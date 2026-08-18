@@ -800,7 +800,248 @@ MaterialExecutionState
 and, if so, whether the latter two require distinct mathematical update and
 decay models.
 
-## 19. Scheduler objective
+## 19. Procedural motor retention and material-specific execution state
+
+A focused procedural-memory research pass strengthens the provisional
+three-layer architecture rather than collapsing it.
+
+### 19.1 Procedural skill is time-sensitive
+
+Tatel and Ackerman's 2025 meta-analysis of procedural skill retention and decay
+synthesized 1,344 effect sizes from 457 reports. Performance loss increased with
+periods of nonuse, and decay differed across accuracy, speed, and mixed
+performance measures. Task characteristics and intermittent use also moderated
+retention.
+
+This provides strong support for allowing `MaterialExecutionState` to weaken
+with nonuse.
+
+The aggregate decay estimates from this heterogeneous literature should **not**
+be used directly as KeyRecall parameters. Their value here is structural:
+material-specific procedural readiness is not merely an immutable accumulation
+of historical evidence.
+
+**Source:** Tatel, C. E., & Ackerman, P. L. (2025). Meta-analysis of procedural
+skill retention and decay. _Psychological Bulletin_.
+
+https://pubmed.ncbi.nlm.nih.gov/40455501/
+
+### 19.2 Motor representations can contain shared and effector-specific components
+
+Motor-sequence research provides evidence for both effector-independent and
+effector-specific representations. Studies of intermanual transfer and motor
+sequence learning have reported transfer of abstract or spatial sequence
+information between hands alongside components that remain specific to the
+trained effector.
+
+This aligns with, but does not prove a one-to-one neural interpretation of, the
+KeyRecall decomposition:
+
+```text
+Technical material
+        |
+        v
+shared/material-level state
+        |
+        +------------------+
+        |                  |
+        v                  v
+RH-specific state     LH-specific state
+```
+
+The software architecture should therefore support **partial transfer** rather
+than assuming either zero or complete transfer between hands.
+
+Practicing F# harmonic minor RH might produce:
+
+```text
+strong update:
+    F# harmonic minor material state
+    RH-specific execution state
+
+shared update:
+    transferable scale motor competencies
+
+partial indirect benefit:
+    prior for future F# harmonic minor LH
+```
+
+It should not mark the LH realization as though it had itself been practiced.
+
+**Representative sources:**
+
+- Panzer, S., Krueger, M., Muehlbauer, T., Kovacs, A. J., & Shea, C. H. (2009).
+  Inter-manual transfer and practice: Coding of simple motor sequences.
+  https://pubmed.ncbi.nlm.nih.gov/19073469/
+- Abrahamse, E. L., Ruitenberg, M. F. L., de Kleine, E., & Verwey, W. B. (2013).
+  Control of automated behavior: Insights from the discrete sequence production
+  task. Background review of sequence representations:
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC3110831/
+- Wiestler, T., Waters-Metenier, S., & Diedrichsen, J. (2014). Effector-
+  independent motor sequence representations exist in extrinsic and intrinsic
+  reference frames. https://pubmed.ncbi.nlm.nih.gov/24695723/
+- Vangheluwe, S., Puttemans, V., Wenderoth, N., Van Baelen, M., & Swinnen, S. P.
+  (2006). Inter- and intralimb transfer of a bimanual task: Generalisability of
+  limb dissociation. https://pubmed.ncbi.nlm.nih.gov/16307261/
+- van Mier, H. I., & Petersen, S. E. (2006). Intermanual transfer effects in
+  sequential tactuomotor learning. https://pubmed.ncbi.nlm.nih.gov/16198379/
+
+### 19.3 Procedural retention is not equivalent to item recall
+
+Motor-memory research also cautions against treating procedural execution as a
+flashcard-like recall process.
+
+Motor learning may demonstrate **savings**: performance can deteriorate during
+nonuse while subsequent reacquisition remains faster than original acquisition.
+Savings, retention, and long-term motor memory need not be identical constructs.
+
+For KeyRecall this argues against simply assigning an HLR-style recall half-life
+to each hand-specific execution.
+
+`MaterialExecutionState` is therefore preferable terminology to
+`ExecutionMemory`: it describes the model's estimate of material-specific
+procedural readiness without prejudging the exact cognitive mechanism.
+
+**Representative sources:**
+
+- Krakauer, J. W., & Shadmehr, R. (2006). Consolidation of motor memory.
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC2553888/
+- Recent work distinguishing savings from long-term motor memory:
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC10138789/
+
+### 19.4 Motor spacing evidence requires a narrower claim
+
+Distributed practice has substantial support in motor learning, including
+evidence for improved long-term retention in some complex motor-training
+domains. However, motor spacing effects vary with task characteristics and
+experimental design and are not as uniform as the declarative-memory spacing
+literature.
+
+KeyRecall should therefore **not directly import declarative spaced-repetition
+intervals into procedural piano practice**.
+
+A piano-specific study by Wiseheart, D'Souza, and Chae found no spacing benefit
+for newly learned 17-note piano sequences and short song phrases under the
+within-session spacing conditions they tested. Importantly for KeyRecall, their
+retention test occurred only about **five minutes after training**. The study
+therefore addresses short-term retention following a single learning session,
+not the longitudinal problem KeyRecall is intended to solve: building,
+maintaining, and reacquiring a technical motor repertoire across months and
+years.
+
+The result is still useful because it demonstrates that a spacing effect should
+not be assumed merely because the task involves piano. It does **not** provide
+evidence against long-term adaptive spacing of piano technique.
+
+The appropriate research position is:
+
+> Spacing is extremely well established for declarative learning, and
+> distributed practice has meaningful support in motor learning, but motor
+> effects are task- and timescale-dependent. Limited piano-specific evidence
+> does not justify directly importing declarative spacing schedules, nor does
+> the available short-retention piano study test KeyRecall's longitudinal use
+> case.
+
+**Sources:**
+
+- Wiseheart, M., D'Souza, A. A., & Chae, B. (2017). Lack of spacing effects
+  during piano learning. https://pmc.ncbi.nlm.nih.gov/articles/PMC5553926/
+- Systematic review of distributed practice in surgical motor-skill training:
+  https://pubmed.ncbi.nlm.nih.gov/28843958/
+
+### 19.5 Accuracy and speed should remain distinguishable
+
+The procedural-retention literature provides empirical support for preserving
+multiple dimensions of performance rather than collapsing MIDI observations into
+one score. Accuracy and speed can show different retention characteristics.
+
+KeyRecall should therefore retain separable observations such as:
+
+```text
+pitch/sequence accuracy
+continuity
+timing/evenness
+tempo capacity
+```
+
+A later performance model may combine these dimensions for prediction or
+scheduling, but the underlying evidence should remain available separately.
+
+### 19.6 Prior expertise can support acquisition of related motor material
+
+Research comparing musicians and nonmusicians on sequential motor tasks has
+found benefits of prior musical experience for acquisition and/or consolidation
+of related finger-sequence skills.
+
+This supports the broader KeyRecall premise that a novel technical item should
+not begin from an isolated zero state. Transferable motor competencies can
+provide informative priors for new but structurally related material.
+
+**Representative sources:**
+
+- https://pubmed.ncbi.nlm.nih.gov/27333186/
+- https://pubmed.ncbi.nlm.nih.gov/27472398/
+
+### 19.7 Refined three-layer state model
+
+The research now supports retaining all three conceptual layers while avoiding
+the assumption that they share identical temporal dynamics:
+
+```text
+LATENT COMPETENCY STATE
+-----------------------
+Transferable capabilities.
+
+Examples:
+    HARMONIC_MINOR_TOPOLOGY
+    DIATONIC_SCALE_MOTOR
+    RH_SCALE_EXECUTION
+    SCALAR_CROSSING
+
+Updated from many materials.
+Transferable across related tasks.
+Refreshed by relevant practice across the repertoire.
+
+
+MATERIAL MEMORY STATE
+---------------------
+Knowledge/familiarity with the musical material itself.
+
+Example:
+    F# harmonic minor scale
+
+Hand-independent at the architectural level.
+Updated whenever the material is meaningfully retrieved/practiced.
+Time-sensitive.
+Exact mathematical memory model remains TBD.
+
+
+MATERIAL EXECUTION STATE
+------------------------
+Material-specific procedural readiness under an execution context.
+
+Examples:
+    F# harmonic minor / RH
+    F# harmonic minor / LH
+    F# harmonic minor / HT
+
+Time-sensitive.
+Supports partial intermanual transfer.
+Should preserve accuracy and speed/fluency information separately.
+Should be capable of representing savings/reacquisition.
+Should not simply reuse the MaterialMemory decay equation.
+```
+
+The distinction between `MaterialMemory` and `MaterialExecutionState` remains a
+modeling abstraction rather than a claim that these software states correspond
+directly to separable biological memory systems.
+
+The next design problem is therefore no longer whether material-specific
+execution state exists. It is how to parameterize that state and connect
+accuracy, fluency/speed, temporal consistency, and transferable competencies in
+an interpretable performance model.
+
+## 20. Scheduler objective
 
 A useful conceptual utility is:
 
@@ -831,7 +1072,7 @@ The scheduler should not require a declared session duration. It should
 continually select a useful next exercise, observe performance, update state,
 and repeat until the user stops.
 
-## 20. Initial level setting
+## 21. Initial level setting
 
 A research-consistent hybrid approach is:
 
@@ -847,7 +1088,7 @@ A research-consistent hybrid approach is:
 This borrows CAT's information-seeking principle without turning KeyRecall into
 a standardized test.
 
-## 21. Irregular practice
+## 22. Irregular practice
 
 No special "missed practice" state is required. Elapsed time simply advances.
 
@@ -865,7 +1106,7 @@ A player returning after two days and one returning after two months can be
 handled by the same model with different elapsed-time inputs. Early exercises
 after a long absence may also have high diagnostic value.
 
-## 22. Telemetry and scientific improvement
+## 23. Telemetry and scientific improvement
 
 The V1 learner model should work **without population telemetry**.
 
@@ -887,11 +1128,12 @@ How much interleaving is useful at different ability levels?
 Population data should calibrate and refine the model rather than be a
 prerequisite for building it.
 
-## 23. Research-supported vs. KeyRecall-specific decisions
+## 24. Research-supported vs. KeyRecall-specific decisions
 
 ### Strongly research-supported principles
 
-- distributed practice improves long-term retention;
+- distributed practice robustly improves long-term retention in declarative
+  learning and has meaningful but task-dependent support in motor learning;
 - useful spacing depends on memory state and retention goals;
 - elapsed time and forgetting can be modeled quantitatively;
 - adaptive scheduling can outperform fixed scheduling;
@@ -925,7 +1167,7 @@ prerequisite for building it.
 The second list is a set of design hypotheses subject to simulation and later
 empirical revision.
 
-## 24. Recommended modeling sequence
+## 25. Recommended modeling sequence
 
 ### Stage 1: Formalize state and evidence
 
@@ -981,7 +1223,7 @@ Only after real data exists consider splitting competencies, estimating
 population priors, learning transfer coefficients, learning scheduler weights,
 or adding contextual-bandit methods.
 
-## 25. Immediate design questions
+## 26. Immediate design questions
 
 ### Latent competency vocabulary
 
@@ -1044,7 +1286,7 @@ direction
 
 Phase and keyboard geometry are plausible additional contextual predictors.
 
-## 26. Working research position
+## 27. Working research position
 
 > KeyRecall should use an interpretable, multidimensional learner model that
 > combines shared transferable competencies with time-sensitive exact-item
@@ -1066,7 +1308,7 @@ These traditions do not prescribe one final KeyRecall equation. They provide a
 defensible foundation from which the learner model and scheduler can be
 designed, simulated, and refined.
 
-## 27. Core reading list
+## 28. Core reading list
 
 - Pavlik, Cen, & Koedinger (2009), _Performance Factors Analysis: A New
   Alternative to Knowledge Tracing_.
