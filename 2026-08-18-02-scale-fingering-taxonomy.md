@@ -420,41 +420,137 @@ augmented second between scale degrees flat-6 and 7.
 This further supports keeping pitch topology, exact fingering pattern,
 motor family, and generated technical events as separate concepts.
 
-## 12. Fixed-Form Melodic-Minor Research Status
+## 12. Fixed-Form Melodic-Minor Canonical Fingering
 
-**Status: scale convention settled; exact canonical fingering table
-still requires normalization from contemporary/jazz piano pedagogy.**
+**Status: 12/12 scales and 24/24 hand-specific patterns normalized.**
 
-Traditional classical sources are problematic because they commonly
-change to natural minor on descent. KeyRecall does not.
+KeyRecall uses the fixed-form/jazz melodic-minor pitch collection:
 
-Berklee/Suzanna Sifter therefore provides the preferred primary
-direction for the fixed-form melodic-minor fingering system.
+``` text
+1 2 b3 4 5 6 7
+```
 
-The pitch collection is the same ascending and descending, but KeyRecall
-should not blindly reverse a convenient one-octave digit string:
-`entry`, internal `cycle`, turnaround, and `exit` must be normalized
-explicitly.
+in both directions. The canonical fingering set is based on contemporary
+piano pedagogy together with the established Schotte/Hanon convention
+that harmonic- and melodic-minor fingerings generally coincide, with
+C-sharp and F-sharp melodic minor as notable RH exceptions.
 
-## 13. Current 48-Scale Catalog
+Canonical one-octave summaries:
 
-Major, natural minor, and harmonic minor are now normalized. Fixed-form
-melodic minor is the remaining V1 scale-form research phase.
+  Scale   RH ascending   LH ascending
+  ------- -------------- --------------
+  C       `12312345`     `54321321`
+  C#      `23123412`     `32143213`
+  D       `12312345`     `54321321`
+  Eb      `21234123`     `21432132`
+  E       `12312345`     `54321321`
+  F       `12341234`     `54321321`
+  F#      `23123412`     `43213214`
+  G       `12312345`     `54321321`
+  G#      `23123123`     `32143213`
+  A       `12312345`     `54321321`
+  Bb      `21231234`     `21321432`
+  B       `12312345`     `43214321`
 
-  Tonic   Major           Natural minor   Harmonic minor   Fixed melodic minor
-  ------- --------------- --------------- ---------------- ---------------------
-  C       Normalized      Normalized      Normalized       Normalize
-  C#/Db   Db normalized   C# normalized   C# normalized    Normalize C#
-  D       Normalized      Normalized      Normalized       Normalize
-  D#/Eb   Eb normalized   Eb normalized   Eb normalized    Normalize Eb
-  E       Normalized      Normalized      Normalized       Normalize
-  F       Normalized      Normalized      Normalized       Normalize
-  F#      Normalized      Normalized      Normalized       Normalize
-  G       Normalized      Normalized      Normalized       Normalize
-  G#/Ab   Ab normalized   G# normalized   G# normalized    Normalize G#
-  A       Normalized      Normalized      Normalized       Normalize
-  A#/Bb   Bb normalized   Bb normalized   Bb normalized    Normalize Bb
-  B       Normalized      Normalized      Normalized       Normalize
+These strings are compact terminal one-octave summaries. The
+authoritative representation remains
+`entry / cycle / terminal_override`.
+
+For ten of the twelve scales, fixed-form melodic minor retains the
+corresponding harmonic-minor fingering. The notable RH exceptions are
+C-sharp and F-sharp:
+
+``` text
+C# melodic RH: 23123412
+F# melodic RH: 23123412
+```
+
+The raised sixth changes the physical geometry near the upper end of
+these scales. For example, F-sharp melodic minor uses:
+
+``` text
+C#3 -> D#4 -> E#1 -> F#2
+```
+
+rather than the harmonic-minor continuation through D natural.
+
+### C-sharp and F-sharp provenance
+
+The C-sharp and F-sharp RH choices deserve explicit research provenance
+because modern sources are not perfectly uniform.
+
+KeyRecall selects `23123412` for both C-sharp and F-sharp fixed-form
+melodic minor because:
+
+-   the Schotte-revised Hanon tradition identifies C-sharp and F-sharp
+    melodic minor as fingering exceptions relative to harmonic minor;
+-   an independent all-key melodic-minor fingering source gives the
+    `23123412` RH pattern for both scales; and
+-   the pattern has a coherent keyboard-geometric rationale around the
+    raised sixth and seventh degrees.
+
+For F-sharp in particular, an alternative RH pattern `23123123` is
+reported by a contemporary piano reference. This should remain in the
+research provenance as a legitimate reported alternative, but it is not
+the KeyRecall V1 canonical fingering.
+
+Suggested provenance record:
+
+``` yaml
+f_sharp_melodic_minor:
+  right_hand:
+    keyrecall_canonical: 23123412
+    status: CANONICAL_SELECTED
+    rationale:
+      - Schotte/Hanon tradition identifies F# melodic minor as an
+        exception relative to harmonic minor
+      - independent all-key melodic-minor source reports 23123412
+      - pattern fits the raised-sixth/raised-seventh keyboard geometry
+    alternatives:
+      - fingering: 23123123
+        status: ALTERNATIVE_REPORTED
+```
+
+The same provenance principle applies to C-sharp where conflicting
+modern material is encountered.
+
+## 13. Complete V1 Scale Catalog
+
+All four initial scale forms are now normalized: **48 scale definitions
+and 96 hand-specific canonical fingering records**.
+
+  --------------------------------------------------------------------------
+  Tonic          Major          Natural minor  Harmonic minor Fixed melodic
+                                                              minor
+  -------------- -------------- -------------- -------------- --------------
+  C              Normalized     Normalized     Normalized     Normalized
+
+  C#/Db          Db normalized  C# normalized  C# normalized  C# normalized
+
+  D              Normalized     Normalized     Normalized     Normalized
+
+  D#/Eb          Eb normalized  Eb normalized  Eb normalized  Eb normalized
+
+  E              Normalized     Normalized     Normalized     Normalized
+
+  F              Normalized     Normalized     Normalized     Normalized
+
+  F#             Normalized     Normalized     Normalized     Normalized
+
+  G              Normalized     Normalized     Normalized     Normalized
+
+  G#/Ab          Ab normalized  G# normalized  G# normalized  G# normalized
+
+  A              Normalized     Normalized     Normalized     Normalized
+
+  A#/Bb          Bb normalized  Bb normalized  Bb normalized  Bb normalized
+
+  B              Normalized     Normalized     Normalized     Normalized
+  --------------------------------------------------------------------------
+
+The enumeration phase is complete. Subsequent work should derive
+`MotorFamily` and `TechnicalEvent` structure from this corpus rather
+than continue adding hand-authored fingering classifications.
 
 ## 14. Development-Time Provenance Record
 
@@ -577,78 +673,92 @@ a separate fingering taxonomy. They introduce chord quality, inversion,
 hand span, black-key starting positions, competing pedagogical systems,
 and potentially stronger dependence on hand geometry.
 
-## 20. Research Conclusions So Far
+## 20. Research Conclusions
 
-1.  One canonical fingering per scale/hand is the correct V1 constraint.
-2.  Canonical means KeyRecall's pedagogically grounded choice, not the
+1.  The V1 canonical enumeration is complete: 48 scale definitions and
+    96 hand-specific fingering records.
+2.  One canonical fingering per scale/hand remains the correct V1
+    constraint.
+3.  Canonical means KeyRecall's pedagogically grounded choice, not the
     only legitimate fingering.
-3.  Source authority matters more than agreement count.
-4.  Major, natural minor, and harmonic minor are fully normalized at the
-    hand-specific canonical-pattern level.
+4.  Source authority matters more than agreement count; meaningful
+    disagreements should be preserved as provenance rather than exposed
+    as competing V1 runtime choices.
 5.  `entry + cycle + terminal_override` cleanly represents initial,
     recurring, and terminal behavior and generates arbitrary octave
     counts.
-6.  Exact fingering patterns and broader motor families are distinct
-    concepts; E-flat natural/harmonic minor demonstrates that boundary
-    behavior can differ while the recurring cycle remains identical.
-7.  The first three scale forms show extensive cross-scale and
-    cross-form fingering reuse.
-8.  Harmonic minor introduces very little new exact motor vocabulary;
-    much of its novelty is pitch topology rather than fingering.
-9.  Motor families should be derived after fixed-form melodic minor is
-    normalized rather than assigned prematurely.
-10. Technical crossing events should be generated from canonical
-    fingering data and retain structural role, not merely finger
-    numbers.
-11. Pitch topology must remain independent from fingering: a change in
-    scale form can preserve the entire motor pattern while changing the
-    required notes.
-12. Descending-by-reversal remains consistent with the normalized major,
-    natural-minor, and harmonic-minor data; it remains a tested dataset
-    property until fixed-form melodic minor is complete.
-13. Fixed-form melodic minor should be sourced from contemporary/jazz
-    piano pedagogy rather than classical descending-melodic-minor
-    conventions.
-14. Alternative fingerings can remain in research provenance without
-    entering V1 runtime behavior.
+6.  Exact `FingeringPattern` and broader `MotorFamily` are distinct
+    concepts.
+7.  The completed corpus shows extensive cross-scale and cross-form
+    fingering reuse; 96 canonical records correspond to far fewer than
+    96 independent motor skills.
+8.  Major, natural minor, and harmonic minor share substantial motor
+    vocabulary. Fixed-form melodic minor likewise normally retains
+    harmonic-minor fingering.
+9.  C-sharp and F-sharp fixed-form melodic minor are notable RH
+    exceptions and warrant preserved provenance.
+10. Boundary behavior can differ even when the recurring cycle is
+    identical, as demonstrated by cases such as E-flat natural versus
+    harmonic minor.
+11. Pitch topology and fingering must remain independent domain
+    concepts: scale-form changes can preserve the entire motor pattern
+    while changing required notes.
+12. Descending-by-reversal is consistent with the completed V1
+    fixed-pitch-collection dataset. Exercise-generation tests should
+    still validate this mechanically rather than relying on an
+    undocumented assumption.
+13. Technical crossing events should be generated from canonical
+    fingering data and retain structural role and keyboard geometry, not
+    merely finger numbers.
+14. `MotorFamily` classifications should now be derived from the
+    complete corpus rather than assigned manually from pedagogical
+    labels alone.
 
-## 21. Next Research Pass
+## 21. Next Analysis Pass --- Derive the Motor Taxonomy
 
-### Phase D --- Fixed-form melodic minor
+With enumeration complete, the next step is structural analysis of the
+96 canonical hand-specific records.
 
-Normalize all 12 fixed-form melodic-minor scales using the same
-representation validated by the first three scale forms.
+### 21.1 Exact pattern analysis
 
-KeyRecall uses the fixed pitch collection:
+1.  Normalize every record to `entry / cycle / terminal_override`.
+2.  Count distinct exact cycles and complete patterns.
+3.  Identify exact reuse across tonics and scale forms.
+4.  Identify patterns that differ only in entry or terminal boundary
+    behavior.
 
-``` text
-1 2 b3 4 5 6 7
-```
+### 21.2 Cyclic and geometric analysis
 
-in both directions.
+1.  Detect rotationally equivalent cycles.
+2.  Compare hand- and direction-reversed structures.
+3.  Identify shared keyboard-geometric organizations even when
+    tonic-relative arrays differ.
+4.  Distinguish exact-pattern families from broader physical
+    `MotorFamily` relationships.
 
-For each tonic and hand:
+### 21.3 Technical-event derivation
 
-1.  establish the canonical fingering from contemporary/jazz piano
-    pedagogy;
-2.  normalize it into `entry / cycle / terminal_override`;
-3.  verify arbitrary multi-octave generation;
-4.  test descending-by-reversal;
-5.  record exact pattern reuse with major, natural minor, and harmonic
-    minor; and
-6.  flag any genuine source disagreement rather than resolving it from
-    low-authority fingering charts.
+Generate the transition vocabulary from the complete corpus, including:
 
-### Phase E --- Derive the taxonomy
+-   hand;
+-   direction;
+-   from-finger and to-finger;
+-   within-octave versus octave-boundary role;
+-   entry, continuation, turnaround, and terminal roles; and
+-   relevant white-key/black-key geometry.
 
-Once all 96 hand-specific V1 records exist:
+### 21.4 Outputs
 
-1.  compare normalized cycles and boundary behavior;
-2.  identify identical and rotationally related structures;
-3.  define `MotorFamily` classifications;
-4.  derive the technical-transition vocabulary;
-5.  generate the fingering-family Mermaid diagram; and
-6.  feed the resulting components back into the KeyRecall Q-matrix.
+The analysis should produce:
+
+1.  the V1 `MotorFamily` taxonomy;
+2.  mappings from every canonical `FingeringPattern` to its motor family
+    or families;
+3.  the derived technical-event vocabulary;
+4.  a Mermaid diagram showing motor-family relationships to scales,
+    hands, and forms; and
+5.  concrete revisions to the KeyRecall Q-matrix and learner-model
+    components.
 
 ## 22. Bibliographic/Source Notes
 
@@ -677,12 +787,38 @@ research.
 
 <https://berkleepress.com/berklee-authors/suzanna-sifter/>
 
+### Schotte/Hanon melodic-minor fingering tradition
+
+Jim Funnell's discussion of the Schotte-revised Hanon editions documents
+the convention that harmonic and melodic minor generally use the same
+fingering, with C-sharp and F-sharp melodic minor as notable exceptions.
+
+<https://funnelljazz.eu/tag/melodic-minor/>
+
+### All-key melodic-minor fingering corroboration
+
+An all-key melodic-minor fingering reference independently reports the
+exceptional `23123412` RH pattern for C-sharp and F-sharp.
+
+<https://hearandplay.com/main/the-fingering-of-the-melodic-minor-scale/>
+
+### Reported F-sharp alternative
+
+A contemporary piano reference reports `23123123` RH for F-sharp melodic
+minor. This is retained as research provenance rather than the KeyRecall
+V1 canonical choice.
+
+<https://piano.org/scales/minor/melodic/f-sharp/>
+
 ## 23. Document Status
 
-This document now contains normalized canonical fingering results for
-all 12 major, all 12 natural-minor, and all 12 harmonic-minor scales:
-**72 of the eventual 96 hand-specific V1 scale records**.
+The V1 scale-fingering enumeration is complete.
 
-Fixed-form melodic minor is the remaining scale-fingering normalization
-phase. Broader `MotorFamily` classifications remain provisional until
-that final 24-record set has been analyzed.
+This document now records canonical fingering results for all 12 major,
+12 natural-minor, 12 harmonic-minor, and 12 fixed-form melodic-minor
+scales: **48 scale definitions and 96 hand-specific canonical records**.
+
+The next revision should no longer focus on scale-by-scale enumeration.
+It should derive the `MotorFamily` taxonomy, technical-event vocabulary,
+and corresponding learner-model/Q-matrix implications from the complete
+canonical corpus.
