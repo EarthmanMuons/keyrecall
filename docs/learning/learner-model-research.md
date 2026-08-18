@@ -502,7 +502,305 @@ pitch_context:
 Preserving tonic context in observations lets later data determine whether
 persistent key-specific effects justify explicit latent parameters.
 
-## 17. Scheduler objective
+## 17. Provisional generalized domain and state model
+
+The current learner-model discussion has been intentionally scale-focused
+because scales are the first fully researched KeyRecall domain. The architecture
+should not, however, make `Scale` the universal technical-material abstraction.
+
+### 17.1 Technical material
+
+Use a general `TechnicalMaterial` concept with domain-specific material
+families:
+
+```text
+TechnicalMaterial
+|
++-- Scale
+|   +-- Major
+|   +-- NaturalMinor
+|   +-- HarmonicMinor
+|   +-- MelodicMinor
+|   `-- future modes...
+|
+`-- Arpeggio
+    +-- MajorTriad
+    +-- MinorTriad
+    +-- DominantSeventh
+    +-- DiminishedSeventh
+    `-- future forms...
+```
+
+An arpeggio should **not** be represented as a scale with a different exercise
+pattern. Scales and arpeggios have different pitch topologies, canonical
+fingerings, motor organizations, and pedagogical identities even though they
+share learner-model and scheduling infrastructure.
+
+V1 may implement only `TechnicalMaterial.type = SCALE`; the abstraction should
+nevertheless avoid requiring a domain-model migration when arpeggios are added.
+
+### 17.2 Exercise patterns are orthogonal to material identity
+
+An `ExercisePattern` describes how technical material is transformed or ordered
+during practice. It does not normally create a new underlying musical material.
+
+For example:
+
+```text
+Material: C major scale
+Pattern:  LINEAR
+```
+
+and:
+
+```text
+Material: C major scale
+Pattern:  THIRDS
+```
+
+share the same underlying material.
+
+Likewise:
+
+```text
+Material: C major arpeggio
+Pattern:  LINEAR
+```
+
+is an arpeggio exercise, not a scale-pattern variant.
+
+This gives the domain four distinct concepts:
+
+```text
+TechnicalMaterial
+    what pitch structure is being practiced?
+
+MotorRealization
+    how is that material physically executed?
+
+ExercisePattern
+    what transformation/order is requested?
+
+TaskConditions
+    under what difficulty and performance context?
+```
+
+A future exercise might therefore be represented conceptually as:
+
+```yaml
+material:
+  type: SCALE
+  tonic: D
+  form: MAJOR
+
+pattern:
+  type: LINEAR
+
+motor:
+  family: DIATONIC_3_4_CYCLE
+
+conditions:
+  hands: RIGHT
+  octaves: 2
+  direction: UP_DOWN
+  tempo_bpm: 96
+```
+
+while a later arpeggio exercise could use the same outer structure with an
+arpeggio-specific topology and motor family.
+
+### 17.3 Generalized topology and motor competencies
+
+The learner vocabulary should likewise avoid making scale-specific components
+the root of all future technical learning.
+
+A provisional generalized topology is:
+
+```text
+PITCH_TOPOLOGY
+|
++-- SCALE_TOPOLOGY
+|   +-- MAJOR_SCALE_TOPOLOGY
+|   `-- MINOR_SCALE_TOPOLOGY
+|       +-- NATURAL_MINOR_TOPOLOGY
+|       +-- HARMONIC_MINOR_TOPOLOGY
+|       `-- MELODIC_MINOR_TOPOLOGY
+|
+`-- ARPEGGIO_TOPOLOGY
+    +-- MAJOR_TRIAD_TOPOLOGY
+    +-- MINOR_TRIAD_TOPOLOGY
+    +-- DOMINANT_SEVENTH_TOPOLOGY
+    `-- DIMINISHED_SEVENTH_TOPOLOGY
+```
+
+Similarly:
+
+```text
+TECHNICAL_MOTOR
+|
++-- DIATONIC_SCALE_MOTOR
+`-- ARPEGGIO_MOTOR
+```
+
+The exact arpeggio motor taxonomy is future research and should not be inferred
+from the scale taxonomy.
+
+### 17.4 Three layers of persistent learner state
+
+The earlier flat choice between one item per scale and one item per
+scale-and-hand is provisionally rejected.
+
+A more expressive model distinguishes:
+
+```text
+1. LATENT COMPETENCY STATE
+   Transferable capability shared across materials and tasks.
+
+2. MATERIAL MEMORY STATE
+   Time-sensitive familiarity/retrievability for a particular musical
+   material.
+
+3. MATERIAL EXECUTION STATE
+   Material-specific history or state under important execution contexts.
+```
+
+For the current scale domain:
+
+```text
+Latent competencies:
+    HARMONIC_MINOR_TOPOLOGY
+    DIATONIC_SCALE_MOTOR
+    RH_SCALE_EXECUTION
+    SCALAR_CROSSING
+    ...
+
+Material memory:
+    F# harmonic minor scale
+
+Material execution state:
+    F# harmonic minor / RH
+    F# harmonic minor / LH
+    F# harmonic minor / HT
+```
+
+This separates remembering the musical object from evidence about executing it
+in a particular context.
+
+Practicing D major RH should therefore be capable of refreshing evidence about
+D-major-scale material while also providing RH-specific motor evidence. A later
+D major LH task should not be treated as completely unrelated, nor should RH
+practice be assumed to fully refresh LH execution.
+
+### 17.5 Patterns should compose with existing knowledge
+
+The same principle applies to future scale patterns.
+
+A pianist encountering C major in thirds for the first time should not start
+from zero if C major itself is well established. Conversely, extensive linear C
+major practice should not imply mastery of the thirds pattern.
+
+Conceptually:
+
+```text
+C-major material experience
+          |
+          +------------------+
+                             |
+                             v
+                    C major in thirds
+                             ^
+                             |
+          +------------------+
+          |
+scale-in-thirds experience
+across other keys
+```
+
+If a pattern demonstrates stable transferable demands, it may eventually justify
+its own latent competency. The pattern should still remain orthogonal to the
+underlying material identity.
+
+### 17.6 V1 implementation boundary
+
+This generalized architecture does **not** expand V1 scope.
+
+The initial implementation can remain:
+
+```text
+TechnicalMaterial
+    SCALE only
+
+ExercisePattern
+    LINEAR only
+
+Scale forms
+    MAJOR
+    NATURAL_MINOR
+    HARMONIC_MINOR
+    MELODIC_MINOR
+
+Execution contexts
+    RH
+    LH
+    HT when supported
+```
+
+The purpose of the generalized vocabulary is to prevent today's scale research
+from becoming tomorrow's architectural constraint.
+
+## 18. Open procedural-memory questions
+
+The generalized state model above is a **provisional KeyRecall design
+hypothesis**, not yet a conclusion from the reviewed memory literature.
+
+The central unresolved question is the status of `MaterialExecutionState`:
+
+```text
+MaterialExecutionState
+    ?
+    +-- independent procedural memory trace with time-dependent forgetting
+    |
+    +-- accumulated contextual evidence feeding the performance model
+    |
+    `-- hybrid persistent execution state with time-dependent decay
+```
+
+The current literature review establishes useful models for item recall and
+shared-skill learning/forgetting, but it does not yet establish that
+material-specific piano motor execution should use the same retention dynamics
+as declarative or vocabulary-like item memory.
+
+A related question is whether `MaterialMemory` itself can cleanly be interpreted
+as a declarative/retrieval trace. Producing a scale combines knowledge of the
+pitch collection with procedural execution, so the convenient architectural
+distinction between "remember D major" and "execute D major RH" should not be
+mistaken for a settled cognitive distinction.
+
+The next research pass should therefore examine motor-skill and
+procedural-memory retention specifically, including:
+
+- retention and forgetting of acquired motor skills over time;
+- differences between declarative and procedural forgetting;
+- contextual specificity and transfer of motor learning;
+- whether hand-specific practice produces durable effector-specific state;
+- transfer between effectors/hands;
+- savings or rapid reacquisition after periods without practice;
+- effects of spacing on complex motor-skill acquisition and retention; and
+- piano-specific evidence where available.
+
+The research goal is to determine whether the three-layer architecture should
+remain:
+
+```text
+LatentCompetencyState
+MaterialMemory
+MaterialExecutionState
+```
+
+and, if so, whether the latter two require distinct mathematical update and
+decay models.
+
+## 19. Scheduler objective
 
 A useful conceptual utility is:
 
@@ -533,7 +831,7 @@ The scheduler should not require a declared session duration. It should
 continually select a useful next exercise, observe performance, update state,
 and repeat until the user stops.
 
-## 18. Initial level setting
+## 20. Initial level setting
 
 A research-consistent hybrid approach is:
 
@@ -549,7 +847,7 @@ A research-consistent hybrid approach is:
 This borrows CAT's information-seeking principle without turning KeyRecall into
 a standardized test.
 
-## 19. Irregular practice
+## 21. Irregular practice
 
 No special "missed practice" state is required. Elapsed time simply advances.
 
@@ -567,7 +865,7 @@ A player returning after two days and one returning after two months can be
 handled by the same model with different elapsed-time inputs. Early exercises
 after a long absence may also have high diagnostic value.
 
-## 20. Telemetry and scientific improvement
+## 22. Telemetry and scientific improvement
 
 The V1 learner model should work **without population telemetry**.
 
@@ -589,7 +887,7 @@ How much interleaving is useful at different ability levels?
 Population data should calibrate and refine the model rather than be a
 prerequisite for building it.
 
-## 21. Research-supported vs. KeyRecall-specific decisions
+## 23. Research-supported vs. KeyRecall-specific decisions
 
 ### Strongly research-supported principles
 
@@ -607,11 +905,12 @@ prerequisite for building it.
 
 ### KeyRecall synthesis decisions
 
-- exact scale items should have memory state separate from transferable
-  competencies;
+- technical-material memory should be distinct from transferable competencies,
+  with material-specific execution state retained separately;
 - DAS3H-like shared-skill dynamics and HLR/ACT-R-like item memory should be
   investigated together;
-- scale topology should initially be represented hierarchically;
+- pitch topology should be hierarchical, with scale topology as the V1
+  implemented branch and arpeggio topology reserved for later research;
 - tonic, phase, and keyboard geometry should initially remain contextual
   features;
 - MIDI observations should remain fine-grained even when latent competencies are
@@ -626,7 +925,7 @@ prerequisite for building it.
 The second list is a set of design hypotheses subject to simulation and later
 empirical revision.
 
-## 22. Recommended modeling sequence
+## 24. Recommended modeling sequence
 
 ### Stage 1: Formalize state and evidence
 
@@ -682,7 +981,7 @@ Only after real data exists consider splitting competencies, estimating
 population priors, learning transfer coefficients, learning scheduler weights,
 or adding contextual-bandit methods.
 
-## 23. Immediate design questions
+## 25. Immediate design questions
 
 ### Latent competency vocabulary
 
@@ -717,17 +1016,15 @@ turnaround execution
 synchronization
 ```
 
-### Item identity
+### Material and execution state
 
-What unit owns a memory trace?
+The provisional domain decision is that musical material and execution context
+should not be flattened into one item identifier.
 
-```text
-scale form + tonic
-scale form + tonic + hand
-scale form + tonic + hand + octave configuration
-```
-
-Too coarse loses specificity; too fine fragments history.
+The remaining research question is how `MaterialMemory` and
+`MaterialExecutionState` should evolve over time, particularly whether
+material-specific execution has an independent procedural forgetting process or
+is better represented as contextual evidence feeding the performance model.
 
 ### Transfer structure
 
@@ -747,7 +1044,7 @@ direction
 
 Phase and keyboard geometry are plausible additional contextual predictors.
 
-## 24. Working research position
+## 26. Working research position
 
 > KeyRecall should use an interpretable, multidimensional learner model that
 > combines shared transferable competencies with time-sensitive exact-item
@@ -769,7 +1066,7 @@ These traditions do not prescribe one final KeyRecall equation. They provide a
 defensible foundation from which the learner model and scheduler can be
 designed, simulated, and refined.
 
-## 25. Core reading list
+## 27. Core reading list
 
 - Pavlik, Cen, & Koedinger (2009), _Performance Factors Analysis: A New
   Alternative to Knowledge Tracing_.
