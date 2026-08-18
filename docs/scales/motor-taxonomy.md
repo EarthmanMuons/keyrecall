@@ -208,6 +208,11 @@ MotorRealization:
 `MotorRealization` is derived from canonical fingering. It must never become the
 authoritative source from which fingering is silently reconstructed.
 
+`MotorFamily` and `MotorRealization` describe the structure of the task; they are
+not synonymous with latent learner components. The adaptive learner model may
+maintain evidence about a pianist's competence with these structures, but a
+structural distinction does not by itself justify a persistent mastery variable.
+
 ## 7. Boundary Behavior
 
 The machine-readable corpus distinguishes entry and terminal adaptations from
@@ -463,36 +468,70 @@ TechnicalEvent:
 Boundary and turnaround events can use the same general event model with
 different `structure` fields rather than being shoehorned into crossing events.
 
-## 15. What Should Become a Learner Component?
+## 15. Boundary with the Learner Model
 
-The mechanical analysis argues strongly **against** one latent learner component
-for every event signature.
+The mechanical analysis argues strongly **against** treating every structural
+feature or technical-event signature as a latent learner component.
 
-A reasonable first hierarchy is:
+The motor taxonomy describes **what the task requires**. `TechnicalEvent`
+instances describe concrete opportunities and observations within that task.
+The learner model separately decides which persistent competencies should be
+estimated from those observations.
+
+For example:
 
 ```text
-DIATONIC_SCALE_MOTOR
-|
-+-- hand realization
-|   +-- RH
-|   `-- LH
-|
-+-- crossing facility
-|   +-- thumb-under with finger 3
-|   +-- thumb-under with finger 4
-|   +-- finger-over-thumb with finger 3
-|   `-- finger-over-thumb with finger 4
-|
-+-- boundary continuation
-|
-`-- direction reversal / turnaround
+DIATONIC_3_4_CYCLE   motor-domain structure
+phase 5              task context
+BLACK -> WHITE       event geometry
+THUMB_UNDER / 4      technical event
 ```
 
-Keyboard geometry and phase should initially be **contextual features
-conditioning the evidence** rather than dozens of independent learner skills.
+None of these automatically implies an independent mastery variable.
 
-If longitudinal data later shows stable geometry-specific weaknesses, the
-learner model can promote selected contexts into explicit latent components.
+The four mechanically observed crossing forms should remain fine-grained event
+attributes even if the learner model initially aggregates their evidence into a
+coarser crossing competency. Preserving fine-grained observations allows later
+empirical analysis to justify splitting a latent component without changing the
+motor-domain model or losing historical information.
+
+Likewise, keyboard geometry and cycle phase should initially remain contextual
+features rather than independent latent competencies. They may be promoted into
+learner-specific parameters later if longitudinal evidence demonstrates stable,
+diagnostically useful geometry- or phase-specific effects.
+
+```text
+Motor domain model
+------------------
+
+CanonicalFingering
+        |
+        v
+MotorRealization
+        +-- MotorFamily
+        +-- phase
+        +-- boundaries
+        `-- geometry
+        |
+        v
+TechnicalEvents
+
+
+Adaptive learner model
+----------------------
+
+Task features + TechnicalEvents + MIDI performance
+                        |
+                        v
+                 Evidence model
+                        |
+                        v
+                Latent competencies
+```
+
+The motor taxonomy describes the structure of the task. The learner model
+describes what KeyRecall currently believes about the pianist. The evidence
+model connects the two.
 
 ## 16. Phase in the Learner Model
 
@@ -502,6 +541,7 @@ justify seven separate phase skills.
 Recommended V1 behavior:
 
 - store phase in `MotorRealization`;
+- treat phase as a task/context feature, not a latent competency;
 - include phase in diagnostic observations;
 - allow phase to influence predicted difficulty;
 - aggregate primary learning evidence at the shared motor/crossing components;
@@ -511,35 +551,43 @@ Recommended V1 behavior:
 
 This preserves transfer without assuming perfect equivalence.
 
-## 17. Revised Q-Matrix Implications
+## 17. Evidence-Model Implications
 
-The original Q-matrix language can now become substantially cleaner.
+The verified taxonomy constrains what information the motor layer can supply to
+a future Q-matrix or other evidence model, but it does not determine the final
+latent-component vocabulary.
 
-An exercise such as C-major RH two octaves can load on:
+A generated exercise can expose structural evidence such as:
 
 ```text
-C_MAJOR_TOPOLOGY
-MAJOR_SCALE_SCHEMA
-
-DIATONIC_SCALE_MOTOR
-RH_SCALE_EXECUTION
-
-THUMB_UNDER_3
-THUMB_UNDER_4
-
-RHYTHMIC_EVENNESS
-TEMPO_CONTROL
-MULTI_OCTAVE_CONTINUATION
-DIRECTION_REVERSAL
+motor family
+hand/orientation
+cycle phase
+entry/terminal boundaries
+crossing opportunities
+keyboard geometry
+octave-continuation opportunities
+turnaround opportunities
 ```
 
-F-major RH no longer needs a separate `F_RH_FINGERING` latent skill. Its
-different phase changes which crossing occurs in which structural location, and
-the event stream supplies that diagnostic context.
+while MIDI performance supplies observations such as correctness, timing,
+continuity, and localized errors.
 
-Likewise C-sharp fixed melodic minor RH does not require a separate
-`FOUR_THEN_THREE` learner component. Its distinctive canonical fingering is
-represented by its phase and event sequence within `DIATONIC_3_4_CYCLE`.
+The evidence model can then decide how strongly those observations update a
+smaller set of persistent learner competencies.
+
+This separation prevents domain concepts such as `F_RH_FINGERING`,
+`THUMB_UNDER_4`, or `PHASE_5` from becoming latent skills merely because they
+can be represented structurally.
+
+Tempo, octave count, direction, and hands-together status should likewise be
+treated here as **performance conditions or task-difficulty features**, not as
+properties that fragment `MotorFamily`. The learner model may estimate how
+performance changes as those conditions become more demanding without creating
+a separate motor family for each condition.
+
+The exact latent-component set and weighting/evidence rules belong in the
+learner-model analysis rather than this motor-taxonomy document.
 
 ## 18. Transfer Consequences
 
@@ -581,7 +629,7 @@ The formal pass produced three analysis artifacts.
 
 ### Motor realization YAML
 
-`2026-08-18-scale-motor-realizations.yaml`
+`motor-realizations.yaml`
 
 Contains:
 
@@ -597,13 +645,13 @@ Contains:
 
 ### Motor realization CSV
 
-`2026-08-18-scale-motor-realizations.csv`
+`generated/motor-realizations.csv`
 
 Tabular version of the same 96-record mapping.
 
 ### Technical-event CSV
 
-`2026-08-18-scale-technical-events.csv`
+`generated/technical-events.csv`
 
 Contains every adjacent transition generated for two-octave ascending and
 descending audit exercises across all 96 records.
@@ -614,33 +662,31 @@ These are analysis artifacts, not yet the proposed production data format.
 
 ```mermaid
 flowchart TD
-    DSM[DIATONIC_SCALE_MOTOR] --> D34[DIATONIC_3_4_CYCLE]
-
-    D34 --> RH[RH Orientation]
-    D34 --> LH[LH Orientation]
-
-    RH --> RPH[Cycle Phase 0..6]
-    LH --> LPH[Cycle Phase 0..6]
-
-    RPH --> MR[Motor Realization]
-    LPH --> MR
-
-    CF[Canonical Fingering] --> MR
+    CF[Canonical Fingering] --> MR[Motor Realization]
     AF[Future Alternative Fingering] -.-> MR
 
+    MR --> D34[DIATONIC_3_4_CYCLE]
+    MR --> PH[Cycle Phase]
     MR --> BD[Boundary Behavior]
     MR --> GEO[Keyboard Geometry]
 
     MR --> EX[Generated Exercise]
     EX --> TE[Technical Events]
+    EX --> TF[Task / Difficulty Features]
 
     TE --> CR[Crossing Attributes]
     TE --> ST[Structural Role]
-    TE --> GM[Geometry]
+    TE --> GM[Event Geometry]
 
-    TE --> QM[Q-Matrix Evidence]
-    QM --> LM[Learner Model]
+    MIDI[MIDI Performance] --> EM[Evidence Model]
+    TE --> EM
+    TF --> EM
+
+    EM --> LM[Latent Competencies]
 ```
+
+The diagram deliberately places an evidence-model boundary between motor-domain
+structure and latent learner state.
 
 ## 21. Verified Taxonomy Status
 
@@ -673,28 +719,22 @@ flowchart TD
 ## 22. Next Step
 
 The structural fingering analysis is now sufficiently mature to return to the
-**learner/Q-matrix model**.
+**learner/evidence model**.
 
-The next pass should revise the earlier five-scale Q-matrix using the verified
-taxonomy and define a first practical latent-component set:
+That work should begin by defining a deliberately small set of persistent
+latent competencies and separating them from:
 
-```text
-scale/topology knowledge
-DIATONIC_SCALE_MOTOR
-RH/LH execution
-crossing facility (3 and 4)
-multi-octave continuation
-hands-together synchronization
-direction reversal
-rhythmic evenness
-tempo control
-```
+- task features such as tonic, scale form, phase, tempo, octave count,
+  direction, and hands configuration;
+- technical-event opportunities such as specific thumb crossings and boundary
+  events; and
+- MIDI observations such as note correctness, timing variation, pauses, and
+  localized execution errors.
 
-Then define how event-localized observations contribute qualitative evidence to
-those components.
-
-That will connect the authoritative fingering/domain work back to the adaptive
-learner model and scheduler.
+Only after those categories are explicit should the earlier Q-matrix be revised.
+The resulting evidence model can then define how fine-grained observations
+update coarser latent competencies and how evidence transfers across related
+tasks.
 
 ## 23. Document Status
 
@@ -708,3 +748,9 @@ same cyclic structure.
 For the current canonical 48-scale / 96-hand V1 corpus, one `DIATONIC_3_4_CYCLE`
 motor family is sufficient. Future data may expand the taxonomy, but no
 additional canonical V1 family is justified by the current corpus.
+
+This document intentionally stops at the boundary of the motor domain. It does
+not freeze a latent learner-component taxonomy. `MotorFamily`, phase, geometry,
+technical events, and performance conditions provide structured evidence to
+that later model rather than automatically becoming mastery variables
+themselves.
