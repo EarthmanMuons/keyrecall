@@ -200,12 +200,12 @@ FingeringPattern
     terminal_override
 ```
 
-- `entry`: how traversal begins at the initial tonic.
-- `cycle`: the repeating seven-note continuation from one tonic to the
-  next internal tonic.
-- `terminal_override`: an optional replacement for continuation behavior
-  when the final tonic is an endpoint rather than an internal octave
-  boundary.
+-   `entry`: how traversal begins at the initial tonic.
+-   `cycle`: the repeating seven-note continuation from one tonic to the
+    next internal tonic.
+-   `terminal_override`: an optional replacement for continuation
+    behavior when the final tonic is an endpoint rather than an internal
+    octave boundary.
 
 For example, C-major RH ascending is normalized as:
 
@@ -216,9 +216,9 @@ terminal_override:
   final_finger: 5
 ```
 
-This generates one, two, four, or arbitrary octave counts without storing
-separate exercise fingerings. The internal tonic uses finger 1 so the
-scale can continue; the final tonic is overridden to finger 5.
+This generates one, two, four, or arbitrary octave counts without
+storing separate exercise fingerings. The internal tonic uses finger 1
+so the scale can continue; the final tonic is overridden to finger 5.
 
 B-flat major RH demonstrates the complementary boundary case: the
 practical initial tonic uses finger 2 while an internal B-flat uses
@@ -258,9 +258,9 @@ a pedagogically meaningful flat-key organization even though their RH
 patterns begin at different phases.
 
 Technical events should also be derived from the canonical pattern. A
-transition such as `4 -> 1` can have different structural roles depending
-on the scale: it may be a within-octave crossing in one pattern and an
-octave-continuation crossing in another.
+transition such as `4 -> 1` can have different structural roles
+depending on the scale: it may be a within-octave crossing in one
+pattern and an octave-continuation crossing in another.
 
 The final motor-family taxonomy remains intentionally deferred until
 harmonic and fixed-form melodic minor have also been normalized.
@@ -276,36 +276,36 @@ The table below uses one-octave terminal fingering strings for compact
 human readability. These strings are summaries; the canonical model is
 the normalized generative representation described above.
 
-| Scale(s) | RH ascending | LH ascending |
-|---|---|---|
-| C, G, D, A, E | `12312345` | `54321321` |
-| F | `12341234` | `54321321` |
-| B | `12312345` | `43214321` |
-| Db | `23123412` | `32143213` |
-| F# | `23412312` | `43213214` |
-| Bb | `21231234` | `32143213` |
-| Eb | `31234123` | `32143213` |
-| Ab | `34123123` | `32143213` |
+  Scale(s)        RH ascending   LH ascending
+  --------------- -------------- --------------
+  C, G, D, A, E   `12312345`     `54321321`
+  F               `12341234`     `54321321`
+  B               `12312345`     `43214321`
+  Db              `23123412`     `32143213`
+  F#              `23412312`     `43213214`
+  Bb              `21231234`     `32143213`
+  Eb              `31234123`     `32143213`
+  Ab              `34123123`     `32143213`
 
 Important boundary behavior:
 
-- C/G/D/A/E/B RH use finger 1 on an internal upper tonic but finger 5
-  at the terminal upper tonic.
-- F RH similarly requires continuation/terminal distinction.
-- B-flat RH uses finger 2 at the initial tonic while recurring internal
-  B-flats use finger 4.
-- Several black-key patterns require no terminal override because the
-  recurring tonic fingering is also suitable at the endpoint.
+-   C/G/D/A/E/B RH use finger 1 on an internal upper tonic but finger 5
+    at the terminal upper tonic.
+-   F RH similarly requires continuation/terminal distinction.
+-   B-flat RH uses finger 2 at the initial tonic while recurring
+    internal B-flats use finger 4.
+-   Several black-key patterns require no terminal override because the
+    recurring tonic fingering is also suitable at the endpoint.
 
 The major-scale research also supports broader pedagogical organizations
 that should inform later `MotorFamily` derivation:
 
-- C/G/D/A/E form the conventional CAGED group.
-- F RH and B LH are hand-specific exceptions to that system.
-- B/D-flat/G-flat share the two-black-key/three-black-key spatial
-  organization.
-- B-flat/E-flat/A-flat share a flat-key spatial organization; their LH
-  pattern is identical.
+-   C/G/D/A/E form the conventional CAGED group.
+-   F RH and B LH are hand-specific exceptions to that system.
+-   B/D-flat/G-flat share the two-black-key/three-black-key spatial
+    organization.
+-   B-flat/E-flat/A-flat share a flat-key spatial organization; their LH
+    pattern is identical.
 
 These are not yet frozen as runtime motor-family identifiers.
 
@@ -316,25 +316,26 @@ These are not yet frozen as runtime motor-family identifiers.
 Natural minor reuses much of the major-scale fingering vocabulary. The
 canonical one-octave terminal summaries are:
 
-| Scale(s) | RH ascending | LH ascending |
-|---|---|---|
-| C, D, E, G, A | `12312345` | `54321321` |
-| F | `12341234` | `54321321` |
-| B | `12312345` | `43214321` |
-| C#, G# | `34123123` | `32143213` |
-| Eb | `31234123` | `21432132` |
-| F# | `23123123` | `43213214` |
-| Bb | `21231234` | `21321432` |
+  Scale(s)        RH ascending   LH ascending
+  --------------- -------------- --------------
+  C, D, E, G, A   `12312345`     `54321321`
+  F               `12341234`     `54321321`
+  B               `12312345`     `43214321`
+  C#, G#          `34123123`     `32143213`
+  Eb              `31234123`     `21432132`
+  F#              `23123123`     `43213214`
+  Bb              `21231234`     `21321432`
 
 Notable exact reuse across major and natural minor includes:
 
-- C/D/E/G/A natural minor reuse the CAGED hand patterns.
-- F natural minor reuses the F-major RH exception and CAGED LH.
-- B natural minor reuses the B-major hand patterns.
-- E-flat natural minor RH matches E-flat major RH.
-- F-sharp natural minor LH matches G-flat major LH.
-- B-flat natural minor RH matches B-flat major RH.
-- C-sharp and G-sharp natural minor share identical RH and LH patterns.
+-   C/D/E/G/A natural minor reuse the CAGED hand patterns.
+-   F natural minor reuses the F-major RH exception and CAGED LH.
+-   B natural minor reuses the B-major hand patterns.
+-   E-flat natural minor RH matches E-flat major RH.
+-   F-sharp natural minor LH matches G-flat major LH.
+-   B-flat natural minor RH matches B-flat major RH.
+-   C-sharp and G-sharp natural minor share identical RH and LH
+    patterns.
 
 Natural minor introduces only a small number of apparently new exact
 tonic-relative patterns, principally:
@@ -346,43 +347,78 @@ Eb LH:    21432132
 Bb LH:    21321432
 ```
 
-These may still prove to be phases or variants of broader motor families,
-so no new `MotorFamily` identifiers are assigned yet.
+These may still prove to be phases or variants of broader motor
+families, so no new `MotorFamily` identifiers are assigned yet.
 
 The parallel-major relationship is useful pedagogical provenance, but it
 should not be encoded as a software rule that derives minor fingering
 from major fingering. Canonical fingering remains explicit domain data.
 
-## 11. Harmonic-Minor Research Status
+## 11. Harmonic-Minor Canonical Fingering
 
-**Status: strong primary source identified; exact black-key sequences
-require careful normalization/corroboration.**
+**Status: 12/12 scales and 24/24 hand-specific patterns normalized.**
 
-Baylor provides harmonic-minor instruction and an appendix containing
-harmonic-minor fingerings. For white-key tonics, Baylor explicitly
-teaches the relationship to parallel-major fingering.
+The seven white-key-tonic harmonic minors retain the conventional
+fingering of their parallel major scales. The five black-key-tonic cases
+were then normalized individually.
 
-High-confidence conventional cases include C, D, E, F, G, A, and B
-harmonic minor.
+Canonical one-octave summaries:
 
-Give targeted exact verification to:
+  Scale(s)        RH ascending   LH ascending
+  --------------- -------------- --------------
+  C, D, E, G, A   `12312345`     `54321321`
+  F               `12341234`     `54321321`
+  B               `12312345`     `43214321`
+  C#, G#          `23123123`     `32143213`
+  F#              `23123123`     `43213214`
+  Eb              `21234123`     `21432132`
+  Bb              `21231234`     `21321432`
 
-``` text
-F# harmonic minor
-C# harmonic minor
-G# harmonic minor
-Eb harmonic minor
-Bb harmonic minor
+As elsewhere in this document, these one-octave strings are compact
+human-readable summaries rather than the authoritative runtime
+representation. Continuation and terminal behavior are represented by
+`entry`, `cycle`, and `terminal_override`.
+
+Notable reuse across scale forms includes:
+
+-   C/D/E/G/A harmonic minor reuse the CAGED hand patterns.
+-   F harmonic minor reuses the F-major/F-natural-minor hand patterns.
+-   B harmonic minor reuses the B-major/B-natural-minor hand patterns.
+-   F-sharp harmonic minor is identical to F-sharp natural minor in both
+    hands.
+-   B-flat harmonic minor is identical to B-flat natural minor in both
+    hands.
+-   C-sharp and G-sharp harmonic minor share identical RH and LH
+    patterns.
+-   C-sharp/G-sharp harmonic-minor RH (`23123123`) is already present as
+    F-sharp natural-minor RH.
+-   C-sharp/G-sharp harmonic-minor LH (`32143213`) is already present in
+    the major/natural-minor catalog.
+-   E-flat harmonic-minor LH is unchanged from E-flat natural minor.
+-   E-flat harmonic-minor RH shares the same recurring cycle as E-flat
+    natural minor but uses a different initial entry finger.
+
+The E-flat case is particularly useful for the domain model:
+
+``` yaml
+eb_natural_minor_rh:
+  entry: [3]
+  cycle: [1, 2, 3, 4, 1, 2, 3]
+
+eb_harmonic_minor_rh:
+  entry: [2]
+  cycle: [1, 2, 3, 4, 1, 2, 3]
 ```
 
-Earlier broad web research exposed alternatives for some of these
-scales. Those lower-authority results are useful only as evidence that
-the exact canonical choice should be checked carefully.
+This demonstrates that two canonical fingerings can share the same
+recurring motor structure while differing only at a boundary condition.
 
-**Decision:** do not fill unresolved black-key harmonic-minor sequences
-from miscellaneous web charts. The user's Piano Chords and Scales app
-can be a targeted secondary check if an exact pattern remains ambiguous
-after authoritative-source review.
+Harmonic minor therefore adds very little new exact motor vocabulary.
+Its principal novelty is pitch topology, especially the characteristic
+augmented second between scale degrees flat-6 and 7.
+
+This further supports keeping pitch topology, exact fingering pattern,
+motor family, and generated technical events as separate concepts.
 
 ## 12. Fixed-Form Melodic-Minor Research Status
 
@@ -402,23 +438,23 @@ explicitly.
 
 ## 13. Current 48-Scale Catalog
 
-Major and natural minor are now normalized. Harmonic minor is the next
-research phase; fixed-form melodic minor follows it.
+Major, natural minor, and harmonic minor are now normalized. Fixed-form
+melodic minor is the remaining V1 scale-form research phase.
 
-| Tonic | Major | Natural minor | Harmonic minor | Fixed melodic minor |
-|---|---|---|---|---|
-| C | Normalized | Normalized | High confidence; normalize next | Normalize |
-| C#/Db | Db normalized | C# normalized | Verify C# exact fingering | Normalize C# |
-| D | Normalized | Normalized | High confidence; normalize next | Normalize |
-| D#/Eb | Eb normalized | Eb normalized | Verify Eb exact fingering | Normalize Eb |
-| E | Normalized | Normalized | High confidence; normalize next | Normalize |
-| F | Normalized | Normalized | High confidence; normalize next | Normalize |
-| F# | Normalized | Normalized | Verify exact fingering | Normalize |
-| G | Normalized | Normalized | High confidence; normalize next | Normalize |
-| G#/Ab | Ab normalized | G# normalized | Verify G# exact fingering | Normalize G# |
-| A | Normalized | Normalized | High confidence; normalize next | Normalize |
-| A#/Bb | Bb normalized | Bb normalized | Verify Bb exact fingering | Normalize Bb |
-| B | Normalized | Normalized | High confidence; normalize next | Normalize |
+  Tonic   Major           Natural minor   Harmonic minor   Fixed melodic minor
+  ------- --------------- --------------- ---------------- ---------------------
+  C       Normalized      Normalized      Normalized       Normalize
+  C#/Db   Db normalized   C# normalized   C# normalized    Normalize C#
+  D       Normalized      Normalized      Normalized       Normalize
+  D#/Eb   Eb normalized   Eb normalized   Eb normalized    Normalize Eb
+  E       Normalized      Normalized      Normalized       Normalize
+  F       Normalized      Normalized      Normalized       Normalize
+  F#      Normalized      Normalized      Normalized       Normalize
+  G       Normalized      Normalized      Normalized       Normalize
+  G#/Ab   Ab normalized   G# normalized   G# normalized    Normalize G#
+  A       Normalized      Normalized      Normalized       Normalize
+  A#/Bb   Bb normalized   Bb normalized   Bb normalized    Normalize Bb
+  B       Normalized      Normalized      Normalized       Normalize
 
 ## 14. Development-Time Provenance Record
 
@@ -482,8 +518,8 @@ left_hand:
   fingering_pattern: <canonical-pattern-id>
 ```
 
-The referenced pattern contains normalized entry/cycle/terminal-override behavior
-required to generate arbitrary exercises.
+The referenced pattern contains normalized entry/cycle/terminal-override
+behavior required to generate arbitrary exercises.
 
 ## 16. Derived Technical Events
 
@@ -543,80 +579,76 @@ and potentially stronger dependence on hand geometry.
 
 ## 20. Research Conclusions So Far
 
-1. One canonical fingering per scale/hand is the correct V1 constraint.
-2. Canonical means KeyRecall's pedagogically grounded choice, not the
-   only legitimate fingering.
-3. Source authority matters more than agreement count.
-4. Major and natural minor are fully normalized at the hand-specific
-   canonical-pattern level.
-5. `entry + cycle + terminal_override` cleanly generates arbitrary
-   octave counts while preserving initial, internal, and terminal tonic
-   behavior.
-6. Descending-by-reversal works for the complete major and natural-minor
-   sets; it remains a tested dataset property until the remaining forms
-   are normalized.
-7. Exact fingering patterns and broader motor families are distinct
-   concepts.
-8. Major and natural minor show substantial cross-scale and cross-form
-   motor-pattern reuse.
-9. Motor families should be derived after all four V1 scale forms are
-   normalized rather than assigned prematurely.
+1.  One canonical fingering per scale/hand is the correct V1 constraint.
+2.  Canonical means KeyRecall's pedagogically grounded choice, not the
+    only legitimate fingering.
+3.  Source authority matters more than agreement count.
+4.  Major, natural minor, and harmonic minor are fully normalized at the
+    hand-specific canonical-pattern level.
+5.  `entry + cycle + terminal_override` cleanly represents initial,
+    recurring, and terminal behavior and generates arbitrary octave
+    counts.
+6.  Exact fingering patterns and broader motor families are distinct
+    concepts; E-flat natural/harmonic minor demonstrates that boundary
+    behavior can differ while the recurring cycle remains identical.
+7.  The first three scale forms show extensive cross-scale and
+    cross-form fingering reuse.
+8.  Harmonic minor introduces very little new exact motor vocabulary;
+    much of its novelty is pitch topology rather than fingering.
+9.  Motor families should be derived after fixed-form melodic minor is
+    normalized rather than assigned prematurely.
 10. Technical crossing events should be generated from canonical
-    fingering data and retain structural role, not merely finger numbers.
-11. Harmonic minor has strong institutional coverage, with a small set
-    of black-key cases requiring exact verification.
-12. Fixed-form melodic minor should be sourced from contemporary/jazz
+    fingering data and retain structural role, not merely finger
+    numbers.
+11. Pitch topology must remain independent from fingering: a change in
+    scale form can preserve the entire motor pattern while changing the
+    required notes.
+12. Descending-by-reversal remains consistent with the normalized major,
+    natural-minor, and harmonic-minor data; it remains a tested dataset
+    property until fixed-form melodic minor is complete.
+13. Fixed-form melodic minor should be sourced from contemporary/jazz
     piano pedagogy rather than classical descending-melodic-minor
     conventions.
-13. Alternative fingerings can remain in research provenance without
+14. Alternative fingerings can remain in research provenance without
     entering V1 runtime behavior.
 
 ## 21. Next Research Pass
 
-### Phase C — Harmonic minor
+### Phase D --- Fixed-form melodic minor
 
-Normalize all 12 harmonic-minor scales using the same representation now
-validated by major and natural minor.
+Normalize all 12 fixed-form melodic-minor scales using the same
+representation validated by the first three scale forms.
 
-Begin with the seven high-confidence white-key tonics:
-
-``` text
-C D E F G A B
-```
-
-Then give targeted scrutiny to:
+KeyRecall uses the fixed pitch collection:
 
 ``` text
-F# C# G# Eb Bb
+1 2 b3 4 5 6 7
 ```
 
-For each hand:
+in both directions.
 
-1. establish the canonical fingering from the strongest available
-   pedagogical source;
-2. normalize it into `entry / cycle / terminal_override`;
-3. verify arbitrary multi-octave generation;
-4. test descending-by-reversal;
-5. record exact pattern reuse with the existing major/natural-minor
-   catalog; and
-6. defer broader motor-family assignment until the complete V1 scale
-   catalog is available.
+For each tonic and hand:
 
-### Phase D — Fixed-form melodic minor
+1.  establish the canonical fingering from contemporary/jazz piano
+    pedagogy;
+2.  normalize it into `entry / cycle / terminal_override`;
+3.  verify arbitrary multi-octave generation;
+4.  test descending-by-reversal;
+5.  record exact pattern reuse with major, natural minor, and harmonic
+    minor; and
+6.  flag any genuine source disagreement rather than resolving it from
+    low-authority fingering charts.
 
-After harmonic minor, normalize all 12 fixed-form melodic-minor scales
-from contemporary/jazz piano pedagogy using the same process.
-
-### Phase E — Derive the taxonomy
+### Phase E --- Derive the taxonomy
 
 Once all 96 hand-specific V1 records exist:
 
-1. compare normalized cycles and boundary behavior;
-2. identify identical and rotationally related structures;
-3. define `MotorFamily` classifications;
-4. derive the technical-transition vocabulary;
-5. generate the fingering-family Mermaid diagram; and
-6. feed the resulting components back into the KeyRecall Q-matrix.
+1.  compare normalized cycles and boundary behavior;
+2.  identify identical and rotationally related structures;
+3.  define `MotorFamily` classifications;
+4.  derive the technical-transition vocabulary;
+5.  generate the fingering-family Mermaid diagram; and
+6.  feed the resulting components back into the KeyRecall Q-matrix.
 
 ## 22. Bibliographic/Source Notes
 
@@ -648,10 +680,9 @@ research.
 ## 23. Document Status
 
 This document now contains normalized canonical fingering results for
-all 12 major and all 12 natural-minor scales: **48 of the eventual 96
-hand-specific V1 scale records**.
+all 12 major, all 12 natural-minor, and all 12 harmonic-minor scales:
+**72 of the eventual 96 hand-specific V1 scale records**.
 
-Harmonic minor is the next normalization phase, followed by fixed-form
-melodic minor. Broader `MotorFamily` classifications remain provisional
-until all four scale forms have been analyzed.
-
+Fixed-form melodic minor is the remaining scale-fingering normalization
+phase. Broader `MotorFamily` classifications remain provisional until
+that final 24-record set has been analyzed.
