@@ -1,7 +1,6 @@
 # KeyRecall Documentation Map
 
-**Status:** Proposed structure — pending confirmation before Phase 2 content
-edits begin\
+**Status:** Living map, updated as the doc set evolves\
 **Date:** August 18, 2026\
 **Purpose:** Orient new readers, and record the current document authority and
 lineage so later documents stop re-deriving vocabulary that earlier documents
@@ -11,20 +10,14 @@ already settled.
 
 ## 1. Why this file exists
 
-KeyRecall's design work has gone through several passes. Each pass got more
-precise than the last, but earlier documents were never fully updated to reflect
-what later passes concluded. The result was three independently drafted
-vocabularies for the same concepts, a Q-matrix that predates the analysis that
-made it stale, and no explicit statement of which document wins when two
-disagree.
-
-This file — together with `GLOSSARY.md` — is the first deliverable of a
-deliberate consolidation pass, done **before** writing the V1 prototype. It does
-not yet rewrite the affected sections of the seven documents below; it
-establishes the vocabulary and authority those edits will use, so the edits
-happen once, coherently, instead of piecemeal. See §4 below for the specific
-list of pending content edits per document, and `GLOSSARY.md` §14 for what this
-pass deliberately leaves undecided.
+KeyRecall's design work has gone through several passes, and earlier
+documents weren't always updated to reflect what later passes
+concluded: independently drafted vocabularies for the same concepts, a
+Q-matrix that predated the analysis that made it stale, no explicit
+statement of which document wins when two disagree. This file, together
+with `GLOSSARY.md`, establishes the vocabulary and authority so that
+kind of drift gets caught rather than accumulating. See §4 for known
+supersessions and `GLOSSARY.md` §14 for the resolution ledger.
 
 ## 2. Reading order
 
@@ -71,19 +64,19 @@ here.
 | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `design/product-vision.md`           | Product thesis, UX principles, competitive landscape, one-sentence vision                                                                                  | Any specific data model, math, or current competency vocabulary                                                                       |
 | `domain-model/fingering-taxonomy.md` | Canonical fingering per scale/hand (source of truth)                                                                                                       | Motor-family classification, learner state                                                                                            |
-| `domain-model/motor-taxonomy.md`     | Motor-family/phase/crossing structure, mechanically verified                                                                                               | Latent competency ontology (explicitly out of scope — see its §15)                                                                    |
-| `domain-model/v1-domain-model.md`    | Domain entities not explicitly superseded below (`ScaleDefinition`, `ExpectedEvent`, relationships, prerequisites, etc.)                                   | `Exercise` (flat form), `FingeringGroup`, `Component` ontology, and its own Q-matrix tables (§6.2-§11) — all superseded, see §4 below |
-| `learner-model/01-research.md`       | Research grounding, citations, KeyRecall-synthesis vs. research-supported distinction                                                                      | Frozen equations (several formulas here are illustrative precedent, not adopted — see §4 below, items 4-5)                            |
+| `domain-model/motor-taxonomy.md`     | Motor-family/phase/crossing structure, mechanically verified                                                                                               | Latent competency ontology (explicitly out of scope, see its §15)                                                                    |
+| `domain-model/v1-domain-model.md`    | Domain entities not explicitly superseded below (`ScaleDefinition`, `ExpectedEvent`, relationships, prerequisites, etc.)                                   | `Exercise` (flat form), `FingeringGroup`, `Component` ontology, and its own Q-matrix tables (§6.2-§11), all superseded, see §4 below |
+| `learner-model/01-research.md`       | Research grounding, citations, KeyRecall-synthesis vs. research-supported distinction                                                                      | Frozen equations (several formulas here are illustrative precedent, not adopted; see §4 below, items 3-4)                            |
 | `learner-model/02-v1-design.md`      | Learner-state architecture; reconciled ten-Competency ontology (§9.1); compositional `Exercise` model | Numerical parameters, scheduler equations                                                                                             |
-| `learner-model/03-v1-math.md`        | V1 equations, scheduler structure (eligibility → challenge filter → priority ranking), simulation/calibration plan                                         | —                                                                                                                                     |
+| `learner-model/03-v1-math.md`        | V1 equations, scheduler structure (eligibility → challenge filter → priority ranking), simulation/calibration plan                                         | (none)                                                                                                                                     |
 
 When a conflict between documents isn't listed in §4 below, don't infer
-authority from filename date or commit order — treat it as an unresolved
-documentation issue and raise it, rather than silently picking a side. This
-project deliberately preserves research and design history instead of
-continuously rewriting it as though the current design had existed from the
-start, so an undocumented conflict is a gap to flag, not a puzzle to resolve by
-inference.
+authority from filename date or commit order: treat it as an unresolved
+documentation issue and raise it, rather than silently picking a side.
+This project deliberately preserves research and design history instead
+of continuously rewriting it as though the current design had existed
+from the start, so an undocumented conflict is a gap to flag, not a
+puzzle to resolve by inference.
 
 ## 4. Known supersessions and resolution status
 
@@ -91,32 +84,24 @@ This section records known document supersessions, both completed and
 still-pending migrations, so historical material in the older documents
 is never mistaken for current design.
 
-1. **`v1-domain-model.md` §6.5-§7 (`Component` categories) and §8-§11
-   (Q-matrix tables)** — **resolved.** Superseded by the reconciled
-   ten-Competency ontology in `02-v1-design.md` §9.1 and the Q-matrix
-   semantics (structural `Q`, derived `q`, evidence-attribution `w`) in
-   `03-v1-math.md` §9. The stale sections now carry inline superseded
-   notes pointing to both. See `GLOSSARY.md` §14 for the resolution
-   record.
-2. **`v1-domain-model.md` §6.2 (`FingeringGroup`)** is superseded by the
-   `FingeringPattern` → `MotorRealization` → `MotorFamily` decomposition in
-   `motor-taxonomy.md`. See `GLOSSARY.md` §2 for why this isn't a simple rename.
-3. **`v1-domain-model.md` §6.3 (flat `Exercise`)** is superseded by the
-   compositional `Exercise` in `02-v1-design.md`
-   (`TechnicalMaterial + ExercisePattern + ExecutionConditions + GuidanceContext + MotorRealization + Opportunities`).
-4. **`01-research.md` §21.1's crossed-effects sketch**
-   (`logit P(Y) = xβ + b_u + c_m + r_{u,m}`) is motivating precedent, not the
-   adopted model. `03-v1-math.md` §10's actual equation has no separate
-   `b_u`/`c_m` terms — that role is played by the competency/memory/residual
-   state directly.
-5. **`design/product-vision.md` §14 and `01-research.md` §22's scheduler utility
-   sums** are superseded by `03-v1-math.md` §20-§22's eligibility →
-   challenge-filter → priority-ranking structure.
+1. **`v1-domain-model.md` §6.2, §6.5-§11**: resolved. Superseded by the
+   ten-Competency ontology (`02-v1-design.md` §9.1) and the `Q`/`q`/`w`
+   Q-matrix (`03-v1-math.md` §9); inline notes point to both.
+   `GLOSSARY.md` §14 has the resolution record.
+2. **`v1-domain-model.md` §6.3 (flat `Exercise`)**: superseded by the
+   compositional `Exercise` in `02-v1-design.md`.
+3. **`01-research.md` §21.1's crossed-effects sketch** is motivating
+   precedent, not the adopted model; `03-v1-math.md` §10's actual
+   equation has no separate `b_u`/`c_m` terms, that role is played by
+   the competency/memory/residual state directly.
+4. **`product-vision.md` §14 and `01-research.md` §22's scheduler
+   utility sums** are superseded by `03-v1-math.md` §20-§22's
+   eligibility → challenge-filter → priority-ranking structure.
 
 ## 5. What this consolidation pass does _not_ cover yet
 
-Deliberately out of scope for this pass — see `GLOSSARY.md` §14 for the full
-list with rationale:
+Deliberately out of scope for this pass; see `GLOSSARY.md` §14 for the
+full list with rationale:
 
 - Exact `SessionState` mathematics (decay, fatigue signal definition).
 - Exact `InstrumentProfile` field set beyond the V1-required subset.

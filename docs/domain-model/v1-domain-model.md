@@ -8,29 +8,11 @@
 fingering-model decisions, transfer assumptions, diagnostic event model, and
 unresolved questions before implementation.
 
-> **Status update — Q-matrix reconciliation complete.** The `Component`/
-> Q-matrix material in §6.5-§6.7, §7, and §8-§11 below, and the
-> `FingeringGroup` material in §6.2, are retained as historical record but
-> are **superseded**. The canonical V1 competency ontology now lives in
-> `../learner-model/02-v1-design.md` §9.1; the canonical Q-matrix
-> semantics (structural `Q`, derived `q`, evidence-attribution `w`) and
-> generation rules now live in `../learner-model/03-v1-math.md` §9. See
-> `../README.md` §4 for the full supersession list.
->
-> The worked examples in §14-§16 below (C major vs. A natural minor, the
-> C→G→D transfer example, F major as a diagnostic counterexample) also
-> use pre-reconciliation competency names (`MAJOR_SCALE_SCHEMA`,
-> `RHYTHMIC_EVENNESS`, `TEMPO_CONTROL`, `RH_DIRECTION_REVERSAL`,
-> `A_NATURAL_MINOR_TOPOLOGY`, `G_MAJOR_TOPOLOGY`, `D_MAJOR_TOPOLOGY`, and
-> similar). Their reasoning and conclusions are still correct — transfer
-> emerging from shared latent structure, F major's diagnostic value, and
-> the pitch-set-vs-motor-fluency distinction all hold under the
-> reconciled ontology too — but map their vocabulary onto
-> `MAJOR_SCALE_TOPOLOGY`/`NATURAL_MINOR_TOPOLOGY`,
-> `RH_SCALE_EXECUTION`/`LH_SCALE_EXECUTION`, `SCALAR_CROSSING`,
-> `DIRECTION_REVERSAL`, and `MaterialMemoryState` (for exact-key
-> retrievability) rather than the per-key/per-transition names used
-> below.
+> **Superseded.** The competency ontology and Q-matrix in this document
+> (§6.2, §6.5-§11, and the worked examples in §14-§16) predate the
+> reconciliation in `../learner-model/02-v1-design.md` §9.1 and
+> `../learner-model/03-v1-math.md` §9. Current names and semantics live
+> there.
 
 ---
 
@@ -598,41 +580,14 @@ as equivalent to:
 because they are different technical events and should provide different
 evidence to the learner model.
 
-> **Superseded.** The `FingeringGroup` concept sketched below anticipated
-> multiple derived fingering families. The mechanical motor-taxonomy
-> analysis (`motor-taxonomy.md`) found something stronger and different
-> in shape instead: all 96 canonical hand-specific records collapse into
-> **one** `MotorFamily` (`DIATONIC_3_4_CYCLE`), differentiated by phase
-> and boundary behavior rather than by group membership. `FingeringGroup`,
-> as specified below, has no distinct role in the current scale-domain
-> model — that's a finding about the current canonical scale corpus, not
-> a claim that no future grouping concept could be useful once
-> alternative fingerings, additional scale patterns, or arpeggios are in
-> scope. The canonical replacement triad is:
->
-> ```text
-> FingeringPattern     concrete canonical fingering (entry/cycle/exit)
-> MotorRealization      mechanically derived realization of a pattern
-> MotorFamily           higher-level equivalence class over realizations
-> ```
->
-> See `../GLOSSARY.md` §2 for the full reasoning.
-
-A reusable fingering family was originally sketched as a derived structure
-over canonical patterns:
-
-```text
-FingeringGroup
-    id
-    hand
-    member_patterns[]
-    shared_transition_structure
-    applicable_scale_definitions[]
-```
-
-The **pattern is authoritative domain data**. `FingeringGroup` is retired;
-`MotorRealization` and `MotorFamily` (`motor-taxonomy.md`) fill its
-intended role.
+> **Superseded.** `FingeringGroup`, sketched below as a derived
+> multi-family classification, is retired: mechanical analysis
+> (`motor-taxonomy.md`) found all 96 canonical hand-specific records
+> collapse into one `MotorFamily` (`DIATONIC_3_4_CYCLE`), differentiated
+> by phase and boundary rather than group membership. The **pattern**
+> remains authoritative domain data; `FingeringPattern` →
+> `MotorRealization` → `MotorFamily` is the current triad (`GLOSSARY.md`
+> §2).
 
 ### 6.3 `Exercise`
 
@@ -655,12 +610,9 @@ Exercise
 Not all parameters are required in the earliest prototype, but the model should
 leave room for them.
 
-> **Superseded.** This flat representation is superseded by the
-> compositional `Exercise` in `../learner-model/02-v1-design.md`
-> (`TechnicalMaterial + ExercisePattern + ExecutionConditions +
-> GuidanceContext + MotorRealization + Opportunities`), which makes
-> `GuidanceContext` a first-class part of the evidence model rather than
-> UI state.
+> **Superseded** by the compositional `Exercise` in
+> `../learner-model/02-v1-design.md`, which makes `GuidanceContext` part
+> of the evidence model rather than UI state.
 
 ### 6.4 `ExpectedEvent`
 
@@ -700,57 +652,18 @@ The exact event vocabulary should emerge from the complete fingering taxonomy.
 `expected_finger` is pedagogical/domain information. Standard MIDI does not
 verify which finger the pianist actually used.
 
-### 6.5 `Component` — superseded by `Competency`
+### 6.5 `Component` (superseded by `Competency`)
 
-> **Superseded.** `Component` is retired in favor of `Competency`. The
-> reconciled V1 competency ontology (ten Competencies, organized under
-> non-latent `CompetencyCategory` nodes) lives in
-> `../learner-model/02-v1-design.md` §9.1. The category list below is
-> retained as historical record of the pre-reconciliation ontology.
+**Superseded** by `Competency`: ten Competencies under non-latent
+`CompetencyCategory` nodes, `../learner-model/02-v1-design.md` §9.1.
 
-A latent capability for which performance supplies evidence.
+### 6.6 `ExerciseComponentMapping` (superseded)
 
-Categories currently include:
-
-```text
-PATTERN / TOPOLOGY
-FINGERING / MOTOR TRANSITION
-CONTINUATION / REVERSAL
-COORDINATION
-GENERAL PERFORMANCE
-KEYBOARD GEOMETRY
-```
-
-### 6.6 `ExerciseComponentMapping` — superseded by the `Q`/`q`/`w` Q-matrix
-
-> **Superseded.** The single `evidence_strength` field below (qualitative
-> `PRIMARY`/`SECONDARY`/`NONE`) conflated three separate questions: what
-> an exercise can test, how that gets weighted in a predictor, and how
-> informative a specific attempt actually was. `03-v1-math.md` §9 splits
-> these into a binary structural Q-matrix (`Q_{e,k}`), a derived
-> normalized predictor loading (`q_{e,k}`), and a per-attempt evidence-
-> attribution weight (`w_{a,k}`, indexed by attempt rather than exercise)
-> — the last of these is where the
-> `PRIMARY`/`SECONDARY` reasoning actually belongs.
-
-A Q-matrix-style relationship between an exercise family and a latent component.
-
-```text
-ExerciseComponentMapping
-    exercise_family
-    component
-    evidence_strength
-```
-
-V1 qualitative strengths:
-
-```text
-PRIMARY
-SECONDARY
-NONE
-```
-
-These are semantic design labels, not numerical coefficients.
+**Superseded** by the `Q`/`q`/`w` split in
+`../learner-model/03-v1-math.md` §9: a binary structural Q-matrix, a
+derived predictor loading, and a per-attempt evidence-attribution
+weight, replacing the qualitative `PRIMARY`/`SECONDARY`/`NONE` used
+here.
 
 ### 6.7 `Observation`
 
@@ -771,270 +684,36 @@ Observation
     restart / interruption markers
 ```
 
-### 6.8 `LearnerComponentState`
+### 6.8 `LearnerComponentState` (superseded by `LatentCompetencyState`)
 
-Represents the current longitudinal belief about a component.
-
-```text
-LearnerComponentState
-    component
-    competence
-    uncertainty
-    retention_state
-    reliable_tempo / performance envelope
-    observation_history
-```
-
-The mathematical representation remains deliberately unspecified.
+**Superseded** by `LatentCompetencyState`,
+`../learner-model/02-v1-design.md` §9.1.
 
 ---
 
-## 7. Initial Latent-Component Ontology
+## 7. Initial Latent-Component Ontology (superseded)
 
-> **Superseded.** This entire section (originally an in-progress sketch,
-> hence the stale `5.x` subsection numbering below) is superseded by the
-> reconciled ten-Competency ontology in
-> `../learner-model/02-v1-design.md` §9.1. In particular:
-> `MAJOR_SCALE_SCHEMA`/`C_MAJOR_TOPOLOGY`-style per-key topology
-> competencies are replaced by four scale-*form* topology competencies
-> plus `MaterialMemoryState` for exact-key retrievability;
-> `RH_3_TO_1_ASCENDING`-style per-transition competencies are replaced by
-> one `SCALAR_CROSSING` competency plus event-level context;
-> `RH_MULTI_OCTAVE_CONTINUATION`/`LH_MULTI_OCTAVE_CONTINUATION` and
-> `RH_DIRECTION_REVERSAL`/`LH_DIRECTION_REVERSAL` collapse into one
-> `MULTI_OCTAVE_CONTINUATION` and one `DIRECTION_REVERSAL` competency
-> each (hand becomes context, not a competency split);
-> `PARALLEL_HAND_SYNCHRONIZATION`/`CROSSING_COORDINATION`/
-> `HT_DIRECTION_REVERSAL` collapse into one `HANDS_TOGETHER_COORDINATION`
-> competency; `BLACK_KEY_NAVIGATION` becomes geometry context rather than
-> a competency; and `TEMPO_CONTROL`/`RHYTHMIC_EVENNESS`/`ERROR_RECOVERY`
-> become task-difficulty/observed-outcome dimensions rather than
-> competencies. See `../learner-model/02-v1-design.md` §9.1.4 for why the
-> two most tempting parent nodes (a general diatonic-motor competency and
-> a general evenness competency) were deliberately left out too.
-
-### 5.1 Pattern and topology
-
-```text
-MAJOR_SCALE_SCHEMA
-NATURAL_MINOR_SCHEMA
-
-C_MAJOR_TOPOLOGY
-G_MAJOR_TOPOLOGY
-D_MAJOR_TOPOLOGY
-F_MAJOR_TOPOLOGY
-A_NATURAL_MINOR_TOPOLOGY
-```
-
-"Topology" means proceduralized knowledge of how the scale lies and unfolds on
-the keyboard, not merely declarative knowledge of its pitch names.
-
-### 5.2 Fingering and motor transitions
-
-The V1 ontology should represent actual transition families rather than a
-generic `STANDARD_SCALE_CROSSING`.
-
-Initial RH examples required by the five-scale set include:
-
-```text
-RH_3_TO_1_ASCENDING
-RH_1_TO_3_DESCENDING
-
-RH_4_TO_1_ASCENDING
-RH_1_TO_4_DESCENDING
-```
-
-Left-hand transition IDs should likewise be generated from the canonical
-fingering patterns actually present in the supported scale taxonomy.
-
-The complete catalog should be built from all intended scale fingerings before
-implementation hardens the ontology.
-
-This is intentionally more precise than the earlier temporary
-`LH_STANDARD_SCALE_CROSSING` idea.
-
-### 5.3 Continuation and reversal
-
-```text
-RH_MULTI_OCTAVE_CONTINUATION
-LH_MULTI_OCTAVE_CONTINUATION
-
-RH_DIRECTION_REVERSAL
-LH_DIRECTION_REVERSAL
-```
-
-Hands-together reversal may also require:
-
-```text
-HT_DIRECTION_REVERSAL
-```
-
-because synchronized reversal is not simply the sum of each hand's individual
-reversal competence.
-
-### 5.4 Coordination
-
-```text
-PARALLEL_HAND_SYNCHRONIZATION
-CROSSING_COORDINATION
-HT_DIRECTION_REVERSAL
-```
-
-Future work may split crossing coordination by specific asymmetric
-hand-transition combinations if evidence supports doing so.
-
-### 5.5 General execution
-
-```text
-RHYTHMIC_EVENNESS
-TEMPO_CONTROL
-ERROR_RECOVERY
-```
-
-Potential later additions:
-
-```text
-VELOCITY_CONTROL
-HAND_BALANCE
-ENDURANCE / SUSTAINED_CONSISTENCY
-```
-
-These should not be added merely because MIDI makes them measurable. Each should
-correspond to a meaningful learner-model construct.
-
-### 5.6 Keyboard geometry
-
-Provisional:
-
-```text
-BLACK_KEY_NAVIGATION
-```
-
-This is intentionally marked as low-confidence.
-
-The eventual model may need more contextual features such as:
-
-```text
-CROSSING_TOWARD_BLACK_KEY
-CROSSING_AWAY_FROM_BLACK_KEY
-THUMB_ADJACENT_TO_BLACK_KEY
-BLACK_WHITE_TRANSITION_GEOMETRY
-```
-
-The correct abstraction should be informed by the complete fingering set and
-later empirical evidence.
+**Superseded** by the reconciled ten-Competency ontology,
+`../learner-model/02-v1-design.md` §9.1, including why a general
+diatonic-motor competency and a general evenness competency were
+deliberately left out.
 
 ---
 
-## 8. Qualitative Q-Matrix: Right Hand, One Octave
+## 8-11. Original Qualitative Q-Matrix Tables (superseded)
 
-> **Superseded (§8-§11).** These per-scale qualitative tables are
-> retained as historical record. The canonical V1 Q-matrix is binary and
-> **generated from exercise composition** rather than authored per scale
-> (`../learner-model/03-v1-math.md` §9.1) — tonic barely matters to Q
-> membership once exact-key retrievability lives in `MaterialMemoryState`.
-> The `PRIMARY`/`SECONDARY`/`NONE` distinction used throughout these
-> tables is superseded by the evidence-attribution weight `w_{a,k}`
-> (`03-v1-math.md` §9.3), indexed by attempt rather than exercise since
-> it's computed from what actually happened, not authored per
-> scale/competency pair. `BLACK_KEY_NAVIGATION` and `TEMPO_CONTROL`, both
-> used as rows below, are retired as competencies (§7 above).
+**Superseded** by the generated binary Q-matrix and evidence-attribution
+weight in `../learner-model/03-v1-math.md` §9. `Q` is generated from
+exercise composition rather than authored per scale; the qualitative
+`PRIMARY`/`SECONDARY`/`NONE` used in these tables is replaced by the
+per-attempt weight `w_{a,k}`.
 
-Assume ascending and descending performance.
-
-Component C major G major D major F major A natural minor
-
----
-
-`MAJOR_SCALE_SCHEMA` P P P P \- `NATURAL_MINOR_SCHEMA` \- \- \- \- P
-key-specific topology P P P P P RH 3→1 / 1→3 transition family P P P \- P RH 4→1
-/ 1→4 transition family \- \- \- P \- `RH_DIRECTION_REVERSAL` P P P P P
-`RH_MULTI_OCTAVE_CONTINUATION` \- \- \- \- \- `BLACK_KEY_NAVIGATION` \- S P S \-
-`RHYTHMIC_EVENNESS` P P P P P `TEMPO_CONTROL` S S S S S
-
-### Interpretation
-
-C, G, D, and A natural minor share substantial RH motor evidence. F major
-intentionally breaks that pattern and therefore has high diagnostic value for
-distinguishing generalized RH fluency from fluency limited to one common
-fingering family.
-
----
-
-## 9. Qualitative Q-Matrix: Left Hand, One Octave
-
-The exact transition IDs should come from the complete LH fingering taxonomy. At
-the current conceptual level:
-
-Component C major G major D major F major A natural minor
-
----
-
-`MAJOR_SCALE_SCHEMA` P P P P \- `NATURAL_MINOR_SCHEMA` \- \- \- \- P
-key-specific topology P P P P P applicable LH fingering-transition components P
-P P P P `LH_DIRECTION_REVERSAL` P P P P P `LH_MULTI_OCTAVE_CONTINUATION` \- \-
-\- \- \- `BLACK_KEY_NAVIGATION` \- S P S \- `RHYTHMIC_EVENNESS` P P P P P
-`TEMPO_CONTROL` S S S S S
-
-### Important modeling decision
-
-Do **not** implement `LH_STANDARD_SCALE_CROSSING` as the permanent component
-merely because these five scales have substantial commonality.
-
-Before finalizing the LH rows, enumerate the canonical left-hand fingering
-groups across the complete intended scale set and generate the corresponding
-transition components.
-
-The initial Q-matrix remains valid conceptually: each scale loads primarily on
-its actual prescribed LH transition components.
-
----
-
-## 10. Two-Octave Transformation
-
-Changing from one octave to two or more octaves does not create a new scale
-skill.
-
-It changes the exercise and activates additional evidence.
-
-Component 1 octave 2+ octaves
-
----
-
-topology P P crossing execution P P reversal P P multi-octave continuation \- P
-evenness P P, with more observations tempo control S P sustained consistency
-weak S/P depending on length
-
-The exercise generator should add continuation events at octave boundaries.
-
----
-
-## 11. Hands-Together Q-Matrix
-
-For two-octave parallel-motion HT exercises:
-
-Component C G D F A natural minor
-
----
-
-scale-family schema P P P P P key topology P P P P P RH motor components S S S S
-S LH motor components S S S S S RH multi-octave continuation S S S S S LH
-multi-octave continuation S S S S S `PARALLEL_HAND_SYNCHRONIZATION` P P P P P
-`CROSSING_COORDINATION` P P P P P `HT_DIRECTION_REVERSAL` P P P P P
-`BLACK_KEY_NAVIGATION` \- S P S \- `RHYTHMIC_EVENNESS` P P P P P `TEMPO_CONTROL`
-P P P P P
-
-### Why individual-hand evidence is secondary
-
-An RH hesitation during HT performance is ambiguous. It could represent:
-
-- RH transition weakness;
-- coordination weakness;
-- attentional interference;
-- interference from the LH pattern.
-
-Therefore HT observations should update RH/LH motor components more cautiously
-than clean hands-separate observations.
+One idea worth keeping from here: an RH hesitation during a
+hands-together attempt is ambiguous (RH weakness, coordination
+weakness, or interference from the LH pattern), so HT observations
+should update RH/LH competencies more cautiously than clean
+hands-separate observations. That reasoning is now expressed as
+attempt-specific `w`, not a qualitative table label.
 
 ---
 
@@ -1282,11 +961,9 @@ overlap.
 
 ## 18. V1 Conceptual Data Model
 
-> This block is historical. `FingeringGroup`, `Component`, and
-> `ExerciseComponentMapping` are retired (§6.2, §6.5-§6.6); the `Exercise`
-> shape is superseded (§6.3). See
-> `../learner-model/02-v1-design.md` §17 for the current conceptual
-> object relationships.
+> Historical. `FingeringGroup`, `Component`, `ExerciseComponentMapping`,
+> and this `Exercise` shape are retired/superseded (§6.2-§6.6). Current
+> object relationships: `../learner-model/02-v1-design.md` §17.
 
 ```text
 ScaleDefinition

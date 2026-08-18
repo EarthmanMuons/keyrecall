@@ -341,7 +341,7 @@ w[a,k]   evidence attribution       "How informative was what actually
 `Q` and `q` are indexed by exercise `e`: they describe the exercise's
 design and don't change between two attempts at it. `w` is indexed by
 attempt `a`, not exercise `e`, precisely because it's computed from what
-actually happened — two attempts at the identical exercise can produce
+actually happened: two attempts at the identical exercise can produce
 different `w`.
 
 Only `Q` is domain truth. `q` is a provisional mathematical convenience
@@ -415,8 +415,8 @@ loading:
 
 \[ q\_{e,k} = `\frac{Q_{e,k}}{\sum_j Q_{e,j}}`{=tex} \]
 
-This keeps the original reasoning for equal normalized loadings —
-avoiding invented per-competency weights such as 0.7 or 0.4 — while
+This keeps the original reasoning for equal normalized loadings
+(avoiding invented per-competency weights such as 0.7 or 0.4) while
 making explicit that `q` is *derived from* `Q`, not an independently
 authored quantity. For the F-major example above (5 relevant
 competencies), each gets `q = 0.2`.
@@ -443,27 +443,25 @@ Q[HANDS_TOGETHER_COORDINATION] = 1        w  high
 ```
 
 `Q` doesn't change between attempts; `w` does. An HT hesitation is
-ambiguous with respect to either individual hand — it could be RH
-weakness, LH weakness, or a coordination failure — so the evidence model
-should update `HANDS_TOGETHER_COORDINATION` strongly while updating
+ambiguous with respect to either individual hand (RH weakness, LH
+weakness, or a coordination failure), so the evidence model should
+update `HANDS_TOGETHER_COORDINATION` strongly while updating
 `RH_SCALE_EXECUTION`/`LH_SCALE_EXECUTION` cautiously. A clean HT success
 can still provide some positive evidence for all three. This is the same
-principle the domain model already stated in prose
-(`../domain-model/v1-domain-model.md` §11, "Why individual-hand evidence
-is secondary") — it now has a place to live as a number instead of a
-qualitative label on the Q-matrix itself.
+principle the domain model already noted (`../domain-model/v1-domain-model.md`
+§8-11), now living as a number instead of a qualitative table label.
 
 `w_{a,k}` is specific to `LatentCompetencyState` evidence attribution.
-Other state layers use analogous evidence-informativeness terms — the
+Other state layers use analogous evidence-informativeness terms: the
 `w` in §15.1's uncertainty update, `w_r` in §16 (material-execution
-evidence), and `w_M` in §18 (material-memory evidence) — but these are
+evidence), and `w_M` in §18 (material-memory evidence), but these are
 not instances of the same mathematical quantity. `MaterialMemoryState`
 and `MaterialExecutionState` are not competencies, so `w_r` and `w_M`
 answer "how informative was this attempt about this material/context,"
 not "...about this competency." They share the general principle of
 evidence-weighted updating, not a common formula, and should stay
 distinct symbols with distinct meanings rather than letting `w` become a
-universal scalar attached to an attempt — that distinction will matter
+universal scalar attached to an attempt; that distinction will matter
 once the Evidence Model is formalized.
 
 ### 9.4 Cross-competency transfer is not a Q-matrix entry
@@ -802,7 +800,7 @@ MotorRealization
 Candidate generation should enforce domain constraints before scoring,
 in two layers with different semantics.
 
-**Hard eligibility** — engineering/domain validity. A candidate that
+**Hard eligibility**: engineering/domain validity. A candidate that
 fails one of these should never be generated at all:
 
 ```text
@@ -813,7 +811,7 @@ tempo lies within allowed product bounds
 guidance configuration is valid
 ```
 
-**Prerequisite gate (`REQUIRES`)** — pedagogical appropriateness given
+**Prerequisite gate (`REQUIRES`)**: pedagogical appropriateness given
 current learner state, e.g.:
 
 ```text
@@ -824,11 +822,11 @@ adequate RH_SCALE_EXECUTION + LH_SCALE_EXECUTION
 Unlike hard eligibility, this gate is normally **soft**: a candidate
 that falls short of a prerequisite is a worse candidate, not necessarily
 an invalid one. Implementations should treat it as a scoring input
-rather than an `if not requires: reject()` check — "eligibility" and
+rather than an `if not requires: reject()` check; "eligibility" and
 "gate" are deliberately different words from "hard eligibility" above
 because the two fail differently. `REQUIRES`
 (`../domain-model/v1-domain-model.md` §17) belongs in this gate, ahead
-of challenge filtering and priority ranking (§22) — it answers "how
+of challenge filtering and priority ranking (§22): it answers "how
 eligible is this exercise given the current prerequisites," rather than
 "how should it rank for retention, information, diversity, or goals."
 

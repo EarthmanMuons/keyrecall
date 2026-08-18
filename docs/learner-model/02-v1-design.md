@@ -416,7 +416,7 @@ expected opportunity in the generated event stream (a crossing, a
 continuation boundary, a turnaround) whose local performance can be
 observed around that opportunity, separately from the surrounding
 scale. This is deliberately not the same claim as observing the
-crossing itself — standard MIDI never reveals whether the learner
+crossing itself: standard MIDI never reveals whether the learner
 actually performed the prescribed crossing, only what happened in the
 window around where the fingering says one was expected.
 
@@ -475,7 +475,7 @@ them.
 
 V1 represents this as **correlated prediction**, not direct
 cross-updating. A strong RH observation should not be recorded as
-partial LH practice — that would misrepresent an attempt that never
+partial LH practice; that would misrepresent an attempt that never
 happened. It should instead improve the *prior prediction* for an
 under-observed LH state, while actual LH evidence dominates once it
 exists:
@@ -497,7 +497,7 @@ initial LH probe without ever asserting LH mastery that hasn't been
 observed.
 
 A correlated-Gaussian prior over `(θ_RH, θ_LH)` is the natural full
-expression of this, but V1 does not need to implement it directly — a
+expression of this, but V1 does not need to implement it directly; a
 heuristic prior-shift rule that respects the same qualitative behavior
 is sufficient to start. The exact mechanism is a `03-v1-math.md`
 question, not decided here.
