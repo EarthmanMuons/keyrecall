@@ -101,7 +101,7 @@ where:
 
 This is attractive because KeyRecall can eventually model:
 
-\[ P(`\text{performance}`{=tex} `\mid `{=tex}`\text{competencies}`{=tex},
+\[ P(`\text{performance}`{=tex} `\mid`{=tex}`\text{competencies}`{=tex},
 `\text{task features}`{=tex}, `\text{history}`{=tex}) \]
 
 without turning every task feature into a separate latent skill.
@@ -1041,7 +1041,331 @@ execution state exists. It is how to parameterize that state and connect
 accuracy, fluency/speed, temporal consistency, and transferable competencies in
 an interpretable performance model.
 
-## 20. Scheduler objective
+## 20. Guidance, retrieval demand, and evidence interpretation
+
+KeyRecall's learner model must distinguish successful **supported execution**
+from successful **independent retrieval**.
+
+If the interface continuously supplies the notes, target keys, or fingering for
+a scale, a correct performance can provide strong evidence about motor execution
+while providing much weaker evidence that the underlying material is
+independently retrievable.
+
+This makes instructional support part of the evidence context rather than merely
+a user-interface preference.
+
+### 20.1 Retrieval practice and independent production
+
+Retrieval-practice research distinguishes attempting to retrieve information
+from simply restudying or re-exposing it. KeyRecall should preserve this
+distinction when updating `MaterialMemoryState`.
+
+For example, two pitch-perfect performances of F# harmonic minor are not
+equivalent evidence if one is performed with the pitch sequence continuously
+displayed and the other is independently produced from only the instruction
+"Play F# harmonic minor."
+
+Conceptually:
+
+```text
+fully prompted performance
+    strong execution evidence
+    weak independent-retrieval evidence
+
+independent performance
+    strong execution evidence
+    strong material-retrieval evidence
+```
+
+Supported practice may still produce learning; supported success simply should
+not be interpreted as equivalent evidence of independent retrievability.
+
+**Representative source:** Karpicke, J. D., & Grimaldi, P. J. (2012).
+_Retrieval-Based Learning: A Perspective for Enhancing Meaningful Learning_.
+
+https://pmc.ncbi.nlm.nih.gov/articles/PMC3983480/
+
+### 20.2 Instruction, concurrent cueing, and feedback are distinct
+
+KeyRecall should distinguish three forms of support.
+
+**Instruction** supplies information before an attempt:
+
+```text
+F# harmonic minor:
+F# G# A B C# D E# F#
+
+RH fingering:
+3 4 1 2 3 1 2 3
+```
+
+**Concurrent cueing** supplies information while execution is occurring:
+
+```text
+highlight next key
+display next note
+show finger number
+```
+
+**Feedback** supplies information after, or in response to, learner behavior:
+
+```text
+wrong note
+timing uneven here
+pause near expected crossing
+post-attempt performance summary
+```
+
+These interventions have different implications for what an attempt tells us.
+Concurrent pitch cues can directly remove some retrieval demand, whereas
+post-response feedback need not prevent the learner from first attempting an
+independent response.
+
+Motor-learning research on augmented feedback also cautions against assuming one
+universal feedback-frequency rule. Guidance can improve acquisition performance,
+but the effects of feedback frequency and timing on retention and transfer
+depend on task and feedback characteristics.
+
+**Representative sources:**
+
+- Winstein, C. J., & Schmidt, R. A. (1990). Reduced frequency of knowledge of
+  results enhances motor skill learning.
+  https://pubmed.ncbi.nlm.nih.gov/7886280/
+- Review discussing augmented-feedback frequency and motor learning:
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC3153799/
+- Review of augmented feedback in motor learning:
+  https://pmc.ncbi.nlm.nih.gov/articles/PMC8681883/
+
+### 20.3 Preserve raw guidance configuration
+
+The data model should preserve the actual support supplied during an exercise
+rather than storing only a coarse ordinal guidance level.
+
+Conceptually:
+
+```yaml
+guidance:
+  instruction:
+    notes_previewed: false
+    fingering_previewed: false
+
+  concurrent_cues:
+    note_names: false
+    target_keys: false
+    finger_numbers: false
+    next_note_preview: false
+
+  feedback:
+    immediate_wrong_note: true
+    post_attempt_summary: true
+```
+
+A derived classification such as `FULL`, `PARTIAL`, `MINIMAL`, or `NONE`, or a
+continuous `retrieval_demand` value, may later be useful for modeling and
+scheduler decisions. The raw configuration should remain available so that the
+mapping can be changed or empirically calibrated.
+
+Any numerical mapping from guidance configuration to retrieval demand would be a
+**KeyRecall model parameter**, not a coefficient established by the current
+literature.
+
+### 20.4 Prior exposure matters even without concurrent cues
+
+An apparently unguided attempt may still differ substantially depending on what
+the learner saw immediately beforehand.
+
+For example:
+
+```text
+show F# harmonic-minor notes
+wait several seconds
+hide notes
+ask learner to play
+```
+
+requires retrieval during execution, but is not equivalent to independently
+producing F# harmonic minor after a long interval without re-exposure.
+
+The attempt should therefore preserve relevant retrieval context:
+
+```yaml
+retrieval_context:
+  material_shown_before_attempt: true
+  seconds_since_material_view: 8
+  concurrent_pitch_cues: false
+```
+
+The eventual memory model can determine how strongly such an attempt updates
+independent retrievability.
+
+### 20.5 Guidance-sensitive evidence updates
+
+Material-memory evidence should depend on observed performance and retrieval
+support:
+
+\[ E\_{`\text{material memory}`{=tex}} = f(`\text{performance}`{=tex},
+`\text{guidance}`{=tex}, `\text{prior exposure}`{=tex}) \]
+
+This is a conceptual relationship rather than a finalized equation.
+
+Consider:
+
+```text
+Attempt A
+    F# harmonic minor
+    notes displayed continuously
+    100% pitch accuracy
+
+Attempt B
+    F# harmonic minor
+    no pitch cues
+    100% pitch accuracy
+```
+
+Attempt A can strongly support conclusions about execution integrity,
+continuity, stability, and motor competence while providing relatively weak
+evidence of independent material retrieval.
+
+Attempt B provides strong evidence for both material retrieval and execution.
+
+Guidance may also affect motor performance itself, so it belongs in the
+performance model as well as the material-memory evidence model.
+
+### 20.6 Retrieval failure and execution failure should be distinguishable
+
+An unguided learner who cannot begin an E-flat harmonic-minor exercise provides
+strong evidence about `MaterialMemoryState` but little direct evidence about
+current material-specific execution capability.
+
+KeyRecall could then increase support:
+
+```text
+unguided retrieval probe
+        |
+        | retrieval fails
+        v
+show/teach material
+        |
+        v
+guided execution
+        |
+        v
+fade support
+        |
+        v
+independent retrieval
+```
+
+These attempts should not be counted as equivalent repetitions.
+
+Conversely, a pianist may select every pitch correctly but show large pauses,
+crossing-local slowdowns, or tempo collapse. Such a performance can provide
+positive material-memory evidence while providing weak or negative execution
+evidence.
+
+### 20.7 Guidance fading should be adaptive
+
+KeyRecall should eventually manipulate support independently from motor
+difficulty. The scheduler's action is broader than selecting a material:
+
+```text
+which material?
+which execution context?
+what tempo?
+how many octaves?
+what pattern?
+how much support?
+```
+
+A plausible adaptive sequence is:
+
+```text
+memory uncertainty high
+    -> attempt low-guidance retrieval probe
+
+retrieval fails
+    -> increase support
+
+supported execution becomes reliable
+    -> fade support
+
+independent retrieval succeeds
+    -> increase spacing and/or motor challenge
+```
+
+This does not imply a fixed `FULL -> PARTIAL -> MINIMAL -> NONE` progression.
+The amount and timing of guidance should remain adaptive.
+
+A 2026 piano-training study using adaptive visual guidance reported improved
+subsequent unguided pitch/fingering accuracy relative to static guidance. Its
+short-duration VR training context is substantially narrower than KeyRecall's
+longitudinal use case, so it is best treated as encouraging domain-specific
+evidence rather than a basis for a scheduling rule.
+
+**Source:** _Adaptive Visual Hand Guidance for Piano Training_ (2026).
+
+https://arxiv.org/abs/2603.06253
+
+### 20.8 GuidanceContext belongs in the exercise model
+
+The conceptual exercise structure therefore becomes:
+
+```text
+Exercise
+|
++-- TechnicalMaterial
++-- ExercisePattern
++-- ExecutionConditions
+|   +-- hands
+|   +-- direction
+|   +-- octaves
+|   `-- tempo
+|
++-- GuidanceContext
+|   +-- prior_instruction
+|   +-- concurrent_cues
+|   `-- feedback_policy
+|
++-- MotorRealization
+`-- Opportunities
+```
+
+An `Attempt` preserves that exercise context alongside observations:
+
+```text
+Attempt
+|
++-- Exercise
++-- MIDIObservations
++-- EventObservations
+`-- DerivedEvidence
+```
+
+The evidence model can then interpret the same observable performance
+differently according to the support that produced it.
+
+### 20.9 Refined definition of MaterialMemoryState
+
+The informal question "Can the learner play this material?" is too broad because
+it conflates retrieval and execution.
+
+A better provisional definition is:
+
+> **`MaterialMemoryState` estimates how available the underlying technical
+> material is for independent production under a specified retrieval context.**
+
+`MaterialExecutionState`, in contrast, estimates:
+
+> **Given that the intended material is available, how capable is the learner of
+> physically executing it under the requested performance conditions?**
+
+A single MIDI attempt cannot perfectly isolate these hidden states. Guidance
+context, prior exposure, error location, timing, continuity, and other
+observations allow the evidence model to infer them probabilistically.
+
+This distinction should be retained in the V1 learner-model design.
+
+## 21. Scheduler objective
 
 A useful conceptual utility is:
 
@@ -1072,7 +1396,7 @@ The scheduler should not require a declared session duration. It should
 continually select a useful next exercise, observe performance, update state,
 and repeat until the user stops.
 
-## 21. Initial level setting
+## 22. Initial level setting
 
 A research-consistent hybrid approach is:
 
@@ -1088,7 +1412,7 @@ A research-consistent hybrid approach is:
 This borrows CAT's information-seeking principle without turning KeyRecall into
 a standardized test.
 
-## 22. Irregular practice
+## 23. Irregular practice
 
 No special "missed practice" state is required. Elapsed time simply advances.
 
@@ -1106,7 +1430,7 @@ A player returning after two days and one returning after two months can be
 handled by the same model with different elapsed-time inputs. Early exercises
 after a long absence may also have high diagnostic value.
 
-## 23. Telemetry and scientific improvement
+## 24. Telemetry and scientific improvement
 
 The V1 learner model should work **without population telemetry**.
 
@@ -1128,7 +1452,7 @@ How much interleaving is useful at different ability levels?
 Population data should calibrate and refine the model rather than be a
 prerequisite for building it.
 
-## 24. Research-supported vs. KeyRecall-specific decisions
+## 25. Research-supported vs. KeyRecall-specific decisions
 
 ### Strongly research-supported principles
 
@@ -1167,7 +1491,7 @@ prerequisite for building it.
 The second list is a set of design hypotheses subject to simulation and later
 empirical revision.
 
-## 25. Recommended modeling sequence
+## 26. Recommended modeling sequence
 
 ### Stage 1: Formalize state and evidence
 
@@ -1223,7 +1547,7 @@ Only after real data exists consider splitting competencies, estimating
 population priors, learning transfer coefficients, learning scheduler weights,
 or adding contextual-bandit methods.
 
-## 26. Immediate design questions
+## 27. Immediate design questions
 
 ### Latent competency vocabulary
 
@@ -1286,7 +1610,7 @@ direction
 
 Phase and keyboard geometry are plausible additional contextual predictors.
 
-## 27. Working research position
+## 28. Working research position
 
 > KeyRecall should use an interpretable, multidimensional learner model that
 > combines shared transferable competencies with time-sensitive exact-item
@@ -1308,7 +1632,7 @@ These traditions do not prescribe one final KeyRecall equation. They provide a
 defensible foundation from which the learner model and scheduler can be
 designed, simulated, and refined.
 
-## 28. Core reading list
+## 29. Core reading list
 
 - Pavlik, Cen, & Koedinger (2009), _Performance Factors Analysis: A New
   Alternative to Knowledge Tracing_.
