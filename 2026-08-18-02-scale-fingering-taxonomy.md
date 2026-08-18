@@ -329,7 +329,7 @@ canonical one-octave terminal summaries are:
   B               `12312345`     `43214321`
   C#, G#          `34123123`     `32143213`
   Eb              `31234123`     `21432132`
-  F#              `23123123`     `43213214`
+  F#              `34123123`     `43213214`
   Bb              `21231234`     `21321432`
 
 Notable exact reuse across major and natural minor includes:
@@ -375,8 +375,8 @@ Canonical one-octave summaries:
   C, D, E, G, A   `12312345`     `54321321`
   F               `12341234`     `54321321`
   B               `12312345`     `43214321`
-  C#, G#          `23123123`     `32143213`
-  F#              `23123123`     `43213214`
+  C#, G#          `34123123`     `32143213`
+  F#              `34123123`     `43213214`
   Eb              `21234123`     `21432132`
   Bb              `21231234`     `21321432`
 
@@ -396,7 +396,7 @@ Notable reuse across scale forms includes:
     hands.
 -   C-sharp and G-sharp harmonic minor share identical RH and LH
     patterns.
--   C-sharp/G-sharp harmonic-minor RH (`23123123`) is already present as
+-   C-sharp/G-sharp harmonic-minor RH (`34123123`) is already present as
     F-sharp natural-minor RH.
 -   C-sharp/G-sharp harmonic-minor LH (`32143213`) is already present in
     the major/natural-minor catalog.
@@ -470,7 +470,7 @@ C-sharp and F-sharp melodic minor as notable RH exceptions.
 Canonical one-octave summaries:
 
   Scale   RH ascending   LH ascending
-  ------- -------------- --------------
+  ------- -------------- ----------------
   C       `12312345`     `54321321`
   C#      `23123412`     `32143213`
   D       `12312345`     `54321321`
@@ -479,7 +479,7 @@ Canonical one-octave summaries:
   F       `12341234`     `54321321`
   F#      `23123412`     `43213214`
   G       `12312345`     `54321321`
-  G#      `23123123`     `32143213`
+  G#      `34123123`     `32143213`
   A       `12312345`     `54321321`
   Bb      `21231234`     `21321432`
   B       `12312345`     `43214321`
@@ -568,6 +568,27 @@ this is sufficient to freeze `23123412` as the V1 RH canonical fingering
 for both C-sharp and F-sharp fixed-form melodic minor. Reported modern
 alternatives remain provenance for possible future alternative-fingering
 support.
+
+### Final continuation audit correction
+
+Mechanical preparation for the motor-family analysis exposed three stale
+one-octave display entries left behind after the multi-octave audit. The
+canonical continuation-oriented summaries are:
+
+``` text
+F# natural minor RH:              34123123
+C#/F#/G# harmonic minor RH:       34123123
+G# fixed-form melodic minor RH:   34123123
+```
+
+The G-sharp melodic-minor correction follows the established rule in
+this dataset that fixed-form melodic minor retains harmonic-minor
+fingering except for the documented C-sharp and F-sharp RH exceptions.
+
+These corrections do not change the underlying source policy or
+`entry / cycle / terminal_override` representation; they make the
+compact display tables consistent with the already-established
+multi-octave normalization.
 
 ## 13. Complete V1 Scale Catalog
 
