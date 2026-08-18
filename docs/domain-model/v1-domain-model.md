@@ -8,6 +8,30 @@
 fingering-model decisions, transfer assumptions, diagnostic event model, and
 unresolved questions before implementation.
 
+> **Status update — Q-matrix reconciliation complete.** The `Component`/
+> Q-matrix material in §6.5-§6.7, §7, and §8-§11 below, and the
+> `FingeringGroup` material in §6.2, are retained as historical record but
+> are **superseded**. The canonical V1 competency ontology now lives in
+> `../learner-model/02-v1-design.md` §9.1; the canonical Q-matrix
+> semantics (structural `Q`, derived `q`, evidence-attribution `w`) and
+> generation rules now live in `../learner-model/03-v1-math.md` §9. See
+> `../README.md` §4 for the full supersession list.
+>
+> The worked examples in §14-§16 below (C major vs. A natural minor, the
+> C→G→D transfer example, F major as a diagnostic counterexample) also
+> use pre-reconciliation competency names (`MAJOR_SCALE_SCHEMA`,
+> `RHYTHMIC_EVENNESS`, `TEMPO_CONTROL`, `RH_DIRECTION_REVERSAL`,
+> `A_NATURAL_MINOR_TOPOLOGY`, `G_MAJOR_TOPOLOGY`, `D_MAJOR_TOPOLOGY`, and
+> similar). Their reasoning and conclusions are still correct — transfer
+> emerging from shared latent structure, F major's diagnostic value, and
+> the pitch-set-vs-motor-fluency distinction all hold under the
+> reconciled ontology too — but map their vocabulary onto
+> `MAJOR_SCALE_TOPOLOGY`/`NATURAL_MINOR_TOPOLOGY`,
+> `RH_SCALE_EXECUTION`/`LH_SCALE_EXECUTION`, `SCALAR_CROSSING`,
+> `DIRECTION_REVERSAL`, and `MaterialMemoryState` (for exact-key
+> retrievability) rather than the per-key/per-transition names used
+> below.
+
 ---
 
 ## 1. Executive Summary
@@ -514,10 +538,8 @@ ScaleDefinition
     pitch_classes / spelled degrees
     ascending_definition
     descending_definition
-    rh_fingering_group
-    lh_fingering_group
-    canonical_rh_fingering_pattern
-    canonical_lh_fingering_pattern
+    rh_fingering_pattern
+    lh_fingering_pattern
 ```
 
 The exact storage representation remains open.
@@ -576,7 +598,28 @@ as equivalent to:
 because they are different technical events and should provide different
 evidence to the learner model.
 
-A reusable fingering family can then be derived from canonical patterns:
+> **Superseded.** The `FingeringGroup` concept sketched below anticipated
+> multiple derived fingering families. The mechanical motor-taxonomy
+> analysis (`motor-taxonomy.md`) found something stronger and different
+> in shape instead: all 96 canonical hand-specific records collapse into
+> **one** `MotorFamily` (`DIATONIC_3_4_CYCLE`), differentiated by phase
+> and boundary behavior rather than by group membership. `FingeringGroup`,
+> as specified below, has no distinct role in the current scale-domain
+> model — that's a finding about the current canonical scale corpus, not
+> a claim that no future grouping concept could be useful once
+> alternative fingerings, additional scale patterns, or arpeggios are in
+> scope. The canonical replacement triad is:
+>
+> ```text
+> FingeringPattern     concrete canonical fingering (entry/cycle/exit)
+> MotorRealization      mechanically derived realization of a pattern
+> MotorFamily           higher-level equivalence class over realizations
+> ```
+>
+> See `../GLOSSARY.md` §2 for the full reasoning.
+
+A reusable fingering family was originally sketched as a derived structure
+over canonical patterns:
 
 ```text
 FingeringGroup
@@ -587,12 +630,9 @@ FingeringGroup
     applicable_scale_definitions[]
 ```
 
-The **pattern is authoritative domain data**. The **group is a derived
-classification**.
-
-Group membership should be determined from the complete canonical fingering
-catalog rather than defined first and used to force scales into preconceived
-families.
+The **pattern is authoritative domain data**. `FingeringGroup` is retired;
+`MotorRealization` and `MotorFamily` (`motor-taxonomy.md`) fill its
+intended role.
 
 ### 6.3 `Exercise`
 
@@ -614,6 +654,13 @@ Exercise
 
 Not all parameters are required in the earliest prototype, but the model should
 leave room for them.
+
+> **Superseded.** This flat representation is superseded by the
+> compositional `Exercise` in `../learner-model/02-v1-design.md`
+> (`TechnicalMaterial + ExercisePattern + ExecutionConditions +
+> GuidanceContext + MotorRealization + Opportunities`), which makes
+> `GuidanceContext` a first-class part of the evidence model rather than
+> UI state.
 
 ### 6.4 `ExpectedEvent`
 
@@ -653,7 +700,13 @@ The exact event vocabulary should emerge from the complete fingering taxonomy.
 `expected_finger` is pedagogical/domain information. Standard MIDI does not
 verify which finger the pianist actually used.
 
-### 6.5 `Component`
+### 6.5 `Component` — superseded by `Competency`
+
+> **Superseded.** `Component` is retired in favor of `Competency`. The
+> reconciled V1 competency ontology (ten Competencies, organized under
+> non-latent `CompetencyCategory` nodes) lives in
+> `../learner-model/02-v1-design.md` §9.1. The category list below is
+> retained as historical record of the pre-reconciliation ontology.
 
 A latent capability for which performance supplies evidence.
 
@@ -668,7 +721,17 @@ GENERAL PERFORMANCE
 KEYBOARD GEOMETRY
 ```
 
-### 6.6 `ExerciseComponentMapping`
+### 6.6 `ExerciseComponentMapping` — superseded by the `Q`/`q`/`w` Q-matrix
+
+> **Superseded.** The single `evidence_strength` field below (qualitative
+> `PRIMARY`/`SECONDARY`/`NONE`) conflated three separate questions: what
+> an exercise can test, how that gets weighted in a predictor, and how
+> informative a specific attempt actually was. `03-v1-math.md` §9 splits
+> these into a binary structural Q-matrix (`Q_{e,k}`), a derived
+> normalized predictor loading (`q_{e,k}`), and a per-attempt evidence-
+> attribution weight (`w_{a,k}`, indexed by attempt rather than exercise)
+> — the last of these is where the
+> `PRIMARY`/`SECONDARY` reasoning actually belongs.
 
 A Q-matrix-style relationship between an exercise family and a latent component.
 
@@ -727,6 +790,28 @@ The mathematical representation remains deliberately unspecified.
 ---
 
 ## 7. Initial Latent-Component Ontology
+
+> **Superseded.** This entire section (originally an in-progress sketch,
+> hence the stale `5.x` subsection numbering below) is superseded by the
+> reconciled ten-Competency ontology in
+> `../learner-model/02-v1-design.md` §9.1. In particular:
+> `MAJOR_SCALE_SCHEMA`/`C_MAJOR_TOPOLOGY`-style per-key topology
+> competencies are replaced by four scale-*form* topology competencies
+> plus `MaterialMemoryState` for exact-key retrievability;
+> `RH_3_TO_1_ASCENDING`-style per-transition competencies are replaced by
+> one `SCALAR_CROSSING` competency plus event-level context;
+> `RH_MULTI_OCTAVE_CONTINUATION`/`LH_MULTI_OCTAVE_CONTINUATION` and
+> `RH_DIRECTION_REVERSAL`/`LH_DIRECTION_REVERSAL` collapse into one
+> `MULTI_OCTAVE_CONTINUATION` and one `DIRECTION_REVERSAL` competency
+> each (hand becomes context, not a competency split);
+> `PARALLEL_HAND_SYNCHRONIZATION`/`CROSSING_COORDINATION`/
+> `HT_DIRECTION_REVERSAL` collapse into one `HANDS_TOGETHER_COORDINATION`
+> competency; `BLACK_KEY_NAVIGATION` becomes geometry context rather than
+> a competency; and `TEMPO_CONTROL`/`RHYTHMIC_EVENNESS`/`ERROR_RECOVERY`
+> become task-difficulty/observed-outcome dimensions rather than
+> competencies. See `../learner-model/02-v1-design.md` §9.1.4 for why the
+> two most tempting parent nodes (a general diatonic-motor competency and
+> a general evenness competency) were deliberately left out too.
 
 ### 5.1 Pattern and topology
 
@@ -843,6 +928,18 @@ later empirical evidence.
 
 ## 8. Qualitative Q-Matrix: Right Hand, One Octave
 
+> **Superseded (§8-§11).** These per-scale qualitative tables are
+> retained as historical record. The canonical V1 Q-matrix is binary and
+> **generated from exercise composition** rather than authored per scale
+> (`../learner-model/03-v1-math.md` §9.1) — tonic barely matters to Q
+> membership once exact-key retrievability lives in `MaterialMemoryState`.
+> The `PRIMARY`/`SECONDARY`/`NONE` distinction used throughout these
+> tables is superseded by the evidence-attribution weight `w_{a,k}`
+> (`03-v1-math.md` §9.3), indexed by attempt rather than exercise since
+> it's computed from what actually happened, not authored per
+> scale/competency pair. `BLACK_KEY_NAVIGATION` and `TEMPO_CONTROL`, both
+> used as rows below, are retired as competencies (§7 above).
+
 Assume ascending and descending performance.
 
 Component C major G major D major F major A natural minor
@@ -942,6 +1039,12 @@ than clean hands-separate observations.
 ---
 
 ## 12. Observation-to-Component Mapping
+
+> The pairing of ideas below (what an exercise can test vs. what a
+> particular observation means) is still the right shape; it's now
+> formalized as `Q_{e,k}` (exercise-level) vs. `w_{a,k}` (attempt-level)
+> in `../learner-model/03-v1-math.md` §9, with "component" read as
+> "competency" throughout.
 
 The Q-matrix identifies what an exercise _can_ test. The Performance Model
 determines what a particular observation actually means.
@@ -1145,6 +1248,10 @@ HT exercise becomes appropriate
 This should usually affect scheduling eligibility rather than act as an absolute
 lock.
 
+> This relationship now has a concrete home: candidate-generation
+> eligibility, before challenge filtering and priority ranking
+> (`../learner-model/03-v1-math.md` §20).
+
 ### `LOADS_ON`
 
 The Q-matrix relationship between exercise/event families and latent components.
@@ -1175,15 +1282,20 @@ overlap.
 
 ## 18. V1 Conceptual Data Model
 
+> This block is historical. `FingeringGroup`, `Component`, and
+> `ExerciseComponentMapping` are retired (§6.2, §6.5-§6.6); the `Exercise`
+> shape is superseded (§6.3). See
+> `../learner-model/02-v1-design.md` §17 for the current conceptual
+> object relationships.
+
 ```text
 ScaleDefinition
     id
     tonic
     scale_type
     interval / pitch definition
-    rh_fingering_group
-    lh_fingering_group
-    canonical fingerings
+    rh_fingering_pattern
+    lh_fingering_pattern
 
 FingeringPattern
     id
@@ -1192,13 +1304,6 @@ FingeringPattern
     entry
     cycle
     exit
-
-FingeringGroup
-    id
-    hand
-    member patterns
-    shared transition structure
-    applicable scales
 
 Exercise
     scale_definition
@@ -1219,29 +1324,11 @@ ExpectedEvent
     sequence position
     event tags
 
-Component
-    id
-    category
-    description
-
-ExerciseComponentMapping
-    exercise family / event family
-    component
-    evidence strength
-
 Observation
     expected event
     observed pitch/timing/velocity
     localized errors
     hand synchronization
-
-LearnerComponentState
-    component
-    competence estimate
-    uncertainty
-    retention state
-    performance envelope
-    observation history
 ```
 
 ---
@@ -1477,6 +1564,13 @@ coarse. The assumption registry should record that uncertainty.
 ---
 
 ## 24. Immediate Next Steps
+
+> **Status: complete.** Steps 1-3 are done
+> (`fingering-taxonomy.md`, `motor-taxonomy.md`, and the Q-matrix
+> reconciliation in `../learner-model/02-v1-design.md` §9.1 /
+> `../learner-model/03-v1-math.md` §9). Step 7 is also done
+> (`../learner-model/03-v1-math.md`). Steps 4-6 were subsumed into that
+> same work rather than done as separate machine-readable artifacts.
 
 Before implementing the learner mathematics:
 

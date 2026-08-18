@@ -343,7 +343,7 @@ Each state should conceptually contain at least:
 
 ``` yaml
 LatentCompetencyState:
-  competency_id: DIATONIC_SCALE_MOTOR
+  competency_id: RH_SCALE_EXECUTION
   estimate: ...
   uncertainty: ...
 ```
@@ -351,37 +351,156 @@ LatentCompetencyState:
 The exact statistical representation of `estimate` and `uncertainty` is
 not yet frozen.
 
-The scale-focused V1 competency graph is expected to include concepts
-such as:
+#### 9.1.1 Competency vs. `CompetencyCategory`
+
+The competency vocabulary distinguishes two kinds of node:
 
 ``` text
-PITCH_TOPOLOGY
-|
-`-- SCALE_TOPOLOGY
-    +-- MAJOR_SCALE_TOPOLOGY
-    `-- MINOR_SCALE_TOPOLOGY
-        +-- NATURAL_MINOR_TOPOLOGY
-        +-- HARMONIC_MINOR_TOPOLOGY
-        `-- MELODIC_MINOR_TOPOLOGY
+Competency
+    an actually estimated latent learner variable
 
-TECHNICAL_MOTOR
-|
-`-- DIATONIC_SCALE_MOTOR
-    +-- RH_SCALE_EXECUTION
-    `-- LH_SCALE_EXECUTION
-
-SCALAR_CROSSING
-MULTI_OCTAVE_CONTINUATION
-DIRECTION_REVERSAL
-HANDS_TOGETHER_COORDINATION
-RHYTHMIC_EVENNESS
+CompetencyCategory
+    an organizational/taxonomy node with no estimated state of its own
 ```
 
-The exact hierarchy and Q-matrix remain governed by the existing
-domain-model and motor-taxonomy work.
+This distinction exists so a grouping that's convenient for
+documentation or UI presentation doesn't silently become an additional
+statistical parameter. Every `Competency` below is independently
+estimated; every `CompetencyCategory` is a label over a set of
+Competencies and carries no `estimate`/`uncertainty` of its own.
+
+#### 9.1.2 Reconciled V1 scale competency ontology
+
+The scale-focused V1 competency graph, reconciled against the
+mechanically verified motor taxonomy (`../domain-model/motor-taxonomy.md`)
+and the domain model's original Q-matrix
+(`../domain-model/v1-domain-model.md` §6.5-§7, now superseded), is:
+
+``` text
+CompetencyCategory: SCALE_TOPOLOGY
+├── MAJOR_SCALE_TOPOLOGY          Competency
+├── NATURAL_MINOR_TOPOLOGY        Competency
+├── HARMONIC_MINOR_TOPOLOGY       Competency
+└── MELODIC_MINOR_TOPOLOGY        Competency
+
+CompetencyCategory: SCALE_EXECUTION
+├── RH_SCALE_EXECUTION            Competency
+└── LH_SCALE_EXECUTION            Competency
+
+SCALAR_CROSSING                   Competency
+MULTI_OCTAVE_CONTINUATION         Competency
+DIRECTION_REVERSAL                Competency
+HANDS_TOGETHER_COORDINATION       Competency
+```
+
+Ten estimated Competencies. `SCALE_TOPOLOGY` and `SCALE_EXECUTION` are
+`CompetencyCategory` nodes only. The Q-matrix that determines which
+competencies a given exercise can provide evidence about, and how that
+evidence is attributed, is specified in `03-v1-math.md` §9.
 
 A competency is refreshed by **relevant practice across the
 repertoire**, not only by repetition of one exact material.
+
+#### 9.1.3 Admission rule
+
+``` text
+A latent Competency should correspond to a persistent transferable
+capability for which KeyRecall has observations that can discriminate
+it, at least probabilistically, from neighboring competencies.
+```
+
+This rule, not the taxonomy's shape, decides what gets estimated.
+`SCALAR_CROSSING`, `MULTI_OCTAVE_CONTINUATION`, and `DIRECTION_REVERSAL`
+pass it: each corresponds to a specific, independently identified
+expected opportunity in the generated event stream (a crossing, a
+continuation boundary, a turnaround) whose local performance can be
+observed around that opportunity, separately from the surrounding
+scale. This is deliberately not the same claim as observing the
+crossing itself — standard MIDI never reveals whether the learner
+actually performed the prescribed crossing, only what happened in the
+window around where the fingering says one was expected.
+
+#### 9.1.4 Two deliberate omissions
+
+Two nodes present in earlier drafts of this ontology are not estimated
+in V1, for the same underlying reason:
+
+**`DIATONIC_SCALE_MOTOR`** (a hypothetical parent over
+`RH_SCALE_EXECUTION` and `LH_SCALE_EXECUTION`) fails the admission rule.
+`motor-taxonomy.md` establishes that all 96 canonical hand-specific
+scale records share one motor family (`DIATONIC_3_4_CYCLE`), but shared
+task structure is not the same thing as a shared observation channel.
+Almost every RH scale attempt would load on both a hand-specific
+competency and this hypothetical parent from essentially the same
+inter-onset-interval stream, with no task that independently isolates
+the parent from the hand-specific competency. Fitting a general factor
+alongside specific factors that explain nearly the same observations is
+a known source of nonidentifiability in general/specific (bifactor-style)
+latent models, not just a KeyRecall guess. `DIATONIC_3_4_CYCLE` remains
+exactly what `motor-taxonomy.md` established it to be: a domain-level
+`MotorFamily`, not learner state. RH/LH transfer is represented instead
+through correlated priors (§9.1.5).
+
+**`RHYTHMIC_EVENNESS`** fails the admission rule for the same structural
+reason: nearly every scale exercise exercises it, and V1 has no
+independent observation channel that separates "weak RH execution" from
+"weak general evenness" when both are inferred from the same timing
+stream. It remains an observed/predicted performance outcome (§12.2),
+feeding whichever competencies the evidence model can actually attribute
+it to, rather than a competency of its own.
+
+Both omissions follow one rule, not two special cases:
+
+``` text
+Add a shared latent factor because the data requires it,
+not because the taxonomy admits a common parent.
+```
+
+If longitudinal evidence later shows either factor materially improves
+prediction after accounting for the specific competencies, it can be
+promoted from `CompetencyCategory` (or from an observed outcome) to an
+estimated `Competency` without changing anything else in this
+architecture.
+
+#### 9.1.5 RH/LH transfer without a parent competency
+
+`RH_SCALE_EXECUTION` and `LH_SCALE_EXECUTION` are estimated
+independently, but not treated as unrelated. The motor-learning
+literature supports both effector-independent and effector-specific
+representations: practice with one hand improves prediction for the
+other, but transfer is incomplete and hand-specific structure remains
+(`01-research.md` §19.2). That's evidence for a *relationship* between
+the two competencies, not evidence for a third latent variable above
+them.
+
+V1 represents this as **correlated prediction**, not direct
+cross-updating. A strong RH observation should not be recorded as
+partial LH practice — that would misrepresent an attempt that never
+happened. It should instead improve the *prior prediction* for an
+under-observed LH state, while actual LH evidence dominates once it
+exists:
+
+``` text
+LH directly observed
+    LH state dominates
+
+LH scarcely observed
+    RH state (and self-reported experience) informs the prior,
+    but uncertainty stays broad until LH is directly observed
+```
+
+This is the same partial-pooling logic already used for
+`MaterialExecutionState` (§9.3), applied across hands instead of across
+materials. It also gives V1 CAT-like placement behavior for free: an
+advanced self-report plus strong RH evidence can support a demanding
+initial LH probe without ever asserting LH mastery that hasn't been
+observed.
+
+A correlated-Gaussian prior over `(θ_RH, θ_LH)` is the natural full
+expression of this, but V1 does not need to implement it directly — a
+heuristic prior-shift rule that respects the same qualitative behavior
+is sufficient to start. The exact mechanism is a `03-v1-math.md`
+question, not decided here.
 
 ### 9.2 MaterialMemoryState
 
@@ -696,8 +815,9 @@ indirectly improve prediction for:
 It should **not** mark the LH residual as if an LH attempt occurred.
 
 Similarly, practicing other scales can maintain or improve
-`DIATONIC_SCALE_MOTOR` even while the material-specific execution state
-for one long-unpracticed scale weakens.
+`RH_SCALE_EXECUTION`/`LH_SCALE_EXECUTION` even while the
+material-specific execution state for one long-unpracticed scale
+weakens.
 
 ## 15. Scheduler action space
 

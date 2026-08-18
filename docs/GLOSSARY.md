@@ -371,22 +371,29 @@ Over-Reliance in VR Piano Learning"* (Hsieh, Visser, Eisemann, Marroquim).
 Small, mechanical fix — bundled into the pending-edits list in `README.md`
 §4 rather than applied here since it touches document content.
 
-## 14. Deferred to later passes
+## 14. Resolution ledger: deferred and resolved items
 
-Explicitly not decided in this document — flagged so the vocabulary/authority
-pass doesn't quietly expand into resolving open design questions it wasn't
-meant to settle:
+Tracks the items this document originally flagged as explicitly not
+decided here, so the vocabulary/authority pass didn't quietly expand
+into resolving open design questions it wasn't meant to settle — and
+records resolutions as they land in later passes, so a reader isn't
+left thinking an item is still open once it isn't. Deferred still means
+what it says for everything below that isn't marked resolved.
 
-- **Q-matrix reconciliation itself** — whether `PRIMARY`/`SECONDARY`/`NONE`
-  (`v1-domain-model.md` §6.6) survives as anything beyond relevant/
-  not-relevant, given `03-v1-math.md` §9 currently loads all relevant
-  competencies equally (`q_{e,k} = 1/n`). These aren't compatible as written.
-  Not resolved here on purpose — restoring arbitrary numeric PRIMARY/SECONDARY
-  weights would reintroduce exactly the unsupported-coefficient problem equal
-  loading was chosen to avoid. This is the first substantive design task
-  after this consolidation, and it also produces the reconciled
-  `Competency` ontology referenced in §1 and the `FingeringPattern` runtime
-  field rename referenced in §2.
+- ~~**Q-matrix reconciliation itself**~~ — **resolved.**
+  `PRIMARY`/`SECONDARY`/`NONE` is retired from the Q-matrix entirely
+  rather than reconciled with equal loading. It splits into a binary
+  structural `Q_{e,k}` (relevant/not-relevant, generated from exercise
+  composition rather than authored per scale), a derived normalized
+  predictor loading `q_{e,k}` (the equal-loading idea, now explicit that
+  it's derived from `Q`), and a per-attempt evidence-attribution weight
+  `w_{a,k}`, indexed by attempt rather than exercise (where the old
+  `PRIMARY`/`SECONDARY` reasoning actually belongs, since it's a property
+  of what happened in an attempt, not of the exercise itself). See
+  `03-v1-math.md` §9. The reconciled
+  ten-Competency ontology referenced in §1 (`02-v1-design.md` §9.1) and
+  the `FingeringPattern` runtime field rename referenced in §2
+  (`v1-domain-model.md` §6.1) are both applied.
 - **`SessionState` mathematics** — decay function, what counts as an
   informative fatigue signal (§4).
 - **`InstrumentProfile` field boundary** beyond the V1-required

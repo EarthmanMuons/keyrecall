@@ -70,6 +70,15 @@ DIATONIC_SCALE_MOTOR
 with hand orientation, cycle phase, boundary behavior, scale topology, and
 keyboard geometry supplying the important contextual distinctions.
 
+`DIATONIC_SCALE_MOTOR` here names a motor-*domain* category — a
+grouping over `MotorFamily` values, parallel to how `DIATONIC_3_4_CYCLE`
+is the one verified `MotorFamily` beneath it. It is not the same thing
+as the identically-named candidate learner *Competency* that was
+considered and explicitly rejected during the competency/Q-matrix
+reconciliation (`../learner-model/02-v1-design.md` §9.1.4) — the name
+collision predates that reconciliation and is worth noting so the two
+aren't conflated.
+
 This is the central result of the analysis pass.
 
 ## 3. Canonical Cycle
@@ -707,16 +716,43 @@ structure and latent learner state.
 
 ### Still provisional
 
-- which event contexts deserve independent latent learner components;
+- ~~which event contexts deserve independent latent learner components~~ —
+  **resolved**: none of the fine-grained event contexts (crossing motion,
+  crossing finger, phase, geometry) do in V1. They aggregate into
+  `SCALAR_CROSSING`, `MULTI_OCTAVE_CONTINUATION`, and
+  `DIRECTION_REVERSAL` as event-level context feeding one competency
+  each. See `../learner-model/02-v1-design.md` §9.1.
 - whether phase should eventually receive learner-specific parameters;
 - whether keyboard-geometry effects can be summarized with a small set of useful
   contextual features;
-- how strongly evidence transfers across hand, direction, phase, and geometry;
-  and
+- how strongly evidence transfers across hand, direction, phase, and geometry —
+  **partially resolved** for hand: V1 represents RH/LH transfer through
+  correlated priors rather than a shared parent competency
+  (`../learner-model/02-v1-design.md` §9.1.5). Strength of transfer across
+  direction, phase, and geometry remains open; and
 - whether future modes, alternative fingerings, or non-diatonic scales introduce
   additional `MotorFamily` values.
 
 ## 22. Next Step
+
+> **Status: done.** The competency/Q-matrix reconciliation this section
+> called for is complete. The reconciled ten-Competency ontology lives in
+> `../learner-model/02-v1-design.md` §9.1; the Q-matrix (structural `Q`,
+> derived `q`, evidence-attribution `w`) lives in
+> `../learner-model/03-v1-math.md` §9. The admission rule the
+> reconciliation settled on:
+>
+> ```text
+> A latent Competency should correspond to a persistent transferable
+> capability for which KeyRecall has observations that can discriminate
+> it, at least probabilistically, from neighboring competencies.
+> ```
+>
+> resolves this document's own caution against treating every mechanically
+> identifiable structure as a latent skill (§15, §17): shared task
+> structure (one `DIATONIC_3_4_CYCLE` motor family across all 96 records)
+> is not the same thing as a shared observation channel, so it did not
+> produce a corresponding shared competency.
 
 The structural fingering analysis is now sufficiently mature to return to the
 **learner/evidence model**.

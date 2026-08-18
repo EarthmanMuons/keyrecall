@@ -44,6 +44,7 @@ u    learner
 m    technical material
 c    execution context, primarily RH/LH/HT
 e    exercise
+a    attempt (one specific performance of an exercise)
 t    attempt time
 k    transferable competency
 ```
@@ -66,9 +67,13 @@ The exercise supplies task features:
 
 \[ x_e \]
 
-and competency loadings:
+and, for each competency `k`, a structural Q-matrix entry and a derived
+predictor loading, both properties of the exercise itself, plus an
+evidence-attribution weight that is a property of a specific *attempt*
+rather than of the exercise it was an attempt at (defined together in
+§9):
 
-\[ q\_{e,k} \]
+\[ Q\_{e,k} `\in \{0,1\}`{=tex}, `\quad `{=tex}q\_{e,k}, `\quad `{=tex}w\_{a,k} \]
 
 Observations from an attempt are denoted collectively by:
 
@@ -313,41 +318,168 @@ Relevant practice on any material can refresh and update the competency.
 Later longitudinal data may justify explicit competency-specific forgetting
 terms.
 
-## 9. Competency loadings
+## 9. The Q-matrix: structural opportunity, derived loading, and evidence attribution
 
-Each exercise has a set of relevant transferable competencies.
-
-Let:
-
-\[ q\_{e,k} `\ge 0`{=tex} \]
-
-be the loading of exercise `e` on competency `k`.
-
-For a simple V1 implementation, equal normalized loadings are preferable to
-invented expert weights.
-
-If an exercise meaningfully loads on `n` competencies:
-
-\[ q\_{e,k} = `\frac{1}{n}`{=tex} \]
-
-for each relevant competency, and zero otherwise.
-
-Example:
+V1 resolves two previously competing ideas: a qualitative
+`PRIMARY`/`SECONDARY`/`NONE` Q-matrix (`../domain-model/v1-domain-model.md`
+§6.6, now superseded) and an equal-normalized-loading rule that ignored
+that distinction entirely. Both were trying to answer different
+questions with one symbol. V1 uses three:
 
 ```text
-F# harmonic minor RH, two octaves
+Q[e,k]   structural opportunity     "Can exercise e provide evidence
+                                      about competency k at all?"
 
-HARMONIC_MINOR_TOPOLOGY       0.25
-DIATONIC_SCALE_MOTOR          0.25
-RH_SCALE_EXECUTION            0.25
-SCALAR_CROSSING               0.25
+q[e,k]   derived predictor loading  "How much weight does k get in the
+                                      provisional performance predictor?"
+
+w[a,k]   evidence attribution       "How informative was what actually
+                                      happened in attempt a, for
+                                      competency k?"
 ```
 
-This is deliberately simpler than assigning unsupported values such as 0.7 or
-0.4 to individual competencies.
+`Q` and `q` are indexed by exercise `e`: they describe the exercise's
+design and don't change between two attempts at it. `w` is indexed by
+attempt `a`, not exercise `e`, precisely because it's computed from what
+actually happened — two attempts at the identical exercise can produce
+different `w`.
 
-The existing motor taxonomy and opportunity analysis determine which
-competencies are relevant. Later data can estimate unequal loadings.
+Only `Q` is domain truth. `q` is a provisional mathematical convenience
+built from `Q`. `w` is computed per attempt, after the fact, from the
+actual observation.
+
+### 9.1 Structural Q-matrix
+
+\[ Q\_{e,k} `\in \{0,1\}`{=tex} \]
+
+> Does exercise `e` create an opportunity to observe competency `k`?
+
+This is binary, not qualitative, and it is **generated from exercise
+composition**, not authored as a per-scale table:
+
+```text
+MAJOR_SCALE_TOPOLOGY / NATURAL_MINOR_TOPOLOGY /
+HARMONIC_MINOR_TOPOLOGY / MELODIC_MINOR_TOPOLOGY
+    1 iff material.form matches
+
+RH_SCALE_EXECUTION
+    1 iff hands ∈ {RIGHT, TOGETHER}
+
+LH_SCALE_EXECUTION
+    1 iff hands ∈ {LEFT, TOGETHER}
+
+SCALAR_CROSSING
+    1 iff the generated event stream contains a crossing opportunity
+
+MULTI_OCTAVE_CONTINUATION
+    1 iff the generated exercise contains an internal octave continuation
+
+DIRECTION_REVERSAL
+    1 iff the exercise contains a turnaround/reversal
+
+HANDS_TOGETHER_COORDINATION
+    1 iff hands == TOGETHER
+```
+
+Tonic barely matters to `Q` membership: exact material identity already
+lives in `MaterialMemoryState`, and hand/material idiosyncrasy already
+lives in `MaterialExecutionState`. `Q` only needs to know which
+transferable competencies this exercise's composition (material form,
+hand configuration, and generated event stream) can provide evidence
+about at all.
+
+`Q` does **not** depend on guidance level. Guidance changes how much a
+given outcome tells us (§6, §18), not which musical material or motor
+opportunities the exercise contains. A fully-cued harmonic-minor
+exercise still has `Q[HARMONIC_MINOR_TOPOLOGY] = 1`; the evidence model
+just assigns it a near-zero `w`.
+
+Example, two-octave F major RH, ascending and descending:
+
+| Competency | Q |
+|---|---:|
+| `MAJOR_SCALE_TOPOLOGY` | 1 |
+| `RH_SCALE_EXECUTION` | 1 |
+| `SCALAR_CROSSING` | 1 |
+| `MULTI_OCTAVE_CONTINUATION` | 1 |
+| `DIRECTION_REVERSAL` | 1 |
+| `HANDS_TOGETHER_COORDINATION` | 0 |
+
+(`LH_SCALE_EXECUTION` and the other three `SCALE_TOPOLOGY` competencies
+are 0 and omitted from the table.)
+
+### 9.2 Derived predictor loading
+
+For the provisional performance predictor (§10), normalize `Q` into a
+loading:
+
+\[ q\_{e,k} = `\frac{Q_{e,k}}{\sum_j Q_{e,j}}`{=tex} \]
+
+This keeps the original reasoning for equal normalized loadings —
+avoiding invented per-competency weights such as 0.7 or 0.4 — while
+making explicit that `q` is *derived from* `Q`, not an independently
+authored quantity. For the F-major example above (5 relevant
+competencies), each gets `q = 0.2`.
+
+Later data can estimate unequal loadings; that remains a heuristic V1
+choice to revisit. It does not require reintroducing
+`PRIMARY`/`SECONDARY` into `Q` itself.
+
+### 9.3 Evidence attribution
+
+\[ w\_{a,k} `\in [0,1]`{=tex} \]
+
+> Given what actually happened in attempt `a`, how informative is the
+> observation about competency `k`?
+
+This is where the old Q-matrix's `PRIMARY`/`SECONDARY` reasoning
+actually belongs. Consider a two-octave HT exercise where both hands are
+individually strong but the attempt falls apart during HT performance:
+
+```text
+Q[RH_SCALE_EXECUTION]          = 1        w  low
+Q[LH_SCALE_EXECUTION]          = 1        w  low
+Q[HANDS_TOGETHER_COORDINATION] = 1        w  high
+```
+
+`Q` doesn't change between attempts; `w` does. An HT hesitation is
+ambiguous with respect to either individual hand — it could be RH
+weakness, LH weakness, or a coordination failure — so the evidence model
+should update `HANDS_TOGETHER_COORDINATION` strongly while updating
+`RH_SCALE_EXECUTION`/`LH_SCALE_EXECUTION` cautiously. A clean HT success
+can still provide some positive evidence for all three. This is the same
+principle the domain model already stated in prose
+(`../domain-model/v1-domain-model.md` §11, "Why individual-hand evidence
+is secondary") — it now has a place to live as a number instead of a
+qualitative label on the Q-matrix itself.
+
+`w_{a,k}` is specific to `LatentCompetencyState` evidence attribution.
+Other state layers use analogous evidence-informativeness terms — the
+`w` in §15.1's uncertainty update, `w_r` in §16 (material-execution
+evidence), and `w_M` in §18 (material-memory evidence) — but these are
+not instances of the same mathematical quantity. `MaterialMemoryState`
+and `MaterialExecutionState` are not competencies, so `w_r` and `w_M`
+answer "how informative was this attempt about this material/context,"
+not "...about this competency." They share the general principle of
+evidence-weighted updating, not a common formula, and should stay
+distinct symbols with distinct meanings rather than letting `w` become a
+universal scalar attached to an attempt — that distinction will matter
+once the Evidence Model is formalized.
+
+### 9.4 Cross-competency transfer is not a Q-matrix entry
+
+If strong `RH_SCALE_EXECUTION` evidence improves the *prior* for
+under-observed `LH_SCALE_EXECUTION` (`02-v1-design.md` §9.1.5), that
+transfer happens in the prior/correlation structure of the competency
+state, not by setting `Q[e, LH_SCALE_EXECUTION] = 1` on an RH-only
+exercise. If no LH opportunity occurred, `Q[e, LH_SCALE_EXECUTION] = 0`,
+full stop. The same applies to transfer between scale-topology
+competencies (e.g. harmonic-minor practice informing a melodic-minor
+prior): it's a relationship between competency states, never a
+fictitious `Q` entry recording practice that didn't happen. This
+preserves the invariant already stated in `02-v1-design.md` §14: related
+practice transfers through shared/correlated state, not by recording it
+as if it were direct practice of untested material or context.
 
 ## 10. Performance model
 
@@ -546,7 +678,7 @@ A simple V1 rule can reduce variance after informative evidence:
 
 \[ `\sigma`{=tex}'\^2\_{u,k} = `\max`{=tex}(
 `\sigma`{=tex}\^2\_{`\min`{=tex},k},
-`\sigma`{=tex}\^2\_{u,k}(1-`\lambda`{=tex}_k w_{e,k}) ) \]
+`\sigma`{=tex}\^2\_{u,k}(1-`\lambda`{=tex}_k w_{a,k}) ) \]
 
 where `w` represents evidence informativeness.
 
@@ -667,9 +799,11 @@ GuidanceContext
 MotorRealization
 ```
 
-Candidate generation should enforce domain constraints before scoring.
+Candidate generation should enforce domain constraints before scoring,
+in two layers with different semantics.
 
-Examples:
+**Hard eligibility** — engineering/domain validity. A candidate that
+fails one of these should never be generated at all:
 
 ```text
 canonical fingering exists
@@ -678,6 +812,25 @@ HT implementation is available
 tempo lies within allowed product bounds
 guidance configuration is valid
 ```
+
+**Prerequisite gate (`REQUIRES`)** — pedagogical appropriateness given
+current learner state, e.g.:
+
+```text
+adequate RH_SCALE_EXECUTION + LH_SCALE_EXECUTION
+    -> HANDS_TOGETHER_COORDINATION exercises become more/fully eligible
+```
+
+Unlike hard eligibility, this gate is normally **soft**: a candidate
+that falls short of a prerequisite is a worse candidate, not necessarily
+an invalid one. Implementations should treat it as a scoring input
+rather than an `if not requires: reject()` check — "eligibility" and
+"gate" are deliberately different words from "hard eligibility" above
+because the two fail differently. `REQUIRES`
+(`../domain-model/v1-domain-model.md` §17) belongs in this gate, ahead
+of challenge filtering and priority ranking (§22) — it answers "how
+eligible is this exercise given the current prerequisites," rather than
+"how should it rank for retention, information, diversity, or goals."
 
 ## 21. Challenge filtering
 
