@@ -7,8 +7,8 @@ proposed for KeyRecall V1.
 
 It is subordinate to:
 
-- `learner-model-research.md`, which preserves the research basis; and
-- `v1-learner-model-design.md`, which defines the conceptual architecture.
+- `01-research.md`, which preserves the research basis; and
+- `02-v1-design.md`, which defines the conceptual architecture.
 
 The purpose here is to make the V1 mathematics explicit enough to implement,
 simulate, inspect, and later replace with empirically fitted models.
@@ -1263,7 +1263,7 @@ The mathematical architecture is informed by established families including:
 - hierarchical/mixed-effects models with learner/item effects;
 - dynamic/longitudinal latent-state models; and
 - motor-learning and procedural-retention research summarized in
-  `learner-model-research.md`.
+  `01-research.md`.
 
 Those sources support the architecture and several qualitative relationships.
 

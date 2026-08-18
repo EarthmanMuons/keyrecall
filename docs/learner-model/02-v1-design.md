@@ -4,7 +4,7 @@
 
 This document specifies the V1 learner-model architecture for KeyRecall.
 
-It translates the conclusions preserved in `learner-model-research.md`
+It translates the conclusions preserved in `01-research.md`
 into a domain and state design suitable for implementation. The research
 document remains the evidentiary basis; this document records the design
 decisions made from that evidence.

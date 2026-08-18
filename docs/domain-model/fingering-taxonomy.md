@@ -3,7 +3,7 @@
 **Status:** Working research specification\
 **Date:** August 18, 2026\
 **Scope:** Canonical piano scale fingerings for the initial scale domain\
-**Related document:** `../design/v1-domain-model.md`
+**Related document:** `v1-domain-model.md`
 
 ---
 
