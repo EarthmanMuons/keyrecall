@@ -413,12 +413,38 @@ eb_harmonic_minor_rh:
 This demonstrates that two canonical fingerings can share the same
 recurring motor structure while differing only at a boundary condition.
 
-Harmonic minor therefore adds very little new exact motor vocabulary.
-Its principal novelty is pitch topology, especially the characteristic
-augmented second between scale degrees flat-6 and 7.
+The multi-octave Baylor diagrams are important here because they expose
+the internal octave-to-octave continuation directly. In particular,
+C-sharp, F-sharp, and G-sharp harmonic-minor RH all normalize to the
+same continuation-oriented `34123123` structure rather than the
+`23123123` one-octave summaries previously inferred from weaker sources.
 
-This further supports keeping pitch topology, exact fingering pattern,
-motor family, and generated technical events as separate concepts.
+This confirms that `entry + cycle + terminal_override` remains adequate;
+the apparent exceptional motor structure was a source-normalization
+problem rather than a domain-model problem.
+
+Harmonic minor still adds little new motor vocabulary. Its principal
+novelty is pitch topology, especially the characteristic augmented
+second between scale degrees flat-6 and 7. This further supports keeping
+pitch topology, exact fingering pattern, motor family, and generated
+technical events as separate concepts.
+
+### Multi-octave normalization note
+
+Black-key minor fingerings must be normalized from evidence that exposes
+internal octave continuation, not from terminal one-octave strings
+alone. Baylor's multi-octave keyboard diagrams directly confirm the RH
+continuation pattern `34123123` for C-sharp, F-sharp, and G-sharp
+harmonic minor.
+
+This audit produced two durable rules for the research process:
+
+1.  one-octave fingering strings are useful display summaries but are
+    insufficient evidence when initial, internal, or terminal tonic
+    behavior may differ; and
+2.  exceptional patterns should be checked against an explicit
+    multi-octave source before they are used to derive `MotorFamily`
+    structure.
 
 ## 12. Fixed-Form Melodic-Minor Canonical Fingering
 
@@ -519,34 +545,34 @@ modern material is encountered.
 All four initial scale forms are now normalized: **48 scale definitions
 and 96 hand-specific canonical fingering records**.
 
-  --------------------------------------------------------------------------
-  Tonic          Major          Natural minor  Harmonic minor Fixed melodic
-                                                              minor
-  -------------- -------------- -------------- -------------- --------------
-  C              Normalized     Normalized     Normalized     Normalized
+  ---------------------------------------------------------------------
+  Tonic         Major         Natural minor Harmonic      Fixed melodic
+                                            minor         minor
+  ------------- ------------- ------------- ------------- -------------
+  C             Normalized    Normalized    Normalized    Normalized
 
-  C#/Db          Db normalized  C# normalized  C# normalized  C# normalized
+  C#/Db         Db normalized C# normalized C# normalized C# normalized
 
-  D              Normalized     Normalized     Normalized     Normalized
+  D             Normalized    Normalized    Normalized    Normalized
 
-  D#/Eb          Eb normalized  Eb normalized  Eb normalized  Eb normalized
+  D#/Eb         Eb normalized Eb normalized Eb normalized Eb normalized
 
-  E              Normalized     Normalized     Normalized     Normalized
+  E             Normalized    Normalized    Normalized    Normalized
 
-  F              Normalized     Normalized     Normalized     Normalized
+  F             Normalized    Normalized    Normalized    Normalized
 
-  F#             Normalized     Normalized     Normalized     Normalized
+  F#            Normalized    Normalized    Normalized    Normalized
 
-  G              Normalized     Normalized     Normalized     Normalized
+  G             Normalized    Normalized    Normalized    Normalized
 
-  G#/Ab          Ab normalized  G# normalized  G# normalized  G# normalized
+  G#/Ab         Ab normalized G# normalized G# normalized G# normalized
 
-  A              Normalized     Normalized     Normalized     Normalized
+  A             Normalized    Normalized    Normalized    Normalized
 
-  A#/Bb          Bb normalized  Bb normalized  Bb normalized  Bb normalized
+  A#/Bb         Bb normalized Bb normalized Bb normalized Bb normalized
 
-  B              Normalized     Normalized     Normalized     Normalized
-  --------------------------------------------------------------------------
+  B             Normalized    Normalized    Normalized    Normalized
+  ---------------------------------------------------------------------
 
 The enumeration phase is complete. Subsequent work should derive
 `MotorFamily` and `TechnicalEvent` structure from this corpus rather
@@ -786,6 +812,15 @@ Preferred primary direction for fixed-form/jazz melodic-minor fingering
 research.
 
 <https://berkleepress.com/berklee-authors/suzanna-sifter/>
+
+### Baylor Piano Basics --- black-key harmonic minor
+
+Baylor's keyboard diagrams for C-sharp, F-sharp, and G-sharp harmonic
+minor expose more than one octave of fingering and therefore provide
+direct evidence for internal continuation. The RH pattern in all three
+cases normalizes to `34123123`.
+
+<https://openbooks.library.baylor.edu/pianobasics/>
 
 ### Schotte/Hanon melodic-minor fingering tradition
 
