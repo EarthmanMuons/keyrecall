@@ -70,13 +70,12 @@ DIATONIC_SCALE_MOTOR
 with hand orientation, cycle phase, boundary behavior, scale topology, and
 keyboard geometry supplying the important contextual distinctions.
 
-`DIATONIC_SCALE_MOTOR` here names a motor-*domain* category, a grouping
-over `MotorFamily` values, parallel to how `DIATONIC_3_4_CYCLE` is the
-one verified `MotorFamily` beneath it. It predates, and is not the same
-thing as, the identically-named candidate learner *Competency* rejected
-during the competency/Q-matrix reconciliation
-(`../learner-model/02-v1-design.md` §9.1.4); worth noting so the two
-aren't conflated.
+`DIATONIC_SCALE_MOTOR` here names a motor-_domain_ category, a grouping over
+`MotorFamily` values, parallel to how `DIATONIC_3_4_CYCLE` is the one verified
+`MotorFamily` beneath it. It predates, and is not the same thing as, the
+identically-named candidate learner _Competency_ rejected during the
+competency/Q-matrix reconciliation (`../learner-model/02-v1-design.md` §9.1.4);
+worth noting so the two aren't conflated.
 
 This is the central result of the analysis pass.
 
@@ -216,9 +215,9 @@ MotorRealization:
 `MotorRealization` is derived from canonical fingering. It must never become the
 authoritative source from which fingering is silently reconstructed.
 
-`MotorFamily` and `MotorRealization` describe the structure of the task; they are
-not synonymous with latent learner components. The adaptive learner model may
-maintain evidence about a pianist's competence with these structures, but a
+`MotorFamily` and `MotorRealization` describe the structure of the task; they
+are not synonymous with latent learner components. The adaptive learner model
+may maintain evidence about a pianist's competence with these structures, but a
 structural distinction does not by itself justify a persistent mastery variable.
 
 ## 7. Boundary Behavior
@@ -482,8 +481,8 @@ The mechanical analysis argues strongly **against** treating every structural
 feature or technical-event signature as a latent learner component.
 
 The motor taxonomy describes **what the task requires**. `TechnicalEvent`
-instances describe concrete opportunities and observations within that task.
-The learner model separately decides which persistent competencies should be
+instances describe concrete opportunities and observations within that task. The
+learner model separately decides which persistent competencies should be
 estimated from those observations.
 
 For example:
@@ -591,8 +590,8 @@ can be represented structurally.
 Tempo, octave count, direction, and hands-together status should likewise be
 treated here as **performance conditions or task-difficulty features**, not as
 properties that fragment `MotorFamily`. The learner model may estimate how
-performance changes as those conditions become more demanding without creating
-a separate motor family for each condition.
+performance changes as those conditions become more demanding without creating a
+separate motor family for each condition.
 
 The exact latent-component set and weighting/evidence rules belong in the
 learner-model analysis rather than this motor-taxonomy document.
@@ -717,27 +716,25 @@ structure and latent learner state.
 
 - ~~which event contexts deserve independent latent learner components~~:
   **resolved**, none do in V1. They aggregate into `SCALAR_CROSSING`,
-  `MULTI_OCTAVE_CONTINUATION`, and `DIRECTION_REVERSAL` as event-level
-  context feeding one competency each (`../learner-model/02-v1-design.md`
-  §9.1).
+  `MULTI_OCTAVE_CONTINUATION`, and `DIRECTION_REVERSAL` as event-level context
+  feeding one competency each (`../learner-model/02-v1-design.md` §9.1).
 - whether phase should eventually receive learner-specific parameters;
 - whether keyboard-geometry effects can be summarized with a small set of useful
   contextual features;
 - how strongly evidence transfers across hand, direction, phase, and geometry:
-  **partially resolved** for hand, via correlated priors rather than a
-  shared parent competency (`../learner-model/02-v1-design.md` §9.1.5).
-  Direction, phase, and geometry remain open; and
+  **partially resolved** for hand, via correlated priors rather than a shared
+  parent competency (`../learner-model/02-v1-design.md` §9.1.5). Direction,
+  phase, and geometry remain open; and
 - whether future modes, alternative fingerings, or non-diatonic scales introduce
   additional `MotorFamily` values.
 
 ## 22. Next Step
 
-> **Status: done.** The competency/Q-matrix reconciliation this section
-> called for is complete. The reconciled ten-Competency ontology lives in
-> `../learner-model/02-v1-design.md` §9.1; the Q-matrix (structural `Q`,
-> derived `q`, evidence-attribution `w`) lives in
-> `../learner-model/03-v1-math.md` §9. The admission rule the
-> reconciliation settled on:
+> **Status: done.** The competency/Q-matrix reconciliation this section called
+> for is complete. The reconciled ten-Competency ontology lives in
+> `../learner-model/02-v1-design.md` §9.1; the Q-matrix (structural `Q`, derived
+> `q`, evidence-attribution `w`) lives in `../learner-model/03-v1-math.md` §9.
+> The admission rule the reconciliation settled on:
 >
 > ```text
 > A latent Competency should correspond to a persistent transferable
@@ -746,10 +743,10 @@ structure and latent learner state.
 > ```
 >
 > resolves this document's own caution against treating every mechanically
-> identifiable structure as a latent skill (§15, §17): shared task
-> structure (one `DIATONIC_3_4_CYCLE` motor family across all 96 records)
-> is not the same thing as a shared observation channel, so it did not
-> produce a corresponding shared competency.
+> identifiable structure as a latent skill (§15, §17): shared task structure
+> (one `DIATONIC_3_4_CYCLE` motor family across all 96 records) is not the same
+> thing as a shared observation channel, so it did not produce a corresponding
+> shared competency.
 
 ## 23. Document Status
 
@@ -766,6 +763,5 @@ additional canonical V1 family is justified by the current corpus.
 
 This document intentionally stops at the boundary of the motor domain. It does
 not freeze a latent learner-component taxonomy. `MotorFamily`, phase, geometry,
-technical events, and performance conditions provide structured evidence to
-that later model rather than automatically becoming mastery variables
-themselves.
+technical events, and performance conditions provide structured evidence to that
+later model rather than automatically becoming mastery variables themselves.

@@ -8,11 +8,10 @@
 fingering-model decisions, transfer assumptions, diagnostic event model, and
 unresolved questions before implementation.
 
-> **Superseded.** The competency ontology and Q-matrix in this document
-> (§6.2, §6.5-§11, and the worked examples in §14-§16) predate the
-> reconciliation in `../learner-model/02-v1-design.md` §9.1 and
-> `../learner-model/03-v1-math.md` §9. Current names and semantics live
-> there.
+> **Superseded.** The competency ontology and Q-matrix in this document (§6.2,
+> §6.5-§11, and the worked examples in §14-§16) predate the reconciliation in
+> `../learner-model/02-v1-design.md` §9.1 and `../learner-model/03-v1-math.md`
+> §9. Current names and semantics live there.
 
 ---
 
@@ -580,14 +579,13 @@ as equivalent to:
 because they are different technical events and should provide different
 evidence to the learner model.
 
-> **Superseded.** `FingeringGroup`, sketched below as a derived
-> multi-family classification, is retired: mechanical analysis
-> (`motor-taxonomy.md`) found all 96 canonical hand-specific records
-> collapse into one `MotorFamily` (`DIATONIC_3_4_CYCLE`), differentiated
-> by phase and boundary rather than group membership. The **pattern**
-> remains authoritative domain data; `FingeringPattern` →
-> `MotorRealization` → `MotorFamily` is the current triad (`GLOSSARY.md`
-> §2).
+> **Superseded.** `FingeringGroup`, sketched below as a derived multi-family
+> classification, is retired: mechanical analysis (`motor-taxonomy.md`) found
+> all 96 canonical hand-specific records collapse into one `MotorFamily`
+> (`DIATONIC_3_4_CYCLE`), differentiated by phase and boundary rather than group
+> membership. The **pattern** remains authoritative domain data;
+> `FingeringPattern` → `MotorRealization` → `MotorFamily` is the current triad
+> (`GLOSSARY.md` §2).
 
 ### 6.3 `Exercise`
 
@@ -611,8 +609,8 @@ Not all parameters are required in the earliest prototype, but the model should
 leave room for them.
 
 > **Superseded** by the compositional `Exercise` in
-> `../learner-model/02-v1-design.md`, which makes `GuidanceContext` part
-> of the evidence model rather than UI state.
+> `../learner-model/02-v1-design.md`, which makes `GuidanceContext` part of the
+> evidence model rather than UI state.
 
 ### 6.4 `ExpectedEvent`
 
@@ -659,11 +657,10 @@ verify which finger the pianist actually used.
 
 ### 6.6 `ExerciseComponentMapping` (superseded)
 
-**Superseded** by the `Q`/`q`/`w` split in
-`../learner-model/03-v1-math.md` §9: a binary structural Q-matrix, a
-derived predictor loading, and a per-attempt evidence-attribution
-weight, replacing the qualitative `PRIMARY`/`SECONDARY`/`NONE` used
-here.
+**Superseded** by the `Q`/`q`/`w` split in `../learner-model/03-v1-math.md` §9:
+a binary structural Q-matrix, a derived predictor loading, and a per-attempt
+evidence-attribution weight, replacing the qualitative
+`PRIMARY`/`SECONDARY`/`NONE` used here.
 
 ### 6.7 `Observation`
 
@@ -686,44 +683,42 @@ Observation
 
 ### 6.8 `LearnerComponentState` (superseded by `LatentCompetencyState`)
 
-**Superseded** by `LatentCompetencyState`,
-`../learner-model/02-v1-design.md` §9.1.
+**Superseded** by `LatentCompetencyState`, `../learner-model/02-v1-design.md`
+§9.1.
 
 ---
 
 ## 7. Initial Latent-Component Ontology (superseded)
 
 **Superseded** by the reconciled ten-Competency ontology,
-`../learner-model/02-v1-design.md` §9.1, including why a general
-diatonic-motor competency and a general evenness competency were
-deliberately left out.
+`../learner-model/02-v1-design.md` §9.1, including why a general diatonic-motor
+competency and a general evenness competency were deliberately left out.
 
 ---
 
 ## 8-11. Original Qualitative Q-Matrix Tables (superseded)
 
-**Superseded** by the generated binary Q-matrix and evidence-attribution
-weight in `../learner-model/03-v1-math.md` §9. `Q` is generated from
-exercise composition rather than authored per scale; the qualitative
-`PRIMARY`/`SECONDARY`/`NONE` used in these tables is replaced by the
-per-attempt weight `w_{a,k}`.
+**Superseded** by the generated binary Q-matrix and evidence-attribution weight
+in `../learner-model/03-v1-math.md` §9. `Q` is generated from exercise
+composition rather than authored per scale; the qualitative
+`PRIMARY`/`SECONDARY`/`NONE` used in these tables is replaced by the per-attempt
+weight `w_{a,k}`.
 
-One idea worth keeping from here: an RH hesitation during a
-hands-together attempt is ambiguous (RH weakness, coordination
-weakness, or interference from the LH pattern), so HT observations
-should update RH/LH competencies more cautiously than clean
-hands-separate observations. That reasoning is now expressed as
-attempt-specific `w`, not a qualitative table label.
+One idea worth keeping from here: an RH hesitation during a hands-together
+attempt is ambiguous (RH weakness, coordination weakness, or interference from
+the LH pattern), so HT observations should update RH/LH competencies more
+cautiously than clean hands-separate observations. That reasoning is now
+expressed as attempt-specific `w`, not a qualitative table label.
 
 ---
 
 ## 12. Observation-to-Component Mapping
 
-> The pairing of ideas below (what an exercise can test vs. what a
-> particular observation means) is still the right shape; it's now
-> formalized as `Q_{e,k}` (exercise-level) vs. `w_{a,k}` (attempt-level)
-> in `../learner-model/03-v1-math.md` §9, with "component" read as
-> "competency" throughout.
+> The pairing of ideas below (what an exercise can test vs. what a particular
+> observation means) is still the right shape; it's now formalized as `Q_{e,k}`
+> (exercise-level) vs. `w_{a,k}` (attempt-level) in
+> `../learner-model/03-v1-math.md` §9, with "component" read as "competency"
+> throughout.
 
 The Q-matrix identifies what an exercise _can_ test. The Performance Model
 determines what a particular observation actually means.
@@ -927,8 +922,8 @@ HT exercise becomes appropriate
 This should usually affect scheduling eligibility rather than act as an absolute
 lock.
 
-> This relationship now has a concrete home: candidate-generation
-> eligibility, before challenge filtering and priority ranking
+> This relationship now has a concrete home: candidate-generation eligibility,
+> before challenge filtering and priority ranking
 > (`../learner-model/03-v1-math.md` §20).
 
 ### `LOADS_ON`
@@ -961,9 +956,9 @@ overlap.
 
 ## 18. V1 Conceptual Data Model
 
-> Historical. `FingeringGroup`, `Component`, `ExerciseComponentMapping`,
-> and this `Exercise` shape are retired/superseded (§6.2-§6.6). Current
-> object relationships: `../learner-model/02-v1-design.md` §17.
+> Historical. `FingeringGroup`, `Component`, `ExerciseComponentMapping`, and
+> this `Exercise` shape are retired/superseded (§6.2-§6.6). Current object
+> relationships: `../learner-model/02-v1-design.md` §17.
 
 ```text
 ScaleDefinition
@@ -1242,12 +1237,12 @@ coarse. The assumption registry should record that uncertainty.
 
 ## 24. Immediate Next Steps
 
-> **Status: complete.** Steps 1-3 are done
-> (`fingering-taxonomy.md`, `motor-taxonomy.md`, and the Q-matrix
-> reconciliation in `../learner-model/02-v1-design.md` §9.1 /
-> `../learner-model/03-v1-math.md` §9). Step 7 is also done
-> (`../learner-model/03-v1-math.md`). Steps 4-6 were subsumed into that
-> same work rather than done as separate machine-readable artifacts.
+> **Status: complete.** Steps 1-3 are done (`fingering-taxonomy.md`,
+> `motor-taxonomy.md`, and the Q-matrix reconciliation in
+> `../learner-model/02-v1-design.md` §9.1 / `../learner-model/03-v1-math.md`
+> §9). Step 7 is also done (`../learner-model/03-v1-math.md`). Steps 4-6 were
+> subsumed into that same work rather than done as separate machine-readable
+> artifacts.
 
 Before implementing the learner mathematics:
 
