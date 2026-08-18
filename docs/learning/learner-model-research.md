@@ -1365,7 +1365,316 @@ observations allow the evidence model to infer them probabilistically.
 
 This distinction should be retained in the V1 learner-model design.
 
-## 21. Scheduler objective
+## 21. Hierarchical item effects and material-specific execution residuals
+
+A targeted review of mixed-effects psychometrics, item-response modeling, and
+educational learner models supports a more parsimonious interpretation of
+`MaterialExecutionState` than maintaining several independent material-specific
+mastery dimensions.
+
+### 21.1 Crossed learner and item effects are established statistical practice
+
+Repeated-performance data naturally contain multiple sources of variation:
+learners differ from one another, materials/tasks differ in general difficulty,
+and repeated observations can reveal learner-specific deviations for particular
+materials.
+
+Cross-classified mixed-effects and explanatory item-response models provide
+established machinery for separating these effects. In KeyRecall terms, a
+conceptual performance model can contain:
+
+```text
+shared learner competencies
++
+general material/task effects
++
+learner x material-specific effect
+```
+
+A schematic logistic form is:
+
+\[ `\operatorname{logit}`{=tex} P(Y\_{u,m,t}) =
+`\mathbf{x}`{=tex}_{u,m,t}\^`\top`{=tex}`\boldsymbol{\beta}`{=tex} + b_u + c_m +
+r_{u,m} \]
+
+where `r_(u,m)` represents a learner-specific deviation for material `m`. This
+equation is a KeyRecall synthesis, not an equation taken directly from one cited
+learner model.
+
+**Representative sources:**
+
+- Van den Noortgate, W., De Boeck, P., & Meulders, M. Cross-classified
+  multilevel logistic models in psychometric response data.
+  https://ppw.kuleuven.be/okp/\_pdf/Noortgate2003CMLMI.pdf
+- Rijmen, F., Tuerlinckx, F., De Boeck, P., & Kuppens, P. A nonlinear
+  mixed-model framework for item-response models.
+- Baayen, R. H., Davidson, D. J., & Bates, D. M. (2008). Mixed-effects modeling
+  with crossed random effects for subjects and items.
+  https://www.mpi.nl/publications/item60973/mixed-effects-modeling-crossed-random-effects-subjects-and-items
+
+### 21.2 Partial pooling is essential
+
+The useful property of a hierarchical learner-by-material effect is **partial
+pooling**.
+
+With little evidence about a learner's execution of a particular material, the
+material-specific estimate should remain close to the prediction supplied by
+shared competencies, material knowledge, and known task difficulty. Repeated
+consistent evidence can then justify a larger personalized deviation.
+
+Conceptually:
+
+```text
+little C# harmonic-minor RH evidence
+        |
+        v
+prediction dominated by shared state
+
+repeated material-specific struggle
+        |
+        v
+negative learner x material/context residual
+
+repeated unusual strength
+        |
+        v
+positive learner x material/context residual
+```
+
+This avoids assigning strong independent mastery estimates to sparsely observed
+material/context combinations and provides a principled cold-start behavior.
+
+Random-item and explanatory IRT models provide established precedent for this
+hierarchical/shrinkage treatment of item effects.
+
+**Representative source:**
+
+https://link.springer.com/article/10.1007/s11336-008-9092-x
+
+### 21.3 Educational learner models also benefit from item-specific effects
+
+Educational-data-mining work provides more direct precedent for combining shared
+skill information with item-specific effects.
+
+Knowledge Tracing Machines use factorized logistic models capable of combining
+student, item, skill, practice-history, and side-information features. Their
+results demonstrate that item-level information can add predictive value beyond
+skill-level effects alone.
+
+Logistic Knowledge Tracing research likewise shows that interpretable models
+using student-, knowledge-component-, and item-level features can be highly
+competitive.
+
+These models do not dictate KeyRecall's implementation, but they support the
+principle that transferable competency state need not explain all persistent
+material-specific performance variation.
+
+**Representative sources:**
+
+- Vie, J.-J., & Kashima, H. Knowledge Tracing Machines.
+  https://ojs.aaai.org/index.php/AAAI/article/view/3853/3731
+- Logistic Knowledge Tracing research using student-, KC-, and item-level
+  features:
+  https://jedm.educationaldatamining.org/index.php/JEDM/article/download/722/177
+- Knowledge Tracing Machines preprint: https://arxiv.org/abs/1811.03388
+
+A factorization-machine architecture is more general than KeyRecall requires for
+V1. It is better treated as a possible later population-trained model if
+sufficient telemetry becomes available.
+
+### 21.4 MaterialExecutionState should be dynamic, not a static random intercept
+
+A conventional learner-by-item random effect is typically treated as persistent
+within the fitted model. KeyRecall's procedural-retention research indicates
+that material-specific execution readiness can change with practice and nonuse.
+
+The mixed-effects analogy therefore identifies **what the state represents**
+without establishing its temporal dynamics.
+
+The appropriate conceptual extension is:
+
+\[ r\_{u,m}(t) \]
+
+rather than a permanently fixed:
+
+\[ r\_{u,m} \]
+
+Dynamic and longitudinal IRT models provide precedent for allowing latent
+learner state to evolve through time and for modeling repeated observations at
+different time points.
+
+**Representative source:**
+
+https://arxiv.org/abs/1304.4441
+
+The exact KeyRecall transition/decay process remains a design and empirical
+question.
+
+### 21.5 Refined definition of MaterialExecutionState
+
+The strongest current V1 definition is:
+
+> **`MaterialExecutionState` is a dynamic, partially pooled learner x
+> technical-material x execution-context residual representing persistent
+> material-specific procedural readiness not already explained by transferable
+> competencies, material retrievability, or current task difficulty.**
+
+Each qualifier is intentional:
+
+- **dynamic:** practice and nonuse can change the state;
+- **partially pooled:** sparse evidence remains close to the shared prediction;
+- **learner x material x execution context:** the state captures idiosyncratic
+  execution rather than general material difficulty;
+- **residual:** it avoids duplicating the transferable competency graph;
+- **procedural readiness:** it concerns execution rather than independent
+  retrieval of the material; and
+- **conditional on task difficulty:** tempo, octave count, direction, guidance,
+  and similar task features should not fragment the state into separate items.
+
+### 21.6 Execution context belongs in the residual key, but task difficulty does not
+
+The current scale domain provides evidence for meaningful hand-specific
+execution and only partial intermanual transfer. It is therefore reasonable for
+V1 to distinguish residual state by major execution context:
+
+```text
+F# harmonic minor / RH
+F# harmonic minor / LH
+F# harmonic minor / HT
+```
+
+These states should not be interpreted as fully independent. Shared competencies
+and `MaterialMemoryState` already provide transfer, and future models may
+additionally impose hierarchical or correlated context effects.
+
+In contrast, avoid separate residual identities for:
+
+```text
+tempo
+octave count
+direction
+guidance level
+keyboard geometry
+```
+
+Those are task predictors. The residual asks whether a learner/material/context
+combination is persistently unusual **after accounting for those predictors**.
+
+### 21.7 Preserve rich outcomes without prematurely multiplying latent state
+
+Detailed MIDI-derived outcomes should remain available:
+
+```text
+pitch/sequence integrity
+continuity
+temporal stability
+tempo achieved
+crossing-local disruption
+coordination measures
+```
+
+The research does not currently justify maintaining separate persistent
+material-specific mastery variables for integrity, fluency/capacity, and
+stability.
+
+V1 should instead begin with a parsimonious material-specific residual while
+retaining rich outcome data. If longitudinal data later shows persistent
+material-specific deviations that differ reliably by outcome dimension,
+multidimensional IRT and multivariate mixed-effects approaches provide an
+established path for expanding the state.
+
+**Representative source:**
+
+https://pmc.ncbi.nlm.nih.gov/articles/PMC5978597/
+
+### 21.8 MaterialMemoryState remains distinct
+
+The residual model does not replace `MaterialMemoryState`.
+
+The two states answer different questions:
+
+```text
+MaterialMemoryState
+    How available is this technical material for independent production
+    under the current retrieval context?
+
+MaterialExecutionState
+    Conditional on shared capability, material availability, and task
+    difficulty, is this learner unusually strong or weak at executing
+    this material in this execution context?
+```
+
+This preserves the three-layer architecture:
+
+```text
+LearnerState
+|
++-- LatentCompetencyState
+|   transferable capability
+|
++-- MaterialMemoryState
+|   exact-material retrievability
+|
+`-- MaterialExecutionState
+    dynamic partially pooled
+    learner x material x execution-context residual
+```
+
+### 21.9 Cold start and extensibility
+
+For a new material/context combination, the residual should begin near the
+shared expectation with high uncertainty:
+
+\[ r\_{u,m}(t) `\approx 0`{=tex} \]
+
+Prediction can therefore fall back naturally to transferable competencies,
+material-memory priors, and known task difficulty. No special isolated
+"new-scale mastery" estimate is required.
+
+The same architecture extends beyond scales:
+
+```text
+arpeggio performance
+    shared competencies
+    + arpeggio topology/motor competencies
+    + arpeggio material memory
+    + learner x arpeggio x execution-context residual
+    + task features
+```
+
+Future exercise patterns can likewise add pattern-related predictors or
+competencies without redefining `MaterialExecutionState`.
+
+### 21.10 V1 design conclusion
+
+The earlier candidate:
+
+```text
+MaterialExecutionState
++-- integrity mastery
++-- fluency/capacity mastery
+`-- stability mastery
+```
+
+should **not** be the default V1 design.
+
+Instead, adopt conceptually:
+
+```text
+MaterialExecutionState
+    dynamic partially pooled
+    learner x material x execution-context residual
+```
+
+while preserving integrity, timing, tempo, continuity, crossing-local behavior,
+and related measurements as rich observations and predicted outcomes.
+
+This conclusion has established statistical precedent, but the exact dynamic
+update rule, shrinkage strength, transfer structure among RH/LH/HT, and decay
+function remain KeyRecall modeling questions to be specified and eventually
+estimated from data.
+
+## 22. Scheduler objective
 
 A useful conceptual utility is:
 
@@ -1396,7 +1705,7 @@ The scheduler should not require a declared session duration. It should
 continually select a useful next exercise, observe performance, update state,
 and repeat until the user stops.
 
-## 22. Initial level setting
+## 23. Initial level setting
 
 A research-consistent hybrid approach is:
 
@@ -1412,7 +1721,7 @@ A research-consistent hybrid approach is:
 This borrows CAT's information-seeking principle without turning KeyRecall into
 a standardized test.
 
-## 23. Irregular practice
+## 24. Irregular practice
 
 No special "missed practice" state is required. Elapsed time simply advances.
 
@@ -1430,7 +1739,7 @@ A player returning after two days and one returning after two months can be
 handled by the same model with different elapsed-time inputs. Early exercises
 after a long absence may also have high diagnostic value.
 
-## 24. Telemetry and scientific improvement
+## 25. Telemetry and scientific improvement
 
 The V1 learner model should work **without population telemetry**.
 
@@ -1452,7 +1761,7 @@ How much interleaving is useful at different ability levels?
 Population data should calibrate and refine the model rather than be a
 prerequisite for building it.
 
-## 25. Research-supported vs. KeyRecall-specific decisions
+## 26. Research-supported vs. KeyRecall-specific decisions
 
 ### Strongly research-supported principles
 
@@ -1491,7 +1800,7 @@ prerequisite for building it.
 The second list is a set of design hypotheses subject to simulation and later
 empirical revision.
 
-## 26. Recommended modeling sequence
+## 27. Recommended modeling sequence
 
 ### Stage 1: Formalize state and evidence
 
@@ -1547,7 +1856,7 @@ Only after real data exists consider splitting competencies, estimating
 population priors, learning transfer coefficients, learning scheduler weights,
 or adding contextual-bandit methods.
 
-## 27. Immediate design questions
+## 28. Immediate design questions
 
 ### Latent competency vocabulary
 
@@ -1610,7 +1919,7 @@ direction
 
 Phase and keyboard geometry are plausible additional contextual predictors.
 
-## 28. Working research position
+## 29. Working research position
 
 > KeyRecall should use an interpretable, multidimensional learner model that
 > combines shared transferable competencies with time-sensitive exact-item
@@ -1632,7 +1941,7 @@ These traditions do not prescribe one final KeyRecall equation. They provide a
 defensible foundation from which the learner model and scheduler can be
 designed, simulated, and refined.
 
-## 29. Core reading list
+## 30. Core reading list
 
 - Pavlik, Cen, & Koedinger (2009), _Performance Factors Analysis: A New
   Alternative to Knowledge Tracing_.
