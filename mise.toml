@@ -1,0 +1,26 @@
+[tools]
+python = "3.14"
+uv = "latest"
+
+[tasks."python:format"]
+description = "Format Python tooling with Ruff"
+run = "uvx ruff@latest format analysis"
+
+[tasks."python:format-check"]
+description = "Check Python formatting with Ruff"
+run = "uvx ruff@latest format --check analysis"
+
+[tasks."python:lint"]
+description = "Lint Python tooling with Ruff"
+run = "uvx ruff@latest check analysis"
+
+[tasks."python:check"]
+description = "Format-check and lint Python tooling"
+depends = [
+  "python:format-check",
+  "python:lint",
+]
+
+[tasks."analysis:scale-motor"]
+description = "Verify scale motor taxonomy and generate analysis artifacts"
+run = "uv run analysis/scale-motor/analyze.py --output-dir analysis/scale-motor/generated"
