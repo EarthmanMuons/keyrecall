@@ -95,8 +95,16 @@ class SchedulerAgent:
         )
         winner = select_scheduler_choice(traces, self.session, self.scheduler_params)
         guarded = repetition_guard(traces, self.session, self.scheduler_params)
+        # repetition_guard() falls back to the raw, unfiltered traces list
+        # when nothing reached priority ranking at all (its own "never
+        # force zero admission" rule has nothing to guard in that case) -
+        # those entries carry rank_key=None, unsortable by <. Excluding
+        # them here is never a loss: a NOT_REACHED candidate was never a
+        # real runner-up, and winner is already None in exactly this case
+        # (raised as NoAdmittedCandidate below), so this list should be
+        # empty then regardless.
         runners_up = sorted(
-            (t for t in guarded if t is not winner),
+            (t for t in guarded if t is not winner and t.rank_key is not None),
             key=lambda t: t.rank_key,
             reverse=True,
         )[: self.top_n]

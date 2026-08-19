@@ -26,9 +26,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "learner-model"))
 
 from candidates import InstrumentProfile, SessionState, generate_candidates
+from config import Params as SchedulerParams
 from config import load_params as load_scheduler_params
 from longitudinal import NoAdmittedCandidate, SchedulerAgent
 from model import Prediction
+from params import Params as LearnerParams
 from params import load_params as load_learner_params
 from pipeline import (
     CandidateTrace,
@@ -90,7 +92,12 @@ def run_sessions(
     return state, truth
 
 
-def check_guidance_fades_as_memory_strengthens() -> None:
+def check_guidance_fades_as_memory_strengthens(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = 0,
+) -> None:
     """04-v1-scheduler.md §30 "guidance that never fades."
 
     Originally: a cued attempt never tests retrieval (retrieval_succeeded
@@ -100,8 +107,12 @@ def check_guidance_fades_as_memory_strengthens() -> None:
     challenge_bypass()), which offers a one-step-less-guided variant
     once enough time has passed since the last confirmed retrieval.
     """
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     instrument = InstrumentProfile()
     agent = SchedulerAgent(instrument, [MATERIALS[0]], scheduler_params, learner_params)
 
@@ -112,7 +123,7 @@ def check_guidance_fades_as_memory_strengthens() -> None:
             learner_params,
             session_count=3,
             attempts_per_session=20,
-            seed=0,
+            seed=seed,
         )
     except NoAdmittedCandidate as exc:
         raise InvariantFailure(
@@ -136,7 +147,12 @@ def check_guidance_fades_as_memory_strengthens() -> None:
         )
 
 
-def check_no_endless_repetition() -> None:
+def check_no_endless_repetition(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = 1,
+) -> None:
     """04-v1-scheduler.md §30 "repeating the same material indefinitely."
 
     Originally a guidance/memory feedback trap: a cued attempt has
@@ -148,8 +164,12 @@ def check_no_endless_repetition() -> None:
     own two properties are tested directly in
     check_repetition_guard_prevents_perseveration().
     """
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     instrument = InstrumentProfile()
     agent = SchedulerAgent(instrument, MATERIALS[:3], scheduler_params, learner_params)
 
@@ -160,7 +180,7 @@ def check_no_endless_repetition() -> None:
             learner_params,
             session_count=4,
             attempts_per_session=20,
-            seed=1,
+            seed=seed,
         )
     except NoAdmittedCandidate as exc:
         raise InvariantFailure(
@@ -186,7 +206,12 @@ def check_no_endless_repetition() -> None:
         )
 
 
-def check_repetition_guard_prevents_perseveration() -> None:
+def check_repetition_guard_prevents_perseveration(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = None,
+) -> None:
     """repetition_guard() (pipeline.py), a pre-selection filter rather
     than another priority term - under lexicographic R>I>V, V can only
     break exact ties, so no V penalty could stop a material whose R wins
@@ -202,7 +227,11 @@ def check_repetition_guard_prevents_perseveration() -> None:
     band membership, cued-vs-tested state, etc. all confound it); a
     controlled rank_key removes that confound.
     """
-    scheduler_params = load_scheduler_params()
+    del seed  # deterministic, no randomness involved
+    del learner_params  # unused: traces are hand-built, no prediction call
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     cap = scheduler_params.diversity.max_consecutive_material_attempts
 
     ex_a = fixed_exercise(MATERIALS[0], "RIGHT")
@@ -269,13 +298,22 @@ def check_repetition_guard_prevents_perseveration() -> None:
         )
 
 
-def check_old_material_resurfaces() -> None:
+def check_old_material_resurfaces(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = 2,
+) -> None:
     """04-v1-scheduler.md §30 "never revisiting older material." Material
     A is practiced, then only material B is available for a stretch, then
     both are candidates again - A's rising retention need should bring it
     back."""
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     instrument = InstrumentProfile()
     material_a, material_b = MATERIALS[0], MATERIALS[1]
 
@@ -290,7 +328,7 @@ def check_old_material_resurfaces() -> None:
         trace, state, truth = run(
             "advanced",
             attempts=20,
-            seed=2,
+            seed=seed,
             params=learner_params,
             agent_pick=agent_a.pick,
             agent_on_outcome=agent_a.on_outcome,
@@ -303,7 +341,7 @@ def check_old_material_resurfaces() -> None:
         trace, state, truth = run(
             "advanced",
             attempts=15,
-            seed=2,
+            seed=seed,
             params=learner_params,
             state=state,
             truth=truth,
@@ -319,7 +357,7 @@ def check_old_material_resurfaces() -> None:
         run(
             "advanced",
             attempts=20,
-            seed=2,
+            seed=seed,
             params=learner_params,
             state=state,
             truth=truth,
@@ -344,7 +382,12 @@ def check_old_material_resurfaces() -> None:
         )
 
 
-def check_new_material_introduction_is_learner_sensitive() -> None:
+def check_new_material_introduction_is_learner_sensitive(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = 0,
+) -> None:
     """04-v1-scheduler.md §24.
 
     Originally identical first selections across profiles: I(e) read
@@ -356,8 +399,12 @@ def check_new_material_introduction_is_learner_sensitive() -> None:
     produces, so which realizations clear it is naturally
     learner-sensitive.
     """
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     instrument = InstrumentProfile()
 
     beginner_state = initial_state(PROFILES["beginner"], learner_params)
@@ -370,8 +417,12 @@ def check_new_material_introduction_is_learner_sensitive() -> None:
     )
 
     try:
-        first_beginner = agent_beginner.pick(random.Random(0), 0, beginner_state, 0.0)
-        first_advanced = agent_advanced.pick(random.Random(0), 0, advanced_state, 0.0)
+        first_beginner = agent_beginner.pick(
+            random.Random(seed), 0, beginner_state, 0.0
+        )
+        first_advanced = agent_advanced.pick(
+            random.Random(seed), 0, advanced_state, 0.0
+        )
     except NoAdmittedCandidate as exc:
         raise InvariantFailure(
             f"scheduler produced no admitted candidate: {exc}"
@@ -385,7 +436,12 @@ def check_new_material_introduction_is_learner_sensitive() -> None:
         )
 
 
-def check_eligibility_progression() -> None:
+def check_eligibility_progression(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = 5,
+) -> None:
     """04-v1-scheduler.md §5.1/§7.1. HT starts PROVISIONALLY_ELIGIBLE and
     becomes FULLY_ELIGIBLE only once RH/LH competency practice raises
     both means past the REQUIRES threshold.
@@ -401,8 +457,12 @@ def check_eligibility_progression() -> None:
     actually exercises progression rather than measuring a ceiling that
     can never be crossed.
     """
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     state = initial_state(PROFILES["advanced"], learner_params)
     state.competencies["RH_SCALE_EXECUTION"].mean = -0.3
     state.competencies["LH_SCALE_EXECUTION"].mean = -0.3
@@ -421,7 +481,7 @@ def check_eligibility_progression() -> None:
     _trace, state, _truth = run(
         "advanced",
         attempts=300,
-        seed=5,
+        seed=seed,
         params=learner_params,
         exercise_fn=rh_lh_only,
         state=state,
@@ -435,15 +495,24 @@ def check_eligibility_progression() -> None:
         )
 
 
-def check_failure_recovery_is_temporary() -> None:
+def check_failure_recovery_is_temporary(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = 6,
+) -> None:
     """04-v1-scheduler.md §6's named exceptions. Exercises
     SchedulerAgent.on_outcome's own bookkeeping (Pass 1's invariants
     already cover the pipeline's own handling of a given
     last_failed_exercise value): the recovery bypass should apply on the
     attempt right after a genuine failure and not on an attempt that
     followed a success (or an untested attempt)."""
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     instrument = InstrumentProfile()
     agent = SchedulerAgent(instrument, [MATERIALS[0]], scheduler_params, learner_params)
 
@@ -454,7 +523,7 @@ def check_failure_recovery_is_temporary() -> None:
         run(
             "technique_strong_memory_weak",
             attempts=30,
-            seed=6,
+            seed=seed,
             params=learner_params,
             agent_pick=agent.pick,
             agent_on_outcome=agent.on_outcome,
@@ -508,7 +577,12 @@ def _guidance_independence(exercise) -> int:
     return 2
 
 
-def check_guidance_probe_failure_does_not_cascade_to_independence() -> None:
+def check_guidance_probe_failure_does_not_cascade_to_independence(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = 0,
+) -> None:
     """04-v1-scheduler.md §30 "guidance is not removed before independent
     retrieval is plausible" - the paired failure mode to §6.2's guidance
     probe.
@@ -524,8 +598,12 @@ def check_guidance_probe_failure_does_not_cascade_to_independence() -> None:
     failed probe's recovery target is exactly its own one-step-more-
     guidance sibling, so the next attempt can only step toward more
     support, never less."""
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     instrument = InstrumentProfile()
     agent = SchedulerAgent(instrument, [MATERIALS[0]], scheduler_params, learner_params)
 
@@ -536,7 +614,7 @@ def check_guidance_probe_failure_does_not_cascade_to_independence() -> None:
             learner_params,
             session_count=3,
             attempts_per_session=20,
-            seed=0,
+            seed=seed,
         )
     except NoAdmittedCandidate as exc:
         raise InvariantFailure(
@@ -569,7 +647,12 @@ def check_guidance_probe_failure_does_not_cascade_to_independence() -> None:
         raise InvariantFailure("test setup error: no guidance-probe failure occurred")
 
 
-def check_recovery_preserves_motor_challenge() -> None:
+def check_recovery_preserves_motor_challenge(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = None,
+) -> None:
     """04-v1-scheduler.md §30 "failure can increase support without
     destroying motor challenge." "Preserve motor challenge" is defined
     concretely: hold hands/octaves/tempo/direction constant relative to
@@ -586,8 +669,13 @@ def check_recovery_preserves_motor_challenge() -> None:
     (the exercise itself) plus exclusive recovery admission
     (pipeline.py's recovery_target()/run_pipeline()): only the exact
     one-step-more-guidance sibling may survive this decision."""
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    del seed  # deterministic single pipeline call, no randomness involved
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     instrument = InstrumentProfile()
     material = MATERIALS[0]
 
@@ -623,7 +711,12 @@ def check_recovery_preserves_motor_challenge() -> None:
         )
 
 
-def check_never_successful_material_is_not_permanently_trapped() -> None:
+def check_never_successful_material_is_not_permanently_trapped(
+    *,
+    scheduler_params: SchedulerParams | None = None,
+    learner_params: LearnerParams | None = None,
+    seed: int | None = 2,
+) -> None:
     """Regression scenario for the bootstrap_probe mechanism
     (pipeline.py). Fixing candidate-actionable recovery (§7.2) exposed a
     sharper version of the original guidance-fading trap: recovery can
@@ -638,8 +731,12 @@ def check_never_successful_material_is_not_permanently_trapped() -> None:
     offering a genuine retrieval-observing candidate (independence > 0)
     at roughly the configured interval, never settling into an unbroken
     cued-only run for the rest of the simulation."""
-    learner_params = load_learner_params()
-    scheduler_params = load_scheduler_params()
+    learner_params = (
+        learner_params if learner_params is not None else load_learner_params()
+    )
+    scheduler_params = (
+        scheduler_params if scheduler_params is not None else load_scheduler_params()
+    )
     instrument = InstrumentProfile()
     agent = SchedulerAgent(instrument, [MATERIALS[0]], scheduler_params, learner_params)
 
@@ -650,7 +747,7 @@ def check_never_successful_material_is_not_permanently_trapped() -> None:
             learner_params,
             session_count=4,
             attempts_per_session=20,
-            seed=2,
+            seed=seed,
         )
     except NoAdmittedCandidate as exc:
         raise InvariantFailure(
