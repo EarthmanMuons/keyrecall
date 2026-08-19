@@ -1,0 +1,29 @@
+model_version = "v1-prototype-0"
+
+# Every value below is a deliberately simple Pass-1 placeholder
+# (docs/learner-model/04-v1-scheduler.md §9), not a tuned policy decision.
+# Pass 2 (behavioral scenarios, 04-v1-scheduler.md §10) is what should
+# actually revise these, same discipline as learner-model/params.toml
+# (docs/learner-model/03-v1-math.md §25).
+
+[eligibility]
+# REQUIRES: RH/LH -> HT is the only relationship implemented this pass
+# (04-v1-scheduler.md §5.1, §9). Both hand competencies' means must reach
+# this threshold for a HANDS_TOGETHER_COORDINATION exercise to be
+# FULLY_ELIGIBLE rather than PROVISIONALLY_ELIGIBLE.
+hand_together_competency_threshold = 0.0
+
+[safety]
+# SchedulerSafetyPolicy: a session-length cap, nothing about fatigue/
+# injury inference (04-v1-scheduler.md §5.2, §9).
+max_session_attempts = 40
+
+[challenge]
+# p_min/p_max: 03-v1-math.md §21's own suggested provisional range.
+p_min = 0.60
+p_max = 0.90
+
+[diversity]
+# V(e): simple recency count over a fixed-size window, not decayed
+# (04-v1-scheduler.md §7.2, §9).
+recent_window = 10
