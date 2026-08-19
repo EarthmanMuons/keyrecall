@@ -240,21 +240,28 @@ The math document is close enough to implementation that readability should beat
 compact single-letter typography, and it currently reuses letters for unrelated
 quantities within itself:
 
-| Current              | Meaning                                                 | Collides with                                            | Rename to                      |
-| -------------------- | ------------------------------------------------------- | -------------------------------------------------------- | ------------------------------ |
-| `D(e)`               | total task difficulty (§10-11)                          | its own component below                                  | `Diff(e)`                      |
-| `D_e`                | direction effect, a term inside `D(e)` (§11)            | `D(e)` itself                                            | `Dir_e`                        |
-| `G_e`                | guidance/support difficulty effect, inside `D(e)` (§11) | `G(e)` below                                             | `Guid_e`                       |
-| `G(e)`               | goal-relevance, scheduler ranking (§22)                 | `G_e` above                                              | `Goal(e)`                      |
-| `I(e)`               | information value, scheduler ranking (§22)              | `I_sequence` below                                       | `Info(e)`                      |
-| `I_sequence`         | sequence/pitch integrity, memory evidence (§6.1)        | `I(e)` above                                             | `Seq` (or `Seq_e`)             |
-| `V(e)`               | diversity/interleaving value (§22)                      | none, renamed for consistency                            | `Div(e)`                       |
-| `R(e)`               | retention/review need, scheduler ranking (§22)          | none, renamed for consistency                            | `Ret(e)`                       |
-| `d_e`                | retrieval demand ∈ [0,1] (§6)                           | none, but easy to misread next to `Dir_e`                | keep `d_e`, flag as distinct   |
-| `w_R, w_I, w_D, w_G` | scheduler ranking weights (§22)                         | case-collide with `w_r` (execution residual weight, §16) | `w_ret, w_info, w_div, w_goal` |
+| Current              | Meaning                                            | Collides with                                            | Rename to                      |
+| -------------------- | -------------------------------------------------- | -------------------------------------------------------- | ------------------------------ |
+| `D_motor(e)`         | motor/execution task difficulty (§10-11)           | its own component below                                  | `Diff_motor(e)`                |
+| `D_e`                | direction effect, a term inside `D_motor(e)` (§11) | `D_motor(e)` itself                                      | `Dir_e`                        |
+| `G(e)`               | goal-relevance, scheduler ranking (§22)            | none currently; historically `G_e` (see below)           | `Goal(e)`                      |
+| `I(e)`               | information value, scheduler ranking (§22)         | `I_sequence` below                                       | `Info(e)`                      |
+| `I_sequence`         | sequence/pitch integrity, memory evidence (§6.1)   | `I(e)` above                                             | `Seq` (or `Seq_e`)             |
+| `V(e)`               | diversity/interleaving value (§22)                 | none, renamed for consistency                            | `Div(e)`                       |
+| `R(e)`               | retention/review need, scheduler ranking (§22)     | none, renamed for consistency                            | `Ret(e)`                       |
+| `d_e`                | retrieval demand ∈ [0,1] (§6)                      | none, but easy to misread next to `Dir_e`                | keep `d_e`, flag as distinct   |
+| `w_R, w_I, w_D, w_G` | scheduler ranking weights (§22)                    | case-collide with `w_r` (execution residual weight, §16) | `w_ret, w_info, w_div, w_goal` |
 
 `O_e` (octave effect) and `H_e` (hand-configuration effect), both in §11, don't
 collide with anything and can stay as-is.
+
+`D(e)` (the pre-hurdle-split "total task difficulty") and `G_e`
+(guidance/support difficulty effect, formerly a term inside it) are retired,
+not renamed: simulation (`analysis/learner-model/`) split retrieval
+availability from execution difficulty, and guidance now affects the former,
+not the latter (`03-v1-math.md` §10-11, §18). `D(e)` became `D_motor(e)`
+above; `G_e` has no successor symbol because it no longer corresponds to
+anything the model computes.
 
 ## 12. Placement priors: self-report maps primarily to the mean, not the variance
 
