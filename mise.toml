@@ -22,6 +22,10 @@ depends = ["python:format-check", "python:lint"]
 description = "Run learner-model simulation invariant checks"
 run = "uv run analysis/learner-model/invariants.py"
 
+[tasks."analysis:learner-model-analyze"]
+description = "Run learner-model behavioral diagnostics and generate analysis CSVs"
+run = "uv run analysis/learner-model/analyze.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:scale-motor"]
 description = "Verify scale motor taxonomy and generate analysis artifacts"
 run = "uv run analysis/scale-motor/analyze.py --output-dir analysis/scale-motor/generated"

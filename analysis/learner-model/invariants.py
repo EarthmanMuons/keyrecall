@@ -18,7 +18,7 @@ from itertools import pairwise
 from domain import Exercise, GuidanceContext, TechnicalMaterial
 from model import Outcome, evidence_weights, predicted_success, update
 from params import load_params
-from simulate import build_opportunities, initial_state, run
+from simulate import fixed_exercise, initial_state, run
 from state import LearnerState
 from synthetic import PROFILES
 
@@ -29,25 +29,6 @@ F_SHARP_HARMONIC_MINOR = TechnicalMaterial("F#", "HARMONIC_MINOR")
 
 class InvariantFailure(Exception):
     pass
-
-
-def _fixed_exercise(
-    material: TechnicalMaterial,
-    hands: str,
-    guidance: GuidanceContext | None = None,
-    octaves: int = 2,
-    direction: str = "UP_DOWN",
-    tempo_bpm: float = 80,
-) -> Exercise:
-    return Exercise(
-        material=material,
-        hands=hands,
-        octaves=octaves,
-        direction=direction,
-        tempo_bpm=tempo_bpm,
-        guidance=guidance or GuidanceContext(),
-        opportunities=build_opportunities(octaves, direction),
-    )
 
 
 def _full_outcome(retrieval_succeeded: bool = True) -> Outcome:
@@ -118,10 +99,60 @@ def check_determinism() -> None:
         raise InvariantFailure("same profile+seed+script produced different traces")
 
 
+def check_chunked_run_matches_single_run() -> None:
+    """A caller threading one rng across several chunked run() calls (e.g.
+    to checkpoint state mid-simulation) should see the same stochastic
+    process as one long call, not a replayed one: run() reseeds from `seed`
+    only when no rng= is given, so the chunking itself must not perturb
+    the sequence."""
+    params = load_params()
+
+    def rh_c_major_only(_rng: random.Random, _i: int) -> Exercise:
+        return fixed_exercise(C_MAJOR, "RIGHT")
+
+    single_trace, _state, _truth = run(
+        "advanced", attempts=40, seed=11, params=params, exercise_fn=rh_c_major_only
+    )
+
+    chunk_rng = random.Random(11)
+    chunked_trace: list[dict] = []
+    state, truth, now = None, None, 0.0
+    for _ in range(4):
+        trace, state, truth = run(
+            "advanced",
+            attempts=10,
+            seed=11,
+            params=params,
+            exercise_fn=rh_c_major_only,
+            state=state,
+            truth=truth,
+            start_now=now,
+            rng=chunk_rng,
+        )
+        now = trace[-1]["at_days"]
+        chunked_trace.extend(trace)
+
+    if len(single_trace) != len(chunked_trace):
+        raise InvariantFailure(
+            f"chunked run produced {len(chunked_trace)} attempts, "
+            f"single run produced {len(single_trace)}"
+        )
+
+    for i, (single, chunked) in enumerate(zip(single_trace, chunked_trace)):
+        # attempt_index is local to each run() call, so it legitimately
+        # differs between the single call and each 10-attempt chunk.
+        single_rest = {k: v for k, v in single.items() if k != "attempt_index"}
+        chunked_rest = {k: v for k, v in chunked.items() if k != "attempt_index"}
+        if single_rest != chunked_rest:
+            raise InvariantFailure(
+                f"attempt {i}: chunked run diverged from a single equivalent run"
+            )
+
+
 def check_prediction_does_not_mutate_state() -> None:
     params = load_params()
     state = initial_state(PROFILES["advanced"], params)
-    exercise = _fixed_exercise(C_MAJOR, "RIGHT")
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
 
     before = state.snapshot()
     predicted_success(state, exercise, now=1.0, params=params)
@@ -147,7 +178,7 @@ def check_unrelated_competencies_do_not_move() -> None:
     params = load_params()
 
     def rh_c_major_only(_rng: random.Random, _i: int) -> Exercise:
-        return _fixed_exercise(C_MAJOR, "RIGHT")
+        return fixed_exercise(C_MAJOR, "RIGHT")
 
     trace, state, _truth = run(
         "advanced", attempts=80, seed=1, params=params, exercise_fn=rh_c_major_only
@@ -170,7 +201,7 @@ def check_meta_sanity_broken_rule_is_caught() -> None:
     params = load_params()
 
     def rh_c_major_only(_rng: random.Random, _i: int) -> Exercise:
-        return _fixed_exercise(C_MAJOR, "RIGHT")
+        return fixed_exercise(C_MAJOR, "RIGHT")
 
     trace, _state, _truth = run(
         "advanced", attempts=10, seed=1, params=params, exercise_fn=rh_c_major_only
@@ -198,12 +229,12 @@ def check_hand_transfer_via_prediction_not_cross_update() -> None:
     state = initial_state(PROFILES["advanced"], params)
     now = 0.0
 
-    lh_probe = _fixed_exercise(C_MAJOR, "LEFT")
+    lh_probe = fixed_exercise(C_MAJOR, "LEFT")
     p_before = predicted_success(state, lh_probe, now, params)
     lh_mean_before = state.competencies["LH_SCALE_EXECUTION"].mean
 
     def rh_only(_rng: random.Random, _i: int) -> Exercise:
-        return _fixed_exercise(C_MAJOR, "RIGHT")
+        return fixed_exercise(C_MAJOR, "RIGHT")
 
     trace, state, truth = run(
         "advanced",
@@ -234,7 +265,7 @@ def check_hand_transfer_via_prediction_not_cross_update() -> None:
     variance_after_rh = state.competencies["LH_SCALE_EXECUTION"].variance
 
     def lh_only(_rng: random.Random, _i: int) -> Exercise:
-        return _fixed_exercise(C_MAJOR, "LEFT")
+        return fixed_exercise(C_MAJOR, "LEFT")
 
     # truth=truth carries the hidden ground truth forward too: without it,
     # run() would deep-copy a fresh "advanced" profile and the synthetic
@@ -271,7 +302,7 @@ def check_material_specific_residual_does_not_contaminate_competency() -> None:
 
     def alternating_harmonic_minor_rh(rng: random.Random, i: int) -> Exercise:
         material = F_SHARP_HARMONIC_MINOR if i % 2 == 0 else D_HARMONIC_MINOR
-        return _fixed_exercise(material, "RIGHT")
+        return fixed_exercise(material, "RIGHT")
 
     _control_trace, control_state, _ = run(
         "advanced",
@@ -329,10 +360,10 @@ def check_memory_decays_with_elapsed_time() -> None:
 
 
 def check_full_cueing_gives_little_memory_evidence() -> None:
-    cued = _fixed_exercise(
+    cued = fixed_exercise(
         C_MAJOR, "RIGHT", guidance=GuidanceContext(concurrent_pitch_cues=True)
     )
-    uncued = _fixed_exercise(C_MAJOR, "RIGHT", guidance=GuidanceContext())
+    uncued = fixed_exercise(C_MAJOR, "RIGHT", guidance=GuidanceContext())
     outcome = _full_outcome()
 
     cued_weight = evidence_weights(cued, outcome).material_memory
@@ -345,10 +376,10 @@ def check_full_cueing_gives_little_memory_evidence() -> None:
 
 
 def check_full_cueing_gives_little_topology_evidence() -> None:
-    cued = _fixed_exercise(
+    cued = fixed_exercise(
         C_MAJOR, "RIGHT", guidance=GuidanceContext(concurrent_pitch_cues=True)
     )
-    uncued = _fixed_exercise(C_MAJOR, "RIGHT", guidance=GuidanceContext())
+    uncued = fixed_exercise(C_MAJOR, "RIGHT", guidance=GuidanceContext())
     outcome = _full_outcome()
 
     cued_topology = evidence_weights(cued, outcome).competencies["MAJOR_SCALE_TOPOLOGY"]
@@ -372,7 +403,7 @@ def check_cued_start_does_not_refresh_retrieval_clock() -> None:
     memory.last_retrieval_at = 0.0
     anchored_at = memory.last_retrieval_at
 
-    exercise = _fixed_exercise(
+    exercise = fixed_exercise(
         C_MAJOR, "RIGHT", guidance=GuidanceContext(concurrent_pitch_cues=True)
     )
     outcome = _full_outcome(retrieval_succeeded=False)
@@ -389,7 +420,7 @@ def check_cued_start_does_not_refresh_retrieval_clock() -> None:
 def check_unguided_failure_lowers_cold_start_estimate() -> None:
     params = load_params()
     state = LearnerState.new(params)
-    exercise = _fixed_exercise(C_MAJOR, "RIGHT")  # unguided
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")  # unguided
 
     p_before = predicted_success(state, exercise, now=1.0, params=params)
 
@@ -447,7 +478,7 @@ def check_returning_reacquisition_differs_from_beginner() -> None:
     params = load_params()
 
     def rh_c_major_only(_rng: random.Random, _i: int) -> Exercise:
-        return _fixed_exercise(C_MAJOR, "RIGHT")
+        return fixed_exercise(C_MAJOR, "RIGHT")
 
     trace_returning, _, _ = run(
         "returning", attempts=30, seed=5, params=params, exercise_fn=rh_c_major_only
@@ -479,6 +510,10 @@ def check_returning_reacquisition_differs_from_beginner() -> None:
 CHECKS: list[tuple[str, Callable[[], None]]] = [
     ("bounds", check_bounds),
     ("determinism", check_determinism),
+    (
+        "chunked run with a threaded rng matches an equivalent single run",
+        check_chunked_run_matches_single_run,
+    ),
     ("prediction does not mutate state", check_prediction_does_not_mutate_state),
     ("unrelated competencies do not move", check_unrelated_competencies_do_not_move),
     (

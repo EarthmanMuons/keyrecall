@@ -91,6 +91,27 @@ def build_opportunities(octaves: int, direction: str) -> frozenset[str]:
     return frozenset(opportunities)
 
 
+def fixed_exercise(
+    material: TechnicalMaterial,
+    hands: str,
+    guidance: GuidanceContext | None = None,
+    octaves: int = 2,
+    direction: str = "UP_DOWN",
+    tempo_bpm: float = 80,
+) -> Exercise:
+    """Scripted exercise for invariant checks and diagnostics that need a
+    fixed, repeatable scenario rather than random_exercise()."""
+    return Exercise(
+        material=material,
+        hands=hands,
+        octaves=octaves,
+        direction=direction,
+        tempo_bpm=tempo_bpm,
+        guidance=guidance or GuidanceContext(),
+        opportunities=build_opportunities(octaves, direction),
+    )
+
+
 def run(
     profile_name: str,
     attempts: int,
@@ -101,12 +122,16 @@ def run(
     state: LearnerState | None = None,
     truth: TrueLearnerProfile | None = None,
     start_now: float = 0.0,
+    rng: random.Random | None = None,
 ) -> tuple[list[dict], LearnerState, TrueLearnerProfile]:
     # PROFILES is shared; deep-copy so mutations to hidden ground truth don't
     # leak across separate run() calls. Pass truth= back in to continue a
     # multi-stage simulation instead of restarting the hidden learner fresh.
     profile = truth if truth is not None else copy.deepcopy(PROFILES[profile_name])
-    rng = random.Random(seed)
+    # rng= lets a caller thread one stream across several chunked run() calls
+    # (e.g. to checkpoint state mid-simulation) so the chunking itself doesn't
+    # replay the same draws each chunk; seed is only used to seed a fresh one.
+    active_rng = rng if rng is not None else random.Random(seed)
     if state is None:
         state = initial_state(profile, params, now=start_now)
     now = start_now
@@ -116,11 +141,11 @@ def run(
     for i in range(attempts):
         now += day_step
         state.propagate(now, params)
-        exercise = pick(rng, i)
+        exercise = pick(active_rng, i)
 
         state_before = state.snapshot()
         predicted_p = predicted_success(state, exercise, now, params)
-        outcome = sample_outcome(profile, exercise, now, rng)
+        outcome = sample_outcome(profile, exercise, now, active_rng)
         weights = evidence_weights(exercise, outcome)
         update(state, exercise, outcome, weights, predicted_p, now, params)
         state_after = state.snapshot()

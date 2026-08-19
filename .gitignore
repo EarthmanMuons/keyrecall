@@ -1,3 +1,3 @@
 .ruff_cache/
 *.pyc
-analysis/scale-motor/generated/
+analysis/*/generated/
