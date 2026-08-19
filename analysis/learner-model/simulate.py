@@ -23,7 +23,13 @@ from collections.abc import Callable
 from pathlib import Path
 
 from domain import Exercise, GuidanceContext, TechnicalMaterial, structural_q
-from model import evidence_weights, normalized_loadings, predicted_success, update
+from model import (
+    Outcome,
+    evidence_weights,
+    normalized_loadings,
+    predicted_success,
+    update,
+)
 from params import Params, load_params
 from state import LearnerState
 from synthetic import PROFILES, TrueLearnerProfile, sample_outcome
@@ -41,6 +47,16 @@ MATERIALS = [
 HANDS = ("RIGHT", "LEFT", "TOGETHER")
 
 ExerciseFn = Callable[[random.Random, int], Exercise]
+
+# Richer, opt-in pick/outcome hooks for a stateful caller (e.g. the
+# scheduler prototype) that needs LearnerState/now to decide, and needs
+# to know what happened afterward to update its own bookkeeping.
+# Deliberately separate from ExerciseFn rather than widening its arity:
+# several existing exercise_fn closures across invariants.py/analyze.py
+# already conform to the plain (rng, index) shape, and this keeps every
+# one of them working unchanged.
+AgentPickFn = Callable[[random.Random, int, LearnerState, float], Exercise]
+AgentOutcomeFn = Callable[[Exercise, Outcome, float], None]
 
 
 def initial_state(
@@ -123,6 +139,8 @@ def run(
     truth: TrueLearnerProfile | None = None,
     start_now: float = 0.0,
     rng: random.Random | None = None,
+    agent_pick: AgentPickFn | None = None,
+    agent_on_outcome: AgentOutcomeFn | None = None,
 ) -> tuple[list[dict], LearnerState, TrueLearnerProfile]:
     # PROFILES is shared; deep-copy so mutations to hidden ground truth don't
     # leak across separate run() calls. Pass truth= back in to continue a
@@ -141,7 +159,12 @@ def run(
     for i in range(attempts):
         now += day_step
         state.propagate(now, params)
-        exercise = pick(active_rng, i)
+        # agent_pick takes priority when supplied: it needs live
+        # state/now to decide (e.g. the scheduler prototype), which
+        # plain ExerciseFn closures never have a way to receive.
+        exercise = (
+            agent_pick(active_rng, i, state, now) if agent_pick else pick(active_rng, i)
+        )
 
         state_before = state.snapshot()
         prediction = predicted_success(state, exercise, now, params)
@@ -149,6 +172,8 @@ def run(
         weights = evidence_weights(exercise, outcome)
         update(state, exercise, outcome, weights, prediction, now, params)
         state_after = state.snapshot()
+        if agent_on_outcome is not None:
+            agent_on_outcome(exercise, outcome, now)
 
         trace.append(
             {

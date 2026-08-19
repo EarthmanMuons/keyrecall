@@ -42,3 +42,7 @@ run = "uv run analysis/scale-motor/analyze.py --output-dir analysis/scale-motor/
 [tasks."analysis:scheduler"]
 description = "Run scheduler pipeline boundary/mechanical-correctness checks"
 run = "uv run analysis/scheduler/invariants.py"
+
+[tasks."analysis:scheduler-scenarios"]
+description = "Run scheduler longitudinal behavioral scenarios (04-v1-scheduler.md §10)"
+run = "uv run analysis/scheduler/scenarios.py"
