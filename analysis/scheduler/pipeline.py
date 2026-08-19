@@ -13,12 +13,18 @@ implements.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 
 from candidates import SessionState
 from config import Params as SchedulerParams
-from domain import MOTOR_COMPETENCIES, TOPOLOGY_COMPETENCIES, Exercise, structural_q
+from domain import (
+    MOTOR_COMPETENCIES,
+    TOPOLOGY_COMPETENCIES,
+    Exercise,
+    GuidanceContext,
+    structural_q,
+)
 from model import Prediction, motor_loadings, predicted_success, topology_loadings
 from params import Params as LearnerParams
 from state import COMPETENCIES, LearnerState
@@ -58,7 +64,8 @@ class CandidateTrace:
     challenge_status: StageStatus
     prediction: Prediction
     challenge_within_band: bool
-    challenge_bypass: str | None  # new_material | recovery | override | None
+    challenge_bypass: str | None  # new_material | recovery | guidance_probe
+    # | bootstrap_probe | override | None
     challenge_survived: bool  # within_band or bypass is not None
 
     # Stage 4: priority ranking (§7). R/I/V/G are ALWAYS computed
@@ -130,6 +137,57 @@ def _guidance_probe_eligible(
     return elapsed >= params.guidance_probe.min_days_since_last_retrieval
 
 
+def _bootstrap_probe_eligible(
+    state: LearnerState, exercise: Exercise, now: float, params: SchedulerParams
+) -> bool:
+    """Distinct from _guidance_probe_eligible(): that one periodically
+    tests whether an ANCHORED memory can support less guidance. This one
+    tests whether retrieval has become possible at all, for a material
+    that's never had a confirmed success - the case exclusive recovery
+    can reach on its own (escalating to maximum cueing before any
+    success occurs), which anchored guidance_probe structurally cannot
+    address, since its own precondition is the anchor this material
+    doesn't have. Same notes_previewed-only scope; reuses
+    guidance_probe's elapsed-time threshold for now (§9: open whether
+    the two should diverge), measured from the last genuine attempt
+    (last_retrieval_attempt_at), not a success."""
+    guidance = exercise.guidance
+    if guidance.concurrent_pitch_cues or not guidance.notes_previewed:
+        return False
+    memory_state = state.material_memory.get(exercise.material.material_id)
+    if memory_state is None or memory_state.last_retrieval_at is not None:
+        return False
+    if memory_state.last_retrieval_attempt_at is None:
+        return False
+    elapsed = now - memory_state.last_retrieval_attempt_at
+    return elapsed >= params.guidance_probe.min_days_since_last_retrieval
+
+
+def _one_step_more_guidance(guidance: GuidanceContext) -> GuidanceContext | None:
+    """unguided -> notes_previewed -> concurrent_pitch_cues. None if
+    already at maximum support - not reachable via a real recovery
+    target in practice, since a cued attempt is never an observed
+    failure to recover from in the first place (retrieval_succeeded
+    stays None, never False, §18.2)."""
+    if guidance.concurrent_pitch_cues:
+        return None
+    if guidance.notes_previewed:
+        return GuidanceContext(concurrent_pitch_cues=True)
+    return GuidanceContext(notes_previewed=True)
+
+
+def recovery_target(failed_exercise: Exercise) -> Exercise | None:
+    """The exact sibling recovery targets: same material, hands, octaves,
+    direction, tempo, opportunities - one step more guidance than what
+    just failed, nothing else. Deliberately narrow (§6): not "some
+    candidate with a retention/information edge," but the same motor
+    task, slightly more supported."""
+    more_guidance = _one_step_more_guidance(failed_exercise.guidance)
+    if more_guidance is None:
+        return None
+    return replace(failed_exercise, guidance=more_guidance)
+
+
 def challenge_bypass(
     state: LearnerState,
     exercise: Exercise,
@@ -138,8 +196,15 @@ def challenge_bypass(
     now: float,
     scheduler_params: SchedulerParams,
     override: str | None,
+    target: Exercise | None,
 ) -> str | None:
     """Named exceptions (§6).
+
+    recovery: target is recovery_target(session.last_failed_exercise),
+    computed once per run_pipeline() call - checked before new_material/
+    guidance_probe, and exclusively: see run_pipeline()'s survived
+    computation for why a recovery context suppresses every other
+    admission path, not just this function's own label.
 
     new_material: unseen material is admitted only through the
     introduction envelope (p_introduction_min <= overall_p), not
@@ -148,24 +213,32 @@ def challenge_bypass(
     profile already produces, so which specific realizations clear it is
     naturally learner-sensitive without branching on tier explicitly.
 
-    recovery: the prior attempt in this session failed - checked before
-    guidance_probe, so a failed probe doesn't immediately re-probe.
+    guidance_probe: see _guidance_probe_eligible(). Only relevant absent
+    a recovery context - a proactive probe when things have been going
+    fine, distinct from recovery's reactive, exact response to a genuine
+    failure.
 
-    guidance_probe: see _guidance_probe_eligible().
+    bootstrap_probe: see _bootstrap_probe_eligible(). The unanchored
+    counterpart to guidance_probe - a material recovery has escalated to
+    maximum cueing before any success ever occurred, so anchored
+    guidance_probe can never apply; this is what keeps offering a
+    retrieval-observing opportunity instead of an absorbing cued state.
 
     override: caller-supplied, for diagnostic-probe/explicit-learner-
     request scenarios that aren't derivable from state alone.
     """
     if override is not None:
         return override
+    if target is not None:
+        return "recovery" if exercise == target else None
     if exercise.material.material_id not in state.material_memory:
         if prediction.overall_p >= scheduler_params.challenge.p_introduction_min:
             return "new_material"
         return None
-    if session.last_outcome_failed:
-        return "recovery"
     if _guidance_probe_eligible(state, exercise, now, scheduler_params):
         return "guidance_probe"
+    if _bootstrap_probe_eligible(state, exercise, now, scheduler_params):
+        return "bootstrap_probe"
     return None
 
 
@@ -308,8 +381,22 @@ def run_pipeline(
     reason (diagnostic probe / explicit learner request, §6) - these
     aren't derivable from state alone, so scripted scenarios supply them
     explicitly rather than the pipeline guessing.
+
+    A recovery context (session.last_failed_exercise set) is exclusive:
+    only the exact recovery_target() may survive this call, not merely
+    preferred among the usual admission paths. Narrowing which candidate
+    gets the "recovery" label isn't enough on its own - a candidate that
+    happens to fall within the normal band, or qualify for
+    new_material/guidance_probe, must not survive alongside the target
+    (04-v1-scheduler.md Pass-2b notes); override still wins regardless,
+    since it's an explicit caller instruction, not an inferred policy.
     """
     overrides = overrides or {}
+    target = (
+        recovery_target(session.last_failed_exercise)
+        if session.last_failed_exercise is not None
+        else None
+    )
     traces: list[CandidateTrace] = []
 
     for exercise in candidates:
@@ -318,6 +405,7 @@ def run_pipeline(
 
         prediction = predicted_success(state, exercise, now, learner_params)
         within_band = challenge_within_band(prediction, scheduler_params)
+        override = overrides.get(exercise)
         bypass = challenge_bypass(
             state,
             exercise,
@@ -325,9 +413,13 @@ def run_pipeline(
             prediction,
             now,
             scheduler_params,
-            overrides.get(exercise),
+            override,
+            target,
         )
-        survived = within_band or bypass is not None
+        if target is not None and override is None:
+            survived = bypass == "recovery"
+        else:
+            survived = within_band or bypass is not None
         challenge_status = StageStatus.REACHED if allowed else StageStatus.NOT_REACHED
 
         r = retention(prediction, exercise)

@@ -55,6 +55,10 @@ class MaterialMemoryState:
     logit_cold_start: float
     cold_start_uncertainty: float
     last_retrieval_at: float | None = None
+    # Set on any genuine retrieval observation (§18.2), win or lose;
+    # last_retrieval_at only on success. Scheduler-side: distinguishes
+    # "never successfully retrieved" from "never even tested."
+    last_retrieval_attempt_at: float | None = None
 
     @property
     def half_life_days(self) -> float:
@@ -190,6 +194,7 @@ class LearnerState:
                     "logit_cold_start": m.logit_cold_start,
                     "cold_start_uncertainty": m.cold_start_uncertainty,
                     "last_retrieval_at": m.last_retrieval_at,
+                    "last_retrieval_attempt_at": m.last_retrieval_attempt_at,
                 }
                 for mid, m in self.material_memory.items()
             },

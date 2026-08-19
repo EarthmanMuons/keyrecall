@@ -73,7 +73,7 @@ class SchedulerAgent:
 
     def new_session(self) -> None:
         """Starts a fresh practice sitting: resets SessionState
-        (attempts_this_session, recent_material_ids, last_outcome_failed)
+        (attempts_this_session, recent_material_ids, last_failed_exercise)
         while LearnerState/TrueLearnerProfile and simulated time carry
         over unbroken via the caller's own state=/truth=/start_now=
         threading (see run_sessions() in scenarios.py). A long
@@ -122,7 +122,9 @@ class SchedulerAgent:
         # "not tested" (e.g. continuous cueing), categorically distinct
         # from a genuine failure (03-v1-math.md §18.2) - recovery must
         # not trigger on an attempt that never tested retrieval at all.
-        self.session.last_outcome_failed = outcome.retrieval_succeeded is False
+        self.session.last_failed_exercise = (
+            exercise if outcome.retrieval_succeeded is False else None
+        )
         self.session.recent_material_ids.append(exercise.material.material_id)
         window = self.scheduler_params.diversity.recent_window
         if len(self.session.recent_material_ids) > window:

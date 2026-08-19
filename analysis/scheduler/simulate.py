@@ -33,7 +33,7 @@ from config import Params as SchedulerParams
 from config import load_params as load_scheduler_params
 from params import load_params as load_learner_params
 from pipeline import CandidateTrace, run_pipeline, select_scheduler_choice
-from simulate import MATERIALS, initial_state
+from simulate import MATERIALS, fixed_exercise, initial_state
 from synthetic import PROFILES
 
 SESSION_PRESET_NAMES = (
@@ -54,7 +54,10 @@ def _session_presets(scheduler_params: SchedulerParams) -> dict[str, SessionStat
             attempts_this_session=10,
             recent_material_ids=["C_MAJOR", "C_MAJOR", "G_MAJOR"],
         ),
-        "post-failure": SessionState(attempts_this_session=5, last_outcome_failed=True),
+        "post-failure": SessionState(
+            attempts_this_session=5,
+            last_failed_exercise=fixed_exercise(MATERIALS[0], "RIGHT"),
+        ),
         "session-cap-reached": SessionState(
             attempts_this_session=scheduler_params.safety.max_session_attempts
         ),

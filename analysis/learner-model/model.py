@@ -303,6 +303,8 @@ def update(
     memory_state = state.material_memory_for(material_id, params)
     had_ever_retrieved = memory_state.last_retrieval_at is not None
     if weights.material_memory > 0.0:
+        memory_state.last_retrieval_attempt_at = now
+
         # Success = independent retrieval (§5.1), not pitch quality and not
         # merely starting: cueing can make outcome.started true without
         # retrieval_succeeded, and that should not count as evidence the

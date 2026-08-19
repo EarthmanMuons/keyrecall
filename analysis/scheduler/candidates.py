@@ -46,12 +46,14 @@ class InstrumentProfile:
 class SessionState:
     """GLOSSARY.md §4/§8. attempts_this_session and recent_material_ids
     drive SchedulerSafetyPolicy (§5.2) and diversity (§7.2);
-    last_outcome_failed drives the "recovery after failure" challenge
-    exception (§6)."""
+    last_failed_exercise drives the "recovery after failure" challenge
+    exception (§6) - the exercise itself, not just whether one failed, so
+    recovery can target its exact one-step-more-guidance sibling rather
+    than any candidate at all."""
 
     attempts_this_session: int = 0
     recent_material_ids: list[str] = field(default_factory=list)
-    last_outcome_failed: bool = False
+    last_failed_exercise: Exercise | None = None
 
 
 def _fits_instrument(octaves: int, instrument: InstrumentProfile) -> bool:

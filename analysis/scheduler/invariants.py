@@ -32,6 +32,7 @@ from params import load_params as load_learner_params
 from pipeline import (
     StageStatus,
     eligibility_tier,
+    recovery_target,
     run_pipeline,
     safety_check,
     select_next,
@@ -67,7 +68,7 @@ def check_generation_depends_only_on_domain_inputs() -> None:
     session_b = SessionState(
         attempts_this_session=30,
         recent_material_ids=["C_MAJOR", "C_MAJOR"],
-        last_outcome_failed=True,
+        last_failed_exercise=fixed_exercise(MATERIALS[0], "RIGHT"),
     )
 
     candidates_a = generate_candidates(instrument, MATERIALS)
@@ -387,26 +388,37 @@ def check_named_exceptions_bypass_challenge_and_reach_priority() -> None:
                 "new_material bypass did not survive/reach priority ranking"
             )
 
+    # Recovery is exclusive (04-v1-scheduler.md §6, Pass-2b): with a
+    # recovery context active, only the exact one-step-more-guidance
+    # sibling of the failed exercise may survive - not "some candidate
+    # gets a recovery label," everything else must be excluded even if
+    # it would otherwise be within-band or new_material-eligible.
     seeded_state = initial_state(PROFILES["beginner"], learner_params)
     _seed_all_materials(seeded_state, learner_params)
+    failed_exercise = fixed_exercise(MATERIALS[0], "RIGHT")
+    target = recovery_target(failed_exercise)
     recovery_traces = run_pipeline(
         seeded_state,
-        SessionState(last_outcome_failed=True),
+        SessionState(last_failed_exercise=failed_exercise),
         candidates,
         scheduler_params,
         learner_params,
         0.0,
     )
-    recovery_bypassed = [t for t in recovery_traces if t.challenge_bypass == "recovery"]
-    if not recovery_bypassed:
+    survivors = [t for t in recovery_traces if t.challenge_survived]
+    if len(survivors) != 1 or survivors[0].exercise != target:
         raise InvariantFailure(
-            "expected recovery bypasses when last_outcome_failed is True"
+            f"expected exactly the recovery target ({target}) to survive, got "
+            f"{[t.exercise for t in survivors]}"
         )
-    for t in recovery_bypassed:
-        if not t.challenge_survived or t.priority_status is not StageStatus.REACHED:
-            raise InvariantFailure(
-                "recovery bypass did not survive/reach priority ranking"
-            )
+    if (
+        survivors[0].challenge_bypass != "recovery"
+        or survivors[0].priority_status is not StageStatus.REACHED
+    ):
+        raise InvariantFailure(
+            "recovery target did not survive via the recovery bypass / reach "
+            "priority ranking"
+        )
 
     one_candidate = candidates[0]
     override_traces = run_pipeline(

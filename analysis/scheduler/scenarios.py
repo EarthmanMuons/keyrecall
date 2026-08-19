@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "learner-model"))
 
-from candidates import InstrumentProfile, SessionState
+from candidates import InstrumentProfile, SessionState, generate_candidates
 from config import load_params as load_scheduler_params
 from longitudinal import NoAdmittedCandidate, SchedulerAgent
 from model import Prediction
@@ -34,8 +34,11 @@ from pipeline import (
     CandidateTrace,
     StageStatus,
     eligibility_tier,
+    recovery_target,
     repetition_guard,
+    run_pipeline,
     select_next,
+    select_scheduler_choice,
 )
 from simulate import MATERIALS, fixed_exercise, initial_state, run
 from synthetic import PROFILES
@@ -116,20 +119,13 @@ def check_guidance_fades_as_memory_strengthens() -> None:
             f"scheduler produced no admitted candidate: {exc}"
         ) from exc
 
-    def independence(exercise) -> int:
-        if exercise.guidance.concurrent_pitch_cues:
-            return 0
-        if exercise.guidance.notes_previewed:
-            return 1
-        return 2
-
     selections = [r.selected for r in agent.records if r.selected is not None]
     if len(selections) < 10:
         raise InvariantFailure(
             f"too few admitted attempts to evaluate this at all ({len(selections)}/60)"
         )
 
-    independences = [independence(t.exercise) for t in selections]
+    independences = [_guidance_independence(t.exercise) for t in selections]
     tail_window = 10
     tail, earlier = independences[-tail_window:], independences[:-tail_window]
     if all(level == 0 for level in tail) and any(level > 0 for level in earlier):
@@ -443,7 +439,7 @@ def check_failure_recovery_is_temporary() -> None:
     """04-v1-scheduler.md §6's named exceptions. Exercises
     SchedulerAgent.on_outcome's own bookkeeping (Pass 1's invariants
     already cover the pipeline's own handling of a given
-    last_outcome_failed value): the recovery bypass should apply on the
+    last_failed_exercise value): the recovery bypass should apply on the
     attempt right after a genuine failure and not on an attempt that
     followed a success (or an untested attempt)."""
     learner_params = load_learner_params()
@@ -504,6 +500,186 @@ def check_failure_recovery_is_temporary() -> None:
         )
 
 
+def _guidance_independence(exercise) -> int:
+    if exercise.guidance.concurrent_pitch_cues:
+        return 0
+    if exercise.guidance.notes_previewed:
+        return 1
+    return 2
+
+
+def check_guidance_probe_failure_does_not_cascade_to_independence() -> None:
+    """04-v1-scheduler.md §30 "guidance is not removed before independent
+    retrieval is plausible" - the paired failure mode to §6.2's guidance
+    probe.
+
+    Originally failed (Pass-2b): a failed probe
+    (challenge_bypass="guidance_probe", retrieval_succeeded=False) routed
+    the next attempt to "recovery" (§6, checked before guidance_probe),
+    which admitted every guidance level - and R(e)'s retrieval_opportunity
+    term rewards HIGHER retrieval_demand, i.e. LESS guidance, so nothing
+    in ranking favored restoring support; both traced probe failures
+    jumped straight to fully unguided. Resolved by the same exclusive
+    recovery mechanism as check_recovery_preserves_motor_challenge: a
+    failed probe's recovery target is exactly its own one-step-more-
+    guidance sibling, so the next attempt can only step toward more
+    support, never less."""
+    learner_params = load_learner_params()
+    scheduler_params = load_scheduler_params()
+    instrument = InstrumentProfile()
+    agent = SchedulerAgent(instrument, [MATERIALS[0]], scheduler_params, learner_params)
+
+    try:
+        run_sessions(
+            "technique_strong_memory_weak",
+            agent,
+            learner_params,
+            session_count=3,
+            attempts_per_session=20,
+            seed=0,
+        )
+    except NoAdmittedCandidate as exc:
+        raise InvariantFailure(
+            f"scheduler produced no admitted candidate: {exc}"
+        ) from exc
+
+    saw_probe_failure = False
+    for i, record in enumerate(agent.records[:-1]):
+        if (
+            record.selected is None
+            or record.selected.challenge_bypass != "guidance_probe"
+            or record.outcome is None
+            or record.outcome.retrieval_succeeded is not False
+        ):
+            continue
+        next_record = agent.records[i + 1]
+        if next_record.selected is None:
+            continue
+        saw_probe_failure = True
+        probe_level = _guidance_independence(record.selected.exercise)
+        next_level = _guidance_independence(next_record.selected.exercise)
+        if next_level > probe_level:
+            raise InvariantFailure(
+                f"attempt {i + 1}: guidance stepped toward MORE independence "
+                f"(level {probe_level} -> {next_level}) immediately after a failed "
+                "guidance probe, instead of restoring support"
+            )
+
+    if not saw_probe_failure:
+        raise InvariantFailure("test setup error: no guidance-probe failure occurred")
+
+
+def check_recovery_preserves_motor_challenge() -> None:
+    """04-v1-scheduler.md §30 "failure can increase support without
+    destroying motor challenge." "Preserve motor challenge" is defined
+    concretely: hold hands/octaves/tempo/direction constant relative to
+    what just failed, exactly one step more guidance - not merely
+    compare execution_p, and not merely "some candidate with more
+    guidance wins."
+
+    Originally failed (Pass-2b): SessionState.last_outcome_failed was a
+    bare bool with no memory of which realization failed, so recovery
+    admitted every ExecutionConditions combination, not just guidance
+    variants of the failed one - the winner collapsed to the easiest
+    realization overall (1 octave, 60bpm, UP), not a guidance-adjusted
+    sibling of what actually failed. Resolved by last_failed_exercise
+    (the exercise itself) plus exclusive recovery admission
+    (pipeline.py's recovery_target()/run_pipeline()): only the exact
+    one-step-more-guidance sibling may survive this decision."""
+    learner_params = load_learner_params()
+    scheduler_params = load_scheduler_params()
+    instrument = InstrumentProfile()
+    material = MATERIALS[0]
+
+    state = initial_state(PROFILES["technique_strong_memory_weak"], learner_params)
+    state.material_memory_for(material.material_id, learner_params)
+    just_attempted = fixed_exercise(
+        material, "RIGHT", octaves=2, tempo_bpm=100, direction="UP_DOWN"
+    )
+    session = SessionState(
+        last_failed_exercise=just_attempted, recent_material_ids=[material.material_id]
+    )
+
+    candidates = generate_candidates(instrument, [material])
+    traces = run_pipeline(
+        state, session, candidates, scheduler_params, learner_params, 0.5
+    )
+    winner = select_scheduler_choice(traces, session, scheduler_params)
+    if winner is None:
+        raise InvariantFailure(
+            "test setup error: expected an admitted winner after a failure"
+        )
+
+    target = recovery_target(just_attempted)
+    if winner.exercise != target:
+        raise InvariantFailure(
+            f"recovery selected a candidate other than the exact recovery target: "
+            f"just attempted hands={just_attempted.hands} octaves={just_attempted.octaves} "
+            f"tempo={just_attempted.tempo_bpm} direction={just_attempted.direction} "
+            f"guidance={just_attempted.guidance}; expected target guidance="
+            f"{target.guidance if target else None}; "
+            f"selected hands={winner.exercise.hands} octaves={winner.exercise.octaves} "
+            f"tempo={winner.exercise.tempo_bpm} direction={winner.exercise.direction}"
+        )
+
+
+def check_never_successful_material_is_not_permanently_trapped() -> None:
+    """Regression scenario for the bootstrap_probe mechanism
+    (pipeline.py). Fixing candidate-actionable recovery (§7.2) exposed a
+    sharper version of the original guidance-fading trap: recovery can
+    correctly escalate a material straight to maximum cueing after only
+    two failures, before any success ever anchors
+    MaterialMemoryState.last_retrieval_at - and anchored guidance_probe's
+    own precondition means it can never fire for a material in that
+    state, leaving no path back to testing retrieval at all.
+
+    Not a requirement that bootstrap probes eventually succeed - that's
+    stochastic and learner-dependent. Only that the scheduler keeps
+    offering a genuine retrieval-observing candidate (independence > 0)
+    at roughly the configured interval, never settling into an unbroken
+    cued-only run for the rest of the simulation."""
+    learner_params = load_learner_params()
+    scheduler_params = load_scheduler_params()
+    instrument = InstrumentProfile()
+    agent = SchedulerAgent(instrument, [MATERIALS[0]], scheduler_params, learner_params)
+
+    try:
+        run_sessions(
+            "technique_strong_memory_weak",
+            agent,
+            learner_params,
+            session_count=4,
+            attempts_per_session=20,
+            seed=2,
+        )
+    except NoAdmittedCandidate as exc:
+        raise InvariantFailure(
+            f"scheduler produced no admitted candidate: {exc}"
+        ) from exc
+
+    selections = [r.selected for r in agent.records if r.selected is not None]
+    if len(selections) < 40:
+        raise InvariantFailure(
+            f"too few admitted attempts to evaluate this at all ({len(selections)}/80)"
+        )
+
+    independences = [_guidance_independence(t.exercise) for t in selections]
+    # Comfortably above one bootstrap-probe interval's worth of attempts
+    # (min_days_since_last_retrieval / day_step), so a legitimate wait
+    # for the first opportunity doesn't trip this, but a permanent trap
+    # spanning the rest of an 80-attempt run does.
+    max_cued_run, current_run = 0, 0
+    for level in independences:
+        current_run = current_run + 1 if level == 0 else 0
+        max_cued_run = max(max_cued_run, current_run)
+
+    if max_cued_run > 25:
+        raise InvariantFailure(
+            f"material stayed fully cued for {max_cued_run} consecutive attempts "
+            "with no retrieval-observing candidate offered - permanently trapped"
+        )
+
+
 CHECKS: list[tuple[str, object]] = [
     (
         "guidance fades as memory strengthens",
@@ -521,6 +697,15 @@ CHECKS: list[tuple[str, object]] = [
     ),
     ("eligibility progresses as RH/LH competency grows", check_eligibility_progression),
     ("failure recovery is temporary", check_failure_recovery_is_temporary),
+    (
+        "guidance probe failure does not cascade to independence",
+        check_guidance_probe_failure_does_not_cascade_to_independence,
+    ),
+    ("recovery preserves motor challenge", check_recovery_preserves_motor_challenge),
+    (
+        "never-successful material is not permanently trapped",
+        check_never_successful_material_is_not_permanently_trapped,
+    ),
 ]
 
 
