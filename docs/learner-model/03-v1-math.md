@@ -165,30 +165,52 @@ It does **not** mean there is a 60% probability that the learner can execute the
 requested exercise successfully. Motor capability, execution context, tempo,
 guidance, and other task conditions remain relevant.
 
-### 5.2 Provisional half-life update
+### 5.2 Half-life update: log-space, surprise-driven
 
-Until enough data exists to fit an HLR-like feature model, V1 may use a
-conservative multiplicative update:
+A multiplicative update (`h' = h·g` on success, `h' = h·s` on failure, `g > 1`,
+`0 < s < 1`) was the original V1 proposal but is now **superseded**: simulation
+(`analysis/learner-model/`) showed it has no lower equilibrium. Repeated
+failure drives `h → 0` regardless of whether that failure was surprising,
+because the update magnitude depends only on `g`/`s` and the evidence weight,
+never on how well the current estimate already predicted the outcome.
 
-\[ h' = h `\cdot `{=tex}g \]
+The validated replacement reparameterizes in log-half-life space and makes the
+update proportional to prediction error rather than a fixed ratio:
 
-after informative successful retrieval, and:
+\[ `\ell `{=tex}= `\log `{=tex}h, `\qquad `{=tex} `\ell`{=tex}' = `\ell`{=tex} +
+w_M `\left`{=tex}( `\alpha`{=tex}\_M `\delta`{=tex}\_M - `\lambda `{=tex}(
+`\ell`{=tex}-`\ell`{=tex}\_0) `\right`{=tex}) \]
 
-\[ h' = h `\cdot `{=tex}s \]
+clipped to broad numerical bounds `[ℓ_min, ℓ_max]`, where:
 
-after informative retrieval failure, where:
+```text
+delta_M      y_retrieval - p_hat_independent_retrieval (surprise, not a fixed
+             ratio: a failure against a confident prediction moves the
+             estimate more than an already-expected failure)
+alpha_M      evidence-scaling coefficient, heuristic V1
+lambda       reversion strength toward the prior l_0, heuristic V1
+l_0          log of the prior half-life
+w_M          evidence weight (§6, §18); scales the WHOLE bracket, not just
+             the evidence term - an unweighted reversion term let a single
+             near-zero-weight attempt meaningfully erode an established
+             estimate before this was caught in review
+```
 
-\[ g \> 1 \]
+`h = e^ℓ` is automatically positive; the clip bounds exist as numerical
+guards, not as the model's primary stabilizer. A dedicated invariant
+(`analysis/learner-model/invariants.py`, "repeated expected failures reach a
+stable equilibrium, not collapse") checks that repeated _expected_ failure
+settles at an interior equilibrium rather than running to the clip floor -
+the property the multiplicative rule lacked. Diagnostic runs (10 successful
+retrievals at 1-minute/hour/day/week spacing) show this surprise-driven
+update already carries meaningful elapsed-time information through
+`p_hat_independent_retrieval`'s own decay formula, without an explicit
+separate time-weighting term; see §35 for the identified remaining gap
+(cold-start updating still uses the old multiplicative form).
 
-and:
-
-\[ 0 \< s \< 1 \]
-
-The values of `g` and `s` are heuristic V1 parameters.
-
-The effective update magnitude must depend on retrieval context. A continuously
-prompted performance should not produce the same half-life update as an
-independent retrieval.
+The effective update magnitude must depend on retrieval context, and does so
+through `w_M`. That dependency needed to be a hard gate, not just
+attenuation: §18 covers why.
 
 ## 6. Retrieval demand
 
@@ -242,6 +264,20 @@ The required invariant is:
 
 > Material-memory updates are strongly conditioned on how much of the material
 > had to be independently retrieved.
+
+Simulation surfaced a sharper version of that invariant than a continuous
+attenuation weight can express. Representing continuous cueing as "retrieval
+failure at low confidence" (`w_M` near zero but nonzero) is still
+distinguishable from "retrieval was never tested": repeated low-confidence
+observations of the same guidance level accumulate under ordinary evidence
+weighting, so 50 fully-cued attempts could erode an established memory
+estimate through legitimate-looking accumulation, not a calculation error.
+The fix was semantic, not numerical: whether an attempt is a retrieval
+observation at all is a property of the attempt distinct from its outcome.
+`retrieval_succeeded` is `True`/`False` when independent retrieval was
+genuinely tested, and `None` when it wasn't (continuous pitch cues) - `None`
+attempts carry `w_M = 0` categorically, not merely a small `w_M`, and don't
+accumulate under repetition. See §18.
 
 ## 7. Material execution residual
 
@@ -421,6 +457,27 @@ Later data can estimate unequal loadings; that remains a heuristic V1 choice to
 revisit. It does not require reintroducing `PRIMARY`/`SECONDARY` into `Q`
 itself.
 
+#### 9.2.1 Loadings are renormalized within a prediction channel, not just over all of `Q`
+
+§10 splits the single performance logit into separate motor, topology, and
+retrieval-availability predictions. Each of those channels needs its own
+loading, renormalized within its own competency subset, not the single `q`
+above restricted post hoc: dividing the full-`Q` loading down to only the
+motor-relevant terms would systematically understate the motor channel's
+competency term whenever topology is also relevant to the same exercise
+(true for nearly every exercise, since a form's topology competency is
+almost always in `Q` alongside its motor competencies). Concretely:
+
+```text
+q_motor[e,k]      Q[e,k] / sum(Q[e,j] for j in MOTOR_COMPETENCIES) if k motor, else 0
+q_topology[e,k]   Q[e,k] / sum(Q[e,j] for j in TOPOLOGY_COMPETENCIES) if k topology, else 0
+```
+
+`q_{e,k}` from this section remains the general-purpose derived loading (used
+in traces/diagnostics for the exercise's full evidence footprint); the
+subset-renormalized variants are what the performance model and competency
+update actually use per channel.
+
 ### 9.3 Evidence attribution
 
 \[ w\_{a,k} `\in [0,1]`{=tex} \]
@@ -475,55 +532,97 @@ were direct practice of untested material or context.
 
 ## 10. Performance model
 
-Define an exercise performance logit:
+### 10.0 Superseded: single shared logit
+
+The originally proposed single logit,
 
 \[ `\eta`{=tex}_{u,e,t} = b + `\sum`{=tex}*k q*{e,k}`\mu`{=tex}_{u,k}(t) +
 `\gamma`{=tex}_M z(M_{u,m}(t)) + `\mu`{=tex}\_{r,u,m,c}(t) - D(e) \]
 
-and:
+with `p_hat = sigma(eta)`, is **superseded**. Simulation (`analysis/learner-model/`,
+documented at length in commit history as "Experiment B") found a specific
+failure mode: when `M` collapses toward 0 (as the §5.2-superseded half-life
+rule made it, but the problem is structural, not limited to that one bug),
+`gamma_M z(M)` dominates `eta` and pins `p_hat` near 0 regardless of the
+competency term. Every attempt that then happens to start reads as a large,
+spurious positive prediction error, and that error gets attributed to
+whichever competencies the exercise touches - a badly calibrated memory
+estimate manufacturing apparent motor learning it didn't cause. Rerunning
+the same synthetic beginner profile under the split model below reversed
+competency-error correction from -18% (diverging) to +6% (converging), with
+the memory half-life dynamics left deliberately unchanged, isolating the
+single shared logit itself as the defect, not the memory rule that first
+exposed it. See §29.2 and §34 for the resulting invariants.
 
-\[ `\hat `{=tex}p\_{u,e,t} = `\sigma`{=tex}(`\eta`{=tex}\_{u,e,t}) =
-`\frac{1}{1+e^{-\eta_{u,e,t}}}`{=tex} \]
+### 10.1 Two-stage retrieval/execution model, with topology as a separate channel
 
-where:
+The validated replacement factors "was an acceptable attempt produced" into
+two questions that ask genuinely different things about the learner, plus a
+third channel for pitch/form knowledge that is neither:
+
+\[ `\hat `{=tex}p\_{`\mathrm{overall}`{=tex}} = `\hat `{=tex}p\_{`\mathrm{available}`{=tex}} `\cdot `{=tex}
+`\hat `{=tex}p\_{`\mathrm{exec}`{=tex}} \]
 
 ```text
-b           intercept
-q           competency loading
-mu_k        transferable competency estimate
-M           material retrievability
-z(M)        transform used to place memory on model scale
-gamma_M     memory contribution
-r           material/context execution residual
-D(e)        task difficulty
-p_hat       predicted acceptable-performance probability
+p_hat_retrieval    P(independent retrieval): M(t) itself, no transform
+p_hat_available    P(material available): 1 - d_e(1 - M(t)); guidance can
+                    supply material the learner wouldn't independently
+                    retrieve, mirrored structurally in the synthetic
+                    generator's own outcome-sampling formula
+p_hat_exec         P(acceptable execution | material available):
+                    sigma(eta_exec)
+p_hat_topology     P(topology/pitch-form correctly known): sigma(eta_topology)
+p_hat_overall      p_hat_available * p_hat_exec
 ```
 
-This is the proposed KeyRecall V1 synthesis. It is not copied from a single
-published learner model.
+\[ `\eta`{=tex}\_{`\mathrm{exec}`{=tex}} = `\sum`{=tex}\_{k
+`\in `{=tex}`\mathrm{Motor}`{=tex}} q\_{`\mathrm{motor}`{=tex}}[e,k]
+`\tilde `{=tex}`\mu`{=tex}_{u,k}(t) + `\mu`{=tex}\_{r,u,m,c}(t) -
+D\_{`\mathrm{motor}`{=tex}}(e) \]
 
-### 10.1 Memory transform
+\[ `\eta`{=tex}\_{`\mathrm{topology}`{=tex}} = `\sum`{=tex}\_{k
+`\in `{=tex}`\mathrm{Topology}`{=tex}} q\_{`\mathrm{topology}`{=tex}}[e,k]
+`\tilde `{=tex}`\mu`{=tex}_{u,k}(t) \]
 
-Because `M` is a probability while the rest of the model operates on a logit
-scale, V1 should not blindly add raw `M`.
+where `\tilde\mu_{u,k}` is the correlated-prior-adjusted competency mean
+(`02-v1-design.md` §9.1.5), `q_motor`/`q_topology` are the subset-renormalized
+loadings (§9.2.1), and `Motor`/`Topology` partition the ten Competencies
+(§9.1.2) exactly along the `CompetencyCategory` boundary already established
+there.
 
-A natural candidate is:
+`p_hat_topology` deliberately does **not** enter `p_hat_overall`: it answers
+a different question than "would this attempt succeed" -
+`p_hat_available`/`p_hat_exec` are about _this attempt_, while
+`p_hat_topology` is a standing belief about latent pitch-form knowledge.
+Folding it into the same product would make it a fourth hurdle factor rather
+than what it actually is, a parallel inference target with its own evidence
+channel (§12, §15). Keep this distinction explicit in any future revision;
+it is easy to look at three predicted probabilities and "correct" the
+equation into a three-factor product.
 
-\[ z(M) =
-`\operatorname{logit}`{=tex}(`\operatorname{clip}`{=tex}(M,`\epsilon`{=tex},1-`\epsilon`{=tex}))
-\]
+`gamma_M z(M)` (the old memory-transform term) is retired along with the
+single shared logit it belonged to (§10.0). Memory no longer enters the
+execution-latent scale, so no memory transform is required by the V1
+performance model.
 
-but this is not yet frozen.
+`D_motor(e)` drops the guidance term `G_e` that the original `D(e)` (§11)
+carried: guidance affects whether material is _available_
+(`p_hat_available`), not how hard it is to _execute_ once available. A
+guidance term inside execution difficulty double-counts cueing's effect once
+the hurdle split separates the two questions. §11 restates this.
 
-Simulation should compare this with simpler bounded transforms before
-implementation.
+Two invariants lock the separation in directly (`analysis/learner-model/invariants.py`):
+guidance changes `p_hat_available` but leaves `p_hat_retrieval` and
+`p_hat_exec` exactly unchanged; and varying motor evidence
+(continuity/temporal-stability) never moves a topology competency's mean,
+nor does varying topology evidence move a motor competency's.
 
 ## 11. Task difficulty
 
 Initially:
 
-\[ D(e) = `\beta`{=tex}\_t g(`\mathrm{BPM}`{=tex}) + `\beta`{=tex}\_o O_e +
-`\beta`{=tex}\_h H_e + `\beta`{=tex}\_d D_e + `\beta`{=tex}\_g G_e \]
+\[ D\_{`\mathrm{motor}`{=tex}}(e) = `\beta`{=tex}\_t g(`\mathrm{BPM}`{=tex}) +
+`\beta`{=tex}\_o O_e + `\beta`{=tex}\_h H_e + `\beta`{=tex}\_d D_e \]
 
 where candidate terms include:
 
@@ -532,8 +631,19 @@ BPM         tempo
 O           octave-count effect
 H           hand-configuration effect
 D           direction effect
-G           guidance/support effect where relevant to execution
 ```
+
+No guidance term: §10.1's hurdle split puts guidance's effect on
+`p_hat_available` (via `d_e`, §6), not on execution difficulty. A `beta_g G_e`
+term inside `D(e)` was part of the original single-logit proposal
+(superseded, §10.0); once retrieval availability and execution are separate
+predictions, keeping a guidance term here as well would double-count cueing.
+Simulation's synthetic ground-truth generator carried the same conflation
+(guidance affecting true motor quality, not just true retrievability) and
+needed the equivalent fix once the estimator's split exposed the mismatch
+between them - a reminder that this is a structural claim about which factors
+belong on which side of the hurdle, not just an estimator implementation
+detail.
 
 Geometry, motor-event structure, and exercise pattern should be recorded even if
 omitted from the first fitted/predictive equation.
@@ -549,7 +659,8 @@ A candidate V1 transform is:
 because proportional tempo increases are more naturally represented than
 absolute BPM differences.
 
-This remains a modeling hypothesis to test in simulation and later telemetry.
+This remains a modeling hypothesis to test in simulation and later telemetry;
+simulation has used it unchanged since the prototype's first version.
 
 ### 11.2 Difficulty coefficients
 
@@ -560,10 +671,9 @@ beta_t
 beta_o
 beta_h
 beta_d
-beta_g
 ```
 
-are heuristic.
+are heuristic. `beta_g` is retired along with the guidance term above.
 
 The model architecture should make them explicit and versioned so they can be
 replaced by fitted coefficients without changing persisted observations.
@@ -590,6 +700,23 @@ discarded after computing these summaries.
 The exact scoring functions that map MIDI observations to these bounded outcomes
 belong to the observation/evidence specification, not to the latent state
 definition.
+
+§10.1's topology channel needs its own outcome, independent of the channels
+above:
+
+\[ y\_{`\mathrm{topology}`{=tex}} `\in [0,1]`{=tex}\]
+
+`y_pitch` (pitch/sequence integrity, `y_sequence`/`I_sequence` elsewhere in
+this document) is not a substitute: simulation's synthetic generator blends
+it from both material-retrieval quality and motor quality, so using it as
+`y_topology`'s target would let retrieval noise back into topology
+competency evidence through the observation side even after §10.1 removed it
+from the prediction side. `y_topology` should instead measure pitch/form
+correctness on its own, independent of whether the material was
+independently retrieved or how cleanly it was executed - "poor topology,
+good execution" and "good topology, poor execution" need to be
+representable as distinct cases, in both the synthetic generator and real
+evidence extraction. §15 covers the corresponding update.
 
 ## 13. Scheduler success score versus state evidence
 
@@ -643,6 +770,24 @@ This provides a simple online learning signal.
 A learner who performs better than expected yields positive evidence; worse than
 expected yields negative evidence.
 
+There is one `delta` per prediction channel (§10.1), not one universal
+`delta` shared across state layers:
+
+```text
+delta_exec       y_motor - p_hat_exec           (motor competencies, §15;
+                                                  execution residual, §16)
+                 y_motor = (y_continuity + y_stability) / 2 - not y_pitch,
+                 which blends in retrieval quality (§12)
+delta_topology   y_topology - p_hat_topology     (topology competencies, §15)
+delta_M          y_retrieval - p_hat_retrieval   (material memory, §18)
+```
+
+This followed directly from §10.0's finding: a shared `delta` computed
+against a blended prediction lets a badly calibrated layer manufacture
+apparent evidence for another layer's state. The general rule (§13) is that
+a state layer should be updated only from a residual whose prediction was
+actually generated by that layer.
+
 ## 15. Provisional competency update
 
 For relevant competency `k`:
@@ -663,6 +808,18 @@ for that competency.
 
 For example, failure to retrieve a scale and therefore never beginning the
 physical execution should not strongly reduce motor competencies.
+
+`q_{e,k}` and `delta_k` are channel-specific (§9.2.1, §14): a motor
+competency `k` uses `q_motor[e,k]` and `delta_exec`; a topology competency
+uses `q_topology[e,k]` and `delta_topology`. Both still share one `alpha_k`
+learning-rate parameter and the same update form; only the loading and the
+prediction error driving it differ by channel. Before this split, topology
+competencies were updated from `delta_exec` (continuity/temporal-stability
+evidence, which carries no information about pitch/form knowledge in the
+synthetic generator) purely because they shared a Q-matrix entry with motor
+competencies on the same exercise - diluting rather than informing their
+estimates. `w_{a,k}` (§9.3) still attenuates topology's update under heavy
+cueing exactly as before; only the target it's attenuating changed.
 
 ### 15.1 Competency uncertainty update
 
@@ -695,7 +852,11 @@ A simple update is:
 w_r`\delta`{=tex}_{`\mathrm{execution}`{=tex}} \]
 
 where `w_r` reflects whether enough actual execution occurred to make the
-attempt informative.
+attempt informative, and `delta_execution` is `delta_exec` (§14) - the
+same motor-only prediction error the execution competencies use (§15), not
+a shared/blended one. The residual and the competencies it's meant to be a
+residual _against_ need to agree on what they're both being corrected
+relative to.
 
 Examples:
 
@@ -737,24 +898,64 @@ independent failure
 supported failure
 ```
 
-A conceptual update weight is:
+The half-life update itself is specified in §5.2 (log-half-life,
+surprise-driven via `delta_M`); this section covers `w_M` and, more
+fundamentally, what counts as a retrieval observation at all.
+
+### 18.1 `w_M`
 
 \[ w_M = f( d_e, `\text{prior exposure}`{=tex},
 `\text{attempt completion}`{=tex}, `\text{sequence evidence}`{=tex} ) \]
 
-Then the half-life update can be expressed as:
+remains the right shape: an evidence weight scaling how much a given attempt
+should move the memory estimate. §5.2's update multiplies `w_M` against the
+whole bracket (evidence term and reversion term together) - a bug found in
+review had `w_M` scaling only the evidence term, so a single attempt with
+`w_M` near zero could still meaningfully move an established estimate
+through an unweighted reversion pull. The exact definition of `w_M` is a V1
+heuristic to be tested.
 
-\[ h' = h `\cdot `{=tex}g\^{w_M} \]
+### 18.2 Retrieval-not-tested is a distinct observation from retrieval-tested-and-failed
 
-for successful retrieval evidence, or:
+The distinction that turned out to matter is not continuous attenuation of
+`w_M` but a categorical one underneath it. Continuous cueing (concurrent
+pitch/note-name display) supplies the material outright: the learner never
+had to demonstrate independent retrieval, so there is no retrieval
+observation to weight, weakly or otherwise. Representing that attempt as "a
+low-confidence retrieval failure" (small but nonzero `w_M`) is different
+from representing it as "not a retrieval observation" (`w_M = 0`
+categorically): under repetition, many small-but-nonzero observations of the
+same guidance level accumulate under ordinary evidence weighting - simulation
+found 50 consecutive fully-cued attempts could erode an established
+100-day half-life by roughly 80% this way, which is the evidence-weighting
+machinery working correctly on data that didn't actually exist.
 
-\[ h' = h `\cdot `{=tex}s\^{w_M} \]
+The retrieval outcome is therefore three-valued, not two:
 
-for retrieval-failure evidence.
+```text
+retrieval_succeeded = True   independent retrieval was tested and succeeded
+retrieval_succeeded = False  independent retrieval was tested and failed
+retrieval_succeeded = None   this attempt was not an independent-retrieval
+                              observation (continuous cueing supplied the
+                              material); w_M = 0 unconditionally, regardless
+                              of task completion or any other signal
+```
 
-This formulation naturally attenuates updates when evidence is weak.
+`None` gives `w_M = 0` categorically rather than merely a small value, so it
+cannot accumulate into meaningful evidence no matter how many times it
+recurs. `notes_previewed` (preview before the attempt, then hidden) remains
+a genuine, weaker-than-cold retrieval observation - `retrieval_succeeded` is
+a real `True`/`False` there, and repetition legitimately accumulates
+evidence, same as an unguided attempt just with lower per-observation
+weight. Two invariants hold both sides of this: many fully-cued attempts
+with `retrieval_succeeded = None` leave the half-life estimate exactly
+unchanged (not merely close), on an estimate established both above and
+below the prior; and repeated genuinely-observed low-demand failures do
+still lower the estimate.
 
-The exact definition of `w_M`, `g`, and `s` is a V1 heuristic to be tested.
+This has the same shape as the `Q`-matrix reasoning in §9.4: an event that
+didn't happen (here, a retrieval that was never tested) must not be recorded
+as if it had, however weakly.
 
 ## 19. Savings and reacquisition
 
@@ -966,8 +1167,8 @@ Examples:
 
 ```text
 initial half-life
-memory growth factor
-memory shrink factor
+memory evidence coefficient (alpha_M)
+memory reversion strength (lambda)
 competency prior variance
 residual prior variance
 learning rates
@@ -988,64 +1189,69 @@ No parameter should silently move between these categories.
 
 ## 26. Initial parameter registry
 
-A future implementation should maintain a versioned registry resembling:
+This registry exists now, not just as a future intention:
+`analysis/learner-model/params.toml`, loaded by `params.py` into typed,
+frozen dataclasses. Every section below has a `model_version` field
+(currently `v1-prototype-0`) but does not yet carry the per-value
+`provenance` annotation this section originally sketched; every value in it
+is `heuristic` in the §25.3 sense unless noted otherwise. The shape
+resembles:
 
 ```yaml
-model_version: v1
+model_version: v1-prototype-0
 
 competency:
-  prior_mean:
-    value: ...
-    provenance: heuristic
-  prior_variance:
-    value: ...
-    provenance: heuristic
-  learning_rate:
-    value: ...
-    provenance: heuristic
-  uncertainty_diffusion:
-    value: ...
-    provenance: heuristic
+  prior_mean: ...
+  prior_variance: ...
+  min_variance: ...
+  learning_rate: ...
+  uncertainty_diffusion: ...
+  evidence_shrinkage: ...
 
 material_memory:
-  initial_half_life:
-    value: ...
-    provenance: heuristic
-  success_growth:
-    value: ...
-    provenance: heuristic
-  failure_shrink:
-    value: ...
-    provenance: heuristic
-  curve:
-    value: half_life
-    provenance: literature_inspired
+  initial_half_life_days: ...
+  alpha_memory: ... # evidence coefficient on log-half-life, §5.2
+  reversion_lambda: ... # reversion strength toward the prior, §5.2
+  min_half_life_days: ... # numerical guard, not the primary stabilizer
+  max_half_life_days: ...
+  prior_retrievability: ...
+  prior_uncertainty: ...
+  min_uncertainty: ...
+  evidence_shrinkage: ...
 
 material_execution:
-  prior_mean:
-    value: 0
-    provenance: model_design
-  prior_variance:
-    value: ...
-    provenance: heuristic
-  learning_rate:
-    value: ...
-    provenance: heuristic
-  mean_reversion:
-    value: ...
-    provenance: heuristic
-  uncertainty_diffusion:
-    value: ...
-    provenance: heuristic
+  prior_variance: ...
+  min_variance: ...
+  learning_rate: ...
+  mean_reversion_tau_days: ...
+  uncertainty_diffusion: ...
+  evidence_shrinkage: ...
 
-scheduler:
-  challenge_min:
-    value: ...
-    provenance: heuristic
-  challenge_max:
-    value: ...
-    provenance: heuristic
+hand_transfer:
+  rho_hand: ... # correlated-prior strength, 02-v1-design.md §9.1.5
+  shrinkage_tau: ...
+
+difficulty:
+  tempo_beta: ...
+  octave_beta: ...
+  hand_beta: ...
+  direction_beta: ...
+  reference_tempo_bpm: ...
+  # no guidance_beta: retired with D(e) -> D_motor(e), §11
+
+placement:
+  beginner_mean: ...
+  some_experience_mean: ...
+  advanced_mean: ...
+  prior_variance_broad: ...
 ```
+
+`success_growth`/`failure_shrink` (multiplicative half-life factors) and
+`gamma_memory` (the single-logit memory-transform coefficient) from earlier
+versions of this registry are retired along with the equations they
+belonged to (§5.2, §10.0); they are not renamed fields, they no longer
+exist. A `scheduler` section does not exist yet: challenge-band and
+priority-ranking parameters (§21-22) remain unimplemented.
 
 Persisting `model_version` with derived learner state and attempts allows later
 replay and comparison.
@@ -1108,6 +1314,34 @@ These are test fixtures, not learner labels intended for the product UI.
 
 Before adding scheduling, verify:
 
+This list is no longer purely aspirational: `analysis/learner-model/invariants.py`
+implements it as 23 passing checks against the code in
+`analysis/learner-model/{state,model,synthetic}.py`, run via
+`mise run analysis:learner-model`. §29.1-§29.8 below are covered; three
+categories weren't anticipated when this list was first written and were
+added once simulation exposed the need for them:
+
+```text
+motor and topology competency updates are independent (§10.1, §15)
+guidance affects material availability, not independent retrieval or
+    execution (§10.1, §18.2)
+log-half-life stays finite/bounded, and repeated *expected* failure
+    reaches a stable equilibrium rather than collapsing (§5.2)
+unobserved retrieval (continuous cueing) never moves memory state,
+    however many times repeated; genuinely observed low-demand failures
+    still accumulate evidence (§18.2)
+```
+
+`analysis/learner-model/analyze.py` runs a complementary behavioral-diagnostics
+pass (calibration, competency convergence, memory tracking, a memory-spacing
+sensitivity probe, residual localization, and a parameter-sensitivity sweep)
+that answers a different question than these invariants: not "does the model
+violate an architectural rule" but "does it behave plausibly over months of
+synthetic practice, and which heuristic parameters actually matter." §10.0's
+finding (single-logit contamination) and the log-half-life equilibrium
+property (§5.2) were both first identified there, then reduced to the
+invariants above.
+
 ### 29.1 Priors
 
 ```text
@@ -1151,7 +1385,8 @@ retrieval failure changes memory state appropriately
 ### 29.6 Guidance
 
 ```text
-full cueing produces weak independent-memory evidence
+full cueing produces zero independent-memory evidence, not merely weak
+    evidence (categorical, §18.2, not a continuous attenuation)
 unguided success produces strong memory evidence
 failed unguided retrieval does not strongly penalize motor execution
 ```
@@ -1328,6 +1563,17 @@ The following are the current mathematical invariants:
     material-specific attempts.
 12. Heuristic constants are explicitly identified and versioned.
 13. Historical observations remain available for future refitting.
+14. A state layer is updated only from a prediction error its own layer
+    generated (§14): motor, topology, and material-memory each predict and
+    update from their own channel, never a shared/blended one.
+15. Guidance affects material availability, never independent retrievability
+    or execution difficulty (§10.1, §11, §18.2).
+16. An observation that never happened (retrieval never tested, under
+    continuous cueing) is a distinct state from an observation that happened
+    and failed, and must not be recorded as weak evidence of failure (§18.2).
+17. Repeated _expected_ evidence (predictions already matching outcomes)
+    settles at a stable equilibrium; it does not compound into unbounded
+    drift merely because attempts keep happening (§5.2).
 
 ## 35. Open mathematical decisions
 
@@ -1339,9 +1585,7 @@ exact competency prior scale
 exact residual prior variance
 exact uncertainty update approximation
 exact material-memory prior
-memory success/failure update factors
 retrieval-demand mapping
-memory transform inside performance logit
 tempo transform
 initial difficulty coefficients
 residual mean-reversion function
@@ -1351,6 +1595,54 @@ challenge-band bounds
 candidate utility versus lexicographic ranking
 minimum evidence required for residual personalization
 explicit savings term, if necessary
+```
+
+Resolved by simulation, not merely narrowed:
+
+- ~~**memory success/failure update factors**~~: resolved architecturally
+  (§5.2, log-half-life, surprise-driven `delta_M`). The specific `alpha_M`
+  and `lambda` values remain heuristic and unfitted.
+- ~~**memory transform inside performance logit**~~: resolved by removal.
+  `gamma_M z(M)` no longer exists; memory doesn't enter the execution logit
+  at all (§10.0-§10.1).
+- ~~**retrieval observability**~~: resolved (§18.2). Whether an attempt is a
+  retrieval observation at all is categorical and distinct from retrieval
+  _demand_ (§6, how much of the material had to be independently produced).
+  `retrieval-demand mapping` itself - the numeric demand values, e.g. the
+  0.05 floor under continuous cueing - remains open, listed above.
+
+Opened by simulation:
+
+```text
+cold-start retrievability update still uses the old multiplicative-shrink
+    form (state.py's cold_start_estimate, pre-first-retrieval only), not the
+    surprise-driven delta_M mechanism §5.2 established for the post-anchor
+    case - an expected tenth cold-start failure currently carries the same
+    kind of update as a surprising first one; a small, separate follow-up,
+    not a reason to revisit §5.2 itself
+
+whether the log-half-life update needs an explicit elapsed-time term of its
+    own, beyond what leaks through p_hat_retrieval's own decay formula - a
+    spacing diagnostic (10 successes at 1 minute/hour/day/week spacing)
+    showed meaningfully different inferred half-lives across spacing
+    without one, but this hasn't been validated against a known true
+    half-life, only checked for the absence of a specific failure mode
+    (short spacing implying "extraordinary retention")
+
+whether the synthetic ground-truth learner's true memory clock should reset
+    on a hidden-true-retrieval event that occurs during continuous cueing:
+    the estimator correctly treats such an attempt as no observation
+    (retrieval_succeeded = None, §18.2), but the generator still samples a
+    true success/failure and, on success, still resets true_memory's clock,
+    which treats an untested latent counterfactual as if it were
+    demonstrated practice; whether that's correct depends on whether
+    TrueMaterialMemory is meant to model latent availability independent of
+    task demands (fine as-is) or strengthening from demonstrated retrieval
+    (should probably not reset under cueing either) - deliberately not
+    resolved alongside the estimator fix it was found next to, since it's a
+    property of the synthetic ground-truth process, not of the model being
+    tested against it; worth resolving before synthetic memory trajectories
+    are used for more serious calibration
 ```
 
 These are deliberately not hidden behind apparently precise constants.
@@ -1416,12 +1708,51 @@ The combination of these components, the mapping from MIDI evidence, and the
 initial V1 constants are KeyRecall design choices that must be validated through
 simulation and longitudinal use.
 
-## 38. Immediate next artifact
+## 38. Prototype status and next steps
 
-The next useful artifact is an executable simulation specification or prototype
-that turns the equations in this document into deterministic code and tests the
-synthetic learner profiles described above.
+The prototype this section originally called for now exists
+(`analysis/learner-model/`) and has done its job: falsifying bad assumptions
+early, before scheduler policy was layered on top. Three rounds of
+simulation-driven revision are folded into this document rather than
+narrated here in full (git history has the detailed account):
 
-The purpose of that prototype is not to optimize parameter values. It is to
-falsify bad assumptions early and verify that the state architecture produces
-the intended qualitative behavior before scheduler policy is layered on top.
+```text
+first pass    implemented this document's original equations as code;
+              invariant/behavioral testing caught several implementation-
+              level bugs (retrieval/exposure conflation, a missing memory-
+              scaling factor, a guidance-sign error) without requiring
+              architectural change
+
+Experiment B  found and fixed the single-shared-logit cross-layer
+              contamination described in §10.0, by splitting retrieval/
+              availability from execution
+
+Experiment    found and fixed the same contamination pattern one level down:
+B.1           motor and topology competencies sharing one execution channel;
+              splitting them further improved every synthetic profile's
+              correction (§15)
+
+Experiment C  replaced the multiplicative half-life rule with the log-half-
+              life, surprise-driven update (§5.2); review caught two more
+              instances of the same underlying pattern (an unweighted
+              reversion term, and retrieval-not-tested conflated with
+              retrieval-tested-and-failed) before it was safe to commit
+```
+
+The consistent shape across all three experiments: a shared/blended
+prediction or evidence signal let one state layer manufacture apparent
+learning it didn't earn, and the fix was always to give the contaminated
+layer its own prediction and its own evidence, never a numerical
+containment measure (a cap, a smaller floor, a threshold) layered on top of
+the shared signal. §34's invariants 14-17 generalize this.
+
+What remains open is listed in §35, most notably the cold-start memory
+updater (still using the pre-C multiplicative form) and the synthetic
+ground-truth clock-reset question. Neither blocks further work; both are
+scoped as explicit follow-ups rather than silently left unresolved.
+
+The next artifact is not the scheduler yet. §35's remaining open items,
+particularly the cold-start updater, are natural next simulation work;
+after that, candidate generation and challenge filtering (§20-21) can be
+layered on a learner-state model that has now been through three rounds of
+adversarial review.
