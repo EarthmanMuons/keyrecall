@@ -63,6 +63,7 @@ FULL_OUTCOME = Outcome(
     continuity=1.0,
     temporal_stability=1.0,
     achieved_tempo_ratio=1.0,
+    topology_accuracy=1.0,
 )
 
 GUIDANCE_LEVELS = {
@@ -105,7 +106,6 @@ SWEEP_PARAMETERS: list[tuple[str, str, Callable[[float, float], float]]] = [
     ("material_execution", "learning_rate", _scale_value),
     ("material_execution", "mean_reversion_tau_days", _scale_value),
     ("hand_transfer", "rho_hand", _scale_value),
-    ("performance", "gamma_memory", _scale_value),
 ]
 SWEEP_FACTORS = (0.5, 1.0, 2.0)
 
@@ -124,11 +124,6 @@ RELEVANT_METRICS: dict[tuple[str, str], tuple[str, ...]] = {
     ("material_execution", "learning_rate"): ("residual_localization_gap",),
     ("material_execution", "mean_reversion_tau_days"): ("residual_localization_gap",),
     ("hand_transfer", "rho_hand"): ("hand_transfer_effect",),
-    # gamma_memory scales retrievability's contribution to predicted_success()
-    # (model.py); it doesn't feed the memory state's own update rule, so
-    # memory_retrievability_error would only move on it second-order, via
-    # prediction error feeding subsequent updates.
-    ("performance", "gamma_memory"): ("prediction_alignment_error",),
 }
 
 
@@ -260,10 +255,10 @@ def memory_tracking_rows(
             now, profile.memory_prior
         )
 
-        predicted_p = predicted_success(state, exercise, now, params)
+        prediction = predicted_success(state, exercise, now, params)
         outcome = sample_outcome(profile, exercise, now, rng)
         weights = evidence_weights(exercise, outcome)
-        update(state, exercise, outcome, weights, predicted_p, now, params)
+        update(state, exercise, outcome, weights, prediction, now, params)
 
         memory_after = state.material_memory["C_MAJOR"]
         rows.append(
@@ -404,7 +399,11 @@ def hand_transfer_rows(
                 "effective_lh_mean": effective_competency_mean(
                     state, "LH_SCALE_EXECUTION", params
                 ),
-                "predicted_lh_p": predicted_success(state, lh_probe, now, params),
+                # execution_p, not overall_p: transfer acts on the competency
+                # mean, which only enters the execution stage now.
+                "predicted_lh_execution_p": predicted_success(
+                    state, lh_probe, now, params
+                ).execution_p,
             }
         )
 
@@ -474,16 +473,24 @@ def reacquisition_rows(
 
 
 def guidance_sensitivity_rows(params: Params) -> list[dict[str, Any]]:
+    """predicted_independent_retrieval_p and predicted_execution_p should be
+    identical across every guidance level: that's the hurdle split actually
+    holding (see the "guidance affects material availability, not
+    retrieval or execution" invariant). Only predicted_material_available_p,
+    and therefore predicted_p, should move."""
     state = initial_state(PROFILES["advanced"], params)
     rows = []
     for level, guidance in GUIDANCE_LEVELS.items():
         exercise = fixed_exercise(C_MAJOR, "RIGHT", guidance=guidance)
-        predicted_p = predicted_success(state, exercise, now=1.0, params=params)
+        prediction = predicted_success(state, exercise, now=1.0, params=params)
         weights = evidence_weights(exercise, FULL_OUTCOME)
         rows.append(
             {
                 "guidance_level": level,
-                "predicted_p": predicted_p,
+                "predicted_independent_retrieval_p": prediction.independent_retrieval_p,
+                "predicted_material_available_p": prediction.material_available_p,
+                "predicted_execution_p": prediction.execution_p,
+                "predicted_p": prediction.overall_p,
                 "memory_weight": weights.material_memory,
                 "topology_weight": weights.competencies["MAJOR_SCALE_TOPOLOGY"],
                 "motor_weight": weights.competencies["RH_SCALE_EXECUTION"],
@@ -556,6 +563,10 @@ def sweep_metric(params: Params, attempts: int = 150, seed: int = 0) -> dict[str
 
     bounds_ok = all(
         0.0 <= record["predicted_p"] <= 1.0
+        and 0.0 <= record["predicted_independent_retrieval_p"] <= 1.0
+        and 0.0 <= record["predicted_material_available_p"] <= 1.0
+        and 0.0 <= record["predicted_execution_p"] <= 1.0
+        and 0.0 <= record["predicted_topology_p"] <= 1.0
         and all(
             0.0 <= w <= 1.0 for w in record["evidence_weights"]["competencies"].values()
         )
@@ -783,12 +794,18 @@ def report(
         print(f"  {profile_name}: {sum(first_ten) / len(first_ten):.3f}")
     print()
 
-    print("Guidance sensitivity:")
+    print(
+        "Guidance sensitivity (independent_retrieval_p and execution_p should "
+        "be constant across levels):"
+    )
     for row in guidance:
         print(
-            f"  {row['guidance_level']:<22} predicted_p={row['predicted_p']:.3f} "
-            f"memory_w={row['memory_weight']:.3f} topology_w={row['topology_weight']:.3f} "
-            f"motor_w={row['motor_weight']:.3f}"
+            f"  {row['guidance_level']:<22} "
+            f"independent_retrieval_p={row['predicted_independent_retrieval_p']:.3f} "
+            f"material_available_p={row['predicted_material_available_p']:.3f} "
+            f"execution_p={row['predicted_execution_p']:.3f} "
+            f"overall_p={row['predicted_p']:.3f} memory_w={row['memory_weight']:.3f} "
+            f"topology_w={row['topology_weight']:.3f} motor_w={row['motor_weight']:.3f}"
         )
     print()
 

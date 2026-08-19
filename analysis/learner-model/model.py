@@ -10,7 +10,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from domain import TOPOLOGY_COMPETENCIES, Exercise, structural_q
+from domain import MOTOR_COMPETENCIES, TOPOLOGY_COMPETENCIES, Exercise, structural_q
 from params import Params
 from state import COMPETENCIES, LearnerState
 
@@ -27,6 +27,24 @@ def normalized_loadings(q: dict[str, int]) -> dict[str, float]:
         return dict.fromkeys(q, 0.0)
     weight = 1.0 / len(relevant)
     return {k: (weight if k in relevant else 0.0) for k in q}
+
+
+def _subset_loadings(q: dict[str, int], subset: frozenset[str]) -> dict[str, float]:
+    """q_{e,k} restricted to and renormalized within one competency subset,
+    for the retrieval/motor/topology-specific predictions below."""
+    relevant = [k for k, v in q.items() if v and k in subset]
+    if not relevant:
+        return dict.fromkeys(q, 0.0)
+    weight = 1.0 / len(relevant)
+    return {k: (weight if k in relevant else 0.0) for k in q}
+
+
+def motor_loadings(q: dict[str, int]) -> dict[str, float]:
+    return _subset_loadings(q, MOTOR_COMPETENCIES)
+
+
+def topology_loadings(q: dict[str, int]) -> dict[str, float]:
+    return _subset_loadings(q, TOPOLOGY_COMPETENCIES)
 
 
 def effective_competency_mean(
@@ -48,10 +66,8 @@ def effective_competency_mean(
     )
 
 
-def task_difficulty(exercise: Exercise, params: Params) -> float:
-    """Diff(e), §11. Positive = harder. guidance_beta must be positive:
-    it's multiplied by retrieval demand (0=cued, 1=unguided), and less
-    support shouldn't make execution easier."""
+def task_difficulty_motor(exercise: Exercise, params: Params) -> float:
+    """D_motor(e): difficulty of the execution stage only. Positive = harder."""
     d = params.difficulty
     tempo_term = d.tempo_beta * math.log(exercise.tempo_bpm / d.reference_tempo_bpm)
     octave_term = d.octave_beta * max(0, exercise.octaves - 1)
@@ -59,50 +75,95 @@ def task_difficulty(exercise: Exercise, params: Params) -> float:
     direction_term = d.direction_beta * (
         1.0 if exercise.direction == "UP_DOWN" else 0.0
     )
-    guidance_term = d.guidance_beta * exercise.guidance.retrieval_demand()
-    return tempo_term + octave_term + hand_term + direction_term + guidance_term
+    return tempo_term + octave_term + hand_term + direction_term
 
 
-def memory_transform(retrievability: float) -> float:
-    """z(M), §10.1: logit of retrievability, clipped away from 0/1."""
-    eps = 1e-4
-    m = min(max(retrievability, eps), 1 - eps)
-    return math.log(m / (1 - m))
-
-
-def predicted_success(
+def predicted_independent_retrieval_p(
     state: LearnerState, exercise: Exercise, now: float, params: Params
 ) -> float:
-    """p_hat, §10. Read-only: never inserts state, so a snapshot taken
-    before calling this reflects everything it used, and predicting is
-    never itself evidence."""
+    """M(t): probability the material would be retrieved without external
+    support."""
+    material_id = exercise.material.material_id
+    memory_state = state.material_memory.get(material_id)
+    if memory_state is not None:
+        return memory_state.retrievability_or_prior(now, params)
+    return params.material_memory.prior_retrievability
+
+
+def predicted_material_available_p(
+    independent_retrieval_p: float, exercise: Exercise
+) -> float:
+    """1 - d*(1-M): guidance can supply material the learner wouldn't
+    independently retrieve. Mirrors synthetic.py's effective_retrievability
+    formula."""
+    retrieval_demand = exercise.guidance.retrieval_demand()
+    return 1.0 - retrieval_demand * (1.0 - independent_retrieval_p)
+
+
+def predicted_execution_p(
+    state: LearnerState, exercise: Exercise, params: Params
+) -> float:
+    """P(acceptable motor execution | material available)."""
     q = structural_q(exercise)
-    loadings = normalized_loadings(q)
+    loadings = motor_loadings(q)
     competency_term = sum(
-        loadings[k] * effective_competency_mean(state, k, params) for k in COMPETENCIES
+        loadings[k] * effective_competency_mean(state, k, params)
+        for k in MOTOR_COMPETENCIES
     )
 
     material_id = exercise.material.material_id
-    memory_state = state.material_memory.get(material_id)
-    retrievability = (
-        memory_state.retrievability_or_prior(now, params)
-        if memory_state is not None
-        else params.material_memory.prior_retrievability
-    )
-    memory_term = params.performance.gamma_memory * memory_transform(retrievability)
-
     execution_state = state.material_execution.get((material_id, exercise.hands))
     residual_term = (
         execution_state.residual_mean if execution_state is not None else 0.0
     )
 
-    eta = (
-        competency_term
-        + memory_term
-        + residual_term
-        - task_difficulty(exercise, params)
+    eta_exec = competency_term + residual_term - task_difficulty_motor(exercise, params)
+    return 1.0 / (1.0 + math.exp(-eta_exec))
+
+
+def predicted_topology_p(
+    state: LearnerState, exercise: Exercise, params: Params
+) -> float:
+    """P(scale-form/pitch topology correctly known)."""
+    q = structural_q(exercise)
+    loadings = topology_loadings(q)
+    topology_term = sum(
+        loadings[k] * effective_competency_mean(state, k, params)
+        for k in TOPOLOGY_COMPETENCIES
     )
-    return 1.0 / (1.0 + math.exp(-eta))
+    return 1.0 / (1.0 + math.exp(-topology_term))
+
+
+@dataclass(frozen=True)
+class Prediction:
+    independent_retrieval_p: float
+    material_available_p: float
+    execution_p: float
+    topology_p: float
+
+    @property
+    def overall_p(self) -> float:
+        return self.material_available_p * self.execution_p
+
+
+def predicted_success(
+    state: LearnerState, exercise: Exercise, now: float, params: Params
+) -> Prediction:
+    """Two-stage: P(overall) = P(material available) * P(acceptable
+    execution | available), §10. Read-only: never inserts state, so a
+    snapshot taken before calling this reflects everything it used, and
+    predicting is never itself evidence."""
+    independent_retrieval_p = predicted_independent_retrieval_p(
+        state, exercise, now, params
+    )
+    return Prediction(
+        independent_retrieval_p=independent_retrieval_p,
+        material_available_p=predicted_material_available_p(
+            independent_retrieval_p, exercise
+        ),
+        execution_p=predicted_execution_p(state, exercise, params),
+        topology_p=predicted_topology_p(state, exercise, params),
+    )
 
 
 @dataclass(frozen=True)
@@ -115,6 +176,7 @@ class Outcome:
     continuity: float
     temporal_stability: float
     achieved_tempo_ratio: float
+    topology_accuracy: float  # pitch/form knowledge, independent of motor quality
 
 
 @dataclass(frozen=True)
@@ -167,26 +229,38 @@ def update(
     exercise: Exercise,
     outcome: Outcome,
     weights: EvidenceWeights,
-    predicted_p: float,
+    prediction: Prediction,
     now: float,
     params: Params,
 ) -> None:
     """Applies §15/§15.1, §16, §18 updates in place; zero-weight layers are
-    left untouched."""
-    q = structural_q(exercise)
-    loadings = normalized_loadings(q)
+    left untouched.
 
-    observed_success = (
-        outcome.pitch_integrity + outcome.continuity + outcome.temporal_stability
-    ) / 3.0
-    prediction_error = observed_success - predicted_p
+    Motor competencies and the execution residual update from a motor-only
+    delta, prediction.execution_p vs. (continuity + temporal_stability) / 2:
+    pitch_integrity is excluded because synthetic.py blends it 60/40 with
+    material_retrieval, so it isn't purely motor evidence. Topology
+    competencies update from a separate delta, prediction.topology_p vs.
+    topology_accuracy, so neither channel can move the other's competencies.
+    """
+    q = structural_q(exercise)
+    motor_q_loadings = motor_loadings(q)
+    topology_q_loadings = topology_loadings(q)
+
+    y_motor = (outcome.continuity + outcome.temporal_stability) / 2.0
+    delta_exec = y_motor - prediction.execution_p
+    delta_topology = outcome.topology_accuracy - prediction.topology_p
 
     for k in COMPETENCIES:
         w = weights.competencies[k]
-        if w <= 0.0 or loadings[k] <= 0.0:
+        if k in TOPOLOGY_COMPETENCIES:
+            loading, delta = topology_q_loadings[k], delta_topology
+        else:
+            loading, delta = motor_q_loadings[k], delta_exec
+        if w <= 0.0 or loading <= 0.0:
             continue
         c = state.competencies[k]
-        c.mean += params.competency.learning_rate * loadings[k] * w * prediction_error
+        c.mean += params.competency.learning_rate * loading * w * delta
         c.variance = max(
             params.competency.min_variance,
             c.variance * (1 - params.competency.evidence_shrinkage * w),
@@ -202,7 +276,7 @@ def update(
         execution_state.residual_mean += (
             params.material_execution.learning_rate
             * weights.material_execution
-            * prediction_error
+            * delta_exec
         )
         execution_state.residual_variance = max(
             params.material_execution.min_variance,
@@ -215,6 +289,8 @@ def update(
         )
         execution_state.last_evidence_at = now
 
+    # This multiplicative half-life rule has no lower equilibrium: repeated
+    # failures drive it toward 0 (unbounded geometric shrink).
     memory_state = state.material_memory_for(material_id, params)
     had_ever_retrieved = memory_state.last_retrieval_at is not None
     if weights.material_memory > 0.0:

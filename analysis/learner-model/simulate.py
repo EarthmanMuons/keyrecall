@@ -144,10 +144,10 @@ def run(
         exercise = pick(active_rng, i)
 
         state_before = state.snapshot()
-        predicted_p = predicted_success(state, exercise, now, params)
+        prediction = predicted_success(state, exercise, now, params)
         outcome = sample_outcome(profile, exercise, now, active_rng)
         weights = evidence_weights(exercise, outcome)
-        update(state, exercise, outcome, weights, predicted_p, now, params)
+        update(state, exercise, outcome, weights, prediction, now, params)
         state_after = state.snapshot()
 
         trace.append(
@@ -169,7 +169,11 @@ def run(
                 },
                 "Q": structural_q(exercise),
                 "q": normalized_loadings(structural_q(exercise)),
-                "predicted_p": predicted_p,
+                "predicted_independent_retrieval_p": prediction.independent_retrieval_p,
+                "predicted_material_available_p": prediction.material_available_p,
+                "predicted_execution_p": prediction.execution_p,
+                "predicted_topology_p": prediction.topology_p,
+                "predicted_p": prediction.overall_p,
                 "outcome": {
                     "started": outcome.started,
                     "completed": outcome.completed,
@@ -178,6 +182,7 @@ def run(
                     "continuity": outcome.continuity,
                     "temporal_stability": outcome.temporal_stability,
                     "achieved_tempo_ratio": outcome.achieved_tempo_ratio,
+                    "topology_accuracy": outcome.topology_accuracy,
                 },
                 "evidence_weights": {
                     "competencies": weights.competencies,

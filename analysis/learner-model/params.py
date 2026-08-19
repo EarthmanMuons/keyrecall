@@ -53,11 +53,6 @@ class HandTransferParams:
 
 
 @dataclass(frozen=True)
-class PerformanceParams:
-    gamma_memory: float  # scales z(M) in eta; unscaled it dominates near M=1
-
-
-@dataclass(frozen=True)
 class DifficultyParams:
     tempo_beta: float
     octave_beta: float
@@ -82,7 +77,6 @@ class Params:
     material_memory: MaterialMemoryParams
     material_execution: MaterialExecutionParams
     hand_transfer: HandTransferParams
-    performance: PerformanceParams
     difficulty: DifficultyParams
     placement: PlacementParams
 
@@ -99,7 +93,6 @@ def load_params(path: Path | None = None) -> Params:
         material_memory=MaterialMemoryParams(**data["material_memory"]),
         material_execution=MaterialExecutionParams(**data["material_execution"]),
         hand_transfer=HandTransferParams(**data["hand_transfer"]),
-        performance=PerformanceParams(**data["performance"]),
         difficulty=DifficultyParams(**data["difficulty"]),
         placement=PlacementParams(**data["placement"]),
     )

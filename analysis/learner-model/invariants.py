@@ -41,6 +41,7 @@ def _full_outcome(retrieval_succeeded: bool = True) -> Outcome:
         continuity=1.0,
         temporal_stability=1.0,
         achieved_tempo_ratio=1.0,
+        topology_accuracy=1.0,
     )
 
 
@@ -51,6 +52,14 @@ def check_bounds() -> None:
         p = record["predicted_p"]
         if not (0.0 <= p <= 1.0):
             raise InvariantFailure(f"predicted_p out of bounds: {p}")
+        if not (0.0 <= record["predicted_independent_retrieval_p"] <= 1.0):
+            raise InvariantFailure("predicted_independent_retrieval_p out of bounds")
+        if not (0.0 <= record["predicted_material_available_p"] <= 1.0):
+            raise InvariantFailure("predicted_material_available_p out of bounds")
+        if not (0.0 <= record["predicted_execution_p"] <= 1.0):
+            raise InvariantFailure("predicted_execution_p out of bounds")
+        if not (0.0 <= record["predicted_topology_p"] <= 1.0):
+            raise InvariantFailure("predicted_topology_p out of bounds")
         if not (0.0 <= record["outcome"]["material_retrieval"] <= 1.0):
             raise InvariantFailure("material_retrieval out of bounds")
 
@@ -230,7 +239,10 @@ def check_hand_transfer_via_prediction_not_cross_update() -> None:
     now = 0.0
 
     lh_probe = fixed_exercise(C_MAJOR, "LEFT")
-    p_before = predicted_success(state, lh_probe, now, params)
+    # execution_p, not overall_p: transfer acts on the competency mean, which
+    # only enters the execution stage now, and overall_p would also move
+    # with C_MAJOR's retrievability (shared across hands) as a confound.
+    p_before = predicted_success(state, lh_probe, now, params).execution_p
     lh_mean_before = state.competencies["LH_SCALE_EXECUTION"].mean
 
     def rh_only(_rng: random.Random, _i: int) -> Exercise:
@@ -255,7 +267,7 @@ def check_hand_transfer_via_prediction_not_cross_update() -> None:
             "through prediction, not direct cross-updating"
         )
 
-    p_after_rh = predicted_success(state, lh_probe, now, params)
+    p_after_rh = predicted_success(state, lh_probe, now, params).execution_p
     if not (p_after_rh > p_before):
         raise InvariantFailure(
             f"predicted LH success didn't improve from correlated RH "
@@ -307,14 +319,14 @@ def check_material_specific_residual_does_not_contaminate_competency() -> None:
     _control_trace, control_state, _ = run(
         "advanced",
         attempts=120,
-        seed=4,
+        seed=0,
         params=params,
         exercise_fn=alternating_harmonic_minor_rh,
     )
     _trace, state, _truth = run(
         "material_specific_difficulty",
         attempts=120,
-        seed=4,
+        seed=0,
         params=params,
         exercise_fn=alternating_harmonic_minor_rh,
     )
@@ -396,6 +408,95 @@ def check_full_cueing_gives_little_topology_evidence() -> None:
         raise InvariantFailure("cueing incorrectly suppressed motor evidence too")
 
 
+def check_guidance_affects_availability_not_retrieval_or_execution() -> None:
+    """Direct test of the retrieval/execution split itself: guidance should
+    move predicted_material_available_p (cueing supplies material) but
+    leave predicted_independent_retrieval_p (cueing doesn't make the
+    learner remember better) and predicted_execution_p (cueing doesn't
+    make fingers move better) exactly alone. A shared logit with a
+    guidance term would fail this."""
+    params = load_params()
+    state = initial_state(PROFILES["advanced"], params)
+
+    cued = fixed_exercise(
+        C_MAJOR, "RIGHT", guidance=GuidanceContext(concurrent_pitch_cues=True)
+    )
+    uncued = fixed_exercise(C_MAJOR, "RIGHT", guidance=GuidanceContext())
+
+    cued_prediction = predicted_success(state, cued, now=1.0, params=params)
+    uncued_prediction = predicted_success(state, uncued, now=1.0, params=params)
+
+    if (
+        cued_prediction.independent_retrieval_p
+        != uncued_prediction.independent_retrieval_p
+    ):
+        raise InvariantFailure(
+            f"guidance changed predicted_independent_retrieval_p: "
+            f"cued={cued_prediction.independent_retrieval_p}, "
+            f"uncued={uncued_prediction.independent_retrieval_p}"
+        )
+    if cued_prediction.execution_p != uncued_prediction.execution_p:
+        raise InvariantFailure(
+            f"guidance changed predicted_execution_p: "
+            f"cued={cued_prediction.execution_p}, uncued={uncued_prediction.execution_p}"
+        )
+    if not (
+        cued_prediction.material_available_p > uncued_prediction.material_available_p
+    ):
+        raise InvariantFailure(
+            f"guidance didn't raise predicted_material_available_p: "
+            f"cued={cued_prediction.material_available_p}, "
+            f"uncued={uncued_prediction.material_available_p}"
+        )
+
+
+def check_motor_and_topology_updates_are_independent() -> None:
+    """Motor competencies move only from delta_exec (continuity/
+    temporal_stability vs. execution_p); topology competencies move only
+    from delta_topology (topology_accuracy vs. topology_p). Varying one
+    signal while holding the other fixed must leave the other channel's
+    competencies untouched."""
+    params = load_params()
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+
+    def run_once(topology_accuracy: float, continuity: float) -> LearnerState:
+        state = LearnerState.new(params)
+        outcome = Outcome(
+            started=True,
+            retrieval_succeeded=True,
+            completed=True,
+            material_retrieval=1.0,
+            pitch_integrity=1.0,
+            continuity=continuity,
+            temporal_stability=continuity,
+            achieved_tempo_ratio=1.0,
+            topology_accuracy=topology_accuracy,
+        )
+        weights = evidence_weights(exercise, outcome)
+        prediction = predicted_success(state, exercise, now=1.0, params=params)
+        update(state, exercise, outcome, weights, prediction, now=1.0, params=params)
+        return state
+
+    low_topology = run_once(topology_accuracy=0.1, continuity=1.0)
+    high_topology = run_once(topology_accuracy=0.9, continuity=1.0)
+    if (
+        low_topology.competencies["RH_SCALE_EXECUTION"].mean
+        != high_topology.competencies["RH_SCALE_EXECUTION"].mean
+    ):
+        raise InvariantFailure("varying topology_accuracy moved a motor competency")
+
+    low_motor = run_once(topology_accuracy=0.5, continuity=0.1)
+    high_motor = run_once(topology_accuracy=0.5, continuity=0.9)
+    if (
+        low_motor.competencies["MAJOR_SCALE_TOPOLOGY"].mean
+        != high_motor.competencies["MAJOR_SCALE_TOPOLOGY"].mean
+    ):
+        raise InvariantFailure(
+            "varying motor evidence (continuity/temporal_stability) moved a "
+            "topology competency"
+        )
+
+
 def check_cued_start_does_not_refresh_retrieval_clock() -> None:
     params = load_params()
     state = LearnerState.new(params)
@@ -408,8 +509,8 @@ def check_cued_start_does_not_refresh_retrieval_clock() -> None:
     )
     outcome = _full_outcome(retrieval_succeeded=False)
     weights = evidence_weights(exercise, outcome)
-    predicted_p = predicted_success(state, exercise, now=10.0, params=params)
-    update(state, exercise, outcome, weights, predicted_p, now=10.0, params=params)
+    prediction = predicted_success(state, exercise, now=10.0, params=params)
+    update(state, exercise, outcome, weights, prediction, now=10.0, params=params)
 
     if state.material_memory["C_MAJOR"].last_retrieval_at != anchored_at:
         raise InvariantFailure(
@@ -422,7 +523,8 @@ def check_unguided_failure_lowers_cold_start_estimate() -> None:
     state = LearnerState.new(params)
     exercise = fixed_exercise(C_MAJOR, "RIGHT")  # unguided
 
-    p_before = predicted_success(state, exercise, now=1.0, params=params)
+    prediction_before = predicted_success(state, exercise, now=1.0, params=params)
+    p_before = prediction_before.independent_retrieval_p
 
     outcome = Outcome(
         started=False,
@@ -433,11 +535,14 @@ def check_unguided_failure_lowers_cold_start_estimate() -> None:
         continuity=0.0,
         temporal_stability=0.0,
         achieved_tempo_ratio=0.0,
+        topology_accuracy=0.0,
     )
     weights = evidence_weights(exercise, outcome)
-    update(state, exercise, outcome, weights, p_before, now=1.0, params=params)
+    update(state, exercise, outcome, weights, prediction_before, now=1.0, params=params)
 
-    p_after = predicted_success(state, exercise, now=2.0, params=params)
+    p_after = predicted_success(
+        state, exercise, now=2.0, params=params
+    ).independent_retrieval_p
     if not (p_after < p_before):
         raise InvariantFailure(
             f"unguided retrieval failure did not lower the next memory-driven "
@@ -536,6 +641,14 @@ CHECKS: list[tuple[str, Callable[[], None]]] = [
     (
         "full cueing gives little topology evidence",
         check_full_cueing_gives_little_topology_evidence,
+    ),
+    (
+        "guidance affects material availability, not retrieval or execution",
+        check_guidance_affects_availability_not_retrieval_or_execution,
+    ),
+    (
+        "motor and topology competency updates are independent",
+        check_motor_and_topology_updates_are_independent,
     ),
     (
         "cued start does not refresh the retrieval clock",

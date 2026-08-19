@@ -11,7 +11,7 @@ import math
 import random
 from dataclasses import dataclass, field
 
-from domain import Exercise, structural_q
+from domain import TOPOLOGY_COMPETENCIES, Exercise, structural_q
 from model import Outcome
 from state import COMPETENCIES
 
@@ -20,7 +20,6 @@ TRUE_DIFFICULTY = {
     "octave_beta": 0.25,
     "hand_beta": 0.3,
     "direction_beta": 0.1,
-    "guidance_beta": 0.6,
     "reference_tempo_bpm": 80.0,
 }
 TRUE_NOISE_SCALE = 0.12
@@ -151,8 +150,7 @@ def _true_difficulty(exercise: Exercise) -> float:
     direction_term = d["direction_beta"] * (
         1.0 if exercise.direction == "UP_DOWN" else 0.0
     )
-    guidance_term = d["guidance_beta"] * exercise.guidance.retrieval_demand()
-    return tempo_term + octave_term + hand_term + direction_term + guidance_term
+    return tempo_term + octave_term + hand_term + direction_term
 
 
 def sample_outcome(
@@ -180,17 +178,31 @@ def sample_outcome(
         1.0, max(0.0, rng.gauss(effective_retrievability, TRUE_NOISE_SCALE))
     )
 
-    # Motor quality is a separate pathway from retrieval, so
-    # TECHNIQUE_STRONG_MEMORY_WEAK and MEMORY_STRONG_TECHNIQUE_WEAK are
-    # actually distinguishable.
+    # Motor quality and topology quality are separate pathways from
+    # retrieval and from each other, so a profile can be strong in one and
+    # weak in the other (TECHNIQUE_STRONG_MEMORY_WEAK, MEMORY_STRONG_
+    # TECHNIQUE_WEAK, and now poor-topology/good-fingers or vice versa).
     q = structural_q(exercise)
     relevant = [k for k, v in q.items() if v]
-    ability = sum(profile.true_competencies[k] for k in relevant) / max(
-        1, len(relevant)
+    motor_relevant = [k for k in relevant if k not in TOPOLOGY_COMPETENCIES]
+    topology_relevant = [k for k in relevant if k in TOPOLOGY_COMPETENCIES]
+
+    motor_ability = sum(profile.true_competencies[k] for k in motor_relevant) / max(
+        1, len(motor_relevant)
     )
-    ability += profile.true_material_execution.get((material_id, exercise.hands), 0.0)
-    logit = ability - _true_difficulty(exercise) + rng.gauss(0.0, TRUE_NOISE_SCALE)
-    motor_quality = 1.0 / (1.0 + math.exp(-logit))
+    motor_ability += profile.true_material_execution.get(
+        (material_id, exercise.hands), 0.0
+    )
+    motor_logit = (
+        motor_ability - _true_difficulty(exercise) + rng.gauss(0.0, TRUE_NOISE_SCALE)
+    )
+    motor_quality = 1.0 / (1.0 + math.exp(-motor_logit))
+
+    topology_ability = sum(
+        profile.true_competencies[k] for k in topology_relevant
+    ) / max(1, len(topology_relevant))
+    topology_logit = topology_ability + rng.gauss(0.0, TRUE_NOISE_SCALE)
+    topology_quality = 1.0 / (1.0 + math.exp(-topology_logit))
 
     if not started:
         return Outcome(
@@ -202,6 +214,7 @@ def sample_outcome(
             continuity=0.0,
             temporal_stability=0.0,
             achieved_tempo_ratio=0.0,
+            topology_accuracy=0.0,
         )
 
     def noisy(center: float) -> float:
@@ -221,4 +234,5 @@ def sample_outcome(
         continuity=continuity,
         temporal_stability=temporal_stability,
         achieved_tempo_ratio=noisy(motor_quality),
+        topology_accuracy=noisy(topology_quality),
     )

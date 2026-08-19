@@ -33,9 +33,6 @@ evidence_shrinkage = 0.3
 rho_hand = 0.3
 shrinkage_tau = 0.5
 
-[performance]
-gamma_memory = 0.25
-
 [difficulty]
 tempo_beta = 0.4
 octave_beta = 0.3
