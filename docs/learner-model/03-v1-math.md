@@ -172,6 +172,7 @@ MaterialMemoryState:
   logit_cold_start: ...
   cold_start_uncertainty: ...
   last_retrieval_at: ...
+  last_retrieval_attempt_at: ...
 ```
 
 `log_half_life`/`half_life_uncertainty` and
@@ -292,6 +293,32 @@ equilibrium under repeated expected failure, and uncertainty is
 phase-separated - repeated pre-anchor failure shrinks `cold_start_uncertainty`
 but leaves `half_life_uncertainty` untouched, the first successful retrieval
 doesn't either, and only a genuinely spaced post-anchor observation does.
+
+### 5.4 `last_retrieval_attempt_at`: observed, distinct from anchored
+
+`last_retrieval_at` answers "when did independent retrieval last succeed" and
+gates which of §5.2/§5.3's update branches applies. It says nothing about
+whether retrieval has been _tested_ at all - a material with no successful
+retrieval yet could equally mean "never attempted" or "attempted and failed
+every time," and those call for different responses from a consumer deciding
+what to do next.
+
+`last_retrieval_attempt_at` disambiguates: it is set on any genuine retrieval
+observation (§18.2 - `retrieval_succeeded` is `True` or `False`, never `None`),
+regardless of outcome. A success updates both fields; a failure updates only
+`last_retrieval_attempt_at`, leaving `last_retrieval_at` untouched. A
+continuously cued attempt (`retrieval_succeeded = None`) updates neither.
+
+This is a genuine `MaterialMemoryState` field, not a scheduler-only
+convenience - it records an observation event about the learner's memory, the
+same category of fact `last_retrieval_at` records, just without the "and it
+succeeded" qualifier. `analysis/scheduler/` (04-v1-scheduler.md §6.2) is its
+first consumer: exclusive recovery can escalate a material to maximum cueing
+before any success ever anchors `last_retrieval_at`, and a mechanism that only
+reads `last_retrieval_at` cannot tell that state apart from a material that was
+simply never practiced. Any future consumer facing the same question - has this
+actually been tested - should read this field rather than re-deriving it from
+attempt history.
 
 ## 6. Retrieval demand
 

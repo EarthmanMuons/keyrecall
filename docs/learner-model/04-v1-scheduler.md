@@ -190,20 +190,32 @@ with nowhere to go. The decision is therefore binary, reached through one of
 four paths:
 
 ```text
-p_min <= overall_p <= p_max              -> survives, normal band
-new material, overall_p >= p_intro_min   -> survives, introduction envelope (§6.1)
-guidance-probe eligible                  -> survives, guidance probe (§6.2)
-recovery / override                      -> survives, named exception
-otherwise                                -> filtered out
+override                                 -> survives, unconditional (wins
+                                             regardless of an active recovery
+                                             context)
+active recovery context (§6.3)           -> exclusive: only the exact
+                                             recovery target survives; every
+                                             other candidate is filtered out
+                                             for this decision
+otherwise, per candidate:
+  p_min <= overall_p <= p_max              -> survives, normal band
+  new material, overall_p >= p_intro_min   -> survives, introduction
+                                               envelope (§6.1)
+  guidance-probe eligible (anchored)       -> survives, guidance probe (§6.2)
+  bootstrap-probe eligible (unanchored)    -> survives, bootstrap probe (§6.4)
+  otherwise                                -> filtered out
 ```
 
-Simulation (`analysis/scheduler/`, §10) validated two of these paths as genuine
-admission gates rather than unconditional bypasses - not every named exception
-"skips the check entirely." Diagnostic probe, recovery after retrieval failure,
-and explicit learner request remain true bypasses (`override`/`recovery`): they
+Simulation (`analysis/scheduler/`, §10) validated these paths as genuine
+admission gates, not uniformly unconditional bypasses. Diagnostic probe and
+explicit learner request (`override`) remain true, unconditional bypasses: they
 skip band evaluation outright, on grounds challenge filtering has no basis to
-second-guess. New-material introduction and guidance fading turned out to need
-their own conditional gates instead, below.
+second-guess. New-material introduction and the two probes turned out to need
+their own conditional gates instead (§6.1, §6.2, §6.4). Recovery turned out to
+need something stronger than an ordinary bypass - not just "this one candidate
+may also be admitted," but "only this one candidate may be admitted" (§6.3), a
+distinction simulation only surfaced after an earlier, looser recovery design
+produced two further failures (§10).
 
 ### 6.1 New-material introduction: a conditional envelope, not a blanket bypass
 
@@ -227,7 +239,7 @@ naturally left with easier realizations and a stronger learner with a broader
 range - no explicit tier branching, and stage 4 still never reconsiders
 difficulty (§7).
 
-### 6.2 Guidance probe: a bounded step back toward independence
+### 6.2 Guidance probe: a bounded step back toward independence, once anchored
 
 §10 documents a failure mode this mechanism exists to close: once a candidate's
 memory looks poor enough that only a cued realization clears the band, a cued
@@ -250,13 +262,112 @@ enough elapsed time since that success (§9: heuristic threshold) - not
     re-probed on literally the next attempt
 ```
 
-checked after the `recovery` exception, so a failed probe doesn't immediately
-trigger another probe (`SessionState.last_outcome_failed` routes the next
-attempt to `recovery` instead). A successful probe is a genuine retrieval test,
-so it can re-anchor the clock itself; if it does, normal band admission - not a
-further bypass - is what lets less-guided realizations compete from there. One
-step, not a jump straight to unguided: the probe only needs to restore a genuine
-test, not solve the whole difficulty gap at once.
+Anchored on `last_retrieval_at` specifically: this is the probe for a material
+that HAS succeeded before and might now support less guidance. §6.4 covers the
+paired, unanchored case - a material that has never succeeded needs a different
+mechanism, not a weakened version of this precondition.
+
+Suppressed entirely whenever a recovery context is active (§6.3), not merely
+checked after it: a failed probe sets `SessionState.last_failed_exercise`, which
+routes the next attempt to recovery's exact one-step-more-guidance sibling of
+the probe itself, so a failed probe can only ever be followed by MORE support,
+never less (§10's guidance-probe-cascade finding). A successful probe is a
+genuine retrieval test, so it can re-anchor the clock itself; if it does, normal
+band admission - not a further bypass - is what lets less-guided realizations
+compete from there. One step, not a jump straight to unguided: the probe only
+needs to restore a genuine test, not solve the whole difficulty gap at once.
+
+### 6.3 Recovery: exact, reactive, exclusive admission
+
+Recovery answers a different question from the two probes: not "should we test
+whether less guidance now works," but "the learner just failed at exactly what
+we asked - what should happen right now." `SessionState` tracks this as
+`last_failed_exercise: Exercise | None` - the failed exercise itself, not a bare
+boolean - set whenever `retrieval_succeeded is False` and cleared on any other
+outcome, including an untested (cued) one.
+
+When `last_failed_exercise` is set, `recovery_target()` computes the exact
+sibling: same `TechnicalMaterial` and `ExecutionConditions` (hands, octaves,
+direction, tempo), exactly one step MORE guidance than what just failed
+(unguided -> `notes_previewed` -> `concurrent_pitch_cues`; a cued attempt is
+never itself a recovery source, since a cued failure is impossible -
+`retrieval_succeeded` stays `None` under continuous cueing, never `False`,
+§18.2). "Preserve motor challenge" is defined by this construction, not by a
+separate check: everything about the task except guidance stays fixed.
+
+Recovery is exclusive, not merely preferred: while a recovery context is active,
+ONLY the exact recovery target may survive challenge filtering (§6) - every
+other candidate is filtered out for this decision, even one that would otherwise
+fall within the normal band or qualify for `new_material`/`guidance_probe`. This
+was not the original design. An earlier version made `last_outcome_failed` a
+bare boolean bypass admitting any candidate after a failure, and simulation
+(§10) found this let priority ranking, not recovery's own intent, pick the
+winner two different ways: `R(e)`'s retrieval-opportunity scaling favors LESS
+guidance, so a failed guidance-probe attempt was routed toward MORE independence
+instead of more support; and a failure on a demanding realization (long, fast,
+direction-reversed) was routed to the easiest realization overall, not a
+guidance-adjusted sibling of what actually failed. Both are the same underlying
+defect: a bare bool tells the scheduler recovery is needed but not what it is
+recovering FROM. Naming the failed exercise itself, and making its
+one-step-more-guided sibling the only admissible answer, closes both failure
+modes at once (§10).
+
+`override` still wins regardless of an active recovery context: it is an
+explicit caller instruction (diagnostic probe, explicit learner request), not an
+inferred policy, and this document's own boundary rule (§2) treats an explicit
+instruction as outside any stage's discretion to second-guess.
+
+### 6.4 Bootstrap probe: the unanchored counterpart to the guidance probe
+
+Making recovery exact and exclusive (§6.3) exposed a sharper version of §6.2's
+original problem. Two genuine failures in a row correctly escalate recovery all
+the way to maximum cueing (`concurrent_pitch_cues`) - before the material has
+EVER had a successful retrieval, i.e. `MaterialMemoryState.last_retrieval_at` is
+still unset. The guidance probe's own precondition is exactly that anchor
+(§6.2), so it structurally cannot fire for a material in this state: nothing in
+§6.1-§6.3 offers a path back to testing retrieval at all, and the material would
+stay fully cued for the rest of the simulation (§10).
+
+This is not the same situation the guidance probe already covers, and is not
+fixed by weakening the guidance probe's own precondition to pretend it is.
+`last_retrieval_at`'s meaning - confirmed successful retrieval - stays exactly
+as strong as before; a material that has never succeeded is not the same
+epistemic case as one that succeeded a while ago and might now support less
+support, and conflating them would let the probe fire on evidence it doesn't
+actually have.
+
+Instead, the two cases get separate mechanisms sharing one shape. The bootstrap
+probe is the guidance probe's unanchored counterpart, gated on:
+
+```text
+material has never had a confirmed successful retrieval
+    (last_retrieval_at is None)
+material has genuinely been tested at least once
+    (MaterialMemoryState.last_retrieval_attempt_at is not None,
+    03-v1-math.md §5.4)
+enough elapsed time since that attempt (§9: currently reuses the
+    guidance probe's own threshold, §6.2, as a starting simplification)
+```
+
+offering exactly the `notes_previewed` realization, same scope as the guidance
+probe, never straight to unguided. `last_retrieval_attempt_at` (`03-v1-math.md`
+§5.4) is what makes this possible: a genuine learner-state field, distinct from
+`last_retrieval_at`, that records any tested retrieval attempt - win or lose -
+so the scheduler can tell "never successfully retrieved" apart from "never even
+tested" without overloading or weakening the success-only anchor.
+
+The bootstrap probe's job is to guarantee the scheduler keeps OFFERING a genuine
+retrieval-observing opportunity at roughly the configured interval - not to
+guarantee that opportunity eventually succeeds, which is stochastic and
+learner-dependent and not something a scheduling policy can promise.
+`check_never_successful_material_is_not_permanently_trapped` (§10) verifies
+exactly this: no unbroken cued-only run spans the rest of the simulation, not
+that retrieval is eventually retrieved successfully.
+
+Checked after the guidance probe in `challenge_bypass()`'s precedence: the two
+preconditions (`last_retrieval_at is not None` vs. `is None`) are mutually
+exclusive for any given candidate, so the check order does not change which
+candidates qualify, only which check runs first.
 
 ## 7. Stage 4: Priority ranking
 
@@ -417,7 +528,7 @@ count/labels are scheduler-simulation work (§9), not decided here.
 | Generation    | Domain combinatorics, `InstrumentProfile`                                                                                                                                                                   | Any learner state                                  | Generated / not                                               |
 | `REQUIRES`    | `LatentCompetencyState`                                                                                                                                                                                     | `MaterialMemoryState`, `MaterialExecutionState`    | Eligibility tier (§7.1)                                       |
 | Safety policy | `SessionState`, session history                                                                                                                                                                             | Competency, memory, execution state                | Suppress / not (per session)                                  |
-| Challenge     | `Prediction.overall_p` (this candidate); `MaterialMemoryState` existence/timing and `SessionState.last_outcome_failed` (named exceptions §6.1-§6.2)                                                         | Retention, information, diversity, goals; topology | Reject / keep, via the band or a named exception              |
+| Challenge     | `Prediction.overall_p` (this candidate); `MaterialMemoryState` existence/timing (`last_retrieval_at`, `last_retrieval_attempt_at`) and `SessionState.last_failed_exercise` (named exceptions §6.1-§6.4)     | Retention, information, diversity, goals; topology | Reject / keep, via the band or a named exception              |
 | Priority      | Eligibility tier (primary key); retention (memory + this candidate's `retrieval_opportunity`, §7.2); information (uncertainty + this candidate's evidence potential); diversity (history); goals (external) | Challenge/difficulty (already decided)             | Rank within tier, then select via the repetition guard (§7.3) |
 
 ## 9. Deliberately left open
@@ -435,7 +546,10 @@ p_introduction_min, the separate lower band for new-material introduction
     (§6.1) - validated as a mechanism, not as a value
 guidance probe's elapsed-time threshold (§6.2) - heuristic value; the
     currently one-step probe scope is validated behaviorally but remains
-    revisable if later scenarios justify a broader progression policy
+    revisable if later scenarios justify a broader progression policy.
+    The bootstrap probe (§6.4) currently reuses this same threshold value
+    as a starting simplification; whether the two intervals should
+    diverge is open, not decided by sharing a config value
 repetition guard's consecutive-selection cap (§7.3) - likewise
 priority weights (w_R, w_I, w_D, w_G) vs. the lexicographic alternative -
     simulation used and validated lexicographic (§10); the weighted-sum
@@ -465,15 +579,19 @@ boundary contract itself as `pipeline.py`, and verifies it in two complementary
 passes, mirroring the split `03-v1-math.md` §38 established for the learner
 model: `invariants.py` (10 checks) proves the boundary holds mechanically - a
 forbidden input can't move a stage's decision, regardless of whether the
-resulting behavior is any good; `scenarios.py` (7 checks) runs the pipeline
+resulting behavior is any good; `scenarios.py` (10 checks) runs the pipeline
 longitudinally, driving `analysis/learner-model/simulate.py`'s own `run()` loop
 through `SchedulerAgent` (`agent_pick`/`agent_on_outcome` hooks) rather than a
 second update simulator, and asks whether the resulting behavior is actually
 good. Both suites pass alongside the learner model's own 26 invariants.
 
-`03-v1-math.md` §30's pathology list motivated the scenarios below; three of
-them found real problems, which drove the revisions described in §6.1, §6.2,
-§7.2, and §7.3:
+`03-v1-math.md` §30's pathology list motivated the scenarios below; most of them
+found real problems, which drove the revisions described in §6.1-§6.4, §7.2, and
+§7.3. Two rounds of findings, not one: the first round produced R(e), the
+guidance probe, and the introduction envelope; fixing the recovery exception
+properly (§6.3) - itself a response to two findings from the second round - then
+exposed a third-round finding the first two rounds' architecture could not have
+surfaced on its own, resolved by the bootstrap probe (§6.4):
 
 ```text
 no endless repetition of one material (§30). Originally failed: a lucky
@@ -502,18 +620,6 @@ guidance can fade after successful retrieval (§30: "guidance that never
     a genuinely-tested, one-step-less-guided attempt; I(e) was never the
     right lever, as this document originally guessed.
 
-guidance is not removed before independent retrieval is plausible (§30,
-    the paired failure mode). Structurally supported by the guidance
-    probe's own design (one step at a time, gated on a prior confirmed
-    success plus elapsed time, §6.2) but not covered by a dedicated
-    scenario - still open.
-
-failure can increase support without destroying motor challenge. Not
-    covered by a dedicated scenario - still open. check_failure_recovery_
-    is_temporary (analysis/scheduler/scenarios.py) verifies the recovery
-    exception itself clears correctly after a subsequent success, not
-    this specific claim about ExecutionConditions.
-
 new-material selection reflects transferable competency and uncertainty,
     not a fixed novice default (§24). Originally failed, also not for
     the reason this document first guessed: I(e) reads only competency
@@ -524,17 +630,53 @@ new-material selection reflects transferable competency and uncertainty,
     the conditional introduction envelope (§6.1): the same overall_p
     every profile already produces (competency mean included) decides
     which realizations are admitted, not I(e).
+
+guidance is not removed before independent retrieval is plausible (§30,
+    the paired failure mode to §6.2's own probe). Originally failed once
+    a dedicated scenario was written: a failed probe
+    (challenge_bypass="guidance_probe", retrieval_succeeded=False) routed
+    the next attempt to the OLD bare-boolean recovery exception, which
+    admitted every guidance level - and R(e)'s retrieval_opportunity term
+    rewards LESS guidance, so nothing in ranking favored restoring
+    support, and both traced probe failures jumped straight to fully
+    unguided. Resolved by exclusive recovery (§6.3): a failed probe's
+    recovery target is exactly its own one-step-more-guidance sibling, so
+    the next attempt can only step toward more support, never less.
+
+failure can increase support without destroying motor challenge.
+    Originally failed once a dedicated scenario was written: the OLD
+    SessionState.last_outcome_failed was a bare bool with no memory of
+    WHICH realization failed, so recovery admitted every
+    ExecutionConditions combination, not just guidance variants of the
+    failed one - the winner collapsed to the easiest realization overall
+    (1 octave, 60bpm, UP), not a guidance-adjusted sibling of what
+    actually failed. Resolved by last_failed_exercise (the exercise
+    itself, §6.3) plus exclusive recovery admission: only the exact
+    one-step-more-guidance sibling may survive this decision.
+
+never-successful material is not permanently trapped at full cueing. Not
+    one of §30's original items - a new failure mode this round of
+    fixes exposed, not present before recovery became exact and
+    exclusive: recovery can correctly escalate a material straight to
+    maximum cueing after two genuine failures, before any success ever
+    anchors last_retrieval_at, and anchored guidance_probe's own
+    precondition means it can never fire for a material in that state -
+    no path back to testing retrieval at all. Resolved by the bootstrap
+    probe (§6.4): not by guaranteeing eventual success, which is
+    stochastic and learner-dependent, but by guaranteeing the scheduler
+    keeps offering a genuine retrieval-observing candidate at roughly
+    the configured interval.
 ```
 
-Two further scenarios validate existing architecture rather than resolving a §30
-pathology: eligibility progression (§5.1 - `PROVISIONALLY_ELIGIBLE` to
-`FULLY_ELIGIBLE` as RH/LH competency crosses the `REQUIRES` threshold) and the
-recovery exception's temporariness (§6, checked above). The repetition guard has
-its own dedicated scenario beyond the longitudinal one above, directly proving
-both its properties (excludes an over-repeated material when an alternative
-exists; never forces zero admission when none does) against directly-constructed
-candidates rather than relying on a real run to produce the right conditions
-incidentally.
+Three further scenarios validate existing architecture rather than resolving a
+§30 pathology: eligibility progression (§5.1 - `PROVISIONALLY_ELIGIBLE` to
+`FULLY_ELIGIBLE` as RH/LH competency crosses the `REQUIRES` threshold), the
+recovery exception's temporariness (§6 - `SchedulerAgent.on_outcome` sets
+`last_failed_exercise` on a genuine failure and clears it on any other outcome),
+and the repetition guard's own dedicated scenario, directly proving both its
+properties (excludes an over-repeated material when an alternative exists; never
+forces zero admission when none does) against directly-constructed candidates
+rather than relying on a real run to produce the right conditions incidentally.
 
 ## 11. Relationship to existing documents
 
@@ -548,6 +690,10 @@ material; it does not replace it.
 03-v1-math.md §23        review urgency (R term)
 03-v1-math.md §13        scheduler score vs. state evidence - the principle
                           this document's §6 applies to overall_p specifically
+03-v1-math.md §5.4        last_retrieval_attempt_at - a genuine
+                          MaterialMemoryState field this document's §6.4
+                          consumes but does not own; §5.4 is authoritative
+                          for what it means
 GLOSSARY.md §6            scheduler structure decision; diagram updated to
                           match §3 above
 GLOSSARY.md §7/§8         InstrumentProfile, SchedulerSafetyPolicy
@@ -555,7 +701,7 @@ v1-domain-model.md §17     REQUIRES
 analysis/scheduler/        executable counterpart to this document: pipeline.py
                             implements stages 2-4 and the boundary contract,
                             invariants.py verifies it mechanically (10 checks),
-                            scenarios.py verifies it behaviorally (7 checks,
+                            scenarios.py verifies it behaviorally (10 checks,
                             §10), longitudinal.py adapts it into
                             analysis/learner-model/simulate.py's run() loop
 ```
