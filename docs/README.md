@@ -40,8 +40,15 @@ docs/
 └── learner-model/                what KeyRecall BELIEVES about the pianist
     ├── 01-research.md               learning-science research basis
     ├── 02-v1-design.md              learner-state architecture
-    └── 03-v1-math.md                V1 equations, scheduler structure, simulation plan
+    ├── 03-v1-math.md                V1 equations, scheduler math, simulation plan
+    └── 04-v1-scheduler.md           scheduler pipeline + information-boundary contract
 ```
+
+`analysis/learner-model/` (repo root, not under `docs/`) is the executable
+counterpart to `01-03`: a simulation prototype with a 26-check invariant
+suite and behavioral diagnostics, referenced throughout `03-v1-math.md` §5,
+§10, §18, §29, §38 as the source of several findings that revised those
+documents after simulation, not before it.
 
 The numeric prefixes in `learner-model/` are load-bearing, not cosmetic:
 `03-v1-math.md` states explicitly that it is subordinate to `02-v1-design.md`,
@@ -66,7 +73,8 @@ is a reasonable next small step, not yet applied here.
 | `domain-model/v1-domain-model.md`    | Domain entities not explicitly superseded below (`ScaleDefinition`, `ExpectedEvent`, relationships, prerequisites, etc.) | `Exercise` (flat form), `FingeringGroup`, `Component` ontology, and its own Q-matrix tables (§6.2-§11), all superseded, see §4 below |
 | `learner-model/01-research.md`       | Research grounding, citations, KeyRecall-synthesis vs. research-supported distinction                                    | Frozen equations (several formulas here are illustrative precedent, not adopted; see §4 below, items 3-4)                            |
 | `learner-model/02-v1-design.md`      | Learner-state architecture; reconciled ten-Competency ontology (§9.1); compositional `Exercise` model                    | Numerical parameters, scheduler equations                                                                                            |
-| `learner-model/03-v1-math.md`        | V1 equations, scheduler structure (eligibility → challenge filter → priority ranking), simulation/calibration plan       | (none)                                                                                                                               |
+| `learner-model/03-v1-math.md`        | V1 equations, scheduler math (challenge-band formula, priority-utility form, §20-23), simulation/calibration plan        | Scheduler stage information-boundary contract (see `04-v1-scheduler.md`)                                                             |
+| `learner-model/04-v1-scheduler.md`   | Scheduler pipeline structure; which stage may read which state and make which decision                                   | Numeric bounds/weights (still heuristic V1, unresolved), scheduler math itself (`03-v1-math.md` §20-23)                              |
 
 When a conflict between documents isn't listed in §4 below, don't infer
 authority from filename date or commit order: treat it as an unresolved

@@ -1042,6 +1042,11 @@ arbitrary constant.
 
 ## 20. Candidate generation
 
+> §20-23 remain authoritative for the scheduler's underlying math. The
+> stage-by-stage information-boundary contract - what each stage may read,
+> what decision it's allowed to make, what it must leave to another stage -
+> is `04-v1-scheduler.md`.
+
 The scheduler should generate exercises from valid combinations of:
 
 ```text

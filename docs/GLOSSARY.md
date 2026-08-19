@@ -107,11 +107,11 @@ than a penalty term fighting a challenge-seeking term in the same sum is a real
 structural improvement; the two earlier formulas are retired.
 
 ```text
-domain constraints           (canonical fingering exists, tempo in bounds, ...)
+candidate generation         (domain constraints - canonical fingering exists,
+                               tempo in bounds, ... - decide what gets
+                               generated at all, not a filter applied after)
         ↓
-prerequisite eligibility     (REQUIRES lives here)
-        ↓
-candidate generation
+eligibility                  (REQUIRES prerequisite gate + SchedulerSafetyPolicy)
         ↓
 challenge filtering          (p_min ≤ p̂ ≤ p_max, with named exceptions)
         ↓
@@ -120,7 +120,9 @@ priority ranking             (retention, information, diversity, goals)
 
 `REQUIRES` (`v1-domain-model.md` §17) belongs in the eligibility stage, not as a
 weighted term competing with retention/information/diversity/ goals. Applied in
-`03-v1-math.md` §20.
+`03-v1-math.md` §20. Full stage-by-stage information-boundary contract - what
+each stage may read, what it must leave to another stage -
+`learner-model/04-v1-scheduler.md`.
 
 ## 7. `InstrumentProfile` (new)
 
