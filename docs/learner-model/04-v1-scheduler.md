@@ -541,16 +541,24 @@ validated the _mechanisms_ these constants parameterize; the specific values
 remain exactly as heuristic and revisable as before:
 
 ```text
-challenge-band bounds (p_min, p_max) and their named-exception conditions
+challenge-band bounds (p_min, p_max) and their named-exception conditions -
+    Pass 3 (§10.1) found p_min sampled-robust over [0.60, 0.70] and p_max
+    robust over the full sampled [0.75, 0.98] range; characterization, not
+    a recommended retuning
 p_introduction_min, the separate lower band for new-material introduction
-    (§6.1) - validated as a mechanism, not as a value
+    (§6.1) - validated as a mechanism, not as a value; Pass 3 (§10.1) found
+    it sampled-robust over [0.15, 0.25]
 guidance probe's elapsed-time threshold (§6.2) - heuristic value; the
     currently one-step probe scope is validated behaviorally but remains
     revisable if later scenarios justify a broader progression policy.
     The bootstrap probe (§6.4) currently reuses this same threshold value
     as a starting simplification; whether the two intervals should
-    diverge is open, not decided by sharing a config value
-repetition guard's consecutive-selection cap (§7.3) - likewise
+    diverge is open, not decided by sharing a config value. Pass 3 (§10.1)
+    found the shared interval sampled-robust over [1, 5] days, failing
+    above 10 by recreating §30's original absorbing-cueing pathology
+repetition guard's consecutive-selection cap (§7.3) - likewise; Pass 3
+    (§10.1) found it sampled-robust over [2, 8], and confirmed the
+    documented cap-below-window dependency with recent_window (config.toml)
 priority weights (w_R, w_I, w_D, w_G) vs. the lexicographic alternative -
     simulation used and validated lexicographic (§10); the weighted-sum
     alternative remains untried, not ruled out
@@ -567,7 +575,8 @@ I(e)'s exact form for combining current uncertainty with a candidate's
     stated in §7.2 remains the open baseline
 SchedulerSafetyPolicy thresholds ("sustained high-demand" numerically)
 REQUIRES relationships beyond the RH/LH -> HT example
-diversity/interleaving's exact data model and decay
+diversity/interleaving's exact data model and decay - Pass 3 (§10.1) found
+    recent_window sampled-robust over [10, 25]
 goals data model
 whether topology gets its own probe-selection signal (§6)
 ```
@@ -678,6 +687,75 @@ properties (excludes an over-repeated material when an alternative exists; never
 forces zero admission when none does) against directly-constructed candidates
 rather than relying on a real run to produce the right conditions incidentally.
 
+### 10.1 Pass 3: sampled parameter robustness
+
+Pass 1 mechanically validated the scheduler's boundary contract, and Pass 2
+behaviorally validated the implemented mechanisms in §6-§7; every numeric
+threshold they use (§9's list) stayed an untuned heuristic placeholder
+throughout. Pass 3 (`analysis/scheduler/sensitivity.py`) characterizes how
+robust those placeholders are - not which values are best - by reusing Pass 2's
+own 10 behavioral checks as a pass/fail oracle across a sampled grid of each
+parameter's value, one parameter at a time (Phase A) and across 4 hand-picked,
+architecturally-motivated parameter pairs together (Phase B), looking for two
+individually-safe values that combine to break something neither breaks alone.
+
+The results are **sampled robustness findings, not estimated true boundaries**:
+a 5-point grid can report "0.60 passed, 0.50 failed," never that the true
+boundary sits at exactly 0.53. Every endpoint below is a grid observation, not a
+fitted value.
+
+```text
+p_min                  sampled passing: 0.60-0.70
+p_max                  robust over the sampled 0.75-0.98 range
+p_introduction_min     sampled passing: 0.15-0.25
+shared probe interval  sampled passing: 1-5 days (§6.4: also governs
+                       bootstrap_probe, not independently tunable yet, §9)
+repetition cap         sampled passing: 2-8
+recency window         sampled passing: 10-25
+```
+
+All 6 defaults pass, and every bounded default has at least one neighboring
+sampled value that also passes. Pass 3 does not establish that any default is
+preferable to its neighbors or locate the true boundary of its passing region;
+`config.toml` is unchanged by this pass, matching Pass 1/Pass 2's own discipline
+of characterizing before retuning.
+
+A minority of seeds don't reproduce a check's own scripted precondition at all
+(scenarios.py's own "test setup error:" convention, e.g. no guidance-probe
+failure occurring in a given run) - inconclusive, not evidence either way, and
+excluded from every classification. `sensitivity.py` tracks this as a third
+state per `(value, check)`/`(cell, check)` group (fails / holds / insufficient
+coverage) rather than folding an absence of evidence into "holds," and reports a
+coverage count so a silent evidence gap can't masquerade as a clean result. 85
+individual runs were inconclusive; 3 `(value, check)` groups and 5
+`(cell, check)` groups lacked any conclusive run entirely. In every one of those
+8 cases, the same value or cell had at least one other, independently conclusive
+check that had already failed there, so none of the classifications reported
+above rest on missing evidence.
+
+None of the 4 tested parameter pairs (band width; introduction envelope vs.
+steady-state band; probe interval vs. repetition cap; repetition cap vs. recency
+window) produced a brittle interaction - every combined-cell failure was already
+predictable from an individually-unsafe input in Phase A alone. Two deliberate
+out-of-contract cells (`p_introduction_min >= p_min`) and three
+(`repetition cap >= recency window`, `config.toml`'s own documented assumption)
+were executed and recorded, not conflated with an ordinary interaction finding:
+the three repetition-cap/recency-window out-of-contract cells failed as
+predicted, a pre-registered positive control on the sweep's own plumbing.
+
+**Structural finding, not a value-tuning one:** the sweep's aggressive grid
+exposed a genuine crash in `SchedulerAgent.pick()` (`longitudinal.py`) -
+`repetition_guard()`'s own documented fallback (returning the raw, unfiltered
+trace list when nothing reaches priority ranking) left `NOT_REACHED` candidates
+with `rank_key=None` in the `runners_up` sort, which cannot compare
+`None < None`. Never reached by Pass 1/Pass 2's own configurations; reached the
+moment Pass 3 pushed `p_min`/`p_introduction_min` far enough to genuinely admit
+nothing. Fixed by excluding `rank_key is None` entries from that sort -
+diagnostic-only, touches neither `winner` selection nor `repetition_guard()` nor
+admission itself. This is the kind of finding this document's own
+frozen-unless-structural-failure scope (§2, §9) exists to allow: a state no
+scripted scenario had reached before, not a policy disagreement.
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -703,5 +781,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             invariants.py verifies it mechanically (10 checks),
                             scenarios.py verifies it behaviorally (10 checks,
                             §10), longitudinal.py adapts it into
-                            analysis/learner-model/simulate.py's run() loop
+                            analysis/learner-model/simulate.py's run() loop,
+                            sensitivity.py sweeps the remaining heuristic
+                            values against that same behavioral suite (§10.1)
 ```
