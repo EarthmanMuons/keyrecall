@@ -186,20 +186,77 @@ applied - a candidate that reaches this stage is already known to be eligible).
 has no term that consumes a challenge score - its rank key is eligibility tier
 plus R/I/V/G, nothing else - so a "strongly deprioritize" option here would be
 exactly the dangling-score problem `REQUIRES` had before §7.1: a distinction
-with nowhere to go. The decision is therefore binary:
+with nowhere to go. The decision is therefore binary, reached through one of
+four paths:
 
 ```text
-p_min <= overall_p <= p_max    -> survives, ranked normally in stage 4
-outside the band                -> filtered out
-named exception                 -> bypasses this stage, survives explicitly
+p_min <= overall_p <= p_max              -> survives, normal band
+new material, overall_p >= p_intro_min   -> survives, introduction envelope (§6.1)
+guidance-probe eligible                  -> survives, guidance probe (§6.2)
+recovery / override                      -> survives, named exception
+otherwise                                -> filtered out
 ```
 
-Named exceptions (diagnostic probe, new-material introduction, recovery after
-retrieval failure, explicit learner request, `03-v1-math.md` §21) skip challenge
-filtering entirely rather than widening the band or softening the reject into a
-penalty. If simulation later shows a genuine need for a softer challenge
-concept, that becomes its own named architectural mechanism with a defined
-consumer, not an implicit score threaded through a stage that doesn't read it.
+Simulation (`analysis/scheduler/`, §10) validated two of these paths as genuine
+admission gates rather than unconditional bypasses - not every named exception
+"skips the check entirely." Diagnostic probe, recovery after retrieval failure,
+and explicit learner request remain true bypasses (`override`/`recovery`): they
+skip band evaluation outright, on grounds challenge filtering has no basis to
+second-guess. New-material introduction and guidance fading turned out to need
+their own conditional gates instead, below.
+
+### 6.1 New-material introduction: a conditional envelope, not a blanket bypass
+
+An unseen `TechnicalMaterial` (no `MaterialMemoryState` entry yet) is admitted
+only if `overall_p >= p_introduction_min`, a separate, lower threshold than the
+steady-state band (§9: heuristic, currently 0.15 vs. `p_min`'s 0.60) - still
+`overall_p`, still stage 3's own signal, just a different band for a
+first-contact candidate.
+
+This replaced an earlier, unconditional form (any never-practiced material
+bypassed challenge filtering outright, regardless of realization difficulty).
+Simulation (§10) found that version couldn't produce learner-sensitive
+introductions: `I(e)` reads only competency _variance_, which starts identical
+across learner tiers (§12), and an unconditional bypass meant `overall_p` -
+which the competency _mean_ does drive - never gated admission either, so mean
+had no channel into which realization got introduced at all. Gating on
+`overall_p` against a lower threshold fixes this without touching priority
+ranking: the same `overall_p` every profile already produces determines which
+realizations (tempo, octaves, hands, guidance) clear the bar, so a beginner is
+naturally left with easier realizations and a stronger learner with a broader
+range - no explicit tier branching, and stage 4 still never reconsiders
+difficulty (§7).
+
+### 6.2 Guidance probe: a bounded step back toward independence
+
+§10 documents a failure mode this mechanism exists to close: once a candidate's
+memory looks poor enough that only a cued realization clears the band, a cued
+attempt never tests retrieval at all (`retrieval_succeeded` stays `None`,
+`03-v1-math.md` §18.2 - correctly, not a bug) - so `MaterialMemoryState`'s clock
+can never re-anchor, and the same cued realization keeps winning admission
+indefinitely. Nothing in stages 3-4 as originally specified could recover from
+that: it isn't a ranking problem (§7.2), it's that the only genuinely-tested
+alternative is structurally unable to reach the band on its own.
+
+The guidance probe is a narrow, named exception admitting exactly one step less
+guidance than full cueing (§9: currently `notes_previewed`, not straight to
+unguided), gated on:
+
+```text
+material has a prior confirmed successful retrieval (MaterialMemoryState
+    exists and last_retrieval_at is set - never probes a material that
+    was never genuinely retrieved at all)
+enough elapsed time since that success (§9: heuristic threshold) - not
+    re-probed on literally the next attempt
+```
+
+checked after the `recovery` exception, so a failed probe doesn't immediately
+trigger another probe (`SessionState.last_outcome_failed` routes the next
+attempt to `recovery` instead). A successful probe is a genuine retrieval test,
+so it can re-anchor the clock itself; if it does, normal band admission - not a
+further bypass - is what lets less-guided realizations compete from there. One
+step, not a jump straight to unguided: the probe only needs to restore a genuine
+test, not solve the whole difficulty gap at once.
 
 ## 7. Stage 4: Priority ranking
 
@@ -223,7 +280,7 @@ rank_key(e) = (eligibility_tier(e), U(e))
 ```
 
 Candidates are ordered by tier first, then by `U(e)` (or the lexicographic
-R>I>V>G ordering, §7.3) within a tier. A `PROVISIONALLY_ELIGIBLE` candidate
+R>I>V>G ordering, §7.4) within a tier. A `PROVISIONALLY_ELIGIBLE` candidate
 never outranks a `FULLY_ELIGIBLE` one no matter how strong its retention or
 diversity score is; it remains reachable - for diagnostic probes, material
 introduction, a fallback when no fully-eligible candidate survives stages 1-3,
@@ -247,8 +304,24 @@ This preserves both standing decisions: `REQUIRES` isn't a hard
 Each term reads a different slice of state (`03-v1-math.md` §22):
 
 ```text
-R  retention/review need     MaterialMemoryState only (§23: f(1-M, U_M)).
-                              Not competency, not execution state.
+R  retention/review need     retention_need(material) x retrieval_opportunity(e)
+                              (§23's f(1-M, U_M), now scaled by whether THIS
+                              candidate can act on that need). Simulation
+                              (§10) found the unscaled form let a
+                              continuously-cued candidate win on an
+                              ever-rising retention score even though every
+                              attempt it wins leaves that need exactly as
+                              unresolved as before (retrieval_succeeded stays
+                              None, §18.2, so the memory clock never
+                              re-anchors) - the same contamination shape §2
+                              warns about, a material-level need copied
+                              unscaled onto a candidate that cannot remediate
+                              it. retrieval_opportunity(e) reads
+                              GuidanceContext (retrieval_demand/
+                              retrieval_observed), 0 under continuous cueing;
+                              still MaterialMemoryState plus this candidate's
+                              own evidence-generating properties, the same
+                              category of read I(e) below already allows.
 
 I  information value          Expected uncertainty REDUCTION from presenting
                               THIS candidate, not merely a lookup of current
@@ -278,11 +351,60 @@ G  learner-goal priority      Externally supplied goals/preferences. Not a
                               learner-state estimate.
 ```
 
+**Rejected:** a capability-weighted `I(e)` (each term above multiplied by a
+matching prediction component - `execution_p` for motor/topology,
+`independent_retrieval_p` for memory) was tried in simulation (§10) to give
+competency mean a channel into new-material ranking. It failed on both counts
+that matter: `execution_p` is a direct transform of the same task-difficulty
+signal challenge filtering already consumes
+(`sigmoid(competency - difficulty)`), so reading it in `I(e)` let stage 4
+reconstruct a difficulty-sensitive preference after stage 3 had already made the
+challenge decision - exactly the boundary violation this document exists to
+prevent, caught by the invariant built to catch it - and it didn't even change
+the ranking outcome it was meant to fix, since the component scales
+same-material candidates roughly uniformly. The actual fix belongs to stage 3
+(§6.1), not `I(e)`: `I(e)` stays as originally specified above.
+
 **Forbidden:** re-deriving challenge or difficulty - already decided in stage 3.
 This stage ranks; it does not reject, and no term here may overturn stage 3's
 admission decision or stage 2's eligibility tier (§7.1).
 
-### 7.3 Open
+### 7.3 Selection: repetition guard, then rank
+
+Computing `rank_key(e)` for every admitted candidate (§7.1-§7.2) is not the same
+act as choosing among them. A narrow, named **repetition guard** sits between
+the two: a material selected more than a configured number of consecutive times
+(§9: heuristic, currently 5) is excluded from winning, unless excluding it would
+leave no admitted candidate at all - never the only viable material, which would
+force no selection whatsoever.
+
+Simulation (§10) found this belongs here, not inside `V(e)`: under the
+lexicographic form (§7.1), `V` only ever breaks _exact_ ties in `R` and `I`,
+which continuous-valued state rarely produces, so no numerical diversity
+penalty - however large - could stop a material whose `R`/`I` legitimately
+outrank the alternatives every single time. The guard is therefore a
+selection-time policy, applied after ranking, not another ranking term:
+
+```text
+candidates with rank_key            (§7.1-§7.2, unchanged)
+        |
+        v
+repetition guard                    exclude an over-repeated material's
+                                     candidates from winning, unless doing
+                                     so would leave none admitted
+        |
+        v
+highest rank_key among the rest     the selected exercise
+```
+
+This two-step selection is the scheduler's one canonical choice function,
+implemented as `select_scheduler_choice()` (`analysis/scheduler/pipeline.py`) so
+every real caller goes through both steps together; composing the raw rank
+comparison alone (`select_next(run_pipeline(...))`, skipping the guard) is a
+real gap this document flags explicitly, not a valid shortcut - it silently
+reproduces the perseveration failure the guard exists to prevent.
+
+### 7.4 Open
 
 Whether `U(e)` is a weighted sum or the lexicographic R>I>V>G ordering
 `03-v1-math.md` §22 sketches, the exact weights, and the eligibility-tier
@@ -290,24 +412,34 @@ count/labels are scheduler-simulation work (§9), not decided here.
 
 ## 8. Information boundary summary
 
-| Stage         | Reads                                                                                                                                                      | Must not read                                      | Decision                     |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------- |
-| Generation    | Domain combinatorics, `InstrumentProfile`                                                                                                                  | Any learner state                                  | Generated / not              |
-| `REQUIRES`    | `LatentCompetencyState`                                                                                                                                    | `MaterialMemoryState`, `MaterialExecutionState`    | Eligibility tier (§7.1)      |
-| Safety policy | `SessionState`, session history                                                                                                                            | Competency, memory, execution state                | Suppress / not (per session) |
-| Challenge     | `Prediction.overall_p` (this candidate)                                                                                                                    | Retention, information, diversity, goals; topology | Reject / keep                |
-| Priority      | Eligibility tier (primary key); retention (memory); information (uncertainty + this candidate's evidence potential); diversity (history); goals (external) | Challenge/difficulty (already decided)             | Rank within tier             |
+| Stage         | Reads                                                                                                                                                                                                       | Must not read                                      | Decision                                                      |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
+| Generation    | Domain combinatorics, `InstrumentProfile`                                                                                                                                                                   | Any learner state                                  | Generated / not                                               |
+| `REQUIRES`    | `LatentCompetencyState`                                                                                                                                                                                     | `MaterialMemoryState`, `MaterialExecutionState`    | Eligibility tier (§7.1)                                       |
+| Safety policy | `SessionState`, session history                                                                                                                                                                             | Competency, memory, execution state                | Suppress / not (per session)                                  |
+| Challenge     | `Prediction.overall_p` (this candidate); `MaterialMemoryState` existence/timing and `SessionState.last_outcome_failed` (named exceptions §6.1-§6.2)                                                         | Retention, information, diversity, goals; topology | Reject / keep, via the band or a named exception              |
+| Priority      | Eligibility tier (primary key); retention (memory + this candidate's `retrieval_opportunity`, §7.2); information (uncertainty + this candidate's evidence potential); diversity (history); goals (external) | Challenge/difficulty (already decided)             | Rank within tier, then select via the repetition guard (§7.3) |
 
 ## 9. Deliberately left open
 
 Matching `03-v1-math.md` §25's provenance discipline, none of the following are
-resolved by this document - they are heuristic V1 choices for scheduler
-simulation to narrow, same status as the learner model's `alpha`/`lambda`
-constants before Experiments B/C:
+resolved by this document - they are heuristic V1 choices, currently versioned
+in `analysis/scheduler/config.py`/`config.toml`, same status as the learner
+model's `alpha`/`lambda` constants before Experiments B/C. Simulation (§10)
+validated the _mechanisms_ these constants parameterize; the specific values
+remain exactly as heuristic and revisable as before:
 
 ```text
 challenge-band bounds (p_min, p_max) and their named-exception conditions
-priority weights (w_R, w_I, w_D, w_G) vs. the lexicographic alternative
+p_introduction_min, the separate lower band for new-material introduction
+    (§6.1) - validated as a mechanism, not as a value
+guidance probe's elapsed-time threshold (§6.2) - heuristic value; the
+    currently one-step probe scope is validated behaviorally but remains
+    revisable if later scenarios justify a broader progression policy
+repetition guard's consecutive-selection cap (§7.3) - likewise
+priority weights (w_R, w_I, w_D, w_G) vs. the lexicographic alternative -
+    simulation used and validated lexicographic (§10); the weighted-sum
+    alternative remains untried, not ruled out
 eligibility-tier count/labels and exactly what promotes/demotes a candidate
     between tiers (§7.1)
 whether/how a provisionally-eligible candidate can be deliberately chosen
@@ -316,7 +448,9 @@ whether/how a provisionally-eligible candidate can be deliberately chosen
     filtering's named exceptions (§6), rather than silently reachable only
     when no fully-eligible candidate exists (§7.1)
 I(e)'s exact form for combining current uncertainty with a candidate's
-    evidence potential (§7.2) - not just that both belong in it
+    evidence potential (§7.2) - not just that both belong in it. A
+    capability-weighted variant was tried and rejected (§7.2); the form
+    stated in §7.2 remains the open baseline
 SchedulerSafetyPolicy thresholds ("sustained high-demand" numerically)
 REQUIRES relationships beyond the RH/LH -> HT example
 diversity/interleaving's exact data model and decay
@@ -326,54 +460,81 @@ whether topology gets its own probe-selection signal (§6)
 
 ## 10. Scheduler simulation tests
 
-Only after the learner-state model behaves sensibly should the scheduler be
-introduced - it now has (`03-v1-math.md` §38: 26 invariants, four rounds of
-adversarial review). `03-v1-math.md` §30 already lists the pathologies to test
-for; this section adds the specific properties this document's boundary contract
-implies, without duplicating that list:
+This list is no longer purely aspirational. `analysis/scheduler/` implements the
+boundary contract itself as `pipeline.py`, and verifies it in two complementary
+passes, mirroring the split `03-v1-math.md` §38 established for the learner
+model: `invariants.py` (10 checks) proves the boundary holds mechanically - a
+forbidden input can't move a stage's decision, regardless of whether the
+resulting behavior is any good; `scenarios.py` (7 checks) runs the pipeline
+longitudinally, driving `analysis/learner-model/simulate.py`'s own `run()` loop
+through `SchedulerAgent` (`agent_pick`/`agent_on_outcome` hooks) rather than a
+second update simulator, and asks whether the resulting behavior is actually
+good. Both suites pass alongside the learner model's own 26 invariants.
+
+`03-v1-math.md` §30's pathology list motivated the scenarios below; three of
+them found real problems, which drove the revisions described in §6.1, §6.2,
+§7.2, and §7.3:
 
 ```text
-no endless repetition of one material (§30: "repeating the same material
-    indefinitely" - a V-term failure if diversity has no effect)
-no permanent preference for easiest exercises (§30: "always choosing the
-    easiest exercise" - a challenge-band failure if the band's lower bound
-    isn't enforced, or an I-term failure if information value never competes
-    with retention)
-old material eventually resurfaces (§30: "never revisiting older material"
-    - an R-term failure)
+no endless repetition of one material (§30). Originally failed: a lucky
+    early unguided success anchors MaterialMemoryState's clock, the
+    scheduler then locks onto a fully-cued realization of the same
+    material, and a cued attempt never tests retrieval (retrieval_
+    succeeded stays None, §18.2) - so the clock never re-anchors,
+    R(e)'s old unscaled form keeps rising without bound, and the same
+    material keeps winning. Not a V-term gap: V only breaks exact ties
+    under lexicographic ranking, which continuous state rarely produces.
+    Resolved by candidate-actionable R(e) plus the repetition guard
+    (§7.2, §7.3), not by strengthening V(e).
+
+old material eventually resurfaces (§30). Passed under the original
+    architecture; unaffected by the R(e)/guard revisions.
+
 guidance can fade after successful retrieval (§30: "guidance that never
-    fades"). The primary mechanism is stage 3, not I(e): candidate
-    generation must offer lower-guidance variants; while memory is weak,
-    those variants' material_available_p (and so overall_p) sits below
-    p_min and challenge filtering rejects them outright, not merely
-    deprioritizes them. As MaterialMemoryState improves, material_available_p
-    rises and the lower-guidance variant enters the challenge band - only
-    then does it exist for priority ranking to choose among at all. I(e)'s
-    role is downstream of that: once both guidance variants are admitted,
-    it can help decide between them by their remaining evidence potential
-    (§7.2), but it is not what causes guidance to fade as memory improves -
-    that's the challenge band doing its job. If simulation shows the
-    lower-guidance variant never gets admitted despite strong memory,
-    investigate stage 3 (band bounds, overall_p computation) before R/I/V/G
-guidance is not removed before independent retrieval is plausible (§30:
-    the paired failure mode - challenge filtering using overall_p, not
-    execution_p alone, is specifically what should prevent this)
-failure can increase support without destroying motor challenge (a stage-2
-    vs. stage-3 separation test: a retrieval failure should be able to move
-    the next candidate's GuidanceContext without collapsing ExecutionConditions
-    difficulty to trivial - if it does, guidance and motor difficulty are
-    contaminating each other the way §10.0's single logit once did)
+    fades"). Originally failed, and not for the reason this document
+    first guessed. The original theory - that a lower-guidance variant
+    passively enters the band once memory improves - assumed memory CAN
+    improve while the scheduler leans on cueing. It can't: a cued
+    attempt never tests retrieval at all, so nothing updates
+    MaterialMemoryState while the scheduler stays cued, and it stays
+    cued permanently once it arrives there. Resolved by the guidance
+    probe (§6.2), a narrow admission exception that periodically forces
+    a genuinely-tested, one-step-less-guided attempt; I(e) was never the
+    right lever, as this document originally guessed.
+
+guidance is not removed before independent retrieval is plausible (§30,
+    the paired failure mode). Structurally supported by the guidance
+    probe's own design (one step at a time, gated on a prior confirmed
+    success plus elapsed time, §6.2) but not covered by a dedicated
+    scenario - still open.
+
+failure can increase support without destroying motor challenge. Not
+    covered by a dedicated scenario - still open. check_failure_recovery_
+    is_temporary (analysis/scheduler/scenarios.py) verifies the recovery
+    exception itself clears correctly after a subsequent success, not
+    this specific claim about ExecutionConditions.
+
 new-material selection reflects transferable competency and uncertainty,
-    not a fixed novice default (§24: an experienced learner should be able
-    to receive a demanding initial probe on unseen material - competency
-    priors drive the challenge prediction itself (§6); uncertainty affects
-    selection primarily through I(e) (§7.2), not through the prediction)
+    not a fixed novice default (§24). Originally failed, also not for
+    the reason this document first guessed: I(e) reads only competency
+    variance, not mean, and variance starts identical across learner
+    tiers (§12) - so "uncertainty affects selection primarily through
+    I(e)," as this document originally claimed, gave mean no channel in
+    at all under the old unconditional new-material bypass. Resolved by
+    the conditional introduction envelope (§6.1): the same overall_p
+    every profile already produces (competency mean included) decides
+    which realizations are admitted, not I(e).
 ```
 
-Each of these should become a scripted scenario against the existing synthetic
-learner profiles (`03-v1-math.md` §28) and a pass/fail check, mirroring
-`analysis/learner-model/invariants.py`'s style rather than introducing a new
-verification approach.
+Two further scenarios validate existing architecture rather than resolving a §30
+pathology: eligibility progression (§5.1 - `PROVISIONALLY_ELIGIBLE` to
+`FULLY_ELIGIBLE` as RH/LH competency crosses the `REQUIRES` threshold) and the
+recovery exception's temporariness (§6, checked above). The repetition guard has
+its own dedicated scenario beyond the longitudinal one above, directly proving
+both its properties (excludes an over-repeated material when an alternative
+exists; never forces zero admission when none does) against directly-constructed
+candidates rather than relying on a real run to produce the right conditions
+incidentally.
 
 ## 11. Relationship to existing documents
 
@@ -391,4 +552,10 @@ GLOSSARY.md §6            scheduler structure decision; diagram updated to
                           match §3 above
 GLOSSARY.md §7/§8         InstrumentProfile, SchedulerSafetyPolicy
 v1-domain-model.md §17     REQUIRES
+analysis/scheduler/        executable counterpart to this document: pipeline.py
+                            implements stages 2-4 and the boundary contract,
+                            invariants.py verifies it mechanically (10 checks),
+                            scenarios.py verifies it behaviorally (7 checks,
+                            §10), longitudinal.py adapts it into
+                            analysis/learner-model/simulate.py's run() loop
 ```
