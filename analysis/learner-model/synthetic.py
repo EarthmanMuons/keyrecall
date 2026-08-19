@@ -162,10 +162,21 @@ def sample_outcome(
     retrieval_demand = exercise.guidance.retrieval_demand()
 
     # Independent retrieval: never attenuated by cueing, since it's asking
-    # whether the material would be retrievable without support.
+    # whether the material would be retrievable without support. This is
+    # tracked regardless of guidance - the learner's true internal state
+    # doesn't depend on what the interface reveals - but whether it's
+    # observable to the estimator does; see observed_retrieval_succeeded.
     retrieval_succeeded = rng.random() < true_retrievability
     if retrieval_succeeded:
         true_memory.last_retrieval_at = now
+
+    # Continuous cueing supplies the material outright, so this attempt
+    # never actually tests independent retrieval: report no observation at
+    # all rather than a low-confidence one, so it can't be repeated into
+    # accumulated evidence about a retrieval that was never demonstrated.
+    observed_retrieval_succeeded = (
+        retrieval_succeeded if exercise.guidance.retrieval_observed() else None
+    )
 
     # Starting is broader: cueing can supply enough support to begin even
     # when independent retrieval would have failed. retrieval_demand=0
@@ -207,7 +218,7 @@ def sample_outcome(
     if not started:
         return Outcome(
             started=False,
-            retrieval_succeeded=False,
+            retrieval_succeeded=observed_retrieval_succeeded,
             completed=False,
             material_retrieval=material_retrieval,
             pitch_integrity=0.0,
@@ -227,7 +238,7 @@ def sample_outcome(
 
     return Outcome(
         started=True,
-        retrieval_succeeded=retrieval_succeeded,
+        retrieval_succeeded=observed_retrieval_succeeded,
         completed=completed,
         material_retrieval=material_retrieval,
         pitch_integrity=pitch_integrity,

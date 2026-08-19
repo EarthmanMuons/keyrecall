@@ -28,8 +28,10 @@ class CompetencyParams:
 @dataclass(frozen=True)
 class MaterialMemoryParams:
     initial_half_life_days: float
-    success_growth: float
-    failure_shrink: float
+    alpha_memory: float
+    reversion_lambda: float
+    min_half_life_days: float
+    max_half_life_days: float
     prior_retrievability: float
     prior_uncertainty: float
     min_uncertainty: float
@@ -58,7 +60,6 @@ class DifficultyParams:
     octave_beta: float
     hand_beta: float
     direction_beta: float
-    guidance_beta: float
     reference_tempo_bpm: float
 
 

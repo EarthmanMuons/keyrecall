@@ -10,6 +10,7 @@ Usage:
 
 from __future__ import annotations
 
+import math
 import random
 import sys
 from collections.abc import Callable
@@ -364,11 +365,244 @@ def check_memory_decays_with_elapsed_time() -> None:
     state = LearnerState.new(params)
     memory = state.material_memory_for("C_MAJOR", params)
     memory.last_retrieval_at = 0.0
-    memory.half_life_days = 4.0
+    memory.log_half_life = math.log(4.0)
 
     values = [memory.retrievability(t) for t in (0.0, 1.0, 5.0, 20.0)]
     if not all(a > b for a, b in pairwise(values)):
         raise InvariantFailure(f"retrievability not monotonically decreasing: {values}")
+
+
+def _repeated_unguided_failure(
+    state: LearnerState, params, attempts: int
+) -> list[float]:
+    """Feeds C_MAJOR unguided failures and returns the log_half_life
+    trajectory. Failure, not success, is what the old multiplicative rule
+    couldn't stabilize."""
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+    now = 0.0
+    log_half_lives = []
+    for _ in range(attempts):
+        now += 0.5
+        state.propagate(now, params)
+        outcome = Outcome(
+            started=False,
+            retrieval_succeeded=False,
+            completed=False,
+            material_retrieval=0.0,
+            pitch_integrity=0.0,
+            continuity=0.0,
+            temporal_stability=0.0,
+            achieved_tempo_ratio=0.0,
+            topology_accuracy=0.0,
+        )
+        weights = evidence_weights(exercise, outcome)
+        prediction = predicted_success(state, exercise, now, params)
+        update(state, exercise, outcome, weights, prediction, now, params)
+        log_half_lives.append(state.material_memory["C_MAJOR"].log_half_life)
+    return log_half_lives
+
+
+def check_log_half_life_stays_finite_and_bounded() -> None:
+    """C1: repeated failure (the old rule's worst case, driving h -> 0) must
+    not underflow or overflow log_half_life past the configured guards."""
+    params = load_params()
+    state = LearnerState.new(params)
+    log_half_lives = _repeated_unguided_failure(state, params, attempts=500)
+
+    final = log_half_lives[-1]
+    if not math.isfinite(final):
+        raise InvariantFailure(f"log_half_life not finite: {final}")
+    lo = math.log(params.material_memory.min_half_life_days)
+    hi = math.log(params.material_memory.max_half_life_days)
+    if not (lo - 1e-9 <= final <= hi + 1e-9):
+        raise InvariantFailure(f"log_half_life {final} outside [{lo}, {hi}]")
+
+
+def check_repeated_expected_failures_reach_equilibrium() -> None:
+    """C2's decisive test: the old multiplicative rule collapsed under
+    repeated failure regardless of whether those failures were surprising.
+    Once predicted retrievability already reflects the (here, zero) true
+    rate, further expected failures should settle into a stable interior
+    equilibrium, not keep drifting toward the clip bound."""
+    params = load_params()
+    state = LearnerState.new(params)
+    log_half_lives = _repeated_unguided_failure(state, params, attempts=200)
+
+    late_steps = [abs(b - a) for a, b in pairwise(log_half_lives[-20:])]
+    if max(late_steps) > 0.05:
+        raise InvariantFailure(
+            f"log_half_life still moving substantially after 200 consistent "
+            f"failures instead of reaching equilibrium: max late step="
+            f"{max(late_steps)}"
+        )
+    min_bound = math.log(params.material_memory.min_half_life_days)
+    if log_half_lives[-1] <= min_bound + 1e-6:
+        raise InvariantFailure(
+            "log_half_life pinned at the min clip bound rather than settling "
+            "at an interior equilibrium"
+        )
+
+
+def check_surprising_success_increases_retention() -> None:
+    params = load_params()
+    state = LearnerState.new(params)
+    memory = state.material_memory_for("C_MAJOR", params)
+    memory.last_retrieval_at = 0.0
+    now = 30.0  # long gap: predicted retrievability is low, so a success is surprising
+    state.propagate(now, params)
+
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+    log_half_life_before = memory.log_half_life
+
+    prediction = predicted_success(state, exercise, now, params)
+    outcome = _full_outcome(retrieval_succeeded=True)
+    weights = evidence_weights(exercise, outcome)
+    update(state, exercise, outcome, weights, prediction, now, params)
+
+    if not (memory.log_half_life > log_half_life_before):
+        raise InvariantFailure(
+            f"a surprising successful retrieval did not increase log_half_life: "
+            f"{log_half_life_before} -> {memory.log_half_life}"
+        )
+
+
+def check_surprising_failure_decreases_retention() -> None:
+    params = load_params()
+    state = LearnerState.new(params)
+    memory = state.material_memory_for("C_MAJOR", params)
+    memory.last_retrieval_at = 0.0
+    now = 0.1  # short gap: predicted retrievability is high, so a failure is surprising
+    state.propagate(now, params)
+
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+    log_half_life_before = memory.log_half_life
+
+    prediction = predicted_success(state, exercise, now, params)
+    outcome = Outcome(
+        started=False,
+        retrieval_succeeded=False,
+        completed=False,
+        material_retrieval=0.0,
+        pitch_integrity=0.0,
+        continuity=0.0,
+        temporal_stability=0.0,
+        achieved_tempo_ratio=0.0,
+        topology_accuracy=0.0,
+    )
+    weights = evidence_weights(exercise, outcome)
+    update(state, exercise, outcome, weights, prediction, now, params)
+
+    if not (memory.log_half_life < log_half_life_before):
+        raise InvariantFailure(
+            f"a surprising retrieval failure did not decrease log_half_life: "
+            f"{log_half_life_before} -> {memory.log_half_life}"
+        )
+
+
+def _cued_no_retrieval_probe_outcome() -> Outcome:
+    """Continuous cueing: retrieval_succeeded=None because independent
+    retrieval was never tested, not because it was tested and failed."""
+    return Outcome(
+        started=True,
+        retrieval_succeeded=None,
+        completed=True,
+        material_retrieval=1.0,
+        pitch_integrity=1.0,
+        continuity=1.0,
+        temporal_stability=1.0,
+        achieved_tempo_ratio=1.0,
+        topology_accuracy=1.0,
+    )
+
+
+def check_unobserved_retrieval_never_moves_memory_state() -> None:
+    """A fully cued execution with no independent-retrieval probe
+    (retrieval_succeeded=None) must produce zero MaterialMemory evidence
+    and leave log_half_life exactly unchanged, however many times it's
+    repeated. Tests both sides of the prior: an established high half-life
+    should stay high and an established low one should stay low, so
+    cueing can't silently pull either toward the prior via repetition."""
+    params = load_params()
+    exercise = fixed_exercise(
+        C_MAJOR, "RIGHT", guidance=GuidanceContext(concurrent_pitch_cues=True)
+    )
+    outcome = _cued_no_retrieval_probe_outcome()
+
+    for initial_half_life_days in (100.0, 0.5):
+        state = LearnerState.new(params)
+        memory = state.material_memory_for("C_MAJOR", params)
+        memory.log_half_life = math.log(initial_half_life_days)
+        memory.last_retrieval_at = 0.0
+        log_half_life_before = memory.log_half_life
+
+        now = 0.0
+        for _ in range(50):
+            now += 0.5
+            state.propagate(now, params)
+            weights = evidence_weights(exercise, outcome)
+            if weights.material_memory != 0.0:
+                raise InvariantFailure(
+                    f"unobserved retrieval got nonzero material_memory weight: "
+                    f"{weights.material_memory}"
+                )
+            prediction = predicted_success(state, exercise, now, params)
+            update(state, exercise, outcome, weights, prediction, now, params)
+
+        if memory.log_half_life != log_half_life_before:
+            raise InvariantFailure(
+                f"50 fully cued attempts with no retrieval probe moved "
+                f"log_half_life (initial {initial_half_life_days}d): "
+                f"{log_half_life_before} -> {memory.log_half_life}"
+            )
+
+
+def check_observed_low_demand_failures_accumulate_evidence() -> None:
+    """The companion to check_unobserved_retrieval_never_moves_memory_state:
+    when retrieval genuinely is observed (retrieval_succeeded is a real
+    bool, e.g. under notes_previewed rather than concurrent cueing), weak
+    evidence should still accumulate over repetition rather than being
+    suppressed - confirming the fix didn't zero out real evidence along
+    with the unobserved case."""
+    params = load_params()
+    exercise = fixed_exercise(
+        C_MAJOR, "RIGHT", guidance=GuidanceContext(notes_previewed=True)
+    )
+    outcome = Outcome(
+        started=True,
+        retrieval_succeeded=False,
+        completed=True,
+        material_retrieval=0.0,
+        pitch_integrity=0.0,
+        continuity=1.0,
+        temporal_stability=1.0,
+        achieved_tempo_ratio=1.0,
+        topology_accuracy=1.0,
+    )
+
+    state = LearnerState.new(params)
+    memory = state.material_memory_for("C_MAJOR", params)
+    memory.log_half_life = math.log(100.0)
+    memory.last_retrieval_at = 0.0
+    log_half_life_before = memory.log_half_life
+
+    now = 0.0
+    for _ in range(20):
+        now += 0.5
+        state.propagate(now, params)
+        weights = evidence_weights(exercise, outcome)
+        if weights.material_memory <= 0.0:
+            raise InvariantFailure(
+                f"genuinely observed low-demand failure got zero weight: "
+                f"{weights.material_memory}"
+            )
+        prediction = predicted_success(state, exercise, now, params)
+        update(state, exercise, outcome, weights, prediction, now, params)
+
+    if not (memory.log_half_life < log_half_life_before):
+        raise InvariantFailure(
+            f"20 genuinely observed retrieval failures did not lower "
+            f"log_half_life: {log_half_life_before} -> {memory.log_half_life}"
+        )
 
 
 def check_full_cueing_gives_little_memory_evidence() -> None:
@@ -634,6 +868,30 @@ CHECKS: list[tuple[str, Callable[[], None]]] = [
         check_material_specific_residual_does_not_contaminate_competency,
     ),
     ("memory decays with elapsed time", check_memory_decays_with_elapsed_time),
+    (
+        "log_half_life stays finite and bounded under repeated failure",
+        check_log_half_life_stays_finite_and_bounded,
+    ),
+    (
+        "repeated expected failures reach a stable equilibrium, not collapse",
+        check_repeated_expected_failures_reach_equilibrium,
+    ),
+    (
+        "a surprising successful retrieval increases retention",
+        check_surprising_success_increases_retention,
+    ),
+    (
+        "a surprising retrieval failure decreases retention",
+        check_surprising_failure_decreases_retention,
+    ),
+    (
+        "unobserved retrieval (continuous cueing) never moves memory state",
+        check_unobserved_retrieval_never_moves_memory_state,
+    ),
+    (
+        "genuinely observed low-demand failures accumulate evidence",
+        check_observed_low_demand_failures_accumulate_evidence,
+    ),
     (
         "full cueing gives little memory evidence",
         check_full_cueing_gives_little_memory_evidence,

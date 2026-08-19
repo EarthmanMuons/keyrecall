@@ -169,7 +169,10 @@ def predicted_success(
 @dataclass(frozen=True)
 class Outcome:
     started: bool  # did execution begin at all (cueing can make this true)
-    retrieval_succeeded: bool  # independent retrieval, NOT attenuated by cueing
+    # True/False: independent retrieval was tested, NOT attenuated by
+    # cueing. None: this attempt wasn't an independent-retrieval
+    # observation at all (e.g. concurrent pitch cues), not a tested failure.
+    retrieval_succeeded: bool | None
     completed: bool
     material_retrieval: float  # [0,1], continuous, cue-inclusive observation
     pitch_integrity: float
@@ -194,11 +197,13 @@ def evidence_weights(exercise: Exercise, outcome: Outcome) -> EvidenceWeights:
     relevant = [k for k, v in q.items() if v]
 
     if not outcome.started:
-        # Informative about memory, almost nothing about execution (§20.6).
+        # Informative about memory, almost nothing about execution (§20.6) -
+        # unless retrieval wasn't even being tested (continuous cueing),
+        # in which case this attempt yields no memory evidence either.
         return EvidenceWeights(
             competencies=dict.fromkeys(COMPETENCIES, 0.0),
             material_execution=0.0,
-            material_memory=0.8,
+            material_memory=0.0 if outcome.retrieval_succeeded is None else 0.8,
         )
 
     execution_weight = 1.0 if outcome.completed else 0.4
@@ -215,7 +220,13 @@ def evidence_weights(exercise: Exercise, outcome: Outcome) -> EvidenceWeights:
         else:
             competency_weights[k] = execution_weight
 
-    memory_weight = retrieval_demand * (1.0 if outcome.completed else 0.6)
+    # None: retrieval wasn't observed (continuous cueing), not a tested
+    # failure - this attempt gives zero MaterialMemory evidence, however
+    # many times it's repeated, rather than accumulating as weak evidence.
+    if outcome.retrieval_succeeded is None:
+        memory_weight = 0.0
+    else:
+        memory_weight = retrieval_demand * (1.0 if outcome.completed else 0.6)
 
     return EvidenceWeights(
         competencies=competency_weights,
@@ -289,8 +300,6 @@ def update(
         )
         execution_state.last_evidence_at = now
 
-    # This multiplicative half-life rule has no lower equilibrium: repeated
-    # failures drive it toward 0 (unbounded geometric shrink).
     memory_state = state.material_memory_for(material_id, params)
     had_ever_retrieved = memory_state.last_retrieval_at is not None
     if weights.material_memory > 0.0:
@@ -298,16 +307,22 @@ def update(
         # merely starting: cueing can make outcome.started true without
         # retrieval_succeeded, and that should not count as evidence the
         # material is independently retrievable.
-        factor = (
-            params.material_memory.success_growth
-            if outcome.retrieval_succeeded
-            else params.material_memory.failure_shrink
+        mm = params.material_memory
+        y_retrieval = 1.0 if outcome.retrieval_succeeded else 0.0
+        delta_memory = y_retrieval - prediction.independent_retrieval_p
+        log_half_life_prior = math.log(mm.initial_half_life_days)
+        new_log_half_life = memory_state.log_half_life + weights.material_memory * (
+            mm.alpha_memory * delta_memory
+            - mm.reversion_lambda * (memory_state.log_half_life - log_half_life_prior)
         )
-        memory_state.half_life_days *= factor**weights.material_memory
+        memory_state.log_half_life = min(
+            max(new_log_half_life, math.log(mm.min_half_life_days)),
+            math.log(mm.max_half_life_days),
+        )
         memory_state.uncertainty = max(
-            params.material_memory.min_uncertainty,
+            mm.min_uncertainty,
             memory_state.uncertainty
-            * (1 - params.material_memory.evidence_shrinkage * weights.material_memory),
+            * (1 - mm.evidence_shrinkage * weights.material_memory),
         )
         if not had_ever_retrieved and not outcome.retrieval_succeeded:
             # No successful retrieval has ever anchored the half-life clock,
@@ -315,11 +330,7 @@ def update(
             memory_state.cold_start_estimate = max(
                 0.0,
                 memory_state.cold_start_estimate
-                * (
-                    1
-                    - params.material_memory.evidence_shrinkage
-                    * weights.material_memory
-                ),
+                * (1 - mm.evidence_shrinkage * weights.material_memory),
             )
 
     if outcome.retrieval_succeeded:  # clock resets on independent retrieval only

@@ -85,24 +85,12 @@ def _scale_value(base: float, factor: float) -> float:
     return base * factor
 
 
-def _scale_distance_from_one(base: float, factor: float) -> float:
-    """For growth/shrink multipliers whose neutral value is 1, not 0
-    (03-v1-math.md §25: success_growth > 1, 0 < failure_shrink < 1).
-    Scaling the raw value can cross that boundary (e.g. success_growth
-    0.5x would drop below 1 and start shrinking on success); scaling the
-    distance from 1 keeps every factor on the same side of it."""
-    return 1 + factor * (base - 1)
-
-
-# (params.toml section, field, value transform). Most parameters have no
-# semantic boundary at a nonzero value, so raw multiplication is fine; the
-# growth/shrink pair needs _scale_distance_from_one instead.
 SWEEP_PARAMETERS: list[tuple[str, str, Callable[[float, float], float]]] = [
     ("competency", "learning_rate", _scale_value),
     ("competency", "uncertainty_diffusion", _scale_value),
     ("competency", "evidence_shrinkage", _scale_value),
-    ("material_memory", "success_growth", _scale_distance_from_one),
-    ("material_memory", "failure_shrink", _scale_distance_from_one),
+    ("material_memory", "alpha_memory", _scale_value),
+    ("material_memory", "reversion_lambda", _scale_value),
     ("material_execution", "learning_rate", _scale_value),
     ("material_execution", "mean_reversion_tau_days", _scale_value),
     ("hand_transfer", "rho_hand", _scale_value),
@@ -119,8 +107,8 @@ RELEVANT_METRICS: dict[tuple[str, str], tuple[str, ...]] = {
     ("competency", "learning_rate"): ("final_competency_error",),
     ("competency", "uncertainty_diffusion"): ("final_competency_error",),
     ("competency", "evidence_shrinkage"): ("final_competency_error",),
-    ("material_memory", "success_growth"): ("memory_retrievability_error",),
-    ("material_memory", "failure_shrink"): ("memory_retrievability_error",),
+    ("material_memory", "alpha_memory"): ("memory_retrievability_error",),
+    ("material_memory", "reversion_lambda"): ("memory_retrievability_error",),
     ("material_execution", "learning_rate"): ("residual_localization_gap",),
     ("material_execution", "mean_reversion_tau_days"): ("residual_localization_gap",),
     ("hand_transfer", "rho_hand"): ("hand_transfer_effect",),
@@ -277,6 +265,60 @@ def memory_tracking_rows(
                 "retrieval_succeeded": outcome.retrieval_succeeded,
             }
         )
+    return rows
+
+
+MEMORY_SPACING_LEVELS = {
+    "1_minute": 1.0 / (24 * 60),
+    "1_hour": 1.0 / 24,
+    "1_day": 1.0,
+    "1_week": 7.0,
+}
+
+
+def memory_spacing_sensitivity_rows(params: Params) -> list[dict[str, Any]]:
+    """Diagnostic, not an invariant: the log-half-life update has no
+    explicit elapsed-time term of its own, only whatever timing information
+    flows through delta_memory via predicted_independent_retrieval_p's own
+    decay formula. Runs 10 successful retrievals of the same material at
+    each of several fixed spacings and reports the resulting log_half_life
+    trajectory, to expose whether that's enough to tell "recalled reliably
+    every minute" apart from "recalled reliably every week" - not to fix it
+    if it isn't."""
+    rows = []
+    for label, spacing_days in MEMORY_SPACING_LEVELS.items():
+        state = LearnerState.new(params)
+        exercise = fixed_exercise(C_MAJOR, "RIGHT")
+        outcome = Outcome(
+            started=True,
+            retrieval_succeeded=True,
+            completed=True,
+            material_retrieval=1.0,
+            pitch_integrity=1.0,
+            continuity=1.0,
+            temporal_stability=1.0,
+            achieved_tempo_ratio=1.0,
+            topology_accuracy=1.0,
+        )
+        now = 0.0
+        for i in range(10):
+            now += spacing_days
+            state.propagate(now, params)
+            weights = evidence_weights(exercise, outcome)
+            prediction = predicted_success(state, exercise, now, params)
+            update(state, exercise, outcome, weights, prediction, now, params)
+            memory = state.material_memory["C_MAJOR"]
+            rows.append(
+                {
+                    "spacing": label,
+                    "spacing_days": spacing_days,
+                    "attempt_index": i,
+                    "at_days": now,
+                    "predicted_independent_retrieval_p": prediction.independent_retrieval_p,
+                    "log_half_life": memory.log_half_life,
+                    "half_life_days": memory.half_life_days,
+                }
+            )
     return rows
 
 
@@ -483,7 +525,11 @@ def guidance_sensitivity_rows(params: Params) -> list[dict[str, Any]]:
     for level, guidance in GUIDANCE_LEVELS.items():
         exercise = fixed_exercise(C_MAJOR, "RIGHT", guidance=guidance)
         prediction = predicted_success(state, exercise, now=1.0, params=params)
-        weights = evidence_weights(exercise, FULL_OUTCOME)
+        outcome = dataclasses.replace(
+            FULL_OUTCOME,
+            retrieval_succeeded=(True if guidance.retrieval_observed() else None),
+        )
+        weights = evidence_weights(exercise, outcome)
         rows.append(
             {
                 "guidance_level": level,
@@ -703,6 +749,7 @@ def report(
     calibration: list[dict[str, Any]],
     convergence: list[dict[str, Any]],
     memory: list[dict[str, Any]],
+    memory_spacing: list[dict[str, Any]],
     residual: list[dict[str, Any]],
     uncertainty: list[dict[str, Any]],
     hand_transfer: list[dict[str, Any]],
@@ -751,6 +798,16 @@ def report(
         f"{gaps[0]:.3f}/{gaps[-1]:.3f} can understate divergence because both "
         f"retrievability estimates may approach 0 late in the run"
     )
+    print()
+
+    print("Memory spacing sensitivity, half_life_days after 10 successes:")
+    for label in MEMORY_SPACING_LEVELS:
+        final_half_life = next(
+            row["half_life_days"]
+            for row in memory_spacing
+            if row["spacing"] == label and row["attempt_index"] == 9
+        )
+        print(f"  every {label:<8} -> {final_half_life:.3f} days")
     print()
 
     control_gaps = [row["gap"] for row in residual if row["condition"] == "control"]
@@ -841,6 +898,7 @@ def main() -> None:
     calibration = calibration_rows(params)
     convergence = competency_convergence_rows(params)
     memory = memory_tracking_rows(params)
+    memory_spacing = memory_spacing_sensitivity_rows(params)
     residual = residual_localization_rows(params)
     uncertainty = uncertainty_behavior_rows(params)
     hand_transfer = hand_transfer_rows(params)
@@ -852,6 +910,7 @@ def main() -> None:
         "calibration.csv": calibration,
         "competency_convergence.csv": convergence,
         "memory_tracking.csv": memory,
+        "memory_spacing_sensitivity.csv": memory_spacing,
         "residual_localization.csv": residual,
         "uncertainty_behavior.csv": uncertainty,
         "hand_transfer.csv": hand_transfer,
@@ -866,6 +925,7 @@ def main() -> None:
         calibration,
         convergence,
         memory,
+        memory_spacing,
         residual,
         uncertainty,
         hand_transfer,

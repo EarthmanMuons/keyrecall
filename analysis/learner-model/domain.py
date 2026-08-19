@@ -56,6 +56,13 @@ class GuidanceContext:
             return 0.6
         return 1.0
 
+    def retrieval_observed(self) -> bool:
+        """Whether this attempt can serve as an independent-retrieval
+        observation at all. Concurrent pitch cues supply the material
+        continuously, so independent retrieval is never actually tested,
+        regardless of how low retrieval_demand() says the bar was."""
+        return not self.concurrent_pitch_cues
+
 
 @dataclass(frozen=True)
 class Exercise:

@@ -45,10 +45,14 @@ class CompetencyState:
 @dataclass
 class MaterialMemoryState:
     material_id: str
-    half_life_days: float
+    log_half_life: float
     uncertainty: float
     cold_start_estimate: float
     last_retrieval_at: float | None = None
+
+    @property
+    def half_life_days(self) -> float:
+        return math.exp(self.log_half_life)
 
     def retrievability(self, now: float) -> float:
         """M(t), §5. Raises if never retrieved; see retrievability_or_prior()."""
@@ -130,7 +134,7 @@ class LearnerState:
         if material_id not in self.material_memory:
             self.material_memory[material_id] = MaterialMemoryState(
                 material_id=material_id,
-                half_life_days=params.material_memory.initial_half_life_days,
+                log_half_life=math.log(params.material_memory.initial_half_life_days),
                 uncertainty=params.material_memory.prior_uncertainty,
                 cold_start_estimate=params.material_memory.prior_retrievability,
             )
@@ -169,6 +173,7 @@ class LearnerState:
             "material_memory": {
                 mid: {
                     "half_life_days": m.half_life_days,
+                    "log_half_life": m.log_half_life,
                     "uncertainty": m.uncertainty,
                     "cold_start_estimate": m.cold_start_estimate,
                     "last_retrieval_at": m.last_retrieval_at,
