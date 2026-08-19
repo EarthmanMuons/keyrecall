@@ -1,0 +1,51 @@
+model_version = "v1-prototype-0"
+
+# Every value below is a heuristic V1 choice (docs/learner-model/03-v1-math.md
+# §25), not a research-established coefficient. Kept out of state.py/model.py
+# so it can be swapped without touching logic.
+
+[competency]
+prior_mean = 0.0
+prior_variance = 1.0
+min_variance = 0.05
+learning_rate = 0.15
+uncertainty_diffusion = 0.01
+evidence_shrinkage = 0.3
+
+[material_memory]
+initial_half_life_days = 3.0
+success_growth = 1.4
+failure_shrink = 0.6
+prior_retrievability = 0.4
+prior_uncertainty = 1.0
+min_uncertainty = 0.05
+evidence_shrinkage = 0.3
+
+[material_execution]
+prior_variance = 0.5
+min_variance = 0.05
+learning_rate = 0.2
+mean_reversion_tau_days = 14.0
+uncertainty_diffusion = 0.02
+evidence_shrinkage = 0.3
+
+[hand_transfer]
+rho_hand = 0.3
+shrinkage_tau = 0.5
+
+[performance]
+gamma_memory = 0.25
+
+[difficulty]
+tempo_beta = 0.4
+octave_beta = 0.3
+hand_beta = 0.2
+direction_beta = 0.15
+guidance_beta = 0.5
+reference_tempo_bpm = 80.0
+
+[placement]
+beginner_mean = -1.0
+some_experience_mean = 0.0
+advanced_mean = 1.0
+prior_variance_broad = 1.5

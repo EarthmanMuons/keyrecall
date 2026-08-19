@@ -16,10 +16,11 @@ run = "uvx ruff@latest check analysis"
 
 [tasks."python:check"]
 description = "Format-check and lint Python tooling"
-depends = [
-  "python:format-check",
-  "python:lint",
-]
+depends = ["python:format-check", "python:lint"]
+
+[tasks."analysis:learner-model"]
+description = "Run learner-model simulation invariant checks"
+run = "uv run analysis/learner-model/invariants.py"
 
 [tasks."analysis:scale-motor"]
 description = "Verify scale motor taxonomy and generate analysis artifacts"
