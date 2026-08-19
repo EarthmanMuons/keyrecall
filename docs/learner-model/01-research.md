@@ -91,18 +91,21 @@ limitations around actions requiring multiple skills.
 
 A logistic family gives a useful general form:
 
-\[ P(`\text{success}`{=tex}) =
-`\sigma`{=tex}(`\text{learner/skill state}`{=tex} +
-`\text{practice evidence}`{=tex} + `\ldots`{=tex}) \]
+```math
+P(\text{success}) = \sigma(\text{learner/skill state} + \text{practice evidence} + \ldots)
+```
 
 where:
 
-\[ `\sigma`{=tex}(x) = `\frac{1}{1 + e^{-x}}`{=tex} \]
+```math
+\sigma(x) = \frac{1}{1 + e^{-x}}
+```
 
 This is attractive because KeyRecall can eventually model:
 
-\[ P(`\text{performance}`{=tex} `\mid`{=tex}`\text{competencies}`{=tex},
-`\text{task features}`{=tex}, `\text{history}`{=tex}) \]
+```math
+P(\text{performance} \mid \text{competencies}, \text{task features}, \text{history})
+```
 
 without turning every task feature into a separate latent skill.
 
@@ -147,9 +150,11 @@ https://arxiv.org/abs/1905.06873
 Settles and Meeder introduced Half-Life Regression (HLR), modeling recall
 probability as:
 
-\[ P(`\text{recall}`{=tex}) = 2\^{-`\Delta`{=tex}/h} \]
+```math
+P(\text{recall}) = 2^{-\Delta/h}
+```
 
-where (`\Delta`{=tex}) is elapsed time and (h) is estimated memory half-life.
+where $\Delta$ is elapsed time and $h$ is estimated memory half-life.
 
 HLR provides precedent for maintaining time-sensitive state for an **exact
 item**. Thus D harmonic minor can have its own practice/forgetting history while
@@ -280,9 +285,9 @@ as **difficulty/context dimensions**, not separate latent skills.
 
 KeyRecall should eventually estimate something closer to:
 
-\[ P(`\text{successful execution}`{=tex} `\mid`{=tex}
-`\text{learner state}`{=tex}, `\text{tempo}`{=tex}, `\text{octaves}`{=tex},
-`\text{hands}`{=tex}, `\ldots`{=tex}) \]
+```math
+P(\text{successful execution} \mid \text{learner state}, \text{tempo}, \text{octaves}, \text{hands}, \ldots)
+```
 
 This suggests a **performance frontier** rather than a single static mastery
 percentage.
@@ -344,10 +349,9 @@ characteristics. Multidimensional IRT generalizes ability to a vector.
 
 A common multidimensional logistic form is:
 
-\[ P_i(`\boldsymbol{\theta}`{=tex}) =
-`\frac{\exp(\mathbf{a}_i^\prime\boldsymbol{\theta}+d_i)}`{=tex}
-{1+`\exp`{=tex}(`\mathbf{a}`{=tex}\_i\^`\prime`{=tex}`\boldsymbol{\theta}`{=tex}+d_i)}
-\]
+```math
+P_i(\boldsymbol{\theta}) = \frac{\exp(\mathbf{a}_i^\prime\boldsymbol{\theta}+d_i)}{1+\exp(\mathbf{a}_i^\prime\boldsymbol{\theta}+d_i)}
+```
 
 Computerized Adaptive Testing selects items that are especially informative
 about current ability estimates. Multidimensional CAT extends this to multiple
@@ -1203,8 +1207,9 @@ independent retrievability.
 Material-memory evidence should depend on observed performance and retrieval
 support:
 
-\[ E\_{`\text{material memory}`{=tex}} = f(`\text{performance}`{=tex},
-`\text{guidance}`{=tex}, `\text{prior exposure}`{=tex}) \]
+```math
+E_{\text{material memory}} = f(\text{performance}, \text{guidance}, \text{prior exposure})
+```
 
 This is a conceptual relationship rather than a finalized equation.
 
@@ -1393,9 +1398,9 @@ learner x material-specific effect
 
 A schematic logistic form is:
 
-\[ `\operatorname{logit}`{=tex} P(Y\_{u,m,t}) =
-`\mathbf{x}`{=tex}_{u,m,t}\^`\top`{=tex}`\boldsymbol{\beta}`{=tex} + b_u + c_m +
-r_{u,m} \]
+```math
+\operatorname{logit} P(Y_{u,m,t}) = \mathbf{x}_{u,m,t}^\top\boldsymbol{\beta} + b_u + c_m + r_{u,m}
+```
 
 where `r_(u,m)` represents a learner-specific deviation for material `m`. This
 equation is a KeyRecall synthesis, not an equation taken directly from one cited
@@ -1493,11 +1498,15 @@ without establishing its temporal dynamics.
 
 The appropriate conceptual extension is:
 
-\[ r\_{u,m}(t) \]
+```math
+r_{u,m}(t)
+```
 
 rather than a permanently fixed:
 
-\[ r\_{u,m} \]
+```math
+r_{u,m}
+```
 
 Dynamic and longitudinal IRT models provide precedent for allowing latent
 learner state to evolve through time and for modeling repeated observations at
@@ -1625,7 +1634,9 @@ LearnerState
 For a new material/context combination, the residual should begin near the
 shared expectation with high uncertainty:
 
-\[ r\_{u,m}(t) `\approx 0`{=tex} \]
+```math
+r_{u,m}(t) \approx 0
+```
 
 Prediction can therefore fall back naturally to transferable competencies,
 material-memory priors, and known task difficulty. No special isolated
@@ -1678,16 +1689,18 @@ estimated from data.
 
 A useful conceptual utility is:
 
-\[ U(e) = w_L L(e) + w_R R(e) + w_I I(e) + w_G G(e) + w_D D(e) - w_C C(e) \]
+```math
+U(e) = w_L L(e) + w_R R(e) + w_I I(e) + w_G G(e) + w_D D(e) - w_C C(e)
+```
 
 where:
 
-- (L(e)): expected learning gain;
-- (R(e)): retention/review need;
-- (I(e)): information value;
-- (G(e)): relevance to selected goals;
-- (D(e)): useful diversity/interleaving; and
-- (C(e)): excessive difficulty, frustration, or time cost.
+- $L(e)$: expected learning gain;
+- $R(e)$: retention/review need;
+- $I(e)$: information value;
+- $G(e)$: relevance to selected goals;
+- $D(e)$: useful diversity/interleaving; and
+- $C(e)$: excessive difficulty, frustration, or time cost.
 
 This is **not an established canonical formula**. It is a proposed KeyRecall
 abstraction whose terms have research foundations:

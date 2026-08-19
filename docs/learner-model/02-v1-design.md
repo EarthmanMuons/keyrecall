@@ -568,7 +568,9 @@ longitudinal evidence demonstrates the need for multidimensional residual state.
 A new material/execution-context residual begins near the shared expectation
 with high uncertainty:
 
-\[ r\_{u,m,c}(t) `\approx 0`{=tex} \]
+```math
+r_{u,m,c}(t) \approx 0
+```
 
 Prediction therefore falls back naturally to:
 
@@ -692,15 +694,15 @@ information.
 
 Conceptually:
 
-\[ P(Y) = f( `\text{LatentCompetencyState}`{=tex},
-`\text{MaterialMemoryState}`{=tex}, `\text{MaterialExecutionState}`{=tex},
-`\text{TaskFeatures}`{=tex}, `\text{GuidanceContext}`{=tex} ) \]
+```math
+P(Y) = f(\text{LatentCompetencyState}, \text{MaterialMemoryState}, \text{MaterialExecutionState}, \text{TaskFeatures}, \text{GuidanceContext})
+```
 
 A mixed-effects-inspired schematic is:
 
-\[ `\operatorname{logit}`{=tex} P(Y\_{u,m,c,t}) =
-`\mathbf{x}`{=tex}_{u,m,c,t}\^{`\top`{=tex}}`\boldsymbol{\beta}`{=tex} +
-r_{u,m,c}(t) \]
+```math
+\operatorname{logit} P(Y_{u,m,c,t}) = \mathbf{x}_{u,m,c,t}^{\top}\boldsymbol{\beta} + r_{u,m,c}(t)
+```
 
 where the feature vector can incorporate shared competency state,
 material-memory state, and task predictors, while `r` captures the dynamic

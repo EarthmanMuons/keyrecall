@@ -258,12 +258,12 @@ quantities within itself:
 collide with anything and can stay as-is.
 
 `D(e)` (the pre-hurdle-split "total task difficulty") and `G_e`
-(guidance/support difficulty effect, formerly a term inside it) are retired,
-not renamed: simulation (`analysis/learner-model/`) split retrieval
-availability from execution difficulty, and guidance now affects the former,
-not the latter (`03-v1-math.md` §10-11, §18). `D(e)` became `D_motor(e)`
-above; `G_e` has no successor symbol because it no longer corresponds to
-anything the model computes.
+(guidance/support difficulty effect, formerly a term inside it) are retired, not
+renamed: simulation (`analysis/learner-model/`) split retrieval availability
+from execution difficulty, and guidance now affects the former, not the latter
+(`03-v1-math.md` §10-11, §18). `D(e)` became `D_motor(e)` above; `G_e` has no
+successor symbol because it no longer corresponds to anything the model
+computes.
 
 ## 12. Placement priors: self-report maps primarily to the mean, not the variance
 

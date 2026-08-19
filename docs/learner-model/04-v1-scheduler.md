@@ -3,8 +3,8 @@
 ## 1. Purpose
 
 This document specifies the V1 scheduler's pipeline and, specifically, the
-information boundary between its stages: what each stage may read, what
-decision it is allowed to make, and what it must leave to a different stage.
+information boundary between its stages: what each stage may read, what decision
+it is allowed to make, and what it must leave to a different stage.
 
 It is subordinate to `01-research.md`, `02-v1-design.md`, and `03-v1-math.md`
 §20-23, which remain authoritative for the underlying math (the challenge-band
@@ -12,38 +12,37 @@ formula, the priority-utility form, review urgency). This document does not
 re-derive that math or freeze numeric weights/bounds; those stay heuristic V1,
 versioned, and open to simulation-driven revision, same as every constant in
 `03-v1-math.md` §25-26. What this document adds is architectural: which stage
-gets to look at which piece of state, stated precisely enough that violating
-it is a visible design error, not just a code-review judgment call.
+gets to look at which piece of state, stated precisely enough that violating it
+is a visible design error, not just a code-review judgment call.
 
 ## 2. Why the boundary needs to be explicit
 
-The learner-model experiments (`03-v1-math.md` §38, invariants 14-18) found
-the same failure shape five separate times: a shared or blended signal let
-one part of the model manufacture apparent learning it hadn't earned. A
-single performance logit let memory contaminate motor competencies. A shared
-execution channel let motor evidence contaminate topology. A shared
-prediction/evidence pathway let a badly calibrated retrieval estimate look
-like motor learning. A shared uncertainty field let pre-anchor evidence
-manufacture confidence about a quantity it had never spoken to. Every fix was
-the same shape: give the contaminated thing its own prediction, its own
-evidence, and (where applicable) its own uncertainty - never a numerical
-patch layered on top of the shared signal.
+The learner-model experiments (`03-v1-math.md` §38, invariants 14-18) found the
+same failure shape five separate times: a shared or blended signal let one part
+of the model manufacture apparent learning it hadn't earned. A single
+performance logit let memory contaminate motor competencies. A shared execution
+channel let motor evidence contaminate topology. A shared prediction/evidence
+pathway let a badly calibrated retrieval estimate look like motor learning. A
+shared uncertainty field let pre-anchor evidence manufacture confidence about a
+quantity it had never spoken to. Every fix was the same shape: give the
+contaminated thing its own prediction, its own evidence, and (where applicable)
+its own uncertainty - never a numerical patch layered on top of the shared
+signal.
 
-The scheduler is built from four stages that each answer a different
-question about a candidate exercise. Nothing stops one stage's code from
-reaching into state that belongs to another stage's question, and unlike the
-learner model, that mistake would not _automatically_ show up as an
-invariant failure - it would show up as a scheduler that behaves plausibly
-while quietly answering the wrong question, unless the invariants are
-written specifically to make that visible (§10). This document exists to
-make that mistake visible before it's written, not to rediscover it through
-simulation the way the learner model did.
+The scheduler is built from four stages that each answer a different question
+about a candidate exercise. Nothing stops one stage's code from reaching into
+state that belongs to another stage's question, and unlike the learner model,
+that mistake would not _automatically_ show up as an invariant failure - it
+would show up as a scheduler that behaves plausibly while quietly answering the
+wrong question, unless the invariants are written specifically to make that
+visible (§10). This document exists to make that mistake visible before it's
+written, not to rediscover it through simulation the way the learner model did.
 
 The general rule, stated once so every section below can just apply it:
 
-> A stage may use only the information appropriate to the question it
-> answers. A decision that belongs to one stage must not be re-derived,
-> second-guessed, weakened, or duplicated by a different stage.
+> A stage may use only the information appropriate to the question it answers. A
+> decision that belongs to one stage must not be re-derived, second-guessed,
+> weakened, or duplicated by a different stage.
 
 ## 3. The four-stage pipeline
 
@@ -67,18 +66,18 @@ This reconciles two slightly different framings already in the doc set.
 `03-v1-math.md` §20 describes hard domain constraints as two layers _within_
 candidate generation; `GLOSSARY.md` §6's diagram shows domain constraints and
 prerequisite eligibility as steps before it. Both are right about different
-things: hard domain/instrument constraints determine what candidate
-generation is even capable of producing, so they belong inside stage 1 as
-generation-time constraints, not a filter applied after generating invalid
-candidates. The `REQUIRES` prerequisite gate is genuinely a separate,
-learner-state-dependent stage, since it needs current competency state to
-evaluate - that's stage 2. `GLOSSARY.md` §6's diagram is updated to match.
+things: hard domain/instrument constraints determine what candidate generation
+is even capable of producing, so they belong inside stage 1 as generation-time
+constraints, not a filter applied after generating invalid candidates. The
+`REQUIRES` prerequisite gate is genuinely a separate, learner-state-dependent
+stage, since it needs current competency state to evaluate - that's stage 2.
+`GLOSSARY.md` §6's diagram is updated to match.
 
 ## 4. Stage 1: Candidate generation
 
-**Question it answers:** what exercises could possibly be presented, given
-the domain and this learner's instrument - independent of whether they'd be
-any good to present right now.
+**Question it answers:** what exercises could possibly be presented, given the
+domain and this learner's instrument - independent of whether they'd be any good
+to present right now.
 
 **Allowed inputs:**
 
@@ -89,16 +88,16 @@ InstrumentProfile (key_count / playable_range, GLOSSARY.md §7)
 ```
 
 **Forbidden inputs:** `LatentCompetencyState`, `MaterialMemoryState`,
-`MaterialExecutionState`, `SessionState`. Nothing about this specific
-learner's estimated ability, memory, or fatigue may influence what gets
-generated - only what's structurally possible. This mirrors the Q-matrix's
-own rule (`03-v1-math.md` §9.4): `Q` must never encode practice or transfer
-that didn't happen. The same discipline applies here in the other direction -
-candidate generation must never encode a readiness judgment that hasn't been
-made yet by a later stage.
+`MaterialExecutionState`, `SessionState`. Nothing about this specific learner's
+estimated ability, memory, or fatigue may influence what gets generated - only
+what's structurally possible. This mirrors the Q-matrix's own rule
+(`03-v1-math.md` §9.4): `Q` must never encode practice or transfer that didn't
+happen. The same discipline applies here in the other direction - candidate
+generation must never encode a readiness judgment that hasn't been made yet by a
+later stage.
 
-**Decision type:** set membership. A candidate is generated or it isn't;
-there is no scoring at this stage. Generated iff:
+**Decision type:** set membership. A candidate is generated or it isn't; there
+is no scoring at this stage. Generated iff:
 
 ```text
 canonical fingering exists
@@ -123,76 +122,71 @@ substitute evidence source for the other:
 
 **Allowed inputs:** `LatentCompetencyState` (mean and uncertainty) for the
 specific competencies a prerequisite relationship names, e.g. adequate
-`RH_SCALE_EXECUTION` + `LH_SCALE_EXECUTION` making
-`HANDS_TOGETHER_COORDINATION` exercises more/fully eligible
-(`v1-domain-model.md` §17, `03-v1-math.md` §20).
+`RH_SCALE_EXECUTION` + `LH_SCALE_EXECUTION` making `HANDS_TOGETHER_COORDINATION`
+exercises more/fully eligible (`v1-domain-model.md` §17, `03-v1-math.md` §20).
 
-**Forbidden inputs:** `MaterialMemoryState`, `MaterialExecutionState`. This
-gate answers "is the learner generally ready for this kind of exercise," not
-"will this specific material go well" - that's challenge filtering's
-question (§6), evaluated on the specific candidate, not a competency
-prerequisite.
+**Forbidden inputs:** `MaterialMemoryState`, `MaterialExecutionState`. This gate
+answers "is the learner generally ready for this kind of exercise," not "will
+this specific material go well" - that's challenge filtering's question (§6),
+evaluated on the specific candidate, not a competency prerequisite.
 
 **Decision type:** soft, via an eligibility **tier**, not a numeric score fed
-into priority ranking's utility. A candidate short of a prerequisite is a
-worse candidate, not an invalid one - it remains available, but does not
-compete on equal footing with a fully-eligible candidate; §7 defines exactly
-how. Unlike stage 1, failing this doesn't remove the candidate from
-consideration.
+into priority ranking's utility. A candidate short of a prerequisite is a worse
+candidate, not an invalid one - it remains available, but does not compete on
+equal footing with a fully-eligible candidate; §7 defines exactly how. Unlike
+stage 1, failing this doesn't remove the candidate from consideration.
 
 ### 5.2 `SchedulerSafetyPolicy`
 
-**Allowed inputs:** `SessionState` (workload/fatigue signal,
-`GLOSSARY.md` §4) and direct session-history signals (recent repetition
-count, sustained-intensity duration). **Not** competency, memory, or
-execution state - this is a workload constraint, not a pedagogical one, and
-explicitly not a medical/injury inference (`GLOSSARY.md` §8).
+**Allowed inputs:** `SessionState` (workload/fatigue signal, `GLOSSARY.md` §4)
+and direct session-history signals (recent repetition count, sustained-intensity
+duration). **Not** competency, memory, or execution state - this is a workload
+constraint, not a pedagogical one, and explicitly not a medical/injury inference
+(`GLOSSARY.md` §8).
 
-**Decision type:** closer to hard than `REQUIRES`. It can suppress a
-candidate for this session regardless of how pedagogically appropriate it
-is competency-wise - a session-load ceiling, not a ranking term.
+**Decision type:** closer to hard than `REQUIRES`. It can suppress a candidate
+for this session regardless of how pedagogically appropriate it is
+competency-wise - a session-load ceiling, not a ranking term.
 
 ## 6. Stage 3: Challenge filtering
 
 **Question it answers:** is the predicted difficulty of this _specific_
-candidate - material, execution conditions, and guidance level all fixed in
-the candidate generated by stage 1 and admitted by stage 2 - in a productive
-zone for this learner. Stage 2 doesn't choose those fields; it only
-evaluates eligibility and safety on the candidate stage 1 already produced.
+candidate - material, execution conditions, and guidance level all fixed in the
+candidate generated by stage 1 and admitted by stage 2 - in a productive zone
+for this learner. Stage 2 doesn't choose those fields; it only evaluates
+eligibility and safety on the candidate stage 1 already produced.
 
 **Allowed inputs:** `Prediction.overall_p` from `predicted_success()`
-(`03-v1-math.md` §10.1: `material_available_p * execution_p`), computed for
-this candidate's exact `TechnicalMaterial` / `ExecutionConditions` /
+(`03-v1-math.md` §10.1: `material_available_p * execution_p`), computed for this
+candidate's exact `TechnicalMaterial` / `ExecutionConditions` /
 `GuidanceContext`.
 
-`overall_p`, not `independent_retrieval_p` or `execution_p` alone, is the
-right quantity: guidance level is a property of _this candidate_, chosen by
-stage 1, not a fixed backdrop the learner shows up to. A fully-cued version
-of hard material legitimately predicts as easier than an unguided version of
-the same material, and challenge filtering should reflect that - it's
-answering "will presenting this exact candidate go well," which cueing
-genuinely changes. This is the `03-v1-math.md` §13 principle
-(`p_hat_acceptable` may be a composite scheduler-facing scalar even though
-state updates must not be) applied to a concrete quantity.
+`overall_p`, not `independent_retrieval_p` or `execution_p` alone, is the right
+quantity: guidance level is a property of _this candidate_, chosen by stage 1,
+not a fixed backdrop the learner shows up to. A fully-cued version of hard
+material legitimately predicts as easier than an unguided version of the same
+material, and challenge filtering should reflect that - it's answering "will
+presenting this exact candidate go well," which cueing genuinely changes. This
+is the `03-v1-math.md` §13 principle (`p_hat_acceptable` may be a composite
+scheduler-facing scalar even though state updates must not be) applied to a
+concrete quantity.
 
 `predicted_topology_p` is deliberately excluded. Topology is a parallel
 inference target (`03-v1-math.md` §10.1), not part of "will this attempt's
 execution look acceptable" - folding it into the challenge signal would make
 this stage re-decide something the evidence model already keeps separate.
-Whether topology warrants its own probe-selection signal is open, not
-resolved here (§9).
+Whether topology warrants its own probe-selection signal is open, not resolved
+here (§9).
 
-**Forbidden inputs:** retention need, information value, diversity, goals
-(stage 4's questions); `REQUIRES`/safety eligibility (stage 2's question,
-already applied - a candidate that reaches this stage is already known to
-be eligible).
+**Forbidden inputs:** retention need, information value, diversity, goals (stage
+4's questions); `REQUIRES`/safety eligibility (stage 2's question, already
+applied - a candidate that reaches this stage is already known to be eligible).
 
-**Decision type:** a true filter, not a filter-or-score. Priority ranking
-(§7) has no term that consumes a challenge score - its rank key is
-eligibility tier plus R/I/V/G, nothing else - so a "strongly deprioritize"
-option here would be exactly the dangling-score problem `REQUIRES` had
-before §7.1: a distinction with nowhere to go. The decision is therefore
-binary:
+**Decision type:** a true filter, not a filter-or-score. Priority ranking (§7)
+has no term that consumes a challenge score - its rank key is eligibility tier
+plus R/I/V/G, nothing else - so a "strongly deprioritize" option here would be
+exactly the dangling-score problem `REQUIRES` had before §7.1: a distinction
+with nowhere to go. The decision is therefore binary:
 
 ```text
 p_min <= overall_p <= p_max    -> survives, ranked normally in stage 4
@@ -200,30 +194,29 @@ outside the band                -> filtered out
 named exception                 -> bypasses this stage, survives explicitly
 ```
 
-Named exceptions (diagnostic probe, new-material introduction, recovery
-after retrieval failure, explicit learner request, `03-v1-math.md` §21) skip
-challenge filtering entirely rather than widening the band or softening the
-reject into a penalty. If simulation later shows a genuine need for a softer
-challenge concept, that becomes its own named architectural mechanism with a
-defined consumer, not an implicit score threaded through a stage that
-doesn't read it.
+Named exceptions (diagnostic probe, new-material introduction, recovery after
+retrieval failure, explicit learner request, `03-v1-math.md` §21) skip challenge
+filtering entirely rather than widening the band or softening the reject into a
+penalty. If simulation later shows a genuine need for a softer challenge
+concept, that becomes its own named architectural mechanism with a defined
+consumer, not an implicit score threaded through a stage that doesn't read it.
 
 ## 7. Stage 4: Priority ranking
 
-**Question it answers:** among everything that survived stages 1-3, what
-should be presented next.
+**Question it answers:** among everything that survived stages 1-3, what should
+be presented next.
 
 ### 7.1 Eligibility tier is the primary key, not a fifth utility term
 
 §5.1's `REQUIRES` evaluation has to affect the outcome somehow, but the existing
 architectural decision (`GLOSSARY.md` §6) is specifically that it must not
 become a weighted term competing with retention/information/diversity/goals,
-since that would let a soft pedagogical judgment get outvoted by, say, a
-strong diversity score - the same kind of boundary violation §2 warns
-about. The resolution is a discrete, ordered **eligibility tier**, computed
-once from `REQUIRES` (e.g. `FULLY_ELIGIBLE` / `PROVISIONALLY_ELIGIBLE` - the
-exact count and labels are open, §9), that ranks lexicographically ahead of
-the R/I/V/G utility rather than inside it:
+since that would let a soft pedagogical judgment get outvoted by, say, a strong
+diversity score - the same kind of boundary violation §2 warns about. The
+resolution is a discrete, ordered **eligibility tier**, computed once from
+`REQUIRES` (e.g. `FULLY_ELIGIBLE` / `PROVISIONALLY_ELIGIBLE` - the exact count
+and labels are open, §9), that ranks lexicographically ahead of the R/I/V/G
+utility rather than inside it:
 
 ```text
 rank_key(e) = (eligibility_tier(e), U(e))
@@ -232,23 +225,22 @@ rank_key(e) = (eligibility_tier(e), U(e))
 Candidates are ordered by tier first, then by `U(e)` (or the lexicographic
 R>I>V>G ordering, §7.3) within a tier. A `PROVISIONALLY_ELIGIBLE` candidate
 never outranks a `FULLY_ELIGIBLE` one no matter how strong its retention or
-diversity score is; it remains reachable - for diagnostic probes,
-material introduction, a fallback when no fully-eligible candidate survives
-stages 1-3, or other explicitly allowed progression scenarios - without
-competing numerically against readiness.
+diversity score is; it remains reachable - for diagnostic probes, material
+introduction, a fallback when no fully-eligible candidate survives stages 1-3,
+or other explicitly allowed progression scenarios - without competing
+numerically against readiness.
 
-Taken literally, "never outranks" and "remains reachable for diagnostic
-probes" are in tension whenever a fully-eligible candidate also survives:
-under the strict lexicographic rule, the provisional candidate is reachable
-only when no fully-eligible one does. If a diagnostic probe should sometimes
-be deliberately chosen despite fully-eligible alternatives existing, that
-needs a named tier bypass, the same shape as challenge filtering's named
-exceptions (§6) - not decided here (§9).
+Taken literally, "never outranks" and "remains reachable for diagnostic probes"
+are in tension whenever a fully-eligible candidate also survives: under the
+strict lexicographic rule, the provisional candidate is reachable only when no
+fully-eligible one does. If a diagnostic probe should sometimes be deliberately
+chosen despite fully-eligible alternatives existing, that needs a named tier
+bypass, the same shape as challenge filtering's named exceptions (§6) - not
+decided here (§9).
 
 This preserves both standing decisions: `REQUIRES` isn't a hard
-`if not requires: reject()` (stage 1's
-kind of decision), and it isn't `w_P P(e)` buried inside pedagogical utility
-either.
+`if not requires: reject()` (stage 1's kind of decision), and it isn't
+`w_P P(e)` buried inside pedagogical utility either.
 
 ### 7.2 Within a tier: R/I/V/G
 
@@ -286,9 +278,9 @@ G  learner-goal priority      Externally supplied goals/preferences. Not a
                               learner-state estimate.
 ```
 
-**Forbidden:** re-deriving challenge or difficulty - already decided in
-stage 3. This stage ranks; it does not reject, and no term here may overturn
-stage 3's admission decision or stage 2's eligibility tier (§7.1).
+**Forbidden:** re-deriving challenge or difficulty - already decided in stage 3.
+This stage ranks; it does not reject, and no term here may overturn stage 3's
+admission decision or stage 2's eligibility tier (§7.1).
 
 ### 7.3 Open
 
@@ -308,8 +300,8 @@ count/labels are scheduler-simulation work (§9), not decided here.
 
 ## 9. Deliberately left open
 
-Matching `03-v1-math.md` §25's provenance discipline, none of the following
-are resolved by this document - they are heuristic V1 choices for scheduler
+Matching `03-v1-math.md` §25's provenance discipline, none of the following are
+resolved by this document - they are heuristic V1 choices for scheduler
 simulation to narrow, same status as the learner model's `alpha`/`lambda`
 constants before Experiments B/C:
 
@@ -336,9 +328,9 @@ whether topology gets its own probe-selection signal (§6)
 
 Only after the learner-state model behaves sensibly should the scheduler be
 introduced - it now has (`03-v1-math.md` §38: 26 invariants, four rounds of
-adversarial review). `03-v1-math.md` §30 already lists the pathologies to
-test for; this section adds the specific properties this document's
-boundary contract implies, without duplicating that list:
+adversarial review). `03-v1-math.md` §30 already lists the pathologies to test
+for; this section adds the specific properties this document's boundary contract
+implies, without duplicating that list:
 
 ```text
 no endless repetition of one material (§30: "repeating the same material
@@ -378,10 +370,10 @@ new-material selection reflects transferable competency and uncertainty,
     selection primarily through I(e) (§7.2), not through the prediction)
 ```
 
-Each of these should become a scripted scenario against the existing
-synthetic learner profiles (`03-v1-math.md` §28) and a pass/fail check,
-mirroring `analysis/learner-model/invariants.py`'s style rather than
-introducing a new verification approach.
+Each of these should become a scripted scenario against the existing synthetic
+learner profiles (`03-v1-math.md` §28) and a pass/fail check, mirroring
+`analysis/learner-model/invariants.py`'s style rather than introducing a new
+verification approach.
 
 ## 11. Relationship to existing documents
 
