@@ -17,7 +17,12 @@ from config import Params as SchedulerParams
 from domain import Exercise, TechnicalMaterial
 from model import Outcome
 from params import Params as LearnerParams
-from pipeline import CandidateTrace, StageStatus, run_pipeline, select_next
+from pipeline import (
+    CandidateTrace,
+    repetition_guard,
+    run_pipeline,
+    select_scheduler_choice,
+)
 from state import LearnerState
 
 
@@ -88,13 +93,10 @@ class SchedulerAgent:
             self.learner_params,
             now,
         )
-        winner = select_next(traces)
+        winner = select_scheduler_choice(traces, self.session, self.scheduler_params)
+        guarded = repetition_guard(traces, self.session, self.scheduler_params)
         runners_up = sorted(
-            (
-                t
-                for t in traces
-                if t.priority_status is StageStatus.REACHED and t is not winner
-            ),
+            (t for t in guarded if t is not winner),
             key=lambda t: t.rank_key,
             reverse=True,
         )[: self.top_n]

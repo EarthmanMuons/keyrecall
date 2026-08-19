@@ -123,8 +123,8 @@ def _guidance_probe_eligible(
     guidance = exercise.guidance
     if guidance.concurrent_pitch_cues or not guidance.notes_previewed:
         return False
-    memory_state = state.material_memory[exercise.material.material_id]
-    if memory_state.last_retrieval_at is None:
+    memory_state = state.material_memory.get(exercise.material.material_id)
+    if memory_state is None or memory_state.last_retrieval_at is None:
         return False
     elapsed = now - memory_state.last_retrieval_at
     return elapsed >= params.guidance_probe.min_days_since_last_retrieval
@@ -368,11 +368,60 @@ def run_pipeline(
     return traces
 
 
+def _consecutive_material_count(session: SessionState, material_id: str) -> int:
+    count = 0
+    for mid in reversed(session.recent_material_ids):
+        if mid != material_id:
+            break
+        count += 1
+    return count
+
+
+def repetition_guard(
+    traces: list[CandidateTrace], session: SessionState, params: SchedulerParams
+) -> list[CandidateTrace]:
+    """Excludes a material selected max_consecutive_material_attempts
+    times in a row from winning, as long as another admitted material
+    exists - never the only one, which would force NoAdmittedCandidate.
+    A pre-selection filter applied before select_next(), not another
+    R/I/V/G term: under lexicographic ranking V can only break exact
+    ties, so no V penalty can stop a material whose R wins outright
+    (04-v1-scheduler.md §10's no-endless-repetition scenario)."""
+    reached = [t for t in traces if t.priority_status is StageStatus.REACHED]
+    if not reached:
+        return traces
+
+    cap = params.diversity.max_consecutive_material_attempts
+    over_repeated = {
+        material_id
+        for material_id in {t.exercise.material.material_id for t in reached}
+        if _consecutive_material_count(session, material_id) >= cap
+    }
+    guarded = [
+        t for t in reached if t.exercise.material.material_id not in over_repeated
+    ]
+    return guarded or reached
+
+
 def select_next(traces: list[CandidateTrace]) -> CandidateTrace | None:
     """Highest rank_key among traces with priority_status REACHED - higher
     tier always wins regardless of R/I/V/G (§7.1); within a tier, higher
-    R/I/V/G wins (§7.2/§22's lexicographic form)."""
+    R/I/V/G wins (§7.2/§22's lexicographic form). The bare lexicographic
+    primitive - no repetition_guard() - kept usable on its own for
+    unit/scenario tests; see select_scheduler_choice() for the canonical
+    V1 choice."""
     reached = [t for t in traces if t.priority_status is StageStatus.REACHED]
     if not reached:
         return None
     return max(reached, key=lambda t: t.rank_key)
+
+
+def select_scheduler_choice(
+    traces: list[CandidateTrace], session: SessionState, params: SchedulerParams
+) -> CandidateTrace | None:
+    """The canonical V1 scheduler choice: repetition_guard() then
+    select_next(). Every real caller (SchedulerAgent, simulate.py, and
+    eventual production code) should call this, not select_next()
+    directly - select_next(run_pipeline(...)) alone silently omits the
+    repetition guard and can reproduce perseveration."""
+    return select_next(repetition_guard(traces, session, params))

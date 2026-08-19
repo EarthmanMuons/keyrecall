@@ -8,9 +8,9 @@ invariants.py (Pass 1's boundary/mechanical-correctness checks): these
 ask a different question - "does the pipeline behave well over
 repeated scheduler -> outcome -> learner-update -> scheduler cycles,"
 not "does a forbidden input move a stage's decision." A FAIL here can
-be a genuine, useful Pass-2 finding about Pass 1's deliberately simple
-placeholders (see scenarios 2 and 4's docstrings), not necessarily a
-regression to fix before moving on - see the Pass-2 plan.
+be a genuine Pass-2 finding, not necessarily a regression to fix before
+moving on - several already drove real policy revisions (R(e), I(e),
+the guidance-probe and introduction bypasses, the repetition guard).
 
 Usage:
     python scenarios.py
@@ -25,11 +25,18 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "learner-model"))
 
-from candidates import InstrumentProfile
+from candidates import InstrumentProfile, SessionState
 from config import load_params as load_scheduler_params
 from longitudinal import NoAdmittedCandidate, SchedulerAgent
+from model import Prediction
 from params import load_params as load_learner_params
-from pipeline import eligibility_tier
+from pipeline import (
+    CandidateTrace,
+    StageStatus,
+    eligibility_tier,
+    repetition_guard,
+    select_next,
+)
 from simulate import MATERIALS, fixed_exercise, initial_state, run
 from synthetic import PROFILES
 
@@ -83,24 +90,12 @@ def run_sessions(
 def check_guidance_fades_as_memory_strengthens() -> None:
     """04-v1-scheduler.md §30 "guidance that never fades."
 
-    Verified by direct inspection over a corrected, uncontaminated
-    multi-session run - the fuller picture than either of this check's
-    two earlier drafts assumed. The scheduler does *not* simply prefer
-    guidance from the start: session 1 (20 attempts) stays fully
-    unguided, repeatedly using the recovery bypass as unguided retrieval
-    keeps failing. But partway into session 2 it shifts to the
-    maximally-cued variant and then never leaves - every remaining
-    attempt through the end of session 3 stays fully cued. A cued
-    attempt has retrieval_succeeded=None (never tested, §18.2 -
-    correctly, not a bug), so MaterialMemoryState's clock can never
-    re-anchor once the scheduler is in that state; independent_retrieval_p
-    can then only keep decaying, which keeps making the cued variant the
-    only (or most rewarded) admissible one. That's §30's named pathology
-    taken literally: once guidance is reached, it never fades back
-    toward independence, because the one thing that would let it happen
-    - a genuinely tested retrieval - is exactly what the trapped state
-    avoids. A real, informative Pass-2 characterization, not a
-    regression to patch here.
+    Originally: a cued attempt never tests retrieval (retrieval_succeeded
+    stays None, §18.2), so once the scheduler shifted to full cueing it
+    could never re-anchor the memory clock and got stuck there
+    permanently. Resolved by the guidance_probe bypass (see
+    challenge_bypass()), which offers a one-step-less-guided variant
+    once enough time has passed since the last confirmed retrieval.
     """
     learner_params = load_learner_params()
     scheduler_params = load_scheduler_params()
@@ -148,24 +143,14 @@ def check_guidance_fades_as_memory_strengthens() -> None:
 def check_no_endless_repetition() -> None:
     """04-v1-scheduler.md §30 "repeating the same material indefinitely."
 
-    Expected finding, not a bug to pre-fix: verified by direct
-    inspection (not guessed), the actual observed mechanism is a
-    guidance/memory feedback trap, not a simple R-vs-I tie. One early
-    unguided success anchors MaterialMemoryState's clock
-    (last_retrieval_at, §5.2). From then on the scheduler keeps
-    selecting a fully-cued variant of the same material - cueing raises
-    material_available_p, so a cued candidate is the one most likely to
-    clear the challenge band. But a cued attempt has
-    retrieval_succeeded=None (never tested, §18.2 - correctly, not a
-    bug), so the clock is never reset. Elapsed time since that one
-    anchor grows every attempt, decaying independent_retrieval_p
-    unboundedly, which keeps raising R = 1 - independent_retrieval_p
-    (§23's simplest form), which keeps making this material win the
-    ranking - a self-sustaining trap where leaning on guidance
-    perpetuates the very weakness that justified leaning on it. That's a
-    genuine, informative Pass-2 characterization (a variant of §30's
-    "guidance removed before independent retrieval is plausible," run in
-    reverse), not a regression to patch here.
+    Originally a guidance/memory feedback trap: a cued attempt has
+    retrieval_succeeded=None (never tested, §18.2), so once the
+    scheduler shifted to a fully-cued variant the memory clock could
+    never re-anchor, and unboundedly rising R entrenched that material.
+    R(e)'s retrieval_opportunity weighting and repetition_guard() (see
+    that function) resolved it at this longitudinal scale; the guard's
+    own two properties are tested directly in
+    check_repetition_guard_prevents_perseveration().
     """
     learner_params = load_learner_params()
     scheduler_params = load_scheduler_params()
@@ -202,6 +187,89 @@ def check_no_endless_repetition() -> None:
             f"one material was selected {max_run} times in a row, exceeding the "
             f"diversity window ({window}) - see this check's docstring for the "
             "observed guidance/memory feedback mechanism"
+        )
+
+
+def check_repetition_guard_prevents_perseveration() -> None:
+    """repetition_guard() (pipeline.py), a pre-selection filter rather
+    than another priority term - under lexicographic R>I>V, V can only
+    break exact ties, so no V penalty could stop a material whose R wins
+    outright. Two properties: with an alternative available, an
+    over-repeated material must not win; with no alternative, the guard
+    must not force no admission.
+
+    Direct CandidateTrace construction, not run_pipeline() output: this
+    tests repetition_guard() itself (a pure function of traces/session),
+    not whether run_pipeline() wires it up - SchedulerAgent already does
+    that (check_no_endless_repetition). A real-prediction setup makes
+    which material "should" win on R/I hard to control precisely (guard
+    band membership, cued-vs-tested state, etc. all confound it); a
+    controlled rank_key removes that confound.
+    """
+    scheduler_params = load_scheduler_params()
+    cap = scheduler_params.diversity.max_consecutive_material_attempts
+
+    ex_a = fixed_exercise(MATERIALS[0], "RIGHT")
+    ex_b = fixed_exercise(MATERIALS[1], "RIGHT")
+    prediction = Prediction(
+        independent_retrieval_p=0.7,
+        material_available_p=0.7,
+        execution_p=0.9,
+        topology_p=0.8,
+    )
+    shared = {
+        "eligibility_tier": "FULLY_ELIGIBLE",
+        "eligibility_reason": "",
+        "safety_allowed": True,
+        "safety_reason": "",
+        "challenge_status": StageStatus.REACHED,
+        "prediction": prediction,
+        "challenge_within_band": True,
+        "challenge_bypass": None,
+        "challenge_survived": True,
+        "priority_status": StageStatus.REACHED,
+    }
+    # A dominates R/I so it would win outright without the guard.
+    trace_a = CandidateTrace(
+        exercise=ex_a,
+        retention=0.9,
+        information=1.0,
+        diversity=0.0,
+        goals=0.0,
+        rank_key=(1, 0.9, 1.0, 0.0, 0.0),
+        **shared,
+    )
+    trace_b = CandidateTrace(
+        exercise=ex_b,
+        retention=0.1,
+        information=0.5,
+        diversity=0.0,
+        goals=0.0,
+        rank_key=(1, 0.1, 0.5, 0.0, 0.0),
+        **shared,
+    )
+
+    if select_next([trace_a, trace_b]) is not trace_a:
+        raise InvariantFailure("test setup error: expected A to win without the guard")
+
+    session = SessionState(recent_material_ids=[MATERIALS[0].material_id] * cap)
+    guarded = repetition_guard([trace_a, trace_b], session, scheduler_params)
+    winner = select_next(guarded)
+    if winner is None:
+        raise InvariantFailure(
+            "test setup error: expected an admitted winner with two materials available"
+        )
+    if winner is trace_a:
+        raise InvariantFailure(
+            f"repetition guard did not exclude a material selected {cap} times in a "
+            "row despite an alternative material being available"
+        )
+
+    single_session = SessionState(recent_material_ids=[MATERIALS[0].material_id] * cap)
+    single_guarded = repetition_guard([trace_a], single_session, scheduler_params)
+    if select_next(single_guarded) is None:
+        raise InvariantFailure(
+            "repetition guard suppressed the only admissible material, forcing no admission"
         )
 
 
@@ -283,15 +351,14 @@ def check_old_material_resurfaces() -> None:
 def check_new_material_introduction_is_learner_sensitive() -> None:
     """04-v1-scheduler.md §24.
 
-    Expected finding, not a bug to pre-fix: information() reads only
-    competency VARIANCE, and initial_state() sets the same
-    prior_variance_broad regardless of self-report tier - only the MEAN
-    differs by tier. A never-practiced material's new_material bypass
-    also means overall_p (which the mean does drive) never gates
-    admission. So under Pass 1's placeholders, the first new-material
-    selection may legitimately be identical across profiles; that's a
-    real characterization of I(e)'s current form (04-v1-scheduler.md
-    §9), not a regression to patch here.
+    Originally identical first selections across profiles: I(e) read
+    only competency variance (equal across tiers at cold start), and the
+    old unconditional new_material bypass meant overall_p (which the
+    mean drives) never gated admission either. Resolved by making
+    new_material conditional on overall_p >= p_introduction_min (see
+    challenge_bypass()) - the same overall_p every profile already
+    produces, so which realizations clear it is naturally
+    learner-sensitive.
     """
     learner_params = load_learner_params()
     scheduler_params = load_scheduler_params()
@@ -443,6 +510,10 @@ CHECKS: list[tuple[str, object]] = [
         check_guidance_fades_as_memory_strengthens,
     ),
     ("no endless repetition of one material", check_no_endless_repetition),
+    (
+        "repetition guard prevents perseveration",
+        check_repetition_guard_prevents_perseveration,
+    ),
     ("old material resurfaces after going unpracticed", check_old_material_resurfaces),
     (
         "new-material introduction is learner-sensitive",

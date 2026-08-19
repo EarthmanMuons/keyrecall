@@ -32,6 +32,10 @@ p_introduction_min = 0.15
 # V(e): simple recency count over a fixed-size window, not decayed
 # (04-v1-scheduler.md §7.2, §9).
 recent_window = 10
+# Repetition guard (§10 no-endless-repetition): a pre-selection filter,
+# not part of V(e) itself. Kept below recent_window so a run is caught
+# before it outgrows recent_material_ids' own tracked history.
+max_consecutive_material_attempts = 5
 
 [guidance_probe]
 # Minimum days since the material's last confirmed successful retrieval

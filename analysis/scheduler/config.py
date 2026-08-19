@@ -42,6 +42,7 @@ class ChallengeParams:
 @dataclass(frozen=True)
 class DiversityParams:
     recent_window: int
+    max_consecutive_material_attempts: int
 
 
 @dataclass(frozen=True)

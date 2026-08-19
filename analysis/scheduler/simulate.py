@@ -32,7 +32,7 @@ from candidates import (
 from config import Params as SchedulerParams
 from config import load_params as load_scheduler_params
 from params import load_params as load_learner_params
-from pipeline import CandidateTrace, run_pipeline, select_next
+from pipeline import CandidateTrace, run_pipeline, select_scheduler_choice
 from simulate import MATERIALS, initial_state
 from synthetic import PROFILES
 
@@ -118,7 +118,7 @@ def main() -> None:
     traces = run_pipeline(
         state, session, candidate_exercises, scheduler_params, learner_params, args.now
     )
-    winner = select_next(traces)
+    winner = select_scheduler_choice(traces, session, scheduler_params)
 
     fh = args.out.open("w", encoding="utf-8") if args.out else sys.stdout
     try:
