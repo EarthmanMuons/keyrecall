@@ -325,17 +325,18 @@ resolved.
 
 ## 15. Summary table
 
-| Old term(s)                                                 | Canonical                                                            | Status                       |
-| ----------------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------- |
-| `KnowledgeComponent`, `KC`, `Component`                     | `Competency`                                                         | rename                       |
-| `FingeringGroup`                                            | _(retired)_, see `FingeringPattern`/`MotorRealization`/`MotorFamily` | retire, not rename           |
-| flat `Exercise` (`v1-domain-model.md` §6.3)                 | compositional `Exercise` (`02-v1-design.md`)                         | supersede                    |
-| _(missing)_                                                 | `LearnerState` / `SessionState` split                                | restore                      |
-| ADM as persistent state                                     | ADM as derived label only                                            | retire as state              |
-| 3 scheduler utility formulas                                | eligibility → challenge filter → priority ranking                    | supersede 2, keep 1          |
-| _(missing)_                                                 | `InstrumentProfile`                                                  | add                          |
-| _(missing)_                                                 | `SchedulerSafetyPolicy`                                              | add                          |
-| _(dropped)_                                                 | `Fluency Profile`                                                    | restore                      |
-| Assumption Registry vs. Parameter Registry                  | both, distinct responsibilities                                      | clarify, don't merge         |
-| `D(e)`/`D_e`/`G_e`/`G(e)`/`I(e)`/`I_sequence`/`V(e)`/`R(e)` | see §11 table                                                        | rename for collision-freedom |
-| _(missing)_                                                 | self-report → `μ0` mapping philosophy                                | decide                       |
+| Old term(s)                                           | Canonical                                                            | Status                       |
+| ----------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------- |
+| `KnowledgeComponent`, `KC`, `Component`               | `Competency`                                                         | rename                       |
+| `FingeringGroup`                                      | _(retired)_, see `FingeringPattern`/`MotorRealization`/`MotorFamily` | retire, not rename           |
+| flat `Exercise` (`v1-domain-model.md` §6.3)           | compositional `Exercise` (`02-v1-design.md`)                         | supersede                    |
+| _(missing)_                                           | `LearnerState` / `SessionState` split                                | restore                      |
+| ADM as persistent state                               | ADM as derived label only                                            | retire as state              |
+| 3 scheduler utility formulas                          | eligibility → challenge filter → priority ranking                    | supersede 2, keep 1          |
+| _(missing)_                                           | `InstrumentProfile`                                                  | add                          |
+| _(missing)_                                           | `SchedulerSafetyPolicy`                                              | add                          |
+| _(dropped)_                                           | `Fluency Profile`                                                    | restore                      |
+| Assumption Registry vs. Parameter Registry            | both, distinct responsibilities                                      | clarify, don't merge         |
+| `D(e)`/`D_e`/`G(e)`/`I(e)`/`I_sequence`/`V(e)`/`R(e)` | see §11 table                                                        | rename for collision-freedom |
+| `G_e`                                                 | _(retired)_, see §11                                                 | retire, not rename           |
+| _(missing)_                                           | self-report → `μ0` mapping philosophy                                | decide                       |

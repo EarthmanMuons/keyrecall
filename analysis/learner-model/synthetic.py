@@ -162,21 +162,24 @@ def sample_outcome(
     retrieval_demand = exercise.guidance.retrieval_demand()
 
     # Independent retrieval: never attenuated by cueing, since it's asking
-    # whether the material would be retrievable without support. This is
-    # tracked regardless of guidance - the learner's true internal state
-    # doesn't depend on what the interface reveals - but whether it's
-    # observable to the estimator does; see observed_retrieval_succeeded.
+    # whether the material would be retrievable without support.
     retrieval_succeeded = rng.random() < true_retrievability
-    if retrieval_succeeded:
+    retrieval_observed = exercise.guidance.retrieval_observed()
+
+    # The true memory clock models learning from retrieval practice, not
+    # latent availability alone: it strengthens only when retrieval was
+    # actually demanded and performed. Under continuous cueing,
+    # retrieval_succeeded is a hidden counterfactual (would it have
+    # succeeded unsupported), not a practice event, so it must not reset
+    # the clock even when true.
+    if retrieval_succeeded and retrieval_observed:
         true_memory.last_retrieval_at = now
 
     # Continuous cueing supplies the material outright, so this attempt
     # never actually tests independent retrieval: report no observation at
     # all rather than a low-confidence one, so it can't be repeated into
     # accumulated evidence about a retrieval that was never demonstrated.
-    observed_retrieval_succeeded = (
-        retrieval_succeeded if exercise.guidance.retrieval_observed() else None
-    )
+    observed_retrieval_succeeded = retrieval_succeeded if retrieval_observed else None
 
     # Starting is broader: cueing can supply enough support to begin even
     # when independent retrieval would have failed. retrieval_demand=0

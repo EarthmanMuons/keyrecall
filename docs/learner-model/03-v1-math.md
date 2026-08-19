@@ -147,10 +147,17 @@ Conceptually:
 ```yaml
 MaterialMemoryState:
   material_id: F_SHARP_HARMONIC_MINOR_SCALE
-  half_life_seconds: ...
+  log_half_life: ...
+  half_life_uncertainty: ...
+  logit_cold_start: ...
+  cold_start_uncertainty: ...
   last_retrieval_at: ...
-  uncertainty: ...
 ```
+
+`log_half_life`/`half_life_uncertainty` and `logit_cold_start`/`cold_start_uncertainty`
+are two separate mean/uncertainty pairs, not four independent fields: exactly
+one pair is operative at a time, decided by whether `last_retrieval_at` has
+ever been set (§5.3).
 
 ### 5.1 Memory is not exercise-success probability
 
@@ -205,12 +212,65 @@ the property the multiplicative rule lacked. Diagnostic runs (10 successful
 retrievals at 1-minute/hour/day/week spacing) show this surprise-driven
 update already carries meaningful elapsed-time information through
 `p_hat_independent_retrieval`'s own decay formula, without an explicit
-separate time-weighting term; see §35 for the identified remaining gap
-(cold-start updating still uses the old multiplicative form).
+separate time-weighting term; see §35 for that open question.
 
 The effective update magnitude must depend on retrieval context, and does so
 through `w_M`. That dependency needed to be a hard gate, not just
 attenuation: §18 covers why.
+
+### 5.3 Before the clock anchors: cold-start belief gets the same treatment
+
+`ℓ`/`w_M` above is only operative once `last_retrieval_at` has been set at
+least once. Before that, `retrievability_or_prior()` returns
+`cold_start_estimate` directly rather than computing anything from `ℓ`, and
+this section's fix applied to `ℓ` originally left that earlier estimate on
+the old multiplicative-shrink form V1 first proposed: every pre-anchor
+failure shrank it by the same fixed fraction regardless of whether the
+failure was surprising, with no lower equilibrium other than a hard floor.
+
+The same reparameterization resolves it, in logit space instead of
+log-half-life space since `cold_start_estimate` is a probability rather than
+a positive duration:
+
+```text
+c            logit(cold_start_estimate)
+c' = c + w_M ( alpha_c delta_c - lambda_c (c - c_0) )
+delta_c      y_retrieval - cold_start_estimate
+c_0          logit(prior_retrievability)
+```
+
+clipped to broad probability bounds, same role as `[ℓ_min, ℓ_max]` above.
+`alpha_c`/`lambda_c` are separate heuristic parameters from `alpha_M`/`lambda`:
+different scale, different underlying quantity, no principled reason to
+share a value.
+
+Two further issues surfaced while fixing this, both instances of one rule:
+evidence about one state representation must not silently become evidence
+about another.
+
+**`ℓ` must not move pre-anchor.** The original implementation updated `ℓ`
+during the pre-anchor phase too, using `delta_M` computed against
+`cold_start_estimate` - evidence about a quantity `ℓ` doesn't represent yet.
+`update()` now branches on whether `last_retrieval_at` has ever been set:
+pre-anchor evidence moves only `c`; post-anchor evidence moves only `ℓ`. The
+first successful retrieval anchors the clock but updates neither - it
+confirms cold-start availability, not a retention interval, since retrieval
+immediately after any retrieval trivially reads as `M ≈ 1` regardless of `h`.
+
+**Uncertainty needed the same split.** A single shared `uncertainty` field
+meant pre-anchor failures could shrink confidence in `ℓ` even though no
+observation had been about it, and that artificially low uncertainty would
+carry across silently the moment the clock anchored. `half_life_uncertainty`
+and `cold_start_uncertainty` are now separate fields, each updated only
+alongside its own mean.
+
+Invariants (`analysis/learner-model/invariants.py`) mirror §5.2's for this
+layer: `cold_start_estimate` stays finite/bounded and reaches an interior
+equilibrium under repeated expected failure, and uncertainty is
+phase-separated - repeated pre-anchor failure shrinks
+`cold_start_uncertainty` but leaves `half_life_uncertainty` untouched, the
+first successful retrieval doesn't either, and only a genuinely spaced
+post-anchor observation does.
 
 ## 6. Retrieval demand
 
@@ -1218,6 +1278,10 @@ material_memory:
   prior_uncertainty: ...
   min_uncertainty: ...
   evidence_shrinkage: ...
+  alpha_cold_start: ... # evidence coefficient on logit(cold_start), §5.3
+  reversion_lambda_cold_start: ... # reversion strength toward the prior, §5.3
+  min_cold_start_probability: ... # numerical guard
+  max_cold_start_probability: ...
 
 material_execution:
   prior_variance: ...
@@ -1574,6 +1638,11 @@ The following are the current mathematical invariants:
 17. Repeated _expected_ evidence (predictions already matching outcomes)
     settles at a stable equilibrium; it does not compound into unbounded
     drift merely because attempts keep happening (§5.2).
+18. Within one state layer, a representation (and its uncertainty) that
+    isn't yet the operative prediction must not move from evidence about a
+    different representation: cold-start belief and half-life are both
+    `MaterialMemoryState`, but evidence about one must not silently become
+    confidence about the other (§5.3).
 
 ## 35. Open mathematical decisions
 
@@ -1610,39 +1679,29 @@ Resolved by simulation, not merely narrowed:
   _demand_ (§6, how much of the material had to be independently produced).
   `retrieval-demand mapping` itself - the numeric demand values, e.g. the
   0.05 floor under continuous cueing - remains open, listed above.
+- ~~**cold-start retrievability update**~~: resolved (§5.3), same
+  reparameterization as §5.2 in logit space, with its own uncertainty state
+  properly separated from `half_life_uncertainty`. `alpha_c`/`lambda_c`
+  remain heuristic and unfitted, same status as `alpha_M`/`lambda`.
+- ~~**synthetic ground-truth memory clock under continuous cueing**~~:
+  resolved. `TrueMaterialMemory` models learning from retrieval practice: the
+  clock now resets only when retrieval was both genuinely demanded and
+  actually performed, not on a hidden counterfactual success sampled during
+  continuous cueing. The latent retrievability draw itself is unchanged and
+  still feeds `material_retrieval`; only the clock-reset condition gained the
+  `retrieval_observed` guard.
 
 Opened by simulation:
 
 ```text
-cold-start retrievability update still uses the old multiplicative-shrink
-    form (state.py's cold_start_estimate, pre-first-retrieval only), not the
-    surprise-driven delta_M mechanism §5.2 established for the post-anchor
-    case - an expected tenth cold-start failure currently carries the same
-    kind of update as a surprising first one; a small, separate follow-up,
-    not a reason to revisit §5.2 itself
-
 whether the log-half-life update needs an explicit elapsed-time term of its
     own, beyond what leaks through p_hat_retrieval's own decay formula - a
     spacing diagnostic (10 successes at 1 minute/hour/day/week spacing)
     showed meaningfully different inferred half-lives across spacing
     without one, but this hasn't been validated against a known true
     half-life, only checked for the absence of a specific failure mode
-    (short spacing implying "extraordinary retention")
-
-whether the synthetic ground-truth learner's true memory clock should reset
-    on a hidden-true-retrieval event that occurs during continuous cueing:
-    the estimator correctly treats such an attempt as no observation
-    (retrieval_succeeded = None, §18.2), but the generator still samples a
-    true success/failure and, on success, still resets true_memory's clock,
-    which treats an untested latent counterfactual as if it were
-    demonstrated practice; whether that's correct depends on whether
-    TrueMaterialMemory is meant to model latent availability independent of
-    task demands (fine as-is) or strengthening from demonstrated retrieval
-    (should probably not reset under cueing either) - deliberately not
-    resolved alongside the estimator fix it was found next to, since it's a
-    property of the synthetic ground-truth process, not of the model being
-    tested against it; worth resolving before synthetic memory trajectories
-    are used for more serious calibration
+    (short spacing implying "extraordinary retention"). Left open: no
+    diagnostic has yet demonstrated a problem this would fix.
 ```
 
 These are deliberately not hidden behind apparently precise constants.
@@ -1712,7 +1771,7 @@ simulation and longitudinal use.
 
 The prototype this section originally called for now exists
 (`analysis/learner-model/`) and has done its job: falsifying bad assumptions
-early, before scheduler policy was layered on top. Three rounds of
+early, before scheduler policy was layered on top. Several rounds of
 simulation-driven revision are folded into this document rather than
 narrated here in full (git history has the detailed account):
 
@@ -1737,22 +1796,35 @@ Experiment C  replaced the multiplicative half-life rule with the log-half-
               instances of the same underlying pattern (an unweighted
               reversion term, and retrieval-not-tested conflated with
               retrieval-tested-and-failed) before it was safe to commit
+
+Cold-start    applied the same reparameterization to the pre-anchor belief
+follow-up     (§5.3); review found the pattern twice more inside this one
+              fix (log_half_life moving from evidence that wasn't about it,
+              and a shared uncertainty field carrying confidence across to a
+              representation no observation had spoken to). Separately,
+              resolved the synthetic ground-truth memory clock resetting on
+              an untested hidden counterfactual under continuous cueing
 ```
 
-The consistent shape across all three experiments: a shared/blended
-prediction or evidence signal let one state layer manufacture apparent
+The consistent shape across every round: a shared/blended prediction,
+evidence signal, or state field let one representation manufacture apparent
 learning it didn't earn, and the fix was always to give the contaminated
-layer its own prediction and its own evidence, never a numerical
-containment measure (a cap, a smaller floor, a threshold) layered on top of
-the shared signal. §34's invariants 14-17 generalize this.
+representation its own prediction, its own evidence, and its own
+uncertainty, never a numerical containment measure (a cap, a smaller floor,
+a threshold) layered on top of the shared signal. §34's invariants 14-18
+generalize this.
 
-What remains open is listed in §35, most notably the cold-start memory
-updater (still using the pre-C multiplicative form) and the synthetic
-ground-truth clock-reset question. Neither blocks further work; both are
-scoped as explicit follow-ups rather than silently left unresolved.
+What remains open is listed in §35: only the question of whether the memory
+update needs an explicit elapsed-time term beyond what already leaks through
+`p_hat_retrieval`'s decay formula, deliberately left open until a diagnostic
+demonstrates a problem it would fix.
 
-The next artifact is not the scheduler yet. §35's remaining open items,
-particularly the cold-start updater, are natural next simulation work;
-after that, candidate generation and challenge filtering (§20-21) can be
-layered on a learner-state model that has now been through three rounds of
-adversarial review.
+The learner-model prototype is now a stable V1 simulation baseline. The
+remaining §35 question about explicit elapsed-time weighting is deliberately
+deferred until a diagnostic demonstrates a problem that requires it; it does
+not block scheduler work.
+
+The next artifact is therefore the scheduler-policy prototype: candidate
+generation, eligibility and prerequisite filtering, challenge filtering, and
+priority ranking (§20-22), tested against the established synthetic learner
+profiles and invariant suite before any production integration.
