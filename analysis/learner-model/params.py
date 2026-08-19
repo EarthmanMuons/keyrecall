@@ -36,6 +36,10 @@ class MaterialMemoryParams:
     prior_uncertainty: float
     min_uncertainty: float
     evidence_shrinkage: float
+    alpha_cold_start: float
+    reversion_lambda_cold_start: float
+    min_cold_start_probability: float
+    max_cold_start_probability: float
 
 
 @dataclass(frozen=True)

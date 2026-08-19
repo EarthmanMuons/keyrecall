@@ -620,7 +620,9 @@ def sweep_metric(params: Params, attempts: int = 150, seed: int = 0) -> dict[str
             c["variance"] > 0 for c in record["state_after"]["competencies"].values()
         )
         and all(
-            m["half_life_days"] > 0 and m["uncertainty"] > 0
+            m["half_life_days"] > 0
+            and m["half_life_uncertainty"] > 0
+            and m["cold_start_uncertainty"] > 0
             for m in record["state_after"]["material_memory"].values()
         )
         for record in trace

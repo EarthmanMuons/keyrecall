@@ -22,6 +22,10 @@ prior_retrievability = 0.4
 prior_uncertainty = 1.0
 min_uncertainty = 0.05
 evidence_shrinkage = 0.3
+alpha_cold_start = 0.7
+reversion_lambda_cold_start = 0.05
+min_cold_start_probability = 0.001
+max_cold_start_probability = 0.999
 
 [material_execution]
 prior_variance = 0.5

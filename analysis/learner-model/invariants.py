@@ -92,8 +92,10 @@ def check_bounds() -> None:
             for m in snap["material_memory"].values():
                 if m["half_life_days"] <= 0:
                     raise InvariantFailure(f"non-positive half-life: {m}")
-                if m["uncertainty"] <= 0:
-                    raise InvariantFailure(f"non-positive memory uncertainty: {m}")
+                if m["half_life_uncertainty"] <= 0:
+                    raise InvariantFailure(f"non-positive half-life uncertainty: {m}")
+                if m["cold_start_uncertainty"] <= 0:
+                    raise InvariantFailure(f"non-positive cold-start uncertainty: {m}")
                 if not (0.0 <= m["cold_start_estimate"] <= 1.0):
                     raise InvariantFailure(f"cold_start_estimate out of bounds: {m}")
             for e in snap["material_execution"].values():
@@ -375,9 +377,13 @@ def check_memory_decays_with_elapsed_time() -> None:
 def _repeated_unguided_failure(
     state: LearnerState, params, attempts: int
 ) -> list[float]:
-    """Feeds C_MAJOR unguided failures and returns the log_half_life
+    """Anchors C_MAJOR (one prior retrieval, so log_half_life - not
+    logit_cold_start - is the operative quantity being predicted from and
+    updated) then feeds unguided failures and returns the log_half_life
     trajectory. Failure, not success, is what the old multiplicative rule
     couldn't stabilize."""
+    memory = state.material_memory_for("C_MAJOR", params)
+    memory.last_retrieval_at = 0.0
     exercise = fixed_exercise(C_MAJOR, "RIGHT")
     now = 0.0
     log_half_lives = []
@@ -440,6 +446,150 @@ def check_repeated_expected_failures_reach_equilibrium() -> None:
         raise InvariantFailure(
             "log_half_life pinned at the min clip bound rather than settling "
             "at an interior equilibrium"
+        )
+
+
+def _repeated_never_anchored_failure(
+    state: LearnerState, params, attempts: int
+) -> list[float]:
+    """Unlike _repeated_unguided_failure, never anchors: retrieval_succeeded
+    is always False, so cold_start_estimate - not log_half_life - stays the
+    operative quantity throughout, exercising the pre-anchor update path."""
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+    now = 0.0
+    cold_start_estimates = []
+    for _ in range(attempts):
+        now += 0.5
+        state.propagate(now, params)
+        outcome = Outcome(
+            started=False,
+            retrieval_succeeded=False,
+            completed=False,
+            material_retrieval=0.0,
+            pitch_integrity=0.0,
+            continuity=0.0,
+            temporal_stability=0.0,
+            achieved_tempo_ratio=0.0,
+            topology_accuracy=0.0,
+        )
+        weights = evidence_weights(exercise, outcome)
+        prediction = predicted_success(state, exercise, now, params)
+        update(state, exercise, outcome, weights, prediction, now, params)
+        cold_start_estimates.append(
+            state.material_memory["C_MAJOR"].cold_start_estimate
+        )
+    return cold_start_estimates
+
+
+def check_cold_start_estimate_stays_finite_and_bounded() -> None:
+    """C1-equivalent for the cold-start belief: repeated failure must not
+    underflow or overflow cold_start_estimate past the configured guards."""
+    params = load_params()
+    state = LearnerState.new(params)
+    cold_start_estimates = _repeated_never_anchored_failure(state, params, attempts=500)
+
+    final = cold_start_estimates[-1]
+    if not math.isfinite(final):
+        raise InvariantFailure(f"cold_start_estimate not finite: {final}")
+    lo = params.material_memory.min_cold_start_probability
+    hi = params.material_memory.max_cold_start_probability
+    if not (lo - 1e-9 <= final <= hi + 1e-9):
+        raise InvariantFailure(f"cold_start_estimate {final} outside [{lo}, {hi}]")
+
+
+def check_repeated_expected_cold_start_failures_reach_equilibrium() -> None:
+    """The cold-start analog of check_repeated_expected_failures_reach_
+    equilibrium: repeated *expected* pre-anchor failure should settle at a
+    stable interior belief, not keep drifting toward the clip bound the way
+    the pre-C2 multiplicative shrink rule did."""
+    params = load_params()
+    state = LearnerState.new(params)
+    cold_start_estimates = _repeated_never_anchored_failure(state, params, attempts=200)
+
+    late_steps = [abs(b - a) for a, b in pairwise(cold_start_estimates[-20:])]
+    if max(late_steps) > 0.01:
+        raise InvariantFailure(
+            f"cold_start_estimate still moving substantially after 200 "
+            f"consistent failures instead of reaching equilibrium: max late "
+            f"step={max(late_steps)}"
+        )
+    min_bound = params.material_memory.min_cold_start_probability
+    if cold_start_estimates[-1] <= min_bound + 1e-6:
+        raise InvariantFailure(
+            "cold_start_estimate pinned at the min clip bound rather than "
+            "settling at an interior equilibrium"
+        )
+
+
+def check_memory_uncertainty_is_phase_separated() -> None:
+    """Pre-anchor evidence should inform cold_start_uncertainty, never
+    half_life_uncertainty - carrying shrunk uncertainty across into a
+    quantity (log_half_life) no observation has actually spoken to yet
+    would misrepresent confidence in a heuristic prior as confidence
+    earned from evidence."""
+    params = load_params()
+    state = LearnerState.new(params)
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+    memory = state.material_memory_for("C_MAJOR", params)
+    initial_half_life_uncertainty = memory.half_life_uncertainty
+    initial_cold_start_uncertainty = memory.cold_start_uncertainty
+
+    now = 0.0
+    for _ in range(100):
+        now += 0.5
+        state.propagate(now, params)
+        outcome = Outcome(
+            started=False,
+            retrieval_succeeded=False,
+            completed=False,
+            material_retrieval=0.0,
+            pitch_integrity=0.0,
+            continuity=0.0,
+            temporal_stability=0.0,
+            achieved_tempo_ratio=0.0,
+            topology_accuracy=0.0,
+        )
+        weights = evidence_weights(exercise, outcome)
+        prediction = predicted_success(state, exercise, now, params)
+        update(state, exercise, outcome, weights, prediction, now, params)
+
+    if not (memory.cold_start_uncertainty < initial_cold_start_uncertainty):
+        raise InvariantFailure(
+            "100 pre-anchor failures did not reduce cold_start_uncertainty"
+        )
+    if memory.half_life_uncertainty != initial_half_life_uncertainty:
+        raise InvariantFailure(
+            f"pre-anchor failures moved half_life_uncertainty: "
+            f"{initial_half_life_uncertainty} -> {memory.half_life_uncertainty}"
+        )
+
+    # First successful retrieval anchors the clock but is itself no spaced
+    # retention-interval evidence about half-life.
+    now += 0.5
+    state.propagate(now, params)
+    outcome = _full_outcome(retrieval_succeeded=True)
+    weights = evidence_weights(exercise, outcome)
+    prediction = predicted_success(state, exercise, now, params)
+    update(state, exercise, outcome, weights, prediction, now, params)
+
+    if memory.half_life_uncertainty != initial_half_life_uncertainty:
+        raise InvariantFailure(
+            f"the first successful retrieval moved half_life_uncertainty: "
+            f"{initial_half_life_uncertainty} -> {memory.half_life_uncertainty}"
+        )
+
+    # A genuinely spaced post-anchor observation should now reduce it.
+    now += 5.0
+    state.propagate(now, params)
+    outcome = _full_outcome(retrieval_succeeded=True)
+    weights = evidence_weights(exercise, outcome)
+    prediction = predicted_success(state, exercise, now, params)
+    update(state, exercise, outcome, weights, prediction, now, params)
+
+    if not (memory.half_life_uncertainty < initial_half_life_uncertainty):
+        raise InvariantFailure(
+            "a genuinely spaced post-anchor observation did not reduce "
+            "half_life_uncertainty"
         )
 
 
@@ -875,6 +1025,18 @@ CHECKS: list[tuple[str, Callable[[], None]]] = [
     (
         "repeated expected failures reach a stable equilibrium, not collapse",
         check_repeated_expected_failures_reach_equilibrium,
+    ),
+    (
+        "cold_start_estimate stays finite and bounded under repeated failure",
+        check_cold_start_estimate_stays_finite_and_bounded,
+    ),
+    (
+        "repeated expected cold-start failures reach a stable equilibrium",
+        check_repeated_expected_cold_start_failures_reach_equilibrium,
+    ),
+    (
+        "memory uncertainty is phase-separated (cold-start vs. half-life)",
+        check_memory_uncertainty_is_phase_separated,
     ),
     (
         "a surprising successful retrieval increases retention",

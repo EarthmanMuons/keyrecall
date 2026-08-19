@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from domain import MOTOR_COMPETENCIES, TOPOLOGY_COMPETENCIES, Exercise, structural_q
 from params import Params
-from state import COMPETENCIES, LearnerState
+from state import COMPETENCIES, LearnerState, logit
 
 HAND_PAIR = {
     "RH_SCALE_EXECUTION": "LH_SCALE_EXECUTION",
@@ -309,27 +309,46 @@ def update(
         # material is independently retrievable.
         mm = params.material_memory
         y_retrieval = 1.0 if outcome.retrieval_succeeded else 0.0
-        delta_memory = y_retrieval - prediction.independent_retrieval_p
-        log_half_life_prior = math.log(mm.initial_half_life_days)
-        new_log_half_life = memory_state.log_half_life + weights.material_memory * (
-            mm.alpha_memory * delta_memory
-            - mm.reversion_lambda * (memory_state.log_half_life - log_half_life_prior)
-        )
-        memory_state.log_half_life = min(
-            max(new_log_half_life, math.log(mm.min_half_life_days)),
-            math.log(mm.max_half_life_days),
-        )
-        memory_state.uncertainty = max(
-            mm.min_uncertainty,
-            memory_state.uncertainty
-            * (1 - mm.evidence_shrinkage * weights.material_memory),
-        )
-        if not had_ever_retrieved and not outcome.retrieval_succeeded:
-            # No successful retrieval has ever anchored the half-life clock,
-            # so a failure here can only move the cold-start estimate itself.
-            memory_state.cold_start_estimate = max(
-                0.0,
-                memory_state.cold_start_estimate
+
+        if had_ever_retrieved:
+            delta_memory = y_retrieval - prediction.independent_retrieval_p
+            log_half_life_prior = math.log(mm.initial_half_life_days)
+            new_log_half_life = memory_state.log_half_life + weights.material_memory * (
+                mm.alpha_memory * delta_memory
+                - mm.reversion_lambda
+                * (memory_state.log_half_life - log_half_life_prior)
+            )
+            memory_state.log_half_life = min(
+                max(new_log_half_life, math.log(mm.min_half_life_days)),
+                math.log(mm.max_half_life_days),
+            )
+            memory_state.half_life_uncertainty = max(
+                mm.min_uncertainty,
+                memory_state.half_life_uncertainty
+                * (1 - mm.evidence_shrinkage * weights.material_memory),
+            )
+        elif not outcome.retrieval_succeeded:
+            # Half-life clock never anchored yet: cold_start_estimate is the
+            # operative prediction, not log_half_life, so only it (and its
+            # own uncertainty) moves.
+            delta_cold_start = y_retrieval - memory_state.cold_start_estimate
+            logit_cold_start_prior = logit(mm.prior_retrievability)
+            new_logit_cold_start = (
+                memory_state.logit_cold_start
+                + weights.material_memory
+                * (
+                    mm.alpha_cold_start * delta_cold_start
+                    - mm.reversion_lambda_cold_start
+                    * (memory_state.logit_cold_start - logit_cold_start_prior)
+                )
+            )
+            memory_state.logit_cold_start = min(
+                max(new_logit_cold_start, logit(mm.min_cold_start_probability)),
+                logit(mm.max_cold_start_probability),
+            )
+            memory_state.cold_start_uncertainty = max(
+                mm.min_uncertainty,
+                memory_state.cold_start_uncertainty
                 * (1 - mm.evidence_shrinkage * weights.material_memory),
             )
 

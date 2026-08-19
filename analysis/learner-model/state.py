@@ -12,6 +12,11 @@ from dataclasses import dataclass, field
 
 from params import Params
 
+
+def logit(p: float) -> float:
+    return math.log(p / (1.0 - p))
+
+
 COMPETENCIES: tuple[str, ...] = (
     "MAJOR_SCALE_TOPOLOGY",
     "NATURAL_MINOR_TOPOLOGY",
@@ -46,13 +51,18 @@ class CompetencyState:
 class MaterialMemoryState:
     material_id: str
     log_half_life: float
-    uncertainty: float
-    cold_start_estimate: float
+    half_life_uncertainty: float
+    logit_cold_start: float
+    cold_start_uncertainty: float
     last_retrieval_at: float | None = None
 
     @property
     def half_life_days(self) -> float:
         return math.exp(self.log_half_life)
+
+    @property
+    def cold_start_estimate(self) -> float:
+        return 1.0 / (1.0 + math.exp(-self.logit_cold_start))
 
     def retrievability(self, now: float) -> float:
         """M(t), §5. Raises if never retrieved; see retrievability_or_prior()."""
@@ -135,8 +145,9 @@ class LearnerState:
             self.material_memory[material_id] = MaterialMemoryState(
                 material_id=material_id,
                 log_half_life=math.log(params.material_memory.initial_half_life_days),
-                uncertainty=params.material_memory.prior_uncertainty,
-                cold_start_estimate=params.material_memory.prior_retrievability,
+                half_life_uncertainty=params.material_memory.prior_uncertainty,
+                logit_cold_start=logit(params.material_memory.prior_retrievability),
+                cold_start_uncertainty=params.material_memory.prior_uncertainty,
             )
         return self.material_memory[material_id]
 
@@ -174,8 +185,10 @@ class LearnerState:
                 mid: {
                     "half_life_days": m.half_life_days,
                     "log_half_life": m.log_half_life,
-                    "uncertainty": m.uncertainty,
+                    "half_life_uncertainty": m.half_life_uncertainty,
                     "cold_start_estimate": m.cold_start_estimate,
+                    "logit_cold_start": m.logit_cold_start,
+                    "cold_start_uncertainty": m.cold_start_uncertainty,
                     "last_retrieval_at": m.last_retrieval_at,
                 }
                 for mid, m in self.material_memory.items()
