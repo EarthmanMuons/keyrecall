@@ -1,6 +1,15 @@
 [tools]
+node = "lts"
 python = "3.14"
 uv = "latest"
+
+[tasks."markdown:format"]
+description = "Format Markdown files with Prettier"
+run = "npx prettier@latest --write \"**/*.md\""
+
+[tasks."markdown:format-check"]
+description = "Check Markdown formatting with Prettier"
+run = "npx prettier@latest --check \"**/*.md\""
 
 [tasks."python:format"]
 description = "Format Python tooling with Ruff"
