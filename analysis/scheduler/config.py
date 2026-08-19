@@ -36,11 +36,17 @@ class SafetyParams:
 class ChallengeParams:
     p_min: float
     p_max: float
+    p_introduction_min: float
 
 
 @dataclass(frozen=True)
 class DiversityParams:
     recent_window: int
+
+
+@dataclass(frozen=True)
+class GuidanceProbeParams:
+    min_days_since_last_retrieval: float
 
 
 @dataclass(frozen=True)
@@ -50,6 +56,7 @@ class Params:
     safety: SafetyParams
     challenge: ChallengeParams
     diversity: DiversityParams
+    guidance_probe: GuidanceProbeParams
 
 
 DEFAULT_PARAMS_PATH = Path(__file__).with_name("config.toml")
@@ -64,4 +71,5 @@ def load_params(path: Path | None = None) -> Params:
         safety=SafetyParams(**data["safety"]),
         challenge=ChallengeParams(**data["challenge"]),
         diversity=DiversityParams(**data["diversity"]),
+        guidance_probe=GuidanceProbeParams(**data["guidance_probe"]),
     )

@@ -22,8 +22,19 @@ max_session_attempts = 40
 # p_min/p_max: 03-v1-math.md §21's own suggested provisional range.
 p_min = 0.60
 p_max = 0.90
+# Lower admission threshold for never-practiced material (§10 new-
+# material introduction): more forgiving than steady-state practice,
+# but still learner-sensitive via overall_p rather than an unconditional
+# bypass.
+p_introduction_min = 0.15
 
 [diversity]
 # V(e): simple recency count over a fixed-size window, not decayed
 # (04-v1-scheduler.md §7.2, §9).
 recent_window = 10
+
+[guidance_probe]
+# Minimum days since the material's last confirmed successful retrieval
+# before a one-step-less-guided variant becomes bypass-eligible (§10
+# guidance fading).
+min_days_since_last_retrieval = 5.0
