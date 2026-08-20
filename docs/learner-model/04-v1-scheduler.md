@@ -1054,6 +1054,136 @@ placement_trajectories.csv
 placement_reversibility.csv
 ```
 
+### 10.5 Pass 7: post-success interval-identifiability bridge
+
+`analysis/learner-model/interval_prediction_bridge.py` extends the Pass 6
+placement sidecar through the period after first factual success but before
+material-local durability is identifiable. The representation distinguishes:
+
+```text
+before_first_factual_success
+post_success_interval_unidentified
+interval_identified
+```
+
+The bridge exists only at prediction time. Scheduler selection sees the bridged
+retrieval probability, while the ordinary estimator update receives its own
+unbridged prediction. Stored current durability, consolidation, transition
+rates, synthetic truth, and scheduler policy are unchanged.
+
+Interval information is not defined by attempt count. For an ordinary retrieval
+prediction `p`, elapsed time `delta`, and estimated half-life `h`, the
+diagnostic uses a bounded Bernoulli information proxy for log half-life:
+
+```text
+x = ln(2) * delta / h
+interval information = min(1, p * x^2 / (1 - p))
+```
+
+Zero elapsed time contributes zero information. Evidence is multiplied by the
+existing material-memory evidence weight and accumulated over factual retrieval
+observations after first success. The primary information threshold is 0.25.
+
+The bridged probability is a 0.5 interpolation in logit space between ordinary
+material retrievability and the uncertainty-limited Pass 6 placement prior. This
+keeps the result between its two inputs. Four variants were compared:
+
+```text
+control                     ordinary material prediction immediately
+bridge_until_second         bridge until one later factual observation
+bridge_until_informative    bridge until information reaches 0.25
+decaying_bridge             exponentially decay weight as information accrues
+```
+
+All values are diagnostic probes, not fitted production coefficients.
+
+The bridge changes prediction in the intended phase. Across 30 seeds, the
+information-threshold variant changes mean retrieval bias as follows:
+
+```text
+profile                       phase                     control   bridged
+memory strong, technique weak interval-unidentified     -0.545    -0.394
+memory strong, technique weak interval-identified       -0.567    -0.568
+broadly strong                interval-unidentified     -0.535    -0.345
+broadly strong                interval-identified       -0.372    -0.373
+```
+
+Thus cross-material placement evidence remains useful after first success. It
+also moves divergence from the beginner trajectory from selection 29 to 21 for
+the memory-strong/technique-weak fixture and from 19 to 18 for the broadly
+strong fixture.
+
+The mechanism nevertheless fails the primary behavioral acceptance criteria:
+
+```text
+metric                              control   until informative
+strong-profile unnecessary cueing    13/20          13/20
+memory-strong final bias              -0.570         -0.573
+broadly-strong final bias             -0.308         -0.319
+memory-strong no-admission count       8.70           8.50
+stable challenge-band fraction         0.00           0.00
+mixed-knowledge retrieval MAE          0.202          0.212
+mixed weak-material unguided count     4.00           4.00
+```
+
+Mixed strong-material cueing improves slightly from 2.40 to 2.27, but that does
+not offset the MAE regression. The pooled-prior effect from Pass 6 still reduces
+the memory-weak fixture's early unguided count from 7.0 to 5.8; extending the
+bridge is not responsible for that benefit.
+
+Aggregate metrics across the five fixtures improve because the bridge corrects
+the targeted middle phase:
+
+```text
+metric                       control   second   informative   decaying
+retrieval prediction MAE       0.287    0.264       0.260       0.262
+retrieval prediction Brier     0.245    0.226       0.222       0.224
+recovery fraction              0.345    0.344       0.345       0.344
+mean maximum revisit gap      10.71d   10.70d      10.75d      10.79d
+```
+
+A post hoc threshold decomposition at 0.10, 0.25, 0.50, and 1.00 rules out the
+specific 0.25 cutoff as the whole problem. For the memory-strong/technique-weak
+fixture, observations classified as identified at the much stricter 1.00
+threshold still have -0.581 ordinary retrieval bias. Increasing bridge lifetime
+would cover more error, but it would not produce a locally calibrated state to
+which prediction could safely hand off.
+
+The durability trace exposes that handoff problem. At the end of the control
+run, estimated current and consolidated half-lives average:
+
+```text
+profile                         current   consolidated   latent initial truth
+memory strong, technique weak     2.90d       3.03d             20d
+broadly strong                    6.35d      11.33d             20d
+```
+
+Positive interval evidence updates current durability, but current durability is
+capped by estimated consolidation. Estimated consolidation begins at the
+ordinary 3-day prior and is raised mainly by the quality-weighted causal success
+transition. In the memory-strong/technique-weak fixture, weak execution quality
+therefore keeps the consolidation envelope near 3 days even though retrieval
+successes provide evidence of strong pre-existing memory.
+
+Pass 7 does not support promoting a prediction bridge. It supports two narrower
+findings: the post-success underidentified phase is real and bridgeable, but the
+material estimator does not absorb enough evidence to become a viable handoff
+target afterward. The next diagnostic should isolate estimator-side
+consolidation inference from causal consolidation formation. In particular, it
+should test whether spaced retrieval evidence can revise the estimate of
+pre-existing retained durability without changing synthetic truth or the
+learner-side consolidation transition.
+
+Pass 7 writes five artifacts:
+
+```text
+bridge_profile_summary.csv
+bridge_variant_summary.csv
+bridge_phase_summary.csv
+bridge_threshold_summary.csv
+bridge_trajectories.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -1086,5 +1216,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             and cold_start_identifiability.py performs the
                             controlled Pass 5 characterization (§10.3), while
                             cross_material_placement.py performs the Pass 6
-                            placement-memory diagnostic (§10.4)
+                            placement-memory diagnostic (§10.4) and
+                            interval_prediction_bridge.py performs the Pass 7
+                            prediction-bridge diagnostic (§10.5)
 ```
