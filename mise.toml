@@ -59,6 +59,10 @@ run = "uv run analysis/learner-model/supported_selection_intent.py --output-dir 
 description = "Pass 12 dimension-targeted recovery modality characterization"
 run = "uv run analysis/learner-model/recovery_modality.py --output-dir analysis/learner-model/generated"
 
+[tasks."analysis:guidance-probe-yield"]
+description = "Pass 13 guidance-probe marginal-yield and termination characterization"
+run = "uv run analysis/learner-model/guidance_probe_yield.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:learner-model"]
 description = "Run learner-model simulation invariant checks"
 run = "uv run analysis/learner-model/invariants.py"

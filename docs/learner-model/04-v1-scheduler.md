@@ -1792,6 +1792,113 @@ recovery_modality_profile_summary.csv
 recovery_modality_variant_summary.csv
 ```
 
+### 10.11 Pass 13: guidance-probe marginal yield
+
+Pass 13 separates control characterization from diagnostic suppression. The
+production scheduler and learner model remain unchanged.
+
+The control stage records each material's probe ordinal, time since the prior
+probe, predicted retrieval, expected information, four separate uncertainty
+states, factual outcome, evidence weight, and event-local state movement. It
+also evaluates the exact unguided sibling on later attempts to measure actual
+challenge admission rather than presentation alone. Results are grouped by exact
+ordinal, ordinal band, operative-memory uncertainty band, and
+consolidation-variance band. No combined realized-information score is created.
+
+Across 30 seeds and seven profiles, marginal yield declines strongly:
+
+```text
+probe ordinal   probes   success   expected I   |delta retrieval p|   memory U reduction   consolidation V reduction   next probe
+1-2              1,741    54.2%       1.939            0.405                 0.160                    0.474               4.24d
+3-5              1,849    52.5%       1.533            0.331                 0.099                    0.147               3.37d
+6-8                680    24.4%       1.184            0.160                 0.053                    0.074               1.51d
+9+               1,306     1.1%       0.729            0.010                 0.011                    0.026               1.24d
+```
+
+The decline is real but not uniform. The globally strong fixtures have only four
+ordinal-9+ probes each. Their late probes still succeed 75-100% and produce
+large retrieval-prediction movement. Nearly all ordinal-9+ volume comes from
+beginner, memory-weak, sparse, mixed, and clustered-knowledge materials. The
+last four of those groups have zero successes at ordinal 9+; beginner success is
+3.8%.
+
+The uncertainty view tells the same story without ordinal confounding:
+
+```text
+operative memory U   probes   success   expected I   |delta retrieval p|   memory U reduction
+high                  2,677    57.2%       1.850            0.406                 0.142
+medium                1,333    40.0%       1.352            0.245                 0.081
+low                   1,566     2.0%       0.774            0.015                 0.016
+```
+
+Low consolidation variance is rarer, but its 188 probes similarly yield 3.2%
+success, 0.021 absolute retrieval movement, 0.001 memory-uncertainty reduction,
+and 0.011 consolidation-variance reduction. Repeated probes can still reduce
+competency and execution variance, so low memory yield does not imply zero total
+learner-state evidence.
+
+The scheduler's expected-information term is directionally calibrated to the
+state dimensions it emphasizes. Across control probes, its correlation with
+realized reduction is 0.641 for operative memory uncertainty, 0.600 for
+consolidation log variance, and 0.470 for competency variance. Correlation with
+execution-variance reduction is only 0.109. The heuristic recognizes much of the
+declining memory yield; the probe bypass itself has no termination threshold
+based on that value.
+
+The short late-probe interval exposes a clock boundary. Successful probes move
+`factual_last_retrieval_at`, naturally delaying the next probe. Failed probes
+leave that success clock old, so the material remains probe-eligible after
+recovery. Pass 13 therefore includes a targeted five-day failed-probe cooldown
+in addition to the initially planned sidecars:
+
+```text
+variant                 probes/seed   suppressed winners   retrieval MAE   Brier   no admission
+control                    26.55              0.00              0.228       0.191       1.96
+10-day minimum spacing     14.14             28.46              0.285       0.259      12.05
+15-day success cooldown    21.30              7.50              0.246       0.218       7.35
+5-day failure cooldown     22.40             21.38              0.256       0.223       2.58
+memory-U threshold         24.68             11.09              0.259       0.220       2.09
+low-yield history          26.30              2.49              0.237       0.198       1.96
+```
+
+Every suppression policy worsens aggregate retrieval calibration. Broad spacing
+and success cooldown frequently remove the only admitted candidate. Failed-probe
+cooldown limits that no-admission increase and improves calibration in both
+globally strong fixtures, but it materially worsens the memory-weak fixture and
+is not robust. The uncertainty rule suppresses many winning probes but often
+substitutes another material's probe, so total probe count falls only 7.1% while
+MAE and Brier worsen. The deliberately strict low-yield history rule barely
+changes probe volume and still regresses calibration and the revisit-gap tail.
+
+Control probes lead to later unguided admission only 2.3% of the time within the
+horizon. Suppression does not improve that outcome consistently. Some variants
+end with lower average uncertainty because they alter material coverage and
+concentration, but their prediction calibration is worse; lower uncertainty is
+not evidence that the omitted observations were unnecessary.
+
+Pass 13 therefore establishes diminishing marginal memory yield, especially
+after repeated failures, but rejects all tested termination policies. Late
+failed probes continue to supply negative retrieval evidence and some motor
+evidence. Simply suppressing them either removes the only admitted action or
+redirects selection without resolving the material's challenge-band state. A
+future probe-policy intervention would need an explicit alternative action or a
+different admission pathway, not only a cooldown. No production policy is
+promoted.
+
+Pass 13 writes nine artifacts:
+
+```text
+guidance_probe_events.csv
+guidance_probe_exact_ordinal_summary.csv
+guidance_probe_ordinal_summary.csv
+guidance_probe_uncertainty_summary.csv
+guidance_probe_consolidation_variance_summary.csv
+guidance_probe_information_calibration.csv
+guidance_probe_policy_seed_summary.csv
+guidance_probe_policy_profile_summary.csv
+guidance_probe_policy_variant_summary.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -1836,5 +1943,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             and supported_selection_intent.py performs the Pass
                             11 intent, yield, and counterfactual characterization
                             (§10.9), while recovery_modality.py performs the Pass
-                            12 dimension-targeted recovery diagnostic (§10.10)
+                            12 dimension-targeted recovery diagnostic (§10.10),
+                            and guidance_probe_yield.py performs the Pass 13
+                            marginal-yield and termination diagnostic (§10.11)
 ```
