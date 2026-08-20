@@ -774,6 +774,57 @@ admission itself. This is the kind of finding this document's own
 frozen-unless-structural-failure scope (§2, §9) exists to allow: a state no
 scripted scenario had reached before, not a policy disagreement.
 
+### 10.2 Pass 4: production-memory redesign characterization
+
+`analysis/scheduler/stress.py` now records calibration metrics as well as
+scheduler behavior: overall prediction bias/MAE, observed retrieval frequency,
+and independent-retrieval prediction bias/MAE/Brier score. Retrieval metrics
+include only attempts where retrieval was actually observed.
+
+The same 250-trial matrix was run at the immediate pre-redesign baseline
+(`2a6b5ce`) and at the production-memory redesign (`db35709`). Every trial
+completed and neither run produced a hard-property violation.
+
+Scheduler behavior moved in the expected direction as the synthetic learner
+became more durable:
+
+```text
+metric                                      baseline   redesigned   change
+recovery fraction                             0.378       0.317     -16.3%
+guidance-probe fraction                       0.432       0.376     -13.0%
+continuous-cue fraction                       0.381       0.313     -17.9%
+maximum material-selection fraction           0.713       0.591     -17.1%
+mean revisit interval                         1.622d      1.910d    +17.7%
+mean of each trial's maximum revisit gap      12.153d     26.565d  +118.6%
+no-admission rate                             0.138       0.141      +2.5%
+```
+
+The longer tail is a characterization flag, not by itself a regression. It
+coincides with less concentration, less recovery/cueing, and better observed
+retrieval performance rather than with a scheduler contract failure.
+
+Weighted over every observed retrieval, calibration changed as follows:
+
+```text
+metric                            baseline   redesigned
+observed retrieval count           38,537      43,328
+retrieval success fraction          0.322       0.503
+retrieval prediction bias          -0.038      -0.050
+retrieval prediction MAE            0.143       0.124
+retrieval prediction Brier          0.081       0.077
+overall prediction MAE              0.210       0.187
+```
+
+The redesign is slightly more conservative on average, not over-optimistic,
+while reducing both retrieval and overall prediction error. That does not
+support lowering global durability-growth rates merely to reproduce the old
+scheduler trajectory. One intentionally misspecified fixture,
+`memory_strong_technique_weak`, remains the main localized calibration problem:
+its core-sweep retrieval bias moved from `-0.367` to `-0.576` because true
+initial memory is much stronger than the estimator's cold-start information.
+That is a placement/observability target for later calibration, not evidence
+against the four-axis transition semantics.
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established

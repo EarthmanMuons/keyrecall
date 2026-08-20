@@ -1010,6 +1010,25 @@ def _compute_metrics(
         _guidance_independence(r.selected.exercise) for r in presented
     )
     tier_counts = Counter(r.selected.eligibility_tier for r in presented)
+    outcome_records = [r for r in presented if r.outcome is not None]
+    overall_prediction_errors = [
+        r.selected.prediction.overall_p
+        - (
+            r.outcome.pitch_integrity
+            + r.outcome.continuity
+            + r.outcome.temporal_stability
+        )
+        / 3.0
+        for r in outcome_records
+    ]
+    observed_retrievals = [
+        r for r in outcome_records if r.outcome.retrieval_succeeded is not None
+    ]
+    retrieval_prediction_errors = [
+        r.selected.prediction.independent_retrieval_p
+        - (1.0 if r.outcome.retrieval_succeeded else 0.0)
+        for r in observed_retrievals
+    ]
 
     max_run, current_run, current_material = 0, 0, None
     per_material_selections: dict[str, list[float]] = {}
@@ -1055,6 +1074,14 @@ def _compute_metrics(
             for r in material_presented
             if _guidance_independence(r.selected.exercise) == 0
         )
+        observed_material_retrievals = [
+            r
+            for r in material_presented
+            if r.outcome is not None and r.outcome.retrieval_succeeded is not None
+        ]
+        successful_material_retrievals = sum(
+            1 for r in observed_material_retrievals if r.outcome.retrieval_succeeded
+        )
 
         condition = (
             spec.mixed_memory_condition_by_material.get(material_id, "")
@@ -1080,6 +1107,13 @@ def _compute_metrics(
                 "max_consecutive_cued_run": max_cued_run,
                 "frac_selections_at_max_cueing": (
                     cued_count / len(material_presented) if material_presented else 0.0
+                ),
+                "retrieval_observation_count": len(observed_material_retrievals),
+                "retrieval_success_count": successful_material_retrievals,
+                "retrieval_success_fraction": (
+                    successful_material_retrievals / len(observed_material_retrievals)
+                    if observed_material_retrievals
+                    else None
                 ),
                 "revisit_interval_mean_days": (sum(gaps) / len(gaps) if gaps else None),
                 "revisit_interval_max_days": (max(gaps) if gaps else None),
@@ -1127,6 +1161,41 @@ def _compute_metrics(
         "frac_concurrent_cues": frac(independence_counts[0]),
         "frac_fully_eligible": frac(tier_counts["FULLY_ELIGIBLE"]),
         "frac_provisionally_eligible": frac(tier_counts["PROVISIONALLY_ELIGIBLE"]),
+        "overall_prediction_bias": (
+            sum(overall_prediction_errors) / len(overall_prediction_errors)
+            if overall_prediction_errors
+            else None
+        ),
+        "overall_prediction_mae": (
+            sum(abs(error) for error in overall_prediction_errors)
+            / len(overall_prediction_errors)
+            if overall_prediction_errors
+            else None
+        ),
+        "retrieval_observation_count": len(observed_retrievals),
+        "retrieval_success_fraction": (
+            sum(1 for r in observed_retrievals if r.outcome.retrieval_succeeded)
+            / len(observed_retrievals)
+            if observed_retrievals
+            else None
+        ),
+        "retrieval_prediction_bias": (
+            sum(retrieval_prediction_errors) / len(retrieval_prediction_errors)
+            if retrieval_prediction_errors
+            else None
+        ),
+        "retrieval_prediction_mae": (
+            sum(abs(error) for error in retrieval_prediction_errors)
+            / len(retrieval_prediction_errors)
+            if retrieval_prediction_errors
+            else None
+        ),
+        "retrieval_prediction_brier": (
+            sum(error**2 for error in retrieval_prediction_errors)
+            / len(retrieval_prediction_errors)
+            if retrieval_prediction_errors
+            else None
+        ),
         "materials_introduced_count": materials_introduced,
         "materials_never_succeeded_count": materials_never_succeeded,
         "materials_never_selected_count": materials_never_selected,
@@ -1183,6 +1252,12 @@ def report(
             "frac_bootstrap_probe",
             "frac_new_material",
             "frac_concurrent_cues",
+            "overall_prediction_bias",
+            "overall_prediction_mae",
+            "retrieval_success_fraction",
+            "retrieval_prediction_bias",
+            "retrieval_prediction_mae",
+            "retrieval_prediction_brier",
         ):
             values = [
                 t[field_name] for t in clean_trials if t.get(field_name) is not None
@@ -1194,6 +1269,42 @@ def report(
                 print(
                     f"  {field_name:<32} mean={mean:.3f} median={median:.3f} max={max(values):.3f}"
                 )
+        print()
+
+        retrieval_observation_count = sum(
+            t["retrieval_observation_count"] for t in clean_trials
+        )
+        attempts_presented = sum(t["attempts_presented"] for t in clean_trials)
+
+        def weighted_mean(field_name: str, weight_name: str, total: int) -> float:
+            if not total:
+                return float("nan")
+            return (
+                sum(
+                    t[weight_name] * t[field_name]
+                    for t in clean_trials
+                    if t[weight_name]
+                )
+                / total
+            )
+
+        print("Observation-weighted calibration across completed trials:")
+        print(f"  retrieval_observation_count       {retrieval_observation_count}")
+        for field_name in (
+            "retrieval_success_fraction",
+            "retrieval_prediction_bias",
+            "retrieval_prediction_mae",
+            "retrieval_prediction_brier",
+        ):
+            print(
+                f"  {field_name:<35} "
+                f"{weighted_mean(field_name, 'retrieval_observation_count', retrieval_observation_count):.3f}"
+            )
+        for field_name in ("overall_prediction_bias", "overall_prediction_mae"):
+            print(
+                f"  {field_name:<35} "
+                f"{weighted_mean(field_name, 'attempts_presented', attempts_presented):.3f}"
+            )
         print()
 
         print("frac_recovery / frac_guidance_probe by profile (core_sweep only):")

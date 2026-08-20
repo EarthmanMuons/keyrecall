@@ -1570,12 +1570,15 @@ unobserved retrieval (continuous cueing) never moves memory state,
 
 `analysis/learner-model/analyze.py` runs a complementary behavioral-diagnostics
 pass (calibration, competency convergence, memory tracking, a memory-spacing
-sensitivity probe, residual localization, and a parameter-sensitivity sweep)
-that answers a different question than these invariants: not "does the model
-violate an architectural rule" but "does it behave plausibly over months of
-synthetic practice, and which heuristic parameters actually matter." §10.0's
-finding (single-logit contamination) and the log-half-life equilibrium property
-(§5.2) were both first identified there, then reduced to the invariants above.
+sensitivity probe, deterministic production-transition trajectories, residual
+localization, and a parameter-sensitivity sweep) that answers a different
+question than these invariants: not "does the model violate an architectural
+rule" but "does it behave plausibly over months of synthetic practice, and which
+heuristic parameters actually matter." The sweep includes every new activation,
+durability, consolidation, and event-factor coefficient, with bounded factors
+kept inside `[0, 1]`. §10.0's finding (single-logit contamination) and the
+log-half-life equilibrium property (§5.2) were both first identified there, then
+reduced to the invariants above.
 
 ### 29.1 Priors
 
@@ -1641,6 +1644,53 @@ returning learner does not behave identically to a true novice
 ```
 
 If this fails, investigate whether an explicit savings mechanism is required.
+
+### 29.9 First production-memory characterization
+
+The first post-redesign characterization compared commit `db35709` with its
+immediate pre-production baseline, `2a6b5ce`, under the same deterministic
+learner diagnostics and the scheduler's 250-trial stress matrix.
+
+The most visible learner-side change is intentionally concentrated in massed
+success. After ten forced successes, current durability changed as follows:
+
+```text
+spacing       baseline     redesigned
+1 minute      3.002 days   5.848 days
+1 hour        3.149 days   5.869 days
+1 day         6.238 days   8.172 days
+1 week       20.719 days  21.232 days
+```
+
+Thus the causal success transition adds real learning where the prior
+evidence-only rule had almost no surprise signal, while spaced success remains
+dominated by retrieval evidence. Ten full-quality two-day unguided successes
+move current durability from 4 to 12.923 days and consolidation from 20 to
+36.051 days. Notes-previewed successes reach 10.499 and 31.989 days under the
+separately parameterized success factor.
+
+Productive nonsuccess remains qualitatively distinct. Starting at current 4
+days, consolidation 20 days, and a day-zero anchor, ten two-day events produce:
+
+```text
+event/guidance                    current     consolidation
+continuous cues                   5.050 days  20.000 days
+notes-previewed observed failure  3.942 days  20.000 days
+unguided observed failure         3.999 days  20.000 days
+```
+
+The observed-failure cases combine negative evidence with positive causal
+practice learning, so their complete update need not show a net durability
+increase. Continuous cueing supplies no retrieval evidence and isolates the
+positive practice-learning path.
+
+The one-at-a-time `0.5x/1x/2x` sweep identifies success durability,
+consolidation growth and target, supported durability, and the ordinary practice
+factors as the strongest new numerical levers. Activation restoration is
+comparatively weak over this range. These are synthetic sensitivity results, not
+fitted values. No production coefficient changed in this characterization:
+aggregate prediction error improved after the redesign, and there is no pilot or
+population target that would justify preferring a neighboring value yet.
 
 ## 30. Scheduler simulation tests
 

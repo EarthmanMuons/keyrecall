@@ -18,6 +18,7 @@ Outputs (in --output-dir):
     hand_transfer.csv          borrowed vs. stored LH mean across RH-only/LH-only phases
     reacquisition.csv          predicted_p/pitch trajectory, returning vs. beginner
     guidance_sensitivity.csv   predicted_p and evidence weights across guidance levels
+    memory_transitions.csv     production memory transitions by event/guidance class
     parameter_sensitivity.csv  0.5x/1x/2x sweep over named heuristic parameters
 
 Usage:
@@ -85,12 +86,46 @@ def _scale_value(base: float, factor: float) -> float:
     return base * factor
 
 
+def _scale_unit_interval(base: float, factor: float) -> float:
+    return min(1.0, base * factor)
+
+
 SWEEP_PARAMETERS: list[tuple[str, str, Callable[[float, float], float]]] = [
     ("competency", "learning_rate", _scale_value),
     ("competency", "uncertainty_diffusion", _scale_value),
     ("competency", "evidence_shrinkage", _scale_value),
     ("material_memory", "alpha_current_durability", _scale_value),
     ("material_memory", "reversion_lambda_current_durability", _scale_value),
+    ("material_memory", "supported_activation_restoration_rate", _scale_value),
+    ("material_memory", "supported_current_durability_rate", _scale_value),
+    ("material_memory", "success_current_durability_rate", _scale_value),
+    ("material_memory", "consolidation_growth_rate", _scale_value),
+    ("material_memory", "consolidation_growth_target_days", _scale_value),
+    (
+        "material_memory",
+        "supported_practice_factor_concurrent_cues",
+        _scale_unit_interval,
+    ),
+    (
+        "material_memory",
+        "supported_practice_factor_notes_previewed",
+        _scale_unit_interval,
+    ),
+    (
+        "material_memory",
+        "supported_practice_factor_unguided",
+        _scale_unit_interval,
+    ),
+    (
+        "material_memory",
+        "retrieval_success_factor_notes_previewed",
+        _scale_unit_interval,
+    ),
+    (
+        "material_memory",
+        "retrieval_success_factor_unguided",
+        _scale_unit_interval,
+    ),
     ("material_execution", "learning_rate", _scale_value),
     ("material_execution", "mean_reversion_tau_days", _scale_value),
     ("hand_transfer", "rho_hand", _scale_value),
@@ -110,6 +145,40 @@ RELEVANT_METRICS: dict[tuple[str, str], tuple[str, ...]] = {
     ("material_memory", "alpha_current_durability"): ("memory_retrievability_error",),
     ("material_memory", "reversion_lambda_current_durability"): (
         "memory_retrievability_error",
+    ),
+    ("material_memory", "supported_activation_restoration_rate"): (
+        "cued_nonsuccess_retrievability_7d",
+    ),
+    ("material_memory", "supported_current_durability_rate"): (
+        "cued_nonsuccess_retrievability_7d",
+    ),
+    ("material_memory", "success_current_durability_rate"): (
+        "tight_success_current_half_life",
+        "weekly_success_current_half_life",
+    ),
+    ("material_memory", "consolidation_growth_rate"): (
+        "success_consolidated_half_life",
+        "tight_success_current_half_life",
+    ),
+    ("material_memory", "consolidation_growth_target_days"): (
+        "success_consolidated_half_life",
+        "tight_success_current_half_life",
+    ),
+    ("material_memory", "supported_practice_factor_concurrent_cues"): (
+        "cued_nonsuccess_retrievability_7d",
+    ),
+    ("material_memory", "supported_practice_factor_notes_previewed"): (
+        "notes_nonsuccess_retrievability_7d",
+    ),
+    ("material_memory", "supported_practice_factor_unguided"): (
+        "unguided_failure_retrievability_7d",
+    ),
+    ("material_memory", "retrieval_success_factor_notes_previewed"): (
+        "notes_success_current_half_life",
+    ),
+    ("material_memory", "retrieval_success_factor_unguided"): (
+        "tight_success_current_half_life",
+        "success_consolidated_half_life",
     ),
     ("material_execution", "learning_rate"): ("residual_localization_gap",),
     ("material_execution", "mean_reversion_tau_days"): ("residual_localization_gap",),
@@ -320,9 +389,131 @@ def memory_spacing_sensitivity_rows(params: Params) -> list[dict[str, Any]]:
                     "predicted_independent_retrieval_p": prediction.independent_retrieval_p,
                     "log_current_half_life": memory.log_current_half_life,
                     "current_half_life_days": memory.current_half_life_days,
+                    "log_consolidated_half_life": memory.log_consolidated_half_life,
+                    "consolidated_half_life_days": (memory.consolidated_half_life_days),
                 }
             )
     return rows
+
+
+def memory_transition_rows(params: Params) -> list[dict[str, Any]]:
+    """Characterize the new causal branches without stochastic outcome noise.
+
+    Every condition starts from the same known but partially depleted memory.
+    Success and productive-nonsuccess cases then receive ten full-quality
+    events at two-day intervals. The seven-day post-series retrievability
+    exposes activation and durability effects without letting an immediate
+    event-time prediction hide them.
+    """
+    cases = (
+        ("success", "unguided", True),
+        ("success", "notes_previewed", True),
+        ("productive_nonsuccess", "concurrent_pitch_cues", None),
+        ("productive_nonsuccess", "notes_previewed", False),
+        ("productive_nonsuccess", "unguided", False),
+    )
+    rows = []
+    for event_class, guidance_level, retrieval_succeeded in cases:
+        state = LearnerState.new(params)
+        memory = state.material_memory_for("C_MAJOR", params)
+        memory.memory_anchor_at = 0.0
+        memory.factual_last_retrieval_at = 0.0
+        memory.last_retrieval_attempt_at = 0.0
+        memory.log_current_half_life = math.log(4.0)
+        memory.log_consolidated_half_life = math.log(20.0)
+        guidance = GUIDANCE_LEVELS[guidance_level]
+        exercise = fixed_exercise(C_MAJOR, "RIGHT", guidance=guidance)
+        outcome = dataclasses.replace(
+            FULL_OUTCOME,
+            retrieval_succeeded=retrieval_succeeded,
+            material_retrieval=1.0 if retrieval_succeeded is True else 0.0,
+        )
+
+        for attempt_index in range(10):
+            now = 2.0 * (attempt_index + 1)
+            state.propagate(now, params)
+            prediction = predicted_success(state, exercise, now, params)
+            update(
+                state,
+                exercise,
+                outcome,
+                evidence_weights(exercise, outcome),
+                prediction,
+                now,
+                params,
+            )
+            rows.append(
+                {
+                    "event_class": event_class,
+                    "guidance_level": guidance_level,
+                    "attempt_index": attempt_index,
+                    "at_days": now,
+                    "predicted_independent_retrieval_p_before": (
+                        prediction.independent_retrieval_p
+                    ),
+                    "memory_anchor_at": memory.memory_anchor_at,
+                    "factual_last_retrieval_at": memory.factual_last_retrieval_at,
+                    "current_half_life_days": memory.current_half_life_days,
+                    "consolidated_half_life_days": (memory.consolidated_half_life_days),
+                    "retrievability_7d_after_series": (
+                        memory.retrievability_or_prior(27.0, params)
+                        if attempt_index == 9
+                        else ""
+                    ),
+                }
+            )
+    return rows
+
+
+def memory_transition_metrics(params: Params) -> dict[str, float]:
+    spacing = memory_spacing_sensitivity_rows(params)
+    transitions = memory_transition_rows(params)
+
+    def spacing_final(label: str, field: str) -> float:
+        return next(
+            float(row[field])
+            for row in spacing
+            if row["spacing"] == label and row["attempt_index"] == 9
+        )
+
+    def transition_final(event_class: str, guidance_level: str, field: str) -> float:
+        return next(
+            float(row[field])
+            for row in transitions
+            if row["event_class"] == event_class
+            and row["guidance_level"] == guidance_level
+            and row["attempt_index"] == 9
+        )
+
+    return {
+        "tight_success_current_half_life": spacing_final(
+            "1_minute", "current_half_life_days"
+        ),
+        "weekly_success_current_half_life": spacing_final(
+            "1_week", "current_half_life_days"
+        ),
+        "success_consolidated_half_life": spacing_final(
+            "1_minute", "consolidated_half_life_days"
+        ),
+        "notes_success_current_half_life": transition_final(
+            "success", "notes_previewed", "current_half_life_days"
+        ),
+        "cued_nonsuccess_retrievability_7d": transition_final(
+            "productive_nonsuccess",
+            "concurrent_pitch_cues",
+            "retrievability_7d_after_series",
+        ),
+        "notes_nonsuccess_retrievability_7d": transition_final(
+            "productive_nonsuccess",
+            "notes_previewed",
+            "retrievability_7d_after_series",
+        ),
+        "unguided_failure_retrievability_7d": transition_final(
+            "productive_nonsuccess",
+            "unguided",
+            "retrievability_7d_after_series",
+        ),
+    }
 
 
 def residual_localization_rows(
@@ -666,6 +857,24 @@ def sweep_metric(params: Params, attempts: int = 150, seed: int = 0) -> dict[str
             value = None
         metrics[name] = value
 
+    transition_metric_names = (
+        "tight_success_current_half_life",
+        "weekly_success_current_half_life",
+        "success_consolidated_half_life",
+        "notes_success_current_half_life",
+        "cued_nonsuccess_retrievability_7d",
+        "notes_nonsuccess_retrievability_7d",
+        "unguided_failure_retrievability_7d",
+    )
+    try:
+        transition_metrics = memory_transition_metrics(params)
+        if not all(math.isfinite(value) for value in transition_metrics.values()):
+            raise ValueError("memory transition metric not finite")
+    except Exception:  # noqa: BLE001 - non-finite/crashed is itself bounds_ok=False
+        metrics["bounds_ok"] = False
+        transition_metrics = dict.fromkeys(transition_metric_names)
+    metrics.update(transition_metrics)
+
     return metrics
 
 
@@ -702,6 +911,13 @@ METRIC_FIELDS = (
     "memory_retrievability_error",
     "residual_localization_gap",
     "hand_transfer_effect",
+    "tight_success_current_half_life",
+    "weekly_success_current_half_life",
+    "success_consolidated_half_life",
+    "notes_success_current_half_life",
+    "cued_nonsuccess_retrievability_7d",
+    "notes_nonsuccess_retrievability_7d",
+    "unguided_failure_retrievability_7d",
 )
 
 
@@ -762,6 +978,7 @@ def report(
     hand_transfer: list[dict[str, Any]],
     reacquisition: list[dict[str, Any]],
     guidance: list[dict[str, Any]],
+    memory_transitions: list[dict[str, Any]],
     sensitivity: list[dict[str, Any]],
 ) -> None:
     print("Calibration (predicted_p vs. observed success, by bucket):")
@@ -873,6 +1090,18 @@ def report(
         )
     print()
 
+    print("Production memory transitions after 10 two-day events:")
+    for row in memory_transitions:
+        if row["attempt_index"] != 9:
+            continue
+        print(
+            f"  {row['event_class']:<23} {row['guidance_level']:<22} "
+            f"current={row['current_half_life_days']:.3f}d "
+            f"consolidated={row['consolidated_half_life_days']:.3f}d "
+            f"p(+7d)={row['retrievability_7d_after_series']:.3f}"
+        )
+    print()
+
     print("Parameter sensitivity (metric that triggered the classification):")
     seen = set()
     for row in sensitivity:
@@ -911,6 +1140,7 @@ def main() -> None:
     hand_transfer = hand_transfer_rows(params)
     reacquisition = reacquisition_rows(params)
     guidance = guidance_sensitivity_rows(params)
+    memory_transitions = memory_transition_rows(params)
     sensitivity = parameter_sensitivity_rows(params)
 
     outputs = {
@@ -923,6 +1153,7 @@ def main() -> None:
         "hand_transfer.csv": hand_transfer,
         "reacquisition.csv": reacquisition,
         "guidance_sensitivity.csv": guidance,
+        "memory_transitions.csv": memory_transitions,
         "parameter_sensitivity.csv": sensitivity,
     }
     for filename, rows in outputs.items():
@@ -938,6 +1169,7 @@ def main() -> None:
         hand_transfer,
         reacquisition,
         guidance,
+        memory_transitions,
         sensitivity,
     )
 
