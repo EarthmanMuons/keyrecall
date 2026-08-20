@@ -1899,6 +1899,135 @@ guidance_probe_policy_profile_summary.csv
 guidance_probe_policy_variant_summary.csv
 ```
 
+### 10.12 Pass 14: low-yield probe alternative actions
+
+Pass 14 preserves the production scheduler and characterizes the exact state
+immediately before each probe that can be identified as low-yield without using
+its future outcome. The diagnostic trigger is probe ordinal 9 or later, or two
+consecutive prior probes below all Pass 13 low-yield thresholds. In this matrix,
+the ordinal rule accounts for the trigger set.
+
+The diagnostic reruns the unchanged candidate pipeline on the preserved state
+and session, then records the best candidate in each alternative class:
+
+```text
+admitted non-probe       any admitted action other than a guidance probe
+ordinary band            bypass-free candidate inside the challenge band
+provisional              admitted provisional-tier non-probe
+recovery-like            exact same motor realization with continuous cues
+easier motor             same material and guidance with lower motor demand
+memory support           best same-material continuous-cue candidate
+other near band          other material closest to the band among rejected candidates
+end session              present nothing else in the current 20-attempt session
+```
+
+Every candidate row retains its rejection reason, predicted retrieval and
+overall probabilities, eligibility tier, bypass, R/I/V/G terms, and actual rank
+key. The sidecar does not turn any diagnostic alternative into a production
+admission route.
+
+Across 30 seeds and seven profiles, 1,306 control probes meet the trigger:
+
+```text
+alternative             available   admitted   mean overall p   principal boundary
+admitted non-probe         98.2%       98.2%        0.288        99.7% are other-material bootstrap probes
+ordinary band              69.1%       69.1%        0.608        61.1% are on the probed material
+provisional                12.6%       12.6%        0.266        beginner-only bootstrap probes
+exact recovery-like       100.0%       12.3%        0.508        87.7% remain too hard
+easier motor               53.1%       53.1%        0.244        all still use the guidance-probe bypass
+memory support            100.0%       69.0%        0.591        31.0% remain too hard
+other near band           100.0%        0.0%        0.573        all remain below the challenge band
+```
+
+This is not general candidate scarcity. An admitted non-probe exists in 98.2% of
+trigger states, and a bypass-free in-band candidate exists in 69.1%. However,
+the apparent alternatives have specific costs. The best non-probe is almost
+always a bootstrap probe on another unresolved material. The best bypass-free
+action is often stronger memory support on the same material. Easier-motor
+candidates remain guidance probes rather than escaping the probe policy.
+
+The selected probe wins primarily through retention urgency, not an inflated
+information score. Against the best admitted non-probe, the probe has higher
+retention in every comparable event, averaging 0.596 versus 0.421. The
+alternative has much higher expected information, averaging 1.978 versus 0.718,
+and much less negative diversity. Since V1 ranking is lexicographic in R/I/V/G
+within a tier, retention decides first. The same pattern holds against
+ordinary-band alternatives: probe retention is higher in every comparable event.
+Pass 14 therefore does not identify a broken information heuristic or a missing
+candidate generator. It identifies a choice among unresolved-material testing,
+stronger support, and current-material retention urgency.
+
+The trigger distribution reinforces the Pass 13 localization:
+
+```text
+profile                         trigger events
+beginner                              184
+technique strong, memory weak         252
+memory strong, technique weak           4
+broadly strong                           4
+mixed prior knowledge                 283
+sparse expert                         269
+common-keys expert                    310
+```
+
+The intentional no-selection comparator ends the remainder of the current
+session at a trigger without advancing probe history. It is deliberately a
+strong version of shortening the session:
+
+```text
+metric                              control   end session
+selected attempts per seed           58.04       42.93
+attempt slots ended per seed           0.00       15.11
+retrieval prediction MAE              0.228       0.263
+retrieval prediction Brier            0.191       0.218
+recovery selections                   22.56       15.38
+no-selection count                     1.96       17.07
+maximum material fraction              0.466       0.386
+maximum revisit gap                   11.03d       9.38d
+```
+
+The shorter revisit gap is mechanical because the sidecar removes session slots.
+It does not offset the lost evidence or worse calibration. Nearly all of the
+intervention falls on weak and heterogeneous profiles; the two globally strong
+profiles almost never reach the trigger. Ending the session is therefore not a
+generally preferable substitute for the late probe.
+
+Pass 14 also isolates four pre-probe clocks on factual failures. Across all
+failed probes, time since the last factual attempt correlates positively with
+memory-uncertainty reduction (0.614) and consolidation-variance reduction
+(0.583), while time since the last factual success correlates negatively (-0.720
+and -0.618). This aggregate contrast reflects the accumulation of failures after
+an old success.
+
+Within the low-yield failed tail, attempt and previous-probe elapsed time still
+correlate with absolute retrieval-prediction movement (0.361), but carry almost
+no relationship to memory-uncertainty or consolidation-variance reduction
+(0.048/-0.011). Consecutive prior probe failures are much more diagnostic of low
+uncertainty yield (-0.839/-0.845). An attempt-based eligibility clock might
+space the probes, but elapsed attempt time alone does not identify when their
+posterior yield has recovered. The factual-success clock must remain distinct
+from factual-attempt and probe history regardless of any later policy.
+
+Pass 14 promotes no scheduler change. A next intervention should compare
+explicit alternatives rather than suppress probes in isolation. The most direct
+candidates are another material's bootstrap test and stronger same-material
+support, with the production ranking and challenge contracts held visible. A
+generic cooldown, an attempt-clock substitution, and unconditional session
+termination are not supported by this characterization.
+
+Pass 14 writes eight artifacts:
+
+```text
+probe_alternative_events.csv
+probe_alternative_availability.csv
+probe_alternative_kinds.csv
+probe_alternative_rejections.csv
+probe_alternative_clock_summary.csv
+probe_alternative_policy_seed_summary.csv
+probe_alternative_policy_summary.csv
+probe_alternative_policy_profile_summary.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -1945,5 +2074,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             (§10.9), while recovery_modality.py performs the Pass
                             12 dimension-targeted recovery diagnostic (§10.10),
                             and guidance_probe_yield.py performs the Pass 13
-                            marginal-yield and termination diagnostic (§10.11)
+                            marginal-yield and termination diagnostic (§10.11),
+                            while probe_alternative_actions.py performs the Pass
+                            14 alternative-action and clock diagnostic (§10.12)
 ```
