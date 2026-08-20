@@ -933,6 +933,127 @@ cold_start_trajectories.csv
 cold_start_observability.csv
 ```
 
+### 10.4 Pass 6: cross-material placement-memory characterization
+
+`analysis/learner-model/cross_material_placement.py` tests whether first factual
+retrieval observations should inform the cold-start prediction for other,
+still-unestablished materials. The experimental state is learner-level and
+epistemic only:
+
+```text
+placement_memory_estimate
+placement_memory_uncertainty
+placement_memory_evidence_count
+```
+
+It is not synthetic learner truth and it does not represent a transferable
+half-life. Only the first factual retrieval observation for each material enters
+the state. Success and failure both contribute, weighted by the existing
+material-memory evidence weight. Repeated practice on one material contributes
+no further placement evidence.
+
+The provisional diagnostic uses a prior evidence strength of 2.0:
+
+```text
+estimate = (2 * 0.4 + weighted successes) / (2 + evidence mass)
+uncertainty = 2 / (2 + evidence mass)
+effective prior = 0.4 + (1 - uncertainty) * (estimate - 0.4)
+```
+
+The uncertainty term conservatively shrinks the estimate back toward the
+ordinary 0.4 prior. These equations are experimental values, not production
+calibration.
+
+Three mechanisms use otherwise identical production behavior:
+
+```text
+control                     no cross-material state
+pooled_prior                effective prior initializes unestablished material
+pooled_prior_uncertainty    same prior plus narrowed cold-start uncertainty
+```
+
+The intervention may change only `logit_cold_start` and, in the third variant,
+`cold_start_uncertainty` while a material has no factual retrieval observation.
+It does not change current durability, consolidation, competencies, scheduler
+policy, or any established material. The script checks this boundary directly.
+
+The four Pass 5 profiles were rerun over 30 deterministic seeds. A fifth mixed
+fixture assigns three randomly chosen materials strong prior memory and four
+weak prior memory for each seed. The main placement costs changed as follows:
+
+```text
+profile                         control                 pooled prior
+                         unnecessary  low-memory  unnecessary  low-memory
+                              cueing    unguided       cueing    unguided
+beginner                        0.00       0.00          0.00       0.00
+technique strong, memory weak   0.00       7.00          0.00       5.80
+memory strong, technique weak  13.00       0.00         13.00       0.00
+broadly strong                 13.00       0.00         13.00       0.00
+mixed prior knowledge           2.40       4.00          2.47       4.00
+```
+
+The pooled estimate learns the intended cross-material signal. Its final
+effective prior averages 0.596 for memory-strong/technique-weak learners, 0.675
+for broadly strong learners, and 0.290 for technique-strong/memory-weak
+learners. This helps the memory-weak fixture reach retrieval calibration sooner,
+moving the mean from selection 27.43 to 19.70, and reduces its early low-memory
+unguided selections by 1.20.
+
+It does not address the primary strong-memory failure. Both strong profiles
+still receive 13 unnecessary guided selections in their first 20 selections,
+neither reaches retrieval calibration, and their divergence from the beginner
+trajectory remains at selections 29 and 19. Final retrieval bias is effectively
+unchanged at -0.570 and about -0.31.
+
+The reason is now mechanical. Strong learners usually succeed on their first
+new-material retrieval. That success immediately establishes an ordinary
+material-memory state, after which the placement prior is no longer operative.
+The later cueing cost comes from the established material's ordinary-prior
+durability, not its pre-observation cold-start probability. The diagnostic
+therefore learns a real placement signal but stops consuming it before the
+dominant error occurs.
+
+Aggregate metrics across the five controlled fixtures improve modestly, but the
+mixed fixture exposes the tradeoff:
+
+```text
+metric                          control   pooled prior   pooled + uncertainty
+retrieval prediction MAE         0.287       0.277              0.277
+retrieval prediction Brier       0.245       0.237              0.238
+recovery fraction                0.355       0.354              0.354
+mean maximum concentration       0.406       0.403              0.403
+mean maximum revisit gap        10.71d      10.74d             10.74d
+```
+
+Mixed-knowledge retrieval MAE worsens from 0.202 to 0.214, strong-material
+cueing rises slightly from 2.40 to 2.47, and weak-material unguided exposure
+does not improve. Narrowing cold-start uncertainty produces no material benefit
+over changing the prior alone.
+
+The explicit late-contradiction sequence shows conservative reversibility. After
+three successes the effective prior is 0.616. Consecutive failures move it to
+0.556, 0.502, then 0.456, so three contradictory observations are required to
+move it below 0.5. That behavior is bounded and reversible, but the full mixed
+fixture shows that reversibility alone does not justify production use.
+
+Pass 6 therefore does not support promoting either experimental mechanism. It
+does support the narrower inference that early cross-material retrieval results
+contain learner-level placement information. The next experiment must decide
+whether that evidence may remain operative after first success until a material
+has supplied an informative elapsed interval. That could be tested as an
+epistemic prediction bridge without changing stored current or consolidated
+half-life. Seeding durability directly would be a stronger claim and remains
+unsupported by Pass 6.
+
+Pass 6 writes four artifacts:
+
+```text
+placement_profile_summary.csv
+placement_variant_summary.csv
+placement_trajectories.csv
+placement_reversibility.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -963,5 +1084,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             values against that same behavioral suite (§10.1),
                             stress.py performs Pass 4 characterization (§10.2),
                             and cold_start_identifiability.py performs the
-                            controlled Pass 5 characterization (§10.3)
+                            controlled Pass 5 characterization (§10.3), while
+                            cross_material_placement.py performs the Pass 6
+                            placement-memory diagnostic (§10.4)
 ```

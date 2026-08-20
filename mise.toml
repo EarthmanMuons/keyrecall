@@ -31,6 +31,10 @@ depends = ["python:format-check", "python:lint"]
 description = "Pass 5 cold-start identifiability and retrieval-observability characterization"
 run = "uv run analysis/learner-model/cold_start_identifiability.py --output-dir analysis/learner-model/generated"
 
+[tasks."analysis:cross-material-placement"]
+description = "Pass 6 cross-material placement-memory characterization"
+run = "uv run analysis/learner-model/cross_material_placement.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:learner-model"]
 description = "Run learner-model simulation invariant checks"
 run = "uv run analysis/learner-model/invariants.py"
