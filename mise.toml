@@ -47,6 +47,10 @@ run = "uv run analysis/learner-model/retained_durability_inference.py --output-d
 description = "Pass 9 retained-consolidation posterior-state validation"
 run = "uv run analysis/learner-model/posterior_state_validation.py --output-dir analysis/learner-model/generated"
 
+[tasks."analysis:prior-knowledge-placement"]
+description = "Pass 10 prior-knowledge placement-policy characterization"
+run = "uv run analysis/learner-model/prior_knowledge_placement.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:learner-model"]
 description = "Run learner-model simulation invariant checks"
 run = "uv run analysis/learner-model/invariants.py"

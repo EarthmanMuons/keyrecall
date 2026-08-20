@@ -1452,6 +1452,93 @@ posterior_validation_summary.csv
 posterior_validation_variant_summary.csv
 ```
 
+### 10.8 Pass 10: prior-knowledge placement policy
+
+Pass 10 returns to the remaining 13 of 20 early supported selections for the
+globally memory-strong fixtures. It tests the narrower scheduler-side claim that
+cross-material placement evidence can grant permission for a less-supported
+first encounter without granting memory credit for an unseen material.
+
+The experiment freezes the Pass 9 learner model, estimator parameters, candidate
+set, eligibility stages, ranking, and synthetic truth. It reuses Pass 6's
+epistemic placement belief only after the scheduler has selected a material.
+Three sidecar policies can reduce the selected exercise's support on its first
+encounter:
+
+```text
+notes permission      after 2 observations and effective prior >= 0.55
+unguided permission   after 2 observations and effective prior >= 0.55
+tiered permission     notes at the threshold above, then unguided after
+                      3 observations and effective prior >= 0.60
+```
+
+These thresholds are diagnostic values, not production calibration. An override
+is allowed only when it removes support, and prediction, outcome sampling,
+learner update, and recovery tracking all consume the resulting exercise. The
+trace retains both proposed and presented guidance. Placement evidence never
+changes a material prediction, stored half-life, uncertainty, transition rate,
+candidate admission, or rank.
+
+The fixture set adds two adversarial profiles to the Pass 6 set. `sparse_expert`
+knows a seed-randomized 2 of 7 materials, while `common_keys_expert` knows the
+fixed C major, G major, and F major cluster. Both are otherwise memory-weak. The
+diagnostic records first-encounter support and factual success, false-high and
+false-low placement, threshold and reversal timing, and strong/weak material
+splits. Retrieval calibration, recovery, concentration, maximum gap, and
+no-admission behavior remain guardrails.
+
+The result falsifies the proposed intervention under the current scheduler. In
+30 matched seeds, every one of the 1,470 first encounters across seven profiles
+and the control was already unguided. The sidecar confidence became permissive
+on many later attempts, but all three policies made zero overrides. Their
+trajectories and aggregate metrics are therefore identical to control.
+
+```text
+profile                           first-encounter success   early supported selections
+memory strong, technique weak             85.2%                      13.0/20
+broadly strong                             84.3%                      13.0/20
+beginner                                   44.3%                       0.0/20
+technique strong, memory weak              17.1%                       0.0/20
+mixed prior knowledge                      49.0%                       2.4/20
+sparse expert                              34.3%                       1.4/20
+common-keys expert                         47.1%                       2.1/20
+```
+
+The heterogeneous guardrail also reveals that first encounters are already
+maximally diagnostic: all 4 weak materials in the mixed and common-key fixtures,
+all 5 weak materials in the sparse fixture, and all 7 materials in the globally
+memory-weak fixture are initially tested unguided. Pass 10 adds no risky
+encounters, but it also has no remaining first-encounter support to remove.
+
+The globally strong 13 of 20 count is instead a post-first-observation effect.
+Across 30 seeds for each strong fixture, its 390 supported early selections
+decompose as follows:
+
+```text
+profile                           guidance probes   recovery   bootstrap probes
+memory strong, technique weak          303             82              5
+broadly strong                          301             85              4
+```
+
+This changes the diagnosis. The production scheduler already uses unguided
+bootstrap encounters to test unseen material. Cross-material confidence that
+only grants permission for the same test is redundant. Reducing the 13 of 20
+count would require a separate experiment on post-observation guidance-probe and
+recovery decisions, including whether the current "unnecessary cueing" metric is
+counting intentional supported probes as a cost. Pass 10 does not broaden its
+intervention to that later phase and promotes no scheduler policy.
+
+Pass 10 writes six artifacts:
+
+```text
+prior_knowledge_trajectories.csv
+prior_knowledge_first_encounters.csv
+prior_knowledge_seed_summary.csv
+prior_knowledge_profile_summary.csv
+prior_knowledge_variant_summary.csv
+prior_knowledge_reversals.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -1490,5 +1577,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             retained_durability_inference.py performs the Pass 8
                             estimator-inference diagnostic (§10.6), and
                             posterior_state_validation.py performs the Pass 9
-                            posterior calibration diagnostic (§10.7)
+                            posterior calibration diagnostic (§10.7), while
+                            prior_knowledge_placement.py performs the Pass 10
+                            first-encounter placement-policy diagnostic (§10.8)
 ```
