@@ -39,6 +39,10 @@ run = "uv run analysis/learner-model/cross_material_placement.py --output-dir an
 description = "Pass 7 post-success interval-identifiability bridge characterization"
 run = "uv run analysis/learner-model/interval_prediction_bridge.py --output-dir analysis/learner-model/generated"
 
+[tasks."analysis:retained-durability-inference"]
+description = "Pass 8 estimator-side retained-durability inference characterization"
+run = "uv run analysis/learner-model/retained_durability_inference.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:learner-model"]
 description = "Run learner-model simulation invariant checks"
 run = "uv run analysis/learner-model/invariants.py"

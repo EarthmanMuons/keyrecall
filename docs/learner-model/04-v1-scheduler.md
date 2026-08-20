@@ -1184,6 +1184,140 @@ bridge_threshold_summary.csv
 bridge_trajectories.csv
 ```
 
+### 10.6 Pass 8: retained-durability inference
+
+`analysis/learner-model/retained_durability_inference.py` tests whether factual
+retrieval intervals can revise estimated retained consolidation independently of
+the quality-weighted causal consolidation transition. Synthetic learner truth,
+scheduler policy, prediction bridging, and production transition rates remain
+unchanged.
+
+The diagnostic distinguishes two sources of movement in the same experimental
+consolidation field:
+
+```text
+retrieval inference   evidence about durable memory that existed before practice
+causal formation      durable memory created by the current practice event
+```
+
+Retrieval inference runs only when factual retrieval is observed and an anchor
+already existed before the attempt. A first success therefore establishes memory
+through the existing causal transition but supplies no elapsed-interval
+evidence. The inference step runs before the ordinary estimator update so that
+current-durability evidence can use any newly inferred consolidation headroom.
+The existing causal equation then runs without coefficient changes. The two
+consolidation deltas are recorded separately.
+
+For elapsed interval `delta` and candidate half-life `h`, all experimental
+variants use the factual Bernoulli retrieval model:
+
+```text
+p = 2^(-delta / h)
+```
+
+Four estimator variants are compared:
+
+```text
+control             no retained-durability inference
+success-only score  bounded likelihood score for successes only
+signed score        bounded likelihood score for successes and failures
+Bayesian posterior  grid posterior over log half-life using the Bernoulli likelihood
+```
+
+The score variants use the derivative with respect to log half-life. With
+`x = ln(2) * delta / h`, the success score is `x`, the failure score is
+`-p*x/(1-p)`, and the information proxy is `p*x^2/(1-p)`. The Bayesian variant
+uses the current log-consolidation estimate and uncertainty as its Gaussian
+prior, weights the likelihood by the existing factual memory-evidence weight,
+then projects posterior mean and variance back into the existing consolidation
+state. All score gains, bounds, grid resolution, and posterior details remain
+diagnostic rather than calibrated production choices.
+
+Controlled trajectories establish the intended qualitative behavior:
+
+```text
+trajectory                 control final   signed final   Bayesian final
+massed successes              25.87d          25.87d          25.86d
+daily successes               18.10d          19.48d          21.56d
+weekly successes              13.57d          20.12d          23.78d
+biweekly successes            13.57d          25.58d          29.94d
+20-day successes              11.13d          26.28d          29.05d
+weak-execution 14-day         4.69d          16.35d          19.65d
+strong-execution 14-day      11.13d          21.65d          25.08d
+```
+
+The massed trajectory receives less than 0.02 days of net inferred consolidation
+in either two-sided variant. Increasing elapsed intervals produce increasing
+retained-durability inference. On the first 14-day success, weak and strong
+execution receive exactly the same inference delta, while strong execution
+receives the larger causal-formation delta. This mechanically separates
+retrieval evidence from practice quality.
+
+The adversarial sequence of two 14-day successes followed by two 14-day failures
+rejects the one-sided mechanism. Its consolidation remains at 17.00 days after
+both failures. The signed score returns to 12.97 days and the Bayesian posterior
+returns to 13.26 days. Four long-interval failures from the initial state also
+lower consolidation to the current-durability envelope. Retained-durability
+inference is therefore reversible rather than a success ratchet.
+
+A scheduler-free profile run uses identical unguided attempts at progressively
+longer intervals for every estimator variant. Across 30 seeds, the primary
+memory-strong/technique-weak fixture changes as follows:
+
+```text
+metric                         control   signed   Bayesian
+final current durability        2.97d     6.40d      6.40d
+final consolidation             3.01d     8.49d      9.92d
+post-interval retrieval bias   -0.374    -0.346     -0.346
+```
+
+The mixed fixture's weak materials have identical prediction error across all
+three variants. Their final consolidation falls rather than rises because
+failures provide negative retained-durability evidence. Mixed strong materials
+gain consolidation without transferring that belief to weak materials.
+
+The final comparison lets the unchanged scheduler react to each experimental
+estimator. The Bayesian variant produces the clearest result:
+
+```text
+profile/material class            control bias   Bayesian bias   control/Bayesian consolidation
+memory strong, technique weak        -0.570          -0.424                 3.03d / 6.51d
+broadly strong                       -0.308          -0.302                11.33d / 14.54d
+technique strong, memory weak          0.009           0.007                 4.51d / 2.38d
+mixed strong                         -0.521          -0.522                 6.06d / 7.04d
+mixed weak                            0.014           0.010                 4.58d / 2.28d
+```
+
+The primary fixture's final absolute bias improves by about 26 percent, and its
+consolidation is no longer trapped near the 3-day prior. Weak-memory calibration
+does not regress. Early unnecessary cueing remains 13 of 20 for the globally
+strong fixtures because no informative interval exists during that phase. Mixed
+strong materials show little prediction benefit because the scheduler selects
+them too rarely to collect enough local interval evidence. Those are limits of
+evidence availability, not evidence that the estimator-side pathway is
+misdirected.
+
+Pass 8 supports a reversible likelihood-based retained-durability update and
+rules out success-only inference. The Bayesian posterior is the strongest
+structural candidate because it uses the full factual likelihood and carries
+uncertainty explicitly. It is not promoted by this pass: its prior shape, grid,
+and update strength remain provisional, and the experiment intentionally does
+not alter production estimator code. The next implementation boundary is to
+design the production estimator update around this likelihood semantics, then
+rerun the full characterization and calibration stack. It is not a reason to
+change synthetic truth, causal consolidation formation, or scheduler policy.
+
+Pass 8 writes six artifacts:
+
+```text
+retained_inference_trajectories.csv
+retained_inference_summary.csv
+retained_inference_profiles.csv
+retained_inference_profile_summary.csv
+retained_inference_scheduler.csv
+retained_inference_scheduler_summary.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -1218,5 +1352,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             cross_material_placement.py performs the Pass 6
                             placement-memory diagnostic (§10.4) and
                             interval_prediction_bridge.py performs the Pass 7
-                            prediction-bridge diagnostic (§10.5)
+                            prediction-bridge diagnostic (§10.5), while
+                            retained_durability_inference.py performs the Pass 8
+                            estimator-inference diagnostic (§10.6)
 ```
