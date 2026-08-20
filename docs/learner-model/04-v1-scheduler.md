@@ -2028,6 +2028,128 @@ probe_alternative_policy_summary.csv
 probe_alternative_policy_profile_summary.csv
 ```
 
+### 10.13 Pass 15: retention-vs-information tradeoff
+
+Pass 15 tests diagnostic ranking exceptions only when the unchanged Pass 14
+trigger fires. Production admission, ranking, learner transitions, and clocks
+remain unchanged. The policy sidecars are:
+
+```text
+control                    retain lexicographic R/I/V/G
+bootstrap alternative      choose the best admitted non-probe only when it is
+                           another material's bootstrap probe
+stronger support repeated  after at least two consecutive probe failures,
+                           choose admitted same-material continuous cues
+stronger support once      insert that support at most once before the next
+                           factual probe on the material
+information before R       preserve eligibility tier, but compare I before R
+                           at the Pass 14 trigger only
+```
+
+The two-failure threshold is diagnostic, not production calibration. The
+repeated and one-shot support variants are separate because continuous cues do
+not create a factual retrieval result. Without an explicit one-shot boundary,
+the failure streak remains unchanged and the same exception can select support
+again indefinitely.
+
+Each policy trajectory records full-run calibration, recovery, concentration,
+revisit gaps, no-admission, probe counts, and final uncertainty. Every trigger
+also receives a ten-selection consequence window. Because policy trajectories
+diverge after the first intervention, Pass 15 additionally forks the exact
+control trigger state. Each available action starts with an identical estimator,
+synthetic truth, session, time, and random-generator state, then returns to the
+production scheduler for ten selections. These paired rollouts isolate the
+action's short-horizon consequence from later policy drift.
+
+The paired control-state comparison explains why stronger support is tempting:
+
+```text
+metric change vs. retention-first probe      bootstrap   stronger support   I before R
+immediate completion                           +0.067          +0.528          +0.085
+immediate retrieval observation                 0.000          -1.000           0.000
+next-10 retrieval observations                 +0.068          +0.533          +0.064
+next-10 retrieval successes                    -0.060          +0.041          -0.064
+memory-U reduction                             -0.009          +0.016          -0.012
+consolidation-V reduction                      -0.037          +0.021          -0.046
+recovery selections                            -0.068          -0.533          -0.064
+material coverage                              +0.675          +0.100          +0.626
+selections until original-material return      +0.797          +0.407          +0.748
+selections until factual return                -0.583          -0.942          -0.625
+```
+
+The same-material intervention makes the trigger action completable, then
+returns to a factual test sooner than control because control usually enters a
+recovery action after another failed probe. Its next ten selections slightly
+improve memory and consolidation uncertainty reduction while reducing recovery.
+The immediate action itself remains fully censored for retrieval. Bootstrap and
+information-first choices broaden coverage but postpone the urgent material and
+slightly reduce memory-state evidence over the paired horizon.
+
+Repeated-policy results reject all four ranking exceptions:
+
+```text
+variant                    applied/seed   probes   recovery   retrieval MAE   Brier   max fraction   max gap
+control                         0.00       26.55     22.56         0.228       0.191      0.466       11.03d
+bootstrap alternative           3.80       23.06     22.29         0.235       0.200      0.380       14.11d
+stronger support repeated       7.88       22.67     18.53         0.254       0.209      0.457       11.43d
+stronger support once           3.01       25.08     21.00         0.236       0.196      0.465       11.00d
+information before R            8.82       24.14     21.47         0.257       0.219      0.272       14.61d
+```
+
+Bootstrap substitution reduces concentration, but increases the maximum-gap tail
+by 3.09 days and worsens calibration. The aggressive information-first
+comparator lowers final estimated uncertainty and concentration, but has the
+largest MAE/Brier regression and a 3.58-day gap increase. Lower uncertainty is
+not a benefit when prediction calibration worsens.
+
+Repeated stronger support confirms the factual-history trap. It raises trigger
+count from 6.22 to 9.77 per seed, and only 18.5% of its later trigger horizons
+return to a factual test within ten selections. Retrieval MAE rises by 0.025 and
+Brier by 0.018.
+
+The one-shot boundary is substantially safer. It reduces guidance probes by 1.48
+and recovery by 1.55 selections per seed while leaving no-admission,
+concentration, and the revisit-gap tail effectively unchanged. It nevertheless
+raises aggregate MAE by 0.008 and Brier by 0.005. The regression is localized in
+the protective weak and heterogeneous fixtures:
+
+```text
+profile                         delta MAE   delta Brier   delta recovery
+technique strong, memory weak      +0.008       +0.005          -2.50
+mixed prior knowledge              +0.018       +0.015          -2.80
+sparse expert                      +0.013       +0.008          -2.60
+common-keys expert                 +0.017       +0.007          -2.97
+```
+
+Beginner and both globally strong fixtures are essentially unaffected because a
+qualifying stronger-support action is absent or the late trigger is rare. The
+one-shot rule therefore trades fewer recovery actions for worse retrieval
+calibration precisely where late failures are common. It does not clear the
+acceptance gate.
+
+Pass 15 promotes no scheduler change and does not justify changing the global
+R/I/V/G ordering. Retention-first late probes remain the least harmful complete
+policy among those tested. The paired result does identify a narrower future
+question: whether a stronger-support interleave can be conditioned on a
+measurable completion need without systematically censoring memory evidence.
+That would require a new discriminator, not merely the existing low-yield
+trigger or failure count.
+
+Pass 15 writes ten artifacts:
+
+```text
+probe_ranking_trajectories.csv
+probe_ranking_events.csv
+probe_ranking_choice_summary.csv
+probe_ranking_horizon_summary.csv
+probe_ranking_paired_horizons.csv
+probe_ranking_paired_summary.csv
+probe_ranking_paired_profile_summary.csv
+probe_ranking_seed_summary.csv
+probe_ranking_profile_summary.csv
+probe_ranking_variant_summary.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -2076,5 +2198,8 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             and guidance_probe_yield.py performs the Pass 13
                             marginal-yield and termination diagnostic (§10.11),
                             while probe_alternative_actions.py performs the Pass
-                            14 alternative-action and clock diagnostic (§10.12)
+                            14 alternative-action and clock diagnostic (§10.12),
+                            and probe_ranking_tradeoff.py performs the Pass 15
+                            ranking-alternative and paired-horizon diagnostic
+                            (§10.13)
 ```
