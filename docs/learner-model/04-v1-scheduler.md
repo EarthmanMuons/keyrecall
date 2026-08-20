@@ -1539,6 +1539,148 @@ prior_knowledge_variant_summary.csv
 prior_knowledge_reversals.csv
 ```
 
+### 10.9 Pass 11: supported-selection intent and cost
+
+Pass 11 decomposes supported selections before considering any scheduler-policy
+change. It replaces the interpretive shortcut:
+
+```text
+true retrieval >= 0.70 and guidance != unguided
+    -> unnecessary cueing
+```
+
+with separate intent classes:
+
+```text
+ordinary supported selection
+recovery support
+guidance probe
+bootstrap probe
+```
+
+The old count remains reproducible in Passes 5, 6, and 10, but it is no longer
+treated as a behavioral defect by itself. High latent retrievability says
+nothing about the selected support's diagnostic value, the estimator's current
+belief, or execution and topology risk.
+
+`analysis/learner-model/supported_selection_intent.py` reruns the seven Pass 10
+fixtures across 30 matched seeds without changing learner or scheduler state
+semantics. For each supported winner it records the selected intent, expected
+information, factual evidence availability, event-local prediction and
+uncertainty changes, and whether guidance later fades. It also evaluates the
+exact unguided sibling against the same pre-attempt learner and session state.
+The counterfactual is never presented and never updates state.
+
+Expected information and realized uncertainty changes remain separate metrics.
+Competency variance, material-execution variance, operative memory uncertainty,
+and consolidation log variance have different meanings and are not summed into a
+synthetic "information gained" scalar.
+
+The 13 of 20 early supported selections for each globally strong fixture retain
+the Pass 10 intent decomposition:
+
+```text
+profile                           guidance probes   recovery   bootstrap probes
+memory strong, technique weak          303             82              5
+broadly strong                          301             85              4
+```
+
+#### 10.9.1 Guidance probes
+
+Every guidance probe uses notes preview and yields a factual retrieval
+observation. The probes are not low-yield support:
+
+```text
+metric                                      memory strong,       broadly
+                                            technique weak        strong
+all probe selections                              1,083            1,079
+early probe selections                              303              301
+retrieval success                                  80.4%            80.2%
+mean expected-information score                    1.997            1.349
+mean operative-memory uncertainty reduction        0.094            0.124
+mean consolidation log-variance reduction          0.269            0.269
+mean competency-variance reduction                  0.179            0.146
+mean execution-variance reduction                   0.066            0.144
+mean absolute retrieval-prediction change           0.542            0.497
+same candidate changed admission after probe       80.4%            69.9%
+```
+
+No unguided sibling is challenge-admitted. All are below the challenge band
+under the estimator's current state. The predicted limiting component is memory
+for 868 of 1,083 probes in the memory-strong/technique-weak fixture and 835 of
+1,079 probes in the broadly strong fixture. Execution limits another 215 and 194
+respectively; topology limits 50 broadly strong probes.
+
+This is an epistemic distinction: latent truth says memory is strong, but the
+scheduler must act on the estimated state. Under that state, the probes generate
+substantial evidence and usually produce the intended immediate admission
+change. Counting every one as unnecessary support was misleading.
+
+The remaining question is cadence and termination. Later unguided presentation
+occurs after none of the memory-strong/technique-weak probes and after only
+11.7% of broadly strong probes within the 60-attempt horizon. For the latter
+group it takes a mean 18.8 further selections. The probes are informative, but
+the diagnostic does not yet establish that their repeated frequency is optimal.
+
+#### 10.9.2 Recovery support
+
+Recovery has different semantics and should not share the probe cost metric. It
+is temporary in the strong profiles:
+
+```text
+metric                                      memory strong,       broadly
+                                            technique weak        strong
+all recovery selections                             240              246
+notes-preview recovery                               31               35
+continuous-cue recovery                             209              211
+factual retrieval observed                         12.9%            14.2%
+later guidance faded                               84.6%            85.4%
+mean selections until fading                        1.35             1.77
+```
+
+Continuous-cue recovery provides no factual memory evidence, which explains the
+small or negative phase-sensitive memory-uncertainty movement. It does still
+reduce competency and execution uncertainty. An unguided sibling is never
+ordinarily admitted because recovery is intentionally exclusive after a factual
+failure.
+
+The more important result is the predicted limiting component of the triggering
+failed selection. This is a diagnostic attribution to the lowest component
+probability; the production challenge stage still filters only `overall_p` and
+does not make a dimension-specific rejection:
+
+```text
+trigger limiting component                 memory strong,       broadly
+                                            technique weak        strong
+memory                                             38               31
+execution                                         164              156
+topology                                           38               59
+```
+
+Execution is the limiting component for 68.3% and 63.4% of recovery triggers.
+The current recovery action can only add notes preview or continuous pitch cues,
+which changes material availability rather than execution capability. This is
+evidence for a possible support-modality mismatch, not evidence that recovery
+itself is excessive. Testing a motor-targeted recovery action requires a new
+policy experiment and is outside Pass 11.
+
+Pass 11 therefore closes the original 13 of 20 metric as a cold-start defect.
+Most of the count is purposeful, high-yield diagnostic probing. The two
+remaining scheduler questions are narrower: whether guidance-probe cadence can
+terminate sooner after sufficient evidence, and whether recovery should target
+the predicted failing dimension. No production scheduler policy changes in this
+pass.
+
+Pass 11 writes five artifacts:
+
+```text
+supported_selection_events.csv
+supported_selection_profile_summary.csv
+guidance_probe_summary.csv
+recovery_support_summary.csv
+supported_counterfactual_summary.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -1579,5 +1721,8 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             posterior_state_validation.py performs the Pass 9
                             posterior calibration diagnostic (§10.7), while
                             prior_knowledge_placement.py performs the Pass 10
-                            first-encounter placement-policy diagnostic (§10.8)
+                            first-encounter placement-policy diagnostic (§10.8),
+                            and supported_selection_intent.py performs the Pass
+                            11 intent, yield, and counterfactual characterization
+                            (§10.9)
 ```
