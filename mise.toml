@@ -39,6 +39,10 @@ run = "uv run analysis/learner-model/analyze.py --output-dir analysis/learner-mo
 description = "Isolated reacquisition experiment (learner-model, diagnostic - not a fix)"
 run = "uv run analysis/learner-model/reacquisition_experiment.py --output-dir analysis/learner-model/generated"
 
+[tasks."analysis:latent-memory-design"]
+description = "Latent memory state design - activation/durability/consolidation (diagnostic, not a fix)"
+run = "uv run analysis/learner-model/latent_memory_design.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:scale-motor"]
 description = "Verify scale motor taxonomy and generate analysis artifacts"
 run = "uv run analysis/scale-motor/analyze.py --output-dir analysis/scale-motor/generated"
