@@ -847,6 +847,92 @@ trials ran 5.82 times faster with 8 workers than serially. The complete
 250-trial sweep finished in about 45 seconds with no crashes or hard-property
 violations.
 
+### 10.3 Pass 5: cold-start identifiability and retrieval observability
+
+`analysis/learner-model/cold_start_identifiability.py` holds estimator
+initialization constant while varying latent truth along two axes: technique
+strength and initial memory strength. Each fixture uses the same broad
+competency prior, the same 0.4 cold-start retrieval estimate, the same 3-day
+current and consolidated half-lives, and the same uncertainties. Only the
+synthetic learner differs. The production scheduler then makes 60 selections or
+admission decisions at half-day intervals from the same seven-material pool.
+
+The four fixtures are beginner, technique-strong/memory-weak,
+memory-strong/technique-weak, and broadly strong. Results below are means over
+30 deterministic seeds. A calibrated retrieval band means five consecutive
+selected attempts with absolute independent-retrieval prediction error at most
+0.10. Early metrics cover the first 20 actual selections; no-admission
+opportunities are recorded separately.
+
+```text
+profile                         initial   first observed   calibrated   unnecessary   final
+                                  bias       retrieval        by       early cueing    bias
+beginner                         0.000          1.00         1.00          0.00       -0.025
+technique strong, memory weak    0.250          1.00        27.43          0.00        0.009
+memory strong, technique weak   -0.450          1.00          n/a         13.00       -0.570
+broadly strong                  -0.450          1.00          n/a         13.00       -0.308
+```
+
+Starting too high is visible in the technique-strong/memory-weak fixture: it
+averages 7.0 early unguided attempts while true retrievability is at most 0.30,
+57.5% of its early selections use recovery, and its first successful retrieval
+does not arrive until attempt 8.17 on average. Starting too low is visible in
+both memory-strong fixtures: 13 of their first 20 selections use guidance
+despite true retrievability of at least 0.70. They nevertheless receive much
+less recovery than the beginner or memory-weak fixtures.
+
+Retrieval observation itself is not globally scarce for the problematic
+memory-strong fixtures:
+
+```text
+profile                         selections 1-5   6-10    11-15   16-20
+beginner                              87.3%      84.0%    75.3%    60.7%
+technique strong, memory weak         82.0%      68.7%    72.7%    62.7%
+memory strong, technique weak         98.7%      95.3%    86.7%    85.3%
+broadly strong                        97.3%      96.7%    86.7%    84.7%
+```
+
+The detailed observability artifact splits these counts by five-selection
+window, guidance level, challenge bypass, and probe type. Its executable
+contract also checks the categorical boundary: continuous pitch cues yield no
+factual retrieval observation, while notes-previewed and unguided attempts do.
+Serial and parallel runs produce identical CSV files.
+
+The estimator trajectories separate from the beginner trajectory only slowly.
+Using a difference of at least 0.15 for five consecutive aggregate selections,
+the broadly strong fixture diverges at selection 19 and the
+memory-strong/technique-weak fixture at selection 29. The
+technique-strong/memory-weak fixture never meets that separation criterion. No
+fixture produces five consecutive selected attempts inside the ordinary
+challenge band during the 60-attempt horizon. The two memory-strong fixtures
+also average 4.67 and 8.70 no-admission decisions, respectively.
+
+These results do not support global probing as the first intervention. The
+strong-memory learner already produces abundant observed successes. The more
+specific limitation is that memory evidence and durability state are local to
+each material. A first success establishes memory but cannot identify a
+forgetting interval, so each newly demonstrated material still begins its
+post-success durability near the ordinary prior. Evidence from one material does
+not establish an "often memory-strong" placement state for another.
+
+The next localized experiment should therefore target cold-start initialization
+or uncertainty, potentially with an explicit placement-only state that pools
+early retrieval evidence without granting immediate ordinary scheduler credit.
+Bootstrap-probe selection is a secondary option for profiles or configurations
+whose observation matrix is actually sparse. Ordinary post-placement transitions
+and production coefficients remain frozen until such a mechanism is
+characterized. Pass 4 aggregate MAE/Brier, recovery, concentration, maximum-gap
+tails, and the 13 scheduler invariants remain the guardrails.
+
+Pass 5 writes four artifacts:
+
+```text
+cold_start_profile_summary.csv
+cold_start_seed_summary.csv
+cold_start_trajectories.csv
+cold_start_observability.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -874,5 +960,8 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             §10), longitudinal.py adapts it into
                             analysis/learner-model/simulate.py's run() loop,
                             sensitivity.py sweeps the remaining heuristic
-                            values against that same behavioral suite (§10.1)
+                            values against that same behavioral suite (§10.1),
+                            stress.py performs Pass 4 characterization (§10.2),
+                            and cold_start_identifiability.py performs the
+                            controlled Pass 5 characterization (§10.3)
 ```
