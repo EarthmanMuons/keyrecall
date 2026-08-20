@@ -35,6 +35,10 @@ run = "uv run analysis/learner-model/invariants.py"
 description = "Run learner-model behavioral diagnostics and generate analysis CSVs"
 run = "uv run analysis/learner-model/analyze.py --output-dir analysis/learner-model/generated"
 
+[tasks."analysis:reacquisition-experiment"]
+description = "Isolated reacquisition experiment (learner-model, diagnostic - not a fix)"
+run = "uv run analysis/learner-model/reacquisition_experiment.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:scale-motor"]
 description = "Verify scale motor taxonomy and generate analysis artifacts"
 run = "uv run analysis/scale-motor/analyze.py --output-dir analysis/scale-motor/generated"
