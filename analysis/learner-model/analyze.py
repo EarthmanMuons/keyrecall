@@ -817,7 +817,7 @@ def sweep_metric(params: Params, attempts: int = 150, seed: int = 0) -> dict[str
             m["current_half_life_days"] > 0
             and m["current_half_life_uncertainty"] > 0
             and m["consolidated_half_life_days"] >= m["current_half_life_days"]
-            and m["consolidated_half_life_uncertainty"] > 0
+            and m["consolidated_log_half_life_variance"] > 0
             and m["cold_start_uncertainty"] > 0
             for m in record["state_after"]["material_memory"].values()
         )

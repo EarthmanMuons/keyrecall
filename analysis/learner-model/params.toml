@@ -1,4 +1,4 @@
-model_version = "v1-prototype-1"
+model_version = "v1-prototype-2"
 
 # Every value below is a heuristic V1 choice (docs/learner-model/03-v1-math.md
 # §25), not a research-established coefficient. Kept out of state.py/model.py
@@ -20,7 +20,11 @@ min_half_life_days = 0.001
 max_memory_half_life_days = 1000.0
 prior_retrievability = 0.4
 prior_uncertainty = 1.0
-consolidation_prior_uncertainty = 1.0
+consolidation_prior_log_variance = 2.0
+consolidation_min_log_variance = 0.2
+retained_inference_min_interval_days = 0.041666666666666664
+retained_inference_likelihood_weight = 1.0
+retained_inference_grid_points = 301
 min_uncertainty = 0.05
 evidence_shrinkage = 0.3
 alpha_cold_start = 0.7

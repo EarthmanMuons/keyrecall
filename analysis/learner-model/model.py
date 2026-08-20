@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from domain import MOTOR_COMPETENCIES, TOPOLOGY_COMPETENCIES, Exercise, structural_q
 from params import Params
-from state import COMPETENCIES, LearnerState, logit
+from state import COMPETENCIES, LearnerState, MaterialMemoryState, logit
 
 HAND_PAIR = {
     "RH_SCALE_EXECUTION": "LH_SCALE_EXECUTION",
@@ -192,6 +192,96 @@ class EvidenceWeights:
     material_memory: float
 
 
+@dataclass(frozen=True)
+class MemoryUpdateDiagnostics:
+    """Event-local attribution, not persistent learner state."""
+
+    consolidation_delta_from_retrieval_inference: float = 0.0
+    consolidation_delta_from_causal_formation: float = 0.0
+
+
+def _retained_probability(elapsed_days: float, half_life_days: float) -> float:
+    return min(
+        1.0 - 1e-12,
+        max(1e-12, 2.0 ** (-elapsed_days / half_life_days)),
+    )
+
+
+def update_retained_consolidation_posterior(
+    memory_state: MaterialMemoryState,
+    retrieval_succeeded: bool,
+    elapsed_days: float,
+    evidence_weight: float,
+    params: Params,
+) -> float:
+    """Apply factual interval likelihood to retained consolidation.
+
+    The state is a Gaussian posterior approximation in log-half-life space.
+    The likelihood is evaluated across the broad memory bounds, then the
+    posterior mean is projected onto the current-durability envelope. Returns
+    the consolidation change in days.
+    """
+    mm = params.material_memory
+    if (
+        evidence_weight <= 0.0
+        or mm.retained_inference_likelihood_weight <= 0.0
+        or elapsed_days < mm.retained_inference_min_interval_days
+    ):
+        return 0.0
+
+    grid_points = mm.retained_inference_grid_points
+    if grid_points < 3:
+        raise ValueError("retained_inference_grid_points must be at least 3")
+    lower = math.log(mm.min_half_life_days)
+    upper = math.log(mm.max_memory_half_life_days)
+    if lower >= upper:
+        return 0.0
+
+    prior_mean = memory_state.log_consolidated_half_life
+    prior_variance = max(
+        mm.consolidation_min_log_variance,
+        memory_state.consolidated_log_half_life_variance,
+    )
+    grid_step = (upper - lower) / (grid_points - 1)
+    effective_weight = evidence_weight * mm.retained_inference_likelihood_weight
+    grid: list[float] = []
+    log_weights: list[float] = []
+    for index in range(grid_points):
+        log_half_life = lower + index * grid_step
+        probability = _retained_probability(elapsed_days, math.exp(log_half_life))
+        log_likelihood = (
+            math.log(probability) if retrieval_succeeded else math.log1p(-probability)
+        )
+        log_prior = -0.5 * (log_half_life - prior_mean) ** 2 / prior_variance
+        grid.append(log_half_life)
+        log_weights.append(log_prior + effective_weight * log_likelihood)
+
+    maximum = max(log_weights)
+    weights = [math.exp(value - maximum) for value in log_weights]
+    total_weight = sum(weights)
+    posterior_mean = (
+        sum(value * weight for value, weight in zip(grid, weights, strict=True))
+        / total_weight
+    )
+    posterior_variance = (
+        sum(
+            weight * (value - posterior_mean) ** 2
+            for value, weight in zip(grid, weights, strict=True)
+        )
+        / total_weight
+    )
+
+    consolidation_before = memory_state.consolidated_half_life_days
+    projected_mean = max(memory_state.log_current_half_life, posterior_mean)
+    projection_error = projected_mean - posterior_mean
+    memory_state.log_consolidated_half_life = projected_mean
+    memory_state.consolidated_log_half_life_variance = max(
+        mm.consolidation_min_log_variance,
+        posterior_variance + projection_error * projection_error,
+    )
+    return memory_state.consolidated_half_life_days - consolidation_before
+
+
 def evidence_weights(exercise: Exercise, outcome: Outcome) -> EvidenceWeights:
     q = structural_q(exercise)
     relevant = [k for k, v in q.items() if v]
@@ -243,7 +333,9 @@ def update(
     prediction: Prediction,
     now: float,
     params: Params,
-) -> None:
+    *,
+    apply_retained_durability_inference: bool = True,
+) -> MemoryUpdateDiagnostics:
     """Applies §15/§15.1, §16, §18 updates in place; zero-weight layers are
     left untouched.
 
@@ -253,6 +345,10 @@ def update(
     material_retrieval, so it isn't purely motor evidence. Topology
     competencies update from a separate delta, prediction.topology_p vs.
     topology_accuracy, so neither channel can move the other's competencies.
+
+    Returns event-local memory attribution. For anchored factual retrieval,
+    retained-consolidation inference runs before current-durability evidence;
+    causal formation runs afterward.
     """
     q = structural_q(exercise)
     motor_q_loadings = motor_loadings(q)
@@ -304,12 +400,27 @@ def update(
     had_memory_anchor = memory_state.memory_anchor_at is not None
     pre_attempt_current_half_life = memory_state.current_half_life_days
     mm = params.material_memory
+    inference_delta = 0.0
+    causal_formation_delta = 0.0
 
     # Observation history is factual bookkeeping, not an evidence-weighted
     # estimate. None means retrieval was never tested, so it updates neither
     # factual timestamp.
     if outcome.retrieval_succeeded is not None:
         memory_state.last_retrieval_attempt_at = now
+
+    if (
+        apply_retained_durability_inference
+        and had_memory_anchor
+        and outcome.retrieval_succeeded is not None
+    ):
+        inference_delta = update_retained_consolidation_posterior(
+            memory_state,
+            outcome.retrieval_succeeded,
+            now - memory_state.memory_anchor_at,
+            weights.material_memory,
+            params,
+        )
 
     if weights.material_memory > 0.0:
         # Success = independent retrieval (§5.1), not pitch quality and not
@@ -400,7 +511,8 @@ def update(
             mm.consolidation_growth_target_days
             - memory_state.consolidated_half_life_days,
         )
-        new_consolidation = memory_state.consolidated_half_life_days + (
+        consolidation_before_formation = memory_state.consolidated_half_life_days
+        new_consolidation = consolidation_before_formation + (
             mm.consolidation_growth_rate * success_factor * quality * consolidation_gap
         )
         new_consolidation = min(new_consolidation, mm.max_memory_half_life_days)
@@ -419,10 +531,11 @@ def update(
         )
         memory_state.log_consolidated_half_life = math.log(new_consolidation)
         memory_state.log_current_half_life = math.log(new_current)
-        return
+        causal_formation_delta = new_consolidation - consolidation_before_formation
+        return MemoryUpdateDiagnostics(inference_delta, causal_formation_delta)
 
     if quality <= 0.0:
-        return
+        return MemoryUpdateDiagnostics(inference_delta, causal_formation_delta)
 
     practice_factor = {
         "cued": mm.supported_practice_factor_concurrent_cues,
@@ -444,3 +557,4 @@ def update(
         )
     )
     memory_state.log_current_half_life = math.log(new_current)
+    return MemoryUpdateDiagnostics(inference_delta, causal_formation_delta)

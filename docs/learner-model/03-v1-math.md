@@ -171,7 +171,7 @@ MaterialMemoryState:
   log_current_half_life: ...
   current_half_life_uncertainty: ...
   log_consolidated_half_life: ...
-  consolidated_half_life_uncertainty: ...
+  consolidated_log_half_life_variance: ...
   factual_last_retrieval_at: ...
   last_retrieval_attempt_at: ...
   logit_cold_start: ...
@@ -192,6 +192,10 @@ envelope available for savings, not an immediate prediction or scheduler term.
 numerical guard: upgraded state already above the target is preserved and never
 reduced. Timestamps are finite and no later than `now`; negative
 simulation-relative timestamps are valid.
+
+`consolidated_log_half_life_variance` is finite and at least
+`consolidation_min_log_variance`. It is a variance in log-half-life space, not a
+duration and not a generic confidence score.
 
 ### 5.1 Memory is not exercise-success probability
 
@@ -299,9 +303,10 @@ pre-anchor failures could shrink confidence in `ℓ` even though no observation
 had been about it, and that artificially low uncertainty would carry across
 silently the moment the clock anchored. `current_half_life_uncertainty` and
 `cold_start_uncertainty` are now separate fields, each updated only alongside
-its own mean. Consolidation has its own prior uncertainty, which remains
-unchanged in the first production characterization because no observation yet
-identifies the true consolidation-transition dose.
+its own mean. Consolidation has a separate posterior variance in log-half-life
+space. It is updated only by factual elapsed retrieval evidence, as defined
+below, and never by evidence about cold-start retrievability or execution
+quality.
 
 Invariants (`analysis/learner-model/invariants.py`) mirror §5.2's for this
 layer: `cold_start_estimate` stays finite/bounded and reaches an interior
@@ -310,6 +315,71 @@ phase-separated - repeated pre-anchor failure shrinks `cold_start_uncertainty`
 but leaves `current_half_life_uncertainty` untouched, the first successful
 retrieval doesn't either, and only a genuinely spaced post-anchor observation
 does.
+
+#### 5.3.1 Retained-consolidation posterior
+
+For retained consolidation, the estimator state has an explicit probabilistic
+meaning:
+
+```text
+log_consolidated_half_life          approximate posterior mean of log(h_c)
+consolidated_log_half_life_variance approximate posterior variance of log(h_c)
+```
+
+The current and cold-start uncertainty fields remain heuristic confidence
+quantities. They must not be consumed as log-space variances.
+
+When retrieval is factually observed after an anchor already existed, the
+elapsed interval supplies a Bernoulli likelihood for candidate retained
+half-life `h_c`:
+
+```math
+p(y = 1 \mid h_c, \Delta t) = 2^{-\Delta t / h_c}
+```
+
+The prior is the current Gaussian approximation in log-half-life space. The
+likelihood is raised to the existing factual material-memory evidence weight,
+multiplied by the provisional likelihood-weight parameter. The posterior is
+evaluated on a bounded log-space grid whose support is:
+
+```text
+log(min_memory_half_life) <= log(h_c) <= log(max_memory_half_life)
+```
+
+The posterior mean is then projected upward if needed to preserve
+`h_current <= h_consolidated`. Projection error is added to posterior variance
+instead of being discarded. Evaluating the likelihood before this projection
+avoids repeatedly truncating a Gaussian at its own mean, which would create
+consolidation headroom even under an almost constant likelihood. The variance is
+also bounded below by `consolidation_min_log_variance`. This floor prevents a
+short controlled history from manufacturing excessive certainty about a latent
+durability quantity that the estimator only approximates.
+
+No retained-consolidation likelihood update occurs when:
+
+- retrieval was unobserved;
+- no anchor existed before the attempt;
+- the elapsed interval is below `retained_inference_min_interval_days`; or
+- the factual memory-evidence weight is zero.
+
+The interval floor is a provisional calibration boundary that makes massed and
+near-zero retrieval observations durability-inert. Successes and failures both
+enter the likelihood after that boundary, so the posterior is reversible.
+Execution quality does not enter this inference path.
+
+The production estimator ordering for an anchored factual observation is:
+
+```text
+1. retained-consolidation likelihood update
+2. ordinary current-durability evidence correction
+3. ordinary causal consolidation formation or productive-nonsuccess transition
+```
+
+The first step may create consolidation headroom that the second can use. The
+third remains a separate learner-side transition whose success branch depends on
+execution quality. Causal formation is treated as a deterministic state
+transition under the provisional coefficients, so it moves the consolidation
+mean but does not itself contract posterior variance.
 
 ### 5.4 Production causal transitions
 
@@ -344,7 +414,9 @@ before this causal transition. Evidence correction may revise current durability
 downward, but the complete success update cannot leave current durability below
 its pre-attempt value. This gives successful retrieval a nonnegative causal
 learning effect relative to the incoming state while still preserving
-`h_current' <= h_consolidated'`.
+`h_current' <= h_consolidated'`. For an anchored factual observation, the
+retained-consolidation posterior update in §5.3.1 precedes both the current
+evidence correction and this causal transition.
 
 On productive nonsuccess, meaning a started-and-completed practice event without
 genuine retrieval success:
@@ -1425,12 +1497,12 @@ No parameter should silently move between these categories.
 This registry exists now, not just as a future intention:
 `analysis/learner-model/params.toml`, loaded by `params.py` into typed, frozen
 dataclasses. Every section below has a `model_version` field (currently
-`v1-prototype-0`) but does not yet carry the per-value `provenance` annotation
+`v1-prototype-2`) but does not yet carry the per-value `provenance` annotation
 this section originally sketched; every value in it is `heuristic` in the §25.3
 sense unless noted otherwise. The shape resembles:
 
 ```yaml
-model_version: v1-prototype-0
+model_version: v1-prototype-2
 
 competency:
   prior_mean: ...
@@ -1448,6 +1520,11 @@ material_memory:
   max_half_life_days: ...
   prior_retrievability: ...
   prior_uncertainty: ...
+  consolidation_prior_log_variance: ...
+  consolidation_min_log_variance: ...
+  retained_inference_min_interval_days: ...
+  retained_inference_likelihood_weight: ...
+  retained_inference_grid_points: ...
   min_uncertainty: ...
   evidence_shrinkage: ...
   alpha_cold_start: ... # evidence coefficient on logit(cold_start), §5.3
@@ -1875,6 +1952,9 @@ The following are the current mathematical invariants:
     consolidation; supported zero-headroom practice is durability-inert (§5.4).
 23. Consolidation has no immediate prediction or scheduler effect; it acts only
     through later state transitions that alter activation/current durability.
+24. Retained-consolidation uncertainty is a posterior variance in log-half-life
+    space. It changes only from factual elapsed retrieval evidence and remains
+    separate from current-durability and cold-start uncertainty.
 
 ## 35. Open mathematical decisions
 

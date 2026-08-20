@@ -58,6 +58,7 @@ MAX_SCORE = 4.0
 MAX_LOG_STEP = 1.0
 POSTERIOR_GRID_POINTS = 301
 MIN_VARIANCE = 1e-6
+PASS8_CONSOLIDATION_PRIOR_LOG_VARIANCE = 1.0
 PROFILE_SEEDS = 30
 DEFAULT_WORKERS = min(8, os.cpu_count() or 1)
 PROFILE_TIMES = (0.5, 7.5, 21.5, 42.5, 70.5, 105.5)
@@ -181,6 +182,7 @@ def initial_state(params: Params) -> LearnerState:
     memory.memory_anchor_at = 0.0
     memory.factual_last_retrieval_at = 0.0
     memory.last_retrieval_attempt_at = 0.0
+    memory.consolidated_log_half_life_variance = PASS8_CONSOLIDATION_PRIOR_LOG_VARIANCE
     return state
 
 
@@ -223,7 +225,7 @@ def apply_score_inference(
     bounded_score = max(-MAX_SCORE, min(MAX_SCORE, score))
     step = (
         SCORE_GAIN
-        * memory.consolidated_half_life_uncertainty
+        * memory.consolidated_log_half_life_variance
         * evidence_weight
         * bounded_score
     )
@@ -233,12 +235,12 @@ def apply_score_inference(
         math.log(params.material_memory.max_memory_half_life_days),
         max(memory.log_current_half_life, proposed),
     )
-    memory.consolidated_half_life_uncertainty = max(
+    memory.consolidated_log_half_life_variance = max(
         params.material_memory.min_uncertainty,
-        memory.consolidated_half_life_uncertainty
+        memory.consolidated_log_half_life_variance
         / (
             1.0
-            + memory.consolidated_half_life_uncertainty * evidence_weight * information
+            + memory.consolidated_log_half_life_variance * evidence_weight * information
         ),
     )
 
@@ -251,7 +253,7 @@ def apply_bayesian_inference(
     upper = math.log(mm.max_memory_half_life_days)
     step = (upper - lower) / (POSTERIOR_GRID_POINTS - 1)
     prior_mean = memory.log_consolidated_half_life
-    prior_variance = max(MIN_VARIANCE, memory.consolidated_half_life_uncertainty)
+    prior_variance = max(MIN_VARIANCE, memory.consolidated_log_half_life_variance)
     log_weights = []
     grid = []
     for index in range(POSTERIOR_GRID_POINTS):
@@ -282,7 +284,7 @@ def apply_bayesian_inference(
         upper,
         max(memory.log_current_half_life, posterior_mean),
     )
-    memory.consolidated_half_life_uncertainty = max(
+    memory.consolidated_log_half_life_variance = max(
         mm.min_uncertainty, posterior_variance
     )
 
@@ -332,12 +334,21 @@ def run_trajectory(
 
         current_before = memory.current_half_life_days
         consolidation_before = memory.consolidated_half_life_days
-        uncertainty_before = memory.consolidated_half_life_uncertainty
+        uncertainty_before = memory.consolidated_log_half_life_variance
         apply_inference(variant, memory, event, weights.material_memory, params)
         consolidation_after_inference = memory.consolidated_half_life_days
         inference_delta = consolidation_after_inference - consolidation_before
 
-        update(state, EXERCISE, outcome, weights, prediction, now, params)
+        update(
+            state,
+            EXERCISE,
+            outcome,
+            weights,
+            prediction,
+            now,
+            params,
+            apply_retained_durability_inference=False,
+        )
         current_after = memory.current_half_life_days
         consolidation_after = memory.consolidated_half_life_days
         causal_delta = consolidation_after - consolidation_after_inference
@@ -359,7 +370,7 @@ def run_trajectory(
                 "current_half_life_after": current_after,
                 "consolidated_half_life_after": consolidation_after,
                 "consolidation_uncertainty_after": (
-                    memory.consolidated_half_life_uncertainty
+                    memory.consolidated_log_half_life_variance
                 ),
             }
         )
@@ -545,6 +556,10 @@ def run_profile_case(
             outcome = sample_outcome(truth, exercise, now, rng)
             weights = evidence_weights(exercise, outcome)
             memory = state.material_memory_for(material_id, params)
+            if memory.last_retrieval_attempt_at is None:
+                memory.consolidated_log_half_life_variance = (
+                    PASS8_CONSOLIDATION_PRIOR_LOG_VARIANCE
+                )
             consolidation_before = memory.consolidated_half_life_days
             anchor_before = memory.memory_anchor_at
             factual = outcome.retrieval_succeeded is not None
@@ -563,7 +578,16 @@ def run_profile_case(
                     params,
                 )
             consolidation_after_inference = memory.consolidated_half_life_days
-            update(state, exercise, outcome, weights, prediction, now, params)
+            update(
+                state,
+                exercise,
+                outcome,
+                weights,
+                prediction,
+                now,
+                params,
+                apply_retained_durability_inference=False,
+            )
             rows.append(
                 {
                     "variant": variant,
@@ -598,7 +622,7 @@ def run_profile_case(
                         memory.consolidated_half_life_days
                     ),
                     "consolidation_uncertainty_after": (
-                        memory.consolidated_half_life_uncertainty
+                        memory.consolidated_log_half_life_variance
                     ),
                 }
             )
@@ -723,6 +747,10 @@ def run_scheduler_case(
         outcome = sample_outcome(truth, exercise, now, rng)
         weights = evidence_weights(exercise, outcome)
         memory = state.material_memory_for(material_id, learner_params)
+        if memory.last_retrieval_attempt_at is None:
+            memory.consolidated_log_half_life_variance = (
+                PASS8_CONSOLIDATION_PRIOR_LOG_VARIANCE
+            )
         consolidation_before = memory.consolidated_half_life_days
         anchor_before = memory.memory_anchor_at
         factual = outcome.retrieval_succeeded is not None
@@ -747,6 +775,7 @@ def run_scheduler_case(
             prediction,
             now,
             learner_params,
+            apply_retained_durability_inference=False,
         )
         agent.on_outcome(exercise, outcome, now)
         rows.append(

@@ -1318,6 +1318,140 @@ retained_inference_scheduler.csv
 retained_inference_scheduler_summary.csv
 ```
 
+### 10.7 Pass 9: production inference and posterior-state validation
+
+Pass 9 promotes the structural result from Pass 8 into the production estimator.
+A factual retrieval observation with a pre-existing anchor now runs these
+transitions in order:
+
+```text
+retained-consolidation posterior inference
+current-durability evidence correction
+causal consolidation formation or productive-nonsuccess learning
+```
+
+The first transition uses the factual Bernoulli interval likelihood and the
+posterior state defined in `03-v1-math.md` §5.3.1. It cannot run on first
+retrieval, unobserved retrieval, zero-weight evidence, or intervals shorter than
+one provisional hour. Its likelihood grid uses the broad memory half-life
+bounds, then projects the posterior mean upward if needed to preserve the
+current-durability envelope. Success and failure are both likelihood
+observations. Execution quality remains absent from inference and continues to
+affect only causal consolidation formation.
+
+The state field formerly named `consolidated_half_life_uncertainty` is now
+`consolidated_log_half_life_variance`. This is a semantic rename rather than a
+compatibility alias: the new field is specifically the variance of the
+approximate posterior over log consolidated half-life. New material and the pure
+V1 state upgrade initialize it from `consolidation_prior_log_variance`; no
+historical estimator observation is pretended to contain this posterior
+information.
+
+`update()` returns event-local diagnostics for:
+
+```text
+consolidation_delta_from_retrieval_inference
+consolidation_delta_from_causal_formation
+```
+
+Simulation traces retain both values. They are attribution data, not persistent
+learner state. Pass 8 explicitly disables the production inference path and pins
+its original prior variance, so its control and candidate results remain a
+reproducible historical experiment.
+
+The structural gate adds direct checks for all production boundaries. The
+learner suite now verifies that first and unobserved retrieval do not update the
+posterior, near-zero successes and failures are inference-inert, long failures
+can lower consolidation, bounds are preserved, inference is identical across
+execution qualities, and causal formation remains quality-sensitive. All 32
+learner invariants, 13 scheduler invariants, and 10 scheduler scenarios pass.
+
+`analysis/learner-model/posterior_state_validation.py` isolates the posterior
+from causal learning and scheduler selection. It generates paired Bernoulli
+retrieval evidence over intervals from 0.25 to 90 days for latent half-lives of
+1, 3, 7, 14, 30, and 90 days. One-at-a-time variants characterize prior
+variance, posterior variance floor, likelihood weight, and grid resolution.
+
+The first provisional settings used prior log variance 1.0 and minimum log
+variance 0.05. Across 100 seeds and all six latent half-lives, broadening the
+prior to 2.0 and conservatively flooring posterior variance at 0.20 changes:
+
+```text
+metric                                      initial provisional   Pass 9 provisional
+mean absolute log error                            0.332                 0.288
+root mean squared log error                        0.416                 0.361
+nominal 90% interval coverage                      77.3%                 96.2%
+```
+
+The final controlled posterior remains ordered by latent durability:
+
+```text
+latent half-life   median estimate   mean log bias   90% coverage
+1d                       1.06d            0.084           99%
+3d                       2.99d            0.008           98%
+7d                       6.74d           -0.045           99%
+14d                     12.71d           -0.090           92%
+30d                     28.33d           -0.101           96%
+90d                     70.15d           -0.251           93%
+```
+
+The remaining high-end underestimation and low-end overestimation are
+quantitative calibration limits. A prior variance of 4.0 improves aggregate log
+error only marginally, from 0.288 to 0.285, so the production value remains 2.0
+rather than selecting the widest tested prior from one Monte Carlo suite. The
+301-point production grid agrees with a 1001-point grid within the 1% mechanical
+tolerance at every latent half-life.
+
+The unchanged scheduler was then run through the complete 250-trial stress
+matrix against a matched control that disables only retained inference:
+
+```text
+metric                                  disabled control   production
+observed retrieval count                    43,328           43,360
+retrieval prediction bias                   -0.050           -0.039
+retrieval prediction MAE                     0.124            0.120
+retrieval prediction Brier                   0.077            0.067
+overall prediction MAE                       0.187            0.187
+recovery fraction                            0.317            0.318
+guidance-probe fraction                      0.376            0.376
+maximum material-selection fraction          0.591            0.620
+mean maximum revisit gap                     26.57d           27.29d
+no-admission rate                            0.141            0.140
+```
+
+Both sweeps complete without crashes or hard-property violations. The production
+pathway improves calibration with essentially unchanged recovery, guidance,
+overall prediction error, and no-admission behavior. Mean material concentration
+rises by 4.9% and the mean maximum-gap tail rises by 2.7%. Both remain well
+below the pre-redesign concentration baseline, but they remain secondary
+regression metrics for later calibration. Half and double likelihood weights do
+not remove the concentration shift and are worse on the controlled posterior
+metric, so Pass 9 does not tune the estimator around scheduler shape.
+
+The primary localized fixture also behaves as predicted by Pass 8:
+
+```text
+profile                         final retrieval bias   early unnecessary cueing
+memory strong, technique weak          -0.42                     13/20
+broadly strong                          -0.29                     13/20
+technique strong, memory weak            0.01                      0/20
+beginner                                -0.02                      0/20
+```
+
+Pass 9 therefore closes the structural and initial calibration gates for
+production retained-durability inference. Its numerical posterior settings
+remain provisional, especially at the 1-day and 90-day extremes. The unchanged
+13/20 early cueing result remains a separate cold-start limitation because no
+elapsed interval evidence exists during those selections.
+
+Pass 9 writes three posterior-validation artifacts:
+
+```text
+posterior_validation_trajectories.csv
+posterior_validation_summary.csv
+posterior_validation_variant_summary.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -1354,5 +1488,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             interval_prediction_bridge.py performs the Pass 7
                             prediction-bridge diagnostic (§10.5), while
                             retained_durability_inference.py performs the Pass 8
-                            estimator-inference diagnostic (§10.6)
+                            estimator-inference diagnostic (§10.6), and
+                            posterior_state_validation.py performs the Pass 9
+                            posterior calibration diagnostic (§10.7)
 ```

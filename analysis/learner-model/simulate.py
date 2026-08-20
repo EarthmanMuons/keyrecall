@@ -170,7 +170,9 @@ def run(
         prediction = predicted_success(state, exercise, now, params)
         outcome = sample_outcome(profile, exercise, now, active_rng)
         weights = evidence_weights(exercise, outcome)
-        update(state, exercise, outcome, weights, prediction, now, params)
+        memory_update = update(
+            state, exercise, outcome, weights, prediction, now, params
+        )
         state_after = state.snapshot()
         if agent_on_outcome is not None:
             agent_on_outcome(exercise, outcome, now)
@@ -213,6 +215,14 @@ def run(
                     "competencies": weights.competencies,
                     "material_execution": weights.material_execution,
                     "material_memory": weights.material_memory,
+                },
+                "memory_update": {
+                    "consolidation_delta_from_retrieval_inference": (
+                        memory_update.consolidation_delta_from_retrieval_inference
+                    ),
+                    "consolidation_delta_from_causal_formation": (
+                        memory_update.consolidation_delta_from_causal_formation
+                    ),
                 },
                 "state_before": state_before,
                 "state_after": state_after,

@@ -41,7 +41,7 @@ import os
 import random
 import sys
 from collections import Counter
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from itertools import pairwise
 from pathlib import Path
 from typing import Any
@@ -1458,6 +1458,17 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_WORKERS,
         help=f"Independent trial workers (default: {DEFAULT_WORKERS}; use 1 for serial)",
     )
+    parser.add_argument(
+        "--disable-retained-inference",
+        action="store_true",
+        help="Diagnostic control: disable production retained-durability inference",
+    )
+    parser.add_argument(
+        "--retained-inference-likelihood-weight",
+        type=float,
+        default=None,
+        help="Diagnostic override for the retained-inference likelihood weight",
+    )
     return parser.parse_args()
 
 
@@ -1467,6 +1478,19 @@ def main() -> None:
 
     scheduler_params = load_scheduler_params(args.scheduler_params)
     learner_params = load_learner_params(args.learner_params)
+    inference_weight = (
+        0.0
+        if args.disable_retained_inference
+        else args.retained_inference_likelihood_weight
+    )
+    if inference_weight is not None:
+        learner_params = replace(
+            learner_params,
+            material_memory=replace(
+                learner_params.material_memory,
+                retained_inference_likelihood_weight=inference_weight,
+            ),
+        )
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
     specs = (

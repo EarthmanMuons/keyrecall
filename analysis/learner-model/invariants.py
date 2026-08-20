@@ -50,6 +50,20 @@ def _full_outcome(retrieval_succeeded: bool = True) -> Outcome:
     )
 
 
+def _successful_outcome_with_quality(quality: float) -> Outcome:
+    return Outcome(
+        started=True,
+        retrieval_succeeded=True,
+        completed=True,
+        material_retrieval=1.0,
+        pitch_integrity=quality,
+        continuity=quality,
+        temporal_stability=quality,
+        achieved_tempo_ratio=quality,
+        topology_accuracy=1.0,
+    )
+
+
 def _anchor_memory(
     memory,
     at: float,
@@ -124,7 +138,11 @@ def check_bounds() -> None:
                     raise InvariantFailure(
                         f"non-positive current-half-life uncertainty: {m}"
                     )
-                if m["consolidated_half_life_uncertainty"] <= 0:
+                if (
+                    not math.isfinite(m["consolidated_log_half_life_variance"])
+                    or m["consolidated_log_half_life_variance"]
+                    < params.material_memory.consolidation_min_log_variance
+                ):
                     raise InvariantFailure(
                         f"non-positive consolidation uncertainty: {m}"
                     )
@@ -445,8 +463,8 @@ def check_v1_memory_upgrade_is_conservative_and_pure() -> None:
     if upgraded.current_half_life_uncertainty != 0.25:
         raise InvariantFailure("upgrade changed current uncertainty")
     if (
-        upgraded.consolidated_half_life_uncertainty
-        != params.material_memory.consolidation_prior_uncertainty
+        upgraded.consolidated_log_half_life_variance
+        != params.material_memory.consolidation_prior_log_variance
     ):
         raise InvariantFailure("upgrade did not use consolidation's own prior")
     if old.log_half_life != math.log(12.0):
@@ -461,10 +479,11 @@ def check_first_success_causes_memory_formation_without_interval_evidence() -> N
     current_before = memory.current_half_life_days
     consolidation_before = memory.consolidated_half_life_days
     current_uncertainty_before = memory.current_half_life_uncertainty
+    consolidation_variance_before = memory.consolidated_log_half_life_variance
 
     outcome = _full_outcome()
     prediction = predicted_success(state, exercise, now=1.0, params=params)
-    update(
+    diagnostics = update(
         state,
         exercise,
         outcome,
@@ -484,6 +503,123 @@ def check_first_success_causes_memory_formation_without_interval_evidence() -> N
         raise InvariantFailure(
             "first success manufactured interval-evidence confidence"
         )
+    if memory.consolidated_log_half_life_variance != consolidation_variance_before:
+        raise InvariantFailure("first success changed consolidation posterior variance")
+    if diagnostics.consolidation_delta_from_retrieval_inference != 0.0:
+        raise InvariantFailure("first success manufactured retained-duration evidence")
+
+
+def check_retained_inference_structural_contracts() -> None:
+    params = load_params()
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+
+    unobserved_state = LearnerState.new(params)
+    unobserved_memory = unobserved_state.material_memory_for("C_MAJOR", params)
+    _anchor_memory(
+        unobserved_memory,
+        0.0,
+        current_half_life_days=3.0,
+        consolidated_half_life_days=20.0,
+    )
+    cued = fixed_exercise(
+        C_MAJOR, "RIGHT", guidance=GuidanceContext(concurrent_pitch_cues=True)
+    )
+    unobserved = _cued_no_retrieval_probe_outcome()
+    variance_before = unobserved_memory.consolidated_log_half_life_variance
+    diagnostics = update(
+        unobserved_state,
+        cued,
+        unobserved,
+        evidence_weights(cued, unobserved),
+        predicted_success(unobserved_state, cued, 14.0, params),
+        14.0,
+        params,
+    )
+    if diagnostics.consolidation_delta_from_retrieval_inference != 0.0:
+        raise InvariantFailure("unobserved retrieval changed consolidation posterior")
+    if unobserved_memory.consolidated_log_half_life_variance != variance_before:
+        raise InvariantFailure("unobserved retrieval changed posterior variance")
+
+    for succeeded in (True, False):
+        massed_state = LearnerState.new(params)
+        massed_memory = massed_state.material_memory_for("C_MAJOR", params)
+        _anchor_memory(
+            massed_memory,
+            0.0,
+            current_half_life_days=3.0,
+            consolidated_half_life_days=20.0,
+        )
+        now = params.material_memory.retained_inference_min_interval_days / 2.0
+        outcome = _full_outcome(succeeded)
+        diagnostics = update(
+            massed_state,
+            exercise,
+            outcome,
+            evidence_weights(exercise, outcome),
+            predicted_success(massed_state, exercise, now, params),
+            now,
+            params,
+        )
+        if diagnostics.consolidation_delta_from_retrieval_inference != 0.0:
+            raise InvariantFailure("near-zero interval changed retained consolidation")
+
+    failure_state = LearnerState.new(params)
+    failure_memory = failure_state.material_memory_for("C_MAJOR", params)
+    _anchor_memory(
+        failure_memory,
+        0.0,
+        current_half_life_days=3.0,
+        consolidated_half_life_days=20.0,
+    )
+    failure = _full_outcome(False)
+    diagnostics = update(
+        failure_state,
+        exercise,
+        failure,
+        evidence_weights(exercise, failure),
+        predicted_success(failure_state, exercise, 14.0, params),
+        14.0,
+        params,
+    )
+    if diagnostics.consolidation_delta_from_retrieval_inference >= 0.0:
+        raise InvariantFailure("long-interval failure did not lower consolidation")
+    if not (
+        failure_memory.current_half_life_days
+        <= failure_memory.consolidated_half_life_days
+        <= params.material_memory.max_memory_half_life_days
+    ):
+        raise InvariantFailure("failure inference broke the durability envelope")
+
+    inference_deltas = []
+    causal_deltas = []
+    for quality in (0.2, 1.0):
+        state = LearnerState.new(params)
+        memory = state.material_memory_for("C_MAJOR", params)
+        _anchor_memory(memory, 0.0, current_half_life_days=3.0)
+        outcome = _successful_outcome_with_quality(quality)
+        diagnostics = update(
+            state,
+            exercise,
+            outcome,
+            evidence_weights(exercise, outcome),
+            predicted_success(state, exercise, 14.0, params),
+            14.0,
+            params,
+        )
+        inference_deltas.append(
+            diagnostics.consolidation_delta_from_retrieval_inference
+        )
+        causal_deltas.append(diagnostics.consolidation_delta_from_causal_formation)
+        if not (
+            memory.current_half_life_days
+            <= memory.consolidated_half_life_days
+            <= params.material_memory.max_memory_half_life_days
+        ):
+            raise InvariantFailure("success inference broke the durability envelope")
+    if not math.isclose(inference_deltas[0], inference_deltas[1], abs_tol=1e-12):
+        raise InvariantFailure("execution quality affected retrieval inference")
+    if not causal_deltas[1] > causal_deltas[0] > 0.0:
+        raise InvariantFailure("causal formation lost execution-quality sensitivity")
 
 
 def check_success_creates_mastery_headroom_but_supported_practice_does_not() -> None:
@@ -1288,6 +1424,10 @@ CHECKS: list[tuple[str, Callable[[], None]]] = [
     (
         "first success forms memory without manufacturing interval evidence",
         check_first_success_causes_memory_formation_without_interval_evidence,
+    ),
+    (
+        "retained inference obeys observation, interval, envelope, and quality boundaries",
+        check_retained_inference_structural_contracts,
     ),
     (
         "success creates mastery headroom; supported practice does not",

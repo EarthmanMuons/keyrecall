@@ -34,7 +34,11 @@ class MaterialMemoryParams:
     max_memory_half_life_days: float
     prior_retrievability: float
     prior_uncertainty: float
-    consolidation_prior_uncertainty: float
+    consolidation_prior_log_variance: float
+    consolidation_min_log_variance: float
+    retained_inference_min_interval_days: float
+    retained_inference_likelihood_weight: float
+    retained_inference_grid_points: int
     min_uncertainty: float
     evidence_shrinkage: float
     alpha_cold_start: float

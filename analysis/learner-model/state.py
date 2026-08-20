@@ -53,7 +53,9 @@ class MaterialMemoryState:
     log_current_half_life: float
     current_half_life_uncertainty: float
     log_consolidated_half_life: float
-    consolidated_half_life_uncertainty: float
+    # Posterior variance of log_consolidated_half_life. Unlike the current
+    # and cold-start uncertainty fields, this has a statistical scale.
+    consolidated_log_half_life_variance: float
     logit_cold_start: float
     cold_start_uncertainty: float
     memory_anchor_at: float | None = None
@@ -116,8 +118,8 @@ def upgrade_v1_material_memory(
         log_current_half_life=old.log_half_life,
         current_half_life_uncertainty=old.half_life_uncertainty,
         log_consolidated_half_life=old.log_half_life,
-        consolidated_half_life_uncertainty=(
-            params.material_memory.consolidation_prior_uncertainty
+        consolidated_log_half_life_variance=(
+            params.material_memory.consolidation_prior_log_variance
         ),
         logit_cold_start=old.logit_cold_start,
         cold_start_uncertainty=old.cold_start_uncertainty,
@@ -192,8 +194,8 @@ class LearnerState:
                 log_current_half_life=math.log(initial),
                 current_half_life_uncertainty=params.material_memory.prior_uncertainty,
                 log_consolidated_half_life=math.log(initial),
-                consolidated_half_life_uncertainty=(
-                    params.material_memory.consolidation_prior_uncertainty
+                consolidated_log_half_life_variance=(
+                    params.material_memory.consolidation_prior_log_variance
                 ),
                 logit_cold_start=logit(params.material_memory.prior_retrievability),
                 cold_start_uncertainty=params.material_memory.prior_uncertainty,
@@ -237,8 +239,8 @@ class LearnerState:
                     "current_half_life_uncertainty": (m.current_half_life_uncertainty),
                     "consolidated_half_life_days": m.consolidated_half_life_days,
                     "log_consolidated_half_life": m.log_consolidated_half_life,
-                    "consolidated_half_life_uncertainty": (
-                        m.consolidated_half_life_uncertainty
+                    "consolidated_log_half_life_variance": (
+                        m.consolidated_log_half_life_variance
                     ),
                     "cold_start_estimate": m.cold_start_estimate,
                     "logit_cold_start": m.logit_cold_start,
