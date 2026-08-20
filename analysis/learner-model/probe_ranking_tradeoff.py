@@ -77,6 +77,29 @@ def consecutive_failures(history: list[dict[str, Any]]) -> int:
     return count
 
 
+def consecutive_completion_failures(history: list[dict[str, Any]]) -> int:
+    count = 0
+    for event in reversed(history):
+        if event["completed"]:
+            break
+        count += 1
+    return count
+
+
+def previous_probe_failure_mode(previous):
+    if previous is None:
+        return "none"
+    retrieval_failed = previous["retrieval_succeeded"] is False
+    completion_failed = not previous["completed"]
+    if retrieval_failed and completion_failed:
+        return "retrieval_and_completion"
+    if retrieval_failed:
+        return "retrieval_only"
+    if completion_failed:
+        return "completion_only"
+    return "neither"
+
+
 def information_first_choice(agent, state, session, now):
     traces = run_pipeline(
         state,
@@ -503,6 +526,7 @@ def run_case(variant: str, fixture: pass10.Fixture, seed: int):
         InstrumentProfile(), list(MATERIAL_POOL), scheduler_params, learner_params
     )
     histories: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
+    selection_histories: defaultdict[str, list[dict[str, Any]]] = defaultdict(list)
     support_inserted_since_probe: set[str] = set()
     rng = random.Random(seed)
     rows: list[dict[str, Any]] = []
@@ -549,10 +573,14 @@ def run_case(variant: str, fixture: pass10.Fixture, seed: int):
                     agent, state, session_before, original, now
                 )
                 failures = consecutive_failures(history)
+                previous_probe = history[-1] if history else None
+                recent = selection_histories[original_material]
+                memory = state.material_memory[original_material]
+                stronger = alternatives["memory_support"]
+                trigger_id = (
+                    f"{fixture.label}:{seed}:{attempt_index}:{original_material}"
+                )
                 if variant == "control":
-                    trigger_id = (
-                        f"{fixture.label}:{seed}:{attempt_index}:{original_material}"
-                    )
                     for paired_action, paired_trace in paired_action_candidates(
                         agent,
                         state,
@@ -594,12 +622,101 @@ def run_case(variant: str, fixture: pass10.Fixture, seed: int):
                     "variant": variant,
                     "profile": fixture.label,
                     "seed": seed,
+                    "trigger_id": trigger_id,
                     "attempt_index": attempt_index,
                     "selection_index": selection_index,
                     "at_days": now,
                     "original_material_id": original_material,
                     "probe_number": len(history) + 1,
                     "consecutive_prior_probe_failures": failures,
+                    "consecutive_prior_probe_completion_failures": (
+                        consecutive_completion_failures(history)
+                    ),
+                    "previous_probe_failure_mode": previous_probe_failure_mode(
+                        previous_probe
+                    ),
+                    "previous_probe_completed": (
+                        previous_probe["completed"]
+                        if previous_probe is not None
+                        else ""
+                    ),
+                    "previous_probe_retrieval_succeeded": (
+                        previous_probe["retrieval_succeeded"]
+                        if previous_probe is not None
+                        else ""
+                    ),
+                    "recent_3_completion_failure_count": sum(
+                        not item["completed"] for item in recent[-3:]
+                    ),
+                    "recent_5_completion_failure_count": sum(
+                        not item["completed"] for item in recent[-5:]
+                    ),
+                    "recent_3_factual_failure_count": sum(
+                        item["retrieval_succeeded"] is False for item in recent[-3:]
+                    ),
+                    "recent_5_factual_failure_count": sum(
+                        item["retrieval_succeeded"] is False for item in recent[-5:]
+                    ),
+                    "control_predicted_retrieval_p": (
+                        original.prediction.independent_retrieval_p
+                    ),
+                    "control_predicted_material_available_p": (
+                        original.prediction.material_available_p
+                    ),
+                    "control_predicted_execution_p": original.prediction.execution_p,
+                    "control_predicted_topology_p": original.prediction.topology_p,
+                    "control_predicted_overall_p": original.prediction.overall_p,
+                    "execution_minus_material_available": (
+                        original.prediction.execution_p
+                        - original.prediction.material_available_p
+                    ),
+                    "execution_minus_retrieval": (
+                        original.prediction.execution_p
+                        - original.prediction.independent_retrieval_p
+                    ),
+                    "current_half_life_days": memory.current_half_life_days,
+                    "consolidated_half_life_days": (memory.consolidated_half_life_days),
+                    "memory_uncertainty": pass11.operative_memory_uncertainty(
+                        state, original_material, learner_params
+                    ),
+                    "consolidation_log_variance": (
+                        memory.consolidated_log_half_life_variance
+                    ),
+                    "competency_variance": pass11.relevant_competency_variance(
+                        state, original.exercise
+                    ),
+                    "execution_residual_variance": pass11.execution_variance(
+                        state, original.exercise, learner_params
+                    ),
+                    "days_since_factual_success": (
+                        now - memory.factual_last_retrieval_at
+                    ),
+                    "days_since_factual_attempt": (
+                        now - memory.last_retrieval_attempt_at
+                        if memory.last_retrieval_attempt_at is not None
+                        else ""
+                    ),
+                    "stronger_support_admitted": (
+                        stronger is not None
+                        and stronger.priority_status is StageStatus.REACHED
+                    ),
+                    "stronger_support_same_realization": (
+                        stronger is not None
+                        and pass14.same_realization(
+                            stronger.exercise, original.exercise
+                        )
+                    ),
+                    "stronger_support_predicted_overall_p": (
+                        stronger.prediction.overall_p if stronger is not None else ""
+                    ),
+                    "stronger_support_predicted_execution_p": (
+                        stronger.prediction.execution_p if stronger is not None else ""
+                    ),
+                    "stronger_support_overall_gain": (
+                        stronger.prediction.overall_p - original.prediction.overall_p
+                        if stronger is not None
+                        else ""
+                    ),
                     "trigger_reason": pass14.trigger_reason(history),
                     "action": action,
                     "alternative_applied": chosen.exercise != original.exercise,
@@ -663,6 +780,13 @@ def run_case(variant: str, fixture: pass10.Fixture, seed: int):
             **deltas,
         }
         rows.append(row)
+        selection_histories[material_id].append(
+            {
+                "completed": outcome.completed,
+                "retrieval_succeeded": outcome.retrieval_succeeded,
+                "scheduler_intent": intent,
+            }
+        )
         if event is not None:
             event.update(
                 {
@@ -686,6 +810,7 @@ def run_case(variant: str, fixture: pass10.Fixture, seed: int):
             history.append(
                 {
                     "at_days": now,
+                    "completed": outcome.completed,
                     "retrieval_succeeded": outcome.retrieval_succeeded,
                     "retrieval_prediction_change": (
                         predicted_success(

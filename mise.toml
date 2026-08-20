@@ -71,6 +71,10 @@ run = "uv run analysis/learner-model/probe_alternative_actions.py --output-dir a
 description = "Pass 15 low-yield probe retention-vs-information characterization"
 run = "uv run analysis/learner-model/probe_ranking_tradeoff.py --output-dir analysis/learner-model/generated"
 
+[tasks."analysis:probe-completion-need"]
+description = "Pass 16 probe-failure completion-need characterization"
+run = "uv run analysis/learner-model/probe_completion_need.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:learner-model"]
 description = "Run learner-model simulation invariant checks"
 run = "uv run analysis/learner-model/invariants.py"

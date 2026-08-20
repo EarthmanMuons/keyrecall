@@ -2150,6 +2150,135 @@ probe_ranking_profile_summary.csv
 probe_ranking_variant_summary.csv
 ```
 
+### 10.14 Pass 16: probe-failure completion need
+
+Pass 16 applies the stopping rule proposed after Pass 15. It fits no classifier
+and changes no scheduler policy. Instead, it uses the paired control-state
+rollouts as outcome labels and asks whether fixed, pre-selection observable
+strata identify where one stronger-support interleave is safe.
+
+The analysis includes only Pass 15 trigger states where same-material stronger
+support is admitted after at least two consecutive factual probe failures. For
+each state, the retention-first probe and stronger-support action begin with the
+same estimator, synthetic truth, session, time, and random-generator state. The
+event records only predictors available before presentation:
+
+```text
+prediction components and their gaps
+probe ordinal and prior factual-probe outcomes
+recent completion and factual-failure histories
+current and consolidated durability
+memory uncertainty and consolidation variance
+competency and execution variance
+stronger-support predicted overall gain
+```
+
+Future paired outcomes label the rows for analysis only. Two labels are
+retained:
+
+```text
+completion-recovery benefit
+    immediate completion improves and next-10 recovery decreases
+
+strict oracle benefit
+    completion-recovery benefit
+    + factual return is not later
+    + retrieval MAE does not increase
+    + retrieval Brier does not increase
+```
+
+The production discriminator is never allowed to read either label or any future
+outcome.
+
+Across 30 seeds, 900 trigger states have the qualifying stronger-support
+candidate. The aggregate treatment effect reproduces Pass 15:
+
+```text
+metric                                        stronger support minus probe
+immediate completion                                      +0.528
+immediate retrieval observation                           -1.000
+next-10 retrieval observations                            +0.533
+next-10 retrieval successes                               +0.041
+memory-U reduction                                        +0.016
+consolidation-V reduction                                 +0.021
+recovery selections                                       -0.533
+days until factual return                                 -0.471
+retrieval MAE                                             +0.0036
+retrieval Brier                                           +0.0004
+```
+
+Only 28.1% of individual states improve both immediate completion and recovery.
+Only 42/900, or 4.7%, also satisfy the strict future-outcome oracle label. That
+small oracle-positive subset exists, but the tested production observables do
+not isolate it coherently.
+
+Several candidate predictors are nearly constant after the Pass 14 trigger and
+stronger-support admission have already filtered the state:
+
+```text
+observable                                      dominant stratum
+predicted retrieval p                           below 0.20 in 899/900
+memory uncertainty                              low in 900/900
+stronger-support overall-p gain                 0.30-0.45 in 897/900
+execution residual variance                     low in 898/900
+recent factual failures                         2-3 in 900/900
+```
+
+Completion history provides less separation than the hypothesis requires. The
+previous probe failed both retrieval and completion in 505 states and retrieval
+alone in 395. Their completion-recovery benefit rates are similar, 27.7% and
+28.6%. Mean MAE still rises by 0.0037 and 0.0036, respectively. Retrieval-only
+failures improve Brier slightly, but not MAE.
+
+The most favorable supported one-factor strata still fail the strict group gate:
+
+```text
+stratum                         n   delta completion   delta recovery   delta factual days   delta MAE   delta Brier
+control overall p < 0.20       94        +0.553           -0.479            -0.426            +0.0043      -0.0090
+control execution p 0.40-0.60 640        +0.525           -0.530            -0.472            +0.0026      -0.0001
+recent completion failures 2-3 398        +0.550           -0.515            -0.470            +0.0032      +0.0013
+```
+
+The first two satisfy every mean criterion except nonincreasing MAE. The third
+regresses both calibration measures. Fixed two-factor intersections do not
+resolve the tradeoff. No region with at least 50 examples simultaneously has:
+
+```text
+completion gain >= 0.25
+recovery reduction >= 0.10
+no later factual return
+nonincreasing retrieval MAE
+nonincreasing retrieval Brier
+```
+
+The highest strict-oracle fraction among supported single-factor strata is 8.5%,
+and the highest among tested two-factor regions is 8.8%. This is at most a weak
+enrichment of a rare future-outcome label, not an operational completion-need
+boundary.
+
+The technique-strong/memory-weak fixture is the closest profile-level result:
+completion rises by 0.542, recovery falls by 0.611, MAE changes by only +0.0001,
+and Brier improves by 0.0007. Fixture identity and latent truth are not
+available to production, however, and the observable strata do not recover that
+result without including heterogeneous states that regress calibration.
+
+Pass 16 therefore promotes no classifier and no further scheduler experiment.
+The current synthetic analysis cannot identify completion need strongly enough
+from pre-selection state to justify censoring a factual probe. Per the stopping
+rule, scheduler exception search is frozen. Further gains should come from
+empirical calibration and richer real-learner observations rather than more
+conditional synthetic policy branches.
+
+Pass 16 writes five artifacts:
+
+```text
+probe_completion_need_labeled_events.csv
+probe_completion_need_summary.csv
+probe_completion_need_profile_summary.csv
+probe_completion_need_strata.csv
+probe_completion_need_regions.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -2201,5 +2330,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             14 alternative-action and clock diagnostic (§10.12),
                             and probe_ranking_tradeoff.py performs the Pass 15
                             ranking-alternative and paired-horizon diagnostic
-                            (§10.13)
+                            (§10.13), while probe_completion_need.py performs the
+                            Pass 16 completion-need discriminator
+                            characterization (§10.14)
 ```
