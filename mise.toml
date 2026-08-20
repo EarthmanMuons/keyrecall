@@ -50,3 +50,7 @@ run = "uv run analysis/scheduler/scenarios.py"
 [tasks."analysis:scheduler-sensitivity"]
 description = "Run scheduler parameter sensitivity/robustness sweep (Pass 3)"
 run = "uv run analysis/scheduler/sensitivity.py --output-dir analysis/scheduler/generated"
+
+[tasks."analysis:scheduler-stress"]
+description = "Run scheduler broad stochastic generalization/stress testing (Pass 4)"
+run = "uv run analysis/scheduler/stress.py --output-dir analysis/scheduler/generated"
