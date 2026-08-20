@@ -1681,6 +1681,117 @@ recovery_support_summary.csv
 supported_counterfactual_summary.csv
 ```
 
+### 10.10 Pass 12: recovery modality
+
+Pass 12 tests the possible support-modality mismatch isolated by Pass 11. It
+does not modify production policy. Three diagnostic variants run the seven Pass
+10 fixtures across 30 matched seeds:
+
+```text
+control
+    all failures use existing one-step memory guidance
+
+dimension targeted
+    memory/topology limited -> existing recovery
+    execution limited       -> one-step motor simplification
+
+motor floor diagnostic
+    memory/topology limited -> existing recovery
+    execution limited       -> easiest same-hands motor realization
+```
+
+The motor actions use existing candidate dimensions. They preserve material,
+hands, and the failed attempt's guidance while lowering tempo, octave span, or
+direction complexity. The one-step variant chooses the single available change
+with the highest predicted execution probability. The floor uses 60 BPM, one
+octave, and upward-only motion. Direct checks ensure that a motor intervention
+never adds memory guidance, never lowers predicted execution probability
+relative to control recovery, and never raises predicted material availability.
+
+The trigger dimension is a diagnostic attribution to the lowest predicted
+component probability, not a new production decision boundary. Memory- and
+topology-limited failures remain controls under the existing recovery policy.
+
+The intervention mechanically works on the dimension it changes. Depending on
+profile and dose, targeted actions raise predicted execution probability by
+about 0.05 to 0.10 while reducing material availability by about 0.28 to 0.50
+relative to cue-escalating control. That tradeoff, however, does not produce a
+robust recovery improvement.
+
+For the primary memory-strong/technique-weak fixture:
+
+```text
+metric                              control   one-step motor   motor floor
+recovery selections per seed          8.00          7.77           7.57
+recovery episodes per seed             7.80          6.70           6.80
+mean episode length                    1.02          1.17           1.11
+execution-recovery completion          0.0%          0.4%           2.4%
+retrieval observation                  0.0%         81.1%          79.3%
+retrieval success when observed         n/a         85.8%          88.3%
+same-dimension episode recurrence      0.0%          9.7%           3.8%
+retrieval prediction MAE              0.475         0.463          0.462
+retrieval prediction Brier            0.375         0.358          0.360
+```
+
+Motor targeting preserves useful retrieval evidence and slightly reduces the
+number of recovery episodes, but it does not make the exercise completable for
+this technique-weak learner. Control's zero recurrence is not a clean success:
+most control recoveries escalate to continuous cues, which censor retrieval and
+clear the factual-failure recovery trigger after one attempt.
+
+The broadly strong fixture also provides no clear reason to promote the
+mechanism. Recovery count is essentially unchanged at 8.20, 8.17, and 8.13. The
+floor nearly preserves execution-recovery completion (94.5% control versus
+93.6%), while one-step targeting lowers it to 88.9%. Observation increases from
+7.7% to 75-78%, but ordinary challenge-band admission still takes about 18-20
+later selections where it occurs.
+
+The weak and heterogeneous controls reject a global execution-argmin policy more
+strongly:
+
+```text
+profile / metric                       control   one-step motor   motor floor
+technique strong, memory weak
+  recovery selections                   31.2          35.1           35.2
+  mean episode length                    1.18          1.54           1.56
+  execution-recovery completion         78.7%         45.6%          43.3%
+  retrieval Brier                       0.084         0.089          0.086
+
+beginner
+  recovery selections                   27.0          33.3           33.9
+  mean episode length                    1.09          1.66           1.79
+  execution-recovery completion          0.0%          0.0%           0.0%
+
+mixed prior knowledge
+  recovery selections                   27.2          31.1           30.7
+  execution-recovery completion         78.4%         51.1%          53.8%
+```
+
+The minimum predicted component is therefore insufficient to choose one support
+modality. A multiplicative outcome can remain jointly memory- and
+execution-limited even when execution is the smallest component. Removing the
+memory support exposes that second weakness. More retrieval observations improve
+aggregate MAE and Brier and reduce concentration, but those downstream gains do
+not compensate for longer and less successful recovery in the protective
+fixtures.
+
+Pass 12 rejects both motor-only recovery candidates. It promotes no scheduler
+change. If recovery is revisited, the narrower next experiment should be
+factorial: independently vary motor simplification and memory guidance to test a
+hybrid action and estimate each contribution. That is separate from the next
+planned guidance-probe marginal-yield characterization.
+
+Pass 12 writes six artifacts:
+
+```text
+recovery_modality_trajectories.csv
+recovery_modality_events.csv
+recovery_modality_episodes.csv
+recovery_modality_seed_summary.csv
+recovery_modality_profile_summary.csv
+recovery_modality_variant_summary.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -1724,5 +1835,6 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             first-encounter placement-policy diagnostic (§10.8),
                             and supported_selection_intent.py performs the Pass
                             11 intent, yield, and counterfactual characterization
-                            (§10.9)
+                            (§10.9), while recovery_modality.py performs the Pass
+                            12 dimension-targeted recovery diagnostic (§10.10)
 ```
