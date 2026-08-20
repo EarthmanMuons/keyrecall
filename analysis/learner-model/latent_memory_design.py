@@ -31,10 +31,9 @@ against a behavioral matrix rather than comparing mechanism shapes.
 
 No changes to synthetic.py, model.py, state.py, simulate.py, pipeline.py,
 longitudinal.py, candidates.py, or any config.toml/params.toml.
-TrueMaterialMemory.retrievability() only ever reads last_retrieval_at and
-half_life_days, so memory_anchor_at is represented here by mutating
-last_retrieval_at directly (the same diagnostic shortcut as the prior
-experiment) - not the recommended production representation.
+The production model now has the separate fields this diagnostic motivated.
+This frozen experiment disables the production transition and applies its
+historical local activation/durability/consolidation rules explicitly.
 
 Usage:
     python latent_memory_design.py
@@ -72,7 +71,9 @@ MATERIAL = TechnicalMaterial("C", "MAJOR")
 NEW_MATERIAL = TechnicalMaterial("G", "MAJOR")
 STARTING_HALF_LIFE_DAYS = 6.0
 STARTING_GAP_DAYS = 14.0  # matches synthetic.py's own "returning" profile comment
-NEW_MATERIAL_DEFAULT_HALF_LIFE_DAYS = PROFILES["returning"].default_half_life_days
+NEW_MATERIAL_DEFAULT_HALF_LIFE_DAYS = PROFILES[
+    "returning"
+].default_current_half_life_days
 # Read from the profile itself, not hardcoded - _true_memory_for()'s lazy
 # init uses this exact value for any material with no seeded entry, and a
 # hardcoded copy could silently drift from it.
@@ -110,11 +111,9 @@ def _delta_q(before: float, after: float) -> float:
 @dataclass
 class LatentMemoryExtras:
     """Side-tracked bookkeeping alongside the real TrueMaterialMemory -
-    never read by sample_outcome(). TrueMaterialMemory.last_retrieval_at
-    is repurposed here as "memory_anchor_at" (moved by supported practice,
-    not just genuine success); factual_last_retrieval_at tracks what that
-    field would mean under its ORIGINAL, unmodified semantics (set only
-    by genuine success), so the report can show the two diverging.
+    never read by sample_outcome(). TrueMaterialMemory.memory_anchor_at is
+    moved by supported practice; factual_last_retrieval_at tracks success-only
+    history, so the report can show the two diverging.
 
     consolidated_half_life_days is named deliberately not "peak": it is
     an IMMUTABLE restoration ceiling in this diagnostic (see
@@ -127,7 +126,9 @@ class LatentMemoryExtras:
 def apply_genuine_success(
     true_memory: TrueMaterialMemory, extras: LatentMemoryExtras, now: float
 ) -> None:
-    true_memory.last_retrieval_at = now
+    true_memory.memory_anchor_at = now
+    true_memory.factual_last_retrieval_at = now
+    true_memory.last_retrieval_attempt_at = now
     extras.factual_last_retrieval_at = now
     # half_life_days / consolidated_half_life_days UNCHANGED here - an
     # explicitly open question (design choice #1 below), not assumed
@@ -144,14 +145,12 @@ def apply_supported_practice(
     half_life_rate: float,
 ) -> None:
     support = _support_factor(exercise)
-    if true_memory.last_retrieval_at is not None:
+    if true_memory.memory_anchor_at is not None:
         fraction = anchor_rate * support * quality
-        true_memory.last_retrieval_at += fraction * (
-            now - true_memory.last_retrieval_at
-        )
+        true_memory.memory_anchor_at += fraction * (now - true_memory.memory_anchor_at)
     gain = half_life_rate * support * quality
-    true_memory.half_life_days += gain * (
-        extras.consolidated_half_life_days - true_memory.half_life_days
+    true_memory.current_half_life_days += gain * (
+        extras.consolidated_half_life_days - true_memory.current_half_life_days
     )
     # consolidated_half_life_days is NOT updated here. For any gain in
     # [0, 1], half_life_days moves TOWARD consolidated_half_life_days and
@@ -230,7 +229,10 @@ def _verify_matched_initial_dose() -> None:
     )
     unguided = fixed_exercise(MATERIAL, "RIGHT")  # support_factor=1.0
     memory = TrueMaterialMemory(
-        half_life_days=STARTING_HALF_LIFE_DAYS, last_retrieval_at=-STARTING_GAP_DAYS
+        current_half_life_days=STARTING_HALF_LIFE_DAYS,
+        consolidated_half_life_days=RETURNING_CONSOLIDATED_HALF_LIFE_DAYS,
+        memory_anchor_at=-STARTING_GAP_DAYS,
+        factual_last_retrieval_at=-STARTING_GAP_DAYS,
     )
     extras = LatentMemoryExtras(
         consolidated_half_life_days=RETURNING_CONSOLIDATED_HALF_LIFE_DAYS,
@@ -254,7 +256,10 @@ def _returning_truth(
     truth = copy.deepcopy(PROFILES["returning"])
     truth.true_material_memory = {
         "C_MAJOR": TrueMaterialMemory(
-            half_life_days=STARTING_HALF_LIFE_DAYS, last_retrieval_at=-STARTING_GAP_DAYS
+            current_half_life_days=STARTING_HALF_LIFE_DAYS,
+            consolidated_half_life_days=consolidated_half_life_days,
+            memory_anchor_at=-STARTING_GAP_DAYS,
+            factual_last_retrieval_at=-STARTING_GAP_DAYS,
         )
     }
     extras = LatentMemoryExtras(
@@ -278,7 +283,10 @@ def _already_strong_truth() -> tuple[TrueLearnerProfile, LatentMemoryExtras]:
     truth = copy.deepcopy(PROFILES["returning"])
     truth.true_material_memory = {
         "C_MAJOR": TrueMaterialMemory(
-            half_life_days=ALREADY_STRONG_HALF_LIFE_DAYS, last_retrieval_at=-1.0
+            current_half_life_days=ALREADY_STRONG_HALF_LIFE_DAYS,
+            consolidated_half_life_days=ALREADY_STRONG_HALF_LIFE_DAYS,
+            memory_anchor_at=-1.0,
+            factual_last_retrieval_at=-1.0,
         )
     }
     extras = LatentMemoryExtras(
@@ -310,9 +318,9 @@ def _row(
         "true_retrievability_before": before,
         "true_retrievability_after": after,
         "delta_q": _delta_q(before, after),
-        "half_life_days": true_memory.half_life_days,
+        "half_life_days": true_memory.current_half_life_days,
         "consolidated_half_life_days": extras.consolidated_half_life_days,
-        "anchor_last_retrieval_at": true_memory.last_retrieval_at,
+        "anchor_last_retrieval_at": true_memory.memory_anchor_at,
         "factual_last_retrieval_at": extras.factual_last_retrieval_at,
         "guidance_independence": _guidance_independence(exercise),
         "retrieval_succeeded": outcome.retrieval_succeeded,
@@ -349,11 +357,14 @@ def _run_fixed_practice(
         true_memory = truth.true_material_memory.get(material_id)
         if true_memory is None:
             true_memory = TrueMaterialMemory(
-                half_life_days=truth.default_half_life_days
+                current_half_life_days=truth.default_current_half_life_days,
+                consolidated_half_life_days=truth.default_current_half_life_days,
             )
             truth.true_material_memory[material_id] = true_memory
         before = true_memory.retrievability(now, truth.memory_prior)
-        outcome = sample_outcome(truth, exercise, now, rng)
+        outcome = sample_outcome(
+            truth, exercise, now, rng, apply_memory_transition=False
+        )
         _apply_latent_update(
             true_memory, extras, exercise, outcome, now, anchor_rate, half_life_rate
         )
@@ -434,7 +445,9 @@ def scenario_4_returning_scheduler_driven(
                 true_memory = truth.true_material_memory[material_id]
                 before = true_memory.retrievability(now, truth.memory_prior)
                 prediction = predicted_success(state, exercise, now, learner_params)
-                outcome = sample_outcome(truth, exercise, now, rng)
+                outcome = sample_outcome(
+                    truth, exercise, now, rng, apply_memory_transition=False
+                )
                 weights = evidence_weights(exercise, outcome)
                 update(
                     state, exercise, outcome, weights, prediction, now, learner_params
@@ -503,9 +516,9 @@ def scenario_6_prolonged_non_practice() -> list[dict[str, Any]]:
                 "true_retrievability_before": r,
                 "true_retrievability_after": r,
                 "delta_q": 0.0,
-                "half_life_days": memory.half_life_days,
+                "half_life_days": memory.current_half_life_days,
                 "consolidated_half_life_days": extras.consolidated_half_life_days,
-                "anchor_last_retrieval_at": memory.last_retrieval_at,
+                "anchor_last_retrieval_at": memory.memory_anchor_at,
                 "factual_last_retrieval_at": extras.factual_last_retrieval_at,
                 "guidance_independence": None,
                 "retrieval_succeeded": None,

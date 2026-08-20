@@ -301,32 +301,41 @@ def update(
         execution_state.last_evidence_at = now
 
     memory_state = state.material_memory_for(material_id, params)
-    had_ever_retrieved = memory_state.last_retrieval_at is not None
-    if weights.material_memory > 0.0:
+    had_memory_anchor = memory_state.memory_anchor_at is not None
+    pre_attempt_current_half_life = memory_state.current_half_life_days
+    mm = params.material_memory
+
+    # Observation history is factual bookkeeping, not an evidence-weighted
+    # estimate. None means retrieval was never tested, so it updates neither
+    # factual timestamp.
+    if outcome.retrieval_succeeded is not None:
         memory_state.last_retrieval_attempt_at = now
 
+    if weights.material_memory > 0.0:
         # Success = independent retrieval (§5.1), not pitch quality and not
         # merely starting: cueing can make outcome.started true without
         # retrieval_succeeded, and that should not count as evidence the
         # material is independently retrievable.
-        mm = params.material_memory
         y_retrieval = 1.0 if outcome.retrieval_succeeded else 0.0
 
-        if had_ever_retrieved:
+        if had_memory_anchor:
             delta_memory = y_retrieval - prediction.independent_retrieval_p
-            log_half_life_prior = math.log(mm.initial_half_life_days)
-            new_log_half_life = memory_state.log_half_life + weights.material_memory * (
-                mm.alpha_memory * delta_memory
-                - mm.reversion_lambda
-                * (memory_state.log_half_life - log_half_life_prior)
+            log_half_life_prior = math.log(mm.initial_current_half_life_days)
+            new_log_half_life = memory_state.log_current_half_life + (
+                weights.material_memory
+                * (
+                    mm.alpha_current_durability * delta_memory
+                    - mm.reversion_lambda_current_durability
+                    * (memory_state.log_current_half_life - log_half_life_prior)
+                )
             )
-            memory_state.log_half_life = min(
+            memory_state.log_current_half_life = min(
                 max(new_log_half_life, math.log(mm.min_half_life_days)),
-                math.log(mm.max_half_life_days),
+                memory_state.log_consolidated_half_life,
             )
-            memory_state.half_life_uncertainty = max(
+            memory_state.current_half_life_uncertainty = max(
                 mm.min_uncertainty,
-                memory_state.half_life_uncertainty
+                memory_state.current_half_life_uncertainty
                 * (1 - mm.evidence_shrinkage * weights.material_memory),
             )
         elif not outcome.retrieval_succeeded:
@@ -354,5 +363,84 @@ def update(
                 * (1 - mm.evidence_shrinkage * weights.material_memory),
             )
 
-    if outcome.retrieval_succeeded:  # clock resets on independent retrieval only
-        memory_state.last_retrieval_at = now
+    quality = 0.0
+    if outcome.started and outcome.completed:
+        quality = max(
+            0.0,
+            min(
+                1.0,
+                (
+                    outcome.continuity
+                    + outcome.temporal_stability
+                    + outcome.pitch_integrity
+                )
+                / 3.0,
+            ),
+        )
+
+    if exercise.guidance.concurrent_pitch_cues:
+        guidance_kind = "cued"
+    elif exercise.guidance.notes_previewed:
+        guidance_kind = "notes"
+    else:
+        guidance_kind = "unguided"
+
+    if outcome.retrieval_succeeded is True:
+        # A first success cannot identify a forgetting rate because no
+        # anchored interval preceded it. It can still causally establish
+        # stronger post-attempt memory through this transition.
+        memory_state.memory_anchor_at = now
+        memory_state.factual_last_retrieval_at = now
+        success_factor = {
+            "notes": mm.retrieval_success_factor_notes_previewed,
+            "unguided": mm.retrieval_success_factor_unguided,
+        }[guidance_kind]
+        consolidation_gap = max(
+            0.0,
+            mm.consolidation_growth_target_days
+            - memory_state.consolidated_half_life_days,
+        )
+        new_consolidation = memory_state.consolidated_half_life_days + (
+            mm.consolidation_growth_rate * success_factor * quality * consolidation_gap
+        )
+        new_consolidation = min(new_consolidation, mm.max_memory_half_life_days)
+        # Evidence correction is allowed to revise current durability down,
+        # but successful retrieval has a nonnegative causal learning effect
+        # relative to the incoming state. The complete success update therefore
+        # cannot finish below its pre-attempt current durability.
+        current_base = max(
+            pre_attempt_current_half_life, memory_state.current_half_life_days
+        )
+        new_current = current_base + (
+            mm.success_current_durability_rate
+            * success_factor
+            * quality
+            * (new_consolidation - current_base)
+        )
+        memory_state.log_consolidated_half_life = math.log(new_consolidation)
+        memory_state.log_current_half_life = math.log(new_current)
+        return
+
+    if quality <= 0.0:
+        return
+
+    practice_factor = {
+        "cued": mm.supported_practice_factor_concurrent_cues,
+        "notes": mm.supported_practice_factor_notes_previewed,
+        "unguided": mm.supported_practice_factor_unguided,
+    }[guidance_kind]
+    if memory_state.memory_anchor_at is not None:
+        fraction = mm.supported_activation_restoration_rate * practice_factor * quality
+        memory_state.memory_anchor_at += fraction * (
+            now - memory_state.memory_anchor_at
+        )
+    new_current = memory_state.current_half_life_days + (
+        mm.supported_current_durability_rate
+        * practice_factor
+        * quality
+        * (
+            memory_state.consolidated_half_life_days
+            - memory_state.current_half_life_days
+        )
+    )
+    memory_state.log_current_half_life = math.log(new_current)

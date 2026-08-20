@@ -18,6 +18,7 @@ Usage:
 
 from __future__ import annotations
 
+import math
 import random
 import sys
 from itertools import pairwise
@@ -604,47 +605,49 @@ def check_guidance_probe_failure_does_not_cascade_to_independence(
     scheduler_params = (
         scheduler_params if scheduler_params is not None else load_scheduler_params()
     )
+    del seed  # deterministic pipeline construction; no sampled outcome required
     instrument = InstrumentProfile()
-    agent = SchedulerAgent(instrument, [MATERIALS[0]], scheduler_params, learner_params)
+    material = MATERIALS[0]
+    state = initial_state(PROFILES["technique_strong_memory_weak"], learner_params)
+    memory = state.material_memory_for(material.material_id, learner_params)
+    memory.memory_anchor_at = -20.0
+    memory.factual_last_retrieval_at = -20.0
+    memory.last_retrieval_attempt_at = -20.0
+    memory.log_current_half_life = math.log(0.1)
+    memory.log_consolidated_half_life = math.log(0.1)
+    candidates = generate_candidates(instrument, [material])
+    traces = run_pipeline(
+        state,
+        SessionState(),
+        candidates,
+        scheduler_params,
+        learner_params,
+        0.0,
+    )
+    probes = [trace for trace in traces if trace.challenge_bypass == "guidance_probe"]
+    if not probes:
+        raise InvariantFailure("test setup error: no guidance-probe candidate admitted")
 
-    try:
-        run_sessions(
-            "technique_strong_memory_weak",
-            agent,
-            learner_params,
-            session_count=3,
-            attempts_per_session=20,
-            seed=seed,
-        )
-    except NoAdmittedCandidate as exc:
+    failed_probe = probes[0].exercise
+    recovery_traces = run_pipeline(
+        state,
+        SessionState(last_failed_exercise=failed_probe),
+        candidates,
+        scheduler_params,
+        learner_params,
+        0.5,
+    )
+    survivors = [trace for trace in recovery_traces if trace.challenge_survived]
+    if len(survivors) != 1 or survivors[0].challenge_bypass != "recovery":
         raise InvariantFailure(
-            f"scheduler produced no admitted candidate: {exc}"
-        ) from exc
-
-    saw_probe_failure = False
-    for i, record in enumerate(agent.records[:-1]):
-        if (
-            record.selected is None
-            or record.selected.challenge_bypass != "guidance_probe"
-            or record.outcome is None
-            or record.outcome.retrieval_succeeded is not False
-        ):
-            continue
-        next_record = agent.records[i + 1]
-        if next_record.selected is None:
-            continue
-        saw_probe_failure = True
-        probe_level = _guidance_independence(record.selected.exercise)
-        next_level = _guidance_independence(next_record.selected.exercise)
-        if next_level > probe_level:
-            raise InvariantFailure(
-                f"attempt {i + 1}: guidance stepped toward MORE independence "
-                f"(level {probe_level} -> {next_level}) immediately after a failed "
-                "guidance probe, instead of restoring support"
-            )
-
-    if not saw_probe_failure:
-        raise InvariantFailure("test setup error: no guidance-probe failure occurred")
+            "failed guidance probe did not produce exactly one recovery target"
+        )
+    probe_level = _guidance_independence(failed_probe)
+    recovery_level = _guidance_independence(survivors[0].exercise)
+    if recovery_level >= probe_level:
+        raise InvariantFailure(
+            "failed guidance probe did not step toward strictly more support"
+        )
 
 
 def check_recovery_preserves_motor_challenge(
@@ -722,7 +725,7 @@ def check_never_successful_material_is_not_permanently_trapped(
     sharper version of the original guidance-fading trap: recovery can
     correctly escalate a material straight to maximum cueing after only
     two failures, before any success ever anchors
-    MaterialMemoryState.last_retrieval_at - and anchored guidance_probe's
+    MaterialMemoryState.factual_last_retrieval_at - and anchored guidance_probe's
     own precondition means it can never fire for a material in that
     state, leaving no path back to testing retrieval at all.
 

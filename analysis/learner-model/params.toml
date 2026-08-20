@@ -1,4 +1,4 @@
-model_version = "v1-prototype-0"
+model_version = "v1-prototype-1"
 
 # Every value below is a heuristic V1 choice (docs/learner-model/03-v1-math.md
 # §25), not a research-established coefficient. Kept out of state.py/model.py
@@ -13,19 +13,34 @@ uncertainty_diffusion = 0.01
 evidence_shrinkage = 0.3
 
 [material_memory]
-initial_half_life_days = 3.0
-alpha_memory = 0.7
-reversion_lambda = 0.05
+initial_current_half_life_days = 3.0
+alpha_current_durability = 0.7
+reversion_lambda_current_durability = 0.05
 min_half_life_days = 0.001
-max_half_life_days = 1000.0
+max_memory_half_life_days = 1000.0
 prior_retrievability = 0.4
 prior_uncertainty = 1.0
+consolidation_prior_uncertainty = 1.0
 min_uncertainty = 0.05
 evidence_shrinkage = 0.3
 alpha_cold_start = 0.7
 reversion_lambda_cold_start = 0.05
 min_cold_start_probability = 0.001
 max_cold_start_probability = 0.999
+
+# Provisional structural values carried from the diagnostic phases. These are
+# deliberately separate knobs even where their initial values match.
+supported_activation_restoration_rate = 0.05
+supported_current_durability_rate = 0.022556390977443608
+success_current_durability_rate = 0.022556390977443608
+consolidation_growth_rate = 0.05
+consolidation_growth_target_days = 60.0
+
+supported_practice_factor_concurrent_cues = 0.3
+supported_practice_factor_notes_previewed = 0.7
+supported_practice_factor_unguided = 1.0
+retrieval_success_factor_notes_previewed = 0.7
+retrieval_success_factor_unguided = 1.0
 
 [material_execution]
 prior_variance = 0.5

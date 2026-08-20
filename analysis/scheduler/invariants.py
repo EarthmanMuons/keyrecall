@@ -27,10 +27,12 @@ from candidates import (
     generate_candidates,
 )
 from config import load_params as load_scheduler_params
+from domain import GuidanceContext
 from model import Prediction
 from params import load_params as load_learner_params
 from pipeline import (
     StageStatus,
+    _guidance_probe_eligible,
     eligibility_tier,
     recovery_target,
     run_pipeline,
@@ -101,7 +103,9 @@ def check_eligibility_depends_only_on_competencies() -> None:
 
     material_id = MATERIALS[0].material_id
     state.material_memory_for(material_id, learner_params)
-    state.material_memory[material_id].log_half_life = math.log(0.001)
+    memory = state.material_memory[material_id]
+    memory.log_current_half_life = math.log(0.001)
+    memory.log_consolidated_half_life = math.log(0.001)
     state.material_execution_for(material_id, "TOGETHER", 0.0, learner_params)
     state.material_execution[(material_id, "TOGETHER")].residual_mean = -5.0
 
@@ -530,6 +534,97 @@ def check_information_term_does_not_leak_into_challenge() -> None:
         )
 
 
+def check_anchor_movement_does_not_reset_guidance_probe_history() -> None:
+    learner_params = load_learner_params()
+    scheduler_params = load_scheduler_params()
+    state = initial_state(PROFILES["advanced"], learner_params)
+    material = MATERIALS[0]
+    memory = state.material_memory_for(material.material_id, learner_params)
+    memory.memory_anchor_at = 0.0
+    memory.factual_last_retrieval_at = 0.0
+    memory.last_retrieval_attempt_at = 0.0
+    exercise = fixed_exercise(
+        material, "RIGHT", guidance=GuidanceContext(notes_previewed=True)
+    )
+    now = scheduler_params.guidance_probe.min_days_since_last_retrieval + 1.0
+    if not _guidance_probe_eligible(state, exercise, now, scheduler_params):
+        raise InvariantFailure(
+            "test setup error: factual history was not probe-eligible"
+        )
+
+    # Simulate supported-practice activation restoration without changing the
+    # factual successful-retrieval event. If probe timing read the anchor, this
+    # would make the same candidate too recent.
+    memory.memory_anchor_at = now - 0.1
+    if not _guidance_probe_eligible(state, exercise, now, scheduler_params):
+        raise InvariantFailure("activation movement reset factual probe history")
+
+
+def check_consolidation_alone_has_no_immediate_scheduler_effect() -> None:
+    import math
+
+    learner_params = load_learner_params()
+    scheduler_params = load_scheduler_params()
+    instrument = InstrumentProfile()
+    candidates = generate_candidates(instrument, MATERIALS)
+    state_a = initial_state(PROFILES["advanced"], learner_params)
+    state_b = initial_state(PROFILES["advanced"], learner_params)
+    _seed_all_materials(state_a, learner_params)
+    _seed_all_materials(state_b, learner_params)
+    for memory in state_b.material_memory.values():
+        memory.log_consolidated_half_life = math.log(30.0)
+
+    traces_a = run_pipeline(
+        state_a,
+        SessionState(),
+        candidates,
+        scheduler_params,
+        learner_params,
+        0.0,
+    )
+    traces_b = run_pipeline(
+        state_b,
+        SessionState(),
+        candidates,
+        scheduler_params,
+        learner_params,
+        0.0,
+    )
+    by_exercise_b = {trace.exercise: trace for trace in traces_b}
+    for trace_a in traces_a:
+        trace_b = by_exercise_b[trace_a.exercise]
+        immediate_a = (
+            trace_a.eligibility_tier,
+            trace_a.safety_allowed,
+            trace_a.prediction,
+            trace_a.challenge_within_band,
+            trace_a.challenge_bypass,
+            trace_a.challenge_survived,
+            trace_a.retention,
+            trace_a.information,
+            trace_a.diversity,
+            trace_a.goals,
+            trace_a.rank_key,
+        )
+        immediate_b = (
+            trace_b.eligibility_tier,
+            trace_b.safety_allowed,
+            trace_b.prediction,
+            trace_b.challenge_within_band,
+            trace_b.challenge_bypass,
+            trace_b.challenge_survived,
+            trace_b.retention,
+            trace_b.information,
+            trace_b.diversity,
+            trace_b.goals,
+            trace_b.rank_key,
+        )
+        if immediate_a != immediate_b:
+            raise InvariantFailure(
+                "consolidation-only variation changed an immediate scheduler input"
+            )
+
+
 CHECKS: list[tuple[str, object]] = [
     (
         "generation depends only on domain inputs",
@@ -570,6 +665,14 @@ CHECKS: list[tuple[str, object]] = [
     (
         "the information term does not leak into challenge admission",
         check_information_term_does_not_leak_into_challenge,
+    ),
+    (
+        "activation movement does not reset factual guidance-probe history",
+        check_anchor_movement_does_not_reset_guidance_probe_history,
+    ),
+    (
+        "consolidation alone has no immediate scheduler effect",
+        check_consolidation_alone_has_no_immediate_scheduler_effect,
     ),
 ]
 

@@ -154,8 +154,8 @@ M_{u,m}(t) = 2^{-\Delta t / h_{u,m}}
 where:
 
 ```text
-Delta t    elapsed time since the relevant retrieval event
-h          current material-specific memory half-life
+Delta t    elapsed time since memory_anchor_at
+h          current material-specific durability half-life
 M          predicted retrievability in [0, 1]
 ```
 
@@ -167,18 +167,31 @@ Conceptually:
 ```yaml
 MaterialMemoryState:
   material_id: F_SHARP_HARMONIC_MINOR_SCALE
-  log_half_life: ...
-  half_life_uncertainty: ...
+  memory_anchor_at: ...
+  log_current_half_life: ...
+  current_half_life_uncertainty: ...
+  log_consolidated_half_life: ...
+  consolidated_half_life_uncertainty: ...
+  factual_last_retrieval_at: ...
+  last_retrieval_attempt_at: ...
   logit_cold_start: ...
   cold_start_uncertainty: ...
-  last_retrieval_at: ...
-  last_retrieval_attempt_at: ...
 ```
 
-`log_half_life`/`half_life_uncertainty` and
-`logit_cold_start`/`cold_start_uncertainty` are two separate mean/uncertainty
-pairs, not four independent fields: exactly one pair is operative at a time,
-decided by whether `last_retrieval_at` has ever been set (§5.3).
+The production state separates activation (`memory_anchor_at`), current
+durability, retained consolidation, and factual retrieval history. Current
+durability is operative only when an anchor exists; otherwise the independent-
+retrieval prediction uses `logit_cold_start`. Consolidation is the slow upper
+envelope available for savings, not an immediate prediction or scheduler term.
+
+```math
+0 < h_{current} \le h_{consolidated} \le h_{max}
+```
+
+`consolidation_growth_target_days` is a saturating growth target, not the broad
+numerical guard: upgraded state already above the target is preserved and never
+reduced. Timestamps are finite and no later than `now`; negative
+simulation-relative timestamps are valid.
 
 ### 5.1 Memory is not exercise-success probability
 
@@ -195,7 +208,7 @@ It does **not** mean there is a 60% probability that the learner can execute the
 requested exercise successfully. Motor capability, execution context, tempo,
 guidance, and other task conditions remain relevant.
 
-### 5.2 Half-life update: log-space, surprise-driven
+### 5.2 Current-durability evidence correction: log-space, surprise-driven
 
 A multiplicative update (`h' = h·g` on success, `h' = h·s` on failure, `g > 1`,
 `0 < s < 1`) was the original V1 proposal but is now **superseded**: simulation
@@ -204,8 +217,8 @@ drives `h → 0` regardless of whether that failure was surprising, because the
 update magnitude depends only on `g`/`s` and the evidence weight, never on how
 well the current estimate already predicted the outcome.
 
-The validated replacement reparameterizes in log-half-life space and makes the
-update proportional to prediction error rather than a fixed ratio:
+The validated estimator correction reparameterizes current durability in
+log-half-life space and makes the update proportional to prediction error:
 
 ```math
 \ell = \log h, \qquad \ell' = \ell + w_M \left( \alpha_M \delta_M - \lambda (\ell - \ell_0) \right)
@@ -226,8 +239,8 @@ w_M          evidence weight (§6, §18); scales the WHOLE bracket, not just
              estimate before this was caught in review
 ```
 
-`h = e^ℓ` is automatically positive; the clip bounds exist as numerical guards,
-not as the model's primary stabilizer. A dedicated invariant
+`h_current = e^ℓ` is automatically positive. The correction is also capped by
+retained consolidation, preserving the upper envelope. A dedicated invariant
 (`analysis/learner-model/invariants.py`, "repeated expected failures reach a
 stable equilibrium, not collapse") checks that repeated _expected_ failure
 settles at an interior equilibrium rather than running to the clip floor - the
@@ -243,7 +256,7 @@ through `w_M`. That dependency needed to be a hard gate, not just attenuation:
 
 ### 5.3 Before the clock anchors: cold-start belief gets the same treatment
 
-`ℓ`/`w_M` above is only operative once `last_retrieval_at` has been set at least
+`ℓ`/`w_M` above is only operative once `memory_anchor_at` has been set at least
 once. Before that, `retrievability_or_prior()` returns `cold_start_estimate`
 directly rather than computing anything from `ℓ`, and this section's fix applied
 to `ℓ` originally left that earlier estimate on the old multiplicative-shrink
@@ -274,51 +287,108 @@ another.
 **`ℓ` must not move pre-anchor.** The original implementation updated `ℓ` during
 the pre-anchor phase too, using `delta_M` computed against
 `cold_start_estimate` - evidence about a quantity `ℓ` doesn't represent yet.
-`update()` now branches on whether `last_retrieval_at` has ever been set:
-pre-anchor evidence moves only `c`; post-anchor evidence moves only `ℓ`. The
-first successful retrieval anchors the clock but updates neither - it confirms
-cold-start availability, not a retention interval, since retrieval immediately
-after any retrieval trivially reads as `M ≈ 1` regardless of `h`.
+`update()` now branches on whether `memory_anchor_at` existed before the
+attempt: pre-anchor evidence moves only `c`; post-anchor evidence moves only
+`ℓ`. The first successful retrieval updates neither estimate through the
+_evidence_ path: no anchored interval preceded it, so it cannot identify a
+forgetting rate. The same event nevertheless causes post-attempt learning
+through §5.4.
 
 **Uncertainty needed the same split.** A single shared `uncertainty` field meant
 pre-anchor failures could shrink confidence in `ℓ` even though no observation
 had been about it, and that artificially low uncertainty would carry across
-silently the moment the clock anchored. `half_life_uncertainty` and
+silently the moment the clock anchored. `current_half_life_uncertainty` and
 `cold_start_uncertainty` are now separate fields, each updated only alongside
-its own mean.
+its own mean. Consolidation has its own prior uncertainty, which remains
+unchanged in the first production characterization because no observation yet
+identifies the true consolidation-transition dose.
 
 Invariants (`analysis/learner-model/invariants.py`) mirror §5.2's for this
 layer: `cold_start_estimate` stays finite/bounded and reaches an interior
 equilibrium under repeated expected failure, and uncertainty is
 phase-separated - repeated pre-anchor failure shrinks `cold_start_uncertainty`
-but leaves `half_life_uncertainty` untouched, the first successful retrieval
-doesn't either, and only a genuinely spaced post-anchor observation does.
+but leaves `current_half_life_uncertainty` untouched, the first successful
+retrieval doesn't either, and only a genuinely spaced post-anchor observation
+does.
 
-### 5.4 `last_retrieval_attempt_at`: observed, distinct from anchored
+### 5.4 Production causal transitions
 
-`last_retrieval_at` answers "when did independent retrieval last succeed" and
-gates which of §5.2/§5.3's update branches applies. It says nothing about
-whether retrieval has been _tested_ at all - a material with no successful
-retrieval yet could equally mean "never attempted" or "attempted and failed
-every time," and those call for different responses from a consumer deciding
-what to do next.
+Let `q` be zero unless the attempt started and completed; otherwise it is the
+bounded mean of continuity, temporal stability, and pitch integrity. Successful
+retrieval and supported practice use separate factor registries even where their
+provisional values currently match.
+
+On genuine retrieval success, atomically:
+
+```text
+memory_anchor_at = now
+factual_last_retrieval_at = now
+last_retrieval_attempt_at = now
+
+h_consolidated' = h_consolidated
+  + consolidation_growth_rate * retrieval_success_factor * q
+  * max(0, consolidation_growth_target - h_consolidated)
+
+h_current_base = max(h_current_incoming, h_current_evidence_corrected)
+
+h_current' = h_current_base
+  + success_current_durability_rate * retrieval_success_factor * q
+  * (h_consolidated' - h_current_base)
+```
+
+Thus a success at `h_current = h_consolidated < growth_target` creates new
+mastery headroom and moves both axes. The first success cannot identify a
+forgetting rate, but the practice event can still causally strengthen
+post-attempt memory. For an anchored memory, retrieval evidence is applied
+before this causal transition. Evidence correction may revise current durability
+downward, but the complete success update cannot leave current durability below
+its pre-attempt value. This gives successful retrieval a nonnegative causal
+learning effect relative to the incoming state while still preserving
+`h_current' <= h_consolidated'`.
+
+On productive nonsuccess, meaning a started-and-completed practice event without
+genuine retrieval success:
+
+```text
+move an existing memory_anchor_at fractionally toward now
+h_current' = h_current
+  + supported_current_durability_rate * supported_practice_factor * q
+  * (h_consolidated - h_current)
+```
+
+This branch cannot create the first anchor, change factual history, raise
+consolidation, or change zero-headroom durability. Genuine success and
+productive nonsuccess are mutually exclusive branches. Elapsed time alone
+changes computed retrievability, never stored durability or timestamps. A
+completed observed retrieval failure, including an unguided failure, can enter
+this branch: it supplies negative evidence about current availability and also
+causes positive learning from the completed practice event. The existing
+`supported_*` parameter names refer to this broader practice-learning effect,
+not only to cue-supported exercises.
+
+### 5.5 `last_retrieval_attempt_at`: observed, distinct from factual success
+
+`factual_last_retrieval_at` answers "when did independent retrieval last
+succeed." It says nothing about whether retrieval has been _tested_ at all - a
+material with no successful retrieval yet could equally mean "never attempted"
+or "attempted and failed every time," and those call for different responses
+from a consumer deciding what to do next.
 
 `last_retrieval_attempt_at` disambiguates: it is set on any genuine retrieval
 observation (§18.2 - `retrieval_succeeded` is `True` or `False`, never `None`),
-regardless of outcome. A success updates both fields; a failure updates only
-`last_retrieval_attempt_at`, leaving `last_retrieval_at` untouched. A
-continuously cued attempt (`retrieval_succeeded = None`) updates neither.
+regardless of outcome. A success updates both factual-history fields; a failure
+updates only `last_retrieval_attempt_at`. A continuously cued attempt
+(`retrieval_succeeded = None`) updates neither.
 
 This is a genuine `MaterialMemoryState` field, not a scheduler-only
 convenience - it records an observation event about the learner's memory, the
-same category of fact `last_retrieval_at` records, just without the "and it
-succeeded" qualifier. `analysis/scheduler/` (04-v1-scheduler.md §6.2) is its
+same category of fact `factual_last_retrieval_at` records, just without the "and
+it succeeded" qualifier. `analysis/scheduler/` (04-v1-scheduler.md §6.2) is its
 first consumer: exclusive recovery can escalate a material to maximum cueing
-before any success ever anchors `last_retrieval_at`, and a mechanism that only
-reads `last_retrieval_at` cannot tell that state apart from a material that was
-simply never practiced. Any future consumer facing the same question - has this
-actually been tested - should read this field rather than re-deriving it from
-attempt history.
+before any factual success, and a mechanism that only reads factual success
+cannot tell that state apart from a material that was simply never practiced.
+Any future consumer facing the same question - has this actually been tested -
+should read this field rather than re-deriving it from attempt history.
 
 ## 6. Retrieval demand
 
@@ -1123,14 +1193,13 @@ prior execution evidence
 previous posterior/state snapshots where useful
 ```
 
-The initial V1 equations do not yet specify a distinct savings term.
-
-Simulation should test whether the combination of transferable competency,
-historical material memory, and residual dynamics already produces reasonable
-reacquisition behavior.
-
-If not, savings becomes an explicit extension rather than being hidden inside an
-arbitrary constant.
+The production model now represents savings explicitly through retained
+consolidation. Genuine successful retrieval slowly grows the consolidated
+durability envelope; productive supported practice can later restore current
+durability toward it without manufacturing retrieval history. Controlled
+diagnostics with identical current state and different consolidation values
+showed the more consolidated state reacquires better. Formation/restoration
+coefficients remain provisional.
 
 ## 20. Candidate generation
 
@@ -1482,7 +1551,7 @@ These are test fixtures, not learner labels intended for the product UI.
 Before adding scheduling, verify:
 
 This list is no longer purely aspirational:
-`analysis/learner-model/invariants.py` implements it as 23 passing checks
+`analysis/learner-model/invariants.py` implements it as 31 passing checks
 against the code in `analysis/learner-model/{state,model,synthetic}.py`, run via
 `mise run analysis:learner-model`. §29.1-§29.8 below are covered; three
 categories weren't anticipated when this list was first written and were added
@@ -1745,6 +1814,17 @@ The following are the current mathematical invariants:
     representation: cold-start belief and half-life are both
     `MaterialMemoryState`, but evidence about one must not silently become
     confidence about the other (§5.3).
+19. Current durability is positive and never exceeds retained consolidation;
+    consolidation never exceeds the broad numerical half-life guard (§5).
+20. Factual successful retrieval implies an activation anchor, but the state
+    representation permits a future anchor without factual success (§5.5).
+21. Supported practice may move an existing activation anchor and restore
+    current durability, but cannot create the first anchor, factual history, or
+    consolidation in V1 (§5.4).
+22. Genuine success refreshes activation and grows both current durability and
+    consolidation; supported zero-headroom practice is durability-inert (§5.4).
+23. Consolidation has no immediate prediction or scheduler effect; it acts only
+    through later state transitions that alter activation/current durability.
 
 ## 35. Open mathematical decisions
 
@@ -1765,10 +1845,14 @@ composite acceptable-performance definition
 challenge-band bounds
 candidate utility versus lexicographic ranking
 minimum evidence required for residual personalization
-explicit savings term, if necessary
+calibration of activation, durability-restoration, and consolidation formation
 ```
 
 Resolved by simulation, not merely narrowed:
+
+- ~~**explicit savings term**~~: resolved structurally through retained
+  consolidation and the production transitions in §5.4. All coefficients remain
+  heuristic and unfitted.
 
 - ~~**memory success/failure update factors**~~: resolved architecturally (§5.2,
   log-half-life, surprise-driven `delta_M`). The specific `alpha_M` and `lambda`
@@ -1783,15 +1867,16 @@ Resolved by simulation, not merely narrowed:
   floor under continuous cueing - remains open, listed above.
 - ~~**cold-start retrievability update**~~: resolved (§5.3), same
   reparameterization as §5.2 in logit space, with its own uncertainty state
-  properly separated from `half_life_uncertainty`. `alpha_c`/`lambda_c` remain
-  heuristic and unfitted, same status as `alpha_M`/`lambda`.
+  properly separated from `current_half_life_uncertainty`. `alpha_c`/`lambda_c`
+  remain heuristic and unfitted, same status as `alpha_M`/`lambda`.
 - ~~**synthetic ground-truth memory clock under continuous cueing**~~: resolved.
-  `TrueMaterialMemory` models learning from retrieval practice: the clock now
-  resets only when retrieval was both genuinely demanded and actually performed,
-  not on a hidden counterfactual success sampled during continuous cueing. The
+  `TrueMaterialMemory` now separates activation from factual retrieval history.
+  `factual_last_retrieval_at` advances only on genuine observed success, never
+  on a hidden counterfactual success sampled during continuous cueing.
+  `memory_anchor_at` also advances on genuine success and may move fractionally
+  through productive nonsuccess practice learning once an anchor exists. The
   latent retrievability draw itself is unchanged and still feeds
-  `material_retrieval`; only the clock-reset condition gained the
-  `retrieval_observed` guard.
+  `material_retrieval`.
 
 Opened by simulation:
 
@@ -1901,7 +1986,7 @@ Experiment C  replaced the multiplicative half-life rule with the log-half-
 
 Cold-start    applied the same reparameterization to the pre-anchor belief
 follow-up     (§5.3); review found the pattern twice more inside this one
-              fix (log_half_life moving from evidence that wasn't about it,
+              fix (log_current_half_life moving from evidence that wasn't about it,
               and a shared uncertainty field carrying confidence across to a
               representation no observation had spoken to). Separately,
               resolved the synthetic ground-truth memory clock resetting on

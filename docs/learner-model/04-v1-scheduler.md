@@ -256,16 +256,16 @@ unguided), gated on:
 
 ```text
 material has a prior confirmed successful retrieval (MaterialMemoryState
-    exists and last_retrieval_at is set - never probes a material that
+    exists and factual_last_retrieval_at is set - never probes a material that
     was never genuinely retrieved at all)
 enough elapsed time since that success (§9: heuristic threshold) - not
     re-probed on literally the next attempt
 ```
 
-Anchored on `last_retrieval_at` specifically: this is the probe for a material
-that HAS succeeded before and might now support less guidance. §6.4 covers the
-paired, unanchored case - a material that has never succeeded needs a different
-mechanism, not a weakened version of this precondition.
+Anchored on `factual_last_retrieval_at` specifically: this is the probe for a
+material that HAS succeeded before and might now support less guidance. §6.4
+covers the paired, unanchored case - a material that has never succeeded needs a
+different mechanism, not a weakened version of this precondition.
 
 Suppressed entirely whenever a recovery context is active (§6.3), not merely
 checked after it: a failed probe sets `SessionState.last_failed_exercise`, which
@@ -322,16 +322,17 @@ instruction as outside any stage's discretion to second-guess.
 Making recovery exact and exclusive (§6.3) exposed a sharper version of §6.2's
 original problem. Two genuine failures in a row correctly escalate recovery all
 the way to maximum cueing (`concurrent_pitch_cues`) - before the material has
-EVER had a successful retrieval, i.e. `MaterialMemoryState.last_retrieval_at` is
-still unset. The guidance probe's own precondition is exactly that anchor
-(§6.2), so it structurally cannot fire for a material in this state: nothing in
-§6.1-§6.3 offers a path back to testing retrieval at all, and the material would
-stay fully cued for the rest of the simulation (§10).
+EVER had a successful retrieval, i.e.
+`MaterialMemoryState.factual_last_retrieval_at` is still unset. The guidance
+probe's own precondition is exactly that anchor (§6.2), so it structurally
+cannot fire for a material in this state: nothing in §6.1-§6.3 offers a path
+back to testing retrieval at all, and the material would stay fully cued for the
+rest of the simulation (§10).
 
 This is not the same situation the guidance probe already covers, and is not
 fixed by weakening the guidance probe's own precondition to pretend it is.
-`last_retrieval_at`'s meaning - confirmed successful retrieval - stays exactly
-as strong as before; a material that has never succeeded is not the same
+`factual_last_retrieval_at`'s meaning - confirmed successful retrieval - stays
+exactly as strong as before; a material that has never succeeded is not the same
 epistemic case as one that succeeded a while ago and might now support less
 support, and conflating them would let the probe fire on evidence it doesn't
 actually have.
@@ -341,7 +342,7 @@ probe is the guidance probe's unanchored counterpart, gated on:
 
 ```text
 material has never had a confirmed successful retrieval
-    (last_retrieval_at is None)
+    (factual_last_retrieval_at is None)
 material has genuinely been tested at least once
     (MaterialMemoryState.last_retrieval_attempt_at is not None,
     03-v1-math.md §5.4)
@@ -352,9 +353,9 @@ enough elapsed time since that attempt (§9: currently reuses the
 offering exactly the `notes_previewed` realization, same scope as the guidance
 probe, never straight to unguided. `last_retrieval_attempt_at` (`03-v1-math.md`
 §5.4) is what makes this possible: a genuine learner-state field, distinct from
-`last_retrieval_at`, that records any tested retrieval attempt - win or lose -
-so the scheduler can tell "never successfully retrieved" apart from "never even
-tested" without overloading or weakening the success-only anchor.
+`factual_last_retrieval_at`, that records any tested retrieval attempt - win or
+lose - so the scheduler can tell "never successfully retrieved" apart from
+"never even tested" without overloading or weakening the success-only anchor.
 
 The bootstrap probe's job is to guarantee the scheduler keeps OFFERING a genuine
 retrieval-observing opportunity at roughly the configured interval - not to
@@ -365,9 +366,9 @@ exactly this: no unbroken cued-only run spans the rest of the simulation, not
 that retrieval is eventually retrieved successfully.
 
 Checked after the guidance probe in `challenge_bypass()`'s precedence: the two
-preconditions (`last_retrieval_at is not None` vs. `is None`) are mutually
-exclusive for any given candidate, so the check order does not change which
-candidates qualify, only which check runs first.
+preconditions (`factual_last_retrieval_at is not None` vs. `is None`) are
+mutually exclusive for any given candidate, so the check order does not change
+which candidates qualify, only which check runs first.
 
 ## 7. Stage 4: Priority ranking
 
@@ -523,13 +524,29 @@ count/labels are scheduler-simulation work (§9), not decided here.
 
 ## 8. Information boundary summary
 
-| Stage         | Reads                                                                                                                                                                                                       | Must not read                                      | Decision                                                      |
-| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------- |
-| Generation    | Domain combinatorics, `InstrumentProfile`                                                                                                                                                                   | Any learner state                                  | Generated / not                                               |
-| `REQUIRES`    | `LatentCompetencyState`                                                                                                                                                                                     | `MaterialMemoryState`, `MaterialExecutionState`    | Eligibility tier (§7.1)                                       |
-| Safety policy | `SessionState`, session history                                                                                                                                                                             | Competency, memory, execution state                | Suppress / not (per session)                                  |
-| Challenge     | `Prediction.overall_p` (this candidate); `MaterialMemoryState` existence/timing (`last_retrieval_at`, `last_retrieval_attempt_at`) and `SessionState.last_failed_exercise` (named exceptions §6.1-§6.4)     | Retention, information, diversity, goals; topology | Reject / keep, via the band or a named exception              |
-| Priority      | Eligibility tier (primary key); retention (memory + this candidate's `retrieval_opportunity`, §7.2); information (uncertainty + this candidate's evidence potential); diversity (history); goals (external) | Challenge/difficulty (already decided)             | Rank within tier, then select via the repetition guard (§7.3) |
+| Stage         | Reads                                                                                                                                                                                                           | Must not read                                                                                          | Decision                                                      |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| Generation    | Domain combinatorics, `InstrumentProfile`                                                                                                                                                                       | Any learner state                                                                                      | Generated / not                                               |
+| `REQUIRES`    | `LatentCompetencyState`                                                                                                                                                                                         | `MaterialMemoryState`, `MaterialExecutionState`                                                        | Eligibility tier (§7.1)                                       |
+| Safety policy | `SessionState`, session history                                                                                                                                                                                 | Competency, memory, execution state                                                                    | Suppress / not (per session)                                  |
+| Challenge     | `Prediction.overall_p` (this candidate); `MaterialMemoryState` existence/timing (`factual_last_retrieval_at`, `last_retrieval_attempt_at`) and `SessionState.last_failed_exercise` (named exceptions §6.1-§6.4) | Retention, information, diversity, goals; topology; `memory_anchor_at` for probe timing; consolidation | Reject / keep, via the band or a named exception              |
+| Priority      | Eligibility tier (primary key); retention (memory + this candidate's `retrieval_opportunity`, §7.2); information (uncertainty + this candidate's evidence potential); diversity (history); goals (external)     | Challenge/difficulty (already decided)                                                                 | Rank within tier, then select via the repetition guard (§7.3) |
+
+The memory-field dependencies are intentionally exact:
+
+```text
+guidance probe  -> factual_last_retrieval_at
+bootstrap probe -> last_retrieval_attempt_at
+retention       -> Prediction.independent_retrieval_p
+information     -> operative cold-start/current-durability uncertainty
+```
+
+`memory_anchor_at` affects scheduling only through the derived retrieval
+prediction, never probe-history timing. Retained consolidation and its
+uncertainty have no immediate scheduler input in V1: changing consolidation
+alone with activation/current state fixed leaves predictions, admission, and
+ranking unchanged. It can affect later scheduling only after a learner-state
+transition restores current durability or activation.
 
 ## 9. Deliberately left open
 
@@ -586,7 +603,7 @@ whether topology gets its own probe-selection signal (§6)
 This list is no longer purely aspirational. `analysis/scheduler/` implements the
 boundary contract itself as `pipeline.py`, and verifies it in two complementary
 passes, mirroring the split `03-v1-math.md` §38 established for the learner
-model: `invariants.py` (10 checks) proves the boundary holds mechanically - a
+model: `invariants.py` (12 checks) proves the boundary holds mechanically - a
 forbidden input can't move a stage's decision, regardless of whether the
 resulting behavior is any good; `scenarios.py` (10 checks) runs the pipeline
 longitudinally, driving `analysis/learner-model/simulate.py`'s own `run()` loop
@@ -668,7 +685,8 @@ never-successful material is not permanently trapped at full cueing. Not
     fixes exposed, not present before recovery became exact and
     exclusive: recovery can correctly escalate a material straight to
     maximum cueing after two genuine failures, before any success ever
-    anchors last_retrieval_at, and anchored guidance_probe's own
+    anchors `memory_anchor_at`/`factual_last_retrieval_at`, and anchored
+    guidance_probe's own
     precondition means it can never fire for a material in that state -
     no path back to testing retrieval at all. Resolved by the bootstrap
     probe (§6.4): not by guaranteeing eventual success, which is
@@ -768,9 +786,9 @@ material; it does not replace it.
 03-v1-math.md §23        review urgency (R term)
 03-v1-math.md §13        scheduler score vs. state evidence - the principle
                           this document's §6 applies to overall_p specifically
-03-v1-math.md §5.4        last_retrieval_attempt_at - a genuine
+03-v1-math.md §5.5        last_retrieval_attempt_at - a genuine
                           MaterialMemoryState field this document's §6.4
-                          consumes but does not own; §5.4 is authoritative
+                          consumes but does not own; §5.5 is authoritative
                           for what it means
 GLOSSARY.md §6            scheduler structure decision; diagram updated to
                           match §3 above
@@ -778,7 +796,7 @@ GLOSSARY.md §7/§8         InstrumentProfile, SchedulerSafetyPolicy
 v1-domain-model.md §17     REQUIRES
 analysis/scheduler/        executable counterpart to this document: pipeline.py
                             implements stages 2-4 and the boundary contract,
-                            invariants.py verifies it mechanically (10 checks),
+                            invariants.py verifies it mechanically (12 checks),
                             scenarios.py verifies it behaviorally (10 checks,
                             §10), longitudinal.py adapts it into
                             analysis/learner-model/simulate.py's run() loop,

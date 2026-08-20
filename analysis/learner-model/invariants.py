@@ -20,8 +20,12 @@ from domain import Exercise, GuidanceContext, TechnicalMaterial
 from model import Outcome, evidence_weights, predicted_success, update
 from params import load_params
 from simulate import fixed_exercise, initial_state, run
-from state import LearnerState
-from synthetic import PROFILES
+from state import (
+    LearnerState,
+    V1MaterialMemoryState,
+    upgrade_v1_material_memory,
+)
+from synthetic import PROFILES, TrueMaterialMemory, apply_true_memory_transition
 
 C_MAJOR = TechnicalMaterial("C", "MAJOR")
 D_HARMONIC_MINOR = TechnicalMaterial("D", "HARMONIC_MINOR")
@@ -44,6 +48,25 @@ def _full_outcome(retrieval_succeeded: bool = True) -> Outcome:
         achieved_tempo_ratio=1.0,
         topology_accuracy=1.0,
     )
+
+
+def _anchor_memory(
+    memory,
+    at: float,
+    *,
+    current_half_life_days: float | None = None,
+    consolidated_half_life_days: float | None = None,
+) -> None:
+    memory.memory_anchor_at = at
+    memory.factual_last_retrieval_at = at
+    memory.last_retrieval_attempt_at = at
+    if current_half_life_days is not None:
+        memory.log_current_half_life = math.log(current_half_life_days)
+        memory.log_consolidated_half_life = math.log(
+            consolidated_half_life_days
+            if consolidated_half_life_days is not None
+            else current_half_life_days
+        )
 
 
 def check_bounds() -> None:
@@ -90,14 +113,37 @@ def check_bounds() -> None:
                 if c["variance"] <= 0:
                     raise InvariantFailure(f"non-positive competency variance: {c}")
             for m in snap["material_memory"].values():
-                if m["half_life_days"] <= 0:
-                    raise InvariantFailure(f"non-positive half-life: {m}")
-                if m["half_life_uncertainty"] <= 0:
-                    raise InvariantFailure(f"non-positive half-life uncertainty: {m}")
+                if not (
+                    0
+                    < m["current_half_life_days"]
+                    <= m["consolidated_half_life_days"]
+                    <= params.material_memory.max_memory_half_life_days
+                ):
+                    raise InvariantFailure(f"invalid durability envelope: {m}")
+                if m["current_half_life_uncertainty"] <= 0:
+                    raise InvariantFailure(
+                        f"non-positive current-half-life uncertainty: {m}"
+                    )
+                if m["consolidated_half_life_uncertainty"] <= 0:
+                    raise InvariantFailure(
+                        f"non-positive consolidation uncertainty: {m}"
+                    )
                 if m["cold_start_uncertainty"] <= 0:
                     raise InvariantFailure(f"non-positive cold-start uncertainty: {m}")
                 if not (0.0 <= m["cold_start_estimate"] <= 1.0):
                     raise InvariantFailure(f"cold_start_estimate out of bounds: {m}")
+                anchor = m["memory_anchor_at"]
+                factual = m["factual_last_retrieval_at"]
+                attempt = m["last_retrieval_attempt_at"]
+                for timestamp in (anchor, factual, attempt):
+                    if timestamp is not None and (
+                        not math.isfinite(timestamp) or timestamp > record["at_days"]
+                    ):
+                        raise InvariantFailure(f"invalid memory timestamp: {m}")
+                if factual is not None and anchor is None:
+                    raise InvariantFailure(f"factual retrieval without anchor: {m}")
+                if factual is not None and factual > anchor:
+                    raise InvariantFailure(f"factual retrieval after anchor: {m}")
             for e in snap["material_execution"].values():
                 if e["residual_variance"] <= 0:
                     raise InvariantFailure(f"non-positive execution variance: {e}")
@@ -366,12 +412,228 @@ def check_memory_decays_with_elapsed_time() -> None:
     params = load_params()
     state = LearnerState.new(params)
     memory = state.material_memory_for("C_MAJOR", params)
-    memory.last_retrieval_at = 0.0
-    memory.log_half_life = math.log(4.0)
+    _anchor_memory(memory, 0.0, current_half_life_days=4.0)
 
     values = [memory.retrievability(t) for t in (0.0, 1.0, 5.0, 20.0)]
     if not all(a > b for a, b in pairwise(values)):
         raise InvariantFailure(f"retrievability not monotonically decreasing: {values}")
+
+
+def check_v1_memory_upgrade_is_conservative_and_pure() -> None:
+    params = load_params()
+    old = V1MaterialMemoryState(
+        material_id="C_MAJOR",
+        log_half_life=math.log(12.0),
+        half_life_uncertainty=0.25,
+        logit_cold_start=0.1,
+        cold_start_uncertainty=0.4,
+        last_retrieval_at=-3.0,
+        last_retrieval_attempt_at=-1.0,
+    )
+    upgraded = upgrade_v1_material_memory(old, params)
+
+    if upgraded.current_half_life_days != 12.0:
+        raise InvariantFailure("upgrade changed current durability")
+    if upgraded.consolidated_half_life_days != 12.0:
+        raise InvariantFailure("upgrade manufactured consolidation headroom")
+    if upgraded.memory_anchor_at != -3.0:
+        raise InvariantFailure("upgrade changed activation history")
+    if upgraded.factual_last_retrieval_at != -3.0:
+        raise InvariantFailure("upgrade changed factual retrieval history")
+    if upgraded.last_retrieval_attempt_at != -1.0:
+        raise InvariantFailure("upgrade changed attempt history")
+    if upgraded.current_half_life_uncertainty != 0.25:
+        raise InvariantFailure("upgrade changed current uncertainty")
+    if (
+        upgraded.consolidated_half_life_uncertainty
+        != params.material_memory.consolidation_prior_uncertainty
+    ):
+        raise InvariantFailure("upgrade did not use consolidation's own prior")
+    if old.log_half_life != math.log(12.0):
+        raise InvariantFailure("upgrade mutated its legacy input")
+
+
+def check_first_success_causes_memory_formation_without_interval_evidence() -> None:
+    params = load_params()
+    state = LearnerState.new(params)
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+    memory = state.material_memory_for("C_MAJOR", params)
+    current_before = memory.current_half_life_days
+    consolidation_before = memory.consolidated_half_life_days
+    current_uncertainty_before = memory.current_half_life_uncertainty
+
+    outcome = _full_outcome()
+    prediction = predicted_success(state, exercise, now=1.0, params=params)
+    update(
+        state,
+        exercise,
+        outcome,
+        evidence_weights(exercise, outcome),
+        prediction,
+        now=1.0,
+        params=params,
+    )
+
+    if memory.memory_anchor_at != 1.0 or memory.factual_last_retrieval_at != 1.0:
+        raise InvariantFailure("first success did not establish both timestamps")
+    if not (memory.current_half_life_days > current_before):
+        raise InvariantFailure("first success did not strengthen current durability")
+    if not (memory.consolidated_half_life_days > consolidation_before):
+        raise InvariantFailure("first success did not form consolidation")
+    if memory.current_half_life_uncertainty != current_uncertainty_before:
+        raise InvariantFailure(
+            "first success manufactured interval-evidence confidence"
+        )
+
+
+def check_success_creates_mastery_headroom_but_supported_practice_does_not() -> None:
+    params = load_params()
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+
+    success_state = LearnerState.new(params)
+    success_memory = success_state.material_memory_for("C_MAJOR", params)
+    _anchor_memory(success_memory, 0.0, current_half_life_days=20.0)
+    prediction = predicted_success(success_state, exercise, now=1.0, params=params)
+    outcome = _full_outcome()
+    update(
+        success_state,
+        exercise,
+        outcome,
+        evidence_weights(exercise, outcome),
+        prediction,
+        now=1.0,
+        params=params,
+    )
+    if not (success_memory.consolidated_half_life_days > 20.0):
+        raise InvariantFailure("success did not create new consolidation headroom")
+    if not (success_memory.current_half_life_days > 20.0):
+        raise InvariantFailure("success did not grow mastery beyond its prior envelope")
+    if not (
+        success_memory.current_half_life_days
+        <= success_memory.consolidated_half_life_days
+    ):
+        raise InvariantFailure("success broke the durability envelope")
+
+    supported_state = LearnerState.new(params)
+    supported_memory = supported_state.material_memory_for("C_MAJOR", params)
+    _anchor_memory(supported_memory, 0.0, current_half_life_days=20.0)
+    cued = fixed_exercise(
+        C_MAJOR, "RIGHT", guidance=GuidanceContext(concurrent_pitch_cues=True)
+    )
+    supported_outcome = _cued_no_retrieval_probe_outcome()
+    prediction = predicted_success(supported_state, cued, now=1.0, params=params)
+    update(
+        supported_state,
+        cued,
+        supported_outcome,
+        evidence_weights(cued, supported_outcome),
+        prediction,
+        now=1.0,
+        params=params,
+    )
+    if not math.isclose(supported_memory.current_half_life_days, 20.0):
+        raise InvariantFailure("zero-headroom supported practice inflated durability")
+    if not math.isclose(supported_memory.consolidated_half_life_days, 20.0):
+        raise InvariantFailure("supported practice raised consolidation")
+
+
+def check_success_cannot_end_below_pre_attempt_current_durability() -> None:
+    params = load_params()
+    state = LearnerState.new(params)
+    memory = state.material_memory_for("C_MAJOR", params)
+    _anchor_memory(
+        memory,
+        0.0,
+        current_half_life_days=20.0,
+        consolidated_half_life_days=30.0,
+    )
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+    now = 0.01
+    prediction = predicted_success(state, exercise, now=now, params=params)
+    outcome = _full_outcome()
+    weights = evidence_weights(exercise, outcome)
+    pre_attempt_current = memory.current_half_life_days
+
+    mm = params.material_memory
+    evidence_corrected_log = memory.log_current_half_life + (
+        weights.material_memory
+        * (
+            mm.alpha_current_durability * (1.0 - prediction.independent_retrieval_p)
+            - mm.reversion_lambda_current_durability
+            * (
+                memory.log_current_half_life
+                - math.log(mm.initial_current_half_life_days)
+            )
+        )
+    )
+    evidence_corrected = math.exp(
+        min(
+            max(evidence_corrected_log, math.log(mm.min_half_life_days)),
+            memory.log_consolidated_half_life,
+        )
+    )
+    if not (evidence_corrected < pre_attempt_current):
+        raise InvariantFailure(
+            "test setup did not produce a downward evidence-only correction"
+        )
+
+    update(state, exercise, outcome, weights, prediction, now=now, params=params)
+
+    if memory.current_half_life_days < pre_attempt_current:
+        raise InvariantFailure(
+            "successful retrieval ended below pre-attempt current durability"
+        )
+    if memory.current_half_life_days > memory.consolidated_half_life_days:
+        raise InvariantFailure("successful retrieval broke the durability envelope")
+
+
+def check_repeated_successes_strengthen_current_and_consolidated_durability() -> None:
+    params = load_params()
+    state = LearnerState.new(params)
+    memory = state.material_memory_for("C_MAJOR", params)
+    _anchor_memory(
+        memory,
+        0.0,
+        current_half_life_days=4.0,
+        consolidated_half_life_days=20.0,
+    )
+    exercise = fixed_exercise(C_MAJOR, "RIGHT")
+    current_before = memory.current_half_life_days
+    consolidation_before = memory.consolidated_half_life_days
+    for now in (2.0, 4.0, 8.0):
+        outcome = _full_outcome()
+        prediction = predicted_success(state, exercise, now=now, params=params)
+        update(
+            state,
+            exercise,
+            outcome,
+            evidence_weights(exercise, outcome),
+            prediction,
+            now=now,
+            params=params,
+        )
+    if memory.current_half_life_days <= current_before:
+        raise InvariantFailure("repeated successes left current durability frozen")
+    if memory.consolidated_half_life_days <= consolidation_before:
+        raise InvariantFailure("repeated successes left consolidation frozen")
+    if memory.current_half_life_days > memory.consolidated_half_life_days:
+        raise InvariantFailure("repeated successes broke the durability envelope")
+
+    truth_memory = TrueMaterialMemory(
+        current_half_life_days=4.0,
+        consolidated_half_life_days=20.0,
+        memory_anchor_at=0.0,
+        factual_last_retrieval_at=0.0,
+    )
+    for now in (2.0, 4.0, 8.0):
+        apply_true_memory_transition(truth_memory, exercise, _full_outcome(), now)
+    if not (
+        truth_memory.current_half_life_days > 4.0
+        and truth_memory.consolidated_half_life_days > 20.0
+        and truth_memory.current_half_life_days
+        <= truth_memory.consolidated_half_life_days
+    ):
+        raise InvariantFailure("truth and estimator transition semantics diverged")
 
 
 def _repeated_unguided_failure(
@@ -383,7 +645,7 @@ def _repeated_unguided_failure(
     trajectory. Failure, not success, is what the old multiplicative rule
     couldn't stabilize."""
     memory = state.material_memory_for("C_MAJOR", params)
-    memory.last_retrieval_at = 0.0
+    _anchor_memory(memory, 0.0)
     exercise = fixed_exercise(C_MAJOR, "RIGHT")
     now = 0.0
     log_half_lives = []
@@ -404,7 +666,7 @@ def _repeated_unguided_failure(
         weights = evidence_weights(exercise, outcome)
         prediction = predicted_success(state, exercise, now, params)
         update(state, exercise, outcome, weights, prediction, now, params)
-        log_half_lives.append(state.material_memory["C_MAJOR"].log_half_life)
+        log_half_lives.append(state.material_memory["C_MAJOR"].log_current_half_life)
     return log_half_lives
 
 
@@ -419,7 +681,7 @@ def check_log_half_life_stays_finite_and_bounded() -> None:
     if not math.isfinite(final):
         raise InvariantFailure(f"log_half_life not finite: {final}")
     lo = math.log(params.material_memory.min_half_life_days)
-    hi = math.log(params.material_memory.max_half_life_days)
+    hi = math.log(params.material_memory.max_memory_half_life_days)
     if not (lo - 1e-9 <= final <= hi + 1e-9):
         raise InvariantFailure(f"log_half_life {final} outside [{lo}, {hi}]")
 
@@ -531,7 +793,7 @@ def check_memory_uncertainty_is_phase_separated() -> None:
     state = LearnerState.new(params)
     exercise = fixed_exercise(C_MAJOR, "RIGHT")
     memory = state.material_memory_for("C_MAJOR", params)
-    initial_half_life_uncertainty = memory.half_life_uncertainty
+    initial_half_life_uncertainty = memory.current_half_life_uncertainty
     initial_cold_start_uncertainty = memory.cold_start_uncertainty
 
     now = 0.0
@@ -557,10 +819,11 @@ def check_memory_uncertainty_is_phase_separated() -> None:
         raise InvariantFailure(
             "100 pre-anchor failures did not reduce cold_start_uncertainty"
         )
-    if memory.half_life_uncertainty != initial_half_life_uncertainty:
+    if memory.current_half_life_uncertainty != initial_half_life_uncertainty:
         raise InvariantFailure(
             f"pre-anchor failures moved half_life_uncertainty: "
-            f"{initial_half_life_uncertainty} -> {memory.half_life_uncertainty}"
+            f"{initial_half_life_uncertainty} -> "
+            f"{memory.current_half_life_uncertainty}"
         )
 
     # First successful retrieval anchors the clock but is itself no spaced
@@ -572,10 +835,11 @@ def check_memory_uncertainty_is_phase_separated() -> None:
     prediction = predicted_success(state, exercise, now, params)
     update(state, exercise, outcome, weights, prediction, now, params)
 
-    if memory.half_life_uncertainty != initial_half_life_uncertainty:
+    if memory.current_half_life_uncertainty != initial_half_life_uncertainty:
         raise InvariantFailure(
             f"the first successful retrieval moved half_life_uncertainty: "
-            f"{initial_half_life_uncertainty} -> {memory.half_life_uncertainty}"
+            f"{initial_half_life_uncertainty} -> "
+            f"{memory.current_half_life_uncertainty}"
         )
 
     # A genuinely spaced post-anchor observation should now reduce it.
@@ -586,7 +850,7 @@ def check_memory_uncertainty_is_phase_separated() -> None:
     prediction = predicted_success(state, exercise, now, params)
     update(state, exercise, outcome, weights, prediction, now, params)
 
-    if not (memory.half_life_uncertainty < initial_half_life_uncertainty):
+    if not (memory.current_half_life_uncertainty < initial_half_life_uncertainty):
         raise InvariantFailure(
             "a genuinely spaced post-anchor observation did not reduce "
             "half_life_uncertainty"
@@ -597,22 +861,22 @@ def check_surprising_success_increases_retention() -> None:
     params = load_params()
     state = LearnerState.new(params)
     memory = state.material_memory_for("C_MAJOR", params)
-    memory.last_retrieval_at = 0.0
+    _anchor_memory(memory, 0.0)
     now = 30.0  # long gap: predicted retrievability is low, so a success is surprising
     state.propagate(now, params)
 
     exercise = fixed_exercise(C_MAJOR, "RIGHT")
-    log_half_life_before = memory.log_half_life
+    log_half_life_before = memory.log_current_half_life
 
     prediction = predicted_success(state, exercise, now, params)
     outcome = _full_outcome(retrieval_succeeded=True)
     weights = evidence_weights(exercise, outcome)
     update(state, exercise, outcome, weights, prediction, now, params)
 
-    if not (memory.log_half_life > log_half_life_before):
+    if not (memory.log_current_half_life > log_half_life_before):
         raise InvariantFailure(
             f"a surprising successful retrieval did not increase log_half_life: "
-            f"{log_half_life_before} -> {memory.log_half_life}"
+            f"{log_half_life_before} -> {memory.log_current_half_life}"
         )
 
 
@@ -620,12 +884,12 @@ def check_surprising_failure_decreases_retention() -> None:
     params = load_params()
     state = LearnerState.new(params)
     memory = state.material_memory_for("C_MAJOR", params)
-    memory.last_retrieval_at = 0.0
+    _anchor_memory(memory, 0.0)
     now = 0.1  # short gap: predicted retrievability is high, so a failure is surprising
     state.propagate(now, params)
 
     exercise = fixed_exercise(C_MAJOR, "RIGHT")
-    log_half_life_before = memory.log_half_life
+    log_half_life_before = memory.log_current_half_life
 
     prediction = predicted_success(state, exercise, now, params)
     outcome = Outcome(
@@ -642,10 +906,10 @@ def check_surprising_failure_decreases_retention() -> None:
     weights = evidence_weights(exercise, outcome)
     update(state, exercise, outcome, weights, prediction, now, params)
 
-    if not (memory.log_half_life < log_half_life_before):
+    if not (memory.log_current_half_life < log_half_life_before):
         raise InvariantFailure(
             f"a surprising retrieval failure did not decrease log_half_life: "
-            f"{log_half_life_before} -> {memory.log_half_life}"
+            f"{log_half_life_before} -> {memory.log_current_half_life}"
         )
 
 
@@ -681,9 +945,8 @@ def check_unobserved_retrieval_never_moves_memory_state() -> None:
     for initial_half_life_days in (100.0, 0.5):
         state = LearnerState.new(params)
         memory = state.material_memory_for("C_MAJOR", params)
-        memory.log_half_life = math.log(initial_half_life_days)
-        memory.last_retrieval_at = 0.0
-        log_half_life_before = memory.log_half_life
+        _anchor_memory(memory, 0.0, current_half_life_days=initial_half_life_days)
+        log_half_life_before = memory.log_current_half_life
 
         now = 0.0
         for _ in range(50):
@@ -698,11 +961,11 @@ def check_unobserved_retrieval_never_moves_memory_state() -> None:
             prediction = predicted_success(state, exercise, now, params)
             update(state, exercise, outcome, weights, prediction, now, params)
 
-        if memory.log_half_life != log_half_life_before:
+        if memory.log_current_half_life != log_half_life_before:
             raise InvariantFailure(
                 f"50 fully cued attempts with no retrieval probe moved "
                 f"log_half_life (initial {initial_half_life_days}d): "
-                f"{log_half_life_before} -> {memory.log_half_life}"
+                f"{log_half_life_before} -> {memory.log_current_half_life}"
             )
 
 
@@ -731,9 +994,8 @@ def check_observed_low_demand_failures_accumulate_evidence() -> None:
 
     state = LearnerState.new(params)
     memory = state.material_memory_for("C_MAJOR", params)
-    memory.log_half_life = math.log(100.0)
-    memory.last_retrieval_at = 0.0
-    log_half_life_before = memory.log_half_life
+    _anchor_memory(memory, 0.0, current_half_life_days=100.0)
+    log_half_life_before = memory.log_current_half_life
 
     now = 0.0
     for _ in range(20):
@@ -748,10 +1010,11 @@ def check_observed_low_demand_failures_accumulate_evidence() -> None:
         prediction = predicted_success(state, exercise, now, params)
         update(state, exercise, outcome, weights, prediction, now, params)
 
-    if not (memory.log_half_life < log_half_life_before):
+    if not (memory.log_current_half_life < log_half_life_before):
         raise InvariantFailure(
             f"20 genuinely observed retrieval failures did not lower "
-            f"log_half_life: {log_half_life_before} -> {memory.log_half_life}"
+            f"log_current_half_life: {log_half_life_before} -> "
+            f"{memory.log_current_half_life}"
         )
 
 
@@ -881,24 +1144,24 @@ def check_motor_and_topology_updates_are_independent() -> None:
         )
 
 
-def check_cued_start_does_not_refresh_retrieval_clock() -> None:
+def check_cued_practice_does_not_change_factual_retrieval_history() -> None:
     params = load_params()
     state = LearnerState.new(params)
     memory = state.material_memory_for("C_MAJOR", params)
-    memory.last_retrieval_at = 0.0
-    anchored_at = memory.last_retrieval_at
+    _anchor_memory(memory, 0.0)
+    factual_at = memory.factual_last_retrieval_at
 
     exercise = fixed_exercise(
         C_MAJOR, "RIGHT", guidance=GuidanceContext(concurrent_pitch_cues=True)
     )
-    outcome = _full_outcome(retrieval_succeeded=False)
+    outcome = _cued_no_retrieval_probe_outcome()
     weights = evidence_weights(exercise, outcome)
     prediction = predicted_success(state, exercise, now=10.0, params=params)
     update(state, exercise, outcome, weights, prediction, now=10.0, params=params)
 
-    if state.material_memory["C_MAJOR"].last_retrieval_at != anchored_at:
+    if state.material_memory["C_MAJOR"].factual_last_retrieval_at != factual_at:
         raise InvariantFailure(
-            "a cued start without independent retrieval refreshed the memory clock"
+            "supported practice manufactured a factual successful retrieval"
         )
 
 
@@ -1019,6 +1282,26 @@ CHECKS: list[tuple[str, Callable[[], None]]] = [
     ),
     ("memory decays with elapsed time", check_memory_decays_with_elapsed_time),
     (
+        "v1 memory upgrade is conservative, pure, and uses consolidation's prior",
+        check_v1_memory_upgrade_is_conservative_and_pure,
+    ),
+    (
+        "first success forms memory without manufacturing interval evidence",
+        check_first_success_causes_memory_formation_without_interval_evidence,
+    ),
+    (
+        "success creates mastery headroom; supported practice does not",
+        check_success_creates_mastery_headroom_but_supported_practice_does_not,
+    ),
+    (
+        "success cannot end below pre-attempt current durability",
+        check_success_cannot_end_below_pre_attempt_current_durability,
+    ),
+    (
+        "repeated successes strengthen current and consolidated durability",
+        check_repeated_successes_strengthen_current_and_consolidated_durability,
+    ),
+    (
         "log_half_life stays finite and bounded under repeated failure",
         check_log_half_life_stays_finite_and_bounded,
     ),
@@ -1047,7 +1330,7 @@ CHECKS: list[tuple[str, Callable[[], None]]] = [
         check_surprising_failure_decreases_retention,
     ),
     (
-        "unobserved retrieval (continuous cueing) never moves memory state",
+        "unobserved retrieval never moves evidence or zero-gap durability",
         check_unobserved_retrieval_never_moves_memory_state,
     ),
     (
@@ -1071,8 +1354,8 @@ CHECKS: list[tuple[str, Callable[[], None]]] = [
         check_motor_and_topology_updates_are_independent,
     ),
     (
-        "cued start does not refresh the retrieval clock",
-        check_cued_start_does_not_refresh_retrieval_clock,
+        "cued practice does not change factual retrieval history",
+        check_cued_practice_does_not_change_factual_retrieval_history,
     ),
     (
         "unguided failure lowers the cold-start memory estimate",

@@ -45,7 +45,7 @@ docs/
 ```
 
 `analysis/learner-model/` (repo root, not under `docs/`) is the executable
-counterpart to `01-03`: a simulation prototype with a 26-check invariant suite
+counterpart to `01-03`: a simulation prototype with a 30-check invariant suite
 and behavioral diagnostics, referenced throughout `03-v1-math.md` §5, §10, §18,
 §29, §38 as the source of several findings that revised those documents after
 simulation, not before it.

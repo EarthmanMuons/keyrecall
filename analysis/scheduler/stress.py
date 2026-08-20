@@ -317,7 +317,7 @@ def _verify_preseed_condition(
                 f"{material_id}: stale retrievability {retrievability:.4f} not materially decayed"
             )
     elif condition == "repeatedly_failed":
-        if memory_state is None or memory_state.last_retrieval_at is None:
+        if memory_state is None or memory_state.factual_last_retrieval_at is None:
             raise AssertionError(
                 f"{material_id}: repeatedly_failed should stay anchored"
             )
@@ -326,9 +326,10 @@ def _verify_preseed_condition(
                 f"{material_id}: repeatedly_failed should be guidance-probe eligible"
             )
     elif condition == "never_successful":
-        if memory_state is None or memory_state.last_retrieval_at is not None:
+        if memory_state is None or memory_state.factual_last_retrieval_at is not None:
             raise AssertionError(
-                f"{material_id}: never_successful must have last_retrieval_at=None"
+                f"{material_id}: never_successful must have "
+                "factual_last_retrieval_at=None"
             )
         if not bootstrap_probe_ok:
             raise AssertionError(

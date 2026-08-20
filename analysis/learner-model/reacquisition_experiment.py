@@ -6,7 +6,8 @@ seeded material (C_MAJOR, true half-life 6.0 days, last true retrieval 14
 days before trial start) never has a single successful retrieval across a
 full 300-attempt/150-day trial at pool_size=1. Reading synthetic.py's
 sample_outcome() confirms why: the only code path that ever moves
-TrueMaterialMemory.last_retrieval_at is a genuine, retrieval-observed
+The pre-production TrueMaterialMemory.last_retrieval_at was a genuine,
+retrieval-observed
 success. Supported practice that doesn't produce one - most of what a
 decayed-memory learner produces - has zero effect on the hidden ground
 truth. Conditions 1-4 below established that mechanism A (a causal
@@ -30,14 +31,10 @@ Two conceptually separate candidate mechanisms, not conflated here:
 
 No changes to synthetic.py, model.py, state.py, simulate.py, pipeline.py,
 longitudinal.py, candidates.py, or any config.toml/params.toml.
-TrueMaterialMemory.retrievability() only ever reads last_retrieval_at and
-half_life_days, so there is no injection point for a genuinely separate
-"memory anchor" field without modifying the shared model - the shapes below
-mutate those two real fields directly as a diagnostic shortcut, standing in
-for what a real implementation would represent more cleanly (e.g. a
-dedicated memory_anchor_at, decoupled from the retrieval-history field it
-would otherwise conflate with). That shortcut must not be mistaken for the
-recommended production design.
+The production model now has the separate fields this diagnostic motivated.
+This frozen experiment explicitly disables the production transition and
+mutates `memory_anchor_at`/`current_half_life_days` with its historical local
+candidate rules so its phase-isolation results remain reproducible.
 
 Usage:
     python reacquisition_experiment.py
@@ -100,7 +97,11 @@ def _returning_truth() -> TrueLearnerProfile:
     truth = copy.deepcopy(PROFILES["returning"])
     truth.true_material_memory = {
         "C_MAJOR": TrueMaterialMemory(
-            half_life_days=STARTING_HALF_LIFE_DAYS, last_retrieval_at=-STARTING_GAP_DAYS
+            current_half_life_days=STARTING_HALF_LIFE_DAYS,
+            consolidated_half_life_days=STARTING_HALF_LIFE_DAYS,
+            memory_anchor_at=-STARTING_GAP_DAYS,
+            factual_last_retrieval_at=-STARTING_GAP_DAYS,
+            last_retrieval_attempt_at=-STARTING_GAP_DAYS,
         )
     }
     return truth
@@ -109,7 +110,7 @@ def _returning_truth() -> TrueLearnerProfile:
 def _new_material_truth() -> TrueLearnerProfile:
     """No pre-seeded TrueMaterialMemory entry at all - relies on
     synthetic.py's own _true_memory_for() lazy-init default
-    (last_retrieval_at=None, half_life_days=profile.default_half_life_days)."""
+    (memory_anchor_at=None, current half-life at the profile default)."""
     truth = copy.deepcopy(PROFILES["returning"])
     truth.true_material_memory = {}
     return truth
@@ -186,8 +187,8 @@ def shape_half_life_only(
     true_memory: TrueMaterialMemory, exercise: Exercise, now: float, quality: float
 ) -> None:
     gain = HALF_LIFE_GROWTH_RATE * _support_factor(exercise) * quality
-    true_memory.half_life_days += gain * (
-        HALF_LIFE_CEILING_DAYS - true_memory.half_life_days
+    true_memory.current_half_life_days += gain * (
+        HALF_LIFE_CEILING_DAYS - true_memory.current_half_life_days
     )
     # last_retrieval_at never touched.
 
@@ -195,27 +196,25 @@ def shape_half_life_only(
 def shape_anchor_movement_only(
     true_memory: TrueMaterialMemory, exercise: Exercise, now: float, quality: float
 ) -> None:
-    if true_memory.last_retrieval_at is None:
+    if true_memory.memory_anchor_at is None:
         return  # no anchor exists yet to move
     fraction = ANCHOR_MOVEMENT_RATE * _support_factor(exercise) * quality
-    true_memory.last_retrieval_at += fraction * (now - true_memory.last_retrieval_at)
+    true_memory.memory_anchor_at += fraction * (now - true_memory.memory_anchor_at)
 
 
 def shape_hybrid(
     true_memory: TrueMaterialMemory, exercise: Exercise, now: float, quality: float
 ) -> None:
     support = _support_factor(exercise)
-    true_memory.half_life_days += (
+    true_memory.current_half_life_days += (
         HYBRID_HALF_LIFE_RATE
         * support
         * quality
-        * (HALF_LIFE_CEILING_DAYS - true_memory.half_life_days)
+        * (HALF_LIFE_CEILING_DAYS - true_memory.current_half_life_days)
     )
-    if true_memory.last_retrieval_at is not None:
+    if true_memory.memory_anchor_at is not None:
         fraction = HYBRID_ANCHOR_RATE * support * quality
-        true_memory.last_retrieval_at += fraction * (
-            now - true_memory.last_retrieval_at
-        )
+        true_memory.memory_anchor_at += fraction * (now - true_memory.memory_anchor_at)
 
 
 SHAPES: dict[str, Callable[[TrueMaterialMemory, Exercise, float, float], None]] = {
@@ -238,6 +237,12 @@ def _apply_shape(
     applying an instructional update on top of it would double-count.
     Isolates exactly the missing pathway: productive practice WITHOUT a
     genuine success."""
+    if outcome.retrieval_succeeded is not None:
+        true_memory.last_retrieval_attempt_at = now
+    if outcome.retrieval_succeeded is True:
+        true_memory.memory_anchor_at = now
+        true_memory.factual_last_retrieval_at = now
+        return
     if shape is None:
         return
     quality = _practice_quality(outcome)
@@ -259,7 +264,10 @@ def _verify_matched_initial_dose() -> None:
     unguided = fixed_exercise(MATERIAL, "RIGHT")  # support_factor=1.0
     for name, shape in SHAPES.items():
         memory = TrueMaterialMemory(
-            half_life_days=STARTING_HALF_LIFE_DAYS, last_retrieval_at=-STARTING_GAP_DAYS
+            current_half_life_days=STARTING_HALF_LIFE_DAYS,
+            consolidated_half_life_days=STARTING_HALF_LIFE_DAYS,
+            memory_anchor_at=-STARTING_GAP_DAYS,
+            factual_last_retrieval_at=-STARTING_GAP_DAYS,
         )
         before = memory.retrievability(0.0, 0.4)
         shape(memory, unguided, 0.0, 1.0)
@@ -327,7 +335,7 @@ def condition_no_practice_rows() -> list[dict[str, Any]]:
                 "true_retrievability_before": r,
                 "true_retrievability_after": r,
                 "delta_q": 0.0,
-                "half_life_days": memory.half_life_days,
+                "half_life_days": memory.current_half_life_days,
                 "model_belief_retrievability": None,
                 "guidance_independence": None,
                 "retrieval_succeeded": None,
@@ -361,12 +369,15 @@ def _run_fixed_practice(
         if true_memory is None:
             # lazy-init default, mirrors state.py's own material_memory_for()
             true_memory = TrueMaterialMemory(
-                half_life_days=truth.default_half_life_days
+                current_half_life_days=truth.default_current_half_life_days,
+                consolidated_half_life_days=truth.default_current_half_life_days,
             )
             truth.true_material_memory[material_id] = true_memory
         before = true_memory.retrievability(now, truth.memory_prior)
         prediction = predicted_success(state, exercise, now, learner_params)
-        outcome = sample_outcome(truth, exercise, now, rng)
+        outcome = sample_outcome(
+            truth, exercise, now, rng, apply_memory_transition=False
+        )
         weights = evidence_weights(exercise, outcome)
         update(state, exercise, outcome, weights, prediction, now, learner_params)
         _apply_shape(shape, true_memory, exercise, outcome, now)
@@ -377,7 +388,7 @@ def _run_fixed_practice(
                 now,
                 before,
                 after,
-                true_memory.half_life_days,
+                true_memory.current_half_life_days,
                 state,
                 learner_params,
                 exercise,
@@ -454,7 +465,9 @@ def condition_scheduler_driven_rows(
             true_memory = truth.true_material_memory[material_id]
             before = true_memory.retrievability(now, truth.memory_prior)
             prediction = predicted_success(state, exercise, now, learner_params)
-            outcome = sample_outcome(truth, exercise, now, rng)
+            outcome = sample_outcome(
+                truth, exercise, now, rng, apply_memory_transition=False
+            )
             weights = evidence_weights(exercise, outcome)
             update(state, exercise, outcome, weights, prediction, now, learner_params)
             _apply_shape(shape, true_memory, exercise, outcome, now)
@@ -466,7 +479,7 @@ def condition_scheduler_driven_rows(
                     now,
                     before,
                     after,
-                    true_memory.half_life_days,
+                    true_memory.current_half_life_days,
                     state,
                     learner_params,
                     exercise,

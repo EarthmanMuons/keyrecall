@@ -24,20 +24,35 @@ TRUE_DIFFICULTY = {
 }
 TRUE_NOISE_SCALE = 0.12
 
+# Synthetic truth intentionally owns separate coefficients from the estimator.
+# Values are provisional structural carry-forwards from the diagnostics, not a
+# claim that the estimator knows the true transition dose.
+TRUE_SUPPORTED_PRACTICE_FACTOR = {"cued": 0.3, "notes": 0.7, "unguided": 1.0}
+TRUE_RETRIEVAL_SUCCESS_FACTOR = {"notes": 0.7, "unguided": 1.0}
+TRUE_ACTIVATION_RESTORATION_RATE = 0.05
+TRUE_SUPPORTED_CURRENT_DURABILITY_RATE = 0.022556390977443608
+TRUE_SUCCESS_CURRENT_DURABILITY_RATE = 0.022556390977443608
+TRUE_CONSOLIDATION_GROWTH_RATE = 0.05
+TRUE_CONSOLIDATION_GROWTH_TARGET_DAYS = 60.0
+TRUE_MAX_MEMORY_HALF_LIFE_DAYS = 1000.0
+
 
 @dataclass
 class TrueMaterialMemory:
     """Ground-truth retrievability, decaying independently of the model's
     MaterialMemoryState estimate."""
 
-    half_life_days: float
-    last_retrieval_at: float | None = None
+    current_half_life_days: float
+    consolidated_half_life_days: float
+    memory_anchor_at: float | None = None
+    factual_last_retrieval_at: float | None = None
+    last_retrieval_attempt_at: float | None = None
 
     def retrievability(self, now: float, prior: float) -> float:
-        if self.last_retrieval_at is None:
+        if self.memory_anchor_at is None:
             return prior
-        delta = now - self.last_retrieval_at
-        return 2.0 ** (-delta / self.half_life_days)
+        delta = now - self.memory_anchor_at
+        return 2.0 ** (-delta / self.current_half_life_days)
 
 
 @dataclass
@@ -48,7 +63,7 @@ class TrueLearnerProfile:
     true_material_execution: dict[tuple[str, str], float] = field(default_factory=dict)
     true_material_memory: dict[str, TrueMaterialMemory] = field(default_factory=dict)
     memory_prior: float = 0.4
-    default_half_life_days: float = 4.0
+    default_current_half_life_days: float = 4.0
 
 
 def _flat(value: float) -> dict[str, float]:
@@ -94,27 +109,31 @@ def _build_profiles() -> dict[str, TrueLearnerProfile]:
             self_report_tier="advanced",
             true_competencies=dict(advanced),
             memory_prior=0.15,
-            default_half_life_days=0.5,
+            default_current_half_life_days=0.5,
         ),
         "memory_strong_technique_weak": TrueLearnerProfile(
             name="memory_strong_technique_weak",
             self_report_tier="some_experience",
             true_competencies=memory_strong_technique_weak,
             memory_prior=0.85,
-            default_half_life_days=20.0,
+            default_current_half_life_days=20.0,
         ),
         "returning": TrueLearnerProfile(
             name="returning",
             self_report_tier="advanced",
             true_competencies=dict(advanced),
-            default_half_life_days=6.0,
+            default_current_half_life_days=6.0,
             # Actual gap, not just a self-report label (§29.8). 14 days
             # against a 6-day half-life gives ~20% per-attempt retrieval
             # odds: low enough to be a real gap, high enough not to make
             # the test flaky over a bounded number of attempts.
             true_material_memory={
                 "C_MAJOR": TrueMaterialMemory(
-                    half_life_days=6.0, last_retrieval_at=-14.0
+                    current_half_life_days=6.0,
+                    consolidated_half_life_days=20.0,
+                    memory_anchor_at=-14.0,
+                    factual_last_retrieval_at=-14.0,
+                    last_retrieval_attempt_at=-14.0,
                 )
             },
         ),
@@ -135,7 +154,8 @@ def _true_memory_for(
 ) -> TrueMaterialMemory:
     if material_id not in profile.true_material_memory:
         profile.true_material_memory[material_id] = TrueMaterialMemory(
-            half_life_days=profile.default_half_life_days
+            current_half_life_days=profile.default_current_half_life_days,
+            consolidated_half_life_days=profile.default_current_half_life_days,
         )
     return profile.true_material_memory[material_id]
 
@@ -153,8 +173,83 @@ def _true_difficulty(exercise: Exercise) -> float:
     return tempo_term + octave_term + hand_term + direction_term
 
 
+def _guidance_kind(exercise: Exercise) -> str:
+    if exercise.guidance.concurrent_pitch_cues:
+        return "cued"
+    if exercise.guidance.notes_previewed:
+        return "notes"
+    return "unguided"
+
+
+def _practice_quality(outcome: Outcome) -> float:
+    if not outcome.started or not outcome.completed:
+        return 0.0
+    return max(
+        0.0,
+        min(
+            1.0,
+            (outcome.continuity + outcome.temporal_stability + outcome.pitch_integrity)
+            / 3.0,
+        ),
+    )
+
+
+def apply_true_memory_transition(
+    memory: TrueMaterialMemory, exercise: Exercise, outcome: Outcome, now: float
+) -> None:
+    """Apply the production truth transition after the complete outcome exists."""
+    if outcome.retrieval_succeeded is not None:
+        memory.last_retrieval_attempt_at = now
+
+    quality = _practice_quality(outcome)
+    guidance_kind = _guidance_kind(exercise)
+
+    if outcome.retrieval_succeeded is True:
+        memory.memory_anchor_at = now
+        memory.factual_last_retrieval_at = now
+        success_factor = TRUE_RETRIEVAL_SUCCESS_FACTOR[guidance_kind]
+        consolidation_gap = max(
+            0.0,
+            TRUE_CONSOLIDATION_GROWTH_TARGET_DAYS - memory.consolidated_half_life_days,
+        )
+        new_consolidation = memory.consolidated_half_life_days + (
+            TRUE_CONSOLIDATION_GROWTH_RATE
+            * success_factor
+            * quality
+            * consolidation_gap
+        )
+        new_consolidation = min(new_consolidation, TRUE_MAX_MEMORY_HALF_LIFE_DAYS)
+        memory.current_half_life_days += (
+            TRUE_SUCCESS_CURRENT_DURABILITY_RATE
+            * success_factor
+            * quality
+            * (new_consolidation - memory.current_half_life_days)
+        )
+        memory.consolidated_half_life_days = new_consolidation
+        return
+
+    if quality <= 0.0:
+        return
+
+    practice_factor = TRUE_SUPPORTED_PRACTICE_FACTOR[guidance_kind]
+    if memory.memory_anchor_at is not None:
+        fraction = TRUE_ACTIVATION_RESTORATION_RATE * practice_factor * quality
+        memory.memory_anchor_at += fraction * (now - memory.memory_anchor_at)
+    memory.current_half_life_days += (
+        TRUE_SUPPORTED_CURRENT_DURABILITY_RATE
+        * practice_factor
+        * quality
+        * (memory.consolidated_half_life_days - memory.current_half_life_days)
+    )
+
+
 def sample_outcome(
-    profile: TrueLearnerProfile, exercise: Exercise, now: float, rng: random.Random
+    profile: TrueLearnerProfile,
+    exercise: Exercise,
+    now: float,
+    rng: random.Random,
+    *,
+    apply_memory_transition: bool = True,
 ) -> Outcome:
     material_id = exercise.material.material_id
     true_memory = _true_memory_for(profile, material_id)
@@ -165,15 +260,6 @@ def sample_outcome(
     # whether the material would be retrievable without support.
     retrieval_succeeded = rng.random() < true_retrievability
     retrieval_observed = exercise.guidance.retrieval_observed()
-
-    # The true memory clock models learning from retrieval practice, not
-    # latent availability alone: it strengthens only when retrieval was
-    # actually demanded and performed. Under continuous cueing,
-    # retrieval_succeeded is a hidden counterfactual (would it have
-    # succeeded unsupported), not a practice event, so it must not reset
-    # the clock even when true.
-    if retrieval_succeeded and retrieval_observed:
-        true_memory.last_retrieval_at = now
 
     # Continuous cueing supplies the material outright, so this attempt
     # never actually tests independent retrieval: report no observation at
@@ -219,7 +305,7 @@ def sample_outcome(
     topology_quality = 1.0 / (1.0 + math.exp(-topology_logit))
 
     if not started:
-        return Outcome(
+        outcome = Outcome(
             started=False,
             retrieval_succeeded=observed_retrieval_succeeded,
             completed=False,
@@ -230,6 +316,9 @@ def sample_outcome(
             achieved_tempo_ratio=0.0,
             topology_accuracy=0.0,
         )
+        if apply_memory_transition:
+            apply_true_memory_transition(true_memory, exercise, outcome, now)
+        return outcome
 
     def noisy(center: float) -> float:
         return min(1.0, max(0.0, rng.gauss(center, TRUE_NOISE_SCALE)))
@@ -239,7 +328,7 @@ def sample_outcome(
     temporal_stability = noisy(motor_quality)
     completed = motor_quality > 0.3 and rng.random() < motor_quality + 0.2
 
-    return Outcome(
+    outcome = Outcome(
         started=True,
         retrieval_succeeded=observed_retrieval_succeeded,
         completed=completed,
@@ -250,3 +339,6 @@ def sample_outcome(
         achieved_tempo_ratio=noisy(motor_quality),
         topology_accuracy=noisy(topology_quality),
     )
+    if apply_memory_transition:
+        apply_true_memory_transition(true_memory, exercise, outcome, now)
+    return outcome

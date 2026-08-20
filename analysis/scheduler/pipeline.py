@@ -131,9 +131,9 @@ def _guidance_probe_eligible(
     if guidance.concurrent_pitch_cues or not guidance.notes_previewed:
         return False
     memory_state = state.material_memory.get(exercise.material.material_id)
-    if memory_state is None or memory_state.last_retrieval_at is None:
+    if memory_state is None or memory_state.factual_last_retrieval_at is None:
         return False
-    elapsed = now - memory_state.last_retrieval_at
+    elapsed = now - memory_state.factual_last_retrieval_at
     return elapsed >= params.guidance_probe.min_days_since_last_retrieval
 
 
@@ -155,7 +155,7 @@ def _bootstrap_probe_eligible(
     if guidance.concurrent_pitch_cues or not guidance.notes_previewed:
         return False
     memory_state = state.material_memory.get(exercise.material.material_id)
-    if memory_state is None or memory_state.last_retrieval_at is not None:
+    if memory_state is None or memory_state.factual_last_retrieval_at is not None:
         return False
     if memory_state.last_retrieval_attempt_at is None:
         return False
@@ -248,9 +248,9 @@ def _memory_uncertainty(
     memory_state = state.material_memory.get(material_id)
     if memory_state is None:
         return learner_params.material_memory.prior_uncertainty
-    if memory_state.last_retrieval_at is None:
+    if memory_state.memory_anchor_at is None:
         return memory_state.cold_start_uncertainty
-    return memory_state.half_life_uncertainty
+    return memory_state.current_half_life_uncertainty
 
 
 def retrieval_opportunity(exercise: Exercise) -> float:

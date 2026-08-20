@@ -490,8 +490,9 @@ exact mechanism is a `03-v1-math.md` question, not decided here.
 
 ### 9.2 MaterialMemoryState
 
-`MaterialMemoryState` represents the current availability of one
-`TechnicalMaterial` for independent production under a retrieval context.
+`MaterialMemoryState` represents the current availability and retained learning
+history of one `TechnicalMaterial` for independent production under a retrieval
+context.
 
 Provisional definition:
 
@@ -503,19 +504,43 @@ It is keyed by learner and material, not by hand:
 ```yaml
 MaterialMemoryState:
   material_id: F_SHARP_HARMONIC_MINOR_SCALE
-  state: ...
-  uncertainty: ...
+  memory_anchor_at: ...
+  log_current_half_life: ...
+  current_half_life_uncertainty: ...
+  log_consolidated_half_life: ...
+  consolidated_half_life_uncertainty: ...
+  factual_last_retrieval_at: ...
+  last_retrieval_attempt_at: ...
+  logit_cold_start: ...
+  cold_start_uncertainty: ...
 ```
 
 It is time-sensitive.
+
+The state deliberately separates four meanings that earlier prototypes
+overloaded:
+
+```text
+activation              memory_anchor_at; effective recency used by retrieval
+current durability      current half-life used by the forgetting curve
+retained consolidation  slow durability envelope available for savings
+factual history         observed retrieval-success/attempt timestamps
+```
+
+Supported practice may move an existing activation anchor and restore current
+durability toward consolidation without manufacturing a retrieval event. Genuine
+retrieval success refreshes activation, strengthens current durability, and
+slowly grows consolidation. Consolidation is an upper envelope for current
+durability, not an immediate scheduler signal.
 
 A successful fully unguided performance provides substantially stronger evidence
 of independent material retrieval than the same pitch-perfect performance with
 the notes continuously displayed.
 
-The exact memory equation remains unresolved. HLR-, ACT-R-, and DAS3H-related
-research informs the design, but V1 should not assume that an existing
-declarative-memory equation transfers unchanged to piano material.
+The exact coefficients remain unresolved. The production state semantics and
+transition boundaries are specified by `03-v1-math.md` §5; HLR-, ACT-R-, and
+DAS3H-related research still does not justify importing external coefficients
+unchanged.
 
 ### 9.3 MaterialExecutionState
 
@@ -763,11 +788,11 @@ Procedural-retention research supports time-sensitive execution state and
 different retention behavior across performance dimensions. It does not justify
 copying declarative-memory decay constants into `MaterialExecutionState`.
 
-The execution model should also remain capable of representing **savings**:
-after apparent performance loss, reacquisition may be faster than initial
-learning.
-
-The exact mechanism for savings is not specified here.
+The model represents **savings** through retained consolidation: after apparent
+performance loss, prior successful retrieval history can leave a higher
+consolidated durability envelope, allowing faster reacquisition than initial
+learning from an otherwise identical current state. Numeric formation and
+restoration rates remain provisional.
 
 ## 14. Partial transfer
 

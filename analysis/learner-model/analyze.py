@@ -89,8 +89,8 @@ SWEEP_PARAMETERS: list[tuple[str, str, Callable[[float, float], float]]] = [
     ("competency", "learning_rate", _scale_value),
     ("competency", "uncertainty_diffusion", _scale_value),
     ("competency", "evidence_shrinkage", _scale_value),
-    ("material_memory", "alpha_memory", _scale_value),
-    ("material_memory", "reversion_lambda", _scale_value),
+    ("material_memory", "alpha_current_durability", _scale_value),
+    ("material_memory", "reversion_lambda_current_durability", _scale_value),
     ("material_execution", "learning_rate", _scale_value),
     ("material_execution", "mean_reversion_tau_days", _scale_value),
     ("hand_transfer", "rho_hand", _scale_value),
@@ -107,8 +107,10 @@ RELEVANT_METRICS: dict[tuple[str, str], tuple[str, ...]] = {
     ("competency", "learning_rate"): ("final_competency_error",),
     ("competency", "uncertainty_diffusion"): ("final_competency_error",),
     ("competency", "evidence_shrinkage"): ("final_competency_error",),
-    ("material_memory", "alpha_memory"): ("memory_retrievability_error",),
-    ("material_memory", "reversion_lambda"): ("memory_retrievability_error",),
+    ("material_memory", "alpha_current_durability"): ("memory_retrievability_error",),
+    ("material_memory", "reversion_lambda_current_durability"): (
+        "memory_retrievability_error",
+    ),
     ("material_execution", "learning_rate"): ("residual_localization_gap",),
     ("material_execution", "mean_reversion_tau_days"): ("residual_localization_gap",),
     ("hand_transfer", "rho_hand"): ("hand_transfer_effect",),
@@ -218,7 +220,8 @@ def memory_tracking_rows(
     # Pre-seed so a before-reading is defined on the very first attempt too,
     # mirroring synthetic._true_memory_for()'s lazy-init default.
     profile.true_material_memory["C_MAJOR"] = TrueMaterialMemory(
-        half_life_days=profile.default_half_life_days
+        current_half_life_days=profile.default_current_half_life_days,
+        consolidated_half_life_days=profile.default_current_half_life_days,
     )
     rng = random.Random(seed)
     state = LearnerState.new(params)
@@ -261,7 +264,7 @@ def memory_tracking_rows(
                 "true_retrievability_after": true_memory.retrievability(
                     now, profile.memory_prior
                 ),
-                "half_life_days": memory_after.half_life_days,
+                "current_half_life_days": memory_after.current_half_life_days,
                 "retrieval_succeeded": outcome.retrieval_succeeded,
             }
         )
@@ -315,8 +318,8 @@ def memory_spacing_sensitivity_rows(params: Params) -> list[dict[str, Any]]:
                     "attempt_index": i,
                     "at_days": now,
                     "predicted_independent_retrieval_p": prediction.independent_retrieval_p,
-                    "log_half_life": memory.log_half_life,
-                    "half_life_days": memory.half_life_days,
+                    "log_current_half_life": memory.log_current_half_life,
+                    "current_half_life_days": memory.current_half_life_days,
                 }
             )
     return rows
@@ -620,8 +623,10 @@ def sweep_metric(params: Params, attempts: int = 150, seed: int = 0) -> dict[str
             c["variance"] > 0 for c in record["state_after"]["competencies"].values()
         )
         and all(
-            m["half_life_days"] > 0
-            and m["half_life_uncertainty"] > 0
+            m["current_half_life_days"] > 0
+            and m["current_half_life_uncertainty"] > 0
+            and m["consolidated_half_life_days"] >= m["current_half_life_days"]
+            and m["consolidated_half_life_uncertainty"] > 0
             and m["cold_start_uncertainty"] > 0
             for m in record["state_after"]["material_memory"].values()
         )
@@ -802,10 +807,10 @@ def report(
     )
     print()
 
-    print("Memory spacing sensitivity, half_life_days after 10 successes:")
+    print("Memory spacing sensitivity, current_half_life_days after 10 successes:")
     for label in MEMORY_SPACING_LEVELS:
         final_half_life = next(
-            row["half_life_days"]
+            row["current_half_life_days"]
             for row in memory_spacing
             if row["spacing"] == label and row["attempt_index"] == 9
         )

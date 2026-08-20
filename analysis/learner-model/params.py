@@ -27,19 +27,30 @@ class CompetencyParams:
 
 @dataclass(frozen=True)
 class MaterialMemoryParams:
-    initial_half_life_days: float
-    alpha_memory: float
-    reversion_lambda: float
+    initial_current_half_life_days: float
+    alpha_current_durability: float
+    reversion_lambda_current_durability: float
     min_half_life_days: float
-    max_half_life_days: float
+    max_memory_half_life_days: float
     prior_retrievability: float
     prior_uncertainty: float
+    consolidation_prior_uncertainty: float
     min_uncertainty: float
     evidence_shrinkage: float
     alpha_cold_start: float
     reversion_lambda_cold_start: float
     min_cold_start_probability: float
     max_cold_start_probability: float
+    supported_activation_restoration_rate: float
+    supported_current_durability_rate: float
+    success_current_durability_rate: float
+    consolidation_growth_rate: float
+    consolidation_growth_target_days: float
+    supported_practice_factor_concurrent_cues: float
+    supported_practice_factor_notes_previewed: float
+    supported_practice_factor_unguided: float
+    retrieval_success_factor_notes_previewed: float
+    retrieval_success_factor_unguided: float
 
 
 @dataclass(frozen=True)

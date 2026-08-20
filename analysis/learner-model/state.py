@@ -50,19 +50,26 @@ class CompetencyState:
 @dataclass
 class MaterialMemoryState:
     material_id: str
-    log_half_life: float
-    half_life_uncertainty: float
+    log_current_half_life: float
+    current_half_life_uncertainty: float
+    log_consolidated_half_life: float
+    consolidated_half_life_uncertainty: float
     logit_cold_start: float
     cold_start_uncertainty: float
-    last_retrieval_at: float | None = None
+    memory_anchor_at: float | None = None
+    factual_last_retrieval_at: float | None = None
     # Set on any genuine retrieval observation (§18.2), win or lose;
-    # last_retrieval_at only on success. Scheduler-side: distinguishes
+    # factual_last_retrieval_at only on success. Scheduler-side: distinguishes
     # "never successfully retrieved" from "never even tested."
     last_retrieval_attempt_at: float | None = None
 
     @property
-    def half_life_days(self) -> float:
-        return math.exp(self.log_half_life)
+    def current_half_life_days(self) -> float:
+        return math.exp(self.log_current_half_life)
+
+    @property
+    def consolidated_half_life_days(self) -> float:
+        return math.exp(self.log_consolidated_half_life)
 
     @property
     def cold_start_estimate(self) -> float:
@@ -70,21 +77,54 @@ class MaterialMemoryState:
 
     def retrievability(self, now: float) -> float:
         """M(t), §5. Raises if never retrieved; see retrievability_or_prior()."""
-        if self.last_retrieval_at is None:
+        if self.memory_anchor_at is None:
             raise RuntimeError(
                 f"{self.material_id}: no retrieval yet, elapsed time is "
                 "undefined; call retrievability_or_prior() instead"
             )
-        delta = now - self.last_retrieval_at
-        return 2.0 ** (-delta / self.half_life_days)
+        delta = now - self.memory_anchor_at
+        return 2.0 ** (-delta / self.current_half_life_days)
 
     def retrievability_or_prior(self, now: float, params: Params) -> float:
         """Before any successful retrieval, uses cold_start_estimate rather
         than a fixed prior, so a failed unguided attempt can still move the
         next prediction even though the half-life clock hasn't started."""
-        if self.last_retrieval_at is None:
+        if self.memory_anchor_at is None:
             return self.cold_start_estimate
         return self.retrievability(now)
+
+
+@dataclass(frozen=True)
+class V1MaterialMemoryState:
+    """Legacy semantic shape used only by the pure v1 upgrade function."""
+
+    material_id: str
+    log_half_life: float
+    half_life_uncertainty: float
+    logit_cold_start: float
+    cold_start_uncertainty: float
+    last_retrieval_at: float | None = None
+    last_retrieval_attempt_at: float | None = None
+
+
+def upgrade_v1_material_memory(
+    old: V1MaterialMemoryState, params: Params
+) -> MaterialMemoryState:
+    """Pure semantic upgrade; future persistence can reuse this mapping."""
+    return MaterialMemoryState(
+        material_id=old.material_id,
+        log_current_half_life=old.log_half_life,
+        current_half_life_uncertainty=old.half_life_uncertainty,
+        log_consolidated_half_life=old.log_half_life,
+        consolidated_half_life_uncertainty=(
+            params.material_memory.consolidation_prior_uncertainty
+        ),
+        logit_cold_start=old.logit_cold_start,
+        cold_start_uncertainty=old.cold_start_uncertainty,
+        memory_anchor_at=old.last_retrieval_at,
+        factual_last_retrieval_at=old.last_retrieval_at,
+        last_retrieval_attempt_at=old.last_retrieval_attempt_at,
+    )
 
 
 @dataclass
@@ -146,10 +186,15 @@ class LearnerState:
         self, material_id: str, params: Params
     ) -> MaterialMemoryState:
         if material_id not in self.material_memory:
+            initial = params.material_memory.initial_current_half_life_days
             self.material_memory[material_id] = MaterialMemoryState(
                 material_id=material_id,
-                log_half_life=math.log(params.material_memory.initial_half_life_days),
-                half_life_uncertainty=params.material_memory.prior_uncertainty,
+                log_current_half_life=math.log(initial),
+                current_half_life_uncertainty=params.material_memory.prior_uncertainty,
+                log_consolidated_half_life=math.log(initial),
+                consolidated_half_life_uncertainty=(
+                    params.material_memory.consolidation_prior_uncertainty
+                ),
                 logit_cold_start=logit(params.material_memory.prior_retrievability),
                 cold_start_uncertainty=params.material_memory.prior_uncertainty,
             )
@@ -175,7 +220,7 @@ class LearnerState:
         for state in self.material_execution.values():
             state.propagate(now, params)
         # MaterialMemoryState needs no propagate(): retrievability is
-        # computed on demand from last_retrieval_at, not stored as a
+        # computed on demand from memory_anchor_at, not stored as a
         # decaying value that would otherwise go stale between calls.
 
     def snapshot(self) -> dict:
@@ -187,13 +232,19 @@ class LearnerState:
             },
             "material_memory": {
                 mid: {
-                    "half_life_days": m.half_life_days,
-                    "log_half_life": m.log_half_life,
-                    "half_life_uncertainty": m.half_life_uncertainty,
+                    "current_half_life_days": m.current_half_life_days,
+                    "log_current_half_life": m.log_current_half_life,
+                    "current_half_life_uncertainty": (m.current_half_life_uncertainty),
+                    "consolidated_half_life_days": m.consolidated_half_life_days,
+                    "log_consolidated_half_life": m.log_consolidated_half_life,
+                    "consolidated_half_life_uncertainty": (
+                        m.consolidated_half_life_uncertainty
+                    ),
                     "cold_start_estimate": m.cold_start_estimate,
                     "logit_cold_start": m.logit_cold_start,
                     "cold_start_uncertainty": m.cold_start_uncertainty,
-                    "last_retrieval_at": m.last_retrieval_at,
+                    "memory_anchor_at": m.memory_anchor_at,
+                    "factual_last_retrieval_at": m.factual_last_retrieval_at,
                     "last_retrieval_attempt_at": m.last_retrieval_attempt_at,
                 }
                 for mid, m in self.material_memory.items()
