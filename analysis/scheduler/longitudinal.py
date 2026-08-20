@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import random
 from dataclasses import dataclass, field
+from heapq import nlargest
 
 from candidates import InstrumentProfile, SessionState, generate_candidates
 from config import Params as SchedulerParams
@@ -46,6 +47,9 @@ class AttemptRecord:
     # need the real, unserialized Outcome to distinguish tested-and-failed
     # from never-tested (03-v1-math.md §18.2).
     outcome: Outcome | None = None
+    # Optional exhaustive witness used by broad stress checks. This keeps
+    # the set of admitted materials without retaining every full trace.
+    admitted_material_ids: frozenset[str] | None = None
 
 
 class SchedulerAgent:
@@ -62,12 +66,15 @@ class SchedulerAgent:
         scheduler_params: SchedulerParams,
         learner_params: LearnerParams,
         top_n: int = 5,
+        capture_admitted_material_ids: bool = False,
     ) -> None:
         self.instrument = instrument
         self.materials = materials
         self.scheduler_params = scheduler_params
         self.learner_params = learner_params
         self.top_n = top_n
+        self.capture_admitted_material_ids = capture_admitted_material_ids
+        self.candidates = generate_candidates(instrument, materials)
         self.session = SessionState()
         self.records: list[AttemptRecord] = []
 
@@ -84,11 +91,10 @@ class SchedulerAgent:
     def pick(
         self, rng: random.Random, index: int, state: LearnerState, now: float
     ) -> Exercise:
-        candidates = generate_candidates(self.instrument, self.materials)
         traces = run_pipeline(
             state,
             self.session,
-            candidates,
+            self.candidates,
             self.scheduler_params,
             self.learner_params,
             now,
@@ -103,14 +109,27 @@ class SchedulerAgent:
         # real runner-up, and winner is already None in exactly this case
         # (raised as NoAdmittedCandidate below), so this list should be
         # empty then regardless.
-        runners_up = sorted(
+        runners_up = nlargest(
+            self.top_n,
             (t for t in guarded if t is not winner and t.rank_key is not None),
             key=lambda t: t.rank_key,
-            reverse=True,
-        )[: self.top_n]
+        )
+        admitted_material_ids = (
+            frozenset(
+                t.exercise.material.material_id
+                for t in guarded
+                if t.rank_key is not None
+            )
+            if self.capture_admitted_material_ids
+            else None
+        )
         self.records.append(
             AttemptRecord(
-                attempt_index=index, at_days=now, selected=winner, runners_up=runners_up
+                attempt_index=index,
+                at_days=now,
+                selected=winner,
+                runners_up=runners_up,
+                admitted_material_ids=admitted_material_ids,
             )
         )
         self.session.attempts_this_session += 1

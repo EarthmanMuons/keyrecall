@@ -28,7 +28,7 @@ from candidates import (
 )
 from config import load_params as load_scheduler_params
 from domain import GuidanceContext
-from model import Prediction
+from model import Prediction, predicted_success
 from params import load_params as load_learner_params
 from pipeline import (
     StageStatus,
@@ -625,6 +625,29 @@ def check_consolidation_alone_has_no_immediate_scheduler_effect() -> None:
             )
 
 
+def check_cached_pipeline_predictions_match_direct_model() -> None:
+    learner_params = load_learner_params()
+    scheduler_params = load_scheduler_params()
+    state = initial_state(PROFILES["advanced"], learner_params)
+    candidates = generate_candidates(InstrumentProfile(), MATERIALS[:3])
+    now = 17.0
+    traces = run_pipeline(
+        state,
+        SessionState(),
+        candidates,
+        scheduler_params,
+        learner_params,
+        now,
+    )
+    for trace in traces:
+        direct = predicted_success(state, trace.exercise, now, learner_params)
+        if trace.prediction != direct:
+            raise InvariantFailure(
+                f"cached pipeline prediction differs from direct model for "
+                f"{trace.exercise}: {trace.prediction} != {direct}"
+            )
+
+
 CHECKS: list[tuple[str, object]] = [
     (
         "generation depends only on domain inputs",
@@ -673,6 +696,10 @@ CHECKS: list[tuple[str, object]] = [
     (
         "consolidation alone has no immediate scheduler effect",
         check_consolidation_alone_has_no_immediate_scheduler_effect,
+    ),
+    (
+        "cached pipeline predictions match the direct learner model",
+        check_cached_pipeline_predictions_match_direct_model,
     ),
 ]
 

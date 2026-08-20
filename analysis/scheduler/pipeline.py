@@ -25,7 +25,15 @@ from domain import (
     GuidanceContext,
     structural_q,
 )
-from model import Prediction, motor_loadings, predicted_success, topology_loadings
+from model import (
+    Prediction,
+    motor_loadings,
+    predicted_execution_p,
+    predicted_independent_retrieval_p,
+    predicted_material_available_p,
+    predicted_topology_p,
+    topology_loadings,
+)
 from params import Params as LearnerParams
 from state import COMPETENCIES, LearnerState
 
@@ -398,12 +406,51 @@ def run_pipeline(
         else None
     )
     traces: list[CandidateTrace] = []
+    retrieval_predictions: dict[str, float] = {}
+    execution_predictions: dict[tuple[object, ...], float] = {}
+    topology_predictions: dict[tuple[object, ...], float] = {}
 
     for exercise in candidates:
         tier, tier_reason = eligibility_tier(state, exercise, scheduler_params)
         allowed, safety_reason = safety_check(session, scheduler_params)
 
-        prediction = predicted_success(state, exercise, now, learner_params)
+        material_id = exercise.material.material_id
+        independent_retrieval_p = retrieval_predictions.get(material_id)
+        if independent_retrieval_p is None:
+            independent_retrieval_p = predicted_independent_retrieval_p(
+                state, exercise, now, learner_params
+            )
+            retrieval_predictions[material_id] = independent_retrieval_p
+
+        # Guidance changes material availability, but not independent
+        # retrieval, execution, or topology. Candidate generation emits each
+        # motor/topology realization under three guidance variants, so compute
+        # those invariant components once per pipeline call.
+        realization_key = (
+            exercise.material,
+            exercise.hands,
+            exercise.octaves,
+            exercise.direction,
+            exercise.tempo_bpm,
+            exercise.opportunities,
+        )
+        execution_p = execution_predictions.get(realization_key)
+        if execution_p is None:
+            execution_p = predicted_execution_p(state, exercise, learner_params)
+            execution_predictions[realization_key] = execution_p
+        topology_p = topology_predictions.get(realization_key)
+        if topology_p is None:
+            topology_p = predicted_topology_p(state, exercise, learner_params)
+            topology_predictions[realization_key] = topology_p
+
+        prediction = Prediction(
+            independent_retrieval_p=independent_retrieval_p,
+            material_available_p=predicted_material_available_p(
+                independent_retrieval_p, exercise
+            ),
+            execution_p=execution_p,
+            topology_p=topology_p,
+        )
         within_band = challenge_within_band(prediction, scheduler_params)
         override = overrides.get(exercise)
         bypass = challenge_bypass(

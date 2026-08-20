@@ -603,7 +603,7 @@ whether topology gets its own probe-selection signal (§6)
 This list is no longer purely aspirational. `analysis/scheduler/` implements the
 boundary contract itself as `pipeline.py`, and verifies it in two complementary
 passes, mirroring the split `03-v1-math.md` §38 established for the learner
-model: `invariants.py` (12 checks) proves the boundary holds mechanically - a
+model: `invariants.py` (13 checks) proves the boundary holds mechanically - a
 forbidden input can't move a stage's decision, regardless of whether the
 resulting behavior is any good; `scenarios.py` (10 checks) runs the pipeline
 longitudinally, driving `analysis/learner-model/simulate.py`'s own `run()` loop
@@ -723,12 +723,12 @@ boundary sits at exactly 0.53. Every endpoint below is a grid observation, not a
 fitted value.
 
 ```text
-p_min                  sampled passing: 0.60-0.70
+p_min                  sampled passing: 0.40-0.70
 p_max                  robust over the sampled 0.75-0.98 range
 p_introduction_min     sampled passing: 0.15-0.25
 shared probe interval  sampled passing: 1-5 days (§6.4: also governs
                        bootstrap_probe, not independently tunable yet, §9)
-repetition cap         sampled passing: 2-8
+repetition cap         sampled passing: 2-5
 recency window         sampled passing: 10-25
 ```
 
@@ -744,12 +744,12 @@ failure occurring in a given run) - inconclusive, not evidence either way, and
 excluded from every classification. `sensitivity.py` tracks this as a third
 state per `(value, check)`/`(cell, check)` group (fails / holds / insufficient
 coverage) rather than folding an absence of evidence into "holds," and reports a
-coverage count so a silent evidence gap can't masquerade as a clean result. 85
-individual runs were inconclusive; 3 `(value, check)` groups and 5
-`(cell, check)` groups lacked any conclusive run entirely. In every one of those
-8 cases, the same value or cell had at least one other, independently conclusive
-check that had already failed there, so none of the classifications reported
-above rest on missing evidence.
+coverage count so a silent evidence gap can't masquerade as a clean result. 5
+individual runs were inconclusive; 1 `(value, check)` group and 1
+`(cell, check)` group lacked any conclusive run entirely. In both cases, the
+same value or cell had at least one other, independently conclusive check that
+had already failed there, so none of the classifications reported above rest on
+missing evidence.
 
 None of the 4 tested parameter pairs (band width; introduction envelope vs.
 steady-state band; probe interval vs. repetition cap; repetition cap vs. recency
@@ -825,6 +825,28 @@ initial memory is much stronger than the estimator's cold-start information.
 That is a placement/observability target for later calibration, not evidence
 against the four-axis transition semantics.
 
+Pass 4 is parallelized across independent trials while preserving input order.
+`--workers` defaults to at most 8 local processes and `--workers 1` retains the
+serial path. Static candidate pools are generated once per agent, and
+guidance-independent retrieval/execution/topology prediction components are
+computed once per realization per pipeline call. The exhaustive repetition-cap
+property stores the complete set of admitted material IDs rather than every full
+`CandidateTrace`, so compact diagnostic runner-up logs remain bounded.
+
+The optimization was checked at three levels:
+
+```text
+cached pipeline predictions == direct learner-model predictions
+8 large trials: serial result objects == parallel result objects
+full 250-trial CSV outputs == pre-optimization CSV outputs byte for byte
+```
+
+On the characterization machine, one representative 7-material trial fell from
+about 4.25 seconds and 136 MB peak RSS to 2.66 seconds and 27 MB. Eight large
+trials ran 5.82 times faster with 8 workers than serially. The complete
+250-trial sweep finished in about 45 seconds with no crashes or hard-property
+violations.
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -847,7 +869,7 @@ GLOSSARY.md §7/§8         InstrumentProfile, SchedulerSafetyPolicy
 v1-domain-model.md §17     REQUIRES
 analysis/scheduler/        executable counterpart to this document: pipeline.py
                             implements stages 2-4 and the boundary contract,
-                            invariants.py verifies it mechanically (12 checks),
+                            invariants.py verifies it mechanically (13 checks),
                             scenarios.py verifies it behaviorally (10 checks,
                             §10), longitudinal.py adapts it into
                             analysis/learner-model/simulate.py's run() loop,

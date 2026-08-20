@@ -21,9 +21,10 @@ assertions:
                           (empty = clean).
 
 Does not import scenarios.py - no Pass-2 oracle reuse this pass, and no
-retuning of config.toml or changes to pipeline.py/candidates.py/
+retuning of config.toml or semantic changes to pipeline.py/candidates.py/
 longitudinal.py unless a genuine structural failure is found (same rule as
-Pass 3). Weighted R/I/V/G ranking is out of scope.
+Pass 3). Semantics-preserving performance changes must reproduce the prior
+CSV outputs exactly. Weighted R/I/V/G ranking is out of scope.
 
 Usage:
     python stress.py
@@ -33,8 +34,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import copy
 import csv
+import os
 import random
 import sys
 from collections import Counter
@@ -72,15 +75,11 @@ CORE_SESSION_COUNT = 15
 CORE_ATTEMPTS_PER_SESSION = 20
 DAY_STEP = 0.5
 
-# Exhaustive, not sampled: property #5 needs to know every REACHED
-# candidate's material, not just the top few by rank. runners_up is
-# otherwise identical to longitudinal.py's own diagnostic list - a plain
-# sort over already-computed traces, not extra pipeline work - so an
-# unbounded top_n costs a bigger sort and a bigger per-attempt trace list,
-# not a bigger computation. Memory is trial-scoped: agent/records are
-# discarded after each trial's rows are extracted (run_trial()), so this
-# doesn't accumulate across the sweep.
-EXHAUSTIVE_TOP_N = 10_000
+# Full traces remain intentionally compact. Property #5 gets exhaustive
+# admission coverage from AttemptRecord.admitted_material_ids instead of
+# retaining every CandidateTrace for every attempt.
+STRESS_TOP_N = 5
+DEFAULT_WORKERS = min(8, os.cpu_count() or 1)
 
 SECONDARY_PROFILES = ("beginner", "advanced")
 SECONDARY_SEEDS = tuple(range(5))
@@ -617,9 +616,10 @@ def check_5_repetition_cap_obeyed(
     session_boundaries: list[int],
     scheduler_params: SchedulerParams,
 ) -> list[dict[str, Any]]:
-    """Exhaustive, not sampled: with EXHAUSTIVE_TOP_N, {winner} | runners_up
-    is the complete admitted set for that attempt, so "an alternative was
-    admitted" here means "truly admitted," not "happened to be sampled.\""""
+    """Exhaustive, not sampled: admitted_material_ids is the complete set of
+    admitted materials for that attempt, so "an alternative was admitted"
+    here means "truly admitted," not "happened to be retained as a runner-up."
+    Hand-built checks without that witness retain the runners_up fallback."""
     violations = []
     cap = scheduler_params.diversity.max_consecutive_material_attempts
     starts = _session_start_indices(session_boundaries)
@@ -632,10 +632,16 @@ def check_5_repetition_cap_obeyed(
             continue
         material_id = record.selected.exercise.material.material_id
         if run_length >= cap and run_material == material_id:
-            alternative_exists = any(
-                t.exercise.material.material_id != material_id
-                for t in record.runners_up
-            )
+            if record.admitted_material_ids is not None:
+                alternative_exists = any(
+                    admitted_material_id != material_id
+                    for admitted_material_id in record.admitted_material_ids
+                )
+            else:
+                alternative_exists = any(
+                    t.exercise.material.material_id != material_id
+                    for t in record.runners_up
+                )
             if alternative_exists:
                 violations.append(
                     {
@@ -858,6 +864,25 @@ def self_check_hard_properties() -> None:
         )
         == 1
     )
+    with_compact_admission_witness = list(same_material_only)
+    with_compact_admission_witness[-1] = AttemptRecord(
+        cap,
+        float(cap),
+        _fake_trace(fixed_exercise(material_a, "RIGHT")),
+        admitted_material_ids=frozenset(
+            (material_a.material_id, material_b.material_id)
+        ),
+    )
+    assert (
+        len(
+            check_5_repetition_cap_obeyed(
+                with_compact_admission_witness,
+                [len(with_compact_admission_witness)],
+                scheduler_params,
+            )
+        )
+        == 1
+    )
 
     # #6 - a leading genuine failure establishes ever_tested=True (matching
     # last_retrieval_attempt_at's real semantics); the cued run afterward is
@@ -933,7 +958,12 @@ def run_trial(
     )
 
     agent = SchedulerAgent(
-        instrument, materials, scheduler_params, learner_params, top_n=EXHAUSTIVE_TOP_N
+        instrument,
+        materials,
+        scheduler_params,
+        learner_params,
+        top_n=STRESS_TOP_N,
+        capture_admitted_material_ids=True,
     )
 
     base_row = {
@@ -992,6 +1022,28 @@ def run_trial(
     )
     violation_rows = [{**base_row, **v} for v in violations]
     return trial_row, material_rows, violation_rows
+
+
+def run_trials(
+    specs: list[TrialSpec],
+    scheduler_params: SchedulerParams,
+    learner_params: LearnerParams,
+    workers: int,
+) -> list[tuple[dict[str, Any], list[dict[str, Any]], list[dict[str, Any]]]]:
+    """Run independent trials in input order, serially or across processes."""
+    if workers < 1:
+        raise ValueError(f"workers must be at least 1, got {workers}")
+    if workers == 1:
+        return [run_trial(spec, scheduler_params, learner_params) for spec in specs]
+    with concurrent.futures.ProcessPoolExecutor(max_workers=workers) as executor:
+        return list(
+            executor.map(
+                run_trial,
+                specs,
+                [scheduler_params] * len(specs),
+                [learner_params] * len(specs),
+            )
+        )
 
 
 def _compute_metrics(
@@ -1400,6 +1452,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--scheduler-params", type=Path, default=None)
     parser.add_argument("--learner-params", type=Path, default=None)
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WORKERS,
+        help=f"Independent trial workers (default: {DEFAULT_WORKERS}; use 1 for serial)",
+    )
     return parser.parse_args()
 
 
@@ -1421,10 +1479,9 @@ def main() -> None:
     trial_rows: list[dict[str, Any]] = []
     material_rows: list[dict[str, Any]] = []
     violation_rows: list[dict[str, Any]] = []
-    for spec in specs:
-        trial_row, spec_material_rows, spec_violation_rows = run_trial(
-            spec, scheduler_params, learner_params
-        )
+    for trial_row, spec_material_rows, spec_violation_rows in run_trials(
+        specs, scheduler_params, learner_params, args.workers
+    ):
         trial_rows.append(trial_row)
         material_rows.extend(spec_material_rows)
         violation_rows.extend(spec_violation_rows)
