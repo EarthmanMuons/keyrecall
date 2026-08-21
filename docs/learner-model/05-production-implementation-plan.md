@@ -752,6 +752,11 @@ Examples include:
 Numeric miscalibration alone should first trigger parameter estimation, not a
 new state dimension.
 
+Proposals to add a competency or prediction channel must also follow
+[`competency-extension-guide.md`](competency-extension-guide.md): demonstrate
+identifiability, held-out transfer, isolation from existing state, and replayed
+value before reopening the ontology.
+
 ### 13.2 Scheduler policy
 
 Reopen scheduler structure only when real data identify a repeatable decision

@@ -36,6 +36,7 @@ docs/
 │
 └── learner-model/
     ├── v1-current-system.md          integrated current view; start here
+    ├── competency-extension-guide.md future ontology admission and tuning
     ├── 01-research.md                literature and evidentiary basis
     ├── 02-v1-design.md               architectural reasoning
     ├── 03-v1-math.md                 detailed math and learner experiments
@@ -59,6 +60,7 @@ information-boundary invariants, and 10 longitudinal scheduler scenarios.
 | Need                                                              | Authority                                                                 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | Integrated initial-production behavior                            | `learner-model/v1-current-system.md`                                      |
+| Future competency admission, validation, and calibration workflow | `learner-model/competency-extension-guide.md`                             |
 | Canonical terminology and symbols                                 | `GLOSSARY.md`                                                             |
 | Product thesis, UX, privacy principles                            | `design/product-vision.md`                                                |
 | Canonical scale fingering                                         | `domain-model/fingering-taxonomy.md`                                      |
@@ -83,6 +85,8 @@ The documents have different jobs:
 
 ```text
 v1-current-system.md     what V1 does and why, without chronology
+competency-extension-guide.md
+                         how a future competency earns promotion
 01-05                    how the design was justified, tested, and prepared
 git history              exact sequence of individual revisions
 ```
