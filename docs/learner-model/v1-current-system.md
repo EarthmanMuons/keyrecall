@@ -161,8 +161,8 @@ a prediction-only adjustment from the better-observed hand:
 
 ```math
 \widetilde\mu_k = \mu_k
-  + \rho_{hand}\frac{\sigma_k^2}{\sigma_k^2 + \tau_{hand}}
-    (\mu_{paired} - \mu_k)
+  + \rho_{\mathrm{hand}}\frac{\sigma_k^2}{\sigma_k^2 + \tau_{\mathrm{hand}}}
+    (\mu_{\mathrm{paired}} - \mu_k)
 ```
 
 The adjustment is largest while the target hand is uncertain and shrinks as its
@@ -194,7 +194,7 @@ After a successful retrieval has established an anchor, independent
 retrievability follows a half-life curve:
 
 ```math
-M_m(t) = 2^{-\Delta t/h_{current,m}}
+M_m(t) = 2^{-\Delta t/h_{\mathrm{current},m}}
 ```
 
 `M = 0.5` means the model predicts a 50% chance of independently retrieving the
@@ -206,14 +206,13 @@ identifiable because there is no anchor. V1 uses a separate cold-start
 probability:
 
 ```math
-M_m(t) = \operatorname{sigmoid}(c_m)
-\qquad\text{when no memory anchor exists}
+M_m(t) = \frac{1}{1+e^{-c_m}}
 ```
 
 Current and consolidated durability obey:
 
 ```math
-0 < h_{current,m} \le h_{consolidated,m} \le h_{max}
+0 < h_{\mathrm{current},m} \le h_{\mathrm{consolidated},m} \le h_{\mathrm{max}}
 ```
 
 Consolidation is retained learning, not current readiness. It does not directly
@@ -286,9 +285,12 @@ Within each prediction channel, relevant `Q` entries receive equal provisional
 weight:
 
 ```math
-q^{channel}_{e,k} =
-\frac{Q_{e,k}}{\sum_{j \in channel} Q_{e,j}}
+q^{(C)}_{e,k} =
+\frac{Q_{e,k}}{\sum_{j \in K_C} Q_{e,j}}
 ```
+
+Here `C` denotes one prediction channel and `K_C` is that channel's competency
+set. V1 uses separate motor and topology versions of this loading.
 
 Motor and topology loadings are normalized separately. Otherwise the presence of
 a topology opportunity would artificially dilute the motor predictor.
@@ -327,13 +329,13 @@ unguided                  d = 1.0
 The exact-material memory prediction is `M_m(t)`:
 
 ```math
-\widehat p_{retrieval}(e) = M_m(t)
+\widehat p_{\mathrm{retrieval}}(e) = M_m(t)
 ```
 
 Guidance can make material available even when independent retrieval would fail:
 
 ```math
-\widehat p_{available}(e) = 1 - d_e(1-M_m(t))
+\widehat p_{\mathrm{available}}(e) = 1 - d_e(1-M_m(t))
 ```
 
 Thus continuous cueing makes availability almost certain, previewed notes
@@ -347,24 +349,28 @@ the update are deliberately separate.
 Motor difficulty is:
 
 ```math
-Diff_{motor}(e) =
-\beta_t\log\left(\frac{BPM_e}{BPM_0}\right)
-+ \beta_o\max(0, octaves_e-1)
-+ \beta_h\mathbb{1}[hands_e=TOGETHER]
-+ \beta_d\mathbb{1}[direction_e=UP\_DOWN]
+D_{\mathrm{motor}}(e) =
+\beta_t\log\left(\frac{b_e}{b_0}\right)
++ \beta_o\max(0, o_e-1)
++ \beta_h I_{\mathrm{HT}}(e)
++ \beta_d I_{\mathrm{UD}}(e)
 ```
+
+Here `b_e` is requested BPM, `b_0` is reference BPM, `o_e` is octave count, and
+`I_HT`/`I_UD` indicate hands-together and ascending-then-descending tasks.
 
 The conditional execution logit is:
 
 ```math
-\eta_{exec}(e) =
-\sum_{k\in Motor}q^{motor}_{e,k}\widetilde\mu_k
+\eta_{\mathrm{exec}}(e) =
+\sum_{k\in K_{\mathrm{motor}}}q^{(\mathrm{motor})}_{e,k}\widetilde\mu_k
 + \mu_{r,m,c}
-- Diff_{motor}(e)
+- D_{\mathrm{motor}}(e)
 ```
 
 ```math
-\widehat p_{exec}(e) = \operatorname{sigmoid}(\eta_{exec}(e))
+\widehat p_{\mathrm{exec}}(e) =
+\frac{1}{1+e^{-\eta_{\mathrm{exec}}(e)}}
 ```
 
 Guidance is absent from motor difficulty. It helps make the material available;
@@ -375,13 +381,13 @@ it does not make the physical task easier once the material is available.
 Pitch/form knowledge has a parallel predictor:
 
 ```math
-\eta_{topology}(e) =
-\sum_{k\in Topology}q^{topology}_{e,k}\widetilde\mu_k
+\eta_{\mathrm{topology}}(e) =
+\sum_{k\in K_{\mathrm{topology}}}q^{(\mathrm{topology})}_{e,k}\widetilde\mu_k
 ```
 
 ```math
-\widehat p_{topology}(e) =
-\operatorname{sigmoid}(\eta_{topology}(e))
+\widehat p_{\mathrm{topology}}(e) =
+\frac{1}{1+e^{-\eta_{\mathrm{topology}}(e)}}
 ```
 
 This is an inference target with its own outcome channel. It is not multiplied
@@ -391,8 +397,8 @@ answers whether the notes can be produced on this attempt.
 ### 6.4 Overall acceptable-performance probability
 
 ```math
-\widehat p_{overall}(e) =
-\widehat p_{available}(e)\widehat p_{exec}(e)
+\widehat p_{\mathrm{overall}}(e) =
+\widehat p_{\mathrm{available}}(e)\widehat p_{\mathrm{exec}}(e)
 ```
 
 This factorization is the key interpretability boundary:
@@ -419,19 +425,23 @@ update needs a bounded target.
 The three prediction errors are:
 
 ```math
-y_{motor} = \frac{y_{continuity}+y_{stability}}{2}
+y_{\mathrm{motor}} =
+\frac{y_{\mathrm{continuity}}+y_{\mathrm{stability}}}{2}
 ```
 
 ```math
-\delta_{exec}=y_{motor}-\widehat p_{exec}
+\delta_{\mathrm{exec}}=
+y_{\mathrm{motor}}-\widehat p_{\mathrm{exec}}
 ```
 
 ```math
-\delta_{topology}=y_{topology}-\widehat p_{topology}
+\delta_{\mathrm{topology}}=
+y_{\mathrm{topology}}-\widehat p_{\mathrm{topology}}
 ```
 
 ```math
-\delta_M=y_{retrieval}-\widehat p_{retrieval}
+\delta_M=
+y_{\mathrm{retrieval}}-\widehat p_{\mathrm{retrieval}}
 ```
 
 There is intentionally no universal prediction error. Each state layer learns
@@ -461,19 +471,19 @@ hiding them remains a real, lower-demand factual test; it produces `True` or
 For a relevant competency:
 
 ```math
-\mu'_k = \mu_k + \alpha_k q^{channel}_{e,k}w_{a,k}\delta_{channel}
+\mu'_k = \mu_k + \alpha_k q^{(C)}_{e,k}w_{a,k}\delta_C
 ```
 
 ```math
 \sigma_k'^2 =
-\max(\sigma^2_{min,k},\sigma_k^2(1-\lambda_k w_{a,k}))
+\max(\sigma^2_{\mathrm{min},k},\sigma_k^2(1-\lambda_k w_{a,k}))
 ```
 
 Motor competencies use `delta_exec`; topology competencies use `delta_topology`.
 The execution residual uses the same motor-only error:
 
 ```math
-\mu'_r = \mu_r + \alpha_r w_r\delta_{exec}
+\mu'_r = \mu_r + \alpha_r w_r\delta_{\mathrm{exec}}
 ```
 
 These are conservative online engineering updates rather than exact Bayesian
@@ -486,7 +496,7 @@ evidence does neither.
 Before an anchor exists, a tested failure updates only the cold-start logit:
 
 ```math
-c' = c + w_M\left[\alpha_c(y_{retrieval}-\operatorname{sigmoid}(c))
+c' = c + w_M\left[\alpha_c\left(y_{\mathrm{retrieval}}-\frac{1}{1+e^{-c}}\right)
 -\lambda_c(c-c_0)\right]
 ```
 
@@ -532,7 +542,8 @@ Once anchored, write `ell = log(h_current)`. Factual retrieval evidence updates:
 
 ```math
 \ell' = \ell + w_M\left[\alpha_M
-(y_{retrieval}-\widehat p_{retrieval})-\lambda_M(\ell-\ell_0)\right]
+(y_{\mathrm{retrieval}}-\widehat p_{\mathrm{retrieval}})
+-\lambda_M(\ell-\ell_0)\right]
 ```
 
 The result is bounded and capped by retained consolidation. Because
@@ -645,7 +656,7 @@ or injury from MIDI behavior.
 Ordinary candidates must satisfy:
 
 ```math
-p_{min}\le\widehat p_{overall}(e)\le p_{max}
+p_{\mathrm{min}}\le\widehat p_{\mathrm{overall}}(e)\le p_{\mathrm{max}}
 ```
 
 The current provisional band is 0.60 to 0.90. This is a configurable engineering
@@ -684,10 +695,11 @@ Surviving candidates are ordered lexicographically:
 The terms are:
 
 ```math
-Ret(e)=(1-\widehat p_{retrieval,m})\,opportunity_{retrieval}(e)
+R(e)=
+(1-\widehat p_{\mathrm{retrieval},m})\,o_{\mathrm{retrieval}}(e)
 ```
 
-`Ret` is high when a material is at risk and this candidate can actually test
+`R` is high when a material is at risk and this candidate can actually test
 retrieval. A continuously cued candidate has zero retrieval opportunity and
 cannot win by exploiting a memory deficit it cannot resolve.
 
