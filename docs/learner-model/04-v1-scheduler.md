@@ -2279,6 +2279,99 @@ probe_completion_need_strata.csv
 probe_completion_need_regions.csv
 ```
 
+### 10.15 Pass 17: factorial recovery support
+
+Pass 17 returns to the recovery-modality question left open by Pass 12. It does
+not reopen the probe or ranking exception search frozen by Pass 16. The
+diagnostic changes an action only after production has already entered recovery
+following a factual retrieval failure.
+
+The experiment crosses memory guidance with three motor doses:
+
+```text
+                              motor none        motor one step       motor floor
+memory guidance off          repeat failed     Pass 12 motor-only   motor-only floor
+memory guidance on           production        hybrid one-step      hybrid floor
+```
+
+"Memory guidance off" preserves the failed attempt's guidance. "Memory guidance
+on" uses production's one-step-more-guidance recovery target. Motor
+simplification then changes only tempo, octave span, or direction within that
+guidance condition. The production control is therefore exactly memory-on,
+motor-none. All six cells apply unconditionally at every recovery trigger;
+predicted limiting dimension is recorded only for post hoc stratification.
+
+The full matrix contains 1,260 trajectories: six cells, seven fixtures, 30
+seeds, and 600 attempts per trajectory. Factorial contrasts are paired by
+fixture and seed. Motor simplification was actually available on 85.1% of
+memory-on one-step recoveries and 78.3% of memory-on floor recoveries.
+
+The no-memory-guidance cells reproduce Pass 12's protective result. Relative to
+motor-none with guidance off, retaining production memory guidance raises
+recovery completion from 0.304 to 0.623 and reduces mean episode length from
+5.597 to 1.097. Retrieval is observed on every guidance-off recovery but on only
+0.145 of production recoveries. This is the expected completion-protection and
+factual-observability tradeoff, not evidence for removing memory support.
+
+Both hybrid cells improve immediate completion without a meaningful calibration
+regression:
+
+```text
+metric                              production     hybrid step     hybrid floor
+recovery completion                    0.623           0.637            0.641
+mean recovery episode length           1.097           1.098            1.098
+completed one-selection exit           0.584           0.596            0.600
+recovery retrieval observation         0.145           0.146            0.147
+selections until factual return        3.598           3.612            3.619
+retrieval MAE                          0.2284          0.2280           0.2278
+retrieval Brier                        0.1913          0.1913           0.1910
+maximum selection fraction             0.466           0.466            0.464
+mean maximum revisit gap, days         11.026          11.014           10.943
+no-admission count                      1.957           1.957            1.981
+```
+
+The paired completion effects are +0.0146 with standard error 0.0024 for one
+step and +0.0180 with standard error 0.0026 for the floor. Their completed
+one-selection-exit effects are +0.0129 and +0.0168. Mean episode length changes
+by less than 0.001 selection for either hybrid. The memory-by-motor interaction
+is positive but small: +0.0066 for one-step completion and +0.0096 for floor
+completion.
+
+No protective fixture has a material calibration regression. The largest hybrid
+changes are +0.0003 MAE and +0.0008 Brier for one step, and +0.0003 Brier for
+the floor. Factual return is delayed by only 0.014 and 0.021 selections in the
+aggregate. Concentration, revisit-gap, and no-admission guardrails remain
+effectively unchanged.
+
+The limiting-dimension strata remain descriptive because the six policies
+produce different downstream trigger populations. They show that recovery is not
+confined to execution-limited states and reinforce the reason for the
+unconditional factorial design. Under production recovery, 2,635 selections are
+memory-limited, 1,825 execution-limited, and 277 topology-limited. Applying a
+post hoc argmin rule to those changing populations would not identify the
+factorial treatment effect.
+
+Pass 17 therefore promotes no production recovery change. The hybrid completion
+effect is repeatable and calibration-safe in these fixtures, but it is only
+1.5-1.8 percentage points and does not shorten recovery episodes or accelerate
+factual return. It does not clear the predeclared requirement for a material
+localized recovery improvement. Recovery policy is now frozen alongside the
+probe and ranking policy. Further recovery calibration should use real learner
+outcomes rather than additional synthetic mechanism branches.
+
+Pass 17 writes eight artifacts:
+
+```text
+recovery_factorial_trajectories.csv
+recovery_factorial_events.csv
+recovery_factorial_episodes.csv
+recovery_factorial_seed_summary.csv
+recovery_factorial_profile_summary.csv
+recovery_factorial_variant_summary.csv
+recovery_factorial_dimension_strata.csv
+recovery_factorial_effects.csv
+```
+
 ## 11. Relationship to existing documents
 
 This document adds a boundary-contract layer on top of already-established
@@ -2332,5 +2425,7 @@ analysis/scheduler/        executable counterpart to this document: pipeline.py
                             ranking-alternative and paired-horizon diagnostic
                             (§10.13), while probe_completion_need.py performs the
                             Pass 16 completion-need discriminator
-                            characterization (§10.14)
+                            characterization (§10.14), and
+                            recovery_factorial.py performs the Pass 17
+                            recovery-support factorial characterization (§10.15)
 ```

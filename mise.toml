@@ -75,6 +75,10 @@ run = "uv run analysis/learner-model/probe_ranking_tradeoff.py --output-dir anal
 description = "Pass 16 probe-failure completion-need characterization"
 run = "uv run analysis/learner-model/probe_completion_need.py --output-dir analysis/learner-model/generated"
 
+[tasks."analysis:recovery-factorial"]
+description = "Pass 17 factorial recovery-support characterization"
+run = "uv run analysis/learner-model/recovery_factorial.py --output-dir analysis/learner-model/generated"
+
 [tasks."analysis:learner-model"]
 description = "Run learner-model simulation invariant checks"
 run = "uv run analysis/learner-model/invariants.py"
