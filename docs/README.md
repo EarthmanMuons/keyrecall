@@ -1,7 +1,7 @@
 # KeyRecall Documentation Map
 
 **Status:** Living map, updated as the doc set evolves\
-**Date:** August 18, 2026\
+**Date:** August 20, 2026\
 **Purpose:** Orient new readers, and record the current document authority and
 lineage so later documents stop re-deriving vocabulary that earlier documents
 already settled.
@@ -41,14 +41,18 @@ docs/
     ├── 01-research.md               learning-science research basis
     ├── 02-v1-design.md              learner-state architecture
     ├── 03-v1-math.md                V1 equations, scheduler math, simulation plan
-    └── 04-v1-scheduler.md           scheduler pipeline + information-boundary contract
+    ├── 04-v1-scheduler.md           scheduler pipeline + information-boundary contract
+    └── 05-production-implementation-plan.md
+                                      telemetry, replay, and empirical-validation plan
 ```
 
 `analysis/learner-model/` (repo root, not under `docs/`) is the executable
-counterpart to `01-03`: a simulation prototype with a 30-check invariant suite
+counterpart to `01-03`: a simulation prototype with a 32-check invariant suite
 and behavioral diagnostics, referenced throughout `03-v1-math.md` §5, §10, §18,
 §29, §38 as the source of several findings that revised those documents after
-simulation, not before it.
+simulation, not before it. `analysis/scheduler/` is the executable counterpart
+to `04-v1-scheduler.md`, including its 13 information-boundary invariants and 10
+behavioral scenarios.
 
 The numeric prefixes in `learner-model/` are load-bearing, not cosmetic:
 `03-v1-math.md` states explicitly that it is subordinate to `02-v1-design.md`,
@@ -65,16 +69,17 @@ is a reasonable next small step, not yet applied here.
 
 ## 3. What each document is authoritative for
 
-| Document                             | Authoritative for                                                                                                        | Not authoritative for                                                                                                                |
-| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `design/product-vision.md`           | Product thesis, UX principles, competitive landscape, one-sentence vision                                                | Any specific data model, math, or current competency vocabulary                                                                      |
-| `domain-model/fingering-taxonomy.md` | Canonical fingering per scale/hand (source of truth)                                                                     | Motor-family classification, learner state                                                                                           |
-| `domain-model/motor-taxonomy.md`     | Motor-family/phase/crossing structure, mechanically verified                                                             | Latent competency ontology (explicitly out of scope, see its §15)                                                                    |
-| `domain-model/v1-domain-model.md`    | Domain entities not explicitly superseded below (`ScaleDefinition`, `ExpectedEvent`, relationships, prerequisites, etc.) | `Exercise` (flat form), `FingeringGroup`, `Component` ontology, and its own Q-matrix tables (§6.2-§11), all superseded, see §4 below |
-| `learner-model/01-research.md`       | Research grounding, citations, KeyRecall-synthesis vs. research-supported distinction                                    | Frozen equations (several formulas here are illustrative precedent, not adopted; see §4 below, items 3-4)                            |
-| `learner-model/02-v1-design.md`      | Learner-state architecture; reconciled ten-Competency ontology (§9.1); compositional `Exercise` model                    | Numerical parameters, scheduler equations                                                                                            |
-| `learner-model/03-v1-math.md`        | V1 equations, scheduler math (challenge-band formula, priority-utility form, §20-23), simulation/calibration plan        | Scheduler stage information-boundary contract (see `04-v1-scheduler.md`)                                                             |
-| `learner-model/04-v1-scheduler.md`   | Scheduler pipeline structure; which stage may read which state and make which decision                                   | Numeric bounds/weights (still heuristic V1, unresolved), scheduler math itself (`03-v1-math.md` §20-23)                              |
+| Document                                             | Authoritative for                                                                                                        | Not authoritative for                                                                                                                |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `design/product-vision.md`                           | Product thesis, UX principles, competitive landscape, one-sentence vision                                                | Any specific data model, math, or current competency vocabulary                                                                      |
+| `domain-model/fingering-taxonomy.md`                 | Canonical fingering per scale/hand (source of truth)                                                                     | Motor-family classification, learner state                                                                                           |
+| `domain-model/motor-taxonomy.md`                     | Motor-family/phase/crossing structure, mechanically verified                                                             | Latent competency ontology (explicitly out of scope, see its §15)                                                                    |
+| `domain-model/v1-domain-model.md`                    | Domain entities not explicitly superseded below (`ScaleDefinition`, `ExpectedEvent`, relationships, prerequisites, etc.) | `Exercise` (flat form), `FingeringGroup`, `Component` ontology, and its own Q-matrix tables (§6.2-§11), all superseded, see §4 below |
+| `learner-model/01-research.md`                       | Research grounding, citations, KeyRecall-synthesis vs. research-supported distinction                                    | Frozen equations (several formulas here are illustrative precedent, not adopted; see §4 below, items 3-4)                            |
+| `learner-model/02-v1-design.md`                      | Learner-state architecture; reconciled ten-Competency ontology (§9.1); compositional `Exercise` model                    | Numerical parameters, scheduler equations                                                                                            |
+| `learner-model/03-v1-math.md`                        | V1 equations, scheduler math (challenge-band formula, priority-utility form, §20-23), simulation/calibration plan        | Scheduler stage information-boundary contract (see `04-v1-scheduler.md`)                                                             |
+| `learner-model/04-v1-scheduler.md`                   | Scheduler pipeline structure; which stage may read which state and make which decision                                   | Numeric bounds/weights (still heuristic V1, unresolved), scheduler math itself (`03-v1-math.md` §20-23)                              |
+| `learner-model/05-production-implementation-plan.md` | Production implementation sequence; attempt journal, replay, telemetry, and empirical reopening gates                    | Learner equations, scheduler policy, or product privacy principles                                                                   |
 
 When a conflict between documents isn't listed in §4 below, don't infer
 authority from filename date or commit order: treat it as an unresolved
