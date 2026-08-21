@@ -301,25 +301,25 @@ and guidance are not part of material identity.
 
 ## Mathematical symbols
 
-| Symbol                                   | Meaning                                       |
-| ---------------------------------------- | --------------------------------------------- |
-| `u`                                      | learner                                       |
-| `m`                                      | technical material                            |
-| `c`                                      | execution context, primarily RH/LH/HT         |
-| `e`                                      | exercise                                      |
-| `a`                                      | attempt                                       |
-| `k`                                      | transferable competency                       |
-| `theta[u,k]`                             | latent competency state                       |
-| `mu[k]`, `sigma²[k]`                     | competency mean and variance                  |
-| `M[m](t)`                                | predicted independent material retrievability |
-| `h_current`, `h_consolidated`            | current and retained half-lives               |
-| `r[u,m,c]`                               | material-specific execution residual          |
-| `Q[e,k]`                                 | binary structural opportunity                 |
-| `q[e,k]`                                 | derived predictor loading                     |
-| `w[a,k]`, `w_M`, `w_r`                   | channel-specific evidence weights             |
-| `d[e]`                                   | retrieval demand                              |
-| `Diff_motor(e)`                          | conditional motor-task difficulty             |
-| `Ret(e)`, `Info(e)`, `Div(e)`, `Goal(e)` | scheduler priority terms                      |
+| Symbol                                                            | Meaning                                       |
+| ----------------------------------------------------------------- | --------------------------------------------- |
+| $u$                                                               | learner                                       |
+| $m$                                                               | technical material                            |
+| $c$                                                               | execution context, primarily RH/LH/HT         |
+| $e$                                                               | exercise                                      |
+| $a$                                                               | attempt                                       |
+| $k$                                                               | transferable competency                       |
+| $\theta_{u,k}$                                                    | latent competency state                       |
+| $\mu_{u,k}$, $\sigma^2_{u,k}$                                     | competency mean and variance                  |
+| $M_m(t)$                                                          | predicted independent material retrievability |
+| $h_{\mathrm{current},m}$, $h_{\mathrm{consolidated},m}$           | current and retained half-lives               |
+| $r_{u,m,c}$                                                       | material-specific execution residual          |
+| $Q_{e,k}$                                                         | binary structural opportunity                 |
+| $q^{(C)}_{e,k}$                                                   | derived predictor loading for channel $C$     |
+| $w_{a,k}$, $w_M$, $w_r$                                           | channel-specific evidence weights             |
+| $d_e$                                                             | retrieval demand                              |
+| $D_{\mathrm{motor}}(e)$                                           | conditional motor-task difficulty             |
+| $R(e)$, $\mathrm{Info}(e)$, $\mathrm{Div}(e)$, $\mathrm{Goal}(e)$ | scheduler priority terms                      |
 
 ## Retired terms
 
