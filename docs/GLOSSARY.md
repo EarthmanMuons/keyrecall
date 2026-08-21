@@ -1,344 +1,332 @@
-# V1 Canonical Vocabulary and Conventions
+# KeyRecall Glossary
 
-**Status:** Living reference, updated as design decisions land\
-**Date:** August 18, 2026\
-**Purpose:** Settle, in one place, every term where the document set has
-accumulated more than one name or more than one shape for the same concept. See
-`README.md` for how this fits into the overall consolidation.
+- **Status:** Canonical V1 terminology
+- **Last aligned:** August 20, 2026
 
-Nothing here is mathematically novel: it's a naming and authority decision, not
-new design work. Substantive open questions are listed in §14 as deferred, not
-resolved here.
+This file is a concise lookup reference for current terms. It does not record
+design history, supersessions, open questions, or mathematical derivations. See
+[`README.md`](README.md) for document authority and history, and
+[`learner-model/v1-current-system.md`](learner-model/v1-current-system.md) for
+the integrated V1 explanation.
 
----
+## Terms
 
-## 1. Competency (canonical)
+### Activation
 
-`Competency` replaces `KnowledgeComponent`, `KC`, and `Component`:
-`product-vision.md` §7, `v1-domain-model.md` §6.5, and `02-v1-design.md` §9.1
-each independently named the same concept, a persistent transferable latent
-capability that exercises provide evidence about. `02-v1-design.md` §9.1 has the
-canonical ten-Competency ontology; the older `Component` material in
-`v1-domain-model.md` is marked superseded there.
+The operative recency of exact-material memory, represented by
+`MaterialMemoryState.memory_anchor_at`. A factual retrieval success sets the
+anchor to the attempt time. Productive supported practice may move an existing
+anchor partway toward the present without recording a retrieval success.
 
-## 2. Fingering/motor vocabulary
+Activation is distinct from current durability and retained consolidation.
 
-`FingeringGroup` (`v1-domain-model.md` §6.2) is retired, not renamed: mechanical
-analysis found all 96 canonical fingering records collapse into one
-`MotorFamily`, a different kind of result than the multi-family classification
-`FingeringGroup` was designed to hold. Canonical triad:
+### Attempt
 
-```text
-FingeringPattern    concrete canonical fingering, authoritative data
-MotorRealization     mechanically derived realization of a pattern
-MotorFamily          higher-level equivalence class over realizations
-```
+One presentation and performance of an `Exercise`, including the decision
+context, observations, derived outcome, evidence weights, state transitions, and
+state references needed for deterministic replay.
 
-Runtime field naming follows `fingering-taxonomy.md` §15 (`fingering_pattern`,
-not `fingering_group`); already applied.
+### Assumption Registry
 
-## 3. `Exercise`: the compositional definition is canonical
+A record of conceptual claims about the world or design, including their basis,
+confidence, and falsifier. It is distinct from the Parameter Registry, which
+records numeric configuration.
 
-Two shapes exist:
+### Bootstrap probe
 
-- `v1-domain-model.md` §6.3, flat:
-  `scale_definition, hand_mode, octaves, direction, motion, tempo, rhythm, articulation, register, pattern_variant`
-- `02-v1-design.md`, compositional:
-  `TechnicalMaterial + ExercisePattern + ExecutionConditions + GuidanceContext + MotorRealization + Opportunities`
+A challenge-band exception that offers notes previewed and then hidden for a
+material that has been tested but never successfully retrieved. Its clock uses
+`last_retrieval_attempt_at`. It prevents never-successful material from becoming
+permanently trapped under continuous cueing.
 
-**Decision:** the compositional definition is canonical. It's what makes
-`GuidanceContext` a first-class part of the evidence model rather than UI state,
-which is load-bearing for the whole memory/execution split in `02-v1-design.md`
-§9. The flat definition in `v1-domain-model.md` §6.3 is superseded.
+### Candidate
 
-## 4. `LearnerState` vs. `SessionState`
+A domain-valid `Exercise` considered by the scheduler. Candidate generation uses
+domain and instrument constraints but no learner state.
 
-`02-v1-design.md` and `03-v1-math.md` only model persistent state
-(`LatentCompetencyState`, `MaterialMemoryState`, `MaterialExecutionState`). The
-transient, within-session layer from `product-vision.md` §12 (warm-up, fatigue,
-temporary performance variation) was dropped somewhere along the way, not
-deliberately retired.
+### Cold-start estimate
 
-**Decision:** restore it as a distinct layer:
+The estimated probability of independently retrieving exact material before the
+first successful retrieval establishes a memory anchor. It is stored in logit
+form and has uncertainty separate from current-durability uncertainty.
 
-```text
-LearnerState
-    persistent across sessions
-    LatentCompetencyState + MaterialMemoryState + MaterialExecutionState
+### Competency
 
-SessionState
-    transient, within a single practice session
-    warm-up signal, fatigue signal, temporary performance deviation
-```
+A persistent, transferable latent learner capability estimated from relevant
+practice across materials. `Competency` is the canonical term; older documents
+may use `KnowledgeComponent`, `KC`, or `Component`.
 
-Without it, a bad last ten minutes of a session can get interpreted as
-persistent competency loss rather than transient state: an inference correctness
-issue, not just a UX gap. Exact math is not decided here (§14). `SessionState`
-may feed `SchedulerSafetyPolicy` (§8) alongside direct workload signals, but
-isn't the only input a safety rule can use.
+V1 estimates ten competencies: four scale-topology competencies, right- and
+left-hand scale execution, scalar crossing, multi-octave continuation, direction
+reversal, and hands-together coordination.
 
-## 5. Acquisition / Development / Maintenance
+### CompetencyCategory
 
-`product-vision.md` §13 treats ADM as an explicit state each competency
-occupies, governing practice methodology. Neither `02-v1-design.md` nor
-`03-v1-math.md` has an ADM variable.
+An organizational label over competencies with no estimated learner state of its
+own. `SCALE_TOPOLOGY` and `SCALE_EXECUTION` are categories, not latent
+variables.
 
-**Decision:** that's the right evolution, stated explicitly rather than left
-looking like an oversight. The continuous probabilistic state already does what
-ADM was for. ADM survives only as a derived, user-facing description, never as
-stored model state:
+### Consolidation
 
-```text
-ACQUISITION   ~ low/uncertain capability; substantial instructional support
-DEVELOPMENT   ~ improving capability; progressively independent performance
-MAINTENANCE   ~ established capability; periodic evidence/review
-```
+See **Retained consolidation**.
 
-The scheduler doesn't need to know which bucket a competency is "in" to operate.
-`02-v1-design.md` should get a short note saying this, so nobody re-adds a
-discrete stage field believing it was never considered.
+### Current durability
 
-## 6. Scheduler structure
+The half-life currently governing decay from `memory_anchor_at`. It is positive,
+may be corrected by factual elapsed retrieval evidence, and never exceeds
+retained consolidation.
 
-`product-vision.md` §14 and `01-research.md` §22 each sketched a weighted-sum
-scheduler utility; `03-v1-math.md` §20-§22 instead uses candidate generation →
-challenge-band filter → priority ranking. Treating difficulty as a filter rather
-than a penalty term fighting a challenge-seeking term in the same sum is a real
-structural improvement; the two earlier formulas are retired.
+### Derived evidence
 
-```text
-candidate generation         (domain constraints - canonical fingering exists,
-                               tempo in bounds, ... - decide what gets
-                               generated at all, not a filter applied after)
-        ↓
-eligibility                  (REQUIRES prerequisite gate + SchedulerSafetyPolicy)
-        ↓
-challenge filtering          (p_min ≤ p̂ ≤ p_max, with named exceptions)
-        ↓
-priority ranking             (retention, information, diversity, goals)
-```
+The interpretation of raw and summarized observations used to update a
+particular state channel. It includes factual retrieval status and
+channel-specific evidence weights.
 
-`REQUIRES` (`v1-domain-model.md` §17) belongs in the eligibility stage, not as a
-weighted term competing with retention/information/diversity/ goals. Applied in
-`03-v1-math.md` §20. Full stage-by-stage information-boundary contract - what
-each stage may read, what it must leave to another stage -
-`learner-model/04-v1-scheduler.md`.
+### Eligibility tier
 
-## 7. `InstrumentProfile` (new)
+An ordered scheduler classification derived from pedagogical prerequisites. The
+current tiers are `FULLY_ELIGIBLE` and `PROVISIONALLY_ELIGIBLE`. Tier is the
+first ranking key, not a weighted utility term.
 
-Not previously modeled anywhere. The learner model interprets timing and
-velocity as evidence of motor competency; instrument differences are a real
-confound, and a generated exercise can request a register the connected
-controller doesn't have.
+### Evidence weight
 
-**Decision:** add `InstrumentProfile` to the domain model, with an explicit
-V1-required/deferred split rather than speculative completeness:
+An attempt-specific measure of how informative an observation is about one state
+channel. Competencies use `w[a,k]`; material memory and execution use distinct
+`w_M` and `w_r` values. There is no universal attempt confidence scalar.
+
+### Exercise
+
+A requested task composed from `TechnicalMaterial`, `ExercisePattern`,
+`ExecutionConditions`, `GuidanceContext`, `MotorRealization`, and observable
+`Opportunities`. The older flat exercise shape in `v1-domain-model.md` is
+superseded.
+
+### ExercisePattern
+
+The ordering or transformation applied to technical material. V1 implements
+`LINEAR`.
+
+### ExecutionConditions
+
+The requested hand configuration, direction, octave count, tempo, and related
+physical conditions of an exercise. These parameterize task difficulty rather
+than material identity.
+
+### Factual retrieval
+
+A retrieval observation that actually occurred. Its three values are:
 
 ```text
-InstrumentProfile
-    key_count / playable_range      REQUIRED in V1: hard constraint on
-                                     candidate generation; do not schedule an
-                                     exercise whose register doesn't fit
-    measured_latency?               deferred; only matters if timing is ever
-                                     interpreted against generated sound or an
-                                     external clock; raw inter-onset MIDI
-                                     timing is largely unaffected
-    action_type?                    deferred metadata; record it, but do not
-                                     normalize scores against it without
-                                     evidence
-    velocity_available
-    velocity_curve/calibration?     deferred metadata, same reasoning
-    capabilities
+true    factual retrieval was tested and succeeded
+false   factual retrieval was tested and failed
+null    retrieval was not factually tested
 ```
 
-## 8. `SchedulerSafetyPolicy` (new): practice-load constraints, not fatigue diagnosis
+“Factual” means retrieval was tested without concurrent answer-supplying cues.
+Continuous pitch cues produce `null`, not a weak failure. Notes previewed and
+then hidden remain a lower-demand factual test.
 
-Not previously modeled. An autonomous scheduler built around Challenge Point
-theory is, by design, going to keep pushing tempo/difficulty toward the
-learner's frontier repeatedly, across many keys, with no session-length concept.
-That has real overuse/RSI implications for a physical motor-skill domain, and
-nothing in the document set addressed it.
+### FingeringPattern
 
-**Decision:** add a policy layer that may consume `SessionState` alongside
-direct workload/session-history signals, but does **not** perform medical/injury
-inference (KeyRecall should be cautious about claiming MIDI behavior indicates
-physical risk). Conservative, non-diagnostic workload guardrails, not contingent
-on successfully detecting fatigue:
+The concrete canonical fingering for one scale, form, hand, and direction. It is
+authoritative domain data. The retired `FingeringGroup` term should not be used
+as a synonym.
+
+### Fluency Profile
+
+The user-facing interpretation of internal learner state, such as “recall
+strong; right-hand execution developing.” It is derived presentation, not an
+additional latent state.
+
+### GuidanceContext
+
+The instructional and cueing conditions surrounding an attempt, including prior
+instruction, notes previewed before performance, continuous cues during
+performance, and feedback policy. Guidance changes retrieval demand and evidence
+interpretation.
+
+### Guidance probe
+
+A challenge-band exception that presents an anchored material with one step less
+guidance after the configured interval since its last factual retrieval success.
+It tests whether support can fade.
+
+### Half-life
+
+The elapsed time over which predicted independent retrievability falls by half
+under the V1 forgetting curve:
+
+```math
+M(t)=2^{-\Delta t/h}
+```
+
+### InstrumentProfile
+
+The connected instrument's relevant physical capabilities. V1 requires enough
+range information to prevent generation of exercises that do not fit the
+instrument. Other hardware metadata remains descriptive unless validated as a
+model input.
+
+### LearnerState
+
+Persistent state across practice sessions:
 
 ```text
-SchedulerSafetyPolicy
-    limits sustained high-demand repetition
-    encourages variation over long high-intensity runs
-    can surface rest recommendations
-    avoids escalating difficulty further under a fatigue-consistent SessionState signal
+LatentCompetencyState
+MaterialMemoryState
+MaterialExecutionState
 ```
 
-This sits in the eligibility/filtering part of the pipeline in §6: it constrains
-what the scheduler will choose, not another ranking term.
+It excludes short-lived scheduling context in `SessionState`.
 
-## 9. `Fluency Profile`: restored as the explicit user-facing abstraction
+### MaterialExecutionState
 
-`product-vision.md` §32.2 proposed this as the learner-facing surface over the
-internal state. It doesn't appear anywhere in `02-v1-design.md` or
-`03-v1-math.md`, which only got more detailed about the internal state during
-the same period. Given how far that internal state now goes
-(`LatentCompetencyState`, `MaterialMemoryState`, `MaterialExecutionState`, and
-now `SessionState`), a translation layer to something a user can actually read
-matters more, not less.
+A dynamic, partially pooled learner-by-material-by-execution-context residual.
+It captures persistent material-specific procedural readiness not already
+explained by transferable competencies or task difficulty.
 
-**Decision:** restore it explicitly. `02-v1-design.md` should state the boundary
-directly:
+### MaterialMemoryState
 
-```text
-Internal (never shown raw):
-    LatentCompetencyState, MaterialMemoryState,
-    MaterialExecutionState, SessionState
+The exact-material state containing activation, current durability, retained
+consolidation, cold-start belief, uncertainty, and factual retrieval history. It
+is keyed by learner and `TechnicalMaterial`, not by hand or exercise variant.
 
-User-facing (derived):
-    Fluency Profile
-        e.g. "C# minor: recall strong, RH execution developing,
-              LH execution strong"
+### MotorFamily
+
+A higher-level equivalence class over mechanically derived motor realizations.
+`DIATONIC_3_4_CYCLE` is domain structure, not learner state.
+
+### MotorRealization
+
+The mechanically derived realization of a `FingeringPattern`, including phases,
+crossings, continuations, reversals, and other technical events.
+
+### Observation
+
+A raw or derived fact about an attempt, such as MIDI events, pitch integrity,
+continuity, temporal stability, tempo, or local behavior near an expected motor
+event. Observations remain richer than the persistent latent state.
+
+### Opportunity
+
+A location or condition in an exercise where a competency could be observed,
+such as a scalar crossing, octave continuation, reversal, or hands-together
+coordination event. Opportunity does not claim that the expected fingering was
+actually used.
+
+### Parameter Registry
+
+The versioned numeric configuration for learner and scheduler behavior. Current
+registries are `analysis/learner-model/params.toml` and
+`analysis/scheduler/config.toml`. Their V1 values are heuristic unless
+explicitly documented otherwise.
+
+### Partial pooling
+
+The behavior by which sparse material-specific evidence remains close to a
+shared learner prediction, while repeated direct evidence permits a larger
+personalized residual. V1 approximates this locally with zero-centered priors,
+conservative updates, and mean reversion.
+
+### Q-matrix
+
+The structural mapping from exercises to transferable competencies:
+
+```math
+Q_{e,k}\in\{0,1\}
 ```
 
-The Fluency Profile's labels (`strong`/`developing`/etc.) are derived
-presentations, not claims of a one-to-one correspondence with specific latent
-variables, same spirit as the ADM labels in §5.
+`Q[e,k] = 1` means exercise `e` creates an opportunity to observe competency
+`k`. It does not state how strong the predictor loading or actual evidence is.
 
-## 10. Two registries, kept distinct
+### Recovery
 
-`product-vision.md` §27 proposed an **Assumption Registry** for
-conceptual/design uncertainty. `03-v1-math.md` §25-§26 independently built a
-**Parameter Registry** for numerical model configuration. These look similar but
-answer different questions.
+An exclusive challenge-band exception immediately after a factual retrieval
+failure. The recovery target is the same material and motor task with exactly
+one step more guidance.
 
-**Decision:** keep both; state the boundary so nobody merges them:
+### Repetition guard
 
-```text
-Assumption Registry
-    claims about the world or the design
-    e.g. "standard MIDI cannot directly observe fingering"
-         "HT transfer from RH+LH is only partial"
-    fields: ID, title, assumption, basis, evidence strength,
-            confidence, observable/falsifier, status
+A selection-time policy that prevents an over-repeated material from winning
+when another admitted material exists. It never removes the only admitted
+option.
 
-Parameter Registry
-    numerical model configuration
-    e.g. residual.prior_variance = ..., provenance: heuristic
-    fields: value, provenance category, model version
-```
+### Retained consolidation
 
-A Parameter Registry entry may cite an Assumption Registry ID as its basis (e.g.
-a heuristic memory half-life citing the HLR-precedent assumption), but they are
-not interchangeable, and an assumption is not automatically a parameter.
+The slower durability envelope retained from prior learning. It supports savings
+and restoration of current durability but does not directly enter V1 prediction
+or scheduling.
 
-Neither registry currently exists as an actual file; both are still prose ("open
-questions" / "explicit non-decisions" lists and the §25-26 provenance scheme).
-Standing them up as real, structured, greppable files is listed as pending work
-in §14.
+### Retrieval demand
 
-## 11. Notation: `03-v1-math.md` symbol cleanup
+A number in `[0,1]` describing how much independent production a guidance
+configuration requires. In the current prototype, continuous cues use `0.05`,
+notes previewed use `0.6`, and unguided practice uses `1.0`. Continuous cues
+still have zero retrieval opportunity because retrieval is not observed.
 
-The math document is close enough to implementation that readability should beat
-compact single-letter typography, and it currently reuses letters for unrelated
-quantities within itself:
+### Retrieval opportunity
 
-| Current              | Meaning                                            | Collides with                                            | Rename to                      |
-| -------------------- | -------------------------------------------------- | -------------------------------------------------------- | ------------------------------ |
-| `D_motor(e)`         | motor/execution task difficulty (§10-11)           | its own component below                                  | `Diff_motor(e)`                |
-| `D_e`                | direction effect, a term inside `D_motor(e)` (§11) | `D_motor(e)` itself                                      | `Dir_e`                        |
-| `G(e)`               | goal-relevance, scheduler ranking (§22)            | none currently; historically `G_e` (see below)           | `Goal(e)`                      |
-| `I(e)`               | information value, scheduler ranking (§22)         | `I_sequence` below                                       | `Info(e)`                      |
-| `I_sequence`         | sequence/pitch integrity, memory evidence (§6.1)   | `I(e)` above                                             | `Seq` (or `Seq_e`)             |
-| `V(e)`               | diversity/interleaving value (§22)                 | none, renamed for consistency                            | `Div(e)`                       |
-| `R(e)`               | retention/review need, scheduler ranking (§22)     | none, renamed for consistency                            | `Ret(e)`                       |
-| `d_e`                | retrieval demand ∈ [0,1] (§6)                      | none, but easy to misread next to `Dir_e`                | keep `d_e`, flag as distinct   |
-| `w_R, w_I, w_D, w_G` | scheduler ranking weights (§22)                    | case-collide with `w_r` (execution residual weight, §16) | `w_ret, w_info, w_div, w_goal` |
+The ability of a candidate to produce genuine retrieval evidence. It is zero
+when retrieval is not observed and otherwise equals retrieval demand. Retention
+and information scores use it so a candidate cannot benefit from evidence it is
+structurally unable to collect.
 
-`O_e` (octave effect) and `H_e` (hand-configuration effect), both in §11, don't
-collide with anything and can stay as-is.
+### Savings
 
-`D(e)` (the pre-hurdle-split "total task difficulty") and `G_e`
-(guidance/support difficulty effect, formerly a term inside it) are retired, not
-renamed: simulation (`analysis/learner-model/`) split retrieval availability
-from execution difficulty, and guidance now affects the former, not the latter
-(`03-v1-math.md` §10-11, §18). `D(e)` became `D_motor(e)` above; `G_e` has no
-successor symbol because it no longer corresponds to anything the model
-computes.
+Faster reacquisition after apparent forgetting because retained consolidation
+survives below current readiness. A learner with prior durable practice need not
+behave like a true beginner even when current performance is similar.
 
-## 12. Placement priors: self-report maps primarily to the mean, not the variance
+### SchedulerSafetyPolicy
 
-`product-vision.md` §5 describes collecting a rough self-report ("new to scales"
-/ "some experience" / "advanced") before practice begins. `03-v1-math.md` §4.1
-defines `μ_{0,k}` and `σ²_{0,k}` as "heuristic priors" without saying how
-self-report maps to them, a real gap since synthetic cold-start behavior in the
-simulation harness (§28-29) depends on it.
+Conservative workload constraints applied before challenge admission. V1
+implements a session-attempt cap and makes no medical or injury diagnosis from
+performance data.
 
-**Decision:** self-report shifts the **prior mean**, while **uncertainty stays
-broad regardless of tier**:
+### SessionState
 
-```text
-beginner        lower μ0,   broad σ0
-some experience moderate μ0, broad σ0
-advanced        higher μ0,  still meaningfully broad σ0
-```
+Transient scheduler context within a practice session, currently including the
+attempt count, recent-material history, and the last failed exercise. It is
+separate from persistent `LearnerState`.
 
-Uncertainty staying broad (rather than shrinking with a more confident
-self-report tier) is what lets the first few diagnostic exercises dominate
-quickly instead of the self-report anchoring the estimate too strongly. The
-exact numeric mapping from tier to `μ0` is a heuristic V1 parameter (Parameter
-Registry, `provenance: heuristic`), not decided here.
+### Structural opportunity
 
-## 13. Citation hygiene
+See **Q-matrix**.
 
-`01-research.md`'s citation for the 2026 VR piano-training paper (currently
-"_Adaptive Visual Hand Guidance for Piano Training_ (2026)", arXiv:2603.06253)
-should be corrected to its actual title and authors: _"Skill-Adaptive Ghost
-Instructors: Enhancing Retention and Reducing Over-Reliance in VR Piano
-Learning"_ (Hsieh, Visser, Eisemann, Marroquim). Small, mechanical fix, bundled
-into the pending-edits list in `README.md` §4 rather than applied here since it
-touches document content.
+### TechnicalMaterial
 
-## 14. Resolution ledger: deferred and resolved items
+The underlying musical object being practiced. For V1 scales, identity is
+primarily tonic plus scale form. Hand, tempo, octave count, direction, pattern,
+and guidance are not part of material identity.
 
-Tracks the items this document originally flagged as explicitly not decided
-here, so the vocabulary/authority pass didn't quietly expand into resolving open
-design questions it wasn't meant to settle, and records resolutions as they land
-in later passes so a reader isn't left thinking an item is still open once it
-isn't. Deferred still means what it says for everything below that isn't marked
-resolved.
+## Mathematical symbols
 
-- ~~**Q-matrix reconciliation itself**~~: **resolved**, see `03-v1-math.md` §9.
-  `PRIMARY`/`SECONDARY`/`NONE` is retired from the Q-matrix entirely: a binary
-  structural `Q_{e,k}`, a derived predictor loading `q_{e,k}`, and a per-attempt
-  evidence weight `w_{a,k}`. The ten-Competency ontology (§1) and
-  `FingeringPattern` field rename (§2) are both applied.
-- **`SessionState` mathematics**: decay function, what counts as an informative
-  fatigue signal (§4).
-- **`InstrumentProfile` field boundary** beyond the V1-required
-  `key_count`/`playable_range` (§7).
-- **`SchedulerSafetyPolicy` thresholds**: what "sustained high-demand
-  repetition" means numerically (§8).
-- **Placement-prior numeric values**: the mapping philosophy is decided (§12),
-  the actual `μ0`/`σ0` numbers per self-report tier are not.
-- **Standing up the two registries as real files** rather than prose
-  open-questions lists (§10).
+| Symbol                                   | Meaning                                       |
+| ---------------------------------------- | --------------------------------------------- |
+| `u`                                      | learner                                       |
+| `m`                                      | technical material                            |
+| `c`                                      | execution context, primarily RH/LH/HT         |
+| `e`                                      | exercise                                      |
+| `a`                                      | attempt                                       |
+| `k`                                      | transferable competency                       |
+| `theta[u,k]`                             | latent competency state                       |
+| `mu[k]`, `sigma²[k]`                     | competency mean and variance                  |
+| `M[m](t)`                                | predicted independent material retrievability |
+| `h_current`, `h_consolidated`            | current and retained half-lives               |
+| `r[u,m,c]`                               | material-specific execution residual          |
+| `Q[e,k]`                                 | binary structural opportunity                 |
+| `q[e,k]`                                 | derived predictor loading                     |
+| `w[a,k]`, `w_M`, `w_r`                   | channel-specific evidence weights             |
+| `d[e]`                                   | retrieval demand                              |
+| `Diff_motor(e)`                          | conditional motor-task difficulty             |
+| `Ret(e)`, `Info(e)`, `Div(e)`, `Goal(e)` | scheduler priority terms                      |
 
----
+## Retired terms
 
-## 15. Summary table
-
-| Old term(s)                                           | Canonical                                                            | Status                       |
-| ----------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------- |
-| `KnowledgeComponent`, `KC`, `Component`               | `Competency`                                                         | rename                       |
-| `FingeringGroup`                                      | _(retired)_, see `FingeringPattern`/`MotorRealization`/`MotorFamily` | retire, not rename           |
-| flat `Exercise` (`v1-domain-model.md` §6.3)           | compositional `Exercise` (`02-v1-design.md`)                         | supersede                    |
-| _(missing)_                                           | `LearnerState` / `SessionState` split                                | restore                      |
-| ADM as persistent state                               | ADM as derived label only                                            | retire as state              |
-| 3 scheduler utility formulas                          | eligibility → challenge filter → priority ranking                    | supersede 2, keep 1          |
-| _(missing)_                                           | `InstrumentProfile`                                                  | add                          |
-| _(missing)_                                           | `SchedulerSafetyPolicy`                                              | add                          |
-| _(dropped)_                                           | `Fluency Profile`                                                    | restore                      |
-| Assumption Registry vs. Parameter Registry            | both, distinct responsibilities                                      | clarify, don't merge         |
-| `D(e)`/`D_e`/`G(e)`/`I(e)`/`I_sequence`/`V(e)`/`R(e)` | see §11 table                                                        | rename for collision-freedom |
-| `G_e`                                                 | _(retired)_, see §11                                                 | retire, not rename           |
-| _(missing)_                                           | self-report → `μ0` mapping philosophy                                | decide                       |
+| Retired                                            | Use instead                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `KnowledgeComponent`, `KC`, `Component`            | `Competency`                                                                   |
+| `FingeringGroup`                                   | `FingeringPattern`, `MotorRealization`, or `MotorFamily`, according to meaning |
+| flat `Exercise` record                             | compositional `Exercise`                                                       |
+| discrete acquisition/development/maintenance state | derived Fluency Profile language                                               |
+| `PRIMARY`/`SECONDARY` Q entries                    | `Q`, predictor loading `q`, and attempt evidence `w`                           |

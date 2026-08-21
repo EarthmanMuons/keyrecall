@@ -1,5 +1,10 @@
 # KeyRecall V1 Learner-Model Design
 
+> **Reader note:** This document preserves the architectural reasoning at the
+> point before the equations and scheduler policy were finalized. Start with
+> [`v1-current-system.md`](v1-current-system.md) for the integrated adopted V1
+> system; use this document for the deeper domain and state-design rationale.
+
 ## 1. Purpose
 
 This document specifies the V1 learner-model architecture for KeyRecall.

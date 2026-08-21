@@ -1,5 +1,11 @@
 # Learner Model Research
 
+> **Reader note:** This document is the research and design-evidence record, not
+> the shortest description of the adopted system. Start with
+> [`v1-current-system.md`](v1-current-system.md) for current V1 behavior, then
+> return here for sources and the boundary between research support and
+> KeyRecall-specific synthesis.
+
 **Status:** Research foundation for learner-state and adaptive scheduling
 design\
 **Scope:** Transferable competencies, item memory, evidence modeling, level

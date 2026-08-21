@@ -1,8 +1,7 @@
 """Performance model (§10) and evidence/update model (§9.3, §14-§18).
 
-Uses descriptive names rather than 03-v1-math.md's single-letter symbols
-(D(e), D_e, G_e, ...): that notation cleanup (GLOSSARY.md §11) is still
-pending and code doesn't need to inherit its collisions.
+Uses the collision-free descriptive notation summarized in GLOSSARY.md rather
+than historical single-letter symbols retained in parts of 03-v1-math.md.
 """
 
 from __future__ import annotations
@@ -185,7 +184,7 @@ class Outcome:
 @dataclass(frozen=True)
 class EvidenceWeights:
     """w[a,k] (§9.3), w_r (§16), w_M (§18): three distinct quantities, not
-    one scalar (GLOSSARY.md §11)."""
+    one scalar (GLOSSARY.md, “Evidence weight”)."""
 
     competencies: dict[str, float]
     material_execution: float

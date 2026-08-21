@@ -1,5 +1,10 @@
 # V1 Scheduler Architecture
 
+> **Reader note:** This document is authoritative for stage information
+> boundaries and preserves the scheduler experiment record. Start with
+> [`v1-current-system.md`](v1-current-system.md) §8 for the adopted production
+> policy without the experiment chronology.
+
 ## 1. Purpose
 
 This document specifies the V1 scheduler's pipeline and, specifically, the
@@ -64,14 +69,15 @@ next exercise
 
 This reconciles two slightly different framings already in the doc set.
 `03-v1-math.md` §20 describes hard domain constraints as two layers _within_
-candidate generation; `GLOSSARY.md` §6's diagram shows domain constraints and
-prerequisite eligibility as steps before it. Both are right about different
-things: hard domain/instrument constraints determine what candidate generation
-is even capable of producing, so they belong inside stage 1 as generation-time
-constraints, not a filter applied after generating invalid candidates. The
-`REQUIRES` prerequisite gate is genuinely a separate, learner-state-dependent
-stage, since it needs current competency state to evaluate - that's stage 2.
-`GLOSSARY.md` §6's diagram is updated to match.
+candidate generation; the integrated current-system guide shows domain
+constraints and prerequisite eligibility as steps before it. Both are right
+about different things: hard domain/instrument constraints determine what
+candidate generation is even capable of producing, so they belong inside stage 1
+as generation-time constraints, not a filter applied after generating invalid
+candidates. The `REQUIRES` prerequisite gate is genuinely a separate,
+learner-state-dependent stage, since it needs current competency state to
+evaluate - that's stage 2. `v1-current-system.md` §8 shows the resulting current
+pipeline.
 
 ## 4. Stage 1: Candidate generation
 
@@ -84,7 +90,7 @@ to present right now.
 ```text
 TechnicalMaterial x ExercisePattern x ExecutionConditions x GuidanceContext
     x MotorRealization combinatorics (02-v1-design.md §4-8)
-InstrumentProfile (key_count / playable_range, GLOSSARY.md §7)
+InstrumentProfile (key_count / playable_range, `GLOSSARY.md`)
 ```
 
 **Forbidden inputs:** `LatentCompetencyState`, `MaterialMemoryState`,
@@ -516,11 +522,12 @@ comparison alone (`select_next(run_pipeline(...))`, skipping the guard) is a
 real gap this document flags explicitly, not a valid shortcut - it silently
 reproduces the perseveration failure the guard exists to prevent.
 
-### 7.4 Open
+### 7.4 Initial-production decision
 
-Whether `U(e)` is a weighted sum or the lexicographic R>I>V>G ordering
-`03-v1-math.md` §22 sketches, the exact weights, and the eligibility-tier
-count/labels are scheduler-simulation work (§9), not decided here.
+Scheduler simulation adopted the lexicographic R>I>V>G ordering. Together with
+eligibility tier as the primary key, it is the frozen initial-production policy
+recorded in `05-production-implementation-plan.md` §3.2. V1 uses no weighted-sum
+scheduler weights.
 
 ## 8. Information boundary summary
 
@@ -576,9 +583,9 @@ guidance probe's elapsed-time threshold (§6.2) - heuristic value; the
 repetition guard's consecutive-selection cap (§7.3) - likewise; Pass 3
     (§10.1) found it sampled-robust over [2, 8], and confirmed the
     documented cap-below-window dependency with recent_window (config.toml)
-priority weights (w_R, w_I, w_D, w_G) vs. the lexicographic alternative -
-    simulation used and validated lexicographic (§10); the weighted-sum
-    alternative remains untried, not ruled out
+priority ordering - simulation used and validated lexicographic R>I>V>G (§10),
+    now frozen for initial production; the untried weighted-sum alternative is
+    not a V1 production path
 eligibility-tier count/labels and exactly what promotes/demotes a candidate
     between tiers (§7.1)
 whether/how a provisionally-eligible candidate can be deliberately chosen
@@ -609,7 +616,7 @@ resulting behavior is any good; `scenarios.py` (10 checks) runs the pipeline
 longitudinally, driving `analysis/learner-model/simulate.py`'s own `run()` loop
 through `SchedulerAgent` (`agent_pick`/`agent_on_outcome` hooks) rather than a
 second update simulator, and asks whether the resulting behavior is actually
-good. Both suites pass alongside the learner model's own 26 invariants.
+good. Both suites pass alongside the learner model's own 32 invariants.
 
 `03-v1-math.md` §30's pathology list motivated the scenarios below; most of them
 found real problems, which drove the revisions described in §6.1-§6.4, §7.2, and
@@ -2388,9 +2395,8 @@ material; it does not replace it.
                           MaterialMemoryState field this document's §6.4
                           consumes but does not own; §5.5 is authoritative
                           for what it means
-GLOSSARY.md §6            scheduler structure decision; diagram updated to
-                          match §3 above
-GLOSSARY.md §7/§8         InstrumentProfile, SchedulerSafetyPolicy
+v1-current-system.md §8   integrated current scheduler explanation
+GLOSSARY.md               InstrumentProfile, SchedulerSafetyPolicy, and terms
 v1-domain-model.md §17     REQUIRES
 analysis/scheduler/        executable counterpart to this document: pipeline.py
                             implements stages 2-4 and the boundary contract,

@@ -1,5 +1,11 @@
 # V1 Learner-Model Mathematics
 
+> **Reader note:** This is the detailed mathematical and learner-experiment
+> record. It deliberately retains clearly marked superseded proposals and
+> calibration questions. Start with
+> [`v1-current-system.md`](v1-current-system.md) for the current equations and
+> production policy without that history.
+
 ## 1. Purpose
 
 This document specifies the smallest mathematically coherent learner model
@@ -1376,7 +1382,7 @@ V    diversity or interleaving value
 G    learner-goal priority
 ```
 
-The exact utility equation is not frozen.
+The weighted equation above was not frozen and was not adopted for V1.
 
 A simpler lexicographic V1 is also acceptable:
 
@@ -1388,7 +1394,10 @@ A simpler lexicographic V1 is also acceptable:
 5. respect learner goals
 ```
 
-Simulation should compare the two approaches before implementation.
+Scheduler simulation adopted and validated this lexicographic form. It is the
+frozen initial-production policy; see `04-v1-scheduler.md` §7 and
+`05-production-implementation-plan.md` §3.2. The weighted form above is retained
+as historical design context, not an alternative production path.
 
 ## 23. Review urgency
 
@@ -1483,7 +1492,7 @@ octave penalty
 HT penalty
 guidance mapping
 challenge band
-scheduler weights
+scheduler policy constants
 ```
 
 ### 25.4 Empirically fitted
@@ -1562,9 +1571,9 @@ placement:
 `success_growth`/`failure_shrink` (multiplicative half-life factors) and
 `gamma_memory` (the single-logit memory-transform coefficient) from earlier
 versions of this registry are retired along with the equations they belonged to
-(§5.2, §10.0); they are not renamed fields, they no longer exist. A `scheduler`
-section does not exist yet: challenge-band and priority-ranking parameters
-(§21-22) remain unimplemented.
+(§5.2, §10.0); they are not renamed fields, they no longer exist. Scheduler
+parameters now live separately in `analysis/scheduler/config.toml`;
+`04-v1-scheduler.md` is authoritative for their policy semantics.
 
 Persisting `model_version` with derived learner state and attempts allows later
 replay and comparison.
@@ -1628,11 +1637,11 @@ These are test fixtures, not learner labels intended for the product UI.
 Before adding scheduling, verify:
 
 This list is no longer purely aspirational:
-`analysis/learner-model/invariants.py` implements it as 31 passing checks
+`analysis/learner-model/invariants.py` implements it as 32 passing checks
 against the code in `analysis/learner-model/{state,model,synthetic}.py`, run via
-`uv run analysis/learner-model/invariants.py`. §29.1-§29.8 below are covered; three
-categories weren't anticipated when this list was first written and were added
-once simulation exposed the need for them:
+`uv run analysis/learner-model/invariants.py`. §29.1-§29.8 below are covered;
+three categories weren't anticipated when this list was first written and were
+added once simulation exposed the need for them:
 
 ```text
 motor and topology competency updates are independent (§10.1, §15)

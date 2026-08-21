@@ -585,7 +585,7 @@ evidence to the learner model.
 > (`DIATONIC_3_4_CYCLE`), differentiated by phase and boundary rather than group
 > membership. The **pattern** remains authoritative domain data;
 > `FingeringPattern` → `MotorRealization` → `MotorFamily` is the current triad
-> (`GLOSSARY.md` §2).
+> (`GLOSSARY.md`, “FingeringPattern”).
 
 ### 6.3 `Exercise`
 

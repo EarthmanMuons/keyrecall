@@ -62,7 +62,7 @@ AgentOutcomeFn = Callable[[Exercise, Outcome, float], None]
 def initial_state(
     profile: TrueLearnerProfile, params: Params, now: float = 0.0
 ) -> LearnerState:
-    """Cold start seeded from self-report tier (GLOSSARY.md §12): shifts the
+    """Cold start seeded from self-report tier: shifts the
     prior mean, keeps uncertainty broad regardless of tier."""
     tier_mean = {
         "beginner": params.placement.beginner_mean,

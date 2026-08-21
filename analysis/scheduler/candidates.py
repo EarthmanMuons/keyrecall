@@ -35,7 +35,7 @@ GUIDANCE_VARIANTS: tuple[GuidanceContext, ...] = (
 
 @dataclass(frozen=True)
 class InstrumentProfile:
-    """GLOSSARY.md §7. key_count gates max playable octave span; a
+    """GLOSSARY.md, InstrumentProfile. key_count gates max playable octave span; a
     deliberately simple proxy (octaves * 12 <= key_count) stands in for
     real register/capability checking until domain data exists."""
 
@@ -44,7 +44,7 @@ class InstrumentProfile:
 
 @dataclass
 class SessionState:
-    """GLOSSARY.md §4/§8. attempts_this_session and recent_material_ids
+    """GLOSSARY.md, SessionState/SchedulerSafetyPolicy. attempts_this_session and recent_material_ids
     drive SchedulerSafetyPolicy (§5.2) and diversity (§7.2);
     last_failed_exercise drives the "recovery after failure" challenge
     exception (§6) - the exercise itself, not just whether one failed, so
