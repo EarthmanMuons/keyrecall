@@ -380,7 +380,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        help="Directory for generated CSVs (default: input directory)",
+        default=Path(__file__).with_name("generated"),
+        help="Directory for generated CSVs (default: ./generated)",
     )
     parser.add_argument(
         "--octaves",
@@ -402,7 +403,7 @@ def main() -> None:
         or args.yaml
         or Path(__file__).with_name("motor-realizations.yaml")
     )
-    output_dir = args.output_dir or input_path.parent
+    output_dir = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
 
     with input_path.open(encoding="utf-8") as fh:

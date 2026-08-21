@@ -1630,7 +1630,7 @@ Before adding scheduling, verify:
 This list is no longer purely aspirational:
 `analysis/learner-model/invariants.py` implements it as 31 passing checks
 against the code in `analysis/learner-model/{state,model,synthetic}.py`, run via
-`mise run analysis:learner-model`. §29.1-§29.8 below are covered; three
+`uv run analysis/learner-model/invariants.py`. §29.1-§29.8 below are covered; three
 categories weren't anticipated when this list was first written and were added
 once simulation exposed the need for them:
 
