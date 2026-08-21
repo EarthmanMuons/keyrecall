@@ -1,7 +1,7 @@
 # KeyRecall Documentation Map
 
 - **Status:** Current navigation and authority map
-- **Last aligned:** August 20, 2026
+- **Last aligned:** August 21, 2026
 
 ## Start here
 
@@ -27,7 +27,8 @@ docs/
 ├── GLOSSARY.md
 │
 ├── design/
-│   └── product-vision.md
+│   ├── product-vision.md
+│   └── future-planning.md           deferred seams, hypotheses, and closed ideas
 │
 ├── domain-model/
 │   ├── fingering-taxonomy.md
@@ -63,6 +64,7 @@ information-boundary invariants, and 10 longitudinal scheduler scenarios.
 | Future competency admission, validation, and calibration workflow | `learner-model/competency-extension-guide.md`                             |
 | Canonical terminology and symbols                                 | `GLOSSARY.md`                                                             |
 | Product thesis, UX, privacy principles                            | `design/product-vision.md`                                                |
+| Deferred architectural, product, and domain hypotheses            | `design/future-planning.md`                                               |
 | Canonical scale fingering                                         | `domain-model/fingering-taxonomy.md`                                      |
 | Derived motor family, phase, crossing, and continuation structure | `domain-model/motor-taxonomy.md`                                          |
 | Domain entities not superseded below                              | `domain-model/v1-domain-model.md`                                         |
@@ -87,6 +89,7 @@ The documents have different jobs:
 v1-current-system.md     what V1 does and why, without chronology
 competency-extension-guide.md
                          how a future competency earns promotion
+future-planning.md       what is deliberately deferred or closed by default
 01-05                    how the design was justified, tested, and prepared
 git history              exact sequence of individual revisions
 ```

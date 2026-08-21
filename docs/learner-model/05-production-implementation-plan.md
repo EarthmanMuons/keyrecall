@@ -734,6 +734,10 @@ being changed.
 
 ## 13. Gates for reopening the frozen systems
 
+[`../design/future-planning.md`](../design/future-planning.md) inventories
+reserved seams, deferred hypotheses, and closed ideas. Their inclusion there
+does not lower the following gates.
+
 ### 13.1 Learner model
 
 Reopen learner-state structure or transition semantics only when real,

@@ -1,0 +1,682 @@
+# Future Planning
+
+- **Status:** Deliberately deferred design space
+- **Last aligned:** August 21, 2026
+- **Scope:** Post-V1 architectural seams, empirical hypotheses, domain growth,
+  and product ideas worth preserving
+
+## 1. Purpose and reopening discipline
+
+This document records ideas KeyRecall has intentionally deferred. It is not a
+roadmap commitment, release sequence, or alternative production specification.
+The canonical initial-production system remains
+[`../learner-model/v1-current-system.md`](../learner-model/v1-current-system.md).
+
+V1 is deliberately simpler than the full design space. That simplicity should
+not erase promising architectural seams, but neither should an old idea regain
+authority merely because it appears in a planning document.
+
+Every item here belongs to one of three categories:
+
+```text
+reserved extension
+    the current architecture has an intentional place for it
+    evidence must still justify activating that seam
+
+deferred hypothesis
+    plausible and worth testing, but its representation is not decided
+
+domain or product expansion
+    valuable scope beyond the initial scale-focused implementation
+```
+
+Structural changes remain subject to the reopening gates in
+[`../learner-model/05-production-implementation-plan.md`](../learner-model/05-production-implementation-plan.md).
+New competencies and prediction channels must additionally follow
+[`../learner-model/competency-extension-guide.md`](../learner-model/competency-extension-guide.md).
+
+The general admission rule is:
+
+> Preserve the architectural seam now. Add latent state or policy only when
+> replayable real observations show that the simpler V1 representation has a
+> repeatable, identifiable failure.
+
+## 2. Reserved architectural extensions
+
+### 2.1 Transient session state
+
+V1 does not model warm-up or fatigue. Its current `SessionState` contains only
+the attempt count, recent-material history, and exact recovery context. This is
+a deliberate scope boundary, not an architectural oversight.
+
+Warm-up, fatigue, current readiness, and similar short-lived effects do not
+belong in:
+
+- persistent transferable competency;
+- exact-material memory; or
+- persistent material/context execution residuals.
+
+They are candidate **transient latent state**: temporary changes in how well
+held capability is expressed during a practice session.
+
+The reserved decomposition is:
+
+```text
+persistent capability
+    transferable competencies
+    exact-material memory
+    material/context residuals
+
+transient readiness
+    session-wide execution deviation
+    eventually, distinguishable warm-up and fatigue components
+
+task
+    nominal exercise difficulty
+
+observed performance
+    persistent capability + transient readiness - difficulty + noise
+```
+
+The main value is attribution correctness. Without a transient explanation,
+broad temporary underperformance can become negative evidence about persistent
+competencies and material residuals.
+
+#### 2.1.1 Start with one execution offset
+
+The first useful model should not begin with separate sophisticated warm-up and
+fatigue processes. It should test whether real histories identify one uncertain,
+session-wide motor-performance offset:
+
+```text
+session_execution_offset
+session_execution_uncertainty
+```
+
+The execution predictor would become:
+
+```math
+\eta_{\mathrm{exec}}(e,t) =
+\sum_{k\in K_{\mathrm{motor}}}q^{(\mathrm{motor})}_{e,k}\widetilde\mu_k
++ \mu_{r,m,c}
++ s_u(t)
+- D_{\mathrm{motor}}(e)
+```
+
+where `s_u(t)` is transient and session-local. The transient state must not
+persist as ordinary long-term ability. Whether a future estimator resets it
+between sessions, carries a decayed prior, or models recovery across measured
+rest is an empirical design question.
+
+The first estimand is not “fatigue” or “warm-up.” It is narrower:
+
+> Current motor performance is temporarily better or worse than the persistent
+> learner state predicts.
+
+That is closer to what MIDI evidence can support and avoids medical or causal
+claims the observations cannot establish.
+
+#### 2.1.2 Require diverse cross-task evidence
+
+One poor exercise must not create a session-state diagnosis. An F-sharp minor
+failure could reflect material memory, the F-sharp residual, a crossing
+competency, requested difficulty, or ordinary noise.
+
+Evidence for a shared transient cause becomes more credible when unexpected
+execution error appears across materially and structurally diverse tasks, for
+example:
+
+```text
+F-sharp minor RH
+C major LH
+G major HT
+D minor RH
+```
+
+The empirical question is:
+
+> After conditioning on persistent competencies, material/context residuals,
+> guidance, task difficulty, and known observation noise, do execution errors
+> share a within-session component across unrelated exercises?
+
+The estimator should require multiple diverse observations and retain broad
+uncertainty. Repeated trouble on one material is evidence for a local residual,
+not session-wide state.
+
+#### 2.1.3 Warm-up and fatigue are interpretations of temporal shape
+
+If a shared transient factor is identifiable, its within-session trajectory may
+support more specific hypotheses.
+
+Warm-up-like behavior:
+
+```text
+session start
+    unexpectedly weak execution across varied tasks
+
+initial activity
+    rapid broad improvement toward persistent prediction
+
+later
+    stable performance
+```
+
+Fatigue-like behavior:
+
+```text
+session start or middle
+    performance near persistent prediction
+
+accumulated workload
+    broad execution deterioration
+
+continued workload
+    persistent or worsening decrement
+```
+
+A later model might decompose the transient effect as:
+
+```math
+s_u(t)=W_u(t)-F_u(t)
+```
+
+with a short-lived warm-up deficit `W` that dissipates through activity and a
+fatigue term `F` that accumulates through workload and recovers through rest.
+This factorization is a deferred hypothesis. It should not be implemented until
+the simpler shared offset is identifiable and the two temporal signatures are
+separately supported.
+
+#### 2.1.4 Session state must change evidence attribution
+
+The complete extension is more than a scheduler heuristic. Session state should
+participate in three places:
+
+```text
+session state
+    -> modifies conditional execution prediction
+    -> changes attribution of execution residuals
+    -> informs scheduler challenge and safety decisions
+```
+
+Suppose persistent state predicts strong execution but several late-session,
+unrelated attempts underperform. If a session adjustment explains that pattern,
+the estimator should avoid attributing the full residual to long-term
+competencies and material residuals.
+
+Conceptually, poor execution creates competing explanations:
+
+```text
+observed execution error
+    -> transferable competency evidence
+    -> material/context residual evidence
+    -> transient session-state evidence
+```
+
+Attribution must depend on structural exposure, material locality, cross-task
+covariance, temporal position, workload, and uncertainty. A session factor must
+not become a convenient sink that masks genuine persistent weakness.
+
+#### 2.1.5 Keep the first session effect out of memory
+
+The initial extension should affect only the motor execution channel. It should
+not change:
+
+```text
+independent retrieval
+current or retained durability
+consolidation inference
+factual retrieval history
+```
+
+Transient attention may affect retrieval in reality, but that distinction is
+harder to identify and is not required to protect motor competency estimates.
+The first semantic boundary should be:
+
+> Session readiness changes how well currently held motor capability is
+> expressed; it does not rewrite what the learner knows or how durable that
+> knowledge is.
+
+#### 2.1.6 Scheduler integration should mostly emerge from prediction
+
+Once the session offset changes conditional execution, the existing prediction
+pipeline naturally changes candidate admission:
+
+```math
+\widehat p_{\mathrm{exec}}(e,t)
+\longrightarrow
+\widehat p_{\mathrm{overall}}(e,t)
+```
+
+A negative transient offset can move harder candidates below the ordinary
+challenge band and shift the set of candidates that fall within it. Recovery of
+the offset can expand the challenge set again. This is cleaner than adding a
+fatigue penalty to priority ranking or a special class of “warm-up exercises.”
+
+A separate hard safety/workload policy may still suggest a break or stop after
+an unusually long or demanding session. It must remain conservative and
+non-diagnostic. Prediction adaptation and workload safety answer different
+questions and should not be collapsed into one fatigue score.
+
+#### 2.1.7 Preserve the evidence needed now
+
+V1 should log enough local, replayable context to test the session hypothesis
+later:
+
+- practice session identifier;
+- attempt-slot and selection ordinal within the session;
+- exact timestamps and inter-attempt gaps;
+- cumulative active practice time when reliably measurable;
+- exercise difficulty dimensions;
+- prediction components before the attempt;
+- continuity, stability/evenness, achieved tempo, synchronization, and localized
+  execution observations;
+- material and competency structural exposures;
+- guidance and recovery context; and
+- reliable pause or app-backgrounding events, if available.
+
+This supports questions such as:
+
+```text
+first few selections systematically underperform?
+    possible warm-up-like shape
+
+late selections systematically underperform?
+    possible fatigue-like shape
+
+effect weakens after a break?
+    stronger transient-recovery evidence
+
+effect spans unrelated motor structures?
+    stronger session-wide evidence
+
+effect remains confined to one material?
+    prefer the material residual
+```
+
+#### 2.1.8 Characterization and admission gate
+
+Synthetic characterization should contrast at least:
+
+```text
+stable learner
+    no session effect
+
+warm-up learner
+    unchanged persistent skill; early transient execution deficit that fades
+
+fatigue learner
+    unchanged persistent skill; late broad execution deficit
+
+material-weak learner
+    local persistent deficit; no session effect
+
+competency-weak learner
+    related-task persistent deficit; no session effect
+
+mixed learners
+    warm-up plus genuinely weak competency
+    fatigue plus genuinely weak material
+```
+
+The model must avoid:
+
+- inferring fatigue from one noisy attempt;
+- mistaking material-local weakness for session state;
+- mistaking persistent competency weakness for warm-up;
+- permanently changing competencies because of a transient truth;
+- using session state to mask genuine long-term decline; and
+- contaminating retrieval or durability estimates.
+
+Real-data admission additionally requires:
+
+- repeatable conditioned within-session residual structure;
+- coverage across varied materials, execution contexts, workloads, gaps, and
+  learner ability;
+- held-out improvement in execution calibration;
+- reduced corruption of persistent state under later observations;
+- stable retrieval calibration;
+- scheduler consequence characterization under the unchanged policy; and
+- an observable pre-decision signal strong enough to affect prediction safely.
+
+This is a post-V1 structural extension. It adds a fourth learner-state layer and
+changes prediction/evidence attribution, so it must clear a higher bar than a
+routine competency addition.
+
+### 2.2 New prediction and outcome channels
+
+V1 separates retrieval, supported availability, conditional execution, and
+topology. Rich observations such as expressive timing or velocity control are
+not automatically latent state.
+
+If a future capability answers a genuinely new question and should influence
+prediction or challenge admission independently, it may require a new channel
+with its own:
+
+- latent state and uncertainty;
+- prediction;
+- observed outcome;
+- prediction error;
+- evidence weights;
+- update path; and
+- scheduler consequence analysis.
+
+This is a structural change, not a competency-enum addition. The distinction and
+admission workflow are defined in the competency extension guide.
+
+### 2.3 Population and hierarchical calibration
+
+The app should continue learning each individual locally. Optional, minimized,
+longitudinal telemetry may later improve the shared model through:
+
+- population-informed placement priors;
+- calibration families for learning, diffusion, and evidence strength;
+- estimated transfer relationships;
+- fitted residual pooling;
+- material and exercise difficulty effects;
+- uncertainty calibration; and
+- only after sufficient data, more sophisticated scheduling policies.
+
+This preserves two separate learning systems:
+
+```text
+the app learns this pianist
+    local history and immediate adaptation
+
+the project learns how pianists learn
+    optional aggregate evidence and versioned model refinement
+```
+
+Population fitting must not become a prerequisite for local operation.
+
+## 3. Learner-model extensions
+
+### 3.1 Performance envelopes
+
+V1 maintains interpretable latent state and rich outcomes but does not model a
+complete performance envelope. Future learner-facing or predictive summaries may
+distinguish:
+
+- reliable tempo under defined conditions;
+- frontier tempo;
+- variability around each tempo;
+- first-attempt reliability;
+- delayed retrieval reliability;
+- hands-together synchronization range;
+- robustness across direction, octave span, register, articulation, or rhythm;
+  and
+- recovery after error.
+
+An envelope should not become a bag of independent mastery scores. Some values
+may be derived from the existing predictor across task conditions; others may
+need new state only if longitudinal evidence shows persistent, separately
+identifiable variation. Derived envelopes must remain conditional on task
+definition, including relevant material, hands, octave span, direction, and
+guidance.
+
+### 3.2 Competency growth
+
+The V1 state/update machinery is designed to admit future competencies without
+rewriting memory or scheduler stages. Residual covariance may reveal missing
+transferable structure across materials.
+
+All proposals follow the competency extension guide: identifiability,
+nonredundancy, transfer, observational replay, held-out calibration, unchanged-
+policy scheduler characterization, and deterministic state migration.
+
+### 3.3 Richer performance-control dimensions
+
+Possible future dimensions include:
+
+- pulse stability;
+- subdivision evenness;
+- tempo tolerance;
+- velocity consistency;
+- dynamic balance;
+- articulation control;
+- repeated-note control; and
+- expressive timing.
+
+Many already belong in preserved observations. They should become competencies
+or prediction channels only when data establish persistent, useful, and
+identifiable learner differences after conditioning on current motor state,
+material residuals, difficulty, and session effects.
+
+## 4. Scheduler and product extensions
+
+### 4.1 Explicit user goals and focus
+
+V1 reserves `Goal(e)` but sets it to zero because no goal model exists. Future
+goals may include:
+
+- exam or curriculum requirements;
+- a selected scale-form or minor-scale focus;
+- arpeggio preparation;
+- target tempos or performance dates;
+- temporary focus areas;
+- free-practice requests; and
+- explicit learner overrides.
+
+Goal relevance belongs in the established goal term and product constraints. It
+must not silently redefine learner competence, evidence, prerequisites, or
+challenge prediction.
+
+### 4.2 Acquisition, development, and maintenance as practice regimes
+
+V1 does not store acquisition/development/maintenance as discrete learner
+states. The continuous probabilistic model already represents capability and
+uncertainty more faithfully.
+
+The deferred question is whether derived learner/material relationships should
+change practice methodology:
+
+```text
+acquisition-like
+    more guidance and supported repetition
+
+development-like
+    progressive cue fading, variable challenge, delayed tests
+
+maintenance-like
+    wider spacing and more interleaved independent retrieval
+```
+
+These should remain derived policy regimes, not authoritative latent labels.
+Their value must be tested against the existing prediction and evidence model.
+
+### 4.3 Adaptive contextual-interference intensity
+
+V1 implements a diversity term and repetition guard. A richer hypothesis is that
+useful interleaving depends on current stability:
+
+```text
+early acquisition
+    more blocked or narrowly varied practice
+
+developing stability
+    increasing variation among related tasks
+
+established performance
+    highly mixed retrieval and transfer practice
+```
+
+Contextual-interference effects are task- and learner-dependent. Any adaptive
+policy must be characterized under unchanged learner semantics and clear
+forward-learning outcomes, not justified by diversity for its own sake.
+
+### 4.4 Fatigue-aware workload and rest policy
+
+A credible transient session estimate could inform challenge and safety. The
+scheduler might avoid sustained highest-demand work, diversify overloaded
+movement, or recommend a break.
+
+Two related forms of state must remain distinct:
+
+```text
+workload facts
+    elapsed active time, repetitions, breaks, task demand
+
+transient performance estimate
+    inferred deviation from persistent execution capability
+```
+
+Safety policy must not wait for a latent fatigue inference to become reliable.
+Conservative workload constraints can remain direct, and neither path should
+claim to diagnose injury or medical risk from MIDI behavior.
+
+### 4.5 Preserve the sessionless UX
+
+Future scheduler intelligence remains constrained by a core product principle:
+
+> Open the app, play what it gives you, and stop whenever you want.
+
+There is no “behind” state. Lookahead is soft and revisable. New goals,
+maintenance regimes, fatigue adaptation, or population-trained policies must not
+turn practice into a rigid calendar or punish irregular use.
+
+## 5. Domain expansion
+
+The long-term technical-practice domain may include:
+
+- modes;
+- arpeggios and inversions;
+- contrary-motion exercises;
+- rhythmic and articulation variants;
+- scales in thirds, sixths, tenths, or other intervals;
+- broken-chord patterns;
+- advanced regimen-derived or Russian-style patterns;
+- symmetric, whole-tone, and diminished scales; and
+- additional provenance-backed technical-material families.
+
+These remain inside technical-practice scope. They are not a commitment to
+general repertoire instruction.
+
+Each new material family needs its own topology, canonical fingering research,
+motor realization, structural opportunities, difficulty mapping, observations,
+and extension characterization. An arpeggio is not a scale with a different
+exercise pattern. Each family must also state explicitly which existing learner
+states should transfer into it and which states are intentionally new.
+
+### 5.1 Alternative fingerings
+
+V1 teaches one canonical fingering. Future legitimate alternatives should be
+provenance-backed `FingeringPattern` records, not untracked overrides.
+
+Alternative patterns may:
+
+- map to an existing motor realization/family;
+- introduce a distinct realization while sharing competencies;
+- expose new structural opportunities; or
+- eventually justify a new competency only after identifiability and transfer
+  evidence.
+
+The design must decide whether memory remains attached to musical material while
+execution residuals or observations distinguish the chosen realization. It must
+never infer the finger actually used from standard MIDI alone.
+
+## 6. Learner-facing product ideas
+
+### 6.1 Fluency Profile
+
+Internal model state should not be shown raw. A future Fluency Profile may
+translate it into useful descriptions of:
+
+- recall and delayed reliability;
+- accuracy and continuity;
+- timing and tempo capability;
+- right/left/combined coordination;
+- consistency and robustness; and
+- current readiness versus longer-term retention where evidence supports a
+  useful distinction.
+
+These are derived presentations, not one-to-one latent variables. Labels must
+communicate uncertainty and avoid implying precision the model does not have.
+
+### 6.2 “Why this exercise?” explanations
+
+Candidate and update traces can support concise explanations such as:
+
+```text
+This scale has not been tested independently for several days.
+This tempo is challenging but currently achievable.
+The notes are previewed because the previous retrieval attempt failed.
+This key exercises a crossing pattern that transfers to related scales.
+```
+
+Explanations must be generated from facts the scheduler actually consumed. They
+must not retrofit a plausible story after selection or expose raw latent values
+as objective truths.
+
+## 7. Empirical and population learning
+
+Future empirical work should prioritize questions that can change a named state,
+prediction, evidence path, or decision:
+
+- Is there a repeatable within-session execution curve after conditioning on
+  persistent state and task difficulty?
+- Which residual covariance patterns support new transferable competencies?
+- Which performance-envelope summaries improve forward prediction or learner
+  understanding?
+- How should priors and calibration families vary across learner histories?
+- Which transfer relationships reproduce across learners and material families?
+- When does additional interleaving improve later performance rather than only
+  change immediate difficulty?
+- How do user goals affect adherence and learning without distorting inference?
+
+Use learner- and time-based holdouts, preserve repeated-measures structure,
+report uncertainty and coverage, and retain immutable original histories for
+replay. Policy learning should begin only after the action space, outcomes, and
+counterfactual limitations are understood well enough to avoid optimizing noisy
+short-term completion.
+
+## 8. Explicitly closed ideas
+
+Closing a mechanism does not necessarily close the underlying problem it
+attempted to solve.
+
+The following are not open future proposals merely because they appear in older
+documents. Synthetic work rejected them, left them unpromoted, or replaced them
+with a clearer production mechanism:
+
+- the old weighted scheduler utility equation;
+- a generic scheduler “learning value” term;
+- cross-material memory or durability seeding;
+- post-success prediction bridges;
+- reduced first-encounter support based on global placement confidence;
+- generic guidance-probe cooldown or suppression;
+- substitution of the factual-attempt clock for factual-success history;
+- information-before-retention ranking exceptions;
+- conditional stronger-support probe exceptions;
+- motor-only recovery; and
+- hybrid recovery as a production policy.
+
+These results do not prove that no future empirical evidence could ever reopen a
+related question. They mean the ideas are **closed by default**: do not place
+them on a roadmap, implement them behind an unvalidated flag, or treat them as
+aspirational V2 features.
+
+The learner/scheduler experiment record in
+[`../learner-model/04-v1-scheduler.md`](../learner-model/04-v1-scheduler.md) and
+the frozen-system gates in
+[`../learner-model/05-production-implementation-plan.md`](../learner-model/05-production-implementation-plan.md)
+are authoritative for why and how a closed mechanism could be reconsidered.
+
+## 9. Planning summary
+
+Among the currently preserved hypotheses, the transient session execution factor
+is a particularly high-value early empirical question because it could prevent
+systematic corruption of persistent competency estimates. It should still begin
+as an identifiability question, not as a warm-up/fatigue feature commitment.
+
+The broader principle is consistent across every section:
+
+```text
+preserve rich observations and architectural seams
+    -> identify a repeatable failure of the simpler model
+    -> isolate the proposed explanation
+    -> compare through observational replay and held-out prediction
+    -> characterize scheduler and product consequences
+    -> promote only with versioned evidence and migration semantics
+```
+
+Until those gates are met, V1 remains the production contract and this document
+remains planning context.
