@@ -60,12 +60,10 @@ same exercise last time. A pianist might:
 
 V1 therefore separates three persistent-state questions:
 
-```text
-What transferable knowledge and technique does the learner have?
-Can the learner independently recall this exact material?
-Does this material/context have a persistent execution deviation
-from what the transferable competencies predict?
-```
+1. What transferable knowledge and technique does the learner have?
+2. Can the learner independently recall this exact material?
+3. Does this material/context have a persistent execution deviation from what
+   the transferable competencies predict?
 
 It stores an uncertain answer to each question. Prediction decomposes those
 beliefs into four quantities: independent retrieval, supported material
@@ -560,11 +558,9 @@ failure.
 Estimator correction and learning caused by practice are recorded separately.
 For an anchored factual retrieval, this execution order is mandatory:
 
-```text
 1. retained-consolidation likelihood inference
 2. current-durability evidence correction
 3. causal consolidation/current-durability transition
-```
 
 The ordering separates evidence about durability that existed before the attempt
 from learning caused by the attempt itself.
@@ -621,12 +617,10 @@ only when that decision produces an exercise to present; a no-admission slot has
 no selection and no presented attempt. This distinction must be preserved in
 session caps, replay, diagnostics, and telemetry.
 
-```text
 1. candidate generation
 2. eligibility and safety
 3. challenge admission
 4. priority ranking and selection
-```
 
 ### 8.1 Candidate generation
 
@@ -926,7 +920,6 @@ instead of adding more synthetic policy branches.
 
 Every presented attempt must be reconstructable as one ordered transaction:
 
-```text
 1. establish decision time and propagate state
 2. evaluate and select from traced candidates
 3. persist the decision before presentation
@@ -936,7 +929,6 @@ Every presented attempt must be reconstructable as one ordered transaction:
 7. run causal state transitions
 8. update session state
 9. persist the outcome, transition trace, and state-after reference
-```
 
 Outcome persistence and the resulting learner/session transition must be
 recoverable atomically. After an interruption, replay must resolve to either the
