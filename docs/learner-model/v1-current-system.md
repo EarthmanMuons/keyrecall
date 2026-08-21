@@ -19,13 +19,13 @@ on, and prose alone would lose that precision.
 
 A few symbols recur throughout and are worth knowing up front:
 
-```text
-mu              mean / best current estimate of something
-sigma^2         variance: how uncertain that estimate is (bigger = less sure)
-t, Delta t      a point in time / elapsed time since some reference point
-p, p-hat        probability; "hat" marks a model prediction
-y               observed outcome or bounded observed score
-```
+| Plain text     | Math                | Meaning                                                        |
+| -------------- | -------------------- | ---------------------------------------------------------------- |
+| `mu`           | $\mu$                | mean / best current estimate of something                       |
+| `sigma^2`      | $\sigma^2$            | variance: how uncertain that estimate is (bigger = less sure)   |
+| `t`, `Delta t` | $t$, $\Delta t$      | a point in time / elapsed time since some reference point       |
+| `p`, `p-hat`   | $p$, $\hat p$        | probability; "hat" marks a model prediction                     |
+| `y`            | $y$                   | observed outcome or bounded observed score                      |
 
 [`GLOSSARY.md`](../GLOSSARY.md) is the canonical, terse lookup for every term
 and symbol; this document is where each of them gets explained and motivated.
