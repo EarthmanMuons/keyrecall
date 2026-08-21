@@ -30,6 +30,12 @@ y               observed outcome or bounded observed score
 [`GLOSSARY.md`](../GLOSSARY.md) is the canonical, terse lookup for every term
 and symbol; this document is where each of them gets explained and motivated.
 
+A few standard mathematical and statistical terms below link out to Wikipedia on
+first use, for anyone who wants one level deeper than the plain-English
+explanation given here. Those links are explanatory aids, not citations: they
+are not evidence for why V1 made a particular design choice. The research basis
+for V1's choices is in §11 and [`01-research.md`](01-research.md).
+
 This is the **current view**. It deliberately omits abandoned equations,
 unsuccessful policy branches, future model ideas, and the chronology of how the
 design evolved. Those remain available in the research and experiment documents
@@ -148,8 +154,10 @@ is consulted.
 ### 4.1 Transferable competencies
 
 For each transferable competency `k`, V1 keeps two numbers: a best guess (mean)
-and how uncertain that guess is (variance). Statisticians write that as a normal
-("bell curve") distribution:
+and how uncertain that guess is
+([variance](https://en.wikipedia.org/wiki/Variance)). Statisticians write that
+as a [normal distribution](https://en.wikipedia.org/wiki/Normal_distribution)
+("bell curve"):
 
 ```math
 \theta_{u,k} \sim \mathcal{N}(\mu_{u,k}, \sigma^2_{u,k})
@@ -228,10 +236,11 @@ factual history         when retrieval was actually tested and succeeded
 ```
 
 After a successful retrieval has established an anchor, independent
-retrievability follows a half-life curve. "Half-life" is borrowed from
-radioactive decay: it's how long it takes for a quantity to fall to half its
-previous value. Here, that's how long until the modeled probability of unaided
-recall falls to 50% after the most recent activation anchor:
+retrievability follows a [half-life](https://en.wikipedia.org/wiki/Half-life)
+curve, borrowed from radioactive decay: it's how long it takes for a quantity to
+fall to half its previous value. Here, that's how long until the modeled
+probability of unaided recall falls to 50% after the most recent activation
+anchor:
 
 ```math
 M_m(t) = 2^{-\Delta t/h_{\mathrm{current},m}}
@@ -246,8 +255,9 @@ that is, after at least one successful factual retrieval (unguided or
 notes-previewed, but not concurrently cued; see §7.1). Before that first
 success, there's no anchor to measure decay from, so elapsed-time durability
 isn't identifiable yet. V1 falls back on a separate time-independent cold-start
-probability instead, using the standard logistic ("sigmoid") shape that squashes
-any raw score into a 0-1 probability:
+probability instead, using the standard
+[logistic](https://en.wikipedia.org/wiki/Logistic_function) ("sigmoid") shape
+that squashes any raw score into a 0-1 probability:
 
 ```math
 M_m(t) = \frac{1}{1+e^{-c_m}}
@@ -282,9 +292,10 @@ struggles with F major left hand can acquire a negative F-major/LH residual
 without weakening the global left-hand estimate by the entire discrepancy.
 
 New residuals start at zero with broad uncertainty, so sparse evidence remains
-strongly shrunk toward the shared prediction, a shrinkage idea common in
-statistical models: don't fully trust a material-specific deviation until
-repeated evidence supports it. During nonuse, the same idea as competency
+strongly shrunk toward the shared prediction, a
+[shrinkage](https://en.wikipedia.org/wiki/Shrinkage_%28statistics%29) idea
+common in statistical models: don't fully trust a material-specific deviation
+until repeated evidence supports it. During nonuse, the same idea as competency
 uncertainty above applies: an unreinforced residual fades back toward the shared
 prediction while the model grows less sure about it:
 
@@ -437,9 +448,9 @@ residual exception, and the difficulty score above into one raw score:
 - D_{\mathrm{motor}}(e)
 ```
 
-That raw score (a "logit," or log-odds) isn't itself a probability. The
-logistic/sigmoid formula below converts it into one, the same squashing shape
-used for cold-start memory in §4.2:
+That raw score (a "[logit](https://en.wikipedia.org/wiki/Logit)," or log-odds)
+isn't itself a probability. The logistic/sigmoid formula below converts it into
+one, the same squashing shape used for cold-start memory in §4.2:
 
 ```math
 \widehat p_{\mathrm{exec}}(e) =
@@ -608,24 +619,30 @@ history.
 This step answers a different question than §7.3: not "did they get it right
 just now," but "given how long it's been and what happened, what does that imply
 about the learner's deeper, retained durability?" V1 doesn't know that retained
-half-life `h_c` for certain, so instead of a single number it keeps a range of
-plausible values, each weighted by how likely it is: a probability distribution.
-If a factual retrieval observation occurs after a pre-existing anchor, the
-elapsed interval supplies evidence about that distribution. The formula below
-just says: "if the true retained half-life were `h_c`, this is the probability
-we'd have seen this outcome after this many days":
+half-life `h_c` for certain, so it does a small piece of
+[Bayesian inference](https://en.wikipedia.org/wiki/Bayesian_inference): it
+represents a range of plausible values for `h_c` and updates their relative
+plausibility as evidence arrives, rather than collapsing to a single number. If
+a factual retrieval observation occurs after a pre-existing anchor, the elapsed
+interval supplies evidence about that distribution. The formula below just says:
+"if the true retained half-life were `h_c`, this is the probability we'd have
+seen this outcome after this many days":
 
 ```math
 P(y=1\mid h_c,\Delta t)=2^{-\Delta t/h_c}
 ```
 
-V1 approximates its belief about `h_c` as a bell curve, but over `log(h_c)`
-rather than `h_c` itself. Half-lives are always positive and can span orders of
-magnitude, and working in log-space handles both cleanly. To update that belief,
-it checks a grid of candidate half-life values, scores each by how well it would
-have predicted the observed outcome (weighted by `w_M`, how informative this
-attempt was), and folds the result back into an updated mean and variance. The
-result is projected only as needed to preserve `h_current <= h_consolidated`.
+That's a
+[Bernoulli likelihood](https://en.wikipedia.org/wiki/Bernoulli_distribution):
+the probability of one success/failure outcome, evaluated for a candidate guess
+at `h_c`. V1 approximates its belief about `h_c` as a bell curve, but over
+`log(h_c)` rather than `h_c` itself. Half-lives are always positive and can span
+orders of magnitude, and working in log-space handles both cleanly. To update
+that belief, it checks a grid of candidate half-life values, scores each by how
+well it would have predicted the observed outcome (weighted by `w_M`, how
+informative this attempt was), and folds the result back into an updated mean
+and variance. The result is projected only as needed to preserve
+`h_current <= h_consolidated`.
 
 This inference does not run on:
 
@@ -638,10 +655,11 @@ Success and failure are both evidence. Execution quality is not. The update
 revises what the estimator believes was already retained; it does not claim that
 the attempt just caused that consolidation.
 
-The stored mean and variance describe this approximate inference posterior, the
-updated belief after folding in the evidence above. The causal transition that
-follows may then change the consolidation mean, but causal formation does not
-itself contract the posterior variance.
+The stored mean and variance describe this approximate inference
+[posterior distribution](https://en.wikipedia.org/wiki/Posterior_probability),
+the updated belief after folding in the evidence above. The causal transition
+that follows may then change the consolidation mean, but causal formation does
+not itself contract the posterior variance.
 
 ### 7.5 Current-durability correction
 
@@ -798,9 +816,10 @@ bootstrap probe    time since last factual retrieval attempt
 
 ### 8.4 Priority ranking
 
-Surviving candidates are ordered lexicographically, exactly like alphabetizing a
-dictionary: compare the first field, and only move to the next field if the
-first is tied:
+Surviving candidates are ordered
+[lexicographically](https://en.wikipedia.org/wiki/Lexicographic_order), exactly
+like alphabetizing a dictionary: compare the first field, and only move to the
+next field if the first is tied:
 
 ```text
 (eligibility tier, retention, information, diversity, goals)
@@ -1014,10 +1033,11 @@ was 0.288 and nominal 90% interval coverage was 96.2%. A 301-point grid agreed
 with a 1001-point grid within the declared 1% tolerance.
 
 Across the matched 250-trial scheduler matrix, enabling retained inference
-improved retrieval MAE from 0.124 to 0.120 and Brier score from 0.077 to 0.067,
-while overall-performance MAE remained 0.187. Recovery, guidance-probe, and
-no-admission rates were essentially unchanged. Concentration and maximum-gap
-tails rose modestly and remain explicit calibration guardrails.
+improved retrieval [MAE](https://en.wikipedia.org/wiki/Mean_absolute_error) from
+0.124 to 0.120 and [Brier score](https://en.wikipedia.org/wiki/Brier_score) from
+0.077 to 0.067, while overall-performance MAE remained 0.187. Recovery,
+guidance-probe, and no-admission rates were essentially unchanged. Concentration
+and maximum-gap tails rose modestly and remain explicit calibration guardrails.
 
 ### 12.5 The scheduler requires narrow structural safeguards
 
