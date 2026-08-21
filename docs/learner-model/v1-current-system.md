@@ -11,6 +11,25 @@ This document explains the learner model and scheduler that KeyRecall plans to
 ship in V1. It begins with the product problem, builds the mathematics one layer
 at a time, and ends with the evidence that supports the design.
 
+We've tried to explain the reasoning in plain English before or alongside each
+formula, so you shouldn't need a statistics background to follow the argument.
+The formulas are still here in full, though: they're the precise contract that
+the code, the TOML parameter files, and the other documents in this folder rely
+on, and prose alone would lose that precision.
+
+A few symbols recur throughout and are worth knowing up front:
+
+```text
+mu              mean / best current estimate of something
+sigma^2         variance: how uncertain that estimate is (bigger = less sure)
+t, Delta t      a point in time / elapsed time since some reference point
+p, p-hat        probability; "hat" marks a model prediction
+y               observed outcome or bounded observed score
+```
+
+[`GLOSSARY.md`](../GLOSSARY.md) is the canonical, terse lookup for every term
+and symbol; this document is where each of them gets explained and motivated.
+
 This is the **current view**. It deliberately omits abandoned equations,
 unsuccessful policy branches, future model ideas, and the chronology of how the
 design evolved. Those remain available in the research and experiment documents
@@ -65,13 +84,24 @@ V1 therefore separates three persistent-state questions:
 3. Does this material/context have a persistent execution deviation from what
    the transferable competencies predict?
 
-It stores an uncertain answer to each question. Prediction decomposes those
-beliefs into four quantities: independent retrieval, supported material
-availability, conditional motor execution, and topology knowledge. The scheduler
-admits candidates at an appropriate challenge level, and the evidence model
-updates only the state for which the completed attempt supplied real evidence.
+It stores an uncertain answer to each question. Prediction then breaks those
+beliefs into four separate numbers, each answering a narrower question about one
+upcoming attempt:
 
-The complete loop is:
+1. **independent retrieval**: could they recall it with no help at all?
+2. **supported material availability**: can they produce it right now, given
+   whatever help this attempt provides?
+3. **conditional motor execution**: assuming the material is available, can
+   their hands actually carry it out?
+4. **topology knowledge**: do they understand the underlying scale pattern,
+   separate from whether they can play it?
+
+The scheduler admits candidates at an appropriate challenge level, and the
+evidence model updates only the state that a completed attempt actually supplied
+real evidence for.
+
+At a high level, here is the loop that runs every time a learner is about to
+practice:
 
 ```text
 propagate state to now
@@ -89,7 +119,9 @@ propagate state to now
 
 ## 3. The exercise being predicted
 
-An `Exercise` is a composition, not a single database label:
+Before getting into beliefs and predictions, it helps to be precise about what
+one `Exercise` actually is. It's not a single row in a database, but a small
+bundle of independent choices:
 
 ```text
 TechnicalMaterial      what is being played: e.g. F# harmonic minor scale
@@ -115,7 +147,9 @@ is consulted.
 
 ### 4.1 Transferable competencies
 
-For each transferable competency `k`, V1 stores a mean and variance:
+For each transferable competency `k`, V1 keeps two numbers: a best guess (mean)
+and how uncertain that guess is (variance). Statisticians write that as a normal
+("bell curve") distribution:
 
 ```math
 \theta_{u,k} \sim \mathcal{N}(\mu_{u,k}, \sigma^2_{u,k})
@@ -154,8 +188,9 @@ confident. The current tiers initialize every competency mean to `-1.0`
 variance `1.5` in every tier. Direct performance can therefore override the
 self-report quickly.
 
-Right- and left-hand execution are separate, but an under-observed hand receives
-a prediction-only adjustment from the better-observed hand:
+Right- and left-hand execution are tracked separately, but if one hand is
+under-observed, its prediction gets a nudge toward the better-observed hand,
+without ever pretending we actually watched that hand play:
 
 ```math
 \widetilde\mu_k = \mu_k
@@ -167,7 +202,9 @@ The adjustment is largest while the target hand is uncertain and shrinks as its
 own direct evidence accumulates. It never records right-hand practice as a
 left-hand observation.
 
-During nonuse, competency means remain fixed while uncertainty diffuses:
+During nonuse, the mean estimate doesn't move. KeyRecall doesn't assume skill
+declined just because a learner took a break; only the model's confidence in
+that estimate erodes, growing over time:
 
 ```math
 \sigma_k^2(t + \Delta t) = \sigma_k^2(t) + \gamma_k\Delta t
@@ -178,8 +215,10 @@ directional skill loss without evidence.
 
 ### 4.2 Exact-material memory
 
-`MaterialMemoryState` answers whether one exact scale is independently
-available. It separates four meanings:
+This is the part of memory most people actually mean when they say "I don't
+remember that scale anymore." That's not "I never learned the skill," but "I
+haven't touched this exact material in a while." `MaterialMemoryState` answers
+whether one exact scale is independently available. It separates four meanings:
 
 ```text
 activation              when operative memory was last anchored
@@ -189,7 +228,10 @@ factual history         when retrieval was actually tested and succeeded
 ```
 
 After a successful retrieval has established an anchor, independent
-retrievability follows a half-life curve:
+retrievability follows a half-life curve. "Half-life" is borrowed from
+radioactive decay: it's how long it takes for a quantity to fall to half its
+previous value. Here, that's how long until the modeled probability of unaided
+recall falls to 50% after the most recent activation anchor:
 
 ```math
 M_m(t) = 2^{-\Delta t/h_{\mathrm{current},m}}
@@ -199,27 +241,36 @@ M_m(t) = 2^{-\Delta t/h_{\mathrm{current},m}}
 material after the elapsed interval. It does **not** mean a 50% chance of
 successfully executing the requested exercise.
 
-Before the first successful retrieval, elapsed-time durability is not
-identifiable because there is no anchor. V1 uses a separate cold-start
-probability:
+The half-life curve above only makes sense once we know when the clock started,
+that is, after at least one successful factual retrieval (unguided or
+notes-previewed, but not concurrently cued; see §7.1). Before that first
+success, there's no anchor to measure decay from, so elapsed-time durability
+isn't identifiable yet. V1 falls back on a separate time-independent cold-start
+probability instead, using the standard logistic ("sigmoid") shape that squashes
+any raw score into a 0-1 probability:
 
 ```math
 M_m(t) = \frac{1}{1+e^{-c_m}}
 ```
 
-Current and consolidated durability obey:
+Current and consolidated durability obey a simple ordering: current durability
+is always positive, never decays slower than retained/consolidated durability,
+and both are capped at a maximum:
 
 ```math
 0 < h_{\mathrm{current},m} \le h_{\mathrm{consolidated},m} \le h_{\mathrm{max}}
 ```
 
-Consolidation is retained learning, not current readiness. It does not directly
-enter prediction or scheduler ranking. It matters when later practice restores
-current durability, allowing reacquisition to be faster than first acquisition.
+Consolidation is retained learning, not current readiness: think of it as skill
+held in reserve. It does not directly enter prediction or scheduler ranking. It
+matters when later practice restores current durability, allowing reacquisition
+to be faster than first acquisition.
 
 ### 4.3 Material-specific execution
 
-For each material and execution context, V1 stores a residual:
+Alongside the shared competencies, V1 also tracks small, material-specific
+exceptions: a "residual" left over after accounting for general skill and task
+difficulty, for each material and execution context:
 
 ```math
 r_{u,m,c} \sim \mathcal{N}(\mu_{r,u,m,c}, \sigma^2_{r,u,m,c})
@@ -231,7 +282,11 @@ struggles with F major left hand can acquire a negative F-major/LH residual
 without weakening the global left-hand estimate by the entire discrepancy.
 
 New residuals start at zero with broad uncertainty, so sparse evidence remains
-strongly shrunk toward the shared prediction. During nonuse:
+strongly shrunk toward the shared prediction, a shrinkage idea common in
+statistical models: don't fully trust a material-specific deviation until
+repeated evidence supports it. During nonuse, the same idea as competency
+uncertainty above applies: an unreinforced residual fades back toward the shared
+prediction while the model grows less sure about it:
 
 ```math
 \mu_r(t + \Delta t) = \mu_r(t)e^{-\Delta t/\tau_r}
@@ -256,10 +311,15 @@ the attempt cap, diversity history, repetition guard, and exact recovery action.
 
 ## 5. Connecting exercises to competencies
 
-V1 uses three related quantities because “this exercise involves a competency”
-and “this attempt taught us about it” are different statements.
+It's easy to conflate three related but different ideas: "this exercise involves
+a competency," "this attempt was informative about it," and "how much weight
+should this competency get in the prediction." V1 keeps them as three separate
+quantities.
 
 ### 5.1 Structural opportunity
+
+This is a plain yes/no map baked into the exercise's structure: a statement
+about what the exercise _could_ teach us, not a belief about the learner:
 
 ```math
 Q_{e,k} \in \{0,1\}
@@ -279,8 +339,9 @@ the learner independently knew it.
 
 ### 5.2 Predictor loading
 
-Within each prediction channel, relevant `Q` entries receive equal provisional
-weight:
+If one exercise touches several competencies, how much should each count toward
+the prediction? Absent better information, V1 just splits the credit evenly
+among whichever competencies are actually in play for that channel:
 
 ```math
 q^{(C)}_{e,k} =
@@ -297,6 +358,9 @@ Equal loading avoids inventing precise relative weights before real data exists.
 
 ### 5.3 Attempt-specific evidence
 
+`Q` says an exercise _could_ tell us something about a competency. `w` says how
+much this particular attempt actually did, and those are different questions:
+
 ```math
 w_{a,k} \in [0,1]
 ```
@@ -311,12 +375,14 @@ and no retrieval evidence at all.
 
 ## 6. Predicting an attempt
 
-V1 predicts independent retrieval, material availability, motor execution, and
-topology separately.
+Rather than one "will they succeed" number, V1 makes four separate predictions
+for each candidate exercise: independent retrieval, supported material
+availability, conditional motor execution, and topology.
 
 ### 6.1 Retrieval versus supported availability
 
-Let `d_e` be retrieval demand:
+Let `d_e` be retrieval demand: how much independent, unassisted production a
+given guidance level actually requires.
 
 ```text
 continuous pitch cues     d = 0.05
@@ -324,13 +390,16 @@ notes previewed           d = 0.6
 unguided                  d = 1.0
 ```
 
-The exact-material memory prediction is `M_m(t)`:
+The independent, unguided-recall probability is just the memory-decay number
+from §4.2, unchanged:
 
 ```math
 \widehat p_{\mathrm{retrieval}}(e) = M_m(t)
 ```
 
-Guidance can make material available even when independent retrieval would fail:
+Guidance can prop up availability even when independent recall would fail: the
+more support given (the lower `d_e`), the closer availability gets to 1
+regardless of memory strength:
 
 ```math
 \widehat p_{\mathrm{available}}(e) = 1 - d_e(1-M_m(t))
@@ -344,7 +413,8 @@ the update are deliberately separate.
 
 ### 6.2 Conditional execution
 
-Motor difficulty is:
+Motor difficulty adds up everything that makes the physical task harder: faster
+tempo, extra octaves, hands together, or a change of direction mid-scale:
 
 ```math
 D_{\mathrm{motor}}(e) =
@@ -357,7 +427,8 @@ D_{\mathrm{motor}}(e) =
 Here `b_e` is requested BPM, `b_0` is reference BPM, `o_e` is octave count, and
 `I_HT`/`I_UD` indicate hands-together and ascending-then-descending tasks.
 
-The conditional execution logit is:
+The conditional execution logit combines shared motor skill, this material's own
+residual exception, and the difficulty score above into one raw score:
 
 ```math
 \eta_{\mathrm{exec}}(e) =
@@ -365,6 +436,10 @@ The conditional execution logit is:
 + \mu_{r,m,c}
 - D_{\mathrm{motor}}(e)
 ```
+
+That raw score (a "logit," or log-odds) isn't itself a probability. The
+logistic/sigmoid formula below converts it into one, the same squashing shape
+used for cold-start memory in §4.2:
 
 ```math
 \widehat p_{\mathrm{exec}}(e) =
@@ -376,7 +451,10 @@ it does not make the physical task easier once the material is available.
 
 ### 6.3 Topology belief
 
-Pitch/form knowledge has a parallel predictor:
+Pitch/form knowledge gets the same treatment as motor execution: a parallel
+predictor scored against topology competencies instead, with no motor-difficulty
+penalty, because this channel represents knowledge of the pitch/form structure
+rather than the physical demands of executing it:
 
 ```math
 \eta_{\mathrm{topology}}(e) =
@@ -394,6 +472,10 @@ answers whether the notes can be produced on this attempt.
 
 ### 6.4 Overall acceptable-performance probability
 
+Multiplying the two hurdle probabilities gives the probability used for
+challenge admission: can the material be produced, and, conditional on that, can
+the requested motor task be executed?
+
 ```math
 \widehat p_{\mathrm{overall}}(e) =
 \widehat p_{\mathrm{available}}(e)\widehat p_{\mathrm{exec}}(e)
@@ -409,18 +491,23 @@ clean cued performance   useful execution evidence, not retrieval evidence
 
 `p_overall` is the scheduler's challenge-admission probability: the modeled
 conjunction of material availability and conditional motor execution. It is not
-a universal latent “quality” variable and does not replace the multidimensional
+a universal latent "quality" variable and does not replace the multidimensional
 observed outcome. State updates retain the separate prediction and outcome
 channels.
 
 ## 7. Turning an attempt into evidence
+
+Predicting is only half the job. Once the learner actually plays, V1 has to turn
+what happened into updates to its beliefs.
 
 The observation pipeline preserves rich MIDI-derived outcomes, including pitch
 integrity, continuity, timing stability, achieved tempo, topology accuracy, and
 localized motor-event behavior. V1 reduces these only where a particular state
 update needs a bounded target.
 
-The three prediction errors are:
+Each prediction channel gets its own "surprise" number: actual outcome minus
+predicted outcome. A positive delta means the learner did better than expected;
+negative means worse. The three prediction errors are:
 
 ```math
 y_{\mathrm{motor}} =
@@ -459,18 +546,24 @@ factual retrieval timestamp. This categorical distinction prevents repeated
 fully cued practice from accumulating into false evidence of remembering or
 forgetting.
 
-“Factual” means retrieval was tested without concurrent answer-supplying cues.
+"Factual" means retrieval was tested without concurrent answer-supplying cues.
 An unguided attempt is the strongest independent test. Previewing notes and then
 hiding them remains a real, lower-demand factual test; it produces `True` or
 `False` with less weight than an unguided attempt.
 
 ### 7.2 Competency and residual updates
 
-For a relevant competency:
+For a relevant competency, this is a simple online error-correction update:
+nudge the mean toward the surprise (`delta`), scaled by how involved this
+competency was (`q`) and how informative this attempt was (`w`), times a
+learning-rate knob (`alpha`):
 
 ```math
 \mu'_k = \mu_k + \alpha_k q^{(C)}_{e,k}w_{a,k}\delta_C
 ```
+
+And shrink the uncertainty a bit whenever informative evidence arrived, bounded
+so it never drops below a floor:
 
 ```math
 \sigma_k'^2 =
@@ -478,7 +571,7 @@ For a relevant competency:
 ```
 
 Motor competencies use `delta_exec`; topology competencies use `delta_topology`.
-The execution residual uses the same motor-only error:
+The execution residual uses the same motor-only error and the same update shape:
 
 ```math
 \mu'_r = \mu_r + \alpha_r w_r\delta_{\mathrm{exec}}
@@ -491,12 +584,18 @@ evidence does neither.
 
 ### 7.3 Cold-start memory correction
 
-Before an anchor exists, a tested failure updates only the cold-start logit:
+Before an anchor exists (§4.2), a tested attempt still teaches us something: it
+just updates the time-independent cold-start probability instead of a decay
+curve:
 
 ```math
 c' = c + w_M\left[\alpha_c\left(y_{\mathrm{retrieval}}-\frac{1}{1+e^{-c}}\right)
 -\lambda_c(c-c_0)\right]
 ```
+
+`alpha_c` controls how fast a surprising outcome moves the estimate; the
+`lambda_c` term gently pulls it back toward a neutral prior `c_0`, so one lucky
+or unlucky attempt can't permanently swing the estimate on its own.
 
 The current half-life and its uncertainty do not move, because the attempt did
 not contain an elapsed anchored interval from which to infer durability. A first
@@ -506,18 +605,27 @@ history.
 
 ### 7.4 Retained-consolidation inference
 
+This step answers a different question than §7.3: not "did they get it right
+just now," but "given how long it's been and what happened, what does that imply
+about the learner's deeper, retained durability?" V1 doesn't know that retained
+half-life `h_c` for certain, so instead of a single number it keeps a range of
+plausible values, each weighted by how likely it is: a probability distribution.
 If a factual retrieval observation occurs after a pre-existing anchor, the
-elapsed interval also supplies evidence about retained durability. For a
-candidate consolidated half-life `h_c`:
+elapsed interval supplies evidence about that distribution. The formula below
+just says: "if the true retained half-life were `h_c`, this is the probability
+we'd have seen this outcome after this many days":
 
 ```math
 P(y=1\mid h_c,\Delta t)=2^{-\Delta t/h_c}
 ```
 
-V1 maintains an approximate Gaussian posterior over `log(h_c)`. It evaluates the
-Bernoulli likelihood on a bounded log-space grid, weighted by `w_M`, then stores
-the posterior mean and variance. The result is projected only as needed to
-preserve `h_current <= h_consolidated`.
+V1 approximates its belief about `h_c` as a bell curve, but over `log(h_c)`
+rather than `h_c` itself. Half-lives are always positive and can span orders of
+magnitude, and working in log-space handles both cleanly. To update that belief,
+it checks a grid of candidate half-life values, scores each by how well it would
+have predicted the observed outcome (weighted by `w_M`, how informative this
+attempt was), and folds the result back into an updated mean and variance. The
+result is projected only as needed to preserve `h_current <= h_consolidated`.
 
 This inference does not run on:
 
@@ -530,13 +638,17 @@ Success and failure are both evidence. Execution quality is not. The update
 revises what the estimator believes was already retained; it does not claim that
 the attempt just caused that consolidation.
 
-The stored mean and variance at this point describe the approximate inference
-posterior. The causal transition that follows may then change the consolidation
-mean, but causal formation does not itself contract the posterior variance.
+The stored mean and variance describe this approximate inference posterior, the
+updated belief after folding in the evidence above. The causal transition that
+follows may then change the consolidation mean, but causal formation does not
+itself contract the posterior variance.
 
 ### 7.5 Current-durability correction
 
-Once anchored, write `ell = log(h_current)`. Factual retrieval evidence updates:
+Same log-space trick as §7.4, now applied to current durability itself: write
+`ell = log(h_current)`. Working in log space keeps the half-life positive and
+puts big and small values on a comparable scale. Factual retrieval evidence
+updates:
 
 ```math
 \ell' = \ell + w_M\left[\alpha_M
@@ -547,13 +659,16 @@ Once anchored, write `ell = log(h_current)`. Factual retrieval evidence updates:
 The result is bounded and capped by retained consolidation. Because
 retained-consolidation inference runs first, this cap uses the consolidation
 state produced by step 1 of the memory update; newly inferred consolidation can
-therefore create headroom for current-durability correction. Working in log
-space keeps the half-life positive. Using prediction error makes surprising
-outcomes move the estimate more than outcomes the model already expected, while
-the reversion term creates a stable interior equilibrium under repeated expected
-failure.
+therefore create headroom for current-durability correction. Using prediction
+error makes surprising outcomes move the estimate more than outcomes the model
+already expected, while the reversion term creates a stable interior equilibrium
+under repeated expected failure.
 
 ### 7.6 Causal memory formation and restoration
+
+So far, §7.4 and §7.5 corrected the model's estimate of durability that already
+existed. This section covers the other half: durability the practice itself just
+created.
 
 Estimator correction and learning caused by practice are recorded separately.
 For an anchored factual retrieval, this execution order is mandatory:
@@ -593,7 +708,9 @@ consolidation_delta_from_retrieval_inference
 consolidation_delta_from_causal_formation
 ```
 
-The production memory update must preserve these semantic invariants:
+These are the non-negotiable rules the implementation must never violate,
+regardless of which numeric parameters are in play. The production memory update
+must preserve these semantic invariants:
 
 ```text
 h_current <= h_consolidated
@@ -647,7 +764,8 @@ or injury from MIDI behavior.
 
 ### 8.3 Challenge admission
 
-Ordinary candidates must satisfy:
+Ordinary candidates must land in a "not too easy, not too hard" band on the
+overall probability computed in §6.4:
 
 ```math
 p_{\mathrm{min}}\le\widehat p_{\mathrm{overall}}(e)\le p_{\mathrm{max}}
@@ -680,11 +798,17 @@ bootstrap probe    time since last factual retrieval attempt
 
 ### 8.4 Priority ranking
 
-Surviving candidates are ordered lexicographically:
+Surviving candidates are ordered lexicographically, exactly like alphabetizing a
+dictionary: compare the first field, and only move to the next field if the
+first is tied:
 
 ```text
 (eligibility tier, retention, information, diversity, goals)
 ```
+
+So eligibility tier always wins first; no amount of retention, information, or
+diversity advantage lets a provisional candidate outrank a fully eligible one.
+There is no hidden weighted sum blending these together.
 
 The terms are:
 
@@ -693,9 +817,11 @@ R(e)=
 (1-\widehat p_{\mathrm{retrieval},m})\,o_{\mathrm{retrieval}}(e)
 ```
 
-`R` is high when a material is at risk and this candidate can actually test
-retrieval. A continuously cued candidate has zero retrieval opportunity and
-cannot win by exploiting a memory deficit it cannot resolve.
+`R` is the retention score: how urgent it is to test this material before it's
+forgotten, weighted by whether this candidate can actually produce real
+retrieval evidence. It's high when a material is at risk and this candidate can
+actually test retrieval. A continuously cued candidate has zero retrieval
+opportunity and cannot win by exploiting a memory deficit it cannot resolve.
 
 ```text
 Info(e)   weighted uncertainty exposed by this candidate's competency,
@@ -732,8 +858,9 @@ admission, or ranking.
 
 ## 9. One attempt from end to end
 
-Suppose the scheduler considers an 80 BPM, two-octave, right-hand G-major scale
-with notes previewed and then hidden.
+Here's what all of the above looks like for one concrete attempt. Suppose the
+scheduler considers an 80 BPM, two-octave, right-hand G-major scale with notes
+previewed and then hidden.
 
 1. The domain structure marks opportunities for major topology, right-hand
    execution, scalar crossing, multi-octave continuation, and reversal.
@@ -806,13 +933,15 @@ require reopening the architecture.
 ## 11. Why this design is defensible
 
 Research supports the model families and qualitative constraints. It does not
-supply piano-specific coefficients or this exact combined architecture.
+supply piano-specific coefficients or this exact combined architecture. You
+don't need to know this literature to use the system; the citations below are
+for anyone who wants to go deeper.
 
 | V1 choice                                | Research basis                                                     | What KeyRecall contributes                                                                                                                   |
 | ---------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Shared competencies updated across tasks | PFA, DAS3H, knowledge tracing, multidimensional IRT                | The ten scale-specific competency ontology and MIDI evidence mapping                                                                         |
 | Exact-material time-dependent memory     | HLR and ACT-R-derived practice scheduling                          | Separate current durability, retained consolidation, activation, and factual clocks                                                          |
-| Partial pooling of material effects      | Hierarchical and crossed-effects modeling                          | Zero-centered material/context residuals with broad initial uncertainty and reversion toward shared state; population-level fitting deferred |
+| Shrinkage of material effects            | Hierarchical and crossed-effects modeling                          | Zero-centered material/context residuals with broad initial uncertainty and reversion toward shared state; population-level fitting deferred |
 | Separate motor and material state        | Procedural-retention and effector-specific motor-learning evidence | The retrieval/availability/execution hurdle split                                                                                            |
 | Guidance-sensitive retrieval evidence    | Retrieval-practice and guidance-fading research                    | Three-valued factual retrieval and a categorical no-evidence boundary under continuous cues                                                  |
 | Challenge admission                      | Challenge Point framework                                          | A broad configurable probability band plus explicit exceptions                                                                               |
@@ -861,7 +990,7 @@ another. Splitting retrieval availability, motor execution, and topology gave
 each state its own prediction error and improved correction across the synthetic
 profiles.
 
-### 12.2 “Not tested” must not mean “failed weakly”
+### 12.2 "Not tested" must not mean "failed weakly"
 
 When fully cued attempts were given a small nonzero memory weight, 50
 repetitions could erode an established 100-day half-life by roughly 80%, even
@@ -918,7 +1047,9 @@ instead of adding more synthetic policy branches.
 
 ## 13. Production contract
 
-Every presented attempt must be reconstructable as one ordered transaction:
+This section specifies the durability, ordering, and replay guarantees the
+implementation must not break. Every presented attempt must be reconstructable
+as one ordered transaction:
 
 1. establish decision time and propagate state
 2. evaluate and select from traced candidates
@@ -957,7 +1088,7 @@ local history; it is not the source of truth.
 ## 14. V1 in one paragraph
 
 KeyRecall V1 models a pianist with uncertain transferable competencies, one
-time-sensitive memory state per exact scale, and a partially pooled execution
+time-sensitive memory state per exact scale, and a shrinkage-based execution
 residual per scale and hand context. It predicts whether the material will be
 available, whether it can be executed under the requested conditions, and what
 topology knowledge the performance may reveal. It admits valid exercises through
