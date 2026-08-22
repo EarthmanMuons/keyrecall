@@ -3,9 +3,16 @@ import 'package:meta/meta.dart';
 /// The cues shown to the learner before or during an attempt.
 ///
 /// Guidance sits on a three-rung support ladder, from [unguided] through
-/// [notesPreviewed] to [concurrentPitchCues]. It changes how much independent
+/// [notesPreviewedOnly] to [continuouslyCued]. It changes how much independent
 /// production an attempt demands, and whether independent retrieval is tested
 /// at all; it never changes how hard the physical task is.
+///
+/// Exactly those three values exist. The constructor is private because a
+/// fourth combination, notes previewed *and* cues left visible, would describe
+/// the same pedagogical condition as [continuouslyCued] while comparing and
+/// hashing differently, and guidance is part of exercise identity, cache
+/// keys, recovery matching, and persisted records. Widen this deliberately if
+/// guidance ever gains a second dimension.
 @immutable
 class GuidanceContext {
   /// Whether the notes were shown before the attempt and then hidden.
@@ -14,25 +21,41 @@ class GuidanceContext {
   /// Whether pitch cues remain visible throughout the attempt.
   final bool concurrentPitchCues;
 
-  const GuidanceContext({
+  const GuidanceContext._({
     this.notesPreviewed = false,
     this.concurrentPitchCues = false,
   });
 
   /// No cues at all: the strongest independent retrieval test.
-  static const GuidanceContext unguided = GuidanceContext();
+  static const GuidanceContext unguided = GuidanceContext._();
 
   /// Notes shown before the attempt, then hidden: a real but lower-demand
   /// retrieval test.
-  static const GuidanceContext notesPreviewedOnly = GuidanceContext(
+  static const GuidanceContext notesPreviewedOnly = GuidanceContext._(
     notesPreviewed: true,
   );
 
   /// Pitch cues visible throughout: the material is supplied outright, so
   /// retrieval is never tested.
-  static const GuidanceContext continuouslyCued = GuidanceContext(
+  static const GuidanceContext continuouslyCued = GuidanceContext._(
     concurrentPitchCues: true,
   );
+
+  /// The rung [independence] names, for reading a level back from a trace or
+  /// a persisted record.
+  ///
+  /// Throws [ArgumentError] for anything outside `0` through `2`.
+  static GuidanceContext ofIndependence(int independence) =>
+      switch (independence) {
+        0 => continuouslyCued,
+        1 => notesPreviewedOnly,
+        2 => unguided,
+        _ => throw ArgumentError.value(
+          independence,
+          'independence',
+          'must be 0, 1, or 2',
+        ),
+      };
 
   /// The support ladder, most independent first.
   static const List<GuidanceContext> ladder = [

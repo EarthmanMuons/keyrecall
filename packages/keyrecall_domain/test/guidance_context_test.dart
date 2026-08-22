@@ -31,17 +31,23 @@ void main() {
       );
     });
 
-    test('cues win when both kinds of support are present', () {
-      const both = GuidanceContext(
-        notesPreviewed: true,
-        concurrentPitchCues: true,
-      );
-      expect(both.isRetrievalObserved, isFalse);
+    test('has no fourth value for previewed-and-cued', () {
+      // Cues left visible supply the material whether or not the notes were
+      // also shown first, so that combination is the same condition as
+      // continuous cueing. Only the three rungs are constructible, which is
+      // what keeps a duplicate from comparing and hashing differently inside
+      // exercise identity, cache keys, and persisted records.
+      expect(GuidanceContext.ladder, hasLength(3));
       expect(
-        both.retrievalDemand,
-        GuidanceContext.continuouslyCued.retrievalDemand,
+        GuidanceContext.ladder.map((guidance) => guidance.independence).toSet(),
+        {0, 1, 2},
       );
-      expect(both.independence, 0);
+      expect(
+        GuidanceContext.ladder
+            .where((guidance) => !guidance.isRetrievalObserved)
+            .toList(),
+        [GuidanceContext.continuouslyCued],
+      );
     });
   });
 
@@ -77,23 +83,39 @@ void main() {
     });
   });
 
-  test('equality is by value', () {
-    expect(const GuidanceContext(), GuidanceContext.unguided);
-    expect(
-      const GuidanceContext(notesPreviewed: true),
-      GuidanceContext.notesPreviewedOnly,
-    );
-    expect(
-      const GuidanceContext(notesPreviewed: true).hashCode,
-      GuidanceContext.notesPreviewedOnly.hashCode,
-    );
-    expect(GuidanceContext.unguided, isNot(GuidanceContext.continuouslyCued));
+  group('identity', () {
+    test('each rung is one value, equal only to itself', () {
+      for (final guidance in GuidanceContext.ladder) {
+        expect(
+          GuidanceContext.ofIndependence(guidance.independence),
+          same(guidance),
+        );
+        for (final other in GuidanceContext.ladder) {
+          if (identical(guidance, other)) continue;
+          expect(guidance, isNot(other));
+        }
+      }
+    });
+
+    test('reads a rung back from a recorded independence level', () {
+      expect(
+        GuidanceContext.ofIndependence(0),
+        GuidanceContext.continuouslyCued,
+      );
+      expect(
+        GuidanceContext.ofIndependence(1),
+        GuidanceContext.notesPreviewedOnly,
+      );
+      expect(GuidanceContext.ofIndependence(2), GuidanceContext.unguided);
+      expect(() => GuidanceContext.ofIndependence(3), throwsArgumentError);
+      expect(() => GuidanceContext.ofIndependence(-1), throwsArgumentError);
+    });
   });
 
   group('instrument profile', () {
     test('gates octave span by key count', () {
-      const upright = InstrumentProfile(keyCount: 88);
-      const compact = InstrumentProfile(keyCount: 25);
+      final upright = InstrumentProfile(keyCount: 88);
+      final compact = InstrumentProfile(keyCount: 25);
 
       expect(upright.supportsOctaveSpan(2), isTrue);
       expect(upright.supportsOctaveSpan(7), isTrue);

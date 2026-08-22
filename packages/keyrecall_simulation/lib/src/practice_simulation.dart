@@ -212,10 +212,19 @@ Exercise randomExercise(AttemptContext context) {
   final octaves = rng.choice(const [1, 2]);
   final direction = rng.choice(ScaleDirection.values);
   final tempoBpm = rng.choice(const [60.0, 80.0, 100.0, 120.0]);
-  final guidance = GuidanceContext(
-    notesPreviewed: rng.nextDouble() < 0.3,
-    concurrentPitchCues: rng.nextDouble() < 0.15,
-  );
+
+  // Two independent draws, collapsed onto the support ladder. Drawing both
+  // keeps the random stream aligned with the reference implementation, which
+  // samples the flags separately; collapsing them keeps "previewed and cued"
+  // from becoming a fourth guidance value, since cues left visible supply the
+  // material whether or not the notes were also shown first.
+  final notesPreviewed = rng.nextDouble() < 0.3;
+  final concurrentPitchCues = rng.nextDouble() < 0.15;
+  final guidance = concurrentPitchCues
+      ? GuidanceContext.continuouslyCued
+      : (notesPreviewed
+            ? GuidanceContext.notesPreviewedOnly
+            : GuidanceContext.unguided);
   return Exercise.linear(
     material: material,
     hands: hands,
