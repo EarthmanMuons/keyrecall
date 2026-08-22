@@ -103,6 +103,21 @@ class MaterialMemoryState {
   /// Whether a successful retrieval has anchored the decay clock.
   bool get isAnchored => memoryAnchorAt != null;
 
+  /// The most recent instant this memory has recorded anything about, or null
+  /// for a material with no history at all.
+  DateTime? get lastObservedAt {
+    DateTime? latest;
+    for (final timestamp in [
+      memoryAnchorAt,
+      factualLastRetrievalAt,
+      lastRetrievalAttemptAt,
+    ]) {
+      if (timestamp == null) continue;
+      if (latest == null || timestamp.isAfter(latest)) latest = timestamp;
+    }
+    return latest;
+  }
+
   /// `M(t)`: the modeled probability of unaided recall at [now].
   ///
   /// Throws [StateError] before any anchor exists, because elapsed time is

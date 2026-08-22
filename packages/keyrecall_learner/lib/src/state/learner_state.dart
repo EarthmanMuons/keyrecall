@@ -4,6 +4,7 @@ import '../params/learner_params.dart';
 import 'competency_state.dart';
 import 'material_execution_state.dart';
 import 'material_memory_state.dart';
+import 'monotonic_time.dart';
 
 /// What a learner says about their own experience at placement.
 ///
@@ -126,12 +127,32 @@ class LearnerState {
     () => MaterialExecutionState.prior(context, at, params.materialExecution),
   );
 
+  /// The instant every propagating layer has been advanced to.
+  ///
+  /// Layers are created at different times, so this is the latest of them:
+  /// the point this state as a whole is current as of.
+  DateTime get lastPropagatedAt {
+    var latest = competencies.values.first.updatedAt;
+    for (final state in competencies.values) {
+      if (state.updatedAt.isAfter(latest)) latest = state.updatedAt;
+    }
+    for (final state in materialExecution.values) {
+      if (state.updatedAt.isAfter(latest)) latest = state.updatedAt;
+    }
+    return latest;
+  }
+
   /// Advances every layer to [now] without evidence.
   ///
   /// Memory needs no propagation: retrievability is computed on demand from
   /// the activation anchor rather than stored as a value that would go stale
   /// between calls.
+  ///
+  /// Throws [ArgumentError] if [now] precedes [lastPropagatedAt], checked
+  /// before anything is written so a rejected call cannot leave some layers
+  /// advanced and others behind.
   void propagateTo(DateTime now, LearnerParams params) {
+    requireForwardPropagation(now, lastPropagatedAt, 'this learner state');
     for (final state in competencies.values) {
       state.propagateTo(now, params.competency);
     }

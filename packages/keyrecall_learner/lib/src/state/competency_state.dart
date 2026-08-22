@@ -2,6 +2,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import '../elapsed_days.dart';
 import '../params/learner_params.dart';
+import 'monotonic_time.dart';
 
 /// The current belief about one transferable [Competency].
 ///
@@ -36,7 +37,11 @@ class CompetencyState {
   ///
   /// Nonuse erodes confidence but does not imply decline: the variance grows
   /// while the mean is left exactly alone.
+  ///
+  /// Throws [ArgumentError] if [now] precedes [updatedAt]. Time may only move
+  /// forward: rewinding and replaying an interval would diffuse it twice.
   void propagateTo(DateTime now, CompetencyParams params) {
+    requireForwardPropagation(now, updatedAt, '${competency.id} competency');
     final elapsed = updatedAt.daysUntil(now);
     if (elapsed > 0) {
       variance += params.uncertaintyDiffusion * elapsed;

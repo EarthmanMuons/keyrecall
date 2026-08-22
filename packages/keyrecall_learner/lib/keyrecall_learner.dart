@@ -21,3 +21,4 @@ export 'src/state/competency_state.dart';
 export 'src/state/learner_state.dart';
 export 'src/state/material_execution_state.dart';
 export 'src/state/material_memory_state.dart';
+export 'src/state/monotonic_time.dart';

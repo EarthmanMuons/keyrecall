@@ -7,6 +7,7 @@ import '../params/learner_params.dart';
 import '../state/learner_state.dart';
 import '../state/material_execution_state.dart';
 import '../state/material_memory_state.dart';
+import '../state/monotonic_time.dart';
 import 'evidence_weights.dart';
 import 'loadings.dart';
 import 'memory_update_diagnostics.dart';
@@ -188,6 +189,11 @@ class LearnerModel {
   /// without the retained-durability posterior, which the calibration
   /// diagnostics use as a control.
   ///
+  /// Throws [ArgumentError] if [at] precedes the point [state] has already
+  /// reached, checked before anything is written. Attempt ordering is part of
+  /// the model contract rather than a calling convention: folding evidence
+  /// into a state that has already moved past it corrupts replay silently.
+  ///
   /// Returns the event-local memory attribution; the state changes themselves
   /// land in [state].
   MemoryUpdateDiagnostics applyOutcome({
@@ -199,6 +205,13 @@ class LearnerModel {
     required DateTime at,
     bool applyRetainedDurabilityInference = true,
   }) {
+    final materialId = exercise.material.materialId;
+    requireForwardPropagation(at, state.lastPropagatedAt, 'this learner state');
+    final observed = state.materialMemory[materialId]?.lastObservedAt;
+    if (observed != null) {
+      requireForwardPropagation(at, observed, '$materialId memory');
+    }
+
     final q = exercise.structuralQ;
     final motorQ = motorLoadings(q);
     final topologyQ = topologyLoadings(q);
@@ -216,7 +229,6 @@ class LearnerModel {
       at: at,
     );
 
-    final materialId = exercise.material.materialId;
     if (weights.materialExecution > 0.0) {
       _updateExecutionResidual(
         state: state,

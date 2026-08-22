@@ -63,15 +63,57 @@ void main() {
       },
     );
 
-    test('going backward in time changes nothing but the timestamp', () {
+    test('refuses to move backward in time', () {
+      // Rewinding and later returning would diffuse the same interval twice,
+      // which corrupts replay silently. Failing loudly is the point.
       final state = model.newState(at: t0);
-      final belief = state.competency(Competency.rhScaleExecution);
-      final varianceBefore = belief.variance;
+      model.propagate(state, t0.plusDays(10));
 
-      model.propagate(state, t0.plusDays(-10));
+      expect(() => model.propagate(state, t0.plusDays(5)), throwsArgumentError);
+    });
 
-      expect(belief.variance, varianceBefore);
-      expect(belief.updatedAt, t0.plusDays(-10));
+    test('rejects a backward step before mutating anything', () {
+      final state = model.newState(at: t0);
+      model.propagate(state, t0.plusDays(10));
+      // A later-created layer makes the state heterogeneous, so a naive
+      // per-layer check would advance some layers before hitting the stale
+      // one.
+      state.materialExecutionFor(
+        (cMajor.materialId, HandConfiguration.right),
+        t0.plusDays(20),
+        params,
+      );
+      expect(state.lastPropagatedAt, t0.plusDays(20));
+
+      final variancesBefore = [
+        for (final belief in state.competencies.values) belief.variance,
+      ];
+      expect(
+        () => model.propagate(state, t0.plusDays(15)),
+        throwsArgumentError,
+      );
+
+      expect(
+        [for (final belief in state.competencies.values) belief.variance],
+        variancesBefore,
+        reason: 'a rejected propagation must leave every layer untouched',
+      );
+      expect(
+        state.competencies.values.every(
+          (belief) => belief.updatedAt == t0.plusDays(10),
+        ),
+        isTrue,
+      );
+    });
+
+    test('standing still is allowed', () {
+      final state = model.newState(at: t0);
+      model.propagate(state, t0.plusDays(10));
+      final variance = state.competency(Competency.rhScaleExecution).variance;
+
+      model.propagate(state, t0.plusDays(10));
+
+      expect(state.competency(Competency.rhScaleExecution).variance, variance);
     });
   });
 

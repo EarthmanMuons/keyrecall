@@ -4,6 +4,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import '../elapsed_days.dart';
 import '../params/learner_params.dart';
+import 'monotonic_time.dart';
 
 /// Identifies one material under one execution context.
 ///
@@ -67,7 +68,15 @@ class MaterialExecutionState {
   /// An unreinforced exception fades back toward the shared prediction while
   /// the model grows less sure about it. Both the exponential reversion and
   /// the linear diffusion are explicit heuristic choices.
+  ///
+  /// Throws [ArgumentError] if [now] precedes [updatedAt]. Time may only move
+  /// forward: rewinding and replaying an interval would revert it twice.
   void propagateTo(DateTime now, MaterialExecutionParams params) {
+    requireForwardPropagation(
+      now,
+      updatedAt,
+      '$materialId/${hands.id} residual',
+    );
     final elapsed = updatedAt.daysUntil(now);
     if (elapsed > 0) {
       residualMean *= math.exp(-elapsed / params.meanReversionTauDays);
