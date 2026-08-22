@@ -17,4 +17,5 @@ export 'src/practice_simulation.dart';
 export 'src/python_compatible_random.dart';
 export 'src/scheduler_agent.dart';
 export 'src/synthetic_learner.dart';
+export 'src/trace_digest.dart';
 export 'src/trace_json.dart';

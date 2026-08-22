@@ -184,8 +184,20 @@ const List<ReferenceRun> referenceRuns = [
   ),
 ];
 
-/// Summation order differs between the two implementations in a few places, so
-/// agreement is to floating-point tolerance rather than bit for bit.
+/// Agreement is to floating-point tolerance rather than bit for bit.
+///
+/// Measured worst-case divergence over these runs is about `2e-11` relative.
+/// Most of it traces to the activation anchor: supported practice moves it
+/// partway toward the present, and this implementation stores a real
+/// `DateTime` rounded to the microsecond while the prototype carries an
+/// unbounded float day count. That difference, well under a millisecond
+/// against a multi-day half-life, then propagates into retrievability and into
+/// the sampled observations. Summation order accounts for the rest.
+///
+/// This tolerance sits comfortably above that noise without pretending the two
+/// compute identically. Keeping real timestamps matters more than matching the
+/// prototype's arithmetic digit for digit, and `trace_digest_test.dart` covers
+/// what can be compared exactly.
 const double tolerance = 1e-9;
 
 void main() {

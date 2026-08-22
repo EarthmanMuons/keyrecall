@@ -16,6 +16,7 @@ environment:
 
 dependencies:
   args: ^2.6.0
+  crypto: ^3.0.7
   keyrecall_domain: ^0.1.0
   keyrecall_learner: ^0.1.0
   keyrecall_scheduler: ^0.1.0

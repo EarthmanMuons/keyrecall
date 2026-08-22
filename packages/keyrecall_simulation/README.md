@@ -70,19 +70,53 @@ for (final record in agent.records) {
 
 ## Comparing against the reference
 
+Three gates, each answering a different question.
+
+**Did the two implementations make the same decisions?** `discreteTraceDigest`
+hashes the categorical fields of a run: exercise identity, realization,
+guidance rung, `started`, `completed`, and the factual retrieval outcome. No
+floating-point value appears, so it is exact across implementations.
+
+The hashed record is declared in `discreteDigestFields` and tagged with
+`discreteDigestSchema`, which is hashed as the first line. The digest is
+therefore a statement about a named record shape, not about whatever the
+simulation happens to record, so adding a diagnostic field later cannot look
+like a behavioral change. Changing the field set means bumping the schema on
+both sides. The Python side computes the same digest:
+
 ```console
-dart run keyrecall_simulation:simulate --profile advanced --attempts 60 --seed 0 --out dart.jsonl
-python3 analysis/learner-model/simulate.py --profile advanced --attempts 60 --seed 0 --out py.jsonl
+python3 tool/reference_digest.py --all
 ```
 
-The two traces agree to floating-point tolerance on every field. The Dart
-records additionally carry `outcome.retrieval_succeeded`, which the Python
-trace omits.
+A mismatch means the runs diverged, not that arithmetic drifted.
 
-Determinism has limits worth knowing. `PythonCompatibleRandom` needs 64-bit
-integers, so it runs on native targets rather than the web. Summation order
-differs between the two implementations in a few places, so agreement is to
-roughly 1e-9 relative rather than bit for bit.
+**Do the numbers still agree?** Run both simulators and diff:
+
+```console
+dart run keyrecall_simulation:simulate --profile advanced --attempts 80 --seed 4 --out dart.jsonl
+python3 analysis/learner-model/simulate.py --profile advanced --attempts 80 --seed 4 --out py.jsonl
+```
+
+Measured worst-case divergence is about 1e-11 relative. Most of it is the
+activation anchor: supported practice moves it partway toward the present, and
+this implementation stores a real `DateTime` rounded to the microsecond while
+the prototype carries an unbounded float day count. Sub-millisecond against a
+multi-day half-life, and it then propagates into retrievability and the sampled
+observations. `reference_equivalence_test.dart` pins final-state scalars from a
+reference run at a 1e-9 tolerance.
+
+Two field-level differences in that diff are expected. The Dart records carry
+`outcome.retrieval_succeeded`, which the Python trace omits. And where the
+prototype samples "notes previewed" together with "cues visible", Dart reports
+`notes_previewed: false`, because visible cues supply the material either way
+and the domain model has no fourth guidance value for that combination.
+
+**Did anything here change at all?** `fullTraceDigest` hashes everything a run
+computed, at full precision. That one is a regression sentinel for this
+implementation rather than a cross-language check.
+
+`PythonCompatibleRandom` needs 64-bit integers, so all of this runs on native
+targets rather than the web.
 
 ## Documentation
 

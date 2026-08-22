@@ -20,3 +20,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   `random.Random` stream, and `attemptTraceToJson`, so a Dart run can be diffed
   attempt by attempt against the reference implementation.
 - A `simulate` executable mirroring `analysis/learner-model/simulate.py`.
+
+### Added
+
+- `discreteTraceDigest`, an exact cross-implementation hash of a run's
+  categorical decisions and outcomes, with `tool/reference_digest.py` producing
+  the same digest from the Python prototype.
+- `fullTraceDigest`, a full-precision regression sentinel for this
+  implementation.
