@@ -1,5 +1,11 @@
 name: keyrecall
-description: "A new Flutter project."
+description: An adaptive piano technical-practice scheduler.
+workspace:
+  - packages/keyrecall_domain
+  - packages/keyrecall_learner
+  - packages/keyrecall_scheduler
+  - packages/keyrecall_simulation
+
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -34,6 +40,15 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+
+  keyrecall_domain:
+    path: packages/keyrecall_domain
+  keyrecall_learner:
+    path: packages/keyrecall_learner
+  keyrecall_scheduler:
+    path: packages/keyrecall_scheduler
+  keyrecall_simulation:
+    path: packages/keyrecall_simulation
 
 dev_dependencies:
   flutter_test:

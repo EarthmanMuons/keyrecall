@@ -1,0 +1,25 @@
+name: keyrecall_scheduler
+description: >-
+  A staged, traceable decision pipeline that chooses the next exercise to
+  present in KeyRecall.
+repository: https://github.com/EarthmanMuons/keyrecall/tree/main/packages/keyrecall_scheduler
+issue_tracker: https://github.com/EarthmanMuons/keyrecall/issues
+
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  # Library floor: the oldest SDK this package works on. Widen or raise
+  # deliberately; the app pins its own toolchain separately.
+  sdk: ^3.8.0
+
+dependencies:
+  keyrecall_domain: ^0.1.0
+  keyrecall_learner: ^0.1.0
+  meta: ^1.17.0
+
+dev_dependencies:
+  import_order_lint: ^0.2.2
+  lints: ^6.0.0
+  test: ^1.25.0

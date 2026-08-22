@@ -1,0 +1,25 @@
+name: keyrecall_learner
+description: >-
+  Competency, material-memory, and execution state for the KeyRecall V1
+  learner model, with prediction and evidence-weighted updates.
+repository: https://github.com/EarthmanMuons/keyrecall/tree/main/packages/keyrecall_learner
+issue_tracker: https://github.com/EarthmanMuons/keyrecall/issues
+
+publish_to: none
+version: 0.1.0
+resolution: workspace
+
+environment:
+  # Library floor: the oldest SDK this package works on. Widen or raise
+  # deliberately; the app pins its own toolchain separately.
+  sdk: ^3.8.0
+
+dependencies:
+  collection: ^1.19.0
+  keyrecall_domain: ^0.1.0
+  meta: ^1.17.0
+
+dev_dependencies:
+  import_order_lint: ^0.2.2
+  lints: ^6.0.0
+  test: ^1.25.0

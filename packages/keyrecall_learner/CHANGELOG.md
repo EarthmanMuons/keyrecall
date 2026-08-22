@@ -1,0 +1,22 @@
+# Changelog
+
+All notable changes to this package will be documented in this file.
+
+The format is based on [Keep a Changelog][1], and this package adheres to
+[Semantic Versioning][2].
+
+[1]: https://keepachangelog.com/en/1.1.0/
+[2]: https://semver.org/
+
+## [Unreleased]
+
+### Added
+
+- Initial port of the KeyRecall V1 learner model from the Python prototype
+  under `analysis/learner-model/`: `LearnerState` over competency, material
+  memory, and execution-residual layers; four-channel `Prediction`; three-valued
+  `FactualRetrieval` observation; `evidenceWeightsFor`; and the ordered memory
+  update covering retained-consolidation inference, current-durability
+  correction, and causal formation and restoration.
+- `v1PrototypeLearnerParams`, mirroring the `v1-prototype-2` registry in
+  `analysis/learner-model/params.toml`.
