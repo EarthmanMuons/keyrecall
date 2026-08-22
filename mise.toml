@@ -26,3 +26,43 @@ run = "uvx ruff@latest check analysis"
 [tasks."python:check"]
 description = "Format-check and lint Python tooling"
 depends = ["python:format-check", "python:lint"]
+
+[tasks."dart:format"]
+description = "Format Dart sources"
+run = "dart format ."
+
+[tasks."dart:format-check"]
+description = "Check Dart formatting"
+run = "dart format --set-exit-if-changed ."
+
+[tasks."dart:imports"]
+description = "Fix Dart import ordering in each package"
+run = """
+for package in packages/*/; do
+  (cd "$package" && dart run import_order_lint:import_order lib test bin)
+done
+"""
+
+[tasks."dart:imports-check"]
+description = "Check Dart import ordering in each package"
+run = """
+for package in packages/*/; do
+  (cd "$package" && dart run import_order_lint:import_order lib test bin --set-exit-if-changed)
+done
+"""
+
+[tasks."dart:analyze"]
+description = "Analyze Dart sources"
+run = "dart analyze"
+
+[tasks."dart:test"]
+description = "Run the pure Dart package tests"
+run = """
+for package in packages/*/; do
+  (cd "$package" && dart test)
+done
+"""
+
+[tasks."dart:check"]
+description = "Format-check, lint, analyze, and test the Dart packages"
+depends = ["dart:format-check", "dart:imports-check", "dart:analyze", "dart:test"]
