@@ -52,7 +52,7 @@ void main() {
     });
 
     test('is not even memory evidence when retrieval was never tested', () {
-      final never = const Outcome(
+      final never = Outcome(
         started: false,
         retrieval: FactualRetrieval.notTested,
         completed: false,

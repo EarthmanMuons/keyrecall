@@ -9,12 +9,12 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 const LearnerModel model = LearnerModel();
 const LearnerParams params = v1PrototypeLearnerParams;
 
-const TechnicalMaterial cMajor = TechnicalMaterial('C', ScaleForm.major);
-const TechnicalMaterial dHarmonicMinor = TechnicalMaterial(
+final TechnicalMaterial cMajor = TechnicalMaterial('C', ScaleForm.major);
+final TechnicalMaterial dHarmonicMinor = TechnicalMaterial(
   'D',
   ScaleForm.harmonicMinor,
 );
-const TechnicalMaterial fSharpHarmonicMinor = TechnicalMaterial(
+final TechnicalMaterial fSharpHarmonicMinor = TechnicalMaterial(
   'F#',
   ScaleForm.harmonicMinor,
 );
@@ -303,7 +303,7 @@ void main() {
       memoryAnchorAt: epoch,
       factualLastRetrievalAt: epoch,
     );
-    const outcome = Outcome(
+    final outcome = Outcome(
       started: true,
       retrieval: FactualRetrieval.succeeded,
       completed: true,

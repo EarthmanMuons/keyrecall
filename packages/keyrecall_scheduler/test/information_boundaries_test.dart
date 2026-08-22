@@ -46,7 +46,7 @@ void main() {
 
     test('never offers an exercise the instrument cannot play', () {
       final tiny = generateCandidates(
-        const InstrumentProfile(keyCount: 12),
+        InstrumentProfile(keyCount: 12),
         materials,
       );
       expect(tiny, isNotEmpty);

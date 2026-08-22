@@ -10,10 +10,10 @@ const LearnerModel learner = LearnerModel();
 const SchedulerPipeline pipeline = SchedulerPipeline(learner: learner);
 const SchedulerConfig config = v1PrototypeSchedulerConfig;
 const LearnerParams learnerParams = v1PrototypeLearnerParams;
-const InstrumentProfile instrument = InstrumentProfile();
+final InstrumentProfile instrument = InstrumentProfile();
 
 /// The materials these tests schedule over.
-const List<TechnicalMaterial> materials = v1ScaleCatalog;
+final List<TechnicalMaterial> materials = v1ScaleCatalog;
 
 /// A learner state placed at [tier].
 LearnerState stateAt(PlacementTier tier) =>

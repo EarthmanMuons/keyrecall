@@ -16,7 +16,11 @@ class SafetyConfig {
   /// Attempt slots allowed per session before every candidate is suppressed.
   final int maxSessionAttempts;
 
-  const SafetyConfig({required this.maxSessionAttempts});
+  const SafetyConfig({required this.maxSessionAttempts})
+    : assert(
+        maxSessionAttempts > 0,
+        'a session that allows no attempts can never present anything',
+      );
 }
 
 /// The probability band ordinary candidates must land in.
@@ -39,7 +43,14 @@ class ChallengeConfig {
     required this.pMin,
     required this.pMax,
     required this.pIntroductionMin,
-  });
+  }) : assert(
+         pMin >= 0 && pMin <= pMax && pMax <= 1,
+         'the band must be an orderable pair of probabilities',
+       ),
+       assert(
+         pIntroductionMin >= 0 && pIntroductionMin <= 1,
+         'the introduction floor is a probability',
+       );
 }
 
 /// How much repetition the scheduler tolerates.
@@ -58,7 +69,15 @@ class DiversityConfig {
   const DiversityConfig({
     required this.recentWindow,
     required this.maxConsecutiveMaterialAttempts,
-  });
+  }) : assert(recentWindow > 0, 'the window must hold at least one selection'),
+       assert(
+         maxConsecutiveMaterialAttempts > 0,
+         'a cap of zero would exclude every material immediately',
+       ),
+       assert(
+         maxConsecutiveMaterialAttempts <= recentWindow,
+         'a run must be catchable before it outgrows the tracked history',
+       );
 }
 
 /// How long the probes wait before testing retrieval again.
@@ -72,7 +91,11 @@ class ProbeConfig {
   /// factual attempt of any kind.
   final double minDaysSinceLastRetrieval;
 
-  const ProbeConfig({required this.minDaysSinceLastRetrieval});
+  const ProbeConfig({required this.minDaysSinceLastRetrieval})
+    : assert(
+        minDaysSinceLastRetrieval >= 0,
+        'a probe cannot become eligible before the event it waits on',
+      );
 }
 
 /// One versioned set of scheduler policy constants.

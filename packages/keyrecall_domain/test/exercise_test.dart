@@ -3,18 +3,15 @@ import 'package:test/test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 void main() {
-  const cMajor = TechnicalMaterial('C', ScaleForm.major);
-  const fSharpHarmonicMinor = TechnicalMaterial('F#', ScaleForm.harmonicMinor);
+  final cMajor = TechnicalMaterial('C', ScaleForm.major);
+  final fSharpHarmonicMinor = TechnicalMaterial('F#', ScaleForm.harmonicMinor);
 
   group('material identity', () {
     test('is the tonic and the form, and nothing about performance', () {
       expect(cMajor.materialId, 'C_MAJOR');
       expect(fSharpHarmonicMinor.materialId, 'F#_HARMONIC_MINOR');
-      expect(cMajor, const TechnicalMaterial('C', ScaleForm.major));
-      expect(
-        cMajor,
-        isNot(const TechnicalMaterial('C', ScaleForm.naturalMinor)),
-      );
+      expect(cMajor, TechnicalMaterial('C', ScaleForm.major));
+      expect(cMajor, isNot(TechnicalMaterial('C', ScaleForm.naturalMinor)));
     });
 
     test('is shared across every way of playing the same scale', () {
@@ -28,6 +25,79 @@ void main() {
             ).material.materialId,
       };
       expect(ids, {'C_MAJOR'});
+    });
+  });
+
+  group('tonic canonicalization', () {
+    test('accepts the spellings the catalog uses', () {
+      for (final tonic in ['C', 'F#', 'Bb', 'A', 'G#', 'Eb', 'Cb', 'B#']) {
+        expect(
+          TechnicalMaterial.isCanonicalTonic(tonic),
+          isTrue,
+          reason: tonic,
+        );
+        expect(TechnicalMaterial(tonic, ScaleForm.major).tonic, tonic);
+      }
+    });
+
+    test('rejects anything that is not already canonical', () {
+      // Each of these would otherwise become a separate material with its own
+      // memory state, sharing nothing with the one it was meant to be.
+      for (final tonic in [
+        'f#',
+        'F\u266f',
+        ' F#',
+        'F# ',
+        'F##',
+        'Fbb',
+        'H',
+        '',
+        'F#m',
+      ]) {
+        expect(
+          TechnicalMaterial.isCanonicalTonic(tonic),
+          isFalse,
+          reason: tonic,
+        );
+        expect(
+          () => TechnicalMaterial(tonic, ScaleForm.major),
+          throwsArgumentError,
+          reason: tonic,
+        );
+      }
+    });
+
+    test('does not quietly repair input', () {
+      // Normalizing here would hide the upstream bug that produced the bad
+      // spelling. Parsing is a boundary concern, not a domain one.
+      expect(
+        () => TechnicalMaterial(' F# ', ScaleForm.major),
+        throwsArgumentError,
+      );
+    });
+
+    test('the catalog is canonical throughout', () {
+      for (final material in v1ScaleCatalog) {
+        expect(TechnicalMaterial.isCanonicalTonic(material.tonic), isTrue);
+      }
+    });
+  });
+
+  group('execution conditions', () {
+    test('reject a span or tempo that cannot be played', () {
+      ExecutionConditions withTempo(double tempoBpm) => ExecutionConditions(
+        hands: HandConfiguration.right,
+        tempoBpm: tempoBpm,
+      );
+
+      expect(() => withTempo(0), throwsArgumentError);
+      expect(() => withTempo(-80), throwsArgumentError);
+      expect(() => withTempo(double.nan), throwsArgumentError);
+      expect(() => withTempo(double.infinity), throwsArgumentError);
+      expect(
+        () => ExecutionConditions(hands: HandConfiguration.right, octaves: 0),
+        throwsArgumentError,
+      );
     });
   });
 

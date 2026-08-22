@@ -28,7 +28,21 @@ class CompetencyParams {
     required this.learningRate,
     required this.uncertaintyDiffusion,
     required this.evidenceShrinkage,
-  });
+  }) : assert(priorVariance > 0, 'a belief cannot start certain'),
+       assert(minVariance > 0, 'evidence must never imply certainty'),
+       assert(
+         minVariance <= priorVariance,
+         'the floor cannot exceed the prior',
+       ),
+       assert(
+         learningRate >= 0,
+         'evidence cannot move the mean away from itself',
+       ),
+       assert(uncertaintyDiffusion >= 0, 'nonuse cannot increase confidence'),
+       assert(
+         evidenceShrinkage >= 0 && evidenceShrinkage <= 1,
+         'shrinkage is a fraction of the variance to remove',
+       );
 }
 
 /// Priors, evidence rates, and transition doses for exact-material memory.
@@ -149,7 +163,40 @@ class MaterialMemoryParams {
     required this.supportedPracticeFactorUnguided,
     required this.retrievalSuccessFactorNotesPreviewed,
     required this.retrievalSuccessFactorUnguided,
-  });
+  }) : assert(minHalfLifeDays > 0, 'a half-life must be positive'),
+       assert(
+         minHalfLifeDays <= initialCurrentHalfLifeDays &&
+             initialCurrentHalfLifeDays <= maxMemoryHalfLifeDays,
+         'a new material must start inside the durability bounds',
+       ),
+       assert(
+         priorRetrievability > 0 && priorRetrievability < 1,
+         'the prior is a probability, and its logit must be finite',
+       ),
+       assert(
+         minColdStartProbability > 0 &&
+             minColdStartProbability < maxColdStartProbability &&
+             maxColdStartProbability < 1,
+         'the cold-start clamps must be orderable and have finite logits',
+       ),
+       assert(priorUncertainty > 0, 'a belief cannot start certain'),
+       assert(minUncertainty > 0, 'evidence must never imply certainty'),
+       assert(
+         consolidationMinLogVariance > 0,
+         'the posterior floor keeps projection error representable',
+       ),
+       assert(
+         retainedInferenceGridPoints >= 3,
+         'the posterior needs at least three grid points to integrate',
+       ),
+       assert(
+         retainedInferenceMinIntervalDays >= 0,
+         'the interval floor cannot be negative',
+       ),
+       assert(
+         consolidationGrowthTargetDays > 0,
+         'consolidation must saturate at a positive half-life',
+       );
 }
 
 /// Priors and update rates for material- and context-specific execution
@@ -181,7 +228,25 @@ class MaterialExecutionParams {
     required this.meanReversionTauDays,
     required this.uncertaintyDiffusion,
     required this.evidenceShrinkage,
-  });
+  }) : assert(priorVariance > 0, 'a residual cannot start certain'),
+       assert(minVariance > 0, 'evidence must never imply certainty'),
+       assert(
+         minVariance <= priorVariance,
+         'the floor cannot exceed the prior',
+       ),
+       assert(
+         learningRate >= 0,
+         'evidence cannot move the mean away from itself',
+       ),
+       assert(
+         meanReversionTauDays > 0,
+         'a zero time constant would erase the residual instantly',
+       ),
+       assert(uncertaintyDiffusion >= 0, 'nonuse cannot increase confidence'),
+       assert(
+         evidenceShrinkage >= 0 && evidenceShrinkage <= 1,
+         'shrinkage is a fraction of the variance to remove',
+       );
 }
 
 /// Strength of the prediction-only adjustment between the two hands.
@@ -193,7 +258,12 @@ class HandTransferParams {
   /// `tau_hand`: variance scale at which the adjustment is half strength.
   final double shrinkageTau;
 
-  const HandTransferParams({required this.rhoHand, required this.shrinkageTau});
+  const HandTransferParams({required this.rhoHand, required this.shrinkageTau})
+    : assert(
+        rhoHand >= 0 && rhoHand <= 1,
+        'transfer borrows a fraction of the gap, never more than all of it',
+      ),
+      assert(shrinkageTau > 0, 'the shrinkage scale must be positive');
 }
 
 /// Coefficients of the motor-difficulty score.
@@ -220,7 +290,10 @@ class DifficultyParams {
     required this.handBeta,
     required this.directionBeta,
     required this.referenceTempoBpm,
-  });
+  }) : assert(
+         referenceTempoBpm > 0,
+         'the tempo term takes the log of a ratio to this tempo',
+       );
 }
 
 /// Competency means each self-report tier starts from.
@@ -244,7 +317,15 @@ class PlacementParams {
     required this.someExperienceMean,
     required this.advancedMean,
     required this.priorVarianceBroad,
-  });
+  }) : assert(
+         beginnerMean <= someExperienceMean &&
+             someExperienceMean <= advancedMean,
+         'the tiers must be ordered by self-reported experience',
+       ),
+       assert(
+         priorVarianceBroad > 0,
+         'self-report shifts the mean but never makes the model confident',
+       );
 }
 
 /// One versioned set of learner-model constants.

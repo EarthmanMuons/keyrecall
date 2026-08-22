@@ -20,3 +20,13 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   correction, and causal formation and restoration.
 - `v1PrototypeLearnerParams`, mirroring the `v1-prototype-2` registry in
   `analysis/learner-model/params.toml`.
+
+### Changed
+
+- Time may only move forward. Propagating backward throws instead of silently
+  permitting an interval to be diffused twice, and the check runs before any
+  layer is written.
+- `LearnerModel.applyOutcome` rejects an attempt that predates the state or the
+  material memory it would update.
+- `Outcome` validates its scores at construction, and the parameter classes
+  assert their own bounds.

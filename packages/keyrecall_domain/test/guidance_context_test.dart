@@ -122,5 +122,10 @@ void main() {
       expect(compact.supportsOctaveSpan(2), isTrue);
       expect(compact.supportsOctaveSpan(3), isFalse);
     });
+
+    test('rejects an instrument with no keys', () {
+      expect(() => InstrumentProfile(keyCount: 0), throwsArgumentError);
+      expect(() => InstrumentProfile(keyCount: -88), throwsArgumentError);
+    });
   });
 }

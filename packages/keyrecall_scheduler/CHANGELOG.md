@@ -19,3 +19,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   guidance-probe, bootstrap-probe, recovery, and override admission exceptions.
 - `v1PrototypeSchedulerConfig`, mirroring the `v1-prototype-0` registry in
   `analysis/scheduler/config.toml`.
+
+### Changed
+
+- The configuration classes assert their own bounds, so the shipped registry is
+  checked where it is declared.

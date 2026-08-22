@@ -82,12 +82,28 @@ class ExecutionConditions {
   /// The requested tempo in beats per minute.
   final double tempoBpm;
 
-  const ExecutionConditions({
+  /// Throws [ArgumentError] for a span or tempo that cannot be played.
+  ///
+  /// The motor-difficulty score takes the log of the tempo ratio, so a
+  /// nonpositive or non-finite tempo would silently produce a meaningless
+  /// difficulty rather than failing where the bad value entered.
+  ExecutionConditions({
     required this.hands,
     this.octaves = 2,
     this.direction = ScaleDirection.upDown,
     this.tempoBpm = 80,
-  });
+  }) {
+    if (octaves < 1) {
+      throw ArgumentError.value(octaves, 'octaves', 'must be at least 1');
+    }
+    if (!tempoBpm.isFinite || tempoBpm <= 0) {
+      throw ArgumentError.value(
+        tempoBpm,
+        'tempoBpm',
+        'must be finite and greater than zero',
+      );
+    }
+  }
 
   @override
   bool operator ==(Object other) =>

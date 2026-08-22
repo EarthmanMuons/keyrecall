@@ -13,12 +13,12 @@ const LearnerModel model = LearnerModel();
 /// Shorthand for those parameters.
 const LearnerParams params = v1PrototypeLearnerParams;
 
-const TechnicalMaterial cMajor = TechnicalMaterial('C', ScaleForm.major);
-const TechnicalMaterial dHarmonicMinor = TechnicalMaterial(
+final TechnicalMaterial cMajor = TechnicalMaterial('C', ScaleForm.major);
+final TechnicalMaterial dHarmonicMinor = TechnicalMaterial(
   'D',
   ScaleForm.harmonicMinor,
 );
-const TechnicalMaterial fSharpHarmonicMinor = TechnicalMaterial(
+final TechnicalMaterial fSharpHarmonicMinor = TechnicalMaterial(
   'F#',
   ScaleForm.harmonicMinor,
 );
@@ -70,7 +70,7 @@ Outcome successOfQuality(double quality) => Outcome(
 );
 
 /// An attempt that never began, because the material could not be recalled.
-Outcome failedToStart() => const Outcome(
+Outcome failedToStart() => Outcome(
   started: false,
   retrieval: FactualRetrieval.failed,
   completed: false,

@@ -21,7 +21,7 @@ void main() {
   const pipeline = SchedulerPipeline(learner: learner);
   const config = v1PrototypeSchedulerConfig;
   const learnerParams = v1PrototypeLearnerParams;
-  const instrument = InstrumentProfile();
+  final instrument = InstrumentProfile();
 
   SchedulerAgent agentOver(List<TechnicalMaterial> materials) => SchedulerAgent(
     pipeline: pipeline,

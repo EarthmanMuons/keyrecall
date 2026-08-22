@@ -5,7 +5,7 @@ import 'technical_material.dart';
 /// An initial catalog rather than a closed set: it covers all four supported
 /// forms and enough sharp/flat variety to exercise transfer between related
 /// keys. Order is stable so traces and fixtures stay comparable across runs.
-const List<TechnicalMaterial> v1ScaleCatalog = [
+final List<TechnicalMaterial> v1ScaleCatalog = List.unmodifiable([
   TechnicalMaterial('C', ScaleForm.major),
   TechnicalMaterial('G', ScaleForm.major),
   TechnicalMaterial('F', ScaleForm.major),
@@ -13,4 +13,4 @@ const List<TechnicalMaterial> v1ScaleCatalog = [
   TechnicalMaterial('D', ScaleForm.harmonicMinor),
   TechnicalMaterial('F#', ScaleForm.harmonicMinor),
   TechnicalMaterial('E', ScaleForm.melodicMinor),
-];
+]);

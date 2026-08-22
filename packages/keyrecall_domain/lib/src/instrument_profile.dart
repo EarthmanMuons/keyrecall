@@ -9,7 +9,12 @@ class InstrumentProfile {
   /// How many keys the instrument has.
   final int keyCount;
 
-  const InstrumentProfile({this.keyCount = 88});
+  /// Throws [ArgumentError] for an instrument with no keys.
+  InstrumentProfile({this.keyCount = 88}) {
+    if (keyCount < 1) {
+      throw ArgumentError.value(keyCount, 'keyCount', 'must be at least 1');
+    }
+  }
 
   /// Whether a traversal of [octaves] octaves fits on this instrument.
   ///

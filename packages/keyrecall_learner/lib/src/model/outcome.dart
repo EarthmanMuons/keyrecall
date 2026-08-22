@@ -45,8 +45,14 @@ enum FactualRetrieval {
 /// What actually happened on one attempt.
 ///
 /// The observation pipeline preserves rich MIDI-derived detail; V1 reduces it
-/// only where a particular state update needs a bounded target. Every score is
-/// in `[0, 1]`.
+/// only where a particular state update needs a bounded target. The five
+/// quality scores are bounded in `[0, 1]`; [achievedTempoRatio] is only
+/// required to be finite and nonnegative, since a learner can overshoot the
+/// requested tempo and V1 records that without consuming it.
+///
+/// Construction rejects anything else. These values reach `log` and `exp` in
+/// the update path, so a NaN or an out-of-range score would propagate into
+/// learner state rather than failing where it entered.
 @immutable
 class Outcome {
   /// Whether execution began at all. Cueing can make this true even when
@@ -77,7 +83,8 @@ class Outcome {
   /// How correct the pitch/form structure was, independent of motor quality.
   final double topologyAccuracy;
 
-  const Outcome({
+  /// Throws [ArgumentError] for a score outside its documented range.
+  Outcome({
     required this.started,
     required this.retrieval,
     required this.completed,
@@ -87,7 +94,26 @@ class Outcome {
     required this.temporalStability,
     required this.achievedTempoRatio,
     required this.topologyAccuracy,
-  });
+  }) {
+    _requireScore(materialRetrieval, 'materialRetrieval');
+    _requireScore(pitchIntegrity, 'pitchIntegrity');
+    _requireScore(continuity, 'continuity');
+    _requireScore(temporalStability, 'temporalStability');
+    _requireScore(topologyAccuracy, 'topologyAccuracy');
+    if (!achievedTempoRatio.isFinite || achievedTempoRatio < 0) {
+      throw ArgumentError.value(
+        achievedTempoRatio,
+        'achievedTempoRatio',
+        'must be finite and nonnegative',
+      );
+    }
+  }
+
+  static void _requireScore(double value, String name) {
+    if (!value.isFinite || value < 0 || value > 1) {
+      throw ArgumentError.value(value, name, 'must be in the range 0 to 1');
+    }
+  }
 
   /// `y_motor`: the bounded motor score the execution channel learns from.
   ///
