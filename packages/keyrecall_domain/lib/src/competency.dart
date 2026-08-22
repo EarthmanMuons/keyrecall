@@ -1,0 +1,71 @@
+/// A transferable capability the V1 learner model estimates.
+///
+/// Practice of any material that creates an opportunity for a competency can
+/// update it, which is how transfer across the repertoire emerges. The ten
+/// values split into two prediction channels, [topologyCompetencies] and
+/// [motorCompetencies], that never update each other.
+enum Competency {
+  majorScaleTopology('MAJOR_SCALE_TOPOLOGY'),
+  naturalMinorTopology('NATURAL_MINOR_TOPOLOGY'),
+  harmonicMinorTopology('HARMONIC_MINOR_TOPOLOGY'),
+  melodicMinorTopology('MELODIC_MINOR_TOPOLOGY'),
+  rhScaleExecution('RH_SCALE_EXECUTION'),
+  lhScaleExecution('LH_SCALE_EXECUTION'),
+  scalarCrossing('SCALAR_CROSSING'),
+  multiOctaveContinuation('MULTI_OCTAVE_CONTINUATION'),
+  directionReversal('DIRECTION_REVERSAL'),
+  handsTogetherCoordination('HANDS_TOGETHER_COORDINATION');
+
+  const Competency(this.id);
+
+  /// Stable identifier used in persisted state and traces.
+  ///
+  /// Serialization uses this rather than [name] or [index] so renaming or
+  /// reordering the enum cannot silently reinterpret a stored journal.
+  final String id;
+
+  /// The competency with the given [id].
+  ///
+  /// Throws [ArgumentError] when no competency matches.
+  static Competency fromId(String id) => values.firstWhere(
+    (competency) => competency.id == id,
+    orElse: () => throw ArgumentError.value(id, 'id', 'unknown competency'),
+  );
+
+  /// Whether this competency describes pitch/form knowledge.
+  bool get isTopology => topologyCompetencies.contains(this);
+
+  /// Whether this competency describes physical execution.
+  bool get isMotor => !isTopology;
+
+  /// The opposite hand's execution competency, or null when there is none.
+  ///
+  /// Used for the prediction-only hand-transfer adjustment; it never licenses
+  /// writing one hand's evidence into the other's stored state.
+  Competency? get pairedHand => switch (this) {
+    Competency.rhScaleExecution => Competency.lhScaleExecution,
+    Competency.lhScaleExecution => Competency.rhScaleExecution,
+    _ => null,
+  };
+}
+
+/// Competencies scored by the topology prediction channel.
+const Set<Competency> topologyCompetencies = {
+  Competency.majorScaleTopology,
+  Competency.naturalMinorTopology,
+  Competency.harmonicMinorTopology,
+  Competency.melodicMinorTopology,
+};
+
+/// Competencies scored by the motor prediction channel.
+///
+/// The complement of [topologyCompetencies]; a cued attempt is barely
+/// informative about topology but can still be strong motor evidence.
+const Set<Competency> motorCompetencies = {
+  Competency.rhScaleExecution,
+  Competency.lhScaleExecution,
+  Competency.scalarCrossing,
+  Competency.multiOctaveContinuation,
+  Competency.directionReversal,
+  Competency.handsTogetherCoordination,
+};
