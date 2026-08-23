@@ -24,3 +24,6 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   can be retried safely.
 - Recovery validates a pending decision's profile, journal position, and
   timestamp before accepting it.
+- `ProfileRepository`, with in-memory and file-backed implementations, covering
+  profile creation, listing, renaming, and selection. Kept separate from
+  practice storage, and deliberately without deletion.

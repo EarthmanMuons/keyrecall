@@ -9,11 +9,13 @@ file store.
 ```text
 decide()   propagate a scratch copy, evaluate candidates, select,
            persist the decision, then present
-commit()   apply the update to canonical state,
-           append the attempt, then clear the decision
+commit()   compute the whole transition on a copy,
+           append the attempt durably,
+           then replace canonical state and clear the decision
 ```
 
-The ordering exists to prevent two specific failures.
+Nothing the session keeps moves until the attempt is history. The ordering
+exists to prevent three specific failures.
 
 **A crash after presenting** leaves a decision with no outcome. On the next
 `open` it surfaces as `pending`, and the caller resolves it explicitly: commit a
