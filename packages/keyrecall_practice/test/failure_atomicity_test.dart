@@ -202,6 +202,42 @@ void main() {
       expect(store.appendsPerformed, 1);
       expect(session.journal.length, 1);
     });
+
+    test('but retrying is not the same as overlapping', () async {
+      // The tests above make committing safe to run *again*. They say nothing
+      // about running two at once, and the attempt id is easy to misread as
+      // permission to do so. It is not: a session is single-writer, and an
+      // overlapping second commit folds the same outcome in from state of a
+      // different age, producing a different record under the same id. The
+      // journal refuses that as a collision rather than absorbing it as a
+      // retry, so the caller is handed a failure it cannot act on.
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store);
+      final presented = await session.decide(at: t0.plusDays(0.5));
+      final outcome = outcomeFor(presented!.exercise);
+
+      final failures = <Object>[];
+      await Future.wait([
+        for (final observed in [t0.plusDays(0.5), t0.plusDays(0.6)])
+          session.commit(outcome, observedWallTime: observed).catchError((
+            Object error,
+          ) {
+            failures.add(error);
+            throw error;
+          }),
+      ], eagerError: false).catchError((Object _) => <AttemptRecord>[]);
+
+      expect(
+        failures,
+        isNotEmpty,
+        reason: 'overlapping commits must fail loudly, not quietly diverge',
+      );
+      expect(
+        session.journal.length,
+        1,
+        reason: 'history holds the attempt once however the two interleaved',
+      );
+    });
   });
 
   group('a corrupted pending decision', () {

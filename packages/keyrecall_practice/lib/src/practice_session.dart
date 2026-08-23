@@ -70,6 +70,22 @@ class PracticeStateError extends StateError {
 /// is still pending. The update is never applied twice, because learner state
 /// is not stored: it is replayed from the journal, and the journal holds each
 /// attempt exactly once.
+///
+/// **Retrying is not the same as overlapping.** All of that makes a failed
+/// step safe to run again *after* it has stopped, and says nothing about
+/// running two at once. A session is a single-writer object: [decide],
+/// [commit], and [abandonPending] each read and mutate the same state, and
+/// none of them holds a lock. A caller must let one finish before starting the
+/// next.
+///
+/// Do not read the idempotency key as permission to enter [commit] twice
+/// concurrently. Two overlapping commits do not collapse into one: the second
+/// folds the same outcome into a copy of state whose age depends on how the
+/// two interleaved, so it produces a *different* record under the same attempt
+/// id, and the journal rejects that as a collision rather than absorbing it as
+/// a retry. Nothing here is corrupted, but the caller is handed a failure it
+/// cannot act on, and the attempt it thought it recorded may be the one that
+/// was rejected.
 class PracticeSession {
   /// The learner model in force.
   final LearnerModel learner;
@@ -291,6 +307,13 @@ class PracticeSession {
   ///
   /// The decision is cleared last. A crash between the append and the clear
   /// leaves a stale slot that the next [open] recognizes as already committed.
+  ///
+  /// Single-writer: callers must serialize commits for a session and must not
+  /// start one while another is still running. Retrying a commit that has
+  /// already failed is safe; entering this method twice concurrently is not,
+  /// for the reason given on [PracticeSession]. A UI driving this from a
+  /// button has to make that button single-flight rather than relying on the
+  /// attempt id to deduplicate.
   ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
   Future<AttemptRecord> commit(
