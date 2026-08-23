@@ -138,3 +138,38 @@ String encodeTime(DateTime at) => at.toUtc().toIso8601String();
 
 /// Writes an optional timestamp, preserving absence as null.
 String? encodeOptionalTime(DateTime? at) => at == null ? null : encodeTime(at);
+
+/// Reads [value] as a map, or fails with a located error.
+///
+/// The `as` cast these replace throws [TypeError], which escapes the uniform
+/// failure contract: a caller reading an untrusted journal should have to catch
+/// exactly one kind of thing.
+Map<String, Object?> asMap(Object? value, String what, {String? location}) {
+  if (value is Map<String, Object?>) return value;
+  throw JournalFormatException(
+    'expected an object for $what, got ${value.runtimeType}',
+    location: location,
+  );
+}
+
+/// Reads [value] as a string, or fails with a located error.
+String asString(Object? value, String what, {String? location}) {
+  if (value is String) return value;
+  throw JournalFormatException(
+    'expected a string for $what, got ${value.runtimeType}',
+    location: location,
+  );
+}
+
+/// Reads [value] as an optional string, distinguishing absent from malformed.
+String? asOptionalString(Object? value, String what, {String? location}) =>
+    value == null ? null : asString(value, what, location: location);
+
+/// Reads [value] as a finite double, or fails with a located error.
+double asDouble(Object? value, String what, {String? location}) {
+  if (value is num && value.isFinite) return value.toDouble();
+  throw JournalFormatException(
+    'expected a finite number for $what, got $value',
+    location: location,
+  );
+}

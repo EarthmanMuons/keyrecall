@@ -73,13 +73,17 @@ Outcome outcomeOf({
   List<TechnicalMaterial>? materials,
   bool withDecisions = true,
   bool withStateHashes = true,
+  AttemptJournal? continuing,
+  LearnerState? fromState,
+  double startDay = 0,
 }) {
   final catalog = materials ?? v1ScaleCatalog.take(3).toList();
-  final initial = model.placementState(PlacementTier.someExperience, at: t0);
+  final initial =
+      fromState ?? model.placementState(PlacementTier.someExperience, at: t0);
   final state = initial.copy();
-  final journal = AttemptJournal(
-    JournalHeader(profileId: testProfile.id, createdAt: t0),
-  );
+  final journal =
+      continuing ??
+      AttemptJournal(JournalHeader(profileId: testProfile.id, createdAt: t0));
   final session = SessionState();
   final candidates = generateCandidates(InstrumentProfile(), catalog);
 
@@ -88,7 +92,7 @@ Outcome outcomeOf({
     if (slot > 500) {
       throw StateError('gave up waiting for $attempts admitted attempts');
     }
-    final at = t0.plusDays(0.5 * (slot + 1));
+    final at = t0.plusDays(startDay + 0.5 * (slot + 1));
 
     SchedulerDecision? decision;
     Exercise exercise;
@@ -145,9 +149,10 @@ Outcome outcomeOf({
     );
 
     var record = AttemptRecord(
+      journalSequence: journal.nextSequence,
       identity: AttemptIdentity(
         profileId: testProfile.id,
-        attemptId: 'attempt-$recorded',
+        attemptId: '$sessionId-attempt-$recorded',
         sessionId: sessionId,
         indexInSession: recorded,
         occurredAt: at,

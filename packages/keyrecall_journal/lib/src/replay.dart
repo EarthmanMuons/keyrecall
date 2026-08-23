@@ -160,9 +160,18 @@ ReplayResult replayJournal(
   var applied = 0;
 
   for (final record in journal.records) {
-    if (from != null &&
-        record.identity.sessionId == from.sessionId &&
-        record.identity.indexInSession <= from.throughIndexInSession) {
+    // Skip by position in the history, not by position within a sitting. A
+    // journal spans many sessions, and a checkpoint already contains all of
+    // them up to its sequence.
+    if (from != null && record.journalSequence <= from.throughJournalSequence) {
+      if (record.journalSequence == from.throughJournalSequence &&
+          record.identity.attemptId != from.throughAttemptId) {
+        throw JournalFormatException(
+          'checkpoint claims to cover attempt ${from.throughAttemptId} at '
+          'sequence ${from.throughJournalSequence}, but this journal has '
+          '${record.identity.attemptId} there',
+        );
+      }
       continue;
     }
 

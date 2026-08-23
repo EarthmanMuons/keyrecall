@@ -144,8 +144,25 @@ class AttemptRecord {
   /// The wire format this record was written in.
   final int schemaVersion;
 
+  /// Position in this journal, counting from zero in append order.
+  ///
+  /// Distinct from [AttemptIdentity.indexInSession], which is position within
+  /// one practice sitting. A history spans many sittings, so a checkpoint has
+  /// to say where it sits in the history, and a reader has to be able to tell
+  /// that a record is missing. Contiguity gives both.
+  final int journalSequence;
+
   /// Which attempt, and when.
   final AttemptIdentity identity;
+
+  /// What the device clock read, when it disagreed with [AttemptIdentity.occurredAt].
+  ///
+  /// Diagnostic only, and never used for decay. A device clock can be corrected
+  /// backward mid-session, but the model timeline cannot go back: elapsed time
+  /// drives every memory transition, and propagating backward is illegal. The
+  /// app resolves that at the observation boundary and may record what it
+  /// actually saw here.
+  final DateTime? observedWallTime;
 
   /// Which model definitions interpreted it.
   final ModelProvenance provenance;
@@ -179,6 +196,7 @@ class AttemptRecord {
   final String? stateAfterHash;
 
   const AttemptRecord({
+    required this.journalSequence,
     required this.identity,
     required this.provenance,
     required this.exercise,
@@ -188,6 +206,7 @@ class AttemptRecord {
     this.decision,
     this.stateBeforeHash,
     this.stateAfterHash,
+    this.observedWallTime,
     this.schemaVersion = attemptSchemaVersion,
   });
 
@@ -199,6 +218,7 @@ class AttemptRecord {
     required String before,
     required String after,
   }) => AttemptRecord(
+    journalSequence: journalSequence,
     identity: identity,
     provenance: provenance,
     exercise: exercise,
@@ -208,6 +228,7 @@ class AttemptRecord {
     decision: decision,
     stateBeforeHash: before,
     stateAfterHash: after,
+    observedWallTime: observedWallTime,
     schemaVersion: schemaVersion,
   );
 
@@ -215,11 +236,13 @@ class AttemptRecord {
   Map<String, Object?> toJson() => {
     'record_type': JournalRecordType.attempt.id,
     'schema_version': schemaVersion,
+    'journal_sequence': journalSequence,
     'profile_id': identity.profileId,
     'attempt_id': identity.attemptId,
     'session_id': identity.sessionId,
     'index_in_session': identity.indexInSession,
     'occurred_at': encodeTime(identity.occurredAt),
+    'observed_wall_time': encodeOptionalTime(observedWallTime),
     'provenance': {
       'learner_model_version': provenance.learnerModelVersion,
       'scheduler_model_version': provenance.schedulerModelVersion,
@@ -258,6 +281,12 @@ class AttemptRecord {
 
     return AttemptRecord(
       schemaVersion: version,
+      journalSequence: requireInt(json, 'journal_sequence', location: location),
+      observedWallTime: readOptionalTime(
+        json,
+        'observed_wall_time',
+        location: location,
+      ),
       identity: AttemptIdentity(
         profileId: requireString(json, 'profile_id', location: location),
         attemptId: attemptId,
@@ -280,7 +309,11 @@ class AttemptRecord {
           'scheduler_model_version',
           location: location,
         ),
-        appBuildVersion: provenanceJson['app_build_version'] as String?,
+        appBuildVersion: asOptionalString(
+          provenanceJson['app_build_version'],
+          'app_build_version',
+          location: location,
+        ),
       ),
       exercise: decodeExercise(
         requireMap(json, 'exercise', location: location),
@@ -289,7 +322,7 @@ class AttemptRecord {
       decision: decisionJson == null
           ? null
           : decodeDecision(
-              decisionJson as Map<String, Object?>,
+              asMap(decisionJson, 'decision', location: location),
               (prediction) => decodePrediction(prediction, location: location),
               location: location,
             ),
@@ -305,13 +338,22 @@ class AttemptRecord {
         requireMap(json, 'memory_update', location: location),
         location: location,
       ),
-      stateBeforeHash: json['state_before_hash'] as String?,
-      stateAfterHash: json['state_after_hash'] as String?,
+      stateBeforeHash: asOptionalString(
+        json['state_before_hash'],
+        'state_before_hash',
+        location: location,
+      ),
+      stateAfterHash: asOptionalString(
+        json['state_after_hash'],
+        'state_after_hash',
+        location: location,
+      ),
     );
   }
 
   @override
   String toString() =>
-      'AttemptRecord(${identity.profileId}/${identity.attemptId}, '
+      'AttemptRecord(#$journalSequence ${identity.profileId}/'
+      '${identity.attemptId}, '
       '${exercise.material.materialId}, ${outcome.retrieval.name})';
 }

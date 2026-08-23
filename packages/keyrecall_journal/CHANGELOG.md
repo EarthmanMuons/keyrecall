@@ -25,3 +25,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - `Profile`, with opaque version 4 UUID identifiers, so several people can share
   one install. Every attempt record and checkpoint is scoped by profile id, and
   a journal refuses an attempt belonging to another profile.
+- `journalSequence`, a contiguous journal-global position, so a checkpoint can
+  say where it sits in a history spanning many sessions and a lost record is
+  detectable.
+- `observedWallTime`, the optional raw device reading, kept separate from the
+  model timeline that drives decay.

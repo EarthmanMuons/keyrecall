@@ -112,7 +112,11 @@ EvidenceWeights decodeEvidenceWeights(
   return EvidenceWeights(
     competencies: {
       for (final entry in competencies.entries)
-        Competency.fromId(entry.key): (entry.value as num).toDouble(),
+        Competency.fromId(entry.key): asDouble(
+          entry.value,
+          'weight for ${entry.key}',
+          location: location,
+        ),
     },
     materialExecution: requireDouble(
       json,
@@ -236,7 +240,7 @@ LearnerState decodeLearnerState(
   final materialMemory = {
     for (final entry in memoryJson.entries)
       entry.key: decodeMaterialMemory(
-        entry.value as Map<String, Object?>,
+        asMap(entry.value, 'memory for ${entry.key}', location: location),
         params: params,
         location: location,
       ),
@@ -249,7 +253,11 @@ LearnerState decodeLearnerState(
   );
   final materialExecution = <ExecutionContext, MaterialExecutionState>{};
   for (final entry in executionJson.entries) {
-    final value = entry.value as Map<String, Object?>;
+    final value = asMap(
+      entry.value,
+      'execution residual for ${entry.key}',
+      location: location,
+    );
     final variance = requireDouble(
       value,
       'residual_variance',

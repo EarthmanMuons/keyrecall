@@ -140,7 +140,10 @@ SchedulerDecision decodeDecision(
     ),
     challengeBypass: bypassId == null
         ? null
-        : _bypassFromId(bypassId as String, location: location),
+        : _bypassFromId(
+            asString(bypassId, 'challenge_bypass', location: location),
+            location: location,
+          ),
     rankKey: RankKey(
       tier: _tierFromId(
         requireString(rankKeyJson, 'tier', location: location),

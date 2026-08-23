@@ -84,6 +84,7 @@ void main() {
       expect(
         () => recorded.journal.append(
           AttemptRecord(
+            journalSequence: recorded.journal.nextSequence,
             identity: AttemptIdentity(
               profileId: other.id,
               attemptId: 'intruder',
@@ -129,8 +130,8 @@ void main() {
         profileId: other.id,
         state: replayed.state,
         learnerModelVersion: params.modelVersion,
-        sessionId: 'session-1',
-        throughIndexInSession: 3,
+        throughJournalSequence: 3,
+        throughAttemptId: 'attempt-3',
         coversThrough: t0.plusDays(2),
       );
 
@@ -180,6 +181,7 @@ void main() {
         );
         bobJournal.append(
           AttemptRecord(
+            journalSequence: bobJournal.nextSequence,
             identity: AttemptIdentity(
               profileId: bob.id,
               attemptId: 'bob-$i',

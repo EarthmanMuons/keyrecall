@@ -78,7 +78,10 @@ Exercise decodeExercise(Map<String, Object?> json, {String? location}) {
       location: location,
     ),
     opportunities: {
-      for (final id in opportunities) MotorOpportunity.fromId(id as String),
+      for (final id in opportunities)
+        MotorOpportunity.fromId(
+          asString(id, 'motor opportunity', location: location),
+        ),
     },
   );
 }

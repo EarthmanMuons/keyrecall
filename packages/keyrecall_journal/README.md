@@ -44,9 +44,20 @@ state is whatever replaying it produces. Nothing rewrites a record.
 A **checkpoint is disposable acceleration.** It saves a replay from starting at
 the beginning, and nothing more. Deleting every checkpoint must cost time and
 nothing else, which is why one carries the hash of its own content, the point in
-history it covers, and the model version that produced it. A checkpoint from
-another model version is not wrong, it is simply unusable as a shortcut, and the
-honest response is to replay from the journal.
+history it covers, and the model version that produced it.
+
+Its position is a journal sequence, not a position within a sitting. A history
+spans many sessions, and a within-session index cannot say what a checkpoint
+already includes: resuming from one would silently reapply every attempt from
+every other session. It also names the attempt at that sequence, so a resume is
+checked rather than trusted, and it captures a deep copy, since learner state is
+mutable and an aliased checkpoint would drift away from the hash it claims.
+
+A checkpoint from another model version is unusable as a shortcut in *every*
+mode, counterfactual included. It already contains one model's reading of
+everything before it, so seeding a different model from it would produce a
+hybrid: earlier history estimated one way, later history another. That answers
+no question anyone asked. Replay from the beginning instead.
 
 **Model and scheduler versions are recorded on every attempt**, not once per
 journal, because a journal outlives any single model version and a record must
@@ -68,6 +79,28 @@ store it.
 
 `retrieval_succeeded` is `true`, `false`, or `null`, and `null` means retrieval
 was never tested. It must never be read, queried, or analyzed as failure.
+
+## Time runs forward
+
+`occurredAt` is the model timeline, and it never goes backward. Every memory
+transition is driven by elapsed time, and propagating backward is illegal in the
+learner model, so a journal that recorded a backward step would be impossible to
+replay. Appending one is refused.
+
+A device clock really can be corrected backward mid-session. That is resolved at
+the observation boundary, before the attempt is recorded, and the raw reading may
+be kept in `observedWallTime` for diagnostics. Nothing computes decay from it.
+
+## Records are contiguous, and ids do not collide
+
+`journalSequence` counts attempts in append order, contiguously, so a lost line
+is detectable rather than silently absorbed. It is distinct from
+`indexInSession`, which is position within one sitting.
+
+Idempotency is not first-write-wins. An attempt id that returns with identical
+content is a retry and a no-op; an attempt id that returns with *different*
+content is a collision and throws. In an authoritative log, silently keeping one
+of two conflicting records is worse than refusing both.
 
 ## Canonical state advances only on a committed attempt
 
@@ -125,6 +158,7 @@ final journal = AttemptJournal(
 
 journal.append(
   AttemptRecord(
+    journalSequence: journal.nextSequence,
     identity: AttemptIdentity(
       profileId: profile.id,
       attemptId: attemptId,

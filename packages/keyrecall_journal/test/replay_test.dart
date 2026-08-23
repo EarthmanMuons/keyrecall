@@ -76,13 +76,10 @@ void main() {
         model: model,
         initial: recorded.initial,
       );
-      final checkpoint = LearnerStateCheckpoint.capture(
-        profileId: testProfile.id,
+      final checkpoint = LearnerStateCheckpoint.after(
+        recorded.journal.records[3],
         state: partial.state,
         learnerModelVersion: params.modelVersion,
-        sessionId: 'session-1',
-        throughIndexInSession: 3,
-        coversThrough: recorded.journal.records[3].identity.occurredAt,
       );
 
       final resumed = replayJournal(
@@ -99,6 +96,130 @@ void main() {
         full.stateHash,
         reason: 'a checkpoint must be an accelerator, never a different answer',
       );
+    });
+
+    test('a checkpoint resumes correctly across several sessions', () {
+      // The failure a within-session index cannot catch: a checkpoint taken in
+      // a later session would leave every earlier session unmatched, and
+      // replay would reapply all of it on top of a state that already
+      // contained it.
+      final first = recordSession(attempts: 5, sessionId: 'session-a');
+      final second = recordSession(
+        attempts: 4,
+        sessionId: 'session-b',
+        continuing: first.journal,
+        fromState: replayJournal(
+          first.journal,
+          model: model,
+          initial: first.initial,
+        ).state,
+        startDay: 20,
+      );
+      final journal = second.journal;
+      expect(journal.length, 9);
+      expect(journal.records.map((r) => r.identity.sessionId).toSet(), {
+        'session-a',
+        'session-b',
+      });
+
+      final full = replayJournal(journal, model: model, initial: first.initial);
+      expect(full.divergences, isEmpty);
+
+      // Checkpoint inside the second session, at within-session index 2 but
+      // journal sequence 7.
+      final at = journal.records[7];
+      expect(at.identity.sessionId, 'session-b');
+      expect(at.identity.indexInSession, 2);
+      expect(at.journalSequence, 7);
+
+      final upTo = AttemptJournal(journal.header)
+        ..appendAll(journal.records.take(8));
+      final partial = replayJournal(upTo, model: model, initial: first.initial);
+      final checkpoint = LearnerStateCheckpoint.after(
+        at,
+        state: partial.state,
+        learnerModelVersion: params.modelVersion,
+      );
+
+      final resumed = replayJournal(
+        journal,
+        model: model,
+        initial: first.initial,
+        from: checkpoint,
+      );
+
+      expect(
+        resumed.attemptsApplied,
+        1,
+        reason: 'only the one attempt after the checkpoint remains',
+      );
+      expect(resumed.divergences, isEmpty);
+      expect(resumed.stateHash, full.stateHash);
+    });
+
+    test('a checkpoint whose position names another attempt is refused', () {
+      final recorded = recordSession(attempts: 5);
+      final replayed = replayJournal(
+        recorded.journal,
+        model: model,
+        initial: recorded.initial,
+      );
+      final wrong = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
+        state: replayed.state,
+        learnerModelVersion: params.modelVersion,
+        throughJournalSequence: 2,
+        throughAttemptId: 'some-other-attempt',
+        coversThrough: t0,
+      );
+
+      expect(
+        () => replayJournal(
+          recorded.journal,
+          model: model,
+          initial: recorded.initial,
+          from: wrong,
+        ),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('a checkpoint does not follow the state it was taken from', () {
+      // Learner state is mutable, so a checkpoint that aliased it would drift
+      // as practice continued and stop matching its own hash.
+      final recorded = recordSession(attempts: 3);
+      final state = replayJournal(
+        recorded.journal,
+        model: model,
+        initial: recorded.initial,
+      ).state;
+      final checkpoint = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
+        state: state,
+        learnerModelVersion: params.modelVersion,
+        throughJournalSequence: 2,
+        throughAttemptId: recorded.journal.records[2].identity.attemptId,
+        coversThrough: t0,
+      );
+
+      final exercise = recorded.journal.records.first.exercise;
+      final at = recorded.journal.records.last.identity.occurredAt.plusDays(30);
+      model.propagate(state, at);
+      model.applyOutcome(
+        state: state,
+        exercise: exercise,
+        outcome: outcomeOf(),
+        weights: evidenceWeightsFor(exercise, outcomeOf()),
+        prediction: model.predict(state, exercise, at: at),
+        at: at,
+      );
+
+      expect(
+        learnerStateHash(checkpoint.state),
+        checkpoint.contentHash,
+        reason: 'the captured state must still hash to what it claims',
+      );
+      expect(learnerStateHash(state), isNot(checkpoint.contentHash));
     });
 
     test('discarding every checkpoint costs only time', () {
@@ -132,27 +253,33 @@ void main() {
       );
     });
 
-    test('when a checkpoint came from another model version', () {
+    test('when a checkpoint came from another model version, in any mode', () {
       final recorded = recordSession(attempts: 3);
       final checkpoint = LearnerStateCheckpoint.capture(
         profileId: testProfile.id,
         state: recorded.initial,
         learnerModelVersion: 'v1-prototype-99',
-        sessionId: 'session-1',
-        throughIndexInSession: 0,
+        throughJournalSequence: 0,
+        throughAttemptId: 'attempt-0',
         coversThrough: t0,
       );
 
       expect(checkpoint.isUsableUnder(params.modelVersion), isFalse);
-      expect(
-        () => replayJournal(
-          recorded.journal,
-          model: model,
-          initial: recorded.initial,
-          from: checkpoint,
-        ),
-        throwsA(isA<JournalFormatException>()),
-      );
+      for (final mode in ReplayMode.values) {
+        expect(
+          () => replayJournal(
+            recorded.journal,
+            model: model,
+            initial: recorded.initial,
+            from: checkpoint,
+            options: ReplayOptions(mode: mode),
+          ),
+          throwsA(isA<JournalFormatException>()),
+          reason:
+              'a checkpoint holds one model reading of everything before it, '
+              'so seeding another model from it yields a hybrid',
+        );
+      }
     });
 
     test('when a recorded state hash does not match the rebuilt state', () {

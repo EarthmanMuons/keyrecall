@@ -46,6 +46,7 @@ void main() {
       );
       final outcome = outcomeOf(retrieval: FactualRetrieval.notTested);
       final record = AttemptRecord(
+        journalSequence: 0,
         identity: AttemptIdentity(
           profileId: testProfile.id,
           attemptId: 'a',
@@ -78,6 +79,7 @@ void main() {
         final exercise = exerciseFor(v1ScaleCatalog.first);
         final outcome = outcomeOf(retrieval: retrieval);
         final record = AttemptRecord(
+          journalSequence: 0,
           identity: AttemptIdentity(
             profileId: testProfile.id,
             attemptId: 'a',
@@ -110,6 +112,7 @@ void main() {
       final exercise = exerciseFor(v1ScaleCatalog.first);
       final outcome = outcomeOf();
       final record = AttemptRecord(
+        journalSequence: 0,
         identity: identity,
         provenance: provenance,
         exercise: exercise,
@@ -132,6 +135,7 @@ void main() {
       final exercise = exerciseFor(v1ScaleCatalog.first);
       final outcome = outcomeOf();
       return AttemptRecord(
+        journalSequence: 0,
         identity: AttemptIdentity(
           profileId: testProfile.id,
           attemptId: 'a',
@@ -194,6 +198,33 @@ void main() {
       );
     });
 
+    test('on a malformed nested value, with the same exception type', () {
+      // Every decode failure is a JournalFormatException, so a caller reading
+      // an untrusted journal catches exactly one thing.
+      final json = validRecord();
+      (json['exercise']! as Map<String, Object?>)['opportunities'] = [42];
+      expect(
+        () => AttemptRecord.fromJson(json),
+        throwsA(isA<JournalFormatException>()),
+      );
+
+      final other = validRecord();
+      other['provenance'] = 'not an object';
+      expect(
+        () => AttemptRecord.fromJson(other),
+        throwsA(isA<JournalFormatException>()),
+      );
+
+      final third = validRecord();
+      (third['evidence_weights']! as Map<String, Object?>)['competencies'] = {
+        'RH_SCALE_EXECUTION': 'heavy',
+      };
+      expect(
+        () => AttemptRecord.fromJson(third),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
     test('on an out-of-range observation', () {
       final json = validRecord();
       (json['outcome']! as Map<String, Object?>)['continuity'] = 1.5;
@@ -234,13 +265,10 @@ void main() {
         model: model,
         initial: recorded.initial,
       );
-      final checkpoint = LearnerStateCheckpoint.capture(
-        profileId: testProfile.id,
+      final checkpoint = LearnerStateCheckpoint.after(
+        recorded.journal.records.last,
         state: replayed.state,
         learnerModelVersion: params.modelVersion,
-        sessionId: 'session-1',
-        throughIndexInSession: 4,
-        coversThrough: recorded.journal.records.last.identity.occurredAt,
       );
 
       final reread = LearnerStateCheckpoint.fromJson(
@@ -250,7 +278,7 @@ void main() {
 
       expect(reread.contentHash, checkpoint.contentHash);
       expect(learnerStateHash(reread.state), checkpoint.contentHash);
-      expect(reread.throughIndexInSession, 4);
+      expect(reread.throughJournalSequence, 4);
       expect(reread.isUsableUnder(params.modelVersion), isTrue);
     });
 
@@ -260,8 +288,8 @@ void main() {
         profileId: testProfile.id,
         state: recorded.initial,
         learnerModelVersion: params.modelVersion,
-        sessionId: 'session-1',
-        throughIndexInSession: 0,
+        throughJournalSequence: 0,
+        throughAttemptId: 'attempt-0',
         coversThrough: t0,
       );
       final json = checkpoint.toJson();
@@ -295,8 +323,8 @@ void main() {
         profileId: testProfile.id,
         state: state,
         learnerModelVersion: params.modelVersion,
-        sessionId: 'session-1',
-        throughIndexInSession: 2,
+        throughJournalSequence: 2,
+        throughAttemptId: 'attempt-2',
         coversThrough: t0,
       );
 

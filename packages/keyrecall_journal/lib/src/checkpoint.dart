@@ -1,6 +1,7 @@
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
+import 'attempt_record.dart';
 import 'canonical_json.dart' as canonical;
 import 'canonical_json.dart';
 import 'codecs/learner_codec.dart';
@@ -32,11 +33,17 @@ class LearnerStateCheckpoint {
   /// produces a different state.
   final String learnerModelVersion;
 
-  /// The session whose attempts it covers through [throughIndexInSession].
-  final String sessionId;
+  /// The journal sequence of the last attempt folded into this state.
+  ///
+  /// A position in the *history*, not in a sitting. A history spans many
+  /// sessions, so a within-session index cannot say what a checkpoint already
+  /// includes: resuming from one would silently reapply every attempt from
+  /// every other session.
+  final int throughJournalSequence;
 
-  /// The last attempt index folded into this state.
-  final int throughIndexInSession;
+  /// The attempt at that position, so a resume can be checked rather than
+  /// trusted.
+  final String throughAttemptId;
 
   /// When the covered attempt happened, in UTC.
   final DateTime coversThrough;
@@ -51,8 +58,8 @@ class LearnerStateCheckpoint {
     required this.schemaVersion,
     required this.profileId,
     required this.learnerModelVersion,
-    required this.sessionId,
-    required this.throughIndexInSession,
+    required this.throughJournalSequence,
+    required this.throughAttemptId,
     required this.coversThrough,
     required this.state,
     required this.contentHash,
@@ -60,28 +67,50 @@ class LearnerStateCheckpoint {
 
   /// Captures [state] as it stands.
   ///
+  /// Takes a deep copy. Learner state is mutable, and a checkpoint that aliased
+  /// it would keep changing as practice continued, drifting away from the hash
+  /// and the position it claims. Representing state at a particular point in
+  /// history is the whole of what a checkpoint is.
+  ///
   /// The hash is computed here rather than supplied, so a checkpoint cannot be
   /// constructed already claiming to be something it is not.
   factory LearnerStateCheckpoint.capture({
     required LearnerState state,
     required String profileId,
     required String learnerModelVersion,
-    required String sessionId,
-    required int throughIndexInSession,
+    required int throughJournalSequence,
+    required String throughAttemptId,
     required DateTime coversThrough,
   }) {
-    final encoded = encodeLearnerState(state);
+    final captured = state.copy();
     return LearnerStateCheckpoint._(
       schemaVersion: checkpointSchemaVersion,
       profileId: profileId,
       learnerModelVersion: learnerModelVersion,
-      sessionId: sessionId,
-      throughIndexInSession: throughIndexInSession,
+      throughJournalSequence: throughJournalSequence,
+      throughAttemptId: throughAttemptId,
       coversThrough: coversThrough.toUtc(),
-      state: state,
-      contentHash: canonical.contentHash(encoded),
+      state: captured,
+      contentHash: canonical.contentHash(encodeLearnerState(captured)),
     );
   }
+
+  /// Captures the state a replay reached, positioned at [record].
+  ///
+  /// The ordinary way to make one: the position and the state come from the
+  /// same place, so they cannot disagree.
+  factory LearnerStateCheckpoint.after(
+    AttemptRecord record, {
+    required LearnerState state,
+    required String learnerModelVersion,
+  }) => LearnerStateCheckpoint.capture(
+    state: state,
+    profileId: record.identity.profileId,
+    learnerModelVersion: learnerModelVersion,
+    throughJournalSequence: record.journalSequence,
+    throughAttemptId: record.identity.attemptId,
+    coversThrough: record.identity.occurredAt,
+  );
 
   /// Whether this checkpoint can seed a replay under [learnerModelVersion].
   ///
@@ -96,8 +125,8 @@ class LearnerStateCheckpoint {
     'schema_version': schemaVersion,
     'profile_id': profileId,
     'learner_model_version': learnerModelVersion,
-    'session_id': sessionId,
-    'through_index_in_session': throughIndexInSession,
+    'through_journal_sequence': throughJournalSequence,
+    'through_attempt_id': throughAttemptId,
     'covers_through': encodeTime(coversThrough),
     'content_hash': contentHash,
     'state': encodeLearnerState(state),
@@ -139,10 +168,14 @@ class LearnerStateCheckpoint {
         'learner_model_version',
         location: location,
       ),
-      sessionId: requireString(json, 'session_id', location: location),
-      throughIndexInSession: requireInt(
+      throughJournalSequence: requireInt(
         json,
-        'through_index_in_session',
+        'through_journal_sequence',
+        location: location,
+      ),
+      throughAttemptId: requireString(
+        json,
+        'through_attempt_id',
         location: location,
       ),
       coversThrough: requireTime(json, 'covers_through', location: location),
@@ -153,7 +186,7 @@ class LearnerStateCheckpoint {
 
   @override
   String toString() =>
-      'LearnerStateCheckpoint($profileId, $sessionId#$throughIndexInSession, '
+      'LearnerStateCheckpoint($profileId, through #$throughJournalSequence, '
       '$learnerModelVersion)';
 }
 

@@ -59,6 +59,10 @@ class JournalHeader {
 /// nothing here is ever rewritten: [append] adds to the end, and appending the
 /// same attempt twice is a no-op rather than a second event.
 ///
+/// Records carry a contiguous [AttemptRecord.journalSequence] and a
+/// nondecreasing timestamp. Both are enforced on append, so a lost line and a
+/// timeline that runs backward are detectable rather than silently absorbed.
+///
 /// Scoped to a single profile. An install holds one of these per person, and
 /// they never interleave: mixing two people's evidence into one state is the
 /// failure this scoping exists to prevent.
@@ -72,7 +76,7 @@ class AttemptJournal {
   final JournalHeader header;
 
   final List<AttemptRecord> _records = [];
-  final Set<String> _attemptIds = {};
+  final Map<String, String> _hashByAttemptId = {};
   final Map<String, int> _lastIndexBySession = {};
 
   AttemptJournal(this.header);
@@ -87,26 +91,68 @@ class AttemptJournal {
   bool get isEmpty => _records.isEmpty;
 
   /// Whether [attemptId] has already been recorded.
-  bool contains(String attemptId) => _attemptIds.contains(attemptId);
+  bool contains(String attemptId) => _hashByAttemptId.containsKey(attemptId);
 
-  /// Appends [record], or does nothing if that attempt is already recorded.
+  /// The sequence the next appended record must carry.
+  int get nextSequence => _records.length;
+
+  /// Appends [record], or does nothing if that exact attempt is already
+  /// recorded.
   ///
-  /// Returns whether it was newly appended. Idempotent on the attempt id, so a
-  /// retried commit after an interrupted write cannot fold the same evidence in
-  /// twice.
+  /// Returns whether it was newly appended. A retried commit after an
+  /// interrupted write is a no-op, so the same evidence cannot be folded in
+  /// twice. But idempotency is not first-write-wins: an attempt id that comes
+  /// back carrying *different* content is a collision, not a retry, and it
+  /// throws. In an authoritative log, silently keeping one of two conflicting
+  /// records is worse than refusing both.
   ///
   /// Throws [JournalFormatException] when the record belongs to another
-  /// profile, or when the attempt index does not advance within its session,
-  /// since either means history arriving where it does not belong.
+  /// profile, when its journal sequence is not the next one, when its
+  /// timestamp precedes the previous attempt, or when its attempt index does
+  /// not advance within its session.
   bool append(AttemptRecord record) {
+    final location = 'attempt ${record.identity.attemptId}';
+
     if (record.identity.profileId != header.profileId) {
       throw JournalFormatException(
         'attempt belongs to profile ${record.identity.profileId}, but this '
         'journal holds ${header.profileId}',
-        location: 'attempt ${record.identity.attemptId}',
+        location: location,
       );
     }
-    if (_attemptIds.contains(record.identity.attemptId)) return false;
+
+    final hash = contentHash(record.toJson());
+    final existing = _hashByAttemptId[record.identity.attemptId];
+    if (existing != null) {
+      if (existing == hash) return false;
+      throw JournalFormatException(
+        'attempt id ${record.identity.attemptId} is already recorded with '
+        'different content; an id that returns with new content is a '
+        'collision, not a retry',
+        location: location,
+      );
+    }
+
+    if (record.journalSequence != nextSequence) {
+      throw JournalFormatException(
+        'journal sequence ${record.journalSequence} is not the expected '
+        '$nextSequence; a gap means a record was lost, and a repeat means one '
+        'was duplicated',
+        location: location,
+      );
+    }
+
+    if (_records.isNotEmpty) {
+      final previous = _records.last.identity.occurredAt;
+      if (record.identity.occurredAt.isBefore(previous)) {
+        throw JournalFormatException(
+          'attempt time ${encodeTime(record.identity.occurredAt)} precedes the '
+          'previous attempt at ${encodeTime(previous)}; the model timeline '
+          'cannot run backward, because propagating backward is illegal',
+          location: location,
+        );
+      }
+    }
 
     final sessionId = record.identity.sessionId;
     final index = record.identity.indexInSession;
@@ -115,12 +161,12 @@ class AttemptJournal {
       throw JournalFormatException(
         'attempt index $index does not advance past $lastIndex in session '
         '$sessionId',
-        location: 'attempt ${record.identity.attemptId}',
+        location: location,
       );
     }
 
     _records.add(record);
-    _attemptIds.add(record.identity.attemptId);
+    _hashByAttemptId[record.identity.attemptId] = hash;
     _lastIndexBySession[sessionId] = index;
     return true;
   }
