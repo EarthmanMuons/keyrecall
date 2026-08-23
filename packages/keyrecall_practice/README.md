@@ -28,9 +28,23 @@ cleared, or it does not, in which case the attempt is still pending. The update
 is never applied twice because learner state is not stored: it is replayed from
 the journal, and the journal holds each attempt exactly once.
 
+**A storage failure that does not kill the process** is the third case, and it
+needs more than crash safety. `commit` computes the whole transition on a copy
+and replaces canonical state only once the append has succeeded, so a throwing
+append leaves the session exactly where it started with the decision still
+pending. Retrying is then genuinely safe. Applying the update first would leave
+state ahead of the journal, and the retry would fold the same outcome in again
+from an already-advanced state.
+
 A pending decision is deliberately **not** part of the journal. An attempt with
 no outcome produced no evidence and moved no state, and putting it in the replay
 stream would invite exactly the manufactured outcome this prevents.
+
+It is also the one input here that is neither replayed nor hash-checked, and
+committing it writes an attempt keyed on the slot's own profile id. So it is
+validated on recovery: a slot belonging to another profile, targeting a journal
+position that is not the next one, or predating the profile is refused rather
+than accepted.
 
 ## Usage
 
@@ -60,8 +74,15 @@ await session.saveCheckpoint(); // optional; only ever saves replay time
 ```
 
 Placement state is anchored at `Profile.createdAt`, so every attempt must fall
-at or after it. The store never stamps a timestamp of its own: a wall clock the
-caller does not control would give replay a different origin on every run.
+at or after it, and the caller supplies the instant a new journal is stamped
+with. A wall clock the caller does not control would give replay a different
+origin on every run. `JournalHeader.createdAt` is storage provenance only;
+nothing derives a model timestamp from it.
+
+The session attempt cap counts **decision opportunities**, not presented
+attempts, so a slot that admits nothing still consumes one. That is deliberate:
+a sitting that keeps finding nothing to present has to end, and counting only
+presentations would let it run forever.
 
 ## Storage
 

@@ -19,3 +19,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   answered, deliberately outside the journal.
 - `PracticeStore`, the storage port, with an in-memory implementation and
   `FilePracticeStore`, which appends to ordinary files and repairs a torn tail.
+- Commit computes the transition on a copy and replaces canonical state only
+  after a durable append, so a storage failure that leaves the process running
+  can be retried safely.
+- Recovery validates a pending decision's profile, journal position, and
+  timestamp before accepting it.

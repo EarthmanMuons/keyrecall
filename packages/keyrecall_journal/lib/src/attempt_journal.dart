@@ -16,7 +16,13 @@ class JournalHeader {
   /// Which profile this history belongs to.
   final String profileId;
 
-  /// When the journal was opened, in UTC.
+  /// When this journal was created, in UTC.
+  ///
+  /// Storage provenance, not learner timeline. Nothing derives a model
+  /// timestamp from it: placement is anchored at the profile's creation
+  /// instant, and every elapsed interval comes from the attempts themselves.
+  /// Recording when the history began is still worth doing, but a reader must
+  /// not mistake it for a point the model reasons from.
   final DateTime createdAt;
 
   JournalHeader({required this.profileId, required DateTime createdAt})

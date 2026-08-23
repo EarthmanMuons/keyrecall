@@ -40,11 +40,17 @@ class FilePracticeStore implements PracticeStore {
   }) => FilePracticeStore(Directory(path), params: params);
 
   @override
-  Future<AttemptJournal> loadJournal(String profileId) async {
+  Future<AttemptJournal> loadJournal(
+    String profileId, {
+    DateTime? createdAt,
+  }) async {
     final file = _journalFile(profileId);
     if (!file.existsSync()) {
       return AttemptJournal(
-        JournalHeader(profileId: profileId, createdAt: DateTime.now().toUtc()),
+        JournalHeader(
+          profileId: profileId,
+          createdAt: createdAt ?? DateTime.now().toUtc(),
+        ),
       );
     }
     return AttemptJournal.fromJsonLines(
@@ -59,9 +65,11 @@ class FilePracticeStore implements PracticeStore {
     await _repairTornTail(file);
 
     if (!file.existsSync()) {
+      // A journal created by its first append is stamped with the attempt it
+      // is created for, rather than with whatever the clock reads now.
       final header = JournalHeader(
         profileId: record.profileId,
-        createdAt: DateTime.now().toUtc(),
+        createdAt: record.identity.occurredAt,
       );
       await _appendLine(file, canonicalJson(header.toJson()));
     }

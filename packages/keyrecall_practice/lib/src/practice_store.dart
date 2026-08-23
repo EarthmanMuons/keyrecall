@@ -23,7 +23,11 @@ abstract interface class PracticeStore {
   ///
   /// Returns an empty journal for a profile with no history yet, rather than
   /// failing: a first run is not an error.
-  Future<AttemptJournal> loadJournal(String profileId);
+  ///
+  /// [createdAt] stamps a journal being created for the first time, and is
+  /// ignored once one exists. The caller supplies it so no store invents a
+  /// timestamp from a clock the caller does not control.
+  Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt});
 
   /// Durably appends [record] to the end of that profile's history.
   ///
@@ -70,12 +74,14 @@ class InMemoryPracticeStore implements PracticeStore {
     : createdAt = (createdAt ?? DateTime.now()).toUtc();
 
   @override
-  Future<AttemptJournal> loadJournal(String profileId) async =>
-      _journalFor(profileId);
+  Future<AttemptJournal> loadJournal(
+    String profileId, {
+    DateTime? createdAt,
+  }) async => _journalFor(profileId, createdAt);
 
   @override
   Future<void> appendAttempt(AttemptRecord record) async {
-    _journalFor(record.profileId).append(record);
+    _journalFor(record.profileId, null).append(record);
   }
 
   @override
@@ -101,10 +107,14 @@ class InMemoryPracticeStore implements PracticeStore {
     _checkpoints[checkpoint.profileId] = checkpoint;
   }
 
-  AttemptJournal _journalFor(String profileId) => _journals.putIfAbsent(
-    profileId,
-    () => AttemptJournal(
-      JournalHeader(profileId: profileId, createdAt: createdAt),
-    ),
-  );
+  AttemptJournal _journalFor(String profileId, DateTime? createdAt) =>
+      _journals.putIfAbsent(
+        profileId,
+        () => AttemptJournal(
+          JournalHeader(
+            profileId: profileId,
+            createdAt: createdAt ?? this.createdAt,
+          ),
+        ),
+      );
 }

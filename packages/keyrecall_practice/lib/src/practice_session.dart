@@ -89,9 +89,10 @@ class PracticeSession {
   final String? appBuildVersion;
 
   final IdGenerator _nextId;
-  final LearnerState _state;
   final SessionState _session;
   final AttemptJournal _journal;
+
+  LearnerState _state;
 
   PendingDecision? _pending;
   PresentedAttempt? _outstanding;
@@ -138,7 +139,10 @@ class PracticeSession {
   }) async {
     final resolvedPipeline = pipeline ?? SchedulerPipeline(learner: learner);
     final generator = nextId ?? newProfileId;
-    final journal = await store.loadJournal(profile.id);
+    final journal = await store.loadJournal(
+      profile.id,
+      createdAt: profile.createdAt,
+    );
 
     // Anchored to when the profile was created, not to the journal header or
     // any wall clock a store happened to stamp. Placement is the state before
@@ -159,7 +163,7 @@ class PracticeSession {
       );
     }
 
-    final pending = await _recoverPending(store, profile.id, journal);
+    final pending = await _recoverPending(store, profile, journal);
 
     return PracticeSession._(
       learner: learner,
@@ -182,8 +186,12 @@ class PracticeSession {
 
   /// The learner state this sitting reasons from.
   ///
-  /// Advances only when an attempt is committed. Anything that looks ahead
-  /// works on a copy, or replay could not reproduce the timeline.
+  /// Advances only when an attempt is committed durably. Anything that looks
+  /// ahead works on a copy, or replay could not reproduce the timeline.
+  ///
+  /// Read it again after each [commit] rather than holding the object across
+  /// one: a commit replaces it wholesale, so a cached reference would quietly
+  /// go stale.
   LearnerState get state => _state;
 
   /// Every attempt recorded for this profile so far.
@@ -234,6 +242,11 @@ class PracticeSession {
       at: at,
     );
     final chosen = pipeline.selectChoice(traces, _session);
+    // The safety cap counts decision opportunities, not presented attempts, so
+    // a slot that admits nothing still consumes one. Deliberate: a sitting that
+    // keeps finding nothing to present has to end, and only counting
+    // presentations would let it run forever. Do not "fix" this to count
+    // commits.
     _session.attemptsThisSession++;
     if (chosen == null) return null;
 
@@ -264,9 +277,16 @@ class PracticeSession {
 
   /// Records what happened and commits the attempt.
   ///
-  /// Applies the update to canonical state, appends the attempt, and only then
-  /// clears the decision. A crash between the append and the clear leaves a
-  /// stale decision that the next [open] recognizes as already committed.
+  /// The whole transition is computed on a copy, and canonical state is only
+  /// replaced once the attempt is durably appended. That matters for a storage
+  /// failure that does *not* kill the process: if the append throws, the
+  /// session is left exactly where it started, the decision is still pending,
+  /// and calling [commit] again is safe. Applying the update first would leave
+  /// state ahead of the journal, and a retry would then fold the same outcome
+  /// in twice from an already-advanced state.
+  ///
+  /// The decision is cleared last. A crash between the append and the clear
+  /// leaves a stale slot that the next [open] recognizes as already committed.
   ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
   Future<AttemptRecord> commit(
@@ -277,12 +297,12 @@ class PracticeSession {
     final decision = outstanding.decision;
     final at = decision.decidedAt;
 
-    // Committing is what advances canonical state.
-    learner.propagate(_state, at);
-    final prediction = learner.predict(_state, decision.exercise, at: at);
+    final next = _state.copy();
+    learner.propagate(next, at);
+    final prediction = learner.predict(next, decision.exercise, at: at);
     final weights = evidenceWeightsFor(decision.exercise, outcome);
     final diagnostics = learner.applyOutcome(
-      state: _state,
+      state: next,
       exercise: decision.exercise,
       outcome: outcome,
       weights: weights,
@@ -294,14 +314,16 @@ class PracticeSession {
       outcome: outcome,
       weights: weights,
       memoryUpdate: diagnostics,
-      stateAfterHash: learnerStateHash(_state),
+      stateAfterHash: learnerStateHash(next),
       observedWallTime: observedWallTime,
     );
 
+    // Nothing above this line touched anything the session keeps. Everything
+    // below it only runs once the attempt is history.
     await store.appendAttempt(record);
-    _journal.append(record);
-    await store.clearPendingDecision(profile.id);
 
+    _state = next;
+    _journal.append(record);
     _session.recordSelection(
       decision.exercise,
       retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
@@ -309,6 +331,8 @@ class PracticeSession {
     );
     _outstanding = null;
     _pending = null;
+
+    await store.clearPendingDecision(profile.id);
     return record;
   }
 
@@ -368,20 +392,53 @@ class PracticeSession {
   }
 
   /// Decides what an unresolved decision means, given what the journal holds.
+  ///
+  /// Validates before accepting it. A pending slot is the one input here that
+  /// is neither replayed nor hash-checked, and committing it writes an attempt
+  /// keyed on the *slot's* profile id, so a misplaced or corrupted file could
+  /// otherwise append one person's practice into another person's history.
   static Future<PendingDecision?> _recoverPending(
     PracticeStore store,
-    String profileId,
+    Profile profile,
     AttemptJournal journal,
   ) async {
-    final pending = await store.loadPendingDecision(profileId);
+    final pending = await store.loadPendingDecision(profile.id);
     if (pending == null) return null;
+
+    if (pending.profileId != profile.id) {
+      throw JournalFormatException(
+        'pending decision belongs to profile ${pending.profileId} but was '
+        'found under ${profile.id}',
+        location: 'pending decision ${pending.attemptId}',
+      );
+    }
 
     if (journal.contains(pending.attemptId)) {
       // Committed before the crash, then interrupted before the slot was
-      // cleared. The attempt is already history; the slot is just stale.
-      await store.clearPendingDecision(profileId);
+      // cleared. The attempt is already history; the slot is merely stale, and
+      // its sequence is legitimately behind.
+      await store.clearPendingDecision(profile.id);
       return null;
     }
+
+    if (pending.journalSequence != journal.nextSequence) {
+      throw JournalFormatException(
+        'pending decision targets journal sequence '
+        '${pending.journalSequence}, but the next position is '
+        '${journal.nextSequence}; an uncommitted attempt that does not target '
+        'the end of history is impossible transaction state',
+        location: 'pending decision ${pending.attemptId}',
+      );
+    }
+
+    if (pending.decidedAt.isBefore(profile.createdAt)) {
+      throw JournalFormatException(
+        'pending decision was made at ${encodeTime(pending.decidedAt)}, before '
+        'the profile existed at ${encodeTime(profile.createdAt)}',
+        location: 'pending decision ${pending.attemptId}',
+      );
+    }
+
     return pending;
   }
 
