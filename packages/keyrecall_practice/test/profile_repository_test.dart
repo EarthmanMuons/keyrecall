@@ -160,6 +160,70 @@ void main() {
     });
   });
 
+  group('the default profile', () {
+    forEachRepository('is created on a first launch, without asking', (
+      repository,
+    ) async {
+      expect(await repository.list(), isEmpty);
+
+      final profile = await repository.selectedOrDefault();
+
+      expect(profile.displayName, defaultProfileName);
+      expect((await repository.selected())?.id, profile.id);
+      expect(await repository.list(), hasLength(1));
+    });
+
+    forEachRepository('is only created once', (repository) async {
+      final first = await repository.selectedOrDefault();
+      final second = await repository.selectedOrDefault();
+
+      expect(second.id, first.id);
+      expect(await repository.list(), hasLength(1));
+    });
+
+    forEachRepository('never displaces a profile that already exists', (
+      repository,
+    ) async {
+      final alice = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+      );
+
+      final active = await repository.selectedOrDefault();
+
+      expect(active.id, alice.id);
+      expect(await repository.list(), hasLength(1));
+    });
+
+    forEachRepository('takes a caller-supplied name', (repository) async {
+      final profile = await repository.selectedOrDefault(displayName: 'Yo');
+
+      expect(profile.displayName, 'Yo');
+    });
+
+    test('selects the oldest rather than inventing another person', () async {
+      // Profiles exist but none is selected. That should not arise, but
+      // creating somebody new to resolve it would be the worse repair.
+      final repository = FileProfileRepository(root, now: () => t0);
+      final alice = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+      );
+      await repository.create(displayName: 'Bob', createdAt: t0.plusDays(1));
+
+      final json =
+          jsonDecode(repository.indexFile.readAsStringSync())
+              as Map<String, Object?>;
+      json['selected_profile_id'] = null;
+      repository.indexFile.writeAsStringSync(jsonEncode(json));
+
+      final active = await repository.selectedOrDefault();
+
+      expect(active.id, alice.id);
+      expect(await repository.list(), hasLength(2));
+    });
+  });
+
   group('the index file', () {
     test('survives a restart', () async {
       final first = FileProfileRepository(root, now: () => t0);

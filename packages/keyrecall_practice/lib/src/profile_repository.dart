@@ -160,6 +160,37 @@ abstract interface class ProfileRepository {
   Future<Profile> select(String profileId);
 }
 
+/// The name a profile gets when the app creates one without asking.
+///
+/// Reads naturally beside real names in a switcher, and a caller with a
+/// localized string should pass its own.
+const String defaultProfileName = 'Me';
+
+/// Conveniences every [ProfileRepository] gets for free.
+extension ProfileRepositoryDefaults on ProfileRepository {
+  /// The active profile, creating a default one if this install has none.
+  ///
+  /// A first launch should not open with a decision. One person on one
+  /// instrument is the ordinary case, and profiles only become a choice worth
+  /// making when somebody wants a second. So the app calls this and gets a
+  /// learner either way; adding a profile stays an action, never a prerequisite.
+  ///
+  /// If profiles exist but none is selected, the oldest is selected rather than
+  /// a new one being made. That state should not arise, but inventing another
+  /// person to resolve it would be the worse repair.
+  Future<Profile> selectedOrDefault({
+    String displayName = defaultProfileName,
+  }) async {
+    final active = await selected();
+    if (active != null) return active;
+
+    final existing = await list();
+    if (existing.isNotEmpty) return select(existing.first.id);
+
+    return create(displayName: displayName);
+  }
+}
+
 /// A [ProfileRepository] holding everything in memory.
 class InMemoryProfileRepository implements ProfileRepository {
   ProfileIndex _index;

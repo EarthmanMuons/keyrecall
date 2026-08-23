@@ -27,3 +27,5 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - `ProfileRepository`, with in-memory and file-backed implementations, covering
   profile creation, listing, renaming, and selection. Kept separate from
   practice storage, and deliberately without deletion.
+- `selectedOrDefault()`, so a first launch opens straight into practice instead
+  of into a profile decision.
