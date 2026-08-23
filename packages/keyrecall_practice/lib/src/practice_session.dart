@@ -48,9 +48,13 @@ class PracticeStateError extends StateError {
 /// ```text
 /// decide()   propagate a scratch copy, evaluate, select,
 ///            persist the decision, then present
-/// commit()   apply the update to canonical state,
-///            append the attempt, then clear the decision
+/// commit()   compute the whole transition on a copy,
+///            append the attempt durably,
+///            then replace canonical state and clear the decision
 /// ```
+///
+/// Committing in that order is one of this package's central guarantees:
+/// nothing the session keeps moves until the attempt is history.
 ///
 /// The two failure modes the ordering exists to prevent:
 ///
