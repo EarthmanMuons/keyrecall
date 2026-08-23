@@ -3,6 +3,7 @@ description: An adaptive piano technical-practice scheduler.
 workspace:
   - packages/keyrecall_domain
   - packages/keyrecall_input
+  - packages/keyrecall_input_sources
   - packages/keyrecall_journal
   - packages/keyrecall_midi
   - packages/keyrecall_learner
@@ -41,6 +42,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_riverpod: ^3.0.3
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -49,6 +52,8 @@ dependencies:
     path: packages/keyrecall_domain
   keyrecall_input:
     path: packages/keyrecall_input
+  keyrecall_input_sources:
+    path: packages/keyrecall_input_sources
   keyrecall_journal:
     path: packages/keyrecall_journal
   keyrecall_midi:

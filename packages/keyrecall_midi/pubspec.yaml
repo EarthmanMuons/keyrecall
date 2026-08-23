@@ -21,6 +21,7 @@ dependencies:
   flutter_midi_command_ble: ^1.0.7
   flutter_riverpod: ^3.0.3
   keyrecall_input: ^0.1.0
+  keyrecall_input_sources: ^0.1.0
   meta: ^1.17.0
   permission_handler: ^13.0.0
   shared_preferences: ^2.5.4

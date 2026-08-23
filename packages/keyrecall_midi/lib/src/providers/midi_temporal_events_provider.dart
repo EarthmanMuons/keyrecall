@@ -3,8 +3,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:keyrecall_input/keyrecall_input.dart';
-
-import 'input_event_clock_provider.dart';
+import 'package:keyrecall_input_sources/keyrecall_input_sources.dart';
 
 import '../models/midi_connection.dart';
 import '../models/midi_constants.dart';

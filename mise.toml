@@ -60,16 +60,23 @@ description = "Analyze Dart sources"
 run = "dart analyze"
 
 [tasks."dart:test"]
-description = "Run the pure Dart package tests"
+description = "Run the package and app tests"
 run = """
+run_tests() {
+  directory="$1"
+  [ -d "$directory/test" ] || return 0
+  # A package that depends on the Flutter SDK needs the Flutter test runner.
+  if grep -q "^  flutter:" "$directory/pubspec.yaml"; then
+    (cd "$directory" && flutter test)
+  else
+    (cd "$directory" && dart test)
+  fi
+}
+
 for package in packages/*/; do
-  # keyrecall_midi is a Flutter package, so its vendored tests need the
-  # Flutter test runner rather than the Dart one.
-  case "$package" in
-    packages/keyrecall_midi/) (cd "$package" && flutter test) ;;
-    *) (cd "$package" && dart test) ;;
-  esac
+  run_tests "${package%/}"
 done
+run_tests .
 """
 
 [tasks."dart:check"]

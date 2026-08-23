@@ -35,9 +35,9 @@ set of expected differences rather than a mystery.
 - The input vocabulary moved to `keyrecall_input`, so the imports point there.
 - `sharedPreferencesProvider` is defined in this package instead of being
   imported from the host app's core.
-- `inputEventClockProvider` is defined here for now, since the vocabulary
-  package is pure Dart and holds no providers. It moves once a second input
-  source needs it.
+- `inputEventClockProvider` comes from `keyrecall_input_sources`, which sits
+  below every input source. A synthetic source has no business depending on
+  this package to find out what time it is.
 - Doc comments referring to `MidiConnectionStatus` and
   `midiConnectionStatusProvider` were reworded, because those symbols were not
   vendored and a dangling reference is worse than a slightly different comment.

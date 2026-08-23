@@ -33,7 +33,6 @@ export 'src/models/midi_preferences.dart';
 export 'src/persistence/midi_preferences_keys.dart';
 export 'src/providers/app_midi_lifecycle_provider.dart';
 export 'src/providers/bluetooth_permission_service_provider.dart';
-export 'src/providers/input_event_clock_provider.dart';
 export 'src/providers/midi_ble_service_provider.dart';
 export 'src/providers/midi_connection_notifier.dart';
 export 'src/providers/midi_device_manager.dart';

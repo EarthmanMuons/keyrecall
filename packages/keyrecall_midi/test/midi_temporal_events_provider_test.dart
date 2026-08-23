@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:keyrecall_input_sources/keyrecall_input_sources.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
 
