@@ -30,3 +30,6 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   material memory it would update.
 - `Outcome` validates its scores at construction, and the parameter classes
   assert their own bounds.
+- `LearnerParams.copyWith`, for counterfactual replay under an alternative
+  parameter set. It requires a new `modelVersion`, so a variant cannot be
+  recorded as the registry it was derived from.

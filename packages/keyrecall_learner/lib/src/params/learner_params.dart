@@ -367,6 +367,31 @@ class LearnerParams {
     required this.difficulty,
     required this.placement,
   });
+
+  /// This registry with some sections replaced.
+  ///
+  /// For counterfactual replay, which re-estimates recorded attempts under an
+  /// alternative parameter set to compare models. Requiring [modelVersion]
+  /// rather than defaulting it is deliberate: a variant that kept the original
+  /// version string would be recorded as the original, and the next replay
+  /// would silently reinterpret history under constants that were never used.
+  LearnerParams copyWith({
+    required String modelVersion,
+    CompetencyParams? competency,
+    MaterialMemoryParams? materialMemory,
+    MaterialExecutionParams? materialExecution,
+    HandTransferParams? handTransfer,
+    DifficultyParams? difficulty,
+    PlacementParams? placement,
+  }) => LearnerParams(
+    modelVersion: modelVersion,
+    competency: competency ?? this.competency,
+    materialMemory: materialMemory ?? this.materialMemory,
+    materialExecution: materialExecution ?? this.materialExecution,
+    handTransfer: handTransfer ?? this.handTransfer,
+    difficulty: difficulty ?? this.difficulty,
+    placement: placement ?? this.placement,
+  );
 }
 
 /// The provisional V1 learner-model constants.
