@@ -4,6 +4,7 @@ workspace:
   - packages/keyrecall_domain
   - packages/keyrecall_journal
   - packages/keyrecall_learner
+  - packages/keyrecall_practice
   - packages/keyrecall_scheduler
   - packages/keyrecall_simulation
 
@@ -48,6 +49,8 @@ dependencies:
     path: packages/keyrecall_journal
   keyrecall_learner:
     path: packages/keyrecall_learner
+  keyrecall_practice:
+    path: packages/keyrecall_practice
   keyrecall_scheduler:
     path: packages/keyrecall_scheduler
   keyrecall_simulation:
