@@ -4,6 +4,38 @@ The durable boundary under [KeyRecall](https://github.com/EarthmanMuons/keyrecal
 what history is, and how learner state is recovered from it. Pure Dart, no
 Flutter dependencies, and no storage engine.
 
+## The profile owns the history
+
+A shared instrument means a shared install, so an install has no single learner.
+It has one independent history per `Profile`: its own journal, its own state,
+its own session.
+
+```text
+KeyRecall install
+├── Alice   journal, learner state, current session
+├── Bob     journal, learner state, current session
+└── Child   journal, learner state, current session
+```
+
+A profile id is opaque and stable, never derived from a display name. Names
+change and repeat, so a history keyed on one would be lost by a rename and
+merged by a coincidence. `newProfileId()` generates a version 4 UUID, which is
+also the namespace a future sync would merge on.
+
+Every persisted artifact is scoped by it. `AttemptRecord` carries the profile id
+on the record itself rather than only on the journal, so a record stays
+self-describing once exported or merged, and a journal refuses an attempt from
+another profile outright.
+
+`LearnerState` deliberately does not know about profiles. It stays the pure
+learner-model object, and this layer associates one with a profile:
+
+```text
+Profile -> AttemptJournal -> LearnerState / checkpoints
+```
+
+That keeps `keyrecall_learner` free of app-account concepts.
+
 ## What is authoritative
 
 The **attempt journal is the source of truth.** It is append-only, and learner
@@ -83,13 +115,18 @@ evaluation.
 ## Usage
 
 ```dart
+final profile = Profile.create(
+  displayName: 'Alice',
+  createdAt: DateTime.now().toUtc(),
+);
 final journal = AttemptJournal(
-  JournalHeader(learnerId: 'local', createdAt: DateTime.now().toUtc()),
+  JournalHeader(profileId: profile.id, createdAt: DateTime.now().toUtc()),
 );
 
 journal.append(
   AttemptRecord(
     identity: AttemptIdentity(
+      profileId: profile.id,
       attemptId: attemptId,
       sessionId: sessionId,
       indexInSession: index,

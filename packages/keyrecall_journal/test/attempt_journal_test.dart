@@ -14,6 +14,7 @@ AttemptRecord recordAt({
   final outcome = outcomeOf();
   return AttemptRecord(
     identity: AttemptIdentity(
+      profileId: testProfile.id,
       attemptId: attemptId,
       sessionId: sessionId,
       indexInSession: indexInSession,
@@ -29,7 +30,7 @@ AttemptRecord recordAt({
 
 void main() {
   JournalHeader header() =>
-      JournalHeader(learnerId: 'learner-1', createdAt: t0);
+      JournalHeader(profileId: testProfile.id, createdAt: t0);
 
   group('append-only', () {
     test('keeps records in the order they arrived', () {
@@ -96,6 +97,7 @@ void main() {
 
       AttemptRecord at(String id, int index, DateTime when) => AttemptRecord(
         identity: AttemptIdentity(
+          profileId: testProfile.id,
           attemptId: id,
           sessionId: 'session-1',
           indexInSession: index,
@@ -125,7 +127,7 @@ void main() {
         recorded.journal.toJsonLines(),
       );
 
-      expect(reread.header.learnerId, 'learner-1');
+      expect(reread.header.profileId, testProfile.id);
       expect(reread.length, recorded.journal.length);
       expect(reread.toJsonLines(), recorded.journal.toJsonLines());
     });

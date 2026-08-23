@@ -6,24 +6,23 @@ import 'attempt_record.dart';
 import 'canonical_json.dart';
 import 'schema.dart';
 
-/// Identifies a journal and the learner whose history it holds.
+/// Identifies a journal and the profile whose history it holds.
 ///
-/// The learner id lives here rather than on every attempt because the storage
-/// architecture is one journal per learner. If that ever changes, this is the
-/// seam: move the field onto the record and bump the attempt schema, rather
-/// than inferring ownership from a file path.
+/// One journal per profile. A shared install has no single learner, so
+/// ownership is stated here and repeated on every record: the header scopes
+/// the file, and the record stays self-describing once it leaves the file.
 @immutable
 class JournalHeader {
-  /// Which learner this history belongs to.
-  final String learnerId;
+  /// Which profile this history belongs to.
+  final String profileId;
 
   /// When the journal was opened, in UTC.
   final DateTime createdAt;
 
-  JournalHeader({required this.learnerId, required DateTime createdAt})
+  JournalHeader({required this.profileId, required DateTime createdAt})
     : createdAt = createdAt.toUtc() {
-    if (learnerId.isEmpty) {
-      throw ArgumentError.value(learnerId, 'learnerId', 'must not be empty');
+    if (profileId.isEmpty) {
+      throw ArgumentError.value(profileId, 'profileId', 'must not be empty');
     }
   }
 
@@ -31,7 +30,7 @@ class JournalHeader {
   Map<String, Object?> toJson() => {
     'record_type': JournalRecordType.header.id,
     'schema_version': attemptSchemaVersion,
-    'learner_id': learnerId,
+    'profile_id': profileId,
     'created_at': encodeTime(createdAt),
   };
 
@@ -45,27 +44,31 @@ class JournalHeader {
       );
     }
     return JournalHeader(
-      learnerId: requireString(json, 'learner_id', location: 'header'),
+      profileId: requireString(json, 'profile_id', location: 'header'),
       createdAt: requireTime(json, 'created_at', location: 'header'),
     );
   }
 
   @override
-  String toString() => 'JournalHeader($learnerId)';
+  String toString() => 'JournalHeader($profileId)';
 }
 
-/// An append-only history of practice attempts.
+/// An append-only history of one profile's practice attempts.
 ///
 /// The source of truth. Learner state is whatever replaying this produces, so
 /// nothing here is ever rewritten: [append] adds to the end, and appending the
 /// same attempt twice is a no-op rather than a second event.
+///
+/// Scoped to a single profile. An install holds one of these per person, and
+/// they never interleave: mixing two people's evidence into one state is the
+/// failure this scoping exists to prevent.
 ///
 /// Deliberately storage-free. It holds records in memory and encodes to
 /// JSON lines; a database or file adapter wraps it. Keeping the contract here,
 /// above any storage engine, is what stops the engine from deciding the
 /// schema.
 class AttemptJournal {
-  /// Which learner this history belongs to.
+  /// Which profile this history belongs to.
   final JournalHeader header;
 
   final List<AttemptRecord> _records = [];
@@ -92,9 +95,17 @@ class AttemptJournal {
   /// retried commit after an interrupted write cannot fold the same evidence in
   /// twice.
   ///
-  /// Throws [JournalFormatException] when the attempt index does not advance
-  /// within its session, since that would mean history arriving out of order.
+  /// Throws [JournalFormatException] when the record belongs to another
+  /// profile, or when the attempt index does not advance within its session,
+  /// since either means history arriving where it does not belong.
   bool append(AttemptRecord record) {
+    if (record.identity.profileId != header.profileId) {
+      throw JournalFormatException(
+        'attempt belongs to profile ${record.identity.profileId}, but this '
+        'journal holds ${header.profileId}',
+        location: 'attempt ${record.identity.attemptId}',
+      );
+    }
     if (_attemptIds.contains(record.identity.attemptId)) return false;
 
     final sessionId = record.identity.sessionId;
@@ -191,5 +202,5 @@ class AttemptJournal {
 
   @override
   String toString() =>
-      'AttemptJournal(${header.learnerId}, ${_records.length} attempts)';
+      'AttemptJournal(${header.profileId}, ${_records.length} attempts)';
 }

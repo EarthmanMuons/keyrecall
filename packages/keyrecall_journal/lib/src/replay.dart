@@ -154,6 +154,7 @@ ReplayResult replayJournal(
     from: from,
     model: model,
     mode: options.mode,
+    profileId: journal.header.profileId,
   );
   final divergences = <ReplayDivergence>[];
   var applied = 0;
@@ -250,8 +251,15 @@ LearnerState _seedState({
   required LearnerStateCheckpoint? from,
   required LearnerModel model,
   required ReplayMode mode,
+  required String profileId,
 }) {
   if (from == null) return initial.copy();
+  if (from.profileId != profileId) {
+    throw JournalFormatException(
+      'checkpoint belongs to profile ${from.profileId}, but this journal '
+      'holds $profileId',
+    );
+  }
   if (mode == ReplayMode.exact &&
       !from.isUsableUnder(model.params.modelVersion)) {
     throw JournalFormatException(

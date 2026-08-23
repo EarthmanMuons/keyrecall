@@ -22,3 +22,6 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - Serialization for the domain, learner, and scheduler types, owned here rather
   than on the model types, with validation of the persisted-state invariants on
   read.
+- `Profile`, with opaque version 4 UUID identifiers, so several people can share
+  one install. Every attempt record and checkpoint is scoped by profile id, and
+  a journal refuses an attempt belonging to another profile.

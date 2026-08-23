@@ -58,13 +58,20 @@ class ModelProvenance {
       'ModelProvenance($learnerModelVersion, $schedulerModelVersion)';
 }
 
-/// Which attempt this is, and when.
+/// Whose attempt this is, which one, and when.
 ///
 /// [indexInSession] is what orders attempts, not [occurredAt]. A wall clock
 /// can be corrected backward between attempts; a monotonic index cannot, so
 /// history keeps its order even when the clock does not.
 @immutable
 class AttemptIdentity {
+  /// Which profile this attempt belongs to.
+  ///
+  /// Carried on the record itself, not only on the journal that holds it, so a
+  /// record stays self-describing when it is exported, merged, or synced. The
+  /// profile owns the history.
+  final String profileId;
+
   /// Locally unique id, and the idempotency key for appending.
   final String attemptId;
 
@@ -78,11 +85,15 @@ class AttemptIdentity {
   final DateTime occurredAt;
 
   AttemptIdentity({
+    required this.profileId,
     required this.attemptId,
     required this.sessionId,
     required this.indexInSession,
     required DateTime occurredAt,
   }) : occurredAt = occurredAt.toUtc() {
+    if (profileId.isEmpty) {
+      throw ArgumentError.value(profileId, 'profileId', 'must not be empty');
+    }
     if (attemptId.isEmpty) {
       throw ArgumentError.value(attemptId, 'attemptId', 'must not be empty');
     }
@@ -101,6 +112,7 @@ class AttemptIdentity {
   @override
   bool operator ==(Object other) =>
       other is AttemptIdentity &&
+      other.profileId == profileId &&
       other.attemptId == attemptId &&
       other.sessionId == sessionId &&
       other.indexInSession == indexInSession &&
@@ -108,11 +120,11 @@ class AttemptIdentity {
 
   @override
   int get hashCode =>
-      Object.hash(attemptId, sessionId, indexInSession, occurredAt);
+      Object.hash(profileId, attemptId, sessionId, indexInSession, occurredAt);
 
   @override
   String toString() =>
-      'AttemptIdentity($attemptId, $sessionId#$indexInSession)';
+      'AttemptIdentity($profileId/$attemptId, $sessionId#$indexInSession)';
 }
 
 /// One practice attempt, as history records it.
@@ -179,6 +191,9 @@ class AttemptRecord {
     this.schemaVersion = attemptSchemaVersion,
   });
 
+  /// Which profile this attempt belongs to.
+  String get profileId => identity.profileId;
+
   /// This record with state hashes attached.
   AttemptRecord withStateHashes({
     required String before,
@@ -200,6 +215,7 @@ class AttemptRecord {
   Map<String, Object?> toJson() => {
     'record_type': JournalRecordType.attempt.id,
     'schema_version': schemaVersion,
+    'profile_id': identity.profileId,
     'attempt_id': identity.attemptId,
     'session_id': identity.sessionId,
     'index_in_session': identity.indexInSession,
@@ -243,6 +259,7 @@ class AttemptRecord {
     return AttemptRecord(
       schemaVersion: version,
       identity: AttemptIdentity(
+        profileId: requireString(json, 'profile_id', location: location),
         attemptId: attemptId,
         sessionId: requireString(json, 'session_id', location: location),
         indexInSession: requireInt(
@@ -295,6 +312,6 @@ class AttemptRecord {
 
   @override
   String toString() =>
-      'AttemptRecord(${identity.attemptId}, '
+      'AttemptRecord(${identity.profileId}/${identity.attemptId}, '
       '${exercise.material.materialId}, ${outcome.retrieval.name})';
 }

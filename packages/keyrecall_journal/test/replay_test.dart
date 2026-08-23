@@ -77,6 +77,7 @@ void main() {
         initial: recorded.initial,
       );
       final checkpoint = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
         state: partial.state,
         learnerModelVersion: params.modelVersion,
         sessionId: 'session-1',
@@ -134,6 +135,7 @@ void main() {
     test('when a checkpoint came from another model version', () {
       final recorded = recordSession(attempts: 3);
       final checkpoint = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
         state: recorded.initial,
         learnerModelVersion: 'v1-prototype-99',
         sessionId: 'session-1',

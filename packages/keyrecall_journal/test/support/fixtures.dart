@@ -6,6 +6,14 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 final DateTime t0 = DateTime.utc(2026);
 
+/// A stable profile for these tests, standing in for one person on a shared
+/// install.
+final Profile testProfile = Profile(
+  id: '3f2a6c18-0000-4000-8000-000000000001',
+  displayName: 'Alice',
+  createdAt: t0,
+);
+
 /// The material these tests reach for when the choice does not matter.
 final TechnicalMaterial v1ScaleCatalogFirst = v1ScaleCatalog.first;
 
@@ -70,7 +78,7 @@ Outcome outcomeOf({
   final initial = model.placementState(PlacementTier.someExperience, at: t0);
   final state = initial.copy();
   final journal = AttemptJournal(
-    JournalHeader(learnerId: 'learner-1', createdAt: t0),
+    JournalHeader(profileId: testProfile.id, createdAt: t0),
   );
   final session = SessionState();
   final candidates = generateCandidates(InstrumentProfile(), catalog);
@@ -138,6 +146,7 @@ Outcome outcomeOf({
 
     var record = AttemptRecord(
       identity: AttemptIdentity(
+        profileId: testProfile.id,
         attemptId: 'attempt-$recorded',
         sessionId: sessionId,
         indexInSession: recorded,

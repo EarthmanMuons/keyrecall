@@ -18,6 +18,13 @@ class LearnerStateCheckpoint {
   /// The wire format this checkpoint was written in.
   final int schemaVersion;
 
+  /// Which profile's state this is.
+  ///
+  /// A checkpoint restored under the wrong profile would hand one person
+  /// another person's learning history, so ownership travels with the state
+  /// rather than with wherever it happened to be filed.
+  final String profileId;
+
   /// The learner parameter registry that produced the state.
   ///
   /// A checkpoint taken under one model version is not valid input for
@@ -42,6 +49,7 @@ class LearnerStateCheckpoint {
 
   const LearnerStateCheckpoint._({
     required this.schemaVersion,
+    required this.profileId,
     required this.learnerModelVersion,
     required this.sessionId,
     required this.throughIndexInSession,
@@ -56,6 +64,7 @@ class LearnerStateCheckpoint {
   /// constructed already claiming to be something it is not.
   factory LearnerStateCheckpoint.capture({
     required LearnerState state,
+    required String profileId,
     required String learnerModelVersion,
     required String sessionId,
     required int throughIndexInSession,
@@ -64,6 +73,7 @@ class LearnerStateCheckpoint {
     final encoded = encodeLearnerState(state);
     return LearnerStateCheckpoint._(
       schemaVersion: checkpointSchemaVersion,
+      profileId: profileId,
       learnerModelVersion: learnerModelVersion,
       sessionId: sessionId,
       throughIndexInSession: throughIndexInSession,
@@ -84,6 +94,7 @@ class LearnerStateCheckpoint {
   /// Writes this checkpoint.
   Map<String, Object?> toJson() => {
     'schema_version': schemaVersion,
+    'profile_id': profileId,
     'learner_model_version': learnerModelVersion,
     'session_id': sessionId,
     'through_index_in_session': throughIndexInSession,
@@ -122,6 +133,7 @@ class LearnerStateCheckpoint {
 
     return LearnerStateCheckpoint._(
       schemaVersion: version,
+      profileId: requireString(json, 'profile_id', location: location),
       learnerModelVersion: requireString(
         json,
         'learner_model_version',
@@ -141,7 +153,7 @@ class LearnerStateCheckpoint {
 
   @override
   String toString() =>
-      'LearnerStateCheckpoint($sessionId#$throughIndexInSession, '
+      'LearnerStateCheckpoint($profileId, $sessionId#$throughIndexInSession, '
       '$learnerModelVersion)';
 }
 

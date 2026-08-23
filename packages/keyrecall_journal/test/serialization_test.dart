@@ -47,6 +47,7 @@ void main() {
       final outcome = outcomeOf(retrieval: FactualRetrieval.notTested);
       final record = AttemptRecord(
         identity: AttemptIdentity(
+          profileId: testProfile.id,
           attemptId: 'a',
           sessionId: 's',
           indexInSession: 0,
@@ -78,6 +79,7 @@ void main() {
         final outcome = outcomeOf(retrieval: retrieval);
         final record = AttemptRecord(
           identity: AttemptIdentity(
+            profileId: testProfile.id,
             attemptId: 'a',
             sessionId: 's',
             indexInSession: 0,
@@ -99,6 +101,7 @@ void main() {
     test('timestamps keep sub-millisecond precision', () {
       final precise = DateTime.utc(2026, 3, 4, 5, 6, 7, 8, 9);
       final identity = AttemptIdentity(
+        profileId: testProfile.id,
         attemptId: 'a',
         sessionId: 's',
         indexInSession: 0,
@@ -130,6 +133,7 @@ void main() {
       final outcome = outcomeOf();
       return AttemptRecord(
         identity: AttemptIdentity(
+          profileId: testProfile.id,
           attemptId: 'a',
           sessionId: 's',
           indexInSession: 0,
@@ -231,6 +235,7 @@ void main() {
         initial: recorded.initial,
       );
       final checkpoint = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
         state: replayed.state,
         learnerModelVersion: params.modelVersion,
         sessionId: 'session-1',
@@ -252,6 +257,7 @@ void main() {
     test('reject content that does not match the claimed hash', () {
       final recorded = recordSession(attempts: 3);
       final checkpoint = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
         state: recorded.initial,
         learnerModelVersion: params.modelVersion,
         sessionId: 'session-1',
@@ -286,6 +292,7 @@ void main() {
           state.materialMemory[materialId]!.logConsolidatedHalfLife + 1.0;
 
       final checkpoint = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
         state: state,
         learnerModelVersion: params.modelVersion,
         sessionId: 'session-1',
