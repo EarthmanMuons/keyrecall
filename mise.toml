@@ -29,16 +29,19 @@ depends = ["python:format-check", "python:lint"]
 
 [tasks."dart:format"]
 description = "Format Dart sources"
-run = "dart format ."
+run = "dart format lib test $(ls -d packages/*/ | grep -v keyrecall_midi)"
 
 [tasks."dart:format-check"]
 description = "Check Dart formatting"
-run = "dart format --set-exit-if-changed ."
+# keyrecall_midi is vendored and deliberately kept close to upstream, so it is
+# not reformatted here; see its VENDORED.md.
+run = "dart format --set-exit-if-changed lib test $(ls -d packages/*/ | grep -v keyrecall_midi)"
 
 [tasks."dart:imports"]
 description = "Fix Dart import ordering in each package"
 run = """
 for package in packages/*/; do
+  case "$package" in packages/keyrecall_midi/) continue ;; esac
   (cd "$package" && dart run import_order_lint:import_order lib test bin)
 done
 """
@@ -47,6 +50,7 @@ done
 description = "Check Dart import ordering in each package"
 run = """
 for package in packages/*/; do
+  case "$package" in packages/keyrecall_midi/) continue ;; esac
   (cd "$package" && dart run import_order_lint:import_order lib test bin --set-exit-if-changed)
 done
 """
@@ -59,7 +63,12 @@ run = "dart analyze"
 description = "Run the pure Dart package tests"
 run = """
 for package in packages/*/; do
-  (cd "$package" && dart test)
+  # keyrecall_midi is a Flutter package, so its vendored tests need the
+  # Flutter test runner rather than the Dart one.
+  case "$package" in
+    packages/keyrecall_midi/) (cd "$package" && flutter test) ;;
+    *) (cd "$package" && dart test) ;;
+  esac
 done
 """
 

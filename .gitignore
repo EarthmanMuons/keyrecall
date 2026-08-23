@@ -52,5 +52,9 @@ app.*.map.json
 
 # --- KeyRecall-specific ---------------------------------------
 
+# The template only ignores the app's own build directory; Flutter
+# packages in the workspace build into their own.
+packages/*/build/
+
 .ruff_cache/
 analysis/*/generated/
