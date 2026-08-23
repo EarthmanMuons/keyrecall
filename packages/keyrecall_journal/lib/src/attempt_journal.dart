@@ -209,7 +209,17 @@ class AttemptJournal {
 
     AttemptJournal? journal;
     for (var i = 0; i < lines.length; i++) {
-      final decoded = jsonDecode(lines[i]);
+      final Object? decoded;
+      try {
+        decoded = jsonDecode(lines[i]);
+      } on FormatException catch (error) {
+        // Uniform failure type: a caller reading an untrusted journal should
+        // catch one thing, not one thing plus whatever the JSON parser throws.
+        throw JournalFormatException(
+          'line is not valid JSON: ${error.message}',
+          location: 'line ${i + 1}',
+        );
+      }
       if (decoded is! Map<String, Object?>) {
         throw JournalFormatException(
           'expected an object',

@@ -15,7 +15,10 @@ library;
 
 export 'src/attempt_journal.dart';
 export 'src/attempt_record.dart';
-export 'src/canonical_json.dart' show canonicalJson, contentHash;
+// The decode toolkit is exported alongside the codecs: an adapter that
+// writes journal-adjacent records needs the same conventions and the same
+// uniform failure type.
+export 'src/canonical_json.dart';
 export 'src/checkpoint.dart';
 export 'src/codecs/domain_codec.dart';
 export 'src/codecs/learner_codec.dart';
