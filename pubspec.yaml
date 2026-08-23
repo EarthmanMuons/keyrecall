@@ -67,6 +67,8 @@ dependencies:
   keyrecall_simulation:
     path: packages/keyrecall_simulation
 
+  path_provider: ^2.1.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
