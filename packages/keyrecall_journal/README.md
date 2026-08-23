@@ -1,0 +1,145 @@
+# keyrecall_journal
+
+The durable boundary under [KeyRecall](https://github.com/EarthmanMuons/keyrecall):
+what history is, and how learner state is recovered from it. Pure Dart, no
+Flutter dependencies, and no storage engine.
+
+## What is authoritative
+
+The **attempt journal is the source of truth.** It is append-only, and learner
+state is whatever replaying it produces. Nothing rewrites a record.
+
+A **checkpoint is disposable acceleration.** It saves a replay from starting at
+the beginning, and nothing more. Deleting every checkpoint must cost time and
+nothing else, which is why one carries the hash of its own content, the point in
+history it covers, and the model version that produced it. A checkpoint from
+another model version is not wrong, it is simply unusable as a shortcut, and the
+honest response is to replay from the journal.
+
+**Model and scheduler versions are recorded on every attempt**, not once per
+journal, because a journal outlives any single model version and a record must
+stay interpretable on its own.
+
+## What is stored, and why
+
+Four things are persisted even though replay recomputes them: the presented
+exercise, the prediction, the evidence weights, and the memory attribution.
+They are the audit trace. Replay recomputes each and compares, which is how a
+change that would silently reinterpret history gets caught instead of absorbed.
+Reapplying the stored numbers would reproduce any past mistake perfectly and
+prove nothing.
+
+Full state snapshots are not duplicated per attempt. Each record carries the
+hash of the state its decision was made from and the state its update produced,
+so replay proves it rebuilt the right state at every step without paying to
+store it.
+
+`retrieval_succeeded` is `true`, `false`, or `null`, and `null` means retrieval
+was never tested. It must never be read, queried, or analyzed as failure.
+
+## Canonical state advances only on a committed attempt
+
+The one rule this boundary imposes on the app.
+
+Time propagation is mathematically path-independent, but it is not
+path-independent in floating point: advancing through three intervals and
+advancing through their sum land on different bits, and a state hash is exact.
+Replay propagates from one recorded attempt to the next, so the writer must do
+the same.
+
+A decision that admits nothing, a candidate preview, or any other look-ahead
+therefore runs against a copy:
+
+```dart
+// Evaluating: scratch copy, because this may not produce an attempt.
+final scratch = state.copy();
+model.propagate(scratch, at);
+final traces = pipeline.evaluate(state: scratch, session: session,
+    candidates: candidates, at: at);
+final chosen = pipeline.selectChoice(traces, session);
+session.attemptsThisSession++;
+if (chosen == null) return; // A slot with no selection records nothing.
+
+// Committing: only now does canonical state advance.
+model.propagate(state, at);
+```
+
+Propagating canonical state at a moment the journal does not record makes that
+state unreachable by replay, which costs the journal its authority.
+
+## Replay modes
+
+| Mode | Question it answers |
+| --- | --- |
+| `exact` | Is the recorded past still reachable? Model versions must match, and every recomputed value is compared. |
+| `counterfactual` | What would a different estimator have concluded from the same observations? |
+
+The counterfactual boundary matters: an alternative estimator may be applied
+only to the exercise that was actually presented. The journal holds no outcome
+for an action never taken, so a scheduler replay showing a different choice says
+nothing about what that choice would have achieved. Do not treat it as policy
+evaluation.
+
+## Usage
+
+```dart
+final journal = AttemptJournal(
+  JournalHeader(learnerId: 'local', createdAt: DateTime.now().toUtc()),
+);
+
+journal.append(
+  AttemptRecord(
+    identity: AttemptIdentity(
+      attemptId: attemptId,
+      sessionId: sessionId,
+      indexInSession: index,
+      occurredAt: at,
+    ),
+    provenance: ModelProvenance.of(
+      learnerParams: model.params,
+      schedulerModelVersion: pipeline.config.modelVersion,
+    ),
+    exercise: chosen.exercise,
+    decision: SchedulerDecision.fromTrace(chosen, pipeline.config),
+    outcome: outcome,
+    weights: weights,
+    memoryUpdate: diagnostics,
+  ).withStateHashes(before: beforeHash, after: learnerStateHash(state)),
+);
+
+final result = replayJournal(journal, model: model, initial: initialState);
+if (!result.isFaithful) {
+  // Divergences name the attempt, the field, and both values.
+}
+```
+
+Appending the same attempt twice is a no-op: the attempt id is the idempotency
+key, so a retried commit after an interrupted write cannot fold the same
+evidence in twice.
+
+## Storage
+
+Deliberately absent. The journal holds records in memory and encodes to JSON
+lines, one record per line, so an adapter can append without rewriting what came
+before and a person can read a journal with ordinary tools. A database or file
+layer wraps this. Keeping the contract above any storage engine is what stops
+the engine from deciding the schema.
+
+## Schema versioning
+
+`attemptSchemaVersion` and `checkpointSchemaVersion` move independently. A
+reader that meets a version it does not understand fails rather than guessing:
+this is the historical source of truth, and a misread record rewrites the past.
+
+Changing a schema means a pure, versioned upgrade function, with upgrade tests
+covering existing persisted state, historical golden journals, and genuinely new
+material separately. A field copied because old history lacks a better estimate
+is an upgrade expedient, and must be documented as one rather than as evidence
+that the old estimator measured both meanings.
+
+## Documentation
+
+[`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)
+sections 5 through 8 are the contract this implements: the attempt transaction,
+the journal record, material-memory serialization, and the replay modes and
+acceptance tests.

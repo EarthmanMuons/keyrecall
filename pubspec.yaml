@@ -2,6 +2,7 @@ name: keyrecall
 description: An adaptive piano technical-practice scheduler.
 workspace:
   - packages/keyrecall_domain
+  - packages/keyrecall_journal
   - packages/keyrecall_learner
   - packages/keyrecall_scheduler
   - packages/keyrecall_simulation
@@ -43,6 +44,8 @@ dependencies:
 
   keyrecall_domain:
     path: packages/keyrecall_domain
+  keyrecall_journal:
+    path: packages/keyrecall_journal
   keyrecall_learner:
     path: packages/keyrecall_learner
   keyrecall_scheduler:
