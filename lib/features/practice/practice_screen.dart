@@ -1,10 +1,9 @@
-import 'package:material_ui/material_ui.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../demo_input/demo_input.dart';
 import '../input/input.dart';

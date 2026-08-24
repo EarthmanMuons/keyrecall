@@ -366,7 +366,7 @@ packages:
     source: hosted
     version: "4.9.2"
   import_order_lint:
-    dependency: transitive
+    dependency: "direct dev"
     description:
       name: import_order_lint
       sha256: c5371c5e44398c6a198934fa9088f1895fee9c1e5a2c8fb4a5c56bce592bb3ff
