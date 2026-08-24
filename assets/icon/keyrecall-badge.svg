@@ -2,7 +2,7 @@
   <defs>
     <clipPath id="kr-badge-clip"><circle cx="24" cy="24" r="22"/></clipPath>
   </defs>
-  <circle cx="24" cy="24" r="22" fill="#685C50" style="fill:var(--kr-badge,#685C50)"/>
+  <circle cx="24" cy="24" r="22" fill="#800020" style="fill:var(--kr-badge,#800020)"/>
   <g clip-path="url(#kr-badge-clip)">
     <g transform="translate(6.561 6.558) scale(0.72662)">
   <title id="krd-title">KeyRecall</title>

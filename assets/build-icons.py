@@ -38,7 +38,7 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 SRC, BUILD, TMP = HERE / "src" / "icon", HERE / "icon", HERE / "icon" / ".tmp"
 
-BRAND_BG = "#685C50"
+BRAND_BG = "#800020"
 KEY, SHARP = "#FFFFFF", "#0A0A0D"
 
 MARK_W, MARK_H, MARK_X, MARK_Y = 38.0, 35.47, 5.0, 6.27
