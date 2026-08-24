@@ -74,6 +74,15 @@ class GuidanceContext {
     return 1.0;
   }
 
+  /// Whether the material is supplied at any point, before the attempt or
+  /// throughout it.
+  ///
+  /// True at both supported rungs and false only when unguided. What the
+  /// presentation layer keys on to decide whether there is anything to show at
+  /// all, as distinct from [isRetrievalObserved], which asks whether what was
+  /// shown left a retrieval test intact.
+  bool get isMaterialSupplied => notesPreviewed || concurrentPitchCues;
+
   /// Whether this attempt can serve as an independent-retrieval observation
   /// at all.
   ///

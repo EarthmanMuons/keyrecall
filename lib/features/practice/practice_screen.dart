@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../demo_input/demo_input.dart';
 import '../input/input.dart';
+import 'attempt_screen.dart';
 import 'practice_providers.dart';
 import 'reported_result.dart';
 
@@ -31,6 +32,15 @@ class PracticeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('KeyRecall dev panel'),
         actions: [
+          IconButton(
+            tooltip: 'Open the practice screen',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => const AttemptScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.piano),
+          ),
           IconButton(
             tooltip: 'Reopen from storage, as a relaunch would',
             onPressed: () => ref.read(practiceLoopProvider.notifier).reopen(),
