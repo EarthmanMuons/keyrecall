@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -7,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../demo_input/demo_input.dart';
 import '../input/input.dart';
+import 'attempt_preview.dart';
 import 'attempt_screen.dart';
 import 'practice_providers.dart';
 import 'reported_result.dart';
@@ -32,6 +35,16 @@ class PracticeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('KeyRecall dev panel'),
         actions: [
+          if (kDebugMode)
+            IconButton(
+              tooltip: 'Look at fixed presentation cases',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => const AttemptPreviewScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.style),
+            ),
           IconButton(
             tooltip: 'Open the practice screen',
             onPressed: () => Navigator.of(context).push(

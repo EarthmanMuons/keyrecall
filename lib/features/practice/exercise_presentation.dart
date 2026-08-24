@@ -22,6 +22,14 @@ String conditionsLine(ExecutionConditions conditions) => [
   '${conditions.tempoBpm.round()} bpm',
 ].join(' · ');
 
+/// The learner-facing name of a guidance rung.
+String guidanceName(GuidanceContext guidance) =>
+    switch (guidance.independence) {
+      0 => 'cues throughout',
+      1 => 'previewed, then hidden',
+      _ => 'unguided',
+    };
+
 String _prettyTonic(String tonic) =>
     tonic.replaceAll('#', '♯').replaceAll('b', '♭');
 
