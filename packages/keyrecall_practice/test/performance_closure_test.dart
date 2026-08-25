@@ -104,9 +104,30 @@ void main() {
     expect(outcome.materialRetrieval, lessThan(0.5));
   });
 
-  test('a hands-together attempt closes without an invented outcome', () async {
+  test('production never presents what it cannot read', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final session = await openSession(store);
+
+    for (var slot = 0; slot < 40; slot++) {
+      final presented = await session.decide(at: t0.plusDays(0.5 * slot));
+      if (presented == null) continue;
+      expect(
+        presented.exercise.conditions.hands,
+        isNot(HandConfiguration.together),
+        reason:
+            'an exercise nothing can measure spends a practice slot and '
+            'teaches the model nothing',
+      );
+      await session.closeFromPerformance(performance(presented.exercise));
+    }
+  });
+
+  test('an unreadable attempt that reaches closure fails closed', () async {
+    // Not the expected path: production does not present these. This is the
+    // defensive case, such as a pending decision recovered from a build whose
+    // supported set was wider.
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final session = await openSession(store, presentOnlyMeasurable: false);
     final presented = await presentUntil(
       session,
       (exercise) => exercise.conditions.hands == HandConfiguration.together,

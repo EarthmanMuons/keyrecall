@@ -408,7 +408,7 @@ retrieval evidence stay perfectly usable, which means **whole-attempt
 measurement availability and per-channel evidence availability are different
 things**. That distinction does not exist in the learner API yet.
 
-### 2.3 Population and hierarchical calibration
+### 2.4 Population and hierarchical calibration
 
 The app should continue learning each individual locally. Optional, minimized,
 longitudinal telemetry may later improve the shared model through:

@@ -8,7 +8,6 @@ import 'package:crisp_notation/crisp_notation.dart' as crisp;
 import 'package:keyrecall/features/demo_input/demo_input.dart';
 import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
-import 'package:keyrecall/features/practice/reported_result.dart';
 
 void main() {
   Exercise exerciseUnder(GuidanceContext guidance) => Exercise.linear(
@@ -17,8 +16,8 @@ void main() {
     guidance: guidance,
   );
 
-  /// Pumps one attempt and returns what it reported, in order.
-  Future<List<ReportedResult>> pumpAttempt(
+  /// Pumps one attempt and returns how many times it was finished.
+  Future<List<void>> pumpAttempt(
     WidgetTester tester,
     GuidanceContext guidance, {
     PresentationConditions? presentation,
@@ -27,7 +26,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final reported = <ReportedResult>[];
+    final finished = <void>[];
     await tester.pumpWidget(
       ProviderScope(
         child: MaterialApp(
@@ -38,13 +37,13 @@ void main() {
               key: ValueKey(guidance.independence),
               exercise: exerciseUnder(guidance),
               presentation: presentation,
-              onReport: (result) async => reported.add(result),
+              onFinish: () async => finished.add(null),
             ),
           ),
         ),
       ),
     );
-    return reported;
+    return finished;
   }
 
   /// How many notes the staff on screen is showing.
@@ -279,18 +278,24 @@ void main() {
     }
   });
 
-  testWidgets('finishing hands over to the stand-in for measurement', (
+  testWidgets('finishing commits what was played, asking nothing', (
     tester,
   ) async {
-    final reported = await pumpAttempt(tester, GuidanceContext.unguided);
+    final finished = await pumpAttempt(tester, GuidanceContext.unguided);
     await readyAndCountIn(tester);
 
     await tester.tap(find.text('Done'));
     await tester.pump();
-    expect(find.text('How did that go?'), findsOneWidget);
 
-    await tester.tap(find.text('Clean'));
-    await tester.pump();
-    expect(reported, [ReportedResult.clean]);
+    expect(
+      finished,
+      hasLength(1),
+      reason: 'what arrived on the wire is the evidence',
+    );
+    expect(
+      find.text('Clean'),
+      findsNothing,
+      reason: 'nobody is asked how it went once the app can read it',
+    );
   });
 }

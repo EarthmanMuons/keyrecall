@@ -11,7 +11,6 @@ import 'attempt_transcript.dart';
 import 'exercise_presentation.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
-import 'reported_result.dart';
 import 'staff_cue.dart';
 
 /// The first learner-facing practice screen: one exercise, presented.
@@ -46,7 +45,7 @@ class AttemptScreen extends ConsumerWidget {
             value.presented?.decision.attemptId ?? value.pending?.attemptId,
           ),
           exercise: value.exercise!,
-          onReport: ref.read(practiceLoopProvider.notifier).report,
+          onFinish: ref.read(practiceLoopProvider.notifier).finish,
         ),
         AsyncData() => const _NothingToPlay(),
         AsyncError(:final error) => Center(child: Text('$error')),
@@ -70,8 +69,8 @@ enum _Phase {
   /// The attempt itself.
   playing,
 
-  /// Over, waiting to hear how it went.
-  reporting,
+  /// Over, and being committed.
+  finishing,
 }
 
 /// One exercise, from Ready through the count-in to what happened.
@@ -82,7 +81,7 @@ enum _Phase {
 class AttemptView extends ConsumerStatefulWidget {
   const AttemptView({
     required this.exercise,
-    required this.onReport,
+    required this.onFinish,
     this.presentation,
     super.key,
   });
@@ -90,8 +89,8 @@ class AttemptView extends ConsumerStatefulWidget {
   /// What the scheduler decided to present.
   final Exercise exercise;
 
-  /// Where the stand-in for measurement goes.
-  final Future<void> Function(ReportedResult) onReport;
+  /// Commits what was played and moves on.
+  final Future<void> Function() onFinish;
 
   /// What to present it under, when something other than practice policy is
   /// choosing. Only the debug case list passes this, to compare one exercise
@@ -156,9 +155,11 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     });
   }
 
-  void _finish() {
+  Future<void> _finish() async {
     ref.read(attemptTranscriptProvider.notifier).stop();
-    setState(() => _phase = _Phase.reporting);
+    setState(() => _phase = _Phase.finishing);
+    // What was played is the evidence. Nobody is asked how it went.
+    await widget.onFinish();
   }
 
   @override
@@ -180,7 +181,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     final staffCarriesTranscript =
         echoes &&
         !showsCue &&
-        (_phase == _Phase.playing || _phase == _Phase.reporting);
+        (_phase == _Phase.playing || _phase == _Phase.finishing);
 
     return Column(
       children: [
@@ -228,7 +229,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     _Phase.playing => Center(
       child: FilledButton.tonal(onPressed: _finish, child: const Text('Done')),
     ),
-    _Phase.reporting => _ReportControl(onReport: widget.onReport),
+    _Phase.finishing => const Center(child: CircularProgressIndicator()),
   };
 }
 
@@ -338,7 +339,7 @@ class _Status extends ConsumerWidget {
         guidance.isMaterialSupplied && !showsPitchCueDuringAttempt(guidance)
             ? 'From memory now.'
             : 'Listening.',
-      _ => 'How did that go?',
+      _ => 'Saving that.',
     };
     final events = ref.watch(inputActivityProvider).eventCount;
 
@@ -359,30 +360,6 @@ class _Status extends ConsumerWidget {
       ],
     );
   }
-}
-
-/// Still the mocked boundary, in a learner's words.
-///
-/// Measurement does not exist yet, so a person says what happened. These
-/// buttons are a stand-in for that, not a scoring design.
-class _ReportControl extends StatelessWidget {
-  const _ReportControl({required this.onReport});
-
-  final Future<void> Function(ReportedResult) onReport;
-
-  @override
-  Widget build(BuildContext context) => Wrap(
-    spacing: 8,
-    runSpacing: 8,
-    alignment: WrapAlignment.center,
-    children: [
-      for (final result in ReportedResult.values)
-        FilledButton.tonal(
-          onPressed: () => onReport(result),
-          child: Text(result.label),
-        ),
-    ],
-  );
 }
 
 class _NothingToPlay extends ConsumerWidget {

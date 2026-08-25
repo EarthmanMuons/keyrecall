@@ -4,7 +4,6 @@ import 'package:material_ui/material_ui.dart';
 import 'attempt_screen.dart';
 import 'exercise_presentation.dart';
 import 'presentation_policy.dart';
-import 'reported_result.dart';
 
 /// Fixed exercises for looking at the practice screen, reachable in any build
 /// but a release one.
@@ -112,7 +111,8 @@ class _PreviewState extends State<_Preview> {
       body: AttemptView(
         exercise: exercise,
         presentation: presentation,
-        onReport: (ReportedResult _) async {
+        // Fabricated cases record nothing, so finishing one just leaves.
+        onFinish: () async {
           if (!context.mounted) return;
           Navigator.of(context).pop();
         },

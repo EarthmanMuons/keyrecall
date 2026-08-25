@@ -147,6 +147,9 @@ class PracticeSession {
   ///
   /// Placement state is anchored at [Profile.createdAt], so every attempt in
   /// the journal must fall at or after it.
+  ///
+  /// Only exercises the observation model can read are presented, unless
+  /// [presentOnlyMeasurable] says otherwise; see [isMeasurable].
   static Future<PracticeSession> open({
     required PracticeStore store,
     required Profile profile,
@@ -158,6 +161,7 @@ class PracticeSession {
     String? sessionId,
     String? appBuildVersion,
     IdGenerator? nextId,
+    bool presentOnlyMeasurable = true,
   }) async {
     final resolvedPipeline = pipeline ?? SchedulerPipeline(learner: learner);
     final generator = nextId ?? newProfileId;
@@ -193,10 +197,16 @@ class PracticeSession {
       store: store,
       profile: profile,
       sessionId: sessionId ?? generator(),
-      candidates: generateCandidates(
-        instrument ?? InstrumentProfile(),
-        materials,
-      ),
+      // An exercise the observation model cannot read produces no evidence,
+      // so presenting one spends a slot and teaches nothing. Tests and
+      // simulations that want the whole space say so.
+      candidates: [
+        for (final exercise in generateCandidates(
+          instrument ?? InstrumentProfile(),
+          materials,
+        ))
+          if (!presentOnlyMeasurable || isMeasurable(exercise)) exercise,
+      ],
       appBuildVersion: appBuildVersion,
       nextId: generator,
       state: replay.state,

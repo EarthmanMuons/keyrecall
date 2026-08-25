@@ -35,6 +35,16 @@ final class PerformanceUnmeasurable extends PerformanceReading {
   const PerformanceUnmeasurable(this.reason);
 }
 
+/// Whether the observation model can read a performance of [exercise].
+///
+/// What production may present. An exercise that cannot be measured produces
+/// no evidence, so scheduling one spends a practice slot and teaches the model
+/// nothing; the honest response is not to offer it until the capability
+/// exists. [PerformanceUnmeasurable] stays as the defensive answer for an
+/// attempt that reaches closure anyway, such as a pending decision recovered
+/// from a build whose supported set was wider.
+bool isMeasurable(Exercise exercise) => realize(exercise).hands.length == 1;
+
 /// Reads [transcript] as a performance of [exercise].
 ///
 /// Never unmeasurable because a performance was poor. A learner who played
@@ -48,15 +58,14 @@ PerformanceReading readPerformance({
   required PerformanceTranscript transcript,
   MeasurementPolicy policy = MeasurementPolicy.standard,
 }) {
-  final realization = realize(exercise);
-  if (realization.hands.length > 1) {
+  if (!isMeasurable(exercise)) {
     return const PerformanceUnmeasurable(
       MeasurementUnavailableReason.handsTogetherCorrespondence,
     );
   }
 
   final measurement = measure(
-    realization: realization,
+    realization: realize(exercise),
     transcript: transcript,
     policy: policy,
   );

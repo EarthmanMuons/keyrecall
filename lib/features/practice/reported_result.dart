@@ -3,6 +3,11 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 /// A result a person reports, standing in for measurement.
 ///
+/// Developer tooling now, not a product path. The learner-facing screen closes
+/// an attempt from what was played; these remain in the dev panel so learner
+/// state transitions can still be driven by hand without an instrument. A
+/// self-report is not a second kind of evidence running beside measurement.
+///
 /// The one mocked boundary in this slice. `PracticeSession.commit` consumes an
 /// [Outcome]; nothing in the learner or scheduler transaction requires that
 /// outcome to have been inferred from what was played. Deriving one from MIDI

@@ -8,6 +8,7 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'attempt_transcript.dart';
 import 'reported_result.dart';
 
 /// Where this install keeps its history.
@@ -114,7 +115,46 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     return _decide(PracticeLoopState(profile: profile, session: session));
   }
 
+  /// Commits what was played and moves to the next exercise.
+  ///
+  /// The production path: what arrived on the wire becomes the evidence,
+  /// without anyone being asked how it went. An attempt the observation model
+  /// cannot read commits as unmeasured rather than being scored by hand, which
+  /// production should never reach, since it does not present material it
+  /// cannot read.
+  ///
+  /// Single-flight for the same reason [report] is.
+  Future<void> finish() async {
+    final current = state.value;
+    if (_writing || current == null || !current.isAwaitingAnswer) return;
+    final transcript = ref.read(attemptTranscriptProvider);
+
+    _writing = true;
+    state = const AsyncValue.loading();
+    try {
+      state = await AsyncValue.guard(() async {
+        final record = await current.session.closeFromPerformance(
+          transcript,
+          observedWallTime: DateTime.now().toUtc(),
+        );
+        return _decide(
+          PracticeLoopState(
+            profile: current.profile,
+            session: current.session,
+            lastCommitted: record,
+          ),
+        );
+      });
+    } finally {
+      _writing = false;
+    }
+  }
+
   /// Records what the person reported and moves to the next exercise.
+  ///
+  /// Scaffolding from before measurement existed, kept for the dev panel so
+  /// learner-state transitions can still be driven by hand. Not a product
+  /// path: a self-report is not a second kind of evidence.
   ///
   /// One write at a time. Two quick taps must not both reach
   /// [PracticeSession.commit] with the same decision: the transaction below is

@@ -56,6 +56,7 @@ Future<PracticeSession> openSession(
   Profile? profile,
   String sessionId = 'session-1',
   IdGenerator? ids,
+  bool presentOnlyMeasurable = true,
 }) => PracticeSession.open(
   store: store,
   profile: profile ?? alice,
@@ -63,6 +64,7 @@ Future<PracticeSession> openSession(
   learner: learner,
   sessionId: sessionId,
   nextId: ids ?? countingIds(),
+  presentOnlyMeasurable: presentOnlyMeasurable,
 );
 
 /// Runs [attempts] complete attempts against [session], starting at [startDay].
