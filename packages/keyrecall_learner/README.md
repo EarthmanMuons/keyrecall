@@ -1,9 +1,9 @@
 # keyrecall_learner
 
-The V1 learner model behind [KeyRecall](https://github.com/EarthmanMuons/keyrecall):
-what the system believes about a pianist, what it expects from the next
-attempt, and how it revises those beliefs afterward. Pure Dart, no Flutter
-dependencies.
+The V1 learner model behind
+[KeyRecall](https://github.com/EarthmanMuons/keyrecall): what the system
+believes about a pianist, what it expects from the next attempt, and how it
+revises those beliefs afterward. Pure Dart, no Flutter dependencies.
 
 The model is a deterministic library. It reads no clock of its own, performs no
 I/O, and mutates only the state it is handed, so a recorded attempt can be
@@ -20,9 +20,9 @@ replayed and must produce the same result.
 - **`MaterialMemoryState`** per exact material: whether this scale is
   independently retrievable, tracked as current durability, retained
   consolidation, an activation anchor, and factual retrieval clocks.
-- **`MaterialExecutionState`** per material and hand: a shrinkage-based
-  residual for problems that are specific to one scale in one hand, rather than
-  a reason to lower the shared estimate.
+- **`MaterialExecutionState`** per material and hand: a shrinkage-based residual
+  for problems that are specific to one scale in one hand, rather than a reason
+  to lower the shared estimate.
 
 ## Four predictions, not one
 
@@ -33,17 +33,17 @@ hurdles, and that product is what challenge admission consumes.
 
 Splitting the channels is the interpretability boundary the model rests on: a
 failure to recall is a memory observation, a failure after starting is an
-execution observation, and a clean cued performance is useful execution
-evidence but no retrieval evidence at all.
+execution observation, and a clean cued performance is useful execution evidence
+but no retrieval evidence at all.
 
 ## Evidence is attributed, not averaged
 
 `FactualRetrieval` is three-valued. `notTested` is not a weak failure: it
 carries exactly zero memory evidence and moves neither factual clock, which is
-what stops repeated fully cued practice from accumulating into false evidence
-of forgetting. `evidenceWeightsFor` produces separate competency, execution,
-and memory weights, and `LearnerModel.applyOutcome` updates only the channels
-the attempt genuinely observed.
+what stops repeated fully cued practice from accumulating into false evidence of
+forgetting. `evidenceWeightsFor` produces separate competency, execution, and
+memory weights, and `LearnerModel.applyOutcome` updates only the channels the
+attempt genuinely observed.
 
 ## Usage
 
@@ -101,6 +101,6 @@ replay does not reinterpret old evidence under new constants.
 
 [`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md)
 is the integrated specification;
-[`docs/learner-model/03-v1-math.md`](../../docs/learner-model/03-v1-math.md)
-has the detailed derivations, and
-[`docs/GLOSSARY.md`](../../docs/GLOSSARY.md) defines every term and symbol.
+[`docs/learner-model/03-v1-math.md`](../../docs/learner-model/03-v1-math.md) has
+the detailed derivations, and [`docs/GLOSSARY.md`](../../docs/GLOSSARY.md)
+defines every term and symbol.

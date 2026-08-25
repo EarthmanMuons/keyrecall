@@ -12,12 +12,12 @@ is involved.
 
 ## The vocabulary
 
-| Event | Meaning |
-| --- | --- |
-| `InputTemporalNoteOnEvent` | A key was struck. Velocity 1 to 127. |
+| Event                       | Meaning                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `InputTemporalNoteOnEvent`  | A key was struck. Velocity 1 to 127.                          |
 | `InputTemporalNoteOffEvent` | A key was released. The note may still sound under the pedal. |
-| `InputTemporalPedalEvent` | The sustain pedal moved. |
-| `InputTemporalResetEvent` | The stream restarted, carrying what was sounding. |
+| `InputTemporalPedalEvent`   | The sustain pedal moved.                                      |
+| `InputTemporalResetEvent`   | The stream restarted, carrying what was sounding.             |
 
 The family is sealed, so a consumer that forgets a case fails to compile rather
 than silently ignoring input.

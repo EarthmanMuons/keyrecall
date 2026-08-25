@@ -1,8 +1,8 @@
 # keyrecall_simulation
 
 Synthetic learners and the harness that drives
-[KeyRecall](https://github.com/EarthmanMuons/keyrecall) over simulated
-practice. Pure Dart, no Flutter dependencies.
+[KeyRecall](https://github.com/EarthmanMuons/keyrecall) over simulated practice.
+Pure Dart, no Flutter dependencies.
 
 A simulation is a mechanism test, not evidence that the parameters are
 calibrated for real pianists. Its value is that it knows the hidden truth, and
@@ -73,8 +73,8 @@ for (final record in agent.records) {
 Three gates, each answering a different question.
 
 **Did the two implementations make the same decisions?** `discreteTraceDigest`
-hashes the categorical fields of a run: exercise identity, realization,
-guidance rung, `started`, `completed`, and the factual retrieval outcome. No
+hashes the categorical fields of a run: exercise identity, realization, guidance
+rung, `started`, `completed`, and the factual retrieval outcome. No
 floating-point value appears, so it is exact across implementations.
 
 The hashed record is declared in `discreteDigestFields` and tagged with

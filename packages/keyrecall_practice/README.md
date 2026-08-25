@@ -1,8 +1,8 @@
 # keyrecall_practice
 
-The attempt transaction behind [KeyRecall](https://github.com/EarthmanMuons/keyrecall),
-and the durable store it writes through. Pure Dart apart from `dart:io` in the
-file store.
+The attempt transaction behind
+[KeyRecall](https://github.com/EarthmanMuons/keyrecall), and the durable store
+it writes through. Pure Dart apart from `dart:io` in the file store.
 
 ## The transaction
 
@@ -91,11 +91,11 @@ presentations would let it run forever.
 `PracticeStore` is the port. Three kinds of thing live behind it with different
 durability requirements:
 
-| | Shape | If lost |
-| --- | --- | --- |
-| Attempts | Append-only, authoritative | History is gone |
+|                  | Shape                         | If lost                                   |
+| ---------------- | ----------------------------- | ----------------------------------------- |
+| Attempts         | Append-only, authoritative    | History is gone                           |
 | Pending decision | One slot, replaced or removed | An interrupted attempt cannot be resolved |
-| Checkpoint | One slot, replaced | Only replay time |
+| Checkpoint       | One slot, replaced            | Only replay time                          |
 
 `FilePracticeStore` is the reference implementation:
 
@@ -111,7 +111,7 @@ the new one and never a half-written file.
 
 A crash mid-append can leave a final line without its newline. That attempt was
 never committed, so the torn tail is dropped on read and truncated before the
-next append. A malformed line *anywhere else* is real corruption of history and
+next append. A malformed line _anywhere else_ is real corruption of history and
 fails loudly, because quietly skipping it would lose evidence.
 
 A database can replace this without the transaction noticing, as long as it

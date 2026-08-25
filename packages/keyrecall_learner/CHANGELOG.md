@@ -12,9 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
-- Initial port of the KeyRecall V1 learner model from the Python prototype
-  under `analysis/learner-model/`: `LearnerState` over competency, material
-  memory, and execution-residual layers; four-channel `Prediction`; three-valued
+- Initial port of the KeyRecall V1 learner model from the Python prototype under
+  `analysis/learner-model/`: `LearnerState` over competency, material memory,
+  and execution-residual layers; four-channel `Prediction`; three-valued
   `FactualRetrieval` observation; `evidenceWeightsFor`; and the ordered memory
   update covering retained-consolidation inference, current-durability
   correction, and causal formation and restoration.

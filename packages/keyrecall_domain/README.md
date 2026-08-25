@@ -1,8 +1,9 @@
 # keyrecall_domain
 
-The practice domain behind [KeyRecall](https://github.com/EarthmanMuons/keyrecall):
-what can be played, how it can be played, and which competencies each
-combination creates an opportunity to observe. No Flutter dependencies.
+The practice domain behind
+[KeyRecall](https://github.com/EarthmanMuons/keyrecall): what can be played, how
+it can be played, and which competencies each combination creates an opportunity
+to observe. No Flutter dependencies.
 
 This package answers structural questions only. It holds no beliefs about any
 learner, reads no state, and makes no pedagogical judgments; those belong to
@@ -58,7 +59,6 @@ real derivation when the catalog lands, rather than widening the heuristic.
 
 ## Documentation
 
-The domain reasoning lives in
-[`docs/domain-model/`](../../docs/domain-model/), and the integrated V1
-specification is
+The domain reasoning lives in [`docs/domain-model/`](../../docs/domain-model/),
+and the integrated V1 specification is
 [`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md).

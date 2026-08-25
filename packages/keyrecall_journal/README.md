@@ -1,8 +1,9 @@
 # keyrecall_journal
 
-The durable boundary under [KeyRecall](https://github.com/EarthmanMuons/keyrecall):
-what history is, and how learner state is recovered from it. Pure Dart, no
-Flutter dependencies, and no storage engine.
+The durable boundary under
+[KeyRecall](https://github.com/EarthmanMuons/keyrecall): what history is, and
+how learner state is recovered from it. Pure Dart, no Flutter dependencies, and
+no storage engine.
 
 ## The profile owns the history
 
@@ -53,7 +54,7 @@ every other session. It also names the attempt at that sequence, so a resume is
 checked rather than trusted, and it captures a deep copy, since learner state is
 mutable and an aliased checkpoint would drift away from the hash it claims.
 
-A checkpoint from another model version is unusable as a shortcut in *every*
+A checkpoint from another model version is unusable as a shortcut in _every_
 mode, counterfactual included. It already contains one model's reading of
 everything before it, so seeding a different model from it would produce a
 hybrid: earlier history estimated one way, later history another. That answers
@@ -66,9 +67,9 @@ stay interpretable on its own.
 ## What is stored, and why
 
 Four things are persisted even though replay recomputes them: the presented
-exercise, the prediction, the evidence weights, and the memory attribution.
-They are the audit trace. Replay recomputes each and compares, which is how a
-change that would silently reinterpret history gets caught instead of absorbed.
+exercise, the prediction, the evidence weights, and the memory attribution. They
+are the audit trace. Replay recomputes each and compares, which is how a change
+that would silently reinterpret history gets caught instead of absorbed.
 Reapplying the stored numbers would reproduce any past mistake perfectly and
 prove nothing.
 
@@ -88,8 +89,9 @@ learner model, so a journal that recorded a backward step would be impossible to
 replay. Appending one is refused.
 
 A device clock really can be corrected backward mid-session. That is resolved at
-the observation boundary, before the attempt is recorded, and the raw reading may
-be kept in `observedWallTime` for diagnostics. Nothing computes decay from it.
+the observation boundary, before the attempt is recorded, and the raw reading
+may be kept in `observedWallTime` for diagnostics. Nothing computes decay from
+it.
 
 ## Records are contiguous, and ids do not collide
 
@@ -98,7 +100,7 @@ is detectable rather than silently absorbed. It is distinct from
 `indexInSession`, which is position within one sitting.
 
 Idempotency is not first-write-wins. An attempt id that returns with identical
-content is a retry and a no-op; an attempt id that returns with *different*
+content is a retry and a no-op; an attempt id that returns with _different_
 content is a collision and throws. In an authoritative log, silently keeping one
 of two conflicting records is worse than refusing both.
 
@@ -134,10 +136,10 @@ state unreachable by replay, which costs the journal its authority.
 
 ## Replay modes
 
-| Mode | Question it answers |
-| --- | --- |
-| `exact` | Is the recorded past still reachable? Model versions must match, and every recomputed value is compared. |
-| `counterfactual` | What would a different estimator have concluded from the same observations? |
+| Mode             | Question it answers                                                                                      |
+| ---------------- | -------------------------------------------------------------------------------------------------------- |
+| `exact`          | Is the recorded past still reachable? Model versions must match, and every recomputed value is compared. |
+| `counterfactual` | What would a different estimator have concluded from the same observations?                              |
 
 The counterfactual boundary matters: an alternative estimator may be applied
 only to the exercise that was actually presented. The journal holds no outcome

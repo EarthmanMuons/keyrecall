@@ -13,5 +13,5 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 ### Added
 
 - `inputEventClockProvider`, the monotonic clock shared by every input source,
-  moved here from `keyrecall_midi` so a synthetic source does not have to
-  depend on the MIDI package to obtain one.
+  moved here from `keyrecall_midi` so a synthetic source does not have to depend
+  on the MIDI package to obtain one.

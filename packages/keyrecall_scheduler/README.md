@@ -4,8 +4,8 @@ The V1 scheduler behind [KeyRecall](https://github.com/EarthmanMuons/keyrecall):
 given what the system currently believes about a pianist, which valid scale
 exercise should they play next. Pure Dart, no Flutter dependencies.
 
-The scheduler is a staged policy, not a scoring function. Each stage answers
-one question and may read only what its information boundary permits, and every
+The scheduler is a staged policy, not a scoring function. Each stage answers one
+question and may read only what its information boundary permits, and every
 candidate comes back with a `CandidateTrace` explaining what happened to it.
 
 ## The four stages
@@ -15,16 +15,16 @@ candidate comes back with a `CandidateTrace` explaining what happened to it.
    parameter at all, and that absence is the boundary enforcement.
 2. **Eligibility and safety.** The `REQUIRES` gate reads competencies and is
    soft: a provisionally eligible candidate stays reachable but can never
-   outrank a fully eligible one. The safety gate reads session state only and
-   is hard.
+   outrank a fully eligible one. The safety gate reads session state only and is
+   hard.
 3. **Challenge admission** keeps ordinary candidates inside a probability band,
    with four named exceptions: new material, guidance probe, bootstrap probe,
    and recovery. Recovery is reactive and exclusive: after a retrieval failure,
    only the same motor task with one more step of guidance survives.
 4. **Priority ranking** orders survivors lexicographically by eligibility tier,
    retention, information, diversity, and goals. There is no hidden weighted
-   sum. A repetition guard then keeps one material from winning forever,
-   without ever removing the only admitted option.
+   sum. A repetition guard then keeps one material from winning forever, without
+   ever removing the only admitted option.
 
 ## Usage
 
@@ -62,9 +62,9 @@ void main() {
 }
 ```
 
-A decision opportunity that admits nothing is a real outcome, not an error.
-Keep attempt slots and selections distinct in session caps, replay,
-diagnostics, and telemetry.
+A decision opportunity that admits nothing is a real outcome, not an error. Keep
+attempt slots and selections distinct in session caps, replay, diagnostics, and
+telemetry.
 
 ## Recording the result
 
