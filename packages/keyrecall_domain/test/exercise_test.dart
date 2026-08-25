@@ -285,14 +285,49 @@ void main() {
     }
   });
 
-  test('the catalog covers every scale form', () {
-    expect(
-      v1ScaleCatalog.map((material) => material.form).toSet(),
-      ScaleForm.values.toSet(),
-    );
-    expect(
-      v1ScaleCatalog.map((material) => material.materialId).toSet(),
-      hasLength(v1ScaleCatalog.length),
-    );
+  group('the catalog', () {
+    test('supports every scale form, in every key', () {
+      expect(
+        allScales.map((material) => material.form).toSet(),
+        ScaleForm.values.toSet(),
+      );
+      expect(allScales, hasLength(48));
+      expect(
+        allScales.map((material) => material.materialId).toSet(),
+        hasLength(allScales.length),
+      );
+    });
+
+    test('offers a subset of what it supports', () {
+      final supported = allScales.map((material) => material.materialId);
+
+      expect(
+        v1ScaleCatalog.map((material) => material.materialId),
+        everyElement(isIn(supported)),
+      );
+      expect(
+        v1ScaleCatalog.length,
+        lessThan(allScales.length),
+        reason:
+            'what a learner is offered is a judgment about the learner, '
+            'and a narrower question than what the system can play',
+      );
+      expect(
+        v1ScaleCatalog.map((material) => material.materialId).toSet(),
+        hasLength(v1ScaleCatalog.length),
+      );
+    });
+
+    test('has a canonical fingering for everything it supports', () {
+      for (final material in allScales) {
+        for (final hand in Hand.values) {
+          expect(
+            canonicalFingering(material, hand),
+            isNotNull,
+            reason: '${material.materialId} $hand',
+          );
+        }
+      }
+    });
   });
 }

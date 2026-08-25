@@ -99,7 +99,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     final session = await PracticeSession.open(
       store: store,
       profile: profile,
-      materials: v1ScaleCatalog,
+      materials: offeredScales,
     );
 
     // An unresolved decision is not quietly discarded and not quietly
