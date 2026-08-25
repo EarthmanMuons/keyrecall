@@ -115,3 +115,48 @@ crisp.Pitch _pitchOf(SpelledPitch pitch) => crisp.Pitch(
   alter: pitch.alteration,
   octave: pitch.octave,
 );
+
+/// The id the element for the [sequence]th played note is drawn under.
+String transcriptElementId(int sequence) => 'played-$sequence';
+
+/// What was played, written out in the order it arrived.
+///
+/// Not a rhythmic transcription. Each note gets the same value and the same
+/// space, because nothing here has decided what a beat was, let alone whether
+/// a note fell on one. Bars are there to keep long attempts readable, not to
+/// claim a metre.
+///
+/// Nothing is placed in an expected position, left out, or marked, so the
+/// staff says only "this is what arrived".
+crisp.Score transcriptScoreFor(
+  PerformanceTranscript transcript, {
+  required crisp.Clef clef,
+}) {
+  final elements = <crisp.MusicElement>[
+    for (final note in transcript.notes)
+      crisp.NoteElement.note(
+        _pitchOf(note.pitch),
+        crisp.NoteDuration.quarter,
+        showAccidental: note.pitch.alteration != 0 ? true : null,
+        id: transcriptElementId(note.sequence),
+      ),
+  ];
+
+  return crisp.Score(
+    clef: clef,
+    keySignature: _noKeySignature,
+    timeSignature: _fourFour,
+    measures: [
+      if (elements.isEmpty)
+        const crisp.Measure([])
+      else
+        for (var start = 0; start < elements.length; start += _beatsPerMeasure)
+          crisp.Measure(
+            elements.sublist(
+              start,
+              (start + _beatsPerMeasure).clamp(0, elements.length),
+            ),
+          ),
+    ],
+  );
+}

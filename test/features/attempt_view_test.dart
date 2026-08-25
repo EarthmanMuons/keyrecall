@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
 
+import 'package:keyrecall/features/demo_input/demo_input.dart';
 import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/reported_result.dart';
@@ -46,9 +47,26 @@ void main() {
     return reported;
   }
 
-  /// The notes the diagram is marking right now.
-  Set<int> markers(WidgetTester tester) =>
-      tester.widget<PianoKeyboard>(find.byType(PianoKeyboard)).scaleNoteNumbers;
+  /// How many notes the staff on screen is showing.
+  int staffNotes(WidgetTester tester) {
+    final staff = find.byType(crisp.MultiSystemView);
+    if (staff.evaluate().isEmpty) return 0;
+    final score = tester.widget<crisp.MultiSystemView>(staff).score;
+    return [
+      for (final measure in score.measures)
+        for (final element in measure.elements)
+          if (element is crisp.NoteElement) element,
+    ].length;
+  }
+
+  /// The notes the diagram is marking right now, or none when the keyboard is
+  /// not on screen at all.
+  Set<int> markers(WidgetTester tester) {
+    final keyboard = find.byType(PianoKeyboard);
+    return keyboard.evaluate().isEmpty
+        ? const {}
+        : tester.widget<PianoKeyboard>(keyboard).scaleNoteNumbers;
+  }
 
   /// Taps Ready and lets the whole count-in run out.
   Future<void> readyAndCountIn(WidgetTester tester) async {
@@ -73,7 +91,7 @@ void main() {
     }
   });
 
-  testWidgets('the instrument is on screen at every rung and phase', (
+  testWidgets('a surface for playing is on screen at every rung and phase', (
     tester,
   ) async {
     for (final guidance in GuidanceContext.ladder) {
@@ -82,9 +100,12 @@ void main() {
 
       await readyAndCountIn(tester);
       expect(
-        find.byType(PianoKeyboard),
-        findsOneWidget,
-        reason: 'withdrawal takes information away, not the keyboard',
+        find.byType(PianoKeyboard).evaluate().length +
+            find.byType(crisp.MultiSystemView).evaluate().length,
+        greaterThan(0),
+        reason:
+            'withdrawal takes information away, not the surfaces: the '
+            'keyboard carries the echo, or the staff carries the transcript',
       );
     }
   });
@@ -120,6 +141,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 750 * 5));
     expect(markers(tester), isEmpty);
     expect(find.text('From memory now.'), findsOneWidget);
+    expect(
+      find.byType(crisp.MultiSystemView),
+      findsOneWidget,
+      reason:
+          'with the cue withdrawn, the staff is free to carry what is '
+          'actually played',
+    );
   });
 
   testWidgets('an unguided attempt never marks the notes', (tester) async {
@@ -174,11 +202,13 @@ void main() {
 
       await readyAndCountIn(tester);
 
-      expect(find.byType(crisp.MultiSystemView), findsNothing);
       expect(
-        find.byType(PianoKeyboard),
-        findsOneWidget,
-        reason: 'the instrument stays whichever surface carried the cue',
+        staffNotes(tester),
+        0,
+        reason:
+            'the written notes go at Ready; the staff that remains is '
+            'carrying the transcript, which is empty until something is '
+            'played',
       );
     });
 
@@ -192,6 +222,29 @@ void main() {
       expect(find.byType(crisp.MultiSystemView), findsNothing);
       expect(find.byType(crisp.GrandStaffView), findsNothing);
     });
+  });
+
+  testWidgets('an unguided attempt writes down what was played', (
+    tester,
+  ) async {
+    await pumpAttempt(tester, GuidanceContext.unguided);
+    await readyAndCountIn(tester);
+    expect(staffNotes(tester), 0);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AttemptView)),
+    );
+    // The wrong notes, deliberately: the transcript says what arrived, not
+    // what was asked for.
+    container.read(demoInputProvider.notifier).play(const [61, 63, 66]);
+    await tester.pump(const Duration(seconds: 3));
+
+    expect(staffNotes(tester), 3);
+    expect(
+      markers(tester),
+      isEmpty,
+      reason: 'nothing about the exercise appears next to what was played',
+    );
   });
 
   testWidgets('every rung counts in', (tester) async {

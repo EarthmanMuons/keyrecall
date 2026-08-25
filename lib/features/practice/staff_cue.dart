@@ -22,7 +22,7 @@ class StaffCue extends StatelessWidget {
 
   /// Pixels per staff space. Small enough that two octaves hands together fit
   /// a phone in a few systems, large enough to read.
-  static const double _staffSpace = 7;
+  static const double staffSpace = 7;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +50,49 @@ class StaffCue extends StatelessWidget {
     return crisp.MultiSystemView(
       score: staffScoreFor(realization, realization.hands.single),
       theme: theme,
-      staffSpace: _staffSpace,
+      staffSpace: staffSpace,
+    );
+  }
+}
+
+/// What the learner has played so far, written out.
+///
+/// The same surface as [StaffCue] carrying different information: this one
+/// grows from observations and starts empty, so it discloses nothing about
+/// what is coming. One staff rather than two, in the clef the exercise's
+/// register suggests, since which hand played a note is not something the
+/// input stream says.
+class TranscriptStaff extends StatelessWidget {
+  const TranscriptStaff({
+    required this.transcript,
+    required this.exercise,
+    super.key,
+  });
+
+  /// What has been played.
+  final PerformanceTranscript transcript;
+
+  /// The exercise being attempted, which decides the clef.
+  final Exercise exercise;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final theme = crisp.CrispNotationTheme.standard.copyWith(
+      staffColor: scheme.onSurfaceVariant,
+      noteColor: scheme.onSurface,
+      highlightColor: scheme.primary,
+    );
+
+    return crisp.MultiSystemView(
+      score: transcriptScoreFor(
+        transcript,
+        clef: exercise.conditions.hands == HandConfiguration.left
+            ? crisp.Clef.bass
+            : crisp.Clef.treble,
+      ),
+      theme: theme,
+      staffSpace: StaffCue.staffSpace,
     );
   }
 }

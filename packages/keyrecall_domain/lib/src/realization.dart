@@ -3,8 +3,8 @@ import 'package:meta/meta.dart';
 
 import 'execution_conditions.dart';
 import 'exercise.dart';
+import 'pitch_spelling.dart';
 import 'spelled_pitch.dart';
-import 'technical_material.dart';
 
 /// One hand, as a player rather than as a configuration.
 ///
@@ -170,16 +170,6 @@ class ExerciseRealization {
   String toString() => 'ExerciseRealization(${moments.length} moments)';
 }
 
-/// Semitones above the tonic in each scale form.
-///
-/// [ScaleForm.melodicMinor] is the fixed form, so a descent uses these too.
-const Map<ScaleForm, List<int>> _formIntervals = {
-  ScaleForm.major: [0, 2, 4, 5, 7, 9, 11],
-  ScaleForm.naturalMinor: [0, 2, 3, 5, 7, 8, 10],
-  ScaleForm.harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
-  ScaleForm.melodicMinor: [0, 2, 3, 5, 7, 9, 11],
-};
-
 /// Lowest MIDI note each hand's tonic is placed at or above.
 ///
 /// A V1 convention, not a fact about the material: the right hand practices
@@ -197,8 +187,8 @@ const Map<Hand, int> _handFloors = {Hand.right: 60, Hand.left: 48};
 /// Throws [ArgumentError] if the tonic is not canonical, and [StateError] if
 /// the material cannot be spelled within double accidentals.
 ExerciseRealization realize(Exercise exercise) {
-  final tonic = _tonicSpelling(exercise.material.tonic);
-  final intervals = _formIntervals[exercise.material.form]!;
+  final material = exercise.material;
+  final intervals = scaleFormIntervals[material.form]!;
   final conditions = exercise.conditions;
 
   final degrees = intervals.length;
@@ -218,7 +208,7 @@ ExerciseRealization realize(Exercise exercise) {
   ];
   final tonicNotes = {
     for (final hand in hands)
-      hand: _tonicAtOrAbove(_handFloors[hand]!, tonic.pitchClass),
+      hand: _tonicAtOrAbove(_handFloors[hand]!, pitchClassOf(material.tonic)),
   };
 
   return ExerciseRealization([
@@ -232,52 +222,19 @@ ExerciseRealization realize(Exercise exercise) {
           for (final hand in hands)
             RealizedNote(
               hand: hand,
-              pitch: _spell(
+              pitch: spellExpectedPitch(
+                material: material,
+                degree: degree,
                 midiNote:
                     tonicNotes[hand]! +
                     (degree ~/ degrees) * 12 +
                     intervals[degree % degrees],
-                letter: tonic.letter.stepsAbove(degree),
-                material: exercise.material,
               ),
             ),
         ],
       ),
   ]);
 }
-
-SpelledPitch _spell({
-  required int midiNote,
-  required NoteLetter letter,
-  required TechnicalMaterial material,
-}) {
-  final pitch = SpelledPitch.forMidiNote(midiNote, letter: letter);
-  if (pitch == null) {
-    throw StateError(
-      '${material.materialId} cannot be spelled on ${letter.label} within '
-      'double accidentals',
-    );
-  }
-  return pitch;
-}
-
-/// The tonic as it is written, so degrees can be spelled from its letter.
-SpelledPitch _tonicSpelling(String tonic) {
-  if (!TechnicalMaterial.isCanonicalTonic(tonic)) {
-    throw ArgumentError.value(tonic, 'tonic', 'not a canonical tonic');
-  }
-  return SpelledPitch(
-    letter: NoteLetter.fromLabel(tonic[0]),
-    // The octave is irrelevant here; only the letter and accidental are read.
-    octave: 4,
-    alteration: tonic.length == 1 ? 0 : (tonic[1] == '#' ? 1 : -1),
-  );
-}
-
-/// The pitch class of a canonical tonic such as `C`, `F#`, or `Bb`.
-///
-/// Throws [ArgumentError] for anything [TechnicalMaterial] would reject.
-int pitchClassOf(String tonic) => _tonicSpelling(tonic).pitchClass;
 
 int _tonicAtOrAbove(int floor, int pitchClass) =>
     floor + (pitchClass - floor % 12 + 12) % 12;

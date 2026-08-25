@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../input/input.dart';
 import '../piano/piano.dart';
+import 'attempt_transcript.dart';
 import 'exercise_presentation.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
@@ -116,6 +117,9 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   }
 
   void _start() {
+    ref
+        .read(attemptTranscriptProvider.notifier)
+        .start(widget.exercise.material);
     final beat = Duration(
       microseconds:
           (60 *
@@ -139,7 +143,10 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     });
   }
 
-  void _finish() => setState(() => _phase = _Phase.reporting);
+  void _finish() {
+    ref.read(attemptTranscriptProvider.notifier).stop();
+    setState(() => _phase = _Phase.reporting);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -151,6 +158,16 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       _Phase.ready => presentation.pitchCue.suppliesMaterial,
       _ => showsPitchCueDuringAttempt(guidance),
     };
+    final echoes = presentation.performanceFeedback != PerformanceFeedback.none;
+
+    // With nothing cued, the staff is free to carry what was played. With a
+    // cue on it, it is not: echoing into a score that already shows the
+    // answer means saying which expected note each observation was, which is
+    // a judgment. There the keyboard carries the echo instead.
+    final staffCarriesTranscript =
+        echoes &&
+        !showsCue &&
+        (_phase == _Phase.playing || _phase == _Phase.reporting);
 
     return Column(
       children: [
@@ -164,6 +181,13 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
                 StaffCue(exercise: exercise),
                 const SizedBox(height: 24),
               ],
+              if (staffCarriesTranscript) ...[
+                TranscriptStaff(
+                  transcript: ref.watch(attemptTranscriptProvider),
+                  exercise: exercise,
+                ),
+                const SizedBox(height: 24),
+              ],
               _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
               const SizedBox(height: 24),
               _control(),
@@ -173,11 +197,12 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         // The instrument sits at the bottom edge, full width, the way a
         // keyboard does: it is where playing shows up, so it stays put while
         // everything above it changes.
-        _Instrument(
-          exercise: exercise,
-          showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
-          echoes: presentation.performanceFeedback != PerformanceFeedback.none,
-        ),
+        if (!staffCarriesTranscript)
+          _Instrument(
+            exercise: exercise,
+            showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
+            echoes: echoes,
+          ),
       ],
     );
   }

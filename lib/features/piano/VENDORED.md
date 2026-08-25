@@ -13,10 +13,10 @@ None of that is interesting to rediscover, and all of it is already correct
 upstream.
 
 It also already separates the two channels KeyRecall needs kept apart:
-`scaleNoteNumbers` describes the material and knows nothing about a
-performance, while `highlightedNoteNumbers` is what is sounding now. That
-distinction is the presentation-versus-observation seam, and it happens to be
-the widget's existing API.
+`scaleNoteNumbers` describes the material and knows nothing about a performance,
+while `highlightedNoteNumbers` is what is sounding now. That distinction is the
+presentation-versus-observation seam, and it happens to be the widget's existing
+API.
 
 ## What came across
 
@@ -35,11 +35,11 @@ adjustment here when that changes.
 
 `scrollable_piano_keyboard.dart`, `piano_scroll_policy.dart`,
 `piano_view_metrics.dart`, `piano_view_settings.dart`, the settings notifier,
-and `piano_resize_handle.dart`. All of that exists so a keyboard can follow
-live playing and be resized by hand. A KeyRecall exercise has a range that is
-known before the attempt starts, so the diagram is sized once to fit it. Pull
-the scrolling layer over if a wide hands-together span turns out not to fit,
-rather than in advance.
+and `piano_resize_handle.dart`. All of that exists so a keyboard can follow live
+playing and be resized by hand. A KeyRecall exercise has a range that is known
+before the attempt starts, so the diagram is sized once to fit it. Pull the
+scrolling layer over if a wide hands-together span turns out not to fit, rather
+than in advance.
 
 ## If it needs to change
 

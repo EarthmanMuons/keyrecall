@@ -13,6 +13,8 @@ export 'src/execution_conditions.dart';
 export 'src/guidance_context.dart';
 export 'src/instrument_profile.dart';
 export 'src/motor_opportunity.dart';
+export 'src/performance_transcript.dart';
+export 'src/pitch_spelling.dart';
 export 'src/presentation_conditions.dart';
 export 'src/realization.dart';
 export 'src/scale_catalog.dart';

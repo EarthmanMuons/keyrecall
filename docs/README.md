@@ -31,6 +31,7 @@ docs/
 │   └── future-planning.md           deferred seams, hypotheses, and closed ideas
 │
 ├── domain-model/
+│   ├── alignment-contract.md        design only; the aligner does not exist
 │   ├── fingering-taxonomy.md
 │   ├── motor-taxonomy.md
 │   └── v1-domain-model.md
