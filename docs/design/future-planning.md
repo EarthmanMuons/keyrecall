@@ -363,6 +363,51 @@ with its own:
 This is a structural change, not a competency-enum addition. The distinction and
 admission workflow are defined in the competency extension guide.
 
+### 2.3 Execution evidence at the achieved motor difficulty
+
+Measurement records `achievedTempoRatio` and nothing consumes it. That leaves a
+gap: a learner who plays a requested 120 BPM exercise perfectly evenly at 60 BPM
+scores 1.0 for continuity and stability, and the execution channel credits them
+at the difficulty of the tempo that was asked for rather than the one they
+played.
+
+The fix is not to damp `motorScore`, which would conflate two separate
+questions:
+
+```text
+how well did the motor execution go?
+how difficult was the motor execution that actually occurred?
+```
+
+Instead the execution channel should evaluate its evidence at the difficulty of
+the performance that happened:
+
+```text
+requested difficulty   difficulty(conditions at the requested tempo)
+observed difficulty    difficulty(conditions at requestedTempo * achievedTempoRatio)
+
+execution evidence attributed at the observed difficulty
+every other channel evaluated normally
+```
+
+This adds no constant and no curve: the model already expresses how tempo
+changes motor difficulty, and this reads that function at the tempo actually
+sustained. Intermediate cases need no policy, since 93% of target is simply
+evidence at 93% of the tempo, and a steady performance above the requested tempo
+is legitimately evidence at a harder condition rather than something to cap.
+
+It must stay execution-specific. Slow, careful practice genuinely strengthens
+factual scale memory, so achieved tempo may not touch retrieval, topology, or
+causal memory formation.
+
+One edge case needs an answer before this is implemented: an attempt with too
+few corresponding notes to establish a tempo at all produces
+`achievedTempoRatio == 0`, which must not become evidence at zero BPM. The
+execution channel's evidence should be unavailable there while topology and
+retrieval evidence stay perfectly usable, which means **whole-attempt
+measurement availability and per-channel evidence availability are different
+things**. That distinction does not exist in the learner API yet.
+
 ### 2.3 Population and hierarchical calibration
 
 The app should continue learning each individual locally. Optional, minimized,

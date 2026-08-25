@@ -141,8 +141,11 @@ class PerformanceMeasurement {
 
   /// Achieved tempo as a fraction of what was asked for.
   ///
-  /// Recorded, not consumed: nothing in the learner model or the scheduler
-  /// reads it yet.
+  /// Phase-free by construction: it compares the requested beat to the median
+  /// gap between the learner's own notes, so starting late costs nothing and
+  /// only the speed shows up. Recorded, not consumed; when it is, it should
+  /// set the difficulty the execution evidence is attributed at rather than
+  /// damp the motor score. See `docs/design/future-planning.md`.
   double achievedTempoRatioFor(ExecutionConditions conditions) {
     final median = medianIntervalMs;
     if (median == null || median <= 0) return 0;
