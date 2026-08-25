@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../audio/count_in_clicker.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
 import 'attempt_transcript.dart';
@@ -111,6 +112,14 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   Timer? _countIn;
 
   @override
+  void initState() {
+    super.initState();
+    // Warmed up while the learner reads the screen, so the first beat is not
+    // waiting on an audio engine.
+    unawaited(ref.read(countInClickerProvider).prepare());
+  }
+
+  @override
   void dispose() {
     _countIn?.cancel();
     super.dispose();
@@ -120,6 +129,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     ref
         .read(attemptTranscriptProvider.notifier)
         .start(widget.exercise.material);
+    final clicker = ref.read(countInClickerProvider);
     final beat = Duration(
       microseconds:
           (60 *
@@ -131,6 +141,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       _phase = _Phase.countIn;
       _beatsLeft = _countInBeats;
     });
+    clicker.beat(downbeat: true);
     _countIn = Timer.periodic(beat, (timer) {
       if (!mounted) return;
       setState(() {
@@ -138,6 +149,8 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         if (_beatsLeft <= 0) {
           timer.cancel();
           _phase = _Phase.playing;
+        } else {
+          clicker.beat();
         }
       });
     });
@@ -310,8 +323,6 @@ class _Status extends ConsumerWidget {
       return Column(
         children: [
           Text('$beatsLeft', style: theme.textTheme.displayLarge),
-          // Silent for now: nothing in the app makes sound yet, so the
-          // count-in shows the pulse rather than sounding it.
           Text('Counting in', style: theme.textTheme.bodyMedium),
         ],
       );

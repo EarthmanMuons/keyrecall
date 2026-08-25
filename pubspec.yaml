@@ -53,6 +53,7 @@ dependencies:
   keyrecall_simulation:
     path: packages/keyrecall_simulation
   crisp_notation: ^0.4.4
+  flutter_pcm_sound: ^3.3.3
 
 dev_dependencies:
   flutter_launcher_icons: "^0.14.4"
