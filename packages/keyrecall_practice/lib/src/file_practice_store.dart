@@ -184,6 +184,12 @@ class FilePracticeStore implements PracticeStore {
     await temporary.rename(file.path);
   }
 
+  @override
+  Future<void> erase(String profileId) async {
+    final directory = _profileDirectory(profileId);
+    if (directory.existsSync()) directory.deleteSync(recursive: true);
+  }
+
   Directory _profileDirectory(String profileId) =>
       Directory('${root.path}/$profileId');
 

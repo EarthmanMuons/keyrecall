@@ -2,6 +2,7 @@ import 'package:crisp_notation/crisp_notation.dart' as crisp;
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'fingering.dart';
 import 'staff_score.dart';
 
 /// The exercise's notes, written out.
@@ -56,7 +57,11 @@ class StaffCue extends StatelessWidget {
       );
     }
     return crisp.MultiSystemView(
-      score: staffScoreFor(realization, realization.hands.single),
+      score: staffScoreFor(
+        realization,
+        realization.hands.single,
+        fingering: fingeringFor(exercise, realization.hands.single),
+      ),
       theme: theme,
       staffSpace: staffSpace,
     );

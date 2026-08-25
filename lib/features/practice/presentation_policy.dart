@@ -1,5 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
+import 'fingering.dart';
+
 /// What V1 puts in front of a learner for a decided exercise.
 ///
 /// The scheduler names a guidance rung; this turns it into the four
@@ -8,15 +10,26 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// space or riding along with a guidance change and making an attempt's
 /// evidence unattributable.
 ///
-/// V1 is deliberately uniform: a keyboard cue or none, never fingering, always
-/// a neutral echo, always a count-in and no more. Only the pitch cue varies
-/// with the rung, so a rung change moves one variable.
-PresentationConditions presentationFor(GuidanceContext guidance) {
+/// V1 is deliberately uniform: a keyboard cue or none, always a neutral echo,
+/// always a count-in and no more. Only the pitch cue varies with the rung, so
+/// a rung change still moves one variable; fingering varies with the material
+/// rather than with the rung, since it is shown wherever the catalog has one
+/// that is not a guess.
+PresentationConditions presentationFor(
+  GuidanceContext guidance, {
+  Exercise? exercise,
+}) {
   final supplied = guidance.isMaterialSupplied;
+  // Fingering is execution support and rides with the cue: naming the finger
+  // for a note the learner is trying to recall would supply half the answer.
+  final fingered =
+      supplied &&
+      exercise != null &&
+      fingeringFor(exercise, realize(exercise).hands.first) != null;
   final presentation = PresentationConditions(
     pitchCue: supplied ? PitchCue.full : PitchCue.none,
     cueModality: supplied ? CueModality.keyboard : null,
-    motorCue: MotorCue.none,
+    motorCue: fingered ? MotorCue.fingering : MotorCue.none,
     performanceFeedback: PerformanceFeedback.neutralEcho,
     tempoSupport: TempoSupport.countInOnly,
   );

@@ -157,6 +157,25 @@ void main() {
     expect(session.hasOutstandingAttempt, isFalse);
   });
 
+  test('erasing a profile leaves nothing to replay', () async {
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final session = await openSession(store);
+    final presented = await presentUntil(session, oneHand);
+    await session.closeFromPerformance(performance(presented.exercise));
+    final practised = learnerStateHash(session.state);
+
+    await store.erase(alice.id);
+    final started = await openSession(store);
+
+    expect(started.journal.length, 0);
+    expect(started.pending, isNull);
+    expect(
+      learnerStateHash(started.state),
+      isNot(practised),
+      reason: 'a profile that started over is back at placement',
+    );
+  });
+
   test('a measured attempt survives a reopen', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final first = await openSession(store);

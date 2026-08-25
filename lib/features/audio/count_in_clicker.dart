@@ -80,6 +80,11 @@ class CountInClicker {
   /// the spacing to whenever the engine next asked for data, which is why the
   /// beats did not land on the pulse they were supposed to establish.
   Future<void> playCountIn({required int beats, required Duration beat}) async {
+    // Preparing the engine takes a variable few hundred milliseconds, and the
+    // count-in the learner is watching has already started. Rather than
+    // holding the numbers back, the audio starts from wherever the count-in
+    // has got to, dropping the beats it missed instead of playing them late.
+    final since = Stopwatch()..start();
     await prepare();
     if (!_ready) return;
 
@@ -95,7 +100,10 @@ class CountInClicker {
       );
     }
     _track = track;
-    _fed = 0;
+    _fed = (since.elapsedMicroseconds * _sampleRate ~/ 1000000).clamp(
+      0,
+      track.length,
+    );
 
     // The engine lives exactly as long as the count-in. Left running it has to
     // be fed silence forever, and anything that interrupts that feeding leaves

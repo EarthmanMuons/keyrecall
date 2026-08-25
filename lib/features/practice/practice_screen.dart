@@ -106,6 +106,11 @@ class _Loop extends ConsumerWidget {
             _Field('id', loop.profile.id),
             _Field('attempts recorded', '${loop.attemptsRecorded}'),
             _Field('session', loop.session.sessionId),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => _confirmErase(context, notifier),
+              child: const Text('Start over, erasing history'),
+            ),
           ],
         ),
         if (loop.pending != null)
@@ -140,6 +145,34 @@ class _Loop extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// Asks before destroying recorded practice.
+Future<void> _confirmErase(
+  BuildContext context,
+  PracticeLoopNotifier notifier,
+) async {
+  final erase = await showDialog<bool>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Start over?'),
+      content: const Text(
+        'Every recorded attempt for this profile is deleted, and the learner '
+        'model goes back to placement. There is no undo.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Keep it'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(context).pop(true),
+          child: const Text('Erase'),
+        ),
+      ],
+    ),
+  );
+  if (erase ?? false) await notifier.eraseHistory();
 }
 
 class _ExercisePanel extends StatelessWidget {

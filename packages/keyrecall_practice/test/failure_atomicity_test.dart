@@ -54,6 +54,9 @@ class FlakyPracticeStore implements PracticeStore {
   @override
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
       inner.saveCheckpoint(checkpoint);
+
+  @override
+  Future<void> erase(String profileId) => inner.erase(profileId);
 }
 
 /// A store that hands back a pending decision the caller did not file.
@@ -94,6 +97,9 @@ class MisfilingPracticeStore implements PracticeStore {
   @override
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
       inner.saveCheckpoint(checkpoint);
+
+  @override
+  Future<void> erase(String profileId) => inner.erase(profileId);
 }
 
 class _StorageFailure implements Exception {

@@ -55,6 +55,13 @@ abstract interface class PracticeStore {
 
   /// Saves [checkpoint], replacing any earlier one.
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint);
+
+  /// Erases everything recorded for [profileId].
+  ///
+  /// Destroys history rather than correcting it, which is the one operation a
+  /// journal is otherwise built to prevent, so nothing in the practice loop
+  /// calls it: it exists for a person who has decided to start over.
+  Future<void> erase(String profileId);
 }
 
 /// A [PracticeStore] that keeps everything in memory.
@@ -105,6 +112,13 @@ class InMemoryPracticeStore implements PracticeStore {
   @override
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) async {
     _checkpoints[checkpoint.profileId] = checkpoint;
+  }
+
+  @override
+  Future<void> erase(String profileId) async {
+    _journals.remove(profileId);
+    _pending.remove(profileId);
+    _checkpoints.remove(profileId);
   }
 
   AttemptJournal _journalFor(String profileId, DateTime? createdAt) =>

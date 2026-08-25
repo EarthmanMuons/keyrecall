@@ -214,6 +214,27 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     }
   }
 
+  /// Erases this profile's history and starts over from placement.
+  ///
+  /// Destroys recorded practice, which is what makes it a deliberate act
+  /// rather than part of the loop: the journal exists so history is not
+  /// rewritten, and this is the one operation that admits someone wants none
+  /// of it.
+  Future<void> eraseHistory() async {
+    final current = state.value;
+    if (_writing || current == null) return;
+
+    _writing = true;
+    state = const AsyncValue.loading();
+    try {
+      final store = await ref.read(practiceStoreProvider.future);
+      await store.erase(current.profile.id);
+    } finally {
+      _writing = false;
+    }
+    ref.invalidateSelf();
+  }
+
   /// Reopens from storage, as a relaunch would.
   ///
   /// The interesting case is doing this while an exercise is on screen: the

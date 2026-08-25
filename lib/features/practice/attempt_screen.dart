@@ -10,6 +10,7 @@ import '../input/input.dart';
 import '../piano/piano.dart';
 import 'attempt_transcript.dart';
 import 'exercise_presentation.dart';
+import 'fingering.dart';
 import 'latency_probe.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
@@ -155,10 +156,13 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       _beatsLeft = _countInBeats;
     });
     // The clicks are rendered as one buffer, so the pulse is exact whatever
-    // this timer does; the number just follows it.
-    ref
-        .read(countInClickerProvider)
-        .playCountIn(beats: _countInBeats, beat: beat);
+    // this timer does, and the audio catches up to the count rather than the
+    // count waiting on the audio.
+    unawaited(
+      ref
+          .read(countInClickerProvider)
+          .playCountIn(beats: _countInBeats, beat: beat),
+    );
 
     _countIn = Timer.periodic(beat, (timer) {
       if (!mounted) return;
@@ -185,7 +189,8 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   Widget build(BuildContext context) {
     final exercise = widget.exercise;
     final guidance = exercise.guidance;
-    final presentation = widget.presentation ?? presentationFor(guidance);
+    final presentation =
+        widget.presentation ?? presentationFor(guidance, exercise: exercise);
 
     final showsCue = switch (_phase) {
       _Phase.ready => presentation.pitchCue.suppliesMaterial,
@@ -252,6 +257,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
             exercise: exercise,
             showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
             echoes: echoes,
+            showsFingering: presentation.motorCue == MotorCue.fingering,
           ),
       ],
     );
@@ -344,6 +350,7 @@ class _Instrument extends ConsumerWidget {
     required this.exercise,
     required this.showsCue,
     required this.echoes,
+    required this.showsFingering,
   });
 
   final Exercise exercise;
@@ -354,6 +361,9 @@ class _Instrument extends ConsumerWidget {
   /// Whether played notes light up.
   final bool echoes;
 
+  /// Whether the fingers are named on the marked keys.
+  final bool showsFingering;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final diagram = KeyboardDiagram.forExercise(exercise);
@@ -361,12 +371,23 @@ class _Instrument extends ConsumerWidget {
         ? ref.watch(inputActivityProvider).soundingNoteNumbers
         : const <int>{};
 
+    // Fingering rides with the cue: it is execution support, and withdrawing
+    // the notes while leaving the fingers would be telling a learner which
+    // finger to use for a note they are trying to recall.
+    final fingering = showsCue && showsFingering
+        ? fingeringByKeyFor(exercise, realize(exercise).hands.first)
+        : const <int, int>{};
+
     return PianoKeyboard(
       whiteKeyCount: diagram.whiteKeyCount,
       firstMidiNote: diagram.firstWhiteMidi,
       scaleNoteNumbers: showsCue ? diagram.memberNotes : const {},
       tonicPitchClass: showsCue ? diagram.tonicPitchClass : null,
       highlightedNoteNumbers: sounding,
+      decorations: [
+        for (final entry in fingering.entries)
+          PianoKeyDecoration(midiNote: entry.key, label: '${entry.value}'),
+      ],
       // No pitch-class filter: a wrong note lights up like any other. Marking
       // it as out of scale would be evaluative feedback, which no rung offers
       // yet and which changes what an attempt observes.
