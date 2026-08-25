@@ -14,10 +14,12 @@ Input stream
     -> PerformanceTranscript                  what was played, in order
 
 PerformanceTranscript
-    -> observation grouping                   which notes happened together
-    -> ObservedMoment[]
+    -> observation grouping                   which notes may have happened together
+    -> ObservationGrouping
+         confident moments
+         ambiguous boundaries
 
-ObservedMoment[] + ExerciseRealization
+ObservationGrouping + ExerciseRealization
     -> Alignment
     -> EditScript                             how the two relate
 
@@ -29,6 +31,13 @@ Grouping is its own stage so the aligner is never asked to discover simultaneity
 and musical correspondence at once. A realization is already moment-shaped;
 grouping is what gives the observations the same shape, and it is the only place
 a timing tolerance lives.
+
+**Grouping may propose simultaneity from timing, but it must not commit where
+timing is ambiguous.** Alignment is allowed to resolve that ambiguity, because
+correspondence to the realization is already an evaluative judgment and this is
+the stage that is permitted to make one. Grouping still knows nothing about
+keys, octaves, hands, or scale degrees; it can only say that two observations
+are plausibly one moment and plausibly two.
 
 The transcript alone supports the neutral case: a literal, append-only record
 that discloses nothing about what was expected. Everything that compares the two
@@ -51,12 +60,12 @@ and its output is the single thing the displays and the learner model read.
 ```text
 groupObservations(
   transcript: PerformanceTranscript,
-  policy: ObservationGroupingPolicy,    how close is "at the same time"
-) -> List<ObservedMoment>
+  policy: ObservationGroupingPolicy,    where confidence ends
+) -> ObservationGrouping
 
 align(
   realization: ExerciseRealization,     what the exercise asked for
-  observed: List<ObservedMoment>,       what was played, in moments
+  grouping: ObservationGrouping,        what was played, where it is certain
   policy: AlignmentPolicy,              what counts as the same note
 ) -> Alignment
 ```
@@ -129,12 +138,13 @@ write it is a notation question somewhere else.
 Deliberately not decided here. Each of these is a real pedagogical choice, and
 naming them is the point:
 
-- **Hands.** Hands-together material has two notes per moment, and human hands
-  do not arrive together to the millisecond. Grouping needs a window, and the
-  window is empirical: alignment must not invent a constant before recorded
-  performances support one. See the diagnostic below.
-- **Order.** Is a rolled or slightly spread pair two moments or one? The same
-  window decides it, which is why grouping is one stage rather than two rules.
+- **Hands.** How wide the ambiguous region is: where grouping stops being
+  confident that two observations are one moment, and where it becomes confident
+  they are two. Both edges are empirical, and only the middle is handed to
+  alignment. See below.
+- **Order.** Whether a deliberately rolled pair is one moment or two is not
+  decidable from timing, so it is alignment's to settle, from whichever reading
+  explains the performance better.
 - **Repeats.** A learner who plays a note, hears it is wrong, and plays the
   right one has produced an insertion followed by a match. Does the policy say
   so, or does it absorb the correction?

@@ -32,6 +32,7 @@ docs/
 │
 ├── domain-model/
 │   ├── alignment-contract.md        design only; the aligner does not exist
+│                                    (evidence: analysis/onset-grouping/)
 │   ├── fingering-taxonomy.md
 │   ├── motor-taxonomy.md
 │   └── v1-domain-model.md
