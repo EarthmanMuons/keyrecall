@@ -152,39 +152,46 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       _ => showsPitchCueDuringAttempt(guidance),
     };
 
-    return ListView(
-      padding: const EdgeInsets.all(24),
+    return Column(
       children: [
-        _TaskStatement(exercise),
-        const SizedBox(height: 24),
-        if (showsCue && cueOnStaff(presentation.cueModality)) ...[
-          StaffCue(exercise: exercise),
-          const SizedBox(height: 24),
-        ],
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              _TaskStatement(exercise),
+              const SizedBox(height: 24),
+              if (showsCue && cueOnStaff(presentation.cueModality)) ...[
+                StaffCue(exercise: exercise),
+                const SizedBox(height: 24),
+              ],
+              _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
+              const SizedBox(height: 24),
+              _control(),
+            ],
+          ),
+        ),
+        // The instrument sits at the bottom edge, full width, the way a
+        // keyboard does: it is where playing shows up, so it stays put while
+        // everything above it changes.
         _Instrument(
           exercise: exercise,
           showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
           echoes: presentation.performanceFeedback != PerformanceFeedback.none,
         ),
-        const SizedBox(height: 16),
-        _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
-        const SizedBox(height: 24),
-        switch (_phase) {
-          _Phase.ready => Center(
-            child: FilledButton(onPressed: _start, child: const Text('Ready')),
-          ),
-          _Phase.countIn => const SizedBox.shrink(),
-          _Phase.playing => Center(
-            child: FilledButton.tonal(
-              onPressed: _finish,
-              child: const Text('Done'),
-            ),
-          ),
-          _Phase.reporting => _ReportControl(onReport: widget.onReport),
-        },
       ],
     );
   }
+
+  Widget _control() => switch (_phase) {
+    _Phase.ready => Center(
+      child: FilledButton(onPressed: _start, child: const Text('Ready')),
+    ),
+    _Phase.countIn => const SizedBox.shrink(),
+    _Phase.playing => Center(
+      child: FilledButton.tonal(onPressed: _finish, child: const Text('Done')),
+    ),
+    _Phase.reporting => _ReportControl(onReport: widget.onReport),
+  };
 }
 
 /// What was asked for. Visible at every rung, because it is the task rather

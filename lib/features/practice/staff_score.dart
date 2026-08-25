@@ -66,6 +66,42 @@ crisp.GrandStaff grandStaffFor(ExerciseRealization realization) =>
       lower: staffScoreFor(realization, Hand.left),
     );
 
+/// The grand staff broken into rows of [measuresPerRow] bars.
+///
+/// A grand staff draws one system however long it is, so two octaves hands
+/// together runs off the side of a phone. Breaking it here keeps each row
+/// fitting the width, at the cost of restating the clefs on every row, which
+/// is what a new system does anyway.
+List<crisp.GrandStaff> grandStaffRowsFor(
+  ExerciseRealization realization, {
+  int measuresPerRow = 2,
+}) {
+  final whole = grandStaffFor(realization);
+  final rows = <crisp.GrandStaff>[];
+
+  for (
+    var start = 0;
+    start < whole.upper.measures.length;
+    start += measuresPerRow
+  ) {
+    final end = (start + measuresPerRow).clamp(0, whole.upper.measures.length);
+    rows.add(
+      crisp.GrandStaff(
+        upper: _measuresOf(whole.upper, start, end),
+        lower: _measuresOf(whole.lower, start, end),
+      ),
+    );
+  }
+  return rows;
+}
+
+crisp.Score _measuresOf(crisp.Score score, int start, int end) => crisp.Score(
+  clef: score.clef,
+  keySignature: score.keySignature,
+  timeSignature: score.timeSignature,
+  measures: score.measures.sublist(start, end),
+);
+
 crisp.Pitch _pitchOf(SpelledPitch pitch) => crisp.Pitch(
   switch (pitch.letter) {
     NoteLetter.c => crisp.Step.c,

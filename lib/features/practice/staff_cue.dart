@@ -35,10 +35,16 @@ class StaffCue extends StatelessWidget {
     );
 
     if (realization.hands.length > 1) {
-      return crisp.GrandStaffView(
-        grandStaff: grandStaffFor(realization),
-        theme: theme,
-        staffSpace: _staffSpace,
+      return Column(
+        children: [
+          // Each row sizes itself to the width, rather than one long system
+          // running off the side.
+          for (final row in grandStaffRowsFor(realization))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: crisp.GrandStaffView(grandStaff: row, theme: theme),
+            ),
+        ],
       );
     }
     return crisp.MultiSystemView(
