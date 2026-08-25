@@ -32,7 +32,7 @@ void main() {
     // The whole point of the panel: the event stream carries enough to know
     // what is sounding, with no access to the source's own state.
     demo().setPedalDown(true);
-    await demo().playAndSettle(const [60], tempo: DemoInputTempo.brisk);
+    await demo().playSequenceAndSettle(const [60], tempo: DemoInputTempo.brisk);
     await pumpEventQueue();
 
     expect(activity().pressedNoteNumbers, {60});
@@ -56,7 +56,11 @@ void main() {
 
   test('agrees with the instrument through a scale under the pedal', () async {
     demo().setPedalDown(true);
-    await demo().playAndSettle(const [60, 62, 64], tempo: DemoInputTempo.brisk);
+    await demo().playSequenceAndSettle(const [
+      60,
+      62,
+      64,
+    ], tempo: DemoInputTempo.brisk);
     await pumpEventQueue();
 
     final instrument = container.read(demoInputProvider);
@@ -67,12 +71,12 @@ void main() {
 
   test('takes a reattacked note back from the pedal', () async {
     demo().setPedalDown(true);
-    await demo().playAndSettle(const [60], tempo: DemoInputTempo.brisk);
+    await demo().playSequenceAndSettle(const [60], tempo: DemoInputTempo.brisk);
     demo().releaseAll();
     await pumpEventQueue();
     expect(activity().sustainedNoteNumbers, {60});
 
-    await demo().playAndSettle(const [60], tempo: DemoInputTempo.brisk);
+    await demo().playSequenceAndSettle(const [60], tempo: DemoInputTempo.brisk);
     await pumpEventQueue();
 
     expect(activity().pressedNoteNumbers, {60});
@@ -80,7 +84,7 @@ void main() {
   });
 
   test('agrees with the instrument through ordinary playing', () async {
-    await demo().playAndSettle(const [
+    await demo().playSequenceAndSettle(const [
       60,
       62,
       64,

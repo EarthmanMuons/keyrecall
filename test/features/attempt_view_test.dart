@@ -234,12 +234,21 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(AttemptView)),
     );
-    // The wrong notes, deliberately: the transcript says what arrived, not
-    // what was asked for.
-    container.read(demoInputProvider.notifier).play(const [61, 63, 66]);
+    // The wrong notes, in a descending order the exercise never asks for:
+    // the transcript says what arrived, not what was expected.
+    container.read(demoInputProvider.notifier).playSequence(const [
+      66,
+      63,
+      61,
+      61,
+    ]);
     await tester.pump(const Duration(seconds: 3));
 
-    expect(staffNotes(tester), 3);
+    expect(
+      staffNotes(tester),
+      4,
+      reason: 'a repeated note was played twice, so it is written twice',
+    );
     expect(
       markers(tester),
       isEmpty,

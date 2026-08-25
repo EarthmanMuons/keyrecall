@@ -99,7 +99,13 @@ class DemoInputNotifier extends Notifier<DemoInputState> {
     return DemoInputState.silent;
   }
 
-  /// Plays [noteNumbers] in ascending order, one at a time.
+  /// Plays [noteNumbers] one at a time, in the order given.
+  ///
+  /// The order is the caller's and is never normalized: what arrives on the
+  /// stream is evidence about a performance, so an instrument that tidied a
+  /// descending scale into an ascending one would be inventing one. A note
+  /// repeated back to back is struck twice, with the key coming up in between,
+  /// the way a real re-attack sounds.
   ///
   /// Each note is released as the next one is struck, the way a scale is
   /// played rather than a chord accumulated. The last note stays held until
@@ -112,11 +118,11 @@ class DemoInputNotifier extends Notifier<DemoInputState> {
   ///
   /// Throws [RangeError] for a note outside the keyboard, which the normalized
   /// stream would refuse anyway.
-  void play(
+  void playSequence(
     Iterable<int> noteNumbers, {
     DemoInputTempo tempo = DemoInputTempo.normal,
   }) {
-    final notes = noteNumbers.toList()..sort();
+    final notes = noteNumbers.toList();
     for (final note in notes) {
       if (note < 0 || note > 127) {
         throw RangeError.range(note, 0, 127, 'noteNumbers');
@@ -137,16 +143,42 @@ class DemoInputNotifier extends Notifier<DemoInputState> {
     }
   }
 
-  /// Plays [noteNumbers] and completes once the last one has sounded.
+  /// Strikes [noteNumbers] together, as a chord.
+  ///
+  /// The order notes within one instant reach the stream is deliberately
+  /// unspecified: they happened at the same time, and nothing downstream may
+  /// read meaning into their sequence. Use [playSequence] when the order is
+  /// the point.
+  ///
+  /// Throws [RangeError] for a note outside the keyboard.
+  void playChord(Set<int> noteNumbers) {
+    for (final note in noteNumbers) {
+      if (note < 0 || note > 127) {
+        throw RangeError.range(note, 0, 127, 'noteNumbers');
+      }
+    }
+
+    _sequence.restart();
+    _liftHands();
+    if (noteNumbers.isEmpty) return;
+
+    _sustained = Set.unmodifiable(
+      _sustained.where((note) => !noteNumbers.contains(note)),
+    );
+    _pressed = Set.unmodifiable(noteNumbers);
+    _commit();
+  }
+
+  /// Plays [noteNumbers] in order and completes once the last one has sounded.
   ///
   /// For a caller that wants to wait for a performance rather than watch for
   /// it, which is most tests.
-  Future<void> playAndSettle(
+  Future<void> playSequenceAndSettle(
     Iterable<int> noteNumbers, {
     DemoInputTempo tempo = DemoInputTempo.normal,
   }) async {
     final notes = noteNumbers.toList();
-    play(notes, tempo: tempo);
+    playSequence(notes, tempo: tempo);
     if (notes.isEmpty) return;
     await Future<void>.delayed(
       tempo.releaseGap + tempo.noteSpacing * notes.length,
@@ -176,6 +208,13 @@ class DemoInputNotifier extends Notifier<DemoInputState> {
 
   /// Strikes [note], releasing whatever was held.
   void _strike(int note) {
+    if (_pressed.contains(note)) {
+      // A re-attack: the key comes up before it goes down again, so the same
+      // note twice reaches the stream as two notes rather than one held one.
+      _pressed = Set.unmodifiable(_pressed.difference({note}));
+      _commit();
+    }
+
     final released = _pressed.difference({note});
     _pressed = Set.unmodifiable({note});
     _sustained = Set.unmodifiable(

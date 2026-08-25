@@ -319,7 +319,7 @@ class _InputPanel extends ConsumerWidget {
               // instrument does not know what was asked for, and nothing here
               // judges what it played.
               onPressed: () =>
-                  demo.play(const [60, 62, 64, 65, 67, 69, 71, 72]),
+                  demo.playSequence(const [60, 62, 64, 65, 67, 69, 71, 72]),
               child: const Text('Play something'),
             ),
             FilledButton.tonal(

@@ -70,25 +70,55 @@ void main() {
     });
 
     test('plays a scale one note at a time, not a chord', () async {
-      await demo().playAndSettle(const [
+      await demo().playSequenceAndSettle(const [
         67,
         60,
         64,
       ], tempo: DemoInputTempo.brisk);
       await pumpEventQueue();
 
-      expect(recorder.transcript, [
-        'reset',
-        'on 60',
-        'off 60',
-        'on 64',
-        'off 64',
-        'on 67',
-      ], reason: 'each note is released as the next one is struck');
+      expect(
+        recorder.transcript,
+        ['reset', 'on 67', 'off 67', 'on 60', 'off 60', 'on 64'],
+        reason:
+            'each note is released as the next one is struck, in the '
+            'order it was given: the order things were played is evidence, and '
+            'an instrument that sorted it would be inventing a performance',
+      );
+    });
+
+    test('strikes a repeated note twice', () async {
+      await demo().playSequenceAndSettle(const [
+        60,
+        60,
+      ], tempo: DemoInputTempo.brisk);
+      await pumpEventQueue();
+
+      expect(
+        recorder.transcript,
+        ['reset', 'on 60', 'off 60', 'on 60'],
+        reason:
+            'a re-attack lifts the key first, so the same note twice is '
+            'two notes rather than one held one',
+      );
+    });
+
+    test('plays a chord all at once', () async {
+      demo().playChord(const {60, 64, 67});
+      await pumpEventQueue();
+
+      expect(currently().pressedNoteNumbers, {60, 64, 67});
+      expect(
+        recorder.transcript.where((line) => line.startsWith('on ')).length,
+        3,
+      );
     });
 
     test('holds the last note until something else happens', () async {
-      await demo().playAndSettle(const [60, 64], tempo: DemoInputTempo.brisk);
+      await demo().playSequenceAndSettle(const [
+        60,
+        64,
+      ], tempo: DemoInputTempo.brisk);
       await pumpEventQueue();
       expect(currently().pressedNoteNumbers, {64});
 
@@ -100,9 +130,14 @@ void main() {
     });
 
     test('releases what was held before playing again', () async {
-      await demo().playAndSettle(const [60, 64], tempo: DemoInputTempo.brisk);
+      await demo().playSequenceAndSettle(const [
+        60,
+        64,
+      ], tempo: DemoInputTempo.brisk);
       await pumpEventQueue();
-      await demo().playAndSettle(const [67], tempo: DemoInputTempo.brisk);
+      await demo().playSequenceAndSettle(const [
+        67,
+      ], tempo: DemoInputTempo.brisk);
       await pumpEventQueue();
 
       expect(recorder.transcript, [
@@ -116,7 +151,7 @@ void main() {
     });
 
     test('interrupting a sequence abandons the rest of it', () async {
-      demo().play(const [
+      demo().playSequence(const [
         60,
         62,
         64,
@@ -141,11 +176,11 @@ void main() {
     });
 
     test('refuses a note outside the keyboard', () {
-      expect(() => demo().play(const [128]), throwsRangeError);
+      expect(() => demo().playSequence(const [128]), throwsRangeError);
     });
 
     test('timestamps never run backward', () async {
-      await demo().playAndSettle(const [
+      await demo().playSequenceAndSettle(const [
         60,
         62,
         64,
@@ -173,7 +208,10 @@ void main() {
       // The reason pressed and sustained are modeled apart: this transition
       // has to stay expressible as an ordinary release.
       demo().setPedalDown(true);
-      await demo().playAndSettle(const [60, 64], tempo: DemoInputTempo.brisk);
+      await demo().playSequenceAndSettle(const [
+        60,
+        64,
+      ], tempo: DemoInputTempo.brisk);
       await pumpEventQueue();
 
       expect(recorder.transcript, [
@@ -191,7 +229,10 @@ void main() {
       // No note-offs follow: those were sent when the keys came up. The pedal
       // event is the whole story, which is what a real instrument reports.
       demo().setPedalDown(true);
-      await demo().playAndSettle(const [60, 64], tempo: DemoInputTempo.brisk);
+      await demo().playSequenceAndSettle(const [
+        60,
+        64,
+      ], tempo: DemoInputTempo.brisk);
       await pumpEventQueue();
       demo().setPedalDown(false);
       await pumpEventQueue();
@@ -205,7 +246,7 @@ void main() {
       // A snapshot refuses an impossible state, so a reset built from one is
       // the guard: no repair is needed if the instrument cannot get there.
       demo().setPedalDown(true);
-      await demo().playAndSettle(const [
+      await demo().playSequenceAndSettle(const [
         60,
         62,
         64,
@@ -229,12 +270,16 @@ void main() {
 
     test('a struck note is taken back from the pedal', () async {
       demo().setPedalDown(true);
-      await demo().playAndSettle(const [60], tempo: DemoInputTempo.brisk);
+      await demo().playSequenceAndSettle(const [
+        60,
+      ], tempo: DemoInputTempo.brisk);
       demo().releaseAll();
       await pumpEventQueue();
       expect(currently().sustainedNoteNumbers, {60});
 
-      await demo().playAndSettle(const [60], tempo: DemoInputTempo.brisk);
+      await demo().playSequenceAndSettle(const [
+        60,
+      ], tempo: DemoInputTempo.brisk);
       await pumpEventQueue();
 
       expect(currently().pressedNoteNumbers, {60});
@@ -257,7 +302,9 @@ void main() {
       // The payoff of normalizing at the boundary: this test reads input
       // without naming a transport, and the stream's static type means nothing
       // above it can either.
-      await demo().playAndSettle(const [60], tempo: DemoInputTempo.brisk);
+      await demo().playSequenceAndSettle(const [
+        60,
+      ], tempo: DemoInputTempo.brisk);
       await pumpEventQueue();
 
       expect(recorder.transcript, ['reset', 'on 60']);
