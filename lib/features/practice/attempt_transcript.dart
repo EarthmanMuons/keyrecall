@@ -20,6 +20,13 @@ import '../input/input.dart';
 /// The window opens at Ready, so the count-in is inside the attempt. Coming in
 /// early is a fact about the performance rather than noise, and dropping those
 /// notes would make an eager entry look like a missing one.
+///
+/// A grace period after Ready would be worse than the stray note it prevents:
+/// ignoring real events because of when they fell relative to the count-in
+/// would make the observation model partly synchronization-aware, which is
+/// exactly what a count-in-only rung is not. If repositioning after Ready turns
+/// out to be a real problem on an instrument, the fix is the choreography, not
+/// a window that discards playing.
 final attemptTranscriptProvider =
     NotifierProvider<AttemptTranscriptNotifier, PerformanceTranscript>(
       AttemptTranscriptNotifier.new,
