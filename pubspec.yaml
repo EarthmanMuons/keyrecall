@@ -49,6 +49,7 @@ dependencies:
     path: packages/keyrecall_scheduler
   keyrecall_simulation:
     path: packages/keyrecall_simulation
+  crisp_notation: ^0.4.4
 
 dev_dependencies:
   flutter_launcher_icons: "^0.14.4"

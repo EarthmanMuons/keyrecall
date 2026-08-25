@@ -10,6 +10,7 @@ import 'exercise_presentation.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
 import 'reported_result.dart';
+import 'staff_cue.dart';
 
 /// The first learner-facing practice screen: one exercise, presented.
 ///
@@ -80,6 +81,7 @@ class AttemptView extends ConsumerStatefulWidget {
   const AttemptView({
     required this.exercise,
     required this.onReport,
+    this.presentation,
     super.key,
   });
 
@@ -88,6 +90,11 @@ class AttemptView extends ConsumerStatefulWidget {
 
   /// Where the stand-in for measurement goes.
   final Future<void> Function(ReportedResult) onReport;
+
+  /// What to present it under, when something other than practice policy is
+  /// choosing. Only the debug case list passes this, to compare one exercise
+  /// in more than one modality.
+  final PresentationConditions? presentation;
 
   @override
   ConsumerState<AttemptView> createState() => _AttemptViewState();
@@ -138,7 +145,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   Widget build(BuildContext context) {
     final exercise = widget.exercise;
     final guidance = exercise.guidance;
-    final presentation = presentationFor(guidance);
+    final presentation = widget.presentation ?? presentationFor(guidance);
 
     final showsCue = switch (_phase) {
       _Phase.ready => presentation.pitchCue.suppliesMaterial,
@@ -150,9 +157,13 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       children: [
         _TaskStatement(exercise),
         const SizedBox(height: 24),
+        if (showsCue && cueOnStaff(presentation.cueModality)) ...[
+          StaffCue(exercise: exercise),
+          const SizedBox(height: 24),
+        ],
         _Instrument(
           exercise: exercise,
-          showsCue: showsCue,
+          showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
           echoes: presentation.performanceFeedback != PerformanceFeedback.none,
         ),
         const SizedBox(height: 16),

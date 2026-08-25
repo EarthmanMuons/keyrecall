@@ -3,6 +3,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'attempt_screen.dart';
 import 'exercise_presentation.dart';
+import 'presentation_policy.dart';
 import 'reported_result.dart';
 
 /// Fixed exercises for looking at the practice screen, reachable in debug
@@ -61,20 +62,61 @@ final List<Exercise> _samples = [
   ),
 ];
 
-class _Preview extends StatelessWidget {
+class _Preview extends StatefulWidget {
   const _Preview(this.exercise);
 
   final Exercise exercise;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(guidanceName(exercise.guidance))),
-    body: AttemptView(
-      exercise: exercise,
-      onReport: (ReportedResult _) async {
-        if (!context.mounted) return;
-        Navigator.of(context).pop();
-      },
-    ),
-  );
+  State<_Preview> createState() => _PreviewState();
+}
+
+class _PreviewState extends State<_Preview> {
+  /// Which modality this case is being looked at in. Practice policy picks
+  /// one; here both are reachable, so the same exercise can be compared as
+  /// marked keys and as notation.
+  CueModality _modality = CueModality.keyboard;
+
+  @override
+  Widget build(BuildContext context) {
+    final exercise = widget.exercise;
+    final policy = presentationFor(exercise.guidance);
+    final presentation = PresentationConditions(
+      pitchCue: policy.pitchCue,
+      cueModality: policy.pitchCue.suppliesMaterial ? _modality : null,
+      motorCue: policy.motorCue,
+      performanceFeedback: policy.performanceFeedback,
+      tempoSupport: policy.tempoSupport,
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(guidanceName(exercise.guidance)),
+        actions: [
+          if (policy.pitchCue.suppliesMaterial)
+            IconButton(
+              tooltip: 'Show the cue the other way',
+              onPressed: () => setState(() {
+                _modality = _modality == CueModality.keyboard
+                    ? CueModality.staff
+                    : CueModality.keyboard;
+              }),
+              icon: Icon(
+                _modality == CueModality.keyboard
+                    ? Icons.music_note
+                    : Icons.piano,
+              ),
+            ),
+        ],
+      ),
+      body: AttemptView(
+        exercise: exercise,
+        presentation: presentation,
+        onReport: (ReportedResult _) async {
+          if (!context.mounted) return;
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
 }

@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:crisp_notation/crisp_notation.dart' as crisp;
+
 import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/reported_result.dart';
@@ -17,8 +19,9 @@ void main() {
   /// Pumps one attempt and returns what it reported, in order.
   Future<List<ReportedResult>> pumpAttempt(
     WidgetTester tester,
-    GuidanceContext guidance,
-  ) async {
+    GuidanceContext guidance, {
+    PresentationConditions? presentation,
+  }) async {
     tester.view.physicalSize = const Size(1400, 2000);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -33,6 +36,7 @@ void main() {
               // would keep the previous attempt's phase.
               key: ValueKey(guidance.independence),
               exercise: exerciseUnder(guidance),
+              presentation: presentation,
               onReport: (result) async => reported.add(result),
             ),
           ),
@@ -131,6 +135,63 @@ void main() {
           'the learner can see the app is listening without being told '
           'anything about pitch',
     );
+  });
+
+  group('a cue written on a staff', () {
+    PresentationConditions onStaff(GuidanceContext guidance) =>
+        PresentationConditions(
+          pitchCue: guidance.isMaterialSupplied ? PitchCue.full : PitchCue.none,
+          cueModality: guidance.isMaterialSupplied ? CueModality.staff : null,
+          motorCue: MotorCue.none,
+          performanceFeedback: PerformanceFeedback.neutralEcho,
+          tempoSupport: TempoSupport.countInOnly,
+        );
+
+    testWidgets('is drawn instead of marking the keys', (tester) async {
+      await pumpAttempt(
+        tester,
+        GuidanceContext.continuouslyCued,
+        presentation: onStaff(GuidanceContext.continuouslyCued),
+      );
+
+      expect(find.byType(crisp.MultiSystemView), findsOneWidget);
+      expect(
+        markers(tester),
+        isEmpty,
+        reason:
+            'the cue is on one surface at a time, and the keyboard is '
+            'here to echo playing rather than to repeat the cue',
+      );
+    });
+
+    testWidgets('is withdrawn like any other cue', (tester) async {
+      await pumpAttempt(
+        tester,
+        GuidanceContext.notesPreviewedOnly,
+        presentation: onStaff(GuidanceContext.notesPreviewedOnly),
+      );
+      expect(find.byType(crisp.MultiSystemView), findsOneWidget);
+
+      await readyAndCountIn(tester);
+
+      expect(find.byType(crisp.MultiSystemView), findsNothing);
+      expect(
+        find.byType(PianoKeyboard),
+        findsOneWidget,
+        reason: 'the instrument stays whichever surface carried the cue',
+      );
+    });
+
+    testWidgets('never appears when nothing is supplied', (tester) async {
+      await pumpAttempt(
+        tester,
+        GuidanceContext.unguided,
+        presentation: onStaff(GuidanceContext.unguided),
+      );
+
+      expect(find.byType(crisp.MultiSystemView), findsNothing);
+      expect(find.byType(crisp.GrandStaffView), findsNothing);
+    });
   });
 
   testWidgets('every rung counts in', (tester) async {

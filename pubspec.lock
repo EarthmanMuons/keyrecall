@@ -129,6 +129,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.15.1"
+  crisp_notation:
+    dependency: "direct main"
+    description:
+      name: crisp_notation
+      sha256: "7c8d28e47a6173bf69f411ee27f2f2a66c00cb6fc030add97c42e5a1c8d2a178"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.4"
+  crisp_notation_core:
+    dependency: transitive
+    description:
+      name: crisp_notation_core
+      sha256: "7d09b867ea58f9d6bf479caf3f082992aba70452b0c80598a5cedc82e6b21e5a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.5"
   crypto:
     dependency: transitive
     description:

@@ -38,3 +38,12 @@ PresentationConditions presentationFor(GuidanceContext guidance) {
 /// rung.
 bool showsPitchCueDuringAttempt(GuidanceContext guidance) =>
     guidance.concurrentPitchCues;
+
+/// Whether a cue in [modality] is written on a staff.
+bool cueOnStaff(CueModality? modality) =>
+    modality == CueModality.staff || modality == CueModality.keyboardAndStaff;
+
+/// Whether a cue in [modality] marks the keyboard diagram.
+bool cueOnKeyboard(CueModality? modality) =>
+    modality == CueModality.keyboard ||
+    modality == CueModality.keyboardAndStaff;
