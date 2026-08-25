@@ -57,7 +57,7 @@ void main() {
     );
 
     test('marks the member notes of the requested range', () {
-      final surface = PitchSurface.forExercise(
+      final surface = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, octaves: 1),
       );
 
@@ -75,7 +75,7 @@ void main() {
     });
 
     test('takes the accidentals from the form, not just the key', () {
-      final surface = PitchSurface.forExercise(
+      final surface = KeyboardDiagram.forExercise(
         exerciseOf('D', ScaleForm.harmonicMinor, octaves: 1),
       );
 
@@ -87,13 +87,13 @@ void main() {
     });
 
     test('drops the left hand an octave and spans both when together', () {
-      final right = PitchSurface.forExercise(
+      final right = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.right),
       );
-      final left = PitchSurface.forExercise(
+      final left = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.left),
       );
-      final together = PitchSurface.forExercise(
+      final together = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.together),
       );
 
@@ -108,7 +108,7 @@ void main() {
     });
 
     test('draws a window wide enough to hold the range', () {
-      final surface = PitchSurface.forExercise(
+      final surface = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.together),
       );
       final lastWhite = _whiteMidiAfter(

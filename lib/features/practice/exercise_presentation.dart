@@ -2,12 +2,8 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 /// How an exercise reads and looks to a learner.
 ///
-/// Presentation only. The domain keeps tonics as canonical ASCII strings
-/// because persisted records key on them, and it has no interval content at
-/// all, so turning `F# HARMONIC_MINOR` into `F♯ harmonic minor` and into a set
-/// of MIDI notes happens here. This is the shape of the hole a shared music
-/// type would eventually fill; until then the theory lives at the edge that
-/// needs it rather than in the model.
+/// Naming and layout only. Which notes an exercise asks for is the domain's
+/// answer to give, and `realize` gives it.
 
 /// The learner-facing name of [material], such as `F♯ harmonic minor`.
 String materialName(TechnicalMaterial material) =>
@@ -46,120 +42,51 @@ String _handsName(HandConfiguration hands) => switch (hands) {
   HandConfiguration.together => 'Hands together',
 };
 
-/// Semitones above the tonic in each scale form.
-///
-/// Melodic minor is the fixed ascending form in both directions, as
-/// [ScaleForm.melodicMinor] defines it.
-const Map<ScaleForm, List<int>> _formIntervals = {
-  ScaleForm.major: [0, 2, 4, 5, 7, 9, 11],
-  ScaleForm.naturalMinor: [0, 2, 3, 5, 7, 8, 10],
-  ScaleForm.harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
-  ScaleForm.melodicMinor: [0, 2, 3, 5, 7, 9, 11],
-};
-
-const Map<String, int> _letterPitchClasses = {
-  'C': 0,
-  'D': 2,
-  'E': 4,
-  'F': 5,
-  'G': 7,
-  'A': 9,
-  'B': 11,
-};
-
 const Set<int> _whitePitchClasses = {0, 2, 4, 5, 7, 9, 11};
 
-/// Where a hand's tonic sits, as a MIDI note at or above this floor.
+/// The keys a diagram marks, and the span it draws them in.
 ///
-/// A presentation choice, not a domain fact: nothing in the model says which
-/// register a scale is practiced in yet. The right hand sits around middle C
-/// and the left an octave below, which is where these exercises are usually
-/// played and keeps a two-octave hands-together span on one readable diagram.
-const int _rightHandFloor = 60;
-const int _leftHandFloor = 48;
-
-/// The pitch material of an exercise, ready for a keyboard diagram.
-///
-/// Deliberately a *set* of member notes and a window to draw them in, with no
-/// order: a cue that knew the sequence would be one step from following the
-/// performance, and following the performance is measurement wearing a
-/// presentation costume. Nothing here can tell where in the scale a learner
-/// is, because nothing here knows the scale has an order.
-class PitchSurface {
+/// Derived from the exercise's realization rather than from a second interval
+/// table here: what an exercise asks for has one definition, in the domain.
+/// The marks are a set, so a diagram cannot say where in the scale the learner
+/// is; a surface that shows progress needs the ordered moments instead.
+class KeyboardDiagram {
   /// MIDI note of the leftmost *white* key drawn.
   final int firstWhiteMidi;
 
   /// How many white keys the diagram spans.
   final int whiteKeyCount;
 
-  /// Every member note within the played range, marked on the diagram.
+  /// Every note the exercise asks for.
   final Set<int> memberNotes;
 
   /// Pitch class of the tonic, marked distinctly from the other members.
   final int tonicPitchClass;
 
-  const PitchSurface({
+  const KeyboardDiagram({
     required this.firstWhiteMidi,
     required this.whiteKeyCount,
     required this.memberNotes,
     required this.tonicPitchClass,
   });
 
-  /// The material [exercise] asks for, in the register its conditions imply.
-  factory PitchSurface.forExercise(Exercise exercise) {
-    final tonicPitchClass = pitchClassOf(exercise.material.tonic);
-    final conditions = exercise.conditions;
-    final span = 12 * conditions.octaves;
+  /// A diagram wide enough for what [exercise] asks for.
+  factory KeyboardDiagram.forExercise(Exercise exercise) {
+    final realization = realize(exercise);
 
-    final floors = [
-      if (conditions.hands.usesLeftHand) _leftHandFloor,
-      if (conditions.hands.usesRightHand) _rightHandFloor,
-    ];
-    final lowest = _tonicAtOrAbove(floors.first, tonicPitchClass);
-    final highest = _tonicAtOrAbove(floors.last, tonicPitchClass) + span;
-
-    final intervals = _formIntervals[exercise.material.form]!;
-    final memberPitchClasses = {
-      for (final interval in intervals) (tonicPitchClass + interval) % 12,
-    };
-
-    // A key on either side, so the outermost members do not sit flush against
+    // A key on either side, so the outermost notes do not sit flush against
     // the edge of the diagram.
-    final firstWhite = _whiteAtOrBelow(lowest - 1);
-    final lastWhite = _whiteAtOrAbove(highest + 1);
+    final firstWhite = _whiteAtOrBelow(realization.lowestPitch - 1);
+    final lastWhite = _whiteAtOrAbove(realization.highestPitch + 1);
 
-    return PitchSurface(
+    return KeyboardDiagram(
       firstWhiteMidi: firstWhite,
       whiteKeyCount: _whiteKeysThrough(firstWhite, lastWhite),
-      memberNotes: {
-        for (var midi = lowest; midi <= highest; midi++)
-          if (memberPitchClasses.contains(midi % 12)) midi,
-      },
-      tonicPitchClass: tonicPitchClass,
+      memberNotes: realization.pitches,
+      tonicPitchClass: pitchClassOf(exercise.material.tonic),
     );
   }
 }
-
-/// The pitch class of a canonical tonic such as `C`, `F#`, or `Bb`.
-///
-/// Throws [ArgumentError] for anything [TechnicalMaterial] would have
-/// rejected, since a tonic reaching here uncanonical means it was built
-/// somewhere that skipped that check.
-int pitchClassOf(String tonic) {
-  final natural = _letterPitchClasses[tonic.isEmpty ? '' : tonic[0]];
-  if (natural == null || tonic.length > 2) {
-    throw ArgumentError.value(tonic, 'tonic', 'not a canonical tonic');
-  }
-  if (tonic.length == 1) return natural;
-  return switch (tonic[1]) {
-    '#' => (natural + 1) % 12,
-    'b' => (natural + 11) % 12,
-    _ => throw ArgumentError.value(tonic, 'tonic', 'not a canonical tonic'),
-  };
-}
-
-int _tonicAtOrAbove(int floor, int pitchClass) =>
-    floor + (pitchClass - floor % 12 + 12) % 12;
 
 int _whiteAtOrBelow(int midi) {
   while (!_whitePitchClasses.contains(midi % 12)) {

@@ -14,5 +14,6 @@ export 'src/guidance_context.dart';
 export 'src/instrument_profile.dart';
 export 'src/motor_opportunity.dart';
 export 'src/presentation_conditions.dart';
+export 'src/realization.dart';
 export 'src/scale_catalog.dart';
 export 'src/technical_material.dart';

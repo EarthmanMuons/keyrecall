@@ -215,7 +215,7 @@ class _PitchSurfaceView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final surface = PitchSurface.forExercise(exercise);
+    final diagram = KeyboardDiagram.forExercise(exercise);
     // Watched only when it is allowed to be seen, so a rung that hides live
     // keys is not one wiring mistake away from showing them.
     final sounding = showsLiveKeys
@@ -223,10 +223,10 @@ class _PitchSurfaceView extends ConsumerWidget {
         : const <int>{};
 
     return PianoKeyboard(
-      whiteKeyCount: surface.whiteKeyCount,
-      firstMidiNote: surface.firstWhiteMidi,
-      scaleNoteNumbers: surface.memberNotes,
-      tonicPitchClass: surface.tonicPitchClass,
+      whiteKeyCount: diagram.whiteKeyCount,
+      firstMidiNote: diagram.firstWhiteMidi,
+      scaleNoteNumbers: diagram.memberNotes,
+      tonicPitchClass: diagram.tonicPitchClass,
       highlightedNoteNumbers: sounding,
       // No pitch-class filter: a wrong note lights up like any other. Marking
       // it as out of scale would be correctness feedback, which is a different
