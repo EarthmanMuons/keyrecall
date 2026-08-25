@@ -7,6 +7,17 @@
 /// Bumping it requires a pure, versioned upgrade function and upgrade tests
 /// covering existing persisted state, historical golden journals, and
 /// genuinely new material separately.
+///
+/// A retained version does not mean that version was ever released. Version 1
+/// existed only during development, and is kept because upgrading it exercises
+/// a real structural change: an outcome and its derived evidence became the
+/// measured branch of a lifecycle sum, and the upgrade proves that historical
+/// records keep their interpretation and replay to the same learner state.
+/// Provenance and a regression fixture, not a claim about what shipped.
+///
+/// It is also not a precedent that every pre-release rearrangement bumps this.
+/// Ordinary churn before release should rewrite fixtures instead; a bump is for
+/// a change worth being able to prove survived.
 const int attemptSchemaVersion = 2;
 
 /// Version of the checkpoint wire format.
