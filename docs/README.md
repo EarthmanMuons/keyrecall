@@ -33,6 +33,7 @@ docs/
 ├── domain-model/
 │   ├── alignment-contract.md        design only; the aligner does not exist
 │                                    (evidence: analysis/onset-grouping/)
+│   ├── attempt-termination.md       design only; how an attempt can end
 │   ├── fingering-taxonomy.md
 │   ├── motor-taxonomy.md
 │   └── v1-domain-model.md

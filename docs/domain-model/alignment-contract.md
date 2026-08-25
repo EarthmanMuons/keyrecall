@@ -189,6 +189,12 @@ exists.
 - Alignment must not reach back into presentation. Spelling an observed note
   uses the key, never the expected position (`spellObservedPitch` cannot see a
   realization, and its signature is what guarantees that).
+- Alignment must not be consulted to terminate an attempt unless that attempt's
+  presentation conditions already permit evaluative feedback. Ending an attempt
+  is the loudest correctness signal available, and a learner cut off after four
+  wrong notes has been told they were wrong four times whatever the screen says.
+  Termination on silence or elapsed time needs no alignment and is allowed
+  anywhere; see [`attempt-termination.md`](attempt-termination.md).
 - Alignment must not be run to draw the neutral echo. If a display needs the
   edit script, it is evaluative, and `PresentationConditions` has to say so.
 - The aligner must not decide evidence. It says how the sequences relate; what
