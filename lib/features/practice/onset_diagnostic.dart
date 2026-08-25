@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../input/input.dart';
 
@@ -99,6 +101,31 @@ class _OnsetDiagnosticScreenState extends ConsumerState<OnsetDiagnosticScreen> {
     super.dispose();
   }
 
+  /// Writes the take to a file the Files app and Finder can reach.
+  ///
+  /// Documents rather than Application Support, which is where practice
+  /// history lives: takes are meant to leave the phone, and journals are not.
+  Future<void> _save(List<Onset> onsets) async {
+    final directory = Directory(
+      '${(await getApplicationDocumentsDirectory()).path}/onsets',
+    )..createSync(recursive: true);
+    final stamp = DateTime.now().toIso8601String().replaceAll(
+      RegExp('[:.]'),
+      '-',
+    );
+    final slug = _label.text.isEmpty
+        ? 'take'
+        : _label.text.toLowerCase().replaceAll(RegExp('[^a-z0-9]+'), '-');
+    final file = File('${directory.path}/$stamp-$slug.json');
+    file.writeAsStringSync(_json(onsets, _label.text));
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('saved ${file.uri.pathSegments.last}')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final take = ref.watch(onsetRecorderProvider);
@@ -118,6 +145,11 @@ class _OnsetDiagnosticScreenState extends ConsumerState<OnsetDiagnosticScreen> {
                     ClipboardData(text: _json(onsets, _label.text)),
                   ),
             icon: const Icon(Icons.copy),
+          ),
+          IconButton(
+            tooltip: 'Save this take on the phone',
+            onPressed: onsets.isEmpty ? null : () => _save(onsets),
+            icon: const Icon(Icons.save_alt),
           ),
         ],
       ),
