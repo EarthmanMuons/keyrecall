@@ -6,8 +6,8 @@ import 'exercise_presentation.dart';
 import 'presentation_policy.dart';
 import 'reported_result.dart';
 
-/// Fixed exercises for looking at the practice screen, reachable in debug
-/// builds only.
+/// Fixed exercises for looking at the practice screen, reachable in any build
+/// but a release one.
 ///
 /// The scheduler decides what to present, so a particular rung and key cannot
 /// be asked for through the loop. These cases skip it entirely: they are

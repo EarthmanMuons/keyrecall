@@ -36,7 +36,9 @@ class PracticeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('KeyRecall dev panel'),
         actions: [
-          if (kDebugMode)
+          // Debug and profile, not release: a profile build is how this gets
+          // taken to a real instrument across the room.
+          if (!kReleaseMode)
             IconButton(
               tooltip: 'Look at fixed presentation cases',
               onPressed: () => Navigator.of(context).push(
