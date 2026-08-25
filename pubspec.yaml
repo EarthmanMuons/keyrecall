@@ -2,6 +2,7 @@ name: keyrecall
 description: An adaptive piano technical-practice scheduler.
 
 workspace:
+  - packages/keyrecall_alignment
   - packages/keyrecall_domain
   - packages/keyrecall_input
   - packages/keyrecall_input_sources
@@ -31,6 +32,8 @@ dependencies:
   material_ui: any
   path_provider: ^2.1.5
 
+  keyrecall_alignment:
+    path: packages/keyrecall_alignment
   keyrecall_domain:
     path: packages/keyrecall_domain
   keyrecall_input:

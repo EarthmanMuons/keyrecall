@@ -1,6 +1,7 @@
 # Alignment contract
 
-- **Status:** Design only. Nothing implements this yet.
+- **Status:** Partly implemented. `keyrecall_alignment` aligns single-hand,
+  pitch-only performances; grouping and everything it gates are still design.
 - **Written:** August 25, 2026
 
 This exists so the transcript built today carries what the aligner will need
