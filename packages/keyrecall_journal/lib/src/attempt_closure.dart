@@ -38,9 +38,19 @@ enum AttemptTermination {
 }
 
 /// Why an attempt has no measured outcome.
+///
+/// Structural, always. A reason names a capability the observation model is
+/// missing, never a performance it disliked: fifty wrong notes measure fine,
+/// and if bad attempts could go unmeasured the evidence would go missing
+/// exactly where it is strongest.
 enum MeasurementUnavailableReason {
   /// Nothing can measure a performance yet.
-  notAvailable('NOT_AVAILABLE');
+  notAvailable('NOT_AVAILABLE'),
+
+  /// The exercise uses both hands, and relating two hands' notes to the
+  /// moments they belong to needs observation grouping, which does not exist.
+  /// See `docs/domain-model/alignment-contract.md`.
+  handsTogetherCorrespondence('HANDS_TOGETHER_CORRESPONDENCE');
 
   const MeasurementUnavailableReason(this.id);
 

@@ -19,6 +19,7 @@ library;
 export 'src/file_practice_store.dart';
 export 'src/file_profile_repository.dart';
 export 'src/pending_decision.dart';
+export 'src/performance_closure.dart';
 export 'src/practice_session.dart';
 export 'src/practice_store.dart';
 export 'src/profile_repository.dart';

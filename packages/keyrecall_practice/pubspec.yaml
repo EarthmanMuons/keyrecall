@@ -18,6 +18,7 @@ dependencies:
   keyrecall_domain: ^0.1.0
   keyrecall_journal: ^0.1.0
   keyrecall_learner: ^0.1.0
+  keyrecall_measurement: ^0.1.0
   keyrecall_scheduler: ^0.1.0
   meta: ^1.17.0
 

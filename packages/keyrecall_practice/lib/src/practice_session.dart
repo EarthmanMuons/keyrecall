@@ -1,10 +1,12 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
 import 'pending_decision.dart';
+import 'performance_closure.dart';
 import 'practice_store.dart';
 
 /// Generates the ids a transaction needs.
@@ -322,6 +324,42 @@ class PracticeSession {
         outcome: outcome,
         observedWallTime: observedWallTime,
       );
+
+  /// Ends the outstanding attempt from what was played.
+  ///
+  /// The whole path: what arrived becomes a correspondence, the correspondence
+  /// becomes a measurement, and the measurement becomes an outcome. An attempt
+  /// the observation model cannot read closes with the reason instead, which
+  /// is a complete record of an attempt that happened and produced no
+  /// evidence.
+  ///
+  /// Throws [PracticeStateError] when no attempt is outstanding.
+  Future<AttemptRecord> closeFromPerformance(
+    PerformanceTranscript transcript, {
+    AttemptTermination termination = AttemptTermination.learnerStopped,
+    MeasurementPolicy policy = MeasurementPolicy.standard,
+    DateTime? observedWallTime,
+  }) {
+    final outstanding = _outstanding ?? _pendingAsOutstanding();
+    final reading = readPerformance(
+      exercise: outstanding.decision.exercise,
+      transcript: transcript,
+      policy: policy,
+    );
+
+    return switch (reading) {
+      PerformanceMeasured(:final outcome) => _close(
+        termination: termination,
+        outcome: outcome,
+        observedWallTime: observedWallTime,
+      ),
+      PerformanceUnmeasurable(:final reason) => _close(
+        termination: termination,
+        unavailable: reason,
+        observedWallTime: observedWallTime,
+      ),
+    };
+  }
 
   /// Ends the outstanding attempt with nothing measured.
   ///
