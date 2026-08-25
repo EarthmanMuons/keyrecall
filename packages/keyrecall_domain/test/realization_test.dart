@@ -171,6 +171,90 @@ void main() {
     });
   });
 
+  group('spelling', () {
+    test('spells each degree on its own letter', () {
+      final realization = realize(
+        exerciseOf(
+          tonic: 'F#',
+          form: ScaleForm.harmonicMinor,
+          octaves: 1,
+          direction: ScaleDirection.up,
+        ),
+      );
+
+      expect(
+        [
+          for (final moment in realization.moments)
+            moment.notes.single.pitch.label,
+        ],
+        ['F#', 'G#', 'A', 'B', 'C#', 'D', 'E#', 'F#'],
+        reason: 'the seventh degree is a raised E, not an F natural',
+      );
+    });
+
+    test('reaches a double accidental when the degree needs one', () {
+      final realization = realize(
+        exerciseOf(
+          tonic: 'G#',
+          form: ScaleForm.harmonicMinor,
+          octaves: 1,
+          direction: ScaleDirection.up,
+        ),
+      );
+      final seventh = realization.moments[6].notes.single;
+
+      expect(seventh.pitch.label, 'F##');
+      expect(seventh.pitch.prettyLabel, 'F𝄪');
+      expect(
+        seventh.midiNote % 12,
+        7,
+        reason: 'it is written as a raised seventh and sounds like a G',
+      );
+    });
+
+    test('the written pitch and the key played always agree', () {
+      for (final material in v1ScaleCatalog) {
+        final realization = realize(
+          Exercise.linear(
+            material: material,
+            hands: HandConfiguration.together,
+          ),
+        );
+        for (final moment in realization.moments) {
+          for (final note in moment.notes) {
+            expect(note.midiNote, note.pitch.midiNote);
+          }
+        }
+      }
+    });
+  });
+
+  group('invariants', () {
+    test('a hand plays at most one note per moment', () {
+      expect(
+        () => RealizationMoment(
+          position: 0,
+          metricOffset: 0,
+          notes: [
+            RealizedNote(
+              hand: Hand.right,
+              pitch: SpelledPitch(letter: NoteLetter.c, octave: 4),
+            ),
+            RealizedNote(
+              hand: Hand.right,
+              pitch: SpelledPitch(letter: NoteLetter.e, octave: 4),
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('an exercise that asks for nothing is not a realization', () {
+      expect(() => ExerciseRealization([]), throwsArgumentError);
+    });
+  });
+
   test('pitch classes read canonical tonics', () {
     expect(pitchClassOf('C'), 0);
     expect(pitchClassOf('F#'), 6);

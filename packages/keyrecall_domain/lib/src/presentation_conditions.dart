@@ -14,6 +14,10 @@ enum PitchCue {
   startOnly('START_ONLY'),
 
   /// A bounded window ahead of where the learner is.
+  ///
+  /// Needs performance alignment to render during an attempt, since "where
+  /// the learner is" is a fact about the performance. Defining the value does
+  /// not mean anything can currently draw it.
   limitedLookahead('LIMITED_LOOKAHEAD'),
 
   /// The whole sequence.
@@ -75,10 +79,12 @@ enum MotorCue {
 
 /// What the learner is shown of their own playing while they play.
 ///
-/// Retrospective, so none of it supplies material in advance. It still changes
-/// what an attempt observes: an evaluated attempt can be repaired note by note
-/// as it goes, which is practice rather than recall, and even a neutral echo
-/// gives sensory confirmation that playing blind does not.
+/// Non-prospective: it arrives with or after the note, never before, so none
+/// of it supplies material in advance. It still changes what an attempt
+/// observes, and it changes it during the attempt: an evaluated attempt can be
+/// repaired note by note as it goes, which is practice rather than recall, and
+/// even a neutral echo gives sensory confirmation that playing blind does
+/// not.
 enum PerformanceFeedback {
   /// The learner sees nothing of what they played.
   none('NONE'),

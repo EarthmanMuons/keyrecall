@@ -3,6 +3,7 @@ import 'package:meta/meta.dart';
 
 import 'execution_conditions.dart';
 import 'exercise.dart';
+import 'spelled_pitch.dart';
 import 'technical_material.dart';
 
 /// One hand, as a player rather than as a configuration.
@@ -25,20 +26,23 @@ class RealizedNote {
   /// Which hand plays it.
   final Hand hand;
 
-  /// Which key, as a MIDI note number.
-  final int midiNote;
+  /// The note as it is written, which is what a staff needs.
+  final SpelledPitch pitch;
 
-  const RealizedNote({required this.hand, required this.midiNote});
+  const RealizedNote({required this.hand, required this.pitch});
+
+  /// Which key it is played on, which is what a keyboard and MIDI need.
+  int get midiNote => pitch.midiNote;
 
   @override
   bool operator ==(Object other) =>
-      other is RealizedNote && other.hand == hand && other.midiNote == midiNote;
+      other is RealizedNote && other.hand == hand && other.pitch == pitch;
 
   @override
-  int get hashCode => Object.hash(hand, midiNote);
+  int get hashCode => Object.hash(hand, pitch);
 
   @override
-  String toString() => 'RealizedNote(${hand.id}, $midiNote)';
+  String toString() => 'RealizedNote(${hand.id}, $pitch)';
 }
 
 const _noteListEquality = ListEquality<RealizedNote>();
@@ -62,11 +66,25 @@ class RealizationMoment {
   /// The notes sounding at this moment, at most one per hand in V1.
   final List<RealizedNote> notes;
 
+  /// Throws [ArgumentError] when a hand is asked to play twice at once.
+  ///
+  /// V1 has no chords, and a moment that already held two notes for one hand
+  /// would make [noteFor] answer arbitrarily. Relax this deliberately when a
+  /// pattern needs it rather than discovering it was always allowed.
   RealizationMoment({
     required this.position,
     required this.metricOffset,
     required List<RealizedNote> notes,
-  }) : notes = List.unmodifiable(notes);
+  }) : notes = List.unmodifiable(notes) {
+    final hands = {for (final note in notes) note.hand};
+    if (hands.length != notes.length) {
+      throw ArgumentError.value(
+        notes,
+        'notes',
+        'a hand plays at most one note per moment',
+      );
+    }
+  }
 
   /// The note [hand] plays here, or null when it plays nothing.
   RealizedNote? noteFor(Hand hand) =>
@@ -108,8 +126,16 @@ class ExerciseRealization {
   /// The moments, in the order they are played.
   final List<RealizationMoment> moments;
 
+  /// Throws [ArgumentError] when there is nothing to play.
+  ///
+  /// An exercise that asks for no notes is not a task, and [lowestPitch] and
+  /// [highestPitch] would fail on it anyway.
   ExerciseRealization(List<RealizationMoment> moments)
-    : moments = List.unmodifiable(moments);
+    : moments = List.unmodifiable(moments) {
+    if (this.moments.isEmpty) {
+      throw ArgumentError.value(moments, 'moments', 'must not be empty');
+    }
+  }
 
   /// Which hands play at all.
   Set<Hand> get hands => {
@@ -154,16 +180,6 @@ const Map<ScaleForm, List<int>> _formIntervals = {
   ScaleForm.melodicMinor: [0, 2, 3, 5, 7, 9, 11],
 };
 
-const Map<String, int> _letterPitchClasses = {
-  'C': 0,
-  'D': 2,
-  'E': 4,
-  'F': 5,
-  'G': 7,
-  'A': 9,
-  'B': 11,
-};
-
 /// Lowest MIDI note each hand's tonic is placed at or above.
 ///
 /// A V1 convention, not a fact about the material: the right hand practices
@@ -173,19 +189,24 @@ const Map<Hand, int> _handFloors = {Hand.right: 60, Hand.left: 48};
 
 /// The notes [exercise] asks for, in order.
 ///
-/// Throws [ArgumentError] if the material's tonic is not canonical, which
-/// [TechnicalMaterial] would already have rejected.
+/// Spelling follows the scale degree rather than the sounding pitch: the
+/// seventh degree is written on the seventh letter above the tonic whatever it
+/// sounds like, which is what makes G♯ harmonic minor's F𝄪 come out as a
+/// raised seventh rather than as a G.
+///
+/// Throws [ArgumentError] if the tonic is not canonical, and [StateError] if
+/// the material cannot be spelled within double accidentals.
 ExerciseRealization realize(Exercise exercise) {
-  final tonicPitchClass = pitchClassOf(exercise.material.tonic);
+  final tonic = _tonicSpelling(exercise.material.tonic);
   final intervals = _formIntervals[exercise.material.form]!;
   final conditions = exercise.conditions;
 
-  final ascending = <int>[
-    for (var octave = 0; octave < conditions.octaves; octave++)
-      for (final interval in intervals) octave * 12 + interval,
-    12 * conditions.octaves,
+  final degrees = intervals.length;
+  final topDegree = degrees * conditions.octaves;
+  final ascending = [
+    for (var degree = 0; degree <= topDegree; degree++) degree,
   ];
-  final offsets = switch (conditions.direction) {
+  final steps = switch (conditions.direction) {
     ScaleDirection.up => ascending,
     // The apex is played once and the traversal turns around on it.
     ScaleDirection.upDown => [...ascending, ...ascending.reversed.skip(1)],
@@ -195,13 +216,13 @@ ExerciseRealization realize(Exercise exercise) {
     if (conditions.hands.usesLeftHand) Hand.left,
     if (conditions.hands.usesRightHand) Hand.right,
   ];
-  final tonics = {
+  final tonicNotes = {
     for (final hand in hands)
-      hand: _tonicAtOrAbove(_handFloors[hand]!, tonicPitchClass),
+      hand: _tonicAtOrAbove(_handFloors[hand]!, tonic.pitchClass),
   };
 
   return ExerciseRealization([
-    for (final (position, offset) in offsets.indexed)
+    for (final (position, degree) in steps.indexed)
       RealizationMoment(
         position: position,
         // One note to a beat, which is all a scale asks for and all the
@@ -209,23 +230,54 @@ ExerciseRealization realize(Exercise exercise) {
         metricOffset: position.toDouble(),
         notes: [
           for (final hand in hands)
-            RealizedNote(hand: hand, midiNote: tonics[hand]! + offset),
+            RealizedNote(
+              hand: hand,
+              pitch: _spell(
+                midiNote:
+                    tonicNotes[hand]! +
+                    (degree ~/ degrees) * 12 +
+                    intervals[degree % degrees],
+                letter: tonic.letter.stepsAbove(degree),
+                material: exercise.material,
+              ),
+            ),
         ],
       ),
   ]);
 }
 
-/// The pitch class of a canonical tonic such as `C`, `F#`, or `Bb`.
-///
-/// Throws [ArgumentError] for anything [TechnicalMaterial] would reject.
-int pitchClassOf(String tonic) {
+SpelledPitch _spell({
+  required int midiNote,
+  required NoteLetter letter,
+  required TechnicalMaterial material,
+}) {
+  final pitch = SpelledPitch.forMidiNote(midiNote, letter: letter);
+  if (pitch == null) {
+    throw StateError(
+      '${material.materialId} cannot be spelled on ${letter.label} within '
+      'double accidentals',
+    );
+  }
+  return pitch;
+}
+
+/// The tonic as it is written, so degrees can be spelled from its letter.
+SpelledPitch _tonicSpelling(String tonic) {
   if (!TechnicalMaterial.isCanonicalTonic(tonic)) {
     throw ArgumentError.value(tonic, 'tonic', 'not a canonical tonic');
   }
-  final natural = _letterPitchClasses[tonic[0]]!;
-  if (tonic.length == 1) return natural;
-  return tonic[1] == '#' ? (natural + 1) % 12 : (natural + 11) % 12;
+  return SpelledPitch(
+    letter: NoteLetter.fromLabel(tonic[0]),
+    // The octave is irrelevant here; only the letter and accidental are read.
+    octave: 4,
+    alteration: tonic.length == 1 ? 0 : (tonic[1] == '#' ? 1 : -1),
+  );
 }
+
+/// The pitch class of a canonical tonic such as `C`, `F#`, or `Bb`.
+///
+/// Throws [ArgumentError] for anything [TechnicalMaterial] would reject.
+int pitchClassOf(String tonic) => _tonicSpelling(tonic).pitchClass;
 
 int _tonicAtOrAbove(int floor, int pitchClass) =>
     floor + (pitchClass - floor % 12 + 12) % 12;

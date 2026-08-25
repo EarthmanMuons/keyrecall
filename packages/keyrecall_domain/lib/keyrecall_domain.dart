@@ -16,4 +16,5 @@ export 'src/motor_opportunity.dart';
 export 'src/presentation_conditions.dart';
 export 'src/realization.dart';
 export 'src/scale_catalog.dart';
+export 'src/spelled_pitch.dart';
 export 'src/technical_material.dart';
