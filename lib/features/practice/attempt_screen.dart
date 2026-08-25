@@ -226,7 +226,13 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
                 ),
                 const SizedBox(height: 24),
               ],
-              _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
+              _Status(
+                phase: _phase,
+                guidance: guidance,
+                beatsLeft: _beatsLeft,
+                played: played,
+                expected: realize(exercise).moments.length,
+              ),
               const SizedBox(height: 24),
               _control(),
             ],
@@ -386,11 +392,19 @@ class _Status extends ConsumerWidget {
     required this.phase,
     required this.guidance,
     required this.beatsLeft,
+    required this.played,
+    required this.expected,
   });
 
   final _Phase phase;
   final GuidanceContext guidance;
   final int beatsLeft;
+
+  /// How many notes have arrived during this attempt.
+  final int played;
+
+  /// How many the exercise asks for.
+  final int expected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -405,16 +419,25 @@ class _Status extends ConsumerWidget {
       );
     }
 
+    // A count of what arrived against what was asked for, so the attempt does
+    // not end at a moment the learner cannot see coming. Both numbers are
+    // already in the task statement, so neither discloses anything, and
+    // nothing here says whether a note was right.
+    if (phase == _Phase.playing) {
+      return Text(
+        '$played of $expected notes',
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      );
+    }
+
     final text = switch (phase) {
       _Phase.ready => switch (guidance.independence) {
         0 => 'The notes stay up while you play.',
         1 => 'Study these, then start. They disappear when you do.',
         _ => 'Play it from memory.',
       },
-      _Phase.playing =>
-        guidance.isMaterialSupplied && !showsPitchCueDuringAttempt(guidance)
-            ? 'From memory now.'
-            : '',
       _ => '',
     };
     if (text.isEmpty) return const SizedBox(height: 20);

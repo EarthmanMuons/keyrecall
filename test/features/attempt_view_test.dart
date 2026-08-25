@@ -148,7 +148,13 @@ void main() {
     );
     await tester.pump(const Duration(milliseconds: 750 * 5));
     expect(markers(tester), isEmpty);
-    expect(find.text('From memory now.'), findsOneWidget);
+    expect(
+      find.text('0 of 29 notes'),
+      findsOneWidget,
+      reason:
+          'the attempt says how far along it is, so its ending is not a '
+          'surprise; both numbers are already in the task statement',
+    );
     expect(
       find.byType(crisp.MultiSystemView),
       findsOneWidget,

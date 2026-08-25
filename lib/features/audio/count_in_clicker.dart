@@ -46,8 +46,12 @@ class CountInClicker {
   int _fed = 0;
   bool _ready = false;
   bool _unavailable = false;
+  Timer? _release;
 
   /// Prepares the engine, if this device has one to give.
+  ///
+  /// Cheap to call again: the engine is released after each count-in, so this
+  /// is what brings it back for the next one.
   Future<void> prepare() async {
     if (_ready || _unavailable) return;
     try {
@@ -75,13 +79,14 @@ class CountInClicker {
   /// Rendered as one buffer rather than queued a click at a time. Queueing left
   /// the spacing to whenever the engine next asked for data, which is why the
   /// beats did not land on the pulse they were supposed to establish.
-  void playCountIn({required int beats, required Duration beat}) {
-    if (!_ready) {
-      unawaited(prepare());
-      return;
-    }
+  Future<void> playCountIn({required int beats, required Duration beat}) async {
+    await prepare();
+    if (!_ready) return;
+
     final beatFrames = beat.inMicroseconds * _sampleRate ~/ 1000000;
-    final track = Int16List(beatFrames * beats);
+    // A tail of silence past the last beat, so the engine is never asked for
+    // audio it does not have while the final click is still sounding.
+    final track = Int16List(beatFrames * beats + _sampleRate ~/ 4);
     for (var index = 0; index < beats; index++) {
       _writeClick(
         track,
@@ -91,16 +96,34 @@ class CountInClicker {
     }
     _track = track;
     _fed = 0;
+
+    // The engine lives exactly as long as the count-in. Left running it has to
+    // be fed silence forever, and anything that interrupts that feeding leaves
+    // it to repeat whatever it last had, which sounds like a metronome that
+    // will not stop.
+    _release?.cancel();
+    _release = Timer(beat * beats + const Duration(seconds: 1), _stop);
+
     unawaited(_feed());
   }
 
   /// Stops and releases the engine.
   Future<void> dispose() async {
+    _release?.cancel();
+    await _stop();
+  }
+
+  Future<void> _stop() async {
     _track = null;
+    _release = null;
     if (!_ready) return;
     _ready = false;
     FlutterPcmSound.setFeedCallback(null);
-    await FlutterPcmSound.release();
+    try {
+      await FlutterPcmSound.release();
+    } on Object {
+      // Nothing useful to do about a device that will not let go.
+    }
   }
 
   Future<void> _feed() async {
