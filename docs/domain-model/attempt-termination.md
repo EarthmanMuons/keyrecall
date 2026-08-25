@@ -74,21 +74,44 @@ An attempt that has ended is closed with what is known at that moment:
 ```text
 AttemptClosure
 ├── terminationReason      required
-└── measuredOutcome        required when measurement succeeds, and explicitly
-                           unavailable when it does not
+└── measurement            Measured(outcome) | Unavailable(reason)
 ```
+
+Unavailability is a value rather than a null. "Nothing measured this attempt,
+because nothing can yet" is known information; a null would say only that the
+record lacks a field, which is what an incomplete write looks like. Replay has
+to tell those apart without guessing.
+
+```dart
+sealed class MeasurementResult {}
+class Measured extends MeasurementResult { final MeasuredOutcome outcome; }
+class MeasurementUnavailable extends MeasurementResult {
+  final MeasurementUnavailableReason reason;
+}
+```
+
+One reason to begin with, `notAvailable`, for the period before an aligner
+exists. Genuinely different failures such as no input, insufficient evidence, an
+indeterminate alignment, or an input fault can be distinguished when they become
+reachable, under the same rule as everywhere else here.
 
 No learner report. If the app can read the performance from the MIDI stream,
 asking for a subjective characterization afterwards is friction that buys a
 second, noisier evidence source. Measurement that genuinely cannot establish an
 outcome should say so as an indeterminate result, not fall back on asking.
 
-A timeout closure is therefore complete and honest on its own:
+A timeout closure is therefore complete and honest on its own, with or without
+an aligner:
 
 ```text
 terminationReason: inactivityTimeout
-measuredOutcome:   whatever the aligner could establish, or indeterminate
+measurement:       Unavailable(notAvailable)
 ```
+
+**Termination does not depend on alignment.** It depends on the closure model
+and the schema that persists it. Building it in that order is what gets the
+unavailable case exercised at all, rather than leaving it a paper state that
+first runs on the day measurement arrives and stops producing it.
 
 `ReportedResult` is scaffolding for the period before measurement exists. It is
 neither a future termination model nor a parallel evidence channel, and learner
@@ -105,6 +128,14 @@ decided what to present and the interaction is unfinished; a closure is a
 finished interaction, whatever evidence it happens to carry. Collapsing the two
 would make the recovery path ask a learner to resolve something that is already
 over.
+
+Three states, then, and only the third needs an aligner:
+
+```text
+1. pending           no closure exists
+2. closed, unmeasured  closure exists, termination known, measurement unavailable
+3. closed, measured    closure exists, termination known, measurement available
+```
 
 Crash recovery is where the distinction earns its keep:
 
@@ -126,6 +157,37 @@ The closure stays one atomic append. When the first non-learner termination path
 becomes real, the persisted record gains the termination reason and the optional
 measurement together in the same schema bump, rather than appending a closure
 and amending it later.
+
+## What a closure without measurement may and may not move
+
+A closed attempt with no usable measurement is a lifecycle fact, and it can
+inform the session and the scheduler: it is a reason not to assume successful
+practice occurred, and a slot was still consumed. It must not update
+competencies. "Nothing was measured" is not evidence that retrieval failed, and
+folding it in as though it were would manufacture exactly the false evidence the
+three-valued retrieval encoding exists to prevent.
+
+```text
+journal lifecycle fact -> session and scheduler behavior
+                       -> no learner competency update
+```
+
+## An order that tests what it claims
+
+1. Introduce `AttemptClosure` and the persisted termination semantics.
+2. Route today's reporting scaffolding through it, preserving behavior:
+   `ReportedResult -> Outcome -> Measured(...) -> AttemptClosure(learnerStopped)`.
+3. Prove closed-with-unavailable-measurement survives replay: no pending
+   decision, one committed closed attempt, and a learner state that has not
+   invented a performance.
+4. Add non-evaluative termination paths.
+5. Build alignment, which makes `Measured` reachable from an actual performance.
+6. Delete `ReportedResult`.
+
+Steps 1 to 3 change storage and lifecycle without changing what the learner
+sees, so the schema bump lands while the only evidence producer is still the
+five buttons, and the evidence producer is replaced later against a lifecycle
+that is already correct.
 
 ## What is deliberately not decided
 
