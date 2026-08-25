@@ -270,6 +270,36 @@ void main() {
     );
   });
 
+  group('a wrong note played exactly on the beat', () {
+    test('costs pitch and degree, and nothing in timing', () {
+      final measurement = measured([...expected]..[2] = 66);
+
+      expect(measurement.topologyAccuracy, lessThan(1.0));
+      expect(measurement.pitchIntegrity, lessThan(1.0));
+      expect(
+        measurement.temporalStability,
+        1.0,
+        reason: 'wrong note, perfectly in time, is a valid observation',
+      );
+      expect(measurement.continuity, 1.0);
+    });
+
+    test('an octave slip is the same: timing is untouched', () {
+      final measurement = measured([...expected]..[3] = expected[3] - 12);
+
+      expect(measurement.pitchIntegrity, lessThan(1.0));
+      expect(
+        measurement.temporalStability,
+        1.0,
+        reason:
+            'a substituted note is still the event the learner produced '
+            'for a note the exercise asked for, so dropping it from the '
+            'timing series would let a pitch error manufacture a pause',
+      );
+      expect(measurement.continuity, 1.0);
+    });
+  });
+
   group('the boundary between alignment and measurement', () {
     test('timing cannot change the correspondence', () {
       final steady = measured(expected);

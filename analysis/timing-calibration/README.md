@@ -50,14 +50,29 @@ coordination, which needs the grouping work.
 ## The constants these justify
 
 ```text
-temporal stability   1.0 at dispersion <= 0.12     comfortable, both takes
-                     0.0 at dispersion >= 0.80     the mildest deliberate unevenness
+temporal stability   1.0 at dispersion <= 0.12     a margin above the comfortable
+                                                   takes, which measured 0.082
+                                                   and 0.092
+                     0.0 at dispersion >= 0.80     just under the rolled take, the
+                                                   mildest of the takes that are
+                                                   dispersed rather than interrupted
 
-continuity           1.0 at longest <= 1.15x       comfortable, including the stumble
-                     0.0 at longest >= 3.00x       the mildest deliberate interruption
+continuity           1.0 at longest <= 1.15x       covers both comfortable takes
+                                                   (1.05x, 1.12x) and both hands of
+                                                   the stumble (1.06x, 1.14x)
+                     0.0 at longest >= 3.00x       between the out-of-phase take's
+                                                   2.69x and the uneven D major's
+                                                   2.94x
 ```
 
 Linear between the two ends, since nothing here justifies a curve.
+
+The two floors are chosen differently on purpose. The continuity floor covers
+every take that was not deliberately interrupted, including the stumble, whose
+per-hand gaps stayed within 1.14x. The stability floor does not cover the
+stumble: its left hand reached 0.245 dispersion, and reading that as perfectly
+steady would be generous. So 0.12 is a margin above comfortable playing rather
+than a line drawn under everything that felt fine to play.
 
 ## What this is not
 

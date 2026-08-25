@@ -31,7 +31,8 @@ class MeasurementPolicy {
 
   /// Dispersion at or above which timing reads as entirely unsteady.
   ///
-  /// Deliberately uneven playing measured 0.75 and up.
+  /// Just under the rolled take at 0.789, which is the mildest of the takes
+  /// that are dispersed rather than interrupted.
   final double unsteadyDispersion;
 
   /// Longest interval, as a multiple of the slow end of ordinary playing, at
@@ -39,11 +40,13 @@ class MeasurementPolicy {
   ///
   /// Measured against the upper quartile rather than the median, so a
   /// performance that alternates fast and slow does not read as interrupted
-  /// every time it slows down. Comfortable playing measured 1.05 to 1.14.
+  /// every time it slows down. Covers both comfortable takes, at 1.05x and
+  /// 1.12x, and both hands of the stumble, at 1.06x and 1.14x.
   final double unbrokenIntervalRatio;
 
   /// Longest-interval ratio at or above which a performance reads as entirely
-  /// broken. Deliberate interruptions measured 2.7 and up.
+  /// broken. Between the out-of-phase take at 2.69x and the uneven D major at
+  /// 2.94x.
   final double brokenIntervalRatio;
 
   const MeasurementPolicy({

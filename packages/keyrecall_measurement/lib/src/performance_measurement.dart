@@ -43,15 +43,15 @@ class PerformanceMeasurement {
   /// Extra notes that were something else.
   final int intrusions;
 
-  /// Spread of the gaps between matched notes, as an interquartile range over
-  /// the median, or null when too few notes arrived to say.
+  /// Spread of the gaps between the notes that correspond to expected ones, as
+  /// an interquartile range over the median, or null when too few arrived.
   final double? dispersion;
 
-  /// The largest gap between matched notes, as a multiple of the upper
+  /// The largest gap between corresponding notes, as a multiple of the upper
   /// quartile, or null when too few arrived.
   final double? worstIntervalRatio;
 
-  /// The median gap between matched notes in milliseconds, or null.
+  /// The median gap between corresponding notes in milliseconds, or null.
   final int? medianIntervalMs;
 
   /// What the policy was.
@@ -199,7 +199,7 @@ PerformanceMeasurement measure({
     }
   }
 
-  final onsets = _matchedOnsets(alignment, transcript);
+  final onsets = _correspondingOnsets(alignment, transcript);
   final intervals = [
     for (var i = 1; i < onsets.length; i++) onsets[i] - onsets[i - 1],
   ];
@@ -250,7 +250,17 @@ bool _isRepeat(
 SpelledPitch _expectedAt(ExerciseRealization realization, int position) =>
     realization.moments[position].notes.first.pitch;
 
-List<int> _matchedOnsets(
+/// When the notes that correspond to expected ones arrived.
+///
+/// Both kinds of correspondence count. A substituted note is still the event
+/// the learner produced for a note the exercise asked for, and leaving it out
+/// would let a wrong pitch manufacture a gap: an octave slip played exactly on
+/// the beat would read as a pause. Pitch correctness must not reach the timing
+/// scores by any route.
+///
+/// Insertions correspond to no expected note, and deletions have no onset at
+/// all, so neither appears.
+List<int> _correspondingOnsets(
   Alignment alignment,
   PerformanceTranscript transcript,
 ) {
@@ -259,7 +269,10 @@ List<int> _matchedOnsets(
   };
   return [
     for (final operation in alignment.operations)
-      if (operation is Match) bySequence[operation.transcriptSequence]!,
+      if (operation
+          case Match(:final transcriptSequence) ||
+              Substitution(:final transcriptSequence))
+        bySequence[transcriptSequence]!,
   ];
 }
 
