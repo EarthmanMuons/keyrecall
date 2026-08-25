@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -266,6 +267,22 @@ class _CommittedPanel extends StatelessWidget {
   );
 }
 
+/// Which instrument is connected, if any.
+class _InstrumentField extends ConsumerWidget {
+  const _InstrumentField();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(midiConnectionStateProvider);
+    return _Field(
+      'instrument',
+      connection.isConnected
+          ? (connection.deviceDisplayName ?? 'connected')
+          : 'not connected',
+    );
+  }
+}
+
 /// Live input, straight from the normalized stream.
 class _InputPanel extends ConsumerWidget {
   const _InputPanel();
@@ -280,6 +297,10 @@ class _InputPanel extends ConsumerWidget {
       title: 'Input',
       children: [
         _Field('source', source.name),
+        // Only when MIDI is the chosen source: reading the connection state
+        // starts the Bluetooth stack, which a panel showing a label has no
+        // business doing.
+        if (source == InputSourceKind.midi) const _InstrumentField(),
         _Field('events seen', '${activity.eventCount}'),
         _Field('resets', '${activity.resetCount}'),
         _Field('pedal', activity.isPedalDown ? 'down' : 'up'),
@@ -313,6 +334,19 @@ class _InputPanel extends ConsumerWidget {
               child: Text(
                 source == InputSourceKind.demo ? 'Use MIDI' : 'Use synthetic',
               ),
+            ),
+            OutlinedButton(
+              onPressed: () async {
+                final device = await MidiDeviceSheet.show(context);
+                // Connecting is the explicit decision the source provider
+                // wants: a device appearing is not one, but choosing it is.
+                if (device != null) {
+                  ref
+                      .read(inputSourceProvider.notifier)
+                      .use(InputSourceKind.midi);
+                }
+              },
+              child: const Text('Choose instrument'),
             ),
           ],
         ),
