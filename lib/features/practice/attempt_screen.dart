@@ -13,20 +13,19 @@ import 'reported_result.dart';
 
 /// The first learner-facing practice screen: one exercise, presented.
 ///
-/// Two layers, and only one of them guidance controls. The *task statement*
-/// (what scale, which hand, how far, which way, how fast) is what was asked
-/// for and is visible at every rung. The *pitch surface* is what tells the
-/// learner which notes, and is the only thing [GuidanceContext] governs. So
-/// fading guidance removes exactly one panel and changes nothing else.
+/// The screen is the same at every rung. A task statement says what was asked
+/// for, an instrument shows what the learner is playing, and guidance controls
+/// only what information is placed on that instrument: withdrawal takes the
+/// markers away, not the keyboard.
 ///
 /// Tempo is a separate axis, which is why the count-in runs at every rung: it
 /// establishes the requested pulse and carries no pitch information. See
 /// `presentationFor`.
 ///
-/// The seam this screen must not cross: it presents an [Exercise] and it shows
-/// live input, and it never compares them. Nothing here knows where in the
-/// scale the learner is, and the pitch surface is a set of member notes with
-/// no order, so a follow-along cue is not expressible without new API.
+/// The seam this screen must not cross: it presents what an exercise asks for
+/// and it echoes what arrived from the instrument, and it never compares them.
+/// The markers are a set of pitches with no order, and the echo is the live
+/// note state, so neither can say where in the scale the learner is.
 class AttemptScreen extends ConsumerWidget {
   const AttemptScreen({super.key});
 
@@ -56,13 +55,13 @@ class AttemptScreen extends ConsumerWidget {
 
 /// Where the learner is within one attempt.
 enum _Phase {
-  /// Task stated, pitch surface shown if the rung supplies one, nothing
-  /// running. Ends when the learner says they are ready.
+  /// Task stated, cue shown if the rung supplies one, nothing running. Ends
+  /// when the learner says they are ready.
   ready,
 
-  /// The pulse being counted in. The pitch surface is already gone at the
-  /// previewed rung: it is withdrawn at Ready, not at the first note, so
-  /// studying the cue and performing from memory have a clean boundary.
+  /// The pulse being counted in. At the previewed rung the cue is already
+  /// gone: it is withdrawn at Ready, not at the first note, so studying it and
+  /// performing from memory have a clean boundary.
   countIn,
 
   /// The attempt itself.
@@ -141,9 +140,9 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     final guidance = exercise.guidance;
     final presentation = presentationFor(guidance);
 
-    final showsSurface = switch (_phase) {
-      _Phase.ready => presentation.pitchRepresentation.suppliesPitchMaterial,
-      _ => showsPitchDuringAttempt(guidance),
+    final showsCue = switch (_phase) {
+      _Phase.ready => presentation.pitchCue.suppliesMaterial,
+      _ => showsPitchCueDuringAttempt(guidance),
     };
 
     return ListView(
@@ -151,20 +150,25 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       children: [
         _TaskStatement(exercise),
         const SizedBox(height: 24),
-        if (showsSurface)
-          _PitchSurfaceView(
-            exercise: exercise,
-            showsLiveKeys:
-                _phase == _Phase.playing &&
-                showsLiveKeysDuringAttempt(guidance),
-          )
-        else
-          _SurfaceAbsent(phase: _phase, guidance: guidance),
+        _Instrument(
+          exercise: exercise,
+          showsCue: showsCue,
+          echoes: presentation.performanceFeedback != PerformanceFeedback.none,
+        ),
+        const SizedBox(height: 16),
+        _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
         const SizedBox(height: 24),
         switch (_phase) {
-          _Phase.ready => _ReadyControl(guidance: guidance, onReady: _start),
-          _Phase.countIn => _CountIn(beatsLeft: _beatsLeft),
-          _Phase.playing => _PlayingControl(onFinish: _finish),
+          _Phase.ready => Center(
+            child: FilledButton(onPressed: _start, child: const Text('Ready')),
+          ),
+          _Phase.countIn => const SizedBox.shrink(),
+          _Phase.playing => Center(
+            child: FilledButton.tonal(
+              onPressed: _finish,
+              child: const Text('Done'),
+            ),
+          ),
           _Phase.reporting => _ReportControl(onReport: widget.onReport),
         },
       ],
@@ -201,145 +205,106 @@ class _TaskStatement extends StatelessWidget {
   }
 }
 
-/// The pitch material, drawn as marked keys.
-class _PitchSurfaceView extends ConsumerWidget {
-  const _PitchSurfaceView({
+/// The keyboard, present at every rung and in every phase.
+///
+/// Two channels that never mix. The marks say which notes the exercise asks
+/// for and are what guidance withdraws; the lit keys say what the instrument
+/// is sending and are the learner's own playing coming back to them. Neither
+/// is derived from the other, and nothing here judges what arrives.
+class _Instrument extends ConsumerWidget {
+  const _Instrument({
     required this.exercise,
-    required this.showsLiveKeys,
+    required this.showsCue,
+    required this.echoes,
   });
 
   final Exercise exercise;
 
-  /// Whether played notes light up. Only true at the continuously cued rung.
-  final bool showsLiveKeys;
+  /// Whether the exercise's notes are marked.
+  final bool showsCue;
+
+  /// Whether played notes light up.
+  final bool echoes;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final diagram = KeyboardDiagram.forExercise(exercise);
-    // Watched only when it is allowed to be seen, so a rung that hides live
-    // keys is not one wiring mistake away from showing them.
-    final sounding = showsLiveKeys
+    final sounding = echoes
         ? ref.watch(inputActivityProvider).soundingNoteNumbers
         : const <int>{};
 
     return PianoKeyboard(
       whiteKeyCount: diagram.whiteKeyCount,
       firstMidiNote: diagram.firstWhiteMidi,
-      scaleNoteNumbers: diagram.memberNotes,
-      tonicPitchClass: diagram.tonicPitchClass,
+      scaleNoteNumbers: showsCue ? diagram.memberNotes : const {},
+      tonicPitchClass: showsCue ? diagram.tonicPitchClass : null,
       highlightedNoteNumbers: sounding,
       // No pitch-class filter: a wrong note lights up like any other. Marking
-      // it as out of scale would be correctness feedback, which is a different
-      // thing from a cue and is not what this rung offers.
+      // it as out of scale would be evaluative feedback, which no rung offers
+      // yet and which changes what an attempt observes.
       height: 160,
     );
   }
 }
 
-/// What stands where the pitch surface would be when there is none.
-///
-/// Never a hint about the notes. Before the attempt it says what this rung is;
-/// during it, it shows that the app is listening, using nothing pitch-bearing:
-/// showing the notes that just arrived would put a cue back on screen through
-/// the input side.
-class _SurfaceAbsent extends ConsumerWidget {
-  const _SurfaceAbsent({required this.phase, required this.guidance});
+/// A line under the instrument saying what is expected right now.
+class _Status extends ConsumerWidget {
+  const _Status({
+    required this.phase,
+    required this.guidance,
+    required this.beatsLeft,
+  });
 
   final _Phase phase;
   final GuidanceContext guidance;
+  final int beatsLeft;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final text = switch (phase) {
-      _Phase.playing => 'Listening',
-      // Only reachable at the previewed rung, where the surface was on screen
-      // a moment ago and has now been withdrawn for good.
-      _ when guidance.isMaterialSupplied => 'The notes are hidden now.',
-      _ => 'Nothing shown for this one.',
-    };
-    final activity = ref.watch(inputActivityProvider);
 
-    return Container(
-      height: 160,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    if (phase == _Phase.countIn) {
+      return Column(
         children: [
-          Text(text, style: theme.textTheme.titleMedium),
-          if (phase == _Phase.playing) ...[
-            const SizedBox(height: 12),
-            // A count, not a transcript: it shows the stream is alive without
-            // naming a single pitch.
-            Text(
-              '${activity.eventCount} events',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+          Text('$beatsLeft', style: theme.textTheme.displayLarge),
+          // Silent for now: nothing in the app makes sound yet, so the
+          // count-in shows the pulse rather than sounding it.
+          Text('Counting in', style: theme.textTheme.bodyMedium),
         ],
-      ),
-    );
-  }
-}
+      );
+    }
 
-class _ReadyControl extends StatelessWidget {
-  const _ReadyControl({required this.guidance, required this.onReady});
-
-  final GuidanceContext guidance;
-  final VoidCallback onReady;
-
-  @override
-  Widget build(BuildContext context) {
-    // Ready means different things per rung and should say so, since at the
-    // previewed rung it is also the moment the notes disappear.
-    final caption = switch (guidance.independence) {
-      0 => 'The notes stay up while you play.',
-      1 => 'Study these, then start. They disappear when you do.',
-      _ => 'Play it from memory.',
+    final text = switch (phase) {
+      _Phase.ready => switch (guidance.independence) {
+        0 => 'The notes stay up while you play.',
+        1 => 'Study these, then start. They disappear when you do.',
+        _ => 'Play it from memory.',
+      },
+      _Phase.playing =>
+        guidance.isMaterialSupplied && !showsPitchCueDuringAttempt(guidance)
+            ? 'From memory now.'
+            : 'Listening.',
+      _ => 'How did that go?',
     };
+    final events = ref.watch(inputActivityProvider).eventCount;
+
     return Column(
       children: [
-        Text(caption, style: Theme.of(context).textTheme.bodyMedium),
-        const SizedBox(height: 12),
-        FilledButton(onPressed: onReady, child: const Text('Ready')),
+        Text(text, style: theme.textTheme.bodyMedium),
+        if (phase == _Phase.playing) ...[
+          const SizedBox(height: 4),
+          // A count, not a transcript: what the app has heard, without naming
+          // a pitch or saying whether it was right.
+          Text(
+            '$events events',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ],
     );
   }
-}
-
-class _CountIn extends StatelessWidget {
-  const _CountIn({required this.beatsLeft});
-
-  final int beatsLeft;
-
-  @override
-  Widget build(BuildContext context) => Column(
-    children: [
-      Text('$beatsLeft', style: Theme.of(context).textTheme.displayLarge),
-      const SizedBox(height: 8),
-      // Silent for now: nothing in the app makes sound yet, so the count-in
-      // shows the pulse rather than sounding it. Audible clicks are the same
-      // decision, better delivered.
-      Text('Counting in', style: Theme.of(context).textTheme.bodyMedium),
-    ],
-  );
-}
-
-class _PlayingControl extends StatelessWidget {
-  const _PlayingControl({required this.onFinish});
-
-  final VoidCallback onFinish;
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: FilledButton.tonal(onPressed: onFinish, child: const Text('Done')),
-  );
 }
 
 /// Still the mocked boundary, in a learner's words.
@@ -352,22 +317,16 @@ class _ReportControl extends StatelessWidget {
   final Future<void> Function(ReportedResult) onReport;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) => Wrap(
+    spacing: 8,
+    runSpacing: 8,
+    alignment: WrapAlignment.center,
     children: [
-      Text('How did that go?', style: Theme.of(context).textTheme.titleMedium),
-      const SizedBox(height: 12),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        alignment: WrapAlignment.center,
-        children: [
-          for (final result in ReportedResult.values)
-            FilledButton.tonal(
-              onPressed: () => onReport(result),
-              child: Text(result.label),
-            ),
-        ],
-      ),
+      for (final result in ReportedResult.values)
+        FilledButton.tonal(
+          onPressed: () => onReport(result),
+          child: Text(result.label),
+        ),
     ],
   );
 }

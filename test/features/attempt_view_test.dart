@@ -42,6 +42,10 @@ void main() {
     return reported;
   }
 
+  /// The notes the diagram is marking right now.
+  Set<int> markers(WidgetTester tester) =>
+      tester.widget<PianoKeyboard>(find.byType(PianoKeyboard)).scaleNoteNumbers;
+
   /// Taps Ready and lets the whole count-in run out.
   Future<void> readyAndCountIn(WidgetTester tester) async {
     await tester.tap(find.text('Ready'));
@@ -65,13 +69,31 @@ void main() {
     }
   });
 
-  testWidgets('continuous cues stay up through the attempt', (tester) async {
+  testWidgets('the instrument is on screen at every rung and phase', (
+    tester,
+  ) async {
+    for (final guidance in GuidanceContext.ladder) {
+      await pumpAttempt(tester, guidance);
+      expect(find.byType(PianoKeyboard), findsOneWidget);
+
+      await readyAndCountIn(tester);
+      expect(
+        find.byType(PianoKeyboard),
+        findsOneWidget,
+        reason: 'withdrawal takes information away, not the keyboard',
+      );
+    }
+  });
+
+  testWidgets('continuous cues stay marked through the attempt', (
+    tester,
+  ) async {
     await pumpAttempt(tester, GuidanceContext.continuouslyCued);
-    expect(find.byType(PianoKeyboard), findsOneWidget);
+    expect(markers(tester), isNotEmpty);
 
     await readyAndCountIn(tester);
 
-    expect(find.byType(PianoKeyboard), findsOneWidget);
+    expect(markers(tester), isNotEmpty);
     expect(find.text('Done'), findsOneWidget);
   });
 
@@ -79,32 +101,31 @@ void main() {
     tester,
   ) async {
     await pumpAttempt(tester, GuidanceContext.notesPreviewedOnly);
-    expect(find.byType(PianoKeyboard), findsOneWidget);
+    expect(markers(tester), isNotEmpty);
 
     await tester.tap(find.text('Ready'));
     await tester.pump();
 
     expect(
-      find.byType(PianoKeyboard),
-      findsNothing,
+      markers(tester),
+      isEmpty,
       reason:
           'the cue goes at Ready, which is what separates studying it '
           'from playing from memory',
     );
-    expect(find.text('The notes are hidden now.'), findsOneWidget);
-
     await tester.pump(const Duration(milliseconds: 750 * 5));
-    expect(find.byType(PianoKeyboard), findsNothing);
+    expect(markers(tester), isEmpty);
+    expect(find.text('From memory now.'), findsOneWidget);
   });
 
-  testWidgets('an unguided attempt never shows the notes', (tester) async {
+  testWidgets('an unguided attempt never marks the notes', (tester) async {
     await pumpAttempt(tester, GuidanceContext.unguided);
 
-    expect(find.byType(PianoKeyboard), findsNothing);
+    expect(markers(tester), isEmpty);
     await readyAndCountIn(tester);
-    expect(find.byType(PianoKeyboard), findsNothing);
+    expect(markers(tester), isEmpty);
     expect(
-      find.text('Listening'),
+      find.text('Listening.'),
       findsOneWidget,
       reason:
           'the learner can see the app is listening without being told '

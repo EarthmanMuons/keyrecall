@@ -122,62 +122,47 @@ void main() {
   });
 
   group('policy', () {
-    test(
-      'supplies a representation exactly when the rung supplies material',
-      () {
-        for (final guidance in GuidanceContext.ladder) {
-          final presentation = presentationFor(guidance);
-          expect(presentation.suitsGuidance(guidance), isTrue);
-          expect(
-            presentation.pitchRepresentation,
-            guidance.isMaterialSupplied
-                ? PitchRepresentation.keyboard
-                : PitchRepresentation.none,
-          );
-        }
-      },
-    );
-
-    test('gives every rung the same tempo support', () {
+    test('supplies a cue exactly when the rung supplies material', () {
       for (final guidance in GuidanceContext.ladder) {
+        final presentation = presentationFor(guidance);
+        expect(presentation.suitsGuidance(guidance), isTrue);
         expect(
-          presentationFor(guidance).tempoSupport,
-          TempoSupport.countInOnly,
-          reason:
-              'a rung change must move one variable, so no rung quietly '
-              'turns a metronome on',
+          presentation.pitchCue,
+          guidance.isMaterialSupplied ? PitchCue.full : PitchCue.none,
+        );
+        expect(
+          presentation.cueModality,
+          guidance.isMaterialSupplied ? CueModality.keyboard : isNull,
         );
       }
     });
 
-    test('keeps the pitch surface up only while the material is supplied '
-        'throughout', () {
-      expect(showsPitchDuringAttempt(GuidanceContext.continuouslyCued), isTrue);
+    test('varies nothing but the pitch cue across the rungs', () {
+      for (final guidance in GuidanceContext.ladder) {
+        final presentation = presentationFor(guidance);
+        expect(presentation.tempoSupport, TempoSupport.countInOnly);
+        expect(presentation.motorCue, MotorCue.none);
+        expect(
+          presentation.performanceFeedback,
+          PerformanceFeedback.neutralEcho,
+          reason:
+              'a rung change must move one variable, so the echo and the '
+              'count-in are the same at every rung',
+        );
+      }
+    });
+
+    test('keeps the cue up only while the material is supplied throughout', () {
       expect(
-        showsPitchDuringAttempt(GuidanceContext.notesPreviewedOnly),
+        showsPitchCueDuringAttempt(GuidanceContext.continuouslyCued),
+        isTrue,
+      );
+      expect(
+        showsPitchCueDuringAttempt(GuidanceContext.notesPreviewedOnly),
         isFalse,
         reason: 'previewed means withdrawn at start, not recallable on demand',
       );
-      expect(showsPitchDuringAttempt(GuidanceContext.unguided), isFalse);
-    });
-
-    test('lights up played keys only where a cue is already on screen', () {
-      expect(
-        showsLiveKeysDuringAttempt(GuidanceContext.continuouslyCued),
-        isTrue,
-      );
-      for (final guidance in [
-        GuidanceContext.notesPreviewedOnly,
-        GuidanceContext.unguided,
-      ]) {
-        expect(
-          showsLiveKeysDuringAttempt(guidance),
-          isFalse,
-          reason:
-              'a live highlight is pitch-bearing, so it cannot come back '
-              'through the input side at a rung that hid the notes',
-        );
-      }
+      expect(showsPitchCueDuringAttempt(GuidanceContext.unguided), isFalse);
     });
   });
 }

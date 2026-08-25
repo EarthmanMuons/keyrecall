@@ -1,8 +1,8 @@
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
-import 'exercise.dart';
 import 'execution_conditions.dart';
+import 'exercise.dart';
 import 'technical_material.dart';
 
 /// One hand, as a player rather than as a configuration.
