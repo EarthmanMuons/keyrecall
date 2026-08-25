@@ -5,6 +5,7 @@ import 'package:meta/meta.dart';
 import 'attempt_record.dart';
 import 'canonical_json.dart';
 import 'schema.dart';
+import 'upgrade.dart';
 
 /// Identifies a journal and the profile whose history it holds.
 ///
@@ -42,13 +43,7 @@ class JournalHeader {
 
   /// Reads a header back.
   factory JournalHeader.fromJson(Map<String, Object?> json) {
-    final version = requireInt(json, 'schema_version');
-    if (version != attemptSchemaVersion) {
-      throw JournalFormatException(
-        'journal schema version $version is not readable by this build, which '
-        'writes version $attemptSchemaVersion',
-      );
-    }
+    json = upgradeJournalHeaderJson(json);
     return JournalHeader(
       profileId: requireString(json, 'profile_id', location: 'header'),
       createdAt: requireTime(json, 'created_at', location: 'header'),

@@ -91,13 +91,7 @@ class PendingDecision {
   /// that cannot be understood is not something to guess at: it names an
   /// exercise a person may have been shown.
   factory PendingDecision.fromJson(Map<String, Object?> json) {
-    final version = requireInt(json, 'schema_version');
-    if (version != attemptSchemaVersion) {
-      throw JournalFormatException(
-        'pending decision schema version $version is not readable by this '
-        'build, which writes version $attemptSchemaVersion',
-      );
-    }
+    json = upgradePendingDecisionJson(json);
 
     const location = 'pending decision';
     final provenanceJson = requireMap(json, 'provenance', location: location);
