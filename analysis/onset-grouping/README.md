@@ -23,13 +23,26 @@ serialization, transport behavior, and the input clock are all inside these
 numbers. That is deliberate: it is the same quantity a grouping stage would see
 in production.
 
-| Take                         | What it is                               |
-| ---------------------------- | ---------------------------------------- |
-| `comfortable-c-major`        | played comfortably                       |
-| `fast-c-major-with-stumble`  | faster, with a stumble partway up        |
-| `uneven-d-major`             | comfortable but with an uneven tempo     |
-| `deliberate-rolled-c-major`  | slow, deliberately spread                |
-| `hands-out-of-phase-c-major` | hands drifted a whole step or more apart |
+| Take                         | What it is                               | Played     |
+| ---------------------------- | ---------------------------------------- | ---------- |
+| `comfortable-c-major`        | played comfortably                       | genuinely  |
+| `fast-c-major-with-stumble`  | faster, with a stumble partway up        | deliberate |
+| `uneven-d-major`             | comfortable but with an uneven tempo     | genuinely  |
+| `deliberate-rolled-c-major`  | slow, deliberately spread                | deliberate |
+| `hands-out-of-phase-c-major` | hands drifted a whole step or more apart | deliberate |
+
+## What these takes are not
+
+Three of the five were played badly on purpose, by someone who can play the
+scale. That is enough to prove a failure mode is reachable, and not enough to
+say how often it happens or what it usually looks like: a competent player
+imitating a stumble is not a sample of a learner stumbling.
+
+So the architectural conclusion below rests on existence, which deliberate
+playing establishes honestly. Everything distributional here is provisional: the
+width of the ambiguous region in particular needs takes from people who are
+actually finding the material hard, and from more than one player and
+instrument.
 
 ## What it shows
 
@@ -38,10 +51,12 @@ within 11, three in the same millisecond, while consecutive moments were 254 ms
 apart or more. Any threshold between those two numbers would group that take
 perfectly.
 
-**Speed and stumbles do not.** The faster take stretched pairs to 106 and 134 ms
-while its shortest step fell to 121 ms. A pair the player intended as one moment
-arrived further apart than two moments they intended as consecutive. The wide
-pairs sit at moments 3 to 5, around the stumble.
+**Speed and stumbles do not.** This take was mis-played on purpose, so treat its
+numbers as a demonstration rather than a measurement. The faster take stretched
+pairs to 106 and 134 ms while its shortest step fell to 121 ms. A pair the
+player intended as one moment arrived further apart than two moments they
+intended as consecutive. The wide pairs sit at moments 3 to 5, around the
+stumble.
 
 **No threshold is error-free.** Pooled over 70 pairs and 65 steps, every
 candidate either tears real moments apart or glues separate ones together:
@@ -58,11 +73,13 @@ its take's median step was tested on the hypothesis that coordination spread is
 proportional rather than absolute. It performs no better than an absolute
 threshold, and is recorded here so the idea is not retried from scratch.
 
-**Closeness in time does not mean correspondence.** In the out-of-phase take,
-the right hand ran a whole step ahead of the left, so notes arrived 23 ms, 43 ms
-and 44 ms apart that belong to _different_ moments, while notes belonging to one
-moment arrived a second or more apart. A timing threshold there would not merely
-be uncertain, it would be confidently wrong.
+**Closeness in time does not mean correspondence.** Also a deliberate take, and
+the one the architectural conclusion rests on, since what it establishes is that
+the failure mode exists at all. In the out-of-phase take, the right hand ran a
+whole step ahead of the left, so notes arrived 23 ms, 43 ms and 44 ms apart that
+belong to _different_ moments, while notes belonging to one moment arrived a
+second or more apart. A timing threshold there would not merely be uncertain, it
+would be confidently wrong.
 
 **Hand order is not stable.** The left hand led 8 of 12, 11 of 12, 10 of 13, 7
 of 14, and 2 of 12 across the takes: usually the left, sometimes evenly split,
@@ -79,11 +96,12 @@ where the timing is ambiguous it has to say so and let alignment resolve it
 against the realization, which is the one place a correspondence judgment
 belongs. The contract records that decision.
 
-Still worth recording: more deliberately staggered and rolled takes, more
-players, and other instruments. Not to decide whether ambiguity is necessary,
-which these takes settle, but to characterize how wide the ambiguous region has
-to be, so a grouper can stay confident at the extremes and hand over only the
-middle.
+Still worth recording: attempts by people genuinely struggling with the
+material, more players, and other instruments. Not to decide whether ambiguity
+is necessary, which these takes settle, but to characterize how wide the
+ambiguous region has to be, so a grouper can stay confident at the extremes and
+hand over only the middle. Deliberate mis-playing cannot answer that, because
+its shape is chosen rather than observed.
 
 ## Reproducing
 
