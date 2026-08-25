@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
 
 import 'package:keyrecall/features/demo_input/demo_input.dart';
+import 'package:keyrecall/features/input/input.dart';
+import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
 
@@ -253,6 +255,66 @@ void main() {
       isEmpty,
       reason: 'nothing about the exercise appears next to what was played',
     );
+  });
+
+  group('playing before the attempt', () {
+    /// What the transcript holds right now.
+    PerformanceTranscript transcriptIn(WidgetTester tester) =>
+        ProviderScope.containerOf(tester.element(find.byType(AttemptView)))
+            .read(attemptTranscriptProvider);
+
+    testWidgets('is visible and is not evidence', (tester) async {
+      await pumpAttempt(tester, GuidanceContext.unguided);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AttemptView)),
+      );
+
+      container.read(demoInputProvider.notifier).playSequence(const [60, 62]);
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(
+        container.read(inputActivityProvider).eventCount,
+        greaterThan(0),
+        reason: 'warming up is visible, and the keyboard reacts',
+      );
+      expect(
+        transcriptIn(tester).isEmpty,
+        isTrue,
+        reason: 'an attempt that has not begun cannot have been played',
+      );
+    });
+
+    testWidgets('does not make a later attempt look started', (tester) async {
+      await pumpAttempt(tester, GuidanceContext.unguided);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AttemptView)),
+      );
+      container.read(demoInputProvider.notifier).playSequence(const [60, 62]);
+      await tester.pump(const Duration(seconds: 2));
+
+      await readyAndCountIn(tester);
+
+      expect(
+        transcriptIn(tester).isEmpty,
+        isTrue,
+        reason:
+            'the transcript begins at Ready, so noodling beforehand is '
+            'not the opening of the performance',
+      );
+    });
+
+    testWidgets('what arrives after Ready is', (tester) async {
+      await pumpAttempt(tester, GuidanceContext.unguided);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AttemptView)),
+      );
+
+      await readyAndCountIn(tester);
+      container.read(demoInputProvider.notifier).playSequence(const [60, 62]);
+      await tester.pump(const Duration(seconds: 2));
+
+      expect(transcriptIn(tester).length, 2);
+    });
   });
 
   testWidgets('every rung counts in', (tester) async {

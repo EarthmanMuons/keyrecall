@@ -528,7 +528,51 @@ maintenance-like
 These should remain derived policy regimes, not authoritative latent labels.
 Their value must be tested against the existing prediction and evidence model.
 
-### 4.3 Adaptive contextual-interference intensity
+### 4.3 Immediate repetition as an episode, not as several attempts
+
+Repeating an exercise until it is right is pedagogically reasonable during
+acquisition, and implementing it as "keep committing attempts until three
+succeed" would be a mistake. Four immediate repetitions of one scale are not
+four independent demonstrations of durable retrieval; they are one acquisition
+episode with internal repetition, and feeding each into the memory clocks as an
+ordinary scheduled attempt manufactures confidence quickly and quietly.
+
+The distinction to preserve:
+
+```text
+rehearsal repetition    immediate repeats that establish the movement
+retrieval observation   an attempt separated enough to be evidence of retention
+```
+
+If this is built, the unit should be an episode carrying its repetition history,
+so what it means for the learner model is decided once and explicitly, rather
+than emerging from how many records were appended.
+
+V1 deliberately does not have it. The scheduler chooses one evidence-bearing
+attempt at a time, and a deliberate "repeat this exercise" affordance is the
+cheaper way to learn whether learners want immediate repetition at all, before
+repetition is encoded into scheduler policy.
+
+### 4.4 Free practice, separate from scheduled practice
+
+Playing before an attempt begins is warm-up: the keyboard shows it and nothing
+records it. The transcript starts at Ready, which is what keeps exploratory
+notes from making an attempt look started and from becoming insertions in an
+alignment.
+
+A real free-practice mode would be an explicit product mode rather than
+something inferred from pre-start playing:
+
+```text
+scheduled practice   evidence-bearing, scheduler-controlled, attempt boundaries matter
+free practice        learner-controlled, no progression, live feedback only
+```
+
+Measurement in free practice could eventually give descriptive feedback, and
+even then it should not update the learner model unless that evidence path is
+deliberately defined.
+
+### 4.5 Adaptive contextual-interference intensity
 
 V1 implements a diversity term and repetition guard. A richer hypothesis is that
 useful interleaving depends on current stability:
@@ -548,7 +592,7 @@ Contextual-interference effects are task- and learner-dependent. Any adaptive
 policy must be characterized under unchanged learner semantics and clear
 forward-learning outcomes, not justified by diversity for its own sake.
 
-### 4.4 Fatigue-aware workload and rest policy
+### 4.6 Fatigue-aware workload and rest policy
 
 A credible transient session estimate could inform challenge and safety. The
 scheduler might avoid sustained highest-demand work, diversify overloaded
@@ -568,7 +612,7 @@ Safety policy must not wait for a latent fatigue inference to become reliable.
 Conservative workload constraints can remain direct, and neither path should
 claim to diagnose injury or medical risk from MIDI behavior.
 
-### 4.5 Preserve the sessionless UX
+### 4.7 Preserve the sessionless UX
 
 Future scheduler intelligence remains constrained by a core product principle:
 

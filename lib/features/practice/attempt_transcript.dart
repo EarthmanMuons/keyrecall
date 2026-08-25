@@ -11,8 +11,15 @@ import '../input/input.dart';
 /// transcript is what was played and in what order, and how long a key stayed
 /// down is a question for a layer that measures.
 ///
-/// Recording is explicit rather than continuous, so notes played while reading
-/// the screen do not join an attempt that has not started.
+/// Recording is explicit rather than continuous. Live input is always visible,
+/// so a learner can warm up, check the instrument, and settle their hands, and
+/// none of it becomes part of an attempt: an exercise that has not begun cannot
+/// have been played, and exploratory notes would otherwise make the attempt
+/// look started and arrive in the alignment as extra notes.
+///
+/// The window opens at Ready, so the count-in is inside the attempt. Coming in
+/// early is a fact about the performance rather than noise, and dropping those
+/// notes would make an eager entry look like a missing one.
 final attemptTranscriptProvider =
     NotifierProvider<AttemptTranscriptNotifier, PerformanceTranscript>(
       AttemptTranscriptNotifier.new,
