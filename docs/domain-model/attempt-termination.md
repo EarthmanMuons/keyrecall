@@ -67,6 +67,32 @@ inactivityTimeout -> completed: false -> the learner failed
 is not available as an accidental inference. An attempt the learner stopped at
 six moments and one a timeout closed at six moments are different observations.
 
+## Three readings of one attempt
+
+Once measurement exists, an attempt carries three independent readings:
+
+```text
+termination reason      how it ended
+learner report          what the learner says happened
+measured outcome        what alignment says happened
+```
+
+They can disagree, and the disagreement is evidence rather than noise. A learner
+who stops and reports a clean attempt that measurement says contained an
+insertion is telling you something about self-monitoring; one who reports a
+breakdown that measurement says was completed after an omission and a recovery
+is telling you something about confidence. Storage must keep the three apart so
+those cases stay representable.
+
+A timeout in particular may leave no valid self-report at all, and the absence
+of an outcome has to remain an absence rather than being coerced into a
+breakdown.
+
+**`ReportedResult` currently conflates the first two.** `brokeDown` says both
+how the attempt ended and how it went, which is tolerable only while Done is the
+one way to end one. When termination reasons become real, split the lifecycle
+event from the learner's characterization and keep `brokeDown` as the latter.
+
 ## What is deliberately not decided
 
 The windows. How many beats of silence, what multiple of the expected duration,
