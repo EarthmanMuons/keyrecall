@@ -10,6 +10,7 @@ library;
 export 'src/competency.dart';
 export 'src/exercise.dart';
 export 'src/execution_conditions.dart';
+export 'src/fingering.dart';
 export 'src/guidance_context.dart';
 export 'src/instrument_profile.dart';
 export 'src/motor_opportunity.dart';

@@ -1,7 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
-import 'fingering.dart';
-
 /// What V1 puts in front of a learner for a decided exercise.
 ///
 /// The scheduler names a guidance rung; this turns it into the four

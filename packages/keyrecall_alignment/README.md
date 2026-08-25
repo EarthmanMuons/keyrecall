@@ -45,10 +45,13 @@ those are two accounts of the same wrong note. V1 prefers the substitution: a
 learner who plays one wrong note has played a wrong note, not skipped one and
 added another.
 
-Ties in the traceback break in a fixed order, so one performance always aligns
-the same way. Evidence derived from an aligner that could return either of two
-equal-cost readings would not be reproducible, and replay is a production gate
-here.
+Ties in the traceback break toward the earliest minimum-cost explanation, so one
+performance always aligns the same way and a partial traversal reads as "played
+the first few notes" rather than "skipped to the end". That second property is
+load-bearing: a scale played up and back down begins and ends on the same note,
+so a single played tonic would otherwise explain as the final one. Evidence
+derived from an aligner that could return either of two equal-cost readings
+would not be reproducible either, and replay is a production gate here.
 
 See
 [`docs/domain-model/alignment-contract.md`](../../docs/domain-model/alignment-contract.md)

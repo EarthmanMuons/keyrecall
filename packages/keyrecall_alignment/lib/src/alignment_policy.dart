@@ -23,6 +23,20 @@ import 'package:meta/meta.dart';
 /// difference between them is a description of what happened, and pricing it
 /// would be a claim about how bad an octave error is, which nothing yet
 /// supports.
+///
+/// ## The earliest minimum-cost explanation
+///
+/// Costs alone do not always pick one reading. When several explanations tie,
+/// the traceback takes the one that places the performance as early in the
+/// traversal as the cost allows, which matters because a scale played up and
+/// back down begins and ends on the same note: a single played tonic explains
+/// equally well as the first note or the last, and the late reading would say
+/// a learner who has played one note has finished.
+///
+/// This is part of the policy, not an implementation detail. It decides what
+/// an ambiguous performance means, so it reaches substitutions, repairs,
+/// retrieval, and every measurement derived from them, and changing it is a
+/// change to the readings rather than to their reproducibility.
 @immutable
 class AlignmentPolicy {
   /// What a note played where it was expected costs. Zero, by definition.

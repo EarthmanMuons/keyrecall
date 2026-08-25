@@ -624,6 +624,19 @@ c_sharp_harmonic_minor:
 Suggested statuses: `ESTABLISHED`, `CORROBORATED`, `ALTERNATIVE_REPORTED`,
 `SOURCE_DISAGREEMENT`, `VERIFICATION_PENDING`, `CANONICAL_SELECTED`.
 
+## 14.5 Implementation status
+
+The canonical dataset is implemented in `keyrecall_domain`
+(`lib/src/fingering.dart`) as `entry / cycle / terminal_override`, keyed by
+material id so that D-flat major and C-sharp minor stay separate entries. All 48
+scales and 96 hand-specific patterns are present, including the continuation
+corrections in section 12. `fingeringFor(exercise, hand)` generates the finger
+stream for any octave span and direction.
+
+The research apparatus in this document deliberately stays here: the runtime
+carries one canonical fingering per scale and hand, with no alternatives,
+sources, or confidence levels.
+
 ## 15. Runtime Data Should Be Smaller
 
 The shipped application should not need the research apparatus.
