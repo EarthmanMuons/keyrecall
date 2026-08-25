@@ -13,13 +13,22 @@ result rather than three separate pieces of matching logic.
 Input stream
     -> PerformanceTranscript                  what was played, in order
 
-PerformanceTranscript + ExerciseRealization
+PerformanceTranscript
+    -> observation grouping                   which notes happened together
+    -> ObservedMoment[]
+
+ObservedMoment[] + ExerciseRealization
     -> Alignment
     -> EditScript                             how the two relate
 
 EditScript
     -> evaluative displays, scoring, learner evidence
 ```
+
+Grouping is its own stage so the aligner is never asked to discover simultaneity
+and musical correspondence at once. A realization is already moment-shaped;
+grouping is what gives the observations the same shape, and it is the only place
+a timing tolerance lives.
 
 The transcript alone supports the neutral case: a literal, append-only record
 that discloses nothing about what was expected. Everything that compares the two
@@ -40,9 +49,14 @@ and its output is the single thing the displays and the learner model read.
 ## What the aligner takes
 
 ```text
+groupObservations(
+  transcript: PerformanceTranscript,
+  policy: ObservationGroupingPolicy,    how close is "at the same time"
+) -> List<ObservedMoment>
+
 align(
   realization: ExerciseRealization,     what the exercise asked for
-  transcript: PerformanceTranscript,    what was played
+  observed: List<ObservedMoment>,       what was played, in moments
   policy: AlignmentPolicy,              what counts as the same note
 ) -> Alignment
 ```
@@ -79,16 +93,48 @@ corrections must not be readable as a clean one. The learner model already
 distinguishes genuine retrieval from supported practice; this is where the
 evidence for that distinction comes from.
 
+## Settled: sameness is exact sounding pitch
+
+A candidate match requires the same MIDI note. Same pitch class in another
+octave is not a match; it is a substitution that records the register error.
+
+```text
+same MIDI note                  -> Match
+same pitch class, wrong octave  -> Substitution, register
+different pitch class           -> Substitution, pitch
+```
+
+Both are the same top-level operation, and the kind of difference rides along
+rather than splitting the edit script's shape:
+
+```text
+Substitution(expected, observed, difference)
+```
+
+Two reasons. An attempt played an octave low would otherwise read as clean
+retrieval, which would make the register in `ExerciseRealization` unobservable
+in principle. And an octave displacement is plausibly evidence about register
+planning rather than about recalling the scale, so collapsing it into a generic
+wrong note throws away the distinction the learner model would want.
+
+**Performance sameness is not notation sameness.** Both sides carry a
+`SpelledPitch`, which makes `expected.pitch == observed.pitch` easy to write and
+wrong to use: the learner pressed a key, and the spelling is our reading of that
+key in context. Alignment compares `midiNote`. A G sharp observed where an A
+flat was expected is the same physical event, and any disagreement about how to
+write it is a notation question somewhere else.
+
 ## What the policy has to decide
 
 Deliberately not decided here. Each of these is a real pedagogical choice, and
 naming them is the point:
 
-- **Sameness.** Pitch class or exact pitch? Is an octave error a substitution or
-  a match with a note about register?
-- **Hands.** Hands-together material has two notes per moment. Is a moment
-  matched when both arrive, and how far apart may they be?
-- **Order.** Is a rolled or slightly spread pair two moments or one?
+- **Hands.** Hands-together material has two notes per moment, and human hands
+  do not arrive together to the millisecond. Grouping needs a window, and the
+  window is empirical: alignment must not invent a constant before recorded
+  performances support one. See the diagnostic below.
+- **Order.** Is a rolled or slightly spread pair two moments or one? The same
+  window decides it, which is why grouping is one stage rather than two rules.
 - **Repeats.** A learner who plays a note, hears it is wrong, and plays the
   right one has produced an insertion followed by a match. Does the policy say
   so, or does it absorb the correction?
@@ -98,6 +144,27 @@ naming them is the point:
   matches that arrive when they were due. V1 should probably start pitch-only,
   because a tempo model does not exist and a timing-aware aligner would smuggle
   one in.
+
+## Calibrating the grouping window
+
+The number should come from recordings rather than from intuition, and the
+transcript already carries what is needed: every note-on with its arrival time.
+The dev panel's onset diagnostic records raw note-ons and reports the gap
+between each and the one before it.
+
+Worth recording before choosing anything:
+
+- several comfortable hands-together scales;
+- deliberately synchronized attacks;
+- deliberately staggered ones;
+- rolled pairs that should _not_ group;
+- both directions, and at least two tempos, since coordination spreads with
+  speed and around the turnaround.
+
+What to look for is whether ordinary asynchrony separates cleanly from
+deliberately sequential playing. If it does not, that is a finding too: the
+policy would then have to tolerate ambiguity rather than pretend a threshold
+exists.
 
 ## What must not happen here
 

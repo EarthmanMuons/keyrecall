@@ -12,6 +12,7 @@ import '../demo_input/demo_input.dart';
 import '../input/input.dart';
 import 'attempt_preview.dart';
 import 'attempt_screen.dart';
+import 'onset_diagnostic.dart';
 import 'practice_providers.dart';
 import 'reported_result.dart';
 
@@ -57,6 +58,16 @@ class PracticeScreen extends ConsumerWidget {
             ),
             icon: const Icon(Icons.piano),
           ),
+          if (!kReleaseMode)
+            IconButton(
+              tooltip: 'Measure how far apart notes arrive',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => const OnsetDiagnosticScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.timeline),
+            ),
           IconButton(
             tooltip: 'Reopen from storage, as a relaunch would',
             onPressed: () => ref.read(practiceLoopProvider.notifier).reopen(),
