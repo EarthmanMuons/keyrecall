@@ -82,13 +82,20 @@ void main() {
       await pumpAttempt(tester, guidance);
 
       expect(find.text('C major'), findsOneWidget);
-      expect(
-        find.text('Right hand · 2 octaves · up and down · 80 bpm'),
-        findsOneWidget,
-        reason:
-            'the conditions are the task, not a cue, so guidance does not '
-            'take them away',
-      );
+      for (final fact in const [
+        'Right hand',
+        '2 octaves',
+        'Up and down',
+        '80 bpm',
+      ]) {
+        expect(
+          find.text(fact),
+          findsOneWidget,
+          reason:
+              'the conditions are the task, not a cue, so guidance does '
+              'not take them away',
+        );
+      }
     }
   });
 
@@ -158,11 +165,11 @@ void main() {
     await readyAndCountIn(tester);
     expect(markers(tester), isEmpty);
     expect(
-      find.text('Listening.'),
+      find.byType(crisp.MultiSystemView),
       findsOneWidget,
       reason:
-          'the learner can see the app is listening without being told '
-          'anything about pitch',
+          'what the learner sees of the attempt is what they played, '
+          'which says nothing about what was asked for',
     );
   });
 

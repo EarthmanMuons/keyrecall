@@ -18,29 +18,13 @@ void main() {
       );
     });
 
-    test('states the conditions as one line', () {
-      expect(
-        conditionsLine(
-          ExecutionConditions(
-            hands: HandConfiguration.right,
-            octaves: 2,
-            direction: ScaleDirection.upDown,
-            tempoBpm: 80,
-          ),
-        ),
-        'Right hand · 2 octaves · up and down · 80 bpm',
-      );
-      expect(
-        conditionsLine(
-          ExecutionConditions(
-            hands: HandConfiguration.together,
-            octaves: 1,
-            direction: ScaleDirection.up,
-            tempoBpm: 66,
-          ),
-        ),
-        'Hands together · 1 octave · up · 66 bpm',
-      );
+    test('names each condition the way a learner would say it', () {
+      expect(handsName(HandConfiguration.right), 'Right hand');
+      expect(handsName(HandConfiguration.together), 'Hands together');
+      expect(octavesName(1), '1 octave');
+      expect(octavesName(2), '2 octaves');
+      expect(directionName(ScaleDirection.up), 'Up');
+      expect(directionName(ScaleDirection.upDown), 'Up and down');
     });
   });
 

@@ -109,13 +109,15 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   _Phase _phase = _Phase.ready;
   int _beatsLeft = _countInBeats;
   Timer? _countIn;
+  bool _finishing = false;
 
   @override
   void initState() {
     super.initState();
-    // Warmed up while the learner reads the screen, so the first beat is not
-    // waiting on an audio engine.
+    // Warmed up while the learner reads the screen, so neither the first beat
+    // nor the first drawn note is waiting on something to load.
     unawaited(ref.read(countInClickerProvider).prepare());
+    unawaited(warmStaffRendering());
   }
 
   @override
@@ -124,11 +126,19 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     super.dispose();
   }
 
+  /// Whether enough notes have arrived for the attempt to be over.
+  ///
+  /// A count, not a verdict. The attempt ends when the learner has played as
+  /// many notes as the exercise asks for, whatever those notes were; ending it
+  /// because they were the *right* notes would be the app telling an unguided
+  /// learner they got it, which is the loudest evaluative signal there is.
+  bool _hasPlayedEnough(int played) =>
+      played >= realize(widget.exercise).moments.length;
+
   void _start() {
     ref
         .read(attemptTranscriptProvider.notifier)
         .start(widget.exercise.material);
-    final clicker = ref.read(countInClickerProvider);
     final beat = Duration(
       microseconds:
           (60 *
@@ -136,11 +146,17 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
                   widget.exercise.conditions.tempoBpm)
               .round(),
     );
+
     setState(() {
       _phase = _Phase.countIn;
       _beatsLeft = _countInBeats;
     });
-    clicker.beat(downbeat: true);
+    // The clicks are rendered as one buffer, so the pulse is exact whatever
+    // this timer does; the number just follows it.
+    ref
+        .read(countInClickerProvider)
+        .playCountIn(beats: _countInBeats, beat: beat);
+
     _countIn = Timer.periodic(beat, (timer) {
       if (!mounted) return;
       setState(() {
@@ -148,14 +164,14 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         if (_beatsLeft <= 0) {
           timer.cancel();
           _phase = _Phase.playing;
-        } else {
-          clicker.beat();
         }
       });
     });
   }
 
   Future<void> _finish() async {
+    if (_finishing) return;
+    _finishing = true;
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
     // What was played is the evidence. Nobody is asked how it went.
@@ -173,6 +189,14 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       _ => showsPitchCueDuringAttempt(guidance),
     };
     final echoes = presentation.performanceFeedback != PerformanceFeedback.none;
+    final played = ref.watch(attemptTranscriptProvider).length;
+
+    if (_phase == _Phase.playing && _hasPlayedEnough(played)) {
+      // After the frame, so finishing does not run inside a build.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_finish());
+      });
+    }
 
     // With nothing cued, the staff is free to carry what was played. With a
     // cue on it, it is not: echoing into a score that already shows the
@@ -223,7 +247,19 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 
   Widget _control() => switch (_phase) {
     _Phase.ready => Center(
-      child: FilledButton(onPressed: _start, child: const Text('Ready')),
+      // Large on purpose: the learner is getting their hands back to the keys,
+      // and should not have to aim.
+      child: SizedBox(
+        width: double.infinity,
+        height: 88,
+        child: FilledButton(
+          onPressed: _start,
+          style: FilledButton.styleFrom(
+            textStyle: Theme.of(context).textTheme.headlineSmall,
+          ),
+          child: const Text('Ready'),
+        ),
+      ),
     ),
     _Phase.countIn => const SizedBox.shrink(),
     _Phase.playing => Center(
@@ -235,6 +271,10 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 
 /// What was asked for. Visible at every rung, because it is the task rather
 /// than a cue.
+///
+/// The scale is the headline, and everything else is how to play it: four
+/// facts, each labelled, so the learner can find the one they are unsure about
+/// rather than reading a sentence to the end.
 class _TaskStatement extends StatelessWidget {
   const _TaskStatement(this.exercise);
 
@@ -243,6 +283,8 @@ class _TaskStatement extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final conditions = exercise.conditions;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -250,13 +292,47 @@ class _TaskStatement extends StatelessWidget {
           materialName(exercise.material),
           style: theme.textTheme.displaySmall,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 28,
+          runSpacing: 12,
+          children: [
+            _Fact(label: 'Hands', value: handsName(conditions.hands)),
+            _Fact(label: 'Range', value: octavesName(conditions.octaves)),
+            _Fact(
+              label: 'Direction',
+              value: directionName(conditions.direction),
+            ),
+            _Fact(label: 'Tempo', value: '${conditions.tempoBpm.round()} bpm'),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// One labelled fact about how to play the exercise.
+class _Fact extends StatelessWidget {
+  const _Fact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
         Text(
-          conditionsLine(exercise.conditions),
-          style: theme.textTheme.titleMedium?.copyWith(
+          label.toUpperCase(),
+          style: theme.textTheme.labelSmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
+            letterSpacing: 0.8,
           ),
         ),
+        const SizedBox(height: 2),
+        Text(value, style: theme.textTheme.titleMedium),
       ],
     );
   }
@@ -338,27 +414,12 @@ class _Status extends ConsumerWidget {
       _Phase.playing =>
         guidance.isMaterialSupplied && !showsPitchCueDuringAttempt(guidance)
             ? 'From memory now.'
-            : 'Listening.',
-      _ => 'Saving that.',
+            : '',
+      _ => '',
     };
-    final events = ref.watch(inputActivityProvider).eventCount;
+    if (text.isEmpty) return const SizedBox(height: 20);
 
-    return Column(
-      children: [
-        Text(text, style: theme.textTheme.bodyMedium),
-        if (phase == _Phase.playing) ...[
-          const SizedBox(height: 4),
-          // A count, not a transcript: what the app has heard, without naming
-          // a pitch or saying whether it was right.
-          Text(
-            '$events events',
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ],
-    );
+    return Text(text, style: theme.textTheme.bodyMedium);
   }
 }
 

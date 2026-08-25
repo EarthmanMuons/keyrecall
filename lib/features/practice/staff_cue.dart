@@ -14,6 +14,14 @@ import 'staff_score.dart';
 /// Both hands get a braced grand staff, one hand a single staff in its own
 /// clef. Long material wraps into systems rather than being squeezed onto one
 /// line.
+/// Loads the engraving font's metrics before a staff needs them.
+///
+/// The first staff to render otherwise waits on an asset read, which is the
+/// kind of lag that shows up once, on the first exercise of a session, and
+/// then never again while you are looking for it.
+Future<void> warmStaffRendering() =>
+    crisp.MusicFonts.load(crisp.MusicFont.bravura);
+
 class StaffCue extends StatelessWidget {
   const StaffCue({required this.exercise, super.key});
 

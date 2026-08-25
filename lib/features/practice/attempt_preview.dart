@@ -26,7 +26,9 @@ class AttemptPreviewScreen extends StatelessWidget {
             ListTile(
               title: Text(materialName(sample.material)),
               subtitle: Text(
-                '${conditionsLine(sample.conditions)}\n'
+                '${handsName(sample.conditions.hands)}, '
+                '${octavesName(sample.conditions.octaves)}, '
+                '${sample.conditions.tempoBpm.round()} bpm\n'
                 '${guidanceName(guidance)}',
               ),
               isThreeLine: true,

@@ -9,14 +9,20 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 String materialName(TechnicalMaterial material) =>
     '${_prettyTonic(material.tonic)} ${_formName(material.form)}';
 
-/// [conditions] as one line, such as `Right hand · 2 octaves · up and down ·
-/// 80 bpm`.
-String conditionsLine(ExecutionConditions conditions) => [
-  _handsName(conditions.hands),
-  conditions.octaves == 1 ? '1 octave' : '${conditions.octaves} octaves',
-  conditions.direction == ScaleDirection.up ? 'up' : 'up and down',
-  '${conditions.tempoBpm.round()} bpm',
-].join(' · ');
+/// Which hand or hands play, as a learner would say it.
+String handsName(HandConfiguration hands) => switch (hands) {
+  HandConfiguration.right => 'Right hand',
+  HandConfiguration.left => 'Left hand',
+  HandConfiguration.together => 'Hands together',
+};
+
+/// How far the traversal goes.
+String octavesName(int octaves) =>
+    octaves == 1 ? '1 octave' : '$octaves octaves';
+
+/// Which way it runs.
+String directionName(ScaleDirection direction) =>
+    direction == ScaleDirection.up ? 'Up' : 'Up and down';
 
 /// The learner-facing name of a guidance rung.
 String guidanceName(GuidanceContext guidance) =>
@@ -34,12 +40,6 @@ String _formName(ScaleForm form) => switch (form) {
   ScaleForm.naturalMinor => 'natural minor',
   ScaleForm.harmonicMinor => 'harmonic minor',
   ScaleForm.melodicMinor => 'melodic minor',
-};
-
-String _handsName(HandConfiguration hands) => switch (hands) {
-  HandConfiguration.right => 'Right hand',
-  HandConfiguration.left => 'Left hand',
-  HandConfiguration.together => 'Hands together',
 };
 
 const Set<int> _whitePitchClasses = {0, 2, 4, 5, 7, 9, 11};

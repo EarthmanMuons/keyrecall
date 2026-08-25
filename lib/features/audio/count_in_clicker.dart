@@ -37,11 +37,13 @@ class CountInClicker {
   static const double _beatHz = 880;
   static const double _downbeatHz = 1320;
 
-  /// Silence handed to the engine when nothing is due, so it has something to
-  /// play rather than running dry between beats.
-  static const int _silenceFrames = 2048;
+  /// How much audio is handed over at a time. Small enough that a count-in
+  /// starts promptly, large enough that the engine is never starved.
+  static const int _feedFrames = 2048;
 
-  final List<Int16List> _queued = [];
+  /// The count-in being played, and how far into it the engine has been fed.
+  Int16List? _track;
+  int _fed = 0;
   bool _ready = false;
   bool _unavailable = false;
 
@@ -56,7 +58,7 @@ class CountInClicker {
         channelCount: 1,
         iosAudioCategory: IosAudioCategory.playback,
       );
-      await FlutterPcmSound.setFeedThreshold(_silenceFrames);
+      await FlutterPcmSound.setFeedThreshold(_feedFrames);
       _ready = true;
       FlutterPcmSound.start();
     } on Object catch (error) {
@@ -68,18 +70,33 @@ class CountInClicker {
     }
   }
 
-  /// Sounds one beat of the count-in.
-  void beat({bool downbeat = false}) {
+  /// Sounds [beats] beats, [beat] apart, starting now.
+  ///
+  /// Rendered as one buffer rather than queued a click at a time. Queueing left
+  /// the spacing to whenever the engine next asked for data, which is why the
+  /// beats did not land on the pulse they were supposed to establish.
+  void playCountIn({required int beats, required Duration beat}) {
     if (!_ready) {
       unawaited(prepare());
       return;
     }
-    _queued.add(_click(downbeat ? _downbeatHz : _beatHz));
+    final beatFrames = beat.inMicroseconds * _sampleRate ~/ 1000000;
+    final track = Int16List(beatFrames * beats);
+    for (var index = 0; index < beats; index++) {
+      _writeClick(
+        track,
+        at: index * beatFrames,
+        hz: index == 0 ? _downbeatHz : _beatHz,
+      );
+    }
+    _track = track;
+    _fed = 0;
+    unawaited(_feed());
   }
 
   /// Stops and releases the engine.
   Future<void> dispose() async {
-    _queued.clear();
+    _track = null;
     if (!_ready) return;
     _ready = false;
     FlutterPcmSound.setFeedCallback(null);
@@ -88,9 +105,15 @@ class CountInClicker {
 
   Future<void> _feed() async {
     if (!_ready) return;
-    final frames = _queued.isEmpty
-        ? Int16List(_silenceFrames)
-        : _queued.removeAt(0);
+    final track = _track;
+    final Int16List frames;
+    if (track == null || _fed >= track.length) {
+      frames = Int16List(_feedFrames);
+    } else {
+      final end = math.min(_fed + _feedFrames, track.length);
+      frames = Int16List.sublistView(track, _fed, end);
+      _fed = end;
+    }
     try {
       await FlutterPcmSound.feed(
         PcmArrayInt16(bytes: ByteData.sublistView(frames)),
@@ -101,16 +124,18 @@ class CountInClicker {
     }
   }
 
-  /// A sine burst that decays to nothing, so it reads as a tick rather than a
-  /// tone and never clicks on its own edges.
-  static Int16List _click(double hz) {
+  /// Writes a sine burst that decays to nothing, so it reads as a tick rather
+  /// than a tone and never clicks on its own edges.
+  static void _writeClick(
+    Int16List track, {
+    required int at,
+    required double hz,
+  }) {
     final length = _clickLength.inMicroseconds * _sampleRate ~/ 1000000;
-    final frames = Int16List(length);
-    for (var i = 0; i < length; i++) {
+    for (var i = 0; i < length && at + i < track.length; i++) {
       final t = i / _sampleRate;
       final decay = math.exp(-t * 60);
-      frames[i] = (math.sin(2 * math.pi * hz * t) * decay * 12000).round();
+      track[at + i] = (math.sin(2 * math.pi * hz * t) * decay * 12000).round();
     }
-    return frames;
   }
 }
