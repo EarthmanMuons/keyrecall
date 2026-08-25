@@ -31,8 +31,11 @@ the whole explanation at once.
 - **Evidence.** Turning an edit script into an outcome the learner model
   consumes is a further step and a separate set of judgments.
 - **Interpretation.** `AlignmentReading` answers whether an attempt was
-  complete, first-pass clean, or repaired. Those are readings of the
-  correspondence, and they live beside it rather than inside it.
+  complete, whether it was first-pass clean, and where it first departed. Those
+  are readings of the correspondence, and they live beside it rather than inside
+  it. It counts repair-shaped patterns rather than naming intentions: an extra
+  note followed by the right one is what a correction looks like, and also what
+  a hesitation or a bounced finger looks like.
 
 ## The costs are the policy
 

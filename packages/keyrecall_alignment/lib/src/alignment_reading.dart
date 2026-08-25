@@ -36,10 +36,12 @@ class AlignmentReading {
 
   /// Extra notes immediately followed by the expected one.
   ///
-  /// What a learner does when they hear a wrong note and fix it. Counted
-  /// because a repaired attempt is practice rather than recall, and the two
-  /// must not read the same.
-  int get selfCorrections {
+  /// The shape a repair leaves behind, and only that. Alignment sees an extra
+  /// note and then the right one; whether that was hearing a mistake and
+  /// fixing it, a hesitation, a repeated key, or a bounced finger is an
+  /// internal state nothing here observed. Calling it a self-correction is a
+  /// reading for a layer that has grounds for one.
+  int get immediateRepairs {
     var corrections = 0;
     for (var i = 0; i < alignment.operations.length - 1; i++) {
       if (alignment.operations[i] is Insertion &&
@@ -65,18 +67,26 @@ class AlignmentReading {
   /// Where the performance first departed from what was asked for, or null
   /// when it never did.
   ///
-  /// The position a display would point at, and the thing a learner usually
-  /// wants to know: not how many mistakes, but where it went wrong.
-  int? get firstDeparturePosition {
+  /// Located rather than numbered, because not every departure sits *at* an
+  /// expected note. An extra note falls between two of them, and saying it
+  /// happened at the following note would put the blame on a note that was
+  /// played correctly. A display that wants to say "an extra F before the E"
+  /// needs the difference.
+  DepartureLocation? get firstDeparture {
+    final positions = matched + substituted + deleted;
+    var consumed = 0;
+
     for (final operation in alignment.operations) {
       switch (operation) {
         case Match():
-          continue;
+          consumed++;
         case Substitution(:final realizationPosition):
         case Deletion(:final realizationPosition):
-          return realizationPosition;
+          return AtExpectedPosition(realizationPosition);
         case Insertion():
-          return null;
+          return consumed == positions
+              ? const AfterRealization()
+              : BeforeExpectedPosition(consumed);
       }
     }
     return null;
@@ -86,4 +96,67 @@ class AlignmentReading {
   String toString() =>
       'AlignmentReading(matched $matched, substituted $substituted, '
       'inserted $inserted, deleted $deleted)';
+}
+
+/// Where a performance departed from what was asked for.
+///
+/// A departure is not always at an expected note: an extra one happens between
+/// two of them, and after the last one there is no following note to speak of.
+@immutable
+sealed class DepartureLocation {
+  const DepartureLocation();
+}
+
+/// Something other than the expected note happened at this position, or the
+/// expected note never arrived.
+@immutable
+final class AtExpectedPosition extends DepartureLocation {
+  /// Which moment of the realization.
+  final int position;
+
+  const AtExpectedPosition(this.position);
+
+  @override
+  bool operator ==(Object other) =>
+      other is AtExpectedPosition && other.position == position;
+
+  @override
+  int get hashCode => position.hashCode;
+
+  @override
+  String toString() => 'AtExpectedPosition($position)';
+}
+
+/// An extra note arrived before this expected one.
+@immutable
+final class BeforeExpectedPosition extends DepartureLocation {
+  /// Which moment of the realization the extra note preceded.
+  final int position;
+
+  const BeforeExpectedPosition(this.position);
+
+  @override
+  bool operator ==(Object other) =>
+      other is BeforeExpectedPosition && other.position == position;
+
+  @override
+  int get hashCode => position.hashCode;
+
+  @override
+  String toString() => 'BeforeExpectedPosition($position)';
+}
+
+/// Playing continued past the end of what was asked for.
+@immutable
+final class AfterRealization extends DepartureLocation {
+  const AfterRealization();
+
+  @override
+  bool operator ==(Object other) => other is AfterRealization;
+
+  @override
+  int get hashCode => 0;
+
+  @override
+  String toString() => 'AfterRealization()';
 }

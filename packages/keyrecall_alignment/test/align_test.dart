@@ -47,6 +47,7 @@ void main() {
   group('a performance with nothing wrong', () {
     test('is all matches, and costs nothing', () {
       final alignment = alignmentOf(expected);
+      expect(AlignmentReading(alignment).firstDeparture, isNull);
 
       expect(shapeOf(alignment), List.filled(expected.length, 'match'));
       expect(alignment.cost, 0);
@@ -59,7 +60,10 @@ void main() {
 
       expect(shapeOf(alignment), List.filled(expected.length, 'deletion'));
       expect(AlignmentReading(alignment).isComplete, isFalse);
-      expect(AlignmentReading(alignment).firstDeparturePosition, 0);
+      expect(
+        AlignmentReading(alignment).firstDeparture,
+        const AtExpectedPosition(0),
+      );
     });
   });
 
@@ -82,7 +86,10 @@ void main() {
         ]);
         expect(AlignmentReading(alignment).isComplete, isTrue);
         expect(AlignmentReading(alignment).isFirstPassClean, isFalse);
-        expect(AlignmentReading(alignment).firstDeparturePosition, 2);
+        expect(
+          AlignmentReading(alignment).firstDeparture,
+          const AtExpectedPosition(2),
+        );
       },
     );
 
@@ -135,6 +142,13 @@ void main() {
         expected.length,
         reason: 'a greedy walk would call the rest of the scale substitutions',
       );
+      expect(
+        AlignmentReading(alignment).firstDeparture,
+        const BeforeExpectedPosition(3),
+        reason:
+            'the extra note fell between two correctly played ones, and '
+            'blaming the note after it would blame a note that was right',
+      );
     });
 
     test('a repeated note is an insertion of what was just played', () {
@@ -166,7 +180,7 @@ void main() {
         'match',
         'match',
       ]);
-      expect(AlignmentReading(alignment).selfCorrections, 1);
+      expect(AlignmentReading(alignment).immediateRepairs, 1);
       expect(
         AlignmentReading(alignment).isComplete,
         isTrue,
@@ -202,7 +216,10 @@ void main() {
       expect(AlignmentReading(alignment).matched, 4);
       expect(AlignmentReading(alignment).deleted, expected.length - 4);
       expect(AlignmentReading(alignment).substituted, 0);
-      expect(AlignmentReading(alignment).firstDeparturePosition, 4);
+      expect(
+        AlignmentReading(alignment).firstDeparture,
+        const AtExpectedPosition(4),
+      );
     });
 
     test('playing on past the end is extra notes, not errors', () {
@@ -211,6 +228,11 @@ void main() {
       expect(AlignmentReading(alignment).matched, expected.length);
       expect(AlignmentReading(alignment).inserted, 2);
       expect(AlignmentReading(alignment).isComplete, isTrue);
+      expect(
+        AlignmentReading(alignment).firstDeparture,
+        const AfterRealization(),
+        reason: 'there is no expected note left for the extras to precede',
+      );
     });
   });
 
