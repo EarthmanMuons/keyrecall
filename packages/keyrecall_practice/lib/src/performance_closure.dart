@@ -1,3 +1,4 @@
+import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
@@ -44,6 +45,26 @@ final class PerformanceUnmeasurable extends PerformanceReading {
 /// attempt that reaches closure anyway, such as a pending decision recovered
 /// from a build whose supported set was wider.
 bool isMeasurable(Exercise exercise) => realize(exercise).hands.length == 1;
+
+/// Whether a performance of [exercise] has covered the whole traversal.
+///
+/// What a screen asks to know whether the attempt is over. Interaction state
+/// rather than evaluation: it says the learner has reached the end of what was
+/// asked for, not whether they were right, because a substituted note covers
+/// its position exactly as a correct one does.
+///
+/// Counting arrivals instead would end a corrected attempt one note early,
+/// cutting off the end of the traversal to pay for an extra note in the
+/// middle.
+bool hasCoveredTraversal({
+  required Exercise exercise,
+  required PerformanceTranscript transcript,
+}) {
+  if (!isMeasurable(exercise) || transcript.isEmpty) return false;
+  return AlignmentReading(
+    align(realization: realize(exercise), transcript: transcript),
+  ).reachedFinalPosition;
+}
 
 /// Reads [transcript] as a performance of [exercise].
 ///

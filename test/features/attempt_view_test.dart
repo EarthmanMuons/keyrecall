@@ -83,9 +83,8 @@ void main() {
 
       expect(find.text('C major'), findsOneWidget);
       for (final fact in const [
-        'Right hand',
-        '2 octaves',
-        'Up and down',
+        'RIGHT HAND',
+        'Up and down · 2 octaves',
         '80 bpm',
       ]) {
         expect(
@@ -149,11 +148,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 750 * 5));
     expect(markers(tester), isEmpty);
     expect(
-      find.text('0 of 29 notes'),
+      find.byType(crisp.MultiSystemView),
       findsOneWidget,
-      reason:
-          'the attempt says how far along it is, so its ending is not a '
-          'surprise; both numbers are already in the task statement',
+      reason: 'with the cue withdrawn, the staff carries what is played',
     );
     expect(
       find.byType(crisp.MultiSystemView),
@@ -328,6 +325,43 @@ void main() {
 
       expect(transcriptIn(tester).length, 2);
     });
+  });
+
+  testWidgets('an attempt ends when the traversal is covered, not counted', (
+    tester,
+  ) async {
+    final finished = await pumpAttempt(tester, GuidanceContext.unguided);
+    await readyAndCountIn(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AttemptView)),
+    );
+
+    // C major, right hand, two octaves up and down: 29 positions, played here
+    // with one extra note partway. Counting arrivals would stop at 29 and cut
+    // off the last note of the scale.
+    final realization = realize(
+      Exercise.linear(
+        material: TechnicalMaterial('C', ScaleForm.major),
+        hands: HandConfiguration.right,
+      ),
+    );
+    final expectedNotes = [
+      for (final moment in realization.moments)
+        moment.noteFor(Hand.right)!.midiNote,
+    ];
+    container
+        .read(demoInputProvider.notifier)
+        .playSequence(
+          [...expectedNotes]..insert(4, 61),
+          tempo: DemoInputTempo.brisk,
+        );
+    await tester.pump(const Duration(seconds: 2));
+
+    expect(
+      finished,
+      hasLength(1),
+      reason: 'the attempt ended once, after the whole traversal was covered',
+    );
   });
 
   testWidgets('every rung counts in', (tester) async {

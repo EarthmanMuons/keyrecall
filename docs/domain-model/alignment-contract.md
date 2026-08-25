@@ -164,38 +164,71 @@ naming them is the point:
   because a tempo model does not exist and a timing-aware aligner would smuggle
   one in.
 
-## Calibrating the grouping window
+## Rejected: a single grouping threshold
 
-The number should come from recordings rather than from intuition, and the
-transcript already carries what is needed: every note-on with its arrival time.
-The dev panel's onset diagnostic records raw note-ons and reports the gap
-between each and the one before it.
+The first plan was to measure hands-together playing and pick a tolerance. Five
+takes on a real instrument rejected that model, and the measurements are in
+[`analysis/onset-grouping/`](../../analysis/onset-grouping/README.md). Three of
+them were mis-played on purpose, which is enough to show a failure mode is
+reachable and not enough to say how common it is: what follows rests on the
+first, and the ambiguous region's width is still uncalibrated.
 
-Worth recording before choosing anything:
+Comfortable playing separates cleanly: pairs within 30 ms, moments 254 ms apart.
+But a faster take with a stumble stretched intended-together pairs to 134 ms
+while its consecutive moments came as close as 121 ms, so the two populations
+overlap exactly where a stumble makes measurement interesting. Pooled over 70
+pairs and 65 steps, no threshold avoids both errors, and scaling the tolerance
+with tempo does no better.
 
-- several comfortable hands-together scales;
-- deliberately synchronized attacks;
-- deliberately staggered ones;
-- rolled pairs that should _not_ group;
-- both directions, and at least two tempos, since coordination spreads with
-  speed and around the turnaround.
+The decisive case is the take where the hands drifted a whole step out of phase.
+There, notes 23 ms apart belonged to _different_ moments while notes of one
+moment arrived a second apart. A timing threshold would not have been uncertain
+there; it would have been confidently wrong, and alignment would then have been
+handed a corrupted partition to explain with insertions and deletions.
 
-What to look for is whether ordinary asynchrony separates cleanly from
-deliberately sequential playing. If it does not, that is a finding too: the
-policy would then have to tolerate ambiguity rather than pretend a threshold
-exists.
+Hence proposals rather than a constant. A grouper may still lean hard at the
+extremes, which is what keeps the search tractable; what it may not do is
+decide, at any gap, that the question is closed. The out-of-phase take rules out
+even the safe-looking half of that: pairing two observations 25 ms apart is a
+strong prior and still overridable, because the reading that costs less overall
+may be the one where they belong to different moments.
+
+A tempting alternative was rejected too: grouping observations that sit an
+octave apart, which would work well for V1 scales because the hands play in
+octaves. That is correspondence knowledge leaking backward into observation, and
+it would have to be unwound the first time material is not in octaves.
+
+Still worth recording: attempts by people genuinely finding the material hard,
+more players, and other instruments. Not to decide whether ambiguity is
+necessary, which these takes settle, but to characterize how wide the ambiguous
+region has to be.
 
 ## What must not happen here
 
 - Alignment must not reach back into presentation. Spelling an observed note
   uses the key, never the expected position (`spellObservedPitch` cannot see a
   realization, and its signature is what guarantees that).
-- Alignment must not be consulted to terminate an attempt unless that attempt's
-  presentation conditions already permit evaluative feedback. Ending an attempt
-  is the loudest correctness signal available, and a learner cut off after four
-  wrong notes has been told they were wrong four times whatever the screen says.
-  Termination on silence or elapsed time needs no alignment and is allowed
-  anywhere; see [`attempt-termination.md`](attempt-termination.md).
+- Alignment must not be consulted to terminate an attempt **on correctness**
+  unless that attempt's presentation conditions already permit evaluative
+  feedback. Ending an attempt is the loudest correctness signal available, and a
+  learner cut off after four wrong notes has been told they were wrong four
+  times whatever the screen says.
+
+  Consulting it for **progress** is allowed anywhere, because progress does not
+  depend on correctness: a substituted note covers its position exactly as a
+  matched one does, so "the traversal has been covered" cannot tell a learner
+  they got it right. That is what ends an ordinary attempt, and it is why
+  counting arrivals is the wrong rule: an extra note in the middle would pay for
+  the last note of the scale and cut the traversal short.
+
+  It does leak a little, and the leak is worth naming. An attempt with an extra
+  note ends one note later than one without, so a learner watching closely can
+  infer that something was extra. That is weaker than being told a note was
+  wrong, and it buys not truncating corrected attempts.
+
+  Termination on silence or elapsed time needs no alignment at all; see
+  [`attempt-termination.md`](attempt-termination.md).
+
 - Alignment must not be run to draw the neutral echo. If a display needs the
   edit script, it is evaluative, and `PresentationConditions` has to say so.
 - The aligner must not decide evidence. It says how the sequences relate; what

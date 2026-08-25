@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../audio/count_in_clicker.dart';
@@ -126,14 +127,14 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     super.dispose();
   }
 
-  /// Whether enough notes have arrived for the attempt to be over.
+  /// Whether the attempt has reached the end of what was asked for.
   ///
-  /// A count, not a verdict. The attempt ends when the learner has played as
-  /// many notes as the exercise asks for, whatever those notes were; ending it
-  /// because they were the *right* notes would be the app telling an unguided
-  /// learner they got it, which is the loudest evaluative signal there is.
-  bool _hasPlayedEnough(int played) =>
-      played >= realize(widget.exercise).moments.length;
+  /// Progress, not a verdict: a wrong note covers its position as well as a
+  /// right one does, so this cannot tell a learner they got it. Counting
+  /// arrivals instead would end a corrected attempt one note early, since an
+  /// extra note in the middle would pay for the last note of the scale.
+  bool _hasCoveredTraversal(PerformanceTranscript transcript) =>
+      hasCoveredTraversal(exercise: widget.exercise, transcript: transcript);
 
   void _start() {
     ref
@@ -189,9 +190,9 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       _ => showsPitchCueDuringAttempt(guidance),
     };
     final echoes = presentation.performanceFeedback != PerformanceFeedback.none;
-    final played = ref.watch(attemptTranscriptProvider).length;
+    final transcript = ref.watch(attemptTranscriptProvider);
 
-    if (_phase == _Phase.playing && _hasPlayedEnough(played)) {
+    if (_phase == _Phase.playing && _hasCoveredTraversal(transcript)) {
       // After the frame, so finishing does not run inside a build.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_finish());
@@ -226,13 +227,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
                 ),
                 const SizedBox(height: 24),
               ],
-              _Status(
-                phase: _phase,
-                guidance: guidance,
-                beatsLeft: _beatsLeft,
-                played: played,
-                expected: realize(exercise).moments.length,
-              ),
+              _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
               const SizedBox(height: 24),
               _control(),
             ],
@@ -278,9 +273,10 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 /// What was asked for. Visible at every rung, because it is the task rather
 /// than a cue.
 ///
-/// The scale is the headline, and everything else is how to play it: four
-/// facts, each labelled, so the learner can find the one they are unsure about
-/// rather than reading a sentence to the end.
+/// Ranked rather than listed. The scale is what the task *is*; the hand and
+/// the shape of the traversal are how to play it; the tempo is a constraint on
+/// it. Four equally weighted boxes would say those matter equally, and a
+/// learner glancing up mid-position needs the identity first.
 class _TaskStatement extends StatelessWidget {
   const _TaskStatement(this.exercise);
 
@@ -298,47 +294,29 @@ class _TaskStatement extends StatelessWidget {
           materialName(exercise.material),
           style: theme.textTheme.displaySmall,
         ),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 28,
-          runSpacing: 12,
-          children: [
-            _Fact(label: 'Hands', value: handsName(conditions.hands)),
-            _Fact(label: 'Range', value: octavesName(conditions.octaves)),
-            _Fact(
-              label: 'Direction',
-              value: directionName(conditions.direction),
-            ),
-            _Fact(label: 'Tempo', value: '${conditions.tempoBpm.round()} bpm'),
-          ],
-        ),
-      ],
-    );
-  }
-}
-
-/// One labelled fact about how to play the exercise.
-class _Fact extends StatelessWidget {
-  const _Fact({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+        const SizedBox(height: 12),
         Text(
-          label.toUpperCase(),
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-            letterSpacing: 0.8,
+          handsName(conditions.hands).toUpperCase(),
+          style: theme.textTheme.titleMedium?.copyWith(
+            letterSpacing: 1.2,
+            fontWeight: FontWeight.w600,
           ),
         ),
         const SizedBox(height: 2),
-        Text(value, style: theme.textTheme.titleMedium),
+        Text(
+          '${directionName(conditions.direction)} · '
+          '${octavesName(conditions.octaves)}',
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Text(
+          '${conditions.tempoBpm.round()} bpm',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }
@@ -392,19 +370,11 @@ class _Status extends ConsumerWidget {
     required this.phase,
     required this.guidance,
     required this.beatsLeft,
-    required this.played,
-    required this.expected,
   });
 
   final _Phase phase;
   final GuidanceContext guidance;
   final int beatsLeft;
-
-  /// How many notes have arrived during this attempt.
-  final int played;
-
-  /// How many the exercise asks for.
-  final int expected;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -416,19 +386,6 @@ class _Status extends ConsumerWidget {
           Text('$beatsLeft', style: theme.textTheme.displayLarge),
           Text('Counting in', style: theme.textTheme.bodyMedium),
         ],
-      );
-    }
-
-    // A count of what arrived against what was asked for, so the attempt does
-    // not end at a moment the learner cannot see coming. Both numbers are
-    // already in the task statement, so neither discloses anything, and
-    // nothing here says whether a note was right.
-    if (phase == _Phase.playing) {
-      return Text(
-        '$played of $expected notes',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
       );
     }
 

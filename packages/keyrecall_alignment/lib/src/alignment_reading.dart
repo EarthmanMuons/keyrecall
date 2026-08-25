@@ -26,6 +26,28 @@ class AlignmentReading {
   /// what is missing here is notes that never arrived at all.
   bool get isComplete => alignment.operations.whereType<Deletion>().isEmpty;
 
+  /// Whether the traversal reached its final expected position.
+  ///
+  /// Progress, not correctness: a substitution covers a position just as a
+  /// match does, so playing the wrong note still gets you to the end. What it
+  /// does not do is treat extra notes as progress, which is the difference
+  /// between "you have played the whole exercise" and "you have played as many
+  /// notes as it contains".
+  bool get reachedFinalPosition {
+    for (final operation in alignment.operations.reversed) {
+      switch (operation) {
+        case Insertion():
+          continue;
+        case Match():
+        case Substitution():
+          return true;
+        case Deletion():
+          return false;
+      }
+    }
+    return false;
+  }
+
   /// Nothing but matches: the performance was right the first time.
   ///
   /// The strict reading, and the one that must not be reachable by repairing
