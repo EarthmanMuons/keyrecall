@@ -281,6 +281,77 @@ void main() {
     });
   });
 
+  group('a performance in progress', () {
+    /// The same scale up and back down, so its first and last notes are both
+    /// the tonic.
+    final upDown = realize(
+      Exercise.linear(
+        material: TechnicalMaterial('C', ScaleForm.major),
+        hands: HandConfiguration.right,
+        octaves: 1,
+      ),
+    );
+
+    Alignment alignedUpDown(List<int> midiNotes) {
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, midiNote) in midiNotes.indexed) {
+        transcript = transcript.appending(
+          pitch: spellObservedPitch(midiNote, material: material),
+          timestampMs: index * 500,
+        );
+      }
+      return align(realization: upDown, transcript: transcript);
+    }
+
+    test('sits as early in the traversal as its cost allows', () {
+      // One played tonic explains equally well as the first note or the last.
+      // Reading it as the last would say a learner who has played one note has
+      // finished the scale.
+      final alignment = alignedUpDown(const [60]);
+
+      expect(alignment.operations.first, isA<Match>());
+      expect((alignment.operations.first as Match).realizationPosition, 0);
+      expect(
+        AlignmentReading(alignment).reachedFinalPosition,
+        isFalse,
+        reason: 'nothing about one note says the traversal is over',
+      );
+    });
+
+    test('reaches the end only when the end has been played', () {
+      final expectedNotes = [
+        for (final moment in upDown.moments)
+          moment.noteFor(Hand.right)!.midiNote,
+      ];
+
+      expect(
+        AlignmentReading(
+          alignedUpDown(expectedNotes.take(expectedNotes.length - 1).toList()),
+        ).reachedFinalPosition,
+        isFalse,
+      );
+      expect(
+        AlignmentReading(alignedUpDown(expectedNotes)).reachedFinalPosition,
+        isTrue,
+      );
+    });
+
+    test('a wrong last note still reaches the end', () {
+      final expectedNotes = [
+        for (final moment in upDown.moments)
+          moment.noteFor(Hand.right)!.midiNote,
+      ];
+
+      expect(
+        AlignmentReading(
+          alignedUpDown([...expectedNotes]..last = 61),
+        ).reachedFinalPosition,
+        isTrue,
+        reason: 'covering a position is progress, not correctness',
+      );
+    });
+  });
+
   test('the same performance always aligns the same way', () {
     final once = alignmentOf([...expected]..insert(3, 61));
     final again = alignmentOf([...expected]..insert(3, 61));

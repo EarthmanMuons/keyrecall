@@ -119,10 +119,16 @@ int _smallest(int a, int b, int c) => a < b ? (a < c ? a : c) : (b < c ? b : c);
 
 /// Walks the table back to the script that produced the cheapest cost.
 ///
-/// Ties are broken in a fixed order, diagonal first, then deletion, then
-/// insertion, so one performance always aligns the same way. Replay depends on
-/// that: an aligner that could return either of two equal-cost readings would
-/// make the evidence derived from it irreproducible.
+/// Ties are broken in a fixed order so one performance always aligns the same
+/// way. Replay depends on that: an aligner that could return either of two
+/// equal-cost readings would make the evidence derived from it irreproducible.
+///
+/// The order puts deletion before the diagonal, which places a performance as
+/// early in the traversal as its cost allows. That matters whenever a pitch
+/// appears more than once: a scale played up and back down begins and ends on
+/// the tonic, so a single played tonic explains equally well as the first note
+/// or the last, and reading it as the last would say a learner who has played
+/// one note has reached the end.
 List<EditOperation> _traceBack(
   List<List<int>> cost,
   List<SpelledPitch> expected,
@@ -134,6 +140,13 @@ List<EditOperation> _traceBack(
   var j = observed.length;
 
   while (i > 0 || j > 0) {
+    if (i > 0 && cost[i][j] == cost[i - 1][j] + policy.deletionCost) {
+      operations.add(
+        Deletion(realizationPosition: i - 1, expected: expected[i - 1]),
+      );
+      i--;
+      continue;
+    }
     if (i > 0 && j > 0) {
       final same = expected[i - 1].midiNote == observed[j - 1].midiNote;
       final step = same ? AlignmentPolicy.matchCost : policy.substitutionCost;
@@ -155,13 +168,6 @@ List<EditOperation> _traceBack(
         j--;
         continue;
       }
-    }
-    if (i > 0 && cost[i][j] == cost[i - 1][j] + policy.deletionCost) {
-      operations.add(
-        Deletion(realizationPosition: i - 1, expected: expected[i - 1]),
-      );
-      i--;
-      continue;
     }
     operations.add(
       Insertion(
