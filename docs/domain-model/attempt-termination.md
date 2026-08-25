@@ -67,31 +67,65 @@ inactivityTimeout -> completed: false -> the learner failed
 is not available as an accidental inference. An attempt the learner stopped at
 six moments and one a timeout closed at six moments are different observations.
 
-## Three readings of one attempt
+## Closing an attempt
 
-Once measurement exists, an attempt carries three independent readings:
+An attempt that has ended is closed with what is known at that moment:
 
 ```text
-termination reason      how it ended
-learner report          what the learner says happened
-measured outcome        what alignment says happened
+AttemptClosure
+├── terminationReason      required
+└── measuredOutcome        required when measurement succeeds, and explicitly
+                           unavailable when it does not
 ```
 
-They can disagree, and the disagreement is evidence rather than noise. A learner
-who stops and reports a clean attempt that measurement says contained an
-insertion is telling you something about self-monitoring; one who reports a
-breakdown that measurement says was completed after an omission and a recovery
-is telling you something about confidence. Storage must keep the three apart so
-those cases stay representable.
+No learner report. If the app can read the performance from the MIDI stream,
+asking for a subjective characterization afterwards is friction that buys a
+second, noisier evidence source. Measurement that genuinely cannot establish an
+outcome should say so as an indeterminate result, not fall back on asking.
 
-A timeout in particular may leave no valid self-report at all, and the absence
-of an outcome has to remain an absence rather than being coerced into a
-breakdown.
+A timeout closure is therefore complete and honest on its own:
 
-**`ReportedResult` currently conflates the first two.** `brokeDown` says both
-how the attempt ended and how it went, which is tolerable only while Done is the
-one way to end one. When termination reasons become real, split the lifecycle
-event from the learner's characterization and keep `brokeDown` as the latter.
+```text
+terminationReason: inactivityTimeout
+measuredOutcome:   whatever the aligner could establish, or indeterminate
+```
+
+`ReportedResult` is scaffolding for the period before measurement exists. It is
+neither a future termination model nor a parallel evidence channel, and learner
+reflection, if it ever earns a place, belongs outside the evidence model as a
+pedagogical feature.
+
+## Pending is not the same as closed without evidence
+
+> Pending means the attempt has not ended. Once it ends, commit the termination
+> reason and whatever measured evidence exists.
+
+A timed-out attempt must not become a pending decision. Pending means the system
+decided what to present and the interaction is unfinished; a closure is a
+finished interaction, whatever evidence it happens to carry. Collapsing the two
+would make the recovery path ask a learner to resolve something that is already
+over.
+
+Crash recovery is where the distinction earns its keep:
+
+```text
+decision persisted, attempt started, app killed
+    -> reopens as pending: no termination was recorded
+
+decision persisted, attempt started, timeout fired, closure appended, app killed
+    -> reopens as a closed attempt: the lifecycle ended before the crash
+```
+
+`PracticeSession.commit` takes an `Outcome` today, which assumes a mandatory
+outcome is the central thing an attempt produces. The change is not to make that
+outcome nullable, which would keep the assumption and merely permit an absence;
+it is that termination is the mandatory lifecycle fact and measurement is
+independent evidence beside it.
+
+The closure stays one atomic append. When the first non-learner termination path
+becomes real, the persisted record gains the termination reason and the optional
+measurement together in the same schema bump, rather than appending a closure
+and amending it later.
 
 ## What is deliberately not decided
 

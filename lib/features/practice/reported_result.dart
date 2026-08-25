@@ -16,12 +16,12 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 /// learner-facing design should start from measurement rather than from these
 /// five buttons.
 ///
-/// [brokeDown] is a conflation with a deadline on it: it says both how the
-/// attempt ended and how it went, which is only tenable while tapping Done is
-/// the one way an attempt can end. When real termination reasons arrive, split
-/// the lifecycle event from the learner's characterization of the performance
-/// and keep this as the latter. It must not become the persisted termination
-/// model. See `docs/domain-model/attempt-termination.md`.
+/// [brokeDown] in particular says both how the attempt ended and how it went,
+/// which is only tenable while tapping Done is the one way an attempt can end.
+/// None of this becomes the persisted termination model, and none of it becomes
+/// a learner-report channel running alongside measurement: an attempt closes
+/// with a termination reason and whatever measurement established. See
+/// `docs/domain-model/attempt-termination.md`.
 enum ReportedResult {
   /// Played through accurately and steadily.
   clean('Clean', 'played it through accurately'),

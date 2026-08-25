@@ -315,6 +315,11 @@ class PracticeSession {
   /// button has to make that button single-flight rather than relying on the
   /// attempt id to deduplicate.
   ///
+  /// Requiring an [Outcome] assumes every attempt ends by producing one, which
+  /// holds only while a person answers each attempt. A termination path that is
+  /// not the learner's closes the attempt with a reason and whatever evidence
+  /// exists, which may be none; see `docs/domain-model/attempt-termination.md`.
+  ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
   Future<AttemptRecord> commit(
     Outcome outcome, {
