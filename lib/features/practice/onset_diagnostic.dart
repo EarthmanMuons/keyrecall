@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
@@ -74,11 +76,31 @@ class OnsetRecorderNotifier extends Notifier<OnsetTake> {
 /// a threshold; it reports what the instrument sent.
 ///
 /// See `docs/domain-model/alignment-contract.md`.
-class OnsetDiagnosticScreen extends ConsumerWidget {
+class OnsetDiagnosticScreen extends ConsumerStatefulWidget {
   const OnsetDiagnosticScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<OnsetDiagnosticScreen> createState() =>
+      _OnsetDiagnosticScreenState();
+}
+
+class _OnsetDiagnosticScreenState extends ConsumerState<OnsetDiagnosticScreen> {
+  /// What this take was meant to be: comfortable, deliberately tight,
+  /// staggered, rolled, and at what tempo and direction.
+  ///
+  /// Kept beside the notes rather than in them. What the instrument sent is
+  /// evidence; what it was meant to be is the label a person puts on it, and
+  /// the two must not be confused when the gaps are read back.
+  final TextEditingController _label = TextEditingController();
+
+  @override
+  void dispose() {
+    _label.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final take = ref.watch(onsetRecorderProvider);
     final onsets = take.onsets;
     final recorder = ref.read(onsetRecorderProvider.notifier);
@@ -92,7 +114,9 @@ class OnsetDiagnosticScreen extends ConsumerWidget {
             tooltip: 'Copy this take as JSON',
             onPressed: onsets.isEmpty
                 ? null
-                : () => Clipboard.setData(ClipboardData(text: _json(onsets))),
+                : () => Clipboard.setData(
+                    ClipboardData(text: _json(onsets, _label.text)),
+                  ),
             icon: const Icon(Icons.copy),
           ),
         ],
@@ -104,6 +128,14 @@ class OnsetDiagnosticScreen extends ConsumerWidget {
             'Play with both hands. Each row is a note-on and how long after '
             'the one before it arrived.',
             style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _label,
+            decoration: const InputDecoration(
+              labelText: 'What this take is',
+              hintText: 'comfortable, 80bpm, up and down',
+            ),
           ),
           const SizedBox(height: 12),
           Row(
@@ -132,13 +164,15 @@ class OnsetDiagnosticScreen extends ConsumerWidget {
     );
   }
 
-  static List<int> _deltasOf(List<Onset> onsets) => [
+  List<int> _deltasOf(List<Onset> onsets) => [
     for (var index = 1; index < onsets.length; index++)
       onsets[index].timestampMs - onsets[index - 1].timestampMs,
   ];
 
-  static String _json(List<Onset> onsets) =>
-      '[${[for (final onset in onsets) '{"note":${onset.noteNumber},"ms":${onset.timestampMs}}'].join(',')}]';
+  String _json(List<Onset> onsets, String label) =>
+      '{"label":${jsonEncode(label)},"notes":['
+      '${[for (final onset in onsets) '{"note":${onset.noteNumber},'
+            '"ms":${onset.timestampMs}}'].join(',')}]}';
 }
 
 /// The gaps, sorted, so a cluster of near-simultaneous pairs is visible
