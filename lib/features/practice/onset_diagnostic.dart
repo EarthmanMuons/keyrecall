@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../input/input.dart';
+import 'latency_probe.dart';
 
 /// One note-on, as raw as it arrives.
 ///
@@ -101,23 +102,23 @@ class _OnsetDiagnosticScreenState extends ConsumerState<OnsetDiagnosticScreen> {
     super.dispose();
   }
 
-  /// Writes the take to a file the Files app and Finder can reach.
+  /// Writes [contents] to a file the Files app and Finder can reach.
   ///
   /// Documents rather than Application Support, which is where practice
   /// history lives: takes are meant to leave the phone, and journals are not.
-  Future<void> _save(List<Onset> onsets) async {
+  Future<void> _save(String contents, {required String kind}) async {
     final directory = Directory(
-      '${(await getApplicationDocumentsDirectory()).path}/onsets',
+      '${(await getApplicationDocumentsDirectory()).path}/$kind',
     )..createSync(recursive: true);
     final stamp = DateTime.now().toIso8601String().replaceAll(
       RegExp('[:.]'),
       '-',
     );
     final slug = _label.text.isEmpty
-        ? 'take'
+        ? kind
         : _label.text.toLowerCase().replaceAll(RegExp('[^a-z0-9]+'), '-');
     final file = File('${directory.path}/$stamp-$slug.json');
-    file.writeAsStringSync(_json(onsets, _label.text));
+    file.writeAsStringSync(contents);
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -148,7 +149,9 @@ class _OnsetDiagnosticScreenState extends ConsumerState<OnsetDiagnosticScreen> {
           ),
           IconButton(
             tooltip: 'Save this take on the phone',
-            onPressed: onsets.isEmpty ? null : () => _save(onsets),
+            onPressed: onsets.isEmpty
+                ? null
+                : () => _save(_json(onsets, _label.text), kind: 'onsets'),
             icon: const Icon(Icons.save_alt),
           ),
         ],
@@ -183,6 +186,9 @@ class _OnsetDiagnosticScreenState extends ConsumerState<OnsetDiagnosticScreen> {
           const SizedBox(height: 16),
           if (deltas.isNotEmpty) _Summary(deltas: deltas),
           const SizedBox(height: 8),
+          const SizedBox(height: 24),
+          _Latency(label: _label.text, onSave: _save),
+          const SizedBox(height: 16),
           for (final (index, onset) in onsets.indexed)
             Text(
               index == 0
@@ -228,4 +234,84 @@ class _Summary extends StatelessWidget {
       ],
     );
   }
+}
+
+/// Where a note's time goes between arriving and being drawn.
+///
+/// Reported here rather than logged, so it can leave an untethered device the
+/// same way a take does: saved into Documents for the Files app, or copied.
+class _Latency extends ConsumerWidget {
+  const _Latency({required this.label, required this.onSave});
+
+  final String label;
+  final Future<void> Function(String contents, {required String kind}) onSave;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final samples = ref.watch(latencyProbeProvider);
+    final painted = [for (final sample in samples) ?sample.toPaintMs];
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text('Note latency', style: theme.textTheme.titleMedium),
+            ),
+            IconButton(
+              tooltip: 'Copy these samples',
+              onPressed: samples.isEmpty
+                  ? null
+                  : () => Clipboard.setData(
+                      ClipboardData(text: _json(samples, label)),
+                    ),
+              icon: const Icon(Icons.copy),
+            ),
+            IconButton(
+              tooltip: 'Save these samples',
+              onPressed: samples.isEmpty
+                  ? null
+                  : () => onSave(_json(samples, label), kind: 'latency'),
+              icon: const Icon(Icons.save_alt),
+            ),
+            IconButton(
+              tooltip: 'Forget them',
+              onPressed: samples.isEmpty
+                  ? null
+                  : ref.read(latencyProbeProvider.notifier).clear,
+              icon: const Icon(Icons.clear),
+            ),
+          ],
+        ),
+        Text(
+          'Measured while playing an exercise, not here.',
+          style: theme.textTheme.bodySmall,
+        ),
+        const SizedBox(height: 4),
+        if (samples.isEmpty)
+          const Text('nothing measured yet')
+        else ...[
+          Text('${samples.length} notes'),
+          Text(
+            'arrival to transcript: ${_summary([for (final sample in samples) sample.toAppendMs])}',
+          ),
+          Text('transcript to painted: ${_summary(painted)}'),
+        ],
+      ],
+    );
+  }
+
+  static String _summary(List<int> values) {
+    if (values.isEmpty) return 'nothing painted yet';
+    final ordered = [...values]..sort();
+    return 'median ${ordered[ordered.length ~/ 2]}ms, '
+        'worst ${ordered.last}ms';
+  }
+
+  static String _json(List<LatencySample> samples, String label) =>
+      '{"label":${jsonEncode(label)},"samples":['
+      '${[for (final sample in samples) '{"seq":${sample.sequence},"arrived":${sample.arrivedMs},'
+            '"appended":${sample.appendedMs},"painted":${sample.paintedMs}}'].join(',')}]}';
 }

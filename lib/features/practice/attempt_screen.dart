@@ -10,6 +10,7 @@ import '../input/input.dart';
 import '../piano/piano.dart';
 import 'attempt_transcript.dart';
 import 'exercise_presentation.dart';
+import 'latency_probe.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
 import 'staff_cue.dart';
@@ -111,6 +112,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   int _beatsLeft = _countInBeats;
   Timer? _countIn;
   bool _finishing = false;
+  int _painted = 0;
 
   @override
   void initState() {
@@ -191,6 +193,15 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     };
     final echoes = presentation.performanceFeedback != PerformanceFeedback.none;
     final transcript = ref.watch(attemptTranscriptProvider);
+
+    if (transcript.isNotEmpty && transcript.length != _painted) {
+      // The frame after the note is on screen is when it was actually seen.
+      final sequence = transcript.notes.last.sequence;
+      _painted = transcript.length;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(latencyProbeProvider.notifier).painted(sequence);
+      });
+    }
 
     if (_phase == _Phase.playing && _hasCoveredTraversal(transcript)) {
       // After the frame, so finishing does not run inside a build.

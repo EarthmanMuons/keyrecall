@@ -150,11 +150,6 @@ void main() {
     expect(
       find.byType(crisp.MultiSystemView),
       findsOneWidget,
-      reason: 'with the cue withdrawn, the staff carries what is played',
-    );
-    expect(
-      find.byType(crisp.MultiSystemView),
-      findsOneWidget,
       reason:
           'with the cue withdrawn, the staff is free to carry what is '
           'actually played',

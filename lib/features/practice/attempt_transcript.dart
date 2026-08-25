@@ -3,6 +3,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
 
 import '../input/input.dart';
+import 'latency_probe.dart';
 
 /// What has been played during the attempt on screen.
 ///
@@ -63,9 +64,13 @@ class AttemptTranscriptNotifier extends Notifier<PerformanceTranscript> {
     if (material == null) return;
     if (event is! InputTemporalNoteOnEvent) return;
 
+    final sequence = state.length;
     state = state.appending(
       pitch: spellObservedPitch(event.noteNumber, material: material),
       timestampMs: event.timestampMs,
     );
+    ref
+        .read(latencyProbeProvider.notifier)
+        .appended(sequence: sequence, arrivedMs: event.timestampMs);
   }
 }
