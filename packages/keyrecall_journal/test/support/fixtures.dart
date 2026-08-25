@@ -160,9 +160,15 @@ Outcome outcomeOf({
       provenance: provenance,
       exercise: exercise,
       decision: decision,
-      outcome: outcome,
-      weights: weights,
-      memoryUpdate: diagnostics,
+      closure: AttemptClosure.measured(
+        termination: AttemptTermination.learnerStopped,
+
+        outcome: outcome,
+
+        weights: weights,
+
+        memoryUpdate: diagnostics,
+      ),
     );
     if (withStateHashes) {
       record = record.withStateHashes(
@@ -176,3 +182,17 @@ Outcome outcomeOf({
 
   return (journal: journal, initial: initial);
 }
+
+/// The measurement a record carries, for tests that know it has one.
+///
+/// Deliberately test-only: production code branches on the sum rather than
+/// reaching past it, which is what keeps an unmeasured attempt from flowing
+/// into anything built on an outcome always existing.
+Measured measuredOf(AttemptRecord record) =>
+    record.closure.measurement as Measured;
+
+/// The measurement inside a written record, for tests that poke at the wire
+/// format.
+Map<String, Object?> measurementJsonOf(Map<String, Object?> record) =>
+    (record['closure']! as Map<String, Object?>)['measurement']!
+        as Map<String, Object?>;

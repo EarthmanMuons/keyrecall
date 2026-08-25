@@ -315,14 +315,46 @@ class PracticeSession {
   /// button has to make that button single-flight rather than relying on the
   /// attempt id to deduplicate.
   ///
-  /// Requiring an [Outcome] assumes every attempt ends by producing one, which
-  /// holds only while a person answers each attempt. A termination path that is
-  /// not the learner's closes the attempt with a reason and whatever evidence
-  /// exists, which may be none; see `docs/domain-model/attempt-termination.md`.
+  /// Throws [PracticeStateError] when no attempt is outstanding.
+  Future<AttemptRecord> commit(Outcome outcome, {DateTime? observedWallTime}) =>
+      _close(
+        termination: AttemptTermination.learnerStopped,
+        outcome: outcome,
+        observedWallTime: observedWallTime,
+      );
+
+  /// Ends the outstanding attempt with nothing measured.
+  ///
+  /// The honest close for an attempt that ended without anyone establishing how
+  /// it went: a timeout, or any path that is not a learner reporting. It moves
+  /// no learner state, because nothing was observed, and the record exists to
+  /// say the attempt ended rather than to claim anything about the
+  /// performance.
+  ///
+  /// The transaction discipline is the same as [commit]'s, for the same
+  /// reasons.
   ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
-  Future<AttemptRecord> commit(
-    Outcome outcome, {
+  Future<AttemptRecord> closeUnmeasured({
+    required AttemptTermination termination,
+    MeasurementUnavailableReason reason =
+        MeasurementUnavailableReason.notAvailable,
+    DateTime? observedWallTime,
+  }) => _close(
+    termination: termination,
+    unavailable: reason,
+    observedWallTime: observedWallTime,
+  );
+
+  /// Commits the outstanding attempt, with or without a measurement.
+  ///
+  /// Exactly one of [outcome] and [unavailable] is meaningful; the nullability
+  /// stays inside this method so no caller and nothing stored ever sees an
+  /// outcome that may or may not be there.
+  Future<AttemptRecord> _close({
+    required AttemptTermination termination,
+    Outcome? outcome,
+    MeasurementUnavailableReason? unavailable,
     DateTime? observedWallTime,
   }) async {
     final outstanding = _outstanding ?? _pendingAsOutstanding();
@@ -330,22 +362,35 @@ class PracticeSession {
     final at = decision.decidedAt;
 
     final next = _state.copy();
-    learner.propagate(next, at);
-    final prediction = learner.predict(next, decision.exercise, at: at);
-    final weights = evidenceWeightsFor(decision.exercise, outcome);
-    final diagnostics = learner.applyOutcome(
-      state: next,
-      exercise: decision.exercise,
-      outcome: outcome,
-      weights: weights,
-      prediction: prediction,
-      at: at,
-    );
+    final AttemptClosure closure;
+
+    if (outcome != null) {
+      learner.propagate(next, at);
+      final prediction = learner.predict(next, decision.exercise, at: at);
+      final weights = evidenceWeightsFor(decision.exercise, outcome);
+      final diagnostics = learner.applyOutcome(
+        state: next,
+        exercise: decision.exercise,
+        outcome: outcome,
+        weights: weights,
+        prediction: prediction,
+        at: at,
+      );
+      closure = AttemptClosure.measured(
+        termination: termination,
+        outcome: outcome,
+        weights: weights,
+        memoryUpdate: diagnostics,
+      );
+    } else {
+      closure = AttemptClosure.unmeasured(
+        termination: termination,
+        reason: unavailable ?? MeasurementUnavailableReason.notAvailable,
+      );
+    }
 
     final record = decision.complete(
-      outcome: outcome,
-      weights: weights,
-      memoryUpdate: diagnostics,
+      closure: closure,
       stateAfterHash: learnerStateHash(next),
       observedWallTime: observedWallTime,
     );
@@ -356,9 +401,12 @@ class PracticeSession {
 
     _state = next;
     _journal.append(record);
+    // The exercise was presented either way, so the sitting knows it was. A
+    // retrieval failure is a claim about the performance, and an unmeasured
+    // attempt supports no such claim.
     _session.recordSelection(
       decision.exercise,
-      retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
+      retrievalFailed: outcome?.retrieval == FactualRetrieval.failed,
       config: pipeline.config.diversity,
     );
     _outstanding = null;

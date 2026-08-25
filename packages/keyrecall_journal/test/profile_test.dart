@@ -94,9 +94,12 @@ void main() {
             ),
             provenance: provenance,
             exercise: exercise,
-            outcome: outcome,
-            weights: evidenceWeightsFor(exercise, outcome),
-            memoryUpdate: const MemoryUpdateDiagnostics(),
+            closure: AttemptClosure.measured(
+              termination: AttemptTermination.learnerStopped,
+              outcome: outcome,
+              weights: evidenceWeightsFor(exercise, outcome),
+              memoryUpdate: const MemoryUpdateDiagnostics(),
+            ),
           ),
         ),
         throwsA(isA<JournalFormatException>()),
@@ -191,9 +194,12 @@ void main() {
             ),
             provenance: provenance,
             exercise: exercise,
-            outcome: outcome,
-            weights: weights,
-            memoryUpdate: diagnostics,
+            closure: AttemptClosure.measured(
+              termination: AttemptTermination.learnerStopped,
+              outcome: outcome,
+              weights: weights,
+              memoryUpdate: diagnostics,
+            ),
           ).withStateHashes(before: before, after: learnerStateHash(state)),
         );
       }

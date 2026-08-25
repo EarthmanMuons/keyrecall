@@ -1,6 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
-import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
 /// A decision that has been made and presented, but not yet answered.
@@ -145,9 +144,7 @@ class PendingDecision {
 
   /// The completed attempt this decision becomes, once [outcome] is known.
   AttemptRecord complete({
-    required Outcome outcome,
-    required EvidenceWeights weights,
-    required MemoryUpdateDiagnostics memoryUpdate,
+    required AttemptClosure closure,
     required String stateAfterHash,
     DateTime? observedWallTime,
   }) => AttemptRecord(
@@ -163,9 +160,7 @@ class PendingDecision {
     provenance: provenance,
     exercise: exercise,
     decision: decision,
-    outcome: outcome,
-    weights: weights,
-    memoryUpdate: memoryUpdate,
+    closure: closure,
     stateBeforeHash: stateBeforeHash,
     stateAfterHash: stateAfterHash,
   );

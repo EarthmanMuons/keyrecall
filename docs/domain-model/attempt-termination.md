@@ -1,6 +1,7 @@
 # Attempt termination policy
 
-- **Status:** Design only. Today an attempt ends when the learner taps Done.
+- **Status:** Steps 1 to 3 are implemented; the app still only ends an attempt
+  when the learner taps Done.
 - **Written:** August 25, 2026
 
 How an attempt ends is its own concern rather than part of alignment, because
@@ -174,13 +175,15 @@ journal lifecycle fact -> session and scheduler behavior
 
 ## An order that tests what it claims
 
-1. Introduce `AttemptClosure` and the persisted termination semantics.
-2. Route today's reporting scaffolding through it, preserving behavior:
-   `ReportedResult -> Outcome -> Measured(...) -> AttemptClosure(learnerStopped)`.
-3. Prove closed-with-unavailable-measurement survives replay: no pending
-   decision, one committed closed attempt, and a learner state that has not
-   invented a performance.
-4. Add non-evaluative termination paths.
+1. ~~Introduce `AttemptClosure` and the persisted termination semantics.~~ Done:
+   schema version 2, with a pure version 1 upgrade.
+2. ~~Route today's reporting scaffolding through it.~~ Done:
+   `PracticeSession.commit` closes as `learnerStopped` with a measurement.
+3. ~~Prove closed-with-unavailable-measurement survives replay.~~ Done:
+   `PracticeSession.closeUnmeasured` exists and is covered, though nothing in
+   the app calls it yet.
+4. Add non-evaluative termination paths, which is what makes `closeUnmeasured`
+   reachable outside tests.
 5. Build alignment, which makes `Measured` reachable from an actual performance.
 6. Delete `ReportedResult`.
 

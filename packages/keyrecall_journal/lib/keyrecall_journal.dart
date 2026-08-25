@@ -13,6 +13,7 @@
 /// adapter wraps it, which is what stops the engine from deciding the schema.
 library;
 
+export 'src/attempt_closure.dart';
 export 'src/attempt_journal.dart';
 export 'src/attempt_record.dart';
 // The decode toolkit is exported alongside the codecs: an adapter that
@@ -26,3 +27,4 @@ export 'src/codecs/scheduler_codec.dart';
 export 'src/profile.dart';
 export 'src/replay.dart';
 export 'src/schema.dart';
+export 'src/upgrade.dart';

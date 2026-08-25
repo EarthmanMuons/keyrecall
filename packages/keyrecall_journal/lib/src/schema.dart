@@ -7,7 +7,7 @@
 /// Bumping it requires a pure, versioned upgrade function and upgrade tests
 /// covering existing persisted state, historical golden journals, and
 /// genuinely new material separately.
-const int attemptSchemaVersion = 1;
+const int attemptSchemaVersion = 2;
 
 /// Version of the checkpoint wire format.
 ///

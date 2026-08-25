@@ -1,6 +1,7 @@
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
+import 'attempt_closure.dart';
 import 'attempt_journal.dart';
 import 'attempt_record.dart';
 import 'checkpoint.dart';
@@ -94,10 +95,17 @@ class ReplayResult {
   /// How many attempts were applied.
   final int attemptsApplied;
 
+  /// How many attempts carried no measurement and so moved nothing.
+  ///
+  /// Counted rather than skipped silently: an attempt that measured nothing
+  /// still happened, and a replay that saw one should be able to say so.
+  final int attemptsUnmeasured;
+
   const ReplayResult({
     required this.state,
     required this.divergences,
     required this.attemptsApplied,
+    this.attemptsUnmeasured = 0,
   });
 
   /// Whether the replay reproduced the journal exactly.
@@ -109,6 +117,7 @@ class ReplayResult {
   @override
   String toString() =>
       'ReplayResult($attemptsApplied attempts, '
+      '$attemptsUnmeasured unmeasured, '
       '${divergences.length} divergences)';
 }
 
@@ -158,6 +167,7 @@ ReplayResult replayJournal(
   );
   final divergences = <ReplayDivergence>[];
   var applied = 0;
+  var unmeasured = 0;
 
   for (final record in journal.records) {
     // Skip by position in the history, not by position within a sitting. A
@@ -186,6 +196,15 @@ ReplayResult replayJournal(
       );
     }
 
+    // An attempt that measured nothing moves no learner state. Not even time:
+    // propagation is driven by the next record that needs it, so a closure
+    // carrying no evidence leaves competencies exactly as they were.
+    if (record.closure.measurement case MeasurementUnavailable()) {
+      unmeasured++;
+      continue;
+    }
+    final measured = record.closure.measurement as Measured;
+
     final at = record.identity.occurredAt;
     model.propagate(state, at);
 
@@ -201,17 +220,23 @@ ReplayResult replayJournal(
     }
 
     final prediction = model.predict(state, record.exercise, at: at);
-    final weights = evidenceWeightsFor(record.exercise, record.outcome);
+    final weights = evidenceWeightsFor(record.exercise, measured.outcome);
 
     if (options.mode == ReplayMode.exact) {
       _comparePrediction(record, prediction, divergences, options);
-      _compareWeights(record, weights, divergences, options);
+      _compareWeights(
+        measured,
+        record.identity.attemptId,
+        weights,
+        divergences,
+        options,
+      );
     }
 
     final diagnostics = model.applyOutcome(
       state: state,
       exercise: record.exercise,
-      outcome: record.outcome,
+      outcome: measured.outcome,
       weights: weights,
       prediction: prediction,
       at: at,
@@ -222,7 +247,7 @@ ReplayResult replayJournal(
       _compareNumber(
         record.identity.attemptId,
         'consolidation_delta_from_retrieval_inference',
-        record.memoryUpdate.consolidationDeltaFromRetrievalInference,
+        measured.memoryUpdate.consolidationDeltaFromRetrievalInference,
         diagnostics.consolidationDeltaFromRetrievalInference,
         divergences,
         options,
@@ -230,7 +255,7 @@ ReplayResult replayJournal(
       _compareNumber(
         record.identity.attemptId,
         'consolidation_delta_from_causal_formation',
-        record.memoryUpdate.consolidationDeltaFromCausalFormation,
+        measured.memoryUpdate.consolidationDeltaFromCausalFormation,
         diagnostics.consolidationDeltaFromCausalFormation,
         divergences,
         options,
@@ -252,6 +277,7 @@ ReplayResult replayJournal(
     state: state,
     divergences: divergences,
     attemptsApplied: applied,
+    attemptsUnmeasured: unmeasured,
   );
 }
 
@@ -325,12 +351,13 @@ void _comparePrediction(
 }
 
 void _compareWeights(
-  AttemptRecord record,
+  Measured measured,
+  String id,
   EvidenceWeights replayed,
   List<ReplayDivergence> divergences,
   ReplayOptions options,
 ) {
-  final id = record.identity.attemptId;
+  final record = measured;
   _compareNumber(
     id,
     'weight.material_execution',

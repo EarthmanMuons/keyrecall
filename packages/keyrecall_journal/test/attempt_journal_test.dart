@@ -29,9 +29,12 @@ AttemptRecord recordAt({
     ),
     provenance: provenance,
     exercise: exercise,
-    outcome: outcome,
-    weights: evidenceWeightsFor(exercise, outcome),
-    memoryUpdate: const MemoryUpdateDiagnostics(),
+    closure: AttemptClosure.measured(
+      termination: AttemptTermination.learnerStopped,
+      outcome: outcome,
+      weights: evidenceWeightsFor(exercise, outcome),
+      memoryUpdate: const MemoryUpdateDiagnostics(),
+    ),
   );
 }
 
@@ -128,9 +131,12 @@ void main() {
         ),
         provenance: provenance,
         exercise: exercise,
-        outcome: outcome,
-        weights: evidenceWeightsFor(exercise, outcome),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        closure: AttemptClosure.measured(
+          termination: AttemptTermination.learnerStopped,
+          outcome: outcome,
+          weights: evidenceWeightsFor(exercise, outcome),
+          memoryUpdate: const MemoryUpdateDiagnostics(),
+        ),
       );
 
       journal.append(at('a', 0, t0.plusDays(10)));
@@ -158,9 +164,12 @@ void main() {
         observedWallTime: t0.plusDays(9),
         provenance: provenance,
         exercise: exercise,
-        outcome: outcome,
-        weights: evidenceWeightsFor(exercise, outcome),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        closure: AttemptClosure.measured(
+          termination: AttemptTermination.learnerStopped,
+          outcome: outcome,
+          weights: evidenceWeightsFor(exercise, outcome),
+          memoryUpdate: const MemoryUpdateDiagnostics(),
+        ),
       );
 
       final journal = AttemptJournal(header())..append(record);

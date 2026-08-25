@@ -20,13 +20,17 @@ void main() {
         expect(reread.identity, record.identity);
         expect(reread.provenance, record.provenance);
         expect(reread.exercise, record.exercise);
-        expect(reread.outcome, record.outcome);
-        expect(reread.weights, record.weights);
+        expect(measuredOf(reread).outcome, measuredOf(record).outcome);
+        expect(measuredOf(reread).weights, measuredOf(record).weights);
         expect(reread.stateBeforeHash, record.stateBeforeHash);
         expect(reread.stateAfterHash, record.stateAfterHash);
         expect(
-          reread.memoryUpdate.consolidationDeltaFromRetrievalInference,
-          record.memoryUpdate.consolidationDeltaFromRetrievalInference,
+          measuredOf(
+            reread,
+          ).memoryUpdate.consolidationDeltaFromRetrievalInference,
+          measuredOf(
+            record,
+          ).memoryUpdate.consolidationDeltaFromRetrievalInference,
         );
         expect(reread.decision?.rankKey, record.decision?.rankKey);
         expect(reread.decision?.prediction, record.decision?.prediction);
@@ -56,13 +60,17 @@ void main() {
         ),
         provenance: provenance,
         exercise: exercise,
-        outcome: outcome,
-        weights: evidenceWeightsFor(exercise, outcome),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        closure: AttemptClosure.measured(
+          termination: AttemptTermination.learnerStopped,
+          outcome: outcome,
+          weights: evidenceWeightsFor(exercise, outcome),
+          memoryUpdate: const MemoryUpdateDiagnostics(),
+        ),
       );
 
       final json = record.toJson();
-      final outcomeJson = json['outcome']! as Map<String, Object?>;
+      final outcomeJson =
+          measurementJsonOf(json)['outcome']! as Map<String, Object?>;
       expect(outcomeJson.containsKey('retrieval_succeeded'), isTrue);
       expect(outcomeJson['retrieval_succeeded'], isNull);
       expect(jsonEncode(json), contains('"retrieval_succeeded":null'));
@@ -70,8 +78,8 @@ void main() {
       final reread = AttemptRecord.fromJson(
         jsonDecode(jsonEncode(json)) as Map<String, Object?>,
       );
-      expect(reread.outcome.retrieval, FactualRetrieval.notTested);
-      expect(reread.outcome.retrieval.isTested, isFalse);
+      expect(measuredOf(reread).outcome.retrieval, FactualRetrieval.notTested);
+      expect(measuredOf(reread).outcome.retrieval.isTested, isFalse);
     });
 
     test('all three retrieval values survive distinctly', () {
@@ -89,14 +97,17 @@ void main() {
           ),
           provenance: provenance,
           exercise: exercise,
-          outcome: outcome,
-          weights: evidenceWeightsFor(exercise, outcome),
-          memoryUpdate: const MemoryUpdateDiagnostics(),
+          closure: AttemptClosure.measured(
+            termination: AttemptTermination.learnerStopped,
+            outcome: outcome,
+            weights: evidenceWeightsFor(exercise, outcome),
+            memoryUpdate: const MemoryUpdateDiagnostics(),
+          ),
         );
         final reread = AttemptRecord.fromJson(
           jsonDecode(jsonEncode(record.toJson())) as Map<String, Object?>,
         );
-        expect(reread.outcome.retrieval, retrieval);
+        expect(measuredOf(reread).outcome.retrieval, retrieval);
       }
     });
 
@@ -116,9 +127,12 @@ void main() {
         identity: identity,
         provenance: provenance,
         exercise: exercise,
-        outcome: outcome,
-        weights: evidenceWeightsFor(exercise, outcome),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        closure: AttemptClosure.measured(
+          termination: AttemptTermination.learnerStopped,
+          outcome: outcome,
+          weights: evidenceWeightsFor(exercise, outcome),
+          memoryUpdate: const MemoryUpdateDiagnostics(),
+        ),
       );
 
       final reread = AttemptRecord.fromJson(
@@ -145,9 +159,12 @@ void main() {
         ),
         provenance: provenance,
         exercise: exercise,
-        outcome: outcome,
-        weights: evidenceWeightsFor(exercise, outcome),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        closure: AttemptClosure.measured(
+          termination: AttemptTermination.learnerStopped,
+          outcome: outcome,
+          weights: evidenceWeightsFor(exercise, outcome),
+          memoryUpdate: const MemoryUpdateDiagnostics(),
+        ),
       ).toJson();
     }
 
@@ -179,7 +196,8 @@ void main() {
 
     test('on a retrieval value that is neither bool nor null', () {
       final json = validRecord();
-      (json['outcome']! as Map<String, Object?>)['retrieval_succeeded'] =
+      (measurementJsonOf(json)['outcome']!
+              as Map<String, Object?>)['retrieval_succeeded'] =
           'maybe';
       expect(
         () => AttemptRecord.fromJson(json),
@@ -216,7 +234,8 @@ void main() {
       );
 
       final third = validRecord();
-      (third['evidence_weights']! as Map<String, Object?>)['competencies'] = {
+      (measurementJsonOf(third)['evidence_weights']!
+          as Map<String, Object?>)['competencies'] = {
         'RH_SCALE_EXECUTION': 'heavy',
       };
       expect(
@@ -227,7 +246,9 @@ void main() {
 
     test('on an out-of-range observation', () {
       final json = validRecord();
-      (json['outcome']! as Map<String, Object?>)['continuity'] = 1.5;
+      (measurementJsonOf(json)['outcome']!
+              as Map<String, Object?>)['continuity'] =
+          1.5;
       expect(() => AttemptRecord.fromJson(json), throwsArgumentError);
     });
   });

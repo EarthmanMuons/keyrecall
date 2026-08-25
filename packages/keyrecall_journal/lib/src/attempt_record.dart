@@ -2,11 +2,14 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
+import 'attempt_closure.dart';
 import 'canonical_json.dart';
+import 'codecs/closure_codec.dart';
 import 'codecs/domain_codec.dart';
 import 'codecs/learner_codec.dart';
 import 'codecs/scheduler_codec.dart';
 import 'schema.dart';
+import 'upgrade.dart';
 
 /// Which model definitions interpreted this attempt.
 ///
@@ -176,14 +179,12 @@ class AttemptRecord {
   /// production loop presents.
   final SchedulerDecision? decision;
 
-  /// What was observed.
-  final Outcome outcome;
-
-  /// How informative it was, per layer.
-  final EvidenceWeights weights;
-
-  /// Where its consolidation change came from.
-  final MemoryUpdateDiagnostics memoryUpdate;
+  /// How the attempt ended, and what was measured of it.
+  ///
+  /// An attempt that ended did so somehow, so the termination is always here.
+  /// Whether anything was measured is a separate question, and everything
+  /// derived from a measurement lives inside it rather than beside it.
+  final AttemptClosure closure;
 
   /// Content hash of the learner state the decision was made from.
   ///
@@ -200,9 +201,7 @@ class AttemptRecord {
     required this.identity,
     required this.provenance,
     required this.exercise,
-    required this.outcome,
-    required this.weights,
-    required this.memoryUpdate,
+    required this.closure,
     this.decision,
     this.stateBeforeHash,
     this.stateAfterHash,
@@ -222,9 +221,7 @@ class AttemptRecord {
     identity: identity,
     provenance: provenance,
     exercise: exercise,
-    outcome: outcome,
-    weights: weights,
-    memoryUpdate: memoryUpdate,
+    closure: closure,
     decision: decision,
     stateBeforeHash: before,
     stateAfterHash: after,
@@ -252,9 +249,7 @@ class AttemptRecord {
     'decision': decision == null
         ? null
         : encodeDecision(decision!, encodePrediction),
-    'outcome': encodeOutcome(outcome),
-    'evidence_weights': encodeEvidenceWeights(weights),
-    'memory_update': encodeMemoryDiagnostics(memoryUpdate),
+    'closure': encodeClosure(closure),
     'state_before_hash': stateBeforeHash,
     'state_after_hash': stateAfterHash,
   };
@@ -265,12 +260,15 @@ class AttemptRecord {
   /// record. A journal reader must not guess: this is the historical source of
   /// truth, and a misread record rewrites the past.
   factory AttemptRecord.fromJson(Map<String, Object?> json) {
+    // Older records are brought forward before anything reads them, so every
+    // reader sees one shape and the upgrade lives in one place.
+    json = upgradeAttemptJson(json);
+
     final version = requireInt(json, 'schema_version');
     if (version != attemptSchemaVersion) {
       throw JournalFormatException(
         'attempt schema version $version is not readable by this build, which '
-        'writes version $attemptSchemaVersion; a versioned upgrade function '
-        'must run first',
+        'writes version $attemptSchemaVersion',
       );
     }
 
@@ -326,16 +324,8 @@ class AttemptRecord {
               (prediction) => decodePrediction(prediction, location: location),
               location: location,
             ),
-      outcome: decodeOutcome(
-        requireMap(json, 'outcome', location: location),
-        location: location,
-      ),
-      weights: decodeEvidenceWeights(
-        requireMap(json, 'evidence_weights', location: location),
-        location: location,
-      ),
-      memoryUpdate: decodeMemoryDiagnostics(
-        requireMap(json, 'memory_update', location: location),
+      closure: decodeClosure(
+        requireMap(json, 'closure', location: location),
         location: location,
       ),
       stateBeforeHash: asOptionalString(
@@ -355,5 +345,5 @@ class AttemptRecord {
   String toString() =>
       'AttemptRecord(#$journalSequence ${identity.profileId}/'
       '${identity.attemptId}, '
-      '${exercise.material.materialId}, ${outcome.retrieval.name})';
+      '${exercise.material.materialId}, ${closure.measurement})';
 }

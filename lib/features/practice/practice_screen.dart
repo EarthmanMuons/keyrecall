@@ -274,8 +274,16 @@ class _CommittedPanel extends StatelessWidget {
         '${record.exercise.material.tonic} '
             '${record.exercise.material.form.id}',
       ),
-      _Field('retrieval', record.outcome.retrieval.name),
-      _Field('motor', record.outcome.motorScore.toStringAsFixed(3)),
+      _Field('termination', record.closure.termination.id),
+      ...switch (record.closure.measurement) {
+        Measured(:final outcome) => [
+          _Field('retrieval', outcome.retrieval.name),
+          _Field('motor', outcome.motorScore.toStringAsFixed(3)),
+        ],
+        MeasurementUnavailable(:final reason) => [
+          _Field('measurement', 'unavailable: ${reason.id}'),
+        ],
+      },
     ],
   );
 }
