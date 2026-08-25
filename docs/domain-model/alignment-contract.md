@@ -14,30 +14,37 @@ Input stream
     -> PerformanceTranscript                  what was played, in order
 
 PerformanceTranscript
-    -> observation grouping                   which notes may have happened together
+    -> observation grouping                   candidate temporal structure
     -> ObservationGrouping
-         confident moments
+         likely-same boundaries
+         likely-separate boundaries
          ambiguous boundaries
 
 ObservationGrouping + ExerciseRealization
+    -> global correspondence search
     -> Alignment
-    -> EditScript                             how the two relate
+         observed moments, in correspondence
+         EditScript                           how the two relate
 
 EditScript
     -> evaluative displays, scoring, learner evidence
 ```
 
 Grouping is its own stage so the aligner is never asked to discover simultaneity
-and musical correspondence at once. A realization is already moment-shaped;
-grouping is what gives the observations the same shape, and it is the only place
-a timing tolerance lives.
+and musical correspondence at once. It is the only place a timing tolerance
+lives, and it produces _candidate temporal structure_ over the observations
+rather than the moments themselves. Observed moments exist only once alignment
+has put them in correspondence with realization moments.
 
-**Grouping may propose simultaneity from timing, but it must not commit where
-timing is ambiguous.** Alignment is allowed to resolve that ambiguity, because
-correspondence to the realization is already an evaluative judgment and this is
-the stage that is permitted to make one. Grouping still knows nothing about
-keys, octaves, hands, or scale degrees; it can only say that two observations
-are plausibly one moment and plausibly two.
+**Everything grouping says is a proposal, not a fact alignment must obey.** A
+boundary marked likely-same is timing evidence that two observations belong
+together, and alignment may overrule it. That is not a hedge: the out-of-phase
+take in the calibration data has observations 23 ms apart that belong to
+different moments, so even a very small gap cannot be authoritative. Proposals
+enter alignment as costs, never as constraints.
+
+Grouping still knows nothing about keys, octaves, hands, or scale degrees. It
+can say only that two observations are plausibly one event and plausibly two.
 
 The transcript alone supports the neutral case: a literal, append-only record
 that discloses nothing about what was expected. Everything that compares the two
@@ -65,8 +72,9 @@ groupObservations(
 
 align(
   realization: ExerciseRealization,     what the exercise asked for
-  grouping: ObservationGrouping,        what was played, where it is certain
-  policy: AlignmentPolicy,              what counts as the same note
+  grouping: ObservationGrouping,        what was played, and what timing suggests
+  policy: AlignmentPolicy,              what counts as the same note, and what
+                                        each explanation costs
 ) -> Alignment
 ```
 
