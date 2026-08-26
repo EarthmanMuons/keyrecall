@@ -622,6 +622,50 @@ There is no “behind” state. Lookahead is soft and revisable. New goals,
 maintenance regimes, fatigue adaptation, or population-trained policies must not
 turn practice into a rigid calendar or punish irregular use.
 
+### 4.8 Material admission by prerequisite, not by tier
+
+`offeredScales` is a hand-authored subset of what the system supports, and it
+exists only because the scheduler cannot yet answer whether a learner is ready
+for a scale. When the `REQUIRES` gate can, that list disappears and production
+schedules over `allScales`.
+
+The gate should not encode a tier number or an ordering by how hard a fingering
+looks. Novelty arrives on three independent axes, and a single sequence cannot
+express them:
+
+```text
+material familiarity     pitch and topology knowledge of related material
+motor familiarity        whether the fingering family is already established
+notation complexity      if and when staff decoding participates
+```
+
+The distinction that makes this worth building is **new pitches with familiar
+fingers** against **new fingers**. The current offer contains both: A, E, and D
+natural minor reuse the C major fingering family entirely, so they are new
+material over established motor structure, while B flat major introduces a
+different entry and cycle. Those are different kinds of difficulty and a tier
+list would rank them as one.
+
+Sketched, not decided:
+
+```text
+A natural minor      requires the C-major-family hands
+                     does not require prior minor material
+
+B flat major         requires stronger single-hand execution, since it
+                     introduces a new entry and cycle
+
+C sharp harmonic     requires both stronger material familiarity and
+minor                established black-key entry
+
+```
+
+The empirical inputs that would settle it come from practice rather than from
+the fingering taxonomy: whether unfamiliar minors appear with enough support to
+learn, whether the scheduler returns to new material soon enough after first
+exposure, and whether the natural minors do transfer as cheaply as their shared
+fingering suggests.
+
 ## 5. Domain expansion
 
 The long-term technical-practice domain may include:
