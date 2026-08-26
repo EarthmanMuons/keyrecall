@@ -44,6 +44,18 @@ class PulseClicker {
   /// while it is playing nothing.
   static const Duration _tail = Duration(milliseconds: 500);
 
+  /// How much audio is handed over at a time.
+  ///
+  /// The engine keeps its queue in one buffer and pops played frames off the
+  /// front, which costs a copy of everything still waiting. A whole count-in
+  /// plus a pulse through a two-octave scale is over three megabytes, and
+  /// handing that across in one piece asks the audio thread to move all of it
+  /// on every callback. A second at a time keeps that copy small.
+  static const Duration _chunk = Duration(seconds: 1);
+
+  /// The pulse being played, and how far into it the engine has been fed.
+  Int16List? _track;
+  int _fed = 0;
   bool _ready = false;
   bool _unavailable = false;
   Timer? _release;
@@ -55,17 +67,21 @@ class PulseClicker {
   Future<void> prepare() async {
     if (_ready || _unavailable) return;
     try {
-      // Nothing to hand over until there is a count-in: the engine stops
-      // itself when its queue empties, and feeding it silence to keep it
-      // awake only makes it stop and restart a few dozen times a second.
-      FlutterPcmSound.setFeedCallback((_) {});
+      // Only ever the rest of a pulse that is already playing. With no track
+      // there is nothing to hand over: the engine stops itself when its queue
+      // empties, and feeding it silence to keep it awake only makes it stop
+      // and restart a few dozen times a second.
+      FlutterPcmSound.setFeedCallback((_) => unawaited(_feedNext()));
       await FlutterPcmSound.setLogLevel(LogLevel.none);
       await FlutterPcmSound.setup(
         sampleRate: _sampleRate,
         channelCount: 1,
         iosAudioCategory: IosAudioCategory.playback,
       );
-      await FlutterPcmSound.setFeedThreshold(0);
+      // Asked for more while half a chunk is still queued, so the queue is
+      // never empty between chunks. Draining to nothing is what makes the
+      // engine stop and restart, and every one of those is an audible seam.
+      await FlutterPcmSound.setFeedThreshold(_chunkFrames ~/ 2);
       _ready = true;
     } on Object catch (error) {
       // A simulator without audio, a test binding with no plugins, a device
@@ -117,7 +133,8 @@ class PulseClicker {
         hz: index % _beatsPerBar == 0 ? _downbeatHz : _beatHz,
       );
     }
-    final skip = (since.elapsedMicroseconds * _sampleRate ~/ 1000000).clamp(
+    _track = track;
+    _fed = (since.elapsedMicroseconds * _sampleRate ~/ 1000000).clamp(
       0,
       track.length,
     );
@@ -128,7 +145,7 @@ class PulseClicker {
     _release?.cancel();
     _release = Timer(beat * beats + _tail * 2, stop);
 
-    await _feed(Int16List.sublistView(track, skip));
+    await _feedNext();
   }
 
   /// Silences the pulse and releases the engine.
@@ -138,6 +155,8 @@ class PulseClicker {
   Future<void> stop() async {
     _release?.cancel();
     _release = null;
+    _track = null;
+    _fed = 0;
     if (!_ready) return;
     _ready = false;
     FlutterPcmSound.setFeedCallback(null);
@@ -146,6 +165,20 @@ class PulseClicker {
     } on Object {
       // Nothing useful to do about a device that will not let go.
     }
+  }
+
+  static int get _chunkFrames => _chunk.inMicroseconds * _sampleRate ~/ 1000000;
+
+  /// Hands over the next chunk, or nothing once the pulse has all been given.
+  Future<void> _feedNext() async {
+    if (!_ready) return;
+    final track = _track;
+    if (track == null || _fed >= track.length) return;
+
+    final end = math.min(_fed + _chunkFrames, track.length);
+    final frames = Int16List.sublistView(track, _fed, end);
+    _fed = end;
+    await _feed(frames);
   }
 
   Future<void> _feed(Int16List frames) async {
