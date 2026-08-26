@@ -86,6 +86,9 @@ class PianoKeyboardPainter extends CustomPainter {
     required this.backgroundColor,
     this.decorations = const <PianoKeyDecoration>[],
     this.decorationColor,
+    this.blackKeyDecorationColor,
+    this.pressedWhiteKeyDecorationColor,
+    this.pressedBlackKeyDecorationColor,
     this.decorationTextScaleMultiplier = 1.0,
     this.drawBackground = true,
     this.drawFeltStrip = true,
@@ -151,7 +154,24 @@ class PianoKeyboardPainter extends CustomPainter {
 
   /// Key decorations (e.g., middle C marker, scale markers).
   final List<PianoKeyDecoration> decorations;
+
+  /// Label color on a resting white key.
   final Color? decorationColor;
+
+  /// Label color on a resting black key.
+  ///
+  /// A separate color rather than a tint of [decorationColor], because the
+  /// two surfaces are at opposite ends of the range: a label legible on ivory
+  /// is not legible on ebony however it is lightened. Falls back to
+  /// [decorationColor].
+  final Color? blackKeyDecorationColor;
+
+  /// Label color on a pressed white key, which is filled with the accent.
+  final Color? pressedWhiteKeyDecorationColor;
+
+  /// Label color on a pressed black key.
+  final Color? pressedBlackKeyDecorationColor;
+
   final double decorationTextScaleMultiplier;
 
   final bool drawBackground;
@@ -671,10 +691,6 @@ class PianoKeyboardPainter extends CustomPainter {
     final color = decorationColor;
     if (color == null) return;
 
-    // A black key is dark in both themes, so the accent that reads on ivory
-    // does not read here; lighten it the way the scale markers do.
-    final blackKeyLabelColor = Color.lerp(color, Colors.white, 0.4)!;
-
     final textPainter = TextPainter(
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
@@ -702,6 +718,12 @@ class PianoKeyboardPainter extends CustomPainter {
       if (centerX < 0 || centerX > size.width) continue;
 
       final isBlack = PianoGeometry.isBlackMidi(d.midiNote);
+      final labelColor = switch ((isBlack, _isHighlighted(d.midiNote))) {
+        (true, true) => pressedBlackKeyDecorationColor,
+        (true, false) => blackKeyDecorationColor,
+        (false, true) => pressedWhiteKeyDecorationColor,
+        (false, false) => null,
+      };
       final width = isBlack ? blackKeyWidth : whiteKeyWidth;
       final fontSize =
           ((isBlack ? blackKeyWidth * 0.62 : whiteKeyWidth * 0.52) *
@@ -712,7 +734,7 @@ class PianoKeyboardPainter extends CustomPainter {
       textPainter.text = TextSpan(
         text: label,
         style: TextStyle(
-          color: isBlack ? blackKeyLabelColor : color,
+          color: labelColor ?? color,
           fontSize: fontSize,
           fontWeight: FontWeight.w600,
         ),
@@ -758,6 +780,11 @@ class PianoKeyboardPainter extends CustomPainter {
             pressedBlackKeySeparatorColor ||
         oldDelegate.blackKeyColor != blackKeyColor ||
         oldDelegate.decorationColor != decorationColor ||
+        oldDelegate.blackKeyDecorationColor != blackKeyDecorationColor ||
+        oldDelegate.pressedWhiteKeyDecorationColor !=
+            pressedWhiteKeyDecorationColor ||
+        oldDelegate.pressedBlackKeyDecorationColor !=
+            pressedBlackKeyDecorationColor ||
         oldDelegate.decorationTextScaleMultiplier !=
             decorationTextScaleMultiplier ||
         !listEquals(oldDelegate.decorations, decorations) ||

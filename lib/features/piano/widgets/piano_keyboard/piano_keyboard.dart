@@ -69,12 +69,15 @@ class PianoKeyboard extends StatelessWidget {
     );
     final outOfScalePressedBlackKey = outOfScalePressedWhiteKey;
 
-    final whiteLum = palette.whiteKey.computeLuminance();
+    // A label is read against the key under it, so each surface picks its own:
+    // dark on a light fill, light on a dark one. A black key and a pressed key
+    // are different surfaces from a resting white key, and a label tinted from
+    // one of them is legible on none of the others.
+    Color labelOn(Color fill) => fill.computeLuminance() > 0.55
+        ? Colors.black.withValues(alpha: 0.70)
+        : Colors.white.withValues(alpha: 0.90);
 
-    // If the key fill is light, use a dark label; otherwise use a light label.
-    final decorationColor = whiteLum > 0.55
-        ? Colors.black.withValues(alpha: 0.55)
-        : Colors.white.withValues(alpha: 0.80);
+    final decorationColor = labelOn(palette.whiteKey);
 
     return SizedBox(
       height: resolvedHeight,
@@ -109,6 +112,9 @@ class PianoKeyboard extends StatelessWidget {
 
           decorations: decorations,
           decorationColor: decorationColor,
+          blackKeyDecorationColor: labelOn(palette.blackKey),
+          pressedWhiteKeyDecorationColor: labelOn(palette.pressedWhiteKey),
+          pressedBlackKeyDecorationColor: labelOn(palette.pressedBlackKey),
           decorationTextScaleMultiplier: decorationTextScaleMultiplier,
 
           drawBackground: true,
