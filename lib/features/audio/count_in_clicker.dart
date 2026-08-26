@@ -37,13 +37,10 @@ class CountInClicker {
   static const double _beatHz = 880;
   static const double _downbeatHz = 1320;
 
-  /// How much audio is handed over at a time. Small enough that a count-in
-  /// starts promptly, large enough that the engine is never starved.
-  static const int _feedFrames = 2048;
+  /// Silence past the last click, so the engine reaches the end of its queue
+  /// while it is playing nothing.
+  static const Duration _tail = Duration(milliseconds: 500);
 
-  /// The count-in being played, and how far into it the engine has been fed.
-  Int16List? _track;
-  int _fed = 0;
   bool _ready = false;
   bool _unavailable = false;
   Timer? _release;
@@ -55,16 +52,18 @@ class CountInClicker {
   Future<void> prepare() async {
     if (_ready || _unavailable) return;
     try {
-      FlutterPcmSound.setFeedCallback((_) => unawaited(_feed()));
+      // Nothing to hand over until there is a count-in: the engine stops
+      // itself when its queue empties, and feeding it silence to keep it
+      // awake only makes it stop and restart a few dozen times a second.
+      FlutterPcmSound.setFeedCallback((_) {});
       await FlutterPcmSound.setLogLevel(LogLevel.none);
       await FlutterPcmSound.setup(
         sampleRate: _sampleRate,
         channelCount: 1,
         iosAudioCategory: IosAudioCategory.playback,
       );
-      await FlutterPcmSound.setFeedThreshold(_feedFrames);
+      await FlutterPcmSound.setFeedThreshold(0);
       _ready = true;
-      FlutterPcmSound.start();
     } on Object catch (error) {
       // A simulator without audio, a test binding with no plugins, a device
       // that refuses the category: all of them mean no click, and none of them
@@ -76,9 +75,11 @@ class CountInClicker {
 
   /// Sounds [beats] beats, [beat] apart, starting now.
   ///
-  /// Rendered as one buffer rather than queued a click at a time. Queueing left
-  /// the spacing to whenever the engine next asked for data, which is why the
-  /// beats did not land on the pulse they were supposed to establish.
+  /// The whole count-in is rendered and handed over in one piece. Trickling it
+  /// a fragment at a time leaves the engine's queue empty between fragments,
+  /// and this engine stops itself whenever its queue runs dry: the count-in
+  /// then becomes a few dozen starts and stops a second, which is audible at
+  /// the seams and puts a click where no beat is.
   Future<void> playCountIn({required int beats, required Duration beat}) async {
     // Preparing the engine takes a variable few hundred milliseconds, and the
     // count-in the learner is watching has already started. Rather than
@@ -89,9 +90,8 @@ class CountInClicker {
     if (!_ready) return;
 
     final beatFrames = beat.inMicroseconds * _sampleRate ~/ 1000000;
-    // A tail of silence past the last beat, so the engine is never asked for
-    // audio it does not have while the final click is still sounding.
-    final track = Int16List(beatFrames * beats + _sampleRate ~/ 4);
+    final tailFrames = _tail.inMicroseconds * _sampleRate ~/ 1000000;
+    final track = Int16List(beatFrames * beats + tailFrames);
     for (var index = 0; index < beats; index++) {
       _writeClick(
         track,
@@ -99,20 +99,18 @@ class CountInClicker {
         hz: index == 0 ? _downbeatHz : _beatHz,
       );
     }
-    _track = track;
-    _fed = (since.elapsedMicroseconds * _sampleRate ~/ 1000000).clamp(
+    final skip = (since.elapsedMicroseconds * _sampleRate ~/ 1000000).clamp(
       0,
       track.length,
     );
 
-    // The engine lives exactly as long as the count-in. Left running it has to
-    // be fed silence forever, and anything that interrupts that feeding leaves
-    // it to repeat whatever it last had, which sounds like a metronome that
-    // will not stop.
+    // Released once the tail has played out, by which point the engine has
+    // already stopped itself. Tearing it down while it is still sounding is
+    // what the last stray click was.
     _release?.cancel();
-    _release = Timer(beat * beats + const Duration(seconds: 1), _stop);
+    _release = Timer(beat * beats + _tail * 2, _stop);
 
-    unawaited(_feed());
+    await _feed(Int16List.sublistView(track, skip));
   }
 
   /// Stops and releases the engine.
@@ -122,7 +120,6 @@ class CountInClicker {
   }
 
   Future<void> _stop() async {
-    _track = null;
     _release = null;
     if (!_ready) return;
     _ready = false;
@@ -134,17 +131,8 @@ class CountInClicker {
     }
   }
 
-  Future<void> _feed() async {
+  Future<void> _feed(Int16List frames) async {
     if (!_ready) return;
-    final track = _track;
-    final Int16List frames;
-    if (track == null || _fed >= track.length) {
-      frames = Int16List(_feedFrames);
-    } else {
-      final end = math.min(_fed + _feedFrames, track.length);
-      frames = Int16List.sublistView(track, _fed, end);
-      _fed = end;
-    }
     try {
       await FlutterPcmSound.feed(
         PcmArrayInt16(bytes: ByteData.sublistView(frames)),
