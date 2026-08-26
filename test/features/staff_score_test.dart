@@ -42,18 +42,24 @@ void main() {
   });
 
   test('carries the realization spelling onto the staff', () {
-    final score = staffScoreFor(
-      realize(exerciseOf(tonic: 'G#', form: ScaleForm.harmonicMinor)),
-      Hand.right,
+    final realization = realize(
+      exerciseOf(tonic: 'G#', form: ScaleForm.harmonicMinor),
     );
+    final score = staffScoreFor(realization, Hand.right);
     final seventh = notesOf(score)[6].pitches.single;
+    final expected = realization.moments[6].notes.single;
 
+    expect(seventh.step, crisp.Step.f);
     expect(
-      seventh,
-      const crisp.Pitch(crisp.Step.f, alter: 2, octave: 5),
+      seventh.alter,
+      2,
       reason: 'the seventh degree is written F double-sharp, not G',
     );
-    expect(seventh.midiNumber, 79);
+    expect(
+      seventh.midiNumber,
+      expected.midiNote,
+      reason: 'the written pitch and the key played always agree',
+    );
   });
 
   test('writes an accidental wherever one is needed', () {

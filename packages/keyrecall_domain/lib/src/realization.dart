@@ -178,9 +178,8 @@ const int _middleC = 60;
 
 /// Where [hand]'s tonic sits for a traversal of [octaves] octaves.
 ///
-/// Middle C is the boundary both hands are placed against, but from opposite
-/// sides: the right hand starts at or above it, and the left hand *finishes*
-/// at or below it.
+/// Middle C is the boundary both hands are placed against, from opposite
+/// sides: the right hand begins near it, and the left hand *finishes* near it.
 ///
 /// The left hand is anchored by where it ends rather than where it begins
 /// because a fixed floor climbs. Anchored at the bottom, two octaves put the
@@ -188,12 +187,18 @@ const int _middleC = 60;
 /// ledger lines above the bass staff, which is neither how the scale is
 /// practiced nor how it is written.
 ///
+/// Near, not at or beyond. Insisting the boundary is never crossed drops a
+/// tonic a whole octave to avoid clearing it by a step: two octaves of D in
+/// the left hand would run from D1 rather than D2, to end two semitones lower.
+/// Rounding to the closer octave keeps every key within half an octave of the
+/// hand's home instead.
+///
 /// One consequence, for when hands-together work becomes real: at one octave
 /// the two hands come out the conventional octave apart, and at two they come
 /// out two octaves apart rather than the octave a pianist would expect.
 int _tonicFor(Hand hand, int pitchClass, int octaves) => switch (hand) {
-  Hand.right => _tonicAtOrAbove(_middleC, pitchClass),
-  Hand.left => _tonicAtOrBelow(_middleC - 12 * octaves, pitchClass),
+  Hand.right => _nearestTonic(_middleC, pitchClass),
+  Hand.left => _nearestTonic(_middleC - 12 * octaves, pitchClass),
 };
 
 /// The notes [exercise] asks for, in order.
@@ -255,8 +260,10 @@ ExerciseRealization realize(Exercise exercise) {
   ]);
 }
 
-int _tonicAtOrAbove(int floor, int pitchClass) =>
-    floor + (pitchClass - floor % 12 + 12) % 12;
-
-int _tonicAtOrBelow(int ceiling, int pitchClass) =>
-    ceiling - (ceiling % 12 - pitchClass + 12) % 12;
+/// The [pitchClass] octave closest to [target], preferring the lower one when
+/// the two are equally far.
+int _nearestTonic(int target, int pitchClass) {
+  final below = target - (target % 12 - pitchClass + 12) % 12;
+  final above = below + 12;
+  return (target - below) <= (above - target) ? below : above;
+}

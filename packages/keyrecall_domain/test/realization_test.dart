@@ -115,22 +115,36 @@ void main() {
 
     test('the left hand stays in its register however many octaves', () {
       for (final octaves in [1, 2]) {
-        for (final tonic in ['C', 'B', 'F']) {
+        for (final material in v1ScaleCatalog) {
           final left = realize(
-            exerciseOf(
-              tonic: tonic,
+            Exercise.linear(
+              material: material,
               hands: HandConfiguration.left,
               octaves: octaves,
             ),
           );
 
           expect(
-            left.highestPitch,
-            lessThanOrEqualTo(60),
-            reason: '$tonic over $octaves octaves climbs above middle C',
+            (left.highestPitch - 60).abs(),
+            lessThanOrEqualTo(6),
+            reason:
+                '${material.materialId} over $octaves octaves finishes half '
+                'an octave or more from middle C',
           );
         }
       }
+    });
+
+    test('neither hand is dropped an octave to avoid crossing middle C', () {
+      // Two octaves of D in the left hand ended two semitones below middle C
+      // by starting from D1, when starting from D2 and finishing two above is
+      // the same scale in the register a pianist would use.
+      final left = realize(
+        exerciseOf(tonic: 'D', hands: HandConfiguration.left, octaves: 2),
+      );
+
+      expect(left.lowestPitch, 38);
+      expect(left.highestPitch, 62);
     });
 
     test('both hands sound in the same moment, an octave apart', () {
