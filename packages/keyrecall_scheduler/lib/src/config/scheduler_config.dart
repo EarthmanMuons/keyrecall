@@ -174,6 +174,10 @@ class SchedulerConfig {
 /// The stage structure and information boundaries these values sit in are
 /// frozen for initial production; the numbers are starting points for
 /// calibration against real practice data.
+///
+/// The name still says prototype because the values came from one. A real
+/// revision of them is the moment to become `v1SchedulerConfig` with the
+/// lineage in a provenance field, rather than renaming for its own sake.
 const SchedulerConfig v1PrototypeSchedulerConfig = SchedulerConfig(
   modelVersion: 'v1-prototype-0',
   eligibility: EligibilityConfig(
