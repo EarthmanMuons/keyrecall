@@ -74,9 +74,20 @@ class PracticeLoopState {
 }
 
 /// Drives the practice loop: decide, present, collect, commit, decide again.
+/// The practice loop.
+///
+/// Retries are off. The default is to rebuild a failed provider on a backoff,
+/// which suits a flaky network and not this: opening a sitting fails for
+/// reasons a retry cannot change, such as a journal recorded under a learner
+/// model this build no longer runs. Retrying leaves the loop in a loading
+/// state that carries the last error, so it renders as failed but never
+/// settles, its future never completes, and an explicit rebuild races the next
+/// retry instead of replacing it. A failure here stays a failure until
+/// something is done about it.
 final practiceLoopProvider =
     AsyncNotifierProvider<PracticeLoopNotifier, PracticeLoopState>(
       PracticeLoopNotifier.new,
+      retry: (_, _) => null,
     );
 
 class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
@@ -259,14 +270,22 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// rewritten, and this is the one operation that admits someone wants none
   /// of it.
   Future<void> eraseHistory() async {
-    final current = state.value;
-    if (_writing || current == null) return;
+    if (_writing) return;
 
     _writing = true;
     state = const AsyncValue.loading();
     try {
+      // The profile is resolved here rather than taken from the loop state,
+      // because the usual reason to erase is that the loop would not load and
+      // there is no state to take it from: a journal recorded under a learner
+      // model this build no longer runs cannot be replayed, and this is the
+      // way out. Requiring a loaded loop made the button do nothing in the one
+      // situation it exists for.
+      final repository = await ref.read(profileRepositoryProvider.future);
       final store = await ref.read(practiceStoreProvider.future);
-      await store.erase(current.profile.id);
+      final profile =
+          state.value?.profile ?? await repository.selectedOrDefault();
+      await store.erase(profile.id);
     } finally {
       _writing = false;
     }

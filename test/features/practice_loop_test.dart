@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'package:keyrecall/features/practice/practice_providers.dart';
 import 'package:keyrecall/features/practice/reported_result.dart';
@@ -231,6 +232,43 @@ void main() {
       );
     }
     expect(cued.toOutcome(_unguidedExercise()).retrieval.isTested, isTrue);
+  });
+
+  test('erasing recovers a journal this build cannot replay', () async {
+    final before = launch();
+    final started = await loopOf(before);
+    await before
+        .read(practiceLoopProvider.notifier)
+        .report(ReportedResult.clean);
+
+    // The same history, recorded under the model that was live before the
+    // tempo attribution change.
+    final journal = File('${root.path}/${started.profile.id}/journal.jsonl');
+    journal.writeAsStringSync(
+      journal.readAsStringSync().replaceAll('v1-2', 'v1-prototype-2'),
+    );
+
+    final after = launch();
+    Object? refused;
+    try {
+      await loopOf(after);
+    } on Object catch (error) {
+      refused = error;
+    }
+    expect(
+      refused,
+      isA<JournalFormatException>(),
+      reason: 'replay must refuse a model it did not run',
+    );
+
+    await after
+        .read(practiceLoopProvider.notifier)
+        .eraseHistory()
+        .timeout(const Duration(seconds: 5));
+
+    final recovered = await loopOf(after);
+    expect(recovered.exercise, isNotNull);
+    expect(recovered.attemptsRecorded, 0);
   });
 }
 
