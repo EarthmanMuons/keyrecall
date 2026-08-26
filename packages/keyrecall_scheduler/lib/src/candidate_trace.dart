@@ -19,6 +19,42 @@ enum EligibilityTier {
   final String id;
 }
 
+/// Which prerequisite rule decided a candidate's eligibility.
+///
+/// Coded rather than only described, because the question these answer is
+/// where admission is too conservative, and that needs failures grouped rather
+/// than read. In particular, the fingering-family axis is approximated by the
+/// band prior today, so stalls clustering at a band that introduces a new hand
+/// pattern are the evidence that would justify measuring it directly.
+enum EligibilityReason {
+  /// No prerequisite relationship applies to this exercise.
+  noPrerequisite('NO_PREREQUISITE'),
+
+  /// Material every learner may practice from the start.
+  foundationMaterial('FOUNDATION_MATERIAL'),
+
+  /// The material's band is met by demonstrated single-hand execution.
+  bandExecutionMet('BAND_EXECUTION_MET'),
+
+  /// The material's band asks for more single-hand execution than the learner
+  /// has shown.
+  bandExecutionFloor('BAND_EXECUTION_FLOOR'),
+
+  /// A minor form asks for some familiarity with minor topology first.
+  minorTopologyPrerequisite('MINOR_TOPOLOGY_PREREQUISITE'),
+
+  /// Fixed-form melodic minor asks for another minor form first.
+  melodicFormPrerequisite('MELODIC_FORM_PREREQUISITE'),
+
+  /// Hands-together work asks for both hands first.
+  handsTogetherPrerequisite('HANDS_TOGETHER_PREREQUISITE');
+
+  const EligibilityReason(this.id);
+
+  /// Stable identifier used in traces.
+  final String id;
+}
+
 /// Whether the real pipeline reached a stage for a candidate.
 ///
 /// Every candidate carries a fully populated trace, because that traceability
@@ -75,19 +111,27 @@ class EligibilityDecision {
   /// Why, in human-readable form, for diagnostics.
   final String reason;
 
-  const EligibilityDecision(this.tier, this.reason);
+  /// Which rule decided it.
+  final EligibilityReason code;
+
+  const EligibilityDecision(
+    this.tier,
+    this.reason, {
+    this.code = EligibilityReason.noPrerequisite,
+  });
 
   @override
   bool operator ==(Object other) =>
       other is EligibilityDecision &&
       other.tier == tier &&
+      other.code == code &&
       other.reason == reason;
 
   @override
-  int get hashCode => Object.hash(tier, reason);
+  int get hashCode => Object.hash(tier, code, reason);
 
   @override
-  String toString() => 'EligibilityDecision(${tier.id}: $reason)';
+  String toString() => 'EligibilityDecision(${tier.id}, ${code.id}: $reason)';
 }
 
 /// The safety gate's verdict for this decision opportunity.

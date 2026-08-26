@@ -149,7 +149,8 @@ class PracticeSession {
   /// the journal must fall at or after it.
   ///
   /// Only exercises the observation model can read are presented, unless
-  /// [presentOnlyMeasurable] says otherwise; see [isMeasurable].
+  /// [presentOnlyMeasurable] says otherwise; see [isMeasurable]. [goal]
+  /// narrows the material under consideration, and defaults to all of it.
   static Future<PracticeSession> open({
     required PracticeStore store,
     required Profile profile,
@@ -158,6 +159,7 @@ class PracticeSession {
     SchedulerPipeline? pipeline,
     InstrumentProfile? instrument,
     PlacementTier placement = PlacementTier.someExperience,
+    PracticeGoal goal = PracticeGoal.generalFluency,
     String? sessionId,
     String? appBuildVersion,
     IdGenerator? nextId,
@@ -197,13 +199,14 @@ class PracticeSession {
       store: store,
       profile: profile,
       sessionId: sessionId ?? generator(),
-      // An exercise the observation model cannot read produces no evidence,
-      // so presenting one spends a slot and teaches nothing. Tests and
-      // simulations that want the whole space say so.
+      // Two filters, and they answer different questions. The goal says what
+      // the learner is working toward; measurability says what the app can
+      // observe. What they are ready for is the scheduler's REQUIRES gate,
+      // which ranks rather than excludes.
       candidates: [
         for (final exercise in generateCandidates(
           instrument ?? InstrumentProfile(),
-          materials,
+          goal.scopeOf(materials),
         ))
           if (!presentOnlyMeasurable || isMeasurable(exercise)) exercise,
       ],

@@ -7,6 +7,7 @@
 /// onto [Competency] values; nothing here reads or stores learner state.
 library;
 
+export 'src/admission_band.dart';
 export 'src/competency.dart';
 export 'src/exercise.dart';
 export 'src/execution_conditions.dart';
@@ -17,6 +18,7 @@ export 'src/motor_opportunity.dart';
 export 'src/performance_transcript.dart';
 export 'src/pitch_spelling.dart';
 export 'src/presentation_conditions.dart';
+export 'src/practice_goal.dart';
 export 'src/realization.dart';
 export 'src/scale_catalog.dart';
 export 'src/spelled_pitch.dart';

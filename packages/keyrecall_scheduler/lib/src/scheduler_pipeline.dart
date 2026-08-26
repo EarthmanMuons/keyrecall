@@ -30,32 +30,116 @@ class SchedulerPipeline {
 
   /// Stage 2a: the `REQUIRES` prerequisite gate.
   ///
-  /// Reads transferable competencies only. The one relationship V1 implements
-  /// is that both hands must be capable before hands-together work is fully
-  /// eligible; everything else is fully eligible by default.
+  /// Two questions, both about the learner rather than about the exercise:
+  /// whether both hands are capable before they play together, and whether
+  /// this material is appropriate to introduce yet.
+  ///
+  /// Material admission uses what the learner model actually observes:
+  /// per-hand execution, and topology competence per scale form. It cannot ask
+  /// whether a hand pattern is already established, because nothing measures
+  /// that, so the admission band stands in for it as a curriculum-derived
+  /// prior. Two materials in one band are treated identically even when one
+  /// introduces a new hand pattern and the other reuses a familiar one, and
+  /// that approximation is the reason `EligibilityReason` is coded: stalls
+  /// clustering at a band that introduces a new pattern are what would justify
+  /// measuring the motor axis directly.
+  ///
+  /// Provisional rather than forbidden, in every case. A provisional candidate
+  /// is outranked by anything fully eligible and is still reachable when
+  /// nothing else is, which is what stops a strict prior from leaving a
+  /// learner with nothing to play.
   EligibilityDecision eligibilityFor(LearnerState state, Exercise exercise) {
-    if (exercise.conditions.hands != HandConfiguration.together) {
-      return const EligibilityDecision(
+    final material = exercise.material;
+    final band = admissionBandOf(material);
+    final hands = exercise.conditions.hands;
+
+    if (hands == HandConfiguration.together) {
+      final threshold = config.eligibility.handTogetherCompetencyThreshold;
+      final rh = state.competency(Competency.rhScaleExecution).mean;
+      final lh = state.competency(Competency.lhScaleExecution).mean;
+      final means =
+          'RH/LH means (${rh.toStringAsFixed(2)}/${lh.toStringAsFixed(2)})';
+      if (rh < threshold || lh < threshold) {
+        return EligibilityDecision(
+          EligibilityTier.provisionallyEligible,
+          '$means below threshold (${threshold.toStringAsFixed(2)})',
+          code: EligibilityReason.handsTogetherPrerequisite,
+        );
+      }
+    }
+
+    // Natural minor asks for nothing: it is where minor topology comes from,
+    // and requiring familiarity to earn the only material that produces it
+    // would keep every minor scale outranked forever.
+    if (material.form == ScaleForm.harmonicMinor ||
+        material.form == ScaleForm.melodicMinor) {
+      final floor = config.eligibility.minorTopologyFloor;
+      final familiar = _bestMinorTopology(state, exclude: material.form);
+      if (familiar < floor) {
+        return EligibilityDecision(
+          EligibilityTier.provisionallyEligible,
+          'another minor form is at ${familiar.toStringAsFixed(2)}, '
+          'floor ${floor.toStringAsFixed(2)}',
+          code: material.form == ScaleForm.melodicMinor
+              // Fixed-form melodic minor is the least familiar of the three
+              // and waits for either of the others.
+              ? EligibilityReason.melodicFormPrerequisite
+              : EligibilityReason.minorTopologyPrerequisite,
+        );
+      }
+    }
+
+    if (band != AdmissionBand.foundation) {
+      final floor = config.eligibility.executionFloorFor(band);
+      final execution = _executionMeanFor(state, hands);
+      if (execution < floor) {
+        return EligibilityDecision(
+          EligibilityTier.provisionallyEligible,
+          '${band.id} asks for execution ${floor.toStringAsFixed(2)}, '
+          'learner is at ${execution.toStringAsFixed(2)}',
+          code: EligibilityReason.bandExecutionFloor,
+        );
+      }
+      return EligibilityDecision(
         EligibilityTier.fullyEligible,
-        'no REQUIRES relationship defined for this exercise',
+        '${band.id} met at execution ${execution.toStringAsFixed(2)}',
+        code: EligibilityReason.bandExecutionMet,
       );
     }
 
-    final threshold = config.eligibility.handTogetherCompetencyThreshold;
+    return const EligibilityDecision(
+      EligibilityTier.fullyEligible,
+      'foundation material, and no other prerequisite applies',
+      code: EligibilityReason.foundationMaterial,
+    );
+  }
+
+  /// The weaker hand's execution when both play, otherwise the playing hand's.
+  double _executionMeanFor(LearnerState state, HandConfiguration hands) {
     final rh = state.competency(Competency.rhScaleExecution).mean;
     final lh = state.competency(Competency.lhScaleExecution).mean;
-    final means =
-        'RH/LH means (${rh.toStringAsFixed(2)}/${lh.toStringAsFixed(2)})';
-    if (rh >= threshold && lh >= threshold) {
-      return EligibilityDecision(
-        EligibilityTier.fullyEligible,
-        '$means meet threshold (${threshold.toStringAsFixed(2)})',
-      );
+    return switch (hands) {
+      HandConfiguration.right => rh,
+      HandConfiguration.left => lh,
+      HandConfiguration.together => rh < lh ? rh : lh,
+    };
+  }
+
+  /// The best minor topology the learner has, ignoring [exclude].
+  ///
+  /// Ignoring the form being admitted is what makes this a transfer rule
+  /// rather than a self-referential one: A harmonic minor is admitted on the
+  /// strength of A natural minor, not of itself. Note that it is any minor
+  /// topology rather than the same tonic's, since the curricula give no
+  /// support for a per-key ladder either.
+  double _bestMinorTopology(LearnerState state, {required ScaleForm exclude}) {
+    var best = double.negativeInfinity;
+    for (final form in ScaleForm.values) {
+      if (form == ScaleForm.major || form == exclude) continue;
+      final mean = state.competency(form.topologyCompetency).mean;
+      if (mean > best) best = mean;
     }
-    return EligibilityDecision(
-      EligibilityTier.provisionallyEligible,
-      '$means below threshold (${threshold.toStringAsFixed(2)})',
-    );
+    return best;
   }
 
   /// Stage 2b: the workload gate.

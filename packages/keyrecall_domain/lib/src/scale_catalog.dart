@@ -63,37 +63,3 @@ final List<TechnicalMaterial> v1ScaleCatalog = List.unmodifiable([
   TechnicalMaterial('F#', ScaleForm.harmonicMinor),
   TechnicalMaterial('E', ScaleForm.melodicMinor),
 ]);
-
-/// The scales V1 offers a learner.
-///
-/// Deliberately smaller than [allScales], and for a pedagogical reason rather
-/// than a technical one: these cover the conventional right-hand family, F
-/// major's thumb exception, the left-hand variants, the natural-minor
-/// relationships, and the harmonic minor's raised seventh, without asking
-/// somebody still building basic fluency to learn the black-key entry patterns
-/// at the same time.
-///
-/// Fixed-form melodic minor is held back for now: it is the least familiar of
-/// the four forms and adds nothing to that progression yet.
-///
-/// A stopgap, and the wrong long-term shape. Which material a learner is ready
-/// for belongs in the scheduler's `REQUIRES` gate, alongside the rule that
-/// hands-together work needs both hands first, so that the offered set can be
-/// everything the system supports and admission can be a judgment about the
-/// learner rather than a constant. Order is stable so a trace stays readable.
-final List<TechnicalMaterial> offeredScales = List.unmodifiable([
-  TechnicalMaterial('C', ScaleForm.major),
-  TechnicalMaterial('G', ScaleForm.major),
-  TechnicalMaterial('D', ScaleForm.major),
-  TechnicalMaterial('F', ScaleForm.major),
-  TechnicalMaterial('A', ScaleForm.major),
-  TechnicalMaterial('E', ScaleForm.major),
-  TechnicalMaterial('Bb', ScaleForm.major),
-  TechnicalMaterial('A', ScaleForm.naturalMinor),
-  TechnicalMaterial('E', ScaleForm.naturalMinor),
-  TechnicalMaterial('D', ScaleForm.naturalMinor),
-  TechnicalMaterial('C', ScaleForm.naturalMinor),
-  TechnicalMaterial('A', ScaleForm.harmonicMinor),
-  TechnicalMaterial('E', ScaleForm.harmonicMinor),
-  TechnicalMaterial('D', ScaleForm.harmonicMinor),
-]);

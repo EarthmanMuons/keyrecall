@@ -1,11 +1,31 @@
 # Material admission
 
-- **Status:** Design only. The scheduler's `REQUIRES` gate implements one rule
-  today, and it is not this one.
+- **Status:** Implemented, as the first policy described under "what to build
+  first". The fingering-family axis is still approximated by the band prior.
 - **Written:** August 26, 2026
 
-`offeredScales` is a hand-authored list that exists because nothing can yet
-answer whether a learner is ready for a scale. This is what would replace it.
+This answers **what may be introduced now**, which is one of three questions
+that are easy to confuse:
+
+```text
+allScales
+   |
+   +-- goal scope        what is the learner trying to learn?
+   |
+   +-- REQUIRES          what is appropriate to introduce now?
+   |
+   +-- scheduler         what should they practice next?
+```
+
+The middle one is this document. A goal is a destination and narrows the
+material under consideration; choosing a syllabus should not make every scale on
+it admissible at once, and material a syllabus omits may still be worth
+practising if it prepares for something the syllabus requires. `PracticeGoal`
+holds that seam open with one value, general fluency over the whole catalog.
+Ranking among what is admissible and in scope is the scheduler's ordinary
+machinery.
+
+`offeredScales` was a hand-authored list standing in for all three. It is gone.
 
 ## What the published curricula do and do not settle
 

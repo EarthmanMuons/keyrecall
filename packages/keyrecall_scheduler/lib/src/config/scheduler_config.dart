@@ -1,3 +1,4 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
 /// Thresholds for the `REQUIRES` prerequisite gate.
@@ -7,7 +8,38 @@ class EligibilityConfig {
   /// fully eligible rather than provisionally eligible.
   final double handTogetherCompetencyThreshold;
 
-  const EligibilityConfig({required this.handTogetherCompetencyThreshold});
+  /// Single-hand execution each admission band asks for, in the logit scale
+  /// competency means use, where placement puts a self-reported beginner at
+  /// -1 and someone with some experience at 0.
+  ///
+  /// A prior rather than a measurement, and the place to revise it. The bands
+  /// stand in for the fingering-family axis, which no competency measures, so
+  /// these floors are how a learner earns material whose hand pattern may be
+  /// new to them.
+  final double earlyTransferExecutionFloor;
+  final double intermediateExecutionFloor;
+  final double advancedExecutionFloor;
+
+  /// Familiarity with some minor topology before a minor form is fully
+  /// eligible, and with a different minor form before fixed-form melodic
+  /// minor is.
+  final double minorTopologyFloor;
+
+  const EligibilityConfig({
+    required this.handTogetherCompetencyThreshold,
+    required this.earlyTransferExecutionFloor,
+    required this.intermediateExecutionFloor,
+    required this.advancedExecutionFloor,
+    required this.minorTopologyFloor,
+  });
+
+  /// The execution floor [band] asks for.
+  double executionFloorFor(AdmissionBand band) => switch (band) {
+    AdmissionBand.foundation => double.negativeInfinity,
+    AdmissionBand.earlyTransfer => earlyTransferExecutionFloor,
+    AdmissionBand.intermediateKeyboard => intermediateExecutionFloor,
+    AdmissionBand.advancedKeyboard => advancedExecutionFloor,
+  };
 }
 
 /// Limits on how much work one session may present.
@@ -141,7 +173,13 @@ class SchedulerConfig {
 /// points for calibration against real practice data.
 const SchedulerConfig v1PrototypeSchedulerConfig = SchedulerConfig(
   modelVersion: 'v1-prototype-0',
-  eligibility: EligibilityConfig(handTogetherCompetencyThreshold: 0.0),
+  eligibility: EligibilityConfig(
+    handTogetherCompetencyThreshold: 0.0,
+    earlyTransferExecutionFloor: 0.0,
+    intermediateExecutionFloor: 0.4,
+    advancedExecutionFloor: 0.8,
+    minorTopologyFloor: 0.0,
+  ),
   safety: SafetyConfig(maxSessionAttempts: 40),
   challenge: ChallengeConfig(pMin: 0.60, pMax: 0.90, pIntroductionMin: 0.15),
   diversity: DiversityConfig(

@@ -13,6 +13,16 @@ model_version = "v1-prototype-0"
 # FULLY_ELIGIBLE rather than PROVISIONALLY_ELIGIBLE.
 hand_together_competency_threshold = 0.0
 
+# Single-hand execution each admission band asks for, on the logit scale
+# competency means use. A curriculum-derived prior, not a measurement; the
+# bands stand in for a fingering-family axis no competency measures. The
+# reference pipeline does not implement material admission, so these are
+# consumed by the Dart scheduler only.
+early_transfer_execution_floor = 0.0
+intermediate_execution_floor = 0.4
+advanced_execution_floor = 0.8
+minor_topology_floor = 0.0
+
 [safety]
 # SchedulerSafetyPolicy: a session-length cap, nothing about fatigue/
 # injury inference (04-v1-scheduler.md §5.2, §9).

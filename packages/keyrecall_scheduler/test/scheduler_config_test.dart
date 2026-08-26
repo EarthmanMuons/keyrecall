@@ -21,6 +21,22 @@ void main() {
         registry['eligibility']!['hand_together_competency_threshold'],
       );
       expect(
+        config.eligibility.earlyTransferExecutionFloor,
+        registry['eligibility']!['early_transfer_execution_floor'],
+      );
+      expect(
+        config.eligibility.intermediateExecutionFloor,
+        registry['eligibility']!['intermediate_execution_floor'],
+      );
+      expect(
+        config.eligibility.advancedExecutionFloor,
+        registry['eligibility']!['advanced_execution_floor'],
+      );
+      expect(
+        config.eligibility.minorTopologyFloor,
+        registry['eligibility']!['minor_topology_floor'],
+      );
+      expect(
         config.safety.maxSessionAttempts,
         registry['safety']!['max_session_attempts'],
       );
