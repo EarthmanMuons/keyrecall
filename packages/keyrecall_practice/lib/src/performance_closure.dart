@@ -56,13 +56,27 @@ bool isMeasurable(Exercise exercise) => realize(exercise).hands.length == 1;
 /// Counting arrivals instead would end a corrected attempt one note early,
 /// cutting off the end of the traversal to pay for an extra note in the
 /// middle.
+///
+/// Reaching the final position is necessary and not sufficient. The aligner
+/// looks for the cheapest explanation of what arrived, and for a scale that
+/// ends on a note it does not start on, the cheapest explanation of a single
+/// played note can be "this is the last one, and everything before it was
+/// missed" -- which is true, costs less than any alternative, and is not
+/// somebody finishing. So the traversal must also have been played through:
+/// at least as many notes as it has positions, however wrong they were.
+///
+/// Still progress rather than correctness. Nothing here reads whether a note
+/// was right, and a learner who genuinely leaves notes out finishes with Done,
+/// which is always there.
 bool hasCoveredTraversal({
   required Exercise exercise,
   required PerformanceTranscript transcript,
 }) {
-  if (!isMeasurable(exercise) || transcript.isEmpty) return false;
+  if (!isMeasurable(exercise)) return false;
+  final realization = realize(exercise);
+  if (transcript.length < realization.moments.length) return false;
   return AlignmentReading(
-    align(realization: realize(exercise), transcript: transcript),
+    align(realization: realization, transcript: transcript),
   ).reachedFinalPosition;
 }
 
