@@ -8,11 +8,17 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// space or riding along with a guidance change and making an attempt's
 /// evidence unattributable.
 ///
-/// V1 is deliberately uniform: a keyboard cue or none, always a neutral echo,
-/// always a count-in and no more. Only the pitch cue varies with the rung, so
-/// a rung change still moves one variable; fingering varies with the material
-/// rather than with the rung, since it is shown wherever the catalog has one
-/// that is not a guess.
+/// V1 is deliberately uniform: a cue on both the keyboard and the staff or no
+/// cue at all, always a neutral echo, always a count-in and no more. Only the
+/// pitch cue varies with the rung, so a rung change still moves one variable;
+/// fingering varies with the material rather than with the rung, since it is
+/// shown wherever the catalog has one that is not a guess.
+///
+/// A supplied cue is written in both modalities because they answer different
+/// questions: the keyboard says which key, the staff says which note. Only the
+/// staff carries the notation a learner will meet anywhere else, and only the
+/// keyboard can name a finger. The unguided rung shows neither, which is the
+/// whole of what that rung means.
 PresentationConditions presentationFor(
   GuidanceContext guidance, {
   Exercise? exercise,
@@ -26,7 +32,7 @@ PresentationConditions presentationFor(
       fingeringFor(exercise, realize(exercise).hands.first) != null;
   final presentation = PresentationConditions(
     pitchCue: supplied ? PitchCue.full : PitchCue.none,
-    cueModality: supplied ? CueModality.keyboard : null,
+    cueModality: supplied ? CueModality.keyboardAndStaff : null,
     motorCue: fingered ? MotorCue.fingering : MotorCue.none,
     performanceFeedback: PerformanceFeedback.neutralEcho,
     tempoSupport: TempoSupport.countInOnly,

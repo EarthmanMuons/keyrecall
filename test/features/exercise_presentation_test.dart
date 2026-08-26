@@ -116,7 +116,7 @@ void main() {
         );
         expect(
           presentation.cueModality,
-          guidance.isMaterialSupplied ? CueModality.keyboard : isNull,
+          guidance.isMaterialSupplied ? CueModality.keyboardAndStaff : isNull,
         );
       }
     });

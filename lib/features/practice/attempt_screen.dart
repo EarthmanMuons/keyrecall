@@ -233,7 +233,10 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
               _TaskStatement(exercise),
               const SizedBox(height: 24),
               if (showsCue && cueOnStaff(presentation.cueModality)) ...[
-                StaffCue(exercise: exercise),
+                StaffCue(
+                  exercise: exercise,
+                  showsFingering: presentation.motorCue == MotorCue.fingering,
+                ),
                 const SizedBox(height: 24),
               ],
               if (staffCarriesTranscript) ...[

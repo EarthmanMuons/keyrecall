@@ -23,10 +23,20 @@ Future<void> warmStaffRendering() =>
     crisp.MusicFonts.load(crisp.MusicFont.bravura);
 
 class StaffCue extends StatelessWidget {
-  const StaffCue({required this.exercise, super.key});
+  const StaffCue({
+    required this.exercise,
+    this.showsFingering = false,
+    super.key,
+  });
 
   /// The exercise whose realization is drawn.
   final Exercise exercise;
+
+  /// Whether the fingering is written over the notes.
+  ///
+  /// The motor cue is its own channel, so the staff carries it only when that
+  /// channel is open rather than whenever the catalog happens to have one.
+  final bool showsFingering;
 
   /// Pixels per staff space. Small enough that two octaves hands together fit
   /// a phone in a few systems, large enough to read.
@@ -59,7 +69,9 @@ class StaffCue extends StatelessWidget {
       score: staffScoreFor(
         realization,
         realization.hands.single,
-        fingering: fingeringFor(exercise, realization.hands.single),
+        fingering: showsFingering
+            ? fingeringFor(exercise, realization.hands.single)
+            : null,
       ),
       theme: theme,
       staffSpace: staffSpace,
