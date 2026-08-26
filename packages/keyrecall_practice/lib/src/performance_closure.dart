@@ -49,35 +49,47 @@ bool isMeasurable(Exercise exercise) => realize(exercise).hands.length == 1;
 /// Whether a performance of [exercise] has covered the whole traversal.
 ///
 /// What a screen asks to know whether the attempt is over. Interaction state
-/// rather than evaluation: it says the learner has reached the end of what was
-/// asked for, not whether they were right, because a substituted note covers
-/// its position exactly as a correct one does.
+/// rather than evaluation: it says the learner has been through what was asked
+/// for, not whether they were right, because a substituted note covers its
+/// position exactly as a correct one does.
 ///
-/// Counting arrivals instead would end a corrected attempt one note early,
-/// cutting off the end of the traversal to pay for an extra note in the
-/// middle.
+/// The criterion is [AlignmentReading.isComplete]: every expected position was
+/// accounted for by something that arrived. Reaching the final position is not
+/// enough on its own, and asking the aligner alone to answer a lifecycle
+/// question was the mistake. It looks for the cheapest explanation of what
+/// arrived, and for a scale ending on a note it does not start on, the
+/// cheapest explanation of one played note can be "this was the last one, and
+/// everything before it was missed" -- true, cheaper than any alternative, and
+/// not somebody finishing.
 ///
-/// Reaching the final position is necessary and not sufficient. The aligner
-/// looks for the cheapest explanation of what arrived, and for a scale that
-/// ends on a note it does not start on, the cheapest explanation of a single
-/// played note can be "this is the last one, and everything before it was
-/// missed" -- which is true, costs less than any alternative, and is not
-/// somebody finishing. So the traversal must also have been played through:
-/// at least as many notes as it has positions, however wrong they were.
+/// A traversal's worth of wrong notes does end the attempt, and that is a
+/// decision rather than an oversight. Under the alignment policy a
+/// substitution costs less than dropping one note and adding another, so any
+/// transcript that long accounts for every position whatever it contains: at
+/// that point "played it badly" and "played something else" differ only in
+/// whether the notes were right, which is correctness, which no rung permits
+/// reading, and which would turn the app's silence into a verdict.
 ///
-/// Still progress rather than correctness. Nothing here reads whether a note
-/// was right, and a learner who genuinely leaves notes out finishes with Done,
-/// which is always there.
+/// So this separates progress from correctness exactly as far as it can, and
+/// the guarantee it makes is the one that matters: an attempt that has not
+/// been through the exercise does not end on its own, however cheaply the
+/// aligner can explain what arrived as having arrived at the end.
+///
+/// A learner who genuinely leaves notes out finishes with Done, which is
+/// always there.
 bool hasCoveredTraversal({
   required Exercise exercise,
   required PerformanceTranscript transcript,
 }) {
   if (!isMeasurable(exercise)) return false;
   final realization = realize(exercise);
+  // Every position needs its own observation, so anything shorter cannot be
+  // complete. Checked first because this runs on every note that arrives and
+  // alignment is quadratic.
   if (transcript.length < realization.moments.length) return false;
   return AlignmentReading(
     align(realization: realization, transcript: transcript),
-  ).reachedFinalPosition;
+  ).isComplete;
 }
 
 /// Reads [transcript] as a performance of [exercise].

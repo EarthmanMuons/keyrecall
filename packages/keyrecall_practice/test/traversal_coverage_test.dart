@@ -71,6 +71,83 @@ void main() {
     }
   });
 
+  group('where progress stops being separable from correctness', () {
+    // A traversal's worth of notes always accounts for every position, because
+    // substituting costs less than dropping one note and adding another. So
+    // once that many notes have arrived, no criterion can tell "played it
+    // badly" from "played something else" without reading whether the notes
+    // were right, which no rung permits. These tests pin that boundary rather
+    // than pretend it is elsewhere.
+
+    test('a traversal-length run of one repeated note ends it', () {
+      final exercise = exerciseOf();
+      final expected = expectedOf(exercise);
+
+      expect(
+        hasCoveredTraversal(
+          exercise: exercise,
+          transcript: played(
+            exercise,
+            List.filled(expected.length, expected.last),
+          ),
+        ),
+        isTrue,
+        reason:
+            'every position is accounted for and the learner has stopped '
+            'playing; refusing here would be a verdict on the notes',
+      );
+    });
+
+    test('a traversal-length run of unrelated notes ends it', () {
+      final exercise = exerciseOf();
+      final expected = expectedOf(exercise);
+
+      expect(
+        hasCoveredTraversal(
+          exercise: exercise,
+          transcript: played(exercise, [
+            for (var i = 0; i < expected.length; i++)
+              expected.first - 24 + (i % 5),
+          ]),
+        ),
+        isTrue,
+      );
+    });
+
+    test('nothing shorter ends it, whatever was played', () {
+      // The guarantee that does hold, and the one the bug broke. Every
+      // transcript shorter than the traversal, over every direction and octave
+      // count, including the ones that reach the final position.
+      for (final direction in ScaleDirection.values) {
+        for (final octaves in [1, 2]) {
+          final exercise = exerciseOf(direction: direction, octaves: octaves);
+          final expected = expectedOf(exercise);
+
+          for (var length = 0; length < expected.length; length++) {
+            for (final notes in [
+              // The end of the traversal, which is what the aligner will
+              // happily explain as having arrived at the end.
+              expected.sublist(expected.length - length),
+              expected.sublist(0, length),
+              List.filled(length, expected.last),
+            ]) {
+              expect(
+                hasCoveredTraversal(
+                  exercise: exercise,
+                  transcript: played(exercise, notes),
+                ),
+                isFalse,
+                reason:
+                    '$length of ${expected.length} notes ended '
+                    '${direction.id} x$octaves',
+              );
+            }
+          }
+        }
+      }
+    });
+  });
+
   test('stopping short does not end it', () {
     final exercise = exerciseOf();
     final expected = expectedOf(exercise);
