@@ -154,6 +154,13 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   @override
   void initState() {
     super.initState();
+    // The previous attempt's notes are still in the transcript, because
+    // closing an attempt reads them after recording stops. They are not this
+    // attempt's, and this screen can be asked about them before it has
+    // recorded anything of its own.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(attemptTranscriptProvider.notifier).discard();
+    });
     // Warmed up while the learner reads the screen, so neither the first beat
     // nor the first drawn note is waiting on something to load.
     unawaited(ref.read(countInClickerProvider).prepare());

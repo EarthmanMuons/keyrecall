@@ -402,4 +402,50 @@ void main() {
       reason: 'nobody is asked how it went once the app can read it',
     );
   });
+
+  testWidgets('a new attempt does not inherit the last one\'s notes', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+
+    Future<void> mount(Key key) => tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: AttemptView(
+              key: key,
+              exercise: exerciseUnder(GuidanceContext.unguided),
+              onFinish: () async {},
+              onDecline: () async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await mount(const ValueKey('first'));
+    await readyAndCountIn(tester);
+    container.read(demoInputProvider.notifier).playSequence(const [60, 62, 64]);
+    await tester.pump(const Duration(seconds: 3));
+    expect(container.read(attemptTranscriptProvider).length, 3);
+
+    // Closing an attempt reads the transcript after recording has stopped, so
+    // those notes are still here when the next attempt is put on screen.
+    await mount(const ValueKey('second'));
+    await tester.pump();
+
+    expect(
+      container.read(attemptTranscriptProvider).length,
+      0,
+      reason:
+          'those notes belong to the attempt that recorded them, and this '
+          'screen can be asked about its own before it has played any',
+    );
+  });
 }

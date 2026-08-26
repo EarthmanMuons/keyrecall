@@ -57,7 +57,21 @@ class AttemptTranscriptNotifier extends Notifier<PerformanceTranscript> {
   }
 
   /// Stops recording, keeping what was played.
+  ///
+  /// What was played outlives the attempt on purpose: closing it reads the
+  /// transcript after recording has stopped. It belongs to that attempt and
+  /// nothing else, which is what [discard] is for.
   void stop() => _material = null;
+
+  /// Forgets the last attempt's transcript.
+  ///
+  /// Between attempts there is a window where recording has stopped but the
+  /// notes are still here, and anything that reads them in that window is
+  /// reading the wrong attempt.
+  void discard() {
+    _material = null;
+    state = PerformanceTranscript.empty;
+  }
 
   void _record(InputTemporalEvent event) {
     final material = _material;
