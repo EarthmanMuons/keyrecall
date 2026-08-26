@@ -188,4 +188,73 @@ void main() {
     expect(reopened.pending, isNull);
     expect(learnerStateHash(reopened.state), expected);
   });
+
+  group('declining before a note is played', () {
+    /// Presents until a single-hand exercise at a rung that tests retrieval.
+    Future<PresentedAttempt> presentTested(PracticeSession session) =>
+        presentUntil(
+          session,
+          (exercise) =>
+              oneHand(exercise) && exercise.guidance.isRetrievalObserved,
+        );
+
+    test('records a retrieval failure with no execution beside it', () async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store);
+      await presentTested(session);
+
+      final record = await session.closeDeclined();
+
+      expect(record.closure.termination, AttemptTermination.learnerDeclined);
+      final measurement = record.closure.measurement as Measured;
+      expect(measurement.outcome.retrieval, FactualRetrieval.failed);
+      expect(measurement.outcome.started, isFalse);
+      expect(
+        measurement.weights.materialExecution,
+        0.0,
+        reason: 'nothing was played, so nothing was shown about execution',
+      );
+      expect(measurement.weights.materialMemory, greaterThan(0.0));
+      expect(
+        measurement.weights.competencies.values,
+        everyElement(0.0),
+        reason: 'a competency is about execution, and there was none',
+      );
+    });
+
+    test('offers the same exercise one rung more supportive', () async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store);
+      final presented = await presentTested(session);
+      final declined = presented.exercise;
+
+      await session.closeDeclined();
+      final next = await session.decide(at: t0.plusDays(3));
+
+      expect(next, isNotNull);
+      final recovery = next!.exercise;
+      expect(recovery.material, declined.material);
+      expect(recovery.conditions, declined.conditions);
+      expect(
+        recovery.guidance,
+        declined.guidance.oneStepMoreSupportive,
+        reason:
+            'exactly one rung, so the memory problem is the only thing '
+            'that moved',
+      );
+    });
+
+    test('is refused at a rung that supplies the material anyway', () async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store);
+      final presented = await presentUntil(
+        session,
+        (exercise) =>
+            oneHand(exercise) && !exercise.guidance.isRetrievalObserved,
+      );
+      expect(presented.exercise.guidance.isMaterialSupplied, isTrue);
+
+      expect(session.closeDeclined, throwsA(isA<PracticeStateError>()));
+    });
+  });
 }

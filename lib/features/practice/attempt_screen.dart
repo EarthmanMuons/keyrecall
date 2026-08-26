@@ -49,6 +49,7 @@ class AttemptScreen extends ConsumerWidget {
           ),
           exercise: value.exercise!,
           onFinish: ref.read(practiceLoopProvider.notifier).finish,
+          onDecline: ref.read(practiceLoopProvider.notifier).decline,
         ),
         AsyncData() => const _NothingToPlay(),
         AsyncError(:final error) => Center(child: Text('$error')),
@@ -85,6 +86,7 @@ class AttemptView extends ConsumerStatefulWidget {
   const AttemptView({
     required this.exercise,
     required this.onFinish,
+    this.onDecline,
     this.presentation,
     super.key,
   });
@@ -94,6 +96,11 @@ class AttemptView extends ConsumerStatefulWidget {
 
   /// Commits what was played and moves on.
   final Future<void> Function() onFinish;
+
+  /// Records that the material could not be retrieved, and moves on.
+  ///
+  /// Absent where there is no loop to record it, which is the debug case list.
+  final Future<void> Function()? onDecline;
 
   /// What to present it under, when something other than practice policy is
   /// choosing. Only the debug case list passes this, to compare one exercise
@@ -174,6 +181,14 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         }
       });
     });
+  }
+
+  Future<void> _decline() async {
+    if (_finishing) return;
+    _finishing = true;
+    ref.read(attemptTranscriptProvider.notifier).stop();
+    setState(() => _phase = _Phase.finishing);
+    await widget.onDecline!();
   }
 
   Future<void> _finish() async {
@@ -267,20 +282,35 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   }
 
   Widget _control() => switch (_phase) {
-    _Phase.ready => Center(
-      // Large on purpose: the learner is getting their hands back to the keys,
-      // and should not have to aim.
-      child: SizedBox(
-        width: double.infinity,
-        height: 88,
-        child: FilledButton(
-          onPressed: _start,
-          style: FilledButton.styleFrom(
-            textStyle: Theme.of(context).textTheme.headlineSmall,
+    _Phase.ready => Column(
+      children: [
+        // Large on purpose: the learner is getting their hands back to the
+        // keys, and should not have to aim.
+        SizedBox(
+          width: double.infinity,
+          height: 88,
+          child: FilledButton(
+            onPressed: _start,
+            style: FilledButton.styleFrom(
+              textStyle: Theme.of(context).textTheme.headlineSmall,
+            ),
+            child: const Text('Ready'),
           ),
-          child: const Text('Ready'),
         ),
-      ),
+        // Only where retrieval is what the attempt would test, and only before
+        // anything is played: afterwards, what happened is a question for the
+        // performance rather than for the learner. Quiet beside Ready, because
+        // it is the answer to a question the rung asked, not an escape from
+        // the exercise.
+        if (widget.onDecline != null &&
+            widget.exercise.guidance.isRetrievalObserved) ...[
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: _decline,
+            child: const Text("I don't remember"),
+          ),
+        ],
+      ],
     ),
     _Phase.countIn => const SizedBox.shrink(),
     _Phase.playing => Center(

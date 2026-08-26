@@ -12,7 +12,8 @@ two of the three ways it can end need no notion of correctness at all.
 ```text
 Attempt termination
 ├── learner initiated
-│   └── Done / abandon
+│   ├── Done / abandon
+│   └── declined: "I don't remember", before playing
 ├── observation based, non-evaluative
 │   ├── prolonged silence
 │   └── excessive elapsed duration
@@ -32,6 +33,26 @@ predicting that the learner cannot finish are all judgments, and acting on one
 by ending the attempt delivers that judgment through the loudest channel there
 is. Under any other feedback condition it is a leak, which
 [`alignment-contract.md`](alignment-contract.md) states as a prohibition.
+
+## Declining is evidence, not an escape hatch
+
+"I don't remember" is a retrieval failure the learner is in a position to
+report, and the learner model already has exactly that state: an outcome that
+never started, with a failed retrieval, carries memory evidence at the rung's
+weight, no execution evidence at all, and opens a recovery context that offers
+the same exercise one rung more supportive. Before this existed the only way to
+say it was to play something wrong, which manufactures execution evidence for a
+performance that never happened.
+
+Two boundaries hold it in place. It is offered only at a rung that tests
+retrieval, since there is nothing to fail to retrieve when the material is on
+screen. And it is offered only before anything has been played: once notes
+attributable to the attempt have arrived, what happened is a question for
+measurement rather than for the learner, and `closeDeclined` refuses.
+
+It is deliberately not a skip. A skip writes no learner evidence at all and is
+an operational action about the session rather than a poor outcome; nothing has
+demonstrated a need for one yet, so there is none.
 
 ## Prompt rather than seize
 

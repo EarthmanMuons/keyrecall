@@ -115,6 +115,36 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     return _decide(PracticeLoopState(profile: profile, session: session));
   }
 
+  /// Records that the learner could not retrieve the material, and moves on.
+  ///
+  /// Not a skip: it commits a real retrieval failure, which is what opens the
+  /// recovery context that offers the same exercise with the material shown.
+  ///
+  /// Single-flight for the same reason [finish] is.
+  Future<void> decline() async {
+    final current = state.value;
+    if (_writing || current == null || !current.isAwaitingAnswer) return;
+
+    _writing = true;
+    state = const AsyncValue.loading();
+    try {
+      state = await AsyncValue.guard(() async {
+        final record = await current.session.closeDeclined(
+          observedWallTime: DateTime.now().toUtc(),
+        );
+        return _decide(
+          PracticeLoopState(
+            profile: current.profile,
+            session: current.session,
+            lastCommitted: record,
+          ),
+        );
+      });
+    } finally {
+      _writing = false;
+    }
+  }
+
   /// Commits what was played and moves to the next exercise.
   ///
   /// The production path: what arrived on the wire becomes the evidence,

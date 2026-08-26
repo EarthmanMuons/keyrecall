@@ -374,6 +374,48 @@ class PracticeSession {
     };
   }
 
+  /// Ends the outstanding attempt with the learner reporting that they could
+  /// not retrieve the material.
+  ///
+  /// A retrieval failure with no execution beside it, which is a state the
+  /// learner model already carries: memory evidence at full weight for the
+  /// rung, no execution evidence at all, and a recovery context that offers
+  /// the same exercise one rung more supportive. Without this the only way to
+  /// say it was to play something wrong, which manufactures execution evidence
+  /// that never happened.
+  ///
+  /// The claim is about retrieval, so it is only available at a rung that
+  /// tests retrieval. Nothing may have been played: an attempt with notes in
+  /// it is a question for measurement.
+  ///
+  /// Throws [PracticeStateError] when no attempt is outstanding, or when the
+  /// outstanding attempt is at a rung that supplies the material anyway.
+  Future<AttemptRecord> closeDeclined({DateTime? observedWallTime}) {
+    final outstanding = _outstanding ?? _pendingAsOutstanding();
+    final guidance = outstanding.decision.exercise.guidance;
+    if (!guidance.isRetrievalObserved) {
+      throw PracticeStateError(
+        'nothing to fail to retrieve: this rung supplies the material',
+      );
+    }
+
+    return _close(
+      termination: AttemptTermination.learnerDeclined,
+      outcome: Outcome(
+        started: false,
+        retrieval: FactualRetrieval.failed,
+        completed: false,
+        materialRetrieval: 0.0,
+        pitchIntegrity: 0.0,
+        continuity: 0.0,
+        temporalStability: 0.0,
+        achievedTempoRatio: 0.0,
+        topologyAccuracy: 0.0,
+      ),
+      observedWallTime: observedWallTime,
+    );
+  }
+
   /// Ends the outstanding attempt with nothing measured.
   ///
   /// The honest close for an attempt that ended without anyone establishing how

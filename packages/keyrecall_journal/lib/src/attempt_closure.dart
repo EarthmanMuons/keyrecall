@@ -19,6 +19,15 @@ enum AttemptTermination {
   /// The attempt ran past the time allowed for it.
   durationLimit('DURATION_LIMIT'),
 
+  /// The learner said they could not retrieve the material, before playing.
+  ///
+  /// Evidence, not an escape hatch: it is a retrieval failure the learner is
+  /// in a position to report, and it says nothing about execution because
+  /// there was none. Only available while nothing has been played, since after
+  /// that what happened is a question for the performance rather than for the
+  /// learner.
+  learnerDeclined('LEARNER_DECLINED'),
+
   /// The app stopped it because of how it was going. Only legitimate where the
   /// attempt's presentation already permits evaluative feedback.
   evaluativeCutoff('EVALUATIVE_CUTOFF');
@@ -82,6 +91,10 @@ sealed class MeasurementResult {
 }
 
 /// A performance was measured, with everything derived from it.
+///
+/// Or, for [AttemptTermination.learnerDeclined], established without one: the
+/// learner reporting that they could not retrieve the material is an outcome
+/// in its own right, and it carries the same evidence a measured attempt does.
 @immutable
 final class Measured extends MeasurementResult {
   /// What was observed.
