@@ -111,6 +111,9 @@ enum ChallengeBypass {
   /// The same task at a tempo the learner just played it at unasked.
   tempoProbe('tempo_probe'),
 
+  /// A retrieval test for material that support has made invisible.
+  observationProbe('observation_probe'),
+
   /// An explicit caller instruction, for diagnostics or a learner request.
   override('override');
 

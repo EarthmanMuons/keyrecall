@@ -174,6 +174,20 @@ class ProbeConfig {
   /// minute or two is about that.
   final double minDaysSinceSupportEstablished;
 
+  /// How many attempts in a row may go by under support before a
+  /// retrieval-observing one is asked for regardless of predicted success.
+  ///
+  /// Support raises predicted success, so as memory weakens the ordinary band
+  /// comes to prefer continuous cueing, which observes no retrieval, which
+  /// leaves nothing to say whether the support is still needed. The scheduler
+  /// optimises the challenge so well that it stops collecting the evidence it
+  /// would take to stop.
+  ///
+  /// Counted rather than timed because the failure was informational, not
+  /// temporal: a whole sitting of practice producing no retrieval evidence at
+  /// all.
+  final int supportedAttemptsBeforeObservation;
+
   /// What an attempt has to look like before the next one may jump straight
   /// to the tempo it was played at.
   ///
@@ -190,6 +204,7 @@ class ProbeConfig {
   const ProbeConfig({
     required this.minDaysSinceLastRetrieval,
     required this.minDaysSinceSupportEstablished,
+    required this.supportedAttemptsBeforeObservation,
     required this.underchallengeTempoRatio,
     required this.underchallengePitchIntegrity,
     required this.underchallengeContinuity,
@@ -276,6 +291,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
   probe: ProbeConfig(
     minDaysSinceLastRetrieval: 5.0,
     minDaysSinceSupportEstablished: 0.01,
+    supportedAttemptsBeforeObservation: 3,
     underchallengeTempoRatio: 1.2,
     underchallengePitchIntegrity: 0.95,
     underchallengeContinuity: 0.9,

@@ -832,15 +832,33 @@ The current provisional band is 0.60 to 0.90. This is a configurable engineering
 choice inspired by Challenge Point reasoning, not a research-established
 universal optimum.
 
-Five named mechanisms can admit a candidate outside the ordinary band:
+Six named mechanisms can admit a candidate outside the ordinary band:
 
 ```text
 new material       only above a lower introduction floor
-guidance probe     one step less support after an anchored success and interval
-bootstrap probe    a retrieval test for never-successful material after interval
+guidance probe     one rung less support once that rung has been established
+bootstrap probe    a retrieval test where no rung is established, after interval
+observation probe  a retrieval test after a run of attempts that observed none
 recovery           exact failed exercise with one step more guidance
 tempo probe        exact easy exercise at the tempo it was actually played at
 ```
+
+The observation probe answers a loop the ordinary band creates on its own.
+Support raises predicted success, so as memory weakens continuous cueing is what
+lands inside the band, and continuous cueing observes no retrieval. Nothing then
+arrives to say whether the support is still needed, and the preference persists
+on evidence that can never be collected: the scheduler optimises the challenge
+so well that it stops gathering what it would take to stop. After a run of
+attempts in which retrieval went unobserved, one retrieval-observing question is
+admitted whatever its predicted success.
+
+Counted across the sitting rather than per material. Simulation showed cueing
+spreading itself over distinct materials, so no material was cued twice running
+and a per-material count never reached two however long the drought lasted. What
+starves is the scheduler's knowledge of whether support is still needed, and
+that starves whether or not the same scale keeps coming back. It is also checked
+ahead of the introduction floor, since a drought is a drought whether the
+candidate that ends it is new or familiar.
 
 Recovery is reactive and exclusive: after a factual retrieval failure, only the
 same material and motor task with one additional guidance step survives that

@@ -144,6 +144,7 @@ Outcome outcomeOf({
 
     session.recordSelection(
       exercise,
+      retrievalObserved: true,
       retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
       config: schedulerConfig.diversity,
     );

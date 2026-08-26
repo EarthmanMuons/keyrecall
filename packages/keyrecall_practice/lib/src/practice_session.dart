@@ -513,6 +513,10 @@ class PracticeSession {
     _session.recordSelection(
       decision.exercise,
       retrievalFailed: outcome?.retrieval == FactualRetrieval.failed,
+      // Whether the rung could have shown retrieval at all, which is
+      // what decides if this attempt answered the question support
+      // makes invisible.
+      retrievalObserved: decision.exercise.guidance.isRetrievalObserved,
       // An attempt that was clearly too easy makes the next slot ask the
       // harder question directly, rather than climbing toward a tempo the
       // learner was already playing at.

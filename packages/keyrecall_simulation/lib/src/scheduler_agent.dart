@@ -156,6 +156,7 @@ class SchedulerAgent {
     // tested retrieval is categorically not a failure to recover from.
     _session.recordSelection(
       exercise,
+      retrievalObserved: exercise.guidance.isRetrievalObserved,
       retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
       config: pipeline.config.diversity,
     );

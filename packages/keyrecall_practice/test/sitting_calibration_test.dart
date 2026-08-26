@@ -128,4 +128,30 @@ void main() {
       reason: 'failing every retrieval is not how independence is earned',
     );
   });
+
+  test('no sitting teaches the scheduler nothing about retrieval', () async {
+    // Support raises predicted success, so as memory weakened the ordinary
+    // band came to prefer continuous cueing, which observes no retrieval at
+    // all. A whole sitting went by without one attempt that could have said
+    // whether the support was still needed, and the preference persisted on
+    // evidence that could never arrive.
+    final sittings = await practise(
+      PlacementTier.someExperience,
+      quality: 0.8,
+      bpm: 80,
+      label: 'middle  ',
+    );
+
+    for (final (index, rungs) in sittings.indexed) {
+      final observing = (rungs[1] ?? 0) + (rungs[2] ?? 0);
+      expect(
+        observing,
+        greaterThan(0),
+        reason:
+            'sitting $index was practised entirely under continuous cueing, '
+            'so it produced no evidence about the question the scheduler was '
+            'implicitly answering when it chose that support',
+      );
+    }
+  });
 }

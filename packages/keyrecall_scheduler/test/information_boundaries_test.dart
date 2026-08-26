@@ -90,6 +90,49 @@ void main() {
       );
     });
 
+    test('breaks a drought of unobserved retrieval whatever the odds', () {
+      // The loop this exists to cut: support raises predicted success, so as
+      // memory weakens the ordinary band prefers the rung that observes
+      // nothing, and the preference then rests on evidence that can never
+      // arrive.
+      final state = stateAt(PlacementTier.beginner);
+      final previewed = exerciseFor(
+        materials.first,
+        guidance: GuidanceContext.notesPreviewedOnly,
+      );
+
+      final quiet = SessionState(
+        supportedAttemptsSinceObservation:
+            config.probe.supportedAttemptsBeforeObservation,
+      );
+      final busy = SessionState(supportedAttemptsSinceObservation: 0);
+
+      List<CandidateTrace> tracesUnder(SessionState session) =>
+          pipeline.evaluate(
+            state: state,
+            session: session,
+            candidates: [previewed],
+            at: t0,
+          );
+
+      final duringDrought = tracesUnder(quiet).single;
+      expect(duringDrought.challengeBypass, ChallengeBypass.observationProbe);
+      expect(duringDrought.isRanked, isTrue);
+      expect(
+        duringDrought.isWithinChallengeBand,
+        isFalse,
+        reason:
+            'the point is that it is admitted despite the odds, so a test '
+            'where it would have been admitted anyway proves nothing',
+      );
+
+      expect(
+        tracesUnder(busy).single.challengeBypass,
+        isNot(ChallengeBypass.observationProbe),
+        reason: 'one supported attempt is not a drought',
+      );
+    });
+
     test('reads whether a material was ever retrieved, not how well', () {
       // The form-introduction rule counts retrieved core scales, which is
       // observation history rather than belief: what the learner has actually

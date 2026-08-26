@@ -161,6 +161,7 @@ void main() {
 
       session.recordSelection(
         at(100),
+        retrievalObserved: true,
         retrievalFailed: false,
         config: config.diversity,
       );

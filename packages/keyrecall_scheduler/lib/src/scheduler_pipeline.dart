@@ -316,6 +316,23 @@ class SchedulerPipeline {
     return lastAttempt.daysUntil(at) >= config.probe.minDaysSinceLastRetrieval;
   }
 
+  /// Whether [exercise] is a deliberate retrieval test for material that has
+  /// been practised under support without retrieval being observed.
+  ///
+  /// Support raises predicted success, so as memory weakens the ordinary band
+  /// comes to prefer continuous cueing. Cueing observes no retrieval, so
+  /// nothing arrives to say whether the support is still needed, and the
+  /// preference persists on evidence that can never be collected. A whole
+  /// sitting can go by teaching the scheduler nothing about the question it is
+  /// implicitly answering.
+  ///
+  /// So after enough supported attempts on a material, one retrieval-observing
+  /// question is asked whatever its predicted success. The band optimises for
+  /// an appropriate challenge; this is the exception that keeps it answerable.
+  bool isObservationProbe(Exercise exercise, int supportedAttempts) =>
+      exercise.guidance == GuidanceContext.notesPreviewedOnly &&
+      supportedAttempts >= config.probe.supportedAttemptsBeforeObservation;
+
   /// Which named exception, if any, admits [exercise] outside the ordinary
   /// band.
   ///
@@ -331,6 +348,7 @@ class SchedulerPipeline {
     required ChallengeBypass? override,
     required Exercise? recoveryTarget,
     required Exercise? tempoProbe,
+    required int supportedAttempts,
   }) {
     if (override != null) return override;
     if (recoveryTarget != null) {
@@ -341,6 +359,13 @@ class SchedulerPipeline {
     // just went wrong is worth more than something that went too easily.
     if (tempoProbe != null) {
       return exercise == tempoProbe ? ChallengeBypass.tempoProbe : null;
+    }
+    // Before the introduction floor rather than after it. That branch answers
+    // with null for material below the floor, which would let an introduction
+    // nobody can afford outrank the reason this exception exists: a drought is
+    // a drought whether the candidate that ends it is new or familiar.
+    if (isObservationProbe(exercise, supportedAttempts)) {
+      return ChallengeBypass.observationProbe;
     }
     if (!state.materialMemory.containsKey(exercise.material.materialId)) {
       return prediction.overallP >= config.challenge.pIntroductionMin
@@ -446,6 +471,7 @@ class SchedulerPipeline {
       override: override,
       recoveryTarget: recoveryTarget,
       tempoProbe: tempoProbe,
+      supportedAttempts: session.supportedAttemptsSinceObservation,
     );
     // A recovery context is exclusive: narrowing which candidate gets the
     // label is not enough, since a candidate that happens to fall in the

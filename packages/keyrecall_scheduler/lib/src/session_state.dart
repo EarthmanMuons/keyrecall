@@ -31,11 +31,27 @@ class SessionState {
   /// specific harder question, not a general licence to pick something harder.
   Exercise? tempoProbe;
 
+  /// Attempts in a row under support, without retrieval being observed at all.
+  ///
+  /// Continuous cueing never observes retrieval, so practice under it produces
+  /// no evidence about whether the support is still needed. Counted rather
+  /// than timed, because what went wrong was a sitting teaching nothing about
+  /// retrieval, not too many hours passing.
+  ///
+  /// Counted across the sitting rather than per material, which is what the
+  /// simulation corrected. Cueing spread itself across distinct materials, so
+  /// no material was ever cued twice in a row and a per-material count never
+  /// reached two however long the drought ran. The thing being starved is the
+  /// scheduler's knowledge of whether support is still needed, and that starves
+  /// whether or not the same scale keeps coming back.
+  int supportedAttemptsSinceObservation;
+
   SessionState({
     this.attemptsThisSession = 0,
     List<String>? recentMaterialIds,
     this.lastFailedExercise,
     this.tempoProbe,
+    this.supportedAttemptsSinceObservation = 0,
   }) : recentMaterialIds = recentMaterialIds ?? [];
 
   /// Whether a recovery context is currently active.
@@ -51,12 +67,18 @@ class SessionState {
   /// clearly too easy, and null otherwise. Like the recovery context it lasts
   /// exactly one decision: a probe that outlived its answer would keep asking
   /// a question that has been answered.
+  /// [retrievalObserved] says whether the attempt was at a rung that could
+  /// have shown retrieval succeeding or failing, whichever it did.
   void recordSelection(
     Exercise exercise, {
     required bool retrievalFailed,
+    required bool retrievalObserved,
     Exercise? tempoProbe,
     required DiversityConfig config,
   }) {
+    supportedAttemptsSinceObservation = retrievalObserved
+        ? 0
+        : supportedAttemptsSinceObservation + 1;
     lastFailedExercise = retrievalFailed ? exercise : null;
     this.tempoProbe = tempoProbe;
     recentMaterialIds.add(exercise.material.materialId);

@@ -21,6 +21,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   `v1PrototypeSchedulerConfig`, mirroring `v1-prototype-0` in
   `analysis/scheduler/config.toml`, and was renamed when it stopped carrying
   only the prototype's values.
+- An observation probe: after a run of attempts in which retrieval went
+  unobserved, one retrieval-observing candidate is admitted whatever its
+  predicted success, reported as `ChallengeBypass.observationProbe`.
 - A tempo probe: an attempt completed cleanly, evenly, unbroken, from memory,
   and comfortably faster than requested opens a `ChallengeBypass.tempoProbe`
   context, which admits the same task at the fastest offered tempo the learner

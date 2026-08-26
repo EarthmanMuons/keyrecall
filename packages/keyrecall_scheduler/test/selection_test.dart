@@ -228,6 +228,7 @@ void main() {
 
       session.recordSelection(
         exerciseA,
+        retrievalObserved: true,
         retrievalFailed: true,
         config: config.diversity,
       );
@@ -235,6 +236,7 @@ void main() {
 
       session.recordSelection(
         exerciseB,
+        retrievalObserved: true,
         retrievalFailed: false,
         config: config.diversity,
       );
@@ -246,6 +248,7 @@ void main() {
       for (var i = 0; i < config.diversity.recentWindow + 5; i++) {
         session.recordSelection(
           exerciseA,
+          retrievalObserved: true,
           retrievalFailed: false,
           config: config.diversity,
         );
