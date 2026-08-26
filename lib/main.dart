@@ -1,12 +1,24 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'features/practice/home_screen.dart';
 import 'theme.dart';
 
-void main() {
-  runApp(const ProviderScope(child: KeyRecallApp()));
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Read before the first frame: which instrument was last connected decides
+  // whether the app reconnects on its own, and a provider that discovers the
+  // store later would have already answered that question with a guess.
+  final preferences = await SharedPreferences.getInstance();
+
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+      child: const KeyRecallApp(),
+    ),
+  );
 }
 
 class KeyRecallApp extends ConsumerWidget {
