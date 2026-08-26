@@ -54,6 +54,16 @@ class MaterialMemoryState {
   /// When factual retrieval last succeeded, or null if it never has.
   DateTime? factualLastRetrievalAt;
 
+  /// Whether retrieval has ever succeeded.
+  ///
+  /// The whole of what a prerequisite may ask of this. Eligibility reads
+  /// factual history and never an estimate, and the difference between "has
+  /// this ever been retrieved" and "how long ago" is where that line would
+  /// start to blur: an age is one comparison away from a durability, which
+  /// belongs to prediction. Named so the boundary is in the vocabulary rather
+  /// than only in a test.
+  bool get hasFactualRetrieval => factualLastRetrievalAt != null;
+
   /// When retrieval was last factually tested, win or lose.
   ///
   /// Distinguishes "never successfully retrieved" from "never even tested",

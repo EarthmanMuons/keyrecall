@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
@@ -86,13 +84,13 @@ class SchedulerPipeline {
     }
 
     // An altered minor form is a new idea rather than a new key: harmonic
-    // minor changes what the sixth and seventh degrees mean, melodic minor
-    // changes two of them in a form the classical convention does not use.
-    // Meeting one while the ordinary scales are still unsettled enlarges the
-    // vocabulary faster than the base under it, whatever the keyboard
-    // geography says, which is why this is not a band question.
-    if (coreForms.contains(material.form) == false) {
-      final breadth = _coreBreadthDecisionFor(state, material.form);
+    // minor raises the seventh against natural minor, and melodic minor
+    // raises the sixth as well, in a fixed form the classical convention does
+    // not use. Meeting one while the ordinary scales are still unsettled
+    // enlarges the vocabulary faster than the base under it, whatever the
+    // keyboard geography says, which is why this is not a band question.
+    if (!coreForms.contains(material.form)) {
+      final breadth = _coreBreadthDecisionFor(state, material.form, hands);
       if (breadth != null) return breadth;
     }
 
@@ -158,13 +156,20 @@ class SchedulerPipeline {
   /// because twelve scales in the three easiest keys is a narrow base wearing
   /// a broad number.
   ///
-  /// Waived for a learner whose single-hand execution is already fluent. The
-  /// rule exists so a beginner's vocabulary does not outrun their base; making
-  /// someone who arrived playing scales demonstrate half a curriculum first
-  /// would be an artificial beginner's path through material they know.
+  /// Waived for a learner already fluent in the hand this exercise asks for.
+  /// The rule exists so a beginner's vocabulary does not outrun their base;
+  /// making someone who arrived playing scales demonstrate half a curriculum
+  /// first would be an artificial beginner's path through material they know.
+  ///
+  /// Per hand, and by the same reading the bands use, because a fluent right
+  /// hand is not evidence about the left. Letting one hand's fluency open the
+  /// curriculum for the other would grant a privilege on the strength of
+  /// something never observed, which is the thing the hand-specific execution
+  /// state exists to keep apart.
   EligibilityDecision? _coreBreadthDecisionFor(
     LearnerState state,
     ScaleForm form,
+    HandConfiguration hands,
   ) {
     final required = switch (form) {
       ScaleForm.harmonicMinor => config.eligibility.harmonicMinorCoreRetrievals,
@@ -173,10 +178,7 @@ class SchedulerPipeline {
     };
     if (required == 0) return null;
 
-    final execution = math.max(
-      state.competency(Competency.rhScaleExecution).mean,
-      state.competency(Competency.lhScaleExecution).mean,
-    );
+    final execution = _executionMeanFor(state, hands);
     if (execution >= config.eligibility.fluentExecutionFloor) return null;
 
     final retrievedBands = <AdmissionBand>{};
@@ -184,7 +186,7 @@ class SchedulerPipeline {
     for (final material in allScales) {
       if (!coreForms.contains(material.form)) continue;
       final memory = state.materialMemory[material.materialId];
-      if (memory?.factualLastRetrievalAt == null) continue;
+      if (memory?.hasFactualRetrieval != true) continue;
       retrieved++;
       retrievedBands.add(admissionBandOf(material));
     }

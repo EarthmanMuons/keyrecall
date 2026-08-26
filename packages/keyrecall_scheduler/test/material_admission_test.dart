@@ -286,6 +286,29 @@ void main() {
       expect(decide(fluent, melodic()).tier, EligibilityTier.fullyEligible);
     });
 
+    test('one fluent hand does not open the curriculum for the other', () {
+      final asymmetric = transferable();
+      asymmetric.competency(Competency.rhScaleExecution).mean =
+          config.eligibility.fluentExecutionFloor;
+
+      expect(
+        decide(asymmetric, scale('A', ScaleForm.harmonicMinor)).tier,
+        EligibilityTier.fullyEligible,
+        reason: 'the right hand has earned it',
+      );
+      expect(
+        decide(
+          asymmetric,
+          scale('A', ScaleForm.harmonicMinor, hands: HandConfiguration.left),
+        ).code,
+        EligibilityReason.harmonicMinorRepertoireBreadth,
+        reason:
+            'a fluent right hand is not evidence about the left, and a '
+            'privilege granted on something never observed is the thing '
+            'hand-specific state exists to prevent',
+      );
+    });
+
     test('it says nothing about major or natural minor', () {
       final beginner = transferable();
 

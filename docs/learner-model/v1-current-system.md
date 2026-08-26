@@ -804,9 +804,10 @@ they are new ideas about what minor means, and meeting one while ordinary scales
 are still unsettled enlarges the vocabulary faster than the base under it. They
 wait on a breadth of major and natural-minor material the learner has actually
 retrieved, spread over more than one band, and the wait is lifted for someone
-whose execution is already fluent, since the rule exists so a beginner's
-vocabulary does not outrun their base rather than to make an experienced player
-re-earn what they arrived with.
+already fluent in the hand the exercise asks for, since the rule exists so a
+beginner's vocabulary does not outrun their base rather than to make an
+experienced player re-earn what they arrived with. Per hand, by the same reading
+the bands use: a fluent right hand is not evidence about the left.
 
 So eligibility reads competency state and factual observation history: whether a
 material has an entry at all, and whether it has ever been retrieved. It does
