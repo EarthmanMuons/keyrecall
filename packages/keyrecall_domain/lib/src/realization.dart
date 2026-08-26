@@ -170,12 +170,31 @@ class ExerciseRealization {
   String toString() => 'ExerciseRealization(${moments.length} moments)';
 }
 
-/// Lowest MIDI note each hand's tonic is placed at or above.
+/// The register boundary the two hands are placed against.
 ///
-/// A V1 convention, not a fact about the material: the right hand practices
-/// around middle C and the left an octave below it. Nothing yet lets a learner
+/// A V1 convention, not a fact about the material. Nothing yet lets a learner
 /// ask for a different register.
-const Map<Hand, int> _handFloors = {Hand.right: 60, Hand.left: 48};
+const int _middleC = 60;
+
+/// Where [hand]'s tonic sits for a traversal of [octaves] octaves.
+///
+/// Middle C is the boundary both hands are placed against, but from opposite
+/// sides: the right hand starts at or above it, and the left hand *finishes*
+/// at or below it.
+///
+/// The left hand is anchored by where it ends rather than where it begins
+/// because a fixed floor climbs. Anchored at the bottom, two octaves put the
+/// entire second octave above middle C, in the other hand's register and four
+/// ledger lines above the bass staff, which is neither how the scale is
+/// practiced nor how it is written.
+///
+/// One consequence, for when hands-together work becomes real: at one octave
+/// the two hands come out the conventional octave apart, and at two they come
+/// out two octaves apart rather than the octave a pianist would expect.
+int _tonicFor(Hand hand, int pitchClass, int octaves) => switch (hand) {
+  Hand.right => _tonicAtOrAbove(_middleC, pitchClass),
+  Hand.left => _tonicAtOrBelow(_middleC - 12 * octaves, pitchClass),
+};
 
 /// The notes [exercise] asks for, in order.
 ///
@@ -208,7 +227,7 @@ ExerciseRealization realize(Exercise exercise) {
   ];
   final tonicNotes = {
     for (final hand in hands)
-      hand: _tonicAtOrAbove(_handFloors[hand]!, pitchClassOf(material.tonic)),
+      hand: _tonicFor(hand, pitchClassOf(material.tonic), conditions.octaves),
   };
 
   return ExerciseRealization([
@@ -238,3 +257,6 @@ ExerciseRealization realize(Exercise exercise) {
 
 int _tonicAtOrAbove(int floor, int pitchClass) =>
     floor + (pitchClass - floor % 12 + 12) % 12;
+
+int _tonicAtOrBelow(int ceiling, int pitchClass) =>
+    ceiling - (ceiling % 12 - pitchClass + 12) % 12;

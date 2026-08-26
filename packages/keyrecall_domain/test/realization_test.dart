@@ -103,11 +103,34 @@ void main() {
 
       expect(left.hands, {Hand.left});
       expect(left.moments.first.noteFor(Hand.right), isNull);
+      expect(left.highestPitch, 60);
       expect(
         left.lowestPitch,
-        48,
-        reason: 'the left hand practices an octave below the right',
+        36,
+        reason:
+            'the left hand is anchored by where it ends, so two octaves '
+            'reach down rather than up',
       );
+    });
+
+    test('the left hand stays in its register however many octaves', () {
+      for (final octaves in [1, 2]) {
+        for (final tonic in ['C', 'B', 'F']) {
+          final left = realize(
+            exerciseOf(
+              tonic: tonic,
+              hands: HandConfiguration.left,
+              octaves: octaves,
+            ),
+          );
+
+          expect(
+            left.highestPitch,
+            lessThanOrEqualTo(60),
+            reason: '$tonic over $octaves octaves climbs above middle C',
+          );
+        }
+      }
     });
 
     test('both hands sound in the same moment, an octave apart', () {
