@@ -2,6 +2,7 @@ import 'package:crisp_notation/crisp_notation.dart' as crisp;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
+import 'package:keyrecall/features/practice/fingering.dart';
 import 'package:keyrecall/features/practice/staff_score.dart';
 
 void main() {
@@ -99,5 +100,55 @@ void main() {
       notesOf(grand.lower).first.pitches.single.midiNumber,
       realization.moments.first.noteFor(Hand.left)!.midiNote,
     );
+  });
+
+  group('what fingering the staff writes', () {
+    test('teaches the first octave and then only the crossings', () {
+      final exercise = exerciseOf(octaves: 2);
+      final full = fingeringFor(exercise, Hand.right)!;
+      final shown = displayFingeringFor(exercise, Hand.right)!;
+      final degrees = scaleFormIntervals[ScaleForm.major]!.length;
+
+      expect(shown.length, full.length);
+      expect(
+        shown.sublist(0, degrees + 1),
+        full.sublist(0, degrees + 1),
+        reason: 'the first octave is where the pattern is learned',
+      );
+      expect(
+        shown.skip(degrees + 1).where((finger) => finger != null).length,
+        lessThan(full.length - degrees - 1),
+        reason: 'the rest is a repeat, so most of it goes unwritten',
+      );
+      expect(shown.last, full.last);
+    });
+
+    test('never leaves a thumb crossing unwritten', () {
+      final exercise = exerciseOf(octaves: 2, direction: ScaleDirection.upDown);
+      final full = fingeringFor(exercise, Hand.right)!;
+      final shown = displayFingeringFor(exercise, Hand.right)!;
+
+      for (var i = 1; i < full.length; i++) {
+        if ((full[i] - full[i - 1]).abs() == 1) continue;
+        expect(
+          shown[i],
+          full[i],
+          reason: 'position $i is where the hand changes shape',
+        );
+      }
+    });
+
+    test('a left-off digit is no digit, not a zero', () {
+      final exercise = exerciseOf(octaves: 2);
+      final score = staffScoreFor(
+        realize(exercise),
+        Hand.right,
+        fingering: displayFingeringFor(exercise, Hand.right),
+      );
+
+      for (final note in notesOf(score)) {
+        expect(note.fingerings.length, lessThanOrEqualTo(1));
+      }
+    });
   });
 }

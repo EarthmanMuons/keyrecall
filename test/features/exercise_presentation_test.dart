@@ -70,7 +70,7 @@ void main() {
       expect(surface.tonicPitchClass, 2);
     });
 
-    test('drops the left hand an octave and spans both when together', () {
+    test('puts each hand in its own register and spans both together', () {
       final right = KeyboardDiagram.forExercise(
         exerciseOf('C', ScaleForm.major, hands: HandConfiguration.right),
       );
@@ -82,8 +82,13 @@ void main() {
       );
 
       expect(right.memberNotes.reduce((a, b) => a < b ? a : b), 60);
-      expect(left.memberNotes.reduce((a, b) => a < b ? a : b), 48);
-      expect(together.memberNotes.reduce((a, b) => a < b ? a : b), 48);
+      expect(
+        left.memberNotes.reduce((a, b) => a > b ? a : b),
+        60,
+        reason: 'the left hand is placed by where it finishes',
+      );
+      expect(left.memberNotes.reduce((a, b) => a < b ? a : b), 36);
+      expect(together.memberNotes.reduce((a, b) => a < b ? a : b), 36);
       expect(
         together.memberNotes.reduce((a, b) => a > b ? a : b),
         84,

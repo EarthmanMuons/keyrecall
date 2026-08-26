@@ -32,7 +32,7 @@ String staffElementId(Hand hand, int position) => '${hand.id}-$position';
 crisp.Score staffScoreFor(
   ExerciseRealization realization,
   Hand hand, {
-  List<int>? fingering,
+  List<int?>? fingering,
 }) {
   final elements = <crisp.MusicElement>[
     for (final moment in realization.moments)
@@ -43,9 +43,11 @@ crisp.Score staffScoreFor(
           // Always written, since nothing establishes the accidentals for the
           // reader: there is no key signature to imply them.
           showAccidental: note.pitch.alteration != 0 ? true : null,
-          fingerings: fingering == null
-              ? const []
-              : [fingering[moment.position]],
+          fingerings: switch (fingering?[moment.position]) {
+            // A null is a digit deliberately left off, not a missing one.
+            null => const <int>[],
+            final finger => [finger],
+          },
           id: staffElementId(hand, moment.position),
         ),
   ];
