@@ -41,7 +41,26 @@ class LearnerModel {
   /// The versioned constants this model reasons with.
   final LearnerParams params;
 
-  const LearnerModel({this.params = v1PrototypeLearnerParams});
+  /// Whether execution evidence is attributed at the difficulty the attempt
+  /// actually demonstrated rather than the one it was asked for.
+  ///
+  /// See [demonstratedTempoBpm]. False reproduces the frozen prototype, which
+  /// recorded achieved tempo without consuming it.
+  final bool attributesDemonstratedDifficulty;
+
+  const LearnerModel({
+    this.params = v1LearnerParams,
+    this.attributesDemonstratedDifficulty = true,
+  });
+
+  /// The model as the frozen Python prototype defined it.
+  ///
+  /// Kept so the reference-equivalence and digest tests can still ask the
+  /// question they were written to ask. Not for production: it is the older
+  /// model, preserved, not a configuration of the current one.
+  const LearnerModel.v1Prototype()
+    : params = v1PrototypeLearnerParams,
+      attributesDemonstratedDifficulty = false;
 
   /// A cold-start state with every competency at the registry prior.
   LearnerState newState({required DateTime at, double? competencyPriorMean}) =>
@@ -95,6 +114,44 @@ class LearnerModel {
             (conditions.hands == HandConfiguration.together ? 1.0 : 0.0) +
         difficulty.directionBeta *
             (conditions.direction == ScaleDirection.upDown ? 1.0 : 0.0);
+  }
+
+  /// The tempo an attempt actually demonstrated, in BPM.
+  ///
+  /// Capped at the requested tempo. A scale played slower than asked for
+  /// demonstrates the easier task, and crediting the harder one is how a
+  /// clean-but-slow run inflates execution ability. Playing faster proves the
+  /// tempo that was asked for, but is not credited beyond it: the scheduler
+  /// chose the challenge, and an accidental sprint should not retroactively
+  /// turn one attempt into a harder probe than anyone scheduled.
+  ///
+  /// Only execution difficulty moves. What was retrieved is still the exercise
+  /// that was asked for: playing C harmonic minor slowly is still recalling C
+  /// harmonic minor.
+  double demonstratedTempoBpm(Exercise exercise, Outcome outcome) {
+    final requested = exercise.conditions.tempoBpm;
+    if (!attributesDemonstratedDifficulty) return requested;
+    final ratio = outcome.achievedTempoRatio;
+    // An attempt with no measurable pace demonstrates nothing about tempo, so
+    // it is attributed at what it was asked for rather than at zero.
+    if (!ratio.isFinite || ratio <= 0) return requested;
+    return math.min(requested, requested * ratio);
+  }
+
+  /// `P(execution succeeds)` at the difficulty [outcome] actually demonstrated.
+  ///
+  /// The baseline an attempt's execution surprise is measured against. At the
+  /// requested tempo it is exactly [executionProbability].
+  double demonstratedExecutionProbability(
+    LearnerState state,
+    Exercise exercise,
+    Outcome outcome,
+  ) {
+    final tempo = demonstratedTempoBpm(exercise, outcome);
+    if (tempo == exercise.conditions.tempoBpm) {
+      return executionProbability(state, exercise);
+    }
+    return executionProbability(state, exercise.atTempo(tempo));
   }
 
   /// `M(t)`: the probability the material would be retrieved with no support.
@@ -216,7 +273,13 @@ class LearnerModel {
     final motorQ = motorLoadings(q);
     final topologyQ = topologyLoadings(q);
 
-    final deltaExec = outcome.motorScore - prediction.executionP;
+    // Against the difficulty demonstrated, not the one requested. The
+    // prediction is still the decision's, and every other channel measures its
+    // surprise against it: only execution is a claim about a physical task
+    // whose difficulty the performance itself established.
+    final deltaExec =
+        outcome.motorScore -
+        demonstratedExecutionProbability(state, exercise, outcome);
     final deltaTopology = outcome.topologyAccuracy - prediction.topologyP;
 
     _updateCompetencies(

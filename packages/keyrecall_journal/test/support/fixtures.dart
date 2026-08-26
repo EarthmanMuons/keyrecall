@@ -18,12 +18,12 @@ final Profile testProfile = Profile(
 final TechnicalMaterial v1ScaleCatalogFirst = v1ScaleCatalog.first;
 
 const LearnerModel model = LearnerModel();
-const LearnerParams params = v1PrototypeLearnerParams;
+const LearnerParams params = v1LearnerParams;
 const SchedulerConfig schedulerConfig = v1PrototypeSchedulerConfig;
 const SchedulerPipeline pipeline = SchedulerPipeline(learner: model);
 
 const ModelProvenance provenance = ModelProvenance(
-  learnerModelVersion: 'v1-prototype-2',
+  learnerModelVersion: 'v1-2',
   schedulerModelVersion: 'v1-prototype-0',
   appBuildVersion: 'test',
 );

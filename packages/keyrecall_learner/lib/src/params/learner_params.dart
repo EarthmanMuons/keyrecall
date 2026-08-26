@@ -403,66 +403,102 @@ class LearnerParams {
 /// `v1-prototype-2`. The architecture these values sit in is frozen for
 /// initial production; the numbers themselves are versioned starting points
 /// awaiting validation against real learner data.
+const CompetencyParams _v1Competency = CompetencyParams(
+  priorMean: 0.0,
+  priorVariance: 1.0,
+  minVariance: 0.05,
+  learningRate: 0.15,
+  uncertaintyDiffusion: 0.01,
+  evidenceShrinkage: 0.3,
+);
+
+const MaterialMemoryParams _v1MaterialMemory = MaterialMemoryParams(
+  initialCurrentHalfLifeDays: 3.0,
+  alphaCurrentDurability: 0.7,
+  reversionLambdaCurrentDurability: 0.05,
+  minHalfLifeDays: 0.001,
+  maxMemoryHalfLifeDays: 1000.0,
+  priorRetrievability: 0.4,
+  priorUncertainty: 1.0,
+  consolidationPriorLogVariance: 2.0,
+  consolidationMinLogVariance: 0.2,
+  retainedInferenceMinIntervalDays: 0.041666666666666664,
+  retainedInferenceLikelihoodWeight: 1.0,
+  retainedInferenceGridPoints: 301,
+  minUncertainty: 0.05,
+  evidenceShrinkage: 0.3,
+  alphaColdStart: 0.7,
+  reversionLambdaColdStart: 0.05,
+  minColdStartProbability: 0.001,
+  maxColdStartProbability: 0.999,
+  supportedActivationRestorationRate: 0.05,
+  supportedCurrentDurabilityRate: 0.022556390977443608,
+  successCurrentDurabilityRate: 0.022556390977443608,
+  consolidationGrowthRate: 0.05,
+  consolidationGrowthTargetDays: 60.0,
+  supportedPracticeFactorConcurrentCues: 0.3,
+  supportedPracticeFactorNotesPreviewed: 0.7,
+  supportedPracticeFactorUnguided: 1.0,
+  retrievalSuccessFactorNotesPreviewed: 0.7,
+  retrievalSuccessFactorUnguided: 1.0,
+);
+
+const MaterialExecutionParams _v1MaterialExecution = MaterialExecutionParams(
+  priorVariance: 0.5,
+  minVariance: 0.05,
+  learningRate: 0.2,
+  meanReversionTauDays: 14.0,
+  uncertaintyDiffusion: 0.02,
+  evidenceShrinkage: 0.3,
+);
+
+const HandTransferParams _v1HandTransfer = HandTransferParams(
+  rhoHand: 0.3,
+  shrinkageTau: 0.5,
+);
+
+const DifficultyParams _v1Difficulty = DifficultyParams(
+  tempoBeta: 0.4,
+  octaveBeta: 0.3,
+  handBeta: 0.2,
+  directionBeta: 0.15,
+  referenceTempoBpm: 80.0,
+);
+
+const PlacementParams _v1Placement = PlacementParams(
+  beginnerMean: -1.0,
+  someExperienceMean: 0.0,
+  advancedMean: 1.0,
+  priorVarianceBroad: 1.5,
+);
+
 const LearnerParams v1PrototypeLearnerParams = LearnerParams(
   modelVersion: 'v1-prototype-2',
-  competency: CompetencyParams(
-    priorMean: 0.0,
-    priorVariance: 1.0,
-    minVariance: 0.05,
-    learningRate: 0.15,
-    uncertaintyDiffusion: 0.01,
-    evidenceShrinkage: 0.3,
-  ),
-  materialMemory: MaterialMemoryParams(
-    initialCurrentHalfLifeDays: 3.0,
-    alphaCurrentDurability: 0.7,
-    reversionLambdaCurrentDurability: 0.05,
-    minHalfLifeDays: 0.001,
-    maxMemoryHalfLifeDays: 1000.0,
-    priorRetrievability: 0.4,
-    priorUncertainty: 1.0,
-    consolidationPriorLogVariance: 2.0,
-    consolidationMinLogVariance: 0.2,
-    retainedInferenceMinIntervalDays: 0.041666666666666664,
-    retainedInferenceLikelihoodWeight: 1.0,
-    retainedInferenceGridPoints: 301,
-    minUncertainty: 0.05,
-    evidenceShrinkage: 0.3,
-    alphaColdStart: 0.7,
-    reversionLambdaColdStart: 0.05,
-    minColdStartProbability: 0.001,
-    maxColdStartProbability: 0.999,
-    supportedActivationRestorationRate: 0.05,
-    supportedCurrentDurabilityRate: 0.022556390977443608,
-    successCurrentDurabilityRate: 0.022556390977443608,
-    consolidationGrowthRate: 0.05,
-    consolidationGrowthTargetDays: 60.0,
-    supportedPracticeFactorConcurrentCues: 0.3,
-    supportedPracticeFactorNotesPreviewed: 0.7,
-    supportedPracticeFactorUnguided: 1.0,
-    retrievalSuccessFactorNotesPreviewed: 0.7,
-    retrievalSuccessFactorUnguided: 1.0,
-  ),
-  materialExecution: MaterialExecutionParams(
-    priorVariance: 0.5,
-    minVariance: 0.05,
-    learningRate: 0.2,
-    meanReversionTauDays: 14.0,
-    uncertaintyDiffusion: 0.02,
-    evidenceShrinkage: 0.3,
-  ),
-  handTransfer: HandTransferParams(rhoHand: 0.3, shrinkageTau: 0.5),
-  difficulty: DifficultyParams(
-    tempoBeta: 0.4,
-    octaveBeta: 0.3,
-    handBeta: 0.2,
-    directionBeta: 0.15,
-    referenceTempoBpm: 80.0,
-  ),
-  placement: PlacementParams(
-    beginnerMean: -1.0,
-    someExperienceMean: 0.0,
-    advancedMean: 1.0,
-    priorVarianceBroad: 1.5,
-  ),
+  competency: _v1Competency,
+  materialMemory: _v1MaterialMemory,
+  materialExecution: _v1MaterialExecution,
+  handTransfer: _v1HandTransfer,
+  difficulty: _v1Difficulty,
+  placement: _v1Placement,
+);
+
+/// The live V1 learner-model constants.
+///
+/// The same numbers as [v1PrototypeLearnerParams] under a version of their
+/// own, because the model reading them is no longer the prototype's: execution
+/// evidence is attributed at the tempo an attempt demonstrated rather than the
+/// one it was asked for. Nothing numeric moved, and the reconciliation test
+/// keeps checking that.
+///
+/// The version is what an attempt records, and what replay refuses to
+/// reinterpret under. Two models that learn differently must not share one, or
+/// a journal replays into a state its own history never produced.
+const LearnerParams v1LearnerParams = LearnerParams(
+  modelVersion: 'v1-2',
+  competency: _v1Competency,
+  materialMemory: _v1MaterialMemory,
+  materialExecution: _v1MaterialExecution,
+  handTransfer: _v1HandTransfer,
+  difficulty: _v1Difficulty,
+  placement: _v1Placement,
 );

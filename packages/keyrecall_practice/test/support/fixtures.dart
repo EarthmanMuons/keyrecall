@@ -28,6 +28,10 @@ Outcome outcomeOf({
   bool started = true,
   bool completed = true,
   double quality = 0.9,
+  // Its own axis, not a quality score: how fast it was played is what the
+  // execution evidence is attributed at, and these tests mean "at the tempo it
+  // was asked for" unless they say otherwise.
+  double tempoRatio = 1.0,
 }) => Outcome(
   started: started,
   retrieval: retrieval,
@@ -36,7 +40,7 @@ Outcome outcomeOf({
   pitchIntegrity: quality,
   continuity: quality,
   temporalStability: quality,
-  achievedTempoRatio: quality,
+  achievedTempoRatio: tempoRatio,
   topologyAccuracy: quality,
 );
 

@@ -54,6 +54,13 @@ typedef OutcomeObserver =
 /// it, the clock, and the random stream. Attempts can be run in batches, and
 /// the run continues where it left off, so a caller can inspect or checkpoint
 /// state partway without perturbing the sequence.
+///
+/// Defaults to [LearnerModel.v1Prototype] rather than the live model, because
+/// this harness exists to hold the port against the frozen Python reference.
+/// Its synthetic learner samples an achieved tempo below the requested one on
+/// nearly every attempt, so under the live model these runs would diverge from
+/// the reference by design and stop testing what they were built to test.
+/// Pass the live model explicitly to simulate current behavior.
 class PracticeSimulation {
   /// The learner model under test.
   final LearnerModel learner;
@@ -92,7 +99,7 @@ class PracticeSimulation {
   factory PracticeSimulation.of(
     SyntheticProfile profile, {
     required int seed,
-    LearnerModel learner = const LearnerModel(),
+    LearnerModel learner = const LearnerModel.v1Prototype(),
     DateTime? epoch,
     Duration attemptSpacing = defaultAttemptSpacing,
   }) {
@@ -114,7 +121,7 @@ class PracticeSimulation {
     required TrueLearnerProfile truth,
     required LearnerState state,
     required int seed,
-    LearnerModel learner = const LearnerModel(),
+    LearnerModel learner = const LearnerModel.v1Prototype(),
     DateTime? epoch,
     Duration attemptSpacing = defaultAttemptSpacing,
   }) => PracticeSimulation._(

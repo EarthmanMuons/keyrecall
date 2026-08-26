@@ -101,6 +101,24 @@ class Exercise {
     opportunities: opportunities,
   );
 
+  /// This exercise at [tempoBpm], with everything else held fixed.
+  ///
+  /// For asking what a task would have been at a different speed. It does not
+  /// describe a different exercise the scheduler could have chosen: nothing
+  /// generates candidates this way.
+  Exercise atTempo(double tempoBpm) => Exercise(
+    material: material,
+    conditions: ExecutionConditions(
+      hands: conditions.hands,
+      octaves: conditions.octaves,
+      direction: conditions.direction,
+      tempoBpm: tempoBpm,
+    ),
+    pattern: pattern,
+    guidance: guidance,
+    opportunities: opportunities,
+  );
+
   /// Whether [other] is the same motor task under different guidance.
   bool hasSameRealizationAs(Exercise other) =>
       material == other.material &&
