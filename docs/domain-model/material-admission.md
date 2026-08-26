@@ -1,0 +1,146 @@
+# Material admission
+
+- **Status:** Design only. The scheduler's `REQUIRES` gate implements one rule
+  today, and it is not this one.
+- **Written:** August 26, 2026
+
+`offeredScales` is a hand-authored list that exists because nothing can yet
+answer whether a learner is ready for a scale. This is what would replace it.
+
+## What the published curricula do and do not settle
+
+Graded syllabi and method books converge on a rough introductory ordering and
+disagree about the details. ABRSM's piano syllabus centres C, G and F major with
+A and D minor early, adds D and A major with E and G minor, then B flat and E
+flat with B and C minor, and moves into the black-key-heavy material later.
+Faber groups early keys by keyboard shape rather than by the circle of fifths.
+Piano Marvel's scale work follows a similar arc and treats one, two and four
+octaves as a difficulty axis of its own.
+
+Two things follow, and the second matters more.
+
+**There is no canonical order.** Sources differ on where B flat, E flat and the
+minor forms belong, and pedagogy writing on the subject says openly that several
+orderings are defensible. So a curriculum-derived ordering is a **conservative
+prior**, not a measurement: evidence about what is reasonable to introduce
+early, and no evidence at all that D flat major has a latent difficulty of 0.73.
+
+**Grades bundle what this architecture separates.** A grade mixes key, hands
+together, octave span, articulation, arpeggios and examination logistics.
+KeyRecall already models hands, octaves, direction and tempo as execution
+conditions, so copying grade boundaries would re-bundle exactly what was pulled
+apart. The bands below are about material only.
+
+## Novelty has three axes, and they move independently
+
+```text
+material familiarity   pitch and topology knowledge of related material
+motor familiarity      whether the fingering family is already established
+notation complexity    if and when staff decoding participates
+```
+
+The catalog makes the second axis concrete. All 48 scales use **14 hand
+patterns**, six left and eight right, derived from `canonicalFingering` rather
+than authored here:
+
+| Hand  | entry, cycle, terminal | Scales                                                        |
+| ----- | ---------------------- | ------------------------------------------------------------- |
+| Right | `1` `2312341` `5`      | C, D, E, G, A, B, in all four forms (24)                      |
+| Right | `1` `2341231` `4`      | F, in all four forms                                          |
+| Right | `2` `1231234`          | B flat, in all four forms                                     |
+| Right | `3` `4123123`          | A flat major; C sharp, F sharp, G sharp minors (8)            |
+| Right | `3` `1234123`          | E flat major, E flat natural minor                            |
+| Right | `2` `1234123`          | E flat harmonic and melodic minor                             |
+| Right | `2` `3123412`          | D flat major; C sharp and F sharp melodic minor               |
+| Right | `2` `3412312`          | F sharp major                                                 |
+| Left  | `5` `4321321`          | C, D, E, F, G, A, in all four forms (24)                      |
+| Left  | `4` `3214321`          | B, in all four forms                                          |
+| Left  | `3` `2143213`          | D flat, E flat, A flat, B flat major; C sharp, G sharp minors |
+| Left  | `4` `3213214`          | F sharp, in all four forms                                    |
+| Left  | `2` `1432132`          | E flat minors                                                 |
+| Left  | `2` `1321432`          | B flat minors                                                 |
+
+Two consequences worth stating. **Most of the catalog is one right-hand family
+and one left-hand family**, 24 scales each, so the motor axis is far coarser
+than the material axis. And **the axes really do separate**: B major's right
+hand is the family a learner already knows from C major while its left hand is
+new, so "B major is harder" is true of one hand and false of the other.
+
+## Bands, as a conservative prior
+
+| Band                  | Material                                              |
+| --------------------- | ----------------------------------------------------- |
+| Foundation            | C, G, F major; A, D minor                             |
+| Early transfer        | D, A, E, B flat major; E, G, C minor                  |
+| Intermediate keyboard | E flat, B, F sharp, A flat major; B, F, F sharp minor |
+| Advanced keyboard     | D flat major; C sharp, G sharp, E flat, B flat minor  |
+
+Fixed-form melodic minor carries a product-level introduction delay across every
+band. That is a choice about what to teach first rather than a claim that it is
+motor-difficult: its fingering is the harmonic minor's everywhere except the two
+right hands the raised sixth changes.
+
+The bands are not a sequence to march through. Interleaving within and across a
+band is the point, and both Faber and Piano Marvel argue for working a group of
+scales together rather than perfecting one before touching the next.
+
+## What `REQUIRES` would have to express
+
+```text
+1. Foundation material          always admissible
+2. Familiar fingering family    admit when that hand's family has demonstrated
+                                competence on some other material
+3. New fingering family         admit above a modest floor of generic
+                                single-hand execution
+4. Key and geographic novelty   admit progressively, bands as the prior
+5. New minor form               require some minor-topology familiarity, not
+                                mastery of that same tonic and form
+6. Hands together               unchanged: both hands first
+7. Octaves, direction, tempo    execution conditions, never reasons to withhold
+                                the material itself
+```
+
+Rule 5 is worth defending. The curricula give no support for a universal natural
+to harmonic to melodic ladder: ABRSM lets candidates choose the form at lower
+grades and narrows later, and Faber teaches the three forms as one related
+concept. Once A natural minor is known, A harmonic minor shares its topology and
+almost all of its motor organization, and only the raised seventh is new. That
+is a transfer to exploit rather than a gate to add.
+
+## What the scheduler cannot ask today
+
+`SchedulerPipeline.eligibilityFor` reads `LearnerState` and nothing else, and
+that state carries:
+
+- four topology competencies, one per scale form;
+- generic `rhScaleExecution` and `lhScaleExecution`;
+- `scalarCrossing`, `multiOctaveContinuation`, `directionReversal`;
+- `handsTogetherCoordination`;
+- per-material _memory_, keyed by material id.
+
+Rules 1, 4, 5, 6 and 7 are expressible with that. Bands are static material
+data, minor-topology familiarity is a topology competency, and the
+hands-together rule already exists.
+
+**Rules 2 and 3 are not.** There is no motor state per fingering family, and
+none per material: execution competence is generic per hand, and
+`materialMemory` is memory rather than motor. So "this hand's family is
+established" cannot be asked at all, and the fingering axis has to ride on the
+band prior until it can be.
+
+That gap is what this document exists to surface. Closing it means a
+motor-family dimension in the competency ontology, which has its own admission
+workflow in the competency extension guide, and which the fingering research
+deliberately stopped short of freezing.
+
+## What to build first
+
+A first policy using only what exists: bands as static material data, generic
+execution floors for the later bands, topology familiarity for a new minor form,
+and the hands-together rule already there. That replaces `offeredScales` with
+something that admits material as a learner improves, while being honest that it
+approximates the motor axis rather than measuring it.
+
+Whether the fingering-family axis earns a competency of its own then becomes a
+question the first policy can help answer: if learners stall specifically where
+a band introduces a new family, that is the evidence for it.
