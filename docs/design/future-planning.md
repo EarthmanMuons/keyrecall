@@ -451,8 +451,22 @@ its own terms: whether it is neutral or evaluative, whether it is available at
 every guidance rung, and whether an attempt that was reviewed afterwards is the
 same evidence as one that was not.
 
-Until that is designed, the loop commits and moves on, which is a choice rather
-than an omission.
+A first version exists, built when practising on a real instrument showed that
+an attempt ended without anything marking that it had. It answers the first
+question deliberately and leaves the other two open. It says one true positive
+thing about the attempt and names the next exercise, and it says why only when
+the reason is one of the scheduler's named exceptions. It never invents: an
+attempt that did not start gets no sentence.
+
+Positive-only is presentation, not omission. Nothing is withheld, because the
+evidence is written to the journal in full before anyone reads the screen, and a
+complete account of a run, good and bad, is what a fluency profile is for.
+
+What is still undesigned is the part that matters to evidence. The review is the
+same at every rung and is not recorded in `PresentationConditions`, so an
+attempt reviewed afterwards is not yet distinguishable from one that was not.
+That is fine while the review says so little, and it is the first thing to fix
+if it ever names individual notes.
 
 ## 3. Learner-model extensions
 
