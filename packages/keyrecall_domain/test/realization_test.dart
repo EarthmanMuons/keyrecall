@@ -114,23 +114,39 @@ void main() {
     });
 
     test('the left hand stays in its register however many octaves', () {
-      for (final octaves in [1, 2]) {
-        for (final material in v1ScaleCatalog) {
-          final left = realize(
-            Exercise.linear(
-              material: material,
-              hands: HandConfiguration.left,
-              octaves: octaves,
-            ),
-          );
+      // The property is about where a tonic sits, so what it needs is every
+      // pitch class. The production catalog is what gets scheduled and covers
+      // all twelve, which is asserted here rather than assumed; the frozen
+      // prototype corpus covers seven and is the wrong fixture for this.
+      expect({
+        for (final material in allScales) pitchClassOf(material.tonic),
+      }, hasLength(12));
 
-          expect(
-            (left.highestPitch - 60).abs(),
-            lessThanOrEqualTo(6),
-            reason:
-                '${material.materialId} over $octaves octaves finishes half '
-                'an octave or more from middle C',
-          );
+      for (final octaves in [1, 2]) {
+        for (final material in allScales) {
+          for (final hands in [
+            HandConfiguration.left,
+            HandConfiguration.right,
+          ]) {
+            final realization = realize(
+              Exercise.linear(
+                material: material,
+                hands: hands,
+                octaves: octaves,
+              ),
+            );
+            final home = hands == HandConfiguration.left
+                ? realization.highestPitch
+                : realization.lowestPitch;
+
+            expect(
+              (home - 60).abs(),
+              lessThanOrEqualTo(6),
+              reason:
+                  '${material.materialId} on ${hands.id} over $octaves '
+                  'octaves sits more than half an octave from middle C',
+            );
+          }
         }
       }
     });
