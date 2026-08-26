@@ -241,29 +241,37 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 
     return Column(
       children: [
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(24),
+        // The task, then what to do about it, then the material. Notation
+        // grows with the exercise, so anything under it can be pushed off a
+        // phone: two octaves of a scale is four systems, and the control the
+        // learner is looking for cannot be the thing that scrolls away.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _TaskStatement(exercise),
-              const SizedBox(height: 24),
-              if (showsCue && cueOnStaff(presentation.cueModality)) ...[
+              const SizedBox(height: 16),
+              _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
+              const SizedBox(height: 16),
+              _control(),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+            children: [
+              if (showsCue && cueOnStaff(presentation.cueModality))
                 StaffCue(
                   exercise: exercise,
                   showsFingering: presentation.motorCue == MotorCue.fingering,
                 ),
-                const SizedBox(height: 24),
-              ],
-              if (staffCarriesTranscript) ...[
+              if (staffCarriesTranscript)
                 TranscriptStaff(
                   transcript: ref.watch(attemptTranscriptProvider),
                   exercise: exercise,
                 ),
-                const SizedBox(height: 24),
-              ],
-              _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
-              const SizedBox(height: 24),
-              _control(),
             ],
           ),
         ),
@@ -429,7 +437,10 @@ class _Instrument extends ConsumerWidget {
   }
 }
 
-/// A line under the instrument saying what is expected right now.
+/// A line saying what is expected right now.
+///
+/// Sits with the control it qualifies rather than with the notation it
+/// describes: "they disappear when you do" is about the button underneath it.
 class _Status extends ConsumerWidget {
   const _Status({
     required this.phase,
