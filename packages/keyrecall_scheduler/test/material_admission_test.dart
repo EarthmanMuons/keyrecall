@@ -8,6 +8,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 /// learner is working toward and from what they should play next.
 void main() {
   const pipeline = SchedulerPipeline(learner: LearnerModel());
+  const config = v1SchedulerConfig;
 
   Exercise scale(
     String tonic,
@@ -28,6 +29,32 @@ void main() {
         ),
     },
   );
+
+  /// Records that [count] major and natural-minor scales have been retrieved,
+  /// spread over as many admission bands as the catalog offers.
+  ///
+  /// The ordinary base an altered minor form is introduced on top of. Tests
+  /// about anything else give it to themselves so the form-introduction gate
+  /// is not what they end up measuring.
+  LearnerState withCoreBreadth(LearnerState state, {int count = 24}) {
+    final core =
+        [
+          for (final material in allScales)
+            if (coreForms.contains(material.form)) material,
+        ]..sort(
+          (a, b) =>
+              admissionBandOf(a).index.compareTo(admissionBandOf(b).index),
+        );
+
+    for (final material in core.take(count)) {
+      state
+          .materialMemoryFor(material.materialId, v1PrototypeLearnerParams)
+          .factualLastRetrievalAt = DateTime.utc(
+        2026,
+      );
+    }
+    return state;
+  }
 
   /// The material question, asked of a learner this material is not new to.
   ///
@@ -124,7 +151,7 @@ void main() {
 
   group('minor forms', () {
     test('harmonic minor waits for some minor topology', () {
-      final none = learnerAt(-1.0);
+      final none = withCoreBreadth(learnerAt(-1.0));
       final decision = decide(none, scale('A', ScaleForm.harmonicMinor));
 
       expect(decision.tier, EligibilityTier.provisionallyEligible);
@@ -132,7 +159,7 @@ void main() {
     });
 
     test('any minor topology will do, not the same tonic', () {
-      final state = learnerAt(-1.0);
+      final state = withCoreBreadth(learnerAt(-1.0));
       state.competency(Competency.naturalMinorTopology).mean = 0.5;
 
       expect(
@@ -143,7 +170,7 @@ void main() {
     });
 
     test('melodic minor waits for one of the other two', () {
-      final state = learnerAt(-1.0);
+      final state = withCoreBreadth(learnerAt(-1.0));
       final decision = decide(state, scale('A', ScaleForm.melodicMinor));
 
       expect(decision.code, EligibilityReason.melodicFormPrerequisite);
@@ -153,6 +180,121 @@ void main() {
         decide(state, scale('A', ScaleForm.melodicMinor)).tier,
         EligibilityTier.fullyEligible,
       );
+    });
+  });
+
+  group('enlarging the vocabulary', () {
+    Exercise harmonic() => scale('A', ScaleForm.harmonicMinor);
+    Exercise melodic() => scale('A', ScaleForm.melodicMinor);
+
+    /// A learner who can transfer, so only breadth is left to decide it.
+    LearnerState transferable() {
+      final state = learnerAt(0.0);
+      state.competency(Competency.naturalMinorTopology).mean = 0.5;
+      state.competency(Competency.harmonicMinorTopology).mean = 0.5;
+      return state;
+    }
+
+    test('an altered minor form waits for a base of ordinary scales', () {
+      final beginner = transferable();
+      final decision = decide(beginner, harmonic());
+
+      expect(decision.tier, EligibilityTier.provisionallyEligible);
+      expect(
+        decision.code,
+        EligibilityReason.harmonicMinorRepertoireBreadth,
+        reason:
+            'able to transfer and still better served by settling what a '
+            'scale is first',
+      );
+    });
+
+    test('the base is retrievals, not presentations', () {
+      final shown = transferable();
+      for (final material in allScales) {
+        if (!coreForms.contains(material.form)) continue;
+        // Seen, and never once produced from memory.
+        shown.materialMemoryFor(material.materialId, v1PrototypeLearnerParams);
+      }
+
+      expect(
+        decide(shown, harmonic()).code,
+        EligibilityReason.harmonicMinorRepertoireBreadth,
+        reason: 'having been shown a scale is not having it',
+      );
+    });
+
+    test('a wide enough base opens harmonic minor', () {
+      final ready = withCoreBreadth(transferable());
+
+      expect(decide(ready, harmonic()).tier, EligibilityTier.fullyEligible);
+    });
+
+    test('melodic minor asks for more of a base than harmonic minor', () {
+      final between = withCoreBreadth(
+        transferable(),
+        count: config.eligibility.harmonicMinorCoreRetrievals,
+      );
+
+      expect(decide(between, harmonic()).tier, EligibilityTier.fullyEligible);
+      expect(
+        decide(between, melodic()).code,
+        EligibilityReason.melodicMinorRepertoireBreadth,
+        reason: 'two altered degrees in a form the convention does not use',
+      );
+    });
+
+    test('a narrow base is not a broad one, however many scales', () {
+      // Every retrieval in the easiest band, and nowhere else.
+      final narrow = transferable();
+      var given = 0;
+      for (final material in allScales) {
+        if (!coreForms.contains(material.form)) continue;
+        if (admissionBandOf(material) != AdmissionBand.foundation) continue;
+        narrow
+            .materialMemoryFor(material.materialId, v1PrototypeLearnerParams)
+            .factualLastRetrievalAt = DateTime.utc(
+          2026,
+        );
+        given++;
+      }
+
+      expect(given, lessThan(config.eligibility.harmonicMinorCoreRetrievals));
+      expect(
+        decide(narrow, harmonic()).code,
+        EligibilityReason.harmonicMinorRepertoireBreadth,
+      );
+    });
+
+    test('it never asks a fluent learner to earn what they arrived with', () {
+      final fluent = transferable();
+      for (final competency in [
+        Competency.rhScaleExecution,
+        Competency.lhScaleExecution,
+      ]) {
+        fluent.competency(competency).mean =
+            config.eligibility.fluentExecutionFloor;
+      }
+
+      expect(
+        decide(fluent, harmonic()).tier,
+        EligibilityTier.fullyEligible,
+        reason:
+            'the rule keeps a beginner\'s vocabulary from outrunning their '
+            'base, not everyone from what they already play',
+      );
+      expect(decide(fluent, melodic()).tier, EligibilityTier.fullyEligible);
+    });
+
+    test('it says nothing about major or natural minor', () {
+      final beginner = transferable();
+
+      for (final form in coreForms) {
+        expect(
+          decide(beginner, scale('A', form)).code,
+          isNot(EligibilityReason.harmonicMinorRepertoireBreadth),
+        );
+      }
     });
   });
 
@@ -170,11 +312,15 @@ void main() {
             intermediateExecutionFloor: 0.4,
             advancedExecutionFloor: 0.8,
             minorTopologyFloor: 0.0,
+            harmonicMinorCoreRetrievals: 0,
+            melodicMinorCoreRetrievals: 0,
+            coreRetrievalBands: 0,
+            fluentExecutionFloor: 1.0,
           ),
           safety: const SafetyConfig(maxSessionAttempts: 40),
-          challenge: v1PrototypeSchedulerConfig.challenge,
-          diversity: v1PrototypeSchedulerConfig.diversity,
-          probe: v1PrototypeSchedulerConfig.probe,
+          challenge: v1SchedulerConfig.challenge,
+          diversity: v1SchedulerConfig.diversity,
+          probe: v1SchedulerConfig.probe,
         ),
       );
 

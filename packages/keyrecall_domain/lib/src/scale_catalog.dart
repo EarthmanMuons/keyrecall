@@ -63,3 +63,16 @@ final List<TechnicalMaterial> v1ScaleCatalog = List.unmodifiable([
   TechnicalMaterial('F#', ScaleForm.harmonicMinor),
   TechnicalMaterial('E', ScaleForm.melodicMinor),
 ]);
+
+/// The forms a learner builds their sense of "a scale" out of.
+///
+/// Major and natural minor are the ordinary vocabulary: one shape and its
+/// relative, with no altered degree to remember. The other minor forms each
+/// change what "minor" means -- a raised seventh, or a raised sixth and
+/// seventh -- so meeting them is learning a new concept rather than a new key.
+///
+/// Used to keep the vocabulary from growing faster than the base under it.
+/// Nothing about difficulty: a Db major scale is harder to play than an A
+/// harmonic minor, and both facts are true at once, which is why this is a
+/// separate question from the admission bands.
+const Set<ScaleForm> coreForms = {ScaleForm.major, ScaleForm.naturalMinor};

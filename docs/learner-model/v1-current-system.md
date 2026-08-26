@@ -798,9 +798,21 @@ introduced, but not tested from memory the first time it appears. That is a
 statement about what has been established here, not a claim that the learner
 does not know the scale.
 
-So eligibility reads competency state, and of material memory only whether an
-entry exists. It never reads what that entry says; durability and the retrieval
-clocks belong to prediction, which runs later.
+A third rule asks a question of its own: whether the learner's vocabulary of
+scale forms should grow yet. Harmonic and melodic minor are not harder keys,
+they are new ideas about what minor means, and meeting one while ordinary scales
+are still unsettled enlarges the vocabulary faster than the base under it. They
+wait on a breadth of major and natural-minor material the learner has actually
+retrieved, spread over more than one band, and the wait is lifted for someone
+whose execution is already fluent, since the rule exists so a beginner's
+vocabulary does not outrun their base rather than to make an experienced player
+re-earn what they arrived with.
+
+So eligibility reads competency state and factual observation history: whether a
+material has an entry at all, and whether it has ever been retrieved. It does
+not read what the model believes about that history. Durability, uncertainty and
+retrievability are estimates, and estimates belong to prediction, which runs
+later.
 
 The safety policy is a separate hard gate based only on session/workload state.
 V1 implements a configurable session-attempt cap. It does not diagnose fatigue

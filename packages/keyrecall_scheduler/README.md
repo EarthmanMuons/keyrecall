@@ -85,11 +85,13 @@ retrieval is categorically not a failure to recover from, which is why
 
 ## Configuration
 
-`v1PrototypeSchedulerConfig` mirrors `analysis/scheduler/config.toml` at
-registry version `v1-prototype-0`, and a test reconciles the two. The stage
-structure and information boundaries are frozen for initial production; the
-thresholds, probe intervals, and window sizes are placeholders awaiting
-calibration against real practice data.
+`v1SchedulerConfig` is the live registry, at version `v1-1`. It began as a
+mirror of `analysis/scheduler/config.toml` at `v1-prototype-0` and has since
+moved past it, so a test now checks that the inherited values still match the
+archive while the version deliberately does not. The stage structure and
+information boundaries are frozen for initial production; the thresholds, probe
+intervals, and window sizes are placeholders awaiting calibration against real
+practice data.
 
 ## Documentation
 

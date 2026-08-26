@@ -58,7 +58,7 @@ void main() {
   });
 
   group('stage 2a, eligibility', () {
-    test('reads competencies, and of memory only whether it exists', () {
+    test('reads competencies and factual history, never an estimate', () {
       final state = stateAt(PlacementTier.advanced);
       final exercise = exerciseFor(
         materials.first,
@@ -87,6 +87,44 @@ void main() {
       expect(
         pipeline.eligibilityFor(state, exercise).tier,
         EligibilityTier.provisionallyEligible,
+      );
+    });
+
+    test('reads whether a material was ever retrieved, not how well', () {
+      // The form-introduction rule counts retrieved core scales, which is
+      // observation history rather than belief: what the learner has actually
+      // produced, not how durable the model thinks it is. Estimates stay on
+      // prediction's side of the stage boundary.
+      final state = stateAt(PlacementTier.someExperience);
+      state.competency(Competency.naturalMinorTopology).mean = 0.5;
+      final harmonic = exerciseFor(
+        TechnicalMaterial('A', ScaleForm.harmonicMinor),
+        guidance: GuidanceContext.notesPreviewedOnly,
+      );
+
+      final before = pipeline.eligibilityFor(state, harmonic);
+      expect(before.code, EligibilityReason.harmonicMinorRepertoireBreadth);
+
+      for (final material in allScales) {
+        if (!coreForms.contains(material.form)) continue;
+        final memory = state.materialMemoryFor(
+          material.materialId,
+          learnerParams,
+        );
+        // Every core scale retrieved once, and every one of them believed to
+        // be on the point of being forgotten.
+        memory
+          ..factualLastRetrievalAt = t0
+          ..logCurrentHalfLife = math.log(0.001)
+          ..logConsolidatedHalfLife = math.log(0.001);
+      }
+
+      expect(
+        pipeline.eligibilityFor(state, harmonic).tier,
+        EligibilityTier.fullyEligible,
+        reason:
+            'the base is what was played, and how durable it is now is a '
+            'question for the stage that predicts',
       );
     });
 

@@ -8,7 +8,7 @@ final DateTime t0 = DateTime.utc(2026);
 
 const LearnerModel learner = LearnerModel();
 const SchedulerPipeline pipeline = SchedulerPipeline(learner: learner);
-const SchedulerConfig config = v1PrototypeSchedulerConfig;
+const SchedulerConfig config = v1SchedulerConfig;
 const LearnerParams learnerParams = v1PrototypeLearnerParams;
 final InstrumentProfile instrument = InstrumentProfile();
 

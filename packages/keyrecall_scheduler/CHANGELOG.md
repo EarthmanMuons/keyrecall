@@ -17,8 +17,14 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   challenge, and priority stages, per-candidate `CandidateTrace` records,
   lexicographic `RankKey` ranking, the repetition guard, and the new-material,
   guidance-probe, bootstrap-probe, recovery, and override admission exceptions.
-- `v1PrototypeSchedulerConfig`, mirroring the `v1-prototype-0` registry in
-  `analysis/scheduler/config.toml`.
+- `v1SchedulerConfig`, at registry version `v1-1`. It began as
+  `v1PrototypeSchedulerConfig`, mirroring `v1-prototype-0` in
+  `analysis/scheduler/config.toml`, and was renamed when it stopped carrying
+  only the prototype's values.
+- A form-introduction prerequisite: harmonic and melodic minor wait on a breadth
+  of retrieved major and natural-minor material, spread across bands, reported
+  as `harmonicMinorRepertoireBreadth` and `melodicMinorRepertoireBreadth`.
+  Waived for a learner whose single-hand execution is already fluent.
 
 ### Changed
 

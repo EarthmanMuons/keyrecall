@@ -5,8 +5,8 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'support/registry_toml.dart';
 
 void main() {
-  group('v1PrototypeSchedulerConfig', () {
-    const config = v1PrototypeSchedulerConfig;
+  group('v1SchedulerConfig', () {
+    const config = v1SchedulerConfig;
 
     test('records where its values came from, without tracking them', () {
       // The prototype's registry is provenance now, not a source to stay in
@@ -20,11 +20,27 @@ void main() {
 
       expect(
         config.modelVersion,
-        registry['']!['model_version'],
+        isNot(registry['']!['model_version']),
         reason:
-            'the version names the prototype this was derived from, and '
-            'changing the Dart values means naming a new version rather than '
-            'editing the archived one',
+            'the live policy has moved past the prototype, so it names its '
+            'own version rather than borrowing the archived one',
+      );
+
+      // What did come from the prototype still has to match it. Divergence is
+      // a decision, and this is what keeps it from also being an accident.
+      expect(
+        config.eligibility.handTogetherCompetencyThreshold,
+        registry['eligibility']!['hand_together_competency_threshold'],
+      );
+      expect(
+        config.safety.maxSessionAttempts,
+        registry['safety']!['max_session_attempts'],
+      );
+      expect(config.challenge.pMin, registry['challenge']!['p_min']);
+      expect(config.challenge.pMax, registry['challenge']!['p_max']);
+      expect(
+        config.challenge.pIntroductionMin,
+        registry['challenge']!['p_introduction_min'],
       );
     });
 

@@ -19,7 +19,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 void main() {
   const learner = LearnerModel();
   const pipeline = SchedulerPipeline(learner: learner);
-  const config = v1PrototypeSchedulerConfig;
+  const config = v1SchedulerConfig;
   const learnerParams = v1PrototypeLearnerParams;
   final instrument = InstrumentProfile();
 

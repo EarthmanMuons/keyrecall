@@ -19,7 +19,7 @@ final TechnicalMaterial v1ScaleCatalogFirst = v1ScaleCatalog.first;
 
 const LearnerModel model = LearnerModel();
 const LearnerParams params = v1LearnerParams;
-const SchedulerConfig schedulerConfig = v1PrototypeSchedulerConfig;
+const SchedulerConfig schedulerConfig = v1SchedulerConfig;
 const SchedulerPipeline pipeline = SchedulerPipeline(learner: model);
 
 const ModelProvenance provenance = ModelProvenance(

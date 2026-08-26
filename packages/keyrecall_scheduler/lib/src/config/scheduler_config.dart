@@ -25,12 +25,48 @@ class EligibilityConfig {
   /// minor is.
   final double minorTopologyFloor;
 
+  /// How many distinct major and natural-minor materials must have been
+  /// retrieved before harmonic minor is fully eligible, and before melodic
+  /// minor is.
+  ///
+  /// Breadth rather than proficiency. The question a learner meeting harmonic
+  /// minor for the first time faces is not whether they can play it but
+  /// whether "minor" is a settled enough idea to take an alteration; a broad
+  /// base of ordinary scales is what settles it. Counting retrievals rather
+  /// than presentations is the difference between having seen a scale and
+  /// having it.
+  ///
+  /// Halfway through the twenty-four core materials, and two thirds for
+  /// melodic minor, which changes two degrees rather than one and in a fixed
+  /// form the classical convention does not use. Both are first guesses to
+  /// revise against real sittings, not measurements.
+  final int harmonicMinorCoreRetrievals;
+  final int melodicMinorCoreRetrievals;
+
+  /// How many admission bands those retrievals must span.
+  ///
+  /// Twelve retrievals all in the easiest keys is a narrower base than the
+  /// count suggests, and the point is breadth.
+  final int coreRetrievalBands;
+
+  /// Single-hand execution at which the breadth requirement is already met.
+  ///
+  /// Someone who arrived able to play scales should not have to demonstrate
+  /// half a curriculum they already know before meeting harmonic minor. Set
+  /// above where placement puts an experienced learner and at where it puts an
+  /// advanced one, so it admits the second and not the first.
+  final double fluentExecutionFloor;
+
   const EligibilityConfig({
     required this.handTogetherCompetencyThreshold,
     required this.earlyTransferExecutionFloor,
     required this.intermediateExecutionFloor,
     required this.advancedExecutionFloor,
     required this.minorTopologyFloor,
+    required this.harmonicMinorCoreRetrievals,
+    required this.melodicMinorCoreRetrievals,
+    required this.coreRetrievalBands,
+    required this.fluentExecutionFloor,
   });
 
   /// The execution floor [band] asks for.
@@ -134,7 +170,7 @@ class ProbeConfig {
 ///
 /// Every value is a deliberately simple placeholder, not a tuned policy
 /// decision. `analysis/scheduler/config.toml` is the authoritative registry;
-/// [v1PrototypeSchedulerConfig] mirrors it, and a test reconciles the two.
+/// [v1SchedulerConfig] mirrors it, and a test reconciles the two.
 @immutable
 class SchedulerConfig {
   /// Identifier of this configuration, recorded with every decision.
@@ -165,7 +201,7 @@ class SchedulerConfig {
   });
 }
 
-/// The provisional V1 scheduler policy constants.
+/// The V1 scheduler policy constants.
 ///
 /// The canonical registry. `analysis/scheduler/config.toml` records what the
 /// Python prototype carried at version `v1-prototype-0` and is provenance
@@ -175,17 +211,22 @@ class SchedulerConfig {
 /// frozen for initial production; the numbers are starting points for
 /// calibration against real practice data.
 ///
-/// The name still says prototype because the values came from one. A real
-/// revision of them is the moment to become `v1SchedulerConfig` with the
-/// lineage in a provenance field, rather than renaming for its own sake.
-const SchedulerConfig v1PrototypeSchedulerConfig = SchedulerConfig(
-  modelVersion: 'v1-prototype-0',
+/// It carried the prototype's name until it stopped carrying only the
+/// prototype's values. The form-introduction thresholds came from curriculum
+/// evidence and a piano, not from the port, so the lineage moved into the
+/// paragraph above and the name says what this is.
+const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
+  modelVersion: 'v1-1',
   eligibility: EligibilityConfig(
     handTogetherCompetencyThreshold: 0.0,
     earlyTransferExecutionFloor: 0.0,
     intermediateExecutionFloor: 0.4,
     advancedExecutionFloor: 0.8,
     minorTopologyFloor: 0.0,
+    harmonicMinorCoreRetrievals: 12,
+    melodicMinorCoreRetrievals: 16,
+    coreRetrievalBands: 2,
+    fluentExecutionFloor: 1.0,
   ),
   safety: SafetyConfig(maxSessionAttempts: 40),
   challenge: ChallengeConfig(pMin: 0.60, pMax: 0.90, pIntroductionMin: 0.15),

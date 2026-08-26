@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
@@ -25,7 +27,7 @@ class SchedulerPipeline {
 
   const SchedulerPipeline({
     required this.learner,
-    this.config = v1PrototypeSchedulerConfig,
+    this.config = v1SchedulerConfig,
   });
 
   /// Stage 2a: the `REQUIRES` prerequisite gate.
@@ -83,6 +85,17 @@ class SchedulerPipeline {
       }
     }
 
+    // An altered minor form is a new idea rather than a new key: harmonic
+    // minor changes what the sixth and seventh degrees mean, melodic minor
+    // changes two of them in a form the classical convention does not use.
+    // Meeting one while the ordinary scales are still unsettled enlarges the
+    // vocabulary faster than the base under it, whatever the keyboard
+    // geography says, which is why this is not a band question.
+    if (coreForms.contains(material.form) == false) {
+      final breadth = _coreBreadthDecisionFor(state, material.form);
+      if (breadth != null) return breadth;
+    }
+
     // Natural minor asks for nothing: it is where minor topology comes from,
     // and requiring familiarity to earn the only material that produces it
     // would keep every minor scale outranked forever.
@@ -130,6 +143,63 @@ class SchedulerPipeline {
       EligibilityTier.fullyEligible,
       'foundation material, and no material prerequisite applies',
       code: EligibilityReason.foundationMaterial,
+    );
+  }
+
+  /// Whether [form] has to wait for a broader base of ordinary scales.
+  ///
+  /// Returns null when it does not, so the ordinary rules decide.
+  ///
+  /// Breadth is counted as distinct major and natural-minor materials this
+  /// profile has actually retrieved, spread over more than one admission band.
+  /// Retrieved rather than seen: having been shown a scale is not having it,
+  /// and it is having it that makes an altered form an alteration of something
+  /// rather than a second thing to learn. Spread rather than counted alone,
+  /// because twelve scales in the three easiest keys is a narrow base wearing
+  /// a broad number.
+  ///
+  /// Waived for a learner whose single-hand execution is already fluent. The
+  /// rule exists so a beginner's vocabulary does not outrun their base; making
+  /// someone who arrived playing scales demonstrate half a curriculum first
+  /// would be an artificial beginner's path through material they know.
+  EligibilityDecision? _coreBreadthDecisionFor(
+    LearnerState state,
+    ScaleForm form,
+  ) {
+    final required = switch (form) {
+      ScaleForm.harmonicMinor => config.eligibility.harmonicMinorCoreRetrievals,
+      ScaleForm.melodicMinor => config.eligibility.melodicMinorCoreRetrievals,
+      _ => 0,
+    };
+    if (required == 0) return null;
+
+    final execution = math.max(
+      state.competency(Competency.rhScaleExecution).mean,
+      state.competency(Competency.lhScaleExecution).mean,
+    );
+    if (execution >= config.eligibility.fluentExecutionFloor) return null;
+
+    final retrievedBands = <AdmissionBand>{};
+    var retrieved = 0;
+    for (final material in allScales) {
+      if (!coreForms.contains(material.form)) continue;
+      final memory = state.materialMemory[material.materialId];
+      if (memory?.factualLastRetrievalAt == null) continue;
+      retrieved++;
+      retrievedBands.add(admissionBandOf(material));
+    }
+
+    final bands = config.eligibility.coreRetrievalBands;
+    if (retrieved >= required && retrievedBands.length >= bands) return null;
+
+    return EligibilityDecision(
+      EligibilityTier.provisionallyEligible,
+      '$retrieved major and natural-minor scales retrieved across '
+      '${retrievedBands.length} bands, and ${form.id} asks for $required '
+      'across $bands',
+      code: form == ScaleForm.melodicMinor
+          ? EligibilityReason.melodicMinorRepertoireBreadth
+          : EligibilityReason.harmonicMinorRepertoireBreadth,
     );
   }
 

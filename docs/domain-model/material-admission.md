@@ -181,11 +181,27 @@ of this document:
 | May it be attempted at this rung yet?         | guidance REQUIRES |
 | Which eligible candidate wins?                | ranking           |
 
-It keys off the absence of material history in this profile, never off a claim
-about the learner: someone may arrive knowing the scale perfectly well, and all
-that is being said is that KeyRecall has not established it. It shares the
-eligibility stage because that stage already sees the whole candidate, but it is
-not a property of the material's band.
+A third rule came from the same place, and is also not a band rule. The bands
+answer "is this key's geography within reach"; this one answers "should the
+learner's vocabulary of scale forms grow yet". A beginner interleaving majors
+and natural minors across keys is getting the contextual-interference benefit
+while the conceptual object stays stable. Adding harmonic minor also changes
+what minor means, and melodic minor changes it again in a fixed form the
+classical convention does not use, so an altered form waits on a breadth of
+ordinary scales the learner has retrieved, across more than one band.
+
+Interleaved, not blocked: once an altered form is admitted it competes with the
+familiar corpus rather than replacing it. The rule is about how fast the
+vocabulary grows, never about practising one form to exhaustion before the next.
+The thresholds are first guesses, and the reason they are counted as retrievals
+across bands rather than as a proficiency average is that the concern is a
+learner having a stable idea of a scale, not their being excellent at one.
+
+`unseenMaterialRequiresCue` keys off the absence of material history in this
+profile, never off a claim about the learner: someone may arrive knowing the
+scale perfectly well, and all that is being said is that KeyRecall has not
+established it. It shares the eligibility stage because that stage already sees
+the whole candidate, but it is not a property of the material's band.
 
 Whether the fingering-family axis earns a competency of its own then becomes a
 question the first policy can help answer: if learners stall specifically where

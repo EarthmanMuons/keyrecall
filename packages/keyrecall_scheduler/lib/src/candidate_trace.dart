@@ -49,6 +49,12 @@ enum EligibilityReason {
   /// Hands-together work asks for both hands first.
   handsTogetherPrerequisite('HANDS_TOGETHER_PREREQUISITE'),
 
+  /// Harmonic minor asks for a broad base of ordinary scales first.
+  harmonicMinorRepertoireBreadth('HARMONIC_MINOR_REPERTOIRE_BREADTH'),
+
+  /// Melodic minor asks for a broader one still.
+  melodicMinorRepertoireBreadth('MELODIC_MINOR_REPERTOIRE_BREADTH'),
+
   /// Material KeyRecall has no history for may be introduced, but not tested
   /// from memory first.
   ///
