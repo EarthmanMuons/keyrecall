@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -149,6 +151,10 @@ class AttemptReview extends StatelessWidget {
             ],
           ],
           const Spacer(),
+          if (!kReleaseMode) ...[
+            _Measured(record: record, next: upcoming),
+            const SizedBox(height: 16),
+          ],
           SizedBox(
             height: 88,
             child: FilledButton(
@@ -160,6 +166,74 @@ class AttemptReview extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// The numbers behind the sentence above it.
+///
+/// Debug and profile only. The learner is told one true thing; this is for
+/// whoever is deciding whether that thing was the right one to say, and for
+/// watching values that now change what is learned. Achieved tempo especially:
+/// it sets the difficulty execution evidence is attributed at, so a systematic
+/// offset between the click and the transcript clock would show up here first.
+class _Measured extends StatelessWidget {
+  const _Measured({required this.record, required this.next});
+
+  final AttemptRecord record;
+  final PresentedAttempt? next;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final decision = next?.decision.decision;
+    final rows = <(String, String)>[
+      ('termination', record.closure.termination.id),
+      ...switch (record.closure.measurement) {
+        Measured(:final outcome, :final weights) => [
+          ('retrieval', outcome.retrieval.name),
+          ('started / completed', '${outcome.started} / ${outcome.completed}'),
+          ('achieved tempo', outcome.achievedTempoRatio.toStringAsFixed(3)),
+          (
+            'attributed at',
+            '${(record.exercise.conditions.tempoBpm * outcome.achievedTempoRatio.clamp(0, 1)).round()} '
+                'of ${record.exercise.conditions.tempoBpm.round()} bpm',
+          ),
+          ('motor score', outcome.motorScore.toStringAsFixed(3)),
+          ('pitch integrity', outcome.pitchIntegrity.toStringAsFixed(3)),
+          ('continuity', outcome.continuity.toStringAsFixed(3)),
+          ('temporal stability', outcome.temporalStability.toStringAsFixed(3)),
+          ('topology accuracy', outcome.topologyAccuracy.toStringAsFixed(3)),
+          (
+            'weights exec / mem',
+            '${weights.materialExecution.toStringAsFixed(2)} / '
+                '${weights.materialMemory.toStringAsFixed(2)}',
+          ),
+        ],
+        MeasurementUnavailable(:final reason) => [('unmeasured', reason.id)],
+      },
+      if (decision != null) ...[
+        ('next tier', decision.eligibilityTier.id),
+        ('next bypass', decision.challengeBypass?.id ?? 'none'),
+        ('next predicted', decision.prediction.overallP.toStringAsFixed(3)),
+      ],
+    ];
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: DefaultTextStyle(
+        style: theme.textTheme.bodySmall!.copyWith(
+          fontFamily: 'monospace',
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            for (final (label, value) in rows)
+              Text('${label.padRight(20)} $value'),
+          ],
+        ),
       ),
     );
   }
