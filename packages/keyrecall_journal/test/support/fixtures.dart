@@ -23,7 +23,7 @@ const SchedulerConfig schedulerConfig = v1SchedulerConfig;
 const SchedulerPipeline pipeline = SchedulerPipeline(learner: model);
 
 const ModelProvenance provenance = ModelProvenance(
-  learnerModelVersion: 'v1-2',
+  learnerModelVersion: 'v1-3',
   schedulerModelVersion: 'v1-prototype-0',
   appBuildVersion: 'test',
 );

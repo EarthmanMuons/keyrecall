@@ -229,6 +229,8 @@ void main() {
       ..memoryAnchorAt = longAgo
       ..factualLastRetrievalAt = longAgo
       ..lastRetrievalAttemptAt = longAgo
+      ..establishedIndependence =
+          GuidanceContext.notesPreviewedOnly.independence
       ..logCurrentHalfLife = math.log(0.1)
       ..logConsolidatedHalfLife = math.log(0.1);
 

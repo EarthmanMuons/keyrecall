@@ -165,6 +165,16 @@ String asString(Object? value, String what, {String? location}) {
 String? asOptionalString(Object? value, String what, {String? location}) =>
     value == null ? null : asString(value, what, location: location);
 
+/// Reads [value] as an optional int, distinguishing absent from malformed.
+int? asOptionalInt(Object? value, String what, {String? location}) {
+  if (value == null) return null;
+  if (value is int) return value;
+  throw JournalFormatException(
+    'expected an integer for $what, got $value',
+    location: location,
+  );
+}
+
 /// Reads [value] as a finite double, or fails with a located error.
 double asDouble(Object? value, String what, {String? location}) {
   if (value is num && value.isFinite) return value.toDouble();

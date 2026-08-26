@@ -258,17 +258,31 @@ class SchedulerPipeline {
 
   /// Whether [exercise] is a proactive step back toward independence.
   ///
-  /// One step down from full cueing only: a successful probe is itself a
-  /// genuine retrieval test, so it can re-anchor the memory clock and let
-  /// ordinary admission take over, with no need to probe straight to fully
-  /// unguided. Requires a prior confirmed success and enough time since it,
-  /// since probing again immediately would be redundant.
+  /// The mirror of recovery: the same task at exactly one rung less support
+  /// than the one the learner last succeeded under, where recovery is the same
+  /// task at one rung more. That makes the ladder traversable in both
+  /// directions and gives it a top, since a material established unguided has
+  /// no less supportive rung to be probed toward.
+  ///
+  /// It used to name one fixed rung, on the reasoning that a successful probe
+  /// re-anchors the clock and ordinary admission takes it from there.
+  /// Simulating three learners showed ordinary admission never gets there:
+  /// every winning slot across all three carried a bypass, so nothing ever
+  /// climbed past previewed and no profile played anything from memory
+  /// unaided. The step from previewed to unguided is a real question in its
+  /// own right anyway. Producing a scale moments after being shown it and
+  /// producing it cold are different achievements, whatever they share as a
+  /// retrieval channel.
+  ///
+  /// Requires a prior confirmed success and enough time since it, since
+  /// probing again immediately would test what is still in hand rather than
+  /// what has been kept.
   bool isGuidanceProbe(LearnerState state, Exercise exercise, DateTime at) {
-    if (exercise.guidance != GuidanceContext.notesPreviewedOnly) return false;
-    final lastSuccess = state
-        .materialMemory[exercise.material.materialId]
-        ?.factualLastRetrievalAt;
-    if (lastSuccess == null) return false;
+    final memory = state.materialMemory[exercise.material.materialId];
+    final established = memory?.establishedIndependence;
+    final lastSuccess = memory?.factualLastRetrievalAt;
+    if (established == null || lastSuccess == null) return false;
+    if (exercise.guidance.independence != established + 1) return false;
     return lastSuccess.daysUntil(at) >= config.probe.minDaysSinceLastRetrieval;
   }
 

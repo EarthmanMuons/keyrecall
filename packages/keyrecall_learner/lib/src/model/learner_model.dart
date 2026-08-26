@@ -520,6 +520,11 @@ class LearnerModel {
     final memoryParams = params.materialMemory;
     memory.memoryAnchorAt = at;
     memory.factualLastRetrievalAt = at;
+    // The rung this was actually produced under, which is what the next
+    // question is built from. The latest rather than the best ever: after a
+    // recovery success the ladder should resume from where the learner just
+    // succeeded, not from a height they reached before failing.
+    memory.establishedIndependence = guidance.independence;
 
     final successFactor = switch (guidance.independence) {
       1 => memoryParams.retrievalSuccessFactorNotesPreviewed,

@@ -305,12 +305,13 @@ void main() {
       memory
         ..memoryAnchorAt = t0
         ..factualLastRetrievalAt = t0
-        ..lastRetrievalAttemptAt = t0;
+        ..lastRetrievalAttemptAt = t0
+        // Established with the notes previewed, so the rung above it is what
+        // a probe would ask for next.
+        ..establishedIndependence =
+            GuidanceContext.notesPreviewedOnly.independence;
 
-      final probe = exerciseFor(
-        materials.first,
-        guidance: GuidanceContext.notesPreviewedOnly,
-      );
+      final probe = exerciseFor(materials.first);
       final at = t0.plusDays(config.probe.minDaysSinceLastRetrieval + 1.0);
       expect(pipeline.isGuidanceProbe(state, probe, at), isTrue);
 

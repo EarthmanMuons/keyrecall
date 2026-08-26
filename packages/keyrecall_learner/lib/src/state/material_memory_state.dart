@@ -54,6 +54,20 @@ class MaterialMemoryState {
   /// When factual retrieval last succeeded, or null if it never has.
   DateTime? factualLastRetrievalAt;
 
+  /// The independence of the rung at which retrieval last succeeded, or null
+  /// if it never has.
+  ///
+  /// Factual history, like the retrieval clocks beside it: the rung a learner
+  /// actually produced this material under, not a belief about what they could
+  /// manage. Replay derives it from the journal the same way, since every
+  /// attempt record carries the exercise it was.
+  ///
+  /// What the guidance ladder is climbed by. Knowing that retrieval succeeded
+  /// is not enough to know what to ask next, because succeeding with the notes
+  /// shown a moment ago and succeeding without them are different achievements
+  /// and the next question differs accordingly.
+  int? establishedIndependence;
+
   /// Whether retrieval has ever succeeded.
   ///
   /// The whole of what a prerequisite may ask of this. Eligibility reads
@@ -80,6 +94,7 @@ class MaterialMemoryState {
     required this.coldStartUncertainty,
     this.memoryAnchorAt,
     this.factualLastRetrievalAt,
+    this.establishedIndependence,
     this.lastRetrievalAttemptAt,
   });
 
@@ -164,6 +179,7 @@ class MaterialMemoryState {
     coldStartUncertainty: coldStartUncertainty,
     memoryAnchorAt: memoryAnchorAt,
     factualLastRetrievalAt: factualLastRetrievalAt,
+    establishedIndependence: establishedIndependence,
     lastRetrievalAttemptAt: lastRetrievalAttemptAt,
   );
 

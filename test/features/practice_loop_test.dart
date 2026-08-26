@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'package:keyrecall/features/practice/practice_providers.dart';
 import 'package:keyrecall/features/practice/reported_result.dart';
@@ -244,8 +245,12 @@ void main() {
     // The same history, recorded under the model that was live before the
     // tempo attribution change.
     final journal = File('${root.path}/${started.profile.id}/journal.jsonl');
+    // Whatever this build calls its model, rewritten to one it does not run.
     journal.writeAsStringSync(
-      journal.readAsStringSync().replaceAll('v1-2', 'v1-prototype-2'),
+      journal.readAsStringSync().replaceAll(
+        '"${v1LearnerParams.modelVersion}"',
+        '"a-model-this-build-does-not-have"',
+      ),
     );
 
     final after = launch();

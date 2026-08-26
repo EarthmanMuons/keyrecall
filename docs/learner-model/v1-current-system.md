@@ -872,6 +872,22 @@ leave retrieval tested, so a first encounter with unseen material can produce a
 tempo probe as soon as it is played from the preview. Only continuous cueing,
 where retrieval is never observed, cannot.
 
+The guidance probe is the mirror of recovery: the same task at exactly one rung
+less support than the one retrieval last succeeded under, where recovery is the
+same task at one rung more. That makes the ladder traversable in both directions
+and gives it a top, since material established unguided has no less supportive
+rung to be probed toward. Climbing from cued to previewed is the bootstrap
+probe's job, since a cued attempt never observes retrieval and so can establish
+nothing.
+
+It named one fixed rung until simulating three learners showed why that fails.
+The reasoning had been that a successful probe re-anchors the clock and ordinary
+admission takes it from there; in practice ordinary admission never got a slot,
+every selected candidate across all three profiles carried a bypass, and no
+profile ever played anything from memory unaided. Knowing the rung retrieval
+succeeded under is what the ladder is climbed by, so material memory records it
+alongside the retrieval clocks.
+
 Guidance and bootstrap probes use different factual clocks:
 
 ```text
