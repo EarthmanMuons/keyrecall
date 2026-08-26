@@ -68,6 +68,21 @@ class MaterialMemoryState {
   /// and the next question differs accordingly.
   int? establishedIndependence;
 
+  /// When that rung was established, or null if none has been.
+  ///
+  /// A separate clock from [factualLastRetrievalAt], and the separation is the
+  /// point. Retrieval timing asks how long ago this was produced at all;
+  /// establishment timing asks how long this rung has been the one the learner
+  /// succeeds at. Sharing one clock made every success at the established rung
+  /// push the next step toward independence further away, so practising more
+  /// meant waiting longer to be asked for less support.
+  ///
+  /// It moves when the rung changes and not when it is repeated. A failure
+  /// clears the establishment entirely, since the rung is no longer one the
+  /// learner is succeeding at, and the next success re-establishes it wherever
+  /// that happens to be.
+  DateTime? establishedIndependenceAt;
+
   /// Whether retrieval has ever succeeded.
   ///
   /// The whole of what a prerequisite may ask of this. Eligibility reads
@@ -95,6 +110,7 @@ class MaterialMemoryState {
     this.memoryAnchorAt,
     this.factualLastRetrievalAt,
     this.establishedIndependence,
+    this.establishedIndependenceAt,
     this.lastRetrievalAttemptAt,
   });
 
@@ -180,6 +196,7 @@ class MaterialMemoryState {
     memoryAnchorAt: memoryAnchorAt,
     factualLastRetrievalAt: factualLastRetrievalAt,
     establishedIndependence: establishedIndependence,
+    establishedIndependenceAt: establishedIndependenceAt,
     lastRetrievalAttemptAt: lastRetrievalAttemptAt,
   );
 

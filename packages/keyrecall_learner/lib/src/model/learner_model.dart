@@ -408,6 +408,16 @@ class LearnerModel {
       }
     }
 
+    // A rung the learner just failed at is no longer one they succeed at, so
+    // it stops being established and the ladder waits for the next success to
+    // say where they are. Without this, failing a step up would leave the
+    // older establishment standing and let the same step be offered again
+    // immediately.
+    if (outcome.retrieval == FactualRetrieval.failed) {
+      memory.establishedIndependence = null;
+      memory.establishedIndependenceAt = null;
+    }
+
     final quality = outcome.practiceQuality;
 
     if (outcome.retrieval == FactualRetrieval.succeeded) {
@@ -524,7 +534,15 @@ class LearnerModel {
     // question is built from. The latest rather than the best ever: after a
     // recovery success the ladder should resume from where the learner just
     // succeeded, not from a height they reached before failing.
-    memory.establishedIndependence = guidance.independence;
+    //
+    // Its clock moves only when the rung does. Succeeding again at the rung
+    // already established says the learner is still there, not that they have
+    // arrived, and moving the clock for it would push the step toward
+    // independence away every time they practised.
+    if (memory.establishedIndependence != guidance.independence) {
+      memory.establishedIndependence = guidance.independence;
+      memory.establishedIndependenceAt = at;
+    }
 
     final successFactor = switch (guidance.independence) {
       1 => memoryParams.retrievalSuccessFactorNotesPreviewed,

@@ -888,12 +888,30 @@ profile ever played anything from memory unaided. Knowing the rung retrieval
 succeeded under is what the ladder is climbed by, so material memory records it
 alongside the retrieval clocks.
 
-Guidance and bootstrap probes use different factual clocks:
+The two probes use different factual clocks, and the difference is the point:
 
 ```text
-guidance probe     time since last successful factual retrieval
-bootstrap probe    time since last factual retrieval attempt
+guidance probe     time since the current rung was established
+bootstrap probe    time since the last factual retrieval attempt
 ```
+
+Removing support and proving retention are different questions and were briefly
+the same clock. Every successful retrieval moved that clock forward, including
+successes at the rung already established, so a learner who never missed a note
+had the next step toward independence pushed further away each time they
+practised: the harder they worked, the longer the preview stayed. Material
+memory therefore records when a rung was established as well as which one, and
+that clock moves when the rung changes rather than whenever it is repeated. A
+factual failure unsettles the rung entirely, since a rung the learner just
+failed at is not one they are succeeding at.
+
+That leaves the case with no established rung, which the bootstrap probe owns:
+material never retrieved at all, and material whose rung a failure unsettled.
+Recovery answers a failure by adding support and can walk a material down to
+full cueing, where retrieval is never observed and nothing could re-establish
+anything, so without this a learner could settle there permanently. Its clock is
+the longer one, because returning to something that just went wrong is a
+question about retention in a way that stepping up from a working rung is not.
 
 ### 8.4 Priority ranking
 

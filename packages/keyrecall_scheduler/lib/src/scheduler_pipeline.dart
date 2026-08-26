@@ -274,32 +274,43 @@ class SchedulerPipeline {
   /// producing it cold are different achievements, whatever they share as a
   /// retrieval channel.
   ///
-  /// Requires a prior confirmed success and enough time since it, since
-  /// probing again immediately would test what is still in hand rather than
-  /// what has been kept.
+  /// Paced by how long the rung has been established rather than by how long
+  /// ago retrieval last happened. Those are different questions, and sharing
+  /// the retrieval clock made every success at the established rung push the
+  /// next step away: a learner who never missed a note waited longer for
+  /// independence the more they practised. Producing a scale seconds after
+  /// being shown it still proves little, so the establishment clock is short
+  /// rather than absent.
   bool isGuidanceProbe(LearnerState state, Exercise exercise, DateTime at) {
     final memory = state.materialMemory[exercise.material.materialId];
     final established = memory?.establishedIndependence;
-    final lastSuccess = memory?.factualLastRetrievalAt;
-    if (established == null || lastSuccess == null) return false;
+    final since = memory?.establishedIndependenceAt;
+    if (established == null || since == null) return false;
     if (exercise.guidance.independence != established + 1) return false;
-    return lastSuccess.daysUntil(at) >= config.probe.minDaysSinceLastRetrieval;
+    return since.daysUntil(at) >= config.probe.minDaysSinceSupportEstablished;
   }
 
-  /// Whether [exercise] is a first retrieval test for material that has never
-  /// succeeded.
+  /// Whether [exercise] is a retrieval test for material with no rung
+  /// currently established.
   ///
-  /// The unanchored counterpart to [isGuidanceProbe]. Recovery can escalate a
-  /// material to maximum cueing after a couple of failures, before any success
-  /// ever anchors the clock, and the guidance probe structurally cannot help
-  /// there because its precondition is the anchor this material lacks. This is
-  /// what keeps offering a retrieval-observing candidate instead of settling
-  /// into a permanently cued state. Its clock is the last factual attempt of
-  /// any kind, not the last success.
+  /// The counterpart to [isGuidanceProbe], which climbs from an established
+  /// rung and so cannot help where there is none. Two ways to have none: the
+  /// material has never been retrieved at all, or it was retrieved and then
+  /// failed, which unsettles the rung. Recovery answers a failure by adding
+  /// support and can walk a material down to full cueing, where retrieval is
+  /// never observed and nothing can re-establish anything. This is what keeps
+  /// offering a retrieval-observing candidate instead of settling there
+  /// permanently.
+  ///
+  /// Its clock is the last factual attempt of any kind rather than the last
+  /// success, since after a failure there may be no success to count from, and
+  /// the wait is the long one: coming back to something that just went wrong
+  /// is a question about retention, unlike stepping up from a rung that is
+  /// working.
   bool isBootstrapProbe(LearnerState state, Exercise exercise, DateTime at) {
     if (exercise.guidance != GuidanceContext.notesPreviewedOnly) return false;
     final memory = state.materialMemory[exercise.material.materialId];
-    if (memory == null || memory.factualLastRetrievalAt != null) return false;
+    if (memory == null || memory.establishedIndependence != null) return false;
     final lastAttempt = memory.lastRetrievalAttemptAt;
     if (lastAttempt == null) return false;
     return lastAttempt.daysUntil(at) >= config.probe.minDaysSinceLastRetrieval;

@@ -231,6 +231,7 @@ void main() {
       ..lastRetrievalAttemptAt = longAgo
       ..establishedIndependence =
           GuidanceContext.notesPreviewedOnly.independence
+      ..establishedIndependenceAt = longAgo
       ..logCurrentHalfLife = math.log(0.1)
       ..logConsolidatedHalfLife = math.log(0.1);
 

@@ -494,7 +494,7 @@ const LearnerParams v1PrototypeLearnerParams = LearnerParams(
 /// reinterpret under. Two models that learn differently must not share one, or
 /// a journal replays into a state its own history never produced.
 const LearnerParams v1LearnerParams = LearnerParams(
-  modelVersion: 'v1-3',
+  modelVersion: 'v1-4',
   competency: _v1Competency,
   materialMemory: _v1MaterialMemory,
   materialExecution: _v1MaterialExecution,

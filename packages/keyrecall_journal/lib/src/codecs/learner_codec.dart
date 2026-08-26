@@ -202,6 +202,9 @@ Map<String, Object?> encodeMaterialMemory(MaterialMemoryState memory) => {
     memory.lastRetrievalAttemptAt,
   ),
   'established_independence': memory.establishedIndependence,
+  'established_independence_at': encodeOptionalTime(
+    memory.establishedIndependenceAt,
+  ),
 };
 
 /// Reads a complete learner state back, validating every invariant.
@@ -350,6 +353,11 @@ MaterialMemoryState decodeMaterialMemory(
     establishedIndependence: asOptionalInt(
       json['established_independence'],
       'established_independence',
+      location: location,
+    ),
+    establishedIndependenceAt: readOptionalTime(
+      json,
+      'established_independence_at',
       location: location,
     ),
   );

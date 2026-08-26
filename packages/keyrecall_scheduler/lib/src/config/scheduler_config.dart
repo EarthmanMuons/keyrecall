@@ -159,6 +159,21 @@ class ProbeConfig {
   /// factual attempt of any kind.
   final double minDaysSinceLastRetrieval;
 
+  /// How long a rung has to have been the established one before the learner
+  /// is asked for the next one up, in days.
+  ///
+  /// A different question from [minDaysSinceLastRetrieval] and so a different
+  /// clock. That one asks whether enough time has passed for retrieval to mean
+  /// something; this asks whether the learner has settled at a level of
+  /// support. Producing a scale seconds after being shown it proves little, so
+  /// this is not zero, but proving durable retention is not what removing a
+  /// preview is for either, so it is much shorter.
+  ///
+  /// A stand-in for the rule actually wanted, which is that other material
+  /// should have intervened. Roughly a quarter of an hour, which at a scale a
+  /// minute or two is about that.
+  final double minDaysSinceSupportEstablished;
+
   /// What an attempt has to look like before the next one may jump straight
   /// to the tempo it was played at.
   ///
@@ -174,6 +189,7 @@ class ProbeConfig {
 
   const ProbeConfig({
     required this.minDaysSinceLastRetrieval,
+    required this.minDaysSinceSupportEstablished,
     required this.underchallengeTempoRatio,
     required this.underchallengePitchIntegrity,
     required this.underchallengeContinuity,
@@ -259,6 +275,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
   ),
   probe: ProbeConfig(
     minDaysSinceLastRetrieval: 5.0,
+    minDaysSinceSupportEstablished: 0.01,
     underchallengeTempoRatio: 1.2,
     underchallengePitchIntegrity: 0.95,
     underchallengeContinuity: 0.9,

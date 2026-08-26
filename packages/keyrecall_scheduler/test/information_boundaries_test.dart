@@ -309,7 +309,8 @@ void main() {
         // Established with the notes previewed, so the rung above it is what
         // a probe would ask for next.
         ..establishedIndependence =
-            GuidanceContext.notesPreviewedOnly.independence;
+            GuidanceContext.notesPreviewedOnly.independence
+        ..establishedIndependenceAt = t0;
 
       final probe = exerciseFor(materials.first);
       final at = t0.plusDays(config.probe.minDaysSinceLastRetrieval + 1.0);
