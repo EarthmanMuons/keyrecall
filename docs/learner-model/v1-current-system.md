@@ -861,10 +861,16 @@ every other one. Retrieval must have been tested and succeeded, since playing
 quickly while reading the notes off the screen says nothing about the exercise.
 
 This is the selection half of a division the attribution rule makes necessary.
-Execution evidence is credited at the tempo that was asked for and never above
-it (§7), so a learner cannot be credited with a difficulty nobody posed. The
-only way to earn evidence at a faster tempo is to be asked for it, and this is
-what does the asking.
+Execution evidence is credited no higher than the tempo that was asked for, and
+at the lower demonstrated tempo when the learner played slower (§7). So a
+learner cannot be credited with a difficulty nobody posed, and the only way to
+earn evidence at a faster tempo is to be asked for it. This is what does the
+asking.
+
+Note which rungs can trigger it. Previewed notes supply the material and still
+leave retrieval tested, so a first encounter with unseen material can produce a
+tempo probe as soon as it is played from the preview. Only continuous cueing,
+where retrieval is never observed, cannot.
 
 Guidance and bootstrap probes use different factual clocks:
 
