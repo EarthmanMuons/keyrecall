@@ -26,6 +26,11 @@ Map<int, int> fingeringByKeyFor(Exercise exercise, Hand hand) {
 /// is the only place the pattern does something a reader could not predict.
 /// The first and last notes stay too, since where a scale starts and ends is
 /// the part people check.
+///
+/// A crossing is written with the finger before it, because a lone digit says
+/// which finger to arrive on and not what the hand is doing: 1 on its own is a
+/// thumb, 3 then 1 is the thumb passing under a third finger, which is the
+/// motion being named.
 List<int?>? displayFingeringFor(Exercise exercise, Hand hand) {
   final fingers = fingeringFor(exercise, hand);
   if (fingers == null) return null;
@@ -36,7 +41,8 @@ List<int?>? displayFingeringFor(Exercise exercise, Hand hand) {
     for (final (position, finger) in fingers.indexed)
       if (position <= firstOctave ||
           position == fingers.length - 1 ||
-          _isCrossing(fingers, position))
+          _isCrossing(fingers, position) ||
+          _isCrossing(fingers, position + 1))
         finger
       else
         null,
@@ -49,4 +55,6 @@ List<int?>? displayFingeringFor(Exercise exercise, Hand hand) {
 /// Anything else is a thumb passing under or a finger crossing over, which is
 /// the thing worth naming.
 bool _isCrossing(List<int> fingers, int position) =>
-    position > 0 && (fingers[position] - fingers[position - 1]).abs() != 1;
+    position > 0 &&
+    position < fingers.length &&
+    (fingers[position] - fingers[position - 1]).abs() != 1;

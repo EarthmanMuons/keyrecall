@@ -123,6 +123,21 @@ void main() {
       expect(shown.last, full.last);
     });
 
+    test('writes the finger a crossing starts from, not just the thumb', () {
+      final exercise = exerciseOf(octaves: 2, direction: ScaleDirection.upDown);
+      final full = fingeringFor(exercise, Hand.right)!;
+      final shown = displayFingeringFor(exercise, Hand.right)!;
+
+      for (var i = 1; i < full.length; i++) {
+        if ((full[i] - full[i - 1]).abs() == 1) continue;
+        expect(
+          shown[i - 1],
+          full[i - 1],
+          reason: 'a lone digit names a finger; a pair names the motion',
+        );
+      }
+    });
+
     test('never leaves a thumb crossing unwritten', () {
       final exercise = exerciseOf(octaves: 2, direction: ScaleDirection.upDown);
       final full = fingeringFor(exercise, Hand.right)!;
