@@ -15,7 +15,9 @@ final Profile alice = Profile(
   createdAt: t0,
 );
 
-final List<TechnicalMaterial> materials = v1ScaleCatalog.take(3).toList();
+final List<TechnicalMaterial> fixtureMaterials = v1ScaleCatalog
+    .take(3)
+    .toList();
 
 /// Ids that count up, so a test can name the attempt it expects.
 IdGenerator countingIds([String prefix = 'attempt']) {
@@ -61,10 +63,13 @@ Future<PracticeSession> openSession(
   String sessionId = 'session-1',
   IdGenerator? ids,
   bool presentOnlyMeasurable = true,
+  PlacementTier placement = PlacementTier.someExperience,
+  List<TechnicalMaterial>? materials,
 }) => PracticeSession.open(
   store: store,
   profile: profile ?? alice,
-  materials: materials,
+  materials: materials ?? fixtureMaterials,
+  placement: placement,
   learner: learner,
   sessionId: sessionId,
   nextId: ids ?? countingIds(),

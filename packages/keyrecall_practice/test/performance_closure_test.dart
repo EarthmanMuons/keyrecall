@@ -269,12 +269,23 @@ void main() {
     test('is refused at a rung that supplies the material anyway', () async {
       final store = InMemoryPracticeStore(createdAt: t0);
       final session = await openSession(store);
-      final presented = await presentUntil(
-        session,
-        (exercise) =>
-            oneHand(exercise) && !exercise.guidance.isRetrievalObserved,
-      );
-      expect(presented.exercise.guidance.isMaterialSupplied, isTrue);
+      // Failing drives the guidance ladder down, which is the only way to
+      // reach the rung that supplies the material throughout.
+      PresentedAttempt? cued;
+      for (var slot = 0; slot < 200 && cued == null; slot++) {
+        final presented = await session.decide(
+          at: t0.plusDays(0.5 + 0.5 * slot),
+        );
+        if (presented == null) continue;
+        if (!presented.exercise.guidance.isRetrievalObserved) {
+          cued = presented;
+          break;
+        }
+        await session.commit(outcomeFor(presented.exercise, succeeded: false));
+      }
+
+      expect(cued, isNotNull);
+      expect(cued!.exercise.guidance.isMaterialSupplied, isTrue);
 
       expect(
         () => session.closeDeclined(transcript: PerformanceTranscript.empty),
