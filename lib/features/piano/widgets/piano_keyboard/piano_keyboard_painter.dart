@@ -353,7 +353,12 @@ class PianoKeyboardPainter extends CustomPainter {
     }
 
     if (decorations.isNotEmpty) {
-      _paintDecorations(canvas, size, whiteKeyWidth: whiteKeyWidth);
+      _paintDecorations(
+        canvas,
+        size,
+        whiteKeyWidth: whiteKeyWidth,
+        blackKeyHeight: blackKeyHeight,
+      );
     }
   }
 
@@ -399,22 +404,17 @@ class PianoKeyboardPainter extends CustomPainter {
   }) {
     final markerColor = scaleMarkerColor!;
     final blackMarkerColor = Color.lerp(markerColor, Colors.white, 0.4)!;
-    final blackKeyWidth = whiteKeyWidth * PianoGeometry.blackKeyWidthRatio;
     final whiteKeyHeight = size.height;
 
     // Markers grow with both key width and height (so an enlarged keyboard gets
     // proportionally larger dots), but stay bounded by key width and a hard
     // ceiling so they never overflow horizontally or balloon on a tall keyboard.
     final whiteMaxRadius = math.max(math.min(whiteKeyWidth * 0.30, 11.0), 4.0);
-    final blackMaxRadius = math.max(math.min(blackKeyWidth * 0.44, 7.5), 3.0);
     final whiteRadius = math
         .max(whiteKeyWidth * 0.20, whiteKeyHeight * 0.026)
         .clamp(4.0, whiteMaxRadius)
         .toDouble();
-    final blackRadius = math
-        .max(blackKeyWidth * 0.34, whiteKeyHeight * 0.020)
-        .clamp(3.0, blackMaxRadius)
-        .toDouble();
+    final blackRadius = _blackMarkerRadius(whiteKeyWidth, whiteKeyHeight);
 
     // Reserve room for a bottom label (the middle-C marker) and record its
     // on-key center. The reserve uses a fixed lift rather than the label's own
@@ -425,6 +425,8 @@ class PianoKeyboardPainter extends CustomPainter {
     for (final d in decorations) {
       if (d.style != PianoKeyDecorationStyle.label) continue;
       if (d.label == null || d.label!.isEmpty) continue;
+      // Black-key labels sit on their own key, not in the bottom band.
+      if (PianoGeometry.isBlackMidi(d.midiNote)) continue;
       final labelFontSize =
           (whiteKeyWidth * 0.52 * decorationTextScaleMultiplier)
               .clamp(9.0, 16.0)
@@ -647,13 +649,31 @@ class PianoKeyboardPainter extends CustomPainter {
     }
   }
 
+  /// Radius of the scale marker drawn on a black key.
+  ///
+  /// Shared with [_paintDecorations] so a label on a black key knows how much
+  /// room the marker below it takes.
+  double _blackMarkerRadius(double whiteKeyWidth, double whiteKeyHeight) {
+    final blackKeyWidth = whiteKeyWidth * PianoGeometry.blackKeyWidthRatio;
+    final ceiling = math.max(math.min(blackKeyWidth * 0.44, 7.5), 3.0);
+    return math
+        .max(blackKeyWidth * 0.34, whiteKeyHeight * 0.020)
+        .clamp(3.0, ceiling)
+        .toDouble();
+  }
+
   void _paintDecorations(
     Canvas canvas,
     Size size, {
     required double whiteKeyWidth,
+    required double blackKeyHeight,
   }) {
     final color = decorationColor;
     if (color == null) return;
+
+    // A black key is dark in both themes, so the accent that reads on ivory
+    // does not read here; lighten it the way the scale markers do.
+    final blackKeyLabelColor = Color.lerp(color, Colors.white, 0.4)!;
 
     final textPainter = TextPainter(
       textAlign: TextAlign.center,
@@ -662,35 +682,54 @@ class PianoKeyboardPainter extends CustomPainter {
 
     // Place near the bottom of the white key, but leave a small margin.
     final baseBottomPad = (whiteKeyWidth * 0.18).clamp(4.0, 8.0);
+    final blackKeyWidth = whiteKeyWidth * PianoGeometry.blackKeyWidthRatio;
+    final blackMarkerRadius = _blackMarkerRadius(whiteKeyWidth, size.height);
 
     for (final d in decorations) {
       if (d.style != PianoKeyDecorationStyle.label) continue;
       final label = d.label;
       if (label == null || label.isEmpty) continue;
 
-      final whiteIndex = _geometry.whiteIndexForMidi(d.midiNote);
-      if (whiteIndex < 0 || whiteIndex >= whiteKeyCount) continue;
-      final fontSize = (whiteKeyWidth * 0.52 * decorationTextScaleMultiplier)
-          .clamp(9.0, 16.0)
-          .toDouble();
+      // Every label is placed on the key it names. Resolving a black key to
+      // its neighbouring white one stacks two labels in one place, which is
+      // what fingering on an accidental used to do.
+      final keyRect = _geometry.keyRectForMidi(
+        midi: d.midiNote,
+        whiteKeyWidth: whiteKeyWidth,
+        totalWidth: size.width,
+      );
+      final centerX = (keyRect.left + keyRect.right) / 2.0;
+      if (centerX < 0 || centerX > size.width) continue;
+
+      final isBlack = PianoGeometry.isBlackMidi(d.midiNote);
+      final width = isBlack ? blackKeyWidth : whiteKeyWidth;
+      final fontSize =
+          ((isBlack ? blackKeyWidth * 0.62 : whiteKeyWidth * 0.52) *
+                  decorationTextScaleMultiplier)
+              .clamp(isBlack ? 8.0 : 9.0, 16.0)
+              .toDouble();
 
       textPainter.text = TextSpan(
         text: label,
         style: TextStyle(
-          color: color,
+          color: isBlack ? blackKeyLabelColor : color,
           fontSize: fontSize,
           fontWeight: FontWeight.w600,
         ),
       );
+      textPainter.layout(minWidth: width, maxWidth: width);
 
-      textPainter.layout(minWidth: whiteKeyWidth, maxWidth: whiteKeyWidth);
+      // On a black key the label sits above the scale marker rather than in
+      // the bottom band, which the key does not reach.
+      final dy = isBlack
+          ? blackKeyHeight -
+                blackMarkerRadius * 2.0 -
+                8.0 -
+                textPainter.height -
+                4.0
+          : size.height - textPainter.height - (baseBottomPad + d.bottomLift);
 
-      final dx = whiteIndex * whiteKeyWidth;
-
-      final bottomPad = baseBottomPad + d.bottomLift;
-      final dy = size.height - textPainter.height - bottomPad;
-
-      textPainter.paint(canvas, Offset(dx, dy));
+      textPainter.paint(canvas, Offset(centerX - width / 2.0, dy));
     }
   }
 
