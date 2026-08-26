@@ -891,7 +891,7 @@ It should not mark the LH realization as though it had itself been practiced.
   independent motor sequence representations exist in extrinsic and intrinsic
   reference frames. https://pubmed.ncbi.nlm.nih.gov/24695723/
 - Vangheluwe, S., Puttemans, V., Wenderoth, N., Van Baelen, M., & Swinnen, S. P.
-  (2006). Inter- and intralimb transfer of a bimanual task: Generalisability of
+  (2006). Inter- and intralimb transfer of a bimanual task: Generalizability of
   limb dissociation. https://pubmed.ncbi.nlm.nih.gov/16307261/
 - van Mier, H. I., & Petersen, S. E. (2006). Intermanual transfer effects in
   sequential tactuomotor learning. https://pubmed.ncbi.nlm.nih.gov/16198379/

@@ -24,7 +24,7 @@ const crisp.KeySignature _noKeySignature = crisp.KeySignature(0);
 /// The id the element for [hand] at [position] is drawn under.
 ///
 /// Stable and derived from the realization, so a later layer that knows where
-/// the learner is can colour or highlight by moment without this adapter
+/// the learner is can color or highlight by moment without this adapter
 /// needing to know anything about a performance.
 String staffElementId(Hand hand, int position) => '${hand.id}-$position';
 
@@ -131,7 +131,7 @@ String transcriptElementId(int sequence) => 'played-$sequence';
 /// Not a rhythmic transcription. Each note gets the same value and the same
 /// space, because nothing here has decided what a beat was, let alone whether
 /// a note fell on one. Bars are there to keep long attempts readable, not to
-/// claim a metre.
+/// claim a meter.
 ///
 /// Nothing is placed in an expected position, left out, or marked, so the
 /// staff says only "this is what arrived".

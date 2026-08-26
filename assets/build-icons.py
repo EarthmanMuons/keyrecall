@@ -95,7 +95,7 @@ def punch_sharp(svg: str) -> str:
     """Turn the sharp into a real hole for the Android themed-icon layer.
 
     A themed icon is recoloured wholesale from its alpha, so a painted sharp
-    comes back the same colour as the naturals and vanishes. It has to be
+    comes back the same color as the naturals and vanishes. It has to be
     absent from the alpha channel.
 
     A mask, not a clip on the keys with the sharp drawn back over it: that
@@ -130,7 +130,7 @@ def wrap_adaptive(svg: str) -> str:
     off = (CANVAS - 48.0 * scale) / 2.0
     r = math.hypot(MARK_W * scale / 2, MARK_H * scale / 2)
     assert abs(r - SAFE_D / 2) < 1e-6, f"corners at r={r}, safe radius {SAFE_D / 2}"
-    assert abs(off + (MARK_X + MARK_W / 2) * scale - CANVAS / 2) < 0.01, "not centred"
+    assert abs(off + (MARK_X + MARK_W / 2) * scale - CANVAS / 2) < 0.01, "not centered"
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CANVAS:g} {CANVAS:g}">\n'
         f'  <g transform="translate({off:.3f} {off:.3f}) scale({scale:.5f})">{inner(svg)}  </g>\n'
@@ -139,7 +139,7 @@ def wrap_adaptive(svg: str) -> str:
 
 
 def wrap_badge(svg: str) -> str:
-    """Mark centred in a filled circle, everything outside it transparent.
+    """Mark centered in a filled circle, everything outside it transparent.
 
     Clip and transform live on separate groups on purpose: a clip-path is
     resolved in the user space established *after* the element's own transform,

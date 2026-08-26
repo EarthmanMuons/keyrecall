@@ -235,9 +235,9 @@ bool _isRepeat(
   int index,
   ExerciseRealization realization,
 ) {
-  for (final neighbour in [index - 1, index + 1]) {
-    if (neighbour < 0 || neighbour >= operations.length) continue;
-    final position = switch (operations[neighbour]) {
+  for (final neighbor in [index - 1, index + 1]) {
+    if (neighbor < 0 || neighbor >= operations.length) continue;
+    final position = switch (operations[neighbor]) {
       Match(:final realizationPosition) => realizationPosition,
       Substitution(:final realizationPosition) => realizationPosition,
       _ => null,

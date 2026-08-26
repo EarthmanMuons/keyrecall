@@ -8,7 +8,7 @@ import 'package:material_ui/material_ui.dart';
 ///
 /// The smallest surface that makes the vendored transport usable on real
 /// hardware: everything below it, including retries, auto-reconnect, and
-/// remembering the last device, already exists in `keyrecall_midi`. Modelled on
+/// remembering the last device, already exists in `keyrecall_midi`. Modeled on
 /// WhatChord's picker without bringing its design across, and not a settings
 /// screen: Bluetooth permission prompts, transport explanations, and status
 /// affordances belong to a real design rather than to a debug sheet.

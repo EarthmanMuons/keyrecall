@@ -30,7 +30,7 @@ machinery.
 ## What the published curricula do and do not settle
 
 Graded syllabi and method books converge on a rough introductory ordering and
-disagree about the details. ABRSM's piano syllabus centres C, G and F major with
+disagree about the details. ABRSM's piano syllabus centers C, G and F major with
 A and D minor early, adds D and A major with E and G minor, then B flat and E
 flat with B and C minor, and moves into the black-key-heavy material later.
 Faber groups early keys by keyboard shape rather than by the circle of fifths.
