@@ -305,10 +305,17 @@ class SchedulerPipeline {
     required DateTime at,
     required ChallengeBypass? override,
     required Exercise? recoveryTarget,
+    required Exercise? tempoProbe,
   }) {
     if (override != null) return override;
     if (recoveryTarget != null) {
       return exercise == recoveryTarget ? ChallengeBypass.recovery : null;
+    }
+    // After recovery and for the same reason: both narrow the slot to one
+    // question, and remediation is the more urgent of the two. Something that
+    // just went wrong is worth more than something that went too easily.
+    if (tempoProbe != null) {
+      return exercise == tempoProbe ? ChallengeBypass.tempoProbe : null;
     }
     if (!state.materialMemory.containsKey(exercise.material.materialId)) {
       return prediction.overallP >= config.challenge.pIntroductionMin
@@ -342,6 +349,7 @@ class SchedulerPipeline {
   }) {
     final failed = session.lastFailedExercise;
     final target = failed == null ? null : recoveryTarget(failed);
+    final probe = target == null ? session.tempoProbe : null;
     final safety = safetyFor(session);
 
     // Guidance changes material availability, but not independent retrieval,
@@ -361,6 +369,7 @@ class SchedulerPipeline {
           at: at,
           safety: safety,
           recoveryTarget: target,
+          tempoProbe: probe,
           override: overrides[exercise],
           retrievalCache: retrievalCache,
           executionCache: executionCache,
@@ -376,6 +385,7 @@ class SchedulerPipeline {
     required DateTime at,
     required SafetyDecision safety,
     required Exercise? recoveryTarget,
+    required Exercise? tempoProbe,
     required ChallengeBypass? override,
     required Map<String, double> retrievalCache,
     required Map<Exercise, double> executionCache,
@@ -410,13 +420,20 @@ class SchedulerPipeline {
       at: at,
       override: override,
       recoveryTarget: recoveryTarget,
+      tempoProbe: tempoProbe,
     );
     // A recovery context is exclusive: narrowing which candidate gets the
     // label is not enough, since a candidate that happens to fall in the
     // ordinary band or qualify as new material must not survive alongside the
-    // target.
-    final survived = recoveryTarget != null && override == null
-        ? bypass == ChallengeBypass.recovery
+    // target. A tempo probe is exclusive for the same reason: the whole point
+    // is to ask the harder question now rather than to add it to a field of
+    // candidates it would lose to on diversity, having just been played.
+    final narrowed = recoveryTarget ?? tempoProbe;
+    final expected = recoveryTarget != null
+        ? ChallengeBypass.recovery
+        : ChallengeBypass.tempoProbe;
+    final survived = narrowed != null && override == null
+        ? bypass == expected
         : withinBand || bypass != null;
 
     final challengeStatus = safety.isAllowed

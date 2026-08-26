@@ -21,6 +21,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   `v1PrototypeSchedulerConfig`, mirroring `v1-prototype-0` in
   `analysis/scheduler/config.toml`, and was renamed when it stopped carrying
   only the prototype's values.
+- A tempo probe: an attempt completed cleanly, evenly, unbroken, from memory,
+  and comfortably faster than requested opens a `ChallengeBypass.tempoProbe`
+  context, which admits the same task at the fastest offered tempo the learner
+  reached and nothing else. Exclusive and one decision long, like recovery.
 - A form-introduction prerequisite: harmonic and melodic minor wait on a breadth
   of retrieved major and natural-minor material, spread across bands, reported
   as `harmonicMinorRepertoireBreadth` and `melodicMinorRepertoireBreadth`.

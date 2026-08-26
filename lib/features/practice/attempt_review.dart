@@ -68,6 +68,10 @@ String? reasonForNext({
     ChallengeBypass.newMaterial => 'New here, so it comes with the notes.',
     ChallengeBypass.guidanceProbe ||
     ChallengeBypass.bootstrapProbe => 'Time to try this one with less help.',
+    ChallengeBypass.tempoProbe =>
+      sameMaterial
+          ? 'That looked easy. Same scale, at the speed you played it.'
+          : 'That looked easy, so this one is quicker.',
     ChallengeBypass.override => null,
     null => sameMaterial ? 'Again, with something changed.' : null,
   };

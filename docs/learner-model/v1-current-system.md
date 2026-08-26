@@ -832,19 +832,39 @@ The current provisional band is 0.60 to 0.90. This is a configurable engineering
 choice inspired by Challenge Point reasoning, not a research-established
 universal optimum.
 
-Four named mechanisms can admit a candidate outside the ordinary band:
+Five named mechanisms can admit a candidate outside the ordinary band:
 
 ```text
 new material       only above a lower introduction floor
 guidance probe     one step less support after an anchored success and interval
 bootstrap probe    a retrieval test for never-successful material after interval
 recovery           exact failed exercise with one step more guidance
+tempo probe        exact easy exercise at the tempo it was actually played at
 ```
 
 Recovery is reactive and exclusive: after a factual retrieval failure, only the
 same material and motor task with one additional guidance step survives that
 decision. Tempo, direction, octave span, and hand configuration do not silently
 collapse.
+
+The tempo probe is its mirror, and exclusive for the same reason. An attempt
+that was completed cleanly, evenly, unbroken, from memory, and comfortably
+faster than requested is evidence about the task rather than about the
+performance: it was beneath the learner. The next decision then asks for the
+same task at the fastest offered tempo they were already reaching, instead of
+climbing toward it a step at a time. Only the tempo moves, for the reason
+recovery moves only guidance.
+
+Every one of those conditions is required, because speed alone is ambiguous:
+rushing and finding it trivial look identical on the tempo axis and differ on
+every other one. Retrieval must have been tested and succeeded, since playing
+quickly while reading the notes off the screen says nothing about the exercise.
+
+This is the selection half of a division the attribution rule makes necessary.
+Execution evidence is credited at the tempo that was asked for and never above
+it (§7), so a learner cannot be credited with a difficulty nobody posed. The
+only way to earn evidence at a faster tempo is to be asked for it, and this is
+what does the asking.
 
 Guidance and bootstrap probes use different factual clocks:
 

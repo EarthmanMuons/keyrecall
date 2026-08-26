@@ -159,11 +159,34 @@ class ProbeConfig {
   /// factual attempt of any kind.
   final double minDaysSinceLastRetrieval;
 
-  const ProbeConfig({required this.minDaysSinceLastRetrieval})
-    : assert(
-        minDaysSinceLastRetrieval >= 0,
-        'a probe cannot become eligible before the event it waits on',
-      );
+  /// What an attempt has to look like before the next one may jump straight
+  /// to the tempo it was played at.
+  ///
+  /// All of them together, because playing faster than asked is ambiguous on
+  /// its own: rushing and finding it trivial look the same on the tempo axis
+  /// alone and differ on every other one. Deliberately strict, since a false
+  /// positive asks for something too hard while a false negative costs only
+  /// the ordinary progression the learner would have had anyway.
+  final double underchallengeTempoRatio;
+  final double underchallengePitchIntegrity;
+  final double underchallengeContinuity;
+  final double underchallengeTemporalStability;
+
+  const ProbeConfig({
+    required this.minDaysSinceLastRetrieval,
+    required this.underchallengeTempoRatio,
+    required this.underchallengePitchIntegrity,
+    required this.underchallengeContinuity,
+    required this.underchallengeTemporalStability,
+  }) : assert(
+         minDaysSinceLastRetrieval >= 0,
+         'a probe cannot become eligible before the event it waits on',
+       ),
+       assert(
+         underchallengeTempoRatio > 1.0,
+         'a tempo probe answers playing faster than asked, so the ratio that '
+         'triggers it has to be above the tempo that was asked',
+       );
 }
 
 /// One versioned set of scheduler policy constants.
@@ -234,5 +257,11 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     recentWindow: 10,
     maxConsecutiveMaterialAttempts: 5,
   ),
-  probe: ProbeConfig(minDaysSinceLastRetrieval: 5.0),
+  probe: ProbeConfig(
+    minDaysSinceLastRetrieval: 5.0,
+    underchallengeTempoRatio: 1.2,
+    underchallengePitchIntegrity: 0.95,
+    underchallengeContinuity: 0.9,
+    underchallengeTemporalStability: 0.7,
+  ),
 );

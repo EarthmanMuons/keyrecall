@@ -24,10 +24,18 @@ class SessionState {
   /// exact one-step-more-guidance sibling rather than any easier candidate.
   Exercise? lastFailedExercise;
 
+  /// The harder exercise to ask for after one that was clearly too easy, or
+  /// null.
+  ///
+  /// The target itself for the same reason recovery holds one: the point is a
+  /// specific harder question, not a general licence to pick something harder.
+  Exercise? tempoProbe;
+
   SessionState({
     this.attemptsThisSession = 0,
     List<String>? recentMaterialIds,
     this.lastFailedExercise,
+    this.tempoProbe,
   }) : recentMaterialIds = recentMaterialIds ?? [];
 
   /// Whether a recovery context is currently active.
@@ -38,12 +46,19 @@ class SessionState {
   /// A recovery context opens only on a genuine tested failure. An attempt
   /// that never tested retrieval is not a failure to recover from, so it
   /// clears the context like a success does.
+  ///
+  /// [tempoProbe] is the harder exercise to ask for next when this one was
+  /// clearly too easy, and null otherwise. Like the recovery context it lasts
+  /// exactly one decision: a probe that outlived its answer would keep asking
+  /// a question that has been answered.
   void recordSelection(
     Exercise exercise, {
     required bool retrievalFailed,
+    Exercise? tempoProbe,
     required DiversityConfig config,
   }) {
     lastFailedExercise = retrievalFailed ? exercise : null;
+    this.tempoProbe = tempoProbe;
     recentMaterialIds.add(exercise.material.materialId);
     while (recentMaterialIds.length > config.recentWindow) {
       recentMaterialIds.removeAt(0);

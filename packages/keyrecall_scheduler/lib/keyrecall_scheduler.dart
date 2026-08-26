@@ -14,3 +14,4 @@ export 'src/priority.dart';
 export 'src/recovery.dart';
 export 'src/scheduler_pipeline.dart';
 export 'src/session_state.dart';
+export 'src/tempo_probe.dart';
