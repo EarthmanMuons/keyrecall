@@ -170,15 +170,28 @@ class PulseClicker {
   static int get _chunkFrames => _chunk.inMicroseconds * _sampleRate ~/ 1000000;
 
   /// Hands over the next chunk, or nothing once the pulse has all been given.
+  ///
+  /// One at a time. The engine asks for more from a callback, and the cursor
+  /// moves before the handover completes, so two overlapping calls would take
+  /// different chunks and could hand them over in either order. Whether that
+  /// can happen depends on the plugin's callback timing, which is not
+  /// something to leave to chance in the one place where order is the audio.
+  bool _feeding = false;
+
   Future<void> _feedNext() async {
-    if (!_ready) return;
+    if (!_ready || _feeding) return;
     final track = _track;
     if (track == null || _fed >= track.length) return;
 
-    final end = math.min(_fed + _chunkFrames, track.length);
-    final frames = Int16List.sublistView(track, _fed, end);
-    _fed = end;
-    await _feed(frames);
+    _feeding = true;
+    try {
+      final end = math.min(_fed + _chunkFrames, track.length);
+      final frames = Int16List.sublistView(track, _fed, end);
+      _fed = end;
+      await _feed(frames);
+    } finally {
+      _feeding = false;
+    }
   }
 
   Future<void> _feed(Int16List frames) async {
