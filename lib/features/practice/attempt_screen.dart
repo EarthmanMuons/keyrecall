@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 import '../audio/count_in_clicker.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
+import 'attempt_review.dart';
 import 'attempt_transcript.dart';
 import 'exercise_presentation.dart';
 import 'fingering.dart';
@@ -31,12 +32,40 @@ import 'staff_cue.dart';
 /// and it echoes what arrived from the instrument, and it never compares them.
 /// The markers are a set of pitches with no order, and the echo is the live
 /// note state, so neither can say where in the scale the learner is.
-class AttemptScreen extends ConsumerWidget {
+class AttemptScreen extends ConsumerStatefulWidget {
   const AttemptScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AttemptScreen> createState() => _AttemptScreenState();
+}
+
+class _AttemptScreenState extends ConsumerState<AttemptScreen> {
+  /// The attempt whose review has been read and dismissed.
+  ///
+  /// Held here rather than in the loop, because whether someone has finished
+  /// looking at a screen is not something the practice history should carry.
+  String? _reviewed;
+
+  @override
+  Widget build(BuildContext context) {
     final loop = ref.watch(practiceLoopProvider);
+    final notifier = ref.read(practiceLoopProvider.notifier);
+
+    // The attempt just finished takes the screen until it is dismissed, even
+    // though the next exercise is already decided behind it. That is the point:
+    // the decision happens while the review is being read, so Next never waits.
+    final committed = loop.value?.lastCommitted;
+    if (committed != null && committed.identity.attemptId != _reviewed) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Practice')),
+        body: AttemptReview(
+          record: committed,
+          next: loop.value?.presented,
+          onNext: () =>
+              setState(() => _reviewed = committed.identity.attemptId),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Practice')),
@@ -48,8 +77,8 @@ class AttemptScreen extends ConsumerWidget {
             value.presented?.decision.attemptId ?? value.pending?.attemptId,
           ),
           exercise: value.exercise!,
-          onFinish: ref.read(practiceLoopProvider.notifier).finish,
-          onDecline: ref.read(practiceLoopProvider.notifier).decline,
+          onFinish: notifier.finish,
+          onDecline: notifier.decline,
         ),
         AsyncData() => const _NothingToPlay(),
         AsyncError(:final error) => Center(child: Text('$error')),
@@ -324,7 +353,12 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     _Phase.playing => Center(
       child: FilledButton.tonal(onPressed: _finish, child: const Text('Done')),
     ),
-    _Phase.finishing => const Center(child: CircularProgressIndicator()),
+    // Still Done, just no longer pressable. Swapping in a spinner for an
+    // append and a scheduler decision makes a wait out of something that is
+    // not one, and moves the screen while the learner is still looking at it.
+    _Phase.finishing => const Center(
+      child: FilledButton.tonal(onPressed: null, child: Text('Done')),
+    ),
   };
 }
 

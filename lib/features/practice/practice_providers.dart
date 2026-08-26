@@ -128,8 +128,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     // anything has been played, and it can only check that if it is shown.
     final transcript = ref.read(attemptTranscriptProvider);
 
+    // No loading state: committing is an append and a scheduler decision, and
+    // replacing the screen with a spinner for that is how an app teaches
+    // someone to wait for it.
     _writing = true;
-    state = const AsyncValue.loading();
     try {
       state = await AsyncValue.guard(() async {
         final record = await current.session.closeDeclined(
@@ -163,8 +165,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     if (_writing || current == null || !current.isAwaitingAnswer) return;
     final transcript = ref.read(attemptTranscriptProvider);
 
+    // No loading state: committing is an append and a scheduler decision, and
+    // replacing the screen with a spinner for that is how an app teaches
+    // someone to wait for it.
     _writing = true;
-    state = const AsyncValue.loading();
     try {
       state = await AsyncValue.guard(() async {
         final record = await current.session.closeFromPerformance(
