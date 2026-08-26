@@ -436,6 +436,15 @@ class _Failure extends ConsumerWidget {
         child: const Text('Try again'),
       ),
       const SizedBox(height: 12),
+      // A journal recorded under a learner model this build no longer runs
+      // cannot be replayed, and retrying will not change that. Destructive, so
+      // it says what it does rather than sitting beside Try again as if it
+      // were another attempt at the same thing.
+      OutlinedButton(
+        onPressed: () => ref.read(practiceLoopProvider.notifier).eraseHistory(),
+        child: const Text('Erase this history and start over'),
+      ),
+      const SizedBox(height: 12),
       Text('$stackTrace', style: const TextStyle(fontFamily: 'monospace')),
     ],
   );
