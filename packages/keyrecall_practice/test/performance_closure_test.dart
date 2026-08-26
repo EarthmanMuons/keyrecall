@@ -203,7 +203,9 @@ void main() {
       final session = await openSession(store);
       await presentTested(session);
 
-      final record = await session.closeDeclined();
+      final record = await session.closeDeclined(
+        transcript: PerformanceTranscript.empty,
+      );
 
       expect(record.closure.termination, AttemptTermination.learnerDeclined);
       final measurement = record.closure.measurement as Measured;
@@ -228,7 +230,7 @@ void main() {
       final presented = await presentTested(session);
       final declined = presented.exercise;
 
-      await session.closeDeclined();
+      await session.closeDeclined(transcript: PerformanceTranscript.empty);
       final next = await session.decide(at: t0.plusDays(3));
 
       expect(next, isNotNull);
@@ -244,6 +246,25 @@ void main() {
       );
     });
 
+    test('is refused once anything has been played', () async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store);
+      final presented = await presentTested(session);
+
+      expect(
+        () => session.closeDeclined(
+          transcript: performance(
+            presented.exercise,
+            as: (expected) => expected.take(1).toList(),
+          ),
+        ),
+        throwsA(isA<PracticeStateError>()),
+        reason:
+            'a note arrived, so what happened is measurement\'s question, and '
+            'the guard is the session\'s rather than the screen\'s',
+      );
+    });
+
     test('is refused at a rung that supplies the material anyway', () async {
       final store = InMemoryPracticeStore(createdAt: t0);
       final session = await openSession(store);
@@ -254,7 +275,10 @@ void main() {
       );
       expect(presented.exercise.guidance.isMaterialSupplied, isTrue);
 
-      expect(session.closeDeclined, throwsA(isA<PracticeStateError>()));
+      expect(
+        () => session.closeDeclined(transcript: PerformanceTranscript.empty),
+        throwsA(isA<PracticeStateError>()),
+      );
     });
   });
 }

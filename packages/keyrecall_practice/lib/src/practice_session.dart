@@ -385,17 +385,30 @@ class PracticeSession {
   /// that never happened.
   ///
   /// The claim is about retrieval, so it is only available at a rung that
-  /// tests retrieval. Nothing may have been played: an attempt with notes in
-  /// it is a question for measurement.
+  /// tests retrieval. It is also a claim that nothing was played, so
+  /// [transcript] is required: the caller shows what arrived rather than being
+  /// trusted to have called this at the right moment. An attempt with notes in
+  /// it is a question for measurement, and [closeFromPerformance] is where it
+  /// belongs.
   ///
-  /// Throws [PracticeStateError] when no attempt is outstanding, or when the
-  /// outstanding attempt is at a rung that supplies the material anyway.
-  Future<AttemptRecord> closeDeclined({DateTime? observedWallTime}) {
+  /// Throws [PracticeStateError] when no attempt is outstanding, when the
+  /// outstanding attempt is at a rung that supplies the material anyway, or
+  /// when anything was played.
+  Future<AttemptRecord> closeDeclined({
+    required PerformanceTranscript transcript,
+    DateTime? observedWallTime,
+  }) {
     final outstanding = _outstanding ?? _pendingAsOutstanding();
     final guidance = outstanding.decision.exercise.guidance;
     if (!guidance.isRetrievalObserved) {
       throw PracticeStateError(
         'nothing to fail to retrieve: this rung supplies the material',
+      );
+    }
+    if (transcript.isNotEmpty) {
+      throw PracticeStateError(
+        '${transcript.length} notes were played, so what happened is a '
+        'question for measurement rather than for the learner',
       );
     }
 

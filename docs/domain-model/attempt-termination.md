@@ -44,11 +44,15 @@ the same exercise one rung more supportive. Before this existed the only way to
 say it was to play something wrong, which manufactures execution evidence for a
 performance that never happened.
 
-Two boundaries hold it in place. It is offered only at a rung that tests
-retrieval, since there is nothing to fail to retrieve when the material is on
-screen. And it is offered only before anything has been played: once notes
-attributable to the attempt have arrived, what happened is a question for
-measurement rather than for the learner, and `closeDeclined` refuses.
+Two boundaries hold it in place, and both are the session's rather than the
+screen's. It is offered only at a rung that tests retrieval, since there is
+nothing to fail to retrieve when the material is on screen. And it is offered
+only before anything has been played: once notes attributable to the attempt
+have arrived, what happened is a question for measurement rather than for the
+learner. `closeDeclined` takes the transcript for that reason, the way
+`closeFromPerformance` does. The caller shows what arrived rather than being
+trusted to have called at the right moment, and a non-empty transcript is
+refused.
 
 It is deliberately not a skip. A skip writes no learner evidence at all and is
 an operational action about the session rather than a poor outcome; nothing has

@@ -124,12 +124,16 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   Future<void> decline() async {
     final current = state.value;
     if (_writing || current == null || !current.isAwaitingAnswer) return;
+    // Presented rather than assumed: the session refuses a decline once
+    // anything has been played, and it can only check that if it is shown.
+    final transcript = ref.read(attemptTranscriptProvider);
 
     _writing = true;
     state = const AsyncValue.loading();
     try {
       state = await AsyncValue.guard(() async {
         final record = await current.session.closeDeclined(
+          transcript: transcript,
           observedWallTime: DateTime.now().toUtc(),
         );
         return _decide(
