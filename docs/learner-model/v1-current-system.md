@@ -326,6 +326,13 @@ This boundary prevents a temporary session condition from automatically being
 stored as persistent ability. In the current V1 scheduler, session state drives
 the attempt cap, diversity history, repetition guard, and exact recovery action.
 
+These pieces do not all have the same lifetime. The attempt cap and the recovery
+context are per-sitting: a restart begins a new sitting, and a recovery context
+that outlived the failure it answered would be answering a question nobody is
+still asking. The diversity history is rebuilt from the tail of the journal, so
+the repetition guard keeps working across a restart rather than immediately
+re-offering whatever was played last.
+
 ## 5. Connecting exercises to competencies
 
 It's easy to conflate three related but different ideas: "this exercise involves

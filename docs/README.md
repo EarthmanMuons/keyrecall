@@ -62,8 +62,11 @@ analysis/timing-calibration/ live: instrument takes behind the timing constants
 The Python prototype is research provenance rather than a second implementation;
 see `analysis/README.md` for what that means and what is canonical instead.
 
-The current verification baseline is 32 learner-model invariants, 13 scheduler
-information-boundary invariants, and 10 longitudinal scheduler scenarios.
+The Dart suite is the verification baseline: 452 tests across the nine pure
+packages, of which 77 are learner-model invariants, 47 are scheduler invariants
+including the information boundaries, and 42 are longitudinal simulations. The
+frozen Python invariant set is a subset that the reference-equivalence and
+digest tests still pin.
 
 ## Authority
 
