@@ -31,6 +31,26 @@ policy dead ends that no amount of reading the code will surface.
   against the reference implementation attempt by attempt rather than only in
   distribution.
 
+## What equivalence covers
+
+**The learner model, and the scheduler stages the prototype implements.** The
+Python prototype is the reference for the V1 mathematics: predictions, evidence
+weights, memory transitions, and the pipeline stages it was ported from. A
+mismatch there is a defect in one implementation, not a number to update.
+
+**Not production scheduler policy.** Material admission lives in the Dart
+`REQUIRES` gate and has no counterpart in `analysis/scheduler/pipeline.py`,
+which still implements the hands-together rule alone. That is deliberate: the
+prototype's value is as an independent executable specification of the model,
+and maintaining a second complete scheduler forever would cost more than it
+proves.
+
+So the boundary is: **model parity is required, scheduler-policy parity is
+not.** Anything the prototype does implement must still agree exactly, which is
+why the pinned digests use `randomExercise` rather than the scheduler; a run
+driven by `SchedulerAgent` exercises Dart-only policy and cannot be compared
+against the prototype.
+
 ## Usage
 
 ```dart

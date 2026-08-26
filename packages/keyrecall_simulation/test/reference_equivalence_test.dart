@@ -20,6 +20,11 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 ///
 /// A mismatch means this port and the prototype disagree. That is a defect in
 /// one of them to reconcile, not a number to update.
+///
+/// The claim is about the model, not about scheduler policy. Material
+/// admission exists only in the Dart `REQUIRES` gate, so these runs use
+/// `randomExercise` rather than the scheduler; see the simulation README for
+/// where the parity boundary sits.
 class ReferenceRun {
   final SyntheticProfile profile;
   final int seed;

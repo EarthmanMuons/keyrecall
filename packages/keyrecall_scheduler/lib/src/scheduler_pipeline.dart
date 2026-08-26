@@ -32,7 +32,10 @@ class SchedulerPipeline {
   ///
   /// Two questions, both about the learner rather than about the exercise:
   /// whether both hands are capable before they play together, and whether
-  /// this material is appropriate to introduce yet.
+  /// this material is appropriate to introduce yet. Foundation material has no
+  /// prerequisite of the second kind, which is not the same as being fully
+  /// eligible however it is played: C major hands together still waits for
+  /// both hands.
   ///
   /// Material admission uses what the learner model actually observes:
   /// per-hand execution, and topology competence per scale form. It cannot ask
@@ -107,9 +110,13 @@ class SchedulerPipeline {
       );
     }
 
+    // Foundation means no *material* prerequisite. An execution condition can
+    // still hold it back: hands-together work on C major is checked above and
+    // may be provisional, which is the decomposition working rather than a
+    // contradiction.
     return const EligibilityDecision(
       EligibilityTier.fullyEligible,
-      'foundation material, and no other prerequisite applies',
+      'foundation material, and no material prerequisite applies',
       code: EligibilityReason.foundationMaterial,
     );
   }

@@ -189,7 +189,16 @@ void main() {
         beginner,
         Exercise.linear(material: material, hands: HandConfiguration.right),
       );
-      expect(decision.tier, isNotNull);
+      expect(
+        decision.tier,
+        anyOf(
+          EligibilityTier.fullyEligible,
+          EligibilityTier.provisionallyEligible,
+        ),
+        reason:
+            'a third, harder tier would have to be confronted here rather '
+            'than leaving a learner with an empty slot',
+      );
     }
   });
 
