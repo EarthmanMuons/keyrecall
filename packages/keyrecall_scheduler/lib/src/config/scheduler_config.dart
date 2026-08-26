@@ -167,10 +167,13 @@ class SchedulerConfig {
 
 /// The provisional V1 scheduler policy constants.
 ///
-/// Mirrors `analysis/scheduler/config.toml` at registry version
-/// `v1-prototype-0`. The stage structure and information boundaries these
-/// values sit in are frozen for initial production; the numbers are starting
-/// points for calibration against real practice data.
+/// The canonical registry. `analysis/scheduler/config.toml` records what the
+/// Python prototype carried at version `v1-prototype-0` and is provenance
+/// rather than a source to stay in step with; see `analysis/README.md`.
+///
+/// The stage structure and information boundaries these values sit in are
+/// frozen for initial production; the numbers are starting points for
+/// calibration against real practice data.
 const SchedulerConfig v1PrototypeSchedulerConfig = SchedulerConfig(
   modelVersion: 'v1-prototype-0',
   eligibility: EligibilityConfig(

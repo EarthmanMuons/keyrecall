@@ -8,55 +8,23 @@ void main() {
   group('v1PrototypeSchedulerConfig', () {
     const config = v1PrototypeSchedulerConfig;
 
-    test('agrees with the authoritative TOML registry', () {
+    test('records where its values came from, without tracking them', () {
+      // The prototype's registry is provenance now, not a source to stay in
+      // step with: the Dart configuration is canonical and may move without
+      // it. See analysis/README.md.
       final registry = readRegistry('analysis/scheduler/config.toml');
       if (registry == null) {
         markTestSkipped('analysis/scheduler/config.toml is not available');
         return;
       }
 
-      expect(config.modelVersion, registry['']!['model_version']);
       expect(
-        config.eligibility.handTogetherCompetencyThreshold,
-        registry['eligibility']!['hand_together_competency_threshold'],
-      );
-      expect(
-        config.eligibility.earlyTransferExecutionFloor,
-        registry['eligibility']!['early_transfer_execution_floor'],
-      );
-      expect(
-        config.eligibility.intermediateExecutionFloor,
-        registry['eligibility']!['intermediate_execution_floor'],
-      );
-      expect(
-        config.eligibility.advancedExecutionFloor,
-        registry['eligibility']!['advanced_execution_floor'],
-      );
-      expect(
-        config.eligibility.minorTopologyFloor,
-        registry['eligibility']!['minor_topology_floor'],
-      );
-      expect(
-        config.safety.maxSessionAttempts,
-        registry['safety']!['max_session_attempts'],
-      );
-      expect(config.challenge.pMin, registry['challenge']!['p_min']);
-      expect(config.challenge.pMax, registry['challenge']!['p_max']);
-      expect(
-        config.challenge.pIntroductionMin,
-        registry['challenge']!['p_introduction_min'],
-      );
-      expect(
-        config.diversity.recentWindow,
-        registry['diversity']!['recent_window'],
-      );
-      expect(
-        config.diversity.maxConsecutiveMaterialAttempts,
-        registry['diversity']!['max_consecutive_material_attempts'],
-      );
-      expect(
-        config.probe.minDaysSinceLastRetrieval,
-        registry['guidance_probe']!['min_days_since_last_retrieval'],
+        config.modelVersion,
+        registry['']!['model_version'],
+        reason:
+            'the version names the prototype this was derived from, and '
+            'changing the Dart values means naming a new version rather than '
+            'editing the archived one',
       );
     });
 

@@ -36,12 +36,11 @@ class PinnedDigests {
 /// python3 tool/reference_digest.py --all
 /// ```
 ///
-/// A discrete mismatch means the two implementations made different decisions
-/// or sampled different categorical outcomes, which is a defect in one of them
-/// to reconcile rather than a value to update. These runs choose exercises at
-/// random rather than through the scheduler, so they compare the model and not
-/// Dart-only scheduler policy such as material admission; see the simulation
-/// README. A full mismatch means this
+/// The discrete column was matched by the Python prototype at
+/// `v1-prototype-0`, which is the evidence that the Dart model reproduces it.
+/// Both columns are regression pins now: a mismatch means this implementation
+/// changed, and the prototype is frozen provenance rather than something to
+/// reconcile against. See `analysis/README.md`. A full mismatch means this
 /// implementation's behavior changed somewhere; the pinned reference scalars
 /// and the tolerance comparison in `reference_equivalence_test.dart` are the
 /// diagnosable failures that say where.

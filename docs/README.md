@@ -53,32 +53,38 @@ docs/
 Executable analysis lives outside `docs/`:
 
 ```text
-analysis/learner-model/    learner prediction, update, simulation, diagnostics
-analysis/scheduler/        scheduler pipeline, scenarios, and policy diagnostics
+analysis/learner-model/    frozen: the Python prototype's model and experiments
+analysis/scheduler/        frozen: the Python prototype's pipeline diagnostics
+analysis/onset-grouping/   live: instrument takes behind the grouping decision
+analysis/timing-calibration/ live: instrument takes behind the timing constants
 ```
+
+The Python prototype is research provenance rather than a second implementation;
+see `analysis/README.md` for what that means and what is canonical instead.
 
 The current verification baseline is 32 learner-model invariants, 13 scheduler
 information-boundary invariants, and 10 longitudinal scheduler scenarios.
 
 ## Authority
 
-| Need                                                              | Authority                                                                 |
-| ----------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Integrated initial-production behavior                            | `learner-model/v1-current-system.md`                                      |
-| Future competency admission, validation, and calibration workflow | `learner-model/competency-extension-guide.md`                             |
-| Canonical terminology and symbols                                 | `GLOSSARY.md`                                                             |
-| Product thesis, UX, privacy principles                            | `design/product-vision.md`                                                |
-| Deferred architectural, product, and domain hypotheses            | `design/future-planning.md`                                               |
-| Canonical scale fingering                                         | `domain-model/fingering-taxonomy.md`                                      |
-| Derived motor family, phase, crossing, and continuation structure | `domain-model/motor-taxonomy.md`                                          |
-| Domain entities not superseded below                              | `domain-model/v1-domain-model.md`                                         |
-| Research claims, citations, and limitations                       | `learner-model/01-research.md`                                            |
-| Learner-state architecture and ten-Competency ontology            | `learner-model/02-v1-design.md`                                           |
-| Detailed equations, derivations, and learner experiment record    | `learner-model/03-v1-math.md`                                             |
-| Scheduler stage information boundaries and experiment record      | `learner-model/04-v1-scheduler.md`                                        |
-| Attempt journal, replay, telemetry, and implementation gates      | `learner-model/05-production-implementation-plan.md`                      |
-| Operational prototype semantics                                   | `analysis/learner-model/` and `analysis/scheduler/`                       |
-| Current provisional numeric values                                | `analysis/learner-model/params.toml` and `analysis/scheduler/config.toml` |
+| Need                                                              | Authority                                               |
+| ----------------------------------------------------------------- | ------------------------------------------------------- |
+| Integrated initial-production behavior                            | `learner-model/v1-current-system.md`                    |
+| Future competency admission, validation, and calibration workflow | `learner-model/competency-extension-guide.md`           |
+| Canonical terminology and symbols                                 | `GLOSSARY.md`                                           |
+| Product thesis, UX, privacy principles                            | `design/product-vision.md`                              |
+| Deferred architectural, product, and domain hypotheses            | `design/future-planning.md`                             |
+| Canonical scale fingering                                         | `domain-model/fingering-taxonomy.md`                    |
+| Derived motor family, phase, crossing, and continuation structure | `domain-model/motor-taxonomy.md`                        |
+| Domain entities not superseded below                              | `domain-model/v1-domain-model.md`                       |
+| Research claims, citations, and limitations                       | `learner-model/01-research.md`                          |
+| Learner-state architecture and ten-Competency ontology            | `learner-model/02-v1-design.md`                         |
+| Detailed equations, derivations, and learner experiment record    | `learner-model/03-v1-math.md`                           |
+| Scheduler stage information boundaries and experiment record      | `learner-model/04-v1-scheduler.md`                      |
+| Attempt journal, replay, telemetry, and implementation gates      | `learner-model/05-production-implementation-plan.md`    |
+| Operational semantics                                             | the Dart packages under `packages/`                     |
+| Current provisional numeric values                                | `LearnerParams` and `SchedulerConfig` in those packages |
+| How the V1 model was derived, and its equivalence evidence        | `analysis/README.md`                                    |
 
 The current-system guide integrates these authorities; it does not erase their
 more detailed contracts. If it conflicts with executable semantics or a
