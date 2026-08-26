@@ -77,6 +77,9 @@ class MaterialMemoryParams {
   final double consolidationMinLogVariance;
 
   /// Shortest interval that can supply retained-durability evidence, in days.
+  ///
+  /// The calibrated value is one hour. Days is the unit every clock in the
+  /// model uses, so it is stored in days rather than converted at each use.
   final double retainedInferenceMinIntervalDays;
 
   /// Weight applied to the retained-durability likelihood.

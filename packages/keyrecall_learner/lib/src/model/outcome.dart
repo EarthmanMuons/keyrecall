@@ -66,6 +66,11 @@ class Outcome {
   final bool completed;
 
   /// Continuous, cue-inclusive measure of how much of the material appeared.
+  ///
+  /// Recorded rather than consumed: the update path learns about memory from
+  /// [retrieval], which is three-valued and knows whether retrieval was tested
+  /// at all. This is the graded view of the same attempt, kept for calibration
+  /// and for a future measure that can use a continuous signal honestly.
   final double materialRetrieval;
 
   /// How correct the sounded pitches were.
@@ -78,6 +83,9 @@ class Outcome {
   final double temporalStability;
 
   /// Achieved tempo as a fraction of the requested tempo.
+  ///
+  /// Recorded rather than consumed; see `design/future-planning.md` on
+  /// execution evidence at achieved motor difficulty.
   final double achievedTempoRatio;
 
   /// How correct the pitch/form structure was, independent of motor quality.

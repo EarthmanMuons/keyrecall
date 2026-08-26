@@ -68,6 +68,13 @@ EvidenceWeights evidenceWeightsFor(Exercise exercise, Outcome outcome) {
     // Informative about memory, almost nothing about execution, unless
     // retrieval was not being tested at all, in which case there is no memory
     // evidence either.
+    //
+    // The memory weight here is deliberately flat rather than scaled by
+    // retrievalDemand, which is why an unstarted previewed attempt (0.8)
+    // outweighs a completed one (0.6). Under a preview the material was put in
+    // front of the learner and still produced nothing, so the failure to begin
+    // is about as decisive as an unguided one; the demand discount exists to
+    // discount what support made easy, and nothing was made easy here.
     return EvidenceWeights(
       competencies: const {},
       materialExecution: 0.0,

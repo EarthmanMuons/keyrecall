@@ -65,6 +65,24 @@ void main() {
       );
       expect(evidenceWeightsFor(cued, never).materialMemory, 0.0);
     });
+
+    test('does not discount the guidance that failed to help', () {
+      final previewedNonStart = evidenceWeightsFor(
+        previewed,
+        failedToStart(),
+      ).materialMemory;
+      final unguidedNonStart = evidenceWeightsFor(
+        unguided,
+        failedToStart(),
+      ).materialMemory;
+      final previewedSuccess = evidenceWeightsFor(
+        previewed,
+        perfectOutcome(),
+      ).materialMemory;
+
+      expect(previewedNonStart, unguidedNonStart);
+      expect(previewedNonStart, greaterThan(previewedSuccess));
+    });
   });
 
   group('continuous cueing', () {
