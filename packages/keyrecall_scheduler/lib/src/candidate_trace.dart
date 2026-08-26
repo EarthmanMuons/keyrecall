@@ -47,7 +47,16 @@ enum EligibilityReason {
   melodicFormPrerequisite('MELODIC_FORM_PREREQUISITE'),
 
   /// Hands-together work asks for both hands first.
-  handsTogetherPrerequisite('HANDS_TOGETHER_PREREQUISITE');
+  handsTogetherPrerequisite('HANDS_TOGETHER_PREREQUISITE'),
+
+  /// Material KeyRecall has no history for may be introduced, but not tested
+  /// from memory first.
+  ///
+  /// A rung question rather than a material one: the material itself is
+  /// admissible, and this says only that its first encounter here has to
+  /// supply it. It makes no claim that the learner does not know the scale,
+  /// which is exactly what an unguided first attempt would be assuming.
+  unseenMaterialRequiresCue('UNSEEN_MATERIAL_REQUIRES_CUE');
 
   const EligibilityReason(this.id);
 

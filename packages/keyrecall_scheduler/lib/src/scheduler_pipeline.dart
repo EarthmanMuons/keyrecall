@@ -56,6 +56,18 @@ class SchedulerPipeline {
     final band = admissionBandOf(material);
     final hands = exercise.conditions.hands;
 
+    // Nothing here has ever been observed about this material, so an unguided
+    // attempt would be testing a memory this app has never seen formed. The
+    // material is still admissible; it enters through a rung that supplies it.
+    if (!state.materialMemory.containsKey(material.materialId) &&
+        !exercise.guidance.isMaterialSupplied) {
+      return const EligibilityDecision(
+        EligibilityTier.provisionallyEligible,
+        'no history for this material, so its first encounter is cued',
+        code: EligibilityReason.unseenMaterialRequiresCue,
+      );
+    }
+
     if (hands == HandConfiguration.together) {
       final threshold = config.eligibility.handTogetherCompetencyThreshold;
       final rh = state.competency(Competency.rhScaleExecution).mean;

@@ -789,6 +789,19 @@ provisionally eligible.
 This is a soft pedagogical gate. A provisional candidate remains reachable, but
 cannot outrank a fully eligible candidate.
 
+The stage answers two questions that are worth keeping apart. Whether a material
+is appropriate yet is a question about the material and the learner's
+competencies. Whether it may be attempted _at this rung_ yet is a question about
+guidance, and the one rule of that kind reads whether the material has any
+history in this profile at all: material nothing is known about may be
+introduced, but not tested from memory the first time it appears. That is a
+statement about what has been established here, not a claim that the learner
+does not know the scale.
+
+So eligibility reads competency state, and of material memory only whether an
+entry exists. It never reads what that entry says; durability and the retrieval
+clocks belong to prediction, which runs later.
+
 The safety policy is a separate hard gate based only on session/workload state.
 V1 implements a configurable session-attempt cap. It does not diagnose fatigue
 or injury from MIDI behavior.

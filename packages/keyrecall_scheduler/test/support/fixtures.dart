@@ -40,8 +40,9 @@ Exercise exerciseFor(
 /// Gives every material a memory entry at its priors.
 ///
 /// Mathematically a no-op for prediction, since a missing entry falls back to
-/// the same prior. It only removes candidates from the new-material exception,
-/// so ordinary band behavior can be observed.
+/// the same prior. It only removes candidates from the new-material exception
+/// and from the rule that unseen material is met cued first, so ordinary band
+/// behavior can be observed.
 void seedAllMaterials(LearnerState state) {
   for (final material in materials) {
     state.materialMemoryFor(material.materialId, learnerParams);

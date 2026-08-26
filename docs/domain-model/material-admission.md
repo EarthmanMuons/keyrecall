@@ -166,6 +166,27 @@ One rule moved during implementation: natural minor asks for nothing, because
 requiring minor familiarity to earn the only material that produces it kept
 every minor scale outranked forever.
 
+A second rule arrived from the instrument rather than the desk, and it is
+deliberately not a band rule. Practising on a real piano turned up a scale being
+asked for from memory that had never been presented at all: the new-material
+exception admitted it, and candidates are generated at every rung, so nothing
+required a first encounter to supply it. The rule added is
+`unseenMaterialRequiresCue`, and it answers a different question from the rest
+of this document:
+
+| Question                                      | Answered by       |
+| --------------------------------------------- | ----------------- |
+| Is this part of the destination or the route? | goal scope        |
+| Is this material appropriate yet?             | material REQUIRES |
+| May it be attempted at this rung yet?         | guidance REQUIRES |
+| Which eligible candidate wins?                | ranking           |
+
+It keys off the absence of material history in this profile, never off a claim
+about the learner: someone may arrive knowing the scale perfectly well, and all
+that is being said is that KeyRecall has not established it. It shares the
+eligibility stage because that stage already sees the whole candidate, but it is
+not a property of the material's band.
+
 Whether the fingering-family axis earns a competency of its own then becomes a
 question the first policy can help answer: if learners stall specifically where
 a band introduces a new family, that is the evidence for it.

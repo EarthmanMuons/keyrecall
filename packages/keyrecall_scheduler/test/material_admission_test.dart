@@ -29,8 +29,17 @@ void main() {
     },
   );
 
-  EligibilityDecision decide(LearnerState state, Exercise exercise) =>
-      pipeline.eligibilityFor(state, exercise);
+  /// The material question, asked of a learner this material is not new to.
+  ///
+  /// Whether a material may be met unguided the first time is a question about
+  /// the rung rather than the material, and has its own group below.
+  EligibilityDecision decide(LearnerState state, Exercise exercise) {
+    state.materialMemoryFor(
+      exercise.material.materialId,
+      v1PrototypeLearnerParams,
+    );
+    return pipeline.eligibilityFor(state, exercise);
+  }
 
   group('foundation material', () {
     test('is admissible to a rank beginner', () {
@@ -169,6 +178,7 @@ void main() {
         ),
       );
 
+      state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
       final decision = strict.eligibilityFor(
         state,
         scale('C', ScaleForm.major, hands: HandConfiguration.together),
@@ -218,5 +228,84 @@ void main() {
       admissionBandOf(TechnicalMaterial('Bb', ScaleForm.major)),
       admissionBandOf(TechnicalMaterial('D', ScaleForm.major)),
     );
+  });
+
+  group('material with no history here', () {
+    test('may be introduced, but not from memory', () {
+      final capable = learnerAt(2.0);
+      final material = TechnicalMaterial('C', ScaleForm.major);
+
+      final unguided = pipeline.eligibilityFor(
+        capable,
+        Exercise.linear(material: material, hands: HandConfiguration.right),
+      );
+
+      expect(unguided.tier, EligibilityTier.provisionallyEligible);
+      expect(unguided.code, EligibilityReason.unseenMaterialRequiresCue);
+    });
+
+    test('is fully eligible at a rung that supplies it', () {
+      final capable = learnerAt(2.0);
+
+      for (final guidance in [
+        GuidanceContext.notesPreviewedOnly,
+        GuidanceContext.continuouslyCued,
+      ]) {
+        final decision = pipeline.eligibilityFor(
+          capable,
+          Exercise.linear(
+            material: TechnicalMaterial('C', ScaleForm.major),
+            hands: HandConfiguration.right,
+            guidance: guidance,
+          ),
+        );
+
+        expect(
+          decision.tier,
+          EligibilityTier.fullyEligible,
+          reason: 'a cued first encounter is how unseen material enters',
+        );
+      }
+    });
+
+    test('says nothing about whether the learner knows the scale', () {
+      // The rule reads the absence of history here, not an assumption about
+      // the learner: a beginner and an expert are held back identically, and
+      // one prior entry releases both.
+      for (final mean in [-2.0, 2.0]) {
+        final state = learnerAt(mean);
+        final exercise = Exercise.linear(
+          material: TechnicalMaterial('C', ScaleForm.major),
+          hands: HandConfiguration.right,
+        );
+
+        expect(
+          pipeline.eligibilityFor(state, exercise).code,
+          EligibilityReason.unseenMaterialRequiresCue,
+        );
+
+        state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+        expect(
+          pipeline.eligibilityFor(state, exercise).code,
+          isNot(EligibilityReason.unseenMaterialRequiresCue),
+        );
+      }
+    });
+
+    test('once history exists, ordinary rules decide the unguided rung', () {
+      final beginner = learnerAt(-2.0);
+      beginner.materialMemoryFor('B_MAJOR', v1PrototypeLearnerParams);
+
+      final decision = pipeline.eligibilityFor(
+        beginner,
+        Exercise.linear(
+          material: TechnicalMaterial('B', ScaleForm.major),
+          hands: HandConfiguration.right,
+        ),
+      );
+
+      expect(decision.tier, EligibilityTier.provisionallyEligible);
+      expect(decision.code, EligibilityReason.bandExecutionFloor);
+    });
   });
 }

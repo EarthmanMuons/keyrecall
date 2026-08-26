@@ -58,16 +58,16 @@ void main() {
   });
 
   group('stage 2a, eligibility', () {
-    test('depends only on competencies', () {
+    test('reads competencies, and of memory only whether it exists', () {
       final state = stateAt(PlacementTier.advanced);
       final exercise = exerciseFor(
         materials.first,
         hands: HandConfiguration.together,
       );
-      final before = pipeline.eligibilityFor(state, exercise);
-
       final materialId = materials.first.materialId;
       final memory = state.materialMemoryFor(materialId, learnerParams);
+      final before = pipeline.eligibilityFor(state, exercise);
+
       memory
         ..logCurrentHalfLife = math.log(0.001)
         ..logConsolidatedHalfLife = math.log(0.001);
@@ -90,8 +90,26 @@ void main() {
       );
     });
 
+    test('reads the presence of history, which is a rung question', () {
+      final state = stateAt(PlacementTier.advanced);
+      final material = materials.first;
+
+      // The same capable learner, the same exercise: only whether this app has
+      // ever seen the material separates the two answers.
+      expect(
+        pipeline.eligibilityFor(state, exerciseFor(material)).code,
+        EligibilityReason.unseenMaterialRequiresCue,
+      );
+      state.materialMemoryFor(material.materialId, learnerParams);
+      expect(
+        pipeline.eligibilityFor(state, exerciseFor(material)).code,
+        isNot(EligibilityReason.unseenMaterialRequiresCue),
+      );
+    });
+
     test('applies no prerequisite to single-hand work', () {
       final state = stateAt(PlacementTier.beginner);
+      seedAllMaterials(state);
       for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
         expect(
           pipeline
@@ -323,6 +341,9 @@ void main() {
       final fullyExercise = exerciseFor(materials[3]);
 
       final state = stateAt(PlacementTier.beginner);
+      // Both candidates are unguided, so both need history here for the tier
+      // to be about the prerequisite under test.
+      seedAllMaterials(state);
       for (final competency in Competency.values) {
         state.competency(competency).variance = 0.05;
       }
