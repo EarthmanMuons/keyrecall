@@ -223,6 +223,24 @@ The feedback loop is intentional: learner-state estimates affect exercise
 selection, new performances create additional observations, and those
 observations update the learner model.
 
+Where each box lives now that the app exists:
+
+| Conceptual                | Implemented as                            |
+| ------------------------- | ----------------------------------------- |
+| Scale Definition          | `TechnicalMaterial`, `ScaleFingering`     |
+| Exercise Generator        | `generateCandidates`, gated by `REQUIRES` |
+| Expected Event Stream     | `ExerciseRealization`                     |
+| MIDI Performance          | `PerformanceTranscript`                   |
+| Event-Aligned Observation | `keyrecall_alignment`, single-hand only   |
+| Observation Attribution   | `keyrecall_measurement`, then `Outcome`   |
+| Learner Component States  | `LearnerState`                            |
+
+The one box that is not yet real for every exercise is the alignment of two
+hands: relating simultaneous notes to the moments they belong to needs
+observation grouping, which recorded playing shows cannot be decided from timing
+alone. Hands-together attempts therefore close with no measurement. See
+[`alignment-contract.md`](alignment-contract.md).
+
 ### 3.2 Shared Latent Components and Emergent Transfer
 
 The following simplified RH example illustrates why KeyRecall should not model

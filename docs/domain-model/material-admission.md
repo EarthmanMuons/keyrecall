@@ -153,13 +153,18 @@ motor-family dimension in the competency ontology, which has its own admission
 workflow in the competency extension guide, and which the fingering research
 deliberately stopped short of freezing.
 
-## What to build first
+## What was built
 
-A first policy using only what exists: bands as static material data, generic
-execution floors for the later bands, topology familiarity for a new minor form,
-and the hands-together rule already there. That replaces `offeredScales` with
-something that admits material as a learner improves, while being honest that it
-approximates the motor axis rather than measuring it.
+A first policy using only what exists: bands as static material data in
+`admissionBandOf`, generic execution floors for the later bands, topology
+familiarity before harmonic and melodic minor, and the hands-together rule that
+was already there. Every rejection is provisional, so material is outranked
+rather than forbidden, and each carries an `EligibilityReason` so stalls can be
+grouped.
+
+One rule moved during implementation: natural minor asks for nothing, because
+requiring minor familiarity to earn the only material that produces it kept
+every minor scale outranked forever.
 
 Whether the fingering-family axis earns a competency of its own then becomes a
 question the first policy can help answer: if learners stall specifically where

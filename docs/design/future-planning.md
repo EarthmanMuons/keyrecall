@@ -433,6 +433,27 @@ the project learns how pianists learn
 
 Population fitting must not become a prerequisite for local operation.
 
+### 2.5 Feedback after an attempt is its own channel
+
+`PerformanceFeedback` says what a learner sees of their own playing **during**
+an attempt: nothing, a neutral echo, or an evaluative display. Showing them
+afterwards what was measured is a different axis, and the practice screen
+deliberately shows nothing.
+
+It is not decoration. What a learner carries out of one attempt changes the next
+one: told which notes were wrong, they will attend to those, which is useful
+practice and also makes the following attempt a different observation from an
+unaided one. So it belongs in `PresentationConditions` as its own value,
+recorded per attempt, rather than arriving as UI polish.
+
+The questions it raises are the ones the during-attempt axis already answered in
+its own terms: whether it is neutral or evaluative, whether it is available at
+every guidance rung, and whether an attempt that was reviewed afterwards is the
+same evidence as one that was not.
+
+Until that is designed, the loop commits and moves on, which is a choice rather
+than an omission.
+
 ## 3. Learner-model extensions
 
 ### 3.1 Performance envelopes
@@ -624,10 +645,11 @@ turn practice into a rigid calendar or punish irregular use.
 
 ### 4.8 Material admission by prerequisite, not by tier
 
-`offeredScales` is a hand-authored subset of what the system supports, and it
-exists only because the scheduler cannot yet answer whether a learner is ready
-for a scale. When the `REQUIRES` gate can, that list disappears and production
-schedules over `allScales`.
+The first material-admission policy is implemented, and
+[`material-admission.md`](../domain-model/material-admission.md) records it.
+What remains reserved is the axis it approximates: the gate reads a
+curriculum-derived band prior because nothing measures whether a hand pattern is
+already established.
 
 The gate should not encode a tier number or an ordering by how hard a fingering
 looks. Novelty arrives on three independent axes, and a single sequence cannot
@@ -646,7 +668,7 @@ material over established motor structure, while B flat major introduces a
 different entry and cycle. Those are different kinds of difficulty and a tier
 list would rank them as one.
 
-Sketched, not decided:
+Sketched, not decided, and the part still unbuilt:
 
 ```text
 A natural minor      requires the C-major-family hands

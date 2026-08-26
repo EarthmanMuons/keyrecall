@@ -59,10 +59,16 @@ analysis/learner-model/params.toml
 analysis/scheduler/config.toml
 ```
 
-These sources are required to agree. The TOML registries are authoritative for
-numeric values, executable code defines machine-level mechanics, and this
-specification defines the intended semantic contract. A disagreement among them
-is a defect to reconcile, not a precedence rule for silently choosing one.
+These sources were required to agree while the Python prototype was live. It is
+now frozen provenance and the Dart packages are canonical, including the
+parameter registries; see `analysis/README.md`. The paragraphs below describe
+that earlier arrangement and the values it settled on, which the Dart registries
+inherited.
+
+The TOML registries were authoritative for numeric values, executable code
+defines machine-level mechanics, and this specification defines the intended
+semantic contract. A disagreement among them is a defect to reconcile, not a
+precedence rule for silently choosing one.
 
 The architecture and transition boundaries are settled for initial production.
 The numeric values are versioned starting points, not scientific constants.
@@ -907,7 +913,8 @@ retrieval clock would move.
 
 The architecture gives each parameter a stable meaning, but the initial values
 remain heuristic. This table is a readable snapshot, not a second parameter
-registry; the TOML files remain authoritative.
+registry. The TOML files record what the prototype carried; `LearnerParams` and
+`SchedulerConfig` in the Dart packages are the live registries.
 
 | Area                         | Current V1 prototype values                                                                                                        |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |

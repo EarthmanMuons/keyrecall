@@ -25,8 +25,22 @@ learner, reads no state, and makes no pedagogical judgments; those belong to
   `Competency` values it creates an opportunity to observe. Guidance does not
   change it: a cued harmonic-minor exercise still contains harmonic-minor
   topology.
-- **Catalog and instrument.** `v1ScaleCatalog` is the initial scale set, and
+- **Realization.** `realize` turns an exercise into the ordered notes it asks
+  for, spelled by scale degree, so a staff and a keyboard diagram read one
+  answer. `PerformanceTranscript` is the other side: what was played, in arrival
+  order, with no relation to what was expected.
+- **Fingering.** `canonicalFingering` covers all 48 scales in both hands as
+  `entry / cycle / terminal`, which generates any octave span rather than
+  storing one-octave strings.
+- **Presentation conditions.** `PresentationConditions` records what an attempt
+  was given on four independent channels: pitch cue, motor cue, performance
+  feedback, and tempo support.
+- **Catalog, bands, and instrument.** `allScales` is everything supported;
+  `admissionBandOf` says how early each is conventionally introduced;
+  `PracticeGoal` classifies material against a destination; and
   `InstrumentProfile` gates what the connected instrument can play.
+  `v1ScaleCatalog` is a fixture the frozen Python prototype matches, not a
+  product list.
 
 ## Usage
 
@@ -51,11 +65,15 @@ void main() {
 
 ## What is deliberately missing
 
-`MotorRealization`, the canonical fingering and derived event structure, is not
-modeled yet: no fingering catalog exists. Until it does, an exercise's
-opportunities are supplied by the caller, and `Exercise.linear` applies a
-provisional rule that can only read octave span and direction. Replace that with
-real derivation when the catalog lands, rather than widening the heuristic.
+The derived motor structure. Fingering and the note sequence are both here now,
+but `MotorOpportunity` is still supplied by the caller, and `Exercise.linear`
+applies a provisional rule that can only read octave span and direction.
+Deriving those sites from the fingering is the work that rule is waiting for;
+widening the heuristic is not.
+
+Nothing here knows how a performance relates to what was asked for. That is
+`keyrecall_alignment`, and it is deliberately one directional: the domain says
+what an exercise is, and never what an attempt at one was worth.
 
 ## Documentation
 

@@ -1,15 +1,26 @@
 # Production Learner and Scheduler Implementation Plan
 
-**Status:** Implementation design plan; production app codebase not yet
-started  
-**Date:** August 20, 2026  
+**Status:** Implementation record. The app exists, and the contracts below were
+implemented; read it for why the production shape is what it is, not for what to
+build next.  
+**Date:** August 20, 2026, with a status revision on August 26, 2026  
 **Scope:** Production learner model, scheduler, local history, instrumentation,
 offline replay, and optional research telemetry
 
 ## 1. Purpose
 
-This document translates the validated learner-model and scheduler work into a
-plan for implementing the real KeyRecall app.
+This document translated the validated learner-model and scheduler work into a
+plan for implementing the real KeyRecall app, and the app was then built from
+it. The sequencing is history; the contracts it defines, the attempt-event
+shape, the update traces, and the deterministic replay requirement, are live and
+implemented in `packages/keyrecall_journal` and `packages/keyrecall_practice`.
+
+Where this document and the code disagree, the code is right and the difference
+is worth recording here. Four things have moved since it was written: an attempt
+now closes with a termination reason and a measurement rather than a bare
+outcome, measurement comes from alignment rather than a self-report, material
+admission gates candidates in the `REQUIRES` stage, and the Python prototype it
+repeatedly refers to is frozen provenance rather than an authority.
 
 The synthetic program is complete for mechanism discovery. It established a
 coherent production learner-state architecture, justified one estimator-side
