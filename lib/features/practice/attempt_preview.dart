@@ -78,6 +78,15 @@ class _PreviewState extends State<_Preview> {
   /// marked keys and as notation.
   CueModality _modality = CueModality.keyboard;
 
+  /// Which tempo support this case is being heard under.
+  ///
+  /// Reachable here and nowhere else. Practice policy is count-in only, and a
+  /// metronome the learner could switch on mid-sitting would change what an
+  /// attempt observes without the record saying so: presentation is derivable
+  /// from the exercise today, and staying derivable is why it is not stored.
+  /// These cases record nothing, so hearing one costs nothing.
+  TempoSupport _tempoSupport = TempoSupport.countInOnly;
+
   @override
   Widget build(BuildContext context) {
     final exercise = widget.exercise;
@@ -87,13 +96,28 @@ class _PreviewState extends State<_Preview> {
       cueModality: policy.pitchCue.suppliesMaterial ? _modality : null,
       motorCue: policy.motorCue,
       performanceFeedback: policy.performanceFeedback,
-      tempoSupport: policy.tempoSupport,
+      tempoSupport: _tempoSupport,
     );
 
     return Scaffold(
       appBar: AppBar(
         title: Text(guidanceName(exercise.guidance)),
         actions: [
+          IconButton(
+            tooltip: _tempoSupport == TempoSupport.metronomeThroughout
+                ? 'Count in and stop'
+                : 'Keep the click going',
+            onPressed: () => setState(() {
+              _tempoSupport = _tempoSupport == TempoSupport.metronomeThroughout
+                  ? TempoSupport.countInOnly
+                  : TempoSupport.metronomeThroughout;
+            }),
+            icon: Icon(
+              _tempoSupport == TempoSupport.metronomeThroughout
+                  ? Icons.timer
+                  : Icons.timer_off,
+            ),
+          ),
           if (policy.pitchCue.suppliesMaterial)
             IconButton(
               tooltip: 'Show the cue the other way',

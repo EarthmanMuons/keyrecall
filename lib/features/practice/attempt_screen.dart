@@ -5,7 +5,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
-import '../audio/count_in_clicker.dart';
+import '../audio/pulse_clicker.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
 import 'attempt_review.dart';
@@ -151,9 +151,14 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   bool _finishing = false;
   int _painted = 0;
 
+  /// Held rather than read on demand, because the pulse has to be silenced
+  /// from [dispose], where reading a provider is no longer safe.
+  late final PulseClicker _pulse;
+
   @override
   void initState() {
     super.initState();
+    _pulse = ref.read(pulseClickerProvider);
     // The previous attempt's notes are still in the transcript, because
     // closing an attempt reads them after recording stops. They are not this
     // attempt's, and this screen can be asked about them before it has
@@ -163,13 +168,16 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     });
     // Warmed up while the learner reads the screen, so neither the first beat
     // nor the first drawn note is waiting on something to load.
-    unawaited(ref.read(countInClickerProvider).prepare());
+    unawaited(_pulse.prepare());
     unawaited(warmStaffRendering());
   }
 
   @override
   void dispose() {
     _countIn?.cancel();
+    // Leaving the screen ends the attempt, and a pulse that outlived it would
+    // keep sounding over whatever comes next.
+    unawaited(_pulse.stop());
     super.dispose();
   }
 
@@ -186,6 +194,13 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     ref
         .read(attemptTranscriptProvider.notifier)
         .start(widget.exercise.material);
+    final tempoSupport =
+        (widget.presentation ??
+                presentationFor(
+                  widget.exercise.guidance,
+                  exercise: widget.exercise,
+                ))
+            .tempoSupport;
     final beat = Duration(
       microseconds:
           (60 *
@@ -201,11 +216,20 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     // The clicks are rendered as one buffer, so the pulse is exact whatever
     // this timer does, and the audio catches up to the count rather than the
     // count waiting on the audio.
-    unawaited(
-      ref
-          .read(countInClickerProvider)
-          .playCountIn(beats: _countInBeats, beat: beat),
-    );
+    if (tempoSupport != TempoSupport.none) {
+      unawaited(
+        _pulse.play(
+          countInBeats: _countInBeats,
+          // A metronome outlasts the notes on purpose. Ending the pulse on
+          // the last expected beat would stop it under anyone playing at
+          // all slowly, which is exactly who is following it.
+          continuingBeats: tempoSupport == TempoSupport.metronomeThroughout
+              ? realize(widget.exercise).moments.length + _countInBeats
+              : 0,
+          beat: beat,
+        ),
+      );
+    }
 
     _countIn = Timer.periodic(beat, (timer) {
       if (!mounted) return;
@@ -222,6 +246,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   Future<void> _decline() async {
     if (_finishing) return;
     _finishing = true;
+    unawaited(_pulse.stop());
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
     await widget.onDecline!();
@@ -230,6 +255,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   Future<void> _finish() async {
     if (_finishing) return;
     _finishing = true;
+    unawaited(_pulse.stop());
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
     // What was played is the evidence. Nobody is asked how it went.

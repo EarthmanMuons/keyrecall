@@ -126,6 +126,18 @@ void main() {
       }
     });
 
+    test('leaves the tempo axis where the rung cannot reach it', () {
+      for (final guidance in GuidanceContext.ladder) {
+        expect(
+          presentationFor(guidance).tempoSupport,
+          TempoSupport.countInOnly,
+          reason:
+              'tempo support is an independent axis, so a rung change must '
+              'not move it in either direction',
+        );
+      }
+    });
+
     test('varies nothing but the pitch cue across the rungs', () {
       for (final guidance in GuidanceContext.ladder) {
         final presentation = presentationFor(guidance);

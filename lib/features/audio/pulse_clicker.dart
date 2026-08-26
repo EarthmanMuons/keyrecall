@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// The click that sounds the count-in.
+/// The click that sounds the pulse.
 ///
 /// Generated rather than played from an asset, so the app carries no audio
 /// files and the click can follow whatever tempo an exercise asks for. It also
@@ -17,13 +17,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Best effort. A device that will not give us an audio engine leaves the
 /// count-in silent, which is exactly where it was before, rather than failing
 /// an attempt.
-final countInClickerProvider = Provider<CountInClicker>((ref) {
-  final clicker = CountInClicker();
-  ref.onDispose(clicker.dispose);
+final pulseClickerProvider = Provider<PulseClicker>((ref) {
+  final clicker = PulseClicker();
+  ref.onDispose(clicker.stop);
   return clicker;
 });
 
-class CountInClicker {
+class PulseClicker {
   /// Frames per second. 44.1kHz is what every platform accepts without
   /// resampling.
   static const int _sampleRate = 44100;
@@ -36,6 +36,9 @@ class CountInClicker {
   /// "one" without a second sound.
   static const double _beatHz = 880;
   static const double _downbeatHz = 1320;
+
+  /// Beats between accents. The exercises are one note to a beat in 4/4.
+  static const int _beatsPerBar = 4;
 
   /// Silence past the last click, so the engine reaches the end of its queue
   /// while it is playing nothing.
@@ -73,14 +76,25 @@ class CountInClicker {
     }
   }
 
-  /// Sounds [beats] beats, [beat] apart, starting now.
+  /// Sounds [countInBeats] counting beats and then [continuingBeats] more,
+  /// [beat] apart, starting now.
   ///
-  /// The whole count-in is rendered and handed over in one piece. Trickling it
-  /// a fragment at a time leaves the engine's queue empty between fragments,
-  /// and this engine stops itself whenever its queue runs dry: the count-in
-  /// then becomes a few dozen starts and stops a second, which is audible at
-  /// the seams and puts a click where no beat is.
-  Future<void> playCountIn({required int beats, required Duration beat}) async {
+  /// Pass zero continuing beats for a count-in that stops and leaves the
+  /// learner holding the pulse.
+  ///
+  /// The whole thing is rendered and handed over in one piece. Trickling it a
+  /// fragment at a time leaves the engine's queue empty between fragments, and
+  /// this engine stops itself whenever its queue runs dry: the pulse then
+  /// becomes a few dozen starts and stops a second, which is audible at the
+  /// seams and puts a click where no beat is.
+  ///
+  /// One buffer also means the beats are spaced by sample count rather than by
+  /// timer, so the pulse cannot drift against itself however busy the app is.
+  Future<void> play({
+    required int countInBeats,
+    required int continuingBeats,
+    required Duration beat,
+  }) async {
     // Preparing the engine takes a variable few hundred milliseconds, and the
     // count-in the learner is watching has already started. Rather than
     // holding the numbers back, the audio starts from wherever the count-in
@@ -89,6 +103,7 @@ class CountInClicker {
     await prepare();
     if (!_ready) return;
 
+    final beats = countInBeats + continuingBeats;
     final beatFrames = beat.inMicroseconds * _sampleRate ~/ 1000000;
     final tailFrames = _tail.inMicroseconds * _sampleRate ~/ 1000000;
     final track = Int16List(beatFrames * beats + tailFrames);
@@ -96,7 +111,10 @@ class CountInClicker {
       _writeClick(
         track,
         at: index * beatFrames,
-        hz: index == 0 ? _downbeatHz : _beatHz,
+        // The bar line, not just the start: a pulse that runs through the
+        // attempt says where the beat is, and an accent every fourth beat says
+        // which beat it is.
+        hz: index % _beatsPerBar == 0 ? _downbeatHz : _beatHz,
       );
     }
     final skip = (since.elapsedMicroseconds * _sampleRate ~/ 1000000).clamp(
@@ -108,18 +126,17 @@ class CountInClicker {
     // already stopped itself. Tearing it down while it is still sounding is
     // what the last stray click was.
     _release?.cancel();
-    _release = Timer(beat * beats + _tail * 2, _stop);
+    _release = Timer(beat * beats + _tail * 2, stop);
 
     await _feed(Int16List.sublistView(track, skip));
   }
 
-  /// Stops and releases the engine.
-  Future<void> dispose() async {
+  /// Silences the pulse and releases the engine.
+  ///
+  /// Public because an attempt can end before its last beat, and a metronome
+  /// still ticking over a finished attempt is the app talking over the learner.
+  Future<void> stop() async {
     _release?.cancel();
-    await _stop();
-  }
-
-  Future<void> _stop() async {
     _release = null;
     if (!_ready) return;
     _ready = false;
