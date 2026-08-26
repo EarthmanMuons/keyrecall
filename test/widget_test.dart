@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keyrecall/features/practice/practice_providers.dart';
-import 'package:keyrecall/features/practice/practice_screen.dart';
+import 'package:keyrecall/features/practice/home_screen.dart';
 
 void main() {
   late Directory root;
@@ -39,7 +39,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: PracticeScreen()),
+        child: const MaterialApp(home: HomeScreen()),
       ),
     );
     await tester.pump();

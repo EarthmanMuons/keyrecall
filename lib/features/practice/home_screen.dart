@@ -16,18 +16,19 @@ import 'onset_diagnostic.dart';
 import 'practice_providers.dart';
 import 'reported_result.dart';
 
-/// A development panel for driving the practice loop by hand.
+/// The app's entry screen: a way into [AttemptScreen], and outside release
+/// builds a development panel for driving the practice loop by hand.
 ///
-/// Deliberately not a design. It exists to make the state machine visible and
-/// operable end to end: the scheduler picks a real exercise, live input crosses
-/// the real source boundary, and a reported result goes through the real
-/// update, journal, and replay path. The only mocked step is turning a
-/// performance into an outcome, which is the boundary that has not been
-/// designed yet.
+/// The panel is deliberately not a design. It exists to make the state machine
+/// visible and operable end to end: the scheduler picks a real exercise, live
+/// input crosses the real source boundary, and a hand-reported result goes
+/// through the real update, journal, and replay path. Learner-facing attempts
+/// no longer report themselves; they are measured. The buttons here remain as
+/// a way to drive the loop without an instrument.
 ///
-/// Nothing here should be carried into the learner-facing UI.
-class PracticeScreen extends ConsumerWidget {
-  const PracticeScreen({super.key});
+/// Nothing in the panel should be carried into the learner-facing UI.
+class HomeScreen extends ConsumerWidget {
+  const HomeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
