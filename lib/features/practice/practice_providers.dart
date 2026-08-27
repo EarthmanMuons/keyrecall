@@ -33,6 +33,181 @@ final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
   return FilePracticeStore(root);
 });
 
+/// One profile as the management screen shows it.
+///
+/// Carries the history count beside the profile because that is what tells two
+/// similarly named profiles apart: which one has been practiced, and how much.
+@immutable
+class ProfileSummary {
+  /// Who this is.
+  final Profile profile;
+
+  /// Whether this is the profile the practice loop is running as.
+  final bool isActive;
+
+  /// How many attempts this profile has recorded, or null when its history
+  /// could not be read.
+  final int? attemptsRecorded;
+
+  /// Why the history could not be read, when it could not.
+  ///
+  /// A journal this build cannot replay is exactly when somebody needs the
+  /// switcher, so an unreadable one is reported in place rather than allowed
+  /// to fail the screen that offers the way out.
+  final String? historyError;
+
+  const ProfileSummary({
+    required this.profile,
+    required this.isActive,
+    this.attemptsRecorded,
+    this.historyError,
+  });
+}
+
+/// Who exists on this install, and what each of them has practiced.
+///
+/// Retries are off for the same reason the practice loop turns them off: the
+/// failures here are unreadable storage, which a retry cannot change.
+final profileRosterProvider =
+    AsyncNotifierProvider<ProfileRosterNotifier, List<ProfileSummary>>(
+      ProfileRosterNotifier.new,
+      retry: (_, _) => null,
+    );
+
+/// Creating, renaming, switching, erasing, and deleting profiles.
+///
+/// Every mutation goes through the repository and then reloads this list.
+/// Reloading the practice loop is separate and deliberate: reopening a sitting
+/// while an exercise is on screen leaves its decision pending, so the loop is
+/// invalidated only when a change actually moves the ground under it, which
+/// means a change to the active profile.
+class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
+  /// Whether a write is already running, for the reason [PracticeLoopNotifier]
+  /// keeps the same flag.
+  bool _writing = false;
+
+  @override
+  Future<List<ProfileSummary>> build() async {
+    final repository = await ref.watch(profileRepositoryProvider.future);
+    final store = await ref.watch(practiceStoreProvider.future);
+
+    final profiles = await repository.list();
+    final activeId = (await repository.selected())?.id;
+    return [
+      for (final profile in profiles)
+        await _summarize(profile, store, isActive: profile.id == activeId),
+    ];
+  }
+
+  /// Adds a profile and practices as it.
+  ///
+  /// The repository deliberately does not switch when a profile is created,
+  /// because a profile can be made for reasons that have nothing to do with
+  /// who is at the instrument. Made from this screen it does: somebody adding
+  /// a profile is somebody about to use it, and the list they are already
+  /// looking at is how they get back.
+  Future<Profile?> add(String displayName) =>
+      _mutate((repository, store) async {
+        final created = await repository.create(displayName: displayName);
+        await repository.select(created.id);
+        return (true, created);
+      });
+
+  /// Changes a profile's display name.
+  Future<Profile?> rename(String profileId, String displayName) =>
+      _mutate((repository, store) async {
+        final renamed = await repository.rename(profileId, displayName);
+        return (await _isActive(repository, profileId), renamed);
+      });
+
+  /// Makes [profileId] the profile the practice loop runs as.
+  Future<Profile?> select(String profileId) =>
+      _mutate((repository, store) async {
+        final selected = await repository.select(profileId);
+        return (true, selected);
+      });
+
+  /// Erases one profile's recorded practice, keeping the profile itself.
+  ///
+  /// The way to put a test profile back at placement without losing the name
+  /// it is recognized by.
+  Future<void> eraseHistory(String profileId) =>
+      _mutate((repository, store) async {
+        final active = await _isActive(repository, profileId);
+        await store.erase(profileId);
+        return (active, null);
+      });
+
+  /// Deletes a profile and everything it recorded.
+  ///
+  /// History first, then the index entry. A directory no index entry names is
+  /// clutter that can be swept up later; an index entry whose history is
+  /// already gone is a person the app would try to open and could not.
+  ///
+  /// Deleting the profile being practiced as leaves the selection on the
+  /// oldest one left, or on a fresh default when that was the last profile on
+  /// the install. Making that profile here, in front of somebody who just
+  /// deleted the only one, is the point: the practice screen would otherwise
+  /// conjure it on the way in, and a person would find themselves practicing
+  /// as somebody they never made.
+  Future<void> remove(String profileId) => _mutate((repository, store) async {
+    final active = await _isActive(repository, profileId);
+    await store.erase(profileId);
+    await repository.delete(profileId);
+    if (active) await repository.selectedOrDefault();
+    return (active, null);
+  });
+
+  /// Runs [change], reloads this list, and reloads the practice loop when the
+  /// change touched the active profile.
+  Future<T?> _mutate<T>(
+    Future<(bool, T?)> Function(ProfileRepository, PracticeStore) change,
+  ) async {
+    if (_writing) return null;
+
+    _writing = true;
+    try {
+      final repository = await ref.read(profileRepositoryProvider.future);
+      final store = await ref.read(practiceStoreProvider.future);
+      final (touchedActive, result) = await change(repository, store);
+
+      ref.invalidateSelf();
+      if (touchedActive) ref.invalidate(practiceLoopProvider);
+      return result;
+    } finally {
+      _writing = false;
+    }
+  }
+
+  static Future<bool> _isActive(
+    ProfileRepository repository,
+    String profileId,
+  ) async => (await repository.selected())?.id == profileId;
+
+  /// Reads what [profile] has recorded, reporting rather than throwing when
+  /// that history cannot be replayed.
+  static Future<ProfileSummary> _summarize(
+    Profile profile,
+    PracticeStore store, {
+    required bool isActive,
+  }) async {
+    try {
+      final journal = await store.loadJournal(profile.id);
+      return ProfileSummary(
+        profile: profile,
+        isActive: isActive,
+        attemptsRecorded: journal.records.length,
+      );
+    } catch (error) {
+      return ProfileSummary(
+        profile: profile,
+        isActive: isActive,
+        historyError: '$error',
+      );
+    }
+  }
+}
+
 /// Everything the panel needs to show about the loop's current position.
 @immutable
 class PracticeLoopState {
@@ -290,6 +465,9 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       _writing = false;
     }
     ref.invalidateSelf();
+    // The switcher shows what each profile has recorded, and one of those
+    // counts just went to zero.
+    ref.invalidate(profileRosterProvider);
   }
 
   /// Reopens from storage, as a relaunch would.

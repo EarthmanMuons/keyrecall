@@ -14,6 +14,7 @@ import 'attempt_preview.dart';
 import 'attempt_screen.dart';
 import 'onset_diagnostic.dart';
 import 'practice_providers.dart';
+import 'profiles_screen.dart';
 import 'reported_result.dart';
 
 /// The app's entry screen: a way into [AttemptScreen], and outside release
@@ -38,6 +39,18 @@ class HomeScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('KeyRecall dev panel'),
         actions: [
+          // Outside the loop's own state on purpose: when a journal cannot be
+          // replayed the loop shows a failure and no profile panel, and
+          // switching to another profile is one of the ways out.
+          IconButton(
+            tooltip: 'Switch, add, or clear out profiles',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => const ProfilesScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.people),
+          ),
           // Debug and profile, not release: a profile build is how this gets
           // taken to a real instrument across the room.
           if (!kReleaseMode)
@@ -107,11 +120,6 @@ class _Loop extends ConsumerWidget {
             _Field('id', loop.profile.id),
             _Field('attempts recorded', '${loop.attemptsRecorded}'),
             _Field('session', loop.session.sessionId),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () => _confirmErase(context, notifier),
-              child: const Text('Start over, erasing history'),
-            ),
           ],
         ),
         if (loop.pending != null)
@@ -146,34 +154,6 @@ class _Loop extends ConsumerWidget {
       ],
     );
   }
-}
-
-/// Asks before destroying recorded practice.
-Future<void> _confirmErase(
-  BuildContext context,
-  PracticeLoopNotifier notifier,
-) async {
-  final erase = await showDialog<bool>(
-    context: context,
-    builder: (context) => AlertDialog(
-      title: const Text('Start over?'),
-      content: const Text(
-        'Every recorded attempt for this profile is deleted, and the learner '
-        'model goes back to placement. There is no undo.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Keep it'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Erase'),
-        ),
-      ],
-    ),
-  );
-  if (erase ?? false) await notifier.eraseHistory();
 }
 
 class _ExercisePanel extends StatelessWidget {

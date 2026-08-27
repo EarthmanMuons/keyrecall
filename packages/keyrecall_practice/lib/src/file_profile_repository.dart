@@ -16,7 +16,9 @@ import 'profile_repository.dart';
 /// a leftover practice directory is not a person, and rebuilding names from
 /// directory ids would attach somebody to a history that is not theirs. A
 /// directory is named by profile id permanently, so renaming touches only the
-/// index and never moves anything.
+/// index and never moves anything, and deleting an entry leaves whatever
+/// practice storage that id had: erasing that is the practice store's call and
+/// not this one's.
 ///
 /// Writes go to a temporary name and are renamed over the target, so a reader
 /// sees the old index or the new one and never a half-written one.
@@ -92,6 +94,14 @@ class FileProfileRepository implements ProfileRepository {
       ProfileIndex(profiles: index.profiles, selectedProfileId: profileId),
     );
     return profile;
+  }
+
+  @override
+  Future<Profile> delete(String profileId) async {
+    final index = await _read();
+    final removed = _require(index, profileId);
+    await _write(index.without(profileId));
+    return removed;
   }
 
   Profile _require(ProfileIndex index, String profileId) {

@@ -160,6 +160,110 @@ void main() {
     });
   });
 
+  group('deleting', () {
+    forEachRepository('removes only the profile asked for', (repository) async {
+      final alice = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+      );
+      final bob = await repository.create(
+        displayName: 'Bob',
+        createdAt: t0.plusDays(1),
+      );
+
+      final removed = await repository.delete(bob.id);
+
+      expect(removed.id, bob.id);
+      expect((await repository.list()).map((profile) => profile.id), [
+        alice.id,
+      ]);
+      expect(await repository.find(bob.id), isNull);
+    });
+
+    forEachRepository('leaves the selection alone when somebody else goes', (
+      repository,
+    ) async {
+      final alice = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+      );
+      final bob = await repository.create(
+        displayName: 'Bob',
+        createdAt: t0.plusDays(1),
+      );
+
+      await repository.delete(bob.id);
+
+      expect((await repository.selected())?.id, alice.id);
+    });
+
+    forEachRepository('hands the selection on when the active profile goes', (
+      repository,
+    ) async {
+      final alice = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+      );
+      final bob = await repository.create(
+        displayName: 'Bob',
+        createdAt: t0.plusDays(1),
+      );
+
+      await repository.delete(alice.id);
+
+      expect(
+        (await repository.selected())?.id,
+        bob.id,
+        reason: 'the app has to be running as somebody',
+      );
+    });
+
+    forEachRepository('hands it to the oldest of those left', (
+      repository,
+    ) async {
+      final alice = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+      );
+      final bob = await repository.create(
+        displayName: 'Bob',
+        createdAt: t0.plusDays(1),
+      );
+      await repository.create(displayName: 'Cass', createdAt: t0.plusDays(2));
+      await repository.select(alice.id);
+
+      await repository.delete(alice.id);
+
+      expect((await repository.selected())?.id, bob.id);
+    });
+
+    forEachRepository('invents nobody when the last profile goes', (
+      repository,
+    ) async {
+      final only = await repository.selectedOrDefault();
+
+      await repository.delete(only.id);
+
+      expect(await repository.list(), isEmpty);
+      expect(
+        await repository.selected(),
+        isNull,
+        reason: 'an empty install is a fact, not a slot to fill',
+      );
+
+      // Somebody has to be asked for. A caller that wants one says so.
+      final fresh = await repository.selectedOrDefault();
+      expect(fresh.id, isNot(only.id));
+      expect((await repository.selected())?.id, fresh.id);
+    });
+
+    forEachRepository('refuses a profile that does not exist', (
+      repository,
+    ) async {
+      expect(() => repository.delete('nobody'), throwsArgumentError);
+    });
+  });
+
   group('the default profile', () {
     forEachRepository('is created on a first launch, without asking', (
       repository,

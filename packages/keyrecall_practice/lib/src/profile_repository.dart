@@ -63,6 +63,29 @@ class ProfileIndex {
   /// Whether anybody exists yet.
   bool get isEmpty => profiles.isEmpty;
 
+  /// This index without [profileId], and with the selection resolved.
+  ///
+  /// Removing somebody who was not selected leaves the selection alone.
+  /// Removing the selected profile hands the selection to the oldest of those
+  /// left, because the app has to run as somebody. Removing the last profile
+  /// leaves nothing selected: an index does not invent a person to keep the
+  /// slot filled.
+  ///
+  /// Removing a profile that is not here returns the same index, so the two
+  /// repositories can raise that as an error the same way, in their own words.
+  ProfileIndex without(String profileId) {
+    final remaining = [
+      for (final profile in profiles)
+        if (profile.id != profileId) profile,
+    ];
+    return ProfileIndex(
+      profiles: remaining,
+      selectedProfileId: selectedProfileId != profileId
+          ? selectedProfileId
+          : (remaining.isEmpty ? null : remaining.first.id),
+    );
+  }
+
   /// Writes the index.
   Map<String, Object?> toJson() => {
     'schema_version': profileIndexSchemaVersion,
@@ -120,9 +143,11 @@ class ProfileIndex {
 /// attempt transaction. What connects them is only the profile id, which is
 /// also what the per-profile practice storage is keyed on.
 ///
-/// Deleting a profile is out of scope. It raises retention and recovery
-/// questions that the first practice screen does not need answered, and adding
-/// it later is easier than taking it back.
+/// Deleting removes an index entry and nothing else. The practice storage
+/// keyed on that id lives behind the other port, so a caller who wants that
+/// history gone erases it there first, in that order: a directory no index
+/// entry names is recoverable clutter, while an index entry whose history is
+/// already gone is a person the app cannot open.
 abstract interface class ProfileRepository {
   /// Every profile, oldest first.
   Future<List<Profile>> list();
@@ -158,6 +183,27 @@ abstract interface class ProfileRepository {
   /// Throws [ArgumentError] when no such profile exists, since a selection
   /// pointing at nobody would leave the app with no defined learner.
   Future<Profile> select(String profileId);
+
+  /// Forgets [profileId], and returns the profile that was removed.
+  ///
+  /// Only the index entry goes. Erasing the practice history is a separate
+  /// call to the practice store, and deliberately so: forgetting who somebody
+  /// is and destroying what they played are different decisions, and a
+  /// repository that owned both would make the smaller one impossible to ask
+  /// for alone.
+  ///
+  /// Deleting the active profile moves the selection to the oldest remaining
+  /// one. The app has to run as somebody, and the alternative is an install
+  /// with a history and nobody selected, which every caller would then have to
+  /// resolve for itself.
+  ///
+  /// Deleting the last profile is the one case that leaves nothing selected.
+  /// A repository that answers "who exists" does not invent a person to keep
+  /// the slot filled; a caller that wants one asks for it, which is what
+  /// [ProfileRepositoryDefaults.selectedOrDefault] is.
+  ///
+  /// Throws [ArgumentError] when no such profile exists.
+  Future<Profile> delete(String profileId);
 }
 
 /// The name a profile gets when the app creates one without asking.
@@ -254,6 +300,13 @@ class InMemoryProfileRepository implements ProfileRepository {
       selectedProfileId: profileId,
     );
     return profile;
+  }
+
+  @override
+  Future<Profile> delete(String profileId) async {
+    final removed = _requireProfile(profileId);
+    _index = _index.without(profileId);
+    return removed;
   }
 
   Profile _requireProfile(String profileId) {
