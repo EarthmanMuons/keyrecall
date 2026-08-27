@@ -31,11 +31,13 @@ class PerformanceMeasurement {
   /// How many moments were asked for.
   final int expectedMoments;
 
-  /// Moments where both hands corresponded to something that arrived.
+  /// How far apart the hands were at each moment both of them corresponded to
+  /// something that arrived, as right minus left.
   ///
-  /// What coordination can be read from, as distinct from how many moments
-  /// asked for two hands.
-  final int correspondedTwoHandMoments;
+  /// The series coordination is read from. Moments where a hand played nothing
+  /// are absent rather than zero, so the length is what was measurable rather
+  /// than what was asked for.
+  final List<int> handAsynchroniesMs;
 
   /// Expected notes that arrived at all, whatever octave they sounded in.
   final int materialProduced;
@@ -66,12 +68,12 @@ class PerformanceMeasurement {
   /// What the policy was.
   final MeasurementPolicy policy;
 
-  const PerformanceMeasurement({
+  PerformanceMeasurement({
     required this.alignment,
     required this.reading,
     required this.expectedNotes,
     required this.expectedMoments,
-    required this.correspondedTwoHandMoments,
+    required List<int> handAsynchroniesMs,
     required this.materialProduced,
     required this.soundedCorrectly,
     required this.degreesCorrect,
@@ -81,7 +83,7 @@ class PerformanceMeasurement {
     this.dispersion,
     this.worstIntervalRatio,
     this.medianIntervalMs,
-  });
+  }) : handAsynchroniesMs = List.unmodifiable(handAsynchroniesMs);
 
   /// Whether anything was played at all.
   bool get started =>
@@ -149,6 +151,53 @@ class PerformanceMeasurement {
   /// stopping.
   double get temporalStability =>
       dispersion == null ? 0 : policy.steadinessOf(dispersion!);
+
+  /// Moments both hands corresponded at, which is what coordination was read
+  /// from.
+  ///
+  /// Provenance rather than a score: a coordination reading off one moment and
+  /// off thirty are not the same evidence.
+  int get correspondedTwoHandMoments => handAsynchroniesMs.length;
+
+  /// How far apart the hands usually were, in milliseconds, or null when no
+  /// moment had both.
+  double? get medianAbsoluteHandAsynchronyMs => handAsynchroniesMs.isEmpty
+      ? null
+      : _median([for (final gap in handAsynchroniesMs) gap.abs().toDouble()]);
+
+  /// How far apart the hands got, in milliseconds, or null when no moment had
+  /// both.
+  ///
+  /// The ninetieth percentile by nearest rank, so a short series reports its
+  /// worst moment rather than interpolating one that did not happen.
+  double? get p90AbsoluteHandAsynchronyMs => handAsynchroniesMs.isEmpty
+      ? null
+      : _nearestRank([
+          for (final gap in handAsynchroniesMs) gap.abs().toDouble(),
+        ], 0.9);
+
+  /// Which hand usually led, as a signed median in milliseconds, or null when
+  /// no moment had both.
+  ///
+  /// Descriptive, and deliberately not evidence. Across the recorded takes the
+  /// left hand led 8 of 12 in one and 2 of 12 in another, so which hand starts
+  /// a moment is a fact about a performance rather than a fault in it.
+  double? get signedMedianHandAsynchronyMs => handAsynchroniesMs.isEmpty
+      ? null
+      : _median([for (final gap in handAsynchroniesMs) gap.toDouble()]);
+
+  /// How together the hands were, in `[0, 1]`, or null when nothing measured
+  /// it.
+  ///
+  /// Null and zero are different claims. Zero says the hands were as far apart
+  /// as playing gets; null says no moment had both hands, which is every
+  /// single-hand performance.
+  double? get coordination {
+    final median = medianAbsoluteHandAsynchronyMs;
+    final tail = p90AbsoluteHandAsynchronyMs;
+    if (median == null || tail == null) return null;
+    return policy.coordinationOf(medianMs: median, p90Ms: tail);
+  }
 
   /// Achieved tempo as a fraction of what was asked for.
   ///
@@ -224,10 +273,11 @@ PerformanceMeasurement measure({
     reading: AlignmentReading(alignment),
     expectedNotes: realization.noteCount,
     expectedMoments: realization.moments.length,
-    correspondedTwoHandMoments: alignment.operations
-        .whereType<MomentCorrespondence>()
-        .where((moment) => moment.handAsynchronyMs != null)
-        .length,
+    handAsynchroniesMs: [
+      for (final operation in alignment.operations)
+        if (operation case MomentCorrespondence(:final handAsynchronyMs))
+          ?handAsynchronyMs,
+    ],
     materialProduced: produced,
     soundedCorrectly: sounded,
     degreesCorrect: degrees,
@@ -315,6 +365,13 @@ double? _worstRatioOf(List<double> intervals) {
 (double, double) _quartilesOf(List<double> values) {
   final ordered = [...values]..sort();
   return (ordered[ordered.length ~/ 4], ordered[(3 * ordered.length) ~/ 4]);
+}
+
+/// The value at [fraction] of the way through [values] by nearest rank.
+double _nearestRank(List<double> values, double fraction) {
+  final ordered = [...values]..sort();
+  final rank = (fraction * ordered.length).ceil() - 1;
+  return ordered[rank.clamp(0, ordered.length - 1)];
 }
 
 double _median(List<double> values) {

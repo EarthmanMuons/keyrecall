@@ -49,6 +49,7 @@ Map<String, Object?> encodeOutcome(Outcome outcome) => {
   'temporal_stability': outcome.temporalStability,
   'achieved_tempo_ratio': outcome.achievedTempoRatio,
   'topology_accuracy': outcome.topologyAccuracy,
+  if (outcome.coordination != null) 'coordination': outcome.coordination,
 };
 
 /// Reads an outcome back, preserving the three-valued retrieval exactly.
@@ -87,6 +88,11 @@ Outcome decodeOutcome(Map<String, Object?> json, {String? location}) {
       'topology_accuracy',
       location: location,
     ),
+    // Absent means unmeasured, which is what every record written before
+    // coordination existed says about it.
+    coordination: json['coordination'] == null
+        ? null
+        : requireDouble(json, 'coordination', location: location),
   );
 }
 

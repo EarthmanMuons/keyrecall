@@ -33,5 +33,6 @@ Outcome outcomeFor({
     continuity: measurement.continuity,
     temporalStability: measurement.temporalStability,
     achievedTempoRatio: measurement.achievedTempoRatioFor(exercise.conditions),
+    coordination: measurement.coordination,
   );
 }

@@ -91,6 +91,18 @@ class Outcome {
   /// How correct the pitch/form structure was, independent of motor quality.
   final double topologyAccuracy;
 
+  /// How together the hands were, or null when nothing measured it.
+  ///
+  /// Three-valued in effect: absent for a single-hand attempt and for a
+  /// two-hand attempt where no moment had both hands, a score otherwise. Zero
+  /// would say the hands were as far apart as playing gets, which is a claim
+  /// no unmeasured attempt supports.
+  ///
+  /// Kept out of [motorScore] and [practiceQuality]. Coordination is what
+  /// `HANDS_TOGETHER_COORDINATION` learns from, and nothing else learns from
+  /// it.
+  final double? coordination;
+
   /// Throws [ArgumentError] for a score outside its documented range.
   Outcome({
     required this.started,
@@ -102,12 +114,14 @@ class Outcome {
     required this.temporalStability,
     required this.achievedTempoRatio,
     required this.topologyAccuracy,
+    this.coordination,
   }) {
     _requireScore(materialRetrieval, 'materialRetrieval');
     _requireScore(pitchIntegrity, 'pitchIntegrity');
     _requireScore(continuity, 'continuity');
     _requireScore(temporalStability, 'temporalStability');
     _requireScore(topologyAccuracy, 'topologyAccuracy');
+    if (coordination != null) _requireScore(coordination!, 'coordination');
     if (!achievedTempoRatio.isFinite || achievedTempoRatio < 0) {
       throw ArgumentError.value(
         achievedTempoRatio,
@@ -145,6 +159,7 @@ class Outcome {
       other.started == started &&
       other.retrieval == retrieval &&
       other.completed == completed &&
+      other.coordination == coordination &&
       other.materialRetrieval == materialRetrieval &&
       other.pitchIntegrity == pitchIntegrity &&
       other.continuity == continuity &&
@@ -163,6 +178,7 @@ class Outcome {
     temporalStability,
     achievedTempoRatio,
     topologyAccuracy,
+    coordination,
   );
 
   @override

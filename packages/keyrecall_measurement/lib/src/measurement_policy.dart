@@ -49,12 +49,37 @@ class MeasurementPolicy {
   /// 2.94x.
   final double brokenIntervalRatio;
 
+  /// Hand asynchrony at or below which a moment reads as together, in
+  /// milliseconds.
+  ///
+  /// Comfortable playing in `analysis/onset-grouping/` kept every pair within
+  /// 30 ms, most within 11.
+  final double synchronizedAsynchronyMs;
+
+  /// Hand asynchrony at or above which a moment reads as not together at all.
+  ///
+  /// Beyond the widest pair in the recorded takes, which reached 134 ms while
+  /// stumbling. One player on one instrument, so this is where the evidence
+  /// runs out rather than where coordination stops being acceptable.
+  final double uncoordinatedAsynchronyMs;
+
+  /// How much of the coordination score the upper tail carries.
+  ///
+  /// Two readings of the same series: the median says how the hands usually
+  /// sat, the tail says how far apart they got. Kept apart so a performance
+  /// that is mostly together with one bad moment scores differently from one
+  /// that is evenly loose.
+  final double coordinationTailWeight;
+
   const MeasurementPolicy({
     this.repeatedMatchedPitchBreaksRetrieval = false,
     this.steadyDispersion = 0.12,
     this.unsteadyDispersion = 0.80,
     this.unbrokenIntervalRatio = 1.15,
     this.brokenIntervalRatio = 3.00,
+    this.synchronizedAsynchronyMs = 30,
+    this.uncoordinatedAsynchronyMs = 150,
+    this.coordinationTailWeight = 0.35,
   });
 
   /// The V1 policy.
@@ -68,6 +93,18 @@ class MeasurementPolicy {
   /// upper quartile reads, in `[0, 1]`.
   double unbrokennessOf(double ratio) =>
       _between(ratio, best: unbrokenIntervalRatio, worst: brokenIntervalRatio);
+
+  /// How together hands that sat [medianMs] apart typically, and [p90Ms] apart
+  /// at their worst, read, in `[0, 1]`.
+  double coordinationOf({required double medianMs, required double p90Ms}) =>
+      (1 - coordinationTailWeight) * _togetherness(medianMs) +
+      coordinationTailWeight * _togetherness(p90Ms);
+
+  double _togetherness(double asynchronyMs) => _between(
+    asynchronyMs,
+    best: synchronizedAsynchronyMs,
+    worst: uncoordinatedAsynchronyMs,
+  );
 
   /// Linear between the two ends, since nothing yet justifies a curve.
   static double _between(
