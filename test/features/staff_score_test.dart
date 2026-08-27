@@ -108,6 +108,45 @@ void main() {
     );
   });
 
+  test('writes each hand its own fingering on its own staff', () {
+    final exercise = exerciseOf(hands: HandConfiguration.together);
+    final realization = realize(exercise);
+
+    final grand = grandStaffFor(
+      realization,
+      fingering: {
+        for (final hand in realization.hands)
+          hand: displayFingeringFor(exercise, hand),
+      },
+    );
+
+    for (final (staff, hand) in [
+      (grand.upper, Hand.right),
+      (grand.lower, Hand.left),
+    ]) {
+      expect(notesOf(staff).first.fingerings, [
+        displayFingeringFor(exercise, hand)!.first,
+      ], reason: '${hand.id} reads its own digits');
+    }
+    expect(
+      notesOf(grand.upper).first.fingerings,
+      isNot(notesOf(grand.lower).first.fingerings),
+      reason: 'the hands do not start on the same finger',
+    );
+  });
+
+  test('the keyboard diagram names no finger when two hands play', () {
+    expect(
+      keyboardFingeringFor(exerciseOf(hands: HandConfiguration.right)),
+      isNotEmpty,
+    );
+    expect(
+      keyboardFingeringFor(exerciseOf(hands: HandConfiguration.together)),
+      isEmpty,
+      reason: 'a key takes one digit, and the hands share keys',
+    );
+  });
+
   group('what fingering the staff writes', () {
     test('teaches the first octave and then only the crossings', () {
       final exercise = exerciseOf(octaves: 2);

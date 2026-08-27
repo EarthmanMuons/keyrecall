@@ -56,9 +56,9 @@ enum MeasurementUnavailableReason {
   /// Nothing can measure a performance yet.
   notAvailable('NOT_AVAILABLE'),
 
-  /// The exercise uses both hands, and relating two hands' notes to the
-  /// moments they belong to needs observation grouping, which does not exist.
-  /// See `docs/domain-model/alignment-contract.md`.
+  /// The exercise used both hands, and relating two hands' notes to the
+  /// moments they belong to needed observation grouping. Written by builds
+  /// before that existed, and read back rather than produced.
   handsTogetherCorrespondence('HANDS_TOGETHER_CORRESPONDENCE');
 
   const MeasurementUnavailableReason(this.id);

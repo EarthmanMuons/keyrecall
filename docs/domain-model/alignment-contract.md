@@ -1,10 +1,11 @@
 # Alignment contract
 
-- **Status:** Partly implemented. `keyrecall_alignment` prices what timing
-  suggests about a transcript and aligns any material against it, both hands
-  included, `keyrecall_measurement` counts notes and moments apart, and
-  coordination reaches the learner model through a channel of its own. Practice
-  still withholds hands-together exercises.
+- **Status:** Implemented for the material V1 generates. `keyrecall_alignment`
+  prices what timing suggests about a transcript and aligns any of it, both
+  hands included; `keyrecall_measurement` counts notes and moments apart; and
+  coordination reaches the learner model through a channel of its own. What is
+  still design is the evaluative display the edit script exists to feed, and the
+  width of the ambiguous region, which more takes would settle.
 - **Written:** August 25, 2026
 - **Revised:** August 27, 2026, with the hands and order questions resolved
 

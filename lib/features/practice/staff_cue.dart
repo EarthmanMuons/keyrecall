@@ -58,7 +58,14 @@ class StaffCue extends StatelessWidget {
         children: [
           // Each row sizes itself to the width, rather than one long system
           // running off the side.
-          for (final row in grandStaffRowsFor(realization))
+          for (final row in grandStaffRowsFor(
+            realization,
+            fingering: {
+              if (showsFingering)
+                for (final hand in realization.hands)
+                  hand: displayFingeringFor(exercise, hand),
+            },
+          ))
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: crisp.GrandStaffView(grandStaff: row, theme: theme),

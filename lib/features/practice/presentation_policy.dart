@@ -29,7 +29,8 @@ PresentationConditions presentationFor(
   final fingered =
       supplied &&
       exercise != null &&
-      fingeringFor(exercise, realize(exercise).hands.first) != null;
+      realize(exercise).hands
+          .every((hand) => fingeringFor(exercise, hand) != null);
   final presentation = PresentationConditions(
     pitchCue: supplied ? PitchCue.full : PitchCue.none,
     cueModality: supplied ? CueModality.keyboardAndStaff : null,

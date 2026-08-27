@@ -69,11 +69,21 @@ crisp.Score staffScoreFor(
 }
 
 /// Both staves, braced together, for an exercise played with both hands.
-crisp.GrandStaff grandStaffFor(ExerciseRealization realization) =>
-    crisp.GrandStaff(
-      upper: staffScoreFor(realization, Hand.right),
-      lower: staffScoreFor(realization, Hand.left),
-    );
+///
+/// Each staff carries its own hand's fingering, which is why a grand staff can
+/// show it at all: the digits sit over the notes rather than over the keys two
+/// hands share.
+crisp.GrandStaff grandStaffFor(
+  ExerciseRealization realization, {
+  Map<Hand, List<int?>?> fingering = const {},
+}) => crisp.GrandStaff(
+  upper: staffScoreFor(
+    realization,
+    Hand.right,
+    fingering: fingering[Hand.right],
+  ),
+  lower: staffScoreFor(realization, Hand.left, fingering: fingering[Hand.left]),
+);
 
 /// The grand staff broken into rows of [measuresPerRow] bars.
 ///
@@ -83,9 +93,10 @@ crisp.GrandStaff grandStaffFor(ExerciseRealization realization) =>
 /// is what a new system does anyway.
 List<crisp.GrandStaff> grandStaffRowsFor(
   ExerciseRealization realization, {
+  Map<Hand, List<int?>?> fingering = const {},
   int measuresPerRow = 2,
 }) {
-  final whole = grandStaffFor(realization);
+  final whole = grandStaffFor(realization, fingering: fingering);
   final rows = <crisp.GrandStaff>[];
 
   for (

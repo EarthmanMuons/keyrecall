@@ -16,6 +16,18 @@ Map<int, int> fingeringByKeyFor(Exercise exercise, Hand hand) {
   };
 }
 
+/// The finger each key takes on the keyboard diagram, or nothing when the
+/// diagram cannot say whose finger it is.
+///
+/// A key takes one digit, and hands together share keys where their registers
+/// meet, so two hands have no unambiguous rendering here. The staff writes the
+/// digits over the notes instead, where each hand has its own line.
+Map<int, int> keyboardFingeringFor(Exercise exercise) {
+  final realization = realize(exercise);
+  if (realization.hands.length > 1) return const {};
+  return fingeringByKeyFor(exercise, realization.hands.single);
+}
+
 /// The fingering to write on the staff, with a `null` wherever a digit would
 /// repeat something already established.
 ///

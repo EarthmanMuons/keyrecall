@@ -231,14 +231,14 @@ Where each box lives now that the app exists:
 | Exercise Generator        | `generateCandidates`, gated by `REQUIRES` |
 | Expected Event Stream     | `ExerciseRealization`                     |
 | MIDI Performance          | `PerformanceTranscript`                   |
-| Event-Aligned Observation | `keyrecall_alignment`, single-hand only   |
+| Event-Aligned Observation | `keyrecall_alignment`                     |
 | Observation Attribution   | `keyrecall_measurement`, then `Outcome`   |
 | Learner Component States  | `LearnerState`                            |
 
-The one box that is not yet real for every exercise is the alignment of two
-hands: relating simultaneous notes to the moments they belong to needs
-observation grouping, which recorded playing shows cannot be decided from timing
-alone. Hands-together attempts therefore close with no measurement. See
+Relating simultaneous notes to the moments they belong to needs observation
+grouping, which recorded playing shows cannot be decided from timing alone. It
+is decided instead by the same search that decides correspondence, which is why
+grouping proposes at a price rather than partitioning. See
 [`alignment-contract.md`](alignment-contract.md).
 
 ### 3.2 Shared Latent Components and Emergent Transfer

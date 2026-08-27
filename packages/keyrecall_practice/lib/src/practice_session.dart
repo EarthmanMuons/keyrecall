@@ -148,9 +148,8 @@ class PracticeSession {
   /// Placement state is anchored at [Profile.createdAt], so every attempt in
   /// the journal must fall at or after it.
   ///
-  /// Only exercises the observation model can read are presented, unless
-  /// [presentOnlyMeasurable] says otherwise; see [isMeasurable]. [goal]
-  /// narrows the material under consideration, and defaults to all of it.
+  /// [goal] narrows the material under consideration, and defaults to all of
+  /// it.
   static Future<PracticeSession> open({
     required PracticeStore store,
     required Profile profile,
@@ -163,7 +162,6 @@ class PracticeSession {
     String? sessionId,
     String? appBuildVersion,
     IdGenerator? nextId,
-    bool presentOnlyMeasurable = true,
   }) async {
     final resolvedPipeline = pipeline ?? SchedulerPipeline(learner: learner);
     final generator = nextId ?? newProfileId;
@@ -199,17 +197,13 @@ class PracticeSession {
       store: store,
       profile: profile,
       sessionId: sessionId ?? generator(),
-      // Two filters, and they answer different questions. The goal says what
-      // the learner is working toward; measurability says what the app can
-      // observe. What they are ready for is the scheduler's REQUIRES gate,
-      // which ranks rather than excludes.
-      candidates: [
-        for (final exercise in generateCandidates(
-          instrument ?? InstrumentProfile(),
-          goal.scopeOf(materials),
-        ))
-          if (!presentOnlyMeasurable || isMeasurable(exercise)) exercise,
-      ],
+      // The goal says what the learner is working toward. What they are ready
+      // for is the scheduler's REQUIRES gate, which ranks rather than
+      // excludes.
+      candidates: generateCandidates(
+        instrument ?? InstrumentProfile(),
+        goal.scopeOf(materials),
+      ).toList(),
       appBuildVersion: appBuildVersion,
       nextId: generator,
       state: replay.state,
@@ -373,18 +367,11 @@ class PracticeSession {
       policy: policy,
     );
 
-    return switch (reading) {
-      PerformanceMeasured(:final outcome) => _close(
-        termination: termination,
-        outcome: outcome,
-        observedWallTime: observedWallTime,
-      ),
-      PerformanceUnmeasurable(:final reason) => _close(
-        termination: termination,
-        unavailable: reason,
-        observedWallTime: observedWallTime,
-      ),
-    };
+    return _close(
+      termination: termination,
+      outcome: reading.outcome,
+      observedWallTime: observedWallTime,
+    );
   }
 
   /// Ends the outstanding attempt with the learner reporting that they could

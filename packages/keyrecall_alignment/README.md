@@ -25,12 +25,14 @@ remaining position; deciding locally picks the expensive one and never recovers.
 Resynchronizing after a skip, an extra, or a correction falls out of choosing
 the whole explanation at once.
 
+It also chooses how the observations were grouped. `groupObservations` prices
+each gap between arrivals, both readings stay affordable, and which arrivals
+made up one performed moment is settled against the realization rather than
+before it. Recorded playing is what rules out deciding it from timing: see
+[`analysis/onset-grouping/`](../../analysis/onset-grouping/README.md).
+
 ## What it deliberately does not do
 
-- **Two hands.** Hands-together material needs observations grouped into
-  moments, and recorded performances show that grouping cannot be decided from
-  timing alone. See
-  [`analysis/onset-grouping/`](../../analysis/onset-grouping/README.md).
 - **Timing.** Relating arrival times to expected times needs a tempo model that
   does not exist, and inventing one inside an aligner would hide it.
 - **Evidence.** Turning an edit script into an outcome the learner model

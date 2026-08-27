@@ -482,8 +482,14 @@ class _Instrument extends ConsumerWidget {
     // Fingering rides with the cue: it is execution support, and withdrawing
     // the notes while leaving the fingers would be telling a learner which
     // finger to use for a note they are trying to recall.
-    final fingering = showsCue && showsFingering
-        ? fingeringByKeyFor(exercise, realize(exercise).hands.first)
+    //
+    // One hand only. A key takes one digit, and hands together share keys
+    // where their registers meet, so the diagram cannot say whose finger it
+    // is. The staff can, and does.
+    final realization = realize(exercise);
+    final fingering =
+        showsCue && showsFingering && realization.hands.length == 1
+        ? fingeringByKeyFor(exercise, realization.hands.single)
         : const <int, int>{};
 
     return PianoKeyboard(

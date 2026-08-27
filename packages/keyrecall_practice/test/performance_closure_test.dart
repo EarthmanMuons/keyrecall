@@ -11,16 +11,20 @@ import 'support/fixtures.dart';
 /// The whole path, from what arrived on the wire to what the journal holds.
 void main() {
   /// What [exercise] asks for, played [as] says.
+  ///
+  /// A moment's notes arrive [spreadMs] apart and the moments [gapMs] apart,
+  /// so a two-hand exercise is played together and on the beat.
   PerformanceTranscript performance(
     Exercise exercise, {
     List<int> Function(List<int> expected)? as,
     int gapMs = 500,
+    int spreadMs = 10,
   }) {
     final realization = realize(exercise);
-    final hand = realization.hands.first;
+    final perMoment = realization.moments.first.notes.length;
     final expected = [
       for (final moment in realization.moments)
-        moment.noteFor(hand)?.midiNote ?? 60,
+        for (final note in moment.notes) note.midiNote,
     ];
     final played = as == null ? expected : as(expected);
 
@@ -28,7 +32,8 @@ void main() {
     for (final (index, midiNote) in played.indexed) {
       transcript = transcript.appending(
         pitch: spellObservedPitch(midiNote, material: exercise.material),
-        timestampMs: index * gapMs,
+        timestampMs:
+            (index ~/ perMoment) * gapMs + (index % perMoment) * spreadMs,
       );
     }
     return transcript;
@@ -105,30 +110,9 @@ void main() {
     expect(outcome.materialRetrieval, lessThan(0.5));
   });
 
-  test('production never presents what it cannot read', () async {
+  test('a hands-together attempt measures like any other', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final session = await openSession(store);
-
-    for (var slot = 0; slot < 40; slot++) {
-      final presented = await session.decide(at: t0.plusDays(0.5 * slot));
-      if (presented == null) continue;
-      expect(
-        presented.exercise.conditions.hands,
-        isNot(HandConfiguration.together),
-        reason:
-            'an exercise nothing can measure spends a practice slot and '
-            'teaches the model nothing',
-      );
-      await session.closeFromPerformance(performance(presented.exercise));
-    }
-  });
-
-  test('an unreadable attempt that reaches closure fails closed', () async {
-    // Not the expected path: production does not present these. This is the
-    // defensive case, such as a pending decision recovered from a build whose
-    // supported set was wider.
-    final store = InMemoryPracticeStore(createdAt: t0);
-    final session = await openSession(store, presentOnlyMeasurable: false);
     final presented = await presentUntil(
       session,
       (exercise) => exercise.conditions.hands == HandConfiguration.together,
@@ -139,21 +123,17 @@ void main() {
       performance(presented.exercise),
     );
 
+    expect(record.closure.measurement, isA<Measured>());
+    final outcome = (record.closure.measurement as Measured).outcome;
     expect(
-      record.closure.measurement,
-      isA<MeasurementUnavailable>().having(
-        (unavailable) => unavailable.reason,
-        'reason',
-        MeasurementUnavailableReason.handsTogetherCorrespondence,
-      ),
-      reason:
-          'the missing capability is named, so it can disappear when '
-          'observation grouping exists',
+      outcome.coordination,
+      isNotNull,
+      reason: 'both hands arrived, so how together they were was observed',
     );
     expect(
       learnerStateHash(session.state),
-      before,
-      reason: 'nothing was measured, so nothing about the learner may change',
+      isNot(before),
+      reason: 'a measured attempt is evidence',
     );
     expect(session.hasOutstandingAttempt, isFalse);
   });

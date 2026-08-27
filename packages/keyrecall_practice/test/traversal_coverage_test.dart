@@ -31,6 +31,65 @@ void main() {
     return transcript;
   }
 
+  group('both hands', () {
+    final exercise = Exercise.linear(
+      material: TechnicalMaterial('D', ScaleForm.major),
+      hands: HandConfiguration.together,
+      octaves: 1,
+      direction: ScaleDirection.up,
+    );
+
+    /// Every note of the first [moments] moments, the hands 10 ms apart.
+    PerformanceTranscript through(int moments) {
+      var transcript = PerformanceTranscript.empty;
+      var at = 0;
+      for (final moment in realize(exercise).moments.take(moments)) {
+        for (final (order, note) in moment.notes.indexed) {
+          transcript = transcript.appending(
+            pitch: note.pitch,
+            timestampMs: at + order * 10,
+          );
+        }
+        at += 500;
+      }
+      return transcript;
+    }
+
+    test('ends when every moment has had both hands', () {
+      final moments = realize(exercise).moments.length;
+
+      expect(
+        hasCoveredTraversal(exercise: exercise, transcript: through(moments)),
+        isTrue,
+      );
+      expect(
+        hasCoveredTraversal(
+          exercise: exercise,
+          transcript: through(moments - 1),
+        ),
+        isFalse,
+      );
+    });
+
+    test('one hand through the whole scale is not a whole traversal', () {
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, moment) in realize(exercise).moments.indexed) {
+        transcript = transcript.appending(
+          pitch: moment.noteFor(Hand.right)!.pitch,
+          timestampMs: index * 500,
+        );
+      }
+
+      expect(
+        hasCoveredTraversal(exercise: exercise, transcript: transcript),
+        isFalse,
+        reason:
+            'the left hand never arrived, so the exercise was not '
+            'played through',
+      );
+    });
+  });
+
   test('a whole traversal ends it', () {
     for (final direction in ScaleDirection.values) {
       final exercise = exerciseOf(direction: direction);
