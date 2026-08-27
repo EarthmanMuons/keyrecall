@@ -1,8 +1,11 @@
 # Alignment contract
 
 - **Status:** Partly implemented. `keyrecall_alignment` aligns single-hand,
-  pitch-only performances; grouping and everything it gates are still design.
+  pitch-only performances. What the script looks like and what it is measured
+  against are settled below; the hands-together stages that depend on them are
+  unbuilt.
 - **Written:** August 25, 2026
+- **Revised:** August 27, 2026, with the hands and order questions resolved
 
 This exists so the transcript built today carries what the aligner will need
 tomorrow, and so the evaluative displays we have discussed are renderings of one
@@ -86,19 +89,23 @@ expected positions, which is what keeps it usable before alignment exists.
 ## What it produces
 
 An edit script over the two sequences, describing relationships rather than
-scores:
+scores. It is moment-first: the outer script relates expected moments to the
+observations that correspond to them, and the note edits ride inside.
 
 ```text
-Match          realization moment i  <-  transcript note j
-Substitution   realization moment i  <-  transcript note j, different pitch
-Insertion                                transcript note j, nothing expected
-Deletion       realization moment i      nothing played
+MomentCorrespondence  realization moment i  <-  observed run j..k
+  Match                 expected note, hand  <-  observed note
+  Substitution          expected note, hand  <-  observed note, different pitch
+  Deletion              expected note, hand      nothing played
+  Insertion                                      observed note, nothing expected
+MomentDeletion        realization moment i      nothing arrived for it
+MomentInsertion                                 observed run, nothing expected
 ```
 
-Every operation names the realization position, the transcript position, or
+Every operation names the realization position, the observations it consumed, or
 both, so a display can walk either sequence and know what happened at each
-point. Deletions carry no transcript position by construction, insertions carry
-no realization position.
+point. Moment deletions consume no observations by construction, moment
+insertions name no realization position.
 
 The result should also be able to answer, without recomputing anything:
 
@@ -142,18 +149,116 @@ key in context. Alignment compares `midiNote`. A G sharp observed where an A
 flat was expected is the same physical event, and any disagreement about how to
 write it is a notation question somewhere else.
 
-## What the policy has to decide
+## Settled: one script for one hand and for two
+
+A single-hand moment holds one note, so it produces one correspondence carrying
+one note edit. That is the whole difference. There is not a scalar aligner and a
+hands-together aligner, and there is not a single-hand measurement path beside a
+two-hand one, because two implementations of the same idea are how two readings
+of the same performance start to disagree.
+
+A second top-level case for a partly-correct moment was considered and rejected.
+It sounds tidier than nesting until it has to answer how many wrong notes make a
+moment wrong, which is fractional correctness reappearing in the layer that
+exists to keep it out. One correspondence case carries whatever note edits it
+carries, and whether that reads as clean is a question for `AlignmentReading`,
+where every other such question already lives.
+
+**Observed notes have no hand, and must not acquire one.** MIDI says which key
+and when. Register and correspondence usually make the player obvious, and hands
+cross, so which hand produced a note is a conclusion alignment reaches by
+matching the expected side rather than a fact the observation carries. Hand
+identity therefore rides on the expected note of a note edit and nowhere else,
+which is the same guarantee `spellObservedPitch` makes by its signature: a stage
+that cannot name the thing cannot quietly assume it.
+
+Inside one correspondence, note edits come from the cheapest matching of the
+expected notes against the observed run. `RealizationMoment` already refuses to
+let a hand play twice at once, which bounds that to a handful of enumerations
+and keeps the inner loop free. When material arrives that needs chords, that
+invariant is what has to be revisited first.
+
+**Single-hand equivalence is the exit criterion for building this.** For any
+single-hand realization, moments and notes are the same count, so every reading
+and every measurement must come out identical to what the scalar aligner
+produced, operation for operation and number for number. A single-hand number
+that moves means the representation is wrong, not that the number was.
+
+## Settled: grouping proposes at a bounded price
+
+For every adjacent pair of observed notes, both the same-moment and the
+split-moment reading stay finite and admissible. Grouping evidence may bias
+alignment and may not make either reading impossible, and the largest preference
+a boundary can contribute is bounded relative to the note-correspondence costs.
+
+This is the invariant rather than the tuning, because the tuning is where it
+would be lost. A cost of infinity at some gap is a classifier wearing a cost
+function's clothes, and the out-of-phase take is the standing proof that no gap
+earns one: notes 23 ms apart there belong to different moments. The clamp itself
+is a number and lives in `AlignmentPolicy` with the other numbers.
+
+## Settled: the partition comes out of the search
+
+A correspondence transition consumes one expected moment and a contiguous run of
+one to K observed notes, where K is the largest expected note count of any
+moment under the active realization contract. K is two for the current scale
+model, where a moment holds at most one note per hand, and the rule is written
+against the realization rather than against hands so that "two hands" does not
+silently become "chords of at most two" the first time the material grows.
+
+The search is one table over expected moments and observed notes, so the run
+lengths, the note matchings inside them, and the correspondence they serve are
+chosen together, at O(M x N x K). The partition is an output of that search and
+never an input to it, which is what makes "grouping never commits" structural
+instead of a discipline someone has to keep.
+
+Ties break toward the earliest minimum-cost explanation, as they already do, and
+at equal cost a shorter run beats a longer one. Both are policy and both decide
+readings: a longer run absorbs a stray note into a moment where nothing shows it
+was extra, and the shorter reading leaves it standing as an insertion, which is
+what the rest of the contract assumes an extra note does.
+
+## Settled: notes, moments, and the space between hands are counted separately
+
+```text
+note           material appeared, pitch integrity, topology accuracy
+moment         completed, reached final position, continuity, temporal
+               stability, achieved tempo
+within moment  coordination
+```
+
+These are different claims and one denominator cannot carry them. A two-note
+moment with one right note has produced half of what it asked for and has
+covered its position exactly once. Degree correctness counts notes even though
+completeness counts moments, because being the right scale degree is a fact
+about a pitch class rather than about a point in the traversal. So
+`expectedNotes` stops meaning the number of moments, and a separate count of
+moments joins it.
+
+A moment's onset is the median arrival of the run that corresponds to it, and
+the asynchrony between the hands is a second derived quantity taken at the same
+time. Both are recorded, so the tempo reading never sees hand spread as an
+irregular gap and the coordination reading never goes back to the transcript to
+rediscover note times. Median rather than earliest, so a rolled attack does not
+drag the moment toward whichever finger led.
+
+Asynchrony exists only where both hands corresponded. Everywhere else it is
+absent rather than zero, the way dispersion already is for a performance too
+short to have a spread.
+
+`HANDS_TOGETHER_COORDINATION` reads a channel of its own: the median absolute
+asynchrony and its upper tail. Attributing it from the generic motor channels
+would make the competency read as measured when nothing measured it, which is
+the one failure the three-valued retrieval encoding exists to prevent elsewhere.
+The signed median is kept as description and does not enter the outcome, because
+which hand leads is a fact about a take rather than a fault: across the recorded
+takes the left led 8 of 12 in one and 2 of 12 in another.
+
+## What the policy still has to decide
 
 Deliberately not decided here. Each of these is a real pedagogical choice, and
 naming them is the point:
 
-- **Hands.** How wide the ambiguous region is: where grouping stops being
-  confident that two observations are one moment, and where it becomes confident
-  they are two. Both edges are empirical, and only the middle is handed to
-  alignment. See below.
-- **Order.** Whether a deliberately rolled pair is one moment or two is not
-  decidable from timing, so it is alignment's to settle, from whichever reading
-  explains the performance better.
 - **Repeats.** A learner who plays a note, hears it is wrong, and plays the
   right one has produced an insertion followed by a match. Does the policy say
   so, or does it absorb the correction?
