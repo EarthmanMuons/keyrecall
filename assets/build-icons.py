@@ -13,15 +13,16 @@ Everything under icon/ is disposable.
 
 Three placements, three different fits:
 
-  none      iOS / Play. The mark's bbox is 38 x 35.47 in the 48 viewBox, i.e.
-            ~10.4% side padding, already inside Apple's 10-15% guidance.
+  square    iOS / Play. The source mark's own padding is only ~10.4% per side,
+            which sits its corners closer to the tile edge than the WhatChord
+            mark does. Re-fit to SQUARE_INSET so the two read as a pair.
 
   adaptive  Android. Bound by the mark's DIAGONAL against the 66dp safe circle,
             not its width -- full-bleed would put the corners 77% past it.
 
   badge     UI. Also diagonal-bound, but against a drawn circle. Uses the mark's
-            true circumscribed radius (25.43) rather than half the bbox diagonal
-            (25.99), since the 1.35 key corner radius pulls the extreme points in.
+            true circumscribed radius (25.73) rather than half the bbox diagonal
+            (26.28), since the 1.35 key corner radius pulls the extreme points in.
 """
 
 from __future__ import annotations
@@ -41,10 +42,12 @@ SRC, BUILD, TMP = HERE / "src" / "icon", HERE / "icon", HERE / "icon" / ".tmp"
 BRAND_BG = "#800020"
 KEY, SHARP = "#FFFFFF", "#0A0A0D"
 
-MARK_W, MARK_H, MARK_X, MARK_Y = 38.0, 35.47, 5.0, 6.27
-MARK_CX, MARK_CY = 24.0, 24.005
-MARK_R = 25.433  # circumscribed radius about (MARK_CX, MARK_CY)
+MARK_W, MARK_H = 38.8, 35.47  # mark bbox in the 48 viewBox: x 5..43.8, y 6.27..41.74
+MARK_CX, MARK_CY = 24.4, 24.005  # bbox center; the wider key gap pushed it right
+MARK_R = 25.728  # circumscribed radius about (MARK_CX, MARK_CY)
 CANVAS, SAFE_D = 108.0, 66.0
+SQUARE_INSET = 0.14  # clear margin per edge on the mark's wide axis
+SQUARE_OPTICAL = 0.015  # leftward optical correction, fraction of the canvas
 BADGE_R, BADGE_FILL = 22.0, 0.84  # Material 44dp circle keyline; mark fills 84%
 
 SOURCES = {
@@ -124,18 +127,44 @@ def punch_sharp(svg: str) -> str:
     return svg
 
 
+def place(svg: str, canvas: float, scale: float, nudge: float = 0.0) -> str:
+    """Scale the mark about its own bbox center and drop it in the canvas center.
+
+    Centering on MARK_CX/MARK_CY rather than the 48 viewBox center matters: the
+    mark is not centered in its own viewBox, so scaling the box would leave the
+    keys off to one side. `nudge` shifts left from there, in canvas units.
+    """
+    tx, ty = canvas / 2 - MARK_CX * scale - nudge, canvas / 2 - MARK_CY * scale
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {canvas:g} {canvas:g}">\n'
+        f'  <g transform="translate({tx:.3f} {ty:.3f}) scale({scale:.5f})">{inner(svg)}  </g>\n'
+        "</svg>\n"
+    )
+
+
+def wrap_square(svg: str) -> str:
+    """Same 48 canvas, mark re-fit to leave SQUARE_INSET clear on the wide axis.
+
+    Width-bound, not diagonal-bound: iOS and Play both round the tile, so the
+    edges are what the eye measures against. The taller-than-wide margin that
+    falls out (~17%) is what pulls the corners in off the mask.
+
+    Then shifted left off true center. The three receding keys run at 25/50/75%,
+    so the mark's ink centroid sits ~7% of the canvas right of its bbox center
+    and a geometrically centered mark reads as having a fat left margin. Only
+    the square fit does this: it is the one placement with slack to spend, and
+    the diagonal-bound fits are already up against a hard boundary.
+    """
+    return place(svg, 48.0, (1 - 2 * SQUARE_INSET) * 48.0 / MARK_W,
+                 SQUARE_OPTICAL * 48.0)
+
+
 def wrap_adaptive(svg: str) -> str:
     """48 viewBox onto a 108dp canvas, sized so the mark fits the 66dp safe circle."""
     scale = SAFE_D / math.hypot(MARK_W, MARK_H)
-    off = (CANVAS - 48.0 * scale) / 2.0
     r = math.hypot(MARK_W * scale / 2, MARK_H * scale / 2)
     assert abs(r - SAFE_D / 2) < 1e-6, f"corners at r={r}, safe radius {SAFE_D / 2}"
-    assert abs(off + (MARK_X + MARK_W / 2) * scale - CANVAS / 2) < 0.01, "not centered"
-    return (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CANVAS:g} {CANVAS:g}">\n'
-        f'  <g transform="translate({off:.3f} {off:.3f}) scale({scale:.5f})">{inner(svg)}  </g>\n'
-        "</svg>\n"
-    )
+    return place(svg, CANVAS, scale)
 
 
 def wrap_badge(svg: str) -> str:
@@ -164,19 +193,23 @@ def wrap_badge(svg: str) -> str:
     )
 
 
-WRAPS = {"adaptive": wrap_adaptive, "badge": wrap_badge}
+WRAPS = {"square": wrap_square, "adaptive": wrap_adaptive, "badge": wrap_badge}
 
 TARGETS = [
     # --- iOS. Opaque, square, no pre-rounded corners; iOS masks and (26+) glasses it.
     # default name (image_path): assets/icon/icon.png
-    Target("icon.png", "brand", px=1024, bg=BRAND_BG),
+    Target("icon.png", "brand", px=1024, bg=BRAND_BG, wrap="square"),
     # iOS 18+ dark variant. Apple recommends transparent here.
     # default name (image_path_ios_dark_transparent): assets/icon/icon_dark.png
-    Target("icon_dark.png", "brand", px=1024),
-    # iOS 18+ tinted variant. The mark is already achromatic, so this is the
-    # same artwork on neutral rather than a separate desaturation pass.
+    Target("icon_dark.png", "brand", px=1024, wrap="square"),
+    # iOS 18+ tinted (and iOS 26 clear) variant. Apple wants an opaque
+    # GRAYSCALE image here and maps its luminance onto the system tint ramp, so
+    # the background has to be black: a mid-grey one tints to a filled light
+    # tile, which is the opposite of the dark-tile-with-light-glyph the rest of
+    # the home screen shows. The mark is already achromatic, so no separate
+    # desaturation pass is needed.
     # default name (image_path_ios_tinted_grayscale): assets/icon/icon_tinted.png
-    Target("icon_tinted.png", "brand", px=1024, bg="#8A8A8A"),
+    Target("icon_tinted.png", "brand", px=1024, bg="#000000", wrap="square"),
     # --- Android adaptive. Flat mark: the launcher applies its own elevation,
     # and baked shadow spread falls outside the safe circle.
     # default name (adaptive_icon_foreground): assets/icon/foreground.png
@@ -184,7 +217,7 @@ TARGETS = [
     # default name (adaptive_icon_monochrome): assets/icon/monochrome.png
     Target("monochrome.png", "flat", px=432, wrap="adaptive", punch=True),
     # --- Store listing. No default name in flutter_launcher_icons; kept custom.
-    Target("playstore.png", "brand", px=512, bg=BRAND_BG),
+    Target("playstore.png", "brand", px=512, bg=BRAND_BG, wrap="square"),
     # --- In-app UI. Vector, tokens left intact so the circle can be themed at
     # runtime via --kr-badge / --kr-key / --kr-sharp.
     Target("keyrecall-badge.svg", "brand", fmt="svg", wrap="badge", bake_tokens=False),

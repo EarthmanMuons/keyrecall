@@ -14,11 +14,11 @@
     <rect clip-path="url(#kr-notKey3)" opacity=".5" x="10.57" y="12.13" width="9.63" height="29.1" rx="1.35"/>
     <rect opacity=".75" x="16.58" y="9.67" width="9.63" height="31.71" rx="1.35"/>
     <rect x="23.24" y="6.27" width="9.63" height="35.47" rx="1.35"/>
-    <rect x="33.37" y="6.27" width="9.63" height="35.47" rx="1.35"/>
+    <rect x="34.17" y="6.27" width="9.63" height="35.47" rx="1.35"/>
   </g>
 
   <!-- Square back corners, rounded front corners (.7). Top edge sits on y=6.27,
        the same line as the naturals, with no overhang. -->
   <path fill="#0A0A0D" style="fill:var(--kr-sharp,#0A0A0D)"
-        d="M30.08 6.27 H36.16 V25.11 A.7 .7 0 0 1 35.46 25.81 H30.78 A.7 .7 0 0 1 30.08 25.11 Z"/>
+        d="M30.48 6.27 H36.56 V28.63 A.7 .7 0 0 1 35.86 29.33 H31.18 A.7 .7 0 0 1 30.48 28.63 Z"/>
 </svg>
