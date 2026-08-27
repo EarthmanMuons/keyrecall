@@ -174,6 +174,18 @@ class ProbeConfig {
   /// minute or two is about that.
   final double minDaysSinceSupportEstablished;
 
+  /// How many selection opportunities may pass with an independence probe
+  /// ranked and losing before one is chosen anyway.
+  ///
+  /// Not a rule that the probe should usually win. Exploration legitimately
+  /// dominates a capable learner's first sittings: new material establishes
+  /// breadth and tempo probes find speed, and both are worth slots. What it
+  /// rules out is that dominance being indefinite. Simulation had an advanced
+  /// learner lose fifteen straight free contests across two sittings with an
+  /// independence question ranked and waiting each time, so novelty was not
+  /// merely winning often, it was winning always.
+  final int maxUnservedGuidanceProbes;
+
   /// How many attempts in a row may go by under support before a
   /// retrieval-observing one is asked for regardless of predicted success.
   ///
@@ -205,6 +217,7 @@ class ProbeConfig {
     required this.minDaysSinceLastRetrieval,
     required this.minDaysSinceSupportEstablished,
     required this.supportedAttemptsBeforeObservation,
+    required this.maxUnservedGuidanceProbes,
     required this.underchallengeTempoRatio,
     required this.underchallengePitchIntegrity,
     required this.underchallengeContinuity,
@@ -292,6 +305,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     minDaysSinceLastRetrieval: 5.0,
     minDaysSinceSupportEstablished: 0.01,
     supportedAttemptsBeforeObservation: 3,
+    maxUnservedGuidanceProbes: 4,
     underchallengeTempoRatio: 1.2,
     underchallengePitchIntegrity: 0.95,
     underchallengeContinuity: 0.9,

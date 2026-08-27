@@ -138,6 +138,14 @@ void main() {
 
     expect(firstUnguided, isNot(-1), reason: 'never asked to play unaided');
     expect(
+      firstUnguided,
+      0,
+      reason:
+          'an independence question was ranked and waiting through the whole '
+          'first sitting and lost every free contest to novelty, which is '
+          'exploration dominating rather than merely leading',
+    );
+    expect(
       sittingDays[firstUnguided],
       lessThan(v1SchedulerConfig.probe.minDaysSinceLastRetrieval),
       reason:

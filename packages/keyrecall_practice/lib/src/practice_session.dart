@@ -277,6 +277,18 @@ class PracticeSession {
       at: at,
     );
     final chosen = pipeline.selectChoice(traces, _session);
+    // What the slot did with a waiting independence question, which only the
+    // selection can see: the traces say what was on the table and the choice
+    // says what happened to it.
+    _session.recordSelectionOpportunity(
+      guidanceProbeRanked: traces.any(
+        (trace) =>
+            trace.isRanked &&
+            trace.challengeBypass == ChallengeBypass.guidanceProbe,
+      ),
+      guidanceProbeSelected:
+          chosen?.challengeBypass == ChallengeBypass.guidanceProbe,
+    );
     // The safety cap counts decision opportunities, not presented attempts, so
     // a slot that admits nothing still consumes one. Deliberate: a sitting that
     // keeps finding nothing to present has to end, and only counting

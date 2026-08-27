@@ -21,6 +21,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   `v1PrototypeSchedulerConfig`, mirroring `v1-prototype-0` in
   `analysis/scheduler/config.toml`, and was renamed when it stopped carrying
   only the prototype's values.
+- A diagnostic fairness guard at selection: once enough selection opportunities
+  have passed with an independence probe ranked and losing, the highest-ranked
+  one is taken. Beside the repetition guard rather than in the rank key or as
+  another bypass.
 - An observation probe: after a run of attempts in which retrieval went
   unobserved, one retrieval-observing candidate is admitted whatever its
   predicted success, reported as `ChallengeBypass.observationProbe`.

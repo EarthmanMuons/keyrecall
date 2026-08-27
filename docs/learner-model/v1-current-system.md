@@ -973,6 +973,26 @@ Lexicographic ranking means retention decides first within an eligibility tier,
 then information, diversity, and goals break ties in that order. V1 has no
 hidden weighted sum.
 
+Two rules run at selection, after ranking has ordered the survivors and before
+the best is taken.
+
+The first is a diagnostic fairness guard. Exploration legitimately dominates a
+capable learner's early sittings: new material establishes breadth and tempo
+probes find speed, and both are worth the slots. What it may not do is dominate
+indefinitely. Simulation had an advanced learner lose fifteen consecutive free
+contests across two sittings with an independence probe ranked and waiting every
+time, so once enough selection opportunities have passed that way, the
+highest-ranked independence probe is taken.
+
+It counts opportunities rather than offers: a slot that recovery or a tempo
+probe narrowed to one candidate was never a contest, so nothing lost it. It is
+silent when no such probe is ranked, which is the case for a learner who has
+established no rung and therefore has no independence question waiting. And it
+is a selection rule rather than a rank term or another admission exception,
+because the probe is already admitted and already ranked; it is losing the
+contest rather than missing from it, and strictly lexicographic ranking cannot
+express an urgency that grows.
+
 Finally, a repetition guard prevents the same material from winning more than
 the configured consecutive-attempt cap when another admitted material exists. It
 never removes the only admitted option.

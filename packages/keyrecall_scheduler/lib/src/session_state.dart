@@ -46,12 +46,22 @@ class SessionState {
   /// whether or not the same scale keeps coming back.
   int supportedAttemptsSinceObservation;
 
+  /// Selection opportunities that passed with an independence probe ranked and
+  /// something else chosen.
+  ///
+  /// Opportunities rather than offers. What matters is how many times the
+  /// question could have been asked and was not, so a slot narrowed to one
+  /// candidate by recovery or a tempo probe does not count: the question was
+  /// not in the contest to lose it.
+  int unservedGuidanceProbeSelections;
+
   SessionState({
     this.attemptsThisSession = 0,
     List<String>? recentMaterialIds,
     this.lastFailedExercise,
     this.tempoProbe,
     this.supportedAttemptsSinceObservation = 0,
+    this.unservedGuidanceProbeSelections = 0,
   }) : recentMaterialIds = recentMaterialIds ?? [];
 
   /// Whether a recovery context is currently active.
@@ -85,6 +95,25 @@ class SessionState {
     while (recentMaterialIds.length > config.recentWindow) {
       recentMaterialIds.removeAt(0);
     }
+  }
+
+  /// Records what one selection did with a waiting independence question.
+  ///
+  /// Called at selection rather than at commit, because the question is about
+  /// what was on the table and only the selection knows that.
+  void recordSelectionOpportunity({
+    required bool guidanceProbeRanked,
+    required bool guidanceProbeSelected,
+  }) {
+    if (guidanceProbeSelected) {
+      unservedGuidanceProbeSelections = 0;
+      return;
+    }
+    // A slot the recovery or tempo context narrowed to one candidate was never
+    // a contest, so nothing lost it.
+    if (isRecovering || tempoProbe != null) return;
+    if (!guidanceProbeRanked) return;
+    unservedGuidanceProbeSelections++;
   }
 
   /// How many times [materialId] was selected in an unbroken run ending now.

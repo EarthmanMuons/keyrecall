@@ -563,12 +563,48 @@ class SchedulerPipeline {
     return best;
   }
 
-  /// The canonical V1 choice: repetition guard, then lexicographic ranking.
+  /// The independence probe to service when one has waited long enough, or
+  /// null.
+  ///
+  /// A selection-stage rule beside the repetition guard rather than a rank
+  /// term or another bypass, and each of those was considered. Ranking is
+  /// strictly lexicographic, so an urgency term would not age gracefully: it
+  /// would dominate everything below it the instant it differed. And a bypass
+  /// would not help, because the probe is already admitted and already ranked.
+  /// It is losing the contest, not missing from it.
+  ///
+  /// The highest-ranked probe rather than whichever has waited longest.
+  /// Admission and ranking still choose which independence question is the
+  /// right one to ask; fairness only guarantees that the kind of question
+  /// eventually gets asked.
+  ///
+  /// Inert whenever a probe would have won anyway, and silent when none is
+  /// ranked: a learner who has established no rung has no independence
+  /// question waiting, and this must never manufacture one.
+  CandidateTrace? overdueGuidanceProbe(
+    List<CandidateTrace> traces,
+    SessionState session,
+  ) {
+    if (session.unservedGuidanceProbeSelections <
+        config.probe.maxUnservedGuidanceProbes) {
+      return null;
+    }
+    return selectBest([
+      for (final trace in traces)
+        if (trace.challengeBypass == ChallengeBypass.guidanceProbe) trace,
+    ]);
+  }
+
+  /// The canonical V1 choice: repetition guard, then the diagnostic fairness
+  /// guard, then lexicographic ranking.
   ///
   /// Every real caller should use this rather than [selectBest] alone, which
-  /// silently omits the guard and can reproduce perseveration.
+  /// silently omits both guards and can reproduce perseveration.
   CandidateTrace? selectChoice(
     List<CandidateTrace> traces,
     SessionState session,
-  ) => selectBest(applyRepetitionGuard(traces, session));
+  ) {
+    final guarded = applyRepetitionGuard(traces, session);
+    return overdueGuidanceProbe(guarded, session) ?? selectBest(guarded);
+  }
 }
