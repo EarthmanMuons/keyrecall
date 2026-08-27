@@ -309,11 +309,11 @@ void main() {
       );
 
       expect(
-        ragged.alignment.operations,
-        steady.alignment.operations,
+        ragged.alignment.noteEdits,
+        steady.alignment.noteEdits,
         reason:
-            'the same notes in the same order align identically however '
-            'they sat in time',
+            'the same notes in the same order correspond identically however '
+            'they sat in time, though each moment records when it happened',
       );
       expect(ragged.temporalStability, lessThan(steady.temporalStability));
     });

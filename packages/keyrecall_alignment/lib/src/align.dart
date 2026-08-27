@@ -195,12 +195,7 @@ List<MomentOperation> _traceBack(
         correspondence.costOf(i - 1, j - run, j) +
         runSurcharge(j - run, j);
     if (cost[i][j] != candidate) return false;
-    operations.add(
-      MomentCorrespondence(
-        realizationPosition: i - 1,
-        noteEdits: correspondence.editsOf(i - 1, j - run, j),
-      ),
-    );
+    operations.add(correspondence.momentFor(i - 1, j - run, j));
     i--;
     j -= run;
     return true;
@@ -247,6 +242,14 @@ List<MomentOperation> _traceBack(
   return operations.reversed.toList();
 }
 
+double _medianOf(List<int> values) {
+  final ordered = [...values]..sort();
+  final middle = ordered.length ~/ 2;
+  return ordered.length.isOdd
+      ? ordered[middle].toDouble()
+      : (ordered[middle - 1] + ordered[middle]) / 2;
+}
+
 /// The cheapest reading of one moment against one run of observations.
 ///
 /// Every assignment of the moment's notes to the run is enumerated, since a
@@ -268,8 +271,30 @@ class _MomentMatcher {
 
   int costOf(int moment, int start, int end) => _read(moment, start, end).cost;
 
-  List<NoteEdit> editsOf(int moment, int start, int end) =>
-      _read(moment, start, end).edits;
+  /// The operation for [moment] against the run in `[start, end)`.
+  MomentCorrespondence momentFor(int moment, int start, int end) {
+    final edits = _read(moment, start, end).edits;
+    final arrival = {
+      for (final note in observed.sublist(start, end))
+        note.sequence: note.timestampMs,
+    };
+    final acted = <Hand, int>{
+      for (final edit in edits)
+        if (edit
+            case Match(:final hand, :final observedSequence) ||
+                Substitution(:final hand, :final observedSequence))
+          hand: arrival[observedSequence]!,
+    };
+    final left = acted[Hand.left];
+    final right = acted[Hand.right];
+
+    return MomentCorrespondence(
+      realizationPosition: moment,
+      noteEdits: edits,
+      onsetMs: _medianOf(arrival.values.toList()),
+      handAsynchronyMs: left == null || right == null ? null : right - left,
+    );
+  }
 
   ({int cost, List<NoteEdit> edits}) _read(int moment, int start, int end) =>
       _cache.putIfAbsent((moment, start, end), () {

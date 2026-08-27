@@ -104,6 +104,64 @@ void main() {
     });
   });
 
+  group('when a moment happened', () {
+    final realization = ExerciseRealization([
+      moment(0, 48, 60),
+      moment(1, 50, 62),
+    ]);
+
+    MomentCorrespondence firstMomentOf(PerformanceTranscript transcript) =>
+        align(realization: realization, transcript: transcript).operations.first
+            as MomentCorrespondence;
+
+    test('a moment happens between its hands', () {
+      final correspondence = firstMomentOf(
+        played([(48, 1000), (60, 1020), (50, 1500), (62, 1540)]),
+      );
+
+      expect(correspondence.onsetMs, 1010);
+      expect(correspondence.handAsynchronyMs, 20);
+    });
+
+    test('which hand arrived first does not move the moment', () {
+      final correspondence = firstMomentOf(
+        played([(60, 1000), (48, 1020), (50, 1500), (62, 1540)]),
+      );
+
+      expect(correspondence.onsetMs, 1010);
+      expect(
+        correspondence.handAsynchronyMs,
+        -20,
+        reason:
+            'the sign says which hand led and the magnitude says how far '
+            'apart they were',
+      );
+    });
+
+    test('a wrong pitch still says when that hand acted', () {
+      final correspondence = firstMomentOf(
+        played([(48, 1000), (61, 1020), (50, 1500), (62, 1540)]),
+      );
+
+      expect(correspondence.noteEdits.last, isA<Substitution>());
+      expect(correspondence.handAsynchronyMs, 20);
+    });
+
+    test('a hand that played nothing leaves no asynchrony at all', () {
+      final correspondence = firstMomentOf(
+        played([(48, 1000), (50, 1500), (62, 1540)]),
+      );
+
+      expect(correspondence.noteEdits.last, isA<Deletion>());
+      expect(correspondence.onsetMs, 1000);
+      expect(
+        correspondence.handAsynchronyMs,
+        isNull,
+        reason: 'absent, not zero: nothing was measured',
+      );
+    });
+  });
+
   group('the grouping the search chooses', () {
     test('timing that says one moment can still be split', () {
       final transcript = transcriptOf('deliberate-rolled-c-major');

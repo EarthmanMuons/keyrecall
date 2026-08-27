@@ -2,9 +2,9 @@
 
 - **Status:** Partly implemented. `keyrecall_alignment` prices what timing
   suggests about a transcript and aligns any material against it, both hands
-  included. What measurement makes of a two-hand correspondence, and what
-  coordination evidence it yields, are not built, so hands-together exercises
-  are still withheld from practice.
+  included, and `keyrecall_measurement` counts notes and moments apart. The
+  coordination channel is not built, so hands-together exercises are still
+  withheld from practice.
 - **Written:** August 25, 2026
 - **Revised:** August 27, 2026, with the hands and order questions resolved
 
@@ -246,10 +246,16 @@ moments joins it.
 
 A moment's onset is the median arrival of the run that corresponds to it, and
 the asynchrony between the hands is a second derived quantity taken at the same
-time. Both are recorded, so the tempo reading never sees hand spread as an
-irregular gap and the coordination reading never goes back to the transcript to
-rediscover note times. Median rather than earliest, so a rolled attack does not
-drag the moment toward whichever finger led.
+time. Both are recorded on the correspondence, so the tempo reading never sees
+hand spread as an irregular gap and the coordination reading never goes back to
+the transcript to rediscover note times. Median rather than earliest, so a
+rolled attack does not drag the moment toward whichever finger led, and
+fractional for an even-sized run, since an onset is a derived quantity rather
+than an arrival.
+
+Asynchrony is right minus left, and it needs both hands to have corresponded to
+something that arrived, not to have played the right note. A wrong pitch still
+says when that hand acted.
 
 Asynchrony exists only where both hands corresponded. Everywhere else it is
 absent rather than zero, the way dispersion already is for a performance too

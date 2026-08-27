@@ -179,25 +179,52 @@ sealed class MomentOperation {
 }
 
 /// A moment of the realization, and what was played for it.
+///
+/// Carries when the moment happened, taken from the observations the search
+/// assigned to it. Reading that off the transcript again later would be a
+/// second answer to a question correspondence has already settled.
 @immutable
 final class MomentCorrespondence extends MomentOperation {
   @override
   final int realizationPosition;
 
+  /// When the moment happened: the median arrival of the observations it
+  /// consumed.
+  ///
+  /// Median rather than earliest, so a spread attack does not drag the moment
+  /// toward whichever finger led. Fractional for an even-sized run, since this
+  /// is a derived quantity rather than an arrival.
+  final double onsetMs;
+
+  /// How far apart the hands were, as right minus left.
+  ///
+  /// Present only where both hands corresponded to an observation. A wrong
+  /// pitch still says when that hand acted, so a substitution counts; a hand
+  /// that played nothing leaves this absent rather than zero.
+  final int? handAsynchronyMs;
+
   MomentCorrespondence({
     required this.realizationPosition,
     required super.noteEdits,
+    required this.onsetMs,
+    this.handAsynchronyMs,
   });
 
   @override
   bool operator ==(Object other) =>
       other is MomentCorrespondence &&
       other.realizationPosition == realizationPosition &&
+      other.onsetMs == onsetMs &&
+      other.handAsynchronyMs == handAsynchronyMs &&
       _noteEditEquality.equals(other.noteEdits, noteEdits);
 
   @override
-  int get hashCode =>
-      Object.hash(realizationPosition, _noteEditEquality.hash(noteEdits));
+  int get hashCode => Object.hash(
+    realizationPosition,
+    onsetMs,
+    handAsynchronyMs,
+    _noteEditEquality.hash(noteEdits),
+  );
 
   @override
   String toString() =>

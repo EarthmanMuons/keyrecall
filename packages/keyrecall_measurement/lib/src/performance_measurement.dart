@@ -25,8 +25,17 @@ class PerformanceMeasurement {
   /// How the observations relate to the exercise, one layer up.
   final AlignmentReading reading;
 
-  /// How many expected notes there were.
+  /// How many notes were asked for, counting each hand's separately.
   final int expectedNotes;
+
+  /// How many moments were asked for.
+  final int expectedMoments;
+
+  /// Moments where both hands corresponded to something that arrived.
+  ///
+  /// What coordination can be read from, as distinct from how many moments
+  /// asked for two hands.
+  final int correspondedTwoHandMoments;
 
   /// Expected notes that arrived at all, whatever octave they sounded in.
   final int materialProduced;
@@ -43,15 +52,15 @@ class PerformanceMeasurement {
   /// Extra notes that were something else.
   final int intrusions;
 
-  /// Spread of the gaps between the notes that correspond to expected ones, as
-  /// an interquartile range over the median, or null when too few arrived.
+  /// Spread of the gaps between the moments that were played, as an
+  /// interquartile range over the median, or null when too few arrived.
   final double? dispersion;
 
-  /// The largest gap between corresponding notes, as a multiple of the upper
+  /// The largest gap between played moments, as a multiple of the upper
   /// quartile, or null when too few arrived.
   final double? worstIntervalRatio;
 
-  /// The median gap between corresponding notes in milliseconds, or null.
+  /// The median gap between played moments in milliseconds, or null.
   final int? medianIntervalMs;
 
   /// What the policy was.
@@ -61,6 +70,8 @@ class PerformanceMeasurement {
     required this.alignment,
     required this.reading,
     required this.expectedNotes,
+    required this.expectedMoments,
+    required this.correspondedTwoHandMoments,
     required this.materialProduced,
     required this.soundedCorrectly,
     required this.degreesCorrect,
@@ -203,7 +214,7 @@ PerformanceMeasurement measure({
     }
   }
 
-  final onsets = _correspondingOnsets(alignment, transcript);
+  final onsets = _momentOnsets(alignment);
   final intervals = [
     for (var i = 1; i < onsets.length; i++) onsets[i] - onsets[i - 1],
   ];
@@ -212,6 +223,11 @@ PerformanceMeasurement measure({
     alignment: alignment,
     reading: AlignmentReading(alignment),
     expectedNotes: realization.noteCount,
+    expectedMoments: realization.moments.length,
+    correspondedTwoHandMoments: alignment.operations
+        .whereType<MomentCorrespondence>()
+        .where((moment) => moment.handAsynchronyMs != null)
+        .length,
     materialProduced: produced,
     soundedCorrectly: sounded,
     degreesCorrect: degrees,
@@ -255,7 +271,10 @@ bool _isRepeat(
 int expectedNotesIn(ExerciseRealization realization) =>
     realization.moments.fold(0, (total, moment) => total + moment.notes.length);
 
-/// When the notes that correspond to expected ones arrived.
+/// When the moments that were played happened.
+///
+/// One onset per moment, so the gap between the hands of one moment is not an
+/// interval and cannot read as an unsteady tempo.
 ///
 /// Both kinds of correspondence count. A substituted note is still the event
 /// the learner produced for a note the exercise asked for, and leaving it out
@@ -263,29 +282,20 @@ int expectedNotesIn(ExerciseRealization realization) =>
 /// the beat would read as a pause. Pitch correctness must not reach the timing
 /// scores by any route.
 ///
-/// Insertions correspond to no expected note, and deletions have no onset at
-/// all, so neither appears.
-List<int> _correspondingOnsets(
-  Alignment alignment,
-  PerformanceTranscript transcript,
-) {
-  final bySequence = {
-    for (final note in transcript.notes) note.sequence: note.timestampMs,
-  };
-  return [
-    for (final positioned in alignment.noteEdits)
-      if (positioned.edit
-          case Match(:final observedSequence) ||
-              Substitution(:final observedSequence))
-        bySequence[observedSequence]!,
-  ];
-}
+/// A moment nothing arrived for has no onset, and a moment whose observations
+/// were all extra corresponds to no expected note, so neither appears.
+List<double> _momentOnsets(Alignment alignment) => [
+  for (final operation in alignment.operations)
+    if (operation case MomentCorrespondence(:final onsetMs, :final noteEdits))
+      if (noteEdits.any((edit) => edit is Match || edit is Substitution))
+        onsetMs,
+];
 
 /// Three matched notes is the fewest that can have a spread at all.
 const int _fewestIntervals = 2;
 
 /// Spread that one outlier cannot manufacture.
-double? _dispersionOf(List<int> intervals) {
+double? _dispersionOf(List<double> intervals) {
   if (intervals.length < _fewestIntervals) return null;
   final median = _median(intervals);
   if (median <= 0) return null;
@@ -295,25 +305,22 @@ double? _dispersionOf(List<int> intervals) {
 
 /// The longest gap against the slow end of ordinary playing, so a performance
 /// that is merely uneven does not read as one that stopped.
-double? _worstRatioOf(List<int> intervals) {
+double? _worstRatioOf(List<double> intervals) {
   if (intervals.length < _fewestIntervals) return null;
   final (_, high) = _quartilesOf(intervals);
   if (high <= 0) return null;
   return intervals.reduce(math.max) / high;
 }
 
-(double, double) _quartilesOf(List<int> values) {
+(double, double) _quartilesOf(List<double> values) {
   final ordered = [...values]..sort();
-  return (
-    ordered[ordered.length ~/ 4].toDouble(),
-    ordered[(3 * ordered.length) ~/ 4].toDouble(),
-  );
+  return (ordered[ordered.length ~/ 4], ordered[(3 * ordered.length) ~/ 4]);
 }
 
-double _median(List<int> values) {
+double _median(List<double> values) {
   final ordered = [...values]..sort();
   final middle = ordered.length ~/ 2;
   return ordered.length.isOdd
-      ? ordered[middle].toDouble()
+      ? ordered[middle]
       : (ordered[middle - 1] + ordered[middle]) / 2;
 }
