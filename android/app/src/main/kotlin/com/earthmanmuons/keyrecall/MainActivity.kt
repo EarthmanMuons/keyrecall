@@ -1,4 +1,4 @@
-package com.example.keyrecall
+package com.earthmanmuons.keyrecall
 
 import io.flutter.embedding.android.FlutterActivity
 

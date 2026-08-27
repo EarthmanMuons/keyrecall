@@ -5,7 +5,7 @@
         android:usesPermissionFlags="neverForLocation" />
 
     <application
-        android:label="keyrecall"
+        android:label="KeyRecall"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
         <activity
