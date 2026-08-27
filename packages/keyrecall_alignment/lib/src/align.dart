@@ -1,9 +1,12 @@
+import 'dart:math' as math;
+
 import 'package:collection/collection.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
 import 'alignment_policy.dart';
 import 'edit_operation.dart';
+import 'observation_grouping.dart';
 
 const _operationEquality = ListEquality<MomentOperation>();
 
@@ -62,69 +65,97 @@ class Alignment {
 /// after a skip, an extra, or a correction falls out of choosing the whole
 /// explanation at once.
 ///
-/// Pitch only. Nothing here reads a timestamp, because relating arrival times
-/// to expected times needs a tempo model that does not exist, and inventing one
-/// inside an aligner would hide it.
+/// The same search chooses how the observations were grouped. A correspondence
+/// consumes one moment and a contiguous run of one to K observations, K being
+/// the largest note count of any moment asked for, so which arrivals belong to
+/// one performed moment is decided against the realization rather than before
+/// it. Timing enters only as [groupObservations] priced it, bounded by
+/// [AlignmentPolicy.maxGroupingPreference]: a run pays
+/// [ObservationBoundary.sameMomentSurcharge] for each boundary inside it, and
+/// splitting anywhere is always affordable.
 ///
-/// Single-hand only, so every moment holds one note and corresponds to at most
-/// one observation. Hands-together material needs observations grouped into
-/// moments first, and grouping cannot be decided from timing alone; see
-/// `docs/domain-model/alignment-contract.md`.
-///
-/// Throws [ArgumentError] when [realization] uses more than one hand.
+/// Pitch and grouping only. Nothing here reads a timestamp except through that
+/// surcharge, because relating arrival times to expected times needs a tempo
+/// model that does not exist, and inventing one inside an aligner would hide
+/// it.
 Alignment align({
   required ExerciseRealization realization,
   required PerformanceTranscript transcript,
   AlignmentPolicy policy = AlignmentPolicy.standard,
+  ObservationGroupingPolicy groupingPolicy = ObservationGroupingPolicy.standard,
 }) {
-  if (realization.hands.length > 1) {
-    throw ArgumentError.value(
-      realization,
-      'realization',
-      'alignment is single-hand only: hands-together material needs '
-          'observations grouped into moments first',
-    );
+  final moments = realization.moments;
+  final observed = transcript.notes;
+  final longestRun = moments.fold(
+    1,
+    (k, moment) => math.max(k, moment.notes.length),
+  );
+
+  // Indexed by the later observation of the boundary, so a run starting there
+  // pays nothing and a run continuing through it pays the surcharge.
+  final surcharge = List<int>.filled(observed.length, 0);
+  for (final boundary in groupObservations(
+    transcript: transcript,
+    policy: groupingPolicy,
+    alignmentPolicy: policy,
+  ).boundaries) {
+    surcharge[boundary.afterSequence] = boundary.sameMomentSurcharge;
   }
 
-  final hand = realization.hands.single;
-  final expected = [
-    for (final moment in realization.moments) moment.noteFor(hand)!.pitch,
-  ];
-  final observed = transcript.notes;
+  int runSurcharge(int start, int end) {
+    var total = 0;
+    for (var t = start + 1; t < end; t++) {
+      total += surcharge[t];
+    }
+    return total;
+  }
 
-  // cost[i][j] is the cheapest way to explain the first i expected notes with
-  // the first j played ones.
+  final correspondence = _MomentMatcher(moments, observed, policy);
+
+  // cost[i][j] is the cheapest way to explain the first i moments with the
+  // first j observations.
   final cost = List.generate(
-    expected.length + 1,
+    moments.length + 1,
     (_) => List<int>.filled(observed.length + 1, 0),
   );
-  for (var i = 1; i <= expected.length; i++) {
-    cost[i][0] = i * policy.deletionCost;
+  for (var i = 1; i <= moments.length; i++) {
+    cost[i][0] =
+        cost[i - 1][0] + policy.deletionCost * moments[i - 1].notes.length;
   }
   for (var j = 1; j <= observed.length; j++) {
     cost[0][j] = j * policy.insertionCost;
   }
 
-  for (var i = 1; i <= expected.length; i++) {
+  for (var i = 1; i <= moments.length; i++) {
     for (var j = 1; j <= observed.length; j++) {
-      final same = expected[i - 1].midiNote == observed[j - 1].midiNote;
-      final diagonal =
-          cost[i - 1][j - 1] +
-          (same ? AlignmentPolicy.matchCost : policy.substitutionCost);
-      final deletion = cost[i - 1][j] + policy.deletionCost;
+      var best =
+          cost[i - 1][j] + policy.deletionCost * moments[i - 1].notes.length;
+      for (var run = 1; run <= longestRun && run <= j; run++) {
+        final candidate =
+            cost[i - 1][j - run] +
+            correspondence.costOf(i - 1, j - run, j) +
+            runSurcharge(j - run, j);
+        if (candidate < best) best = candidate;
+      }
       final insertion = cost[i][j - 1] + policy.insertionCost;
-      cost[i][j] = _smallest(diagonal, deletion, insertion);
+      cost[i][j] = insertion < best ? insertion : best;
     }
   }
 
   return Alignment(
-    operations: _traceBack(cost, expected, observed, hand, policy),
-    cost: cost[expected.length][observed.length],
+    operations: _traceBack(
+      cost,
+      moments,
+      observed,
+      correspondence,
+      runSurcharge,
+      longestRun,
+      policy,
+    ),
+    cost: cost[moments.length][observed.length],
     policy: policy,
   );
 }
-
-int _smallest(int a, int b, int c) => a < b ? (a < c ? a : c) : (b < c ? b : c);
 
 /// Walks the table back to the script that produced the cheapest cost.
 ///
@@ -132,73 +163,193 @@ int _smallest(int a, int b, int c) => a < b ? (a < c ? a : c) : (b < c ? b : c);
 /// way. Replay depends on that: an aligner that could return either of two
 /// equal-cost readings would make the evidence derived from it irreproducible.
 ///
-/// The order puts deletion before the diagonal, which places a performance as
-/// early in the traversal as its cost allows. That matters whenever a pitch
-/// appears more than once: a scale played up and back down begins and ends on
-/// the tonic, so a single played tonic explains equally well as the first note
-/// or the last, and reading it as the last would say a learner who has played
-/// one note has reached the end.
+/// The order puts a missing moment before a correspondence, which places a
+/// performance as early in the traversal as its cost allows. That matters
+/// whenever a pitch appears more than once: a scale played up and back down
+/// begins and ends on the tonic, so a single played tonic explains equally well
+/// as the first note or the last, and reading it as the last would say a
+/// learner who has played one note has reached the end.
+///
+/// A moment takes one observation before an extra note is allowed to stand,
+/// and an extra stands before a moment takes a second observation. Absorbing
+/// another arrival into a moment is the last reading tried, because a longer
+/// run hides an extra where nothing shows it arrived.
 List<MomentOperation> _traceBack(
   List<List<int>> cost,
-  List<SpelledPitch> expected,
+  List<RealizationMoment> moments,
   List<PlayedNote> observed,
-  Hand hand,
+  _MomentMatcher correspondence,
+  int Function(int start, int end) runSurcharge,
+  int longestRun,
   AlignmentPolicy policy,
 ) {
   final operations = <MomentOperation>[];
-  var i = expected.length;
+  var i = moments.length;
   var j = observed.length;
 
+  /// Takes a correspondence of [run] observations, if that is what it cost.
+  bool takeRun(int run) {
+    if (i == 0 || run > j) return false;
+    final candidate =
+        cost[i - 1][j - run] +
+        correspondence.costOf(i - 1, j - run, j) +
+        runSurcharge(j - run, j);
+    if (cost[i][j] != candidate) return false;
+    operations.add(
+      MomentCorrespondence(
+        realizationPosition: i - 1,
+        noteEdits: correspondence.editsOf(i - 1, j - run, j),
+      ),
+    );
+    i--;
+    j -= run;
+    return true;
+  }
+
   while (i > 0 || j > 0) {
-    if (i > 0 && cost[i][j] == cost[i - 1][j] + policy.deletionCost) {
-      operations.add(
-        MomentDeletion(
-          realizationPosition: i - 1,
-          noteEdits: [Deletion(hand: hand, expected: expected[i - 1])],
-        ),
-      );
-      i--;
-      continue;
-    }
-    if (i > 0 && j > 0) {
-      final same = expected[i - 1].midiNote == observed[j - 1].midiNote;
-      final step = same ? AlignmentPolicy.matchCost : policy.substitutionCost;
-      if (cost[i][j] == cost[i - 1][j - 1] + step) {
+    if (i > 0) {
+      final missing =
+          cost[i - 1][j] + policy.deletionCost * moments[i - 1].notes.length;
+      if (cost[i][j] == missing) {
         operations.add(
-          MomentCorrespondence(
+          MomentDeletion(
             realizationPosition: i - 1,
             noteEdits: [
-              same
-                  ? Match(
-                      hand: hand,
-                      observedSequence: observed[j - 1].sequence,
-                    )
-                  : Substitution(
-                      hand: hand,
-                      observedSequence: observed[j - 1].sequence,
-                      expected: expected[i - 1],
-                      observed: observed[j - 1].pitch,
-                    ),
+              for (final note in moments[i - 1].notes)
+                Deletion(hand: note.hand, expected: note.pitch),
             ],
           ),
         );
         i--;
-        j--;
         continue;
       }
     }
-    operations.add(
-      MomentInsertion(
-        noteEdits: [
-          Insertion(
-            observedSequence: observed[j - 1].sequence,
-            observed: observed[j - 1].pitch,
-          ),
-        ],
-      ),
-    );
-    j--;
+    if (takeRun(1)) continue;
+    if (j > 0 && cost[i][j] == cost[i][j - 1] + policy.insertionCost) {
+      operations.add(
+        MomentInsertion(
+          noteEdits: [
+            Insertion(
+              observedSequence: observed[j - 1].sequence,
+              observed: observed[j - 1].pitch,
+            ),
+          ],
+        ),
+      );
+      j--;
+      continue;
+    }
+    for (var run = 2; run <= longestRun; run++) {
+      if (takeRun(run)) break;
+    }
   }
 
   return operations.reversed.toList();
+}
+
+/// The cheapest reading of one moment against one run of observations.
+///
+/// Every assignment of the moment's notes to the run is enumerated, since a
+/// moment holds at most one note per hand and a run is at most that long. The
+/// hand a played note belongs to falls out of the assignment that wins, which
+/// is the only place hand identity is decided.
+///
+/// Assignments are enumerated with the moment's notes in order, each trying the
+/// observations in arrival order and then going unplayed, and the first
+/// cheapest is kept. Two equally cheap readings therefore always resolve the
+/// same way.
+class _MomentMatcher {
+  final List<RealizationMoment> moments;
+  final List<PlayedNote> observed;
+  final AlignmentPolicy policy;
+  final Map<(int, int, int), ({int cost, List<NoteEdit> edits})> _cache = {};
+
+  _MomentMatcher(this.moments, this.observed, this.policy);
+
+  int costOf(int moment, int start, int end) => _read(moment, start, end).cost;
+
+  List<NoteEdit> editsOf(int moment, int start, int end) =>
+      _read(moment, start, end).edits;
+
+  ({int cost, List<NoteEdit> edits}) _read(int moment, int start, int end) =>
+      _cache.putIfAbsent((moment, start, end), () {
+        final notes = moments[moment].notes;
+        final run = observed.sublist(start, end);
+        final assignment = List<int?>.filled(notes.length, null);
+        final played = <int>{};
+        List<int?>? best;
+        int? bestCost;
+
+        void walk(int index, int spent) {
+          if (bestCost != null && spent >= bestCost!) return;
+          if (index == notes.length) {
+            final total =
+                spent + policy.insertionCost * (run.length - played.length);
+            if (bestCost == null || total < bestCost!) {
+              bestCost = total;
+              best = [...assignment];
+            }
+            return;
+          }
+          for (var candidate = 0; candidate < run.length; candidate++) {
+            if (!played.add(candidate)) continue;
+            assignment[index] = candidate;
+            walk(
+              index + 1,
+              spent +
+                  (notes[index].midiNote == run[candidate].midiNote
+                      ? AlignmentPolicy.matchCost
+                      : policy.substitutionCost),
+            );
+            played.remove(candidate);
+          }
+          assignment[index] = null;
+          walk(index + 1, spent + policy.deletionCost);
+        }
+
+        walk(0, 0);
+        return (cost: bestCost!, edits: _editsFor(notes, run, best!));
+      });
+
+  List<NoteEdit> _editsFor(
+    List<RealizedNote> notes,
+    List<PlayedNote> run,
+    List<int?> assignment,
+  ) {
+    final consumed = <(int, NoteEdit)>[];
+    final missing = <NoteEdit>[];
+    final played = <int>{};
+
+    for (final (index, note) in notes.indexed) {
+      final candidate = assignment[index];
+      if (candidate == null) {
+        missing.add(Deletion(hand: note.hand, expected: note.pitch));
+        continue;
+      }
+      played.add(candidate);
+      final arrival = run[candidate];
+      consumed.add((
+        candidate,
+        note.midiNote == arrival.midiNote
+            ? Match(hand: note.hand, observedSequence: arrival.sequence)
+            : Substitution(
+                hand: note.hand,
+                observedSequence: arrival.sequence,
+                expected: note.pitch,
+                observed: arrival.pitch,
+              ),
+      ));
+    }
+
+    for (final (index, arrival) in run.indexed) {
+      if (played.contains(index)) continue;
+      consumed.add((
+        index,
+        Insertion(observedSequence: arrival.sequence, observed: arrival.pitch),
+      ));
+    }
+
+    consumed.sort((a, b) => a.$1.compareTo(b.$1));
+    return [for (final (_, edit) in consumed) edit, ...missing];
+  }
 }

@@ -265,23 +265,6 @@ void main() {
     });
   });
 
-  group('what alignment refuses', () {
-    test('hands-together material, until grouping exists', () {
-      final together = realize(
-        Exercise.linear(
-          material: material,
-          hands: HandConfiguration.together,
-          octaves: 1,
-        ),
-      );
-
-      expect(
-        () => align(realization: together, transcript: played(expected)),
-        throwsArgumentError,
-      );
-    });
-  });
-
   group('a performance in progress', () {
     /// The same scale up and back down, so its first and last notes are both
     /// the tonic.

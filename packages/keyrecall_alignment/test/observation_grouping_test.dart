@@ -1,22 +1,14 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 
-/// What timing contributes, and what it is not allowed to contribute.
-///
-/// The recorded takes are the corpus because they carry what a grouper
-/// actually sees: human asynchrony, MIDI serialization, and transport
-/// behavior, including arrivals that share a millisecond.
-void main() {
-  const takesPath = '../../analysis/onset-grouping/takes';
+import 'support/recorded_takes.dart';
 
+void main() {
   final material = TechnicalMaterial('C', ScaleForm.major);
 
-  PerformanceTranscript transcriptOf(List<(int, int)> notes) {
+  PerformanceTranscript transcriptFrom(List<(int, int)> notes) {
     var transcript = PerformanceTranscript.empty;
     for (final (midiNote, timestampMs) in notes) {
       transcript = transcript.appending(
@@ -27,34 +19,14 @@ void main() {
     return transcript;
   }
 
-  /// A take as the diagnostic exported it.
-  PerformanceTranscript take(String name) {
-    final file = File('$takesPath/$name.json');
-    final recorded =
-        (jsonDecode(file.readAsStringSync()) as Map<String, Object?>)['notes']!
-            as List<Object?>;
-    return transcriptOf([
-      for (final note in recorded.cast<Map<String, Object?>>())
-        (note['note']! as int, note['ms']! as int),
-    ]);
-  }
-
-  const takeNames = [
-    'comfortable-c-major',
-    'fast-c-major-with-stumble',
-    'uneven-d-major',
-    'deliberate-rolled-c-major',
-    'hands-out-of-phase-c-major',
-  ];
-
   /// Steady playing at [gapMs], for cases the corpus does not contain.
   PerformanceTranscript steady(int gapMs, {int count = 4}) =>
-      transcriptOf([for (var i = 0; i < count; i++) (60 + i, i * gapMs)]);
+      transcriptFrom([for (var i = 0; i < count; i++) (60 + i, i * gapMs)]);
 
   group('what a boundary is', () {
     test('one per adjacent pair, in arrival order', () {
-      for (final name in takeNames) {
-        final transcript = take(name);
+      for (final name in recordedTakes.keys) {
+        final transcript = transcriptOf(name);
         final grouping = groupObservations(transcript: transcript);
 
         expect(grouping.boundaries.length, transcript.length - 1, reason: name);
@@ -82,9 +54,9 @@ void main() {
     test('both readings stay affordable at every gap', () {
       const policy = AlignmentPolicy.standard;
 
-      for (final name in takeNames) {
+      for (final name in recordedTakes.keys) {
         for (final boundary in groupObservations(
-          transcript: take(name),
+          transcript: transcriptOf(name),
         ).boundaries) {
           expect(boundary.sameMomentCost, inInclusiveRange(0, 2), reason: name);
           expect(
@@ -105,7 +77,7 @@ void main() {
       const indifferent = AlignmentPolicy(maxGroupingPreference: 0);
 
       for (final boundary in groupObservations(
-        transcript: take('comfortable-c-major'),
+        transcript: transcriptOf('comfortable-c-major'),
         alignmentPolicy: indifferent,
       ).boundaries) {
         expect(boundary.sameMomentCost, 0);
@@ -138,10 +110,10 @@ void main() {
   group('what timing may not see', () {
     test('the same arrivals price the same however they are spelled', () {
       const timings = [0, 20, 500, 620, 1000];
-      final scale = transcriptOf([
+      final scale = transcriptFrom([
         for (final (index, at) in timings.indexed) (60 + index, at),
       ]);
-      final noise = transcriptOf([
+      final noise = transcriptFrom([
         for (final (index, at) in timings.indexed) (61 + index * 5, at),
       ]);
 
@@ -152,10 +124,10 @@ void main() {
     });
 
     test('one transcript always groups the same way', () {
-      for (final name in takeNames) {
+      for (final name in recordedTakes.keys) {
         expect(
-          groupObservations(transcript: take(name)),
-          groupObservations(transcript: take(name)),
+          groupObservations(transcript: transcriptOf(name)),
+          groupObservations(transcript: transcriptOf(name)),
           reason: name,
         );
       }
@@ -165,9 +137,9 @@ void main() {
   group('what the recorded playing produces', () {
     test('all three leans appear across the corpus', () {
       final leans = {
-        for (final name in takeNames)
+        for (final name in recordedTakes.keys)
           for (final boundary in groupObservations(
-            transcript: take(name),
+            transcript: transcriptOf(name),
           ).boundaries)
             boundary.lean,
       };
@@ -178,7 +150,7 @@ void main() {
     test('comfortable playing lands outside the ambiguous region', () {
       final leans = {
         for (final boundary in groupObservations(
-          transcript: take('comfortable-c-major'),
+          transcript: transcriptOf('comfortable-c-major'),
         ).boundaries)
           boundary.lean,
       };
@@ -207,7 +179,7 @@ void main() {
 
     test('a gap of 23 ms leans together and stays splittable', () {
       final grouping = groupObservations(
-        transcript: take('hands-out-of-phase-c-major'),
+        transcript: transcriptOf('hands-out-of-phase-c-major'),
       );
       final closest = grouping.boundaries.reduce(
         (a, b) => a.gapMs <= b.gapMs ? a : b,
@@ -227,7 +199,7 @@ void main() {
     test('arrivals sharing a millisecond are boundaries like any other', () {
       final simultaneous = [
         for (final boundary in groupObservations(
-          transcript: take('comfortable-c-major'),
+          transcript: transcriptOf('comfortable-c-major'),
         ).boundaries)
           if (boundary.gapMs == 0) boundary,
       ];

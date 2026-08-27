@@ -82,6 +82,14 @@ class ObservationBoundary {
     required this.splitMomentCost,
   });
 
+  /// What reading these two observations as one moment costs against reading
+  /// them as two.
+  ///
+  /// Negative where timing favors one moment. The absolute level of a boundary
+  /// is unobservable, since every complete explanation pays for every boundary
+  /// once, so this difference is the whole of what timing contributes.
+  int get sameMomentSurcharge => sameMomentCost - splitMomentCost;
+
   /// Which reading costs less, if either.
   BoundaryLean get lean => switch (sameMomentCost.compareTo(splitMomentCost)) {
     < 0 => BoundaryLean.sameMoment,

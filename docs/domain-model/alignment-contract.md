@@ -1,9 +1,10 @@
 # Alignment contract
 
 - **Status:** Partly implemented. `keyrecall_alignment` prices what timing
-  suggests about a transcript, and aligns single-hand, pitch-only performances.
-  The search that chooses a grouping and a correspondence together is unbuilt,
-  so hands-together material is still refused.
+  suggests about a transcript and aligns any material against it, both hands
+  included. What measurement makes of a two-hand correspondence, and what
+  coordination evidence it yields, are not built, so hands-together exercises
+  are still withheld from practice.
 - **Written:** August 25, 2026
 - **Revised:** August 27, 2026, with the hands and order questions resolved
 
@@ -217,7 +218,14 @@ Ties break toward the earliest minimum-cost explanation, as they already do, and
 at equal cost a shorter run beats a longer one. Both are policy and both decide
 readings: a longer run absorbs a stray note into a moment where nothing shows it
 was extra, and the shorter reading leaves it standing as an insertion, which is
-what the rest of the contract assumes an extra note does.
+what the rest of the contract assumes an extra note does. In full, a moment
+takes one observation before an extra is allowed to stand, and an extra stands
+before a moment takes a second observation.
+
+Within a correspondence, the notes are assigned in the moment's own order, each
+taking the observations in arrival order before going unplayed, and the first
+cheapest assignment wins. Two equally wrong notes in one moment therefore
+resolve the same way every time, which replay needs and no reading depends on.
 
 ## Settled: notes, moments, and the space between hands are counted separately
 
