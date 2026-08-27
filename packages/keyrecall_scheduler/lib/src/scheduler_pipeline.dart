@@ -7,6 +7,33 @@ import 'priority.dart';
 import 'recovery.dart';
 import 'session_state.dart';
 
+/// What one admission exception has to say about one candidate.
+///
+/// Three answers rather than two. An exception that refuses a candidate has
+/// answered, and nothing after it may answer instead; an exception with
+/// nothing to say has not. Collapsing those into a nullable bypass is what let
+/// a later exception become unreachable without any signal.
+sealed class _Verdict {
+  const _Verdict();
+}
+
+/// This exception admits the candidate, under this name.
+class _Admits extends _Verdict {
+  final ChallengeBypass bypass;
+
+  const _Admits(this.bypass);
+}
+
+/// This exception owns the question for this candidate, and the answer is no.
+class _Refuses extends _Verdict {
+  const _Refuses();
+}
+
+/// This exception has nothing to say; the next one decides.
+class _Silent extends _Verdict {
+  const _Silent();
+}
+
 /// The staged decision pipeline that chooses what to practice next.
 ///
 /// Four stages, each answering one question with an explicit information
@@ -336,10 +363,21 @@ class SchedulerPipeline {
   /// Which named exception, if any, admits [exercise] outside the ordinary
   /// band.
   ///
-  /// Recovery is checked first and exclusively: while a recovery context is
-  /// active, the exact target is the only candidate that may be admitted at
-  /// all. An [override] always wins, because it is an explicit caller
-  /// instruction rather than a policy inferred from state.
+  /// Precedence is [AdmissionException]'s declaration order, consulted until
+  /// one of them answers. The order is policy and not an accident of layout:
+  /// an override is an explicit instruction and beats every inference;
+  /// recovery beats the tempo probe because something that just went wrong
+  /// matters more than something that went too easily; the observation probe
+  /// comes before the introduction floor because a drought is a drought
+  /// whether the candidate that ends it is new or familiar.
+  ///
+  /// Some exceptions answer for a candidate they do not admit, which is why
+  /// [_Verdict] distinguishes refusing from having nothing to say. A recovery
+  /// context refuses everything but its target, and material below the
+  /// introduction floor is refused rather than passed along. Writing those as
+  /// a bare `return null` in a chain of ifs is what made this a list: a null
+  /// reads as "nothing applied", so moving a clause below one silently made it
+  /// unreachable, which is a bug this code has already had once.
   ChallengeBypass? challengeBypassFor({
     required LearnerState state,
     required Exercise exercise,
@@ -350,35 +388,55 @@ class SchedulerPipeline {
     required Exercise? tempoProbe,
     required int supportedAttempts,
   }) {
-    if (override != null) return override;
-    if (recoveryTarget != null) {
-      return exercise == recoveryTarget ? ChallengeBypass.recovery : null;
-    }
-    // After recovery and for the same reason: both narrow the slot to one
-    // question, and remediation is the more urgent of the two. Something that
-    // just went wrong is worth more than something that went too easily.
-    if (tempoProbe != null) {
-      return exercise == tempoProbe ? ChallengeBypass.tempoProbe : null;
-    }
-    // Before the introduction floor rather than after it. That branch answers
-    // with null for material below the floor, which would let an introduction
-    // nobody can afford outrank the reason this exception exists: a drought is
-    // a drought whether the candidate that ends it is new or familiar.
-    if (isObservationProbe(exercise, supportedAttempts)) {
-      return ChallengeBypass.observationProbe;
-    }
-    if (!state.materialMemory.containsKey(exercise.material.materialId)) {
-      return prediction.overallP >= config.challenge.pIntroductionMin
-          ? ChallengeBypass.newMaterial
-          : null;
-    }
-    if (isGuidanceProbe(state, exercise, at)) {
-      return ChallengeBypass.guidanceProbe;
-    }
-    if (isBootstrapProbe(state, exercise, at)) {
-      return ChallengeBypass.bootstrapProbe;
+    for (final exception in AdmissionException.values) {
+      final verdict = switch (exception) {
+        AdmissionException.override =>
+          override == null ? const _Silent() : _Admits(override),
+        AdmissionException.recovery => _exactly(
+          recoveryTarget,
+          exercise,
+          ChallengeBypass.recovery,
+        ),
+        AdmissionException.tempoProbe => _exactly(
+          tempoProbe,
+          exercise,
+          ChallengeBypass.tempoProbe,
+        ),
+        AdmissionException.observationProbe =>
+          isObservationProbe(exercise, supportedAttempts)
+              ? const _Admits(ChallengeBypass.observationProbe)
+              : const _Silent(),
+        AdmissionException.newMaterial =>
+          state.materialMemory.containsKey(exercise.material.materialId)
+              ? const _Silent()
+              : prediction.overallP >= config.challenge.pIntroductionMin
+              ? const _Admits(ChallengeBypass.newMaterial)
+              : const _Refuses(),
+        AdmissionException.guidanceProbe =>
+          isGuidanceProbe(state, exercise, at)
+              ? const _Admits(ChallengeBypass.guidanceProbe)
+              : const _Silent(),
+        AdmissionException.bootstrapProbe =>
+          isBootstrapProbe(state, exercise, at)
+              ? const _Admits(ChallengeBypass.bootstrapProbe)
+              : const _Silent(),
+      };
+
+      if (verdict case _Admits(:final bypass)) return bypass;
+      if (verdict is _Refuses) return null;
     }
     return null;
+  }
+
+  /// The verdict of an exception that admits exactly [target] and refuses
+  /// every other candidate while it is open.
+  static _Verdict _exactly(
+    Exercise? target,
+    Exercise exercise,
+    ChallengeBypass bypass,
+  ) {
+    if (target == null) return const _Silent();
+    return exercise == target ? _Admits(bypass) : const _Refuses();
   }
 
   /// Runs every candidate through every stage and returns the full traces.
@@ -595,6 +653,24 @@ class SchedulerPipeline {
     ]);
   }
 
+  /// The candidates genuinely available this slot.
+  ///
+  /// One answer to "what could have been chosen", so the choice and anything
+  /// recording what happened to the choice are looking at the same set. A
+  /// candidate the repetition guard removed was not passed over; it was not
+  /// there.
+  List<CandidateTrace> selectable(
+    List<CandidateTrace> traces,
+    SessionState session,
+  ) => applyRepetitionGuard(traces, session);
+
+  /// The canonical V1 choice from an already-narrowed set: the diagnostic
+  /// fairness guard, then lexicographic ranking.
+  CandidateTrace? chooseFrom(
+    List<CandidateTrace> selectable,
+    SessionState session,
+  ) => overdueGuidanceProbe(selectable, session) ?? selectBest(selectable);
+
   /// The canonical V1 choice: repetition guard, then the diagnostic fairness
   /// guard, then lexicographic ranking.
   ///
@@ -603,8 +679,5 @@ class SchedulerPipeline {
   CandidateTrace? selectChoice(
     List<CandidateTrace> traces,
     SessionState session,
-  ) {
-    final guarded = applyRepetitionGuard(traces, session);
-    return overdueGuidanceProbe(guarded, session) ?? selectBest(guarded);
-  }
+  ) => chooseFrom(selectable(traces, session), session);
 }

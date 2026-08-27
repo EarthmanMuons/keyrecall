@@ -276,15 +276,16 @@ class PracticeSession {
       candidates: candidates,
       at: at,
     );
-    final chosen = pipeline.selectChoice(traces, _session);
     // What the slot did with a waiting independence question, which only the
-    // selection can see: the traces say what was on the table and the choice
-    // says what happened to it.
+    // selection can see. Read from what was actually available rather than
+    // from every ranked candidate: one the repetition guard removed was not
+    // passed over, it was not there, and counting it would start the fairness
+    // clock on a contest that never took place.
+    final available = pipeline.selectable(traces, _session);
+    final chosen = pipeline.chooseFrom(available, _session);
     _session.recordSelectionOpportunity(
-      guidanceProbeRanked: traces.any(
-        (trace) =>
-            trace.isRanked &&
-            trace.challengeBypass == ChallengeBypass.guidanceProbe,
+      guidanceProbeAvailable: available.any(
+        (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
       ),
       guidanceProbeSelected:
           chosen?.challengeBypass == ChallengeBypass.guidanceProbe,

@@ -123,6 +123,37 @@ enum ChallengeBypass {
   final String id;
 }
 
+/// The admission exceptions, in the order they are consulted.
+///
+/// Declaration order is precedence order, the way it is for [EligibilityTier].
+/// Which exception gets to answer first is a policy decision, and it was
+/// previously expressed as the order of `if` statements, where an exception
+/// that refused a candidate looked exactly like one that had nothing to say.
+/// Adding a mechanism at the bottom of that chain made it unreachable for
+/// every candidate an earlier one had quietly refused.
+enum AdmissionException {
+  /// An explicit caller instruction, which beats every inference.
+  override,
+
+  /// Something just went wrong, which matters more than anything going well.
+  recovery,
+
+  /// Something went too easily, and the harder question is worth the slot.
+  tempoProbe,
+
+  /// Nothing has observed retrieval for a while, whatever the odds say.
+  observationProbe,
+
+  /// Material with no history, admitted over a lower floor.
+  newMaterial,
+
+  /// One rung less support than the one that is working.
+  guidanceProbe,
+
+  /// A retrieval test where no rung is established at all.
+  bootstrapProbe,
+}
+
 /// The `REQUIRES` gate's verdict for one candidate.
 @immutable
 class EligibilityDecision {

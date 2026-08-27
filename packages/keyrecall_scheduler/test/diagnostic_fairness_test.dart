@@ -37,22 +37,22 @@ void main() {
   );
 
   group('the counter', () {
-    test('rises when a ranked probe loses a free contest', () {
+    test('rises when an available probe loses a free contest', () {
       final session = SessionState();
 
       session.recordSelectionOpportunity(
-        guidanceProbeRanked: true,
+        guidanceProbeAvailable: true,
         guidanceProbeSelected: false,
       );
 
       expect(session.unservedGuidanceProbeSelections, 1);
     });
 
-    test('does not rise when no probe was ranked', () {
+    test('does not rise when no probe was available', () {
       final session = SessionState();
 
       session.recordSelectionOpportunity(
-        guidanceProbeRanked: false,
+        guidanceProbeAvailable: false,
         guidanceProbeSelected: false,
       );
 
@@ -71,7 +71,7 @@ void main() {
         SessionState(tempoProbe: exerciseFor(materials.first)),
       ]) {
         session.recordSelectionOpportunity(
-          guidanceProbeRanked: true,
+          guidanceProbeAvailable: true,
           guidanceProbeSelected: false,
         );
 
@@ -89,7 +89,7 @@ void main() {
       final session = SessionState(unservedGuidanceProbeSelections: 99);
 
       session.recordSelectionOpportunity(
-        guidanceProbeRanked: true,
+        guidanceProbeAvailable: true,
         guidanceProbeSelected: true,
       );
 
@@ -178,5 +178,39 @@ void main() {
         pipeline.selectChoice(traces, fresh)?.exercise,
       );
     });
+  });
+
+  test('a probe the repetition guard removed did not lose a contest', () async {
+    // The third kind of non-opportunity, alongside recovery and tempo slots.
+    // The probe was ranked and still unavailable, because the repetition
+    // policy had already taken it off the table.
+    final material = materials.first;
+    final state = established(material);
+    final session = SessionState(
+      recentMaterialIds: List.filled(
+        config.diversity.maxConsecutiveMaterialAttempts,
+        material.materialId,
+      ),
+    );
+
+    final traces = tracesFor(state, session);
+    expect(
+      traces.where(
+        (trace) =>
+            trace.isRanked &&
+            trace.challengeBypass == ChallengeBypass.guidanceProbe,
+      ),
+      isNotEmpty,
+      reason: 'the probe has to be ranked for the distinction to matter',
+    );
+
+    final available = pipeline.selectable(traces, session);
+    expect(
+      available.where(
+        (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
+      ),
+      isEmpty,
+      reason: 'the guard removed every candidate on that material',
+    );
   });
 }

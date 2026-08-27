@@ -46,8 +46,8 @@ class SessionState {
   /// whether or not the same scale keeps coming back.
   int supportedAttemptsSinceObservation;
 
-  /// Selection opportunities that passed with an independence probe ranked and
-  /// something else chosen.
+  /// Selection opportunities that passed with an independence probe available
+  /// and something else chosen.
   ///
   /// Opportunities rather than offers. What matters is how many times the
   /// question could have been asked and was not, so a slot narrowed to one
@@ -102,7 +102,7 @@ class SessionState {
   /// Called at selection rather than at commit, because the question is about
   /// what was on the table and only the selection knows that.
   void recordSelectionOpportunity({
-    required bool guidanceProbeRanked,
+    required bool guidanceProbeAvailable,
     required bool guidanceProbeSelected,
   }) {
     if (guidanceProbeSelected) {
@@ -112,7 +112,7 @@ class SessionState {
     // A slot the recovery or tempo context narrowed to one candidate was never
     // a contest, so nothing lost it.
     if (isRecovering || tempoProbe != null) return;
-    if (!guidanceProbeRanked) return;
+    if (!guidanceProbeAvailable) return;
     unservedGuidanceProbeSelections++;
   }
 
