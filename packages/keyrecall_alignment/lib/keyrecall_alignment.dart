@@ -9,10 +9,9 @@
 /// which observations arrived together. It proposes and alignment disposes:
 /// both readings of every gap stay affordable.
 ///
-/// Deliberately narrow for now: [align] takes one hand, pitch only, no
-/// evidence, and no knowledge of scheduling or presentation. See
-/// `docs/domain-model/alignment-contract.md` for what is settled and what is
-/// still open.
+/// Deliberately narrow: pitch and grouping, no evidence, and no knowledge of
+/// scheduling or presentation. See `docs/domain-model/alignment-contract.md`
+/// for what is settled and what is still open.
 library;
 
 export 'src/align.dart';

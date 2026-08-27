@@ -1,8 +1,9 @@
 # Attempt termination policy
 
-- **Status:** Steps 1 to 3 are implemented; the app still only ends an attempt
-  when the learner taps Done.
+- **Status:** Steps 1 to 3 and 5 are implemented; the app still only ends an
+  attempt when the learner taps Done.
 - **Written:** August 25, 2026
+- **Revised:** August 27, 2026
 
 How an attempt ends is its own concern rather than part of alignment, because
 two of the three ways it can end need no notion of correctness at all.
@@ -209,7 +210,9 @@ journal lifecycle fact -> session and scheduler behavior
    the app calls it yet.
 4. Add non-evaluative termination paths, which is what makes `closeUnmeasured`
    reachable outside tests.
-5. Build alignment, which makes `Measured` reachable from an actual performance.
+5. ~~Build alignment, which makes `Measured` reachable from an actual
+   performance.~~ Done: `PracticeSession.closeFromPerformance` measures what was
+   played, for one hand or two.
 6. Delete `ReportedResult`.
 
 Steps 1 to 3 change storage and lifecycle without changing what the learner

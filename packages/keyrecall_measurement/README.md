@@ -63,8 +63,12 @@ pedagogical boundary.
 
 ## Availability
 
-Measurement says whether the observation model can read the attempt, never
-whether the attempt was any good. Fifty wrong notes measure fine. Only something
-structural, such as hands-together material that needs grouping, makes
-measurement unavailable. Otherwise the worst performances would go missing
-exactly where the evidence is strongest.
+Measurement says what the observation model read, never whether the attempt was
+any good. Fifty wrong notes measure fine, and every exercise V1 generates can be
+read, so nothing a learner plays goes unmeasured. Otherwise the worst
+performances would go missing exactly where the evidence is strongest.
+
+What can be absent is a channel rather than a measurement. Coordination needs a
+moment where both hands corresponded to something that arrived, and where no
+moment did, it is absent rather than zero: an attempt nobody could read for
+togetherness has not been read as ragged.

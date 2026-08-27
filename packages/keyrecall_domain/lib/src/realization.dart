@@ -109,14 +109,14 @@ class RealizationMoment {
 /// What an exercise asks for, as an ordered sequence of musical events.
 ///
 /// The single answer to "which notes, in what order, in which hand". Staff
-/// rendering, a progress indicator, fingering annotation, and eventually the
-/// alignment of an observed performance all need that answer, and deriving it
-/// twice is how two definitions of the same exercise start to disagree.
+/// rendering, a progress indicator, fingering annotation, and the alignment of
+/// an observed performance all need that answer, and deriving it twice is how
+/// two definitions of the same exercise start to disagree.
 ///
 /// Deliberately not measurement. There is no wall-clock timing here, no
 /// tolerance, no notion of a note being played early, late, wrongly, or not at
-/// all. A realization says what the task is; relating a performance to it is a
-/// separate layer that does not exist yet.
+/// all. A realization says what the task is; relating a performance to it is
+/// `keyrecall_alignment`'s job.
 ///
 /// Derived on demand from an [Exercise] and not part of its identity, so
 /// nothing about it reaches candidate generation, ranking, or persisted

@@ -45,6 +45,13 @@ forgetting. `evidenceWeightsFor` produces separate competency, execution, and
 memory weights, and `LearnerModel.applyOutcome` updates only the channels the
 attempt genuinely observed.
 
+`Outcome.coordination` is the same idea one layer down. Every competency belongs
+to exactly one prediction channel, motor, topology, or coordination, and
+`HANDS_TOGETHER_COORDINATION` is the only member of the third. It learns from
+how together the hands actually were, and an attempt that measured none carries
+no weight for it, so it keeps its prior rather than inheriting a motor score
+that never observed it.
+
 ## Usage
 
 ```dart

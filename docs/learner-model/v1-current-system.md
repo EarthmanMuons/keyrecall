@@ -1,7 +1,7 @@
 # The KeyRecall V1 Adaptive System
 
 - **Status:** Current integrated specification for the initial production model
-- **Last aligned:** August 20, 2026
+- **Last aligned:** August 27, 2026
 - **Audience:** Developers, product designers, and researchers who need to
   understand what V1 does without reading the experiment history first
 
@@ -373,10 +373,13 @@ q^{(C)}_{e,k} =
 ```
 
 Here `C` denotes one prediction channel and `K_C` is that channel's competency
-set. V1 uses separate motor and topology versions of this loading.
+set. V1 has three: motor, topology, and coordination. Every competency belongs
+to exactly one of them.
 
-Motor and topology loadings are normalized separately. Otherwise the presence of
-a topology opportunity would artificially dilute the motor predictor.
+Each channel is normalized within itself. Otherwise the presence of a topology
+opportunity would artificially dilute the motor predictor, and a two-hand
+exercise would predict execution partly from how together the hands are rather
+than from the two hands that execute.
 
 Equal loading avoids inventing precise relative weights before real data exists.
 
@@ -525,13 +528,14 @@ Predicting is only half the job. Once the learner actually plays, V1 has to turn
 what happened into updates to its beliefs.
 
 The observation pipeline preserves rich MIDI-derived outcomes, including pitch
-integrity, continuity, timing stability, achieved tempo, topology accuracy, and
-localized motor-event behavior. V1 reduces these only where a particular state
-update needs a bounded target.
+integrity, continuity, timing stability, achieved tempo, topology accuracy, how
+far apart the hands were at each moment both of them played, and localized
+motor-event behavior. V1 reduces these only where a particular state update
+needs a bounded target.
 
 Each prediction channel gets its own "surprise" number: actual outcome minus
 predicted outcome. A positive delta means the learner did better than expected;
-negative means worse. The three prediction errors are:
+negative means worse. The four prediction errors are:
 
 ```math
 y_{\mathrm{motor}} =
@@ -549,9 +553,21 @@ y_{\mathrm{topology}}-\widehat p_{\mathrm{topology}}
 ```
 
 ```math
+\delta_{\mathrm{coord}}=
+y_{\mathrm{coord}}-\widehat p_{\mathrm{coord}}
+```
+
+```math
 \delta_M=
 y_{\mathrm{retrieval}}-\widehat p_{\mathrm{retrieval}}
 ```
+
+`y_coord` reads how together the hands were, from the moments where both of them
+corresponded to something that arrived. It is three-valued in effect: a
+single-hand attempt has no such moment, and neither does a two-hand attempt
+where one hand never landed, and in both cases the channel is absent rather than
+zero. Zero would say the hands were as far apart as playing gets, which is not
+what an unobserved attempt shows.
 
 There is intentionally no universal prediction error. Each state layer learns
 only from a residual that its own prediction helped generate.
@@ -594,8 +610,12 @@ so it never drops below a floor:
 \max(\sigma^2_{\mathrm{min},k},\sigma_k^2(1-\lambda_k w_{a,k}))
 ```
 
-Motor competencies use `delta_exec`; topology competencies use `delta_topology`.
-The execution residual uses the same motor-only error and the same update shape:
+Each competency uses its own channel's error: motor competencies use
+`delta_exec`, topology competencies `delta_topology`, and coordination
+`delta_coord`. An attempt that measured no coordination carries no weight for
+that competency at all, so it is left untouched rather than taught from a motor
+score that never observed it. The execution residual uses the same motor-only
+error and the same update shape:
 
 ```math
 \mu'_r = \mu_r + \alpha_r w_r\delta_{\mathrm{exec}}
