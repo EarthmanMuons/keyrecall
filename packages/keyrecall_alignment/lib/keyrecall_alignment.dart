@@ -5,14 +5,18 @@
 /// correctness judgment is allowed to be made, and everything evaluative that
 /// a learner eventually sees is a rendering of its result.
 ///
-/// Deliberately narrow for now: one hand, pitch only, no timing, no evidence,
-/// and no knowledge of scheduling or presentation. See
-/// `docs/domain-model/alignment-contract.md` for what is settled, what is
-/// still open, and why grouping hands-together observations is not attempted
-/// here.
+/// [groupObservations] runs before it, pricing what timing suggests about
+/// which observations arrived together. It proposes and alignment disposes:
+/// both readings of every gap stay affordable.
+///
+/// Deliberately narrow for now: [align] takes one hand, pitch only, no
+/// evidence, and no knowledge of scheduling or presentation. See
+/// `docs/domain-model/alignment-contract.md` for what is settled and what is
+/// still open.
 library;
 
 export 'src/align.dart';
 export 'src/alignment_policy.dart';
 export 'src/alignment_reading.dart';
 export 'src/edit_operation.dart';
+export 'src/observation_grouping.dart';

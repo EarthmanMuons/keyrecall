@@ -51,10 +51,20 @@ class AlignmentPolicy {
   /// What an expected note that never arrived costs.
   final int deletionCost;
 
+  /// The most that timing may prefer one grouping of the observations over
+  /// another.
+  ///
+  /// One substitution, so a boundary can tip a reading that correspondence is
+  /// otherwise indifferent to and cannot outbid a correspondence decision.
+  /// Both readings of every boundary stay affordable, which is what keeps
+  /// grouping a proposal: see `docs/domain-model/alignment-contract.md`.
+  final int maxGroupingPreference;
+
   const AlignmentPolicy({
     this.substitutionCost = 2,
     this.insertionCost = 3,
     this.deletionCost = 3,
+    this.maxGroupingPreference = 2,
   });
 
   /// The V1 policy.
@@ -68,5 +78,5 @@ class AlignmentPolicy {
   @override
   String toString() =>
       'AlignmentPolicy(sub $substitutionCost, ins $insertionCost, '
-      'del $deletionCost)';
+      'del $deletionCost, grouping $maxGroupingPreference)';
 }

@@ -1,9 +1,9 @@
 # Alignment contract
 
-- **Status:** Partly implemented. `keyrecall_alignment` aligns single-hand,
-  pitch-only performances. What the script looks like and what it is measured
-  against are settled below; the hands-together stages that depend on them are
-  unbuilt.
+- **Status:** Partly implemented. `keyrecall_alignment` prices what timing
+  suggests about a transcript, and aligns single-hand, pitch-only performances.
+  The search that chooses a grouping and a correspondence together is unbuilt,
+  so hands-together material is still refused.
 - **Written:** August 25, 2026
 - **Revised:** August 27, 2026, with the hands and order questions resolved
 
@@ -72,6 +72,7 @@ and its output is the single thing the displays and the learner model read.
 groupObservations(
   transcript: PerformanceTranscript,
   policy: ObservationGroupingPolicy,    where confidence ends
+  alignmentPolicy: AlignmentPolicy,     what a preference may be worth
 ) -> ObservationGrouping
 
 align(

@@ -353,6 +353,60 @@ void main() {
     });
   });
 
+  group('the script is well formed', () {
+    final performances = <String, List<int>>{
+      'clean': expected,
+      'nothing': const [],
+      'a wrong note': [...expected]..[4] = expected[4] + 1,
+      'a skip': [...expected]..removeAt(4),
+      'an extra': [...expected]..insert(3, 61),
+      'stopped early': expected.take(3).toList(),
+      'played on past the end': [...expected, 74, 76],
+    };
+
+    for (final performance in performances.entries) {
+      test(performance.key, () {
+        final alignment = alignmentOf(performance.value);
+
+        expect(
+          [
+            for (final operation in alignment.operations)
+              ...operation.observedSequences,
+          ],
+          [for (var i = 0; i < performance.value.length; i++) i],
+          reason: 'every observation is accounted for once, in arrival order',
+        );
+
+        expect(
+          [
+            for (final operation in alignment.operations)
+              ?operation.realizationPosition,
+          ],
+          [for (var i = 0; i < realization.moments.length; i++) i],
+          reason: 'every moment is accounted for once, in order',
+        );
+
+        for (final operation in alignment.operations) {
+          switch (operation) {
+            case MomentDeletion(:final realizationPosition, :final noteEdits):
+              expect(
+                noteEdits.whereType<Deletion>().length,
+                realization.moments[realizationPosition].notes.length,
+                reason:
+                    'a moment nothing arrived for is missing every note '
+                    'it asked for',
+              );
+            case MomentCorrespondence(:final noteEdits):
+              expect(operation.observedSequences, isNotEmpty);
+              expect(noteEdits, isNotEmpty);
+            case MomentInsertion(:final noteEdits):
+              expect(noteEdits, everyElement(isA<Insertion>()));
+          }
+        }
+      });
+    }
+  });
+
   test('the same performance always aligns the same way', () {
     final once = alignmentOf([...expected]..insert(3, 61));
     final again = alignmentOf([...expected]..insert(3, 61));
