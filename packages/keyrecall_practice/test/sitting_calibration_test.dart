@@ -43,11 +43,42 @@ void main() {
       );
       final rungs = <int, int>{};
       final bypasses = <String, int>{};
+      var offered = 0;
+      var taken = 0;
+      int? firstOffered;
 
       for (var i = 0; i < perSitting; i++) {
         final at = t0.plusDays(day + i * 90 / Duration.secondsPerDay);
+
+        // What was on the table, alongside what was chosen from it. A
+        // diagnostic question that is never eligible and one that is eligible
+        // every slot and always loses are different problems with different
+        // fixes, and the selection alone cannot tell them apart.
+        const shadow = SchedulerPipeline(learner: LearnerModel());
+        final available = shadow
+            .evaluate(
+              state: session.state,
+              session: session.session,
+              candidates: generateCandidates(InstrumentProfile(), allScales),
+              at: at,
+            )
+            .where(
+              (trace) =>
+                  trace.isRanked &&
+                  trace.challengeBypass == ChallengeBypass.guidanceProbe,
+            )
+            .length;
+        if (available > 0) {
+          offered++;
+          firstOffered ??= i;
+        }
+
         final presented = await session.decide(at: at);
         if (presented == null) continue;
+        if (presented.decision.decision.challengeBypass ==
+            ChallengeBypass.guidanceProbe) {
+          taken++;
+        }
 
         final exercise = presented.exercise;
         final independence = exercise.guidance.independence;
@@ -82,7 +113,9 @@ void main() {
         '$label sitting $index (day ${day.toInt()}): '
         'cued/previewed/unguided='
         '${rungs[0] ?? 0}/${rungs[1] ?? 0}/${rungs[2] ?? 0} '
-        'bypasses=$bypasses',
+        'bypasses=$bypasses '
+        'independenceProbes offered=$offered taken=$taken '
+        'firstOfferedAt=$firstOffered',
       );
     }
     return sittings;
