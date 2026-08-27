@@ -35,8 +35,8 @@ void main() {
       align(realization: realization, transcript: played(midiNotes));
 
   List<String> shapeOf(Alignment alignment) => [
-    for (final operation in alignment.operations)
-      switch (operation) {
+    for (final positioned in alignment.noteEdits)
+      switch (positioned.edit) {
         Match() => 'match',
         Substitution(:final kind) => 'substitution.${kind.id.toLowerCase()}',
         Insertion() => 'insertion',
@@ -97,7 +97,7 @@ void main() {
       final alignment = alignmentOf([...expected]..[3] = expected[3] - 12);
 
       expect(
-        alignment.operations[3],
+        alignment.noteEdits[3].edit,
         isA<Substitution>().having(
           (s) => s.kind,
           'kind',
@@ -253,9 +253,10 @@ void main() {
           policy: generous,
         );
 
-        expect(alignment.operations.whereType<Substitution>(), isEmpty);
-        expect(alignment.operations.whereType<Insertion>().length, 1);
-        expect(alignment.operations.whereType<Deletion>().length, 1);
+        final reading = AlignmentReading(alignment);
+        expect(reading.substituted, 0);
+        expect(reading.inserted, 1);
+        expect(reading.deleted, 1);
       },
     );
 
@@ -309,8 +310,8 @@ void main() {
       // finished the scale.
       final alignment = alignedUpDown(const [60]);
 
-      expect(alignment.operations.first, isA<Match>());
-      expect((alignment.operations.first as Match).realizationPosition, 0);
+      expect(alignment.noteEdits.first.edit, isA<Match>());
+      expect(alignment.noteEdits.first.realizationPosition, 0);
       expect(
         AlignmentReading(alignment).reachedFinalPosition,
         isFalse,

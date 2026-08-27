@@ -161,23 +161,21 @@ String renderPin({
   final reading = measurement.reading;
 
   final script = [
-    for (final operation in measurement.alignment.operations)
-      switch (operation) {
-        Match(:final realizationPosition, :final transcriptSequence) =>
-          'M$realizationPosition<$transcriptSequence',
+    for (final (:realizationPosition, :edit) in measurement.alignment.noteEdits)
+      switch (edit) {
+        Match(:final observedSequence) =>
+          'M$realizationPosition<$observedSequence',
         Substitution(
-          :final realizationPosition,
-          :final transcriptSequence,
+          :final observedSequence,
           :final expected,
           :final observed,
           :final kind,
         ) =>
-          'S$realizationPosition<$transcriptSequence'
+          'S$realizationPosition<$observedSequence'
               ':${expected.label}>${observed.label}:${kind.id}',
-        Insertion(:final transcriptSequence, :final observed) =>
-          'I<$transcriptSequence:${observed.label}',
-        Deletion(:final realizationPosition, :final expected) =>
-          'D$realizationPosition:${expected.label}',
+        Insertion(:final observedSequence, :final observed) =>
+          'I<$observedSequence:${observed.label}',
+        Deletion(:final expected) => 'D$realizationPosition:${expected.label}',
       },
   ].join(' ');
 

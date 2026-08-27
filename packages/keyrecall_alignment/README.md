@@ -6,8 +6,13 @@ Relates an observed performance to the notes an exercise asked for.
 ExerciseRealization + PerformanceTranscript
     -> align()
     -> Alignment
-         Match | Substitution | Insertion | Deletion
+         MomentCorrespondence | MomentDeletion | MomentInsertion
+           Match | Substitution | Insertion | Deletion
 ```
+
+The script is moment-first, and a moment that asks for one note produces one
+correspondence holding one note edit. Hand identity rides on the expected note
+of an edit: an observation says which key and when, never which hand.
 
 `align` answers one question: which played note corresponds to which expected
 one, and what is left over on either side. It is the only place a correctness

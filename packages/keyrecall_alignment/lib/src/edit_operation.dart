@@ -1,10 +1,11 @@
+import 'package:collection/collection.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
 /// How an observed note differs from the one that was expected there.
 ///
 /// Descriptive, not a severity ranking. An octave error is plausibly a fact
-/// about where the hand was placed rather than about remembering the scale, and
+/// about where the hand went rather than about remembering the scale, and
 /// keeping the two apart is what lets a later layer treat them differently. It
 /// costs the same either way; see [AlignmentPolicy].
 enum SubstitutionKind {
@@ -20,61 +21,62 @@ enum SubstitutionKind {
   final String id;
 }
 
-/// One relationship between what was asked for and what was played.
+/// One relationship between a note that was asked for and one that was played.
 ///
-/// The alphabet of an edit script. Every operation names the realization
-/// position it concerns, the transcript note it concerns, or both, so a reader
-/// can walk either sequence and know what happened at each point.
+/// The expected side names the [Hand] that was asked to play, because the
+/// realization says so. The observed side names an arrival, because that is all
+/// an observation carries: which hand pressed a key is a conclusion alignment
+/// reaches by correspondence, never a property of the note.
 @immutable
-sealed class EditOperation {
-  const EditOperation();
+sealed class NoteEdit {
+  const NoteEdit();
+
+  /// The observation this consumed, or null when it consumed none.
+  int? get observedSequence;
 }
 
 /// The expected note was played.
 @immutable
-final class Match extends EditOperation {
-  /// Which moment of the realization.
-  final int realizationPosition;
+final class Match extends NoteEdit {
+  /// The hand that was asked to play it.
+  final Hand hand;
 
-  /// Which note of the transcript.
-  final int transcriptSequence;
+  @override
+  final int observedSequence;
 
-  const Match({
-    required this.realizationPosition,
-    required this.transcriptSequence,
-  });
+  const Match({required this.hand, required this.observedSequence});
 
   @override
   bool operator ==(Object other) =>
       other is Match &&
-      other.realizationPosition == realizationPosition &&
-      other.transcriptSequence == transcriptSequence;
+      other.hand == hand &&
+      other.observedSequence == observedSequence;
 
   @override
-  int get hashCode => Object.hash(realizationPosition, transcriptSequence);
+  int get hashCode => Object.hash(hand, observedSequence);
 
   @override
-  String toString() => 'Match($realizationPosition <- $transcriptSequence)';
+  String toString() => 'Match(${hand.id} <- $observedSequence)';
 }
 
-/// Something was played where the expected note should have been.
+/// Something else was played for the expected note.
 @immutable
-final class Substitution extends EditOperation {
-  /// Which moment of the realization.
-  final int realizationPosition;
+final class Substitution extends NoteEdit {
+  /// The hand that was asked to play it.
+  final Hand hand;
 
-  /// Which note of the transcript.
-  final int transcriptSequence;
+  @override
+  final int observedSequence;
 
-  /// What was asked for there.
+  /// What was asked for.
   final SpelledPitch expected;
 
   /// What arrived instead.
   final SpelledPitch observed;
 
   const Substitution({
-    required this.realizationPosition,
-    required this.transcriptSequence,
+    required this.hand,
+    required this.observedSequence,
     required this.expected,
     required this.observed,
   });
@@ -87,65 +89,162 @@ final class Substitution extends EditOperation {
   @override
   bool operator ==(Object other) =>
       other is Substitution &&
-      other.realizationPosition == realizationPosition &&
-      other.transcriptSequence == transcriptSequence &&
+      other.hand == hand &&
+      other.observedSequence == observedSequence &&
       other.expected == expected &&
       other.observed == observed;
 
   @override
-  int get hashCode =>
-      Object.hash(realizationPosition, transcriptSequence, expected, observed);
+  int get hashCode => Object.hash(hand, observedSequence, expected, observed);
 
   @override
   String toString() =>
-      'Substitution($realizationPosition <- $transcriptSequence, '
+      'Substitution(${hand.id} <- $observedSequence, '
       '${expected.label} vs ${observed.label}, ${kind.id})';
 }
 
 /// A note nobody asked for.
 @immutable
-final class Insertion extends EditOperation {
-  /// Which note of the transcript.
-  final int transcriptSequence;
+final class Insertion extends NoteEdit {
+  @override
+  final int observedSequence;
 
   /// What was played.
   final SpelledPitch observed;
 
-  const Insertion({required this.transcriptSequence, required this.observed});
+  const Insertion({required this.observedSequence, required this.observed});
 
   @override
   bool operator ==(Object other) =>
       other is Insertion &&
-      other.transcriptSequence == transcriptSequence &&
+      other.observedSequence == observedSequence &&
       other.observed == observed;
 
   @override
-  int get hashCode => Object.hash(transcriptSequence, observed);
+  int get hashCode => Object.hash(observedSequence, observed);
 
   @override
-  String toString() => 'Insertion($transcriptSequence, ${observed.label})';
+  String toString() => 'Insertion($observedSequence, ${observed.label})';
 }
 
 /// An expected note that never arrived.
 @immutable
-final class Deletion extends EditOperation {
-  /// Which moment of the realization.
-  final int realizationPosition;
+final class Deletion extends NoteEdit {
+  /// The hand that was asked to play it.
+  final Hand hand;
 
-  /// What was asked for there.
+  /// What was asked for.
   final SpelledPitch expected;
 
-  const Deletion({required this.realizationPosition, required this.expected});
+  const Deletion({required this.hand, required this.expected});
+
+  @override
+  int? get observedSequence => null;
 
   @override
   bool operator ==(Object other) =>
-      other is Deletion &&
-      other.realizationPosition == realizationPosition &&
-      other.expected == expected;
+      other is Deletion && other.hand == hand && other.expected == expected;
 
   @override
-  int get hashCode => Object.hash(realizationPosition, expected);
+  int get hashCode => Object.hash(hand, expected);
 
   @override
-  String toString() => 'Deletion($realizationPosition, ${expected.label})';
+  String toString() => 'Deletion(${hand.id}, ${expected.label})';
 }
+
+const _noteEditEquality = ListEquality<NoteEdit>();
+
+/// One relationship between a moment of the realization and the observations
+/// that account for it.
+///
+/// The alphabet of an edit script, one level above the notes. A moment that
+/// asks for one note produces one note edit, so single-hand material is this
+/// shape with everything inside it singular.
+@immutable
+sealed class MomentOperation {
+  /// The note edits, ordered by the observation each consumed, with edits that
+  /// consumed none last.
+  final List<NoteEdit> noteEdits;
+
+  MomentOperation({required List<NoteEdit> noteEdits})
+    : noteEdits = List.unmodifiable(noteEdits);
+
+  /// Which moment of the realization, or null when nothing was expected.
+  int? get realizationPosition;
+
+  /// The observations this consumed, in arrival order.
+  List<int> get observedSequences => [
+    for (final edit in noteEdits) ?edit.observedSequence,
+  ];
+}
+
+/// A moment of the realization, and what was played for it.
+@immutable
+final class MomentCorrespondence extends MomentOperation {
+  @override
+  final int realizationPosition;
+
+  MomentCorrespondence({
+    required this.realizationPosition,
+    required super.noteEdits,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is MomentCorrespondence &&
+      other.realizationPosition == realizationPosition &&
+      _noteEditEquality.equals(other.noteEdits, noteEdits);
+
+  @override
+  int get hashCode =>
+      Object.hash(realizationPosition, _noteEditEquality.hash(noteEdits));
+
+  @override
+  String toString() =>
+      'MomentCorrespondence($realizationPosition <- $observedSequences)';
+}
+
+/// A moment of the realization that nothing arrived for.
+@immutable
+final class MomentDeletion extends MomentOperation {
+  @override
+  final int realizationPosition;
+
+  MomentDeletion({required this.realizationPosition, required super.noteEdits});
+
+  @override
+  bool operator ==(Object other) =>
+      other is MomentDeletion &&
+      other.realizationPosition == realizationPosition &&
+      _noteEditEquality.equals(other.noteEdits, noteEdits);
+
+  @override
+  int get hashCode =>
+      Object.hash(realizationPosition, _noteEditEquality.hash(noteEdits));
+
+  @override
+  String toString() => 'MomentDeletion($realizationPosition)';
+}
+
+/// Playing that no moment of the realization asked for.
+@immutable
+final class MomentInsertion extends MomentOperation {
+  MomentInsertion({required super.noteEdits});
+
+  @override
+  int? get realizationPosition => null;
+
+  @override
+  bool operator ==(Object other) =>
+      other is MomentInsertion &&
+      _noteEditEquality.equals(other.noteEdits, noteEdits);
+
+  @override
+  int get hashCode => _noteEditEquality.hash(noteEdits);
+
+  @override
+  String toString() => 'MomentInsertion($observedSequences)';
+}
+
+/// A note edit and the realization position of the moment it belongs to.
+typedef PositionedNoteEdit = ({int? realizationPosition, NoteEdit edit});

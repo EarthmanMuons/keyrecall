@@ -86,7 +86,7 @@ bool hasCoveredTraversal({
   // Every position needs its own observation, so anything shorter cannot be
   // complete. Checked first because this runs on every note that arrives and
   // alignment is quadratic.
-  if (transcript.length < realization.moments.length) return false;
+  if (transcript.length < realization.noteCount) return false;
   return AlignmentReading(
     align(realization: realization, transcript: transcript),
   ).isComplete;

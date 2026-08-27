@@ -143,6 +143,10 @@ class ExerciseRealization {
       for (final note in moment.notes) note.hand,
   };
 
+  /// How many notes are asked for, counting each hand's separately.
+  int get noteCount =>
+      moments.fold(0, (total, moment) => total + moment.notes.length);
+
   /// Every pitch the exercise asks for, without order or repetition.
   ///
   /// What a diagram that marks keys needs, as distinct from what a staff

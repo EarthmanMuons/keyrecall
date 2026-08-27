@@ -24,7 +24,7 @@ class AlignmentReading {
   ///
   /// A wrong note in the right place still reached that point in the scale;
   /// what is missing here is notes that never arrived at all.
-  bool get isComplete => alignment.operations.whereType<Deletion>().isEmpty;
+  bool get isComplete => deleted == 0;
 
   /// Whether the traversal reached its final expected position.
   ///
@@ -36,12 +36,11 @@ class AlignmentReading {
   bool get reachedFinalPosition {
     for (final operation in alignment.operations.reversed) {
       switch (operation) {
-        case Insertion():
+        case MomentInsertion():
           continue;
-        case Match():
-        case Substitution():
+        case MomentCorrespondence():
           return true;
-        case Deletion():
+        case MomentDeletion():
           return false;
       }
     }
@@ -54,7 +53,7 @@ class AlignmentReading {
   /// mistakes as you go. An attempt that arrived at the end after three
   /// corrections is complete and not first-pass clean.
   bool get isFirstPassClean =>
-      alignment.operations.every((operation) => operation is Match);
+      alignment.noteEdits.every((positioned) => positioned.edit is Match);
 
   /// Extra notes immediately followed by the expected one.
   ///
@@ -64,10 +63,10 @@ class AlignmentReading {
   /// internal state nothing here observed. Calling it a self-correction is a
   /// reading for a layer that has grounds for one.
   int get immediateRepairs {
+    final edits = alignment.noteEdits;
     var corrections = 0;
-    for (var i = 0; i < alignment.operations.length - 1; i++) {
-      if (alignment.operations[i] is Insertion &&
-          alignment.operations[i + 1] is Match) {
+    for (var i = 0; i < edits.length - 1; i++) {
+      if (edits[i].edit is Insertion && edits[i + 1].edit is Match) {
         corrections++;
       }
     }
@@ -75,16 +74,19 @@ class AlignmentReading {
   }
 
   /// Expected notes that were played as written.
-  int get matched => alignment.operations.whereType<Match>().length;
+  int get matched => _count<Match>();
 
   /// Expected notes that something else was played for.
-  int get substituted => alignment.operations.whereType<Substitution>().length;
+  int get substituted => _count<Substitution>();
 
   /// Notes played that nothing asked for.
-  int get inserted => alignment.operations.whereType<Insertion>().length;
+  int get inserted => _count<Insertion>();
 
   /// Expected notes that never arrived.
-  int get deleted => alignment.operations.whereType<Deletion>().length;
+  int get deleted => _count<Deletion>();
+
+  int _count<T extends NoteEdit>() =>
+      alignment.noteEdits.where((positioned) => positioned.edit is T).length;
 
   /// Where the performance first departed from what was asked for, or null
   /// when it never did.
@@ -98,13 +100,13 @@ class AlignmentReading {
     final positions = matched + substituted + deleted;
     var consumed = 0;
 
-    for (final operation in alignment.operations) {
-      switch (operation) {
+    for (final (:realizationPosition, :edit) in alignment.noteEdits) {
+      switch (edit) {
         case Match():
           consumed++;
-        case Substitution(:final realizationPosition):
-        case Deletion(:final realizationPosition):
-          return AtExpectedPosition(realizationPosition);
+        case Substitution():
+        case Deletion():
+          return AtExpectedPosition(realizationPosition!);
         case Insertion():
           return consumed == positions
               ? const AfterRealization()

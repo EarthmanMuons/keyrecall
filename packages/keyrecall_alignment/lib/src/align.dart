@@ -5,17 +5,17 @@ import 'package:meta/meta.dart';
 import 'alignment_policy.dart';
 import 'edit_operation.dart';
 
-const _operationEquality = ListEquality<EditOperation>();
+const _operationEquality = ListEquality<MomentOperation>();
 
 /// How a performance relates to what the exercise asked for.
 ///
-/// The edit script and nothing else. Whether the attempt was any good, whether
-/// it counts as retrieval, and what it says about a competency are all
-/// readings of this, made elsewhere.
+/// The edit script and nothing else, moment by moment. Whether the attempt was
+/// any good, whether it counts as retrieval, and what it says about a
+/// competency are all readings of this, made elsewhere.
 @immutable
 class Alignment {
   /// The relationships, in the order both sequences run.
-  final List<EditOperation> operations;
+  final List<MomentOperation> operations;
 
   /// What this explanation cost under the policy that produced it.
   final int cost;
@@ -24,7 +24,7 @@ class Alignment {
   final AlignmentPolicy policy;
 
   Alignment({
-    required List<EditOperation> operations,
+    required List<MomentOperation> operations,
     required this.cost,
     required this.policy,
   }) : operations = List.unmodifiable(operations);
@@ -38,6 +38,13 @@ class Alignment {
   @override
   int get hashCode => Object.hash(cost, _operationEquality.hash(operations));
 
+  /// Every note edit, in script order, carrying the moment it belongs to.
+  List<PositionedNoteEdit> get noteEdits => [
+    for (final operation in operations)
+      for (final edit in operation.noteEdits)
+        (realizationPosition: operation.realizationPosition, edit: edit),
+  ];
+
   @override
   String toString() => 'Alignment(${operations.length} operations, $cost)';
 }
@@ -45,7 +52,8 @@ class Alignment {
 /// Relates [transcript] to what [realization] asked for.
 ///
 /// Returns the minimum-cost complete edit script under [policy]: every expected
-/// note and every played note appears exactly once, in one operation.
+/// note and every played note appears exactly once, in one note edit, under the
+/// moment it belongs to.
 ///
 /// Global rather than greedy, and that is the point. A single extra note early
 /// in a scale has one cheap explanation, an insertion, and one expensive one,
@@ -58,8 +66,9 @@ class Alignment {
 /// to expected times needs a tempo model that does not exist, and inventing one
 /// inside an aligner would hide it.
 ///
-/// Single-hand only for now. Hands-together material needs observations grouped
-/// into moments first, and grouping cannot be decided from timing alone; see
+/// Single-hand only, so every moment holds one note and corresponds to at most
+/// one observation. Hands-together material needs observations grouped into
+/// moments first, and grouping cannot be decided from timing alone; see
 /// `docs/domain-model/alignment-contract.md`.
 ///
 /// Throws [ArgumentError] when [realization] uses more than one hand.
@@ -109,7 +118,7 @@ Alignment align({
   }
 
   return Alignment(
-    operations: _traceBack(cost, expected, observed, policy),
+    operations: _traceBack(cost, expected, observed, hand, policy),
     cost: cost[expected.length][observed.length],
     policy: policy,
   );
@@ -129,20 +138,24 @@ int _smallest(int a, int b, int c) => a < b ? (a < c ? a : c) : (b < c ? b : c);
 /// the tonic, so a single played tonic explains equally well as the first note
 /// or the last, and reading it as the last would say a learner who has played
 /// one note has reached the end.
-List<EditOperation> _traceBack(
+List<MomentOperation> _traceBack(
   List<List<int>> cost,
   List<SpelledPitch> expected,
   List<PlayedNote> observed,
+  Hand hand,
   AlignmentPolicy policy,
 ) {
-  final operations = <EditOperation>[];
+  final operations = <MomentOperation>[];
   var i = expected.length;
   var j = observed.length;
 
   while (i > 0 || j > 0) {
     if (i > 0 && cost[i][j] == cost[i - 1][j] + policy.deletionCost) {
       operations.add(
-        Deletion(realizationPosition: i - 1, expected: expected[i - 1]),
+        MomentDeletion(
+          realizationPosition: i - 1,
+          noteEdits: [Deletion(hand: hand, expected: expected[i - 1])],
+        ),
       );
       i--;
       continue;
@@ -152,17 +165,22 @@ List<EditOperation> _traceBack(
       final step = same ? AlignmentPolicy.matchCost : policy.substitutionCost;
       if (cost[i][j] == cost[i - 1][j - 1] + step) {
         operations.add(
-          same
-              ? Match(
-                  realizationPosition: i - 1,
-                  transcriptSequence: observed[j - 1].sequence,
-                )
-              : Substitution(
-                  realizationPosition: i - 1,
-                  transcriptSequence: observed[j - 1].sequence,
-                  expected: expected[i - 1],
-                  observed: observed[j - 1].pitch,
-                ),
+          MomentCorrespondence(
+            realizationPosition: i - 1,
+            noteEdits: [
+              same
+                  ? Match(
+                      hand: hand,
+                      observedSequence: observed[j - 1].sequence,
+                    )
+                  : Substitution(
+                      hand: hand,
+                      observedSequence: observed[j - 1].sequence,
+                      expected: expected[i - 1],
+                      observed: observed[j - 1].pitch,
+                    ),
+            ],
+          ),
         );
         i--;
         j--;
@@ -170,9 +188,13 @@ List<EditOperation> _traceBack(
       }
     }
     operations.add(
-      Insertion(
-        transcriptSequence: observed[j - 1].sequence,
-        observed: observed[j - 1].pitch,
+      MomentInsertion(
+        noteEdits: [
+          Insertion(
+            observedSequence: observed[j - 1].sequence,
+            observed: observed[j - 1].pitch,
+          ),
+        ],
       ),
     );
     j--;

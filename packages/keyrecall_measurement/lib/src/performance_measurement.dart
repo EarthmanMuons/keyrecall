@@ -74,7 +74,7 @@ class PerformanceMeasurement {
 
   /// Whether anything was played at all.
   bool get started =>
-      alignment.operations.any((operation) => operation is! Deletion);
+      alignment.noteEdits.any((positioned) => positioned.edit is! Deletion);
 
   /// Whether every expected note eventually arrived.
   ///
@@ -174,14 +174,15 @@ PerformanceMeasurement measure({
     policy: alignmentPolicy,
   );
 
+  final edits = alignment.noteEdits;
   var produced = 0;
   var sounded = 0;
   var degrees = 0;
   var repeats = 0;
   var intrusions = 0;
 
-  for (final (index, operation) in alignment.operations.indexed) {
-    switch (operation) {
+  for (final (index, positioned) in edits.indexed) {
+    switch (positioned.edit) {
       case Match():
         produced++;
         sounded++;
@@ -192,7 +193,7 @@ PerformanceMeasurement measure({
           degrees++;
         }
       case Insertion(:final observed):
-        if (_isRepeat(observed, alignment.operations, index, realization)) {
+        if (_isRepeat(observed, edits, index, realization)) {
           repeats++;
         } else {
           intrusions++;
@@ -210,7 +211,7 @@ PerformanceMeasurement measure({
   return PerformanceMeasurement(
     alignment: alignment,
     reading: AlignmentReading(alignment),
-    expectedNotes: realization.moments.length,
+    expectedNotes: realization.noteCount,
     materialProduced: produced,
     soundedCorrectly: sounded,
     degreesCorrect: degrees,
@@ -231,27 +232,28 @@ PerformanceMeasurement measure({
 /// the learner did, so both count.
 bool _isRepeat(
   SpelledPitch observed,
-  List<EditOperation> operations,
+  List<PositionedNoteEdit> edits,
   int index,
   ExerciseRealization realization,
 ) {
   for (final neighbor in [index - 1, index + 1]) {
-    if (neighbor < 0 || neighbor >= operations.length) continue;
-    final position = switch (operations[neighbor]) {
-      Match(:final realizationPosition) => realizationPosition,
-      Substitution(:final realizationPosition) => realizationPosition,
+    if (neighbor < 0 || neighbor >= edits.length) continue;
+    final (:realizationPosition, :edit) = edits[neighbor];
+    final hand = switch (edit) {
+      Match(:final hand) => hand,
+      Substitution(:final hand) => hand,
       _ => null,
     };
-    if (position == null) continue;
-    if (_expectedAt(realization, position).pitchClass == observed.pitchClass) {
-      return true;
-    }
+    if (hand == null) continue;
+    final expected = realization.moments[realizationPosition!].noteFor(hand)!;
+    if (expected.pitch.pitchClass == observed.pitchClass) return true;
   }
   return false;
 }
 
-SpelledPitch _expectedAt(ExerciseRealization realization, int position) =>
-    realization.moments[position].notes.first.pitch;
+/// How many notes the realization asks for, over all its moments.
+int expectedNotesIn(ExerciseRealization realization) =>
+    realization.moments.fold(0, (total, moment) => total + moment.notes.length);
 
 /// When the notes that correspond to expected ones arrived.
 ///
@@ -271,11 +273,11 @@ List<int> _correspondingOnsets(
     for (final note in transcript.notes) note.sequence: note.timestampMs,
   };
   return [
-    for (final operation in alignment.operations)
-      if (operation
-          case Match(:final transcriptSequence) ||
-              Substitution(:final transcriptSequence))
-        bySequence[transcriptSequence]!,
+    for (final positioned in alignment.noteEdits)
+      if (positioned.edit
+          case Match(:final observedSequence) ||
+              Substitution(:final observedSequence))
+        bySequence[observedSequence]!,
   ];
 }
 
