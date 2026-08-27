@@ -44,7 +44,9 @@ Exercise exerciseFor(
 /// A flawless attempt.
 Outcome perfectOutcome({
   FactualRetrieval retrieval = FactualRetrieval.succeeded,
+  double? coordination,
 }) => Outcome(
+  coordination: coordination,
   started: true,
   retrieval: retrieval,
   completed: true,

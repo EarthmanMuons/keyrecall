@@ -6,22 +6,16 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 /// State a reference run under `analysis/learner-model/` produced.
 ///
-/// Recorded from the Python prototype, which is the reference implementation
-/// of the V1 model, by running the same profile, seed, and attempt count. Every
-/// number here is downstream of every prediction, evidence weight, and memory
-/// transition in the run, so any divergence anywhere shows up as a mismatch.
+/// Recorded from the Python prototype the V1 model was designed in, by running
+/// the same profile, seed, and attempt count. Every number here is downstream
+/// of every prediction, evidence weight, and memory transition in the run, so
+/// any divergence anywhere shows up as a mismatch.
 ///
-/// Regenerate with, and only with, a matching reference run:
-///
-/// ```console
-/// python3 analysis/learner-model/simulate.py \
-///     --profile advanced --attempts 40 --seed 0 --out reference.jsonl
-/// ```
-///
-/// These numbers are the evidence that the reproduction succeeded, and the
-/// prototype is now frozen provenance rather than a live reference: a mismatch
-/// means this implementation changed, which may be intended. See
-/// `analysis/README.md`.
+/// These numbers were the evidence that the reproduction succeeded, and are a
+/// regression pin now: a mismatch means this implementation changed, which may
+/// be intended, and the values are then regenerated from a Dart run. The
+/// prototype is frozen provenance rather than something to reconcile against.
+/// See `analysis/README.md`.
 class ReferenceRun {
   final SyntheticProfile profile;
   final int seed;
@@ -56,12 +50,12 @@ const List<ReferenceRun> referenceRuns = [
         0.3111390936652999,
       ),
       Competency.melodicMinorTopology: (0.9990417432818954, 0.7007472512749983),
-      Competency.rhScaleExecution: (1.0588157013773878, 0.055),
-      Competency.lhScaleExecution: (1.086277348282719, 0.05),
-      Competency.scalarCrossing: (1.1113454990138236, 0.05),
-      Competency.multiOctaveContinuation: (1.0584937894311077, 0.05),
-      Competency.directionReversal: (1.058440771217241, 0.05),
-      Competency.handsTogetherCoordination: (1.0337475506462832, 0.055),
+      Competency.rhScaleExecution: (1.0661185229191938, 0.055),
+      Competency.lhScaleExecution: (1.0934401654856238, 0.05),
+      Competency.scalarCrossing: (1.1184591192862812, 0.05),
+      Competency.multiOctaveContinuation: (1.0613577953442774, 0.05),
+      Competency.directionReversal: (1.0640657075468016, 0.05),
+      Competency.handsTogetherCoordination: (1.0, 1.6999999999999957),
     },
     memory: {
       'A_NATURAL_MINOR': (
@@ -69,16 +63,16 @@ const List<ReferenceRun> referenceRuns = [
         4.756635997588373,
         0.3476318328103355,
       ),
-      'C_MAJOR': (5.618371293609872, 18.799456960625314, 0.274762587746675),
-      'D_HARMONIC_MINOR': (8.306538433072916, 26.158732709765665, 0.4),
+      'C_MAJOR': (5.618371293609872, 18.799456960625296, 0.274762587746675),
+      'D_HARMONIC_MINOR': (8.306538433072488, 26.158732709764458, 0.4),
       'E_MELODIC_MINOR': (
-        4.427954051451002,
-        10.528349297839949,
+        4.427954051451413,
+        10.528349297841057,
         0.30678799551944613,
       ),
       'F#_HARMONIC_MINOR': (2.2115103158282756, 2.351539116285737, 0.4),
       'F_MAJOR': (3.0198864293996253, 4.585134175596055, 0.3476318328103355),
-      'G_MAJOR': (2.5881677356718216, 3.040249752324981, 0.3476318328103355),
+      'G_MAJOR': (2.5881677356714707, 3.040249752324981, 0.3476318328103355),
     },
     executionContexts: 14,
     lastAttemptDays: 20.0,
@@ -101,23 +95,20 @@ const List<ReferenceRun> referenceRuns = [
         -1.0038710770715353,
         1.4924215999999961,
       ),
-      Competency.rhScaleExecution: (-1.025592894988373, 0.2042594604041182),
-      Competency.lhScaleExecution: (-1.0153934720576074, 0.3137372455860814),
-      Competency.scalarCrossing: (-1.0326412199664061, 0.11078659067456027),
+      Competency.rhScaleExecution: (-1.027613760854602, 0.2042594604041182),
+      Competency.lhScaleExecution: (-1.017424900499139, 0.3137372455860814),
+      Competency.scalarCrossing: (-1.034637911414693, 0.11078659067456027),
       Competency.multiOctaveContinuation: (
-        -1.0190041119113267,
+        -1.0204180838611894,
         0.2703194904714861,
       ),
-      Competency.directionReversal: (-1.0142078917286632, 0.43143447554754094),
-      Competency.handsTogetherCoordination: (
-        -1.0083451470795743,
-        0.6695399989857808,
-      ),
+      Competency.directionReversal: (-1.0147731197099512, 0.43143447554754094),
+      Competency.handsTogetherCoordination: (-1.0, 1.6999999999999957),
     },
     memory: {
       'A_NATURAL_MINOR': (3.0000000000000004, 3.0000000000000004, 0.4),
-      'C_MAJOR': (2.984538350736177, 7.159521489853896, 0.4),
-      'D_HARMONIC_MINOR': (2.8817950708141917, 4.987470625412445, 0.4),
+      'C_MAJOR': (2.984538350736177, 7.159521489853902, 0.4),
+      'D_HARMONIC_MINOR': (2.8817950708141917, 4.987470625412432, 0.4),
       'E_MELODIC_MINOR': (
         2.3376838876241592,
         3.0000000000000004,
@@ -128,7 +119,7 @@ const List<ReferenceRun> referenceRuns = [
         3.3927046683804845,
         0.30678799551944613,
       ),
-      'F_MAJOR': (3.02404448272332, 4.178221218022571, 0.3289733703999744),
+      'F_MAJOR': (3.02404448272332, 4.178221218022572, 0.3289733703999744),
       'G_MAJOR': (3.0000000000000004, 3.0000000000000004, 0.30678799551944613),
     },
     executionContexts: 18,
@@ -143,18 +134,15 @@ const List<ReferenceRun> referenceRuns = [
       Competency.naturalMinorTopology: (0.9963123007283098, 1.425499999999996),
       Competency.harmonicMinorTopology: (1.0282181641763752, 1.321547864630184),
       Competency.melodicMinorTopology: (1.000822192034568, 1.6544397499999957),
-      Competency.rhScaleExecution: (1.0433710067110837, 0.17231188459999994),
-      Competency.lhScaleExecution: (1.0225463681882736, 0.19043447749999987),
-      Competency.scalarCrossing: (1.0586551824905455, 0.07),
+      Competency.rhScaleExecution: (1.044652998895035, 0.17231188459999994),
+      Competency.lhScaleExecution: (1.0238139102512362, 0.19043447749999987),
+      Competency.scalarCrossing: (1.0598651855597132, 0.07),
       Competency.multiOctaveContinuation: (
-        1.0197636746796621,
+        1.0210542643749814,
         0.16505188459999995,
       ),
-      Competency.directionReversal: (1.0427564094632626, 0.21055524799999986),
-      Competency.handsTogetherCoordination: (
-        1.0072621924088119,
-        0.9132499999999992,
-      ),
+      Competency.directionReversal: (1.0445101349606416, 0.21055524799999986),
+      Competency.handsTogetherCoordination: (1.0, 1.6999999999999957),
     },
     memory: {
       'A_NATURAL_MINOR': (

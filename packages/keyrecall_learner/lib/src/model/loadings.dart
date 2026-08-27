@@ -18,6 +18,10 @@ Map<Competency, double> normalizedLoadings(Set<Competency> q) {
 Map<Competency, double> motorLoadings(Set<Competency> q) =>
     normalizedLoadings(q.intersection(motorCompetencies));
 
+/// `q_{e,k}` restricted to and renormalized within the coordination channel.
+Map<Competency, double> coordinationLoadings(Set<Competency> q) =>
+    normalizedLoadings(q.intersection(coordinationCompetencies));
+
 /// `q_{e,k}` restricted to and renormalized within the topology channel.
 ///
 /// Normalized separately from [motorLoadings]: sharing one denominator would

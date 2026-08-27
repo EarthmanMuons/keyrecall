@@ -263,13 +263,22 @@ void main() {
   });
 
   test('the competency channels partition the ontology', () {
+    final channels = [
+      motorCompetencies,
+      topologyCompetencies,
+      coordinationCompetencies,
+    ];
+
     expect(
-      motorCompetencies.union(topologyCompetencies),
+      channels.reduce((all, channel) => all.union(channel)),
       Competency.values.toSet(),
     );
-    expect(motorCompetencies.intersection(topologyCompetencies), isEmpty);
     for (final competency in Competency.values) {
-      expect(competency.isMotor, isNot(competency.isTopology));
+      expect(
+        channels.where((channel) => channel.contains(competency)).length,
+        1,
+        reason: '\$competency belongs to one prediction channel',
+      );
     }
   });
 

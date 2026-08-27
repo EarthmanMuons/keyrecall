@@ -2,9 +2,9 @@
 
 - **Status:** Partly implemented. `keyrecall_alignment` prices what timing
   suggests about a transcript and aligns any material against it, both hands
-  included, and `keyrecall_measurement` counts notes and moments apart. The
-  coordination channel is not built, so hands-together exercises are still
-  withheld from practice.
+  included, `keyrecall_measurement` counts notes and moments apart, and
+  coordination reaches the learner model through a channel of its own. Practice
+  still withholds hands-together exercises.
 - **Written:** August 25, 2026
 - **Revised:** August 27, 2026, with the hands and order questions resolved
 

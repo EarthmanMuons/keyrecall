@@ -36,7 +36,10 @@ enum Competency {
   bool get isTopology => topologyCompetencies.contains(this);
 
   /// Whether this competency describes physical execution.
-  bool get isMotor => !isTopology;
+  bool get isMotor => motorCompetencies.contains(this);
+
+  /// Whether this competency describes keeping the hands together.
+  bool get isCoordination => coordinationCompetencies.contains(this);
 
   /// The opposite hand's execution competency, or null when there is none.
   ///
@@ -59,13 +62,21 @@ const Set<Competency> topologyCompetencies = {
 
 /// Competencies scored by the motor prediction channel.
 ///
-/// The complement of [topologyCompetencies]; a cued attempt is barely
-/// informative about topology but can still be strong motor evidence.
+/// A cued attempt is barely informative about topology but can still be strong
+/// motor evidence.
 const Set<Competency> motorCompetencies = {
   Competency.rhScaleExecution,
   Competency.lhScaleExecution,
   Competency.scalarCrossing,
   Competency.multiOctaveContinuation,
   Competency.directionReversal,
+};
+
+/// Competencies scored by the coordination channel.
+///
+/// How together the hands were is measured directly, so it learns from that
+/// rather than from how the playing sat in time. Continuity and steadiness say
+/// nothing about whether two hands arrived together.
+const Set<Competency> coordinationCompetencies = {
   Competency.handsTogetherCoordination,
 };

@@ -189,6 +189,21 @@ class LearnerModel {
     );
   }
 
+  /// `P(the hands stay together)`.
+  ///
+  /// Carries no motor-difficulty penalty: coordinating two hands is what this
+  /// channel is about, so charging the same difficulty twice would predict a
+  /// two-hand attempt as harder to coordinate the harder it is to play.
+  double coordinationProbability(LearnerState state, Exercise exercise) {
+    final loadings = coordinationLoadings(exercise.structuralQ);
+    var coordinationTerm = 0.0;
+    for (final entry in loadings.entries) {
+      coordinationTerm +=
+          entry.value * effectiveCompetencyMean(state, entry.key);
+    }
+    return _sigmoid(coordinationTerm);
+  }
+
   /// `P(the pitch/form structure is known)`.
   ///
   /// Carries no motor-difficulty penalty: this channel is about knowing the
@@ -272,6 +287,7 @@ class LearnerModel {
     final q = exercise.structuralQ;
     final motorQ = motorLoadings(q);
     final topologyQ = topologyLoadings(q);
+    final coordinationQ = coordinationLoadings(q);
 
     // Against the difficulty demonstrated, not the one requested. The
     // prediction is still the decision's, and every other channel measures its
@@ -281,14 +297,21 @@ class LearnerModel {
         outcome.motorScore -
         demonstratedExecutionProbability(state, exercise, outcome);
     final deltaTopology = outcome.topologyAccuracy - prediction.topologyP;
+    // Absent when nothing measured how together the hands were, which leaves
+    // the coordination channel untouched rather than teaching it zero.
+    final deltaCoordination = outcome.coordination == null
+        ? null
+        : outcome.coordination! - coordinationProbability(state, exercise);
 
     _updateCompetencies(
       state: state,
       weights: weights,
       motorQ: motorQ,
       topologyQ: topologyQ,
+      coordinationQ: coordinationQ,
       deltaExec: deltaExec,
       deltaTopology: deltaTopology,
+      deltaCoordination: deltaCoordination,
       at: at,
     );
 
@@ -318,18 +341,30 @@ class LearnerModel {
     required EvidenceWeights weights,
     required Map<Competency, double> motorQ,
     required Map<Competency, double> topologyQ,
+    required Map<Competency, double> coordinationQ,
     required double deltaExec,
     required double deltaTopology,
+    required double? deltaCoordination,
     required DateTime at,
   }) {
     for (final competency in Competency.values) {
       final weight = weights[competency];
-      final isTopology = competency.isTopology;
+      final channel = _channelOf(competency);
       final loading =
-          (isTopology ? topologyQ[competency] : motorQ[competency]) ?? 0.0;
+          switch (channel) {
+            _Channel.topology => topologyQ[competency],
+            _Channel.motor => motorQ[competency],
+            _Channel.coordination => coordinationQ[competency],
+          } ??
+          0.0;
       if (weight <= 0.0 || loading <= 0.0) continue;
 
-      final delta = isTopology ? deltaTopology : deltaExec;
+      final delta = switch (channel) {
+        _Channel.topology => deltaTopology,
+        _Channel.motor => deltaExec,
+        _Channel.coordination => deltaCoordination,
+      };
+      if (delta == null) continue;
       final belief = state.competency(competency);
       belief.mean += params.competency.learningRate * loading * weight * delta;
       belief.variance = math.max(
@@ -622,4 +657,14 @@ class LearnerModel {
               (memory.consolidatedHalfLifeDays - current),
     );
   }
+}
+
+/// Which prediction each competency's evidence is measured against.
+enum _Channel { motor, topology, coordination }
+
+_Channel _channelOf(Competency competency) {
+  if (competency.isTopology) return _Channel.topology;
+  return coordinationCompetencies.contains(competency)
+      ? _Channel.coordination
+      : _Channel.motor;
 }

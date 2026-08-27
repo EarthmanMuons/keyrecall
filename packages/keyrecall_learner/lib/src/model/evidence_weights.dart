@@ -88,11 +88,17 @@ EvidenceWeights evidenceWeightsFor(Exercise exercise, Outcome outcome) {
   // Topology is a pitch-knowledge question like memory, so a cued attempt is
   // barely informative about it. Motor competencies are unaffected: cueing
   // does not move the learner's hands for them.
+  //
+  // Coordination is omitted unless the attempt measured it. An exercise both
+  // hands play creates the opportunity; whether anything was observed through
+  // it is a fact about the performance.
   final competencyWeights = {
     for (final competency in exercise.structuralQ)
-      competency: competency.isTopology
-          ? executionWeight * retrievalDemand
-          : executionWeight,
+      if (!coordinationCompetencies.contains(competency) ||
+          outcome.coordination != null)
+        competency: competency.isTopology
+            ? executionWeight * retrievalDemand
+            : executionWeight,
   };
 
   return EvidenceWeights(
