@@ -4,47 +4,10 @@ import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
-import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'attempt_diagnosis.dart';
 import 'exercise_presentation.dart';
-
-/// The best true thing about an attempt, or null when there is none.
-///
-/// Deliberately one thing and deliberately positive. A learner mid-sitting is
-/// deciding whether to keep going, and a list of everything that happened is
-/// what the fluency profile is for; this is the sentence that makes the
-/// attempt feel finished.
-///
-/// Positive-only is a presentation choice, not a hidden one: nothing here
-/// softens or omits evidence, because the evidence has already been written to
-/// the journal in full by the time anyone reads this.
-///
-/// Returns null rather than inventing praise. An attempt that never started,
-/// or one that fell apart, gets no sentence, and the screen says something
-/// factual instead of congratulating a learner on nothing.
-String? praiseFor(Exercise exercise, Outcome outcome) {
-  if (!outcome.started) return null;
-
-  final fromMemory = outcome.retrieval == FactualRetrieval.succeeded;
-
-  if (outcome.completed && outcome.pitchIntegrity >= 0.999) {
-    return fromMemory ? 'Every note, from memory.' : 'Every note right.';
-  }
-  if (outcome.completed && outcome.temporalStability >= 0.8) {
-    return 'Nice and steady the whole way.';
-  }
-  if (outcome.completed && outcome.continuity >= 0.9) {
-    return 'Straight through, no stopping.';
-  }
-  if (outcome.completed) {
-    return fromMemory
-        ? 'You got there from memory.'
-        : 'All the way to the end.';
-  }
-  if (fromMemory) return 'You had the notes.';
-  return null;
-}
 
 /// Why the scheduler chose what it chose, when it can be said honestly.
 ///
@@ -89,11 +52,15 @@ class AttemptReview extends StatelessWidget {
     required this.record,
     required this.next,
     required this.onNext,
+    this.reading,
     super.key,
   });
 
   /// The attempt that just closed.
   final AttemptRecord record;
+
+  /// What it was read from, when the closure came from a performance.
+  final PerformanceReading? reading;
 
   /// What has been decided to come next, if anything.
   final PresentedAttempt? next;
@@ -104,11 +71,11 @@ class AttemptReview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final closure = record.closure;
-    final praise = switch (closure.measurement) {
-      Measured(:final outcome) => praiseFor(record.exercise, outcome),
-      MeasurementUnavailable() => null,
-    };
+    final diagnosis = diagnose(
+      exercise: record.exercise,
+      closure: record.closure,
+      reading: reading,
+    );
     final upcoming = next;
     final reason = upcoming == null
         ? null
@@ -125,7 +92,7 @@ class AttemptReview extends StatelessWidget {
         children: [
           const Spacer(),
           Text(
-            praise ?? 'Logged.',
+            diagnosis?.sentence ?? 'Logged.',
             style: theme.textTheme.headlineMedium,
             textAlign: TextAlign.center,
           ),
@@ -157,7 +124,7 @@ class AttemptReview extends StatelessWidget {
           ],
           const Spacer(),
           if (!kReleaseMode) ...[
-            _Measured(record: record, next: upcoming),
+            _Measured(record: record, next: upcoming, diagnosis: diagnosis),
             const SizedBox(height: 16),
           ],
           SizedBox(
@@ -184,10 +151,15 @@ class AttemptReview extends StatelessWidget {
 /// it sets the difficulty execution evidence is attributed at, so a systematic
 /// offset between the click and the transcript clock would show up here first.
 class _Measured extends StatelessWidget {
-  const _Measured({required this.record, required this.next});
+  const _Measured({
+    required this.record,
+    required this.next,
+    required this.diagnosis,
+  });
 
   final AttemptRecord record;
   final PresentedAttempt? next;
+  final AttemptDiagnosis? diagnosis;
 
   @override
   Widget build(BuildContext context) {
@@ -195,6 +167,10 @@ class _Measured extends StatelessWidget {
     final decision = next?.decision.decision;
     final rows = <(String, String)>[
       ('termination', record.closure.termination.id),
+      if (diagnosis case final diagnosis?) ...[
+        ('fault', diagnosis.fault?.name ?? 'none'),
+        ('located', diagnosis.where?.name ?? 'nowhere'),
+      ],
       ...switch (record.closure.measurement) {
         Measured(:final outcome, :final weights) => [
           ('retrieval', outcome.retrieval.name),

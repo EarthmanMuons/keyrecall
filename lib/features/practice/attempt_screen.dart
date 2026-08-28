@@ -60,6 +60,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         appBar: AppBar(title: const Text('Practice')),
         body: AttemptReview(
           record: committed,
+          reading: loop.value?.lastReading,
           next: loop.value?.presented,
           onNext: () =>
               setState(() => _reviewed = committed.identity.attemptId),
