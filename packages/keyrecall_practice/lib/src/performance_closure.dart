@@ -1,5 +1,6 @@
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:meta/meta.dart';
@@ -17,6 +18,22 @@ class PerformanceReading {
   final Outcome outcome;
 
   const PerformanceReading({required this.measurement, required this.outcome});
+}
+
+/// A committed attempt, and the reading it was committed from.
+///
+/// Two lifetimes in one place. The record is history and outlives the sitting;
+/// the reading is the correspondence behind it, which nothing persists, so
+/// this is the only moment anything can ask it where a fault happened.
+@immutable
+class ClosedAttempt {
+  /// What history now says about the attempt.
+  final AttemptRecord record;
+
+  /// What that was read from.
+  final PerformanceReading reading;
+
+  const ClosedAttempt({required this.record, required this.reading});
 }
 
 /// Whether a performance of [exercise] has covered the whole traversal.

@@ -226,6 +226,13 @@ class PracticeLoopState {
   /// The last attempt committed in this sitting.
   final AttemptRecord? lastCommitted;
 
+  /// What [lastCommitted] was read from, when it was read from a performance.
+  ///
+  /// Absent for a decline, for a hand-entered report, and after a reopen, all
+  /// of which produce a record without a correspondence behind it. Nothing
+  /// persists this, so it lives exactly as long as the review that reads it.
+  final PerformanceReading? lastReading;
+
   /// Why there is nothing to present, when there is nothing.
   final String? note;
 
@@ -235,6 +242,7 @@ class PracticeLoopState {
     this.presented,
     this.pending,
     this.lastCommitted,
+    this.lastReading,
     this.note,
   });
 
@@ -357,7 +365,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     _writing = true;
     try {
       state = await AsyncValue.guard(() async {
-        final record = await current.session.closeFromPerformance(
+        final closed = await current.session.closeFromPerformance(
           transcript,
           observedWallTime: DateTime.now().toUtc(),
         );
@@ -365,7 +373,8 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           PracticeLoopState(
             profile: current.profile,
             session: current.session,
-            lastCommitted: record,
+            lastCommitted: closed.record,
+            lastReading: closed.reading,
           ),
         );
       });
@@ -496,6 +505,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       session: from.session,
       presented: presented,
       lastCommitted: from.lastCommitted,
+      lastReading: from.lastReading,
       note: presented == null
           ? 'the scheduler admitted nothing for this slot'
           : from.note,

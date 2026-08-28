@@ -353,13 +353,19 @@ class PracticeSession {
   /// is a complete record of an attempt that happened and produced no
   /// evidence.
   ///
+  /// The reading comes back beside the record because the record deliberately
+  /// does not carry it. History stores the outcome, which is what replay needs
+  /// and what a later model must be able to reinterpret; the correspondence
+  /// behind it is transient, and a caller that wants to say where something
+  /// went wrong has to be handed it while it still exists.
+  ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
-  Future<AttemptRecord> closeFromPerformance(
+  Future<ClosedAttempt> closeFromPerformance(
     PerformanceTranscript transcript, {
     AttemptTermination termination = AttemptTermination.learnerStopped,
     MeasurementPolicy policy = MeasurementPolicy.standard,
     DateTime? observedWallTime,
-  }) {
+  }) async {
     final outstanding = _outstanding ?? _pendingAsOutstanding();
     final reading = readPerformance(
       exercise: outstanding.decision.exercise,
@@ -367,10 +373,13 @@ class PracticeSession {
       policy: policy,
     );
 
-    return _close(
-      termination: termination,
-      outcome: reading.outcome,
-      observedWallTime: observedWallTime,
+    return ClosedAttempt(
+      record: await _close(
+        termination: termination,
+        outcome: reading.outcome,
+        observedWallTime: observedWallTime,
+      ),
+      reading: reading,
     );
   }
 

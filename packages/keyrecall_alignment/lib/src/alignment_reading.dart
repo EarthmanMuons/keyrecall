@@ -88,6 +88,22 @@ class AlignmentReading {
   int _count<T extends NoteEdit>() =>
       alignment.noteEdits.where((positioned) => positioned.edit is T).length;
 
+  /// The first moment of the realization nothing arrived for, or null when
+  /// everything did.
+  ///
+  /// Where an attempt that did not finish stopped, in the ordinary case. Not
+  /// the same question as [firstDeparture], which reports whichever departure
+  /// came first including a wrong or extra note: an attempt can play something
+  /// wrong at the second moment and still run out at the twelfth.
+  int? get firstAbsentPosition {
+    for (final operation in alignment.operations) {
+      if (operation case MomentDeletion(:final realizationPosition)) {
+        return realizationPosition;
+      }
+    }
+    return null;
+  }
+
   /// Where the performance first departed from what was asked for, or null
   /// when it never did.
   ///

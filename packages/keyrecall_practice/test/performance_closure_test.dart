@@ -64,13 +64,16 @@ void main() {
     final session = await openSession(store);
     final presented = await presentUntil(session, oneHand);
 
-    final record = await session.closeFromPerformance(
+    final closed = await session.closeFromPerformance(
       performance(presented.exercise),
     );
 
-    final measurement = record.closure.measurement;
+    final measurement = closed.record.closure.measurement;
     expect(measurement, isA<Measured>());
-    expect(record.closure.termination, AttemptTermination.learnerStopped);
+    expect(
+      closed.record.closure.termination,
+      AttemptTermination.learnerStopped,
+    );
     final outcome = (measurement as Measured).outcome;
     expect(outcome.completed, isTrue);
     expect(outcome.motorScore, 1.0);
@@ -82,12 +85,32 @@ void main() {
     );
   });
 
+  test('hands back the reading the record was made from', () async {
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final session = await openSession(store);
+    final presented = await presentUntil(session, oneHand);
+
+    final closed = await session.closeFromPerformance(
+      performance(presented.exercise),
+    );
+
+    final committed = closed.record.closure.measurement as Measured;
+    expect(
+      closed.reading.outcome,
+      committed.outcome,
+      reason:
+          'a caller reading the correspondence must be reading the one '
+          'history was written from, not a second measurement of it',
+    );
+    expect(closed.reading.measurement.reading.isComplete, isTrue);
+  });
+
   test('a poor attempt is still measured, not refused', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final session = await openSession(store);
     final presented = await presentUntil(session, oneHand);
 
-    final record = await session.closeFromPerformance(
+    final closed = await session.closeFromPerformance(
       // Nothing like the exercise, at a stumbling pace.
       performance(
         presented.exercise,
@@ -96,7 +119,7 @@ void main() {
       ),
     );
 
-    final measurement = record.closure.measurement;
+    final measurement = closed.record.closure.measurement;
     expect(
       measurement,
       isA<Measured>(),
@@ -119,12 +142,12 @@ void main() {
     );
     final before = learnerStateHash(session.state);
 
-    final record = await session.closeFromPerformance(
+    final closed = await session.closeFromPerformance(
       performance(presented.exercise),
     );
 
-    expect(record.closure.measurement, isA<Measured>());
-    final outcome = (record.closure.measurement as Measured).outcome;
+    expect(closed.record.closure.measurement, isA<Measured>());
+    final outcome = (closed.record.closure.measurement as Measured).outcome;
     expect(
       outcome.coordination,
       isNotNull,
