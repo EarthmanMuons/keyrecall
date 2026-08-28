@@ -14,8 +14,8 @@ import 'exercise_presentation.dart';
 /// Only the named exceptions are stated. Those are recorded on the decision
 /// and mean exactly one thing each. An ordinary admission wins on a
 /// lexicographic key against candidates the decision does not keep, so which
-/// term decided it is not something this can know, and it says nothing rather
-/// than guessing.
+/// term decided it is not something this can know, and it falls back to
+/// [differenceTo] rather than guessing.
 String? reasonForNext({
   required SchedulerDecision decision,
   required Exercise next,
@@ -36,9 +36,59 @@ String? reasonForNext({
       sameMaterial
           ? 'That looked easy. Same scale, at the speed you played it.'
           : 'That looked easy, so this one is quicker.',
-    ChallengeBypass.override => null,
-    null => sameMaterial ? 'Again, with something changed.' : null,
+    ChallengeBypass.override ||
+    null => differenceTo(next, previous) ?? (sameMaterial ? 'Again.' : null),
   };
+}
+
+/// What is different about [next], when a learner would notice.
+///
+/// A fact about the pair rather than a reason for it. Stating what changed
+/// claims nothing about the ranking that produced the change, which is what
+/// makes this available where [reasonForNext] has nothing honest to say.
+///
+/// One difference, in salience order rather than in the order the exercise
+/// happens to hold them. Two exercises can differ in every condition at once,
+/// and reading the changelog is not what somebody with their hands on the keys
+/// is there for. The scale itself is not in the order: its name is already on
+/// the screen above this.
+String? differenceTo(Exercise next, Exercise previous) {
+  final conditions = next.conditions;
+  final was = previous.conditions;
+
+  if (conditions.hands != was.hands) {
+    return switch (conditions.hands) {
+      HandConfiguration.together => 'Both hands this time.',
+      HandConfiguration.right => 'Right hand alone this time.',
+      HandConfiguration.left => 'Left hand alone this time.',
+    };
+  }
+  if (next.guidance != previous.guidance) {
+    if (next.guidance == GuidanceContext.continuouslyCued) {
+      return 'The notes stay up for this one.';
+    }
+    if (next.guidance == GuidanceContext.notesPreviewedOnly) {
+      return 'A look at the notes first, then from memory.';
+    }
+    return 'This one is from memory.';
+  }
+  if (conditions.octaves != was.octaves) {
+    return conditions.octaves == 1
+        ? 'One octave this time.'
+        : '${conditions.octaves} octaves this time.';
+  }
+  if (conditions.direction != was.direction) {
+    return switch (conditions.direction) {
+      ScaleDirection.up => 'Just up this time.',
+      ScaleDirection.upDown => 'Up and back down this time.',
+    };
+  }
+  if (conditions.tempoBpm != was.tempoBpm) {
+    return conditions.tempoBpm > was.tempoBpm
+        ? 'A little quicker.'
+        : 'A little slower.';
+  }
+  return null;
 }
 
 /// What just happened, and what is next.
