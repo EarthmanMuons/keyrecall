@@ -65,6 +65,18 @@ class PerformanceMeasurement {
   /// The median gap between played moments in milliseconds, or null.
   final int? medianIntervalMs;
 
+  /// Where the longest gap between played moments ended, as a realization
+  /// position, or null when too few arrived.
+  ///
+  /// The moment [worstIntervalRatio] is about. A break is a gap rather than a
+  /// note, and the moment that ended it is the one a learner can be pointed
+  /// at: it is where playing resumed.
+  final int? longestGapBeforePosition;
+
+  /// Where the hands were furthest apart, as a realization position, or null
+  /// when no moment had both.
+  final int? widestAsynchronyAtPosition;
+
   /// What the policy was.
   final MeasurementPolicy policy;
 
@@ -83,6 +95,8 @@ class PerformanceMeasurement {
     this.dispersion,
     this.worstIntervalRatio,
     this.medianIntervalMs,
+    this.longestGapBeforePosition,
+    this.widestAsynchronyAtPosition,
   }) : handAsynchroniesMs = List.unmodifiable(handAsynchroniesMs);
 
   /// Whether anything was played at all.
@@ -265,8 +279,10 @@ PerformanceMeasurement measure({
 
   final onsets = _momentOnsets(alignment);
   final intervals = [
-    for (var i = 1; i < onsets.length; i++) onsets[i] - onsets[i - 1],
+    for (var i = 1; i < onsets.length; i++)
+      onsets[i].onsetMs - onsets[i - 1].onsetMs,
   ];
+  final longestGap = _longestGapIndexOf(intervals);
 
   return PerformanceMeasurement(
     alignment: alignment,
@@ -286,6 +302,10 @@ PerformanceMeasurement measure({
     dispersion: _dispersionOf(intervals),
     worstIntervalRatio: _worstRatioOf(intervals),
     medianIntervalMs: intervals.isEmpty ? null : _median(intervals).round(),
+    longestGapBeforePosition: longestGap == null
+        ? null
+        : onsets[longestGap + 1].position,
+    widestAsynchronyAtPosition: _widestAsynchronyPositionOf(alignment),
     policy: policy,
   );
 }
@@ -334,12 +354,47 @@ int expectedNotesIn(ExerciseRealization realization) =>
 ///
 /// A moment nothing arrived for has no onset, and a moment whose observations
 /// were all extra corresponds to no expected note, so neither appears.
-List<double> _momentOnsets(Alignment alignment) => [
+List<({int position, double onsetMs})> _momentOnsets(Alignment alignment) => [
   for (final operation in alignment.operations)
-    if (operation case MomentCorrespondence(:final onsetMs, :final noteEdits))
+    if (operation case MomentCorrespondence(
+      :final realizationPosition,
+      :final onsetMs,
+      :final noteEdits,
+    ))
       if (noteEdits.any((edit) => edit is Match || edit is Substitution))
-        onsetMs,
+        (position: realizationPosition, onsetMs: onsetMs),
 ];
+
+/// Which interval was the longest, or null when there are too few to compare.
+///
+/// Gated the same way [_worstRatioOf] is, because it is that ratio's location
+/// and the two must not disagree about whether there was a worst gap at all.
+int? _longestGapIndexOf(List<double> intervals) {
+  if (intervals.length < _fewestIntervals) return null;
+  var longest = 0;
+  for (var i = 1; i < intervals.length; i++) {
+    if (intervals[i] > intervals[longest]) longest = i;
+  }
+  return longest;
+}
+
+/// Where the hands got furthest apart, or null when no moment had both.
+int? _widestAsynchronyPositionOf(Alignment alignment) {
+  int? widestPosition;
+  var widest = -1;
+  for (final operation in alignment.operations) {
+    if (operation case MomentCorrespondence(
+      :final realizationPosition,
+      handAsynchronyMs: final asynchrony?,
+    )) {
+      if (asynchrony.abs() > widest) {
+        widest = asynchrony.abs();
+        widestPosition = realizationPosition;
+      }
+    }
+  }
+  return widestPosition;
+}
 
 /// Three matched notes is the fewest that can have a spread at all.
 const int _fewestIntervals = 2;

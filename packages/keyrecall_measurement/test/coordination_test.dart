@@ -164,6 +164,37 @@ void main() {
     });
   });
 
+  group('where the hands came apart', () {
+    test('names the moment they were furthest apart', () {
+      expect(
+        measuredWith(const [10, 10, 90, 10]).widestAsynchronyAtPosition,
+        2,
+      );
+    });
+
+    test('does not care which hand led', () {
+      expect(
+        measuredWith(const [10, 10, -90, 10]).widestAsynchronyAtPosition,
+        2,
+      );
+    });
+
+    test('skips moments a hand played nothing at', () {
+      final measurement = measuredWith(
+        const [90, 10, 10, 10],
+        silent: {Hand.left},
+        atMoment: 0,
+      );
+
+      expect(measurement.correspondedTwoHandMoments, 3);
+      expect(
+        measurement.widestAsynchronyAtPosition,
+        isNot(0),
+        reason: 'a moment with one hand has no spread to be the widest',
+      );
+    });
+  });
+
   test('the outcome carries the score and not which hand led', () {
     Outcome outcomeOf(List<int> spreads) =>
         outcomeFor(measurement: measuredWith(spreads), exercise: exercise);

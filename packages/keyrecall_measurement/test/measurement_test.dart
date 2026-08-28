@@ -270,6 +270,35 @@ void main() {
     );
   });
 
+  group('where the timing went wrong', () {
+    test('names the moment the longest gap ran up to', () {
+      final gaps = [1000, 1000, 1000, 5000, 1000, 1000, 1000];
+      final measurement = measured(expected, gaps: gaps);
+
+      expect(
+        measurement.longestGapBeforePosition,
+        4,
+        reason:
+            'the gap sits between the fourth and fifth notes, and the '
+            'fifth is the one somebody can be pointed at',
+      );
+    });
+
+    test('says nothing when there was no worst gap to locate', () {
+      final measurement = measured(expected.take(2).toList());
+
+      expect(measurement.worstIntervalRatio, isNull);
+      expect(measurement.longestGapBeforePosition, isNull);
+    });
+
+    test('locates the gap by when playing resumed, not by what was played', () {
+      final gaps = [1000, 1000, 1000, 5000, 1000, 1000, 1000];
+      final wrongNote = measured([...expected]..[4] = 66, gaps: gaps);
+
+      expect(wrongNote.longestGapBeforePosition, 4);
+    });
+  });
+
   group('a wrong note played exactly on the beat', () {
     test('costs pitch and degree, and nothing in timing', () {
       final measurement = measured([...expected]..[2] = 66);
