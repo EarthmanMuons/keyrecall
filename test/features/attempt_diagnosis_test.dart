@@ -101,6 +101,42 @@ void main() {
       );
     });
 
+    test('the whole scale an octave off is one mistake, not fifteen', () {
+      // What a real sitting produced: an unguided attempt played correctly in
+      // the wrong register, every note a register substitution, reported as
+      // fifteen pitches slipping. That describes a performance nobody gave.
+      final diagnosis = diagnosisOf(
+        played([for (final note in expected) note - 12]),
+      );
+
+      expect(diagnosis.fault, AttemptFault.notes);
+      expect(diagnosis.slippedNotes, expected.length);
+      expect(diagnosis.registerOnly, isTrue);
+      expect(diagnosis.sentence, 'Right notes, an octave off.');
+    });
+
+    test('one octave slip among right notes is placed', () {
+      final diagnosis = diagnosisOf(
+        played([...expected]..[3] = expected[3] - 12),
+      );
+
+      expect(diagnosis.registerOnly, isTrue);
+      expect(diagnosis.sentence, 'Right note, wrong octave on the way up.');
+    });
+
+    test('a wrong pitch beside an octave slip is not a register mistake', () {
+      final diagnosis = diagnosisOf(
+        played(
+          [...expected]
+            ..[3] = expected[3] - 12
+            ..[9] = 66,
+        ),
+      );
+
+      expect(diagnosis.registerOnly, isFalse);
+      expect(diagnosis.sentence, '2 pitches slipped.');
+    });
+
     test('a wrong note and an extra one are totalled, not ranked', () {
       final diagnosis = diagnosisOf(
         played(
@@ -232,7 +268,7 @@ void main() {
       ),
     )!;
 
-    expect(diagnosis.sentence, 'Noted. That one would not come.');
+    expect(diagnosis.sentence, 'Noted. We will come back to it.');
   });
 
   test('an unmeasured attempt gets no diagnosis at all', () {

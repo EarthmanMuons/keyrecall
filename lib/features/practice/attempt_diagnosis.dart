@@ -83,6 +83,14 @@ class AttemptDiagnosis {
   /// them.
   final int? extraNotes;
 
+  /// Whether every wrong pitch was the right note in the wrong octave.
+  ///
+  /// Its own case because it is its own mistake, and because the exercise may
+  /// not have said where to start. Telling somebody who played the scale
+  /// correctly that fifteen pitches slipped describes a performance they did
+  /// not give.
+  final bool registerOnly;
+
   const AttemptDiagnosis({
     required this.started,
     required this.finished,
@@ -92,11 +100,12 @@ class AttemptDiagnosis {
     required this.handsTogether,
     this.slippedNotes,
     this.extraNotes,
+    this.registerOnly = false,
   });
 
   /// The sentence to put on the screen.
   String get sentence {
-    if (declined) return 'Noted. That one would not come.';
+    if (declined) return 'Noted. We will come back to it.';
     if (!started) return 'Nothing came through.';
     if (!finished) {
       return where == null
@@ -134,6 +143,11 @@ class AttemptDiagnosis {
     final extra = extraNotes;
     if (slipped == null || extra == null) {
       return 'A few pitches slipped$_where.';
+    }
+    if (registerOnly) {
+      return slipped == 1
+          ? 'Right note, wrong octave$_where.'
+          : 'Right notes, an octave off.';
     }
     if (slipped > 0 && extra > 0) return '${slipped + extra} notes went wrong.';
     if (slipped == 1) return 'A pitch slipped$_where.';
@@ -177,9 +191,27 @@ AttemptDiagnosis? diagnose({
       handsTogether: exercise.conditions.hands == HandConfiguration.together,
       slippedNotes: script?.substituted,
       extraNotes: script?.inserted,
+      registerOnly: script != null && _isRegisterOnly(script),
     );
   }
   return null;
+}
+
+/// Whether every departure was a register slip and nothing else went wrong.
+///
+/// Playing the whole scale an octave from where the exercise placed it is one
+/// mistake rather than fifteen, and at an unguided rung it may not be a
+/// mistake the learner could have avoided: nothing on screen says which octave
+/// to start in.
+bool _isRegisterOnly(AlignmentReading script) {
+  if (script.substituted == 0 || script.inserted > 0) return false;
+  return script.alignment.noteEdits.every(
+    (positioned) => switch (positioned.edit) {
+      Substitution(:final kind) => kind == SubstitutionKind.register,
+      Match() => true,
+      _ => false,
+    },
+  );
 }
 
 /// The one channel worth naming, or null when none of them is.
