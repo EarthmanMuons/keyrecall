@@ -53,6 +53,13 @@ class StaffCue extends StatelessWidget {
       highlightColor: scheme.primary,
     );
 
+    // The cue is showing the scale on purpose, so it is written the way a
+    // scale book writes it. The staff that grows from what was played is not;
+    // see [TranscriptStaff].
+    final keySignature = crisp.KeySignature(
+      keySignatureFifths(exercise.material),
+    );
+
     if (realization.hands.length > 1) {
       return Column(
         children: [
@@ -65,6 +72,7 @@ class StaffCue extends StatelessWidget {
                 for (final hand in realization.hands)
                   hand: displayFingeringFor(exercise, hand),
             },
+            keySignature: keySignature,
           ))
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -80,6 +88,7 @@ class StaffCue extends StatelessWidget {
         fingering: showsFingering
             ? displayFingeringFor(exercise, realization.hands.single)
             : null,
+        keySignature: keySignature,
       ),
       theme: theme,
       staffSpace: staffSpace,

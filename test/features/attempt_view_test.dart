@@ -85,9 +85,13 @@ void main() {
       await pumpAttempt(tester, guidance);
 
       expect(find.text('C major'), findsOneWidget);
+      // Where the hand goes is part of the task, not a cue: an unguided
+      // attempt cannot infer the register the exercise placed the scale in,
+      // and playing it correctly an octave away scores as every note wrong.
+
       for (final fact in const [
         'RIGHT HAND',
-        'Up and down · 2 octaves',
+        'Up and down · 2 octaves · from C4',
         '80 bpm',
       ]) {
         expect(

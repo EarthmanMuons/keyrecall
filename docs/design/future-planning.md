@@ -847,7 +847,17 @@ translate it into useful descriptions of:
 These are derived presentations, not one-to-one latent variables. Labels must
 communicate uncertainty and avoid implying precision the model does not have.
 
-### 6.2 “Why this exercise?” explanations
+### 6.2 A hand shown rather than named
+
+The task statement says which hand plays in words, and words are easy to read
+past when the previous exercise used the other one. A small pair of hand figures
+with the one in use marked would be read without being read, which is what a
+person moving between the screen and the keyboard has attention for.
+
+Not urgent, and deliberately not a replacement for the text: it is a second
+channel for the same fact, which is the point.
+
+### 6.3 “Why this exercise?” explanations
 
 Candidate and update traces can support concise explanations such as:
 

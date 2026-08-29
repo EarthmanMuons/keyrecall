@@ -20,6 +20,29 @@ String handsName(HandConfiguration hands) => switch (hands) {
 String octavesName(int octaves) =>
     octaves == 1 ? '1 octave' : '$octaves octaves';
 
+/// Where each hand starts, as a learner would read it off a keyboard.
+///
+/// Part of the task rather than a cue. Which octave to begin in is a
+/// convention this app chose, not something the material implies, so an
+/// unguided attempt has no way to infer it: a learner who plays the scale
+/// perfectly one octave from where the exercise placed it has done nothing
+/// wrong and every note counts as a wrong pitch. The rungs withhold what the
+/// notes are; they were never meant to withhold where the hand goes.
+String startingNotesName(ExerciseRealization realization) {
+  final starts = [
+    for (final hand in [Hand.left, Hand.right])
+      if (realization.moments.first.noteFor(hand) case final note?)
+        _scientificName(note.pitch),
+  ];
+  return 'from ${starts.join(' and ')}';
+}
+
+/// A pitch as its letter, any accidental, and its octave number, which is how
+/// a keyboard is labelled and how one player tells another where to put their
+/// hand.
+String _scientificName(SpelledPitch pitch) =>
+    '${_prettyTonic(pitch.label)}${pitch.midiNote ~/ 12 - 1}';
+
 /// Which way it runs.
 String directionName(ScaleDirection direction) =>
     direction == ScaleDirection.up ? 'Up' : 'Up and down';

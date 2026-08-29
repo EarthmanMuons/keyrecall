@@ -7,11 +7,12 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// from [ExerciseRealization], so the staff and the keyboard diagram are two
 /// views of one answer to what the exercise asks for.
 ///
-/// V1 draws quarter notes in 4/4 with no key signature and an accidental on
-/// every altered note. That is deliberately plain rather than idiomatic: a key
-/// signature is itself a cue, since four sharps tell a learner most of E major
-/// before they play a note, so which attempts get one is a policy question
-/// this layer should not answer by default.
+/// Quarter notes in 4/4. Whether a key signature is written is the caller's
+/// to decide and not this layer's, because a signature is itself information:
+/// four sharps tell a learner most of E major before they play a note. The cue
+/// staff writes one, since it is showing them the scale on purpose. The staff
+/// that grows from what they played does not, because by then it would be
+/// telling them what they were supposed to have done.
 
 /// Beats in a bar. One moment to a beat, so also moments in a bar.
 const int _beatsPerMeasure = 4;
@@ -29,10 +30,14 @@ const crisp.KeySignature _noKeySignature = crisp.KeySignature(0);
 String staffElementId(Hand hand, int position) => '${hand.id}-$position';
 
 /// The staff [hand] reads from.
+///
+/// Written in [keySignature] when one is given, and with an accidental on
+/// every altered note when it is not.
 crisp.Score staffScoreFor(
   ExerciseRealization realization,
   Hand hand, {
   List<int?>? fingering,
+  crisp.KeySignature? keySignature,
 }) {
   final elements = <crisp.MusicElement>[
     for (final moment in realization.moments)
@@ -40,9 +45,15 @@ crisp.Score staffScoreFor(
         crisp.NoteElement.note(
           _pitchOf(note.pitch),
           crisp.NoteDuration.quarter,
-          // Always written, since nothing establishes the accidentals for the
-          // reader: there is no key signature to imply them.
-          showAccidental: note.pitch.alteration != 0 ? true : null,
+          // Forced only where nothing establishes the accidentals for the
+          // reader. Under a signature the engraver decides, which is what
+          // puts harmonic minor's raised seventh on the page and leaves the
+          // notes the signature already covers alone.
+          showAccidental: keySignature != null
+              ? null
+              : note.pitch.alteration != 0
+              ? true
+              : null,
           fingerings: switch (fingering?[moment.position]) {
             // A null is a digit deliberately left off, not a missing one.
             null => const <int>[],
@@ -54,7 +65,7 @@ crisp.Score staffScoreFor(
 
   return crisp.Score(
     clef: hand == Hand.left ? crisp.Clef.bass : crisp.Clef.treble,
-    keySignature: _noKeySignature,
+    keySignature: keySignature ?? _noKeySignature,
     timeSignature: _fourFour,
     measures: [
       for (var start = 0; start < elements.length; start += _beatsPerMeasure)
@@ -76,13 +87,20 @@ crisp.Score staffScoreFor(
 crisp.GrandStaff grandStaffFor(
   ExerciseRealization realization, {
   Map<Hand, List<int?>?> fingering = const {},
+  crisp.KeySignature? keySignature,
 }) => crisp.GrandStaff(
   upper: staffScoreFor(
     realization,
     Hand.right,
     fingering: fingering[Hand.right],
+    keySignature: keySignature,
   ),
-  lower: staffScoreFor(realization, Hand.left, fingering: fingering[Hand.left]),
+  lower: staffScoreFor(
+    realization,
+    Hand.left,
+    fingering: fingering[Hand.left],
+    keySignature: keySignature,
+  ),
 );
 
 /// The grand staff broken into rows of [measuresPerRow] bars.
@@ -95,8 +113,13 @@ List<crisp.GrandStaff> grandStaffRowsFor(
   ExerciseRealization realization, {
   Map<Hand, List<int?>?> fingering = const {},
   int measuresPerRow = 2,
+  crisp.KeySignature? keySignature,
 }) {
-  final whole = grandStaffFor(realization, fingering: fingering);
+  final whole = grandStaffFor(
+    realization,
+    fingering: fingering,
+    keySignature: keySignature,
+  );
   final rows = <crisp.GrandStaff>[];
 
   for (

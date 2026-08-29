@@ -431,7 +431,8 @@ class _TaskStatement extends StatelessWidget {
         const SizedBox(height: 2),
         Text(
           '${directionName(conditions.direction)} · '
-          '${octavesName(conditions.octaves)}',
+          '${octavesName(conditions.octaves)} · '
+          '${startingNotesName(realize(exercise))}',
           style: theme.textTheme.bodyLarge?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),

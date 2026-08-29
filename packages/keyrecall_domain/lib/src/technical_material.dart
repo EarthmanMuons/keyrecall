@@ -90,3 +90,72 @@ class TechnicalMaterial {
   @override
   String toString() => materialId;
 }
+
+/// How many sharps or flats the key signature of [material] is written with.
+///
+/// Positive counts sharps, negative counts flats, as engraving conventionally
+/// numbers them.
+///
+/// Every minor form takes the natural minor's signature, which is the relative
+/// major's. That is the convention rather than a simplification: the raised
+/// seventh of harmonic minor and the raised sixth and seventh of melodic minor
+/// are written as accidentals where they occur, precisely because they are
+/// alterations of the key rather than part of it. A staff drawn this way says
+/// what a printed scale book says.
+///
+/// Throws [ArgumentError] for a tonic no standard signature covers. The
+/// catalog's twelve are all covered; the guard is for a thirteenth arriving
+/// without anyone deciding how to write it.
+int keySignatureFifths(TechnicalMaterial material) {
+  final signatures = material.form == ScaleForm.major
+      ? _majorFifths
+      : _minorFifths;
+  final fifths = signatures[material.tonic];
+  if (fifths == null) {
+    throw ArgumentError.value(
+      material.tonic,
+      'tonic',
+      'no standard key signature for this tonic in ${material.form.id}',
+    );
+  }
+  return fifths;
+}
+
+/// Sharps and flats for each major tonic, around the circle of fifths.
+const Map<String, int> _majorFifths = {
+  'Cb': -7,
+  'Gb': -6,
+  'Db': -5,
+  'Ab': -4,
+  'Eb': -3,
+  'Bb': -2,
+  'F': -1,
+  'C': 0,
+  'G': 1,
+  'D': 2,
+  'A': 3,
+  'E': 4,
+  'B': 5,
+  'F#': 6,
+  'C#': 7,
+};
+
+/// The same circle, three letters round: every minor takes its relative
+/// major's signature.
+const Map<String, int> _minorFifths = {
+  'Ab': -7,
+  'Eb': -6,
+  'Bb': -5,
+  'F': -4,
+  'C': -3,
+  'G': -2,
+  'D': -1,
+  'A': 0,
+  'E': 1,
+  'B': 2,
+  'F#': 3,
+  'C#': 4,
+  'G#': 5,
+  'D#': 6,
+  'A#': 7,
+};

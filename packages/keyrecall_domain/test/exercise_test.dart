@@ -319,6 +319,46 @@ void main() {
     }
   });
 
+  group('key signatures', () {
+    test('every catalog material has one', () {
+      for (final material in allScales) {
+        expect(
+          () => keySignatureFifths(material),
+          returnsNormally,
+          reason: material.materialId,
+        );
+      }
+    });
+
+    test('a minor form takes its relative major signature', () {
+      // The convention rather than a simplification: harmonic minor's raised
+      // seventh is an alteration of the key, written where it occurs, so it
+      // does not belong in the signature.
+      for (final form in ScaleForm.values) {
+        if (form == ScaleForm.major) continue;
+        expect(
+          keySignatureFifths(TechnicalMaterial('A', form)),
+          0,
+          reason: 'A minor is written like C major, in ${form.id}',
+        );
+        expect(keySignatureFifths(TechnicalMaterial('E', form)), 1);
+      }
+    });
+
+    test('sharps are positive and flats negative', () {
+      expect(keySignatureFifths(TechnicalMaterial('G', ScaleForm.major)), 1);
+      expect(keySignatureFifths(TechnicalMaterial('F', ScaleForm.major)), -1);
+      expect(keySignatureFifths(TechnicalMaterial('Db', ScaleForm.major)), -5);
+    });
+
+    test('a tonic nobody decided how to write is refused', () {
+      expect(
+        () => keySignatureFifths(TechnicalMaterial('D#', ScaleForm.major)),
+        throwsArgumentError,
+      );
+    });
+  });
+
   group('the catalog', () {
     test('supports every scale form, in every key', () {
       expect(
