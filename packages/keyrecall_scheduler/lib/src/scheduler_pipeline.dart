@@ -378,6 +378,29 @@ class SchedulerPipeline {
       exercise.guidance == GuidanceContext.notesPreviewedOnly &&
       supportedAttempts >= config.probe.supportedAttemptsBeforeObservation;
 
+  /// The highest eligibility tier that has anything left to introduce, or null
+  /// when no material is unseen.
+  ///
+  /// A set-level fact, which is why it is computed once for a slot rather than
+  /// asked of a candidate. The introduction exception is the only admission
+  /// path a cold-start learner has, and a candidate cannot tell on its own
+  /// whether something more appropriate is also waiting to be introduced.
+  EligibilityTier? introducibleTier(
+    LearnerState state,
+    List<Exercise> candidates,
+  ) {
+    EligibilityTier? best;
+    for (final exercise in candidates) {
+      if (state.materialMemory.containsKey(exercise.material.materialId)) {
+        continue;
+      }
+      final tier = eligibilityFor(state, exercise).tier;
+      if (best == null || tier.index > best.index) best = tier;
+      if (best == EligibilityTier.fullyEligible) break;
+    }
+    return best;
+  }
+
   /// Which named exception, if any, admits [exercise] outside the ordinary
   /// band.
   ///
@@ -405,6 +428,8 @@ class SchedulerPipeline {
     required Exercise? recoveryTarget,
     required Exercise? tempoProbe,
     required int supportedAttempts,
+    required EligibilityTier eligibility,
+    required EligibilityTier? introducibleTier,
   }) {
     for (final exception in AdmissionException.values) {
       final verdict = switch (exception) {
@@ -424,9 +449,22 @@ class SchedulerPipeline {
           isObservationProbe(exercise, supportedAttempts)
               ? const _Admits(ChallengeBypass.observationProbe)
               : const _Silent(),
+        // Difficulty is what an introduction is allowed to bypass, and only
+        // that. A prerequisite says the material is inappropriate for a
+        // separate reason, so introducing something is never a licence to
+        // introduce anything: while the slot has an introducible candidate in
+        // a higher tier, a lower one is not reachable here at all.
+        //
+        // The tier is checked before the floor deliberately. Reversing them
+        // would let a provisional candidate that clears the introduction
+        // minimum beat a fully eligible one that does not, which is
+        // probability leapfrogging a prerequisite. Nothing introduced is the
+        // right answer there.
         AdmissionException.newMaterial =>
           state.materialMemory.containsKey(exercise.material.materialId)
               ? const _Silent()
+              : eligibility != introducibleTier
+              ? const _Refuses()
               : prediction.overallP >= config.challenge.pIntroductionMin
               ? const _Admits(ChallengeBypass.newMaterial)
               : const _Refuses(),
@@ -477,6 +515,7 @@ class SchedulerPipeline {
     final target = failed == null ? null : recoveryTarget(failed);
     final probe = target == null ? session.tempoProbe : null;
     final safety = safetyFor(session);
+    final introducible = introducibleTier(state, candidates);
 
     // Guidance changes material availability, but not independent retrieval,
     // execution, or topology. Generation emits each realization under all
@@ -497,6 +536,7 @@ class SchedulerPipeline {
           recoveryTarget: target,
           tempoProbe: probe,
           override: overrides[exercise],
+          introducibleTier: introducible,
           retrievalCache: retrievalCache,
           executionCache: executionCache,
           topologyCache: topologyCache,
@@ -513,6 +553,7 @@ class SchedulerPipeline {
     required Exercise? recoveryTarget,
     required Exercise? tempoProbe,
     required ChallengeBypass? override,
+    required EligibilityTier? introducibleTier,
     required Map<String, double> retrievalCache,
     required Map<Exercise, double> executionCache,
     required Map<Exercise, double> topologyCache,
@@ -538,6 +579,10 @@ class SchedulerPipeline {
       ),
     );
 
+    // Ahead of admission rather than beside ranking: the introduction
+    // exception reads the tier, so eligibility now decides what may be
+    // admitted as well as how admitted candidates are ordered.
+    final eligibility = eligibilityFor(state, exercise);
     final withinBand = isWithinChallengeBand(prediction);
     final bypass = challengeBypassFor(
       state: state,
@@ -548,6 +593,8 @@ class SchedulerPipeline {
       recoveryTarget: recoveryTarget,
       tempoProbe: tempoProbe,
       supportedAttempts: session.supportedAttemptsSinceObservation,
+      eligibility: eligibility.tier,
+      introducibleTier: introducibleTier,
     );
     // A recovery context is exclusive: narrowing which candidate gets the
     // label is not enough, since a candidate that happens to fall in the
@@ -570,7 +617,6 @@ class SchedulerPipeline {
         ? StageStatus.reached
         : StageStatus.notReached;
 
-    final eligibility = eligibilityFor(state, exercise);
     final terms = RankKey(
       tier: eligibility.tier,
       retention: retention(prediction, exercise),

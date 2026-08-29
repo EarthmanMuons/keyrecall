@@ -31,7 +31,10 @@ void main() {
         createdAt: t0,
         placement: tier,
       ),
-      materials: v1ScaleCatalog,
+      // The production catalog, not the seven-material equivalence fixture:
+      // what a learner is offered depends on how much appropriate material
+      // exists, so a shorter list answers a different question.
+      materials: allScales,
       learner: learner,
       sessionId: 'session-1',
     );

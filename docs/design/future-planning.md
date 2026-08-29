@@ -704,15 +704,15 @@ fingering suggests.
 
 ### 4.8 The cold-start regime: placement priors against the challenge band
 
-Measured, not conjectured. A census of all 1,008 generated candidates at slot
+Measured, not conjectured. A census of all 6,912 generated candidates at slot
 zero, with every material already seen so the unseen-material rule is not what
 is being measured:
 
 | Placement tier   | Fully eligible | Below band | In band | Best reachable `p` |
 | ---------------- | -------------: | ---------: | ------: | -----------------: |
-| `beginner`       |            192 |        192 |   **0** |          **0.283** |
-| `someExperience` |            576 |        576 |   **0** |          **0.513** |
-| `advanced`       |          1,008 |        742 |     266 |              0.730 |
+| `beginner`       |            240 |        240 |   **0** |          **0.283** |
+| `someExperience` |          1,728 |      1,728 |   **0** |          **0.513** |
+| `advanced`       |          6,912 |      5,088 |   1,824 |              0.730 |
 
 The easiest exercise the catalog can produce is the same for all three: C major,
 right hand, one octave, 60 bpm, continuously cued. Against `pMin = 0.60`, **two
@@ -735,16 +735,27 @@ play a familiar scale one-handed, and it is what the app assumed for every
 profile before placement was asked for. Introduction-only is a strange
 description of them.
 
-**The prerequisite gates lose their force under it.** Challenge admission is
-stage 3 and eligibility ranking is stage 4, so the tier ordering can only sort
-what admission let through. While the bypasses point at foundation material a
-beginner's sequence is exactly right; once that material is exhausted, the
-new-material bypass necessarily points at unpracticed material, which is the
-material the admission bands exist to defer. In the traced sitting the first
-twelve attempts were foundation, one octave, single hand, and the thirteenth was
-a two-octave harmonic minor admitted by `new_material` and demoted to
-provisional by the octave prerequisite — demoted, but still selected, because
-nothing fully eligible was admitted at all.
+**The prerequisite gates lost their force under it, until they were made part of
+admission.** Challenge admission is stage 3 and eligibility ranking is stage 4,
+so the tier ordering could only sort what admission let through, and
+`new_material` was admitting anything unseen. The introduction exception is now
+stratified: it may bypass challenge difficulty, but while the slot holds an
+introducible candidate in a higher eligibility tier, a lower one is not
+reachable through it at all. For `someExperience` that removed provisional
+selections from an early sitting entirely, and `advanced` was unaffected.
+
+What it does not remove is the underlying scarcity. A beginner has five
+foundation materials, and once all five have been met every remaining
+introduction is provisional, so the deliberate fallback engages and
+early-transfer material starts appearing around the thirteenth attempt. That is
+the specified behaviour rather than a leak — provisional means deferred while
+something better exists, not forbidden — but it means the real question is
+narrower than it looked:
+
+> once a beginner has met the foundation, should the scheduler introduce less
+> appropriate material, or stop introducing and consolidate what they have?
+
+Nothing here answers that, and it is a product judgment rather than a threshold.
 
 So the open question is not which floor to nudge. It is whether the intended
 cold-start mode is introduction-driven, and if so, what should aim the
