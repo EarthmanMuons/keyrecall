@@ -1,7 +1,9 @@
 # Material admission
 
-- **Status:** Implemented, as the first policy described under "what to build
-  first". The fingering-family axis is still approximated by the band prior.
+- **Status:** The first policy, as built. Two of its rules have since been
+  strengthened and one relaxed; see
+  [`progression-graph.md`](progression-graph.md) for what is enforced now. The
+  fingering-family axis is still approximated by the band prior.
 - **Written:** August 26, 2026
 
 This answers **what may be introduced now**, which is one of three questions
@@ -126,6 +128,16 @@ major later became a prerequisite of its own; one octave of C major stayed
 foundation material throughout, which is the rule holding rather than bending.
 The wider account of which conditions gate and which only predict is in
 [`progression-graph.md`](progression-graph.md).
+
+Rule 5 has since been strengthened, and rule 4 relaxed. An altered minor form
+now waits on a curriculum phase rather than a topology floor: both hands
+observed separately, some hands-together work, and retrieval breadth counted per
+hand. And a band's execution floor is discounted by one band when the exercise
+is at the gentlest conditions the catalog offers, because difficulty is
+compositional and the floor was reading only half of it. Both are in
+[`progression-graph.md`](progression-graph.md). What follows is the reasoning
+the first policy was built on, which still holds for the part of rule 5 that
+survives.
 
 Rule 5 is worth defending. The curricula give no support for a universal natural
 to harmonic to melodic ladder: ABRSM lets candidates choose the form at lower

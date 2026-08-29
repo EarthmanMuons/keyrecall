@@ -1,7 +1,7 @@
 # KeyRecall Documentation Map
 
 - **Status:** Current navigation and authority map
-- **Last aligned:** August 21, 2026
+- **Last aligned:** August 29, 2026
 
 ## Start here
 
@@ -66,11 +66,11 @@ analysis/timing-calibration/ live: instrument takes behind the timing constants
 The Python prototype is research provenance rather than a second implementation;
 see `analysis/README.md` for what that means and what is canonical instead.
 
-The Dart suite is the verification baseline: 452 tests across the nine pure
-packages, of which 77 are learner-model invariants, 47 are scheduler invariants
-including the information boundaries, and 42 are longitudinal simulations. The
-frozen Python invariant set is a subset that the reference-equivalence and
-digest tests still pin.
+The Dart suite is the verification baseline: 719 tests across the nine pure
+packages, of which 104 are learner-model invariants, 136 are scheduler
+invariants including the information boundaries, and 42 are longitudinal
+simulations. The frozen Python invariant set is a subset that the
+reference-equivalence and digest tests still pin.
 
 ## Authority
 

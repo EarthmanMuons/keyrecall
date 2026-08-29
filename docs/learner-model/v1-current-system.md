@@ -1,7 +1,7 @@
 # The KeyRecall V1 Adaptive System
 
 - **Status:** Current integrated specification for the initial production model
-- **Last aligned:** August 27, 2026
+- **Last aligned:** August 29, 2026
 - **Audience:** Developers, product designers, and researchers who need to
   understand what V1 does without reading the experiment history first
 
@@ -315,6 +315,25 @@ prediction while the model grows less sure about it:
 
 The material-specific exception gradually returns toward the shared prediction
 while uncertainty grows.
+
+The same record also carries the **execution frontier**: the fastest tempo this
+learner has managed at each octave span, for this material and this hand
+configuration. It sits here because it is the same kind of claim about the same
+thing, and it is keyed here because two octaves in the right hand says nothing
+about a left hand that has played one, and hands together is a third frontier
+again.
+
+A tempo per span rather than a widest span and a fastest tempo. Those are two
+maxima and the pair of them is not a place anybody has been: one octave at 96
+and two at 60 would read as two octaves at 96, and stepping on from there would
+ask for something a step past nothing. Execution conditions form a small lattice
+and this is its shape.
+
+It moves only on an attempt that was managed — through to the end, and with a
+motor score at the midpoint or above — so a tempo somebody could not get through
+does not become the place they are asked to go on from. It is a maximum per
+span, so working slowly on something already taken faster does not walk it back
+down.
 
 ### 4.4 Session state is separate
 
@@ -852,16 +871,44 @@ The current provisional band is 0.60 to 0.90. This is a configurable engineering
 choice inspired by Challenge Point reasoning, not a research-established
 universal optimum.
 
-Six named mechanisms can admit a candidate outside the ordinary band:
+Eight named mechanisms can admit a candidate outside the ordinary band:
 
 ```text
-new material       only above a lower introduction floor
-guidance probe     one rung less support once that rung has been established
-bootstrap probe    a retrieval test where no rung is established, after interval
-observation probe  a retrieval test after a run of attempts that observed none
-recovery           exact failed exercise with one step more guidance
-tempo probe        exact easy exercise at the tempo it was actually played at
+new material        only above a lower introduction floor, and only from the
+                    highest eligibility tier with anything left to introduce
+consolidation       a scale met and not yet produced from memory, offered again
+                    at the previewed rung when nothing appropriate is left to
+                    introduce
+execution progress  one adjacent execution step on material already produced
+                    from memory: the next tempo rung, one octave wider, or the
+                    same work with both hands
+guidance probe      one rung less support once that rung has been established
+bootstrap probe     a retrieval test where no rung is established, after interval
+observation probe   a retrieval test after a run of attempts that observed none
+recovery            exact failed exercise with one step more guidance
+tempo probe         exact easy exercise at the tempo it was actually played at
 ```
+
+Three of those partition what is known about a material, so they never contend:
+unseen material is introduced, seen and unretrieved material is consolidated,
+and seen and retrieved material progresses. Execution progression is consulted
+last of all, so a candidate that is also a probe keeps the probe's reason: a
+probe is answering a specific question and progression is ordinary work.
+
+Consolidation exists because the ordinary band is inert for a beginner and every
+other path to seen material was shut: no rung established so the guidance probe
+could not climb, the bootstrap probe days away, and the observation probe
+counting supported attempts that a previewed introduction resets. Introducing
+was the only move the scheduler had, so after the appropriate material ran out
+it introduced the inappropriate.
+
+Execution progression advances exactly one axis. Information gain prefers
+whatever is least explored, so a candidate that goes wider _and_ faster at once
+is the most attractive thing on offer and the least appropriate: two steps taken
+as one, after which nobody knows which of them was the problem. It also requires
+that the material has been produced from memory rather than merely shown, since
+playing a scale well while looking at it demonstrates the conditions and not the
+scale.
 
 The observation probe answers a loop the ordinary band creates on its own.
 Support raises predicted success, so as memory weakens continuous cueing is what
@@ -889,9 +936,14 @@ The tempo probe is its mirror, and exclusive for the same reason. An attempt
 that was completed cleanly, evenly, unbroken, from memory, and comfortably
 faster than requested is evidence about the task rather than about the
 performance: it was beneath the learner. The next decision then asks for the
-same task at the fastest offered tempo they were already reaching, instead of
+same task at the fastest offered tempo they were already reaching, rather than
 climbing toward it a step at a time. Only the tempo moves, for the reason
 recovery moves only guidance.
+
+It is a probe rather than the tempo axis itself. Ordinary tempo movement is
+execution progression's, one rung of the metronome ladder at a time; this is the
+deliberate jump to a speed already demonstrated in the playing, which is a
+different question and worth a slot of its own.
 
 Every one of those conditions is required, because speed alone is ambiguous:
 rushing and finding it trivial look identical on the tempo axis and differ on

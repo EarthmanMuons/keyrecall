@@ -1,7 +1,7 @@
 # KeyRecall Glossary
 
 - **Status:** Canonical V1 terminology
-- **Last aligned:** August 20, 2026
+- **Last aligned:** August 29, 2026
 
 This file is a concise lookup reference for current terms. It does not record
 design history, supersessions, open questions, or mathematical derivations. See
@@ -38,6 +38,13 @@ A challenge-band exception that offers notes previewed and then hidden for a
 material that has been tested but never successfully retrieved. Its clock uses
 `last_retrieval_attempt_at`. It prevents never-successful material from becoming
 permanently trapped under continuous cueing.
+
+### Consolidation exception
+
+A challenge-band exception that offers a scale already met and not yet produced
+from memory, at the previewed rung, when the slot has nothing appropriate left
+to introduce. Not to be confused with retained consolidation, which is a memory
+state.
 
 ### Candidate
 
@@ -185,6 +192,37 @@ A dynamic, partially pooled learner-by-material-by-execution-context residual.
 It captures persistent material-specific procedural readiness not already
 explained by transferable competencies or task difficulty.
 
+It also carries the execution frontier for that material and hand configuration.
+
+### Execution frontier
+
+The fastest tempo a learner has managed at each octave span, for one material
+and one hand configuration, held on `MaterialExecutionState`. A tempo per span
+rather than a widest span and a fastest tempo, since those are two maxima and
+the pair of them need never have been played together.
+
+It advances only on an attempt that completed with a motor score at or above
+`demonstratedMotorScore`, and it is the baseline execution progression steps
+from.
+
+### Execution progression
+
+A challenge-band exception that offers one adjacent execution step on material
+already produced from memory: the next tempo rung, one octave wider, or the same
+work with both hands. Exactly one axis moves per candidate; see
+`ExecutionAdvance`.
+
+Distinct from consolidation, which offers material that has been met and not yet
+produced. The two partition what is known about a material, alongside
+introduction for material never met.
+
+### ExecutionAdvance
+
+Which execution axis a candidate advances against the frontier: none, tempo,
+span, hands together, or multiple. Only a single adjacent step is admissible;
+`multiple` exists so that going wider and faster at once is structurally
+excluded rather than merely outranked.
+
 ### MaterialMemoryState
 
 The exact-material state containing activation, current durability, retained
@@ -238,6 +276,13 @@ Q_{e,k}\in\{0,1\}
 
 `Q[e,k] = 1` means exercise `e` creates an opportunity to observe competency
 `k`. It does not state how strong the predictor loading or actual evidence is.
+
+### Metronome ladder
+
+The Maelzel tempo progression, from 40 to 208, used as an adjacency relation
+rather than a candidate set: it defines what the next and previous tempo are.
+Its steps grow with the tempo, which is the right shape for a quantity where a
+fixed count of beats per minute does not mean a fixed amount at both ends.
 
 ### Recovery
 
