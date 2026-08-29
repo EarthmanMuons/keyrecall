@@ -23,3 +23,4 @@ export 'src/realization.dart';
 export 'src/scale_catalog.dart';
 export 'src/spelled_pitch.dart';
 export 'src/technical_material.dart';
+export 'src/tempo_ladder.dart';
