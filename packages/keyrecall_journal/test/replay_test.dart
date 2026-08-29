@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
 
@@ -59,6 +61,62 @@ void main() {
         initial: recorded.initial,
       );
       expect(live.divergences, isEmpty);
+    });
+
+    test('the execution frontier survives a checkpoint and a rebuild', () {
+      // It is durable learner state now, so both routes to it have to agree:
+      // reading a checkpoint back, and throwing the checkpoint away and
+      // replaying the journal that produced it. A field that only one route
+      // carries is a divergence that hides until somebody deletes a file.
+      final recorded = recordSession(attempts: 8);
+      final replayed = replayJournal(
+        recorded.journal,
+        model: model,
+        initial: recorded.initial,
+      );
+
+      final frontiers = replayed.state.materialExecution;
+      expect(
+        frontiers.values.any((residual) => residual.demonstratedOctaves > 0),
+        isTrue,
+        reason:
+            'a sitting this long demonstrates something, or the rest of '
+            'this test is checking that zero equals zero',
+      );
+
+      final captured = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
+        state: replayed.state,
+        learnerModelVersion: params.modelVersion,
+        throughJournalSequence: recorded.journal.records.last.journalSequence,
+        throughAttemptId: recorded.journal.records.last.identity.attemptId,
+        coversThrough: recorded.journal.records.last.identity.occurredAt,
+      );
+      final reread = LearnerStateCheckpoint.fromJson(
+        jsonDecode(jsonEncode(captured.toJson())) as Map<String, Object?>,
+        params: params,
+      );
+
+      for (final entry in frontiers.entries) {
+        final restored = reread.state.materialExecution[entry.key]!;
+        expect(
+          restored.demonstratedOctaves,
+          entry.value.demonstratedOctaves,
+          reason: '${entry.key}',
+        );
+        expect(
+          restored.demonstratedTempoByOctaves,
+          entry.value.demonstratedTempoByOctaves,
+          reason: '${entry.key}',
+        );
+      }
+      expect(
+        learnerStateHash(reread.state),
+        learnerStateHash(replayed.state),
+        reason:
+            'and the frontier is part of what the state hashes to, so a '
+            'route that lost it would already have been caught',
+      );
     });
 
     test('resuming from a checkpoint reaches the same state', () {

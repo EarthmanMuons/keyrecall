@@ -187,6 +187,10 @@ Map<String, Object?> encodeLearnerState(LearnerState state) => {
         'residual_variance': entry.value.residualVariance,
         'updated_at': encodeTime(entry.value.updatedAt),
         'last_evidence_at': encodeOptionalTime(entry.value.lastEvidenceAt),
+        'demonstrated_tempo_by_octaves': {
+          for (final span in entry.value.demonstratedTempoByOctaves.entries)
+            '${span.key}': span.value,
+        },
       },
   },
 };
@@ -292,6 +296,18 @@ LearnerState decodeLearnerState(
         'last_evidence_at',
         location: location,
       ),
+      demonstratedTempoByOctaves: {
+        for (final span in requireMap(
+          value,
+          'demonstrated_tempo_by_octaves',
+          location: location,
+        ).entries)
+          int.parse(span.key): asDouble(
+            span.value,
+            span.key,
+            location: location,
+          ),
+      },
     );
     materialExecution[residual.context] = residual;
   }

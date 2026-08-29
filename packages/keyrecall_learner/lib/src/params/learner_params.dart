@@ -224,6 +224,20 @@ class MaterialExecutionParams {
   /// Fraction of variance removed by fully informative evidence.
   final double evidenceShrinkage;
 
+  /// Motor quality at or above which an attempt counts as having demonstrated
+  /// the conditions it was played under.
+  ///
+  /// What moves the execution frontier, beside having got through the
+  /// exercise at all. Both halves are needed: completing says the span and
+  /// tempo were survivable, and the motor score says it was played rather
+  /// than endured, so a faster attempt that fell apart does not become the
+  /// place the learner is asked to go on from.
+  ///
+  /// The midpoint, and a first guess. It is deliberately not the
+  /// underchallenge thresholds, which say an attempt was too easy: a frontier
+  /// should move when something was managed, not only when it was trivial.
+  final double demonstratedMotorScore;
+
   const MaterialExecutionParams({
     required this.priorVariance,
     required this.minVariance,
@@ -231,6 +245,7 @@ class MaterialExecutionParams {
     required this.meanReversionTauDays,
     required this.uncertaintyDiffusion,
     required this.evidenceShrinkage,
+    required this.demonstratedMotorScore,
   }) : assert(priorVariance > 0, 'a residual cannot start certain'),
        assert(minVariance > 0, 'evidence must never imply certainty'),
        assert(
@@ -444,6 +459,7 @@ const MaterialMemoryParams _v1MaterialMemory = MaterialMemoryParams(
 );
 
 const MaterialExecutionParams _v1MaterialExecution = MaterialExecutionParams(
+  demonstratedMotorScore: 0.5,
   priorVariance: 0.5,
   minVariance: 0.05,
   learningRate: 0.2,

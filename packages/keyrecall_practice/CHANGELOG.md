@@ -27,6 +27,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - `ProfileRepository`, with in-memory and file-backed implementations, covering
   profile creation, listing, renaming, and selection. Kept separate from
   practice storage, and deliberately without deletion.
+- The execution frontier: `MaterialExecutionState` records the fastest tempo a
+  learner has demonstrated at each span, for that material with that hand. A
+  tempo per span rather than two maxima, because a widest span and a fastest
+  tempo are not a place anybody has been. Durable learner state, reconstructed
+  by replay from the same exercise and outcome stream the residual beside it is.
 - Self-describing profile directories: each profile writes its own
   `profile.json` beside its journal, so a directory holding both is enough to
   reopen that learner with no file outside it. The roster is scanned from those

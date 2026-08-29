@@ -52,5 +52,11 @@ double tempoAfter(double bpm) => tempoStepped(bpm, 1);
 /// The next rung down from [bpm].
 double tempoBefore(double bpm) => tempoStepped(bpm, -1);
 
+/// Whether there is a rung above [bpm].
+bool hasTempoAfter(double bpm) => tempoRungOf(bpm) < metronomeLadder.length - 1;
+
+/// Whether there is a rung below [bpm].
+bool hasTempoBefore(double bpm) => tempoRungOf(bpm) > 0;
+
 /// Whether [bpm] is a rung rather than a value between two.
 bool isTempoRung(double bpm) => metronomeLadder.contains(bpm);

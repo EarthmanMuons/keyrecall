@@ -38,6 +38,25 @@ class MaterialExecutionState {
   /// When informative evidence last arrived, or null if it never has.
   DateTime? lastEvidenceAt;
 
+  /// The fastest tempo this learner has managed at each span, for this
+  /// material and this hand.
+  ///
+  /// The execution frontier, and a learner fact rather than scheduler
+  /// bookkeeping: it says what has been demonstrated here, which is the same
+  /// kind of claim the residual beside it makes. It belongs at this key
+  /// because a right hand that has played two octaves says nothing about a
+  /// left hand that has not, and hands together is a third frontier again.
+  ///
+  /// A tempo per span rather than a widest span and a fastest tempo, because
+  /// those are two maxima and the pair of them is not a place anybody has
+  /// been. One octave at 96 and two at 60 would read as two octaves at 96,
+  /// and a step on from there would be asking for something a step past
+  /// nothing. Execution conditions are a small lattice and this is its shape.
+  ///
+  /// Demonstrated rather than attempted, so a span or a tempo somebody could
+  /// not get through does not become the place they are asked to go on from.
+  final Map<int, double> demonstratedTempoByOctaves;
+
   MaterialExecutionState({
     required this.materialId,
     required this.hands,
@@ -45,7 +64,8 @@ class MaterialExecutionState {
     required this.residualVariance,
     required this.updatedAt,
     this.lastEvidenceAt,
-  });
+    Map<int, double>? demonstratedTempoByOctaves,
+  }) : demonstratedTempoByOctaves = demonstratedTempoByOctaves ?? {};
 
   /// A residual for a never-observed material and context, at its priors.
   factory MaterialExecutionState.prior(
@@ -93,7 +113,28 @@ class MaterialExecutionState {
     residualVariance: residualVariance,
     updatedAt: updatedAt,
     lastEvidenceAt: lastEvidenceAt,
+    demonstratedTempoByOctaves: {...demonstratedTempoByOctaves},
   );
+
+  /// The widest span anything has been demonstrated at, or zero when nothing
+  /// has.
+  int get demonstratedOctaves => demonstratedTempoByOctaves.keys.fold(
+    0,
+    (widest, octaves) => octaves > widest ? octaves : widest,
+  );
+
+  /// The fastest tempo demonstrated at [octaves], or zero when that span has
+  /// never been managed.
+  double demonstratedTempoAt(int octaves) =>
+      demonstratedTempoByOctaves[octaves] ?? 0;
+
+  /// Records that [octaves] was managed at [tempoBpm].
+  void demonstrate({required int octaves, required double tempoBpm}) {
+    final best = demonstratedTempoByOctaves[octaves];
+    if (best == null || tempoBpm > best) {
+      demonstratedTempoByOctaves[octaves] = tempoBpm;
+    }
+  }
 
   @override
   String toString() =>

@@ -319,6 +319,8 @@ class LearnerModel {
       _updateExecutionResidual(
         state: state,
         context: (materialId, exercise.conditions.hands),
+        exercise: exercise,
+        outcome: outcome,
         weight: weights.materialExecution,
         deltaExec: deltaExec,
         at: at,
@@ -378,6 +380,8 @@ class LearnerModel {
   void _updateExecutionResidual({
     required LearnerState state,
     required ExecutionContext context,
+    required Exercise exercise,
+    required Outcome outcome,
     required double weight,
     required double deltaExec,
     required DateTime at,
@@ -391,6 +395,20 @@ class LearnerModel {
           (1 - params.materialExecution.evidenceShrinkage * weight),
     );
     residual.lastEvidenceAt = at;
+
+    // The execution frontier moves only on an attempt that was managed:
+    // through to the end, and played rather than endured. A span or a tempo
+    // somebody could not get through is not the place to go on from, and a
+    // maximum rather than the latest so that working slowly on something
+    // already taken faster does not walk it back down.
+    if (!outcome.completed ||
+        outcome.motorScore < params.materialExecution.demonstratedMotorScore) {
+      return;
+    }
+    residual.demonstrate(
+      octaves: exercise.conditions.octaves,
+      tempoBpm: exercise.conditions.tempoBpm,
+    );
   }
 
   MemoryUpdateDiagnostics _updateMaterialMemory({
