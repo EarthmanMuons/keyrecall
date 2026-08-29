@@ -156,6 +156,12 @@ List<Exercise> withExecutionNeighbours(
     final atNarrower = demonstratedAt(materialId, conditions.hands, span - 1);
 
     final wanted = <double>{
+      // Staying where this span has been managed. The rung a learner is on is
+      // not always one the generator has, and it has to remain offerable:
+      // holding there is ordinary work, and a recovery context targets an
+      // exact exercise, so letting the current rung disappear the moment the
+      // frontier reaches it leaves recovery with nothing to admit at all.
+      if (atSpan > 0) atSpan,
       // Going faster where this span has been managed.
       if (atSpan > 0) tempoAfter(atSpan),
       // Going wider, carrying the tempo the narrower span was managed at.

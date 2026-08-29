@@ -111,6 +111,9 @@ enum ChallengeBypass {
   /// letting the slot reach for something new and less appropriate.
   consolidation('consolidation'),
 
+  /// One adjacent execution step on material the learner already owns.
+  executionProgression('execution_progression'),
+
   /// Never-practiced material, admitted through the introduction envelope.
   newMaterial('new_material'),
 
@@ -170,6 +173,13 @@ enum AdmissionException {
 
   /// A retrieval test where no rung is established at all.
   bootstrapProbe,
+
+  /// One adjacent execution step on material already owned.
+  ///
+  /// Last, so a probe keeps its own reason. A probe is answering a specific
+  /// question and this is ordinary work, so where a candidate happens to be
+  /// both, the question wins.
+  executionProgression,
 }
 
 /// The `REQUIRES` gate's verdict for one candidate.

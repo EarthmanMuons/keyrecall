@@ -70,11 +70,11 @@ void main() {
 
     test('a slot that admits nothing presents and records nothing', () async {
       final store = InMemoryPracticeStore(createdAt: t0);
-      final session = await openSession(store);
+      final session = await openSession(store, pipeline: pipelineCappedAt(4));
 
       var admitted = 0;
       var refused = 0;
-      for (var i = 0; i < 30; i++) {
+      for (var i = 0; i < 10; i++) {
         final presented = await session.decide(at: t0.plusDays(0.5 * (i + 1)));
         if (presented == null) {
           refused++;

@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
@@ -73,13 +74,33 @@ Future<PracticeSession> openSession(
   IdGenerator? ids,
   PlacementTier placement = PlacementTier.someExperience,
   List<TechnicalMaterial>? materials,
+  SchedulerPipeline? pipeline,
 }) => PracticeSession.open(
   store: store,
   profile: profile ?? alicePlacedAt(placement),
   materials: materials ?? fixtureMaterials,
   learner: learner,
+  pipeline: pipeline,
   sessionId: sessionId,
   nextId: ids ?? countingIds(),
+);
+
+/// A pipeline whose sitting ends after [attempts] slots.
+///
+/// The one deterministic way to reach a slot that admits nothing. Running a
+/// short catalog dry used to do it and no longer does: the scheduler can go on
+/// deepening material it has, which is the point of execution progression and
+/// makes running out a bad thing to depend on.
+SchedulerPipeline pipelineCappedAt(int attempts) => SchedulerPipeline(
+  learner: learner,
+  config: SchedulerConfig(
+    modelVersion: v1SchedulerConfig.modelVersion,
+    eligibility: v1SchedulerConfig.eligibility,
+    safety: SafetyConfig(maxSessionAttempts: attempts),
+    challenge: v1SchedulerConfig.challenge,
+    diversity: v1SchedulerConfig.diversity,
+    probe: v1SchedulerConfig.probe,
+  ),
 );
 
 /// Runs [attempts] complete attempts against [session], starting at [startDay].

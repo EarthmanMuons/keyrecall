@@ -3,6 +3,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
+import 'execution_progression.dart';
 import 'priority.dart';
 import 'recovery.dart';
 import 'session_state.dart';
@@ -641,6 +642,26 @@ class SchedulerPipeline {
           isBootstrapProbe(state, exercise, at)
               ? const _Admits(ChallengeBypass.bootstrapProbe)
               : const _Silent(),
+
+        // Deepening material the learner owns. Owns, rather than has been
+        // shown: somebody who played a scale perfectly while it was in front
+        // of them has demonstrated the motor conditions and not the scale, and
+        // answering that with a faster one races execution ahead of what they
+        // know. Establishing the material is consolidation's job, and this
+        // begins where that ends.
+        //
+        // Silent rather than refusing on every failure. It is an opportunity
+        // to admit familiar work outside the ordinary band, not a policy that
+        // should stop another exception having something to say.
+        AdmissionException.executionProgression =>
+          switch (state.materialMemory[exercise.material.materialId]) {
+            final memory?
+                when memory.hasFactualRetrieval &&
+                    eligibility == EligibilityTier.fullyEligible &&
+                    executionAdvanceFor(state, exercise).isAdjacentStep =>
+              const _Admits(ChallengeBypass.executionProgression),
+            _ => const _Silent(),
+          },
       };
 
       if (verdict case _Admits(:final bypass)) return bypass;
@@ -680,7 +701,12 @@ class SchedulerPipeline {
     final target = failed == null ? null : recoveryTarget(failed);
     final probe = target == null ? session.tempoProbe : null;
     final safety = safetyFor(session);
-    final introducible = introducibleTier(state, candidates);
+    // Refined once, here, and every set-level fact below reads the refined
+    // set. Computing one of them from the raw candidates while the loop
+    // evaluates the refined ones would make two different universes out of
+    // one slot.
+    final refined = withExecutionNeighbours(state, candidates);
+    final introducible = introducibleTier(state, refined);
 
     // Guidance changes material availability, but not independent retrieval,
     // execution, or topology. Generation emits each realization under all
@@ -691,7 +717,7 @@ class SchedulerPipeline {
     final topologyCache = <Exercise, double>{};
 
     return [
-      for (final exercise in candidates)
+      for (final exercise in refined)
         _evaluateCandidate(
           state: state,
           session: session,

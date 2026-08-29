@@ -33,6 +33,10 @@ String? reasonForNext({
       sameMaterial
           ? 'That one again, this time from memory.'
           : 'One you have met, this time from memory.',
+    ChallengeBypass.executionProgression =>
+      sameMaterial
+          ? 'The same one, a step further.'
+          : 'One you know, a step further.',
     ChallengeBypass.guidanceProbe ||
     ChallengeBypass.bootstrapProbe ||
     ChallengeBypass.observationProbe => 'Time to try this one with less help.',

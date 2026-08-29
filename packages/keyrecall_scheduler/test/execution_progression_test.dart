@@ -260,6 +260,36 @@ void main() {
       );
     });
 
+    test('the rung a learner is on stays offerable', () {
+      // Found by the simulation suite rather than by reasoning. Offering only
+      // the next rung made the current one vanish the moment the frontier
+      // reached it, and a recovery context targets an exact exercise: with
+      // its target gone, recovery is exclusive and admits nothing, so whole
+      // slots went empty.
+      final state = learner();
+      demonstrate(state, HandConfiguration.right, tempoBpm: 63);
+      final generated = generatedForC();
+
+      final offered = withExecutionNeighbours(state, generated);
+      expect(
+        offered.any(
+          (e) =>
+              e.conditions.tempoBpm == 63 &&
+              e.conditions.hands == HandConfiguration.right &&
+              e.conditions.octaves == 1,
+        ),
+        isTrue,
+        reason:
+            'holding is ordinary work, and recovering needs somewhere to '
+            'recover to',
+      );
+      expect(
+        offered.any((e) => e.conditions.tempoBpm == 66),
+        isTrue,
+        reason: 'and the next rung is there beside it',
+      );
+    });
+
     test('nothing is added for a learner with no frontier', () {
       final generated = generateCandidates(InstrumentProfile(), [
         TechnicalMaterial('C', ScaleForm.major),

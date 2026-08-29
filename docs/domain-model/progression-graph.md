@@ -214,6 +214,12 @@ which is a question a syllabus does not answer.
 Marvel treats span as a difficulty axis of its own. This is the strongest single
 edge in the graph.
 
+Once a scale is owned, going wider is one step of **execution progression**
+rather than a prerequisite question at all. The three axes each have an
+adjacency relation, exactly one may move per candidate, and material must have
+been retrieved rather than merely shown: playing a scale well while looking at
+it demonstrates the conditions and not the scale.
+
 **Verdict: `REQUIRES`.** It is the _difficulty does not restrain it_ case, and
 the evidence is direct. Before the gate existed, a synthetic beginner reached
 two octaves of F major unguided on their eighth attempt, having played one
