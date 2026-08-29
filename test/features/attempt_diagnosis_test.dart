@@ -101,6 +101,24 @@ void main() {
       );
     });
 
+    test('a wrong note and an extra one are totalled, not ranked', () {
+      final diagnosis = diagnosisOf(
+        played(
+          [...expected]
+            ..[3] = 66
+            ..insert(9, 66),
+        ),
+      );
+
+      expect(diagnosis.slippedNotes, 1);
+      expect(diagnosis.extraNotes, 1);
+      expect(
+        diagnosis.sentence,
+        '2 notes went wrong.',
+        reason: 'naming one kind of mistake would hide the other',
+      );
+    });
+
     test('a note nobody asked for is not a pitch that slipped', () {
       final diagnosis = diagnosisOf(played([...expected]..insert(4, 66)));
 

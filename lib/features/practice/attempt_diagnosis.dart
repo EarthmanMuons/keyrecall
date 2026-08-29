@@ -124,12 +124,18 @@ class AttemptDiagnosis {
   /// "A few" is a guess, and it is the wrong guess exactly when the attempt
   /// went worst. The edit script knows how many, so this says how many, and
   /// falls back to the vague version only when there is no script to ask.
+  ///
+  /// A wrong note and an extra note are different things and are named
+  /// differently, but only while the attempt made one kind of mistake. An
+  /// attempt that made both is totalled instead: naming one kind would hide
+  /// the other, and naming both is the changelog this is meant not to be.
   String get _notesSentence {
     final slipped = slippedNotes;
     final extra = extraNotes;
     if (slipped == null || extra == null) {
       return 'A few pitches slipped$_where.';
     }
+    if (slipped > 0 && extra > 0) return '${slipped + extra} notes went wrong.';
     if (slipped == 1) return 'A pitch slipped$_where.';
     if (slipped > 1) return '$slipped pitches slipped$_where.';
     return extra == 1
