@@ -212,7 +212,7 @@ abstract interface class ProfileRepository {
   Future<Profile> delete(String profileId);
 }
 
-/// The name a profile gets when the app creates one without asking.
+/// The name a profile gets when the app creates one without asking for one.
 ///
 /// Reads naturally beside real names in a switcher, and a caller with a
 /// localized string should pass its own.
@@ -220,29 +220,26 @@ const String defaultProfileName = 'Me';
 
 /// Conveniences every [ProfileRepository] gets for free.
 extension ProfileRepositoryDefaults on ProfileRepository {
-  /// The active profile, creating a default one if this install has none.
+  /// The active profile, the oldest one when profiles exist but none is
+  /// selected, or null when this install has nobody on it.
   ///
-  /// A first launch should not open with a decision. One person on one
-  /// instrument is the ordinary case, and profiles only become a choice worth
-  /// making when somebody wants a second. So the app calls this and gets a
-  /// learner either way; adding a profile stays an action, never a prerequisite.
+  /// Deliberately does not create anybody. An install with no profile is a
+  /// real state with a real answer, and the answer is a question for the
+  /// person sitting there: a profile carries an immutable placement, so one
+  /// conjured to keep the slot filled is a learner started from a prior nobody
+  /// chose and nobody can change afterwards. Resolving that belongs to
+  /// whatever can ask.
   ///
-  /// If profiles exist but none is selected, the oldest is selected rather than
-  /// a new one being made. That state should not arise, but inventing another
-  /// person to resolve it would be the worse repair.
-  /// The profile conjured for an install with none takes [placement], which
-  /// defaults to the tier that assumes least about somebody nobody has asked.
-  Future<Profile> selectedOrDefault({
-    String displayName = defaultProfileName,
-    PlacementTier placement = PlacementTier.someExperience,
-  }) async {
+  /// Profiles existing with none selected is the one case worth repairing
+  /// here, because it should not arise and inventing another person to resolve
+  /// it would be the worse repair.
+  Future<Profile?> selectedOrOldest() async {
     final active = await selected();
     if (active != null) return active;
 
     final existing = await list();
-    if (existing.isNotEmpty) return select(existing.first.id);
-
-    return create(displayName: displayName, placement: placement);
+    if (existing.isEmpty) return null;
+    return select(existing.first.id);
   }
 }
 

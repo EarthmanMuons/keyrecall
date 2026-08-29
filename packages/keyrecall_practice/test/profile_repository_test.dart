@@ -286,7 +286,11 @@ void main() {
     forEachRepository('invents nobody when the last profile goes', (
       repository,
     ) async {
-      final only = await repository.selectedOrDefault();
+      final only = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       await repository.delete(only.id);
 
@@ -296,11 +300,13 @@ void main() {
         isNull,
         reason: 'an empty install is a fact, not a slot to fill',
       );
-
-      // Somebody has to be asked for. A caller that wants one says so.
-      final fresh = await repository.selectedOrDefault();
-      expect(fresh.id, isNot(only.id));
-      expect((await repository.selected())?.id, fresh.id);
+      expect(
+        await repository.selectedOrOldest(),
+        isNull,
+        reason:
+            'and resolving it is a question for whoever can ask, since a '
+            'profile carries a placement nobody could change afterwards',
+      );
     });
 
     forEachRepository('refuses a profile that does not exist', (
@@ -310,25 +316,19 @@ void main() {
     });
   });
 
-  group('the default profile', () {
-    forEachRepository('is created on a first launch, without asking', (
+  group('resolving who is active', () {
+    forEachRepository('creates nobody on an install with nobody on it', (
       repository,
     ) async {
-      expect(await repository.list(), isEmpty);
-
-      final profile = await repository.selectedOrDefault();
-
-      expect(profile.displayName, defaultProfileName);
-      expect((await repository.selected())?.id, profile.id);
-      expect(await repository.list(), hasLength(1));
-    });
-
-    forEachRepository('is only created once', (repository) async {
-      final first = await repository.selectedOrDefault();
-      final second = await repository.selectedOrDefault();
-
-      expect(second.id, first.id);
-      expect(await repository.list(), hasLength(1));
+      expect(await repository.selectedOrOldest(), isNull);
+      expect(
+        await repository.list(),
+        isEmpty,
+        reason:
+            'asking who is active must not be how a learner comes into '
+            'existence: the placement they would be started from is one they '
+            'were never asked for and could never change',
+      );
     });
 
     forEachRepository('never displaces a profile that already exists', (
@@ -340,16 +340,8 @@ void main() {
         placement: PlacementTier.someExperience,
       );
 
-      final active = await repository.selectedOrDefault();
-
-      expect(active.id, alice.id);
+      expect((await repository.selectedOrOldest())?.id, alice.id);
       expect(await repository.list(), hasLength(1));
-    });
-
-    forEachRepository('takes a caller-supplied name', (repository) async {
-      final profile = await repository.selectedOrDefault(displayName: 'Yo');
-
-      expect(profile.displayName, 'Yo');
     });
 
     test('selects the oldest rather than inventing another person', () async {
@@ -373,9 +365,7 @@ void main() {
       json['selected_profile_id'] = null;
       repository.indexFile.writeAsStringSync(jsonEncode(json));
 
-      final active = await repository.selectedOrDefault();
-
-      expect(active.id, alice.id);
+      expect((await repository.selectedOrOldest())?.id, alice.id);
       expect(await repository.list(), hasLength(2));
     });
   });

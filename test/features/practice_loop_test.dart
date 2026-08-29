@@ -28,18 +28,40 @@ void main() {
     return container;
   }
 
+  /// Answers the placement question, which is what creates the learner.
+  ///
+  /// The loop refuses to run on an install nobody has been placed on, so
+  /// every test here starts where the first-run screen leaves the app.
+  Future<void> place(
+    ProviderContainer container, [
+    PlacementTier tier = PlacementTier.someExperience,
+  ]) => container.read(profileRosterProvider.notifier).place(tier);
+
   Future<PracticeLoopState> loopOf(ProviderContainer container) =>
       container.read(practiceLoopProvider.future);
 
-  test(
-    'a first launch reaches a presented exercise with no decisions asked',
-    () async {
-      final loop = await loopOf(launch());
+  test('an install nobody has been placed on presents nothing', () async {
+    // The loop will not conjure a learner to have somebody to run as: the
+    // placement that learner would start from is one nobody chose and nobody
+    // could change. The first-run screen is what resolves it.
+    await expectLater(loopOf(launch()), throwsA(isA<StateError>()));
+  });
 
+  test(
+    'placing the install reaches an exercise, asking nothing else',
+    () async {
+      final container = launch();
+      await place(container, PlacementTier.beginner);
+
+      final loop = await loopOf(container);
+
+      expect(loop.profile.displayName, isNotEmpty);
       expect(
-        loop.profile.displayName,
-        isNotEmpty,
-        reason: 'an install gets a profile without anyone choosing one',
+        loop.profile.placement,
+        PlacementTier.beginner,
+        reason:
+            'the prior the whole history will be read against is the one '
+            'that was answered for, not a house default',
       );
       expect(loop.presented, isNotNull);
       expect(loop.pending, isNull);
@@ -51,6 +73,7 @@ void main() {
     'reporting a result commits it and presents the next exercise',
     () async {
       final container = launch();
+      await place(container);
       final first = await loopOf(container);
       final firstId = first.presented!.decision.attemptId;
 
@@ -76,6 +99,7 @@ void main() {
     // and cannot act on. Nothing down there serializes writers, so the loop
     // has to.
     final container = launch();
+    await place(container);
     final before = await loopOf(container);
     expect(before.session.session.attemptsThisSession, 1);
 
@@ -108,6 +132,7 @@ void main() {
 
   test('history survives a relaunch', () async {
     final first = launch();
+    await place(first);
     await loopOf(first);
     await first
         .read(practiceLoopProvider.notifier)
@@ -130,6 +155,7 @@ void main() {
         // The decision is durable before the exercise is shown, so abandoning
         // the process here is exactly the crash the transaction is built for.
         final crashed = launch();
+        await place(crashed);
         final shown = await loopOf(crashed);
         final shownId = shown.presented!.decision.attemptId;
         crashed.dispose();
@@ -151,10 +177,12 @@ void main() {
       'can be answered, and lands in history under its original id',
       () async {
         final crashed = launch();
+        await place(crashed);
         final shownId = (await loopOf(crashed)).presented!.decision.attemptId;
         crashed.dispose();
 
         final container = launch();
+        await place(container);
         await loopOf(container);
         await container
             .read(practiceLoopProvider.notifier)
@@ -170,10 +198,12 @@ void main() {
 
     test('can be abandoned, recording nothing', () async {
       final crashed = launch();
+      await place(crashed);
       await loopOf(crashed);
       crashed.dispose();
 
       final container = launch();
+      await place(container);
       await loopOf(container);
       await container.read(practiceLoopProvider.notifier).abandonPending();
       final resolved = container.read(practiceLoopProvider).value!;
@@ -193,6 +223,7 @@ void main() {
       // committed attempt being folded in a second time: the attempt id is the
       // journal's idempotency key precisely so this is safe.
       final container = launch();
+      await place(container);
       await loopOf(container);
       await container
           .read(practiceLoopProvider.notifier)
@@ -237,6 +268,7 @@ void main() {
 
   test('erasing recovers a journal this build cannot replay', () async {
     final before = launch();
+    await place(before);
     final started = await loopOf(before);
     await before
         .read(practiceLoopProvider.notifier)

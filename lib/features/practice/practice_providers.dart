@@ -122,6 +122,29 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
         return (true, created);
       });
 
+  /// Places the learner this install has not asked about yet.
+  ///
+  /// The first-launch path, where the profile is conjured rather than named:
+  /// what matters is that the tier it starts from is the one somebody chose,
+  /// since nothing can change it afterwards.
+  ///
+  /// Placing an install that already has somebody on it returns them
+  /// unchanged, because the question was already answered and a second answer
+  /// would be one the history cannot honour.
+  Future<Profile?> place(PlacementTier placement) =>
+      _mutate((repository, store) async {
+        final existing = await repository.selectedOrOldest();
+        if (existing != null) return (true, existing);
+
+        return (
+          true,
+          await repository.create(
+            displayName: defaultProfileName,
+            placement: placement,
+          ),
+        );
+      });
+
   /// Changes a profile's display name.
   Future<Profile?> rename(String profileId, String displayName) =>
       _mutate((repository, store) async {
@@ -154,16 +177,15 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   /// already gone is a person the app would try to open and could not.
   ///
   /// Deleting the profile being practiced as leaves the selection on the
-  /// oldest one left, or on a fresh default when that was the last profile on
-  /// the install. Making that profile here, in front of somebody who just
-  /// deleted the only one, is the point: the practice screen would otherwise
-  /// conjure it on the way in, and a person would find themselves practicing
-  /// as somebody they never made.
+  /// oldest one left. Deleting the last one leaves the install with nobody on
+  /// it, which puts the app back at the placement question rather than
+  /// conjuring a replacement: a profile carries a prior nobody can change
+  /// later, so one made on somebody's behalf is the thing to avoid rather
+  /// than the tidy outcome.
   Future<void> remove(String profileId) => _mutate((repository, store) async {
     final active = await _isActive(repository, profileId);
     await store.erase(profileId);
     await repository.delete(profileId);
-    if (active) await repository.selectedOrDefault();
     return (active, null);
   });
 
@@ -296,9 +318,14 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     final repository = await ref.watch(profileRepositoryProvider.future);
     final store = await ref.watch(practiceStoreProvider.future);
 
-    // No profile decision is asked of a first-time user: the install gets one
-    // and only needs attention if a second is ever wanted.
-    final profile = await repository.selectedOrDefault();
+    // Never conjures anybody. An install with no profile has not answered the
+    // placement question, and answering it is what creates the learner; a
+    // sitting opened before that would run as somebody started from a prior
+    // nobody chose. The gate above this screen is what makes it unreachable.
+    final profile = await repository.selectedOrOldest();
+    if (profile == null) {
+      throw StateError('no profile on this install has been placed yet');
+    }
     final session = await PracticeSession.open(
       store: store,
       profile: profile,
@@ -477,8 +504,8 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       final repository = await ref.read(profileRepositoryProvider.future);
       final store = await ref.read(practiceStoreProvider.future);
       final profile =
-          state.value?.profile ?? await repository.selectedOrDefault();
-      await store.erase(profile.id);
+          state.value?.profile ?? await repository.selectedOrOldest();
+      if (profile != null) await store.erase(profile.id);
     } finally {
       _writing = false;
     }

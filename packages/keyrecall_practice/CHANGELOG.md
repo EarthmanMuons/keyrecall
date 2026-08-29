@@ -27,5 +27,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - `ProfileRepository`, with in-memory and file-backed implementations, covering
   profile creation, listing, renaming, and selection. Kept separate from
   practice storage, and deliberately without deletion.
-- `selectedOrDefault()`, so a first launch opens straight into practice instead
-  of into a profile decision.
+- `selectedOrOldest()`, which resolves who is active and creates nobody. It
+  replaced `selectedOrDefault()`, whose fabricated profile started from a
+  placement nobody chose and nobody could change afterwards; an install with no
+  profile is now an onboarding state the app resolves by asking.
+- `create` takes a required `PlacementTier`, and `Profile` carries it. It is the
+  initial condition replay propagates from, so a profile that does not record it
+  cannot reproduce its own state, and an index entry without one is refused
+  rather than defaulted.

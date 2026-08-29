@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'package:keyrecall/features/practice/practice_providers.dart';
 import 'package:keyrecall/features/practice/home_screen.dart';
@@ -35,7 +36,14 @@ void main() {
     );
     addTearDown(container.dispose);
 
-    await tester.runAsync(() => container.read(practiceLoopProvider.future));
+    // The panel sits behind the placement gate in the real app, so the install
+    // is placed the way the first-run screen places it before it is pumped.
+    await tester.runAsync(() async {
+      await container
+          .read(profileRosterProvider.notifier)
+          .place(PlacementTier.someExperience);
+      await container.read(practiceLoopProvider.future);
+    });
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -58,7 +66,7 @@ void main() {
     await tester.pump();
   }
 
-  testWidgets('launching reaches an exercise without asking anything first', (
+  testWidgets('a placed install reaches an exercise without asking more', (
     tester,
   ) async {
     await pumpPanel(tester);

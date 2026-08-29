@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'placement.dart';
 import 'practice_providers.dart';
 
 /// Who uses this install: switch between them, add one, rename one, put one
@@ -210,38 +210,6 @@ class _ProfileTile extends ConsumerWidget {
 /// What the menu on a profile offers.
 enum _ProfileAction { select, rename, eraseHistory, delete }
 
-/// How a placement tier is put to somebody who has not been assessed.
-///
-/// Described by what a learner can already do rather than by a label they have
-/// to award themselves. "Intermediate" asks for a judgment about a word;
-/// "I can usually play a familiar scale with one hand without looking" asks
-/// about a morning at the piano. The three progress across breadth, retrieval,
-/// execution and coordination, which is what the prior is summarizing.
-extension on PlacementTier {
-  String get headline => switch (this) {
-    PlacementTier.beginner => 'I\u2019m new to scales.',
-    PlacementTier.someExperience => 'I\u2019ve practiced some scales.',
-    PlacementTier.advanced => 'Scales are already familiar.',
-  };
-
-  String get detail => switch (this) {
-    PlacementTier.beginner => 'I may need help with the notes or fingering.',
-    PlacementTier.someExperience =>
-      'I can usually play a familiar scale with one hand without looking at '
-          'the notes.',
-    PlacementTier.advanced =>
-      'I can play several scales from memory, with both hands and at a steady '
-          'tempo.',
-  };
-
-  /// The short form, for a list that has room for a few words.
-  String get label => switch (this) {
-    PlacementTier.beginner => 'new to scales',
-    PlacementTier.someExperience => 'some scales',
-    PlacementTier.advanced => 'scales familiar',
-  };
-}
-
 /// Adds a profile and switches to it.
 Future<void> _addProfile(BuildContext context, WidgetRef ref) async {
   final name = await _askForName(
@@ -252,90 +220,10 @@ Future<void> _addProfile(BuildContext context, WidgetRef ref) async {
   );
   if (name == null || !context.mounted) return;
 
-  final placement = await _askForPlacement(context);
+  final placement = await askForPlacement(context);
   if (placement == null) return;
 
   await ref.read(profileRosterProvider.notifier).add(name, placement);
-}
-
-/// Asks where to start this learner's estimates, or null when nobody answered.
-///
-/// Asked once and never again. Placement is the prior the whole history is
-/// computed from, so there is no edit control for it anywhere: a later answer
-/// would reinterpret every attempt already recorded rather than update a skill
-/// level, and erasing the history is the honest route to a different start.
-///
-/// Nothing is preselected. A prefilled answer to a permanent question is one
-/// somebody confirms without reading.
-Future<PlacementTier?> _askForPlacement(BuildContext context) =>
-    showDialog<PlacementTier>(
-      context: context,
-      builder: (context) {
-        final theme = Theme.of(context);
-        return AlertDialog(
-          title: const Text('Where should we start?'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                'This only sets your starting point. KeyRecall will adjust '
-                'from how you play.',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 16),
-              for (final tier in PlacementTier.values) ...[
-                _PlacementChoice(
-                  tier: tier,
-                  onChosen: () => Navigator.of(context).pop(tier),
-                ),
-                const SizedBox(height: 8),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
-    );
-
-/// One answer to the placement question.
-class _PlacementChoice extends StatelessWidget {
-  const _PlacementChoice({required this.tier, required this.onChosen});
-
-  final PlacementTier tier;
-  final VoidCallback onChosen;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return OutlinedButton(
-      onPressed: onChosen,
-      style: OutlinedButton.styleFrom(
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(tier.headline, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 2),
-          Text(
-            tier.detail,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// Asks for a display name, refusing an empty one.

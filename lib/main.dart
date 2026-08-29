@@ -3,7 +3,7 @@ import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'features/practice/home_screen.dart';
+import 'features/practice/placement.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -35,7 +35,7 @@ class KeyRecallApp extends ConsumerWidget {
       title: 'KeyRecall',
       theme: ThemeData(colorScheme: lightColorScheme),
       darkTheme: ThemeData(colorScheme: darkColorScheme),
-      home: const HomeScreen(),
+      home: const PlacementGate(),
     );
   }
 }
