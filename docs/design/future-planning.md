@@ -702,6 +702,69 @@ learn, whether the scheduler returns to new material soon enough after first
 exposure, and whether the natural minors do transfer as cheaply as their shared
 fingering suggests.
 
+### 4.8 The cold-start regime: placement priors against the challenge band
+
+Measured, not conjectured. A census of all 1,008 generated candidates at slot
+zero, with every material already seen so the unseen-material rule is not what
+is being measured:
+
+| Placement tier   | Fully eligible | Below band | In band | Best reachable `p` |
+| ---------------- | -------------: | ---------: | ------: | -----------------: |
+| `beginner`       |            192 |        192 |   **0** |          **0.283** |
+| `someExperience` |            576 |        576 |   **0** |          **0.513** |
+| `advanced`       |          1,008 |        742 |     266 |              0.730 |
+
+The easiest exercise the catalog can produce is the same for all three: C major,
+right hand, one octave, 60 bpm, continuously cued. Against `pMin = 0.60`, **two
+of the three placement tiers cannot reach the challenge band at any exercise**,
+and the third only just does.
+
+`beginnerMean = -1.0`, `someExperienceMean = 0.0` and `pMin = 0.60` are each
+defensible alone. Together they define a regime nobody chose: for the majority
+of new learners the ordinary "not too easy, not too hard" path is inert, and
+every attempt is admitted by a named bypass instead. A traced beginner sitting
+confirms it — across sixteen consecutive attempts, `challengeBypass` was never
+null.
+
+That may be a coherent operating mode. A beginner genuinely is meeting
+everything for the first time, and `pIntroductionMin = 0.15` exists to carry
+exactly that. Two things about it are harder to defend.
+
+**It applies to `someExperience`.** That tier describes somebody who can already
+play a familiar scale one-handed, and it is what the app assumed for every
+profile before placement was asked for. Introduction-only is a strange
+description of them.
+
+**The prerequisite gates lose their force under it.** Challenge admission is
+stage 3 and eligibility ranking is stage 4, so the tier ordering can only sort
+what admission let through. While the bypasses point at foundation material a
+beginner's sequence is exactly right; once that material is exhausted, the
+new-material bypass necessarily points at unpracticed material, which is the
+material the admission bands exist to defer. In the traced sitting the first
+twelve attempts were foundation, one octave, single hand, and the thirteenth was
+a two-octave harmonic minor admitted by `new_material` and demoted to
+provisional by the octave prerequisite — demoted, but still selected, because
+nothing fully eligible was admitted at all.
+
+So the open question is not which floor to nudge. It is whether the intended
+cold-start mode is introduction-driven, and if so, what should aim the
+introductions once the appropriate material runs out. Candidate directions, none
+yet argued for:
+
+- a lower `pMin` for learners whose estimates are still near their placement
+  prior, so ordinary admission can operate at all;
+- placement priors set against the band rather than independently of it;
+- an introduction envelope that respects the admission bands, so "new material"
+  means the next appropriate material rather than any unseen material;
+- accepting introduction-only as the intended cold start and making the bands
+  the thing that orders introductions.
+
+Related, and found the same way: `handTogetherCompetencyThreshold` is `0.0` and
+`someExperienceMean` is also `0.0`, and the gate tests `mean < threshold`. So
+whether that tier gets hands-together work immediately is currently decided by
+the equality semantics of two numbers that were set independently, rather than
+by a pedagogical decision.
+
 ## 5. Domain expansion
 
 The long-term technical-practice domain may include:

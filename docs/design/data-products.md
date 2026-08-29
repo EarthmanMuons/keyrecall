@@ -164,6 +164,75 @@ discarded rather than kept because they might be useful, which is minimization
 doing its job. But **semantic downsampling for privacy happens at the export
 boundary, not by damaging the canonical local evidence.**
 
+## What happens when the bytes are wrong
+
+Detection should be strong; automatic repair should be conservative. Most of the
+detection already exists and was built for other reasons: append-only writes,
+attempt ids as idempotency keys, profile scoping, contiguous journal sequence
+numbers, monotonic ordering, before and after state hashes on every record,
+exact replay on open, content-hashed checkpoints, model-version stamping, and
+whole-file replacement through a temporary for everything that is not an append.
+
+Together those turn most silent corruption into a loud failure at the next open.
+Four classes remain worth naming, because they differ in what may be done about
+them.
+
+**A corrupt checkpoint is repaired by deletion.** It is verified against the
+journal before it is trusted and discarded when it does not match. Nothing is
+lost but the time replay takes.
+
+**A torn final append may be truncated.** The realistic crash for an append-only
+file is a last line that never finished, and a journal whose final line has no
+newline is read without it. This is deliberately the _final_ line only. A
+malformed line with valid records after it is corruption of committed history,
+and the records that follow were derived from a state that cannot now be
+established, so it fails rather than skipping.
+
+```text
+valid valid valid valid [torn append]     recoverable
+valid valid [damaged] valid valid         not automatically repairable
+```
+
+**A record that parses but says something different is detected, never
+repaired.** This is what the state hashes are for: replay recomputes each
+transition and compares, so an altered record diverges at a nameable attempt.
+The right response is to report which attempt, keep the damaged file, and offer
+an explicit destructive choice. Erasing the history is that choice today.
+Discarding history after the last verified attempt is a plausible later addition
+and is not built, because it raises questions about pending decisions,
+checkpoints, and what a person understands themselves to be losing.
+
+**A lost profile index orphans intact evidence, and this is the one real gap.**
+The index is the only copy of two things replay cannot proceed without: the
+profile's creation instant, which placement is anchored at, and the placement
+tier itself. The journal header carries a profile id and a storage timestamp
+that is explicitly not the learner timeline, so a profile directory full of
+perfectly good attempts cannot be replayed without the file that sits outside
+it.
+
+That asymmetry is worth closing, because the genesis is about a hundred bytes
+and the history it governs is hundreds of megabytes. The shape to grow into is a
+profile directory that describes itself:
+
+```text
+<profile-id>/
+  profile.json      id, creation instant, placement: the replay genesis
+  journal.jsonl
+  checkpoint.json
+```
+
+with the roster reduced to selection and display metadata, rebuildable by
+scanning the directories, and cross-checkable against them. Nothing needs the
+index to be authoritative about identity.
+
+Not proposed: parity blocks, error-correcting codes, replicas, page checksums,
+background scrubbing, or backups whose purpose is corruption protection. At two
+kilobytes an attempt those are disproportionate. A per-record hash chain over
+canonical content would add file-level integrity independent of replay, and is
+worth considering for diagnostics, but the state hashes already form a semantic
+chain over the same records, so it improves how a failure is described rather
+than whether it is caught.
+
 ## The reinterpretability boundary
 
 Worth stating plainly, because it is a consequence of a decision made for
