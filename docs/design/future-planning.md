@@ -755,7 +755,20 @@ narrower than it looked:
 > once a beginner has met the foundation, should the scheduler introduce less
 > appropriate material, or stop introducing and consolidate what they have?
 
-Nothing here answers that, and it is a product judgment rather than a threshold.
+Answered by consolidating, and the answer was forced rather than chosen. A
+census of the slot where it goes wrong found **no seen fully eligible candidate
+surviving admission at all**: not in the ordinary band, no rung established so
+the guidance probe could not climb, the bootstrap probe days away, and the
+observation probe counting supported attempts that a previewed introduction
+resets. Introducing was the only move the scheduler had, which is why
+introducing is what it kept doing.
+
+So consolidation is an admission exception rather than a ranking preference —
+there was nothing to prefer. It offers a met and unretrieved scale at the
+previewed rung when the slot has nothing appropriate left to introduce, and goes
+quiet once that scale has been produced from memory. No refusal against the
+introduction beside it is needed: the tier leads the ranking key, so fully
+eligible consolidation outranks provisional novelty wherever both apply.
 
 So the open question is not which floor to nudge. It is whether the intended
 cold-start mode is introduction-driven, and if so, what should aim the

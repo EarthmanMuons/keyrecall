@@ -107,6 +107,10 @@ enum StageStatus {
 /// A named reason a candidate was admitted outside the ordinary challenge
 /// band.
 enum ChallengeBypass {
+  /// Material already met and not yet retrieved, offered again rather than
+  /// letting the slot reach for something new and less appropriate.
+  consolidation('consolidation'),
+
   /// Never-practiced material, admitted through the introduction envelope.
   newMaterial('new_material'),
 
@@ -154,6 +158,9 @@ enum AdmissionException {
 
   /// Nothing has observed retrieval for a while, whatever the odds say.
   observationProbe,
+
+  /// Material already met that has not yet been produced from memory.
+  consolidation,
 
   /// Material with no history, admitted over a lower floor.
   newMaterial,

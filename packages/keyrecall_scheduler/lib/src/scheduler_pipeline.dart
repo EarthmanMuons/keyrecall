@@ -550,6 +550,40 @@ class SchedulerPipeline {
           isObservationProbe(exercise, supportedAttempts)
               ? const _Admits(ChallengeBypass.observationProbe)
               : const _Silent(),
+        // The slot has nothing appropriate left to introduce, and something
+        // already met that has never been produced from memory. Offering it
+        // again is better work than reaching for material a learner has not
+        // earned, and without this there is nothing else the slot can do: for
+        // a beginner in a first sitting every other path to seen material is
+        // shut. It is out of the ordinary band, no rung is established so the
+        // guidance probe cannot climb, the bootstrap probe is days away, and
+        // the observation probe counts supported attempts that a previewed
+        // introduction resets. Introducing was the only move available, which
+        // is why introductions kept happening.
+        //
+        // No refusal is needed against the introduction below. This admits
+        // fully eligible work, that one admits provisional work, and the tier
+        // leads the ranking key, so consolidation wins where it applies and
+        // steps aside where it does not.
+        //
+        // The previewed rung, and only that one, for the reason the bootstrap
+        // probe uses it: where no rung is established, that is the retrieval
+        // test to offer. A cued repeat cannot turn a scale that has been shown
+        // into one that has been produced however often it is offered, and an
+        // unguided one hands out independence that is supposed to be earned,
+        // which would make failing every retrieval a way to be asked harder
+        // questions.
+        AdmissionException.consolidation =>
+          introducibleTier == EligibilityTier.fullyEligible ||
+                  eligibility != EligibilityTier.fullyEligible ||
+                  exercise.guidance != GuidanceContext.notesPreviewedOnly
+              ? const _Silent()
+              : switch (state.materialMemory[exercise.material.materialId]) {
+                  final memory? when !memory.hasFactualRetrieval =>
+                    const _Admits(ChallengeBypass.consolidation),
+                  _ => const _Silent(),
+                },
+
         // Difficulty is what an introduction is allowed to bypass, and only
         // that. A prerequisite says the material is inappropriate for a
         // separate reason, so introducing something is never a licence to
