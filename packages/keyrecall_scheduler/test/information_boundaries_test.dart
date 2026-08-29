@@ -188,7 +188,7 @@ void main() {
       );
     });
 
-    test('applies no prerequisite to single-hand work', () {
+    test('applies no prerequisite to single-hand work at one octave', () {
       final state = stateAt(PlacementTier.beginner);
       seedAllMaterials(state);
       for (final hands in [HandConfiguration.right, HandConfiguration.left]) {

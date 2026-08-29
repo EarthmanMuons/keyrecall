@@ -25,7 +25,9 @@ Exercise exerciseFor(
   TechnicalMaterial material, {
   HandConfiguration hands = HandConfiguration.right,
   GuidanceContext guidance = GuidanceContext.unguided,
-  int octaves = 2,
+  // One octave by default, so a test about some other stage does not have the
+  // octave-span prerequisite decide its eligibility tier for it.
+  int octaves = 1,
   ScaleDirection direction = ScaleDirection.upDown,
   double tempoBpm = 80,
 }) => Exercise.linear(

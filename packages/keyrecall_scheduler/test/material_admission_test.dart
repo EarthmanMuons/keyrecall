@@ -10,11 +10,18 @@ void main() {
   const pipeline = SchedulerPipeline(learner: LearnerModel());
   const config = v1SchedulerConfig;
 
+  /// One octave, so the octave-span prerequisite is never what a test about
+  /// material admission ends up measuring. It has its own group below.
   Exercise scale(
     String tonic,
     ScaleForm form, {
     HandConfiguration hands = HandConfiguration.right,
-  }) => Exercise.linear(material: TechnicalMaterial(tonic, form), hands: hands);
+    int octaves = 1,
+  }) => Exercise.linear(
+    material: TechnicalMaterial(tonic, form),
+    hands: hands,
+    octaves: octaves,
+  );
 
   /// A learner whose competencies all sit at [mean], on the logit scale
   /// placement uses.
@@ -81,7 +88,11 @@ void main() {
       ]) {
         final decision = decide(
           beginner,
-          Exercise.linear(material: material, hands: HandConfiguration.right),
+          Exercise.linear(
+            material: material,
+            hands: HandConfiguration.right,
+            octaves: 1,
+          ),
         );
 
         expect(
@@ -117,6 +128,7 @@ void main() {
       final exercise = Exercise.linear(
         material: material,
         hands: HandConfiguration.right,
+        octaves: 1,
       );
 
       expect(
@@ -321,6 +333,68 @@ void main() {
     });
   });
 
+  group('octave span', () {
+    test('two octaves wait for one, and say so', () {
+      final decision = decide(
+        learnerAt(-1.0),
+        scale('C', ScaleForm.major, octaves: 2),
+      );
+
+      expect(decision.tier, EligibilityTier.provisionallyEligible);
+      expect(decision.code, EligibilityReason.octaveSpanPrerequisite);
+    });
+
+    test('one octave of the same material is untouched', () {
+      expect(
+        decide(learnerAt(-1.0), scale('C', ScaleForm.major)).tier,
+        EligibilityTier.fullyEligible,
+        reason: 'the span is the condition under question, not the scale',
+      );
+    });
+
+    test('it opens as ordinary one-octave work raises execution', () {
+      expect(
+        decide(
+          learnerAt(config.eligibility.multiOctaveExecutionFloor),
+          scale('C', ScaleForm.major, octaves: 2),
+        ).tier,
+        EligibilityTier.fullyEligible,
+      );
+    });
+
+    test('a learner who arrived able to play never meets it', () {
+      expect(
+        decide(learnerAt(0.0), scale('Db', ScaleForm.major, octaves: 2)).code,
+        isNot(EligibilityReason.octaveSpanPrerequisite),
+        reason:
+            'placement puts some experience at zero, and the floor is '
+            'below it',
+      );
+    });
+
+    test('it reads the hand that is actually playing', () {
+      final state = learnerAt(1.0);
+      state.competency(Competency.lhScaleExecution).mean = -2.0;
+
+      expect(
+        decide(state, scale('C', ScaleForm.major, octaves: 2)).tier,
+        EligibilityTier.fullyEligible,
+      );
+      expect(
+        decide(
+          state,
+          scale(
+            'C',
+            ScaleForm.major,
+            hands: HandConfiguration.left,
+            octaves: 2,
+          ),
+        ).code,
+        EligibilityReason.octaveSpanPrerequisite,
+      );
+    });
+  });
+
   group('hands together', () {
     test('still asks for both hands first, unchanged', () {
       final state = learnerAt(1.0);
@@ -331,6 +405,7 @@ void main() {
           modelVersion: 'test',
           eligibility: const EligibilityConfig(
             handTogetherCompetencyThreshold: 0.0,
+            multiOctaveExecutionFloor: -0.5,
             earlyTransferExecutionFloor: 0.0,
             intermediateExecutionFloor: 0.4,
             advancedExecutionFloor: 0.8,
@@ -366,7 +441,11 @@ void main() {
     for (final material in allScales) {
       final decision = decide(
         beginner,
-        Exercise.linear(material: material, hands: HandConfiguration.right),
+        Exercise.linear(
+          material: material,
+          hands: HandConfiguration.right,
+          octaves: 1,
+        ),
       );
       expect(
         decision.tier,
@@ -406,7 +485,11 @@ void main() {
 
       final unguided = pipeline.eligibilityFor(
         capable,
-        Exercise.linear(material: material, hands: HandConfiguration.right),
+        Exercise.linear(
+          material: material,
+          hands: HandConfiguration.right,
+          octaves: 1,
+        ),
       );
 
       expect(unguided.tier, EligibilityTier.provisionallyEligible);
@@ -426,6 +509,7 @@ void main() {
             material: TechnicalMaterial('C', ScaleForm.major),
             hands: HandConfiguration.right,
             guidance: guidance,
+            octaves: 1,
           ),
         );
 
@@ -446,6 +530,7 @@ void main() {
         final exercise = Exercise.linear(
           material: TechnicalMaterial('C', ScaleForm.major),
           hands: HandConfiguration.right,
+          octaves: 1,
         );
 
         expect(
@@ -470,6 +555,7 @@ void main() {
         Exercise.linear(
           material: TechnicalMaterial('B', ScaleForm.major),
           hands: HandConfiguration.right,
+          octaves: 1,
         ),
       );
 

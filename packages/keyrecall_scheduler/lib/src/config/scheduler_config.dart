@@ -20,6 +20,22 @@ class EligibilityConfig {
   final double intermediateExecutionFloor;
   final double advancedExecutionFloor;
 
+  /// Single-hand execution a traversal of more than one octave asks for.
+  ///
+  /// The one condition on the execution axis with unanimous curriculum
+  /// support: no source teaches two octaves before one. It needs a floor
+  /// because the information term actively prefers the untried condition, and
+  /// a span nobody has attempted is where the uncertainty is; without one a
+  /// synthetic beginner reached two octaves unguided on their eighth attempt.
+  ///
+  /// Generic rather than per-material, for the reason the bands are not a
+  /// per-key ladder, and not read off multi-octave continuation itself, which
+  /// would be the self-referential trap natural minor already taught. Halfway
+  /// between where placement puts a self-reported beginner and someone with
+  /// some experience, so it is earned by ordinary one-octave work and never
+  /// asked of a learner who arrived able to play.
+  final double multiOctaveExecutionFloor;
+
   /// Familiarity with some minor topology before a minor form is fully
   /// eligible, and with a different minor form before fixed-form melodic
   /// minor is.
@@ -59,6 +75,7 @@ class EligibilityConfig {
 
   const EligibilityConfig({
     required this.handTogetherCompetencyThreshold,
+    required this.multiOctaveExecutionFloor,
     required this.earlyTransferExecutionFloor,
     required this.intermediateExecutionFloor,
     required this.advancedExecutionFloor,
@@ -286,6 +303,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
   modelVersion: 'v1-1',
   eligibility: EligibilityConfig(
     handTogetherCompetencyThreshold: 0.0,
+    multiOctaveExecutionFloor: -0.5,
     earlyTransferExecutionFloor: 0.0,
     intermediateExecutionFloor: 0.4,
     advancedExecutionFloor: 0.8,

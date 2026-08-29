@@ -110,6 +110,24 @@ class SchedulerPipeline {
       }
     }
 
+    // Two octaves before one is the one ordering on the execution axis every
+    // source agrees on, and the information term will otherwise reach for the
+    // span nobody has attempted precisely because nobody has. The material is
+    // untouched: one octave of it stays fully eligible.
+    if (exercise.conditions.octaves > 1) {
+      final floor = config.eligibility.multiOctaveExecutionFloor;
+      final execution = _executionMeanFor(state, hands);
+      if (execution < floor) {
+        return EligibilityDecision(
+          EligibilityTier.provisionallyEligible,
+          '${exercise.conditions.octaves} octaves ask for execution '
+          '${floor.toStringAsFixed(2)}, learner is at '
+          '${execution.toStringAsFixed(2)}',
+          code: EligibilityReason.octaveSpanPrerequisite,
+        );
+      }
+    }
+
     // An altered minor form is a new idea rather than a new key: harmonic
     // minor raises the seventh against natural minor, and melodic minor
     // raises the sixth as well, in a fixed form the classical convention does

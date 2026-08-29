@@ -49,6 +49,9 @@ enum EligibilityReason {
   /// Hands-together work asks for both hands first.
   handsTogetherPrerequisite('HANDS_TOGETHER_PREREQUISITE'),
 
+  /// A multi-octave traversal asks for one octave first.
+  octaveSpanPrerequisite('OCTAVE_SPAN_PREREQUISITE'),
+
   /// Harmonic minor asks for a broad base of ordinary scales first.
   harmonicMinorRepertoireBreadth('HARMONIC_MINOR_REPERTOIRE_BREADTH'),
 
