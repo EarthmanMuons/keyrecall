@@ -87,20 +87,24 @@ class ProfileIndex {
     );
   }
 
-  /// Writes the index.
+  /// Writes the part of an index that is not derivable from the profiles
+  /// themselves.
+  ///
+  /// Which profiles exist is not written here. A profile records itself beside
+  /// its own history, so this file answers only the question nothing else can:
+  /// which of them is active. That makes it convenience state, and losing it
+  /// costs a selection rather than an identity.
   Map<String, Object?> toJson() => {
     'schema_version': profileIndexSchemaVersion,
     'selected_profile_id': selectedProfileId,
-    'profiles': [for (final profile in profiles) profile.toJson()],
   };
 
-  /// Reads an index back.
+  /// The selection recorded in [json], or null when there is none.
   ///
-  /// Throws [JournalFormatException] on anything unreadable. A profile index
-  /// that cannot be understood is not something to rebuild from directory
-  /// names: an id is an identity, and guessing one would attach a person to
-  /// somebody else's practice history.
-  factory ProfileIndex.fromJson(Map<String, Object?> json) {
+  /// Throws [JournalFormatException] on anything unreadable. A selection is
+  /// small and rewritable, but a version this build does not know is still a
+  /// file it must not guess at.
+  static String? selectionFromJson(Map<String, Object?> json) {
     final version = requireInt(json, 'schema_version');
     if (version != profileIndexSchemaVersion) {
       throw JournalFormatException(
@@ -108,26 +112,10 @@ class ProfileIndex {
         'which writes version $profileIndexSchemaVersion',
       );
     }
-
-    const location = 'profile index';
-    final entries = json['profiles'];
-    if (entries is! List) {
-      throw const JournalFormatException(
-        'expected a list at "profiles"',
-        location: location,
-      );
-    }
-
-    return ProfileIndex(
-      profiles: [
-        for (final entry in entries)
-          Profile.fromJson(asMap(entry, 'profile', location: location)),
-      ],
-      selectedProfileId: asOptionalString(
-        json['selected_profile_id'],
-        'selected_profile_id',
-        location: location,
-      ),
+    return asOptionalString(
+      json['selected_profile_id'],
+      'selected_profile_id',
+      location: 'profile index',
     );
   }
 

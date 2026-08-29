@@ -6,23 +6,39 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'profile_repository.dart';
 
-/// A [ProfileRepository] backed by a single index file.
+/// A [ProfileRepository] backed by self-describing profile directories.
 ///
 /// ```text
-/// <root>/profiles.json     who exists, and who is active
-/// <root>/<profile-id>/     that person's practice storage
+/// <root>/profiles.json          which profile is active
+/// <root>/<profile-id>/
+///   profile.json                who this is: the replay genesis
+///   journal.jsonl               what they played
+///   checkpoint.json
 /// ```
 ///
-/// The index is the authority on who exists. This never scans for directories:
-/// a leftover practice directory is not a person, and rebuilding names from
-/// directory ids would attach somebody to a history that is not theirs. A
-/// directory is named by profile id permanently, so renaming touches only the
-/// index and never moves anything, and deleting an entry leaves whatever
-/// practice storage that id had: erasing that is the practice store's call and
-/// not this one's.
+/// Each profile records itself beside its own history, and that is the
+/// authority on who exists. The invariant worth stating:
 ///
-/// Writes go to a temporary name and are renamed over the target, so a reader
-/// sees the old index or the new one and never a half-written one.
+/// > a directory holding a valid `profile.json` and journal is enough to
+/// > reopen that learner, with no file outside it.
+///
+/// Which matters because the genesis is tiny and the history it governs is
+/// not. A profile's creation instant is what placement is anchored at and its
+/// placement is the prior every posterior descends from, so keeping the only
+/// copy of both in one shared file would let a hundred lost bytes strand every
+/// megabyte of intact evidence on the install.
+///
+/// So the roster is scanned rather than stored, and `profiles.json` holds only
+/// the selection. Scanning is not guessing from directory names, which would
+/// attach somebody to a history that is not theirs; it is reading each
+/// profile's own record of itself. A directory with no `profile.json` is
+/// orphaned storage rather than a person, which is exactly what a deleted
+/// profile's leftover history is.
+///
+/// A directory is named by profile id permanently, so renaming rewrites one
+/// small file and moves nothing. Every write goes to a temporary name and is
+/// renamed over its target, so a reader sees one version or the other and
+/// never a half-written one.
 class FileProfileRepository implements ProfileRepository {
   /// Directory holding the index and the per-profile directories.
   final Directory root;
@@ -36,8 +52,12 @@ class FileProfileRepository implements ProfileRepository {
   factory FileProfileRepository.at(String path, {DateTime Function()? now}) =>
       FileProfileRepository(Directory(path), now: now);
 
-  /// The index file this repository reads and writes.
+  /// The file recording which profile is active.
   File get indexFile => File('${root.path}/profiles.json');
+
+  /// Where [profileId] records itself.
+  File profileFileFor(String profileId) =>
+      File('${root.path}/$profileId/profile.json');
 
   @override
   Future<List<Profile>> list() async => (await _read()).profiles;
@@ -115,31 +135,89 @@ class FileProfileRepository implements ProfileRepository {
     return profile;
   }
 
-  /// Reads the index, treating a missing file as an install nobody has used.
+  /// Assembles the roster from the profiles on disk, and the selection from
+  /// the index.
   ///
-  /// A file that exists but cannot be read is a different matter, and fails.
+  /// A missing directory or index is an install nobody has used yet. A file
+  /// that exists and cannot be read is a different matter and fails: a profile
+  /// is the genesis of a history, and a reader that skipped an unreadable one
+  /// would present somebody with an install their practice had vanished from.
+  ///
+  /// A selection naming a profile that is no longer here is dropped rather
+  /// than raised. It is the one piece of state here that is rewritable
+  /// convenience, and a crash between removing a profile and rewriting the
+  /// selection is exactly how it arises.
   Future<ProfileIndex> _read() async {
-    final file = indexFile;
-    if (!file.existsSync()) return ProfileIndex.empty();
+    if (!root.existsSync()) return ProfileIndex.empty();
 
-    final Object? decoded;
-    try {
-      decoded = jsonDecode(await file.readAsString());
-    } on FormatException catch (error) {
-      throw JournalFormatException(
-        'profile index is not valid JSON: ${error.message}',
-        location: file.path,
+    final profiles = <Profile>[];
+    for (final entry in root.listSync().whereType<Directory>()) {
+      final file = File('${entry.path}/profile.json');
+      if (!file.existsSync()) continue;
+      profiles.add(
+        Profile.fromJson(
+          asMap(_decode(file, 'profile'), 'profile', location: file.path),
+        ),
       );
     }
-    return ProfileIndex.fromJson(
-      asMap(decoded, 'profile index', location: file.path),
+
+    final selected = indexFile.existsSync()
+        ? ProfileIndex.selectionFromJson(
+            asMap(
+              _decode(indexFile, 'profile index'),
+              'profile index',
+              location: indexFile.path,
+            ),
+          )
+        : null;
+
+    return ProfileIndex(
+      profiles: profiles,
+      selectedProfileId: profiles.any((profile) => profile.id == selected)
+          ? selected
+          : null,
     );
   }
 
+  Object? _decode(File file, String what) {
+    try {
+      return jsonDecode(file.readAsStringSync());
+    } on FormatException catch (error) {
+      throw JournalFormatException(
+        '$what is not valid JSON: ${error.message}',
+        location: file.path,
+      );
+    }
+  }
+
+  /// Writes every profile beside its own history, then the selection.
+  ///
+  /// Profiles first, and the selection last, because the selection is the part
+  /// that can be repaired by reading: a crash before it lands leaves everybody
+  /// present with nobody active, which resolves itself.
   Future<void> _write(ProfileIndex index) async {
     await root.create(recursive: true);
-    final temporary = File('${indexFile.path}.tmp');
-    await temporary.writeAsString(canonicalJson(index.toJson()), flush: true);
-    await temporary.rename(indexFile.path);
+    for (final profile in index.profiles) {
+      final file = profileFileFor(profile.id);
+      await file.parent.create(recursive: true);
+      await _writeAtomically(file, canonicalJson(profile.toJson()));
+    }
+    for (final entry in root.listSync().whereType<Directory>()) {
+      final id = entry.path.split(Platform.pathSeparator).last;
+      if (index.find(id) != null) continue;
+      final file = File('${entry.path}/profile.json');
+      // Forgetting who somebody is takes their record of themselves with it.
+      // Leaving it would make the roster resurrect them on the next scan, and
+      // the history beside it becomes orphaned storage, which is what a
+      // deleted profile's leftover practice already was.
+      if (file.existsSync()) await file.delete();
+    }
+    await _writeAtomically(indexFile, canonicalJson(index.toJson()));
+  }
+
+  Future<void> _writeAtomically(File file, String contents) async {
+    final temporary = File('${file.path}.tmp');
+    await temporary.writeAsString(contents, flush: true);
+    await temporary.rename(file.path);
   }
 }

@@ -15,6 +15,11 @@ import 'practice_store.dart';
 /// <root>/<profileId>/checkpoint.json   one slot, replaced
 /// ```
 ///
+/// The directory is shared with the profile's own record of itself, which the
+/// profile repository writes and this store never touches. That is what lets a
+/// history be reopened without the install's index; see
+/// [FileProfileRepository].
+///
 /// A database would work too, and the port exists so one can be swapped in.
 /// Files are the natural first fit: the journal is already append-only JSON
 /// lines, appending is the one write pattern that never rewrites history, and a
@@ -184,10 +189,23 @@ class FilePracticeStore implements PracticeStore {
     await temporary.rename(file.path);
   }
 
+  /// Deletes the files this store wrote, and nothing else in the directory.
+  ///
+  /// Not the directory itself, because it is shared: a profile records itself
+  /// beside its history so that the history can be reopened without the
+  /// install's index, and erasing practice is not the same decision as
+  /// forgetting who somebody is. Removing the directory wholesale would make
+  /// the smaller decision impossible to ask for, which is the seam the profile
+  /// repository and this store are kept apart to preserve.
   @override
   Future<void> erase(String profileId) async {
-    final directory = _profileDirectory(profileId);
-    if (directory.existsSync()) directory.deleteSync(recursive: true);
+    for (final file in [
+      _journalFile(profileId),
+      _pendingFile(profileId),
+      _checkpointFile(profileId),
+    ]) {
+      if (file.existsSync()) file.deleteSync();
+    }
   }
 
   Directory _profileDirectory(String profileId) =>

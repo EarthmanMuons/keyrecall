@@ -454,32 +454,33 @@ void main() {
       );
     });
 
-    test(
-      'a selection pointing at nobody fails rather than being ignored',
-      () async {
-        final repository = FileProfileRepository(root, now: () => t0);
-        await repository.create(
-          displayName: 'Alice',
-          createdAt: t0,
-          placement: PlacementTier.someExperience,
-        );
+    test('a selection pointing at nobody is dropped, not raised', () async {
+      // The selection is the one piece of state here that is rewritable
+      // convenience rather than identity, and a crash between removing a
+      // profile and rewriting the selection is how a dangling one arises.
+      // Everybody is still present; nobody is active until somebody chooses.
+      final repository = FileProfileRepository(root, now: () => t0);
+      final alice = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
-        final json =
-            jsonDecode(repository.indexFile.readAsStringSync())
-                as Map<String, Object?>;
-        json['selected_profile_id'] = 'nobody';
-        repository.indexFile.writeAsStringSync(jsonEncode(json));
+      final json =
+          jsonDecode(repository.indexFile.readAsStringSync())
+              as Map<String, Object?>;
+      json['selected_profile_id'] = 'nobody';
+      repository.indexFile.writeAsStringSync(jsonEncode(json));
 
-        await expectLater(
-          repository.selected(),
-          throwsA(isA<JournalFormatException>()),
-        );
-      },
-    );
+      expect(await repository.selected(), isNull);
+      expect((await repository.list()).single.id, alice.id);
+      expect((await repository.selectedOrOldest())?.id, alice.id);
+    });
 
     test('an orphaned practice directory is not a profile', () async {
-      // The index is the authority on who exists. Rebuilding people from
-      // directory names would attach somebody to a history that is not theirs.
+      // A profile's own record of itself is the authority on who exists, and
+      // a directory without one holds nobody. Rebuilding people from directory
+      // names would attach somebody to a history that is not theirs.
       final repository = FileProfileRepository(root, now: () => t0);
       Directory(
         '${root.path}/3f2a6c18-0000-4000-8000-00000000dead',

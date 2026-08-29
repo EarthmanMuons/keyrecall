@@ -27,6 +27,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - `ProfileRepository`, with in-memory and file-backed implementations, covering
   profile creation, listing, renaming, and selection. Kept separate from
   practice storage, and deliberately without deletion.
+- Self-describing profile directories: each profile writes its own
+  `profile.json` beside its journal, so a directory holding both is enough to
+  reopen that learner with no file outside it. The roster is scanned from those
+  records and `profiles.json` holds only which profile is active, which makes
+  losing it cost a selection rather than every history on the install.
 - `selectedOrOldest()`, which resolves who is active and creates nobody. It
   replaced `selectedOrDefault()`, whose fabricated profile started from a
   placement nobody chose and nobody could change afterwards; an install with no

@@ -202,17 +202,14 @@ Discarding history after the last verified attempt is a plausible later addition
 and is not built, because it raises questions about pending decisions,
 checkpoints, and what a person understands themselves to be losing.
 
-**A lost profile index orphans intact evidence, and this is the one real gap.**
-The index is the only copy of two things replay cannot proceed without: the
-profile's creation instant, which placement is anchored at, and the placement
-tier itself. The journal header carries a profile id and a storage timestamp
-that is explicitly not the learner timeline, so a profile directory full of
-perfectly good attempts cannot be replayed without the file that sits outside
-it.
+**A lost profile index costs a selection, and nothing else.** It used to cost
+everything: the index held the only copy of two things replay cannot proceed
+without, the profile's creation instant that placement is anchored at and the
+placement tier itself, so a directory full of perfectly good attempts was
+unreplayable without a file outside it. A hundred bytes governed hundreds of
+megabytes.
 
-That asymmetry is worth closing, because the genesis is about a hundred bytes
-and the history it governs is hundreds of megabytes. The shape to grow into is a
-profile directory that describes itself:
+Each profile now records itself beside its own history:
 
 ```text
 <profile-id>/
@@ -221,9 +218,20 @@ profile directory that describes itself:
   checkpoint.json
 ```
 
-with the roster reduced to selection and display metadata, rebuildable by
-scanning the directories, and cross-checkable against them. Nothing needs the
-index to be authoritative about identity.
+with the invariant that **a directory holding a valid `profile.json` and journal
+is enough to reopen that learner, with no file outside it**. The roster is
+scanned from those records rather than stored, and `profiles.json` holds only
+which profile is active. That is genuinely convenience state: a selection naming
+somebody who is no longer there is dropped rather than raised, since a crash
+between removing a profile and rewriting the selection is exactly how one
+arises.
+
+Scanning is not guessing from directory names, which would attach somebody to a
+history that is not theirs. A directory with no `profile.json` is orphaned
+storage rather than a person, which is what a deleted profile's leftover
+practice is: forgetting who somebody is and destroying what they played remain
+separate decisions, so erasing a history removes the files the practice store
+wrote rather than the directory they share.
 
 Not proposed: parity blocks, error-correcting codes, replicas, page checksums,
 background scrubbing, or backups whose purpose is corruption protection. At two
