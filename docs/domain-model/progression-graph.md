@@ -111,11 +111,77 @@ narrows later; Faber teaches the three forms as one related concept.
 
 **Verdict: `REQUIRES` on the altered forms only.** Natural minor asks for
 nothing, because it is where minor topology comes from. Harmonic and melodic
-minor pass the _conceptual object_ test: they change what minor means, so they
-wait on a breadth of ordinary scales retrieved across more than one band, and on
-some familiarity with another minor topology. Not per-tonic: A harmonic minor is
-admitted on the strength of A natural minor and of minor topology generally, and
-no source supports a per-key form ladder.
+minor pass the _conceptual object_ test, and what they wait on is a curriculum
+phase rather than a threshold:
+
+```text
+major + natural minor
+        ↓
+both hands observed separately
+        ↓
+some hands-together work on ordinary material
+        ↓
+harmonic minor
+        ↓  more ordinary-form breadth
+melodic minor
+```
+
+Every one of those conditions asks whether a channel has been **observed**, not
+where its mean sits. Placement seeds means from what a learner said about
+themselves at onboarding, so a mean test lets a self-report stand in for
+demonstrated musicianship: choosing "scales are already familiar" once opened
+every altered form before a note was played. `LearnerState.isObserved` is the
+question policy asks instead.
+
+Breadth is counted **per hand**. Memory is keyed by material and knows a scale
+was retrieved without knowing which hand was playing, so the count is joined
+with the execution residual for that hand, which is the one part of learner
+state keyed by hand as well as material. It is a projection rather than a record
+— a scale retrieved by one hand and merely played by the other counts for both —
+but it is enough to stop twelve right-hand scales speaking for a left hand that
+has played none of them.
+
+The hands-together condition applies to one-hand candidates too, deliberately.
+Nothing about harmonic minor mechanically needs two hands; two hands is being
+used as the marker of the phase, and a phase a learner has not reached is not
+reached for right-hand work either.
+
+Not per-tonic: A harmonic minor is admitted on the strength of A natural minor
+and of minor topology generally, and no source supports a per-key form ladder.
+
+**The waiver is an escape from this graph, not part of it.** Somebody who
+arrived playing scales should not be marched through a curriculum they know, so
+one condition waives the whole foundation:
+
+```text
+hands-together coordination observed AND fluent
+```
+
+The two halves do different work. Observed, because placement seeds the mean
+from the onboarding answer and a mean alone would let a self-report skip the
+phase. Fluent, because mere exposure is what the ordinary path asks for, and one
+ragged first attempt proves somebody has been in the two-hand regime rather than
+that they are past it.
+
+It reads the coordination channel rather than a hand's execution deliberately.
+The ordinary path establishes the phase developmentally; the waiver establishes
+that a learner is already beyond it, so it asks about the dimension that defines
+the phase. One fluent hand is a single channel and not that dimension, and
+waiving a phase without observing what defines it would be internally
+inconsistent. A scale played hands together well is a scale played with two
+hands that each work, which is why the waiver does not also check them
+separately — strictly that is evidence rather than proof, since two mediocre
+hands can be well synchronized, but a curriculum waiver needs evidence strong
+enough that the prerequisites would be artificial, not a proof of every latent
+competency.
+
+Anyone reading this graph literally and tempted to remove the waiver should know
+it is deliberate. And anyone tempted to justify the phase itself from a syllabus
+should not: ABRSM introduces minor scales at Initial Grade, hands separately and
+one octave, so no published curriculum makes hands-together a prerequisite of
+altered minor forms. The claim here is narrower and about KeyRecall's own
+machinery — what evidence justifies **skipping a phase of this progression** —
+which is a question a syllabus does not answer.
 
 ### One octave to two
 

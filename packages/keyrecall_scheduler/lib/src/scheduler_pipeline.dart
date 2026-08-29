@@ -135,7 +135,7 @@ class SchedulerPipeline {
     // enlarges the vocabulary faster than the base under it, whatever the
     // keyboard geography says, which is why this is not a band question.
     if (!coreForms.contains(material.form)) {
-      final breadth = _coreBreadthDecisionFor(state, material.form, hands);
+      final breadth = _alteredFormDecisionFor(state, material.form, hands);
       if (breadth != null) return breadth;
     }
 
@@ -189,29 +189,37 @@ class SchedulerPipeline {
     );
   }
 
-  /// Whether [form] has to wait for a broader base of ordinary scales.
+  /// Whether an altered minor form has to wait for a foundation under it.
   ///
   /// Returns null when it does not, so the ordinary rules decide.
   ///
-  /// Breadth is counted as distinct major and natural-minor materials this
-  /// profile has actually retrieved, spread over more than one admission band.
-  /// Retrieved rather than seen: having been shown a scale is not having it,
-  /// and it is having it that makes an altered form an alteration of something
-  /// rather than a second thing to learn. Spread rather than counted alone,
-  /// because twelve scales in the three easiest keys is a narrow base wearing
-  /// a broad number.
+  /// Harmonic minor is not another unseen scale; it is a new idea about what
+  /// minor means, layered on a major and natural-minor foundation. So this is
+  /// a curriculum phase transition rather than a threshold, and it asks for
+  /// the evidence that a phase has actually been reached:
   ///
-  /// Waived for a learner already fluent in the hand this exercise asks for.
-  /// The rule exists so a beginner's vocabulary does not outrun their base;
-  /// making someone who arrived playing scales demonstrate half a curriculum
-  /// first would be an artificial beginner's path through material they know.
+  /// - both hands observed separately, because a scale learned in one hand is
+  ///   not a scale learned;
+  /// - some hands-together work on ordinary material, which is what marks the
+  ///   move from having met some shapes to studying scales;
+  /// - retrieval breadth across major and natural minor, counted per hand.
   ///
-  /// Per hand, and by the same reading the bands use, because a fluent right
-  /// hand is not evidence about the left. Letting one hand's fluency open the
-  /// curriculum for the other would grant a privilege on the strength of
-  /// something never observed, which is the thing the hand-specific execution
-  /// state exists to keep apart.
-  EligibilityDecision? _coreBreadthDecisionFor(
+  /// The hands-together condition applies to one-hand candidates too, and
+  /// deliberately. Nothing about harmonic minor mechanically needs two hands.
+  /// It is being used as the marker of the phase, and a phase the learner has
+  /// not reached is not reached for right-hand work either.
+  ///
+  /// Every one of these asks whether a channel has been *observed* rather than
+  /// where its mean sits. Placement seeds means from what somebody said about
+  /// themselves, so a mean test would let the onboarding answer masquerade as
+  /// demonstrated musicianship, which is the trap natural minor already taught
+  /// in a different form.
+  ///
+  /// Waived by observed fluent hands-together coordination, and only by that;
+  /// see [_hasFluentHandsTogether]. Making somebody who arrived playing scales
+  /// demonstrate half a curriculum first would be an artificial path through
+  /// material they know, and making them play it once to show it is not.
+  EligibilityDecision? _alteredFormDecisionFor(
     LearnerState state,
     ScaleForm form,
     HandConfiguration hands,
@@ -223,32 +231,97 @@ class SchedulerPipeline {
     };
     if (required == 0) return null;
 
-    final execution = _executionMeanFor(state, hands);
-    if (execution >= config.eligibility.fluentExecutionFloor) return null;
+    if (_hasFluentHandsTogether(state)) return null;
 
-    final retrievedBands = <AdmissionBand>{};
+    for (final hand in HandConfiguration.values) {
+      if (hand == HandConfiguration.together) continue;
+      if (state.isObserved(_executionCompetencyOf(hand))) continue;
+      return EligibilityDecision(
+        EligibilityTier.provisionallyEligible,
+        'the ${hand.id.toLowerCase()} hand has never been observed, and '
+        '${form.id} asks for a foundation in both',
+        code: EligibilityReason.alteredFormHandsFoundation,
+      );
+    }
+
+    if (!state.isObserved(Competency.handsTogetherCoordination)) {
+      return EligibilityDecision(
+        EligibilityTier.provisionallyEligible,
+        'no hands-together work yet, and ${form.id} asks for some on ordinary '
+        'material first',
+        code: EligibilityReason.alteredFormHandsTogetherFoundation,
+      );
+    }
+
+    final bands = config.eligibility.coreRetrievalBands;
+    for (final hand in HandConfiguration.values) {
+      if (hand == HandConfiguration.together) continue;
+      final (retrieved, spread) = _ordinaryBreadthFor(state, hand);
+      if (retrieved >= required && spread >= bands) continue;
+      return EligibilityDecision(
+        EligibilityTier.provisionallyEligible,
+        'the ${hand.id.toLowerCase()} hand has $retrieved major and '
+        'natural-minor scales retrieved across $spread bands, and ${form.id} '
+        'asks for $required across $bands',
+        code: form == ScaleForm.melodicMinor
+            ? EligibilityReason.melodicMinorRepertoireBreadth
+            : EligibilityReason.harmonicMinorRepertoireBreadth,
+      );
+    }
+    return null;
+  }
+
+  /// How many ordinary-form scales [hand] has played and had retrieved, and
+  /// how many admission bands they span.
+  ///
+  /// Two facts joined because neither is enough alone. Memory is keyed by
+  /// material and knows a scale was retrieved without knowing which hand was
+  /// playing; execution residuals are keyed by material and hand and know a
+  /// hand played it without knowing whether anything was remembered. Requiring
+  /// both is the closest this state can come to "this hand has this scale",
+  /// and it is a projection rather than a record: a scale retrieved by one
+  /// hand and merely played by the other counts for both.
+  (int, int) _ordinaryBreadthFor(LearnerState state, HandConfiguration hand) {
+    final spread = <AdmissionBand>{};
     var retrieved = 0;
     for (final material in allScales) {
       if (!coreForms.contains(material.form)) continue;
       final memory = state.materialMemory[material.materialId];
       if (memory?.hasFactualRetrieval != true) continue;
+      if (!state.hasPlayed(material.materialId, hand)) continue;
       retrieved++;
-      retrievedBands.add(admissionBandOf(material));
+      spread.add(admissionBandOf(material));
     }
-
-    final bands = config.eligibility.coreRetrievalBands;
-    if (retrieved >= required && retrievedBands.length >= bands) return null;
-
-    return EligibilityDecision(
-      EligibilityTier.provisionallyEligible,
-      '$retrieved major and natural-minor scales retrieved across '
-      '${retrievedBands.length} bands, and ${form.id} asks for $required '
-      'across $bands',
-      code: form == ScaleForm.melodicMinor
-          ? EligibilityReason.melodicMinorRepertoireBreadth
-          : EligibilityReason.harmonicMinorRepertoireBreadth,
-    );
+    return (retrieved, spread.length);
   }
+
+  /// Whether hands-together playing has been observed and is fluent.
+  ///
+  /// The escape hatch from the phase graph, and the only one. The ordinary
+  /// path establishes the phase developmentally; this establishes that the
+  /// learner is already past it, so it asks about the dimension that defines
+  /// the phase rather than about one hand.
+  ///
+  /// A scale played hands together well enough to produce competent
+  /// coordination evidence is a scale played with two hands that each work, so
+  /// this does not need to check them separately. Strictly it does not prove
+  /// high single-hand execution, since two mediocre hands can be well
+  /// synchronized; a curriculum waiver does not need that proof, only evidence
+  /// strong enough that marching the learner through the prerequisites would
+  /// be artificial.
+  ///
+  /// Observed and fluent, both. Placement seeds this mean from the onboarding
+  /// answer, so the mean alone would let a self-report skip the phase, and
+  /// exposure alone would let one ragged first attempt do it.
+  bool _hasFluentHandsTogether(LearnerState state) =>
+      state.isObserved(Competency.handsTogetherCoordination) &&
+      state.competency(Competency.handsTogetherCoordination).mean >=
+          config.eligibility.fluentHandsTogetherFloor;
+
+  static Competency _executionCompetencyOf(HandConfiguration hand) =>
+      hand == HandConfiguration.right
+      ? Competency.rhScaleExecution
+      : Competency.lhScaleExecution;
 
   /// The weaker hand's execution when both play, otherwise the playing hand's.
   double _executionMeanFor(LearnerState state, HandConfiguration hands) {

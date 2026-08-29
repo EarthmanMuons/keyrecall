@@ -4,6 +4,8 @@ import 'package:test/test.dart';
 
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'support/fixtures.dart';
+
 /// What may be introduced now, which is a different question from what a
 /// learner is working toward and from what they should play next.
 void main() {
@@ -37,13 +39,28 @@ void main() {
     },
   );
 
-  /// Records that [count] major and natural-minor scales have been retrieved,
-  /// spread over as many admission bands as the catalog offers.
+  /// Marks [competency] as having received evidence.
   ///
-  /// The ordinary base an altered minor form is introduced on top of. Tests
-  /// about anything else give it to themselves so the form-introduction gate
-  /// is not what they end up measuring.
-  LearnerState withCoreBreadth(LearnerState state, {int count = 24}) {
+  /// What separates a mean somebody demonstrated from one placement seeded
+  /// from their own account of themselves.
+  LearnerState observing(LearnerState state, Iterable<Competency> which) {
+    for (final competency in which) {
+      state.competency(competency).lastEvidenceAt = t0;
+    }
+    return state;
+  }
+
+  /// Records that [hands] has played and retrieved [count] major and
+  /// natural-minor scales, spread over as many admission bands as the catalog
+  /// offers.
+  ///
+  /// Both halves, because the gate reads both: memory says a scale was
+  /// retrieved and execution residuals say which hand was playing.
+  LearnerState withHandBreadth(
+    LearnerState state, {
+    int count = 24,
+    HandConfiguration hands = HandConfiguration.right,
+  }) {
     final core =
         [
           for (final material in allScales)
@@ -55,10 +72,30 @@ void main() {
 
     for (final material in core.take(count)) {
       state
-          .materialMemoryFor(material.materialId, v1PrototypeLearnerParams)
-          .factualLastRetrievalAt = DateTime.utc(
-        2026,
-      );
+              .materialMemoryFor(material.materialId, v1PrototypeLearnerParams)
+              .factualLastRetrievalAt =
+          t0;
+      state
+              .materialExecutionFor(
+                (material.materialId, hands),
+                t0,
+                v1PrototypeLearnerParams,
+              )
+              .lastEvidenceAt =
+          t0;
+    }
+    return state;
+  }
+
+  /// A learner with the ordinary-form foundation an altered form asks for.
+  LearnerState withFoundation(LearnerState state, {int count = 24}) {
+    observing(state, [
+      Competency.rhScaleExecution,
+      Competency.lhScaleExecution,
+      Competency.handsTogetherCoordination,
+    ]);
+    for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+      withHandBreadth(state, count: count, hands: hands);
     }
     return state;
   }
@@ -163,7 +200,7 @@ void main() {
 
   group('minor forms', () {
     test('harmonic minor waits for some minor topology', () {
-      final none = withCoreBreadth(learnerAt(-1.0));
+      final none = withFoundation(learnerAt(-1.0));
       final decision = decide(none, scale('A', ScaleForm.harmonicMinor));
 
       expect(decision.tier, EligibilityTier.provisionallyEligible);
@@ -171,7 +208,7 @@ void main() {
     });
 
     test('any minor topology will do, not the same tonic', () {
-      final state = withCoreBreadth(learnerAt(-1.0));
+      final state = withFoundation(learnerAt(-1.0));
       state.competency(Competency.naturalMinorTopology).mean = 0.5;
 
       expect(
@@ -182,7 +219,7 @@ void main() {
     });
 
     test('melodic minor waits for one of the other two', () {
-      final state = withCoreBreadth(learnerAt(-1.0));
+      final state = withFoundation(learnerAt(-1.0));
       final decision = decide(state, scale('A', ScaleForm.melodicMinor));
 
       expect(decision.code, EligibilityReason.melodicFormPrerequisite);
@@ -195,11 +232,12 @@ void main() {
     });
   });
 
-  group('enlarging the vocabulary', () {
-    Exercise harmonic() => scale('A', ScaleForm.harmonicMinor);
+  group('the foundation an altered minor form sits on', () {
+    Exercise harmonic({HandConfiguration hands = HandConfiguration.right}) =>
+        scale('A', ScaleForm.harmonicMinor, hands: hands);
     Exercise melodic() => scale('A', ScaleForm.melodicMinor);
 
-    /// A learner who can transfer, so only breadth is left to decide it.
+    /// A learner who can transfer, so only the foundation is left to decide it.
     LearnerState transferable() {
       final state = learnerAt(0.0);
       state.competency(Competency.naturalMinorTopology).mean = 0.5;
@@ -207,26 +245,94 @@ void main() {
       return state;
     }
 
-    test('an altered minor form waits for a base of ordinary scales', () {
-      final beginner = transferable();
-      final decision = decide(beginner, harmonic());
+    test('a learner with nothing behind them waits for both hands', () {
+      final decision = decide(transferable(), harmonic());
 
       expect(decision.tier, EligibilityTier.provisionallyEligible);
+      expect(decision.code, EligibilityReason.alteredFormHandsFoundation);
+    });
+
+    test('one observed hand is not both', () {
+      final oneHand = observing(transferable(), [Competency.rhScaleExecution]);
+
       expect(
-        decision.code,
-        EligibilityReason.harmonicMinorRepertoireBreadth,
+        decide(oneHand, harmonic()).code,
+        EligibilityReason.alteredFormHandsFoundation,
+        reason: 'a scale learned in one hand is not a scale learned',
+      );
+    });
+
+    test('both hands separately still wait for hands together', () {
+      final separate = observing(transferable(), [
+        Competency.rhScaleExecution,
+        Competency.lhScaleExecution,
+      ]);
+
+      expect(
+        decide(separate, harmonic()).code,
+        EligibilityReason.alteredFormHandsTogetherFoundation,
         reason:
-            'able to transfer and still better served by settling what a '
-            'scale is first',
+            'not because harmonic minor needs two hands, but because having '
+            'put two together is what marks the phase it belongs to',
+      );
+    });
+
+    test('the phase gate applies to one-hand candidates too', () {
+      // Deliberate. The hands-together condition is a marker of where the
+      // learner is in the curriculum, and a phase they have not reached is
+      // not reached for right-hand work either.
+      final separate = observing(transferable(), [
+        Competency.rhScaleExecution,
+        Competency.lhScaleExecution,
+      ]);
+
+      for (final hands in HandConfiguration.values) {
+        expect(
+          decide(separate, harmonic(hands: hands)).code,
+          EligibilityReason.alteredFormHandsTogetherFoundation,
+          reason: hands.id,
+        );
+      }
+    });
+
+    test('breadth is asked of each hand, not of the profile', () {
+      // The bug this replaced: twelve right-hand scales spoke for a left hand
+      // that had played none of them, because memory is keyed by material and
+      // never knew which hand was playing.
+      final lopsided = observing(transferable(), [
+        Competency.rhScaleExecution,
+        Competency.lhScaleExecution,
+        Competency.handsTogetherCoordination,
+      ]);
+      withHandBreadth(lopsided, hands: HandConfiguration.right);
+
+      expect(
+        decide(lopsided, harmonic()).code,
+        EligibilityReason.harmonicMinorRepertoireBreadth,
+        reason: 'and the right hand having all of it does not settle it',
       );
     });
 
     test('the base is retrievals, not presentations', () {
-      final shown = transferable();
+      final shown = observing(transferable(), [
+        Competency.rhScaleExecution,
+        Competency.lhScaleExecution,
+        Competency.handsTogetherCoordination,
+      ]);
       for (final material in allScales) {
         if (!coreForms.contains(material.form)) continue;
-        // Seen, and never once produced from memory.
+        // Seen and played by both hands, and never once produced from memory.
         shown.materialMemoryFor(material.materialId, v1PrototypeLearnerParams);
+        for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+          shown
+                  .materialExecutionFor(
+                    (material.materialId, hands),
+                    t0,
+                    v1PrototypeLearnerParams,
+                  )
+                  .lastEvidenceAt =
+              t0;
+        }
       }
 
       expect(
@@ -237,13 +343,14 @@ void main() {
     });
 
     test('a wide enough base opens harmonic minor', () {
-      final ready = withCoreBreadth(transferable());
-
-      expect(decide(ready, harmonic()).tier, EligibilityTier.fullyEligible);
+      expect(
+        decide(withFoundation(transferable()), harmonic()).tier,
+        EligibilityTier.fullyEligible,
+      );
     });
 
     test('melodic minor asks for more of a base than harmonic minor', () {
-      final between = withCoreBreadth(
+      final between = withFoundation(
         transferable(),
         count: config.eligibility.harmonicMinorCoreRetrievals,
       );
@@ -257,76 +364,119 @@ void main() {
     });
 
     test('a narrow base is not a broad one, however many scales', () {
-      // Every retrieval in the easiest band, and nowhere else.
-      final narrow = transferable();
+      // Every scale from one band, which the early-transfer band has enough of
+      // to clear the count on its own. Breadth is the point, so it does not.
+      final narrow = observing(transferable(), [
+        Competency.rhScaleExecution,
+        Competency.lhScaleExecution,
+        Competency.handsTogetherCoordination,
+      ]);
       var given = 0;
       for (final material in allScales) {
         if (!coreForms.contains(material.form)) continue;
-        if (admissionBandOf(material) != AdmissionBand.foundation) continue;
+        if (admissionBandOf(material) != AdmissionBand.earlyTransfer) continue;
         narrow
-            .materialMemoryFor(material.materialId, v1PrototypeLearnerParams)
-            .factualLastRetrievalAt = DateTime.utc(
-          2026,
-        );
+                .materialMemoryFor(
+                  material.materialId,
+                  v1PrototypeLearnerParams,
+                )
+                .factualLastRetrievalAt =
+            t0;
+        for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+          narrow
+                  .materialExecutionFor(
+                    (material.materialId, hands),
+                    t0,
+                    v1PrototypeLearnerParams,
+                  )
+                  .lastEvidenceAt =
+              t0;
+        }
         given++;
       }
 
-      expect(given, lessThan(config.eligibility.harmonicMinorCoreRetrievals));
+      expect(
+        given,
+        greaterThanOrEqualTo(config.eligibility.harmonicMinorCoreRetrievals),
+        reason: 'enough of them to clear the count',
+      );
       expect(
         decide(narrow, harmonic()).code,
         EligibilityReason.harmonicMinorRepertoireBreadth,
+        reason: 'and all of them in one band',
       );
     });
 
-    test('it never asks a fluent learner to earn what they arrived with', () {
-      final fluent = transferable();
-      for (final competency in [
-        Competency.rhScaleExecution,
-        Competency.lhScaleExecution,
-      ]) {
-        fluent.competency(competency).mean =
-            config.eligibility.fluentExecutionFloor;
-      }
+    test('a self-report is not the fluency the waiver is for', () {
+      // The bug this replaced, and the reason the waiver reads observation as
+      // well as the mean: placement seeds means from what somebody said about
+      // themselves, so advanced onboarding alone opened every altered form
+      // before a single note was played.
+      final claimed = const LearnerModel().placementState(
+        PlacementTier.advanced,
+        at: t0,
+      );
 
       expect(
-        decide(fluent, harmonic()).tier,
-        EligibilityTier.fullyEligible,
-        reason:
-            'the rule keeps a beginner\'s vocabulary from outrunning their '
-            'base, not everyone from what they already play',
+        claimed.competency(Competency.handsTogetherCoordination).mean,
+        greaterThanOrEqualTo(config.eligibility.fluentHandsTogetherFloor),
+        reason: 'the mean alone would have waived it',
       );
+      expect(
+        decide(claimed, harmonic()).tier,
+        EligibilityTier.provisionallyEligible,
+      );
+    });
+
+    test('fluent hands-together playing waives the foundation', () {
+      // The escape hatch, and the only one. Somebody playing a scale hands
+      // together this well is playing it with two hands that each work, so
+      // asking them for six ordinary scales in each hand first would be an
+      // artificial path through material they have just shown.
+      final fluent = observing(transferable(), [
+        Competency.handsTogetherCoordination,
+      ]);
+      fluent.competency(Competency.handsTogetherCoordination).mean =
+          config.eligibility.fluentHandsTogetherFloor;
+
+      expect(decide(fluent, harmonic()).tier, EligibilityTier.fullyEligible);
       expect(decide(fluent, melodic()).tier, EligibilityTier.fullyEligible);
     });
 
-    test('one fluent hand does not open the curriculum for the other', () {
-      final asymmetric = transferable();
-      asymmetric.competency(Competency.rhScaleExecution).mean =
-          config.eligibility.fluentExecutionFloor;
+    test('one fluent hand is not enough to skip the phase', () {
+      // A single channel, and not the one that defines the phase being
+      // skipped. Waiving a phase without observing its defining dimension
+      // would be internally inconsistent.
+      final oneHand = observing(transferable(), [Competency.rhScaleExecution]);
+      oneHand.competency(Competency.rhScaleExecution).mean =
+          config.eligibility.fluentHandsTogetherFloor;
 
       expect(
-        decide(asymmetric, scale('A', ScaleForm.harmonicMinor)).tier,
-        EligibilityTier.fullyEligible,
-        reason: 'the right hand has earned it',
+        decide(oneHand, harmonic()).tier,
+        EligibilityTier.provisionallyEligible,
       );
+    });
+
+    test('exposure to hands-together work is not fluency at it', () {
+      // One ragged first attempt proves somebody has been in the two-hand
+      // regime, which is what the ordinary path asks for. It does not prove
+      // they are past the phase, which is what the waiver asks for.
+      final exposed = observing(transferable(), [
+        Competency.handsTogetherCoordination,
+      ]);
+      exposed.competency(Competency.handsTogetherCoordination).mean =
+          config.eligibility.fluentHandsTogetherFloor - 0.5;
+
       expect(
-        decide(
-          asymmetric,
-          scale('A', ScaleForm.harmonicMinor, hands: HandConfiguration.left),
-        ).code,
-        EligibilityReason.harmonicMinorRepertoireBreadth,
-        reason:
-            'a fluent right hand is not evidence about the left, and a '
-            'privilege granted on something never observed is the thing '
-            'hand-specific state exists to prevent',
+        decide(exposed, harmonic()).tier,
+        EligibilityTier.provisionallyEligible,
       );
     });
 
     test('it says nothing about major or natural minor', () {
-      final beginner = transferable();
-
       for (final form in coreForms) {
         expect(
-          decide(beginner, scale('A', form)).code,
+          decide(transferable(), scale('A', form)).code,
           isNot(EligibilityReason.harmonicMinorRepertoireBreadth),
         );
       }
@@ -413,7 +563,7 @@ void main() {
             harmonicMinorCoreRetrievals: 0,
             melodicMinorCoreRetrievals: 0,
             coreRetrievalBands: 0,
-            fluentExecutionFloor: 1.0,
+            fluentHandsTogetherFloor: 1.0,
           ),
           safety: const SafetyConfig(maxSessionAttempts: 40),
           challenge: v1SchedulerConfig.challenge,

@@ -140,6 +140,16 @@ void main() {
       // prediction's side of the stage boundary.
       final state = stateAt(PlacementTier.someExperience);
       state.competency(Competency.naturalMinorTopology).mean = 0.5;
+      // The foundation conditions are about which channels have been
+      // observed, and are satisfied here so that what is left to decide it is
+      // the retrieval history this test is about.
+      for (final competency in [
+        Competency.rhScaleExecution,
+        Competency.lhScaleExecution,
+        Competency.handsTogetherCoordination,
+      ]) {
+        state.competency(competency).lastEvidenceAt = t0;
+      }
       final harmonic = exerciseFor(
         TechnicalMaterial('A', ScaleForm.harmonicMinor),
         guidance: GuidanceContext.notesPreviewedOnly,
@@ -154,12 +164,22 @@ void main() {
           material.materialId,
           learnerParams,
         );
-        // Every core scale retrieved once, and every one of them believed to
-        // be on the point of being forgotten.
+        // Every core scale retrieved once by both hands, and every one of them
+        // believed to be on the point of being forgotten.
         memory
           ..factualLastRetrievalAt = t0
           ..logCurrentHalfLife = math.log(0.001)
           ..logConsolidatedHalfLife = math.log(0.001);
+        for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+          state
+                  .materialExecutionFor(
+                    (material.materialId, hands),
+                    t0,
+                    learnerParams,
+                  )
+                  .lastEvidenceAt =
+              t0;
+        }
       }
 
       expect(

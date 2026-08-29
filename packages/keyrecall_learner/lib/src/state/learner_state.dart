@@ -118,6 +118,28 @@ class LearnerState {
 
   /// The execution residual for [context], creating it at its priors if
   /// absent.
+  /// Whether [competency] has ever received informative evidence.
+  ///
+  /// The domain question every prerequisite really wants, asked once here so
+  /// policy does not have to know how evidence is represented. A mean cannot
+  /// answer it: placement seeds every competency at a value chosen from what
+  /// the learner said about themselves, so a mean above a threshold may mean
+  /// somebody has demonstrated something or may mean they were asked a
+  /// question at onboarding and answered it optimistically. Those are
+  /// different claims, and a gate that cannot tell them apart is admitting on
+  /// a self-report.
+  bool isObserved(Competency competency) =>
+      this.competency(competency).lastEvidenceAt != null;
+
+  /// Whether this hand has ever played [materialId] informatively.
+  ///
+  /// Execution residuals are the one thing learner state keys by hand as well
+  /// as by material, which makes them the only place a hand-scoped question
+  /// about a specific scale can be answered at all. Memory is per material:
+  /// it knows a scale was retrieved and not which hand was playing.
+  bool hasPlayed(String materialId, HandConfiguration hands) =>
+      materialExecution[(materialId, hands)]?.lastEvidenceAt != null;
+
   MaterialExecutionState materialExecutionFor(
     ExecutionContext context,
     DateTime at,

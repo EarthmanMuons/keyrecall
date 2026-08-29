@@ -52,6 +52,14 @@ enum EligibilityReason {
   /// A multi-octave traversal asks for one octave first.
   octaveSpanPrerequisite('OCTAVE_SPAN_PREREQUISITE'),
 
+  /// An altered minor form asks for both hands to have been observed
+  /// separately first.
+  alteredFormHandsFoundation('ALTERED_FORM_HANDS_FOUNDATION'),
+
+  /// An altered minor form asks for some hands-together work on ordinary
+  /// material first.
+  alteredFormHandsTogetherFoundation('ALTERED_FORM_HANDS_TOGETHER_FOUNDATION'),
+
   /// Harmonic minor asks for a broad base of ordinary scales first.
   harmonicMinorRepertoireBreadth('HARMONIC_MINOR_REPERTOIRE_BREADTH'),
 

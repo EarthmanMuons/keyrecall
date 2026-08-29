@@ -41,9 +41,9 @@ class EligibilityConfig {
   /// minor is.
   final double minorTopologyFloor;
 
-  /// How many distinct major and natural-minor materials must have been
-  /// retrieved before harmonic minor is fully eligible, and before melodic
-  /// minor is.
+  /// How many distinct major and natural-minor materials each hand must have
+  /// played and had retrieved before harmonic minor is fully eligible, and
+  /// before melodic minor is.
   ///
   /// Breadth rather than proficiency. The question a learner meeting harmonic
   /// minor for the first time faces is not whether they can play it but
@@ -52,10 +52,12 @@ class EligibilityConfig {
   /// than presentations is the difference between having seen a scale and
   /// having it.
   ///
-  /// Halfway through the twenty-four core materials, and two thirds for
+  /// A quarter of the twenty-four core materials per hand, and a third for
   /// melodic minor, which changes two degrees rather than one and in a fixed
-  /// form the classical convention does not use. Both are first guesses to
-  /// revise against real sittings, not measurements.
+  /// form the classical convention does not use. Asked of each hand rather
+  /// than of the profile, so twelve right-hand scales no longer speak for a
+  /// left hand that has played none of them. Both are first guesses to revise
+  /// against real sittings, not measurements.
   final int harmonicMinorCoreRetrievals;
   final int melodicMinorCoreRetrievals;
 
@@ -65,13 +67,26 @@ class EligibilityConfig {
   /// count suggests, and the point is breadth.
   final int coreRetrievalBands;
 
-  /// Single-hand execution at which the breadth requirement is already met.
+  /// Hands-together coordination at which the ordinary-form foundation counts
+  /// as already behind the learner.
   ///
-  /// Someone who arrived able to play scales should not have to demonstrate
-  /// half a curriculum they already know before meeting harmonic minor. Set
-  /// above where placement puts an experienced learner and at where it puts an
-  /// advanced one, so it admits the second and not the first.
-  final double fluentExecutionFloor;
+  /// The escape hatch from the curriculum phase, and it reads the coordination
+  /// channel rather than a hand's execution because that is the phase's own
+  /// defining marker. Somebody playing a scale hands together well enough to
+  /// produce competent coordination evidence is playing it with two hands that
+  /// each work, so making them demonstrate six ordinary scales in each hand
+  /// first would be an artificial path through material they have just shown.
+  ///
+  /// One fluent hand is deliberately not enough. It is a single channel, and
+  /// waiving a phase without observing the dimension that defines it is
+  /// internally inconsistent.
+  ///
+  /// Set where placement puts an advanced learner, which is also why the mean
+  /// is never enough on its own: placement seeds it there from what somebody
+  /// said about themselves. It is paired with a requirement that the channel
+  /// has actually been observed, which a real attempt satisfies and an
+  /// onboarding answer never does.
+  final double fluentHandsTogetherFloor;
 
   const EligibilityConfig({
     required this.handTogetherCompetencyThreshold,
@@ -83,7 +98,7 @@ class EligibilityConfig {
     required this.harmonicMinorCoreRetrievals,
     required this.melodicMinorCoreRetrievals,
     required this.coreRetrievalBands,
-    required this.fluentExecutionFloor,
+    required this.fluentHandsTogetherFloor,
   });
 
   /// The execution floor [band] asks for.
@@ -308,10 +323,10 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     intermediateExecutionFloor: 0.4,
     advancedExecutionFloor: 0.8,
     minorTopologyFloor: 0.0,
-    harmonicMinorCoreRetrievals: 12,
-    melodicMinorCoreRetrievals: 16,
+    harmonicMinorCoreRetrievals: 6,
+    melodicMinorCoreRetrievals: 8,
     coreRetrievalBands: 2,
-    fluentExecutionFloor: 1.0,
+    fluentHandsTogetherFloor: 1.0,
   ),
   safety: SafetyConfig(maxSessionAttempts: 40),
   challenge: ChallengeConfig(pMin: 0.60, pMax: 0.90, pIntroductionMin: 0.15),
