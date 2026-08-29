@@ -13,7 +13,11 @@ import 'support/fixtures.dart';
 void main() {
   group('profile identity', () {
     test('is opaque, so a rename keeps the history', () {
-      final alice = Profile.create(displayName: 'Alice', createdAt: t0);
+      final alice = Profile.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
       final renamed = alice.renamed('Alice B.');
 
       expect(renamed.id, alice.id);
@@ -22,8 +26,16 @@ void main() {
     });
 
     test('does not collide between two people with the same name', () {
-      final first = Profile.create(displayName: 'Sam', createdAt: t0);
-      final second = Profile.create(displayName: 'Sam', createdAt: t0);
+      final first = Profile.create(
+        displayName: 'Sam',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
+      final second = Profile.create(
+        displayName: 'Sam',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       expect(first.id, isNot(second.id));
       expect(first, isNot(second));
@@ -51,6 +63,7 @@ void main() {
         displayName: 'Bob',
         createdAt: t0,
         presentationHint: 'teal',
+        placement: PlacementTier.someExperience,
       );
       final reread = Profile.fromJson(
         jsonDecode(jsonEncode(profile.toJson())) as Map<String, Object?>,
@@ -62,12 +75,84 @@ void main() {
 
     test('rejects an empty id or name', () {
       expect(
-        () => Profile(id: '', displayName: 'Bob', createdAt: t0),
+        () => Profile(
+          id: '',
+          displayName: 'Bob',
+          createdAt: t0,
+          placement: PlacementTier.someExperience,
+        ),
         throwsArgumentError,
       );
       expect(
-        () => Profile(id: 'x', displayName: '', createdAt: t0),
+        () => Profile(
+          id: 'x',
+          displayName: '',
+          createdAt: t0,
+          placement: PlacementTier.someExperience,
+        ),
         throwsArgumentError,
+      );
+    });
+  });
+
+  group('placement is recorded, not assumed', () {
+    test('every profile written now carries its tier explicitly', () {
+      for (final tier in PlacementTier.values) {
+        final written = Profile.create(
+          displayName: 'Bob',
+          createdAt: t0,
+          placement: tier,
+        ).toJson();
+
+        expect(
+          written['placement'],
+          tier.id,
+          reason:
+              'a missing placement has to date a record rather than '
+              'describe one, so nothing written now may omit it',
+        );
+      }
+    });
+
+    test('a profile with no placement is refused, not defaulted', () {
+      final withoutPlacement = {
+        'id': '3f2a6c18-0000-4000-8000-00000000a11c',
+        'display_name': 'Alice',
+        'created_at': encodeTime(t0),
+        'presentation_hint': null,
+      };
+
+      expect(
+        () => Profile.fromJson(withoutPlacement),
+        throwsA(isA<JournalFormatException>()),
+        reason:
+            'the prior a history was computed against is not something to '
+            'guess: a default would reinterpret that history under a starting '
+            'state it never ran from',
+      );
+    });
+
+    test('renaming carries the placement, since identity is untouched', () {
+      final profile = Profile.create(
+        displayName: 'Bob',
+        createdAt: t0,
+        placement: PlacementTier.beginner,
+      );
+
+      expect(profile.renamed('Robert').placement, PlacementTier.beginner);
+    });
+
+    test('two profiles differing only in placement are not the same', () {
+      Profile placedAt(PlacementTier tier) => Profile(
+        id: '3f2a6c18-0000-4000-8000-00000000a11c',
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: tier,
+      );
+
+      expect(
+        placedAt(PlacementTier.beginner),
+        isNot(placedAt(PlacementTier.someExperience)),
       );
     });
   });
@@ -77,7 +162,11 @@ void main() {
       // The failure this scoping exists to prevent: one person's evidence
       // folded into another person's learner state.
       final recorded = recordSession(attempts: 2);
-      final other = Profile.create(displayName: 'Bob', createdAt: t0);
+      final other = Profile.create(
+        displayName: 'Bob',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
       final exercise = exerciseFor(v1ScaleCatalogFirst);
       final outcome = outcomeOf();
 
@@ -127,7 +216,11 @@ void main() {
         model: model,
         initial: recorded.initial,
       );
-      final other = Profile.create(displayName: 'Bob', createdAt: t0);
+      final other = Profile.create(
+        displayName: 'Bob',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       final foreign = LearnerStateCheckpoint.capture(
         profileId: other.id,
@@ -153,7 +246,11 @@ void main() {
       // The shared-iPad case, end to end: same install, same model, two
       // people, two states that never touch.
       final alice = recordSession(attempts: 6);
-      final bob = Profile.create(displayName: 'Bob', createdAt: t0);
+      final bob = Profile.create(
+        displayName: 'Bob',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
       final bobJournal = AttemptJournal(
         JournalHeader(profileId: bob.id, createdAt: t0),
       );

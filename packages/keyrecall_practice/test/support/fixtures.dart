@@ -9,10 +9,17 @@ final DateTime t0 = DateTime.utc(2026);
 const LearnerModel learner = LearnerModel();
 const LearnerParams params = v1PrototypeLearnerParams;
 
-final Profile alice = Profile(
+final Profile alice = alicePlacedAt(PlacementTier.someExperience);
+
+/// Alice, started from [placement].
+///
+/// Same identity, so the same journal and the same store keys; only the prior
+/// her history propagates from differs.
+Profile alicePlacedAt(PlacementTier placement) => Profile(
   id: '3f2a6c18-0000-4000-8000-00000000a11c',
   displayName: 'Alice',
   createdAt: t0,
+  placement: placement,
 );
 
 final List<TechnicalMaterial> fixtureMaterials = v1ScaleCatalog
@@ -57,6 +64,8 @@ Outcome outcomeFor(Exercise exercise, {bool succeeded = true}) => outcomeOf(
 );
 
 /// Opens a sitting against [store], with reproducible ids.
+/// Placement now travels on the profile, so a session over a different tier
+/// is a session over a different profile.
 Future<PracticeSession> openSession(
   PracticeStore store, {
   Profile? profile,
@@ -66,9 +75,8 @@ Future<PracticeSession> openSession(
   List<TechnicalMaterial>? materials,
 }) => PracticeSession.open(
   store: store,
-  profile: profile ?? alice,
+  profile: profile ?? alicePlacedAt(placement),
   materials: materials ?? fixtureMaterials,
-  placement: placement,
   learner: learner,
   sessionId: sessionId,
   nextId: ids ?? countingIds(),

@@ -145,8 +145,10 @@ class PracticeSession {
   /// version, or that fails its own hash, is discarded rather than trusted;
   /// losing one costs replay time and nothing else.
   ///
-  /// Placement state is anchored at [Profile.createdAt], so every attempt in
-  /// the journal must fall at or after it.
+  /// Placement state is anchored at [Profile.createdAt] and seeded from
+  /// [Profile.placement], so every attempt in the journal must fall at or
+  /// after it and the prior it propagates from comes from the profile rather
+  /// than from whoever opened the session.
   ///
   /// [goal] narrows the material under consideration, and defaults to all of
   /// it.
@@ -157,7 +159,6 @@ class PracticeSession {
     LearnerModel learner = const LearnerModel(),
     SchedulerPipeline? pipeline,
     InstrumentProfile? instrument,
-    PlacementTier placement = PlacementTier.someExperience,
     PracticeGoal goal = PracticeGoal.generalFluency,
     String? sessionId,
     String? appBuildVersion,
@@ -175,7 +176,10 @@ class PracticeSession {
     // any practice, so its instant has to be stable across reopens and under
     // the caller's control, or replay would propagate from a different origin
     // each time.
-    final initial = learner.placementState(placement, at: profile.createdAt);
+    final initial = learner.placementState(
+      profile.placement,
+      at: profile.createdAt,
+    );
     final replay = replayJournal(
       journal,
       model: learner,

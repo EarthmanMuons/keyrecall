@@ -41,6 +41,7 @@ void main() {
       final created = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
 
       expect(created.displayName, 'Alice');
@@ -54,8 +55,16 @@ void main() {
     forEachRepository('gives each person a distinct identity', (
       repository,
     ) async {
-      final first = await repository.create(displayName: 'Sam', createdAt: t0);
-      final second = await repository.create(displayName: 'Sam', createdAt: t0);
+      final first = await repository.create(
+        displayName: 'Sam',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
+      final second = await repository.create(
+        displayName: 'Sam',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       expect(first.id, isNot(second.id));
       expect(await repository.list(), hasLength(2));
@@ -69,6 +78,7 @@ void main() {
       final first = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
       expect(
         (await repository.selected())?.id,
@@ -76,7 +86,11 @@ void main() {
         reason: 'an install with one person should not need a selection step',
       );
 
-      await repository.create(displayName: 'Bob', createdAt: t0.plusDays(1));
+      await repository.create(
+        displayName: 'Bob',
+        createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
+      );
       expect(
         (await repository.selected())?.id,
         first.id,
@@ -89,9 +103,21 @@ void main() {
     forEachRepository('is ordered oldest first, deterministically', (
       repository,
     ) async {
-      await repository.create(displayName: 'Third', createdAt: t0.plusDays(3));
-      await repository.create(displayName: 'First', createdAt: t0);
-      await repository.create(displayName: 'Second', createdAt: t0.plusDays(1));
+      await repository.create(
+        displayName: 'Third',
+        createdAt: t0.plusDays(3),
+        placement: PlacementTier.someExperience,
+      );
+      await repository.create(
+        displayName: 'First',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
+      await repository.create(
+        displayName: 'Second',
+        createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
+      );
 
       expect((await repository.list()).map((profile) => profile.displayName), [
         'First',
@@ -109,6 +135,7 @@ void main() {
         displayName: 'Alice',
         createdAt: t0,
         presentationHint: 'teal',
+        placement: PlacementTier.someExperience,
       );
 
       final renamed = await repository.rename(created.id, 'Alice B.');
@@ -124,6 +151,7 @@ void main() {
       final created = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
       await repository.rename(created.id, 'Renamed');
 
@@ -140,10 +168,12 @@ void main() {
       final alice = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
       final bob = await repository.create(
         displayName: 'Bob',
         createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
       );
 
       expect((await repository.selected())?.id, alice.id);
@@ -154,7 +184,11 @@ void main() {
     forEachRepository('refuses a profile that does not exist', (
       repository,
     ) async {
-      await repository.create(displayName: 'Alice', createdAt: t0);
+      await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       expect(() => repository.select('nobody'), throwsArgumentError);
     });
@@ -165,10 +199,12 @@ void main() {
       final alice = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
       final bob = await repository.create(
         displayName: 'Bob',
         createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
       );
 
       final removed = await repository.delete(bob.id);
@@ -186,10 +222,12 @@ void main() {
       final alice = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
       final bob = await repository.create(
         displayName: 'Bob',
         createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
       );
 
       await repository.delete(bob.id);
@@ -203,10 +241,12 @@ void main() {
       final alice = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
       final bob = await repository.create(
         displayName: 'Bob',
         createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
       );
 
       await repository.delete(alice.id);
@@ -224,12 +264,18 @@ void main() {
       final alice = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
       final bob = await repository.create(
         displayName: 'Bob',
         createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
       );
-      await repository.create(displayName: 'Cass', createdAt: t0.plusDays(2));
+      await repository.create(
+        displayName: 'Cass',
+        createdAt: t0.plusDays(2),
+        placement: PlacementTier.someExperience,
+      );
       await repository.select(alice.id);
 
       await repository.delete(alice.id);
@@ -291,6 +337,7 @@ void main() {
       final alice = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
 
       final active = await repository.selectedOrDefault();
@@ -312,8 +359,13 @@ void main() {
       final alice = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
-      await repository.create(displayName: 'Bob', createdAt: t0.plusDays(1));
+      await repository.create(
+        displayName: 'Bob',
+        createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
+      );
 
       final json =
           jsonDecode(repository.indexFile.readAsStringSync())
@@ -331,10 +383,15 @@ void main() {
   group('the index file', () {
     test('survives a restart', () async {
       final first = FileProfileRepository(root, now: () => t0);
-      final alice = await first.create(displayName: 'Alice', createdAt: t0);
+      final alice = await first.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
       final bob = await first.create(
         displayName: 'Bob',
         createdAt: t0.plusDays(1),
+        placement: PlacementTier.someExperience,
       );
       await first.select(bob.id);
 
@@ -349,7 +406,11 @@ void main() {
 
     test('is written whole, never half', () async {
       final repository = FileProfileRepository(root, now: () => t0);
-      await repository.create(displayName: 'Alice', createdAt: t0);
+      await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       expect(repository.indexFile.existsSync(), isTrue);
       expect(File('${repository.indexFile.path}.tmp').existsSync(), isFalse);
@@ -369,7 +430,11 @@ void main() {
 
     test('corrupt metadata fails loudly', () async {
       final repository = FileProfileRepository(root, now: () => t0);
-      await repository.create(displayName: 'Alice', createdAt: t0);
+      await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       repository.indexFile.writeAsStringSync('{not json');
 
@@ -381,7 +446,11 @@ void main() {
 
     test('an unreadable schema version fails rather than guessing', () async {
       final repository = FileProfileRepository(root, now: () => t0);
-      await repository.create(displayName: 'Alice', createdAt: t0);
+      await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       final json =
           jsonDecode(repository.indexFile.readAsStringSync())
@@ -399,7 +468,11 @@ void main() {
       'a selection pointing at nobody fails rather than being ignored',
       () async {
         final repository = FileProfileRepository(root, now: () => t0);
-        await repository.create(displayName: 'Alice', createdAt: t0);
+        await repository.create(
+          displayName: 'Alice',
+          createdAt: t0,
+          placement: PlacementTier.someExperience,
+        );
 
         final json =
             jsonDecode(repository.indexFile.readAsStringSync())
@@ -428,6 +501,7 @@ void main() {
       final created = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
       expect((await repository.list()).single.id, created.id);
     });
@@ -441,6 +515,7 @@ void main() {
       final created = await profiles.create(
         displayName: 'Alice',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
 
       final session = await openSession(store, profile: created);
@@ -460,8 +535,16 @@ void main() {
     test('each profile practices into its own directory', () async {
       final profiles = FileProfileRepository(root, now: () => t0);
       final store = FilePracticeStore(root);
-      final alice = await profiles.create(displayName: 'Alice', createdAt: t0);
-      final bob = await profiles.create(displayName: 'Bob', createdAt: t0);
+      final alice = await profiles.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
+      final bob = await profiles.create(
+        displayName: 'Bob',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
 
       await practise(await openSession(store, profile: alice), attempts: 3);
       await practise(

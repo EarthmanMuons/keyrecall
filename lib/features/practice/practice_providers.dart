@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -106,9 +107,17 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   /// who is at the instrument. Made from this screen it does: somebody adding
   /// a profile is somebody about to use it, and the list they are already
   /// looking at is how they get back.
-  Future<Profile?> add(String displayName) =>
+  /// [placement] is fixed here for the life of the profile. Nothing offers to
+  /// change it later, because it is the prior the whole history is computed
+  /// from: a different answer would reinterpret every attempt rather than
+  /// update a skill level, and erasing the history is the honest route to a
+  /// different starting point.
+  Future<Profile?> add(String displayName, PlacementTier placement) =>
       _mutate((repository, store) async {
-        final created = await repository.create(displayName: displayName);
+        final created = await repository.create(
+          displayName: displayName,
+          placement: placement,
+        );
         await repository.select(created.id);
         return (true, created);
       });

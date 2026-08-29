@@ -1,4 +1,5 @@
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
 /// Version of the profile index wire format.
@@ -164,8 +165,13 @@ abstract interface class ProfileRepository {
   /// again. The first profile created becomes the active one, since an install
   /// with exactly one person should not need a separate selection step. Later
   /// ones do not: adding somebody must not quietly switch who is practicing.
+  /// [placement] is where this learner's competency estimates start, and it
+  /// is fixed here for the life of the profile: it is the initial condition
+  /// every later posterior is computed from, so changing it would reinterpret
+  /// the history rather than update it.
   Future<Profile> create({
     required String displayName,
+    required PlacementTier placement,
     DateTime? createdAt,
     String? presentationHint,
   });
@@ -224,8 +230,11 @@ extension ProfileRepositoryDefaults on ProfileRepository {
   /// If profiles exist but none is selected, the oldest is selected rather than
   /// a new one being made. That state should not arise, but inventing another
   /// person to resolve it would be the worse repair.
+  /// The profile conjured for an install with none takes [placement], which
+  /// defaults to the tier that assumes least about somebody nobody has asked.
   Future<Profile> selectedOrDefault({
     String displayName = defaultProfileName,
+    PlacementTier placement = PlacementTier.someExperience,
   }) async {
     final active = await selected();
     if (active != null) return active;
@@ -233,7 +242,7 @@ extension ProfileRepositoryDefaults on ProfileRepository {
     final existing = await list();
     if (existing.isNotEmpty) return select(existing.first.id);
 
-    return create(displayName: displayName);
+    return create(displayName: displayName, placement: placement);
   }
 }
 
@@ -263,11 +272,13 @@ class InMemoryProfileRepository implements ProfileRepository {
   @override
   Future<Profile> create({
     required String displayName,
+    required PlacementTier placement,
     DateTime? createdAt,
     String? presentationHint,
   }) async {
     final profile = Profile.create(
       displayName: displayName,
+      placement: placement,
       createdAt: createdAt ?? _now(),
       presentationHint: presentationHint,
     );

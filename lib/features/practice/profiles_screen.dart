@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'practice_providers.dart';
@@ -214,7 +215,12 @@ Future<void> _addProfile(BuildContext context, WidgetRef ref) async {
     initial: '',
     confirmLabel: 'Add',
   );
-  if (name != null) await ref.read(profileRosterProvider.notifier).add(name);
+  if (name == null) return;
+  // Stated rather than defaulted: nothing asks yet, and a placement nobody
+  // chose should be visible at the one call site making the assumption.
+  await ref
+      .read(profileRosterProvider.notifier)
+      .add(name, PlacementTier.someExperience);
 }
 
 /// Asks for a display name, refusing an empty one.

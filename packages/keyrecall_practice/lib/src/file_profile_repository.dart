@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'profile_repository.dart';
 
@@ -51,12 +52,14 @@ class FileProfileRepository implements ProfileRepository {
   @override
   Future<Profile> create({
     required String displayName,
+    required PlacementTier placement,
     DateTime? createdAt,
     String? presentationHint,
   }) async {
     final index = await _read();
     final profile = Profile.create(
       displayName: displayName,
+      placement: placement,
       createdAt: createdAt ?? _now(),
       presentationHint: presentationHint,
     );

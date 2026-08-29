@@ -156,6 +156,7 @@ void main() {
         id: '3f2a6c18-0000-4000-8000-00000000b0b0',
         displayName: 'Bob',
         createdAt: t0,
+        placement: PlacementTier.someExperience,
       );
 
       final aliceSession = await openSession(store);

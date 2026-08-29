@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
 import 'canonical_json.dart';
@@ -25,6 +26,24 @@ class Profile {
   /// When the profile was created, in UTC.
   final DateTime createdAt;
 
+  /// Where this learner's competency estimates started, before any practice.
+  ///
+  /// Part of the profile rather than of a session, because it is the initial
+  /// condition replay propagates from: every posterior in the journal is a
+  /// function of it, so a profile whose placement is not recorded cannot
+  /// reproduce its own state. It was a caller-side default until it was
+  /// stored here, and a default is not a record.
+  ///
+  /// Immutable for the same reason. Changing it is not updating a skill level;
+  /// it is reinterpreting the whole trajectory under a different prior. The
+  /// route to a different placement is erasing the history it would have
+  /// reinterpreted.
+  ///
+  /// Required rather than defaulted, everywhere it is constructed or read. A
+  /// default here would put the prior back where it started: chosen by
+  /// whichever code path happened to omit it.
+  final PlacementTier placement;
+
   /// Optional presentation hint, such as a color or avatar token.
   ///
   /// Deliberately untyped: it belongs to whatever the UI decides to show, and
@@ -35,6 +54,7 @@ class Profile {
     required this.id,
     required this.displayName,
     required DateTime createdAt,
+    required this.placement,
     this.presentationHint,
   }) : createdAt = createdAt.toUtc() {
     if (id.isEmpty) {
@@ -53,11 +73,13 @@ class Profile {
   factory Profile.create({
     required String displayName,
     required DateTime createdAt,
+    required PlacementTier placement,
     String? presentationHint,
   }) => Profile(
     id: newProfileId(),
     displayName: displayName,
     createdAt: createdAt,
+    placement: placement,
     presentationHint: presentationHint,
   );
 
@@ -69,6 +91,7 @@ class Profile {
     id: id,
     displayName: displayName,
     createdAt: createdAt,
+    placement: placement,
     presentationHint: presentationHint,
   );
 
@@ -77,14 +100,23 @@ class Profile {
     'id': id,
     'display_name': displayName,
     'created_at': encodeTime(createdAt),
+    'placement': placement.id,
     'presentation_hint': presentationHint,
   };
 
   /// Reads a profile back.
+  ///
+  /// A missing placement is refused rather than defaulted. It is the prior the
+  /// profile's whole history was computed against, so guessing it would
+  /// reinterpret that history under a starting state it never ran from, which
+  /// is the one thing a reader of authoritative data must not do quietly.
   factory Profile.fromJson(Map<String, Object?> json) => Profile(
     id: requireString(json, 'id', location: 'profile'),
     displayName: requireString(json, 'display_name', location: 'profile'),
     createdAt: requireTime(json, 'created_at', location: 'profile'),
+    placement: PlacementTier.fromId(
+      requireString(json, 'placement', location: 'profile'),
+    ),
     presentationHint: json['presentation_hint'] as String?,
   );
 
@@ -94,10 +126,12 @@ class Profile {
       other.id == id &&
       other.displayName == displayName &&
       other.createdAt == createdAt &&
+      other.placement == placement &&
       other.presentationHint == presentationHint;
 
   @override
-  int get hashCode => Object.hash(id, displayName, createdAt, presentationHint);
+  int get hashCode =>
+      Object.hash(id, displayName, createdAt, placement, presentationHint);
 
   @override
   String toString() => 'Profile($displayName, $id)';

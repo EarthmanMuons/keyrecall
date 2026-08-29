@@ -12,6 +12,7 @@ final Profile testProfile = Profile(
   id: '3f2a6c18-0000-4000-8000-000000000001',
   displayName: 'Alice',
   createdAt: t0,
+  placement: PlacementTier.someExperience,
 );
 
 /// The material these tests reach for when the choice does not matter.

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/practice_providers.dart';
@@ -68,8 +69,14 @@ void main() {
   Future<(Profile, Profile)> seedTwo(ProviderContainer container) async {
     final repository = await container.read(profileRepositoryProvider.future);
     return (
-      await repository.create(displayName: 'Alice'),
-      await repository.create(displayName: 'Bob'),
+      await repository.create(
+        displayName: 'Alice',
+        placement: PlacementTier.someExperience,
+      ),
+      await repository.create(
+        displayName: 'Bob',
+        placement: PlacementTier.beginner,
+      ),
     );
   }
 
