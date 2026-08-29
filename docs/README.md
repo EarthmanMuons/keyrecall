@@ -34,6 +34,8 @@ docs/
 │   ├── alignment-contract.md        grouping proposes, alignment decides
 │                                    (evidence: analysis/onset-grouping/)
 │   ├── attempt-termination.md       closures exist; non-learner paths do not
+│   ├── progression-graph.md         what precedes what, and where each
+│                                    edge is enforced
 │   ├── material-admission.md        what may be introduced now, and why
 │   ├── fingering-taxonomy.md
 │   ├── motor-taxonomy.md
@@ -79,6 +81,7 @@ digest tests still pin.
 | Deferred architectural, product, and domain hypotheses            | `design/future-planning.md`                             |
 | Canonical scale fingering                                         | `domain-model/fingering-taxonomy.md`                    |
 | Derived motor family, phase, crossing, and continuation structure | `domain-model/motor-taxonomy.md`                        |
+| Which prerequisite edges exist, and which are prediction instead  | `domain-model/progression-graph.md`                     |
 | Domain entities not superseded below                              | `domain-model/v1-domain-model.md`                       |
 | Research claims, citations, and limitations                       | `learner-model/01-research.md`                          |
 | Learner-state architecture and ten-Competency ontology            | `learner-model/02-v1-design.md`                         |

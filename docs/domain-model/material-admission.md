@@ -120,6 +120,13 @@ scales together rather than perfecting one before touching the next.
                                 the material itself
 ```
 
+Rule 7 says _the material_, and the distinction it is making is between
+withholding a scale and withholding one way of playing it. Two octaves of C
+major later became a prerequisite of its own; one octave of C major stayed
+foundation material throughout, which is the rule holding rather than bending.
+The wider account of which conditions gate and which only predict is in
+[`progression-graph.md`](progression-graph.md).
+
 Rule 5 is worth defending. The curricula give no support for a universal natural
 to harmonic to melodic ladder: ABRSM lets candidates choose the form at lower
 grades and narrows later, and Faber teaches the three forms as one related
