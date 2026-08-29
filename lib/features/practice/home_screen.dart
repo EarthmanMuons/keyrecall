@@ -16,6 +16,7 @@ import 'onset_diagnostic.dart';
 import 'practice_providers.dart';
 import 'profiles_screen.dart';
 import 'reported_result.dart';
+import 'timing_calibration.dart';
 
 /// The app's entry screen: a way into [AttemptScreen], and outside release
 /// builds a development panel for driving the practice loop by hand.
@@ -72,7 +73,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             icon: const Icon(Icons.piano),
           ),
-          if (!kReleaseMode)
+          if (!kReleaseMode) ...[
             IconButton(
               tooltip: 'Measure how far apart notes arrive',
               onPressed: () => Navigator.of(context).push(
@@ -82,6 +83,16 @@ class HomeScreen extends ConsumerWidget {
               ),
               icon: const Icon(Icons.timeline),
             ),
+            IconButton(
+              tooltip: 'Record the takes behind the timing constants',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => const TimingCalibrationScreen(),
+                ),
+              ),
+              icon: const Icon(Icons.straighten),
+            ),
+          ],
           IconButton(
             tooltip: 'Reopen from storage, as a relaunch would',
             onPressed: () => ref.read(practiceLoopProvider.notifier).reopen(),

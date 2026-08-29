@@ -47,6 +47,37 @@ up as the two hands drifting apart rather than as either hand pausing. That is a
 reminder that these two scores measure one hand's fluency and say nothing about
 coordination, which needs the grouping work.
 
+## What these takes cannot answer
+
+All nine rows above are one traversal length at one tempo, roughly 295ms between
+notes. Two questions have since been asked of the constants that the corpus
+cannot settle, and they push the same direction, so a run that varies only one
+of them cannot tell them apart.
+
+**Tempo.** Dispersion is a spread over a median, so the variation it allows
+shrinks in milliseconds as somebody plays faster: 120ms at a 1000ms interval,
+60ms at 500ms, 36ms at 300ms. Whether real playing shrinks with it is open.
+Scalar timing says variability scales with the interval, which would make the
+ratio right. A constant motor component, and the input stack's own fixed jitter,
+would make it wrong at the fast end and call for an absolute floor:
+
+```text
+allowed variation = max(relative allowance, absolute floor)
+```
+
+**Length.** `quartiles` here, and `_quartilesOf` in the Dart, take
+`ordered[n // 4]` and `ordered[3 * n // 4]`. That is the 17th to 83rd percentile
+of a seven-interval traversal and roughly the 25th to 75th of a twenty-nine
+interval one, so exercise length changes what dispersion means before any
+playing is considered. The takes above are long; a one-octave ascending scale is
+not.
+
+`tempo_and_length.py` reads a run recorded by the app's timing-calibration
+screen and reports every cell under both the current estimator and interpolated
+quartiles. The order matters: if a one-octave penalty largely disappears under
+interpolated quartiles, the estimator is what to fix, and fitting an absolute
+floor first would bake an artifact into the policy.
+
 ## The constants these justify
 
 ```text
