@@ -97,7 +97,68 @@ void main() {
       findsOneWidget,
       reason: 'the first profile created is the one being practiced as',
     );
-    expect(find.text('0 attempts · added ${_today()}'), findsNWidgets(2));
+    // The placement is on the row because nothing can change it, and Alice
+    // and Bob were seeded at different tiers.
+    expect(
+      find.text('0 attempts · some scales · added ${_today()}'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('0 attempts · new to scales · added ${_today()}'),
+      findsOneWidget,
+    );
+  });
+
+  group('adding a profile', () {
+    /// Runs the add flow as far as the placement question.
+    Future<void> nameAndContinue(WidgetTester tester, String name) async {
+      await tapAndSettle(tester, find.byIcon(Icons.person_add));
+      await tester.enterText(find.byType(TextField), name);
+      await tapAndSettle(tester, find.text('Add'));
+    }
+
+    testWidgets('asks where to start, and records the answer', (tester) async {
+      final container = containerOn();
+      await pumpProfiles(tester, container);
+
+      await nameAndContinue(tester, 'Cass');
+      expect(find.text('Where should we start?'), findsOneWidget);
+      await tapAndSettle(tester, find.text('I’m new to scales.'));
+
+      final repository = await tester.runAsync(
+        () => container.read(profileRepositoryProvider.future),
+      );
+      final created = (await tester.runAsync(() => repository!.list()))!.single;
+      expect(created.displayName, 'Cass');
+      expect(
+        created.placement,
+        PlacementTier.beginner,
+        reason:
+            'the prior the whole history will be computed from is the one '
+            'the learner actually chose',
+      );
+    });
+
+    testWidgets('creates nobody when the question goes unanswered', (
+      tester,
+    ) async {
+      final container = containerOn();
+      await pumpProfiles(tester, container);
+
+      await nameAndContinue(tester, 'Cass');
+      await tapAndSettle(tester, find.text('Cancel'));
+
+      final repository = await tester.runAsync(
+        () => container.read(profileRepositoryProvider.future),
+      );
+      expect(
+        await tester.runAsync(() => repository!.list()),
+        isEmpty,
+        reason:
+            'a placement nobody chose is not one to invent on their '
+            'behalf, and it could never be corrected afterwards',
+      );
+    });
   });
 
   testWidgets('tapping a profile switches who the practice loop runs as', (
