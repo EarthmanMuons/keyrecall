@@ -90,11 +90,29 @@ void main() {
             'the next ones, not the black-key geographies',
       );
       expect(
-        offered.map((e) => e.material).toSet(),
-        hasLength(greaterThan(5)),
+        offered.any(
+          (e) => admissionBandOf(e.material) == AdmissionBand.earlyTransfer,
+        ),
+        isTrue,
         reason:
             'and there is more to meet than the five foundation scales, '
             'which is what a whole band being unreachable made it',
+      );
+      expect(
+        offered
+            .where((e) => e.conditions.hands == HandConfiguration.left)
+            .map((e) => e.material)
+            .toSet()
+            .intersection(
+              offered
+                  .where((e) => e.conditions.hands == HandConfiguration.right)
+                  .map((e) => e.material)
+                  .toSet(),
+            ),
+        isNotEmpty,
+        reason:
+            'and a scale one hand has met is offered to the other, rather '
+            'than staying on whichever hand happened to meet it first',
       );
     },
   );

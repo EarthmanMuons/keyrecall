@@ -225,11 +225,25 @@ produced two further failures (§10).
 
 ### 6.1 New-material introduction: a conditional envelope, not a blanket bypass
 
-An unseen `TechnicalMaterial` (no `MaterialMemoryState` entry yet) is admitted
-only if `overall_p >= p_introduction_min`, a separate, lower threshold than the
-steady-state band (§9: heuristic, currently 0.15 vs. `p_min`'s 0.60) - still
-`overall_p`, still stage 3's own signal, just a different band for a
-first-contact candidate.
+Material this hand has not played (no `MaterialExecutionState` entry for
+`(materialId, hands)`) is admitted only if `overall_p >= p_introduction_min`, a
+separate, lower threshold than the steady-state band (§9: heuristic, currently
+0.15 vs. `p_min`'s 0.60) - still `overall_p`, still stage 3's own signal, just a
+different band for a first-contact candidate.
+
+Per hand, not per material. `MaterialMemoryState` is keyed by material, because
+knowing the notes of a scale is a fact about the scale; execution residuals are
+keyed by material and hand, because a fingering is not. Reading introduction off
+memory alone left the second hand with no admission path at all - introduction
+silent because the scale was known, consolidation silent because it had been
+retrieved, and execution progression with no frontier to step from - and a
+device sitting kept every scale on the hand that met it first for thirty
+attempts.
+
+Hands-together is excluded. Playing both hands at once is not a third hand
+meeting the material; it is a transition off two frontiers that already exist,
+with its own prerequisite and its own conservative entry tempo, which is
+execution progression's step to offer.
 
 This replaced an earlier, unconditional form (any never-practiced material
 bypassed challenge filtering outright, regardless of realization difficulty).

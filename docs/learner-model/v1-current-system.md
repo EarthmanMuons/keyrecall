@@ -874,8 +874,9 @@ universal optimum.
 Eight named mechanisms can admit a candidate outside the ordinary band:
 
 ```text
-new material        only above a lower introduction floor, and only from the
-                    highest eligibility tier with anything left to introduce
+new material        a scale this hand has not played, only above a lower
+                    introduction floor, and only from the highest eligibility
+                    tier with anything left to introduce
 consolidation       a scale met and not yet produced from memory, offered again
                     at the previewed rung when nothing appropriate is left to
                     introduce
@@ -890,10 +891,14 @@ tempo probe         exact easy exercise at the tempo it was actually played at
 ```
 
 Three of those partition what is known about a material, so they never contend:
-unseen material is introduced, seen and unretrieved material is consolidated,
-and seen and retrieved material progresses. Execution progression is consulted
-last of all, so a candidate that is also a probe keeps the probe's reason: a
-probe is answering a specific question and progression is ordinary work.
+material a hand has not played is introduced, played and unretrieved material is
+consolidated, and played and retrieved material progresses. Introduction reads
+the hand rather than the material because knowing the notes of a scale travels
+with the learner and a fingering does not; hands-together is not an
+introduction, but a step progression offers off two frontiers that already
+exist. Execution progression is consulted last of all, so a candidate that is
+also a probe keeps the probe's reason: a probe is answering a specific question
+and progression is ordinary work.
 
 Consolidation exists because the ordinary band is inert for a beginner and every
 other path to seen material was shut: no rung established so the guidance probe

@@ -71,6 +71,18 @@ void main() {
     guidance: GuidanceContext.continuouslyCued,
   );
 
+  /// Record that this exercise's hand has played its material.
+  void played(LearnerState state, Exercise exercise) {
+    state
+            .materialExecutionFor(
+              (exercise.material.materialId, exercise.conditions.hands),
+              t0,
+              v1PrototypeLearnerParams,
+            )
+            .lastEvidenceAt =
+        t0;
+  }
+
   final foundation = introduction('C');
   // Provisional for a learner who has not earned two octaves.
   final twoOctaves = introduction('G', octaves: 2);
@@ -223,13 +235,10 @@ void main() {
   });
 
   test('ordinary challenge admission is untouched', () {
-    // Material with history is not an introduction, so none of this applies
-    // to it however it ranks.
+    // A hand that has played the material is not being introduced to it, so
+    // none of this applies to it however it ranks.
     final state = learnerAt(1.0);
-    state.materialMemoryFor(
-      foundation.material.materialId,
-      v1PrototypeLearnerParams,
-    );
+    played(state, foundation);
 
     expect(introduces(state, foundation, [foundation]), isFalse);
     expect(
@@ -237,5 +246,71 @@ void main() {
       isNull,
       reason: 'nothing is left to introduce',
     );
+  });
+
+  group('introduction is per hand', () {
+    /// The same work as [foundation], for the other hand.
+    final otherHand = exerciseFor(
+      foundation.material,
+      octaves: 1,
+      tempoBpm: 60,
+      hands: HandConfiguration.left,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+
+    test('a hand that has never played retrieved material still meets it', () {
+      final state = learnerAt(1.0);
+      played(state, foundation);
+      state
+              .materialMemoryFor(
+                foundation.material.materialId,
+                v1PrototypeLearnerParams,
+              )
+              .factualLastRetrievalAt =
+          t0;
+
+      expect(
+        pipeline.isIntroduction(state, otherHand),
+        isTrue,
+        reason:
+            'knowing the notes is a fact about the material; playing them '
+            'with the other hand is a fingering nobody has attempted',
+      );
+      expect(introduces(state, otherHand, [otherHand]), isTrue);
+    });
+
+    test('once that hand has played it, introduction is silent', () {
+      final state = learnerAt(1.0);
+      played(state, foundation);
+      played(state, otherHand);
+
+      expect(pipeline.isIntroduction(state, otherHand), isFalse);
+      expect(introduces(state, otherHand, [otherHand]), isFalse);
+    });
+
+    test('hands together is never an introduction', () {
+      // Both hands at once is a transition off two frontiers, with its own
+      // prerequisite and its own conservative entry tempo. Reaching it
+      // through introduction would skip both.
+      final together = exerciseFor(
+        foundation.material,
+        octaves: 1,
+        tempoBpm: 60,
+        hands: HandConfiguration.together,
+        guidance: GuidanceContext.continuouslyCued,
+      );
+      final state = learnerAt(1.0);
+
+      expect(
+        state.hasPlayed(
+          foundation.material.materialId,
+          HandConfiguration.together,
+        ),
+        isFalse,
+        reason: 'and no frontier of its own to be going on from either',
+      );
+      expect(pipeline.isIntroduction(state, together), isFalse);
+      expect(introduces(state, together, [together]), isFalse);
+    });
   });
 }

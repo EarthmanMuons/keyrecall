@@ -27,13 +27,13 @@ void main() {
     final memory = state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
     if (retrieved) memory.factualLastRetrievalAt = t0;
     for (final configuration in hands) {
-      state
-          .materialExecutionFor(
-            ('C_MAJOR', configuration),
-            t0,
-            v1PrototypeLearnerParams,
-          )
-          .demonstrate(octaves: 1, tempoBpm: tempoBpm);
+      state.materialExecutionFor(
+          ('C_MAJOR', configuration),
+          t0,
+          v1PrototypeLearnerParams,
+        )
+        ..demonstrate(octaves: 1, tempoBpm: tempoBpm)
+        ..lastEvidenceAt = t0;
     }
     return state;
   }
@@ -116,9 +116,13 @@ void main() {
     // The two paths partition material state, and this is the boundary:
     // playing a scale well while looking at it demonstrates the conditions
     // and not the scale.
-    final state = owning([HandConfiguration.right], retrieved: false);
-    // Nothing left to introduce, so consolidation is what the slot has: with
-    // an unmet scale still on offer, introducing it would rightly come first.
+    // Both hands, so nothing is left to introduce: a hand that has never
+    // played this scale is an introduction of its own and would rightly come
+    // first.
+    final state = owning([
+      HandConfiguration.right,
+      HandConfiguration.left,
+    ], retrieved: false);
     final traces = pipeline.evaluate(
       state: state,
       session: SessionState(),

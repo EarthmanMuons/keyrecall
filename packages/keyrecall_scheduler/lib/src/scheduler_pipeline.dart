@@ -203,6 +203,27 @@ class SchedulerPipeline {
     );
   }
 
+  /// Whether [exercise] would be this hand's first encounter with its
+  /// material.
+  ///
+  /// Per hand, not per material. Knowing the notes of a scale is a fact about
+  /// the material and travels with the learner; playing it under the other
+  /// hand is a fingering nobody has attempted, and material memory alone
+  /// cannot tell the two apart. Read per material, the second hand had no
+  /// admission path at all: introduction was silent because the scale was
+  /// known, consolidation because it had been retrieved, and execution
+  /// progression because that hand had no frontier to step from. A device
+  /// sitting kept every scale on the hand that met it first, for thirty
+  /// attempts.
+  ///
+  /// Hands-together is not an introduction. Both hands at once is a transition
+  /// off two frontiers that already exist, with its own prerequisite and its
+  /// own conservative entry tempo, which is execution progression's step to
+  /// offer rather than this one's.
+  bool isIntroduction(LearnerState state, Exercise exercise) =>
+      exercise.conditions.hands != HandConfiguration.together &&
+      !state.hasPlayed(exercise.material.materialId, exercise.conditions.hands);
+
   /// Whether [exercise] may be met for the first time at all.
   ///
   /// A different question from eligibility, and the only place the two come
@@ -551,9 +572,7 @@ class SchedulerPipeline {
   ) {
     EligibilityTier? best;
     for (final exercise in candidates) {
-      if (state.materialMemory.containsKey(exercise.material.materialId)) {
-        continue;
-      }
+      if (!isIntroduction(state, exercise)) continue;
       if (!isIntroducible(state, exercise)) continue;
       final tier = eligibilityFor(state, exercise).tier;
       if (best == null || tier.index > best.index) best = tier;
@@ -656,7 +675,7 @@ class SchedulerPipeline {
         // probability leapfrogging a prerequisite. Nothing introduced is the
         // right answer there.
         AdmissionException.newMaterial =>
-          state.materialMemory.containsKey(exercise.material.materialId)
+          !isIntroduction(state, exercise)
               ? const _Silent()
               : !isIntroducible(state, exercise)
               ? const _Refuses()

@@ -43,13 +43,26 @@ void main() {
     guidance: guidance,
   );
 
-  /// Records that [tonic] has been met, and retrieved when asked.
+  /// Records that [tonic] has been met by both hands, and retrieved when
+  /// asked.
   void meet(LearnerState state, String tonic, {bool retrieved = false}) {
     final memory = state.materialMemoryFor(
       '${tonic}_MAJOR',
       v1PrototypeLearnerParams,
     );
     if (retrieved) memory.factualLastRetrievalAt = t0;
+    // Both hands, because a hand that has never played the scale is an
+    // introduction of its own and would take the slot ahead of this.
+    for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+      state
+              .materialExecutionFor(
+                ('${tonic}_MAJOR', hands),
+                t0,
+                v1PrototypeLearnerParams,
+              )
+              .lastEvidenceAt =
+          t0;
+    }
   }
 
   /// Whether the consolidation exception admits [exercise], given everything

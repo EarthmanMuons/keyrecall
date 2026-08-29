@@ -113,21 +113,37 @@ void main() {
     // The introduction envelope gates on the same predicted success every
     // profile already produces, so which realizations clear it varies by
     // learner rather than being fixed for everyone.
-    Exercise firstChoice(PlacementTier tier) {
-      final agent = agentOver(v1ScaleCatalog);
-      return agent.choose(
-        AttemptContext(
-          rng: PythonCompatibleRandom(0),
-          attemptIndex: 0,
-          state: learner.placementState(tier, at: defaultSimulationEpoch),
+    //
+    // Read over the whole admissible set rather than the top-ranked choice.
+    // Everybody starts at the gentlest conditions now that meeting material
+    // is per hand, so the tiers agree on the first exercise and differ in
+    // what else they could have been given.
+    Set<Exercise> introducible(PlacementTier tier) {
+      final state = learner.placementState(tier, at: defaultSimulationEpoch);
+      final candidates = generateCandidates(instrument, v1ScaleCatalog);
+      return {
+        for (final trace in pipeline.evaluate(
+          state: state,
+          session: SessionState(),
+          candidates: candidates,
           at: defaultSimulationEpoch,
-        ),
-      );
+        ))
+          if (trace.challengeBypass == ChallengeBypass.newMaterial)
+            trace.exercise,
+      };
     }
 
+    final beginner = introducible(PlacementTier.beginner);
+    final advanced = introducible(PlacementTier.advanced);
+
+    expect(beginner, isNotEmpty);
+    expect(advanced.difference(beginner), isNotEmpty);
     expect(
-      firstChoice(PlacementTier.beginner),
-      isNot(firstChoice(PlacementTier.advanced)),
+      beginner.every((exercise) => exercise.conditions.octaves == 1),
+      isTrue,
+      reason:
+          'and a beginner earns the second octave rather than starting on '
+          'it',
     );
   });
 

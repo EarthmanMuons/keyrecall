@@ -48,6 +48,19 @@ Exercise exerciseFor(
 void seedAllMaterials(LearnerState state) {
   for (final material in materials) {
     state.materialMemoryFor(material.materialId, learnerParams);
+    // Meeting material is per hand, so the memory alone does not say it has
+    // been met: an attempt writes both, and one hand knowing a scale leaves
+    // the other still to be introduced to it.
+    for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+      state
+              .materialExecutionFor(
+                (material.materialId, hands),
+                t0,
+                learnerParams,
+              )
+              .lastEvidenceAt =
+          t0;
+    }
   }
 }
 
