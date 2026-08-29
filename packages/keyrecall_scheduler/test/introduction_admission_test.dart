@@ -63,8 +63,9 @@ void main() {
     String tonic, {
     int octaves = 1,
     double tempoBpm = 60,
+    ScaleForm form = ScaleForm.major,
   }) => exerciseFor(
-    TechnicalMaterial(tonic, ScaleForm.major),
+    TechnicalMaterial(tonic, form),
     octaves: octaves,
     tempoBpm: tempoBpm,
     guidance: GuidanceContext.continuouslyCued,
@@ -156,6 +157,69 @@ void main() {
     );
     expect(introduces(state, foundation, both), isFalse);
     expect(introduces(state, twoOctaves, both), isFalse);
+  });
+
+  test('an altered form cannot be introduced before its foundation', () {
+    // The distinction eligibility alone could not make. Provisional means
+    // deferred while something better exists, which is right for an execution
+    // condition and wrong for a curriculum phase: a device sitting introduced
+    // harmonic and melodic minor six times before hands-together work
+    // appeared once, every time through this exception.
+    final state = learnerAt(-1.0);
+    final harmonic = introduction('A', form: ScaleForm.harmonicMinor);
+
+    expect(pipeline.isIntroducible(state, harmonic), isFalse);
+    expect(introduces(state, harmonic, [harmonic]), isFalse);
+    expect(
+      pipeline.introducibleTier(state, [harmonic]),
+      isNull,
+      reason:
+          'and it is not the stratum either, since it cannot be '
+          'introduced at all',
+    );
+  });
+
+  test('the barrier is asked directly, not read off the first refusal', () {
+    // Straight from a device sitting: an unseen harmonic minor at an unguided
+    // rung reports that its first encounter has to be cued, because that rule
+    // refuses before the phase check is reached. Deciding a barrier from a
+    // diagnostic that stops at the first answer is how this went wrong once
+    // already.
+    final state = learnerAt(-1.0);
+    final unguided = exerciseFor(
+      TechnicalMaterial('A', ScaleForm.harmonicMinor),
+      octaves: 1,
+      guidance: GuidanceContext.unguided,
+    );
+
+    expect(
+      pipeline.eligibilityFor(state, unguided).code,
+      EligibilityReason.unseenMaterialRequiresCue,
+      reason: 'something else refuses it before the phase check is reached',
+    );
+    expect(pipeline.isIntroducible(state, unguided), isFalse);
+  });
+
+  test('a foundation met opens introduction again', () {
+    final ready = learnerAt(0.0);
+    for (final competency in [
+      Competency.rhScaleExecution,
+      Competency.lhScaleExecution,
+      Competency.handsTogetherCoordination,
+    ]) {
+      ready.competency(competency).lastEvidenceAt = t0;
+    }
+    ready.competency(Competency.handsTogetherCoordination).mean =
+        v1SchedulerConfig.eligibility.fluentHandsTogetherFloor;
+
+    expect(
+      pipeline.isIntroducible(
+        ready,
+        introduction('A', form: ScaleForm.harmonicMinor),
+      ),
+      isTrue,
+      reason: 'the waiver is a way past the phase, not past the barrier only',
+    );
   });
 
   test('ordinary challenge admission is untouched', () {

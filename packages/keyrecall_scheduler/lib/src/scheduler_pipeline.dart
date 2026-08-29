@@ -110,6 +110,17 @@ class SchedulerPipeline {
       }
     }
 
+    // An altered minor form is a new idea rather than a new key: harmonic
+    // minor raises the seventh against natural minor, and melodic minor
+    // raises the sixth as well, in a fixed form the classical convention does
+    // not use. Meeting one while the ordinary scales are still unsettled
+    // enlarges the vocabulary faster than the base under it, whatever the
+    // keyboard geography says, which is why this is not a band question.
+    if (!coreForms.contains(material.form)) {
+      final breadth = _alteredFormDecisionFor(state, material.form, hands);
+      if (breadth != null) return breadth;
+    }
+
     // Two octaves before one is the one ordering on the execution axis every
     // source agrees on, and the information term will otherwise reach for the
     // span nobody has attempted precisely because nobody has. The material is
@@ -126,17 +137,6 @@ class SchedulerPipeline {
           code: EligibilityReason.octaveSpanPrerequisite,
         );
       }
-    }
-
-    // An altered minor form is a new idea rather than a new key: harmonic
-    // minor raises the seventh against natural minor, and melodic minor
-    // raises the sixth as well, in a fixed form the classical convention does
-    // not use. Meeting one while the ordinary scales are still unsettled
-    // enlarges the vocabulary faster than the base under it, whatever the
-    // keyboard geography says, which is why this is not a band question.
-    if (!coreForms.contains(material.form)) {
-      final breadth = _alteredFormDecisionFor(state, material.form, hands);
-      if (breadth != null) return breadth;
     }
 
     // Natural minor asks for nothing: it is where minor topology comes from,
@@ -188,6 +188,33 @@ class SchedulerPipeline {
       code: EligibilityReason.foundationMaterial,
     );
   }
+
+  /// Whether [exercise] may be met for the first time at all.
+  ///
+  /// A different question from eligibility, and the only place the two come
+  /// apart. Eligibility orders candidates: provisional means deferred while
+  /// something better exists, which is right for an execution condition like
+  /// octave span, where the material is appropriate and one way of playing it
+  /// is not. It is wrong for a curriculum phase. A device sitting introduced
+  /// harmonic and melodic minor six times before hands-together work appeared
+  /// once, each time through the introduction exception, because "not fully
+  /// eligible" was never the same claim as "not to be introduced".
+  ///
+  /// So the altered forms are a barrier rather than a disadvantage. Recovery
+  /// of one already introduced is a separate question and is left alone; what
+  /// this forbids is meeting one for the first time.
+  ///
+  /// Asked directly rather than read off the eligibility reason, because that
+  /// reason is whichever rule refused first and a two-octave harmonic minor
+  /// reports the span. Deciding a barrier from a diagnostic that stops at the
+  /// first answer is how this went wrong once already.
+  bool isIntroducible(LearnerState state, Exercise exercise) =>
+      _alteredFormDecisionFor(
+        state,
+        exercise.material.form,
+        exercise.conditions.hands,
+      ) ==
+      null;
 
   /// Whether an altered minor form has to wait for a foundation under it.
   ///
@@ -467,6 +494,7 @@ class SchedulerPipeline {
       if (state.materialMemory.containsKey(exercise.material.materialId)) {
         continue;
       }
+      if (!isIntroducible(state, exercise)) continue;
       final tier = eligibilityFor(state, exercise).tier;
       if (best == null || tier.index > best.index) best = tier;
       if (best == EligibilityTier.fullyEligible) break;
@@ -536,6 +564,8 @@ class SchedulerPipeline {
         AdmissionException.newMaterial =>
           state.materialMemory.containsKey(exercise.material.materialId)
               ? const _Silent()
+              : !isIntroducible(state, exercise)
+              ? const _Refuses()
               : eligibility != introducibleTier
               ? const _Refuses()
               : prediction.overallP >= config.challenge.pIntroductionMin

@@ -83,6 +83,17 @@ side provisionally eligible until the earlier side is established. Everything
 else is governed by prediction, and is admitted or held back by whether the
 learner is likely to succeed at it today.
 
+One of them is stronger than that. **Provisional means deferred while something
+better exists, which is right for an execution condition and wrong for a
+curriculum phase.** Two octaves of an appropriate scale is the material a
+learner should be on, played a way they have not earned; harmonic minor before
+its foundation is not material they should be on at all. So the altered forms
+are a barrier to first introduction rather than a ranking disadvantage: a device
+sitting introduced harmonic and melodic minor six times before hands-together
+work appeared once, every time through the introduction exception, because "not
+fully eligible" was never the same claim as "not to be introduced". Recovery of
+a form already met is a separate question and is left alone.
+
 ## Axis by axis
 
 ### Key difficulty tiers
