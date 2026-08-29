@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
@@ -362,6 +364,35 @@ class SchedulerPipeline {
       ? Competency.rhScaleExecution
       : Competency.lhScaleExecution;
 
+  /// The tempo [exercise]'s material is introduced at.
+  ///
+  /// What this learner's playing hand has shown on material they already own,
+  /// or the slow end of ordinary practice when they have shown nothing. So a
+  /// beginner still meets their first scale at sixty, and somebody who has
+  /// been working in the seventies meets their next one there rather than
+  /// being walked back to sixty every time the catalog opens a little wider.
+  ///
+  /// Capped for the later bands. Transfer across fingering families is exactly
+  /// what nothing here measures yet, so a key whose geography is new is met
+  /// unhurried whatever the hand has managed on keys it knows: a new shape and
+  /// a new speed at once is the compounding this has been avoiding everywhere
+  /// else.
+  double entryTempoFor(LearnerState state, Exercise exercise) {
+    final gentle = config.eligibility.gentleTempoBpm;
+    final transferable = transferableTempoFor(
+      state,
+      exercise.conditions.hands,
+      exercise.conditions.octaves,
+    );
+    if (transferable <= 0) return gentle;
+
+    return admissionBandOf(
+          exercise.material,
+        ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer)
+        ? transferable
+        : math.min(transferable, gentle);
+  }
+
   /// Whether these are the gentlest conditions the catalog offers a scale
   /// under.
   ///
@@ -630,6 +661,13 @@ class SchedulerPipeline {
               : !isIntroducible(state, exercise)
               ? const _Refuses()
               : eligibility != introducibleTier
+              ? const _Refuses()
+              // One tempo, and a chosen one. An introduction used to be
+              // offered at every tempo generation listed, and nothing in the
+              // ranking key reads tempo, so which of them a learner met was
+              // decided by the order of a constant. Sixty always won, and it
+              // looked like a policy.
+              : exercise.conditions.tempoBpm != entryTempoFor(state, exercise)
               ? const _Refuses()
               : prediction.overallP >= config.challenge.pIntroductionMin
               ? const _Admits(ChallengeBypass.newMaterial)

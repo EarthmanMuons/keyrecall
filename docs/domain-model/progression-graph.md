@@ -214,6 +214,17 @@ which is a question a syllabus does not answer.
 Marvel treats span as a difficulty axis of its own. This is the strongest single
 edge in the graph.
 
+A scale nobody has played is met at the tempo that learner's playing hand has
+shown on scales they own, taken as a median rather than a maximum, and capped to
+the slow end of ordinary practice when the key's geography is new: a new shape
+and a new speed at once is the compounding this graph avoids everywhere else.
+Somebody who has shown nothing meets their first scale unhurried.
+
+That is a decision now rather than an accident. An introduction used to be
+offered at every tempo generation listed, and nothing in the ranking key reads
+tempo, so which one a learner met was settled by the order of a constant. Sixty
+always won and it looked like policy.
+
 Once a scale is owned, going wider is one step of **execution progression**
 rather than a prerequisite question at all. The three axes each have an
 adjacency relation, exactly one may move per candidate, and material must have

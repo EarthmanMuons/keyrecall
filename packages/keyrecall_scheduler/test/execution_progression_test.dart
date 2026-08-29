@@ -177,6 +177,125 @@ void main() {
     );
   });
 
+  group('the tempo an unseen scale is met at', () {
+    const pipeline = SchedulerPipeline(learner: LearnerModel());
+
+    // B flat major: early transfer, so the later-band cap is not what these
+    // are measuring. B major would have been, which is worth a comment.
+    Exercise unseen({
+      String tonic = 'Bb',
+      HandConfiguration hands = HandConfiguration.right,
+      double tempoBpm = 60,
+    }) => Exercise.linear(
+      material: TechnicalMaterial(tonic, ScaleForm.major),
+      hands: hands,
+      octaves: 1,
+      tempoBpm: tempoBpm,
+    );
+
+    test('a learner who has shown nothing meets it unhurried', () {
+      expect(
+        pipeline.entryTempoFor(learner(), unseen()),
+        v1SchedulerConfig.eligibility.gentleTempoBpm,
+      );
+    });
+
+    test('it is the middle of what that hand does, not the best of it', () {
+      // One quick success should not make every scale a learner has never
+      // played arrive at a hundred and twenty-six.
+      final state = learner();
+      for (final (tonic, tempoBpm) in [
+        ('C', 60.0),
+        ('D', 63.0),
+        ('E', 72.0),
+        ('F', 104.0),
+        ('G', 126.0),
+      ]) {
+        demonstrate(
+          state,
+          HandConfiguration.right,
+          materialId: '${tonic}_MAJOR',
+          tempoBpm: tempoBpm,
+        );
+      }
+
+      expect(pipeline.entryTempoFor(state, unseen()), 72);
+    });
+
+    test('one hand does not speak for the other', () {
+      final state = learner();
+      demonstrate(state, HandConfiguration.right, tempoBpm: 96);
+
+      expect(
+        pipeline.entryTempoFor(state, unseen(hands: HandConfiguration.left)),
+        v1SchedulerConfig.eligibility.gentleTempoBpm,
+      );
+    });
+
+    test('a new geography is met unhurried whatever the hand can do', () {
+      // A new shape and a new speed at once is the compounding avoided
+      // everywhere else, and transfer across fingering families is exactly
+      // what nothing here measures yet.
+      final state = learner();
+      for (final tonic in ['C', 'D', 'E']) {
+        demonstrate(
+          state,
+          HandConfiguration.right,
+          materialId: '${tonic}_MAJOR',
+          tempoBpm: 96,
+        );
+      }
+
+      expect(pipeline.entryTempoFor(state, unseen(tonic: 'D')), 96);
+      expect(
+        pipeline.entryTempoFor(state, unseen(tonic: 'Db')),
+        v1SchedulerConfig.eligibility.gentleTempoBpm,
+        reason: 'D flat major is a keyboard away, not a speed away',
+      );
+    });
+
+    test('an introduction is offered at that tempo and no other', () {
+      // The behaviour this replaced: every generated tempo was admitted and
+      // nothing in the ranking key reads tempo, so which one a learner met
+      // was decided by the order of a constant.
+      final state = learner();
+      for (final tonic in ['C', 'D', 'E']) {
+        demonstrate(
+          state,
+          HandConfiguration.right,
+          materialId: '${tonic}_MAJOR',
+          tempoBpm: 76,
+        );
+        state.materialMemoryFor('${tonic}_MAJOR', v1PrototypeLearnerParams);
+      }
+
+      final offered = pipeline
+          .evaluate(
+            state: state,
+            session: SessionState(),
+            candidates: generateCandidates(InstrumentProfile(), [
+              TechnicalMaterial('Bb', ScaleForm.major),
+            ]),
+            at: t0.plusDays(1),
+          )
+          .where(
+            (trace) =>
+                trace.challengeBypass == ChallengeBypass.newMaterial &&
+                trace.exercise.conditions.hands == HandConfiguration.right &&
+                // At one octave, which is the span the evidence is at: two
+                // octaves has none, so it is met unhurried like anything else
+                // nobody has shown.
+                trace.exercise.conditions.octaves == 1,
+          );
+
+      expect(offered, isNotEmpty);
+      expect(
+        offered.map((trace) => trace.exercise.conditions.tempoBpm).toSet(),
+        {76.0},
+      );
+    });
+  });
+
   group('the neighbours the generator does not contain', () {
     List<Exercise> generatedForC() => generateCandidates(InstrumentProfile(), [
       TechnicalMaterial('C', ScaleForm.major),

@@ -117,6 +117,37 @@ double handsTogetherEntryTempo(
   return right < left ? right : left;
 }
 
+/// The tempo this learner's [hands] have shown at [span] on material they
+/// already own, or zero when they have shown none.
+///
+/// Transferable evidence, which is what an unseen scale has to be met on:
+/// its own frontier is empty by definition, and the tempo it is introduced at
+/// would otherwise be whichever the generator happened to list first.
+///
+/// The median rather than the fastest. One quick success on C major should not
+/// make every scale a learner has never played arrive at a hundred and
+/// twenty-six, and the median is the middle of what they actually do rather
+/// than the best thing that ever happened.
+///
+/// Snapped to the ladder, so an introduction lands somewhere a metronome can
+/// be set to and somewhere a later step can move from.
+double transferableTempoFor(
+  LearnerState state,
+  HandConfiguration hands,
+  int span,
+) {
+  final demonstrated = <double>[
+    for (final residual in state.materialExecution.values)
+      if (residual.hands == hands)
+        if (residual.demonstratedTempoAt(span) > 0)
+          residual.demonstratedTempoAt(span),
+  ]..sort();
+  if (demonstrated.isEmpty) return 0;
+
+  final middle = demonstrated[demonstrated.length ~/ 2];
+  return metronomeLadder[tempoRungOf(middle)];
+}
+
 /// The exercises one adjacent execution step from where this learner already
 /// is, which the static generator does not contain.
 ///
@@ -156,6 +187,11 @@ List<Exercise> withExecutionNeighbours(
     final atNarrower = demonstratedAt(materialId, conditions.hands, span - 1);
 
     final wanted = <double>{
+      // Meeting something new at a tempo this hand has shown elsewhere. Its
+      // own frontier is empty, so without this the introduction has only the
+      // tempi the generator lists and picks between them on nothing.
+      if (atSpan <= 0 && atNarrower <= 0)
+        transferableTempoFor(state, conditions.hands, span),
       // Staying where this span has been managed. The rung a learner is on is
       // not always one the generator has, and it has to remain offerable:
       // holding there is ordinary work, and a recovery context targets an
