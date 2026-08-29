@@ -100,9 +100,18 @@ void main() {
       expect(probeFor(at(60), playedAt(1.7))?.conditions.tempoBpm, 100);
     });
 
-    test('nothing when the next offered tempo is out of reach', () {
-      expect(probeFor(at(60), playedAt(1.3)), isNull);
-      expect(probeFor(at(120), playedAt(2.0)), isNull);
+    test('the highest rung they were already reaching', () {
+      // The ladder is what makes this a real answer rather than the nearest
+      // thing the generator happened to offer. Those were sixty, eighty, a
+      // hundred and a hundred and twenty, so a learner a fifth faster than
+      // sixty was asked for eighty and saw nothing between.
+      expect(probeFor(at(60), playedAt(1.21))!.conditions.tempoBpm, 72);
+      expect(probeFor(at(60), playedAt(1.3))!.conditions.tempoBpm, 76);
+      expect(probeFor(at(100), playedAt(1.25))!.conditions.tempoBpm, 120);
+    });
+
+    test('nothing above the top of the ladder', () {
+      expect(probeFor(at(208), playedAt(2.0)), isNull);
     });
 
     test('only the tempo moves', () {

@@ -1,7 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
-import 'candidate_generation.dart';
 import 'config/scheduler_config.dart';
 
 /// Whether [outcome] shows [exercise] was clearly too easy.
@@ -61,10 +60,16 @@ Exercise? tempoProbeTarget({
     return null;
   }
 
+  // The highest rung of the metronome ladder they were already reaching,
+  // rather than the highest tempo the generator happens to offer. Those were
+  // sixty, eighty, a hundred and a hundred and twenty, so a learner playing a
+  // sixty-beat exercise at a hundred and five was asked for a hundred and saw
+  // nothing between: the probe could only land where candidate generation had
+  // already put something.
   final requested = exercise.conditions.tempoBpm;
   final achieved = requested * outcome.achievedTempoRatio;
   double? target;
-  for (final tempo in generatedTempi) {
+  for (final tempo in metronomeLadder) {
     if (tempo <= requested || tempo > achieved) continue;
     if (target == null || tempo > target) target = tempo;
   }

@@ -36,7 +36,13 @@ String trajectoryRow(int index, AttemptRecord record) {
       Measured(:final outcome) =>
         'done=${outcome.completed} pitch='
             '${outcome.pitchIntegrity.toStringAsFixed(2)} '
-            'motor=${outcome.motorScore.toStringAsFixed(2)}',
+            'motor=${outcome.motorScore.toStringAsFixed(2)} '
+            // What the tempo probe reads and the frontier is attributed at.
+            // A ratio far from what somebody believes they played is a
+            // question about the transcript rather than about the playing,
+            // and it cannot be asked from a table that leaves it out.
+            'played=${(conditions.tempoBpm * outcome.achievedTempoRatio).round()}bpm'
+            '(x${outcome.achievedTempoRatio.toStringAsFixed(2)})',
       MeasurementUnavailable(:final reason) => 'unmeasured ${reason.id}',
     },
   ].join(' ');
@@ -71,7 +77,7 @@ String trajectoryOf(Profile profile, AttemptJournal journal) => [
     'first_eligibility_reason'.padRight(38),
     'admitted_by'.padRight(18),
     'predicted',
-    'outcome',
+    'outcome (played = requested x achieved ratio)',
   ].join(' '),
   for (final (index, record) in journal.records.indexed)
     trajectoryRow(index, record),

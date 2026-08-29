@@ -705,7 +705,17 @@ class SchedulerPipeline {
     // set. Computing one of them from the raw candidates while the loop
     // evaluates the refined ones would make two different universes out of
     // one slot.
-    final refined = withExecutionNeighbours(state, candidates);
+    // An exclusive target has to be in the set it narrows. Recovery and the
+    // tempo probe both refuse everything but one exact exercise, so a target
+    // the candidates do not contain leaves the slot admitting nothing at all,
+    // which is how the tempo probe reaching a metronome rung would otherwise
+    // have broken it: generation has no candidate at a hundred and four.
+    final neighbours = withExecutionNeighbours(state, candidates);
+    final refined = [
+      ...neighbours,
+      for (final exclusive in [target, probe])
+        if (exclusive != null && !neighbours.contains(exclusive)) exclusive,
+    ];
     final introducible = introducibleTier(state, refined);
 
     // Guidance changes material availability, but not independent retrieval,
