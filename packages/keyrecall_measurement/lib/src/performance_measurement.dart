@@ -417,9 +417,28 @@ double? _worstRatioOf(List<double> intervals) {
   return intervals.reduce(math.max) / high;
 }
 
+/// The lower and upper quartiles, interpolated between the values either side.
+///
+/// Interpolated rather than picking `ordered[n ~/ 4]`, which is not the same
+/// statistic at every length: on the fourteen intervals of a one-octave
+/// traversal that index lands on the 23rd percentile, and on the seven of an
+/// ascending one it lands on the 17th, so exercise length changed what
+/// dispersion meant before any playing was considered. Calibration takes
+/// measured that inflation at 1.3x on seven intervals and 1.1x on fourteen.
 (double, double) _quartilesOf(List<double> values) {
   final ordered = [...values]..sort();
-  return (ordered[ordered.length ~/ 4], ordered[(3 * ordered.length) ~/ 4]);
+  return (_quantileOf(ordered, 0.25), _quantileOf(ordered, 0.75));
+}
+
+/// The value [fraction] of the way through [ordered], linearly interpolated.
+double _quantileOf(List<double> ordered, double fraction) {
+  if (ordered.length == 1) return ordered.first;
+  final position = fraction * (ordered.length - 1);
+  final below = position.floor();
+  final above = position.ceil();
+  if (below == above) return ordered[below];
+  return ordered[below] +
+      (ordered[above] - ordered[below]) * (position - below);
 }
 
 /// The value at [fraction] of the way through [values] by nearest rank.

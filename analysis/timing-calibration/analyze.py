@@ -31,8 +31,14 @@ from analyze import TAKES, assign, expected
 
 
 def quartiles(values):
-    ordered = sorted(values)
-    return ordered[len(ordered) // 4], ordered[3 * len(ordered) // 4]
+    """The lower and upper quartiles, interpolated, matching the Dart.
+
+    Not ``ordered[n // 4]``: that index is a different percentile at every
+    length, so exercise length changed what dispersion meant before any
+    playing was considered.
+    """
+    lower, _, upper = st.quantiles(sorted(values), n=4, method="inclusive")
+    return lower, upper
 
 
 def per_hand(notes):

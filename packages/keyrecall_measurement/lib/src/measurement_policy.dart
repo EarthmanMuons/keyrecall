@@ -25,14 +25,18 @@ class MeasurementPolicy {
   ///
   /// The interquartile range of the inter-onset intervals over their median.
   /// Robust on purpose: one long pause must not read as unsteady playing, and
-  /// a mean-based spread would say it was. Comfortable playing measured 0.08
-  /// to 0.09.
+  /// a mean-based spread would say it was. Comfortable playing measures 0.07,
+  /// and a later run of even playing across four tempi and two spans stayed
+  /// between 0.04 and 0.08, so the margin here is real rather than nominal.
   final double steadyDispersion;
 
   /// Dispersion at or above which timing reads as entirely unsteady.
   ///
-  /// Just under the rolled take at 0.789, which is the mildest of the takes
-  /// that are dispersed rather than interrupted.
+  /// Just under the rolled take, which is the mildest of the takes that are
+  /// dispersed rather than interrupted and which measures 0.678 across its
+  /// moments. The constant moved when quartiles became interpolated, because
+  /// the reference point is the take rather than the number a particular
+  /// estimator gave it.
   final double unsteadyDispersion;
 
   /// Longest interval, as a multiple of the slow end of ordinary playing, at
@@ -74,7 +78,7 @@ class MeasurementPolicy {
   const MeasurementPolicy({
     this.repeatedMatchedPitchBreaksRetrieval = false,
     this.steadyDispersion = 0.12,
-    this.unsteadyDispersion = 0.80,
+    this.unsteadyDispersion = 0.67,
     this.unbrokenIntervalRatio = 1.15,
     this.brokenIntervalRatio = 3.00,
     this.synchronizedAsynchronyMs = 30,

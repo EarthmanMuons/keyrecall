@@ -47,46 +47,89 @@ up as the two hands drifting apart rather than as either hand pausing. That is a
 reminder that these two scores measure one hand's fluency and say nothing about
 coordination, which needs the grouping work.
 
-## What these takes cannot answer
+## What a factorial run answered
 
-All nine rows above are one traversal length at one tempo, roughly 295ms between
-notes. Two questions have since been asked of the constants that the corpus
-cannot settle, and they push the same direction, so a run that varies only one
-of them cannot tell them apart.
+Twenty-four takes recorded through the app on August 29, 2026: C major, right
+hand, up and down, notes shown throughout, three takes of every cell.
+
+| Span     | bpm | median | absolute spread | was discrete | now interpolated |
+| -------- | --: | -----: | --------------: | -----------: | ---------------: |
+| 1 octave |  60 |  957ms |          51.7ms |        0.054 |            0.049 |
+| 1 octave |  80 |  760ms |          41.3ms |        0.054 |            0.048 |
+| 1 octave | 100 |  597ms |          28.7ms |        0.048 |            0.045 |
+| 1 octave | 120 |  498ms |          35.7ms |        0.072 |            0.062 |
+| 2 octave |  60 |  919ms |          40.0ms |        0.044 |            0.040 |
+| 2 octave |  80 |  740ms |          37.3ms |        0.050 |            0.051 |
+| 2 octave | 100 |  590ms |          35.7ms |        0.061 |            0.060 |
+| 2 octave | 120 |  495ms |          27.0ms |        0.055 |            0.055 |
+
+**No absolute floor is warranted.** The hypothesis was that spread would stay
+flat in milliseconds while the median shrank, so dispersion would climb with
+tempo. It does not. Spread is flat and if anything falls as the tempo rises,
+from 52ms to 36ms across the one-octave row, so dispersion stays between 0.04
+and 0.07 across the whole matrix. Every cell sits comfortably inside the 0.12
+threshold, so a floor would have been fitted to a problem this player does not
+have at the tempi the app offers.
+
+**The estimator was the real defect, and the run's own design hid it.** Both
+spans were played up and down, so the shortest traversal measured was fourteen
+intervals, where the discrete estimator inflates dispersion by about 1.1x. The
+app also generates ascending-only exercises, which for one octave is seven
+intervals. Recomputing on the ascending half of each one-octave take, which is
+the same playing at that length:
+
+| bpm | discrete | interpolated | inflation |
+| --: | -------: | -----------: | --------: |
+|  60 |    0.053 |        0.037 |     1.42x |
+|  80 |    0.045 |        0.035 |     1.27x |
+| 100 |    0.077 |        0.060 |     1.28x |
+| 120 |    0.066 |        0.053 |     1.24x |
+
+So `quartiles` here and `_quartilesOf` in the Dart now interpolate. The
+constants were refitted against the same takes rather than kept: the rolled
+take, which is the reference for entirely unsteady, measures 0.678 across its
+moments under interpolated quartiles where it measured above 0.80 before, so
+`unsteadyDispersion` moved with it. The reference point is the take, not the
+number a particular estimator gave it. `steadyDispersion` did not move;
+comfortable playing measures 0.07 and the new run stays under 0.08 throughout.
+
+**The device report that prompted this is not reproduced.** Playing evenly at
+120 bpm measures 0.055 to 0.072, well inside steady. Whatever produced a "the
+pulse kept moving around" on a real attempt was not the tempo, so it was either
+a genuine reading or something these cells do not cover: every take here shows
+the notes throughout, and a hesitation over what comes next lands in the
+interval series exactly like unsteadiness.
+
+## What motivated the factorial run
+
+Recorded here for provenance: the section above is the answer, and this was the
+question. All nine rows of the original corpus are one traversal length at one
+tempo, roughly 295ms between notes, so two doubts about the constants had no
+evidence either way, and they push the same direction.
 
 **Tempo.** Dispersion is a spread over a median, so the variation it allows
-shrinks in milliseconds as somebody plays faster: 120ms at a 1000ms interval,
-60ms at 500ms, 36ms at 300ms. Whether real playing shrinks with it is open.
-Scalar timing says variability scales with the interval, which would make the
-ratio right. A constant motor component, and the input stack's own fixed jitter,
-would make it wrong at the fast end and call for an absolute floor:
+shrinks in milliseconds as somebody plays faster. Scalar timing says variability
+scales with the interval, which would make the ratio right; a constant motor
+component, and the input stack's own fixed jitter, would call for an absolute
+floor. **Answered: no floor.** Absolute spread was flat to falling across the
+tempi.
 
-```text
-allowed variation = max(relative allowance, absolute floor)
-```
-
-**Length.** `quartiles` here, and `_quartilesOf` in the Dart, take
-`ordered[n // 4]` and `ordered[3 * n // 4]`. That is the 17th to 83rd percentile
-of a seven-interval traversal and roughly the 25th to 75th of a twenty-nine
-interval one, so exercise length changes what dispersion means before any
-playing is considered. The takes above are long; a one-octave ascending scale is
-not.
-
-`tempo_and_length.py` reads a run recorded by the app's timing-calibration
-screen and reports every cell under both the current estimator and interpolated
-quartiles. The order matters: if a one-octave penalty largely disappears under
-interpolated quartiles, the estimator is what to fix, and fitting an absolute
-floor first would bake an artifact into the policy.
+**Length.** The quartile estimator took `ordered[n // 4]` and
+`ordered[3 * n // 4]`, which is a different percentile at every length.
+**Answered: this was the defect.** Quartiles are interpolated now, here and in
+the Dart.
 
 ## The constants these justify
 
 ```text
 temporal stability   1.0 at dispersion <= 0.12     a margin above the comfortable
-                                                   takes, which measured 0.082
-                                                   and 0.092
-                     0.0 at dispersion >= 0.80     just under the rolled take, the
+                                                   takes, which measure 0.071 and
+                                                   0.090 per hand
+                     0.0 at dispersion >= 0.67     just under the rolled take, the
                                                    mildest of the takes that are
-                                                   dispersed rather than interrupted
+                                                   dispersed rather than
+                                                   interrupted, at 0.678 across
+                                                   its moments
 
 continuity           1.0 at longest <= 1.15x       covers both comfortable takes
                                                    (1.05x, 1.12x) and both hands of
@@ -101,7 +144,7 @@ Linear between the two ends, since nothing here justifies a curve.
 The two floors are chosen differently on purpose. The continuity floor covers
 every take that was not deliberately interrupted, including the stumble, whose
 per-hand gaps stayed within 1.14x. The stability floor does not cover the
-stumble: its left hand reached 0.245 dispersion, and reading that as perfectly
+stumble: its left hand reached 0.235 dispersion, and reading that as perfectly
 steady would be generous. So 0.12 is a margin above comfortable playing rather
 than a line drawn under everything that felt fine to play.
 

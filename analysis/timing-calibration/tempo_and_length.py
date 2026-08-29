@@ -35,13 +35,19 @@ from collections import defaultdict
 
 
 def discrete_quartiles(values):
-    """What the app computes today, in Dart and in `analyze.py`."""
+    """What the app computed before the factorial run, and no longer does.
+
+    Kept so a recorded run can still be read both ways: this is the estimator
+    whose length sensitivity the run was designed to expose, and comparing
+    against it is what showed the inflation was worth fixing rather than
+    compensating for.
+    """
     ordered = sorted(values)
     return ordered[len(ordered) // 4], ordered[3 * len(ordered) // 4]
 
 
 def interpolated_quartiles(values):
-    """A conventional 25th and 75th percentile, linearly interpolated."""
+    """A conventional 25th and 75th percentile, which is what the app uses."""
     ordered = sorted(values)
     lo, hi = statistics.quantiles(ordered, n=4, method="inclusive")[0::2]
     return lo, hi
@@ -85,7 +91,7 @@ def main(path):
 
     print(
         f"{'span':>5} {'bpm':>5} {'n':>3} {'median':>8} {'spread':>8} "
-        f"{'dispersion':>11} {'interpolated':>13}"
+        f"{'was discrete':>13} {'now interp':>11}"
     )
     for octaves, bpm in sorted(rows):
         takes = rows[(octaves, bpm)]
@@ -93,8 +99,8 @@ def main(path):
             f"{octaves:5d} {bpm:5.0f} {len(takes):3d} "
             f"{statistics.mean(t['median'] for t in takes):8.0f} "
             f"{statistics.mean(t['spread_ms'] for t in takes):8.1f} "
-            f"{statistics.mean(t['discrete'] for t in takes):11.3f} "
-            f"{statistics.mean(t['interpolated'] for t in takes):13.3f}"
+            f"{statistics.mean(t['discrete'] for t in takes):13.3f} "
+            f"{statistics.mean(t['interpolated'] for t in takes):11.3f}"
         )
 
     print()
