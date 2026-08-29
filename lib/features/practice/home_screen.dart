@@ -16,6 +16,7 @@ import 'onset_diagnostic.dart';
 import 'practice_providers.dart';
 import 'profiles_screen.dart';
 import 'reported_result.dart';
+import 'trajectory_export.dart';
 import 'timing_calibration.dart';
 
 /// The app's entry screen: a way into [AttemptScreen], and outside release
@@ -82,6 +83,23 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               icon: const Icon(Icons.timeline),
+            ),
+            IconButton(
+              tooltip:
+                  'Write this profile\u2019s trajectory where Files can '
+                  'reach it',
+              onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  final path = await exportTrajectory(ref);
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('saved ${path.split('/').last}')),
+                  );
+                } on Object catch (error) {
+                  messenger.showSnackBar(SnackBar(content: Text('$error')));
+                }
+              },
+              icon: const Icon(Icons.list_alt),
             ),
             IconButton(
               tooltip: 'Record the takes behind the timing constants',

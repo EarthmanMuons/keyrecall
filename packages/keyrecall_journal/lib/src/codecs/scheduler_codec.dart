@@ -20,6 +20,13 @@ class SchedulerDecision {
   /// Which prerequisite tier it competed in.
   final EligibilityTier eligibilityTier;
 
+  /// Which prerequisite rule decided that tier, when one did.
+  ///
+  /// The tier says a candidate was outranked; this says what outranked it.
+  /// They are different questions, and only the second one groups stalls,
+  /// which is the whole reason the reasons are coded rather than described.
+  final EligibilityReason? eligibilityReason;
+
   /// Why the safety gate allowed this decision opportunity.
   final String safetyReason;
 
@@ -42,6 +49,7 @@ class SchedulerDecision {
   const SchedulerDecision({
     required this.prediction,
     required this.eligibilityTier,
+    required this.eligibilityReason,
     required this.safetyReason,
     required this.withinChallengeBand,
     required this.challengeBandMin,
@@ -67,6 +75,7 @@ class SchedulerDecision {
     return SchedulerDecision(
       prediction: trace.prediction,
       eligibilityTier: trace.eligibility.tier,
+      eligibilityReason: trace.eligibility.code,
       safetyReason: trace.safety.reason,
       withinChallengeBand: trace.isWithinChallengeBand,
       challengeBandMin: config.challenge.pMin,
@@ -90,6 +99,7 @@ Map<String, Object?> encodeDecision(
 ) => {
   'prediction': encodePrediction(decision.prediction),
   'eligibility_tier': decision.eligibilityTier.id,
+  'eligibility_reason': decision.eligibilityReason?.id,
   'safety_reason': decision.safetyReason,
   'within_challenge_band': decision.withinChallengeBand,
   'challenge_band_min': decision.challengeBandMin,
@@ -122,6 +132,10 @@ SchedulerDecision decodeDecision(
       requireMap(json, 'prediction', location: location),
     ),
     eligibilityTier: tier,
+    eligibilityReason: switch (json['eligibility_reason']) {
+      final String id => _reasonFromId(id, location: location),
+      _ => null,
+    },
     safetyReason: requireString(json, 'safety_reason', location: location),
     withinChallengeBand: requireBool(
       json,
@@ -166,6 +180,15 @@ EligibilityTier _tierFromId(String id, {String? location}) =>
       (tier) => tier.id == id,
       orElse: () => throw JournalFormatException(
         'unknown eligibility tier "$id"',
+        location: location,
+      ),
+    );
+
+EligibilityReason _reasonFromId(String id, {String? location}) =>
+    EligibilityReason.values.firstWhere(
+      (reason) => reason.id == id,
+      orElse: () => throw JournalFormatException(
+        'unknown eligibility reason "$id"',
         location: location,
       ),
     );
