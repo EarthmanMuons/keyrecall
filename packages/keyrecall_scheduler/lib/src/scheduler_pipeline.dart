@@ -161,7 +161,18 @@ class SchedulerPipeline {
     }
 
     if (band != AdmissionBand.foundation) {
-      final floor = config.eligibility.executionFloorFor(band);
+      // Difficulty is compositional, and the floor was reading only half of
+      // it. New keyboard geography is one thing to take on; a harder way of
+      // playing is another, and asking for both at once is what the floor is
+      // protecting against. Met at the gentlest conditions the catalog
+      // offers, a key is a smaller ask than the band alone suggests, so it is
+      // judged against the band before it.
+      //
+      // One band, not a waiver. It puts D major in front of a beginner at one
+      // octave in one hand, which is where the next scales after the
+      // foundation ought to come from, and leaves D flat major where it was.
+      final asked = _isGentlest(exercise.conditions) ? _bandBefore(band) : band;
+      final floor = config.eligibility.executionFloorFor(asked);
       final execution = _executionMeanFor(state, hands);
       if (execution < floor) {
         return EligibilityDecision(
@@ -349,6 +360,23 @@ class SchedulerPipeline {
       hand == HandConfiguration.right
       ? Competency.rhScaleExecution
       : Competency.lhScaleExecution;
+
+  /// Whether these are the gentlest conditions the catalog offers a scale
+  /// under.
+  ///
+  /// One octave, one hand, at the slow end of ordinary practice. Not the
+  /// guidance rung, which is a separate ladder with its own rules about first
+  /// encounters and about what independence has to be earned.
+  bool _isGentlest(ExecutionConditions conditions) =>
+      conditions.octaves == 1 &&
+      conditions.hands != HandConfiguration.together &&
+      conditions.tempoBpm <= config.eligibility.gentleTempoBpm;
+
+  /// The band before [band], or [band] itself when it is the first.
+  static AdmissionBand _bandBefore(AdmissionBand band) =>
+      band == AdmissionBand.foundation
+      ? band
+      : AdmissionBand.values[band.index - 1];
 
   /// The weaker hand's execution when both play, otherwise the playing hand's.
   double _executionMeanFor(LearnerState state, HandConfiguration hands) {

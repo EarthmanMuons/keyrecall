@@ -556,6 +556,7 @@ void main() {
           eligibility: const EligibilityConfig(
             handTogetherCompetencyThreshold: 0.0,
             multiOctaveExecutionFloor: -0.5,
+            gentleTempoBpm: 60,
             earlyTransferExecutionFloor: 0.0,
             intermediateExecutionFloor: 0.4,
             advancedExecutionFloor: 0.8,

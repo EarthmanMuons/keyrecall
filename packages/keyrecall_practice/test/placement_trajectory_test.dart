@@ -74,11 +74,27 @@ void main() {
         reason: 'both hands come before hands together',
       );
       expect(
+        offered.every((e) => coreForms.contains(e.material.form)),
+        isTrue,
+        reason: 'an altered minor form is a phase away, not a key away',
+      );
+      expect(
         offered.every(
-          (e) => admissionBandOf(e.material) == AdmissionBand.foundation,
+          (e) => admissionBandOf(
+            e.material,
+          ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer),
         ),
         isTrue,
-        reason: 'the bands hold at the start, where they matter most',
+        reason:
+            'the bands still hold: a beginner meeting new keys gently gets '
+            'the next ones, not the black-key geographies',
+      );
+      expect(
+        offered.map((e) => e.material).toSet(),
+        hasLength(greaterThan(5)),
+        reason:
+            'and there is more to meet than the five foundation scales, '
+            'which is what a whole band being unreachable made it',
       );
     },
   );

@@ -106,10 +106,22 @@ ordering and disagree on details; several orderings are defensible. Faber groups
 by keyboard shape rather than by the circle of fifths.
 
 **Verdict: `REQUIRES`, as a conservative prior.** Enforced by `AdmissionBand`
-plus a per-band single-hand execution floor. This is the one place where a
-`REQUIRES` is standing in for something else: the fingering-family axis has no
-competency, so the band carries it. See `material-admission.md` for the fourteen
-hand patterns and what the band is approximating.
+plus a per-band single-hand execution floor, **discounted by one band when the
+exercise is at the gentlest conditions the catalog offers**: one octave, one
+hand, at the slow end of ordinary practice.
+
+That discount is the difference between a band and a wall. Difficulty is
+compositional, and the floor was reading only half of it: new keyboard geography
+is one thing to take on and a harder way of playing is another, and what the
+floor protects against is meeting both at once. Without it a beginner had five
+scales, and after meeting them the scheduler's next appropriate material was a
+two-octave early-transfer key rather than a one-octave one — new geography _and_
+a new span, when only the first was the point. With it, D major at one octave in
+one hand is where the scales after the foundation come from, and D flat major
+stays where it was. This is the one place where a `REQUIRES` is standing in for
+something else: the fingering-family axis has no competency, so the band carries
+it. See `material-admission.md` for the fourteen hand patterns and what the band
+is approximating.
 
 ### Major to the minor forms
 

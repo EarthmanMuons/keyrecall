@@ -36,6 +36,15 @@ class EligibilityConfig {
   /// asked of a learner who arrived able to play.
   final double multiOctaveExecutionFloor;
 
+  /// The tempo at or below which an exercise counts as gently presented.
+  ///
+  /// Part of what makes a key reachable a band earlier than its floor would
+  /// otherwise allow. The slow end of ordinary practice rather than the
+  /// slowest the generator can produce: this says a scale is being met
+  /// unhurried, and it should not move when the tempo ladder underneath it
+  /// grows.
+  final double gentleTempoBpm;
+
   /// Familiarity with some minor topology before a minor form is fully
   /// eligible, and with a different minor form before fixed-form melodic
   /// minor is.
@@ -91,6 +100,7 @@ class EligibilityConfig {
   const EligibilityConfig({
     required this.handTogetherCompetencyThreshold,
     required this.multiOctaveExecutionFloor,
+    required this.gentleTempoBpm,
     required this.earlyTransferExecutionFloor,
     required this.intermediateExecutionFloor,
     required this.advancedExecutionFloor,
@@ -319,6 +329,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
   eligibility: EligibilityConfig(
     handTogetherCompetencyThreshold: 0.0,
     multiOctaveExecutionFloor: -0.5,
+    gentleTempoBpm: 60,
     earlyTransferExecutionFloor: 0.0,
     intermediateExecutionFloor: 0.4,
     advancedExecutionFloor: 0.8,
