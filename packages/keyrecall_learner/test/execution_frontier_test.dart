@@ -156,6 +156,24 @@ void main() {
     expect(frontier.demonstratedTempoAt(2), 0);
   });
 
+  test('the frontier moves at the demonstrated score and not below it', () {
+    // Where the new scheduling behaviour switches on, made explicit so a
+    // device sitting can say whether the midpoint is the right place for it.
+    // Below the line nothing advances and there is nothing adjacent to offer;
+    // at it, the next step becomes reachable.
+    final threshold = params.materialExecution.demonstratedMotorScore;
+
+    final below = after(
+      fresh(),
+      scale(tempoBpm: 72),
+      played(quality: threshold - 0.01),
+    );
+    expect(below.demonstratedTempoAt(1), 0);
+
+    final at = after(fresh(), scale(tempoBpm: 72), played(quality: threshold));
+    expect(at.demonstratedTempoAt(1), 72);
+  });
+
   test('one hand says nothing about the other', () {
     final state = fresh();
     after(state, scale(octaves: 2, tempoBpm: 96), played(quality: 1.0));

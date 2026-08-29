@@ -103,9 +103,10 @@ class Exercise {
 
   /// This exercise at [tempoBpm], with everything else held fixed.
   ///
-  /// For asking what a task would have been at a different speed. It does not
-  /// describe a different exercise the scheduler could have chosen: nothing
-  /// generates candidates this way.
+  /// For asking what a task would have been at a different speed, and for the
+  /// one place a candidate is built this way: the next tempo rung is a
+  /// learner-dependent value, so the static generator has no candidate at it
+  /// and the scheduler makes one from the shape beside it.
   Exercise atTempo(double tempoBpm) => Exercise(
     material: material,
     conditions: ExecutionConditions(
