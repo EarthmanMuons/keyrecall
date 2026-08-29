@@ -29,6 +29,7 @@ Map<String, (Exercise, PerformanceTranscript)> singleHandCases() {
     'rh-two-octaves': Exercise.linear(
       material: TechnicalMaterial('Bb', ScaleForm.major),
       hands: HandConfiguration.right,
+      octaves: 2,
       direction: ScaleDirection.up,
     ),
   };

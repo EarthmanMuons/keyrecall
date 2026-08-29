@@ -99,6 +99,31 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test('default to the least-assumptive span, which is one octave', () {
+      // A default is invisible policy. Two octaves carries a prerequisite of
+      // its own, so defaulting to it would have every unspecified call site
+      // quietly asking a harder question than it meant to, which is what it
+      // did until this test existed.
+      expect(ExecutionConditions(hands: HandConfiguration.right).octaves, 1);
+      expect(
+        Exercise.linear(
+          material: TechnicalMaterial('C', ScaleForm.major),
+          hands: HandConfiguration.right,
+        ).conditions.octaves,
+        1,
+      );
+    });
+
+    test('one octave creates no multi-octave opportunity to be measured', () {
+      expect(
+        Exercise.linear(
+          material: TechnicalMaterial('C', ScaleForm.major),
+          hands: HandConfiguration.right,
+        ).structuralQ,
+        isNot(contains(Competency.multiOctaveContinuation)),
+      );
+    });
   });
 
   group('structural Q', () {

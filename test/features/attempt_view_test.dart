@@ -12,9 +12,12 @@ import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
 
 void main() {
+  /// Two octaves, so the task statement under test is the plural one. Every
+  /// other exercise here takes the one-octave default.
   Exercise exerciseUnder(GuidanceContext guidance) => Exercise.linear(
     material: TechnicalMaterial('C', ScaleForm.major),
     hands: HandConfiguration.right,
+    octaves: 2,
     guidance: guidance,
   );
 
@@ -333,13 +336,9 @@ void main() {
 
     // C major, right hand, two octaves up and down: 29 positions, played here
     // with one extra note partway. Counting arrivals would stop at 29 and cut
-    // off the last note of the scale.
-    final realization = realize(
-      Exercise.linear(
-        material: TechnicalMaterial('C', ScaleForm.major),
-        hands: HandConfiguration.right,
-      ),
-    );
+    // off the last note of the scale. Realized from the exercise that was
+    // actually pumped, so the two cannot drift apart.
+    final realization = realize(exerciseUnder(GuidanceContext.unguided));
     final expectedNotes = [
       for (final moment in realization.moments)
         moment.noteFor(Hand.right)!.midiNote,

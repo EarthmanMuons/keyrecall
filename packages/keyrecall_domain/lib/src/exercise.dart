@@ -71,7 +71,7 @@ class Exercise {
   factory Exercise.linear({
     required TechnicalMaterial material,
     required HandConfiguration hands,
-    int octaves = 2,
+    int octaves = 1,
     ScaleDirection direction = ScaleDirection.upDown,
     double tempoBpm = 80,
     GuidanceContext guidance = GuidanceContext.unguided,
