@@ -28,6 +28,8 @@ docs/
 │
 ├── design/
 │   ├── product-vision.md
+│   ├── data-products.md             journal, checkpoint, fluency history, and
+│   │                                telemetry: what may be lost from each
 │   └── future-planning.md           deferred seams, hypotheses, and closed ideas
 │
 ├── domain-model/
@@ -78,6 +80,7 @@ digest tests still pin.
 | Future competency admission, validation, and calibration workflow | `learner-model/competency-extension-guide.md`           |
 | Canonical terminology and symbols                                 | `GLOSSARY.md`                                           |
 | Product thesis, UX, privacy principles                            | `design/product-vision.md`                              |
+| What each store is for, and where aggregation is allowed          | `design/data-products.md`                               |
 | Deferred architectural, product, and domain hypotheses            | `design/future-planning.md`                             |
 | Canonical scale fingering                                         | `domain-model/fingering-taxonomy.md`                    |
 | Derived motor family, phase, crossing, and continuation structure | `domain-model/motor-taxonomy.md`                        |
