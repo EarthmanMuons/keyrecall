@@ -118,5 +118,13 @@ void main() {
         lessThan(0),
       );
     });
+
+    test('it participates in value equality and hashing', () {
+      final transition = key(transition: true);
+      final ordinary = key(transition: false);
+
+      expect(transition, isNot(ordinary));
+      expect(transition.hashCode, isNot(ordinary.hashCode));
+    });
   });
 }

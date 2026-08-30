@@ -291,15 +291,9 @@ enum RealizationRank {
 /// provisional candidate outrank a fully eligible one. There is no hidden
 /// weighted sum.
 ///
-/// Two questions in one key, and the order between them is the point. The
-/// first five terms ask **which material** to practise: how urgently it needs
-/// testing, what it would reveal, how recently it was seen. The last asks
-/// **which realization of it** to ask for, and is consulted only once the
-/// material-level question has come out even, which for two candidates on the
-/// same scale it always does. So choosing between C major and G major is
-/// exactly the decision it was before, and choosing between C major at sixty
-/// and C major at a hundred and thirty-two is a decision that is now made
-/// rather than fallen into.
+/// The terms before [realization] choose between candidate evidence
+/// opportunities. Some are material-level; coordination transition and
+/// information may differ between realizations of the same material.
 @immutable
 class RankKey implements Comparable<RankKey> {
   /// Primary key: the eligibility tier.
@@ -405,6 +399,7 @@ class RankKey implements Comparable<RankKey> {
   @override
   int get hashCode => Object.hash(
     tier,
+    coordinationTransition,
     retention,
     information,
     diversity,
