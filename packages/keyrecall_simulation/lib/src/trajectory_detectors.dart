@@ -61,6 +61,13 @@ List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
 /// the work the learner is already doing, and one of them asks for something
 /// they have demonstrably outgrown. No threshold makes that the right choice.
 /// This is the shape of the eleven-slot collapse a device sitting produced.
+///
+/// Only against candidates that tie on every term the key compares first, for
+/// the reason [_unmeasuredEntryIgnored] does: a better realization can lose
+/// legitimately because information or diversity differs, and calling that a
+/// defect would be the detector encoding what the scheduler happens to do.
+/// This one has never misfired, which says the ambiguity has not been reached
+/// rather than that it is not there.
 Iterable<Anomaly> _realizationStall(Trajectory trajectory) sync* {
   for (final slot in trajectory.slots) {
     if (slot.realization != RealizationRank.surpassed) continue;
@@ -69,8 +76,8 @@ Iterable<Anomaly> _realizationStall(Trajectory trajectory) sync* {
           trace.exercise.material.materialId ==
               slot.chosen.material.materialId &&
           trace.exercise.conditions.hands == slot.chosen.conditions.hands &&
-          trace.rankKey!.tier == slot.winner.rankKey!.tier &&
-          trace.rankKey!.realization == RealizationRank.advancing,
+          trace.rankKey!.realization == RealizationRank.advancing &&
+          _tiesBeforeRealization(trace.rankKey!, slot.winner.rankKey!),
     );
     if (better.isEmpty) continue;
 
