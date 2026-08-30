@@ -26,18 +26,9 @@ void main(List<String> arguments) {
   for (var i = 0; i < 25; i++) {
     final at = at0.add(Duration(seconds: i * 60));
     learner.propagate(state, at);
-    final chosen = pipeline.chooseFrom(
-      pipeline.selectable(
-        pipeline.evaluate(
-          state: state,
-          session: session,
-          candidates: candidates,
-          at: at,
-        ),
-        session,
-      ),
-      session,
-    );
+    final chosen = pipeline
+        .decide(state: state, session: session, candidates: candidates, at: at)
+        .selected;
     if (chosen == null) break;
     final outcome = playing.play(chosen.exercise, rng);
     learner.applyOutcome(
@@ -48,6 +39,7 @@ void main(List<String> arguments) {
       prediction: learner.predict(state, chosen.exercise, at: at),
       at: at,
     );
+    pipeline.recordOutcome(session, chosen.exercise, outcome);
   }
 
   final at = at0.add(const Duration(seconds: 1500));

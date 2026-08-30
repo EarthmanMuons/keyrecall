@@ -2,13 +2,58 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
-/// One slot of a simulated sitting, with everything a detector needs.
-///
-/// The whole trace rather than the chosen exercise, because most of what has
-/// gone wrong was invisible in the choice and obvious in what it was chosen
-/// over. Every hand-built census this repository has needed reconstructed
-/// exactly this, and reconstructing it after the fact is how three separate
-/// wrong diagnoses got made.
+/// Candidate counts at the scheduler stages relevant to selection.
+class CandidateStageCounts {
+  final int generated;
+  final int evaluated;
+  final int eligible;
+  final int admitted;
+  final int selectable;
+
+  const CandidateStageCounts({
+    required this.generated,
+    required this.evaluated,
+    required this.eligible,
+    required this.admitted,
+    required this.selectable,
+  });
+}
+
+/// Hands-together material ids observed at each scheduler stage.
+class HandsTogetherStages {
+  final Set<String> prerequisiteSatisfied;
+  final Set<String> eligible;
+  final Set<String> admitted;
+  final Set<String> selectable;
+
+  const HandsTogetherStages({
+    required this.prerequisiteSatisfied,
+    required this.eligible,
+    required this.admitted,
+    required this.selectable,
+  });
+
+  Set<String> get fullyEligibleSelectable => eligible.intersection(selectable);
+}
+
+/// A decision slot that produced no selection.
+class TerminalTrajectorySlot {
+  final int index;
+  final DateTime at;
+  final List<CandidateTrace> traces;
+  final List<CandidateTrace> selectable;
+  final CandidateStageCounts candidates;
+
+  const TerminalTrajectorySlot({
+    required this.index,
+    required this.at,
+    required this.traces,
+    required this.selectable,
+    required this.candidates,
+  });
+}
+
+/// One slot of a simulated sitting, with the state detectors need.
 class TrajectorySlot {
   /// Which slot of the sitting this is, from zero.
   final int index;
@@ -34,6 +79,9 @@ class TrajectorySlot {
   /// The frontier for the chosen material and hand, before the attempt.
   final Map<int, double> frontierBefore;
 
+  /// The frontier for the chosen material and hand, after the attempt.
+  final Map<int, double> frontierAfter;
+
   /// The paced tempo for the chosen material and hand, before the attempt.
   final double pacedBefore;
 
@@ -45,28 +93,8 @@ class TrajectorySlot {
   /// tempo against.
   final double transferableBefore;
 
-  /// Materials whose hands-together prerequisite the scheduler considered
-  /// satisfied this slot, whatever happened afterwards.
-  ///
-  /// Read from stage 2a's own verdict rather than reconstructed from
-  /// outcomes. Readiness is the scheduler's notion, and a clock that starts
-  /// when both hands have merely completed a material once may start earlier
-  /// or later than production's, which puts every latency derived from it in
-  /// doubt.
-  final Set<String> handsTogetherReady;
-
-  /// Materials for which a *fully eligible* hands-together candidate survived
-  /// admission this slot.
-  ///
-  /// Fully eligible, and per material, because neither weaker reading says
-  /// anything. Any surviving hands-together candidate is nearly always
-  /// available: the catalog is wide, most of it is provisionally eligible on
-  /// the hands-together prerequisite, and provisional candidates still survive
-  /// admission and rank last. Counting those makes an availability metric read
-  /// as though coordination work were on offer from the first slot, which was
-  /// how a first measurement here concluded that hands together loses on
-  /// ranking when it had never genuinely been offered.
-  final Set<String> handsTogetherOffered;
+  final CandidateStageCounts candidates;
+  final HandsTogetherStages handsTogether;
 
   const TrajectorySlot({
     required this.index,
@@ -77,10 +105,11 @@ class TrajectorySlot {
     required this.performedTempoBpm,
     required this.outcome,
     required this.frontierBefore,
+    required this.frontierAfter,
     required this.pacedBefore,
     required this.transferableBefore,
-    required this.handsTogetherReady,
-    required this.handsTogetherOffered,
+    required this.candidates,
+    required this.handsTogether,
   });
 
   /// Where the chosen realization sat against the frontier.
@@ -88,6 +117,10 @@ class TrajectorySlot {
 
   /// The demonstrated tempo at the span that was played, or zero.
   double get frontierAtSpan => frontierBefore[chosen.conditions.octaves] ?? 0;
+
+  bool get frontierAdvanced => frontierAfter.entries.any(
+    (entry) => entry.value > (frontierBefore[entry.key] ?? 0),
+  );
 }
 
 /// How severely a detector's finding should be read.
@@ -156,10 +189,12 @@ class Trajectory {
 
   /// The slots, in order.
   final List<TrajectorySlot> slots;
+  final TerminalTrajectorySlot? terminal;
 
   const Trajectory({
     required this.playerId,
     required this.seed,
     required this.slots,
+    this.terminal,
   });
 }

@@ -66,10 +66,15 @@ ClusterKind describeCluster(List<TrajectorySlot> cluster) {
   final independence = [
     for (final slot in cluster) slot.chosen.guidance.independence,
   ];
-  final hands = {for (final slot in cluster) slot.chosen.conditions.hands};
-
-  if (hands.contains(HandConfiguration.together) && hands.length > 1) {
-    return ClusterKind.coordinationPhase;
+  var sawRight = false;
+  var sawLeft = false;
+  for (final slot in cluster) {
+    final hands = slot.chosen.conditions.hands;
+    if (hands == HandConfiguration.right) sawRight = true;
+    if (hands == HandConfiguration.left) sawLeft = true;
+    if (hands == HandConfiguration.together && sawRight && sawLeft) {
+      return ClusterKind.coordinationPhase;
+    }
   }
 
   var descents = 0;

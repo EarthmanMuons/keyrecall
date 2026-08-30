@@ -9,9 +9,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 /// Where a sweep's time goes.
 ///
-/// Coarse and deliberately duplicated from [runTrajectory] rather than
-/// instrumenting it, so the measured loop is the shape the sweep runs and no
-/// timing code survives into the thing being timed.
+/// Coarse timings for the trajectory loop.
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('seeds', defaultsTo: '10')
@@ -32,9 +30,7 @@ Future<void> main(List<String> arguments) async {
     for (final phase in [
       'generate',
       'propagate',
-      'evaluate',
-      'selectable',
-      'choose',
+      'decide',
       'ht sets',
       'sort alternatives',
       'play',
@@ -71,24 +67,19 @@ Future<void> main(List<String> arguments) async {
       final at = at0.add(Duration(seconds: index * 60));
       time('propagate', () => learner.propagate(state, at));
 
-      final traces = time(
-        'evaluate',
-        () => pipeline.evaluate(
+      final selection = time(
+        'decide',
+        () => pipeline.decide(
           state: state,
           session: session,
           candidates: candidates,
           at: at,
         ),
       );
+      final traces = selection.traces;
       candidateEvaluations += traces.length;
-      final available = time(
-        'selectable',
-        () => pipeline.selectable(traces, session),
-      );
-      final chosen = time(
-        'choose',
-        () => pipeline.chooseFrom(available, session),
-      );
+      final available = selection.selectable;
+      final chosen = selection.selected;
       if (chosen == null) break;
       slotCount++;
 
@@ -98,23 +89,43 @@ Future<void> main(List<String> arguments) async {
             exercise.material.materialId,
             exercise.conditions.hands,
           )];
+      final frontierBefore = {...?residual?.demonstratedTempoByOctaves};
+      final pacedBefore = residual?.pacedTempoBpm ?? 0;
+      final transferableBefore = transferableTempoFor(
+        state,
+        exercise.conditions.hands,
+        exercise.conditions.octaves,
+      );
 
       final outcome = time('play', () => playing.play(exercise, rng));
 
       final ht = time('ht sets', () {
-        final ready = <String>{};
-        final offered = <String>{};
+        final prerequisiteSatisfied = <String>{};
+        final eligible = <String>{};
+        final admitted = <String>{};
         for (final trace in traces) {
           if (trace.exercise.conditions.hands != HandConfiguration.together) {
             continue;
           }
-          if (trace.eligibility.tier != EligibilityTier.fullyEligible) continue;
-          ready.add(trace.exercise.material.materialId);
-          if (trace.challengeSurvived) {
-            offered.add(trace.exercise.material.materialId);
+          final id = trace.exercise.material.materialId;
+          if (trace.handsTogetherPrerequisiteSatisfied == true) {
+            prerequisiteSatisfied.add(id);
           }
+          if (trace.eligibility.tier == EligibilityTier.fullyEligible) {
+            eligible.add(id);
+          }
+          if (trace.isRanked) admitted.add(id);
         }
-        return (ready, offered);
+        return HandsTogetherStages(
+          prerequisiteSatisfied: prerequisiteSatisfied,
+          eligible: eligible,
+          admitted: admitted,
+          selectable: {
+            for (final trace in available)
+              if (trace.exercise.conditions.hands == HandConfiguration.together)
+                trace.exercise.material.materialId,
+          },
+        );
       });
 
       final alternatives = time('sort alternatives', () {
@@ -123,29 +134,6 @@ Future<void> main(List<String> arguments) async {
             if (!identical(trace, chosen)) trace,
         ]..sort((a, b) => b.rankKey!.compareTo(a.rankKey!));
         return rest;
-      });
-
-      time('record', () {
-        recorded.add(
-          TrajectorySlot(
-            index: index,
-            at: at,
-            chosen: exercise,
-            winner: chosen,
-            alternatives: alternatives,
-            performedTempoBpm: playing.performedTempoFor(exercise),
-            outcome: outcome,
-            frontierBefore: {...?residual?.demonstratedTempoByOctaves},
-            pacedBefore: residual?.pacedTempoBpm ?? 0,
-            transferableBefore: transferableTempoFor(
-              state,
-              exercise.conditions.hands,
-              exercise.conditions.octaves,
-            ),
-            handsTogetherReady: ht.$1,
-            handsTogetherOffered: ht.$2,
-          ),
-        );
       });
 
       time(
@@ -159,12 +147,45 @@ Future<void> main(List<String> arguments) async {
           at: at,
         ),
       );
-      session.recordSelection(
-        exercise,
-        retrievalObserved: exercise.guidance.isRetrievalObserved,
-        retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
-        config: pipeline.config.diversity,
-      );
+
+      time('record', () {
+        recorded.add(
+          TrajectorySlot(
+            index: index,
+            at: at,
+            chosen: exercise,
+            winner: chosen,
+            alternatives: alternatives,
+            performedTempoBpm: playing.performedTempoFor(exercise),
+            outcome: outcome,
+            frontierBefore: frontierBefore,
+            frontierAfter: {
+              ...?state
+                  .materialExecution[(
+                    exercise.material.materialId,
+                    exercise.conditions.hands,
+                  )]
+                  ?.demonstratedTempoByOctaves,
+            },
+            pacedBefore: pacedBefore,
+            transferableBefore: transferableBefore,
+            candidates: CandidateStageCounts(
+              generated: candidates.length,
+              evaluated: traces.length,
+              eligible: traces
+                  .where(
+                    (trace) =>
+                        trace.eligibility.tier == EligibilityTier.fullyEligible,
+                  )
+                  .length,
+              admitted: traces.where((trace) => trace.isRanked).length,
+              selectable: available.length,
+            ),
+            handsTogether: ht,
+          ),
+        );
+      });
+      pipeline.recordOutcome(session, exercise, outcome);
     }
 
     time(

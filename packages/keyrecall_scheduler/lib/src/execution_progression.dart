@@ -170,6 +170,18 @@ double handsTogetherEntryTempo(
 bool supportsHandsTogether(LearnerState state, String materialId, int span) =>
     handsTogetherEntryTempo(state, materialId, span) > 0;
 
+/// Whether the learner may play [exercise] with both hands at its span.
+bool handsTogetherPrerequisiteSatisfied(LearnerState state, Exercise exercise) {
+  if (exercise.conditions.hands != HandConfiguration.together) return true;
+  final materialId = exercise.material.materialId;
+  final span = exercise.conditions.octaves;
+  final together =
+      state.materialExecution[(materialId, HandConfiguration.together)];
+  return (together?.demonstratedTempoAt(span) ?? 0) > 0 ||
+      (together?.demonstratedTempoAt(span - 1) ?? 0) > 0 ||
+      supportsHandsTogether(state, materialId, span);
+}
+
 /// The tempo this learner's [hands] play at on material they already own, or
 /// zero when they have shown none.
 ///

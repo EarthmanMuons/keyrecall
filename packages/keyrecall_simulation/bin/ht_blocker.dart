@@ -60,7 +60,8 @@ Future<void> main(List<String> arguments) async {
       );
 
       for (final slot in trajectory.slots) {
-        if (slot.handsTogetherOffered.isEmpty) continue;
+        final offered = slot.handsTogether.fullyEligibleSelectable;
+        if (offered.isEmpty) continue;
         if (slot.chosen.conditions.hands == HandConfiguration.together) {
           continue;
         }
@@ -68,10 +69,8 @@ Future<void> main(List<String> arguments) async {
         final waiting = slot.alternatives.where(
           (trace) =>
               trace.exercise.conditions.hands == HandConfiguration.together &&
-              slot.handsTogetherOffered.contains(
-                trace.exercise.material.materialId,
-              ) &&
-              trace.challengeSurvived,
+              offered.contains(trace.exercise.material.materialId) &&
+              trace.isRanked,
         );
         if (waiting.isEmpty) continue;
 

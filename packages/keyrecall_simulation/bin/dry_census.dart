@@ -138,14 +138,15 @@ _Census? _dryCensus({
   for (var index = 0; index < slots; index++) {
     final at = at0.add(Duration(seconds: index * 60));
     learner.propagate(state, at);
-    final traces = pipeline.evaluate(
+    final selection = pipeline.decide(
       state: state,
       session: session,
       candidates: candidates,
       at: at,
     );
-    final available = pipeline.selectable(traces, session);
-    final chosen = pipeline.chooseFrom(available, session);
+    final traces = selection.traces;
+    final available = selection.selectable;
+    final chosen = selection.selected;
 
     if (chosen == null) {
       final flags = <String>{};
@@ -215,12 +216,7 @@ _Census? _dryCensus({
       prediction: learner.predict(state, exercise, at: at),
       at: at,
     );
-    session.recordSelection(
-      exercise,
-      retrievalObserved: exercise.guidance.isRetrievalObserved,
-      retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
-      config: pipeline.config.diversity,
-    );
+    pipeline.recordOutcome(session, exercise, outcome);
   }
   return null;
 }

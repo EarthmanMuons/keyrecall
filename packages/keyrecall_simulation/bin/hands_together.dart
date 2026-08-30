@@ -5,7 +5,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// How long hands-together takes to arrive, measured per material.
+/// How long hands-together takes to arrive for each material.
 ///
 /// Three clocks, mapped to the stages that could be responsible, and all three
 /// about **the same scale**. A latency that pairs readiness on C major with an
@@ -14,15 +14,12 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// tier, found one in nearly every opening slot, and concluded the delay was
 /// all ranking.
 ///
-/// - **ready**: stage 2a considers the hands-together prerequisite satisfied
-///   for this material. The scheduler's own verdict, not both hands having
-///   completed it once, so the clock starts where production thinks it starts.
-/// - **offered**: a fully eligible hands-together candidate for it survived
-///   challenge admission, so the slot could have presented it.
+/// - **ready**: the hands-together prerequisite passed for this material.
+/// - **offered**: a fully eligible hands-together candidate was selectable.
 /// - **chosen**: one was actually selected.
 ///
-/// Then `offered - ready` is what prerequisites and admission cost, and
-/// `chosen - offered` is what ranking costs.
+/// Then `offered - ready` is what eligibility, admission, and the repetition
+/// guard cost, and `chosen - offered` is what ranking costs.
 ///
 /// Nothing is clamped. A negative latency means the instrument is wrong, and
 /// should say so rather than becoming a plausible zero.
@@ -43,7 +40,7 @@ Future<void> main(List<String> arguments) async {
     ..writeln(
       'hands-together latency per material, $seeds seeds x $slots slots\n'
       '  ready   = stage 2a satisfied the hands-together prerequisite\n'
-      '  offered = a fully eligible candidate survived admission\n'
+      '  offered = a fully eligible candidate remained selectable\n'
       '  chosen  = one was selected\n'
       '  latencies are in slots, for the same material throughout\n',
     )
@@ -90,10 +87,10 @@ Future<void> main(List<String> arguments) async {
       final offeredAt = <String, int>{};
       final chosenAt = <String, int>{};
       for (final slot in trajectory.slots) {
-        for (final id in slot.handsTogetherReady) {
+        for (final id in slot.handsTogether.prerequisiteSatisfied) {
           readyAt.putIfAbsent(id, () => slot.index);
         }
-        for (final id in slot.handsTogetherOffered) {
+        for (final id in slot.handsTogether.fullyEligibleSelectable) {
           offeredAt.putIfAbsent(id, () => slot.index);
         }
         if (slot.chosen.conditions.hands == HandConfiguration.together) {
@@ -104,31 +101,26 @@ Future<void> main(List<String> arguments) async {
         }
       }
 
-      if (readyAt.isEmpty) continue;
-      everReady++;
-      if (offeredAt.isEmpty) continue;
-      everOffered++;
+      for (final ready in readyAt.entries) {
+        everReady++;
+        final offered = offeredAt[ready.key];
+        if (offered == null) continue;
+        everOffered++;
+        if (offered < ready.value) {
+          impossible++;
+          continue;
+        }
+        offerLatency.add(offered - ready.value);
 
-      // The earliest material to become ready, followed through on itself.
-      final first = readyAt.entries.reduce(
-        (a, b) => a.value <= b.value ? a : b,
-      );
-      final offered = offeredAt[first.key];
-      if (offered == null) continue;
-      if (offered < first.value) {
-        impossible++;
-        continue;
+        final chosen = chosenAt[ready.key];
+        if (chosen == null) continue;
+        if (chosen < offered) {
+          impossible++;
+          continue;
+        }
+        everChosen++;
+        selectLatency.add(chosen - offered);
       }
-      offerLatency.add(offered - first.value);
-
-      final chosen = chosenAt[first.key];
-      if (chosen == null) continue;
-      if (chosen < offered) {
-        impossible++;
-        continue;
-      }
-      everChosen++;
-      selectLatency.add(chosen - offered);
     }
 
     stdout.writeln(

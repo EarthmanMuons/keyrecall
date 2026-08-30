@@ -39,6 +39,7 @@ Trajectory runTrajectory({
       generateCandidates(instrument ?? InstrumentProfile(), materials);
 
   final recorded = <TrajectorySlot>[];
+  TerminalTrajectorySlot? terminal;
   for (var index = 0; index < slots; index++) {
     final at = at0.add(
       Duration(seconds: (index * minutesPerSlot * 60).round()),
@@ -54,7 +55,16 @@ Trajectory runTrajectory({
     final traces = selection.traces;
     final available = selection.selectable;
     final chosen = selection.selected;
-    if (chosen == null) break;
+    if (chosen == null) {
+      terminal = TerminalTrajectorySlot(
+        index: index,
+        at: at,
+        traces: traces,
+        selectable: available,
+        candidates: _candidateCounts(candidates.length, traces, available),
+      );
+      break;
+    }
 
     final exercise = chosen.exercise;
     final residual =
@@ -64,51 +74,43 @@ Trajectory runTrajectory({
         )];
     final frontierBefore = {...?residual?.demonstratedTempoByOctaves};
     final pacedBefore = residual?.pacedTempoBpm ?? 0;
+    final transferableBefore = transferableTempoFor(
+      state,
+      exercise.conditions.hands,
+      exercise.conditions.octaves,
+    );
 
     final outcome = playing.play(exercise, rng);
-    // Both read from every trace rather than from what survived the
-    // repetition guard, and both keep the material, because a latency that
-    // does not correlate readiness, offer and selection on one scale measures
-    // nothing. Two stages, two sets: stage 2a says the learner qualifies,
-    // stage 3 says the slot could actually have presented it.
-    final ready = {
-      for (final trace in traces)
-        if (trace.exercise.conditions.hands == HandConfiguration.together &&
-            trace.eligibility.tier == EligibilityTier.fullyEligible)
+    final handsTogetherTraces = traces.where(
+      (trace) => trace.exercise.conditions.hands == HandConfiguration.together,
+    );
+    final handsTogetherSelectable = available.where(
+      (trace) => trace.exercise.conditions.hands == HandConfiguration.together,
+    );
+    final handsTogether = HandsTogetherStages(
+      prerequisiteSatisfied: {
+        for (final trace in handsTogetherTraces)
+          if (trace.handsTogetherPrerequisiteSatisfied == true)
+            trace.exercise.material.materialId,
+      },
+      eligible: {
+        for (final trace in handsTogetherTraces)
+          if (trace.eligibility.tier == EligibilityTier.fullyEligible)
+            trace.exercise.material.materialId,
+      },
+      admitted: {
+        for (final trace in handsTogetherTraces)
+          if (trace.isRanked) trace.exercise.material.materialId,
+      },
+      selectable: {
+        for (final trace in handsTogetherSelectable)
           trace.exercise.material.materialId,
-    };
-    final offered = {
-      for (final trace in traces)
-        if (trace.exercise.conditions.hands == HandConfiguration.together &&
-            trace.eligibility.tier == EligibilityTier.fullyEligible &&
-            trace.challengeSurvived)
-          trace.exercise.material.materialId,
-    };
-
-    recorded.add(
-      TrajectorySlot(
-        index: index,
-        at: at,
-        chosen: exercise,
-        winner: chosen,
-        // Ranked, and not the winner. What a slot was chosen over is the
-        // question every detector actually asks.
-        alternatives: [
-          for (final trace in available)
-            if (!identical(trace, chosen)) trace,
-        ]..sort((a, b) => b.rankKey!.compareTo(a.rankKey!)),
-        performedTempoBpm: playing.performedTempoFor(exercise),
-        outcome: outcome,
-        frontierBefore: frontierBefore,
-        pacedBefore: pacedBefore,
-        transferableBefore: transferableTempoFor(
-          state,
-          exercise.conditions.hands,
-          exercise.conditions.octaves,
-        ),
-        handsTogetherReady: ready,
-        handsTogetherOffered: offered,
-      ),
+      },
+    );
+    final candidateCounts = _candidateCounts(
+      candidates.length,
+      traces,
+      available,
     );
 
     learner.applyOutcome(
@@ -119,8 +121,55 @@ Trajectory runTrajectory({
       prediction: learner.predict(state, exercise, at: at),
       at: at,
     );
+    final frontierAfter = {
+      ...?state
+          .materialExecution[(
+            exercise.material.materialId,
+            exercise.conditions.hands,
+          )]
+          ?.demonstratedTempoByOctaves,
+    };
+    recorded.add(
+      TrajectorySlot(
+        index: index,
+        at: at,
+        chosen: exercise,
+        winner: chosen,
+        alternatives: [
+          for (final trace in available)
+            if (!identical(trace, chosen)) trace,
+        ]..sort((a, b) => b.rankKey!.compareTo(a.rankKey!)),
+        performedTempoBpm: playing.performedTempoFor(exercise),
+        outcome: outcome,
+        frontierBefore: frontierBefore,
+        frontierAfter: frontierAfter,
+        pacedBefore: pacedBefore,
+        transferableBefore: transferableBefore,
+        candidates: candidateCounts,
+        handsTogether: handsTogether,
+      ),
+    );
     pipeline.recordOutcome(session, exercise, outcome);
   }
 
-  return Trajectory(playerId: player.id, seed: seed, slots: recorded);
+  return Trajectory(
+    playerId: player.id,
+    seed: seed,
+    slots: recorded,
+    terminal: terminal,
+  );
 }
+
+CandidateStageCounts _candidateCounts(
+  int generated,
+  List<CandidateTrace> traces,
+  List<CandidateTrace> selectable,
+) => CandidateStageCounts(
+  generated: generated,
+  evaluated: traces.length,
+  eligible: traces
+      .where((trace) => trace.eligibility.tier == EligibilityTier.fullyEligible)
+      .length,
+  admitted: traces.where((trace) => trace.isRanked).length,
+  selectable: selectable.length,
+);

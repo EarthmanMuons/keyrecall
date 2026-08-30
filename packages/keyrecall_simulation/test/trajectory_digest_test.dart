@@ -31,7 +31,7 @@ void main() {
           slot.outcome.pitchIntegrity.toStringAsFixed(6),
           slot.performedTempoBpm.toStringAsFixed(6),
           slot.frontierBefore.toString(),
-          slot.handsTogetherOffered.toList()..sort(),
+          slot.handsTogether.fullyEligibleSelectable.toList()..sort(),
         ].join('|'),
     ];
     return sha256.convert(utf8.encode(lines.join('\n'))).toString();

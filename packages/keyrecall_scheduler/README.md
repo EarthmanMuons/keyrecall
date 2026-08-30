@@ -45,16 +45,16 @@ void main() {
     const InstrumentProfile(),
     v1ScaleCatalog,
   );
-  final traces = pipeline.evaluate(
+  final decision = pipeline.decide(
     state: state,
     session: session,
     candidates: candidates,
     at: now,
   );
 
-  final choice = pipeline.selectChoice(traces, session);
+  final choice = decision.selected;
   if (choice == null) {
-    print('nothing admitted: ${traces.first.safety.reason}');
+    print('nothing admitted');
     return;
   }
   print('present ${choice.exercise}');
@@ -71,12 +71,7 @@ telemetry.
 After the attempt is played, tell the session what happened:
 
 ```dart
-session.attemptsThisSession++;
-session.recordSelection(
-  choice.exercise,
-  retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
-  config: pipeline.config.diversity,
-);
+pipeline.recordOutcome(session, choice.exercise, outcome);
 ```
 
 Only a tested failure opens a recovery context. An attempt that never tested

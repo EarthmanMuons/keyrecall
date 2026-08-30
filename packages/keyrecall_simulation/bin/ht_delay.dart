@@ -66,10 +66,9 @@ Future<void> main(List<String> arguments) async {
       String? tracked;
       var offeredAt = -1;
       for (final slot in trajectory.slots) {
-        if (slot.handsTogetherOffered.isEmpty) continue;
-        tracked = slot.handsTogetherOffered.reduce(
-          (a, b) => a.compareTo(b) <= 0 ? a : b,
-        );
+        final offered = slot.handsTogether.fullyEligibleSelectable;
+        if (offered.isEmpty) continue;
+        tracked = offered.reduce((a, b) => a.compareTo(b) <= 0 ? a : b);
         offeredAt = slot.index;
         break;
       }

@@ -136,16 +136,14 @@ Future<void> main(List<String> arguments) async {
   for (var index = 0; index < slots; index++) {
     final at = at0.add(Duration(seconds: index * 60));
     learner.propagate(state, at);
-    final traces = pipeline.evaluate(
+    final selection = pipeline.decide(
       state: state,
       session: session,
       candidates: candidates,
       at: at,
     );
-    final chosen = pipeline.chooseFrom(
-      pipeline.selectable(traces, session),
-      session,
-    );
+    final traces = selection.traces;
+    final chosen = selection.selected;
 
     if (chosen == null) {
       final eligible = [
@@ -166,12 +164,7 @@ Future<void> main(List<String> arguments) async {
       prediction: learner.predict(state, exercise, at: at),
       at: at,
     );
-    session.recordSelection(
-      exercise,
-      retrievalObserved: exercise.guidance.isRetrievalObserved,
-      retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
-      config: pipeline.config.diversity,
-    );
+    pipeline.recordOutcome(session, exercise, outcome);
   }
   return null;
 }

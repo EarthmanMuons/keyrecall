@@ -62,7 +62,7 @@ Future<void> main(List<String> arguments) async {
       pipeline: pipeline,
     );
     if (found == null) continue;
-    final (state, gentlest, at) = found;
+    final (state, gentlest, at, playing, rng) = found;
 
     if (shown < exampleLimit) {
       shown++;
@@ -107,8 +107,6 @@ Future<void> main(List<String> arguments) async {
     }
 
     // Ask the player for the gentlest work forty times and see what happens.
-    final rng = PythonCompatibleRandom(seed);
-    final playing = player.begin();
     final floor = Exercise.linear(
       material: gentlest.material,
       hands: gentlest.conditions.hands,
@@ -138,7 +136,8 @@ Future<void> main(List<String> arguments) async {
     ..writeln('  actual motor score  ${mean(motor)}');
 }
 
-(LearnerState, Exercise, DateTime)? _dryStateFor({
+(LearnerState, Exercise, DateTime, PlayerState, PythonCompatibleRandom)?
+_dryStateFor({
   required SyntheticPlayer player,
   required int seed,
   required int slots,
@@ -156,16 +155,14 @@ Future<void> main(List<String> arguments) async {
   for (var index = 0; index < slots; index++) {
     final at = at0.add(Duration(seconds: index * 60));
     learner.propagate(state, at);
-    final traces = pipeline.evaluate(
+    final selection = pipeline.decide(
       state: state,
       session: session,
       candidates: candidates,
       at: at,
     );
-    final chosen = pipeline.chooseFrom(
-      pipeline.selectable(traces, session),
-      session,
-    );
+    final traces = selection.traces;
+    final chosen = selection.selected;
 
     if (chosen == null) {
       final eligible = [
@@ -173,7 +170,7 @@ Future<void> main(List<String> arguments) async {
           if (trace.eligibility.tier == EligibilityTier.fullyEligible) trace,
       ]..sort((a, b) => b.prediction.overallP.compareTo(a.prediction.overallP));
       if (eligible.isEmpty) return null;
-      return (state, eligible.first.exercise, at);
+      return (state, eligible.first.exercise, at, playing, rng);
     }
 
     final exercise = chosen.exercise;
@@ -186,12 +183,7 @@ Future<void> main(List<String> arguments) async {
       prediction: learner.predict(state, exercise, at: at),
       at: at,
     );
-    session.recordSelection(
-      exercise,
-      retrievalObserved: exercise.guidance.isRetrievalObserved,
-      retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
-      config: pipeline.config.diversity,
-    );
+    pipeline.recordOutcome(session, exercise, outcome);
   }
   return null;
 }

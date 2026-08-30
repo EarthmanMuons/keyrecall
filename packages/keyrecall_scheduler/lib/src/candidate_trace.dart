@@ -437,6 +437,9 @@ class CandidateTrace {
   /// The candidate this trace describes.
   final Exercise exercise;
 
+  /// Whether the hands-together prerequisite passed for this candidate.
+  final bool? handsTogetherPrerequisiteSatisfied;
+
   /// Stage 2a: the prerequisite verdict.
   final EligibilityDecision eligibility;
 
@@ -471,6 +474,7 @@ class CandidateTrace {
 
   const CandidateTrace({
     required this.exercise,
+    this.handsTogetherPrerequisiteSatisfied,
     required this.eligibility,
     required this.safety,
     required this.challengeStatus,

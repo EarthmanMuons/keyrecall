@@ -56,8 +56,8 @@ class SelectionResult {
 /// may not read learner state at all), eligibility and safety, challenge
 /// admission, and priority ranking with selection.
 ///
-/// [evaluate] traces every candidate through every stage; [selectChoice] is
-/// the canonical V1 answer for what to present.
+/// [evaluate] traces every candidate through every stage; [decide] performs a
+/// complete decision-slot transition.
 class SchedulerPipeline {
   /// The learner model supplying predictions and uncertainty.
   final LearnerModel learner;
@@ -190,13 +190,7 @@ class SchedulerPipeline {
     // Once hands-together has a record of its own here it goes on through
     // that, like any other execution context.
     if (hands == HandConfiguration.together) {
-      final span = exercise.conditions.octaves;
-      final together = state.materialExecution[(material.materialId, hands)];
-      final established =
-          (together?.demonstratedTempoAt(span) ?? 0) > 0 ||
-          (together?.demonstratedTempoAt(span - 1) ?? 0) > 0;
-      if (!established &&
-          !supportsHandsTogether(state, material.materialId, span)) {
+      if (!handsTogetherPrerequisiteSatisfied(state, exercise)) {
         return const EligibilityDecision(
           EligibilityTier.provisionallyEligible,
           'each hand has still to learn this alone at this span',
@@ -1064,6 +1058,10 @@ class SchedulerPipeline {
 
     return CandidateTrace(
       exercise: exercise,
+      handsTogetherPrerequisiteSatisfied:
+          exercise.conditions.hands == HandConfiguration.together
+          ? handsTogetherPrerequisiteSatisfied(state, exercise)
+          : null,
       eligibility: eligibility,
       safety: safety,
       challengeStatus: challengeStatus,
@@ -1090,7 +1088,7 @@ class SchedulerPipeline {
     SessionState session,
   ) {
     final ranked = traces.where((trace) => trace.isRanked).toList();
-    if (ranked.isEmpty) return traces;
+    if (ranked.isEmpty) return ranked;
 
     final cap = config.diversity.maxConsecutiveMaterialAttempts;
     final overRepeated = {

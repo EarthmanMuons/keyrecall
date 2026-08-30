@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'trajectory.dart';
@@ -11,22 +12,11 @@ import 'trajectory.dart';
 /// a mechanism was asserted from a plausible reading twice. A report that
 /// carries the census cannot be argued with.
 String censusOf(TrajectorySlot slot, {int alternatives = 8}) {
-  String describe(CandidateTrace trace) {
-    final c = trace.exercise.conditions;
-    return '  ${trace.exercise.material.materialId.padRight(18)}'
-        '${c.hands.id.padRight(9)}${c.octaves}oct '
-        '${c.direction == ScaleDirection.up ? 'up  ' : 'updn'} '
-        '${c.tempoBpm.toStringAsFixed(0).padLeft(4)}bpm g=${trace.exercise.guidance.independence} '
-        '${(trace.challengeBypass?.id ?? 'in-band').padRight(22)}'
-        '${trace.eligibility.tier.id}/${trace.eligibility.code.id} '
-        '${trace.rankKey}';
-  }
-
   final conditions = slot.chosen.conditions;
   return [
     'slot ${slot.index} at ${slot.at.toIso8601String()}',
     'chosen:',
-    describe(slot.winner),
+    _describeCandidate(slot.winner),
     'played ${slot.performedTempoBpm.toStringAsFixed(0)}bpm '
         '(x${slot.outcome.achievedTempoRatio.toStringAsFixed(2)}) '
         'completed=${slot.outcome.completed} '
@@ -35,8 +25,35 @@ String censusOf(TrajectorySlot slot, {int alternatives = 8}) {
     'frontier for ${slot.chosen.material.materialId}/${conditions.hands.id}: '
         '${slot.frontierBefore} paced=${slot.pacedBefore.toStringAsFixed(0)}',
     'best alternatives:',
-    ...slot.alternatives.take(alternatives).map(describe),
+    ...slot.alternatives.take(alternatives).map(_describeCandidate),
   ].join('\n');
+}
+
+String censusOfTerminal(TerminalTrajectorySlot slot, {int candidates = 8}) {
+  final best = [...slot.traces]
+    ..sort((a, b) => b.prediction.overallP.compareTo(a.prediction.overallP));
+  return [
+    'slot ${slot.index} at ${slot.at.toIso8601String()} admitted nothing',
+    '${slot.candidates.generated} generated, '
+        '${slot.candidates.evaluated} evaluated, '
+        '${slot.candidates.eligible} fully eligible, '
+        '${slot.candidates.admitted} admitted, '
+        '${slot.candidates.selectable} selectable',
+    'best predicted candidates:',
+    ...best.take(candidates).map(_describeCandidate),
+  ].join('\n');
+}
+
+String _describeCandidate(CandidateTrace trace) {
+  final c = trace.exercise.conditions;
+  return '  ${trace.exercise.material.materialId.padRight(18)}'
+      '${c.hands.id.padRight(9)}${c.octaves}oct '
+      '${c.direction == ScaleDirection.up ? 'up  ' : 'updn'} '
+      '${c.tempoBpm.toStringAsFixed(0).padLeft(4)}bpm '
+      'g=${trace.exercise.guidance.independence} '
+      '${(trace.challengeBypass?.id ?? 'in-band').padRight(22)}'
+      '${trace.eligibility.tier.id}/${trace.eligibility.code.id} '
+      '${trace.rankKey}';
 }
 
 /// Every detector, run over one trajectory.
@@ -141,6 +158,7 @@ Iterable<Anomaly> _unmeasuredEntryIgnored(Trajectory trajectory) sync* {
 /// Whether two keys are equal on everything decided before the realization.
 bool _tiesBeforeRealization(RankKey a, RankKey b) =>
     a.tier == b.tier &&
+    a.coordinationTransition == b.coordinationTransition &&
     a.retention == b.retention &&
     a.information == b.information &&
     a.diversity == b.diversity &&
@@ -158,6 +176,7 @@ bool _tiesBeforeRealization(RankKey a, RankKey b) =>
 /// admits nothing is never recorded.
 Iterable<Anomaly> _sittingRanDry(Trajectory trajectory, int requested) sync* {
   if (trajectory.slots.length >= requested) return;
+  final terminal = trajectory.terminal;
   yield Anomaly(
     detector: 'sitting_ran_dry',
     severity: AnomalySeverity.invariant,
@@ -165,7 +184,7 @@ Iterable<Anomaly> _sittingRanDry(Trajectory trajectory, int requested) sync* {
     summary:
         'the slot after ${trajectory.slots.length} admitted nothing, with '
         '$requested asked for',
-    census: trajectory.slots.isEmpty ? null : censusOf(trajectory.slots.last),
+    census: terminal == null ? null : censusOfTerminal(terminal),
   );
 }
 
@@ -185,9 +204,8 @@ Iterable<Anomaly> _sittingRanDry(Trajectory trajectory, int requested) sync* {
 /// exists, and it made an intermediate player meet F natural minor at sixty
 /// while meeting A natural minor at ninety-six in the same sitting.
 ///
-/// One rung below the pace is the settled policy and is not a trip. Geography
-/// and speed are different axes, so an unfamiliar fingering is worth being
-/// careful about; it is worth a rung of caution rather than the whole ladder.
+/// The early-transfer band may use the full transferable tempo. Later bands
+/// may enter one rung below the material's established pace.
 ///
 /// Deliberately *not* "a later introduction was slower than an earlier one".
 /// That is legitimate: geography transfers imperfectly, the bands exist to say
@@ -199,10 +217,10 @@ Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
     if (slot.winner.challengeBypass != ChallengeBypass.newMaterial) continue;
     final transferable = slot.transferableBefore;
     if (transferable <= 0) continue;
-    // One rung below the pace is the policy, not a defect: an unfamiliar
-    // geography is a real additional ask. More than one rung is the evidence
-    // being discarded rather than discounted.
-    final floor = tempoBefore(transferable);
+    final band = admissionBandOf(slot.chosen.material);
+    final floor = band.isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer)
+        ? transferable
+        : tempoBefore(transferable);
     final asked = slot.chosen.conditions.tempoBpm;
     if (asked >= floor) continue;
 
@@ -234,33 +252,29 @@ Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
 /// the introductions across a sitting hang together.
 Iterable<Anomaly> _entryTempoRegression(Trajectory trajectory) sync* {
   final highest = <HandConfiguration, (double, int)>{};
-  var failedSince = <HandConfiguration>{};
   for (final slot in trajectory.slots) {
     final hands = slot.chosen.conditions.hands;
-    if (!slot.outcome.completed) failedSince.add(hands);
-    if (slot.winner.challengeBypass != ChallengeBypass.newMaterial) continue;
-
-    final tempo = slot.chosen.conditions.tempoBpm;
-    final previous = highest[hands];
-    if (previous != null &&
-        tempo < previous.$1 &&
-        !failedSince.contains(hands)) {
-      yield Anomaly(
-        detector: 'entry_tempo_regression',
-        severity: AnomalySeverity.observation,
-        slot: slot.index,
-        summary:
-            'met new material at ${tempo.toStringAsFixed(0)}bpm on '
-            '${hands.id} after meeting one at '
-            '${previous.$1.toStringAsFixed(0)}bpm at slot ${previous.$2}, '
-            'with nothing having gone wrong in between',
-        census: censusOf(slot),
-      );
+    if (slot.winner.challengeBypass == ChallengeBypass.newMaterial) {
+      final tempo = slot.chosen.conditions.tempoBpm;
+      final previous = highest[hands];
+      if (previous != null && tempo < previous.$1) {
+        yield Anomaly(
+          detector: 'entry_tempo_regression',
+          severity: AnomalySeverity.observation,
+          slot: slot.index,
+          summary:
+              'met new material at ${tempo.toStringAsFixed(0)}bpm on '
+              '${hands.id} after meeting one at '
+              '${previous.$1.toStringAsFixed(0)}bpm at slot ${previous.$2}, '
+              'with nothing having gone wrong in between',
+          census: censusOf(slot),
+        );
+      }
+      if (slot.outcome.completed && (previous == null || tempo > previous.$1)) {
+        highest[hands] = (tempo, slot.index);
+      }
     }
-    if (previous == null || tempo > previous.$1) {
-      highest[hands] = (tempo, slot.index);
-    }
-    failedSince = failedSince.difference({hands});
+    if (!slot.outcome.completed) highest.remove(hands);
   }
 }
 
@@ -305,8 +319,8 @@ Iterable<Anomaly> _materialConcentration(Trajectory trajectory) sync* {
   );
 }
 
-/// **Observation.** No frontier advanced for a long stretch despite the
-/// learner completing what they were asked for.
+/// **Observation.** Neither a frontier nor the material set advanced for a
+/// long stretch despite the learner completing what they were asked for.
 ///
 /// Meeting material does not count as a stall. A learner working through
 /// scales they have never played is going somewhere, and a run of
@@ -317,9 +331,10 @@ Iterable<Anomaly> _progressionStall(Trajectory trajectory) sync* {
   var completedSince = 0;
   for (final slot in trajectory.slots) {
     final advanced =
-        slot.realization == RealizationRank.advancing ||
-        slot.winner.challengeBypass == ChallengeBypass.newMaterial;
-    if (advanced && slot.outcome.completed) {
+        slot.frontierAdvanced ||
+        (slot.winner.challengeBypass == ChallengeBypass.newMaterial &&
+            slot.outcome.started);
+    if (advanced) {
       since = 0;
       completedSince = 0;
       continue;
@@ -332,72 +347,81 @@ Iterable<Anomaly> _progressionStall(Trajectory trajectory) sync* {
         severity: AnomalySeverity.observation,
         slot: slot.index,
         summary:
-            'no frontier advanced across $window slots, $completedSince of '
-            'them completed',
+            'no frontier advanced and no material was introduced across '
+            '$window slots, $completedSince of them completed',
         census: censusOf(slot),
       );
     }
   }
 }
 
-/// **Observation.** Both hands own a material and hands-together never
-/// arrives.
+/// **Observation.** A material passed the hands-together prerequisite but was
+/// never selected.
 Iterable<Anomaly> _handsTogetherStall(Trajectory trajectory) sync* {
-  final byHand = <String, Set<HandConfiguration>>{};
-  int? readyAt;
-  String? readyMaterial;
+  final readyAt = <String, int>{};
+  final chosenAt = <String, int>{};
   for (final slot in trajectory.slots) {
-    final id = slot.chosen.material.materialId;
-    final hands = slot.chosen.conditions.hands;
-    if (hands == HandConfiguration.together) return;
-    if (!slot.outcome.completed) continue;
-    (byHand[id] ??= {}).add(hands);
-    if (readyAt == null &&
-        byHand[id]!.containsAll({
-          HandConfiguration.right,
-          HandConfiguration.left,
-        })) {
-      readyAt = slot.index;
-      readyMaterial = id;
+    for (final id in slot.handsTogether.prerequisiteSatisfied) {
+      readyAt.putIfAbsent(id, () => slot.index);
+    }
+    if (slot.chosen.conditions.hands == HandConfiguration.together) {
+      chosenAt.putIfAbsent(slot.chosen.material.materialId, () => slot.index);
     }
   }
-  if (readyAt == null) return;
-  final waited = trajectory.slots.length - readyAt;
-  if (waited < 15) return;
-  yield Anomaly(
-    detector: 'hands_together_stall',
-    severity: AnomalySeverity.observation,
-    summary:
-        'both hands owned $readyMaterial by slot $readyAt and hands together '
-        'never arrived in the following $waited slots',
-  );
+  for (final ready in readyAt.entries) {
+    final chosen = chosenAt[ready.key];
+    if (chosen != null && chosen >= ready.value) continue;
+    final waited = trajectory.slots.length - ready.value - 1;
+    if (waited < 15) continue;
+    yield Anomaly(
+      detector: 'hands_together_stall',
+      severity: AnomalySeverity.observation,
+      summary:
+          'the hands-together prerequisite passed for ${ready.key} at slot '
+          '${ready.value}, but it was not selected in the following $waited '
+          'slots',
+    );
+  }
 }
 
 /// **Observation.** Support went back up and stayed up after independence was
 /// working, without a failure explaining it.
 Iterable<Anomaly> _guidanceRegression(Trajectory trajectory) sync* {
   final best = <String, int>{};
+  final pending = <String, (int, TrajectorySlot)>{};
   for (final slot in trajectory.slots) {
     final id = slot.chosen.material.materialId;
+    if (slot.outcome.retrieval == FactualRetrieval.failed) {
+      best.remove(id);
+      pending.remove(id);
+      continue;
+    }
     final independence = slot.chosen.guidance.independence;
     final reached = best[id];
     if (reached != null &&
         independence < reached &&
         slot.outcome.completed &&
         slot.winner.challengeBypass != ChallengeBypass.recovery) {
-      yield Anomaly(
-        detector: 'guidance_regression',
-        severity: AnomalySeverity.observation,
-        slot: slot.index,
-        summary:
-            'offered $id at independence $independence after reaching '
-            '$reached, outside recovery',
-        census: censusOf(slot),
-      );
+      pending.putIfAbsent(id, () => (reached, slot));
     }
-    if (slot.outcome.completed && (reached == null || independence > reached)) {
+    if (slot.outcome.retrieval == FactualRetrieval.succeeded &&
+        (reached == null || independence >= reached)) {
       best[id] = independence;
+      pending.remove(id);
     }
+  }
+  for (final entry in pending.entries) {
+    final (reached, slot) = entry.value;
+    yield Anomaly(
+      detector: 'guidance_regression',
+      severity: AnomalySeverity.observation,
+      slot: slot.index,
+      summary:
+          '${entry.key} stayed below independence $reached from slot '
+          '${slot.index} through the end of the sitting, without an '
+          'intervening retrieval failure',
+      census: censusOf(slot),
+    );
   }
 }
 
