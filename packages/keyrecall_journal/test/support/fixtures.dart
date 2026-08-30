@@ -23,8 +23,10 @@ const LearnerParams params = v1LearnerParams;
 const SchedulerConfig schedulerConfig = v1SchedulerConfig;
 const SchedulerPipeline pipeline = SchedulerPipeline(learner: model);
 
-const ModelProvenance provenance = ModelProvenance(
-  learnerModelVersion: 'v1-4',
+// Read from the params rather than repeated, so a model version bump does not
+// silently turn every fixture into a cross-version replay test.
+final ModelProvenance provenance = ModelProvenance(
+  learnerModelVersion: params.modelVersion,
   schedulerModelVersion: 'v1-prototype-0',
   appBuildVersion: 'test',
 );

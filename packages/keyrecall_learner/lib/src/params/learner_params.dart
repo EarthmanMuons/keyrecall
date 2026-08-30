@@ -528,14 +528,21 @@ const LearnerParams v1PrototypeLearnerParams = LearnerParams(
 /// The same numbers as [v1PrototypeLearnerParams] under a version of their
 /// own, because the model reading them is no longer the prototype's: execution
 /// evidence is attributed at the tempo an attempt demonstrated rather than the
-/// one it was asked for. Nothing numeric moved, and the reconciliation test
-/// keeps checking that.
+/// one it was asked for, it keeps an execution frontier and a paced tempo, and
+/// it records which spans a hand knows well enough for the other to join it.
+///
+/// The version moves when the model learns differently, which is why it is at
+/// `v1-5`: a state carrying none of those records is not a state this model
+/// would have produced, and a checkpoint written before them is refused by
+/// [LearnerStateCheckpoint.isUsableUnder] rather than decoded into something
+/// with silent zeros in it. The journal replays the history instead, which
+/// reconstructs the records properly.
 ///
 /// The version is what an attempt records, and what replay refuses to
 /// reinterpret under. Two models that learn differently must not share one, or
 /// a journal replays into a state its own history never produced.
 const LearnerParams v1LearnerParams = LearnerParams(
-  modelVersion: 'v1-4',
+  modelVersion: 'v1-5',
   competency: _v1Competency,
   materialMemory: _v1MaterialMemory,
   materialExecution: _v1MaterialExecution,

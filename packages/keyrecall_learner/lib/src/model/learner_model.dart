@@ -403,9 +403,17 @@ class LearnerModel {
     if (outcome.completed &&
         outcome.pitchIntegrity >=
             params.materialExecution.handsTogetherPitchIntegrity) {
+      // At the tempo they actually played, not the one they were asked for.
+      // The frontier beside this records the request, because a rung is earned
+      // by being asked for it and it is the place a learner is asked to go on
+      // from. This is where hands-together work will start, so it has to be
+      // where the hand actually is: somebody asked for sixty who plays at a
+      // hundred and twenty would otherwise begin coordination work below
+      // sixty, and somebody asked for a hundred and twenty who plays at eighty
+      // would begin it far too fast.
       residual.readyForHandsTogether(
         octaves: exercise.conditions.octaves,
-        tempoBpm: exercise.conditions.tempoBpm,
+        tempoBpm: exercise.conditions.tempoBpm * outcome.achievedTempoRatio,
       );
     }
 

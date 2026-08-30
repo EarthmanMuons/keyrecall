@@ -74,7 +74,7 @@ class MaterialExecutionState {
   double pacedTempoBpm;
 
   /// The spans at which this hand has played this material well enough for the
-  /// other hand to join it, and the tempo it managed there.
+  /// other hand to join it, and the tempo it was actually played at there.
   ///
   /// Not the execution frontier, and deliberately kept beside it rather than
   /// derived from it. The frontier says where this hand can be asked to go on
@@ -90,6 +90,11 @@ class MaterialExecutionState {
   /// none. Unimanual practice does not fully transfer to bimanual playing, so
   /// waiting for the weaker hand to be good alone is waiting for the wrong
   /// thing.
+  ///
+  /// The tempo recorded here is the performed one, where the frontier records
+  /// the requested one. A rung is earned by being asked for it, which is what
+  /// the frontier is for; this decides where coordination work begins, so it
+  /// has to say where the hand actually is.
   final Map<int, double> coordinationReadyTempoByOctaves;
 
   MaterialExecutionState({
