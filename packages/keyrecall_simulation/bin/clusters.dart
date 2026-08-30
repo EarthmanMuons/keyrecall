@@ -28,7 +28,8 @@ Future<void> main(List<String> arguments) async {
 
   const kinds = [
     'improving',
-    'descending support',
+    'finding support',
+    'oscillating support',
     'stuck at the floor',
     'coordination phase',
     'other',
@@ -111,7 +112,17 @@ String _describe(List<TrajectorySlot> cluster) {
   if (hands.contains(HandConfiguration.together) && hands.length > 1) {
     return 'coordination phase';
   }
-  if (independence.last < independence.first) return 'descending support';
+  // Monotone or oscillating, which the ends alone cannot tell apart. A run of
+  // introduce, recover, introduce, recover ends lower than it started and is
+  // not a learner settling on the support they need.
+  var descents = 0;
+  var climbs = 0;
+  for (var i = 1; i < independence.length; i++) {
+    if (independence[i] < independence[i - 1]) descents++;
+    if (independence[i] > independence[i - 1]) climbs++;
+  }
+  if (descents > 0 && climbs > 0) return 'oscillating support';
+  if (descents > 0) return 'finding support';
 
   final firstHalf = motor.take(motor.length ~/ 2);
   final secondHalf = motor.skip(motor.length ~/ 2);
@@ -139,5 +150,5 @@ String _render(String archetype, int seed, List<TrajectorySlot> cluster) => [
         '${(slot.winner.challengeBypass?.id ?? 'in-band').padRight(22)}'
         'motor=${slot.outcome.motorScore.toStringAsFixed(2)} '
         'pitch=${slot.outcome.pitchIntegrity.toStringAsFixed(2)} '
-        'done=${slot.outcome.completed}',
+        'started=${slot.outcome.started} done=${slot.outcome.completed}',
 ].join('\n');
