@@ -111,6 +111,7 @@ Map<String, Object?> encodeDecision(
     'information': decision.rankKey.information,
     'diversity': decision.rankKey.diversity,
     'goals': decision.rankKey.goals,
+    'realization': decision.rankKey.realization.id,
   },
 };
 
@@ -171,9 +172,22 @@ SchedulerDecision decodeDecision(
       ),
       diversity: requireDouble(rankKeyJson, 'diversity', location: location),
       goals: requireDouble(rankKeyJson, 'goals', location: location),
+      realization: _realizationFromId(
+        requireString(rankKeyJson, 'realization', location: location),
+        location: location,
+      ),
     ),
   );
 }
+
+RealizationRank _realizationFromId(String id, {String? location}) =>
+    RealizationRank.values.firstWhere(
+      (rank) => rank.id == id,
+      orElse: () => throw JournalFormatException(
+        'unknown realization rank: $id',
+        location: location,
+      ),
+    );
 
 EligibilityTier _tierFromId(String id, {String? location}) =>
     EligibilityTier.values.firstWhere(

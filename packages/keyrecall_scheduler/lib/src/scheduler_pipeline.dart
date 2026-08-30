@@ -189,6 +189,34 @@ class SchedulerPipeline {
       // One band, not a waiver. It puts D major in front of a beginner at one
       // octave in one hand, which is where the next scales after the
       // foundation ought to come from, and leaves D flat major where it was.
+      // Already played, in this hand, at this span. The floor asks whether a
+      // learner is fluent enough for an unfamiliar key geography, and somebody
+      // who has got through this one has answered that about this one: a
+      // general execution mean is a weaker claim than the material's own
+      // record, exactly as it was for hands together.
+      //
+      // Without this the floor left the learner's own frontier ineligible. A
+      // device sitting demonstrated C natural minor left hand at a hundred and
+      // twenty-six, and every candidate at that tempo stayed provisional while
+      // the sixty-beat one was fully eligible through the gentleness discount
+      // below. Tier decides before anything else, so eleven consecutive slots
+      // went to work the learner was two rungs past.
+      //
+      // At this span, not at any span: two octaves of a key is a geography one
+      // octave of it has not shown.
+      final demonstrated =
+          state.materialExecution[(material.materialId, hands)]
+              ?.demonstratedTempoAt(exercise.conditions.octaves) ??
+          0;
+      if (demonstrated > 0) {
+        return EligibilityDecision(
+          EligibilityTier.fullyEligible,
+          '${band.id} already played at '
+          '${demonstrated.toStringAsFixed(0)} bpm',
+          code: EligibilityReason.bandGeographyDemonstrated,
+        );
+      }
+
       final asked = _isGentlest(exercise.conditions) ? _bandBefore(band) : band;
       final floor = config.eligibility.executionFloorFor(asked);
       final execution = _executionMeanFor(state, hands);
@@ -949,6 +977,7 @@ class SchedulerPipeline {
       information: information(state, exercise, learner.params),
       diversity: diversity(exercise, session),
       goals: goals(exercise),
+      realization: realizationRankFor(state, exercise),
     );
 
     return CandidateTrace(

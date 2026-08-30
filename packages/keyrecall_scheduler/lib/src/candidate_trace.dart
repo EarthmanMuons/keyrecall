@@ -36,6 +36,10 @@ enum EligibilityReason {
   /// The material's band is met by demonstrated single-hand execution.
   bandExecutionMet('BAND_EXECUTION_MET'),
 
+  /// The learner has already played this material, in this hand, at this span,
+  /// so the band's question about the key is settled by evidence.
+  bandGeographyDemonstrated('BAND_GEOGRAPHY_DEMONSTRATED'),
+
   /// The material's band asks for more single-hand execution than the learner
   /// has shown.
   bandExecutionFloor('BAND_EXECUTION_FLOOR'),
@@ -239,13 +243,63 @@ class SafetyDecision {
       'SafetyDecision(${isAllowed ? 'allowed' : 'suppressed'}: $reason)';
 }
 
+/// Where a realization sits against what the learner has already demonstrated
+/// on that material and hand.
+///
+/// Ordered by how much a slot spent on it is worth, best first when compared
+/// as a rank: a step forward, then holding where they are, then work they have
+/// already surpassed.
+///
+/// This exists because the material-level terms cannot tell realizations apart.
+/// Retention and diversity are facts about a material, and information reads
+/// competencies, so two hundred and thirty candidates on one scale at every
+/// tempo, span and hand configuration can carry identical keys. A device
+/// sitting collapsed into eleven consecutive one-octave right-hand exercises at
+/// sixty while the learner was playing at a hundred and twenty-five, because
+/// sixty and a hundred and thirty-two tied on every field and generation lists
+/// sixty first. An axis nothing ranks is not neutral; it is decided by the
+/// order of a constant.
+enum RealizationRank {
+  /// Slower, narrower, or fewer hands than this learner has already managed
+  /// here. Reachable, and last: they have been past this.
+  surpassed('SURPASSED'),
+
+  /// No frontier to sit against, which is every first encounter. Between the
+  /// other two deliberately: meeting material is ordinary work, and neither a
+  /// step on from something nor a step back to it.
+  unmeasured('UNMEASURED'),
+
+  /// Where this learner is: the tempo and span they have demonstrated.
+  /// Practising what you have just reached is real work.
+  holding('HOLDING'),
+
+  /// One adjacent step past the frontier, which is the thing this whole
+  /// progression exists to offer.
+  advancing('ADVANCING');
+
+  const RealizationRank(this.id);
+
+  /// Stable identifier used in traces.
+  final String id;
+}
+
 /// The lexicographic priority key: eligibility tier, then retention,
-/// information, diversity, and goals.
+/// information, diversity, goals, and finally the realization.
 ///
 /// Compared like alphabetizing a dictionary. The tier always decides first, so
 /// no amount of retention, information, or diversity advantage lets a
 /// provisional candidate outrank a fully eligible one. There is no hidden
 /// weighted sum.
+///
+/// Two questions in one key, and the order between them is the point. The
+/// first five terms ask **which material** to practise: how urgently it needs
+/// testing, what it would reveal, how recently it was seen. The last asks
+/// **which realization of it** to ask for, and is consulted only once the
+/// material-level question has come out even, which for two candidates on the
+/// same scale it always does. So choosing between C major and G major is
+/// exactly the decision it was before, and choosing between C major at sixty
+/// and C major at a hundred and thirty-two is a decision that is now made
+/// rather than fallen into.
 @immutable
 class RankKey implements Comparable<RankKey> {
   /// Primary key: the eligibility tier.
@@ -265,12 +319,17 @@ class RankKey implements Comparable<RankKey> {
   /// exists.
   final double goals;
 
+  /// Where this realization sits against the learner's frontier for its
+  /// material and hand.
+  final RealizationRank realization;
+
   const RankKey({
     required this.tier,
     required this.retention,
     required this.information,
     required this.diversity,
     required this.goals,
+    this.realization = RealizationRank.unmeasured,
   });
 
   @override
@@ -283,7 +342,9 @@ class RankKey implements Comparable<RankKey> {
     if (byInformation != 0) return byInformation;
     final byDiversity = diversity.compareTo(other.diversity);
     if (byDiversity != 0) return byDiversity;
-    return goals.compareTo(other.goals);
+    final byGoals = goals.compareTo(other.goals);
+    if (byGoals != 0) return byGoals;
+    return realization.index.compareTo(other.realization.index);
   }
 
   @override
@@ -293,18 +354,20 @@ class RankKey implements Comparable<RankKey> {
       other.retention == retention &&
       other.information == information &&
       other.diversity == diversity &&
-      other.goals == goals;
+      other.goals == goals &&
+      other.realization == realization;
 
   @override
   int get hashCode =>
-      Object.hash(tier, retention, information, diversity, goals);
+      Object.hash(tier, retention, information, diversity, goals, realization);
 
   @override
   String toString() =>
       'RankKey(${tier.id}, R: ${retention.toStringAsFixed(3)}, '
       'I: ${information.toStringAsFixed(3)}, '
       'V: ${diversity.toStringAsFixed(1)}, '
-      'G: ${goals.toStringAsFixed(1)})';
+      'G: ${goals.toStringAsFixed(1)}, '
+      '${realization.id})';
 }
 
 /// Everything the pipeline computed about one candidate.

@@ -218,6 +218,17 @@ back. Keeping them apart preserves the rule that evidence at a tempo is earned
 by being asked for that tempo, while letting an unseen scale arrive near the
 speed the learner actually plays. It is what `transferableTempoFor` reads.
 
+### Realization rank
+
+Where a candidate sits against the learner's frontier for its material and hand:
+advancing, holding, unmeasured, or surpassed. The last term of `RankKey`, and
+the only one that reads execution conditions.
+
+The other five terms ask which material to practise; this asks which realization
+of it. It is consulted only when they come out even, which for two candidates on
+the same scale they always do, so it changes how a scale is asked for and never
+which scale wins.
+
 ### Execution progression
 
 A challenge-band exception that offers one adjacent execution step on material

@@ -1,6 +1,8 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'candidate_trace.dart';
+
 /// Which execution axis a candidate advances, against what the learner has
 /// demonstrated on its material.
 ///
@@ -91,6 +93,34 @@ ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
   if (atNarrower > 0 && tempo == atNarrower) return ExecutionAdvance.span;
 
   return ExecutionAdvance.none;
+}
+
+/// Where [exercise] sits against what this learner has demonstrated on its
+/// material and hand configuration.
+///
+/// A different question from [executionAdvanceFor], which asks whether a
+/// candidate is *the* next step and is strict about it: exactly one axis, the
+/// adjacent rung, nothing else. This asks the looser question ranking needs,
+/// which is whether a slot spent here moves the learner on, holds them where
+/// they are, or asks for something they are already past.
+///
+/// Read at the span being played, because the frontier is a lattice and the
+/// tempo somebody manages at one octave says nothing about two.
+RealizationRank realizationRankFor(LearnerState state, Exercise exercise) {
+  if (executionAdvanceFor(state, exercise).isAdjacentStep) {
+    return RealizationRank.advancing;
+  }
+
+  final conditions = exercise.conditions;
+  final demonstrated =
+      state.materialExecution[(exercise.material.materialId, conditions.hands)]
+          ?.demonstratedTempoAt(conditions.octaves) ??
+      0;
+  if (demonstrated <= 0) return RealizationRank.unmeasured;
+
+  return conditions.tempoBpm < demonstrated
+      ? RealizationRank.surpassed
+      : RealizationRank.holding;
 }
 
 /// The one tempo hands-together work is entered at for [materialId] at
