@@ -850,6 +850,46 @@ outrank everything else once it has been reached.
 Measured by `keyrecall_simulation/bin/hands_together.dart` and
 `bin/ht_delay.dart`.
 
+## 4.11 Scheduler evaluation cost
+
+Profiling the simulation sweep measured the app as a side effect. One decision
+is about forty milliseconds on a development machine, and ninety-six per cent of
+it is `SchedulerPipeline.evaluate` over roughly eight thousand candidates, of
+which prediction and information are more than half:
+
+```text
+per candidate
+  predict              1.062 us
+  information          1.069 us
+  eligibilityFor       0.212 us
+  structuralQ          0.194 us
+  realizationRankFor   0.168 us
+```
+
+A phone is slower than the machine that produced those numbers, and the learner
+waits for this between exercises.
+
+The obvious saving is that `information` is computed for every candidate and
+consumed only by the ones that reach ranking, which is a small fraction. It was
+deliberately not taken: a lazy term would capture a `LearnerState` that mutates
+after the slot, and `CandidateTrace` deliberately populates stage values for
+candidates an earlier stage excluded, so that "why not that one?" is answerable
+from the trace alone.
+
+So the question is architectural rather than a matter of shaving a hot loop:
+
+> Can expensive state-dependent work be skipped for candidates that cannot reach
+> ranking, without weakening the explainability of rejected ones?
+
+A two-phase trace would answer it - admission-stage facts always present,
+ranking-stage facts explicitly absent with a reason - and that is a change to
+the trace contract, not an optimization. Worth doing on its own, away from
+correctness work.
+
+`keyrecall_simulation/bin/profile_evaluate.dart` reproduces the numbers above.
+Not a timing assertion, which would be flaky; a command to run when evaluation
+feels slow, against the figures recorded here.
+
 ## 5. Domain expansion
 
 The long-term technical-practice domain may include:

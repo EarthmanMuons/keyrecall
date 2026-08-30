@@ -987,6 +987,11 @@ class SchedulerPipeline {
       diversity: diversity(exercise, session),
       goals: goals(exercise),
       realization: realizationRankFor(state, exercise),
+      realizationFit: realizationFitFor(
+        state,
+        exercise,
+        gentleTempoBpm: config.eligibility.gentleTempoBpm,
+      ),
     );
 
     return CandidateTrace(

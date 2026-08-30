@@ -44,6 +44,7 @@ List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
   ..._realizationStall(trajectory),
   ..._sittingRanDry(trajectory, requestedSlots ?? trajectory.slots.length),
   ..._entryTempoIgnoresPace(trajectory),
+  ..._unmeasuredEntryIgnored(trajectory),
   ..._entryTempoRegression(trajectory),
   ..._belowFrontierShare(trajectory),
   ..._materialConcentration(trajectory),
@@ -86,6 +87,56 @@ Iterable<Anomaly> _realizationStall(Trajectory trajectory) sync* {
     );
   }
 }
+
+/// **Invariant.** An unmeasured realization was chosen while an equally
+/// eligible one of the same material, hand and span sat nearer the intended
+/// entry.
+///
+/// The realization term's other half. `unmeasured` says nothing has been
+/// demonstrated at this span, which is true of every tempo there at once, so
+/// until the fit term existed a learner reaching a new span had sixty and a
+/// hundred and twenty tied and generation order decided. Structural for the
+/// same reason as [_realizationStall]: both candidates reached ranking, both
+/// are the same work at different speeds, and one of them is the one the
+/// evidence points at.
+Iterable<Anomaly> _unmeasuredEntryIgnored(Trajectory trajectory) sync* {
+  for (final slot in trajectory.slots) {
+    if (slot.realization != RealizationRank.unmeasured) continue;
+    final conditions = slot.chosen.conditions;
+    final nearer = slot.alternatives.where(
+      (trace) =>
+          trace.exercise.material.materialId ==
+              slot.chosen.material.materialId &&
+          trace.exercise.conditions.hands == conditions.hands &&
+          trace.exercise.conditions.octaves == conditions.octaves &&
+          trace.rankKey!.realization == RealizationRank.unmeasured &&
+          trace.rankKey!.realizationFit > slot.winner.rankKey!.realizationFit &&
+          _tiesBeforeRealization(trace.rankKey!, slot.winner.rankKey!),
+    );
+    if (nearer.isEmpty) continue;
+
+    yield Anomaly(
+      detector: 'unmeasured_entry_ignored',
+      severity: AnomalySeverity.invariant,
+      slot: slot.index,
+      summary:
+          'chose ${conditions.tempoBpm.toStringAsFixed(0)}bpm at '
+          '${conditions.octaves} octaves of '
+          '${slot.chosen.material.materialId}, with ${nearer.length} '
+          'realizations of the same work sitting nearer the entry the '
+          'evidence points at',
+      census: censusOf(slot),
+    );
+  }
+}
+
+/// Whether two keys are equal on everything decided before the realization.
+bool _tiesBeforeRealization(RankKey a, RankKey b) =>
+    a.tier == b.tier &&
+    a.retention == b.retention &&
+    a.information == b.information &&
+    a.diversity == b.diversity &&
+    a.goals == b.goals;
 
 /// **Invariant.** The sitting ran out of things to offer.
 ///

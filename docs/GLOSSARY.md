@@ -247,6 +247,22 @@ of it. It is consulted only when they come out even, which for two candidates on
 the same scale they always do, so it changes how a scale is asked for and never
 which scale wins.
 
+### Realization fit
+
+How near an unmeasured realization is to the one a learner should be entering
+at, as a negative rung distance. The last term of `RankKey`, and zero for every
+realization the frontier can already speak about.
+
+`RealizationRank.unmeasured` says nothing has been demonstrated at this span,
+which is true of every tempo there at once, so a learner reaching a new span had
+sixty and a hundred and twenty tied again and generation order decided between
+them. The target comes from the most local evidence available: the tempo this
+material and hand managed at the adjacent narrower span, then the pace the hand
+shows on material it owns, then the gentle default.
+
+A distance rather than more ordinal categories, because what is being compared
+is a distance and any boundary between "near" and "far" would be arbitrary.
+
 ### Execution progression
 
 A challenge-band exception that offers one adjacent execution step on material

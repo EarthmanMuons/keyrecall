@@ -323,6 +323,22 @@ class RankKey implements Comparable<RankKey> {
   /// material and hand.
   final RealizationRank realization;
 
+  /// How near an unmeasured realization is to the one this learner should be
+  /// entering at, as a negative rung distance. Zero for everything else.
+  ///
+  /// The last term, and the smallest. [RealizationRank.unmeasured] says
+  /// nothing has been demonstrated at this span, which is true of every tempo
+  /// there at once, so without this a learner reaching a new span had sixty
+  /// and a hundred and twenty tied again and generation order decided between
+  /// them. That is the failure the whole realization term exists to remove,
+  /// surviving in the one state where the term had nothing to say.
+  ///
+  /// A distance rather than more ordinal categories, because what is being
+  /// compared is a distance. Splitting `unmeasured` into near and far would
+  /// need a boundary nobody can defend, and the ordering is the same either
+  /// way.
+  final double realizationFit;
+
   const RankKey({
     required this.tier,
     required this.retention,
@@ -330,6 +346,7 @@ class RankKey implements Comparable<RankKey> {
     required this.diversity,
     required this.goals,
     this.realization = RealizationRank.unmeasured,
+    this.realizationFit = 0,
   });
 
   @override
@@ -344,7 +361,9 @@ class RankKey implements Comparable<RankKey> {
     if (byDiversity != 0) return byDiversity;
     final byGoals = goals.compareTo(other.goals);
     if (byGoals != 0) return byGoals;
-    return realization.index.compareTo(other.realization.index);
+    final byRealization = realization.index.compareTo(other.realization.index);
+    if (byRealization != 0) return byRealization;
+    return realizationFit.compareTo(other.realizationFit);
   }
 
   @override
@@ -355,11 +374,19 @@ class RankKey implements Comparable<RankKey> {
       other.information == information &&
       other.diversity == diversity &&
       other.goals == goals &&
-      other.realization == realization;
+      other.realization == realization &&
+      other.realizationFit == realizationFit;
 
   @override
-  int get hashCode =>
-      Object.hash(tier, retention, information, diversity, goals, realization);
+  int get hashCode => Object.hash(
+    tier,
+    retention,
+    information,
+    diversity,
+    goals,
+    realization,
+    realizationFit,
+  );
 
   @override
   String toString() =>
@@ -367,7 +394,8 @@ class RankKey implements Comparable<RankKey> {
       'I: ${information.toStringAsFixed(3)}, '
       'V: ${diversity.toStringAsFixed(1)}, '
       'G: ${goals.toStringAsFixed(1)}, '
-      '${realization.id})';
+      '${realization.id}'
+      '${realizationFit == 0 ? '' : ' ${realizationFit.toStringAsFixed(0)}'})';
 }
 
 /// Everything the pipeline computed about one candidate.

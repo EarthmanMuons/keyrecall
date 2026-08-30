@@ -208,6 +208,74 @@ double transferableTempoFor(
   return paced[paced.length ~/ 2];
 }
 
+/// The tempo a realization with no frontier at its span should be entered at.
+///
+/// "Unmeasured" says nothing has been demonstrated *here*, not that nothing is
+/// known. Evidence exists, and it is ordered by how local it is:
+///
+/// 1. this material and hand at the adjacent narrower span, which is the
+///    fingering they already play with an octave added;
+/// 2. failing that, the pace this hand shows on material it owns, which is
+///    what an unseen scale is met at;
+/// 3. failing that, [gentleTempoBpm], because nobody has seen them play.
+///
+/// The first is what makes this different from [transferableTempoFor]. A
+/// learner going from one octave of B flat major to two has evidence about B
+/// flat major in that hand, and reaching past it to a median over other scales
+/// would answer a more distant question than the one being asked.
+///
+/// The narrower span's tempo unchanged, and deliberately not a rung below it.
+/// A rung of caution for the new octave is arguable, but [executionAdvanceFor]
+/// already calls the carry at that exact tempo a span step, so discounting
+/// here would leave the intended entry and the offered step disagreeing by a
+/// rung about the same realization. One intended entry, agreed on by both.
+double unmeasuredEntryTempo(
+  LearnerState state,
+  Exercise exercise, {
+  required double gentleTempoBpm,
+}) {
+  final conditions = exercise.conditions;
+  final residual =
+      state.materialExecution[(exercise.material.materialId, conditions.hands)];
+
+  final narrower = residual?.demonstratedTempoAt(conditions.octaves - 1) ?? 0;
+  if (narrower > 0) return narrower;
+
+  final transferable = transferableTempoFor(
+    state,
+    conditions.hands,
+    conditions.octaves,
+  );
+  return transferable > 0 ? transferable : gentleTempoBpm;
+}
+
+/// How well [exercise] matches the realization this learner should be entering
+/// at, as a negative rung distance, where zero is the intended one.
+///
+/// Only meaningful for a realization with no frontier at its span. Everything
+/// else is ordered by its relationship to the frontier, which [RealizationRank]
+/// already says, and this returns zero so it cannot reorder them.
+///
+/// Negative so that larger is better, which is the direction every other rank
+/// term runs in.
+double realizationFitFor(
+  LearnerState state,
+  Exercise exercise, {
+  required double gentleTempoBpm,
+}) {
+  if (realizationRankFor(state, exercise) != RealizationRank.unmeasured) {
+    return 0;
+  }
+  final target = unmeasuredEntryTempo(
+    state,
+    exercise,
+    gentleTempoBpm: gentleTempoBpm,
+  );
+  return -(tempoRungOf(exercise.conditions.tempoBpm) - tempoRungOf(target))
+      .abs()
+      .toDouble();
+}
+
 /// The exercises one adjacent execution step from where this learner already
 /// is, which the static generator does not contain.
 ///

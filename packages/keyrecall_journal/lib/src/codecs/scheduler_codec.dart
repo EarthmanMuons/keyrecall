@@ -112,6 +112,7 @@ Map<String, Object?> encodeDecision(
     'diversity': decision.rankKey.diversity,
     'goals': decision.rankKey.goals,
     'realization': decision.rankKey.realization.id,
+    'realization_fit': decision.rankKey.realizationFit,
   },
 };
 
@@ -174,6 +175,11 @@ SchedulerDecision decodeDecision(
       goals: requireDouble(rankKeyJson, 'goals', location: location),
       realization: _realizationFromId(
         requireString(rankKeyJson, 'realization', location: location),
+        location: location,
+      ),
+      realizationFit: requireDouble(
+        rankKeyJson,
+        'realization_fit',
         location: location,
       ),
     ),

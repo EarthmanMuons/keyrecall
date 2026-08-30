@@ -894,6 +894,13 @@ recovery            exact failed exercise with one step more guidance
 tempo probe         the same exercise at the tempo it was actually played at
 ```
 
+Ranking asks two questions in one key. The first five terms choose the material;
+the last two choose how to realize it, and are reached only when the first five
+come out even, which for two realizations of one scale they always do.
+`RealizationRank` orders a candidate against the frontier - advancing, holding,
+unmeasured, surpassed - and the realization fit separates unmeasured ones, which
+are otherwise identical to each other however far apart their tempi are.
+
 Three of those partition what is known about a material, so they never contend:
 material a hand has not played is introduced, played and unretrieved material is
 consolidated, and played and retrieved material progresses. Introduction reads
