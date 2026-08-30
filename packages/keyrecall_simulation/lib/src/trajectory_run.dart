@@ -23,6 +23,7 @@ Trajectory runTrajectory({
   double minutesPerSlot = 1.0,
   SchedulerPipeline pipeline = const SchedulerPipeline(learner: LearnerModel()),
   InstrumentProfile? instrument,
+  List<Exercise>? generated,
 }) {
   final rng = PythonCompatibleRandom(seed);
   final at0 = start ?? DateTime.utc(2026);
@@ -30,10 +31,12 @@ Trajectory runTrajectory({
   final state = learner.placementState(player.placement, at: at0);
   final playing = player.begin();
   final session = SessionState();
-  final candidates = generateCandidates(
-    instrument ?? InstrumentProfile(),
-    materials,
-  );
+  // Generation is learner-blind, so the same catalog and instrument give the
+  // same candidates for every seed. A sweep passes one set in rather than
+  // rebuilding it eight hundred times.
+  final candidates =
+      generated ??
+      generateCandidates(instrument ?? InstrumentProfile(), materials);
 
   final recorded = <TrajectorySlot>[];
   for (var index = 0; index < slots; index++) {

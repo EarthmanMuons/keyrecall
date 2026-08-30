@@ -136,3 +136,44 @@ one candidate, and `progression_stall` counted a run of introductions as a
 frontier that would not move. Both encoded "what the scheduler currently does"
 as a property. The census made both obvious on one read, which is the argument
 for the census.
+
+## Making the sweep fast enough to iterate on
+
+A sweep that takes half an hour is not a development instrument, it is a thing
+you run overnight and stop consulting. Profiled rather than guessed at:
+
+```text
+advanced, 6 seeds x 50 slots        40.2 ms per slot
+  evaluate                          96%
+  sort alternatives                  2%
+  selectable                         2%
+  everything else                   <1%
+
+per candidate, 8190 candidates per slot
+  predict                          1.062 us
+  information                      1.069 us
+  eligibilityFor                   0.212 us
+  structuralQ                      0.194 us
+  realizationRankFor               0.168 us
+```
+
+So the synthetic player, the detectors, the census and the learner update are
+all noise. The cost is stage 3 and stage 4 evaluating eight thousand candidates
+a slot, and prediction plus information are more than half of it. That is a fact
+about the app as much as the sweep: it makes one of these decisions while
+somebody waits.
+
+Trajectories are independent and determined by archetype, seed and
+configuration, so they run across isolates, dealt round robin rather than one
+archetype per isolate: a true beginner's sitting costs a fraction of an advanced
+one, and grouping by archetype leaves the slowest gating the sweep. Candidate
+generation is hoisted, being learner-blind.
+
+`trajectory_digest_test.dart` pins two benchmark trajectories by digest, so a
+performance change that alters a single choice, outcome or anomaly fails rather
+than quietly becoming a second implementation. The rule the sweep is worth
+nothing without: **optimizations may hoist pure candidate and configuration
+facts, and the real state-dependent scheduler logic still runs every slot.**
+
+Two modes, and the default is the fast one: twenty-five seeds for iteration, a
+hundred or more to run deliberately either side of a scheduler change.
