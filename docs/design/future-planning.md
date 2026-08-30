@@ -810,6 +810,32 @@ offered, which today's eight admission mechanisms between them do not guarantee.
 
 Pinned in `keyrecall_simulation/test/sitting_ran_dry_test.dart`.
 
+## 4.10 Hands together, for a player with one weak hand
+
+Two defects, separated by measuring the prerequisite and the ranking on the same
+material rather than one clock for both.
+
+**The prerequisite is rarely satisfied for an uneven player.** Hands-together
+asks that both hands have demonstrated the scale at that span, and a frontier
+advances only on an attempt completed at or above `demonstratedMotorScore`. A
+weak hand rarely clears that, so its frontier stays empty and coordination work
+never qualifies at all: satisfied in two simulated sittings of forty for a
+strong-right-hand player, and in none for a true beginner.
+
+"Each hand can manage the scale before the two go together" is defensible
+pedagogy. Requiring the weaker hand to reach half the motor score before
+coordination is ever offered may not be, and it is the same
+aggregate-versus-local question in a new place: the bar is a general quality
+threshold, and the thing it gates is specific work on one scale.
+
+**Once offered, it is often not chosen.** For players whose hands are close, a
+fully eligible candidate survives admission in the very slot the prerequisite is
+first satisfied, and is then selected in fifteen to twenty-five runs of forty, a
+median of twenty to twenty-five slots later. This is the narrow hands-together
+ranking preference, deferred earlier pending evidence, and this is the evidence.
+
+Measured by `keyrecall_simulation/bin/hands_together.dart`.
+
 ## 5. Domain expansion
 
 The long-term technical-practice domain may include:

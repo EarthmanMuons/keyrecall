@@ -104,16 +104,30 @@ material unrelated to the one whose hands were ready. It reported instant
 availability and concluded the delay was all ranking. Neither half was
 established.
 
-The measurement is being repeated against fully eligible candidates for the
-_same_ material, with readiness read from the scheduler's own prerequisite
-verdict rather than reconstructed from outcomes, and with impossible orderings
-failing loudly instead of clamping to a plausible zero.
+Repeated against fully eligible candidates for the _same_ material, with
+readiness read from the scheduler's own prerequisite verdict rather than
+reconstructed from outcomes, and with impossible orderings counted rather than
+clamped to a plausible zero, it separates into two different defects.
 
-What survives the retraction is what was measured directly from selections: a
-player with a strong right hand and a weak left played hands together in one run
-out of forty, and a true beginner got both hands through the same material in
-three runs out of forty, so its stall trips were never about hands together at
-all.
+For a player whose hands are close in ability, the offer latency is zero at both
+the median and the ninetieth percentile: the slot that first satisfies the
+prerequisite also carries a fully eligible candidate that survives admission.
+Coordination work is then chosen in fifteen to twenty-five runs of forty, a
+median of twenty to twenty-five slots later. Available immediately, unchosen for
+a third of a sitting, and in a good many sittings never chosen at all. That is a
+ranking question.
+
+For a player with one weak hand it is not. The prerequisite is satisfied in two
+runs of forty, and for a true beginner in none: the frontier only advances on an
+attempt completed at or above `demonstratedMotorScore`, a weak hand rarely
+clears that, so its frontier stays empty and hands-together never qualifies. The
+first instrument reported this archetype as offered in every run and chosen in
+one, which read as the strongest ranking evidence in the sweep and was the exact
+opposite of what was happening.
+
+Being roughly right for five archetypes while inverted on the two that motivated
+the investigation is the worst available way to be wrong, and only a clock
+sourced from stage 2a on the same material could tell them apart.
 
 The lesson worth keeping is about the detectors rather than the scheduler. Two
 of the first definitions were wrong in the same way: `exclusive_target_emptied`
