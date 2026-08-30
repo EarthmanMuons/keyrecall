@@ -57,6 +57,22 @@ class MaterialExecutionState {
   /// not get through does not become the place they are asked to go on from.
   final Map<int, double> demonstratedTempoByOctaves;
 
+  /// The fastest tempo this learner has actually played this cleanly, whatever
+  /// they were asked for.
+  ///
+  /// A separate question from the frontier beside it, and deliberately not
+  /// folded into it. The frontier answers what this learner has been asked for
+  /// and managed, which is the only thing a step goes on from; this answers how
+  /// fast they play when nobody is holding them back, which is what an unseen
+  /// scale should arrive near.
+  ///
+  /// Keeping them apart is what preserves the rule that evidence at a tempo is
+  /// earned by being asked for that tempo. Somebody who plays a sixty-beat
+  /// exercise at a hundred and twenty has shown a pace, not a demonstrated
+  /// rung, and the next scale they meet should start nearer that pace without
+  /// their frontier claiming a tempo nobody posed.
+  double pacedTempoBpm;
+
   MaterialExecutionState({
     required this.materialId,
     required this.hands,
@@ -65,6 +81,7 @@ class MaterialExecutionState {
     required this.updatedAt,
     this.lastEvidenceAt,
     Map<int, double>? demonstratedTempoByOctaves,
+    this.pacedTempoBpm = 0,
   }) : demonstratedTempoByOctaves = demonstratedTempoByOctaves ?? {};
 
   /// A residual for a never-observed material and context, at its priors.
@@ -114,6 +131,7 @@ class MaterialExecutionState {
     updatedAt: updatedAt,
     lastEvidenceAt: lastEvidenceAt,
     demonstratedTempoByOctaves: {...demonstratedTempoByOctaves},
+    pacedTempoBpm: pacedTempoBpm,
   );
 
   /// The widest span anything has been demonstrated at, or zero when nothing
@@ -134,6 +152,12 @@ class MaterialExecutionState {
     if (best == null || tempoBpm > best) {
       demonstratedTempoByOctaves[octaves] = tempoBpm;
     }
+  }
+
+  /// Records that this was played cleanly at [tempoBpm], snapped to the ladder.
+  void paced(double tempoBpm) {
+    final rung = metronomeLadder[tempoRungOf(tempoBpm)];
+    if (rung > pacedTempoBpm) pacedTempoBpm = rung;
   }
 
   @override

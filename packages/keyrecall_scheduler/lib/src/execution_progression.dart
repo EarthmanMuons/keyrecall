@@ -117,35 +117,42 @@ double handsTogetherEntryTempo(
   return right < left ? right : left;
 }
 
-/// The tempo this learner's [hands] have shown at [span] on material they
-/// already own, or zero when they have shown none.
+/// The tempo this learner's [hands] play at on material they already own, or
+/// zero when they have shown none.
 ///
-/// Transferable evidence, which is what an unseen scale has to be met on:
-/// its own frontier is empty by definition, and the tempo it is introduced at
+/// Transferable evidence, which is what an unseen scale has to be met on: its
+/// own frontier is empty by definition, and the tempo it is introduced at
 /// would otherwise be whichever the generator happened to list first.
+///
+/// The pace rather than the frontier. A frontier is capped at what was asked
+/// for, so a learner who plays every sixty-beat exercise at a hundred and
+/// twenty reads as a sixty-beat learner and meets every new scale there,
+/// however fast they actually play. Reading the pace is what lets material
+/// arrive near them without their frontier claiming a rung nobody posed.
 ///
 /// The median rather than the fastest. One quick success on C major should not
 /// make every scale a learner has never played arrive at a hundred and
 /// twenty-six, and the median is the middle of what they actually do rather
 /// than the best thing that ever happened.
 ///
-/// Snapped to the ladder, so an introduction lands somewhere a metronome can
-/// be set to and somewhere a later step can move from.
+/// [span] is unread. Pace is a fact about the hand, and the only thing an
+/// unseen scale can borrow: nobody has played this material at any span, so
+/// there is no narrower one to carry forward. Kept in the signature because
+/// the caller is choosing a tempo for a particular span and a later rule may
+/// well want it.
 double transferableTempoFor(
   LearnerState state,
   HandConfiguration hands,
   int span,
 ) {
-  final demonstrated = <double>[
+  final paced = <double>[
     for (final residual in state.materialExecution.values)
       if (residual.hands == hands)
-        if (residual.demonstratedTempoAt(span) > 0)
-          residual.demonstratedTempoAt(span),
+        if (residual.pacedTempoBpm > 0) residual.pacedTempoBpm,
   ]..sort();
-  if (demonstrated.isEmpty) return 0;
+  if (paced.isEmpty) return 0;
 
-  final middle = demonstrated[demonstrated.length ~/ 2];
-  return metronomeLadder[tempoRungOf(middle)];
+  return paced[paced.length ~/ 2];
 }
 
 /// The exercises one adjacent execution step from where this learner already

@@ -127,7 +127,11 @@ void main() {
   });
 
   group('what the scheduler does with it', () {
-    test('the probe takes the slot, and only the probe', () {
+    test('the probe reaches the slot without emptying it', () {
+      // It was exclusive once, and that made the same scale come back
+      // immediately at the speed it had just been played nearly every time
+      // anything was met. It is an ordinary exception now: reachable outside
+      // the band, and able to lose a slot to a scale nobody has played.
       final exercise = at(60);
       final probe = probeFor(exercise, playedAt(1.7))!;
       final session = SessionState(tempoProbe: probe);
@@ -138,11 +142,17 @@ void main() {
         candidates: allCandidates(),
         at: t0,
       );
-      final survivors = traces.where((trace) => trace.isRanked).toList();
+      final probed = traces.where(
+        (trace) => trace.challengeBypass == ChallengeBypass.tempoProbe,
+      );
 
-      expect(survivors, hasLength(1));
-      expect(survivors.single.exercise, probe);
-      expect(survivors.single.challengeBypass, ChallengeBypass.tempoProbe);
+      expect(probed.map((trace) => trace.exercise), [probe]);
+      expect(probed.single.challengeSurvived, isTrue);
+      expect(
+        traces.where((trace) => trace.isRanked).length,
+        greaterThan(1),
+        reason: 'and everything else this learner could be given is still here',
+      );
     });
 
     test('recovery outranks it, because something went wrong', () {
@@ -178,8 +188,13 @@ void main() {
       expect(session.tempoProbe, isNull);
     });
 
-    test('the repetition guard does not swallow it', () {
-      // Just played five times, which is the cap.
+    test('the repetition guard now applies to it', () {
+      // Just played five times, which is the cap. The probe used to be
+      // exclusive, which exempted it from the guard by emptying the field
+      // around it. As an ordinary candidate it is guarded like the rest, and
+      // the pace that prompted it is recorded from the outcome either way, so
+      // what a swallowed probe costs is the explicit verification rather than
+      // the evidence.
       final exercise = at(60);
       final probe = probeFor(exercise, playedAt(1.7))!;
       final session = SessionState(
@@ -194,7 +209,24 @@ void main() {
         at: t0,
       );
 
-      expect(pipeline.selectChoice(traces, session)?.exercise, probe);
+      final admitted = traces.singleWhere((trace) => trace.exercise == probe);
+
+      expect(
+        admitted.challengeBypass,
+        ChallengeBypass.tempoProbe,
+        reason: 'admission still recognizes it',
+      );
+      expect(
+        pipeline
+            .selectable(traces, session)
+            .map((trace) => trace.exercise)
+            .contains(probe),
+        isFalse,
+        reason:
+            'and the guard removes it like anything else, which is right: '
+            'somebody who has played this scale five times running is not '
+            'served by a sixth, however fast',
+      );
     });
   });
 }

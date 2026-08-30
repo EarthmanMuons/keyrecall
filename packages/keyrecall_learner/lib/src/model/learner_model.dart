@@ -409,6 +409,11 @@ class LearnerModel {
       octaves: exercise.conditions.octaves,
       tempoBpm: exercise.conditions.tempoBpm,
     );
+    // And how fast they were actually going, which the frontier deliberately
+    // does not record: a rung is earned by being asked for it. Somebody asked
+    // for sixty who plays at a hundred and twenty has shown a pace, and an
+    // unseen scale should arrive near that rather than near sixty.
+    residual.paced(exercise.conditions.tempoBpm * outcome.achievedTempoRatio);
   }
 
   MemoryUpdateDiagnostics _updateMaterialMemory({

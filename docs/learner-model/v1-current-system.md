@@ -890,7 +890,7 @@ guidance probe      one rung less support once that rung has been established
 bootstrap probe     a retrieval test where no rung is established, after interval
 observation probe   a retrieval test after a run of attempts that observed none
 recovery            exact failed exercise with one step more guidance
-tempo probe         exact easy exercise at the tempo it was actually played at
+tempo probe         the same exercise at the tempo it was actually played at
 ```
 
 Three of those partition what is known about a material, so they never contend:
@@ -940,18 +940,28 @@ same material and motor task with one additional guidance step survives that
 decision. Tempo, direction, octave span, and hand configuration do not silently
 collapse.
 
-The tempo probe is its mirror, and exclusive for the same reason. An attempt
-that was completed cleanly, evenly, unbroken, from memory, and comfortably
-faster than requested is evidence about the task rather than about the
-performance: it was beneath the learner. The next decision then asks for the
-same task at the fastest offered tempo they were already reaching, rather than
-climbing toward it a step at a time. Only the tempo moves, for the reason
-recovery moves only guidance.
+The tempo probe is its mirror, and is not exclusive. An attempt that was
+completed cleanly, evenly, unbroken, from memory, and comfortably faster than
+requested is evidence about the task rather than about the performance: it was
+beneath the learner. The probe offers that same task at the fastest offered
+tempo they were already reaching. Only the tempo moves, for the reason recovery
+moves only guidance.
+
+It was exclusive once, and that made it routine: play a scale at sixty, play it
+again immediately at a hundred and twenty, nearly every time anything was met.
+It was the only way to learn a learner's pace, because an execution frontier
+records the tempo that was _asked for_ and a probe was the only way to ask. Pace
+is recorded now, beside the frontier and separate from it, so unseen material
+arrives near the speed somebody actually plays and there is much less for the
+probe to discover. As an ordinary exception it can win a slot when it is the
+most useful thing on offer and lose one to a scale nobody has played - including
+to the repetition guard, which is right: somebody who has played this scale five
+times running is not served by a sixth, however fast.
 
 It is a probe rather than the tempo axis itself. Ordinary tempo movement is
 execution progression's, one rung of the metronome ladder at a time; this is the
 deliberate jump to a speed already demonstrated in the playing, which is a
-different question and worth a slot of its own.
+different question.
 
 Every one of those conditions is required, because speed alone is ambiguous:
 rushing and finding it trivial look identical on the tempo axis and differ on

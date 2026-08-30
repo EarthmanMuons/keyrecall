@@ -28,6 +28,7 @@ void main() {
       int? firstTempoProbe,
       int? firstUnguided,
       int? firstAlteredMinor,
+      int? firstNearPace,
       int distinctMaterials,
     })
   >
@@ -49,6 +50,7 @@ void main() {
     int? firstTempoProbe;
     int? firstUnguided;
     int? firstAlteredMinor;
+    int? firstNearPace;
     var slots = 0;
 
     for (var i = 0; i < attempts; i++) {
@@ -64,6 +66,7 @@ void main() {
       final label = bypass?.id ?? 'ordinary';
       bypasses[label] = (bypasses[label] ?? 0) + 1;
       if (bypass == ChallengeBypass.tempoProbe) firstTempoProbe ??= slots;
+      if (exercise.conditions.tempoBpm >= bpm * 0.8) firstNearPace ??= slots;
       if (independence == 2) firstUnguided ??= slots;
       if (!coreForms.contains(exercise.material.form)) {
         firstAlteredMinor ??= slots;
@@ -96,6 +99,7 @@ void main() {
       firstTempoProbe: firstTempoProbe,
       firstUnguided: firstUnguided,
       firstAlteredMinor: firstAlteredMinor,
+      firstNearPace: firstNearPace,
       distinctMaterials: seen.length,
     );
   }
@@ -106,6 +110,7 @@ void main() {
       'rungs(cued/prev/unguided)='
       '${r.rungs[0] ?? 0}/${r.rungs[1] ?? 0}/${r.rungs[2] ?? 0} '
       'firstTempoProbe=${r.firstTempoProbe} '
+      'firstNearPace=${r.firstNearPace} '
       'firstUnguided=${r.firstUnguided} '
       'firstAlteredMinor=${r.firstAlteredMinor} '
       'distinct=${r.distinctMaterials} '
@@ -118,11 +123,17 @@ void main() {
     report('advanced ', r);
 
     expect(
-      r.firstTempoProbe,
+      r.firstNearPace,
       isNotNull,
       reason: 'playing everything well above tempo has to be noticed',
     );
-    expect(r.firstTempoProbe, lessThan(10));
+    expect(
+      r.firstNearPace,
+      lessThan(10),
+      reason:
+          'and answered by asking for work at that speed, rather than by '
+          'handing the same scale back at it immediately',
+    );
     expect(
       r.firstUnguided,
       isNotNull,

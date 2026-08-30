@@ -875,15 +875,20 @@ class SchedulerPipeline {
     // A recovery context is exclusive: narrowing which candidate gets the
     // label is not enough, since a candidate that happens to fall in the
     // ordinary band or qualify as new material must not survive alongside the
-    // target. A tempo probe is exclusive for the same reason: the whole point
-    // is to ask the harder question now rather than to add it to a field of
-    // candidates it would lose to on diversity, having just been played.
-    final narrowed = recoveryTarget ?? tempoProbe;
-    final expected = recoveryTarget != null
-        ? ChallengeBypass.recovery
-        : ChallengeBypass.tempoProbe;
+    // target. Something went wrong and the next thing asked for is the answer
+    // to that.
+    //
+    // A tempo probe is not. It used to be, and it made the same scale come
+    // back immediately at the speed it was just played, nearly every time
+    // something was met: play C major at sixty, play it again at a hundred and
+    // twenty. That was the only way to learn a learner's pace when a frontier
+    // could only record what was asked for. Pace is recorded now, so material
+    // arrives near them and the probe has much less to do; leaving it as an
+    // ordinary exception lets it win a slot when it is the most useful thing
+    // there and lose one to a scale nobody has played.
+    final narrowed = recoveryTarget;
     final survived = narrowed != null && override == null
-        ? bypass == expected
+        ? bypass == ChallengeBypass.recovery
         : withinBand || bypass != null;
 
     final challengeStatus = safety.isAllowed

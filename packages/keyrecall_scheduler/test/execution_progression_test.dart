@@ -21,15 +21,24 @@ void main() {
   );
 
   /// Records that [hands] managed [materialId] at [octaves] and [tempoBpm].
+  /// A managed attempt: the rung it was asked for, and the speed it was played
+  /// at, which production records together and which differ only for somebody
+  /// going faster than they were asked to.
   void demonstrate(
     LearnerState state,
     HandConfiguration hands, {
     String materialId = 'C_MAJOR',
     int octaves = 1,
     double tempoBpm = 60,
-  }) => state
-      .materialExecutionFor((materialId, hands), t0, v1PrototypeLearnerParams)
-      .demonstrate(octaves: octaves, tempoBpm: tempoBpm);
+    double? pacedBpm,
+  }) =>
+      state.materialExecutionFor(
+          (materialId, hands),
+          t0,
+          v1PrototypeLearnerParams,
+        )
+        ..demonstrate(octaves: octaves, tempoBpm: tempoBpm)
+        ..paced(pacedBpm ?? tempoBpm);
 
   Exercise scale({
     HandConfiguration hands = HandConfiguration.right,

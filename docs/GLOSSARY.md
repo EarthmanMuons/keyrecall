@@ -205,6 +205,19 @@ It advances only on an attempt that completed with a motor score at or above
 `demonstratedMotorScore`, and it is the baseline execution progression steps
 from.
 
+### Paced tempo
+
+The fastest tempo a learner has actually played a material cleanly, whatever
+they were asked for, held beside the execution frontier on
+`MaterialExecutionState`.
+
+A separate question from the frontier, and deliberately not folded into it. The
+frontier records what was asked for and managed, which is the only thing a step
+goes on from; this records how fast somebody plays when nobody is holding them
+back. Keeping them apart preserves the rule that evidence at a tempo is earned
+by being asked for that tempo, while letting an unseen scale arrive near the
+speed the learner actually plays. It is what `transferableTempoFor` reads.
+
 ### Execution progression
 
 A challenge-band exception that offers one adjacent execution step on material
