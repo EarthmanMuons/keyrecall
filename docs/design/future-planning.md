@@ -890,6 +890,63 @@ correctness work.
 Not a timing assertion, which would be flaky; a command to run when evaluation
 feels slow, against the figures recorded here.
 
+## 4.12 The remedial tempo range, and the coefficient that makes it inert
+
+Three separate facts, kept apart because only the third is a decision.
+
+**The range exists and is unreachable.** `metronomeLadder` runs from forty, and
+the rungs below sixty were reserved for a learner who cannot manage the ordinary
+floor. Candidate generation offers `[60, 80, 100, 120]`, and the only things
+that materialize a tempo off that set are derived from frontier evidence, which
+a struggling learner does not have. So nothing ever asks for forty to fifty
+eight, in the app or in simulation - they share one generator.
+
+**Under the current coefficient, reaching them would not help.** Motor
+difficulty scales tempo as `beta_t log(b / b_0)` with `beta_t = 0.4` and a
+reference of eighty. Descending the whole way from sixty to forty adds
+
+```text
+0.4 (ln(60/80) - ln(40/80)) = 0.4 ln(1.5) = 0.162
+```
+
+to the execution logit. A learner the challenge band has refused everything sits
+near `p_exec = 0.30`, and reaching the floor of the band at 0.60 needs
+
+```text
+logit(0.60) - logit(0.30) = 0.847
+```
+
+which under that coefficient would take about **seven beats per minute**. The
+sub-sixty ladder cannot move this learner into the band, and thirty one dry
+sittings confirm it: none re-enters the band at any rung, and mean predicted
+success rises from 0.298 to 0.333 across the entire descent.
+
+For scale, an extra octave costs 0.3 and hands together costs 0.2 under the same
+coefficients. Halving the tempo is currently worth about half of adding a second
+octave.
+
+**The coefficient has never been fitted.** `03-v1-math.md` §11.2 says the
+difficulty betas are heuristic and should be replaceable by fitted values
+without changing persisted observations, and §11.1 records that simulation has
+used them unchanged since the prototype. So this is not a defensible theoretical
+position that the evidence contradicts; it is a placeholder that has never been
+tested, and simulation cannot fit it, because both synthetic generators invent
+their own completion rules.
+
+Which makes this a device question, and a small one. For a learner who knows the
+notes, one octave of C major in one hand, fully cued, at forty, fifty and sixty,
+several attempts each, scored against whatever `acceptable execution` is taken
+to mean. Counterbalance the tempo order, or within-sitting learning will read as
+a tempo effect.
+
+That gives both quantities at once: whether predicted execution probability is
+near right at each tempo, and whether the slope from sixty to forty resembles
+the model's. Either can be wrong independently.
+
+Until the slope is measured, generating sub-sixty candidates would ship a
+difficulty axis the model has almost no reason to prefer. The candidate space
+and the coefficient have to move together.
+
 ## 5. Domain expansion
 
 The long-term technical-practice domain may include:
