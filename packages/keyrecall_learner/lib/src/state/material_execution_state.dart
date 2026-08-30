@@ -73,6 +73,25 @@ class MaterialExecutionState {
   /// their frontier claiming a tempo nobody posed.
   double pacedTempoBpm;
 
+  /// The spans at which this hand has played this material well enough for the
+  /// other hand to join it, and the tempo it managed there.
+  ///
+  /// Not the execution frontier, and deliberately kept beside it rather than
+  /// derived from it. The frontier says where this hand can be asked to go on
+  /// from, and moves only on an attempt played rather than endured. This says
+  /// the notes are known here, so putting the hands together would be a
+  /// coordination exercise rather than the simultaneous remediation of two
+  /// parts nobody has learned.
+  ///
+  /// The two came apart on exactly the learner the distinction is for. A weak
+  /// hand rarely clears the frontier's motor bar, so its frontier stayed empty
+  /// and hands-together work was never offered: a strong-right-hand player
+  /// qualified in two simulated sittings of forty, and a true beginner in
+  /// none. Unimanual practice does not fully transfer to bimanual playing, so
+  /// waiting for the weaker hand to be good alone is waiting for the wrong
+  /// thing.
+  final Map<int, double> coordinationReadyTempoByOctaves;
+
   MaterialExecutionState({
     required this.materialId,
     required this.hands,
@@ -82,7 +101,9 @@ class MaterialExecutionState {
     this.lastEvidenceAt,
     Map<int, double>? demonstratedTempoByOctaves,
     this.pacedTempoBpm = 0,
-  }) : demonstratedTempoByOctaves = demonstratedTempoByOctaves ?? {};
+    Map<int, double>? coordinationReadyTempoByOctaves,
+  }) : demonstratedTempoByOctaves = demonstratedTempoByOctaves ?? {},
+       coordinationReadyTempoByOctaves = coordinationReadyTempoByOctaves ?? {};
 
   /// A residual for a never-observed material and context, at its priors.
   factory MaterialExecutionState.prior(
@@ -132,6 +153,7 @@ class MaterialExecutionState {
     lastEvidenceAt: lastEvidenceAt,
     demonstratedTempoByOctaves: {...demonstratedTempoByOctaves},
     pacedTempoBpm: pacedTempoBpm,
+    coordinationReadyTempoByOctaves: {...coordinationReadyTempoByOctaves},
   );
 
   /// The widest span anything has been demonstrated at, or zero when nothing
@@ -151,6 +173,19 @@ class MaterialExecutionState {
     final best = demonstratedTempoByOctaves[octaves];
     if (best == null || tempoBpm > best) {
       demonstratedTempoByOctaves[octaves] = tempoBpm;
+    }
+  }
+
+  /// The tempo this hand knows [octaves] of the material at, or zero when the
+  /// other hand cannot yet join it there.
+  double coordinationReadyTempoAt(int octaves) =>
+      coordinationReadyTempoByOctaves[octaves] ?? 0;
+
+  /// Records that [octaves] was played with the notes known, at [tempoBpm].
+  void readyForHandsTogether({required int octaves, required double tempoBpm}) {
+    final best = coordinationReadyTempoByOctaves[octaves];
+    if (best == null || tempoBpm > best) {
+      coordinationReadyTempoByOctaves[octaves] = tempoBpm;
     }
   }
 

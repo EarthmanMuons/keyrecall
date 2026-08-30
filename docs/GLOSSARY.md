@@ -205,6 +205,24 @@ It advances only on an attempt that completed with a motor score at or above
 `demonstratedMotorScore`, and it is the baseline execution progression steps
 from.
 
+### Coordination readiness
+
+The spans at which one hand has played a material well enough for the other to
+join it, and the tempo it managed there, held beside the execution frontier on
+`MaterialExecutionState`.
+
+Recorded on any completed attempt whose pitch integrity reaches
+`handsTogetherPitchIntegrity`, which is a different claim from the frontier's
+and reads a different channel. The frontier asks whether a tempo and span were
+played rather than endured, because it is the place a learner is asked to go on
+from; this asks whether the notes are known, so that putting the hands together
+would be a coordination exercise rather than the simultaneous remediation of two
+parts nobody has learned.
+
+The two came apart on the learner the distinction is for. A weak hand rarely
+clears the frontier's motor bar, so its frontier stayed empty and hands-together
+work was never offered at all.
+
 ### Paced tempo
 
 The fastest tempo a learner has actually played a material cleanly, whatever

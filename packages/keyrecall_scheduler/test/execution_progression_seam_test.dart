@@ -33,6 +33,7 @@ void main() {
           v1PrototypeLearnerParams,
         )
         ..demonstrate(octaves: 1, tempoBpm: tempoBpm)
+        ..readyForHandsTogether(octaves: 1, tempoBpm: tempoBpm)
         ..lastEvidenceAt = t0;
     }
     return state;

@@ -396,6 +396,19 @@ class LearnerModel {
     );
     residual.lastEvidenceAt = at;
 
+    // Knowing the notes here is a separate record from the frontier, and a
+    // separate bar: pitch rather than motor quality, because a hand that plays
+    // the right notes unevenly knows the scale and is ready for the other hand
+    // to join it, while a hand that plays the wrong ones smoothly is not.
+    if (outcome.completed &&
+        outcome.pitchIntegrity >=
+            params.materialExecution.handsTogetherPitchIntegrity) {
+      residual.readyForHandsTogether(
+        octaves: exercise.conditions.octaves,
+        tempoBpm: exercise.conditions.tempoBpm,
+      );
+    }
+
     // The execution frontier moves only on an attempt that was managed:
     // through to the end, and played rather than endured. A span or a tempo
     // somebody could not get through is not the place to go on from, and a

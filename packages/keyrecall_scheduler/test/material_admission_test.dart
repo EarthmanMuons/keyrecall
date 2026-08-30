@@ -554,6 +554,7 @@ void main() {
           v1PrototypeLearnerParams,
         )
         ..demonstrate(octaves: span, tempoBpm: 60)
+        ..readyForHandsTogether(octaves: span, tempoBpm: 60)
         ..lastEvidenceAt = t0;
     }
 

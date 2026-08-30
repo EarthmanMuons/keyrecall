@@ -191,6 +191,12 @@ Map<String, Object?> encodeLearnerState(LearnerState state) => {
           for (final span in entry.value.demonstratedTempoByOctaves.entries)
             '${span.key}': span.value,
         },
+        'paced_tempo_bpm': entry.value.pacedTempoBpm,
+        'coordination_ready_tempo_by_octaves': {
+          for (final span
+              in entry.value.coordinationReadyTempoByOctaves.entries)
+            '${span.key}': span.value,
+        },
       },
   },
 };
@@ -300,6 +306,23 @@ LearnerState decodeLearnerState(
         for (final span in requireMap(
           value,
           'demonstrated_tempo_by_octaves',
+          location: location,
+        ).entries)
+          int.parse(span.key): asDouble(
+            span.value,
+            span.key,
+            location: location,
+          ),
+      },
+      pacedTempoBpm: requireDouble(
+        value,
+        'paced_tempo_bpm',
+        location: location,
+      ),
+      coordinationReadyTempoByOctaves: {
+        for (final span in requireMap(
+          value,
+          'coordination_ready_tempo_by_octaves',
           location: location,
         ).entries)
           int.parse(span.key): asDouble(

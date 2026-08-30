@@ -107,8 +107,9 @@ class SchedulerPipeline {
       if (breadth != null) return breadth;
     }
 
-    // Both hands, on this material, at this span. Evidence about the work in
-    // front of the learner rather than a general verdict on their hands.
+    // Both hands knowing this material at this span. Evidence about the work
+    // in front of the learner rather than a general verdict on their hands,
+    // and about the notes rather than the polish: see [supportsHandsTogether].
     //
     // This was a floor on the two hand-execution means, and it made playing
     // together a reward for fluency rather than an early coordination skill.
@@ -128,10 +129,10 @@ class SchedulerPipeline {
           (together?.demonstratedTempoAt(span) ?? 0) > 0 ||
           (together?.demonstratedTempoAt(span - 1) ?? 0) > 0;
       if (!established &&
-          handsTogetherEntryTempo(state, material.materialId, span) <= 0) {
+          !supportsHandsTogether(state, material.materialId, span)) {
         return const EligibilityDecision(
           EligibilityTier.provisionallyEligible,
-          'each hand has still to manage this alone at this span',
+          'each hand has still to learn this alone at this span',
           code: EligibilityReason.handsTogetherPrerequisite,
         );
       }

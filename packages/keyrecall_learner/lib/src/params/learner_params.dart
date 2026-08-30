@@ -238,6 +238,29 @@ class MaterialExecutionParams {
   /// should move when something was managed, not only when it was trivial.
   final double demonstratedMotorScore;
 
+  /// Pitch integrity at or above which a hand counts as knowing this material
+  /// well enough for the other hand to join it.
+  ///
+  /// A different claim from the execution frontier beside it, and deliberately
+  /// not the same threshold. The frontier asks whether a tempo and span were
+  /// played rather than endured, because it is the place a learner is asked to
+  /// go on from. This asks whether putting the hands together would be a
+  /// coordination exercise rather than the simultaneous remediation of two
+  /// parts nobody has learned, which is a question about the notes.
+  ///
+  /// So it reads pitch rather than motor quality. A hand that plays the right
+  /// notes unevenly knows the scale; a hand that plays the wrong ones smoothly
+  /// does not, and is the one that should not be brought into hands-together
+  /// work. Using the motor frontier as the gate meant a weak hand never
+  /// cleared it, its frontier stayed empty, and coordination work was never
+  /// offered at all: simulation found a strong-right-hand player qualifying in
+  /// two sittings of forty, and a true beginner in none.
+  ///
+  /// Provisional. The structural decision is that hands-together readiness and
+  /// the execution frontier are different claims; where exactly this sits is a
+  /// calibration nobody has done.
+  final double handsTogetherPitchIntegrity;
+
   const MaterialExecutionParams({
     required this.priorVariance,
     required this.minVariance,
@@ -246,6 +269,7 @@ class MaterialExecutionParams {
     required this.uncertaintyDiffusion,
     required this.evidenceShrinkage,
     required this.demonstratedMotorScore,
+    required this.handsTogetherPitchIntegrity,
   }) : assert(priorVariance > 0, 'a residual cannot start certain'),
        assert(minVariance > 0, 'evidence must never imply certainty'),
        assert(
@@ -460,6 +484,7 @@ const MaterialMemoryParams _v1MaterialMemory = MaterialMemoryParams(
 
 const MaterialExecutionParams _v1MaterialExecution = MaterialExecutionParams(
   demonstratedMotorScore: 0.5,
+  handsTogetherPitchIntegrity: 0.8,
   priorVariance: 0.5,
   minVariance: 0.05,
   learningRate: 0.2,

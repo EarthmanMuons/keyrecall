@@ -26,6 +26,7 @@ void main() {
         learnerParams,
       )
       ..demonstrate(octaves: octaves, tempoBpm: tempoBpm)
+      ..readyForHandsTogether(octaves: octaves, tempoBpm: tempoBpm)
       ..paced(tempoBpm)
       ..lastEvidenceAt = t0;
     return state;

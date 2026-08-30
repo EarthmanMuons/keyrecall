@@ -38,6 +38,7 @@ void main() {
           v1PrototypeLearnerParams,
         )
         ..demonstrate(octaves: octaves, tempoBpm: tempoBpm)
+        ..readyForHandsTogether(octaves: octaves, tempoBpm: tempoBpm)
         ..paced(pacedBpm ?? tempoBpm);
 
   Exercise scale({
@@ -108,7 +109,9 @@ void main() {
     expect(ExecutionAdvance.multiple.isAdjacentStep, isFalse);
   });
 
-  test('hands together enters at the slower of what each hand managed', () {
+  test('hands together enters a rung below the slower hand', () {
+    // Slower than either hand managed alone, deliberately. Playing them
+    // together is a new motor task rather than the two old ones at once.
     final state = learner();
     demonstrate(state, HandConfiguration.right, tempoBpm: 84);
     demonstrate(state, HandConfiguration.left, tempoBpm: 72);
@@ -116,7 +119,7 @@ void main() {
     expect(
       executionAdvanceFor(
         state,
-        scale(hands: HandConfiguration.together, tempoBpm: 72),
+        scale(hands: HandConfiguration.together, tempoBpm: tempoBefore(72)),
       ),
       ExecutionAdvance.handsTogether,
       reason:
@@ -356,14 +359,14 @@ void main() {
       final together = withExecutionNeighbours(state, generated).where(
         (e) =>
             e.conditions.hands == HandConfiguration.together &&
-            e.conditions.tempoBpm == 63 &&
+            e.conditions.tempoBpm == tempoBefore(63) &&
             e.conditions.octaves == 1,
       );
       expect(together, isNotEmpty);
       expect(
         executionAdvanceFor(state, together.first),
         ExecutionAdvance.handsTogether,
-        reason: 'the slower of what each hand managed alone',
+        reason: 'a rung below the slower of what each hand managed alone',
       );
     });
 

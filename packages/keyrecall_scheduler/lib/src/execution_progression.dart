@@ -135,17 +135,40 @@ double handsTogetherEntryTempo(
   String materialId,
   int span,
 ) {
-  final right =
-      state.materialExecution[(materialId, HandConfiguration.right)]
-          ?.demonstratedTempoAt(span) ??
+  double readyAt(HandConfiguration hands) =>
+      state.materialExecution[(materialId, hands)]?.coordinationReadyTempoAt(
+        span,
+      ) ??
       0;
-  final left =
-      state.materialExecution[(materialId, HandConfiguration.left)]
-          ?.demonstratedTempoAt(span) ??
-      0;
+
+  final right = readyAt(HandConfiguration.right);
+  final left = readyAt(HandConfiguration.left);
   if (right <= 0 || left <= 0) return 0;
-  return right < left ? right : left;
+
+  // A rung below the slower hand. Putting the hands together is a new motor
+  // task rather than the two old ones at once, and every source that discusses
+  // it says to slow down when they first meet.
+  return tempoBefore(right < left ? right : left);
 }
+
+/// Whether both hands know [materialId] at [span] well enough for the other to
+/// join them.
+///
+/// Read from the coordination-readiness record rather than from the execution
+/// frontier. The frontier says where a hand can be asked to go on from and
+/// moves only on an attempt played rather than endured; this says the notes
+/// are known, so putting the hands together is a coordination exercise and not
+/// the simultaneous remediation of two parts nobody has learned.
+///
+/// The distinction exists because the two came apart on precisely the learner
+/// it matters for. A weak hand rarely clears the frontier's motor bar, so its
+/// frontier stayed empty, and hands-together work was never offered at all:
+/// simulation found a strong-right-hand player qualifying in two sittings of
+/// forty and a true beginner in none. Waiting for the weaker hand to be good
+/// on its own is waiting for the wrong thing, since unimanual practice does
+/// not fully transfer to playing with both.
+bool supportsHandsTogether(LearnerState state, String materialId, int span) =>
+    handsTogetherEntryTempo(state, materialId, span) > 0;
 
 /// The tempo this learner's [hands] play at on material they already own, or
 /// zero when they have shown none.
