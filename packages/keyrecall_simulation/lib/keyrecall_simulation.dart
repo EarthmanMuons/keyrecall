@@ -14,8 +14,13 @@ library;
 
 export 'src/attempt_trace.dart';
 export 'src/practice_simulation.dart';
+export 'src/player_archetypes.dart';
 export 'src/python_compatible_random.dart';
 export 'src/scheduler_agent.dart';
 export 'src/synthetic_learner.dart';
+export 'src/synthetic_player.dart';
 export 'src/trace_digest.dart';
+export 'src/trajectory.dart';
+export 'src/trajectory_detectors.dart';
+export 'src/trajectory_run.dart';
 export 'src/trace_json.dart';
