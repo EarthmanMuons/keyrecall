@@ -43,6 +43,7 @@ String censusOf(TrajectorySlot slot, {int alternatives = 8}) {
 List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
   ..._realizationStall(trajectory),
   ..._sittingRanDry(trajectory, requestedSlots ?? trajectory.slots.length),
+  ..._entryTempoIgnoresPace(trajectory),
   ..._entryTempoRegression(trajectory),
   ..._belowFrontierShare(trajectory),
   ..._materialConcentration(trajectory),
@@ -109,11 +110,60 @@ Iterable<Anomaly> _sittingRanDry(Trajectory trajectory, int requested) sync* {
   );
 }
 
-/// **Invariant.** A material was introduced more slowly than an earlier
+/// **Invariant.** An introduction was clamped below the pace this hand has
+/// shown, by the band cap alone.
+///
+/// Two policy inputs contradicting each other, which is what makes this
+/// structural rather than a threshold. `transferableTempoFor` exists to answer
+/// what tempo an unseen scale should be met at, and is deliberately the median
+/// of what this hand actually does. The cap in `entryTempoFor` then discards
+/// that answer for anything past the early-transfer band and substitutes the
+/// gentlest tempo on the ladder.
+///
+/// The cap was right before pace was measured: a new geography at an unknown
+/// speed was two unknowns at once, and the gentle tempo was the only honest
+/// default. It is not a claim anybody would defend now that the evidence
+/// exists, and it makes an intermediate player meet F natural minor at sixty
+/// while meeting A natural minor at ninety-six in the same sitting.
+///
+/// Deliberately *not* "a later introduction was slower than an earlier one".
+/// That is legitimate: geography transfers imperfectly, the bands exist to say
+/// so, and meeting D flat melodic minor gently after A major at a hundred and
+/// eight is the bands working. See [_entryTempoRegression], which measures
+/// that as an observation.
+Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
+  for (final slot in trajectory.slots) {
+    if (slot.winner.challengeBypass != ChallengeBypass.newMaterial) continue;
+    final transferable = slot.transferableBefore;
+    if (transferable <= 0) continue;
+    final asked = slot.chosen.conditions.tempoBpm;
+    if (asked >= transferable) continue;
+
+    yield Anomaly(
+      detector: 'entry_tempo_ignores_pace',
+      severity: AnomalySeverity.invariant,
+      slot: slot.index,
+      summary:
+          'met ${slot.chosen.material.materialId} at '
+          '${asked.toStringAsFixed(0)}bpm on '
+          '${slot.chosen.conditions.hands.id} while this hand had shown '
+          '${transferable.toStringAsFixed(0)}bpm on material it owns',
+      census: censusOf(slot),
+    );
+  }
+}
+
+/// **Observation.** A material was introduced more slowly than an earlier
 /// introduction on the same hand, with no failure in between.
 ///
-/// Growing capability must not make the next new scale arrive gentler. The
-/// only thing that legitimately walks conditions back is recovery.
+/// Not an invariant, because it compares unrelated materials. A later scale
+/// can legitimately arrive gentler than an earlier one: the admission bands
+/// exist precisely because scale geography transfers imperfectly, so meeting a
+/// black-key melodic minor slowly after an easy major is the design working
+/// rather than a regression.
+///
+/// Kept as a count, because a run full of them still says something about how
+/// the introductions across a sitting hang together.
 Iterable<Anomaly> _entryTempoRegression(Trajectory trajectory) sync* {
   final highest = <HandConfiguration, (double, int)>{};
   var failedSince = <HandConfiguration>{};
@@ -129,7 +179,7 @@ Iterable<Anomaly> _entryTempoRegression(Trajectory trajectory) sync* {
         !failedSince.contains(hands)) {
       yield Anomaly(
         detector: 'entry_tempo_regression',
-        severity: AnomalySeverity.invariant,
+        severity: AnomalySeverity.observation,
         slot: slot.index,
         summary:
             'met new material at ${tempo.toStringAsFixed(0)}bpm on '

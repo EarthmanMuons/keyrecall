@@ -62,6 +62,11 @@ Trajectory runTrajectory({
     final pacedBefore = residual?.pacedTempoBpm ?? 0;
 
     final outcome = playing.play(exercise, rng);
+    final admissible = [
+      for (final trace in available)
+        if (trace.exercise.conditions.hands == HandConfiguration.together)
+          trace,
+    ];
 
     recorded.add(
       TrajectorySlot(
@@ -79,6 +84,12 @@ Trajectory runTrajectory({
         outcome: outcome,
         frontierBefore: frontierBefore,
         pacedBefore: pacedBefore,
+        transferableBefore: transferableTempoFor(
+          state,
+          exercise.conditions.hands,
+          exercise.conditions.octaves,
+        ),
+        handsTogetherAdmissible: admissible.isNotEmpty,
       ),
     );
 

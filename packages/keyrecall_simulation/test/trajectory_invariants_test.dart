@@ -23,13 +23,18 @@ void main() {
   /// so removing an entry is the visible act of claiming it is fixed.
   const known = {
     'true_beginner':
-        'sitting_ran_dry: a learner who fails almost everything walks every '
-        'material down to full cueing, where retrieval is never observed, and '
-        'the slot eventually admits nothing at all',
+        'sitting_ran_dry on the narrow catalog only, and reachable in '
+        'production through a goal that scopes it. Pinned in '
+        'sitting_ran_dry_test.dart',
     'advanced':
-        'entry_tempo_regression: introductions land at the gentle tempo once '
-        'the material is far enough up the bands for the cap in entryTempoFor '
-        'to bite, so meeting a new scale gets slower as the learner improves',
+        'entry_tempo_ignores_pace: the cap in entryTempoFor discards the '
+        'transferable pace for any band past early transfer, so a learner who '
+        'plays at 120 meets a later scale at 60. Pinned causally in '
+        'keyrecall_scheduler/test/entry_tempo_pace_test.dart',
+    'intermediate': 'entry_tempo_ignores_pace, as advanced',
+    'tempo_noncompliant': 'entry_tempo_ignores_pace, as advanced',
+    'uneven_hands': 'entry_tempo_ignores_pace, as advanced',
+    'coordination_limited': 'entry_tempo_ignores_pace, as advanced',
   };
 
   for (final player in PlayerArchetypes.all) {

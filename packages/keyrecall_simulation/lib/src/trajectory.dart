@@ -37,6 +37,18 @@ class TrajectorySlot {
   /// The paced tempo for the chosen material and hand, before the attempt.
   final double pacedBefore;
 
+  /// The tempo this hand had shown at this span on material it already owns,
+  /// before the attempt, or zero when it had shown none.
+  ///
+  /// What an unseen scale can legitimately be met at, recorded at decision
+  /// time because it is the input a later detector has to compare the chosen
+  /// tempo against.
+  final double transferableBefore;
+
+  /// Whether hands-together on the chosen material was admissible this slot,
+  /// and whether it was offered at all.
+  final bool handsTogetherAdmissible;
+
   const TrajectorySlot({
     required this.index,
     required this.at,
@@ -47,6 +59,8 @@ class TrajectorySlot {
     required this.outcome,
     required this.frontierBefore,
     required this.pacedBefore,
+    required this.transferableBefore,
+    required this.handsTogetherAdmissible,
   });
 
   /// Where the chosen realization sat against the frontier.
