@@ -45,14 +45,15 @@ Trajectory runTrajectory({
     );
     learner.propagate(state, at);
 
-    final traces = pipeline.evaluate(
+    final selection = pipeline.decide(
       state: state,
       session: session,
       candidates: candidates,
       at: at,
     );
-    final available = pipeline.selectable(traces, session);
-    final chosen = pipeline.chooseFrom(available, session);
+    final traces = selection.traces;
+    final available = selection.selectable;
+    final chosen = selection.selected;
     if (chosen == null) break;
 
     final exercise = chosen.exercise;
@@ -118,12 +119,7 @@ Trajectory runTrajectory({
       prediction: learner.predict(state, exercise, at: at),
       at: at,
     );
-    session.recordSelection(
-      exercise,
-      retrievalObserved: exercise.guidance.isRetrievalObserved,
-      retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
-      config: pipeline.config.diversity,
-    );
+    pipeline.recordOutcome(session, exercise, outcome);
   }
 
   return Trajectory(playerId: player.id, seed: seed, slots: recorded);

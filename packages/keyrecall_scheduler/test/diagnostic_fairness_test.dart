@@ -98,6 +98,40 @@ void main() {
   });
 
   group('the guard', () {
+    test('the decision transition accounts for the slot and its probe', () {
+      final state = established(materials.first);
+      final session = SessionState();
+
+      final result = pipeline.decide(
+        state: state,
+        session: session,
+        candidates: allCandidates(),
+        at: t0.plusDays(1),
+      );
+
+      expect(
+        result.selected?.challengeBypass,
+        isNot(ChallengeBypass.guidanceProbe),
+      );
+      expect(session.attemptsThisSession, 1);
+      expect(session.unservedGuidanceProbeSelections, 1);
+    });
+
+    test('the decision transition services an overdue probe', () {
+      final state = established(materials.first);
+      final session = SessionState(unservedGuidanceProbeSelections: threshold);
+
+      final result = pipeline.decide(
+        state: state,
+        session: session,
+        candidates: allCandidates(),
+        at: t0.plusDays(1),
+      );
+
+      expect(result.selected?.challengeBypass, ChallengeBypass.guidanceProbe);
+      expect(session.unservedGuidanceProbeSelections, 0);
+    });
+
     test('services the waiting question once the wait is long enough', () {
       final material = materials.first;
       final state = established(material);

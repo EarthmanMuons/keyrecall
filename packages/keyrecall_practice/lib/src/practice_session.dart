@@ -268,32 +268,13 @@ class PracticeSession {
     final scratch = _state.copy();
     learner.propagate(scratch, at);
 
-    final traces = pipeline.evaluate(
+    final selection = pipeline.decide(
       state: scratch,
       session: _session,
       candidates: candidates,
       at: at,
     );
-    // What the slot did with a waiting independence question, which only the
-    // selection can see. Read from what was actually available rather than
-    // from every ranked candidate: one the repetition guard removed was not
-    // passed over, it was not there, and counting it would start the fairness
-    // clock on a contest that never took place.
-    final available = pipeline.selectable(traces, _session);
-    final chosen = pipeline.chooseFrom(available, _session);
-    _session.recordSelectionOpportunity(
-      guidanceProbeAvailable: available.any(
-        (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
-      ),
-      guidanceProbeSelected:
-          chosen?.challengeBypass == ChallengeBypass.guidanceProbe,
-    );
-    // The safety cap counts decision opportunities, not presented attempts, so
-    // a slot that admits nothing still consumes one. Deliberate: a sitting that
-    // keeps finding nothing to present has to end, and only counting
-    // presentations would let it run forever. Do not "fix" this to count
-    // commits.
-    _session.attemptsThisSession++;
+    final chosen = selection.selected;
     if (chosen == null) return null;
 
     final decision = PendingDecision(
@@ -523,25 +504,7 @@ class PracticeSession {
     // The exercise was presented either way, so the sitting knows it was. A
     // retrieval failure is a claim about the performance, and an unmeasured
     // attempt supports no such claim.
-    _session.recordSelection(
-      decision.exercise,
-      retrievalFailed: outcome?.retrieval == FactualRetrieval.failed,
-      // Whether the rung could have shown retrieval at all, which is
-      // what decides if this attempt answered the question support
-      // makes invisible.
-      retrievalObserved: decision.exercise.guidance.isRetrievalObserved,
-      // An attempt that was clearly too easy makes the next slot ask the
-      // harder question directly, rather than climbing toward a tempo the
-      // learner was already playing at.
-      tempoProbe: outcome == null
-          ? null
-          : tempoProbeTarget(
-              exercise: decision.exercise,
-              outcome: outcome,
-              config: pipeline.config.probe,
-            ),
-      config: pipeline.config.diversity,
-    );
+    pipeline.recordOutcome(_session, decision.exercise, outcome);
     _outstanding = null;
     _pending = null;
 

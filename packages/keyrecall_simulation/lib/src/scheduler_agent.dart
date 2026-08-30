@@ -107,17 +107,16 @@ class SchedulerAgent {
   ///
   /// Throws [NoAdmittedCandidate] when the decision admits nothing.
   Exercise choose(AttemptContext context) {
-    final traces = pipeline.evaluate(
+    final selection = pipeline.decide(
       state: context.state,
       session: _session,
       candidates: candidates,
       at: context.at,
     );
-    final guarded = pipeline.applyRepetitionGuard(traces, _session);
-    final winner = pipeline.selectBest(guarded);
+    final winner = selection.selected;
 
     final contenders =
-        guarded
+        selection.selectable
             .where((trace) => trace.isRanked && !identical(trace, winner))
             .toList()
           ..sort((a, b) => b.rankKey!.compareTo(a.rankKey!));
@@ -130,14 +129,12 @@ class SchedulerAgent {
         runnersUp: contenders.take(runnersUpCount).toList(),
         admittedMaterialIds: captureAdmittedMaterialIds
             ? {
-                for (final trace in guarded)
+                for (final trace in selection.selectable)
                   if (trace.isRanked) trace.exercise.material.materialId,
               }
             : null,
       ),
     );
-    _session.attemptsThisSession++;
-
     if (winner == null) {
       throw NoAdmittedCandidate(
         'no candidate reached priority ranking at attempt '
@@ -152,14 +149,7 @@ class SchedulerAgent {
   /// observer.
   void observe(Exercise exercise, Outcome outcome, DateTime at) {
     records.last.outcome = outcome;
-    // Only a tested failure opens a recovery context. An attempt that never
-    // tested retrieval is categorically not a failure to recover from.
-    _session.recordSelection(
-      exercise,
-      retrievalObserved: exercise.guidance.isRetrievalObserved,
-      retrievalFailed: outcome.retrieval == FactualRetrieval.failed,
-      config: pipeline.config.diversity,
-    );
+    pipeline.recordOutcome(_session, exercise, outcome);
   }
 }
 

@@ -7,6 +7,7 @@ import 'execution_progression.dart';
 import 'priority.dart';
 import 'recovery.dart';
 import 'session_state.dart';
+import 'tempo_probe.dart';
 
 /// What one admission exception has to say about one candidate.
 ///
@@ -35,6 +36,19 @@ class _Silent extends _Verdict {
   const _Silent();
 }
 
+/// The candidates considered and the selection made for one attempt slot.
+class SelectionResult {
+  final List<CandidateTrace> traces;
+  final List<CandidateTrace> selectable;
+  final CandidateTrace? selected;
+
+  const SelectionResult({
+    required this.traces,
+    required this.selectable,
+    required this.selected,
+  });
+}
+
 /// The staged decision pipeline that chooses what to practice next.
 ///
 /// Four stages, each answering one question with an explicit information
@@ -55,6 +69,59 @@ class SchedulerPipeline {
     required this.learner,
     this.config = v1SchedulerConfig,
   });
+
+  /// Evaluates and selects one attempt slot, updating its session bookkeeping.
+  SelectionResult decide({
+    required LearnerState state,
+    required SessionState session,
+    required List<Exercise> candidates,
+    required DateTime at,
+    Map<Exercise, ChallengeBypass> overrides = const {},
+  }) {
+    final traces = evaluate(
+      state: state,
+      session: session,
+      candidates: candidates,
+      at: at,
+      overrides: overrides,
+    );
+    final available = selectable(traces, session);
+    final selected = chooseFrom(available, session);
+    session.recordSelectionOpportunity(
+      guidanceProbeAvailable: available.any(
+        (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
+      ),
+      guidanceProbeSelected:
+          selected?.challengeBypass == ChallengeBypass.guidanceProbe,
+    );
+    session.attemptsThisSession++;
+    return SelectionResult(
+      traces: traces,
+      selectable: available,
+      selected: selected,
+    );
+  }
+
+  /// Records how a presented exercise ended in the current session.
+  void recordOutcome(
+    SessionState session,
+    Exercise exercise,
+    Outcome? outcome,
+  ) {
+    session.recordSelection(
+      exercise,
+      retrievalFailed: outcome?.retrieval == FactualRetrieval.failed,
+      retrievalObserved: exercise.guidance.isRetrievalObserved,
+      tempoProbe: outcome == null
+          ? null
+          : tempoProbeTarget(
+              exercise: exercise,
+              outcome: outcome,
+              config: config.probe,
+            ),
+      config: config.diversity,
+    );
+  }
 
   /// Stage 2a: the `REQUIRES` prerequisite gate.
   ///
