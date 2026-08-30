@@ -98,21 +98,6 @@ class SchedulerPipeline {
       );
     }
 
-    if (hands == HandConfiguration.together) {
-      final threshold = config.eligibility.handTogetherCompetencyThreshold;
-      final rh = state.competency(Competency.rhScaleExecution).mean;
-      final lh = state.competency(Competency.lhScaleExecution).mean;
-      final means =
-          'RH/LH means (${rh.toStringAsFixed(2)}/${lh.toStringAsFixed(2)})';
-      if (rh < threshold || lh < threshold) {
-        return EligibilityDecision(
-          EligibilityTier.provisionallyEligible,
-          '$means below threshold (${threshold.toStringAsFixed(2)})',
-          code: EligibilityReason.handsTogetherPrerequisite,
-        );
-      }
-    }
-
     // An altered minor form is a new idea rather than a new key: harmonic
     // minor raises the seventh against natural minor, and melodic minor
     // raises the sixth as well, in a fixed form the classical convention does
@@ -122,6 +107,36 @@ class SchedulerPipeline {
     if (!coreForms.contains(material.form)) {
       final breadth = _alteredFormDecisionFor(state, material.form, hands);
       if (breadth != null) return breadth;
+    }
+
+    // Both hands, on this material, at this span. Evidence about the work in
+    // front of the learner rather than a general verdict on their hands.
+    //
+    // This was a floor on the two hand-execution means, and it made playing
+    // together a reward for fluency rather than an early coordination skill.
+    // A beginner who played forty scales almost perfectly was still at -0.46
+    // and -0.27 against a floor of zero, so every hands-together candidate sat
+    // provisional, execution progression could not admit one, and the altered
+    // minor phase gate that requires hands-together exposure was unreachable
+    // behind it. The means still shape the prediction, which is where a
+    // general estimate belongs; what they no longer do is veto the attempt.
+    //
+    // Once hands-together has a record of its own here it goes on through
+    // that, like any other execution context.
+    if (hands == HandConfiguration.together) {
+      final span = exercise.conditions.octaves;
+      final together = state.materialExecution[(material.materialId, hands)];
+      final established =
+          (together?.demonstratedTempoAt(span) ?? 0) > 0 ||
+          (together?.demonstratedTempoAt(span - 1) ?? 0) > 0;
+      if (!established &&
+          handsTogetherEntryTempo(state, material.materialId, span) <= 0) {
+        return const EligibilityDecision(
+          EligibilityTier.provisionallyEligible,
+          'each hand has still to manage this alone at this span',
+          code: EligibilityReason.handsTogetherPrerequisite,
+        );
+      }
     }
 
     // Two octaves before one is the one ordering on the execution axis every

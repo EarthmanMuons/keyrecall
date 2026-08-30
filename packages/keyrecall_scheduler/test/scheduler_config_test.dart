@@ -29,10 +29,6 @@ void main() {
       // What did come from the prototype still has to match it. Divergence is
       // a decision, and this is what keeps it from also being an accident.
       expect(
-        config.eligibility.handTogetherCompetencyThreshold,
-        registry['eligibility']!['hand_together_competency_threshold'],
-      );
-      expect(
         config.safety.maxSessionAttempts,
         isNull,
         reason:

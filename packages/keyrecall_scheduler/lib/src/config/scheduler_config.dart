@@ -4,10 +4,6 @@ import 'package:meta/meta.dart';
 /// Thresholds for the `REQUIRES` prerequisite gate.
 @immutable
 class EligibilityConfig {
-  /// Both hand-execution means must reach this before hands-together work is
-  /// fully eligible rather than provisionally eligible.
-  final double handTogetherCompetencyThreshold;
-
   /// Single-hand execution each admission band asks for, in the logit scale
   /// competency means use, where placement puts a self-reported beginner at
   /// -1 and someone with some experience at 0.
@@ -98,7 +94,6 @@ class EligibilityConfig {
   final double fluentHandsTogetherFloor;
 
   const EligibilityConfig({
-    required this.handTogetherCompetencyThreshold,
     required this.multiOctaveExecutionFloor,
     required this.gentleTempoBpm,
     required this.earlyTransferExecutionFloor,
@@ -338,7 +333,6 @@ class SchedulerConfig {
 const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
   modelVersion: 'v1-1',
   eligibility: EligibilityConfig(
-    handTogetherCompetencyThreshold: 0.0,
     multiOctaveExecutionFloor: -0.5,
     gentleTempoBpm: 60,
     earlyTransferExecutionFloor: 0.0,

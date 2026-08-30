@@ -783,11 +783,11 @@ yet argued for:
 - accepting introduction-only as the intended cold start and making the bands
   the thing that orders introductions.
 
-Related, and found the same way: `handTogetherCompetencyThreshold` is `0.0` and
-`someExperienceMean` is also `0.0`, and the gate tests `mean < threshold`. So
-whether that tier gets hands-together work immediately is currently decided by
-the equality semantics of two numbers that were set independently, rather than
-by a pedagogical decision.
+Resolved: the hands-together prerequisite was a floor on the two hand-execution
+means, so whether a tier got hands-together work immediately was decided by the
+equality semantics of two numbers set independently. It now asks for evidence
+about the work in front of the learner - both hands having managed that scale at
+that span - which is also what supplies the entry tempo.
 
 ## 5. Domain expansion
 

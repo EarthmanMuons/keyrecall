@@ -546,41 +546,77 @@ void main() {
   });
 
   group('hands together', () {
-    test('still asks for both hands first, unchanged', () {
-      final state = learnerAt(1.0);
-      state.competency(Competency.lhScaleExecution).mean = -1.0;
-      final strict = SchedulerPipeline(
-        learner: const LearnerModel(),
-        config: SchedulerConfig(
-          modelVersion: 'test',
-          eligibility: const EligibilityConfig(
-            handTogetherCompetencyThreshold: 0.0,
-            multiOctaveExecutionFloor: -0.5,
-            gentleTempoBpm: 60,
-            earlyTransferExecutionFloor: 0.0,
-            intermediateExecutionFloor: 0.4,
-            advancedExecutionFloor: 0.8,
-            minorTopologyFloor: 0.0,
-            harmonicMinorCoreRetrievals: 0,
-            melodicMinorCoreRetrievals: 0,
-            coreRetrievalBands: 0,
-            fluentHandsTogetherFloor: 1.0,
-          ),
-          safety: const SafetyConfig(maxSessionAttempts: 40),
-          challenge: v1SchedulerConfig.challenge,
-          diversity: v1SchedulerConfig.diversity,
-          probe: v1SchedulerConfig.probe,
-        ),
-      );
+    /// Record that [hands] has managed C major at [span].
+    void demonstrated(LearnerState state, HandConfiguration hands, int span) {
+      state.materialExecutionFor(
+          ('C_MAJOR', hands),
+          t0,
+          v1PrototypeLearnerParams,
+        )
+        ..demonstrate(octaves: span, tempoBpm: 60)
+        ..lastEvidenceAt = t0;
+    }
 
+    Exercise together({int octaves = 1}) => scale(
+      'C',
+      ScaleForm.major,
+      hands: HandConfiguration.together,
+      octaves: octaves,
+    );
+
+    test('still asks for both hands first', () {
+      // Fluent by every general measure, and still asked to play the scale
+      // with each hand before playing it with both.
+      final state = learnerAt(1.0);
       state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
-      final decision = strict.eligibilityFor(
-        state,
-        scale('C', ScaleForm.major, hands: HandConfiguration.together),
-      );
+      demonstrated(state, HandConfiguration.right, 1);
+
+      final decision = pipeline.eligibilityFor(state, together());
 
       expect(decision.tier, EligibilityTier.provisionallyEligible);
       expect(decision.code, EligibilityReason.handsTogetherPrerequisite);
+    });
+
+    test('both hands on the material is the whole prerequisite', () {
+      // Weak by every general measure, and admitted anyway: what qualifies
+      // somebody to try playing a scale with both hands is having played it
+      // with each. Coordination is an early skill, not a reward for fluency.
+      final state = learnerAt(-1.0);
+      state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+      demonstrated(state, HandConfiguration.right, 1);
+      demonstrated(state, HandConfiguration.left, 1);
+
+      expect(
+        pipeline.eligibilityFor(state, together()).tier,
+        EligibilityTier.fullyEligible,
+      );
+    });
+
+    test('the prerequisite is asked at the span being played', () {
+      final state = learnerAt(1.0);
+      state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+      demonstrated(state, HandConfiguration.right, 1);
+      demonstrated(state, HandConfiguration.left, 1);
+
+      expect(
+        pipeline.eligibilityFor(state, together(octaves: 2)).code,
+        EligibilityReason.handsTogetherPrerequisite,
+        reason: 'neither hand has managed two octaves of it alone',
+      );
+    });
+
+    test('once hands together is established it goes on through its own '
+        'record', () {
+      // One octave together is managed; two is an ordinary span step from
+      // there, and does not send the learner back to prove each hand again.
+      final state = learnerAt(-1.0);
+      state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+      demonstrated(state, HandConfiguration.together, 1);
+
+      expect(
+        pipeline.eligibilityFor(state, together(octaves: 2)).code,
+        isNot(EligibilityReason.handsTogetherPrerequisite),
+      );
     });
   });
 
