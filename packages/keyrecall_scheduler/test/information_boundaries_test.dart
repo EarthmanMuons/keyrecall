@@ -99,6 +99,9 @@ void main() {
       final previewed = exerciseFor(
         materials.first,
         guidance: GuidanceContext.notesPreviewedOnly,
+        // A probe holds every axis but the one it asks about, and this learner
+        // has no frontier, so the tempo it holds is the gentle one.
+        tempoBpm: config.eligibility.gentleTempoBpm,
       );
 
       final quiet = SessionState(
@@ -386,7 +389,10 @@ void main() {
             GuidanceContext.notesPreviewedOnly.independence
         ..establishedIndependenceAt = t0;
 
-      final probe = exerciseFor(materials.first);
+      final probe = exerciseFor(
+        materials.first,
+        tempoBpm: config.eligibility.gentleTempoBpm,
+      );
       final at = t0.plusDays(config.probe.minDaysSinceLastRetrieval + 1.0);
       expect(pipeline.isGuidanceProbe(state, probe, at), isTrue);
 

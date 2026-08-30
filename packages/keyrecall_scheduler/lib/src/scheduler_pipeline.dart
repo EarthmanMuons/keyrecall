@@ -525,12 +525,40 @@ class SchedulerPipeline {
   /// independence the more they practised. Producing a scale seconds after
   /// being shown it still proves little, so the establishment clock is short
   /// rather than absent.
+  /// The one tempo a probe about guidance is asked at.
+  ///
+  /// A probe moves one axis. A guidance probe that also dropped a learner from
+  /// a hundred and twenty-six to sixty moved two, and the slower one then read
+  /// as underchallenged and drew a tempo probe along behind it: a mechanism
+  /// undoing its own question a slot later. Nothing in ranking reads tempo, so
+  /// which tempo a probe landed on was decided by the order of a constant, and
+  /// sixty always won.
+  ///
+  /// The frontier for this material, hand and span, which is where the learner
+  /// already is. [entryTempoFor] when that span has never been managed: a
+  /// material can have an established guidance rung without having been played
+  /// this wide, and the learner's pace is the best answer there.
+  double heldTempoFor(LearnerState state, Exercise exercise) {
+    final frontier =
+        state
+            .materialExecution[(
+              exercise.material.materialId,
+              exercise.conditions.hands,
+            )]
+            ?.demonstratedTempoAt(exercise.conditions.octaves) ??
+        0;
+    return frontier > 0 ? frontier : entryTempoFor(state, exercise);
+  }
+
   bool isGuidanceProbe(LearnerState state, Exercise exercise, DateTime at) {
     final memory = state.materialMemory[exercise.material.materialId];
     final established = memory?.establishedIndependence;
     final since = memory?.establishedIndependenceAt;
     if (established == null || since == null) return false;
     if (exercise.guidance.independence != established + 1) return false;
+    if (exercise.conditions.tempoBpm != heldTempoFor(state, exercise)) {
+      return false;
+    }
     return since.daysUntil(at) >= config.probe.minDaysSinceSupportEstablished;
   }
 
@@ -557,6 +585,9 @@ class SchedulerPipeline {
     if (memory == null || memory.establishedIndependence != null) return false;
     final lastAttempt = memory.lastRetrievalAttemptAt;
     if (lastAttempt == null) return false;
+    if (exercise.conditions.tempoBpm != heldTempoFor(state, exercise)) {
+      return false;
+    }
     return lastAttempt.daysUntil(at) >= config.probe.minDaysSinceLastRetrieval;
   }
 
@@ -573,8 +604,13 @@ class SchedulerPipeline {
   /// So after enough supported attempts on a material, one retrieval-observing
   /// question is asked whatever its predicted success. The band optimises for
   /// an appropriate challenge; this is the exception that keeps it answerable.
-  bool isObservationProbe(Exercise exercise, int supportedAttempts) =>
+  bool isObservationProbe(
+    LearnerState state,
+    Exercise exercise,
+    int supportedAttempts,
+  ) =>
       exercise.guidance == GuidanceContext.notesPreviewedOnly &&
+      exercise.conditions.tempoBpm == heldTempoFor(state, exercise) &&
       supportedAttempts >= config.probe.supportedAttemptsBeforeObservation;
 
   /// The highest eligibility tier that has anything left to introduce, or null
@@ -644,7 +680,7 @@ class SchedulerPipeline {
           ChallengeBypass.tempoProbe,
         ),
         AdmissionException.observationProbe =>
-          isObservationProbe(exercise, supportedAttempts)
+          isObservationProbe(state, exercise, supportedAttempts)
               ? const _Admits(ChallengeBypass.observationProbe)
               : const _Silent(),
         // The slot has nothing appropriate left to introduce, and something

@@ -886,7 +886,8 @@ consolidation       a scale met and not yet produced from memory, offered again
 execution progress  one adjacent execution step on material already produced
                     from memory: the next tempo rung, one octave wider, or the
                     same work with both hands
-guidance probe      one rung less support once that rung has been established
+guidance probe      one rung less support once that rung has been established,
+                    at the tempo already managed there
 bootstrap probe     a retrieval test where no rung is established, after interval
 observation probe   a retrieval test after a run of attempts that observed none
 recovery            exact failed exercise with one step more guidance
