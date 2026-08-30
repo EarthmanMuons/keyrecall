@@ -325,8 +325,8 @@ behave like a true beginner even when current performance is similar.
 ### SchedulerSafetyPolicy
 
 Conservative workload constraints applied before challenge admission. V1
-implements a session-attempt cap and makes no medical or injury diagnosis from
-performance data.
+implements a session-attempt cap, unset in production, and makes no medical or
+injury diagnosis from performance data.
 
 ### SessionState
 

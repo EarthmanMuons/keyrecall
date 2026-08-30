@@ -244,16 +244,27 @@ void main() {
     });
 
     test('suppresses exactly at the session cap', () {
-      final cap = config.safety.maxSessionAttempts;
+      const cap = 40;
+      final bounded = SchedulerPipeline(
+        learner: learner,
+        config: boundedTo(cap),
+      );
       expect(
-        pipeline
-            .safetyFor(SessionState(attemptsThisSession: cap - 1))
-            .isAllowed,
+        bounded.safetyFor(SessionState(attemptsThisSession: cap - 1)).isAllowed,
         isTrue,
       );
       expect(
-        pipeline.safetyFor(SessionState(attemptsThisSession: cap)).isAllowed,
+        bounded.safetyFor(SessionState(attemptsThisSession: cap)).isAllowed,
         isFalse,
+      );
+    });
+
+    test('an unbounded sitting is never suppressed by its length', () {
+      expect(config.safety.maxSessionAttempts, isNull);
+      expect(
+        pipeline.safetyFor(SessionState(attemptsThisSession: 1000)).isAllowed,
+        isTrue,
+        reason: 'a sitting ends when the player stops, not at a constant',
       );
     });
   });
@@ -393,14 +404,16 @@ void main() {
       seedAllMaterials(state);
       final candidates = allCandidates();
 
-      final suppressed = pipeline.evaluate(
-        state: state,
-        session: SessionState(
-          attemptsThisSession: config.safety.maxSessionAttempts,
-        ),
-        candidates: candidates,
-        at: t0,
-      );
+      // A bounded sitting is the one deterministic way to suppress every
+      // candidate at stage 2b, which is what this needs to observe.
+      const cap = 40;
+      final suppressed =
+          SchedulerPipeline(learner: learner, config: boundedTo(cap)).evaluate(
+            state: state,
+            session: SessionState(attemptsThisSession: cap),
+            candidates: candidates,
+            at: t0,
+          );
       expect(
         suppressed.any((trace) => trace.priorityStatus.isReached),
         isFalse,

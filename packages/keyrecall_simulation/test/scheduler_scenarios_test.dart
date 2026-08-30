@@ -357,8 +357,25 @@ void main() {
       SyntheticProfile.advanced,
       seed: 0,
     );
-    final agent = agentOver([v1ScaleCatalog.first]);
-    agent.session.attemptsThisSession = config.safety.maxSessionAttempts;
+    // Production sittings are unbounded, so a slot that admits nothing has to
+    // be arranged rather than waited for.
+    const cap = 40;
+    final agent = SchedulerAgent(
+      pipeline: SchedulerPipeline(
+        learner: learner,
+        config: SchedulerConfig(
+          modelVersion: config.modelVersion,
+          eligibility: config.eligibility,
+          safety: const SafetyConfig(maxSessionAttempts: cap),
+          challenge: config.challenge,
+          diversity: config.diversity,
+          probe: config.probe,
+        ),
+      ),
+      instrument: instrument,
+      materials: [v1ScaleCatalog.first],
+    );
+    agent.session.attemptsThisSession = cap;
 
     expect(
       () => simulation.run(1, chooser: agent.choose, onOutcome: agent.observe),

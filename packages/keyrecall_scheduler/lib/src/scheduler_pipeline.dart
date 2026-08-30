@@ -462,11 +462,14 @@ class SchedulerPipeline {
   /// Stage 2b: the workload gate.
   ///
   /// Reads session state only. A hard gate, unlike eligibility, but a narrow
-  /// one: V1 caps session length and does not try to diagnose fatigue or
-  /// injury from playing behavior.
+  /// one: it bounds session length where a bound is configured and does not
+  /// try to diagnose fatigue or injury from playing behavior.
   SafetyDecision safetyFor(SessionState session) {
     final cap = config.safety.maxSessionAttempts;
     final attempts = session.attemptsThisSession;
+    if (cap == null) {
+      return SafetyDecision(true, 'sittings are not bounded by attempt count');
+    }
     if (attempts >= cap) {
       return SafetyDecision(
         false,

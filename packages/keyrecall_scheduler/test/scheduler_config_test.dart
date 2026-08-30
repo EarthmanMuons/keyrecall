@@ -34,7 +34,13 @@ void main() {
       );
       expect(
         config.safety.maxSessionAttempts,
-        registry['safety']!['max_session_attempts'],
+        isNull,
+        reason:
+            'the prototype bounded a sitting at '
+            '${registry['safety']!['max_session_attempts']} attempts, which was '
+            'a guard against a runaway decision loop rather than a statement '
+            'about how long somebody practices; a sitting now ends when the '
+            'player stops',
       );
       expect(config.challenge.pMin, registry['challenge']!['p_min']);
       expect(config.challenge.pMax, registry['challenge']!['p_max']);

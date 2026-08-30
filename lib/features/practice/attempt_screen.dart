@@ -554,21 +554,41 @@ class _Status extends ConsumerWidget {
   }
 }
 
+/// A slot that admitted nothing.
+///
+/// Not an ending. Sittings are unbounded and the scheduler has eight ways to
+/// admit a candidate outside the ordinary band, so reaching this means every
+/// one of them declined and the reason is worth knowing. It read as running
+/// out of material once, while a hundred and fifty candidates were still
+/// admissible and only the attempt cap had been hit.
 class _NothingToPlay extends ConsumerWidget {
   const _NothingToPlay();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => Center(
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        const Text('Nothing to practice right now.'),
-        const SizedBox(height: 12),
-        FilledButton(
-          onPressed: () => ref.read(practiceLoopProvider.notifier).reopen(),
-          child: const Text('Open another sitting'),
-        ),
-      ],
-    ),
-  );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            'The scheduler found nothing to offer.',
+            style: theme.textTheme.titleMedium,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'That should not happen. Stop whenever you like; this one is '
+            'worth reporting.',
+            style: theme.textTheme.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          FilledButton(
+            onPressed: () => ref.read(practiceLoopProvider.notifier).reopen(),
+            child: const Text('Try again'),
+          ),
+        ],
+      ),
+    );
+  }
 }

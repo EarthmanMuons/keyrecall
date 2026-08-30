@@ -855,8 +855,11 @@ retrievability are estimates, and estimates belong to prediction, which runs
 later.
 
 The safety policy is a separate hard gate based only on session/workload state.
-V1 implements a configurable session-attempt cap. It does not diagnose fatigue
-or injury from MIDI behavior.
+It implements a configurable session-attempt cap, left unset in production: a
+sitting ends when the player stops. The cap exists as a guard against a runaway
+decision loop and as a knob for tests and simulation, not as a statement about
+how long somebody practices. It does not diagnose fatigue or injury from MIDI
+behavior.
 
 ### 8.3 Challenge admission
 
@@ -1138,7 +1141,7 @@ registry. The TOML files record what the prototype carried; `LearnerParams` and
 | Execution residual           | prior variance `0.5`; learning rate `0.2`; mean-reversion time `14d`; uncertainty diffusion `0.02/day`                             |
 | Hand transfer                | correlation strength `0.3`; shrinkage scale `0.5`                                                                                  |
 | Motor difficulty             | tempo `0.4`; extra octave `0.3`; hands together `0.2`; up/down `0.15`; reference tempo `80 BPM`                                    |
-| Scheduler eligibility/safety | HT competency threshold `0.0`; session cap `40` attempts                                                                           |
+| Scheduler eligibility/safety | HT competency threshold `0.0`; no session cap                                                                                      |
 | Scheduler challenge          | ordinary band `0.60-0.90`; new-material floor `0.15`                                                                               |
 | Scheduler history            | recent window `10`; consecutive-material cap `5`; probe interval `5d`                                                              |
 

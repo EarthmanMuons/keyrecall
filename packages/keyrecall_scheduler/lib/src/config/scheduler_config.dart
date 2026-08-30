@@ -123,12 +123,23 @@ class EligibilityConfig {
 /// Limits on how much work one session may present.
 @immutable
 class SafetyConfig {
-  /// Attempt slots allowed per session before every candidate is suppressed.
-  final int maxSessionAttempts;
+  /// Attempt slots allowed per session before every candidate is suppressed,
+  /// or null for a sitting the scheduler never ends.
+  ///
+  /// Null in production. A sitting ends when the player stops, which is the
+  /// whole shape of the product: open it, play, leave. A constant that stopped
+  /// somebody at forty was a guard against a runaway `decide` loop that had
+  /// quietly become the length of a practice session, and it read to the
+  /// player as having run out of material while a hundred and fifty candidates
+  /// were still admissible.
+  ///
+  /// Kept as a knob because bounded sittings are still worth writing tests
+  /// about, and because a simulation wants to say how long one runs.
+  final int? maxSessionAttempts;
 
-  const SafetyConfig({required this.maxSessionAttempts})
+  const SafetyConfig({this.maxSessionAttempts})
     : assert(
-        maxSessionAttempts > 0,
+        maxSessionAttempts == null || maxSessionAttempts > 0,
         'a session that allows no attempts can never present anything',
       );
 }
@@ -339,7 +350,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     coreRetrievalBands: 2,
     fluentHandsTogetherFloor: 1.0,
   ),
-  safety: SafetyConfig(maxSessionAttempts: 40),
+  safety: SafetyConfig(),
   challenge: ChallengeConfig(pMin: 0.60, pMax: 0.90, pIntroductionMin: 0.15),
   diversity: DiversityConfig(
     recentWindow: 10,
