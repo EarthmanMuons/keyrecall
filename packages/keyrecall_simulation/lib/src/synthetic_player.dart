@@ -234,7 +234,18 @@ class PlayerState {
     }
 
     final available = retrievalSucceeded ? 1.0 : supplied;
-    final pitchIntegrity = noisy(0.5 + 0.5 * available * motorQuality);
+
+    // Which notes came is mostly about whether they were known, and only
+    // slightly about how well the hand moved. Wrong notes come from not
+    // knowing the scale rather than from weak fingers.
+    //
+    // This was `0.5 + 0.5 * available * motorQuality`, dominated by motor
+    // quality, and it made a weak hand a hand that plays wrong notes. So the
+    // one archetype built to be uneven could not express the learner it was
+    // for - somebody who knows a scale and plays it unevenly - and every
+    // measurement about uneven hands was really a measurement about hands that
+    // do not know the material.
+    final pitchIntegrity = noisy(available * (0.85 + 0.15 * motorQuality));
     final completed = motorQuality > 0.25 && rng.nextDouble() < 0.9;
 
     // Hands together only. Coordination degrades with strain rather than with
