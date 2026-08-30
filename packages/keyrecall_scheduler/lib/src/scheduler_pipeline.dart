@@ -982,6 +982,7 @@ class SchedulerPipeline {
 
     final terms = RankKey(
       tier: eligibility.tier,
+      coordinationTransition: isCoordinationTransition(state, exercise),
       retention: retention(prediction, exercise),
       information: information(state, exercise, learner.params),
       diversity: diversity(exercise, session),

@@ -305,6 +305,25 @@ class RankKey implements Comparable<RankKey> {
   /// Primary key: the eligibility tier.
   final EligibilityTier tier;
 
+  /// Whether this candidate is the learner's first chance to play its material
+  /// with both hands, having just earned it.
+  ///
+  /// Above retention, which is where it has to be to do anything: measuring
+  /// what separated a waiting hands-together candidate from the winner, the
+  /// first differing term was retention in eighty-four per cent of slots and
+  /// information in the rest, never the tier and never diversity. Below
+  /// retention this would never fire.
+  ///
+  /// That means it does override genuine retention urgency, not only the
+  /// hair's-breadth differences that make up about half of those slots. It is
+  /// allowed to because it cannot persist: the first hands-together attempt on
+  /// the material ends it, so the cost is one slot per scale, once.
+  ///
+  /// Below the tier, so it cannot pull a provisionally eligible candidate past
+  /// a fully eligible one. A transition is worth reaching for early; it is not
+  /// worth reaching for something the learner is not ready for.
+  final bool coordinationTransition;
+
   /// `R(e)`: how urgent it is to test this material, weighted by whether this
   /// candidate can actually produce retrieval evidence.
   final double retention;
@@ -342,6 +361,7 @@ class RankKey implements Comparable<RankKey> {
   const RankKey({
     required this.tier,
     required this.retention,
+    this.coordinationTransition = false,
     required this.information,
     required this.diversity,
     required this.goals,
@@ -353,6 +373,10 @@ class RankKey implements Comparable<RankKey> {
   int compareTo(RankKey other) {
     final byTier = tier.index.compareTo(other.tier.index);
     if (byTier != 0) return byTier;
+    final byTransition = _order(
+      coordinationTransition,
+    ).compareTo(_order(other.coordinationTransition));
+    if (byTransition != 0) return byTransition;
     final byRetention = retention.compareTo(other.retention);
     if (byRetention != 0) return byRetention;
     final byInformation = information.compareTo(other.information);
@@ -370,6 +394,7 @@ class RankKey implements Comparable<RankKey> {
   bool operator ==(Object other) =>
       other is RankKey &&
       other.tier == tier &&
+      other.coordinationTransition == coordinationTransition &&
       other.retention == retention &&
       other.information == information &&
       other.diversity == diversity &&
@@ -390,7 +415,9 @@ class RankKey implements Comparable<RankKey> {
 
   @override
   String toString() =>
-      'RankKey(${tier.id}, R: ${retention.toStringAsFixed(3)}, '
+      'RankKey(${tier.id}, '
+      '${coordinationTransition ? 'TRANSITION, ' : ''}'
+      'R: ${retention.toStringAsFixed(3)}, '
       'I: ${information.toStringAsFixed(3)}, '
       'V: ${diversity.toStringAsFixed(1)}, '
       'G: ${goals.toStringAsFixed(1)}, '
@@ -466,3 +493,5 @@ class CandidateTrace {
       'bypass: ${challengeBypass?.id ?? 'none'}, '
       'ranked: $isRanked)';
 }
+
+int _order(bool flag) => flag ? 1 : 0;

@@ -276,6 +276,43 @@ double realizationFitFor(
       .toDouble();
 }
 
+/// Whether [exercise] is this learner's first chance to play its material with
+/// both hands, having just earned it.
+///
+/// A transition rather than a preference. Coordination has just become
+/// available on this scale, and the slot after that is when it is worth
+/// spending: measured across every archetype, a hands-together candidate that
+/// had become fully eligible and admissible waited a median of seven to
+/// nineteen slots to be chosen and in many sittings was never chosen at all,
+/// with every one of those slots going to a different material rather than to
+/// another realization of the same one.
+///
+/// Derived rather than stored, which is what bounds it. It holds only while
+/// both hands know the scale and the two have never been put together on it,
+/// so the first hands-together attempt ends it whatever the attempt was like.
+/// Nothing accumulates, nothing expires on a timer, and a sitting that ends
+/// mid-transition resumes in the same state because both halves are durable
+/// learner facts.
+///
+/// The attempt rather than the success, deliberately. What the scheduler owes
+/// is bringing newly available coordination work into practice promptly; how it
+/// went is then evidence like any other, and recovery is what answers a bad
+/// one.
+///
+/// Single-hand work on the same material is not a transition, so selecting the
+/// scale for the right hand neither benefits from this nor consumes it.
+bool isCoordinationTransition(LearnerState state, Exercise exercise) =>
+    exercise.conditions.hands == HandConfiguration.together &&
+    !state.hasPlayed(
+      exercise.material.materialId,
+      HandConfiguration.together,
+    ) &&
+    supportsHandsTogether(
+      state,
+      exercise.material.materialId,
+      exercise.conditions.octaves,
+    );
+
 /// The exercises one adjacent execution step from where this learner already
 /// is, which the static generator does not contain.
 ///

@@ -107,6 +107,7 @@ Map<String, Object?> encodeDecision(
   'challenge_bypass': decision.challengeBypass?.id,
   'rank_key': {
     'tier': decision.rankKey.tier.id,
+    'coordination_transition': decision.rankKey.coordinationTransition,
     'retention': decision.rankKey.retention,
     'information': decision.rankKey.information,
     'diversity': decision.rankKey.diversity,
@@ -163,6 +164,11 @@ SchedulerDecision decodeDecision(
     rankKey: RankKey(
       tier: _tierFromId(
         requireString(rankKeyJson, 'tier', location: location),
+        location: location,
+      ),
+      coordinationTransition: requireBool(
+        rankKeyJson,
+        'coordination_transition',
         location: location,
       ),
       retention: requireDouble(rankKeyJson, 'retention', location: location),
