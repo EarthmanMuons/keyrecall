@@ -62,11 +62,24 @@ Trajectory runTrajectory({
     final pacedBefore = residual?.pacedTempoBpm ?? 0;
 
     final outcome = playing.play(exercise, rng);
-    final admissible = [
-      for (final trace in available)
-        if (trace.exercise.conditions.hands == HandConfiguration.together)
-          trace,
-    ];
+    // Both read from every trace rather than from what survived the
+    // repetition guard, and both keep the material, because a latency that
+    // does not correlate readiness, offer and selection on one scale measures
+    // nothing. Two stages, two sets: stage 2a says the learner qualifies,
+    // stage 3 says the slot could actually have presented it.
+    final ready = {
+      for (final trace in traces)
+        if (trace.exercise.conditions.hands == HandConfiguration.together &&
+            trace.eligibility.tier == EligibilityTier.fullyEligible)
+          trace.exercise.material.materialId,
+    };
+    final offered = {
+      for (final trace in traces)
+        if (trace.exercise.conditions.hands == HandConfiguration.together &&
+            trace.eligibility.tier == EligibilityTier.fullyEligible &&
+            trace.challengeSurvived)
+          trace.exercise.material.materialId,
+    };
 
     recorded.add(
       TrajectorySlot(
@@ -89,7 +102,8 @@ Trajectory runTrajectory({
           exercise.conditions.hands,
           exercise.conditions.octaves,
         ),
-        handsTogetherAdmissible: admissible.isNotEmpty,
+        handsTogetherReady: ready,
+        handsTogetherOffered: offered,
       ),
     );
 

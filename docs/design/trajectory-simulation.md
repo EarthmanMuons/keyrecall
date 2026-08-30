@@ -77,3 +77,48 @@ This is the deliverable rather than a convenience. Three separate diagnoses in
 this repository were wrong because the pipeline was reasoned about instead of
 observed, and each was corrected by building exactly this table by hand. An
 anomaly that cannot show its working is not worth raising.
+
+## What the first sweep found
+
+Eight archetypes, a hundred seeds each, fifty slots: forty thousand decisions.
+
+`realization_stall` fired **zero times**, which is the strongest evidence
+available that splitting `RankKey` into a material question and a realization
+question fixed the generation-order pathology rather than making one device
+trajectory look better. `below_frontier_share` and `guidance_regression` were
+also silent throughout.
+
+`entry_tempo_ignores_pace` fired about five thousand times, across every
+archetype past a beginner and none below. One cause: the band cap in
+`entryTempoFor` discarding the transferable pace. Beginners never reach the
+capped bands, which is why a person testing at a piano as a beginner could not
+have found it.
+
+`hands_together_stall` needed decomposing rather than believing, and the first
+decomposition was itself wrong. It measured slots from both hands completing a
+material to the first slot where _any_ hands-together candidate survived
+admission. But the catalog is wide, most of it is provisionally eligible on the
+hands-together prerequisite, and provisional candidates still survive admission
+and rank last, so that clock started at slot zero in nearly every run on a
+material unrelated to the one whose hands were ready. It reported instant
+availability and concluded the delay was all ranking. Neither half was
+established.
+
+The measurement is being repeated against fully eligible candidates for the
+_same_ material, with readiness read from the scheduler's own prerequisite
+verdict rather than reconstructed from outcomes, and with impossible orderings
+failing loudly instead of clamping to a plausible zero.
+
+What survives the retraction is what was measured directly from selections: a
+player with a strong right hand and a weak left played hands together in one run
+out of forty, and a true beginner got both hands through the same material in
+three runs out of forty, so its stall trips were never about hands together at
+all.
+
+The lesson worth keeping is about the detectors rather than the scheduler. Two
+of the first definitions were wrong in the same way: `exclusive_target_emptied`
+fired on every recovery slot, because recovery is _meant_ to narrow a slot to
+one candidate, and `progression_stall` counted a run of introductions as a
+frontier that would not move. Both encoded "what the scheduler currently does"
+as a property. The census made both obvious on one read, which is the argument
+for the census.

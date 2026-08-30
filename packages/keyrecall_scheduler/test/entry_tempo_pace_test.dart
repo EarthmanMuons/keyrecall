@@ -74,12 +74,26 @@ void main() {
         isFalse,
         reason: 'the material this pins has to be in a capped band',
       );
+      // Not `greaterThan(gentle)`. A fix returning sixty-six would satisfy
+      // that while keeping almost all of the defect, and the point is not
+      // that the cap should be looser but that the evidence should be used.
+      //
+      // The policy this asserts, which is the thing to disagree with if any
+      // of it is wrong:
+      //
+      //   unknown pace, unknown geography  -> the gentle tempo
+      //   known pace, unknown geography    -> the geography may cost a rung
+      //                                       or two, and may not erase what
+      //                                       the hand has shown
+      //
+      // One rung of the ladder below the pace, so a harder key is allowed to
+      // be worth something and not worth everything.
       expect(
         pipeline.entryTempoFor(state, capped),
-        greaterThan(gentle),
+        greaterThanOrEqualTo(tempoBefore(120)),
         reason:
-            'the hand has shown 120 on scales it owns, and nothing about a '
-            'harder geography makes that evidence disappear',
+            'the hand has shown 120 on scales it owns, and a harder geography '
+            'is worth a rung of caution rather than three',
       );
     },
   );

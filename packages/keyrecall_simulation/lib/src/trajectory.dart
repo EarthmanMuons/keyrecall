@@ -45,9 +45,28 @@ class TrajectorySlot {
   /// tempo against.
   final double transferableBefore;
 
-  /// Whether hands-together on the chosen material was admissible this slot,
-  /// and whether it was offered at all.
-  final bool handsTogetherAdmissible;
+  /// Materials whose hands-together prerequisite the scheduler considered
+  /// satisfied this slot, whatever happened afterwards.
+  ///
+  /// Read from stage 2a's own verdict rather than reconstructed from
+  /// outcomes. Readiness is the scheduler's notion, and a clock that starts
+  /// when both hands have merely completed a material once may start earlier
+  /// or later than production's, which puts every latency derived from it in
+  /// doubt.
+  final Set<String> handsTogetherReady;
+
+  /// Materials for which a *fully eligible* hands-together candidate survived
+  /// admission this slot.
+  ///
+  /// Fully eligible, and per material, because neither weaker reading says
+  /// anything. Any surviving hands-together candidate is nearly always
+  /// available: the catalog is wide, most of it is provisionally eligible on
+  /// the hands-together prerequisite, and provisional candidates still survive
+  /// admission and rank last. Counting those makes an availability metric read
+  /// as though coordination work were on offer from the first slot, which was
+  /// how a first measurement here concluded that hands together loses on
+  /// ranking when it had never genuinely been offered.
+  final Set<String> handsTogetherOffered;
 
   const TrajectorySlot({
     required this.index,
@@ -60,7 +79,8 @@ class TrajectorySlot {
     required this.frontierBefore,
     required this.pacedBefore,
     required this.transferableBefore,
-    required this.handsTogetherAdmissible,
+    required this.handsTogetherReady,
+    required this.handsTogetherOffered,
   });
 
   /// Where the chosen realization sat against the frontier.

@@ -5,23 +5,30 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// How long hands-together takes to arrive, measured rather than judged.
+/// How long hands-together takes to arrive, measured per material.
 ///
-/// The stall detector conflates two mechanisms and so cannot say which is at
-/// fault. This separates them:
+/// Three clocks, mapped to the stages that could be responsible, and all three
+/// about **the same scale**. A latency that pairs readiness on C major with an
+/// offer on G major measures nothing, which a first version of this did: it
+/// took the first hands-together candidate of any material and any eligibility
+/// tier, found one in nearly every opening slot, and concluded the delay was
+/// all ranking.
 ///
-/// - **admission latency**: slots from both hands completing a material to the
-///   first slot where any hands-together realization survives admission. Long
-///   here means prerequisites or entry tempo.
-/// - **selection latency**: slots from that first admissible offer to the
-///   first one actually chosen. Long here means ranking.
+/// - **ready**: stage 2a considers the hands-together prerequisite satisfied
+///   for this material. The scheduler's own verdict, not both hands having
+///   completed it once, so the clock starts where production thinks it starts.
+/// - **offered**: a fully eligible hands-together candidate for it survived
+///   challenge admission, so the slot could have presented it.
+/// - **chosen**: one was actually selected.
 ///
-/// Reported as a distribution because the threshold in the stall detector is
-/// uncalibrated, and a bound firing on most runs is more likely to be a bad
-/// bound than a scheduler that fails most sittings.
+/// Then `offered - ready` is what prerequisites and admission cost, and
+/// `chosen - offered` is what ranking costs.
+///
+/// Nothing is clamped. A negative latency means the instrument is wrong, and
+/// should say so rather than becoming a plausible zero.
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
-    ..addOption('seeds', defaultsTo: '60')
+    ..addOption('seeds', defaultsTo: '40')
     ..addOption('slots', defaultsTo: '60')
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
@@ -32,25 +39,27 @@ Future<void> main(List<String> arguments) async {
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
 
-  stdout.writeln(
-    'hands-together latency, $seeds seeds x $slots slots, allScales\n'
-    '  ready    = both hands completed the same material\n'
-    '  admitted = a hands-together candidate first survived admission\n'
-    '  chosen   = one was first selected\n',
-  );
-  stdout.writeln(
-    '${'archetype'.padRight(22)}${'runs'.padLeft(6)}'
-    '${'ready'.padLeft(8)}${'admitd'.padLeft(8)}${'chosen'.padLeft(8)}'
-    '${'adm p50'.padLeft(9)}${'adm p90'.padLeft(9)}'
-    '${'sel p50'.padLeft(9)}${'sel p90'.padLeft(9)}',
-  );
+  stdout
+    ..writeln(
+      'hands-together latency per material, $seeds seeds x $slots slots\n'
+      '  ready   = stage 2a satisfied the hands-together prerequisite\n'
+      '  offered = a fully eligible candidate survived admission\n'
+      '  chosen  = one was selected\n'
+      '  latencies are in slots, for the same material throughout\n',
+    )
+    ..writeln(
+      '${'archetype'.padRight(22)}${'ready'.padLeft(7)}${'offrd'.padLeft(7)}'
+      '${'chosn'.padLeft(7)}${'off p50'.padLeft(9)}${'off p90'.padLeft(9)}'
+      '${'sel p50'.padLeft(9)}${'sel p90'.padLeft(9)}${'bad'.padLeft(5)}',
+    );
 
   for (final player in PlayerArchetypes.all) {
-    var reached = 0;
-    var admitted = 0;
-    var chosen = 0;
-    final admissionLatency = <int>[];
-    final selectionLatency = <int>[];
+    var everReady = 0;
+    var everOffered = 0;
+    var everChosen = 0;
+    var impossible = 0;
+    final offerLatency = <int>[];
+    final selectLatency = <int>[];
 
     for (var seed = 0; seed < seeds; seed++) {
       final trajectory = runTrajectory(
@@ -60,48 +69,59 @@ Future<void> main(List<String> arguments) async {
         slots: slots,
       );
 
-      final completedHands = <String, Set<HandConfiguration>>{};
-      int? readyAt;
-      int? admittedAt;
-      int? chosenAt;
+      final readyAt = <String, int>{};
+      final offeredAt = <String, int>{};
+      final chosenAt = <String, int>{};
       for (final slot in trajectory.slots) {
-        final hands = slot.chosen.conditions.hands;
-        if (chosenAt == null && hands == HandConfiguration.together) {
-          chosenAt = slot.index;
+        for (final id in slot.handsTogetherReady) {
+          readyAt.putIfAbsent(id, () => slot.index);
         }
-        if (admittedAt == null && slot.handsTogetherAdmissible) {
-          admittedAt = slot.index;
+        for (final id in slot.handsTogetherOffered) {
+          offeredAt.putIfAbsent(id, () => slot.index);
         }
-        if (readyAt == null && slot.outcome.completed) {
-          final id = slot.chosen.material.materialId;
-          (completedHands[id] ??= {}).add(hands);
-          if (completedHands[id]!.containsAll({
-            HandConfiguration.right,
-            HandConfiguration.left,
-          })) {
-            readyAt = slot.index;
-          }
+        if (slot.chosen.conditions.hands == HandConfiguration.together) {
+          chosenAt.putIfAbsent(
+            slot.chosen.material.materialId,
+            () => slot.index,
+          );
         }
       }
 
-      if (readyAt == null) continue;
-      reached++;
-      if (admittedAt == null) continue;
-      admitted++;
-      admissionLatency.add((admittedAt - readyAt).clamp(0, slots));
-      if (chosenAt == null) continue;
-      chosen++;
-      selectionLatency.add((chosenAt - admittedAt).clamp(0, slots));
+      if (readyAt.isEmpty) continue;
+      everReady++;
+      if (offeredAt.isEmpty) continue;
+      everOffered++;
+
+      // The earliest material to become ready, followed through on itself.
+      final first = readyAt.entries.reduce(
+        (a, b) => a.value <= b.value ? a : b,
+      );
+      final offered = offeredAt[first.key];
+      if (offered == null) continue;
+      if (offered < first.value) {
+        impossible++;
+        continue;
+      }
+      offerLatency.add(offered - first.value);
+
+      final chosen = chosenAt[first.key];
+      if (chosen == null) continue;
+      if (chosen < offered) {
+        impossible++;
+        continue;
+      }
+      everChosen++;
+      selectLatency.add(chosen - offered);
     }
 
     stdout.writeln(
-      '${player.id.padRight(22)}${seeds.toString().padLeft(6)}'
-      '${reached.toString().padLeft(8)}${admitted.toString().padLeft(8)}'
-      '${chosen.toString().padLeft(8)}'
-      '${_quantile(admissionLatency, 0.5).padLeft(9)}'
-      '${_quantile(admissionLatency, 0.9).padLeft(9)}'
-      '${_quantile(selectionLatency, 0.5).padLeft(9)}'
-      '${_quantile(selectionLatency, 0.9).padLeft(9)}',
+      '${player.id.padRight(22)}${everReady.toString().padLeft(7)}'
+      '${everOffered.toString().padLeft(7)}${everChosen.toString().padLeft(7)}'
+      '${_quantile(offerLatency, 0.5).padLeft(9)}'
+      '${_quantile(offerLatency, 0.9).padLeft(9)}'
+      '${_quantile(selectLatency, 0.5).padLeft(9)}'
+      '${_quantile(selectLatency, 0.9).padLeft(9)}'
+      '${impossible.toString().padLeft(5)}',
     );
   }
 }
@@ -109,6 +129,5 @@ Future<void> main(List<String> arguments) async {
 String _quantile(List<int> values, double q) {
   if (values.isEmpty) return '-';
   final ordered = [...values]..sort();
-  final rank = ((ordered.length - 1) * q).round();
-  return '${ordered[rank]}';
+  return '${ordered[((ordered.length - 1) * q).round()]}';
 }

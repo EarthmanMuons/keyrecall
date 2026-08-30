@@ -789,6 +789,27 @@ equality semantics of two numbers set independently. It now asks for evidence
 about the work in front of the learner - both hands having managed that scale at
 that span - which is also what supplies the entry tempo.
 
+## 4.9 A sitting with nothing to offer
+
+`_NothingToPlay` is an error state, and simulation established that catalog
+breadth is the only thing currently keeping it off the screen.
+
+A learner who fails most of what they are given has each material walked toward
+support by recovery. Cued attempts never observe retrieval, so nothing
+re-anchors, and when there is nothing left to introduce instead the slot admits
+nothing at all. Over the seven-material catalog a true beginner reaches it by
+slot eleven and in three quarters of runs within a hundred and twenty slots;
+over the shipped forty-eight it never happens, at three times the length of a
+sweep. So breadth is an escape rather than a delay.
+
+That makes it a live path rather than a stress fixture, because
+`PracticeGoal.scopeOf` narrows the catalog to `targetMaterialIds`. A goal aimed
+at a handful of scales recreates the narrow catalog exactly. Before goals ship,
+this needs a principled floor: something a learner in that state can always be
+offered, which today's eight admission mechanisms between them do not guarantee.
+
+Pinned in `keyrecall_simulation/test/sitting_ran_dry_test.dart`.
+
 ## 5. Domain expansion
 
 The long-term technical-practice domain may include:
