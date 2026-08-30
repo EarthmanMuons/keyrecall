@@ -964,6 +964,24 @@ execution progression's, one rung of the metronome ladder at a time; this is the
 deliberate jump to a speed already demonstrated in the playing, which is a
 different question.
 
+### A probe holds every axis but its own
+
+The guidance, bootstrap, and observation probes all ask one question about
+support, and all three hold the execution conditions the learner is already at:
+the frontier tempo for that material, hand, and span, or the entry tempo where
+that span has never been managed.
+
+This is a rule about probes, not about tempo. A probe that moved two axes would
+ask two questions and answer neither, since nothing in the outcome says which
+one the learner responded to. A probe on any other axis has to implement the
+same rule in its own direction.
+
+Holding is active rather than incidental. Nothing constructs a probe: they are
+predicates over generated candidates, and the ranking key reads none of the
+execution conditions, so an axis nobody constrains is not left alone - it is
+decided by the order of a constant. Guidance probes landed at sixty for that
+reason, however fast the learner was working.
+
 Every one of those conditions is required, because speed alone is ambiguous:
 rushing and finding it trivial look identical on the tempo axis and differ on
 every other one. Retrieval must have been tested and succeeded, since playing

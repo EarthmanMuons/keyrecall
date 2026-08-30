@@ -527,12 +527,21 @@ class SchedulerPipeline {
   /// rather than absent.
   /// The one tempo a probe about guidance is asked at.
   ///
-  /// A probe moves one axis. A guidance probe that also dropped a learner from
-  /// a hundred and twenty-six to sixty moved two, and the slower one then read
-  /// as underchallenged and drew a tempo probe along behind it: a mechanism
-  /// undoing its own question a slot later. Nothing in ranking reads tempo, so
-  /// which tempo a probe landed on was decided by the order of a constant, and
-  /// sixty always won.
+  /// **A probe holds every condition but the axis it asks about.** That is the
+  /// rule this implements for tempo, and it is the rule a probe on any other
+  /// axis has to implement in its own direction: a probe testing span holds
+  /// guidance and tempo, one testing hands holds span and tempo. A probe that
+  /// moves two axes has asked two questions and can answer neither, because
+  /// nothing in the outcome says which one the learner responded to.
+  ///
+  /// It is not enough to leave the other axes alone in the construction, since
+  /// nothing constructs a probe here: these are predicates over generated
+  /// candidates, and the ranking key reads none of the execution conditions.
+  /// An unconstrained axis is therefore not held, it is chosen by the order of
+  /// a constant. A guidance probe dropped a learner from a hundred and twenty
+  /// six to sixty for exactly that reason, and the slower exercise then read as
+  /// underchallenged and drew a tempo probe along behind it: a mechanism
+  /// undoing its own question a slot later.
   ///
   /// The frontier for this material, hand and span, which is where the learner
   /// already is. [entryTempoFor] when that span has never been managed: a
