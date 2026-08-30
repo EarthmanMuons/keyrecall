@@ -52,6 +52,7 @@ List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
   ..._handsTogetherStall(trajectory),
   ..._guidanceRegression(trajectory),
   ..._shortCycleRepetition(trajectory),
+  ..._materialCluster(trajectory),
 ];
 
 /// **Invariant.** A surpassed realization was chosen while an advancing one of
@@ -400,23 +401,57 @@ Iterable<Anomaly> _guidanceRegression(Trajectory trajectory) sync* {
   }
 }
 
-/// **Observation.** The same exercise came back immediately, repeatedly.
+/// **Observation.** Two materials alternated for six slots.
 ///
-/// The tempo probe echo, generalized: any two-slot cycle that repeats is the
+/// The tempo probe echo, generalized: a two-slot cycle that repeats is the
 /// scheduler talking to itself rather than teaching.
+///
+/// Alternation specifically, which this did not always mean. Comparing each
+/// slot with the one two before it is true of a solid run of one material as
+/// well, so a learner being taken through a scale - right hand, recover, left
+/// hand, hands together - was reported as churn under a summary that described
+/// something else entirely. That is a cluster rather than a cycle, and worth
+/// counting separately.
 Iterable<Anomaly> _shortCycleRepetition(Trajectory trajectory) sync* {
   var run = 0;
   for (var i = 2; i < trajectory.slots.length; i++) {
-    final same =
-        trajectory.slots[i].chosen.material.materialId ==
-        trajectory.slots[i - 2].chosen.material.materialId;
-    run = same ? run + 1 : 0;
+    final earlier = trajectory.slots[i - 2].chosen.material.materialId;
+    final previous = trajectory.slots[i - 1].chosen.material.materialId;
+    final current = trajectory.slots[i].chosen.material.materialId;
+    run = current == earlier && current != previous ? run + 1 : 0;
     if (run == 4) {
       yield Anomaly(
         detector: 'short_cycle_repetition',
         severity: AnomalySeverity.observation,
         slot: i,
-        summary: 'the same two materials alternated for six slots',
+        summary: '$current and $previous alternated for six slots',
+        census: censusOf(trajectory.slots[i]),
+      );
+    }
+  }
+}
+
+/// **Observation.** One material held six slots in a row.
+///
+/// Not the same thing as alternating, and not obviously wrong: taking a scale
+/// through each hand and then both is a cluster somebody would recognize as
+/// practice. Counted so that a run of them can be looked at rather than
+/// assumed either way.
+Iterable<Anomaly> _materialCluster(Trajectory trajectory) sync* {
+  var run = 1;
+  for (var i = 1; i < trajectory.slots.length; i++) {
+    final same =
+        trajectory.slots[i].chosen.material.materialId ==
+        trajectory.slots[i - 1].chosen.material.materialId;
+    run = same ? run + 1 : 1;
+    if (run == 6) {
+      yield Anomaly(
+        detector: 'material_cluster',
+        severity: AnomalySeverity.observation,
+        slot: i,
+        summary:
+            '${trajectory.slots[i].chosen.material.materialId} held six '
+            'consecutive slots',
         census: censusOf(trajectory.slots[i]),
       );
     }
