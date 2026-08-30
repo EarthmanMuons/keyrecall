@@ -243,6 +243,13 @@ class _Measured extends StatelessWidget {
           ('pitch integrity', outcome.pitchIntegrity.toStringAsFixed(3)),
           ('continuity', outcome.continuity.toStringAsFixed(3)),
           ('temporal stability', outcome.temporalStability.toStringAsFixed(3)),
+          // The one number a coordination fault is read from, and the one the
+          // panel used to leave out: every other row could read 1.000 while
+          // the diagnosis said the hands came apart.
+          (
+            'coordination',
+            outcome.coordination?.toStringAsFixed(3) ?? 'one hand',
+          ),
           ('topology accuracy', outcome.topologyAccuracy.toStringAsFixed(3)),
           (
             'weights exec / mem',
