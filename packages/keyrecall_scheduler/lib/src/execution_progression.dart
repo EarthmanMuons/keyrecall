@@ -301,6 +301,24 @@ double realizationFitFor(
 ///
 /// Single-hand work on the same material is not a transition, so selecting the
 /// scale for the right hand neither benefits from this nor consumes it.
+///
+/// Once per material, not once per span. The event is the learner moving from
+/// never having coordinated this scale to having coordinated it, and after
+/// that hands together on it is no longer a new skill state: two octaves is
+/// ordinary execution progression on a skill that exists, which
+/// [ExecutionAdvance.span] already offers. Making every newly ready span a
+/// transition would duplicate that and privilege hands-together expansion over
+/// every other execution axis, which is the sort of scheduler gravity the rank
+/// key exists to remove. It would also cost a slot per span rather than a slot
+/// per scale, and the tight bound is what justifies overriding retention at
+/// all.
+///
+/// If hands-together at a wider span turns out to starve later, that is
+/// evidence about execution advances generally rather than about coordination,
+/// and the fix belongs where tempo and span starve too.
+///
+/// Direction is not read, for the same reason: up and up-down are not two
+/// first encounters with playing a scale using both hands.
 bool isCoordinationTransition(LearnerState state, Exercise exercise) =>
     exercise.conditions.hands == HandConfiguration.together &&
     !state.hasPlayed(

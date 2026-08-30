@@ -50,7 +50,8 @@ Future<void> main(List<String> arguments) async {
     ..writeln(
       '${'archetype'.padRight(22)}${'ready'.padLeft(7)}${'offrd'.padLeft(7)}'
       '${'chosn'.padLeft(7)}${'off p50'.padLeft(9)}${'off p90'.padLeft(9)}'
-      '${'sel p50'.padLeft(9)}${'sel p90'.padLeft(9)}${'bad'.padLeft(5)}',
+      '${'sel p50'.padLeft(9)}${'sel p90'.padLeft(9)}${'bad'.padLeft(5)}'
+      '${'trans'.padLeft(7)}${'run'.padLeft(5)}',
     );
 
   for (final player in PlayerArchetypes.all) {
@@ -58,6 +59,8 @@ Future<void> main(List<String> arguments) async {
     var everOffered = 0;
     var everChosen = 0;
     var impossible = 0;
+    var transitions = 0;
+    var longestRun = 0;
     final offerLatency = <int>[];
     final selectLatency = <int>[];
 
@@ -68,6 +71,20 @@ Future<void> main(List<String> arguments) async {
         materials: allScales,
         slots: slots,
       );
+
+      // How often the transition term decided a slot, and how many in a row.
+      // A run of first coordination attempts on different scales is a phase
+      // rather than a defect; a long one crowding out everything due is not.
+      var run = 0;
+      for (final slot in trajectory.slots) {
+        if (slot.winner.rankKey!.coordinationTransition) {
+          transitions++;
+          run++;
+          if (run > longestRun) longestRun = run;
+        } else {
+          run = 0;
+        }
+      }
 
       final readyAt = <String, int>{};
       final offeredAt = <String, int>{};
@@ -121,7 +138,8 @@ Future<void> main(List<String> arguments) async {
       '${_quantile(offerLatency, 0.9).padLeft(9)}'
       '${_quantile(selectLatency, 0.5).padLeft(9)}'
       '${_quantile(selectLatency, 0.9).padLeft(9)}'
-      '${impossible.toString().padLeft(5)}',
+      '${impossible.toString().padLeft(5)}'
+      '${transitions.toString().padLeft(7)}${longestRun.toString().padLeft(5)}',
     );
   }
 }
