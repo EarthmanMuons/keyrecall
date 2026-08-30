@@ -810,31 +810,45 @@ offered, which today's eight admission mechanisms between them do not guarantee.
 
 Pinned in `keyrecall_simulation/test/sitting_ran_dry_test.dart`.
 
-## 4.10 Hands together, for a player with one weak hand
+## 4.10 Hands together waits on the wrong scale
 
-Two defects, separated by measuring the prerequisite and the ranking on the same
-material rather than one clock for both.
+**The prerequisite is settled.** It read the execution frontier, which moves
+only on an attempt completed at or above `demonstratedMotorScore`; a weak hand
+rarely clears that, so its frontier stayed empty and coordination work was never
+offered. Readiness is now its own record, written on any completed attempt whose
+pitch integrity clears its own bar, because a hand playing the right notes
+unevenly knows the scale and a hand playing the wrong ones smoothly does not. An
+uneven player went from qualifying in two simulated sittings of twenty to
+eighteen.
 
-**The prerequisite is rarely satisfied for an uneven player.** Hands-together
-asks that both hands have demonstrated the scale at that span, and a frontier
-advances only on an attempt completed at or above `demonstratedMotorScore`. A
-weak hand rarely clears that, so its frontier stays empty and coordination work
-never qualifies at all: satisfied in two simulated sittings of forty for a
-strong-right-hand player, and in none for a true beginner.
+**What remains is where the delay lives.** Once a fully eligible hands-together
+candidate is admitted - which happens in the same slot the prerequisite is first
+satisfied, at both the median and the ninetieth percentile - it waits a median
+of seven to nineteen slots to be chosen, and in some sittings is never chosen.
 
-"Each hand can manage the scale before the two go together" is defensible
-pedagogy. Requiring the weaker hand to reach half the motor score before
-coordination is ever offered may not be, and it is the same
-aggregate-versus-local question in a new place: the bar is a general quality
-threshold, and the thing it gates is specific work on one scale.
+Attributing every slot of that wait says the cause is not what it looked like:
 
-**Once offered, it is often not chosen.** For players whose hands are close, a
-fully eligible candidate survives admission in the very slot the prerequisite is
-first satisfied, and is then selected in fifteen to twenty-five runs of forty, a
-median of twenty to twenty-five slots later. This is the narrow hands-together
-ranking preference, deferred earlier pending evidence, and this is the evidence.
+```text
+archetype             gap slots   other material   another realization of it
+developing                  163             100%                          0%
+intermediate                441             100%                          0%
+advanced                    310             100%                          0%
+uneven_hands                294             100%                          0%
+```
 
-Measured by `keyrecall_simulation/bin/hands_together.dart`.
+Not one slot in any archetype went to a different realization of the scale that
+was waiting. So the narrow same-material preference this was expected to need -
+prefer the first hands-together realization of M over M's other realizations -
+would produce a satisfying regression test and move the latency by nothing.
+
+What the evidence asks for instead is at the material level: a material that has
+just become hands-together ready carries a bounded scheduling urgency, so the
+coordination opportunity does not decay unnoticed while the scheduler works
+through other scales. Bounded, because coordination should not permanently
+outrank everything else once it has been reached.
+
+Measured by `keyrecall_simulation/bin/hands_together.dart` and
+`bin/ht_delay.dart`.
 
 ## 5. Domain expansion
 
