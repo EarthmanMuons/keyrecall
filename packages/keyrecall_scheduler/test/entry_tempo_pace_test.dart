@@ -56,47 +56,39 @@ void main() {
     );
   });
 
-  test(
-    'and a later band discards it, which is the defect',
-    skip:
-        'entryTempoFor caps every band past early transfer at gentleTempoBpm, '
-        'so a learner who plays at 120 meets F natural minor at 60. The cap '
-        'predates pace being measured and is the aggregate rule overriding '
-        'local evidence; decide the policy, then unskip.',
-    () {
-      final state = playingAt(120);
-      final capped = unseen('F', ScaleForm.naturalMinor);
+  test('and a later band costs exactly one rung of it', () {
+    final state = playingAt(120);
+    final capped = unseen('F', ScaleForm.naturalMinor);
 
-      expect(
-        admissionBandOf(
-          capped.material,
-        ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer),
-        isFalse,
-        reason: 'the material this pins has to be in a capped band',
-      );
-      // Not `greaterThan(gentle)`. A fix returning sixty-six would satisfy
-      // that while keeping almost all of the defect, and the point is not
-      // that the cap should be looser but that the evidence should be used.
-      //
-      // The policy this asserts, which is the thing to disagree with if any
-      // of it is wrong:
-      //
-      //   unknown pace, unknown geography  -> the gentle tempo
-      //   known pace, unknown geography    -> the geography may cost a rung
-      //                                       or two, and may not erase what
-      //                                       the hand has shown
-      //
-      // One rung of the ladder below the pace, so a harder key is allowed to
-      // be worth something and not worth everything.
-      expect(
-        pipeline.entryTempoFor(state, capped),
-        greaterThanOrEqualTo(tempoBefore(120)),
-        reason:
-            'the hand has shown 120 on scales it owns, and a harder geography '
-            'is worth a rung of caution rather than three',
-      );
-    },
-  );
+    expect(
+      admissionBandOf(
+        capped.material,
+      ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer),
+      isFalse,
+      reason: 'the material this pins has to be in a capped band',
+    );
+    // Not `greaterThan(gentle)`. A fix returning sixty-six would satisfy
+    // that while keeping almost all of the defect, and the point is not
+    // that the cap should be looser but that the evidence should be used.
+    //
+    // The policy this asserts, which is the thing to disagree with if any
+    // of it is wrong:
+    //
+    //   unknown pace, unknown geography  -> the gentle tempo
+    //   known pace, unknown geography    -> the geography may cost a rung
+    //                                       or two, and may not erase what
+    //                                       the hand has shown
+    //
+    // One rung of the ladder below the pace, so a harder key is allowed to
+    // be worth something and not worth everything.
+    expect(
+      pipeline.entryTempoFor(state, capped),
+      tempoBefore(120),
+      reason:
+          'the hand has shown 120 on scales it owns, and a harder geography '
+          'is worth a rung of caution rather than three',
+    );
+  });
 
   test('two scales in one sitting should not disagree by three rungs', () {
     // The shape a person would notice: same hand, same span, same session,

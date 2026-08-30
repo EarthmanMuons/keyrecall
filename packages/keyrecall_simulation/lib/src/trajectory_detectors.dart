@@ -123,8 +123,12 @@ Iterable<Anomaly> _sittingRanDry(Trajectory trajectory, int requested) sync* {
 /// The cap was right before pace was measured: a new geography at an unknown
 /// speed was two unknowns at once, and the gentle tempo was the only honest
 /// default. It is not a claim anybody would defend now that the evidence
-/// exists, and it makes an intermediate player meet F natural minor at sixty
+/// exists, and it made an intermediate player meet F natural minor at sixty
 /// while meeting A natural minor at ninety-six in the same sitting.
+///
+/// One rung below the pace is the settled policy and is not a trip. Geography
+/// and speed are different axes, so an unfamiliar fingering is worth being
+/// careful about; it is worth a rung of caution rather than the whole ladder.
 ///
 /// Deliberately *not* "a later introduction was slower than an earlier one".
 /// That is legitimate: geography transfers imperfectly, the bands exist to say
@@ -136,8 +140,12 @@ Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
     if (slot.winner.challengeBypass != ChallengeBypass.newMaterial) continue;
     final transferable = slot.transferableBefore;
     if (transferable <= 0) continue;
+    // One rung below the pace is the policy, not a defect: an unfamiliar
+    // geography is a real additional ask. More than one rung is the evidence
+    // being discarded rather than discounted.
+    final floor = tempoBefore(transferable);
     final asked = slot.chosen.conditions.tempoBpm;
-    if (asked >= transferable) continue;
+    if (asked >= floor) continue;
 
     yield Anomaly(
       detector: 'entry_tempo_ignores_pace',
@@ -147,7 +155,8 @@ Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
           'met ${slot.chosen.material.materialId} at '
           '${asked.toStringAsFixed(0)}bpm on '
           '${slot.chosen.conditions.hands.id} while this hand had shown '
-          '${transferable.toStringAsFixed(0)}bpm on material it owns',
+          '${transferable.toStringAsFixed(0)}bpm on material it owns, more '
+          'than the one rung a harder geography is worth',
       census: censusOf(slot),
     );
   }

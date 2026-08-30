@@ -231,6 +231,20 @@ separate, lower threshold than the steady-state band (§9: heuristic, currently
 0.15 vs. `p_min`'s 0.60) - still `overall_p`, still stage 3's own signal, just a
 different band for a first-contact candidate.
 
+The tempo it is met at is one rung below the pace this hand has shown on
+material it owns, for a geography past the early-transfer band, and the pace
+itself otherwise. Geography and speed are different axes: an unfamiliar
+fingering is a real additional ask, so the full pace is overconfident, and the
+learner's own pace is direct behavioral evidence, so dropping further treats it
+as though it barely existed. Where no pace has been shown there is nothing to
+discount and the gentlest tempo on the ladder is the only honest default.
+
+This replaced a cap at that gentlest tempo, which predated pace being measured.
+Simulation raised it about five thousand times across every archetype past a
+beginner and none below, because a beginner never reaches the capped bands: a
+learner playing at a hundred and twenty met one scale at the pace and the next
+at sixty in the same sitting.
+
 Per hand, not per material. `MaterialMemoryState` is keyed by material, because
 knowing the notes of a scale is a fact about the scale; execution residuals are
 keyed by material and hand, because a fingering is not. Reading introduction off

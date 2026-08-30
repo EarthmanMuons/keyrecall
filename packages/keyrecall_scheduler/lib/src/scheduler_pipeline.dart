@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
@@ -448,13 +446,23 @@ class SchedulerPipeline {
       exercise.conditions.hands,
       exercise.conditions.octaves,
     );
+    // Nobody has seen this learner play, so there is no evidence to be
+    // conservative about. The gentle tempo is the only honest default.
     if (transferable <= 0) return gentle;
 
+    // One rung, and exactly one. Geography and speed are different axes: an
+    // unfamiliar fingering is a real additional ask, so the full pace is
+    // overconfident, and the learner's own pace is direct behavioral evidence,
+    // so dropping to the bottom of the ladder treats it as though it barely
+    // existed. This used to be `min(transferable, gentle)`, which took a
+    // learner playing at a hundred and twenty down to sixty for anything past
+    // early transfer, and made the same sitting meet one scale at the pace and
+    // the next at the floor.
     return admissionBandOf(
           exercise.material,
         ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer)
         ? transferable
-        : math.min(transferable, gentle);
+        : tempoBefore(transferable);
   }
 
   /// Whether these are the gentlest conditions the catalog offers a scale

@@ -241,10 +241,12 @@ void main() {
       );
     });
 
-    test('a new geography is met unhurried whatever the hand can do', () {
+    test('a new geography costs a rung, not the whole ladder', () {
       // A new shape and a new speed at once is the compounding avoided
-      // everywhere else, and transfer across fingering families is exactly
-      // what nothing here measures yet.
+      // everywhere else, so an unfamiliar geography is worth being careful
+      // about. It is worth one rung: the pace is behavioral evidence, and
+      // sending a learner who plays at ninety-six back to sixty because the
+      // key is harder treats that evidence as though it barely existed.
       final state = learner();
       for (final tonic in ['C', 'D', 'E']) {
         demonstrate(
@@ -258,8 +260,8 @@ void main() {
       expect(pipeline.entryTempoFor(state, unseen(tonic: 'D')), 96);
       expect(
         pipeline.entryTempoFor(state, unseen(tonic: 'Db')),
-        v1SchedulerConfig.eligibility.gentleTempoBpm,
-        reason: 'D flat major is a keyboard away, not a speed away',
+        tempoBefore(96),
+        reason: 'D flat major is a keyboard away, not a whole ladder away',
       );
     });
 
