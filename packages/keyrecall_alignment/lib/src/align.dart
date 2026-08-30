@@ -78,11 +78,75 @@ class Alignment {
 /// surcharge, because relating arrival times to expected times needs a tempo
 /// model that does not exist, and inventing one inside an aligner would hide
 /// it.
+///
+/// Register is relative. The realization anchors the scale somewhere so a
+/// staff can draw it, but which C somebody starts on is a property of that
+/// anchor and not of the task: the same fingering, the same intervals, the
+/// same shape. So the performance is explained against the realization and
+/// against the realization shifted by whole octaves, whichever costs less.
+///
+/// Whole octaves, and the whole realization at once. A single note in the
+/// wrong octave still reads as a register substitution, because no shift of
+/// everything explains it. Hands together move together, so playing the pair
+/// an octave up is right and playing the hands two octaves apart is not: the
+/// distance between them is the task, their position on the keyboard is not.
 Alignment align({
   required ExerciseRealization realization,
   required PerformanceTranscript transcript,
   AlignmentPolicy policy = AlignmentPolicy.standard,
   ObservationGroupingPolicy groupingPolicy = ObservationGroupingPolicy.standard,
+}) {
+  final asWritten = _alignExactly(
+    realization: realization,
+    transcript: transcript,
+    policy: policy,
+    groupingPolicy: groupingPolicy,
+  );
+  final shift = _registerShiftFor(realization, transcript);
+  if (shift == 0) return asWritten;
+
+  final transposed = _alignExactly(
+    realization: realization.shiftedByOctaves(shift),
+    transcript: transcript,
+    policy: policy,
+    groupingPolicy: groupingPolicy,
+  );
+  return transposed.cost < asWritten.cost ? transposed : asWritten;
+}
+
+/// The whole-octave shift that best explains where the performance sat, or
+/// zero when the realization's own register explains it.
+///
+/// The median of what was played against the median of what was asked for,
+/// rounded to octaves. The median rather than the first note, because the
+/// first note is exactly the one a learner is most likely to have fumbled and
+/// reading the whole performance off it would move a scale on one bad start.
+///
+/// One candidate rather than a search over the keyboard: alignment is
+/// quadratic and runs on every arriving note, so this pays for at most one
+/// extra pass, and the answer it proposes is the only one the evidence
+/// actually suggests.
+int _registerShiftFor(
+  ExerciseRealization realization,
+  PerformanceTranscript transcript,
+) {
+  if (transcript.notes.isEmpty) return 0;
+  final expected = [
+    for (final moment in realization.moments)
+      for (final note in moment.notes) note.midiNote,
+  ]..sort();
+  final played = [for (final note in transcript.notes) note.pitch.midiNote]
+    ..sort();
+  final difference =
+      played[played.length ~/ 2] - expected[expected.length ~/ 2];
+  return (difference / 12).round();
+}
+
+Alignment _alignExactly({
+  required ExerciseRealization realization,
+  required PerformanceTranscript transcript,
+  required AlignmentPolicy policy,
+  required ObservationGroupingPolicy groupingPolicy,
 }) {
   final moments = realization.moments;
   final observed = transcript.notes;

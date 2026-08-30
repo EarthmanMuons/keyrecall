@@ -101,18 +101,18 @@ void main() {
       );
     });
 
-    test('the whole scale an octave off is one mistake, not fifteen', () {
-      // What a real sitting produced: an unguided attempt played correctly in
-      // the wrong register, every note a register substitution, reported as
-      // fifteen pitches slipping. That describes a performance nobody gave.
+    test('the whole scale an octave off is not a mistake', () {
+      // What a real sitting produced twice: the scale played correctly, an
+      // octave from where the staff happened to draw it, scored as every note
+      // wrong. Which C somebody starts on is not the task, so alignment
+      // explains the performance against the shifted realization and there is
+      // nothing here to report.
       final diagnosis = diagnosisOf(
         played([for (final note in expected) note - 12]),
       );
 
-      expect(diagnosis.fault, AttemptFault.notes);
-      expect(diagnosis.slippedNotes, expected.length);
-      expect(diagnosis.registerOnly, isTrue);
-      expect(diagnosis.sentence, 'Right notes, an octave off.');
+      expect(diagnosis.fault, isNull);
+      expect(diagnosis.slippedNotes, 0);
     });
 
     test('one octave slip among right notes is placed', () {

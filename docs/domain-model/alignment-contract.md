@@ -139,11 +139,25 @@ rather than splitting the edit script's shape:
 Substitution(expected, observed, difference)
 ```
 
-Two reasons. An attempt played an octave low would otherwise read as clean
-retrieval, which would make the register in `ExerciseRealization` unobservable
-in principle. And an octave displacement is plausibly evidence about register
-planning rather than about recalling the scale, so collapsing it into a generic
-wrong note throws away the distinction the learner model would want.
+An octave displacement is plausibly evidence about register planning rather than
+about recalling the scale, so collapsing it into a generic wrong note throws
+away a distinction the learner model would want.
+
+**Sameness is exact, but the anchor is not part of the task.** Register is
+relative: a performance is explained against the realization and against the
+realization shifted by whole octaves, whichever costs less. The realization
+anchors the scale somewhere so a staff can draw it, and that anchor is a drawing
+decision - the same fingering, the same intervals, the same shape, wherever on
+the keyboard it starts. Two device sittings scored a scale played correctly an
+octave from where the staff drew it as every note wrong, one of them on a hand's
+first encounter with the material.
+
+The shift is whole octaves applied to the whole realization at once, so a single
+note in the wrong octave still records a register substitution: no shift of
+everything explains it. Hands together move together, which is what makes the
+rule say something. The distance between the hands is the task; where the pair
+sits is not, and normalizing each hand independently would read hands two
+octaves apart as correct.
 
 **Performance sameness is not notation sameness.** Both sides carry a
 `SpelledPitch`, which makes `expected.pitch == observed.pitch` easy to write and

@@ -22,12 +22,12 @@ String octavesName(int octaves) =>
 
 /// Where each hand starts, as a learner would read it off a keyboard.
 ///
-/// Part of the task rather than a cue. Which octave to begin in is a
-/// convention this app chose, not something the material implies, so an
-/// unguided attempt has no way to infer it: a learner who plays the scale
-/// perfectly one octave from where the exercise placed it has done nothing
-/// wrong and every note counts as a wrong pitch. The rungs withhold what the
-/// notes are; they were never meant to withhold where the hand goes.
+/// A suggestion rather than part of the task. Which octave to begin in is a
+/// convention this app chose so a staff has somewhere to draw the scale, and
+/// scoring is register-relative: playing it perfectly an octave from where the
+/// exercise placed it is the same scale and reads as one. This says where the
+/// notation put it, so a learner reading the staff and a learner reading this
+/// line put their hand in the same place.
 String startingNotesName(ExerciseRealization realization) {
   final starts = [
     for (final hand in [Hand.left, Hand.right])

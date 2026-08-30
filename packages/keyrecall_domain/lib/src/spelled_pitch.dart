@@ -68,6 +68,18 @@ class SpelledPitch {
     }
   }
 
+  /// The same spelling [octaves] higher, or lower for a negative count.
+  ///
+  /// Spelling is untouched, because moving by whole octaves cannot change a
+  /// letter or an accidental. An F sharp stays an F sharp.
+  SpelledPitch shiftedByOctaves(int octaves) => octaves == 0
+      ? this
+      : SpelledPitch(
+          letter: letter,
+          octave: octave + octaves,
+          alteration: alteration,
+        );
+
   /// The pitch class this spelling sounds.
   int get pitchClass => (letter.naturalPitchClass + alteration + 12) % 12;
 

@@ -31,6 +31,11 @@ class RealizedNote {
 
   const RealizedNote({required this.hand, required this.pitch});
 
+  /// The same note [octaves] higher, or lower for a negative count.
+  RealizedNote shiftedByOctaves(int octaves) => octaves == 0
+      ? this
+      : RealizedNote(hand: hand, pitch: pitch.shiftedByOctaves(octaves));
+
   /// Which key it is played on, which is what a keyboard and MIDI need.
   int get midiNote => pitch.midiNote;
 
@@ -65,6 +70,15 @@ class RealizationMoment {
 
   /// The notes sounding at this moment, at most one per hand in V1.
   final List<RealizedNote> notes;
+
+  /// The same moment [octaves] higher, or lower for a negative count.
+  RealizationMoment shiftedByOctaves(int octaves) => octaves == 0
+      ? this
+      : RealizationMoment(
+          position: position,
+          metricOffset: metricOffset,
+          notes: [for (final note in notes) note.shiftedByOctaves(octaves)],
+        );
 
   /// Throws [ArgumentError] when a hand is asked to play twice at once.
   ///
@@ -136,6 +150,17 @@ class ExerciseRealization {
       throw ArgumentError.value(moments, 'moments', 'must not be empty');
     }
   }
+
+  /// The whole exercise [octaves] higher, or lower for a negative count.
+  ///
+  /// Every note moves together, so the shape, the intervals, and the distance
+  /// between the hands are all preserved. Which C a scale starts on is a
+  /// property of the realization, not of the scale.
+  ExerciseRealization shiftedByOctaves(int octaves) => octaves == 0
+      ? this
+      : ExerciseRealization([
+          for (final moment in moments) moment.shiftedByOctaves(octaves),
+        ]);
 
   /// Which hands play at all.
   Set<Hand> get hands => {
