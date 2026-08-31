@@ -222,9 +222,9 @@ const int _middleC = 60;
 /// Rounding to the closer octave keeps every key within half an octave of the
 /// hand's home instead.
 ///
-/// One consequence, for when hands-together work becomes real: at one octave
-/// the two hands come out the conventional octave apart, and at two they come
-/// out two octaves apart rather than the octave a pianist would expect.
+/// One consequence for hands-together work: at one octave the two hands come
+/// out the conventional octave apart, and at two they come out two octaves
+/// apart rather than the octave a pianist would expect.
 int _tonicFor(Hand hand, int pitchClass, int octaves) => switch (hand) {
   Hand.right => _nearestTonic(_middleC, pitchClass),
   Hand.left => _nearestTonic(_middleC - 12 * octaves, pitchClass),

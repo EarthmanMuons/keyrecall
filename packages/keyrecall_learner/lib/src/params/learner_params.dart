@@ -238,25 +238,20 @@ class MaterialExecutionParams {
   /// should move when something was managed, not only when it was trivial.
   final double demonstratedMotorScore;
 
-  /// Pitch integrity at or above which a hand counts as knowing this material
-  /// well enough for the other hand to join it.
+  /// Pitch integrity at or above which a hand has separately demonstrated
+  /// enough of a material for the other hand to join it.
   ///
-  /// A different claim from the execution frontier beside it, and deliberately
-  /// not the same threshold. The frontier asks whether a tempo and span were
-  /// played rather than endured, because it is the place a learner is asked to
-  /// go on from. This asks whether putting the hands together would be a
-  /// coordination exercise rather than the simultaneous remediation of two
-  /// parts nobody has learned, which is a question about the notes.
+  /// Deliberately not the execution frontier's threshold. The frontier asks
+  /// whether a tempo and span were played rather than endured, because it is
+  /// the place a learner is asked to go on from; this asks whether putting the
+  /// hands together would be a coordination exercise rather than the
+  /// simultaneous remediation of two parts.
   ///
-  /// So it reads pitch rather than motor quality. A hand that plays the right
-  /// notes unevenly knows the scale; a hand that plays the wrong ones smoothly
-  /// does not, and is the one that should not be brought into hands-together
-  /// work. Using the motor frontier as the gate meant a weak hand never
-  /// cleared it, its frontier stayed empty, and coordination work was never
-  /// offered at all: simulation found a strong-right-hand player qualifying in
-  /// two sittings of forty, and a true beginner in none.
+  /// So it reads pitch rather than motor quality: a hand playing the right
+  /// notes unevenly is ready to coordinate, and one playing the wrong notes
+  /// smoothly is not. It makes no claim about factual retrieval.
   ///
-  /// Provisional. The structural decision is that hands-together readiness and
+  /// Provisional. The structural decision is that coordination readiness and
   /// the execution frontier are different claims; where exactly this sits is a
   /// calibration nobody has done.
   final double handsTogetherPitchIntegrity;
@@ -525,22 +520,14 @@ const LearnerParams v1PrototypeLearnerParams = LearnerParams(
 
 /// The live V1 learner-model constants.
 ///
-/// The same numbers as [v1PrototypeLearnerParams] under a version of their
-/// own, because the model reading them is no longer the prototype's: execution
-/// evidence is attributed at the tempo an attempt demonstrated rather than the
-/// one it was asked for, it keeps an execution frontier and a paced tempo, and
-/// it records which spans a hand knows well enough for the other to join it.
+/// The same numbers as [v1PrototypeLearnerParams] under a version of their own,
+/// because the model reading them is no longer the prototype's.
 ///
-/// The version moves when the model learns differently, which is why it is at
-/// `v1-5`: a state carrying none of those records is not a state this model
-/// would have produced, and a checkpoint written before them is refused by
-/// [LearnerStateCheckpoint.isUsableUnder] rather than decoded into something
-/// with silent zeros in it. The journal replays the history instead, which
-/// reconstructs the records properly.
-///
-/// The version is what an attempt records, and what replay refuses to
-/// reinterpret under. Two models that learn differently must not share one, or
-/// a journal replays into a state its own history never produced.
+/// **The version moves whenever the model learns differently.** It is what an
+/// attempt records and what replay refuses to reinterpret under, so two models
+/// that learn differently must not share one: a checkpoint written by another
+/// is refused by [LearnerStateCheckpoint.isUsableUnder] rather than decoded
+/// into a state with silent zeros in it, and the journal is replayed instead.
 const LearnerParams v1LearnerParams = LearnerParams(
   modelVersion: 'v1-5',
   competency: _v1Competency,

@@ -18,10 +18,7 @@ import 'technical_material.dart';
 /// them admissible at once, and it should not stop the scheduler using easier
 /// related material that prepares for them.
 ///
-/// V1 has one goal, and this exists so the seam is in the right place rather
-/// than discovered later. When goals become real, the shape to grow into is a
-/// target domain, target execution conditions, and a target proficiency, with
-/// support material distinguished from target material.
+/// V1 has one goal, general fluency over the whole catalog.
 @immutable
 class PracticeGoal {
   /// What this goal is called.

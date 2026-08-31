@@ -73,9 +73,8 @@ class MaterialMemoryState {
   /// A separate clock from [factualLastRetrievalAt], and the separation is the
   /// point. Retrieval timing asks how long ago this was produced at all;
   /// establishment timing asks how long this rung has been the one the learner
-  /// succeeds at. Sharing one clock made every success at the established rung
-  /// push the next step toward independence further away, so practising more
-  /// meant waiting longer to be asked for less support.
+  /// succeeds at. Sharing one clock would make every success at the established
+  /// rung push the next step toward independence further away.
   ///
   /// It moves when the rung changes and not when it is repeated. A failure
   /// clears the establishment entirely, since the rung is no longer one the

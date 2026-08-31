@@ -41,17 +41,13 @@ class MaterialExecutionState {
   /// The fastest tempo this learner has managed at each span, for this
   /// material and this hand.
   ///
-  /// The execution frontier, and a learner fact rather than scheduler
-  /// bookkeeping: it says what has been demonstrated here, which is the same
-  /// kind of claim the residual beside it makes. It belongs at this key
-  /// because a right hand that has played two octaves says nothing about a
-  /// left hand that has not, and hands together is a third frontier again.
+  /// The execution frontier, keyed per material and hand because a right hand
+  /// that has played two octaves says nothing about a left hand that has not,
+  /// and hands together is a third frontier again.
   ///
   /// A tempo per span rather than a widest span and a fastest tempo, because
-  /// those are two maxima and the pair of them is not a place anybody has
-  /// been. One octave at 96 and two at 60 would read as two octaves at 96,
-  /// and a step on from there would be asking for something a step past
-  /// nothing. Execution conditions are a small lattice and this is its shape.
+  /// those are two maxima and the pair of them is not a place anybody has been:
+  /// one octave at 96 and two at 60 would read as two octaves at 96.
   ///
   /// Demonstrated rather than attempted, so a span or a tempo somebody could
   /// not get through does not become the place they are asked to go on from.
@@ -60,17 +56,14 @@ class MaterialExecutionState {
   /// The fastest tempo this learner has actually played this cleanly, whatever
   /// they were asked for.
   ///
-  /// A separate question from the frontier beside it, and deliberately not
-  /// folded into it. The frontier answers what this learner has been asked for
-  /// and managed, which is the only thing a step goes on from; this answers how
-  /// fast they play when nobody is holding them back, which is what an unseen
-  /// scale should arrive near.
+  /// Deliberately not folded into the frontier beside it. The frontier answers
+  /// what this learner has been asked for and managed, which is the only thing
+  /// a step goes on from; this answers how fast they play unprompted, which is
+  /// what an unseen scale should arrive near.
   ///
-  /// Keeping them apart is what preserves the rule that evidence at a tempo is
-  /// earned by being asked for that tempo. Somebody who plays a sixty-beat
-  /// exercise at a hundred and twenty has shown a pace, not a demonstrated
-  /// rung, and the next scale they meet should start nearer that pace without
-  /// their frontier claiming a tempo nobody posed.
+  /// Keeping them apart preserves the rule that evidence at a tempo is earned
+  /// by being asked for that tempo: playing a sixty-beat exercise at a hundred
+  /// and twenty shows a pace, not a demonstrated rung.
   double pacedTempoBpm;
 
   /// The spans at which this hand has played this material well enough for the
@@ -78,18 +71,10 @@ class MaterialExecutionState {
   ///
   /// Not the execution frontier, and deliberately kept beside it rather than
   /// derived from it. The frontier says where this hand can be asked to go on
-  /// from, and moves only on an attempt played rather than endured. This says
-  /// the notes are known here, so putting the hands together would be a
-  /// coordination exercise rather than the simultaneous remediation of two
-  /// parts nobody has learned.
-  ///
-  /// The two came apart on exactly the learner the distinction is for. A weak
-  /// hand rarely clears the frontier's motor bar, so its frontier stayed empty
-  /// and hands-together work was never offered: a strong-right-hand player
-  /// qualified in two simulated sittings of forty, and a true beginner in
-  /// none. Unimanual practice does not fully transfer to bimanual playing, so
-  /// waiting for the weaker hand to be good alone is waiting for the wrong
-  /// thing.
+  /// from and moves only on an attempt played rather than endured; this says
+  /// the hand produced the right pitches here, which makes no claim about
+  /// factual retrieval and is what a weak hand can satisfy while its frontier
+  /// stays empty.
   ///
   /// The tempo recorded here is the performed one, where the frontier records
   /// the requested one. A rung is earned by being asked for it, which is what
