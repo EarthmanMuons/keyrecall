@@ -19,6 +19,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   with diagnostic-only suppression when coordination is the weaker factor.
 - A realization-family pacing census covering allocation, yield, concentration,
   return paths, and motion balance across learner archetypes.
+- `RealizationFamilyPacing`, a rolling allocation-and-yield model over declared
+  realization-family keys, and `FamilyPacedPipeline`, which applies its pressure
+  at selection beside the repetition guard.
+- A paired same-seed experiment comparing current scheduling against
+  realization-family pressure across archetypes.
 - Initial port of the KeyRecall synthetic harness from the Python prototypes:
   the seven `SyntheticProfile` hidden learners, outcome sampling and true memory
   transitions, `PracticeSimulation`, and the `SchedulerAgent` that drives the

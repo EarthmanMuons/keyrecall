@@ -17,6 +17,7 @@ export 'src/clusters.dart';
 export 'src/practice_simulation.dart';
 export 'src/player_archetypes.dart';
 export 'src/python_compatible_random.dart';
+export 'src/realization_family_pacing.dart';
 export 'src/scheduler_agent.dart';
 export 'src/synthetic_learner.dart';
 export 'src/synthetic_player.dart';

@@ -109,3 +109,68 @@ The next production policy, if one is warranted, should therefore act on a
 measured allocation failure: persistent family concentration with poor yield and
 a useful alternative. It should not be inferred from candidate-local probability
 ordering alone.
+
+## Generic pressure experiment
+
+`family_pacing_ab` runs each archetype twice on the same seed, once against the
+current pipeline and once against `FamilyPacedPipeline`, and reports allocation,
+yield, concentration, breadth, and starvation for both arms.
+
+Families are declared string keys, not an enum the scheduler branches on. A
+right- or left-hand exercise declares one key; a hands-together exercise
+declares `hands:together` alongside `motion:parallel` or `motion:contrary`, so
+rotating between motions still accumulates pressure on the shared strand while
+each motion is paced separately. A later realization would join the same
+accounting by naming the strands it belongs to, without the pacing algorithm
+gaining a case for it.
+
+Pressure over a rolling window of recent selections is
+`max(0, share - floor) x (1 - managed fraction)`. It rises when a family holds
+much of the window and little of that work was productive, and falls both as
+the family produces managed execution and as the window fills with other
+families. A family over the set-aside pressure has its candidates removed from
+the available set, exactly where the repetition guard acts, and never when
+nothing else is admitted. Admission is untouched: a pressured candidate stays
+eligible and ranked, and still wins a slot where it is the only thing there.
+Ranking is lexicographic, so a penalty term could only have broken exact ties.
+
+## Experiment results
+
+Ten paired 60-slot runs per archetype at window 12, floor 0.5, minimum four
+family attempts, set-aside at 0.15:
+
+- `developing` moves 29 of 262 hands-together slots to single-hand work. The
+  median most concentrated 20-slot window falls from 75% to 65% and its maximum
+  from 95% to 75%; the longest unmanaged hands-together run falls from a median
+  of 8 and a maximum of 18 to 6 and 10. Frontier advances rise from 108 to 122,
+  all of the gain single-hand. Hands-together work does not disappear: every run
+  still reaches it, first exposure is unmoved at slot 12.7, recovery still fires
+  94 times, and motion switching stays at a median of 7 per run.
+- `advanced` is bit-identical. Pressure never reaches the set-aside threshold in
+  any of its 600 slots, because its hands-together work is managed.
+- `uneven_hands` stays a low hands-together trajectory, 5.7% to 6.2%, with
+  frontier advances within two of the current arm. Its 18 set-aside slots act on
+  the right-hand family it over-allocates, not on hands together.
+
+The signature holds across settings. At a 0.20 or 0.25 set-aside threshold, or
+at a window of 16, `developing` still loses 19 to 27 hands-together slots, still
+gains frontier advances, and still never loses hands-together work entirely;
+only the magnitude moves. No arm produced a terminal run.
+
+## Open question the experiment raised
+
+The mechanism is family-agnostic by construction, so it also paces single-hand
+families. `true_beginner` allocates 58.8% of its slots to the left hand and
+advances a frontier 11 times in 600 slots, so almost everything in its window
+reads as unproductive and left-hand pressure fires. Two of ten runs then reach
+hands-together work they never reached before: five attempts, none managed,
+three of them recovery. The gentler settings reduce this to one or two attempts
+but do not remove it.
+
+That is the mechanism working as specified and the yield signal being wrong for
+this cohort. Managed execution is a demanding definition of productive work for
+a learner who is not yet managing anything, and a family that is unproductive
+because the learner is early is not the same as a family that is unproductive
+because it is being over-allocated. A production policy would need a yield
+signal that separates those, or a floor that keeps a family whose alternatives
+are all less prepared from being paced at all.
