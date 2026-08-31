@@ -174,3 +174,72 @@ because the learner is early is not the same as a family that is unproductive
 because it is being over-allocated. A production policy would need a yield
 signal that separates those, or a floor that keeps a family whose alternatives
 are all less prepared from being paced at all.
+
+## Alternative readiness at set-aside points
+
+`family_pacing_relief` records both sides of every substitution the filter
+makes: the best candidate pressure removed, the best candidate that replaced
+it, their predicted success, band membership, bypass category, and what the
+replacement went on to do.
+
+Predicted success separates the cohorts cleanly:
+
+| | set-asides | relieving at least as ready | median gap | relieving managed |
+| --- | --- | --- | --- | --- |
+| `developing` | 43 | 95.3% | +0.059 | 28.6% |
+| `uneven_hands` | 18 | 44.4% | -0.030 | 21.4% |
+| `true_beginner` | 66 | 19.7% | -0.016 | 0.0% |
+
+`developing` substitutes a hands-together progression candidate for a
+better-predicted single-hand one in 39 of 43 cases, and the replacement manages
+execution and advances a frontier in 12 of them. `true_beginner` substitutes
+left-hand new material for right-hand new material at slightly worse predicted
+success, and not one of its 63 replacements managed execution or advanced
+anything. Low yield means the opposite thing in the two cohorts, and the
+readiness of the alternative is what says which.
+
+Band membership does not discriminate: no pressured candidate and no relieving
+candidate is inside the challenge band in any archetype, because every
+set-aside substitutes one bypass candidate for another. Eligibility does not
+either; both sides are fully eligible in every case. Predicted success is the
+only one of the three that separates them.
+
+## Relievable pressure
+
+`requireReadyAlternative` adds one condition to relief: the best surviving
+candidate must be at least as ready as the best candidate pressure would
+remove. Pressure still detects concentration with poor yield; relief now also
+requires somewhere better to put the slot. The rule names no family and no
+learner stage, so a later strand inherits it without a clause of its own.
+
+Against the same ten paired runs per archetype:
+
+- `true_beginner` set-asides fall from 66 to 20 and its hands-together leak
+  from five attempts to one, in one run of ten rather than two. Frontier
+  advances rise from 11 to 15, better than the 11 the ungated filter produced,
+  so the single-hand pacing that survives the gate is the useful part of it.
+- `developing` is essentially unchanged: the same 29 hands-together slots move
+  to single-hand work, concentration still falls to 65% median and 75% maximum
+  of a 20-slot window, and the longest unmanaged run still falls to 6 median and
+  10 maximum. Only 3 of its 43 set-asides fail the gate. Frontier advances rise
+  by 10 rather than 14, which is what those three slots cost.
+- `uneven_hands` keeps 7 of 18 set-asides and ends 4 frontier advances below the
+  current arm rather than 2. Its pressure is genuinely ambiguous: single-hand
+  concentration with alternatives that are readier only half the time.
+- `advanced` remains bit-identical; pressure never fires.
+
+The gate therefore removes most of the regression at a small cost to the case it
+was meant to serve, without a beginner exemption or a family-specific
+prerequisite.
+
+## What is still unsettled
+
+Predicted success answers whether an alternative is likelier to succeed, not
+whether it is the more useful next work; a comfortable candidate scores well on
+it. The `uneven_hands` result is where that shows: half its alternatives are
+readier, the gate keeps those, and the trajectory still ends slightly behind the
+current scheduler. A comparison reading the ranking facts already computed at
+this point, band position, progression opportunity, recovery target, and
+frontier potential, is the next thing to test against these same three cohorts.
+The constants and the definition of productive work are untouched, since neither
+is what the readiness result turned on.

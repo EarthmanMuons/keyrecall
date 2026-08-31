@@ -19,6 +19,7 @@ Future<void> main(List<String> arguments) async {
     ..addOption('share-floor', defaultsTo: '0.5')
     ..addOption('min-attempts', defaultsTo: '4')
     ..addOption('set-aside-at', defaultsTo: '0.15')
+    ..addFlag('require-ready-alternative', defaultsTo: false)
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
   if (options.flag('help')) {
@@ -34,6 +35,7 @@ Future<void> main(List<String> arguments) async {
     shareFloor: double.parse(options.option('share-floor')!),
     minFamilyAttempts: int.parse(options.option('min-attempts')!),
     setAsideAt: double.parse(options.option('set-aside-at')!),
+    requireReadyAlternative: options.flag('require-ready-alternative'),
   );
   final jobs = <TrajectoryJob>[
     for (final archetype in archetypes)
@@ -65,7 +67,8 @@ Future<void> main(List<String> arguments) async {
   stdout.writeln(
     'realization-family pacing A/B, $seeds independent runs x $slots slots, '
     'window ${pacing.window}, floor ${pacing.shareFloor}, '
-    'min ${pacing.minFamilyAttempts}, set aside at ${pacing.setAsideAt}',
+    'min ${pacing.minFamilyAttempts}, set aside at ${pacing.setAsideAt}, '
+    'ready alternative required ${pacing.requireReadyAlternative}',
   );
   for (final archetype in archetypes) {
     final result = results[archetype] ?? _Comparison();
@@ -81,7 +84,8 @@ Future<void> main(List<String> arguments) async {
     stdout
       ..writeln(
         '  set-aside slots: ${result.paced.setAsideSlots}; '
-        'nothing to relieve: ${result.paced.unrelievedSlots}',
+        'nothing to relieve: ${result.paced.unrelievedSlots}; '
+        'no ready alternative: ${result.paced.unreadySlots}',
       )
       ..writeln(
         '  first divergence: ${result.divergedRuns}/${result.runs} runs',
@@ -251,8 +255,9 @@ Map<String, _Comparison> _runJobs(
     comparison.current.absorb(_measure(current));
     comparison.paced.absorb(
       _measure(paced)
-        ..setAsideSlots = pipeline.setAsideSlots
-        ..unrelievedSlots = pipeline.unrelievedSlots,
+        ..setAsideSlots = pipeline.setAsides.length
+        ..unrelievedSlots = pipeline.unrelievedSlots
+        ..unreadySlots = pipeline.unreadySlots,
     );
     final shared = current.slots.length < paced.slots.length
         ? current.slots.length
@@ -463,6 +468,7 @@ class _Metrics {
   int slotsToSingleHandCount = 0;
   int setAsideSlots = 0;
   int unrelievedSlots = 0;
+  int unreadySlots = 0;
   final Map<_Family, int> familyAttempts = {};
   final List<int> maxHt20 = [];
   final List<int> maxUnmanagedHt20 = [];
@@ -505,6 +511,7 @@ class _Metrics {
     slotsToSingleHandCount += other.slotsToSingleHandCount;
     setAsideSlots += other.setAsideSlots;
     unrelievedSlots += other.unrelievedSlots;
+    unreadySlots += other.unreadySlots;
     other.familyAttempts.forEach((key, value) {
       familyAttempts[key] = (familyAttempts[key] ?? 0) + value;
     });

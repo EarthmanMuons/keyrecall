@@ -41,11 +41,21 @@ class RealizationFamilyPacingConfig {
   /// The pressure at which a family's candidates are set aside.
   final double setAsideAt;
 
+  /// Whether relief requires an alternative at least as ready as the
+  /// candidate it would displace.
+  ///
+  /// Without it, pressure assumes that poor yield means the learner should be
+  /// working on something else. For a learner failing everything, poor yield
+  /// instead means the foundational work is not finished, and every other
+  /// family is a worse use of the slot.
+  final bool requireReadyAlternative;
+
   const RealizationFamilyPacingConfig({
     this.window = 12,
     this.shareFloor = 0.5,
     this.minFamilyAttempts = 4,
     this.setAsideAt = 0.15,
+    this.requireReadyAlternative = false,
   });
 }
 
@@ -95,6 +105,34 @@ class RealizationFamilyPacing {
       resolver(exercise).any(pressured.contains);
 }
 
+/// One slot where pressure removed candidates and others survived.
+///
+/// Both sides of the substitution the filter made: the best candidate it
+/// removed and the best candidate that replaced it, so a diagnostic can ask
+/// how much better prepared the relieving family actually was.
+class FamilySetAside {
+  final int slot;
+  final Set<String> pressuredFamilies;
+  final CandidateTrace pressured;
+  final CandidateTrace relieving;
+
+  const FamilySetAside({
+    required this.slot,
+    required this.pressuredFamilies,
+    required this.pressured,
+    required this.relieving,
+  });
+
+  /// Whether the relieving family is a credible substitute.
+  ///
+  /// Predicted success alone, which is the scheduler's existing generic
+  /// readiness measure. A richer comparison would read the ranking facts, but
+  /// this is enough to ask whether readiness separates a family that should
+  /// yield the slot from one whose alternatives are all less prepared.
+  bool get isRelievable =>
+      relieving.prediction.overallP >= pressured.prediction.overallP;
+}
+
 /// The V1 pipeline with realization-family pressure applied at selection.
 ///
 /// A selection-stage filter beside the repetition guard, not an admission
@@ -106,10 +144,13 @@ class FamilyPacedPipeline extends SchedulerPipeline {
   final RealizationFamilyPacing pacing;
 
   /// Slots where pressure removed candidates and others survived.
-  int setAsideSlots = 0;
+  final List<FamilySetAside> setAsides = [];
 
   /// Slots where every admitted candidate was pressured and none was removed.
   int unrelievedSlots = 0;
+
+  /// Slots where pressure held because no alternative family was ready.
+  int unreadySlots = 0;
 
   FamilyPacedPipeline({
     required super.learner,
@@ -132,7 +173,22 @@ class FamilyPacedPipeline extends SchedulerPipeline {
       unrelievedSlots++;
       return guarded;
     }
-    if (relieved.length < guarded.length) setAsideSlots++;
+    if (relieved.length == guarded.length) return relieved;
+
+    final removed = guarded
+        .where((trace) => pacing.isPressured(trace.exercise, pressured))
+        .toList();
+    final setAside = FamilySetAside(
+      slot: session.attemptsThisSession,
+      pressuredFamilies: pressured,
+      pressured: selectBest(removed)!,
+      relieving: selectBest(relieved)!,
+    );
+    if (pacing.config.requireReadyAlternative && !setAside.isRelievable) {
+      unreadySlots++;
+      return guarded;
+    }
+    setAsides.add(setAside);
     return relieved;
   }
 

@@ -1,4 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -81,7 +83,65 @@ void main() {
       expect(pacing.pressure('hands:together'), 0);
     });
   });
+
+  group('relievability', () {
+    test('a readier alternative can relieve the pressured family', () {
+      expect(
+        _setAside(pressuredP: 0.20, relievingP: 0.32).isRelievable,
+        isTrue,
+      );
+    });
+
+    test('a less ready alternative cannot', () {
+      expect(
+        _setAside(pressuredP: 0.20, relievingP: 0.17).isRelievable,
+        isFalse,
+      );
+    });
+  });
 }
+
+FamilySetAside _setAside({
+  required double pressuredP,
+  required double relievingP,
+}) => FamilySetAside(
+  slot: 0,
+  pressuredFamilies: const {'hands:together'},
+  pressured: _trace(HandConfiguration.together, pressuredP),
+  relieving: _trace(HandConfiguration.right, relievingP),
+);
+
+CandidateTrace _trace(HandConfiguration hands, double executionP) =>
+    CandidateTrace(
+      exercise: _exercise(hands),
+      eligibility: const EligibilityDecision(
+        EligibilityTier.fullyEligible,
+        'eligible',
+      ),
+      safety: const SafetyDecision(true, 'safe'),
+      challengeStatus: StageStatus.reached,
+      prediction: Prediction(
+        independentRetrievalP: 1,
+        materialAvailableP: 1,
+        executionP: executionP,
+        coordinationP: 1,
+        topologyP: 1,
+      ),
+      isWithinChallengeBand: false,
+      challengeBypass: ChallengeBypass.executionProgression,
+      challengeSurvived: true,
+      priorityStatus: StageStatus.reached,
+      rankKey: const RankKey(
+        tier: EligibilityTier.fullyEligible,
+        coordinationTransition: false,
+        retention: 0,
+        information: 0,
+        diversity: 0,
+        goals: 0,
+        realization: RealizationRank.unmeasured,
+        realizationFit: 0,
+      ),
+    );
 
 RealizationFamilyPacing _filled({
   required int together,

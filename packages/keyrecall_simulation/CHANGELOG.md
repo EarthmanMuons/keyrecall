@@ -24,6 +24,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   at selection beside the repetition guard.
 - A paired same-seed experiment comparing current scheduling against
   realization-family pressure across archetypes.
+- `FamilySetAside` and a diagnostic reporting how ready the best cross-family
+  alternative is wherever pressure displaces a candidate.
+- `requireReadyAlternative`, which relieves a pressured family only when a
+  surviving candidate is at least as ready as the one it displaces.
 - Initial port of the KeyRecall synthetic harness from the Python prototypes:
   the seven `SyntheticProfile` hidden learners, outcome sampling and true memory
   transitions, `PracticeSimulation`, and the `SchedulerAgent` that drives the
