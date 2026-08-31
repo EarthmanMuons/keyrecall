@@ -66,6 +66,21 @@ person. Asserting one would freeze today's behavior as the definition of healthy
 practice and give the simulation a second specification whose arbitrary numbers
 are as hard to reason about as the scheduler's.
 
+## What a slot can and cannot answer
+
+**A slot's `alternatives` are post-admission and post-guard evidence, and cannot
+answer what was refused.** They are built from the selectable set, so every
+candidate in them already cleared eligibility, challenge admission, and the
+repetition guard. A diagnostic that counts refusals over `alternatives` measures
+only the survivors, and reports the admission stage as near-total success by
+construction.
+
+A sitting evaluates thousands of candidates a slot and retains the selectable
+ones, which is why the refused ones have to be read as they go past:
+`runTrajectory` takes an `observeTraces` callback that receives every trace for
+each slot. Anything asking which stage refused a candidate, or under which
+guidance rung, reads that rather than the trajectory.
+
 ## The census
 
 Every trip carries the candidate census for its slot: the winner, everything it

@@ -176,6 +176,10 @@ against a _preference_ in how the single one is spent. Since the transition is
 consumed by whichever hands-together exercise wins it, a parallel-motion winner
 spends the once-per-material budget on the harder of the two realizations.
 
+**The domain cannot express contrary motion, so this is not a scheduler change
+yet.** See section 5; the argument above is why the representation is worth
+adding, not a rule to implement now.
+
 ## 3. Proposed policy shape
 
 A coordination-transition-specific admission path, alongside
@@ -187,20 +191,25 @@ admit when
     and each hand's pitch integrity on this material
         at this span clears CALIBRATION                       see section 5
     and exercise.guidance.isMaterialSupplied                  load-bearing
-do not require
+bypass, for this transition only
     memory.hasFactualRetrieval
-    the candidate to clear BAND_EXECUTION_FLOOR
-tempo
-    handsTogetherEntryTempo, unchanged: a rung below the slower hand
-ranking
-    prefer contrary motion while isCoordinationTransition holds
-consumption
-    exactly as today: the first hands-together attempt ends it
+    BAND_EXECUTION_FLOOR
+retain
+    handsTogetherEntryTempo, a rung below the slower hand
+    once-per-material consumption, ended by the first attempt
 ```
 
 Coordination readiness on both hands is already the entry condition of
 `isCoordinationTransition`, so the pitch-integrity requirement is an additional
 bar on the same records rather than a second source of truth.
+
+Both bypasses are load-bearing and each carries a cohort: section 5 measures
+`BAND_EXECUTION_FLOOR` as what blocks `uneven_hands` and admission as what
+blocks `developing`, so a path that dropped either would leave one of them where
+it is.
+
+Contrary-motion preference is **not** part of this. It is deferred to future
+domain support, in section 5.
 
 ## 4. Explicit non-changes
 
@@ -213,15 +222,16 @@ tempted to generalize this exception and the evidence does not support it.
   researched here concerns those axes.
 - **`BAND_EXECUTION_FLOOR` is not weakened generally.** It is bypassed for this
   one transition, on the material's-own-record argument, and nowhere else.
-- **No second transition by direction.** Contrary motion is a ranking preference
-  within the single transition.
+- **No second transition by direction**, and no contrary-motion ranking
+  preference in this change. The domain cannot represent contrary motion; see
+  section 5.
 - **No ranking changes outside the coordination transition.** The rank key,
   repetition policy, and tempo policy are untouched. The audit gave no evidence
   to disturb them.
 - **No change to new-material policy.** `unseenMaterialRequiresCue` and the
   admission bands govern introduction as before.
 
-## 5. Unresolved calibration
+## 5. What measurement settled, and what it did not
 
 **The per-hand pitch-integrity threshold is not literature-derived.** Nothing
 found licenses a specific value, and the honest reason is that the literature
@@ -236,13 +246,73 @@ The literature supports the _shape_ of the rule, which is that per-hand pitch
 integrity rather than factual retrieval is the right channel to read. It
 supports no number in it.
 
-Two further open questions, both smaller:
+### Contrary motion is deferred to future domain support
 
-- whether the catalog generates contrary-motion realizations at all, which
-  decides whether the ranking preference has anything to prefer;
-- whether the `uneven_hands` cohort actually reaches a contest once the band
-  floor is bypassed, or meets a further blocker the instrumentation has not
-  separated yet.
+**The domain cannot represent it.** `ScaleDirection` is `up` and `upDown`, and
+both describe the traversal of one scale line in time. A hands-together
+realization gives every hand the same scale degree at each position, so two
+hands are parallel by construction. Contrary motion is not a realization the
+catalog omits; it is not expressible.
+
+The likely factoring keeps the two axes apart, because they are orthogonal: both
+hands can traverse an `upDown` exercise while moving contrary to each other, so
+folding contrary motion into `ScaleDirection` would conflate the temporal
+traversal of a line with the relationship between two lines.
+
+```text
+traversal   up | upDown
+handMotion  parallel | contrary        hands-together exercises only
+```
+
+The dependency chain runs representation, then realization and generation, then
+fingering and expected notes, then a transition-only ranking preference, and
+only then measurement. Nothing before the last step is a scheduler change.
+
+**This ordering also gates the calibration above.** Contrary motion is the
+easier first coordination task, so a pitch-integrity threshold tuned while every
+first hands-together attempt is parallel motion would be tuned against a
+harder-than-intended task and would read as higher than it needs to be.
+Calibrate after the representation exists, not before.
+
+### Three cohort facts, measured
+
+From `keyrecall_simulation/bin/ht_admission.dart` over every evaluated candidate
+carrying the transition term, 20 seeds by 60 slots:
+
+```text
+                    slots   supp    elig  admit    won
+uneven_hands          642    642      55     66     50
+developing            480    480     480    109    102
+true_beginner           5      5       0      0      0
+```
+
+**`uneven_hands` is blocked by `BAND_EXECUTION_FLOOR`.** 642 slots hold a
+transition candidate and 55 hold a fully eligible one. Of 29,004 blocked
+candidates, 19,336 are material-supplied, which is the two-thirds the three
+generated guidance rungs predict. So a supplied-only exception can bypass that
+blocker with no change to generation.
+
+**`developing` is blocked by admission, not eligibility.** Every transition
+candidate is `FOUNDATION_MATERIAL` and fully eligible, and only 109 slots of 480
+see one admitted. Dropping the retrieval requirement in the same
+coordination-specific path is what reaches this cohort.
+
+**`true_beginner` barely reaches the predicate at all**, 5 slots in 1200. This
+policy should not be presented as solving beginner hands-together onset. Whether
+coordination readiness is reachable that early is a separate reachability and
+calibration question.
+
+**These facts survive the contrary-motion work.** They are about the admission
+path, not about the direction of the scale, which is why the sequence above
+measures the mechanism now and re-baselines latency later.
+
+### A measurement invariant this cost us
+
+The first version of the diagnostic aggregated over a slot's winner and
+alternatives and reported the opposite conclusion. `TrajectorySlot.alternatives`
+is built from the selectable set, so it holds only candidates that already
+survived admission and the repetition guard. See
+[`trajectory-simulation.md`](trajectory-simulation.md).
 
 ## Sources
 
