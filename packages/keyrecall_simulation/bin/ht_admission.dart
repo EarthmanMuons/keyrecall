@@ -78,6 +78,12 @@ Future<void> main(List<String> arguments) async {
       'admit ${counts.admitted.toString().padLeft(5)}  '
       'won ${counts.won.toString().padLeft(5)}',
     );
+    stdout.writeln(
+      '  won by motion: parallel ${counts.wonParallel}, '
+      'contrary ${counts.wonContrary}; '
+      'transition after a material was already played together: '
+      '${counts.transitionAfterFirst}',
+    );
     final ordered = counts.reasons.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     for (final entry in ordered) {
@@ -85,7 +91,9 @@ Future<void> main(List<String> arguments) async {
         '  ${entry.key.padRight(40)}'
         '${entry.value.toString().padLeft(7)} candidates, '
         '${(counts.suppliedReasons[entry.key] ?? 0).toString().padLeft(6)} '
-        'supplied',
+        'supplied'
+        '   [parallel ${counts.byMotion['PARALLEL/${entry.key}'] ?? 0}, '
+        'contrary ${counts.byMotion['CONTRARY/${entry.key}'] ?? 0}]',
       );
     }
   }
@@ -99,6 +107,9 @@ class _Job {
 }
 
 /// Per-archetype tallies, in plain fields so they cross an isolate boundary.
+///
+/// Every count is split by hand motion, because the question the rerun asks is
+/// what changed when contrary motion became part of the modeled task.
 class _Counts {
   int slots = 0;
   int supplied = 0;
@@ -107,6 +118,10 @@ class _Counts {
   int won = 0;
   final Map<String, int> reasons = {};
   final Map<String, int> suppliedReasons = {};
+  final Map<String, int> byMotion = {};
+  int wonParallel = 0;
+  int wonContrary = 0;
+  int transitionAfterFirst = 0;
 
   void absorb(_Counts other) {
     slots += other.slots;
@@ -114,12 +129,18 @@ class _Counts {
     fullyEligible += other.fullyEligible;
     admitted += other.admitted;
     won += other.won;
-    other.reasons.forEach((key, value) {
-      reasons[key] = (reasons[key] ?? 0) + value;
-    });
-    other.suppliedReasons.forEach((key, value) {
-      suppliedReasons[key] = (suppliedReasons[key] ?? 0) + value;
-    });
+    wonParallel += other.wonParallel;
+    wonContrary += other.wonContrary;
+    transitionAfterFirst += other.transitionAfterFirst;
+    for (final source in [
+      (other.reasons, reasons),
+      (other.suppliedReasons, suppliedReasons),
+      (other.byMotion, byMotion),
+    ]) {
+      source.$1.forEach((key, value) {
+        source.$2[key] = (source.$2[key] ?? 0) + value;
+      });
+    }
   }
 }
 
@@ -160,7 +181,10 @@ Map<String, _Counts> _countsFor(List<_Job> jobs, int slots) {
 
         for (final trace in transitions) {
           final code = trace.eligibility.code.id;
+          final motion = trace.exercise.conditions.handMotion.id;
           counts.reasons[code] = (counts.reasons[code] ?? 0) + 1;
+          counts.byMotion['$motion/$code'] =
+              (counts.byMotion['$motion/$code'] ?? 0) + 1;
           if (trace.exercise.guidance.isMaterialSupplied) {
             counts.suppliedReasons[code] =
                 (counts.suppliedReasons[code] ?? 0) + 1;
@@ -169,8 +193,27 @@ Map<String, _Counts> _countsFor(List<_Job> jobs, int slots) {
       },
     );
 
+    // Which motion actually spent the transition, and whether any candidate
+    // still carried the term after a material had been played with both hands.
+    final playedTogether = <String>{};
     for (final slot in trajectory.slots) {
-      if (slot.winner.terms.coordinationTransition) counts.won++;
+      final exercise = slot.winner.exercise;
+      final materialId = exercise.material.materialId;
+      if (slot.winner.terms.coordinationTransition) {
+        counts.won++;
+        if (exercise.conditions.handMotion == HandMotion.contrary) {
+          counts.wonContrary++;
+        } else {
+          counts.wonParallel++;
+        }
+      }
+      if (playedTogether.contains(materialId) &&
+          slot.winner.terms.coordinationTransition) {
+        counts.transitionAfterFirst++;
+      }
+      if (exercise.conditions.hands == HandConfiguration.together) {
+        playedTogether.add(materialId);
+      }
     }
   }
 
