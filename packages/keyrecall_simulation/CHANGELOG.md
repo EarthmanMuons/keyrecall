@@ -15,6 +15,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - Hands-together evidence and coordination-aware admission diagnostics at
   independent-trajectory grain, distinguishing a coordination-caused band
   crossing from coordination merely being the weaker motor factor.
+- A paired same-seed experiment comparing current HT execution progression
+  with diagnostic-only suppression when coordination is the weaker factor.
 - Initial port of the KeyRecall synthetic harness from the Python prototypes:
   the seven `SyntheticProfile` hidden learners, outcome sampling and true memory
   transitions, `PracticeSimulation`, and the `SchedulerAgent` that drives the
