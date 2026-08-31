@@ -130,4 +130,47 @@ void main() {
       isNot(contains(Competency.handsTogetherCoordination)),
     );
   });
+
+  test('repeated adverse readings lower the coordination prediction', () {
+    final outcome = Outcome(
+      started: true,
+      retrieval: FactualRetrieval.notTested,
+      completed: false,
+      materialRetrieval: 1.0,
+      pitchIntegrity: 1.0,
+      continuity: 0.385,
+      temporalStability: 0.385,
+      achievedTempoRatio: 1.0,
+      topologyAccuracy: 1.0,
+      coordination: 0.385,
+    );
+
+    double afterRepeatedEvidence(Duration spacing) {
+      final state = model.newState(at: t0);
+      var at = t0;
+      for (var i = 0; i < 25; i++) {
+        model.applyOutcome(
+          state: state,
+          exercise: handsTogether,
+          outcome: outcome,
+          weights: evidenceWeightsFor(handsTogether, outcome),
+          prediction: model.predict(state, handsTogether, at: at),
+          at: at,
+        );
+        at = at.add(spacing);
+        model.propagate(state, at);
+      }
+      return model.coordinationProbability(state, handsTogether);
+    }
+
+    final immediate = afterRepeatedEvidence(Duration.zero);
+    final oneMinute = afterRepeatedEvidence(const Duration(minutes: 1));
+    final initial = model.coordinationProbability(
+      model.newState(at: t0),
+      handsTogether,
+    );
+
+    expect(immediate, lessThan(initial));
+    expect(oneMinute, immediate);
+  });
 }

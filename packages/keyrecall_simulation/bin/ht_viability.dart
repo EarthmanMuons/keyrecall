@@ -79,7 +79,7 @@ Future<void> main(List<String> arguments) async {
       '  silent   = of those, made after the silent reason first held\n'
       '  either   = of those, made after either first held\n'
       '  at       = median progression admissions before either first held\n'
-      '  predict  = coordination probability at the first and last attempt\n',
+      '  predict  = mean first and last probability across independent runs\n',
     )
     ..writeln(
       '${'archetype'.padRight(16)}${'runs'.padLeft(6)}${'prog'.padLeft(7)}'

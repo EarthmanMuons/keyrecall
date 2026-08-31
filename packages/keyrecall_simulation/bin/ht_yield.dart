@@ -74,7 +74,9 @@ Future<void> main(List<String> arguments) async {
       '  adverse  = share of scored attempts whose surprise was negative\n'
       '  run      = longest run on one context and exception\n'
       '  after    = attempts on a context whose surprise had already been\n'
-      '             adverse twice running\n',
+      '             adverse twice running\n'
+      '  counts are pooled across independent learner states, not one update\n'
+      '  sequence\n',
     )
     ..writeln(
       '${'archetype'.padRight(14)}${'admitted by'.padRight(23)}${'n'.padLeft(5)}'
