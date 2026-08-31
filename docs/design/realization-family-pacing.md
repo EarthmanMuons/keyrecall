@@ -243,3 +243,72 @@ this point, band position, progression opportunity, recovery target, and
 frontier potential, is the next thing to test against these same three cohorts.
 The constants and the definition of productive work are untouched, since neither
 is what the readiness result turned on.
+
+## Frontier opportunity does not separate useful relief
+
+The diagnostic now records, for both sides of every set-aside, predicted
+success, bypass category, realization rank, the retention and information rank
+terms, whether the relieving candidate already outranks the pressured one, and
+what the replacement went on to do. Forty seeds per archetype.
+
+Two corrections to how the earlier readiness result should be read.
+
+First, a large fraction of recorded set-asides are inert. The relieving
+candidate already outranks the pressured one in 39% of `developing`, 55% of
+`true_beginner`, and 58% of `uneven_hands` set-asides, which means the filter
+removed candidates that were not going to win and the slot resolved exactly as
+it would have. This confirms the caution against a `RankKey` comparator in a
+sharper form than expected: requiring the relieving candidate to outrank the
+pressured one would retain only the set-asides that change nothing. Everything
+below is restricted to substitutions that actually changed the winner.
+
+Second, on those effective substitutions, no pre-decision fact separates useful
+relief from useless relief within a cohort. Useful means the replacement
+managed execution or advanced a frontier.
+
+| criterion | `developing` kept / useful | `uneven_hands` kept / useful | `true_beginner` kept / useful |
+| --- | --- | --- | --- |
+| any relief | 98 / 40% | 27 / 11% | 114 / 4% |
+| ready | 90 / 41% | 18 / 6% | 30 / 3% |
+| opportunity | 94 / 40% | 14 / 7% | 5 / 0% |
+| ready + opportunity | 87 / 41% | 6 / 0% | 2 / 0% |
+| holds rank | 96 / 41% | 24 / 13% | 112 / 4% |
+
+For `developing` every criterion sits within a point of the 40% base rate, so
+none of them is doing any work. Realization rank cannot discriminate there
+because both useful and useless relief are `advancing`, 38 of 39 against 56 of
+59. For `uneven_hands`, the discriminating cohort, readiness and opportunity are
+worse than taking all relief, and their conjunction is 0 of 6. `true_beginner`
+sits at 4% whatever is required of the alternative.
+
+The readiness result therefore held at the level of the cohort, not the slot.
+Relief is useful 40% of the time for `developing` and 4% of the time for
+`true_beginner` no matter which candidate is picked, and predicted success
+correlates with that difference well enough to gate on. It does not predict
+which particular relief will pay off, and neither does frontier opportunity.
+
+The one suggestive within-cohort signal is the retention term for
+`uneven_hands`: useful relief carries a mean retention need of 0.241 against
+0.004 for useless relief, and its useful relief is mostly new material rather
+than progression. That is consistent with the earlier finding that its useful
+alternatives are the less ready ones, and it is why the readiness gate cost it
+frontier advances. Three useful events is far too small a sample to act on, and
+the same term is inert for `developing`, whose work is progression on already
+anchored material.
+
+## Where that leaves the design
+
+Pressure and relief remain sound as separate questions, and the readiness gate
+stays the best-performing configuration measured, now with an accurate account
+of why it works. What the experiment rules out is a slot-level utility test
+built from the facts the trace already carries. The information that would
+distinguish a productive substitution from an unproductive one at decision time
+is not present in eligibility, band position, predicted success, realization
+rank, or the retention and information terms.
+
+Two directions remain open, and they are different in kind. One is to model
+expected learning value directly, which is new machinery rather than a new
+reading of existing facts. The other is to accept that relief is only
+answerable at trajectory grain, keep the cohort-level readiness gate, and hold
+pacing to the paired-experiment outcomes rather than to a per-slot criterion.
+The second is cheaper and is what the evidence currently supports.

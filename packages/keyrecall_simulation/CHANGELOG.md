@@ -28,6 +28,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   alternative is wherever pressure displaces a candidate.
 - `requireReadyAlternative`, which relieves a pressured family only when a
   surviving candidate is at least as ready as the one it displaces.
+- Realization rank, ranking terms, inert-substitution detection, and per-slot
+  relief-criterion comparison in the set-aside diagnostic.
 - Initial port of the KeyRecall synthetic harness from the Python prototypes:
   the seven `SyntheticProfile` hidden learners, outcome sampling and true memory
   transitions, `PracticeSimulation`, and the `SchedulerAgent` that drives the

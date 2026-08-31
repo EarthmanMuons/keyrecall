@@ -84,42 +84,165 @@ void _writeArchetype(String archetype, _Relief relief) {
       'nothing to relieve: ${relief.unrelieved}; '
       'no ready alternative: ${relief.unready}',
     );
-  if (relief.setAsides == 0) return;
+  final points = relief.points;
+  if (points.isEmpty) return;
 
   stdout
     ..writeln('  readiness (min / median / mean / max)')
-    ..writeln('    pressured overallP        ${_summary(relief.pressuredP)}')
-    ..writeln('    relieving overallP        ${_summary(relief.relievingP)}')
-    ..writeln('    relieving - pressured     ${_summary(relief.readinessGap)}')
+    ..writeln(
+      '    pressured overallP        '
+      '${_summary([for (final p in points) p.pressuredP])}',
+    )
+    ..writeln(
+      '    relieving overallP        '
+      '${_summary([for (final p in points) p.relievingP])}',
+    )
+    ..writeln(
+      '    relieving - pressured     '
+      '${_summary([for (final p in points) p.readinessGap])}',
+    )
     ..writeln(
       '  relieving at least as ready: '
-      '${_share(relief.relievingAtLeastAsReady, relief.setAsides)}',
+      '${_share(points.where((p) => p.isReady).length, points.length)}',
     )
     ..writeln(
       '  within challenge band: pressured '
-      '${_share(relief.pressuredInBand, relief.setAsides)}, relieving '
-      '${_share(relief.relievingInBand, relief.setAsides)}',
+      '${_share(points.where((p) => p.pressuredInBand).length, points.length)}'
+      ', relieving '
+      '${_share(points.where((p) => p.relievingInBand).length, points.length)}',
     )
     ..writeln(
       '  fully eligible: pressured '
-      '${_share(relief.pressuredFullyEligible, relief.setAsides)}, relieving '
-      '${_share(relief.relievingFullyEligible, relief.setAsides)}',
+      '${_share(points.where((p) => p.pressuredFullyEligible).length, points.length)}'
+      ', relieving '
+      '${_share(points.where((p) => p.relievingFullyEligible).length, points.length)}',
     )
     ..writeln(
       '  relieving choice taken: '
-      '${_share(relief.relievingChosen, relief.setAsides)}',
+      '${_share(points.where((p) => p.taken).length, points.length)}',
     )
     ..writeln(
-      '  relieving choice managed: '
-      '${_share(relief.relievingManaged, relief.relievingChosen)}, '
-      'advanced a frontier: '
-      '${_share(relief.relievingAdvanced, relief.relievingChosen)}',
+      '  relieving already outranks pressured: '
+      '${_share(points.where((p) => p.outranksPressured).length, points.length)}',
+    );
+
+  final taken = points.where((p) => p.taken && p.isEffective).toList();
+  stdout
+    ..writeln('  ranking terms (mean, pressured -> relieving)')
+    ..writeln(
+      '    retention                 '
+      '${_mean([for (final p in points) p.pressuredRetention])} -> '
+      '${_mean([for (final p in points) p.relievingRetention])}',
     )
-    ..writeln('  substituted family:');
-  _writeMap(relief.familyPairs);
+    ..writeln(
+      '    information               '
+      '${_mean([for (final p in points) p.pressuredInformation])} -> '
+      '${_mean([for (final p in points) p.relievingInformation])}',
+    )
+    ..writeln('  realization rank of the relieving choice')
+    ..writeln(
+      '    ${'rank'.padRight(12)}${'n'.padLeft(6)}${'ready'.padLeft(14)}'
+      '${'taken'.padLeft(14)}${'managed'.padLeft(14)}'
+      '${'advanced'.padLeft(14)}',
+    );
+  for (final rank in RealizationRank.values) {
+    final group = points.where((p) => p.relievingRank == rank).toList();
+    if (group.isEmpty) continue;
+    final chosen = group.where((p) => p.taken).length;
+    stdout.writeln(
+      '    ${rank.id.toLowerCase().padRight(12)}'
+      '${group.length.toString().padLeft(6)}'
+      '${_share(group.where((p) => p.isReady).length, group.length).padLeft(14)}'
+      '${_share(chosen, group.length).padLeft(14)}'
+      '${_share(group.where((p) => p.managed).length, chosen).padLeft(14)}'
+      '${_share(group.where((p) => p.advanced).length, chosen).padLeft(14)}',
+    );
+  }
+
+  stdout
+    ..writeln('  realization rank of the pressured candidate')
+    ..writeln('    ${_rankCounts(points)}')
+    ..writeln(
+      '  candidate relief criteria, over ${taken.length} '
+      'effective taken slots',
+    )
+    ..writeln(
+      '    ${'criterion'.padRight(26)}${'kept'.padLeft(14)}'
+      '${'managed'.padLeft(14)}${'advanced'.padLeft(14)}'
+      '${'useful'.padLeft(14)}',
+    );
+  final criteria = <(String, bool Function(_Point))>[
+    ('any relief', (p) => true),
+    ('ready', (p) => p.isReady),
+    ('opportunity', (p) => p.hasOpportunity),
+    ('ready + opportunity', (p) => p.isReady && p.hasOpportunity),
+    ('ready + holds rank', (p) => p.isReady && p.holdsRank),
+    ('holds rank', (p) => p.holdsRank),
+  ];
+  for (final (label, matches) in criteria) {
+    final kept = taken.where(matches).toList();
+    stdout.writeln(
+      '    ${label.padRight(26)}'
+      '${_share(kept.length, taken.length).padLeft(14)}'
+      '${_share(kept.where((p) => p.managed).length, kept.length).padLeft(14)}'
+      '${_share(kept.where((p) => p.advanced).length, kept.length).padLeft(14)}'
+      '${_share(kept.where((p) => p.wasUseful).length, kept.length).padLeft(14)}',
+    );
+  }
+
+  stdout
+    ..writeln('  taken relief, useful vs not')
+    ..writeln(
+      '    ${'group'.padRight(12)}${'n'.padLeft(6)}${'readinessGap'.padLeft(14)}'
+      '${'retention'.padLeft(12)}${'information'.padLeft(13)}'
+      '${'ranks'.padLeft(30)}',
+    );
+  for (final (label, group) in [
+    ('useful', taken.where((p) => p.wasUseful).toList()),
+    ('not useful', taken.where((p) => !p.wasUseful).toList()),
+  ]) {
+    if (group.isEmpty) continue;
+    stdout.writeln(
+      '    ${label.padRight(12)}${group.length.toString().padLeft(6)}'
+      '${_mean([for (final p in group) p.readinessGap]).padLeft(14)}'
+      '${_mean([for (final p in group) p.relievingRetention]).padLeft(12)}'
+      '${_mean([for (final p in group) p.relievingInformation]).padLeft(13)}'
+      '${_relievingRankCounts(group).padLeft(30)}',
+    );
+  }
+
+  stdout.writeln('  substituted family:');
+  _writeMap(_countBy(points, (p) => p.familyPair));
   stdout.writeln('  substituted category:');
-  _writeMap(relief.categoryPairs);
+  _writeMap(_countBy(points, (p) => p.categoryPair));
 }
+
+Map<String, int> _countBy(List<_Point> points, String Function(_Point) key) {
+  final counts = <String, int>{};
+  for (final point in points) {
+    final label = key(point);
+    counts[label] = (counts[label] ?? 0) + 1;
+  }
+  return counts;
+}
+
+String _relievingRankCounts(List<_Point> points) => [
+  for (final rank in RealizationRank.values)
+    if (points.any((p) => p.relievingRank == rank))
+      '${rank.id.toLowerCase()} '
+          '${points.where((p) => p.relievingRank == rank).length}',
+].join(', ');
+
+String _rankCounts(List<_Point> points) => [
+  for (final rank in RealizationRank.values)
+    if (points.any((p) => p.pressuredRank == rank))
+      '${rank.id.toLowerCase()} '
+          '${points.where((p) => p.pressuredRank == rank).length}',
+].join(', ');
+
+String _mean(List<double> values) => values.isEmpty
+    ? '-'
+    : (values.reduce((a, b) => a + b) / values.length).toStringAsFixed(4);
 
 String _summary(List<double> values) {
   if (values.isEmpty) return '-';
@@ -136,7 +259,7 @@ String _signed(double value) =>
 String _share(int numerator, int denominator) => denominator == 0
     ? '-'
     : '$numerator/$denominator '
-          '(${(100 * numerator / denominator).toStringAsFixed(1)}%)';
+          '(${(100 * numerator / denominator).toStringAsFixed(0)}%)';
 
 void _writeMap(Map<String, int> values) {
   if (values.isEmpty) {
@@ -183,82 +306,116 @@ String _familyLabel(Exercise exercise) =>
 String _category(CandidateTrace trace) =>
     trace.challengeBypass?.id ?? 'ordinary';
 
+class _Point {
+  final double pressuredP;
+  final double relievingP;
+  final RealizationRank pressuredRank;
+  final RealizationRank relievingRank;
+  final double pressuredRetention;
+  final double relievingRetention;
+  final double pressuredInformation;
+  final double relievingInformation;
+  final bool pressuredInBand;
+  final bool relievingInBand;
+  final bool pressuredFullyEligible;
+  final bool relievingFullyEligible;
+  final String familyPair;
+  final String categoryPair;
+  final bool outranksPressured;
+  final bool taken;
+  final bool managed;
+  final bool advanced;
+
+  const _Point({
+    required this.pressuredP,
+    required this.relievingP,
+    required this.pressuredRank,
+    required this.relievingRank,
+    required this.pressuredRetention,
+    required this.relievingRetention,
+    required this.pressuredInformation,
+    required this.relievingInformation,
+    required this.pressuredInBand,
+    required this.relievingInBand,
+    required this.pressuredFullyEligible,
+    required this.relievingFullyEligible,
+    required this.familyPair,
+    required this.categoryPair,
+    required this.outranksPressured,
+    required this.taken,
+    required this.managed,
+    required this.advanced,
+  });
+
+  double get readinessGap => relievingP - pressuredP;
+  bool get isReady => readinessGap >= 0;
+
+  /// Whether a successful attempt could move the relieving frontier.
+  bool get hasOpportunity => relievingRank == RealizationRank.advancing;
+
+  /// Whether relief does not step back from the pressured frontier position.
+  bool get holdsRank => relievingRank.index >= pressuredRank.index;
+
+  bool get wasUseful => taken && (managed || advanced);
+
+  /// Whether the filter actually changed the winner.
+  ///
+  /// A set-aside whose relieving candidate already outranks the pressured one
+  /// removed candidates that were not going to win, so its outcome says
+  /// nothing about relief.
+  bool get isEffective => !outranksPressured;
+}
+
 class _Relief {
-  int setAsides = 0;
   int unrelieved = 0;
   int unready = 0;
-  int relievingAtLeastAsReady = 0;
-  int pressuredInBand = 0;
-  int relievingInBand = 0;
-  int pressuredFullyEligible = 0;
-  int relievingFullyEligible = 0;
-  int relievingChosen = 0;
-  int relievingManaged = 0;
-  int relievingAdvanced = 0;
-  final List<double> pressuredP = [];
-  final List<double> relievingP = [];
-  final List<double> readinessGap = [];
-  final Map<String, int> familyPairs = {};
-  final Map<String, int> categoryPairs = {};
+  final List<_Point> points = [];
+
+  int get setAsides => points.length;
 
   void observe(FamilyPacedPipeline pipeline, Trajectory trajectory) {
     unrelieved += pipeline.unrelievedSlots;
     unready += pipeline.unreadySlots;
     for (final setAside in pipeline.setAsides) {
-      setAsides++;
       final pressured = setAside.pressured;
       final relieving = setAside.relieving;
-      pressuredP.add(pressured.prediction.overallP);
-      relievingP.add(relieving.prediction.overallP);
-      final gap = relieving.prediction.overallP - pressured.prediction.overallP;
-      readinessGap.add(gap);
-      if (gap >= 0) relievingAtLeastAsReady++;
-      if (pressured.isWithinChallengeBand) pressuredInBand++;
-      if (relieving.isWithinChallengeBand) relievingInBand++;
-      if (pressured.eligibility.tier == EligibilityTier.fullyEligible) {
-        pressuredFullyEligible++;
-      }
-      if (relieving.eligibility.tier == EligibilityTier.fullyEligible) {
-        relievingFullyEligible++;
-      }
-      final pair =
-          '${_familyLabel(pressured.exercise)} -> '
-          '${_familyLabel(relieving.exercise)}';
-      familyPairs[pair] = (familyPairs[pair] ?? 0) + 1;
-      final categories = '${_category(pressured)} -> ${_category(relieving)}';
-      categoryPairs[categories] = (categoryPairs[categories] ?? 0) + 1;
-
-      if (setAside.slot >= trajectory.slots.length) continue;
-      final slot = trajectory.slots[setAside.slot];
-      if (slot.chosen != relieving.exercise) continue;
-      relievingChosen++;
-      if (slot.managedExecution) relievingManaged++;
-      if (slot.frontierAdvanced) relievingAdvanced++;
+      final slot = setAside.slot < trajectory.slots.length
+          ? trajectory.slots[setAside.slot]
+          : null;
+      final taken = slot != null && slot.chosen == relieving.exercise;
+      points.add(
+        _Point(
+          pressuredP: pressured.prediction.overallP,
+          relievingP: relieving.prediction.overallP,
+          pressuredRank: pressured.rankKey!.realization,
+          relievingRank: relieving.rankKey!.realization,
+          pressuredRetention: pressured.rankKey!.retention,
+          relievingRetention: relieving.rankKey!.retention,
+          pressuredInformation: pressured.rankKey!.information,
+          relievingInformation: relieving.rankKey!.information,
+          pressuredInBand: pressured.isWithinChallengeBand,
+          relievingInBand: relieving.isWithinChallengeBand,
+          pressuredFullyEligible:
+              pressured.eligibility.tier == EligibilityTier.fullyEligible,
+          relievingFullyEligible:
+              relieving.eligibility.tier == EligibilityTier.fullyEligible,
+          familyPair:
+              '${_familyLabel(pressured.exercise)} -> '
+              '${_familyLabel(relieving.exercise)}',
+          categoryPair: '${_category(pressured)} -> ${_category(relieving)}',
+          outranksPressured:
+              relieving.rankKey!.compareTo(pressured.rankKey!) > 0,
+          taken: taken,
+          managed: taken && slot.managedExecution,
+          advanced: taken && slot.frontierAdvanced,
+        ),
+      );
     }
   }
 
   void absorb(_Relief other) {
-    setAsides += other.setAsides;
     unrelieved += other.unrelieved;
     unready += other.unready;
-    relievingAtLeastAsReady += other.relievingAtLeastAsReady;
-    pressuredInBand += other.pressuredInBand;
-    relievingInBand += other.relievingInBand;
-    pressuredFullyEligible += other.pressuredFullyEligible;
-    relievingFullyEligible += other.relievingFullyEligible;
-    relievingChosen += other.relievingChosen;
-    relievingManaged += other.relievingManaged;
-    relievingAdvanced += other.relievingAdvanced;
-    pressuredP.addAll(other.pressuredP);
-    relievingP.addAll(other.relievingP);
-    readinessGap.addAll(other.readinessGap);
-    for (final source in [
-      (other.familyPairs, familyPairs),
-      (other.categoryPairs, categoryPairs),
-    ]) {
-      source.$1.forEach((key, value) {
-        source.$2[key] = (source.$2[key] ?? 0) + value;
-      });
-    }
+    points.addAll(other.points);
   }
 }
