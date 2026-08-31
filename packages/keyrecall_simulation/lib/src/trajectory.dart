@@ -162,6 +162,12 @@ class Anomaly {
   /// One line saying what happened.
   final String summary;
 
+  /// Detector-specific magnitude used to order worked cases.
+  final double magnitude;
+
+  /// Material or hand the finding follows, when it has one.
+  final String? subject;
+
   /// The census, when a slot anchors it.
   final String? census;
 
@@ -169,6 +175,8 @@ class Anomaly {
     required this.detector,
     required this.severity,
     required this.summary,
+    this.magnitude = 0,
+    this.subject,
     this.slot,
     this.census,
   });

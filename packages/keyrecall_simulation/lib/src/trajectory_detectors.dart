@@ -103,6 +103,7 @@ Iterable<Anomaly> _realizationStall(Trajectory trajectory) sync* {
       detector: 'realization_stall',
       severity: AnomalySeverity.invariant,
       slot: slot.index,
+      magnitude: better.length.toDouble(),
       summary:
           'chose ${slot.chosen.conditions.tempoBpm.toStringAsFixed(0)}bpm on '
           '${slot.chosen.material.materialId} with the frontier at '
@@ -144,6 +145,7 @@ Iterable<Anomaly> _unmeasuredEntryIgnored(Trajectory trajectory) sync* {
       detector: 'unmeasured_entry_ignored',
       severity: AnomalySeverity.invariant,
       slot: slot.index,
+      magnitude: nearer.length.toDouble(),
       summary:
           'chose ${conditions.tempoBpm.toStringAsFixed(0)}bpm at '
           '${conditions.octaves} octaves of '
@@ -181,6 +183,7 @@ Iterable<Anomaly> _sittingRanDry(Trajectory trajectory, int requested) sync* {
     detector: 'sitting_ran_dry',
     severity: AnomalySeverity.invariant,
     slot: trajectory.slots.length,
+    magnitude: (requested - trajectory.slots.length).toDouble(),
     summary:
         'the slot after ${trajectory.slots.length} admitted nothing, with '
         '$requested asked for',
@@ -217,10 +220,7 @@ Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
     if (slot.winner.challengeBypass != ChallengeBypass.newMaterial) continue;
     final transferable = slot.transferableBefore;
     if (transferable <= 0) continue;
-    final band = admissionBandOf(slot.chosen.material);
-    final floor = band.isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer)
-        ? transferable
-        : tempoBefore(transferable);
+    final floor = _entryTempoFloor(slot)!;
     final asked = slot.chosen.conditions.tempoBpm;
     if (asked >= floor) continue;
 
@@ -228,6 +228,7 @@ Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
       detector: 'entry_tempo_ignores_pace',
       severity: AnomalySeverity.invariant,
       slot: slot.index,
+      magnitude: floor - asked,
       summary:
           'met ${slot.chosen.material.materialId} at '
           '${asked.toStringAsFixed(0)}bpm on '
@@ -248,8 +249,8 @@ Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
 /// black-key melodic minor slowly after an easy major is the design working
 /// rather than a regression.
 ///
-/// Kept as a count, because a run full of them still says something about how
-/// the introductions across a sitting hang together.
+/// A step that exactly matches the documented later-band discount is reported
+/// separately from an otherwise unexplained regression.
 Iterable<Anomaly> _entryTempoRegression(Trajectory trajectory) sync* {
   final highest = <HandConfiguration, (double, int)>{};
   for (final slot in trajectory.slots) {
@@ -258,15 +259,30 @@ Iterable<Anomaly> _entryTempoRegression(Trajectory trajectory) sync* {
       final tempo = slot.chosen.conditions.tempoBpm;
       final previous = highest[hands];
       if (previous != null && tempo < previous.$1) {
+        final previousSlot = trajectory.slots[previous.$2];
+        final band = admissionBandOf(slot.chosen.material);
+        final previousBand = admissionBandOf(previousSlot.chosen.material);
+        final expected = _entryTempoFloor(slot);
+        final isBandStep =
+            expected != null &&
+            tempo == expected &&
+            band.index > previousBand.index;
         yield Anomaly(
-          detector: 'entry_tempo_regression',
+          detector: isBandStep
+              ? 'entry_tempo_band_step_down'
+              : 'entry_tempo_regression',
           severity: AnomalySeverity.observation,
           slot: slot.index,
-          summary:
-              'met new material at ${tempo.toStringAsFixed(0)}bpm on '
-              '${hands.id} after meeting one at '
-              '${previous.$1.toStringAsFixed(0)}bpm at slot ${previous.$2}, '
-              'with nothing having gone wrong in between',
+          magnitude: previous.$1 - tempo,
+          subject: slot.chosen.material.materialId,
+          summary: isBandStep
+              ? 'met later-band material at ${tempo.toStringAsFixed(0)}bpm '
+                    'on ${hands.id}, the documented one-rung discount from '
+                    '${previous.$1.toStringAsFixed(0)}bpm'
+              : 'met new material at ${tempo.toStringAsFixed(0)}bpm on '
+                    '${hands.id} after meeting one at '
+                    '${previous.$1.toStringAsFixed(0)}bpm at slot '
+                    '${previous.$2}, with nothing having gone wrong in between',
           census: censusOf(slot),
         );
       }
@@ -276,6 +292,16 @@ Iterable<Anomaly> _entryTempoRegression(Trajectory trajectory) sync* {
     }
     if (!slot.outcome.completed) highest.remove(hands);
   }
+}
+
+double? _entryTempoFloor(TrajectorySlot slot) {
+  final transferable = slot.transferableBefore;
+  if (transferable <= 0) return null;
+  return admissionBandOf(
+        slot.chosen.material,
+      ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer)
+      ? transferable
+      : tempoBefore(transferable);
 }
 
 /// **Observation.** How much of the sitting went to work the learner has
@@ -293,6 +319,7 @@ Iterable<Anomaly> _belowFrontierShare(Trajectory trajectory) sync* {
   yield Anomaly(
     detector: 'below_frontier_share',
     severity: AnomalySeverity.observation,
+    magnitude: share,
     summary:
         '$below of ${trajectory.slots.length} slots '
         '(${(share * 100).round()}%) asked for work already surpassed',
@@ -313,6 +340,8 @@ Iterable<Anomaly> _materialConcentration(Trajectory trajectory) sync* {
   yield Anomaly(
     detector: 'material_concentration',
     severity: AnomalySeverity.observation,
+    magnitude: share,
+    subject: worst.key,
     summary:
         '${worst.key} took ${worst.value} of ${trajectory.slots.length} slots '
         '(${(share * 100).round()}%)',
@@ -346,6 +375,7 @@ Iterable<Anomaly> _progressionStall(Trajectory trajectory) sync* {
         detector: 'progression_stall',
         severity: AnomalySeverity.observation,
         slot: slot.index,
+        magnitude: completedSince.toDouble(),
         summary:
             'no frontier advanced and no material was introduced across '
             '$window slots, $completedSince of them completed',
@@ -376,6 +406,8 @@ Iterable<Anomaly> _handsTogetherStall(Trajectory trajectory) sync* {
     yield Anomaly(
       detector: 'hands_together_stall',
       severity: AnomalySeverity.observation,
+      magnitude: waited.toDouble(),
+      subject: ready.key,
       summary:
           'the hands-together prerequisite passed for ${ready.key} at slot '
           '${ready.value}, but it was not selected in the following $waited '
@@ -416,6 +448,8 @@ Iterable<Anomaly> _guidanceRegression(Trajectory trajectory) sync* {
       detector: 'guidance_regression',
       severity: AnomalySeverity.observation,
       slot: slot.index,
+      magnitude: (trajectory.slots.length - slot.index).toDouble(),
+      subject: entry.key,
       summary:
           '${entry.key} stayed below independence $reached from slot '
           '${slot.index} through the end of the sitting, without an '
@@ -448,6 +482,8 @@ Iterable<Anomaly> _shortCycleRepetition(Trajectory trajectory) sync* {
         detector: 'short_cycle_repetition',
         severity: AnomalySeverity.observation,
         slot: i,
+        magnitude: 6,
+        subject: current,
         summary: '$current and $previous alternated for six slots',
         census: censusOf(trajectory.slots[i]),
       );
@@ -473,6 +509,8 @@ Iterable<Anomaly> _materialCluster(Trajectory trajectory) sync* {
         detector: 'material_cluster',
         severity: AnomalySeverity.observation,
         slot: i,
+        magnitude: 6,
+        subject: trajectory.slots[i].chosen.material.materialId,
         summary:
             '${trajectory.slots[i].chosen.material.materialId} held six '
             'consecutive slots',

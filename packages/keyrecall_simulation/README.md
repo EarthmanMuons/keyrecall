@@ -86,6 +86,18 @@ for (final record in agent.records) {
 }
 ```
 
+To inspect detector cases by archetype:
+
+```console
+dart run keyrecall_simulation:cases \
+  --detector entry_tempo_band_step_down \
+  --archetype uneven_hands \
+  --order worst \
+  --limit 5
+```
+
+The report includes a detector-specific timeline and the decisive census.
+
 ## Comparing against the reference
 
 Three gates, each answering a different question.
