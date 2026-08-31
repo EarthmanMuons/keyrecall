@@ -3,29 +3,14 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 /// A result a person reports, standing in for measurement.
 ///
-/// Developer tooling now, not a product path. The learner-facing screen closes
-/// an attempt from what was played; these remain in the dev panel so learner
-/// state transitions can still be driven by hand without an instrument. A
-/// self-report is not a second kind of evidence running beside measurement.
+/// Developer tooling, not a product path: the learner-facing screen closes an
+/// attempt from what was played, and these exist so state transitions can be
+/// driven by hand without an instrument. A self-report is not a second kind of
+/// evidence running beside measurement, and this must not grow into a scoring
+/// UX.
 ///
-/// The one mocked boundary in this slice. `PracticeSession.commit` consumes an
-/// [Outcome]; nothing in the learner or scheduler transaction requires that
-/// outcome to have been inferred from what was played. Deriving one from MIDI
-/// means deciding how an exercise's expected notes are represented, which is
-/// the unmodeled `MotorRealization` question. Building that now would make the
-/// vertical slice drive the domain model instead of test it, so a person says
-/// what happened and everything downstream is real.
-///
-/// These are not a scoring UX and should not grow into one. Their only job is
-/// to construct valid outcomes that drive the state machine, and the eventual
-/// learner-facing design should start from measurement rather than from these
-/// five buttons.
-///
-/// [brokeDown] in particular says both how the attempt ended and how it went,
-/// which is only tenable while tapping Done is the one way an attempt can end.
-/// None of this becomes the persisted termination model, and none of it becomes
-/// a learner-report channel running alongside measurement: an attempt closes
-/// with a termination reason and whatever measurement established. See
+/// [brokeDown] says both how the attempt ended and how it went, which is only
+/// tenable while tapping Done is the one way an attempt can end. See
 /// `docs/domain-model/attempt-termination.md`.
 enum ReportedResult {
   /// Played through accurately and steadily.

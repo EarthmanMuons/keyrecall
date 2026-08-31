@@ -22,12 +22,10 @@ import 'latency_probe.dart';
 /// early is a fact about the performance rather than noise, and dropping those
 /// notes would make an eager entry look like a missing one.
 ///
-/// A grace period after Ready would be worse than the stray note it prevents:
-/// ignoring real events because of when they fell relative to the count-in
-/// would make the observation model partly synchronization-aware, which is
-/// exactly what a count-in-only rung is not. If repositioning after Ready turns
-/// out to be a real problem on an instrument, the fix is the choreography, not
-/// a window that discards playing.
+/// There is deliberately no grace period after Ready. Ignoring real events for
+/// falling early relative to the count-in would make the observation model
+/// partly synchronization-aware, which is exactly what a count-in-only rung is
+/// not.
 final attemptTranscriptProvider =
     NotifierProvider<AttemptTranscriptNotifier, PerformanceTranscript>(
       AttemptTranscriptNotifier.new,
