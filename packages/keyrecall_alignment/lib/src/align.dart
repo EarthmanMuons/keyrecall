@@ -352,16 +352,26 @@ class _MomentMatcher {
     final left = acted[Hand.left];
     final right = acted[Hand.right];
 
-    // A note both hands meet on has one onset, so its asynchrony is zero by
-    // construction rather than by measurement: there is one key and the
-    // instrument reports pressing it once. Reading that as evidence of
-    // coordination would credit the learner for what the representation
-    // guarantees.
+    // An identifiability limit rather than a measurement. Where the hands meet
+    // on one key the instrument reports one onset, so there is no inter-hand
+    // timing to observe and the difference would be zero however the learner
+    // played. Null says unobservable, which is the same thing this reports for
+    // a hand that played nothing, and keeps the moment out of the coordination
+    // summaries instead of contributing a guaranteed zero to them.
+    final shared = edits.any(
+      (edit) => switch (edit) {
+        Match(:final hands) || Substitution(:final hands) => hands.length > 1,
+        _ => false,
+      },
+    );
+
     return MomentCorrespondence(
       realizationPosition: moment,
       noteEdits: edits,
       onsetMs: _medianOf(arrival.values.toList()),
-      handAsynchronyMs: left == null || right == null ? null : right - left,
+      handAsynchronyMs: shared || left == null || right == null
+          ? null
+          : right - left,
     );
   }
 

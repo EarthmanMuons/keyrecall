@@ -340,6 +340,23 @@ void main() {
         expect(ExerciseRealization([unison(0, 60)]).noteCount, 1);
       });
 
+      test('observes no asynchrony, rather than an asynchrony of zero', () {
+        final correspondence =
+            align(
+                  realization: ExerciseRealization([unison(0, 60)]),
+                  transcript: played([(60, 1000)]),
+                ).operations.single
+                as MomentCorrespondence;
+
+        expect(
+          correspondence.handAsynchronyMs,
+          isNull,
+          reason:
+              'one key gives one onset, so a zero here would be the '
+              'representation rather than the playing',
+        );
+      });
+
       test('still refuses a hand playing twice at once', () {
         expect(
           () => RealizationMoment(

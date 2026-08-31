@@ -195,6 +195,50 @@ void main() {
     });
   });
 
+  test('a note both hands meet on is not coordination evidence', () {
+    // What contrary motion starts on. One key gives one onset, so the hands
+    // cannot be observed apart there however they played, and a zero would be
+    // the representation rather than the performance.
+    final withUnison = ExerciseRealization([
+      RealizationMoment(
+        position: 0,
+        metricOffset: 0,
+        notes: [
+          RealizedNote.shared(hands: {Hand.left, Hand.right}, pitch: pitch(60)),
+        ],
+      ),
+      ...realize(exercise).moments.skip(1).take(2),
+    ]);
+
+    // The unison struck once, then each later moment with the hands 40ms apart.
+    var transcript = PerformanceTranscript.empty.appending(
+      pitch: withUnison.moments.first.notes.single.pitch,
+      timestampMs: 1000,
+    );
+    var at = 2000;
+    for (final moment in withUnison.moments.skip(1)) {
+      transcript = transcript
+          .appending(pitch: moment.noteFor(Hand.left)!.pitch, timestampMs: at)
+          .appending(
+            pitch: moment.noteFor(Hand.right)!.pitch,
+            timestampMs: at + 40,
+          );
+      at += 1000;
+    }
+
+    final measurement = measure(
+      realization: withUnison,
+      transcript: transcript,
+    );
+
+    expect(
+      measurement.correspondedTwoHandMoments,
+      2,
+      reason: 'the unison is not a moment coordination was read from',
+    );
+    expect(measurement.medianAbsoluteHandAsynchronyMs, 40);
+  });
+
   test('the outcome carries the score and not which hand led', () {
     Outcome outcomeOf(List<int> spreads) =>
         outcomeFor(measurement: measuredWith(spreads), exercise: exercise);
