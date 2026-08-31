@@ -24,6 +24,7 @@ Trajectory runTrajectory({
   SchedulerPipeline pipeline = const SchedulerPipeline(learner: LearnerModel()),
   InstrumentProfile? instrument,
   List<Exercise>? generated,
+  void Function(int slot, List<CandidateTrace> traces)? observeTraces,
 }) {
   final rng = PythonCompatibleRandom(seed);
   final at0 = start ?? DateTime.utc(2026);
@@ -55,6 +56,10 @@ Trajectory runTrajectory({
     final traces = selection.traces;
     final available = selection.selectable;
     final chosen = selection.selected;
+    // Every candidate, which a slot does not retain: a sitting evaluates
+    // thousands and only the selectable ones are worth carrying to the end.
+    // A diagnostic asking what was refused has to see them as they go past.
+    observeTraces?.call(index, traces);
     if (chosen == null) {
       terminal = TerminalTrajectorySlot(
         index: index,
