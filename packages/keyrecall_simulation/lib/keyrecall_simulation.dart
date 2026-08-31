@@ -24,5 +24,6 @@ export 'src/trace_digest.dart';
 export 'src/trajectory.dart';
 export 'src/trajectory_cases.dart';
 export 'src/trajectory_detectors.dart';
+export 'src/trajectory_jobs.dart';
 export 'src/trajectory_run.dart';
 export 'src/trace_json.dart';
