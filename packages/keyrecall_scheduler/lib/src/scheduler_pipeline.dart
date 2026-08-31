@@ -862,6 +862,7 @@ class SchedulerPipeline {
     final retrievalCache = <String, double>{};
     final executionCache = <Exercise, double>{};
     final topologyCache = <Exercise, double>{};
+    final informationCache = <InformationKey, double>{};
 
     return [
       for (final exercise in refined)
@@ -879,6 +880,7 @@ class SchedulerPipeline {
           retrievalCache: retrievalCache,
           executionCache: executionCache,
           topologyCache: topologyCache,
+          informationCache: informationCache,
         ),
     ];
   }
@@ -897,6 +899,7 @@ class SchedulerPipeline {
     required Map<String, double> retrievalCache,
     required Map<Exercise, double> executionCache,
     required Map<Exercise, double> topologyCache,
+    required Map<InformationKey, double> informationCache,
   }) {
     final realization = exercise.withGuidance(GuidanceContext.unguided);
     final independentRetrievalP = retrievalCache.putIfAbsent(
@@ -963,7 +966,10 @@ class SchedulerPipeline {
       contraryCoordination:
           transition && exercise.conditions.handMotion == HandMotion.contrary,
       retention: retention(prediction, exercise),
-      information: information(state, exercise, learner.params),
+      information: informationCache.putIfAbsent(
+        informationKeyFor(exercise),
+        () => information(state, exercise, learner.params),
+      ),
       diversity: diversity(exercise, session),
       goals: goals(exercise),
       realization: realizationRankFor(state, exercise),

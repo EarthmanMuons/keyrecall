@@ -136,11 +136,16 @@ class Exercise {
   /// A statement about the exercise's structure, not a belief about the
   /// learner, and not affected by guidance: a cued harmonic-minor exercise
   /// still contains harmonic-minor topology.
-  Set<Competency> get structuralQ => {
+  ///
+  /// Derived once per exercise rather than on each read. A scheduling slot asks
+  /// this of ten thousand candidates and several stages ask it of each, so
+  /// rebuilding the set every time was a measurable share of a decision for a
+  /// value that cannot change.
+  late final Set<Competency> structuralQ = Set.unmodifiable({
     material.form.topologyCompetency,
     ...conditions.hands.executionCompetencies,
     for (final opportunity in opportunities) opportunity.competency,
-  };
+  });
 
   @override
   bool operator ==(Object other) =>

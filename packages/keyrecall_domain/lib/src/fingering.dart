@@ -1,6 +1,5 @@
 import 'package:meta/meta.dart';
 
-import 'execution_conditions.dart';
 import 'exercise.dart';
 import 'pitch_spelling.dart';
 import 'realization.dart';

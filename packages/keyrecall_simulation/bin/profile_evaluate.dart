@@ -102,6 +102,20 @@ Future<void> main(List<String> arguments) async {
       information(state, exercise, model.params);
     }
   });
+  timed('informationKeyFor', 20, () {
+    for (final exercise in candidates) {
+      informationKeyFor(exercise);
+    }
+  });
+  timed('information (cached)', 20, () {
+    final cache = <InformationKey, double>{};
+    for (final exercise in candidates) {
+      cache.putIfAbsent(
+        informationKeyFor(exercise),
+        () => information(state, exercise, model.params),
+      );
+    }
+  });
   timed('structuralQ', 20, () {
     for (final exercise in candidates) {
       exercise.structuralQ;

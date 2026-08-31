@@ -32,6 +32,42 @@ double retentionNeed(Prediction prediction) =>
 double retention(Prediction prediction, Exercise exercise) =>
     retentionNeed(prediction) * retrievalOpportunity(exercise);
 
+/// Exactly what [information] reads about a candidate, given a fixed learner
+/// state.
+///
+/// Declared as a type rather than assembled at the call site so that an input
+/// added to [information] later cannot be silently omitted from the key: the
+/// two live beside each other, and `information_key_test.dart` holds every
+/// generated candidate to the claim that equal keys give equal answers.
+///
+/// - the execution context, which carries the material id the memory term
+///   reads and the residual the execution term reads;
+/// - the competencies the exercise loads, as a mask because a `Set` compares
+///   by identity;
+/// - the guidance, which is all that [retrievalOpportunity] and the retrieval
+///   demand weighting depend on.
+///
+/// Deliberately not the exercise: tempo, span and direction reach this only
+/// through the competencies they load and the context they key, so candidates
+/// differing in those alone share an answer.
+typedef InformationKey = (ExecutionContext, int, GuidanceContext);
+
+/// The [InformationKey] for [exercise].
+InformationKey informationKeyFor(Exercise exercise) => (
+  executionContextOf(exercise),
+  _competencyMask(exercise.structuralQ),
+  exercise.guidance,
+);
+
+/// [competencies] as a bit per [Competency], so it can be compared by value.
+int _competencyMask(Set<Competency> competencies) {
+  var mask = 0;
+  for (final (index, competency) in Competency.values.indexed) {
+    if (competencies.contains(competency)) mask |= 1 << index;
+  }
+  return mask;
+}
+
 /// `I(e)`: how much uncertainty this candidate's evidence opportunities
 /// expose.
 ///
