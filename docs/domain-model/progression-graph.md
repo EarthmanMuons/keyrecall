@@ -260,8 +260,16 @@ is an artificial beginner's path through material somebody already has.
 **Sources:** universal in method books, and structurally obvious.
 
 **Verdict: `REQUIRES`.** The _uninterpretable evidence_ case, and the clearest
-one. Both hands' execution means must clear a threshold before hands-together
-work is fully eligible.
+one. Both hands must have shown coordination readiness on this material at this
+span before hands-together work is fully eligible.
+
+This was a floor on the two hand-execution means, which made playing together a
+reward for general fluency rather than an early coordination skill; see
+`handsTogetherPrerequisiteSatisfied`. What the edge asks about now is the work
+in front of the learner rather than their hands in general, and about the notes
+rather than the polish. Whether the gate should also be reachable through an
+admission exception is a separate question, specified in
+[`../design/coordination-transition-policy.md`](../design/coordination-transition-policy.md).
 
 ### Direction and the reversal
 

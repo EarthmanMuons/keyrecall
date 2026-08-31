@@ -850,6 +850,11 @@ outrank everything else once it has been reached.
 Measured by `keyrecall_simulation/bin/hands_together.dart` and
 `bin/ht_delay.dart`.
 
+**Admission is a separate question, and it now has its own document.** The delay
+above is about a candidate that was already admitted. Whether one should be
+admitted at all, relative to factual retrieval and the band floor, is specified
+in [`coordination-transition-policy.md`](coordination-transition-policy.md).
+
 ## 4.11 Scheduler evaluation cost
 
 Profiling the simulation sweep measured the app as a side effect. One decision

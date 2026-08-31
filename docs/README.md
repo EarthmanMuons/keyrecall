@@ -31,8 +31,11 @@ docs/
 │   ├── data-products.md             journal, checkpoint, fluency history, and
 │   │                                telemetry: what may be lost from each
 │   ├── future-planning.md           deferred seams, hypotheses, and closed ideas
-│   └── trajectory-simulation.md     synthetic players, invariants against
-│                                    observations, and the candidate census
+│   ├── trajectory-simulation.md     synthetic players, invariants against
+│   │                                observations, and the candidate census
+│   └── coordination-transition-policy.md
+│                                    proposed: when hands-together becomes
+│                                    admissible, and the evidence for it
 │
 ├── domain-model/
 │   ├── alignment-contract.md        grouping proposes, alignment decides
@@ -85,6 +88,7 @@ reference-equivalence and digest tests still pin.
 | What each store is for, and where aggregation is allowed          | `design/data-products.md`                               |
 | Deferred architectural, product, and domain hypotheses            | `design/future-planning.md`                             |
 | Synthetic players, trajectory detectors, and the sweep            | `design/trajectory-simulation.md`                       |
+| Proposed hands-together admission policy, and its evidence chain  | `design/coordination-transition-policy.md`              |
 | Canonical scale fingering                                         | `domain-model/fingering-taxonomy.md`                    |
 | Derived motor family, phase, crossing, and continuation structure | `domain-model/motor-taxonomy.md`                        |
 | Which prerequisite edges exist, and which are prediction instead  | `domain-model/progression-graph.md`                     |
