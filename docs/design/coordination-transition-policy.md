@@ -164,11 +164,11 @@ there is no per-material record standing behind the candidate.
 
 ### Contrary motion first
 
-Pedagogy is close to unanimous that the first hands-together scale should be
-contrary motion: the hands mirror, the same fingers align, and the thumb
-crossings happen simultaneously, whereas parallel motion pairs non-homologous
-fingers. ABRSM encodes it by putting contrary-motion C major at grade 1, before
-any similar-motion hands-together scale exists.
+Common piano pedagogy introduces hands-together work through contrary motion:
+the hands mirror, the same fingers align, and the thumb crossings happen
+simultaneously, whereas parallel motion pairs non-homologous fingers. ABRSM
+encodes it by putting contrary-motion C major at grade 1, before any
+similar-motion hands-together scale exists.
 
 `isCoordinationTransition` deliberately does not read direction, and its stated
 reason survives intact: up and up-down are not two first encounters with playing

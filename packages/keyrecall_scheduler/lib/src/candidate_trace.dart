@@ -313,10 +313,10 @@ class RankKey implements Comparable<RankKey> {
   /// Whether this candidate spends the coordination transition on contrary
   /// motion.
   ///
-  /// Pedagogy is close to unanimous that the first hands-together scale should
-  /// be contrary: the hands mirror, the same fingers align, and the thumb
-  /// crossings happen together, where parallel motion pairs non-homologous
-  /// fingers. See `docs/design/coordination-transition-policy.md`.
+  /// Common piano pedagogy introduces hands-together work through contrary
+  /// motion: the hands mirror, the same fingers align, and the thumb crossings
+  /// happen together, where parallel motion pairs non-homologous fingers. See
+  /// `docs/design/coordination-transition-policy.md`.
   ///
   /// **A claim about which introduction is better, not about which exercise is
   /// easier.** Prediction scores the two identically, because nothing measured
