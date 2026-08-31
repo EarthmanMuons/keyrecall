@@ -3,6 +3,7 @@ import 'dart:isolate';
 
 import 'package:args/args.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
@@ -14,14 +15,20 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// learner any good.
 ///
 /// So attribute each attempt to the exception that admitted it, and ask what
-/// moved. Execution success is the wrong sole test: coordination is a channel
-/// of its own precisely so that an attempt can fail as execution and still be
-/// worth the slot. What would not be worth the slot is an exception firing
-/// repeatedly while neither channel moves.
+/// the coordination channel made of it. Execution success is the wrong sole
+/// test: coordination is a channel of its own precisely so an attempt can fail
+/// as execution and still be worth the slot.
 ///
-/// Reports, per archetype and bypass: attempts, how many were managed, how the
-/// coordination competency moved per attempt, and how long the streak of
-/// bypassed attempts runs before one lands inside the ordinary band.
+/// The movement reported is the one the learner actually applies, not a
+/// difference between two states: the surprise of the measured coordination
+/// reading against [LearnerModel.coordinationProbability] at decision time,
+/// which is what the update is computed from. A state difference would fold in
+/// propagation and every other channel's evidence.
+///
+/// Streaks are counted per execution context and exception, because that is the
+/// grain a policy would act on. A trajectory-wide streak says a learner is
+/// being fed bypassed work; it does not say whether one realization is being
+/// hammered or many are each failing once.
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('archetypes', defaultsTo: 'developing,uneven_hands,advanced')
@@ -58,16 +65,22 @@ Future<void> main(List<String> arguments) async {
     ..writeln(
       'hands-together attempts by what admitted them, '
       '$seeds seeds x $slots slots\n'
-      '  band    = of those, inside the ordinary challenge band\n'
-      '  managed = production accepted the attempt as demonstrated execution\n'
-      '  coord   = mean change in the coordination competency, per attempt\n'
-      '  scored  = attempts that produced a coordination reading at all\n'
-      '  streak  = longest run of bypassed attempts before one lands in band\n',
+      '  band     = inside the ordinary challenge band\n'
+      '  managed  = production accepted it as demonstrated execution\n'
+      '  scored   = produced a coordination reading at all\n'
+      '  predict  = mean coordination probability before the attempt\n'
+      '  read     = mean measured coordination\n'
+      '  surprise = read minus predict, which is what the update applies\n'
+      '  adverse  = share of scored attempts whose surprise was negative\n'
+      '  run      = longest run on one context and exception\n'
+      '  after    = attempts on a context whose surprise had already been\n'
+      '             adverse twice running\n',
     )
     ..writeln(
-      '${'archetype'.padRight(14)}${'admitted by'.padRight(24)}${'n'.padLeft(6)}'
-      '${'band'.padLeft(7)}${'managed'.padLeft(9)}${'scored'.padLeft(8)}'
-      '${'coord'.padLeft(10)}${'streak'.padLeft(8)}',
+      '${'archetype'.padRight(14)}${'admitted by'.padRight(23)}${'n'.padLeft(5)}'
+      '${'band'.padLeft(6)}${'mgd'.padLeft(6)}${'scored'.padLeft(8)}'
+      '${'predict'.padLeft(9)}${'read'.padLeft(8)}${'surprise'.padLeft(10)}'
+      '${'adverse'.padLeft(9)}${'run'.padLeft(6)}${'after'.padLeft(7)}',
     );
 
   for (final archetype in archetypes) {
@@ -77,10 +90,6 @@ Future<void> main(List<String> arguments) async {
     ];
     final reasons = {for (final attempt in mine) attempt.bypass}.toList()
       ..sort();
-    final longestStreak = mine.fold<int>(
-      0,
-      (longest, attempt) => attempt.streak > longest ? attempt.streak : longest,
-    );
 
     for (final reason in reasons) {
       final rows = [
@@ -89,83 +98,114 @@ Future<void> main(List<String> arguments) async {
       ];
       final scored = [
         for (final row in rows)
-          if (row.coordinationDelta != null) row,
+          if (row.surprise != null) row,
       ];
-      final coordination = scored.isEmpty
-          ? null
-          : scored.fold<double>(0, (sum, r) => sum + r.coordinationDelta!) /
-                scored.length;
+      String mean(double Function(_Attempt) of, {int places = 4}) =>
+          scored.isEmpty
+          ? '-'
+          : (scored.fold<double>(0, (sum, r) => sum + of(r)) / scored.length)
+                .toStringAsFixed(places);
+      String share(int count, int total) =>
+          total == 0 ? '-' : '${(100 * count / total).round()}%';
 
       stdout.writeln(
-        '${archetype.padRight(14)}${reason.padRight(24)}'
-        '${rows.length.toString().padLeft(6)}'
-        '${'${(100 * rows.where((r) => r.withinBand).length / rows.length).round()}%'.padLeft(7)}'
-        '${'${(100 * rows.where((r) => r.managed).length / rows.length).round()}%'.padLeft(9)}'
+        '${archetype.padRight(14)}${reason.padRight(23)}'
+        '${rows.length.toString().padLeft(5)}'
+        '${share(rows.where((r) => r.withinBand).length, rows.length).padLeft(6)}'
+        '${share(rows.where((r) => r.managed).length, rows.length).padLeft(6)}'
         '${scored.length.toString().padLeft(8)}'
-        '${(coordination == null ? '-' : coordination.toStringAsFixed(4)).padLeft(10)}'
-        '${(reason == reasons.first ? longestStreak.toString() : '').padLeft(8)}',
+        '${mean((r) => r.predicted, places: 3).padLeft(9)}'
+        '${mean((r) => r.reading!, places: 3).padLeft(8)}'
+        '${mean((r) => r.surprise!).padLeft(10)}'
+        '${share(scored.where((r) => r.surprise! < 0).length, scored.length).padLeft(9)}'
+        '${rows.fold<int>(0, (m, r) => r.run > m ? r.run : m).toString().padLeft(6)}'
+        '${rows.where((r) => r.afterAdverse).length.toString().padLeft(7)}',
       );
     }
   }
 }
 
-/// One hands-together attempt and what it moved.
+/// One hands-together attempt and what the coordination channel made of it.
 class _Attempt {
   final String archetype;
   final String bypass;
   final bool withinBand;
   final bool managed;
-  final double? coordinationDelta;
+  final double predicted;
+  final double? reading;
+  final double? surprise;
 
-  /// How many bypassed attempts had run without one landing in the ordinary
-  /// band, counted within this trajectory.
-  final int streak;
+  /// How many attempts in a row this execution context has taken under this
+  /// exception, which is the grain a policy would act on.
+  final int run;
+
+  /// Whether this context's coordination surprise had already been adverse
+  /// twice running when this attempt was admitted.
+  final bool afterAdverse;
 
   const _Attempt({
     required this.archetype,
     required this.bypass,
     required this.withinBand,
     required this.managed,
-    required this.coordinationDelta,
-    required this.streak,
+    required this.predicted,
+    required this.reading,
+    required this.surprise,
+    required this.run,
+    required this.afterAdverse,
   });
 }
 
 List<_Attempt> _attemptsFor(List<TrajectoryJob> jobs, int slots) {
+  const model = LearnerModel();
   final attempts = <_Attempt>[];
 
   for (final job in jobs) {
-    // The coordination estimate before each decision, so the movement an
-    // attempt produced is the difference against the next slot's reading.
-    final coordinationAt = <int, double>{};
+    // The live state before each decision, for the coordination probability
+    // the update is a surprise against.
+    final bySlot = <int, LearnerState>{};
     final trajectory = runTrajectory(
       player: playerOf(job.archetypeId),
       seed: job.seed,
       materials: allScales,
       slots: slots,
-      observeState: (slot, state) => coordinationAt[slot] = state
-          .competency(Competency.handsTogetherCoordination)
-          .mean,
+      observeState: (slot, state) => bySlot[slot] = state.copy(),
     );
 
-    var streak = 0;
+    final runs = <String, int>{};
+    final adverse = <String, int>{};
     for (final slot in trajectory.slots) {
-      if (slot.chosen.conditions.hands != HandConfiguration.together) continue;
-      final before = coordinationAt[slot.index];
-      final after = coordinationAt[slot.index + 1];
-      streak = slot.winner.isWithinChallengeBand ? 0 : streak + 1;
+      final exercise = slot.chosen;
+      if (exercise.conditions.hands != HandConfiguration.together) continue;
+      final bypass = slot.winner.challengeBypass?.id ?? 'ordinary band';
+      final key =
+          '${executionContextOf(exercise)}'
+          '|${exercise.conditions.octaves}|$bypass';
+
+      final reading = slot.outcome.coordination;
+      final predicted = model.coordinationProbability(
+        bySlot[slot.index]!,
+        exercise,
+      );
+      final surprise = reading == null ? null : reading - predicted;
+
       attempts.add(
         _Attempt(
           archetype: job.archetypeId,
-          bypass: slot.winner.challengeBypass?.id ?? 'ordinary band',
+          bypass: bypass,
           withinBand: slot.winner.isWithinChallengeBand,
           managed: slot.managedExecution,
-          coordinationDelta: before == null || after == null
-              ? null
-              : after - before,
-          streak: streak,
+          predicted: predicted,
+          reading: reading,
+          surprise: surprise,
+          run: runs.update(key, (n) => n + 1, ifAbsent: () => 1),
+          afterAdverse: (adverse[key] ?? 0) >= 2,
         ),
       );
+
+      if (surprise != null) {
+        adverse[key] = surprise < 0 ? (adverse[key] ?? 0) + 1 : 0;
+      }
     }
   }
 
