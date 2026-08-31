@@ -46,10 +46,11 @@ researched independently.
 **The transition is already tightly bounded.** `isCoordinationTransition`
 (`execution_progression.dart:334`) holds only while both hands know the scale
 and the two have never been put together on it, so the first hands-together
-attempt on that material ends it whatever the attempt was like. Once per
-material, not once per span, and direction is not read. That bound is what makes
-an exception here cheap enough to justify: the whole exposure is one slot per
-scale across a learner's history.
+attempt on that material that produced execution evidence ends it, however badly
+it went; one that never started leaves it owed. Once per material, not once per
+span, and direction is not read. That bound is what makes an exception here
+cheap enough to justify: the whole exposure is one slot per scale across a
+learner's history.
 
 ## 2. What the evidence supports
 

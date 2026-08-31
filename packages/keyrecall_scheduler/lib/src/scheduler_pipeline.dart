@@ -879,9 +879,12 @@ class SchedulerPipeline {
         ? StageStatus.reached
         : StageStatus.notReached;
 
+    final transition = isCoordinationTransition(state, exercise);
     final terms = RankKey(
       tier: eligibility.tier,
-      coordinationTransition: isCoordinationTransition(state, exercise),
+      coordinationTransition: transition,
+      contraryCoordination:
+          transition && exercise.conditions.handMotion == HandMotion.contrary,
       retention: retention(prediction, exercise),
       information: information(state, exercise, learner.params),
       diversity: diversity(exercise, session),

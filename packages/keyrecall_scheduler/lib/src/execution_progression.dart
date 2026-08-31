@@ -277,13 +277,15 @@ double realizationFitFor(
 ///
 /// Derived rather than stored, which is what bounds it: it holds only while
 /// both hands satisfy coordination readiness for the material and the two have
-/// never been put together on it, so the first hands-together attempt ends it
-/// whatever that attempt was like. Nothing accumulates and nothing expires on a
-/// timer.
+/// never produced execution evidence together on it. Nothing accumulates and
+/// nothing expires on a timer.
 ///
-/// The attempt rather than the success. What the scheduler owes is bringing
-/// newly available coordination work into practice promptly; how it went is
-/// then evidence like any other.
+/// **Execution evidence, not presentation.** An attempt that never started
+/// carries none, so it leaves the transition owed: the learner was shown the
+/// coordination task and did not meet it. Any attempt they did play spends it
+/// however badly it went, because what the scheduler owes is bringing newly
+/// available coordination work into practice, and how it went is then evidence
+/// like any other.
 ///
 /// Once per material rather than once per span, and direction is unread. The
 /// event is the learner moving from never having coordinated this scale to

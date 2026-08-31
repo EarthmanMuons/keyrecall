@@ -52,7 +52,7 @@ void main() {
     expect(isCoordinationTransition(readyForBoth(), together()), isTrue);
   });
 
-  test('and the first attempt ends it, however it went', () {
+  test('and an attempt that produced execution evidence ends it', () {
     // The attempt rather than the success. What the scheduler owes is bringing
     // the work into practice; how it went is evidence like any other.
     final state = readyForBoth();
@@ -187,6 +187,124 @@ void main() {
       expect(parallel, isNot(contrary));
       expect(parallel.hashCode, isNot(contrary.hashCode));
       expect(parallel.hasSameRealizationAs(contrary), isFalse);
+    });
+  });
+
+  group('what actually spends the transition', () {
+    Outcome outcome({required bool started}) => Outcome(
+      started: started,
+      retrieval: FactualRetrieval.succeeded,
+      completed: started,
+      materialRetrieval: 1.0,
+      pitchIntegrity: started ? 1.0 : 0.0,
+      continuity: started ? 1.0 : 0.0,
+      temporalStability: started ? 1.0 : 0.0,
+      achievedTempoRatio: started ? 1.0 : 0.0,
+      topologyAccuracy: 1.0,
+    );
+
+    LearnerState afterPlaying({required bool started}) {
+      final state = readyForBoth();
+      final exercise = together();
+      final played = outcome(started: started);
+      learner.applyOutcome(
+        state: state,
+        exercise: exercise,
+        outcome: played,
+        weights: evidenceWeightsFor(exercise, played),
+        prediction: learner.predict(state, exercise, at: t0),
+        at: t0,
+      );
+      return state;
+    }
+
+    test('a played attempt does', () {
+      expect(
+        isCoordinationTransition(afterPlaying(started: true), together()),
+        isFalse,
+      );
+    });
+
+    test('an attempt that never started does not', () {
+      // Execution evidence is what marks the material as coordinated, and an
+      // unstarted attempt carries none: nothing was played, so the learner has
+      // not met the coordination task and the transition is still owed them.
+      final state = afterPlaying(started: false);
+
+      expect(
+        evidenceWeightsFor(
+          together(),
+          outcome(started: false),
+        ).materialExecution,
+        0.0,
+      );
+      expect(isCoordinationTransition(state, together()), isTrue);
+      expect(
+        isCoordinationTransition(
+          state,
+          together(handMotion: HandMotion.contrary),
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  group('which motion the transition is spent on', () {
+    RankKey keyFor(Exercise exercise, LearnerState state) => pipeline
+        .evaluate(
+          state: state,
+          session: SessionState(),
+          candidates: [exercise],
+          at: t0,
+        )
+        // Evaluation adds execution neighbours, so the trace for the exercise
+        // asked about is picked out rather than assumed to be the only one.
+        .firstWhere((trace) => trace.exercise == exercise)
+        .terms;
+
+    test('contrary outranks parallel while the transition is unspent', () {
+      final state = readyForBoth();
+      final parallel = keyFor(together(), state);
+      final contrary = keyFor(together(handMotion: HandMotion.contrary), state);
+
+      expect(parallel.coordinationTransition, isTrue);
+      expect(contrary.coordinationTransition, isTrue);
+      expect(parallel.contraryCoordination, isFalse);
+      expect(contrary.contraryCoordination, isTrue);
+      expect(
+        contrary.compareTo(parallel),
+        greaterThan(0),
+        reason:
+            'the two tie on every other term, so without this the order of '
+            'HandMotion.values decides which one a learner meets',
+      );
+    });
+
+    test('and orders nothing once it is spent', () {
+      final state = readyForBoth();
+      state
+              .materialExecutionFor(
+                (
+                  material.materialId,
+                  HandConfiguration.together,
+                  HandMotion.parallel,
+                ),
+                t0,
+                learnerParams,
+              )
+              .lastEvidenceAt =
+          t0;
+
+      final contrary = keyFor(together(handMotion: HandMotion.contrary), state);
+
+      expect(contrary.coordinationTransition, isFalse);
+      expect(
+        contrary.contraryCoordination,
+        isFalse,
+        reason:
+            'outside the transition the motions are ordinary realizations of '
+            'the same material, and this must not order them',
+      );
     });
   });
 }

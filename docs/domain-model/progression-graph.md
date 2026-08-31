@@ -77,7 +77,8 @@ they can handle.
  unseen material ──► cued first encounter             [prediction only]
                     [REQUIRES]
                                                  parallel ─── contrary
-                                                 [no edge; not yet generated]
+                                                 [no edge; ranked preference
+                                                  inside the transition]
 ```
 
 Reading it: solid `REQUIRES` edges are enforced at stage 2a and make the later
@@ -287,12 +288,17 @@ transition.** `HandMotion` is a realization condition like span or tempo, not a
 new skill state. The coordination transition stays **once per material**: the
 event it marks is a learner moving from never having coordinated this scale to
 having coordinated it, and meeting the other hand motion afterwards is ordinary
-execution progression on a skill that exists.
+execution progression on a skill that exists. It is spent by execution evidence
+rather than by presentation, so an attempt the learner never started leaves it
+owed.
 
 The preference belongs in ranking rather than in a gate, and only while the
 single transition is unspent, so that the one slot it costs is spent on the
-easier realization. Nothing generates contrary motion yet, so the preference has
-nothing to prefer today.
+easier realization. It is a claim about which of two otherwise tied candidates
+is the better introduction, not a claim that contrary motion is generally
+easier: prediction scores the two identically, because nothing measured supports
+a quantitative difference between them. Without the term the choice still gets
+made, by the order `HandMotion.values` happens to list.
 
 Whether parallel and contrary hands-together work progress independently depends
 on whether learner execution state is keyed by hand motion. **It is not today**:

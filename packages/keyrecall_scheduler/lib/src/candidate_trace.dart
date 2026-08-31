@@ -310,6 +310,28 @@ class RankKey implements Comparable<RankKey> {
   /// candidate past a fully eligible one.
   final bool coordinationTransition;
 
+  /// Whether this candidate spends the coordination transition on contrary
+  /// motion.
+  ///
+  /// Pedagogy is close to unanimous that the first hands-together scale should
+  /// be contrary: the hands mirror, the same fingers align, and the thumb
+  /// crossings happen together, where parallel motion pairs non-homologous
+  /// fingers. See `docs/design/coordination-transition-policy.md`.
+  ///
+  /// **A claim about which introduction is better, not about which exercise is
+  /// easier.** Prediction scores the two identically, because nothing measured
+  /// supports a quantitative difference; this says only that where the two are
+  /// otherwise tied, coordination is introduced through the mirrored one.
+  ///
+  /// **Must follow [coordinationTransition] and precede retention**, and is
+  /// false whenever the transition is: outside it the two motions are ordinary
+  /// realizations of the same material and this must not order them.
+  ///
+  /// Without it the choice is still made, by the order `HandMotion.values`
+  /// happens to list. Measured across every archetype, contrary motion won
+  /// none of 710 transition slots for exactly that reason.
+  final bool contraryCoordination;
+
   /// `R(e)`: how urgent it is to test this material, weighted by whether this
   /// candidate can actually produce retrieval evidence.
   final double retention;
@@ -344,6 +366,7 @@ class RankKey implements Comparable<RankKey> {
     required this.tier,
     required this.retention,
     this.coordinationTransition = false,
+    this.contraryCoordination = false,
     required this.information,
     required this.diversity,
     required this.goals,
@@ -359,6 +382,10 @@ class RankKey implements Comparable<RankKey> {
       coordinationTransition,
     ).compareTo(_order(other.coordinationTransition));
     if (byTransition != 0) return byTransition;
+    final byContrary = _order(
+      contraryCoordination,
+    ).compareTo(_order(other.contraryCoordination));
+    if (byContrary != 0) return byContrary;
     final byRetention = retention.compareTo(other.retention);
     if (byRetention != 0) return byRetention;
     final byInformation = information.compareTo(other.information);
@@ -377,6 +404,7 @@ class RankKey implements Comparable<RankKey> {
       other is RankKey &&
       other.tier == tier &&
       other.coordinationTransition == coordinationTransition &&
+      other.contraryCoordination == contraryCoordination &&
       other.retention == retention &&
       other.information == information &&
       other.diversity == diversity &&
@@ -388,6 +416,7 @@ class RankKey implements Comparable<RankKey> {
   int get hashCode => Object.hash(
     tier,
     coordinationTransition,
+    contraryCoordination,
     retention,
     information,
     diversity,
@@ -400,6 +429,7 @@ class RankKey implements Comparable<RankKey> {
   String toString() =>
       'RankKey(${tier.id}, '
       '${coordinationTransition ? 'TRANSITION, ' : ''}'
+      '${contraryCoordination ? 'CONTRARY, ' : ''}'
       'R: ${retention.toStringAsFixed(3)}, '
       'I: ${information.toStringAsFixed(3)}, '
       'V: ${diversity.toStringAsFixed(1)}, '
