@@ -478,7 +478,7 @@ class CandidateTrace {
   /// candidate.
   final StageStatus challengeStatus;
 
-  /// Stage 3 input: all four predicted channels.
+  /// Stage 3 input: all five predicted channels.
   final Prediction prediction;
 
   /// Whether predicted success landed inside the ordinary band.

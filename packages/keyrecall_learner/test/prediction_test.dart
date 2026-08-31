@@ -197,6 +197,7 @@ void main() {
           prediction.independentRetrievalP,
           prediction.materialAvailableP,
           prediction.executionP,
+          prediction.coordinationP,
           prediction.topologyP,
           prediction.overallP,
         ]) {

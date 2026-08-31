@@ -342,6 +342,14 @@ void _comparePrediction(
   );
   _compareNumber(
     id,
+    'coordination_p',
+    recorded.coordinationP,
+    replayed.coordinationP,
+    divergences,
+    options,
+  );
+  _compareNumber(
+    id,
     'topology_p',
     recorded.topologyP,
     replayed.topologyP,

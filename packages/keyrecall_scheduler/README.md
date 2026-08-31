@@ -80,7 +80,7 @@ retrieval is categorically not a failure to recover from, which is why
 
 ## Configuration
 
-`v1SchedulerConfig` is the live registry, at version `v1-1`. It began as a
+`v1SchedulerConfig` is the live registry, at version `v1-2`. It began as a
 mirror of `analysis/scheduler/config.toml` at `v1-prototype-0` and has since
 moved past it, so a test now checks that the inherited values still match the
 archive while the version deliberately does not. The stage structure and

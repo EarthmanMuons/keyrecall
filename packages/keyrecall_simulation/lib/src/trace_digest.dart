@@ -15,7 +15,7 @@ import 'attempt_trace.dart';
 const String discreteDigestSchema = 'discrete-trace-digest-v2';
 
 /// Schema tag for [fullTraceDigest]. See [discreteDigestSchema].
-const String fullDigestSchema = 'full-trace-digest-v1';
+const String fullDigestSchema = 'full-trace-digest-v2';
 
 /// Exactly what [discreteTraceDigest] hashes, in order.
 ///
@@ -57,7 +57,7 @@ String discreteTraceDigest(Iterable<AttemptTrace> traces) => _digest(
 
 /// A full-precision digest of everything one run computed.
 ///
-/// Covers the state each decision was made from, all four predicted channels,
+/// Covers the state each decision was made from, all five predicted channels,
 /// the observed outcome, every evidence weight, the memory attribution, and
 /// the state that resulted. Any change to a prediction, a random draw, a
 /// transition, or an intermediate state changes it.
@@ -144,6 +144,7 @@ List<String> _fullFields(AttemptTrace trace, DateTime epoch) => [
   _encodeNumber(trace.prediction.independentRetrievalP),
   _encodeNumber(trace.prediction.materialAvailableP),
   _encodeNumber(trace.prediction.executionP),
+  _encodeNumber(trace.prediction.coordinationP),
   _encodeNumber(trace.prediction.topologyP),
   _encodeNumber(trace.outcome.materialRetrieval),
   _encodeNumber(trace.outcome.pitchIntegrity),

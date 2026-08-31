@@ -916,6 +916,7 @@ class SchedulerPipeline {
         realization,
         () => learner.executionProbability(state, exercise),
       ),
+      coordinationP: learner.coordinationProbability(state, exercise),
       topologyP: topologyCache.putIfAbsent(
         realization,
         () => learner.topologyProbability(state, exercise),

@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   challenge, and priority stages, per-candidate `CandidateTrace` records,
   lexicographic `RankKey` ranking, the repetition guard, and the new-material,
   guidance-probe, bootstrap-probe, recovery, and override admission exceptions.
-- `v1SchedulerConfig`, at registry version `v1-1`. It began as
+- `v1SchedulerConfig`, at registry version `v1-2`. It began as
   `v1PrototypeSchedulerConfig`, mirroring `v1-prototype-0` in
   `analysis/scheduler/config.toml`, and was renamed when it stopped carrying
   only the prototype's values.
@@ -39,5 +39,7 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Challenge admission now consumes coordination-aware overall prediction for
+  hands-together candidates. Admission exceptions are otherwise unchanged.
 - The configuration classes assert their own bounds, so the shipped registry is
   checked where it is declared.

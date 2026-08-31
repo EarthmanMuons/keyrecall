@@ -48,10 +48,16 @@ class LearnerModel {
   /// recorded achieved tempo without consuming it.
   final bool attributesDemonstratedDifficulty;
 
+  /// Whether bilateral coordination participates in challenge prediction.
+  ///
+  /// False only for [LearnerModel.v1Prototype], whose recorded prediction
+  /// semantics predate the coordination channel's admission consequence.
+  final bool includesCoordinationInChallenge;
+
   const LearnerModel({
     this.params = v1LearnerParams,
     this.attributesDemonstratedDifficulty = true,
-  });
+  }) : includesCoordinationInChallenge = true;
 
   /// The model as the frozen Python prototype defined it.
   ///
@@ -60,7 +66,8 @@ class LearnerModel {
   /// model, preserved, not a configuration of the current one.
   const LearnerModel.v1Prototype()
     : params = v1PrototypeLearnerParams,
-      attributesDemonstratedDifficulty = false;
+      attributesDemonstratedDifficulty = false,
+      includesCoordinationInChallenge = false;
 
   /// A cold-start state with every competency at the registry prior.
   LearnerState newState({required DateTime at, double? competencyPriorMean}) =>
@@ -174,6 +181,10 @@ class LearnerModel {
   }
 
   /// `P(acceptable motor execution | material available)`.
+  ///
+  /// Reads only motor competencies and the material execution residual.
+  /// Bilateral coordination is a separate required channel for hands-together
+  /// work and forms the motor-control bottleneck in [Prediction.overallP].
   double executionProbability(LearnerState state, Exercise exercise) {
     final loadings = motorLoadings(exercise.structuralQ);
     var competencyTerm = 0.0;
@@ -196,6 +207,7 @@ class LearnerModel {
   /// channel is about, so charging the same difficulty twice would predict a
   /// two-hand attempt as harder to coordinate the harder it is to play.
   double coordinationProbability(LearnerState state, Exercise exercise) {
+    if (exercise.conditions.hands != HandConfiguration.together) return 1.0;
     final loadings = coordinationLoadings(exercise.structuralQ);
     var coordinationTerm = 0.0;
     for (final entry in loadings.entries) {
@@ -239,6 +251,9 @@ class LearnerModel {
         exercise.guidance,
       ),
       executionP: executionProbability(state, exercise),
+      coordinationP: includesCoordinationInChallenge
+          ? coordinationProbability(state, exercise)
+          : 1.0,
       topologyP: topologyProbability(state, exercise),
     );
   }

@@ -163,7 +163,7 @@ for this learner. Stage 2 doesn't choose those fields; it only evaluates
 eligibility and safety on the candidate stage 1 already produced.
 
 **Allowed inputs:** `Prediction.overall_p` from `predicted_success()`
-(`03-v1-math.md` §10.1: `material_available_p * execution_p`), computed for this
+(`material_available_p * min(execution_p, coordination_p)`), computed for this
 candidate's exact `TechnicalMaterial` / `ExecutionConditions` /
 `GuidanceContext`.
 

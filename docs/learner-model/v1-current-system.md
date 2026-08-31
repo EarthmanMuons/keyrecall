@@ -97,7 +97,7 @@ V1 therefore separates three persistent-state questions:
    the transferable competencies predict?
 
 It stores an uncertain answer to each question. Prediction then breaks those
-beliefs into four separate numbers, each answering a narrower question about one
+beliefs into five separate numbers, each answering a narrower question about one
 upcoming attempt:
 
 1. **independent retrieval**: could they recall it with no help at all?
@@ -105,7 +105,9 @@ upcoming attempt:
    whatever help this attempt provides?
 3. **conditional motor execution**: assuming the material is available, can
    their hands actually carry it out?
-4. **topology knowledge**: do they understand the underlying scale pattern,
+4. **bilateral coordination**: for hands-together work, can the hands stay
+   together?
+5. **topology knowledge**: do they understand the underlying scale pattern,
    separate from whether they can play it?
 
 The scheduler admits candidates at an appropriate challenge level, and the
@@ -433,9 +435,9 @@ and no retrieval evidence at all.
 
 ## 6. Predicting an attempt
 
-Rather than one "will they succeed" number, V1 makes four separate predictions
+Rather than one "will they succeed" number, V1 makes five separate predictions
 for each candidate exercise: independent retrieval, supported material
-availability, conditional motor execution, and topology.
+availability, conditional motor execution, bilateral coordination, and topology.
 
 ### 6.1 Retrieval versus supported availability
 
@@ -530,13 +532,15 @@ answers whether the notes can be produced on this attempt.
 
 ### 6.4 Overall acceptable-performance probability
 
-Multiplying the two hurdle probabilities gives the probability used for
-challenge admission: can the material be produced, and, conditional on that, can
-the requested motor task be executed?
+Challenge admission combines material availability with the weaker of the two
+correlated motor-control channels: can the material be produced, and can both
+execution and bilateral coordination support the requested task?
 
 ```math
 \widehat p_{\mathrm{overall}}(e) =
-\widehat p_{\mathrm{available}}(e)\widehat p_{\mathrm{exec}}(e)
+\widehat p_{\mathrm{available}}(e)\,
+\min(\widehat p_{\mathrm{exec}}(e),
+\widehat p_{\mathrm{coordination}}(e))
 ```
 
 This factorization is the key interpretability boundary:
@@ -547,11 +551,12 @@ failure after starting   primarily an execution observation
 clean cued performance   useful execution evidence, not retrieval evidence
 ```
 
-`p_overall` is the scheduler's challenge-admission probability: the modeled
-conjunction of material availability and conditional motor execution. It is not
-a universal latent "quality" variable and does not replace the multidimensional
-observed outcome. State updates retain the separate prediction and outcome
-channels.
+`p_coordination` is one for single-hand work. For hands-together work, execution
+and coordination are correlated views of the same performance, so their weaker
+probability is the motor-control bottleneck rather than multiplying them under
+an independence assumption. `p_overall` multiplies that bottleneck by the
+separate material-availability hurdle. It is not a universal latent "quality"
+variable and does not replace the multidimensional observed outcome.
 
 ## 7. Turning an attempt into evidence
 

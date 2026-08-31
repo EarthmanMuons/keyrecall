@@ -204,6 +204,7 @@ CandidateTrace _trace(Exercise exercise, {ChallengeBypass? bypass}) {
       independentRetrievalP: 0.8,
       materialAvailableP: 0.8,
       executionP: 0.8,
+      coordinationP: 1.0,
       topologyP: 0.8,
     ),
     isWithinChallengeBand: true,

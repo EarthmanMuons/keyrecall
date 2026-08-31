@@ -24,12 +24,15 @@ replayed and must produce the same result.
   for problems that are specific to one scale in one hand, rather than a reason
   to lower the shared estimate.
 
-## Four predictions, not one
+## Five predictions, not one
 
-`LearnerModel.predict` answers four narrower questions than "will they succeed":
+`LearnerModel.predict` answers five narrower questions than "will they succeed":
 independent retrieval, supported material availability, conditional motor
-execution, and topology knowledge. `Prediction.overallP` multiplies the two
-hurdles, and that product is what challenge admission consumes.
+execution, bilateral coordination, and topology knowledge. For hands-together
+work, the weaker of execution and coordination is the motor-control bottleneck;
+single-hand work carries a coordination probability of one. Material
+availability multiplies that bottleneck, and the result is what challenge
+admission consumes.
 
 Splitting the channels is the interpretability boundary the model rests on: a
 failure to recall is a memory observation, a failure after starting is an

@@ -20,6 +20,7 @@ CandidateTrace admittedTrace(
     independentRetrievalP: 0.7,
     materialAvailableP: 0.7,
     executionP: 0.9,
+    coordinationP: 1.0,
     topologyP: 0.8,
   );
   final terms = RankKey(
@@ -194,6 +195,7 @@ void main() {
         independentRetrievalP: 0.05,
         materialAvailableP: 0.95,
         executionP: 0.9,
+        coordinationP: 1.0,
         topologyP: 0.8,
       );
       expect(retentionNeed(urgent), closeTo(0.95, 1e-12));

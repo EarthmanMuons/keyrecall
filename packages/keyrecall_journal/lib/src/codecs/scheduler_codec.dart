@@ -14,7 +14,7 @@ import '../schema.dart';
 /// retain the near misses separately when it needs them.
 @immutable
 class SchedulerDecision {
-  /// The four predicted channels for the selected exercise.
+  /// The five predicted channels for the selected exercise.
   final Prediction prediction;
 
   /// Which prerequisite tier it competed in.

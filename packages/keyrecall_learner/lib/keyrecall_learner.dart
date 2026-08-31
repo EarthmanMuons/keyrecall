@@ -3,7 +3,7 @@
 /// [LearnerState] holds three layers of belief about one learner: transferable
 /// [CompetencyState], exact-material [MaterialMemoryState], and per-context
 /// [MaterialExecutionState]. [LearnerModel] turns those beliefs into a
-/// four-channel [Prediction] for an upcoming exercise, and folds an [Outcome]
+/// five-channel [Prediction] for an upcoming exercise, and folds an [Outcome]
 /// back in through [evidenceWeightsFor], updating only the channels the
 /// attempt genuinely observed.
 library;

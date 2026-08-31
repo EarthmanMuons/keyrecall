@@ -12,7 +12,8 @@ Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) {
   final version = json['schema_version'];
   return switch (version) {
     attemptSchemaVersion => json,
-    1 => _version1To2(json),
+    2 => _version2To3(json),
+    1 => _version2To3(_version1To2(json)),
     _ => throw JournalFormatException(
       'attempt schema version $version is not upgradable by this build, which '
       'writes version $attemptSchemaVersion',
@@ -40,16 +41,27 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 ///
 /// Throws [JournalFormatException] for a version this build cannot upgrade.
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
-    _stampedForward(json, 'pending decision');
+    switch (json['schema_version']) {
+      attemptSchemaVersion => json,
+      2 => _version2To3(json),
+      1 => _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+      final version => throw JournalFormatException(
+        'pending decision schema version $version is not upgradable by this '
+        'build, which writes version $attemptSchemaVersion',
+      ),
+    };
 
 /// Accepts any upgradable version and restamps it, for records whose own
 /// fields did not change.
-Map<String, Object?> _stampedForward(Map<String, Object?> json, String what) {
+Map<String, Object?> _stampedForward(
+  Map<String, Object?> json,
+  String what, {
+  int to = attemptSchemaVersion,
+}) {
   final version = json['schema_version'];
   if (version == attemptSchemaVersion) return json;
-  if (version == 1) {
-    return Map<String, Object?>.of(json)
-      ..['schema_version'] = attemptSchemaVersion;
+  if (version == 1 || version == 2) {
+    return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
     '$what schema version $version is not upgradable by this build, which '
@@ -69,7 +81,7 @@ Map<String, Object?> _version1To2(Map<String, Object?> json) {
     ..remove('evidence_weights')
     ..remove('memory_update');
 
-  upgraded['schema_version'] = attemptSchemaVersion;
+  upgraded['schema_version'] = 2;
   upgraded['closure'] = {
     'termination': AttemptTermination.learnerStopped.id,
     'measurement': {
@@ -79,5 +91,23 @@ Map<String, Object?> _version1To2(Map<String, Object?> json) {
       'memory_update': json['memory_update'],
     },
   };
+  return upgraded;
+}
+
+/// Version 2 recorded challenge prediction before bilateral coordination
+/// participated in it. A coordination probability of one preserves that exact
+/// historical meaning: overall probability remains availability times motor
+/// execution.
+Map<String, Object?> _version2To3(Map<String, Object?> json) {
+  final upgraded = Map<String, Object?>.of(json)
+    ..['schema_version'] = attemptSchemaVersion;
+  final decision = json['decision'];
+  if (decision is! Map<String, Object?>) return upgraded;
+  final prediction = decision['prediction'];
+  if (prediction is! Map<String, Object?>) return upgraded;
+
+  upgraded['decision'] = Map<String, Object?>.of(decision)
+    ..['prediction'] = (Map<String, Object?>.of(prediction)
+      ..['coordination_p'] = 1.0);
   return upgraded;
 }

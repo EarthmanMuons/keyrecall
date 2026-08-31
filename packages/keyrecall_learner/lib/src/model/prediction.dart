@@ -1,6 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:meta/meta.dart';
 
-/// What the model expects from one upcoming attempt, on four separate
+/// What the model expects from one upcoming attempt, on five separate
 /// channels.
 ///
 /// Splitting the prediction is the interpretability boundary the whole model
@@ -19,6 +21,12 @@ class Prediction {
   /// available.
   final double executionP;
 
+  /// Probability the hands stay together.
+  ///
+  /// One for a single-hand exercise, where bilateral coordination is not a
+  /// required hurdle.
+  final double coordinationP;
+
   /// Probability the learner knows the underlying pitch/form structure.
   ///
   /// An inference target with its own outcome channel. It is deliberately not
@@ -30,14 +38,18 @@ class Prediction {
     required this.independentRetrievalP,
     required this.materialAvailableP,
     required this.executionP,
+    required this.coordinationP,
     required this.topologyP,
   });
 
-  /// The challenge-admission probability: both hurdles cleared.
+  /// The challenge-admission probability: every required hurdle cleared.
   ///
-  /// The modeled conjunction of material availability and conditional motor
-  /// execution, not a universal latent quality score.
-  double get overallP => materialAvailableP * executionP;
+  /// Motor execution and coordination are correlated views of the same
+  /// performance, so their weaker probability is the motor-control bottleneck
+  /// rather than multiplying them as though they were independent. Material
+  /// availability remains the separate hurdle.
+  double get overallP =>
+      materialAvailableP * math.min(executionP, coordinationP);
 
   @override
   bool operator ==(Object other) =>
@@ -45,6 +57,7 @@ class Prediction {
       other.independentRetrievalP == independentRetrievalP &&
       other.materialAvailableP == materialAvailableP &&
       other.executionP == executionP &&
+      other.coordinationP == coordinationP &&
       other.topologyP == topologyP;
 
   @override
@@ -52,6 +65,7 @@ class Prediction {
     independentRetrievalP,
     materialAvailableP,
     executionP,
+    coordinationP,
     topologyP,
   );
 
@@ -60,5 +74,6 @@ class Prediction {
       'Prediction(retrieval: ${independentRetrievalP.toStringAsFixed(3)}, '
       'available: ${materialAvailableP.toStringAsFixed(3)}, '
       'execution: ${executionP.toStringAsFixed(3)}, '
+      'coordination: ${coordinationP.toStringAsFixed(3)}, '
       'topology: ${topologyP.toStringAsFixed(3)})';
 }

@@ -6,17 +6,18 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import '../canonical_json.dart';
 import '../schema.dart';
 
-/// Writes the four predicted channels.
+/// Writes the five predicted channels.
 Map<String, Object?> encodePrediction(Prediction prediction) => {
   'independent_retrieval_p': prediction.independentRetrievalP,
   'material_available_p': prediction.materialAvailableP,
   'execution_p': prediction.executionP,
+  'coordination_p': prediction.coordinationP,
   'topology_p': prediction.topologyP,
 };
 
-/// Reads the four predicted channels back.
+/// Reads the five predicted channels back.
 ///
-/// Overall success is deliberately not stored: it is the product of two of
+/// Overall success is deliberately not stored: it is derived from three of
 /// these, and storing it would create a second place for it to be wrong.
 Prediction decodePrediction(Map<String, Object?> json, {String? location}) =>
     Prediction(
@@ -31,6 +32,7 @@ Prediction decodePrediction(Map<String, Object?> json, {String? location}) =>
         location: location,
       ),
       executionP: requireDouble(json, 'execution_p', location: location),
+      coordinationP: requireDouble(json, 'coordination_p', location: location),
       topologyP: requireDouble(json, 'topology_p', location: location),
     );
 

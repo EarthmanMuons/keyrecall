@@ -9,8 +9,9 @@ import 'support/fixtures.dart';
 /// record, because the learner ending the attempt and saying what happened was
 /// the only way one could be written.
 Map<String, Object?> version1(Map<String, Object?> current) {
-  final measurement = measurementJsonOf(current);
-  return Map<String, Object?>.of(current)
+  final old = version2(current);
+  final measurement = measurementJsonOf(old);
+  return Map<String, Object?>.of(old)
     ..['schema_version'] = 1
     ..remove('closure')
     ..['outcome'] = measurement['outcome']
@@ -18,11 +19,23 @@ Map<String, Object?> version1(Map<String, Object?> current) {
     ..['memory_update'] = measurement['memory_update'];
 }
 
+Map<String, Object?> version2(Map<String, Object?> current) {
+  final old = Map<String, Object?>.of(current)..['schema_version'] = 2;
+  final decision = old['decision'];
+  if (decision is! Map<String, Object?>) return old;
+  final prediction = decision['prediction'];
+  if (prediction is! Map<String, Object?>) return old;
+  old['decision'] = Map<String, Object?>.of(decision)
+    ..['prediction'] = (Map<String, Object?>.of(prediction)
+      ..remove('coordination_p'));
+  return old;
+}
+
 void main() {
   final recorded = recordSession();
   final journal = recorded.journal;
 
-  group('version 1 to 2', () {
+  group('version 1 to current', () {
     test('reads every historical outcome as a learner-stopped measurement', () {
       for (final original in journal.records) {
         final upgraded = AttemptRecord.fromJson(version1(original.toJson()));
@@ -110,6 +123,27 @@ void main() {
       expect(after.stateHash, before.stateHash);
       expect(after.attemptsApplied, before.attemptsApplied);
       expect(after.divergences, isEmpty);
+    });
+  });
+
+  group('version 2 to current', () {
+    test('preserves the former challenge prediction', () {
+      for (final original in journal.records) {
+        final decision = original.decision;
+        if (decision == null) continue;
+
+        final upgraded = AttemptRecord.fromJson(version2(original.toJson()));
+
+        expect(upgraded.decision!.prediction.coordinationP, 1.0);
+        expect(
+          upgraded.decision!.prediction.overallP,
+          closeTo(
+            decision.prediction.materialAvailableP *
+                decision.prediction.executionP,
+            1e-12,
+          ),
+        );
+      }
     });
   });
 

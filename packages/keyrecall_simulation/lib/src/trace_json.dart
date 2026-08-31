@@ -35,6 +35,7 @@ Map<String, Object?> attemptTraceToJson(
     'predicted_independent_retrieval_p': trace.prediction.independentRetrievalP,
     'predicted_material_available_p': trace.prediction.materialAvailableP,
     'predicted_execution_p': trace.prediction.executionP,
+    'predicted_coordination_p': trace.prediction.coordinationP,
     'predicted_topology_p': trace.prediction.topologyP,
     'predicted_p': trace.prediction.overallP,
     'outcome': _outcomeJson(trace.outcome),

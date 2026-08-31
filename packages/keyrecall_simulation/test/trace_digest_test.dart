@@ -45,7 +45,7 @@ const List<PinnedDigests> pinnedRuns = [
     attempts: 80,
     discrete:
         '7738a3fa3fcd45fad5def4c9b19bf468d6d903cf2b680bc7433d0384d7ca6675',
-    full: 'b98eae069fca6e930389fbd811da69618a6ebab8b4af4ef0875cce48c0c44d48',
+    full: '592360275edc6c97896ba46b33846d10900c9db23eea35307ede5b291a1a1f94',
   ),
   PinnedDigests(
     profile: SyntheticProfile.beginner,
@@ -53,7 +53,7 @@ const List<PinnedDigests> pinnedRuns = [
     attempts: 80,
     discrete:
         'eb6e6b7ca584fa6b37cc457842bf1f873919a233a529ece1d108eb13b9fce128',
-    full: '40eaab8b193ef6181e9621f2d1c6677b0c25f2c669322addc3945cb4fb60bc48',
+    full: 'a759cc8c300e47ef0edc8520ae98ad4cdd1b49f50a1f1747ee17274abd6491b8',
   ),
   PinnedDigests(
     profile: SyntheticProfile.returning,
@@ -61,7 +61,7 @@ const List<PinnedDigests> pinnedRuns = [
     attempts: 80,
     discrete:
         '558a181e55893357dc069c675bbf2142c71afc79940170805fd0d9cb18c9a8b6',
-    full: 'a183d01b014b0b2cf65d345554b5272915b5e3e96f62623081891447f5f395ad',
+    full: '7f470cf0f56f5d74b0544b72cc672c632b6a8a698a702b5c61258526af58b818',
   ),
   PinnedDigests(
     profile: SyntheticProfile.techniqueStrongMemoryWeak,
@@ -69,7 +69,7 @@ const List<PinnedDigests> pinnedRuns = [
     attempts: 80,
     discrete:
         '8314f455000ca11aa03fc72c5e44d011f2eae949b49607f1ae4884eb22655c5f',
-    full: 'c921d7b28733011ecff261aa6879ddebc5828b6c1ace9a7ae3997747cdbc1263',
+    full: 'e03908d26a50500dadf6219288ecc6cfcc4d51c49591643e05c09175773457fb',
   ),
 ];
 
@@ -117,7 +117,7 @@ void main() {
       // A digest computed under a different schema must not silently compare
       // equal to one computed under this schema.
       expect(discreteDigestSchema, 'discrete-trace-digest-v2');
-      expect(fullDigestSchema, 'full-trace-digest-v1');
+      expect(fullDigestSchema, 'full-trace-digest-v2');
       expect(discreteDigestSchema, isNot(fullDigestSchema));
 
       final traces = PracticeSimulation.of(

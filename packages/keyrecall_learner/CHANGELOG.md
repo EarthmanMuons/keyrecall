@@ -14,7 +14,7 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 - Initial port of the KeyRecall V1 learner model from the Python prototype under
   `analysis/learner-model/`: `LearnerState` over competency, material memory,
-  and execution-residual layers; four-channel `Prediction`; three-valued
+  and execution-residual layers; five-channel `Prediction`; three-valued
   `FactualRetrieval` observation; `evidenceWeightsFor`; and the ordered memory
   update covering retained-consolidation inference, current-durability
   correction, and causal formation and restoration.
@@ -23,6 +23,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Hands-together challenge prediction now includes bilateral coordination as the
+  correlated motor-control bottleneck; single-hand prediction is unchanged.
 - Time may only move forward. Propagating backward throws instead of silently
   permitting an interval to be diffused twice, and the check runs before any
   layer is written.
