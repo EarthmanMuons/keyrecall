@@ -41,9 +41,9 @@ double retention(Prediction prediction, Exercise exercise) =>
 /// memory or execution entry and is never itself evidence.
 ///
 /// Deliberately blind to competency *means*. Weighting each term by predicted
-/// capability was tried and reverted: it re-derived the difficulty structure
-/// challenge admission already consumes, breaking the boundary that priority
-/// ranking must not re-consume challenge difficulty.
+/// capability would re-derive the difficulty structure challenge admission
+/// already consumes, breaking the boundary that priority ranking must not
+/// re-consume challenge difficulty.
 double information(
   LearnerState state,
   Exercise exercise,

@@ -250,15 +250,11 @@ class SafetyDecision {
 /// as a rank: a step forward, then holding where they are, then work they have
 /// already surpassed.
 ///
-/// This exists because the material-level terms cannot tell realizations apart.
-/// Retention and diversity are facts about a material, and information reads
-/// competencies, so two hundred and thirty candidates on one scale at every
-/// tempo, span and hand configuration can carry identical keys. A device
-/// sitting collapsed into eleven consecutive one-octave right-hand exercises at
-/// sixty while the learner was playing at a hundred and twenty-five, because
-/// sixty and a hundred and thirty-two tied on every field and generation lists
-/// sixty first. An axis nothing ranks is not neutral; it is decided by the
-/// order of a constant.
+/// The material-level terms cannot tell realizations apart: retention and
+/// diversity are facts about a material and information reads competencies, so
+/// every tempo, span and hand configuration of one scale can carry identical
+/// keys. An axis nothing ranks is not neutral; it is decided by the order of a
+/// constant.
 enum RealizationRank {
   /// Slower, narrower, or fewer hands than this learner has already managed
   /// here. Reachable, and last: they have been past this.
@@ -302,20 +298,16 @@ class RankKey implements Comparable<RankKey> {
   /// Whether this candidate is the learner's first chance to play its material
   /// with both hands, having just earned it.
   ///
-  /// Above retention, which is where it has to be to do anything: measuring
-  /// what separated a waiting hands-together candidate from the winner, the
-  /// first differing term was retention in eighty-four per cent of slots and
-  /// information in the rest, never the tier and never diversity. Below
-  /// retention this would never fire.
+  /// **Must precede retention and information, or it is inert.** Those are the
+  /// terms that separate a waiting hands-together candidate from the winner, so
+  /// below either of them this term never decides anything.
   ///
-  /// That means it does override genuine retention urgency, not only the
-  /// hair's-breadth differences that make up about half of those slots. It is
-  /// allowed to because it cannot persist: the first hands-together attempt on
-  /// the material ends it, so the cost is one slot per scale, once.
+  /// It therefore overrides genuine retention urgency, which it is allowed to
+  /// do because it cannot persist: the first hands-together attempt on the
+  /// material ends it, so the cost is one slot per scale, once.
   ///
-  /// Below the tier, so it cannot pull a provisionally eligible candidate past
-  /// a fully eligible one. A transition is worth reaching for early; it is not
-  /// worth reaching for something the learner is not ready for.
+  /// **Must follow the tier**, so it cannot pull a provisionally eligible
+  /// candidate past a fully eligible one.
   final bool coordinationTransition;
 
   /// `R(e)`: how urgent it is to test this material, weighted by whether this
@@ -339,17 +331,13 @@ class RankKey implements Comparable<RankKey> {
   /// How near an unmeasured realization is to the one this learner should be
   /// entering at, as a negative rung distance. Zero for everything else.
   ///
-  /// The last term, and the smallest. [RealizationRank.unmeasured] says
-  /// nothing has been demonstrated at this span, which is true of every tempo
-  /// there at once, so without this a learner reaching a new span had sixty
-  /// and a hundred and twenty tied again and generation order decided between
-  /// them. That is the failure the whole realization term exists to remove,
-  /// surviving in the one state where the term had nothing to say.
+  /// The last term, and the smallest. [RealizationRank.unmeasured] is true of
+  /// every tempo at an unreached span at once, so without this the tempi there
+  /// tie and generation order decides between them.
   ///
   /// A distance rather than more ordinal categories, because what is being
-  /// compared is a distance. Splitting `unmeasured` into near and far would
-  /// need a boundary nobody can defend, and the ordering is the same either
-  /// way.
+  /// compared is a distance: splitting `unmeasured` into near and far would
+  /// need a boundary nobody can defend.
   final double realizationFit;
 
   const RankKey({

@@ -20,16 +20,14 @@ class EligibilityConfig {
   ///
   /// The one condition on the execution axis with unanimous curriculum
   /// support: no source teaches two octaves before one. It needs a floor
-  /// because the information term actively prefers the untried condition, and
-  /// a span nobody has attempted is where the uncertainty is; without one a
-  /// synthetic beginner reached two octaves unguided on their eighth attempt.
+  /// because the information term prefers the untried condition, and a span
+  /// nobody has attempted is where the uncertainty is.
   ///
-  /// Generic rather than per-material, for the reason the bands are not a
-  /// per-key ladder, and not read off multi-octave continuation itself, which
-  /// would be the self-referential trap natural minor already taught. Halfway
-  /// between where placement puts a self-reported beginner and someone with
-  /// some experience, so it is earned by ordinary one-octave work and never
-  /// asked of a learner who arrived able to play.
+  /// Generic rather than per-material, and not read off multi-octave
+  /// continuation itself, which would be self-referential. Halfway between
+  /// where placement puts a self-reported beginner and someone with some
+  /// experience, so it is earned by ordinary one-octave work and never asked of
+  /// a learner who arrived able to play.
   final double multiOctaveExecutionFloor;
 
   /// The tempo at or below which an exercise counts as gently presented.
@@ -50,19 +48,16 @@ class EligibilityConfig {
   /// played and had retrieved before harmonic minor is fully eligible, and
   /// before melodic minor is.
   ///
-  /// Breadth rather than proficiency. The question a learner meeting harmonic
-  /// minor for the first time faces is not whether they can play it but
-  /// whether "minor" is a settled enough idea to take an alteration; a broad
-  /// base of ordinary scales is what settles it. Counting retrievals rather
-  /// than presentations is the difference between having seen a scale and
-  /// having it.
+  /// Breadth rather than proficiency. What a learner meeting harmonic minor
+  /// faces is not whether they can play it but whether "minor" is a settled
+  /// enough idea to take an alteration, and a broad base of ordinary scales is
+  /// what settles it. Counting retrievals rather than presentations is the
+  /// difference between having seen a scale and having it.
   ///
   /// A quarter of the twenty-four core materials per hand, and a third for
-  /// melodic minor, which changes two degrees rather than one and in a fixed
-  /// form the classical convention does not use. Asked of each hand rather
-  /// than of the profile, so twelve right-hand scales no longer speak for a
-  /// left hand that has played none of them. Both are first guesses to revise
-  /// against real sittings, not measurements.
+  /// melodic minor, which alters two degrees rather than one. Asked of each
+  /// hand rather than of the profile. Both are first guesses to revise against
+  /// real sittings rather than measurements.
   final int harmonicMinorCoreRetrievals;
   final int melodicMinorCoreRetrievals;
 
@@ -75,16 +70,9 @@ class EligibilityConfig {
   /// Hands-together coordination at which the ordinary-form foundation counts
   /// as already behind the learner.
   ///
-  /// The escape hatch from the curriculum phase, and it reads the coordination
+  /// The escape hatch from the curriculum phase. It reads the coordination
   /// channel rather than a hand's execution because that is the phase's own
-  /// defining marker. Somebody playing a scale hands together well enough to
-  /// produce competent coordination evidence is playing it with two hands that
-  /// each work, so making them demonstrate six ordinary scales in each hand
-  /// first would be an artificial path through material they have just shown.
-  ///
-  /// One fluent hand is deliberately not enough. It is a single channel, and
-  /// waiving a phase without observing the dimension that defines it is
-  /// internally inconsistent.
+  /// defining marker, and one fluent hand is deliberately not enough.
   ///
   /// Set where placement puts an advanced learner, which is also why the mean
   /// is never enough on its own: placement seeds it there from what somebody
@@ -226,12 +214,9 @@ class ProbeConfig {
   /// ranked and losing before one is chosen anyway.
   ///
   /// Not a rule that the probe should usually win. Exploration legitimately
-  /// dominates a capable learner's first sittings: new material establishes
-  /// breadth and tempo probes find speed, and both are worth slots. What it
-  /// rules out is that dominance being indefinite. Simulation had an advanced
-  /// learner lose fifteen straight free contests across two sittings with an
-  /// independence question ranked and waiting each time, so novelty was not
-  /// merely winning often, it was winning always.
+  /// dominates a capable learner's first sittings, since new material
+  /// establishes breadth and tempo probes find speed. What this rules out is
+  /// that dominance being indefinite.
   final int maxUnservedGuidanceProbes;
 
   /// How many attempts in a row may go by under support before a
@@ -239,13 +224,10 @@ class ProbeConfig {
   ///
   /// Support raises predicted success, so as memory weakens the ordinary band
   /// comes to prefer continuous cueing, which observes no retrieval, which
-  /// leaves nothing to say whether the support is still needed. The scheduler
-  /// optimises the challenge so well that it stops collecting the evidence it
-  /// would take to stop.
+  /// leaves nothing to say whether the support is still needed.
   ///
-  /// Counted rather than timed because the failure was informational, not
-  /// temporal: a whole sitting of practice producing no retrieval evidence at
-  /// all.
+  /// Counted rather than timed, because what it guards against is
+  /// informational: a whole sitting producing no retrieval evidence at all.
   final int supportedAttemptsBeforeObservation;
 
   /// What an attempt has to look like before the next one may jump straight
@@ -325,11 +307,6 @@ class SchedulerConfig {
 /// The stage structure and information boundaries these values sit in are
 /// frozen for initial production; the numbers are starting points for
 /// calibration against real practice data.
-///
-/// It carried the prototype's name until it stopped carrying only the
-/// prototype's values. The form-introduction thresholds came from curriculum
-/// evidence and a piano, not from the port, so the lineage moved into the
-/// paragraph above and the name says what this is.
 const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
   modelVersion: 'v1-1',
   eligibility: EligibilityConfig(

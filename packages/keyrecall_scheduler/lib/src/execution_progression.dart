@@ -6,12 +6,10 @@ import 'candidate_trace.dart';
 /// Which execution axis a candidate advances, against what the learner has
 /// demonstrated on its material.
 ///
-/// The point of naming them is [multiple]. Information gain prefers whatever
-/// is least explored, so a candidate that goes wider *and* faster at once is
-/// the most attractive thing on offer and the least appropriate: it is two
-/// steps taken as one, and a learner who cannot manage it has told nobody
-/// which of the two was the problem. One axis at a time is the invariant, and
-/// this is what makes it one rather than a comment.
+/// The point of naming them is [multiple]. Information gain prefers whatever is
+/// least explored, so a candidate that goes wider *and* faster at once is the
+/// most attractive thing on offer and the least appropriate: a learner who
+/// cannot manage it has told nobody which of the two axes was the problem.
 enum ExecutionAdvance {
   /// Not an adjacent step. Either the learner has already been here, or it is
   /// further off than the next rung; admission treats those the same, since
@@ -151,22 +149,17 @@ double handsTogetherEntryTempo(
   return tempoBefore(right < left ? right : left);
 }
 
-/// Whether both hands know [materialId] at [span] well enough for the other to
-/// join them.
+/// Whether each hand has separately demonstrated enough of [materialId] at
+/// [span] for the other to join it.
 ///
-/// Read from the coordination-readiness record rather than from the execution
-/// frontier. The frontier says where a hand can be asked to go on from and
-/// moves only on an attempt played rather than endured; this says the notes
-/// are known, so putting the hands together is a coordination exercise and not
-/// the simultaneous remediation of two parts nobody has learned.
-///
-/// The distinction exists because the two came apart on precisely the learner
-/// it matters for. A weak hand rarely clears the frontier's motor bar, so its
-/// frontier stayed empty, and hands-together work was never offered at all:
-/// simulation found a strong-right-hand player qualifying in two sittings of
-/// forty and a true beginner in none. Waiting for the weaker hand to be good
-/// on its own is waiting for the wrong thing, since unimanual practice does
-/// not fully transfer to playing with both.
+/// Read from the coordination-readiness record rather than the execution
+/// frontier, and it makes no claim about factual retrieval. The frontier says
+/// where a hand can be asked to go on from and moves only on an attempt played
+/// rather than endured; readiness says the hand produced the right pitches,
+/// which is what makes putting the hands together a coordination exercise
+/// rather than the simultaneous remediation of two parts. A weak hand rarely
+/// clears the frontier's motor bar, and waiting for it to is waiting for the
+/// wrong thing.
 bool supportsHandsTogether(LearnerState state, String materialId, int span) =>
     handsTogetherEntryTempo(state, materialId, span) > 0;
 
@@ -186,25 +179,16 @@ bool handsTogetherPrerequisiteSatisfied(LearnerState state, Exercise exercise) {
 /// zero when they have shown none.
 ///
 /// Transferable evidence, which is what an unseen scale has to be met on: its
-/// own frontier is empty by definition, and the tempo it is introduced at
-/// would otherwise be whichever the generator happened to list first.
+/// own frontier is empty by definition.
 ///
-/// The pace rather than the frontier. A frontier is capped at what was asked
-/// for, so a learner who plays every sixty-beat exercise at a hundred and
-/// twenty reads as a sixty-beat learner and meets every new scale there,
-/// however fast they actually play. Reading the pace is what lets material
-/// arrive near them without their frontier claiming a rung nobody posed.
+/// The pace rather than the frontier, since a frontier is capped at what was
+/// asked for and would read a learner who plays every sixty-beat exercise at a
+/// hundred and twenty as a sixty-beat learner. The median rather than the
+/// fastest, so one quick success does not set the pace for every unseen scale.
 ///
-/// The median rather than the fastest. One quick success on C major should not
-/// make every scale a learner has never played arrive at a hundred and
-/// twenty-six, and the median is the middle of what they actually do rather
-/// than the best thing that ever happened.
-///
-/// [span] is unread. Pace is a fact about the hand, and the only thing an
-/// unseen scale can borrow: nobody has played this material at any span, so
-/// there is no narrower one to carry forward. Kept in the signature because
-/// the caller is choosing a tempo for a particular span and a later rule may
-/// well want it.
+/// [span] is unread: pace is a fact about the hand, and nobody has played this
+/// material at any span. It stays in the signature because the caller is
+/// choosing a tempo for a particular span.
 double transferableTempoFor(
   LearnerState state,
   HandConfiguration hands,
@@ -231,16 +215,13 @@ double transferableTempoFor(
 ///    what an unseen scale is met at;
 /// 3. failing that, [gentleTempoBpm], because nobody has seen them play.
 ///
-/// The first is what makes this different from [transferableTempoFor]. A
-/// learner going from one octave of B flat major to two has evidence about B
-/// flat major in that hand, and reaching past it to a median over other scales
-/// would answer a more distant question than the one being asked.
+/// The first is what makes this different from [transferableTempoFor]: a
+/// learner widening B flat major has evidence about B flat major in that hand,
+/// and a median over other scales would answer a more distant question.
 ///
-/// The narrower span's tempo unchanged, and deliberately not a rung below it.
-/// A rung of caution for the new octave is arguable, but [executionAdvanceFor]
-/// already calls the carry at that exact tempo a span step, so discounting
-/// here would leave the intended entry and the offered step disagreeing by a
-/// rung about the same realization. One intended entry, agreed on by both.
+/// The narrower span's tempo unchanged rather than a rung below it, because
+/// [executionAdvanceFor] calls the carry at that exact tempo a span step and
+/// the intended entry must not disagree with the offered step.
 double unmeasuredEntryTempo(
   LearnerState state,
   Exercise exercise, {
@@ -291,46 +272,23 @@ double realizationFitFor(
 /// Whether [exercise] is this learner's first chance to play its material with
 /// both hands, having just earned it.
 ///
-/// A transition rather than a preference. Coordination has just become
-/// available on this scale, and the slot after that is when it is worth
-/// spending: measured across every archetype, a hands-together candidate that
-/// had become fully eligible and admissible waited a median of seven to
-/// nineteen slots to be chosen and in many sittings was never chosen at all,
-/// with every one of those slots going to a different material rather than to
-/// another realization of the same one.
+/// Derived rather than stored, which is what bounds it: it holds only while
+/// both hands satisfy coordination readiness for the material and the two have
+/// never been put together on it, so the first hands-together attempt ends it
+/// whatever that attempt was like. Nothing accumulates and nothing expires on a
+/// timer.
 ///
-/// Derived rather than stored, which is what bounds it. It holds only while
-/// both hands know the scale and the two have never been put together on it,
-/// so the first hands-together attempt ends it whatever the attempt was like.
-/// Nothing accumulates, nothing expires on a timer, and a sitting that ends
-/// mid-transition resumes in the same state because both halves are durable
-/// learner facts.
+/// The attempt rather than the success. What the scheduler owes is bringing
+/// newly available coordination work into practice promptly; how it went is
+/// then evidence like any other.
 ///
-/// The attempt rather than the success, deliberately. What the scheduler owes
-/// is bringing newly available coordination work into practice promptly; how it
-/// went is then evidence like any other, and recovery is what answers a bad
-/// one.
-///
-/// Single-hand work on the same material is not a transition, so selecting the
-/// scale for the right hand neither benefits from this nor consumes it.
-///
-/// Once per material, not once per span. The event is the learner moving from
-/// never having coordinated this scale to having coordinated it, and after
-/// that hands together on it is no longer a new skill state: two octaves is
-/// ordinary execution progression on a skill that exists, which
-/// [ExecutionAdvance.span] already offers. Making every newly ready span a
-/// transition would duplicate that and privilege hands-together expansion over
-/// every other execution axis, which is the sort of scheduler gravity the rank
-/// key exists to remove. It would also cost a slot per span rather than a slot
-/// per scale, and the tight bound is what justifies overriding retention at
-/// all.
-///
-/// If hands-together at a wider span turns out to starve later, that is
-/// evidence about execution advances generally rather than about coordination,
-/// and the fix belongs where tempo and span starve too.
-///
-/// Direction is not read, for the same reason: up and up-down are not two
-/// first encounters with playing a scale using both hands.
+/// Once per material rather than once per span, and direction is unread. The
+/// event is the learner moving from never having coordinated this scale to
+/// having coordinated it. A wider span afterwards is ordinary execution
+/// progression on a skill that exists, which [ExecutionAdvance.span] offers,
+/// and up against up-down is not a second first encounter. Costing one slot per
+/// scale rather than one per realization is what justifies overriding retention
+/// at all.
 bool isCoordinationTransition(LearnerState state, Exercise exercise) =>
     exercise.conditions.hands == HandConfiguration.together &&
     !state.hasPlayed(
@@ -346,25 +304,15 @@ bool isCoordinationTransition(LearnerState state, Exercise exercise) =>
 /// The exercises one adjacent execution step from where this learner already
 /// is, which the static generator does not contain.
 ///
-/// Candidate generation is deliberately learner-blind: it answers what
-/// exercise shapes exist, not which realization of one is meaningful now. But
-/// every adjacency relation here can land on a tempo that is a
-/// learner-dependent value — sixty-three exists only because somebody managed
-/// sixty — so a purely static set has no candidate for the rule to recognize,
-/// and the axis could never advance locally however well the rule was written.
+/// Candidate generation is deliberately learner-blind: it answers what exercise
+/// shapes exist, not which realization of one is meaningful now. But every
+/// adjacency relation here can land on a learner-dependent tempo, so a purely
+/// static set has no candidate for the rule to recognize.
 ///
-/// So this is a refinement between generation and eligibility rather than a
-/// change to either, and it holds one invariant: **every exercise it adds is a
-/// tempo variant of a shape generation already produced.** Same material,
-/// hands, span, direction and guidance. It materializes the tempo the three
-/// relations ask for and invents nothing else.
-///
-/// All three, because all three can need one. Widening to a span nobody has
-/// reached carries the narrower span's tempo with it, and that tempo may be a
-/// rung the generator has no candidate at. Entering hands-together work
-/// carries the slower of what the two hands managed, which may be another. It
-/// was tempting to add only the first, since that is the one that made the
-/// problem visible.
+/// A refinement between generation and eligibility rather than a change to
+/// either, holding one invariant: **every exercise it adds is a tempo variant
+/// of a shape generation already produced.** Same material, hands, span,
+/// direction and guidance.
 List<Exercise> withExecutionNeighbours(
   LearnerState state,
   List<Exercise> candidates,

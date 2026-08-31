@@ -34,16 +34,12 @@ class SessionState {
   /// Attempts in a row under support, without retrieval being observed at all.
   ///
   /// Continuous cueing never observes retrieval, so practice under it produces
-  /// no evidence about whether the support is still needed. Counted rather
-  /// than timed, because what went wrong was a sitting teaching nothing about
-  /// retrieval, not too many hours passing.
+  /// no evidence about whether the support is still needed.
   ///
-  /// Counted across the sitting rather than per material, which is what the
-  /// simulation corrected. Cueing spread itself across distinct materials, so
-  /// no material was ever cued twice in a row and a per-material count never
-  /// reached two however long the drought ran. The thing being starved is the
-  /// scheduler's knowledge of whether support is still needed, and that starves
-  /// whether or not the same scale keeps coming back.
+  /// Counted across the sitting rather than per material, because what starves
+  /// is the scheduler's knowledge of whether support is still needed, and that
+  /// starves whether or not the same scale keeps coming back. Cueing spreads
+  /// itself across materials, so a per-material count would rarely reach two.
   int supportedAttemptsSinceObservation;
 
   /// Selection opportunities that passed with an independence probe available
@@ -75,10 +71,10 @@ class SessionState {
   ///
   /// [tempoProbe] is the harder exercise to ask for next when this one was
   /// clearly too easy, and null otherwise. Like the recovery context it lasts
-  /// exactly one decision: a probe that outlived its answer would keep asking
-  /// a question that has been answered.
-  /// [retrievalObserved] says whether the attempt was at a rung that could
-  /// have shown retrieval succeeding or failing, whichever it did.
+  /// exactly one decision.
+  ///
+  /// [retrievalObserved] says whether the attempt was at a rung that could have
+  /// shown retrieval succeeding or failing, whichever it did.
   void recordSelection(
     Exercise exercise, {
     required bool retrievalFailed,

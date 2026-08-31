@@ -42,11 +42,9 @@ bool isUnderchallenged({
 /// unattributable, which is the same reason recovery lowers only guidance.
 ///
 /// Nothing is credited for the fast attempt itself; see
-/// [LearnerModel.demonstratedTempoBpm], which caps execution attribution at
-/// the tempo that was actually asked for. That cap is what makes this
-/// necessary: without it a scheduler could infer the ceiling from an attempt
-/// nobody posed, and with it the only way to earn evidence at a tempo is to
-/// be asked for that tempo.
+/// [LearnerModel.demonstratedTempoBpm], which caps execution attribution at the
+/// tempo that was asked for. That cap is what makes this necessary: the only
+/// way to earn evidence at a tempo is to be asked for it.
 Exercise? tempoProbeTarget({
   required Exercise exercise,
   required Outcome outcome,
@@ -61,11 +59,7 @@ Exercise? tempoProbeTarget({
   }
 
   // The highest rung of the metronome ladder they were already reaching,
-  // rather than the highest tempo the generator happens to offer. Those were
-  // sixty, eighty, a hundred and a hundred and twenty, so a learner playing a
-  // sixty-beat exercise at a hundred and five was asked for a hundred and saw
-  // nothing between: the probe could only land where candidate generation had
-  // already put something.
+  // rather than the highest tempo the generator happens to offer.
   final requested = exercise.conditions.tempoBpm;
   final achieved = requested * outcome.achievedTempoRatio;
   double? target;

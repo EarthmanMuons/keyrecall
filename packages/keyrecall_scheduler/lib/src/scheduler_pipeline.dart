@@ -11,10 +11,7 @@ import 'tempo_probe.dart';
 
 /// What one admission exception has to say about one candidate.
 ///
-/// Three answers rather than two. An exception that refuses a candidate has
-/// answered, and nothing after it may answer instead; an exception with
-/// nothing to say has not. Collapsing those into a nullable bypass is what let
-/// a later exception become unreachable without any signal.
+/// A refusal ends the question; silence lets the next exception answer.
 sealed class _Verdict {
   const _Verdict();
 }
@@ -51,10 +48,9 @@ class SelectionResult {
 
 /// The staged decision pipeline that chooses what to practice next.
 ///
-/// Four stages, each answering one question with an explicit information
-/// boundary: candidate generation (which lives outside this class, because it
-/// may not read learner state at all), eligibility and safety, challenge
-/// admission, and priority ranking with selection.
+/// Eligibility and safety, then challenge admission, then priority ranking and
+/// selection. Candidate generation lives outside this class because it may not
+/// read learner state at all.
 ///
 /// [evaluate] traces every candidate through every stage; [decide] performs a
 /// complete decision-slot transition.
@@ -125,35 +121,26 @@ class SchedulerPipeline {
 
   /// Stage 2a: the `REQUIRES` prerequisite gate.
   ///
-  /// Two questions, both about the learner rather than about the exercise:
-  /// whether both hands are capable before they play together, and whether
-  /// this material is appropriate to introduce yet. Foundation material has no
+  /// Two questions, both about the learner rather than the exercise: whether
+  /// both hands are capable before they play together, and whether this
+  /// material is appropriate to introduce yet. Foundation material has no
   /// prerequisite of the second kind, which is not the same as being fully
-  /// eligible however it is played: C major hands together still waits for
-  /// both hands.
+  /// eligible however it is played.
   ///
-  /// Material admission uses what the learner model actually observes:
-  /// per-hand execution, and topology competence per scale form. It cannot ask
-  /// whether a hand pattern is already established, because nothing measures
-  /// that, so the admission band stands in for it as a curriculum-derived
-  /// prior. Two materials in one band are treated identically even when one
-  /// introduces a new hand pattern and the other reuses a familiar one, and
-  /// that approximation is the reason `EligibilityReason` is coded: stalls
-  /// clustering at a band that introduces a new pattern are what would justify
-  /// measuring the motor axis directly.
+  /// Nothing measures whether a hand pattern is established, so the admission
+  /// band stands in for it as a curriculum-derived prior. `EligibilityReason`
+  /// is coded so that stalls clustering at one band remain visible.
   ///
-  /// Provisional rather than forbidden, in every case. A provisional candidate
-  /// is outranked by anything fully eligible and is still reachable when
-  /// nothing else is, which is what stops a strict prior from leaving a
-  /// learner with nothing to play.
+  /// Provisional rather than forbidden, in every case: a provisional candidate
+  /// is outranked by anything fully eligible and stays reachable when nothing
+  /// else is.
   EligibilityDecision eligibilityFor(LearnerState state, Exercise exercise) {
     final material = exercise.material;
     final band = admissionBandOf(material);
     final hands = exercise.conditions.hands;
 
-    // Nothing here has ever been observed about this material, so an unguided
-    // attempt would be testing a memory this app has never seen formed. The
-    // material is still admissible; it enters through a rung that supplies it.
+    // An unguided attempt would test a memory this app has never seen formed.
+    // The material is still admissible, through a rung that supplies it.
     if (!state.materialMemory.containsKey(material.materialId) &&
         !exercise.guidance.isMaterialSupplied) {
       return const EligibilityDecision(
@@ -163,32 +150,17 @@ class SchedulerPipeline {
       );
     }
 
-    // An altered minor form is a new idea rather than a new key: harmonic
-    // minor raises the seventh against natural minor, and melodic minor
-    // raises the sixth as well, in a fixed form the classical convention does
-    // not use. Meeting one while the ordinary scales are still unsettled
-    // enlarges the vocabulary faster than the base under it, whatever the
-    // keyboard geography says, which is why this is not a band question.
+    // An altered minor form is a new idea rather than a new key, so its
+    // prerequisite is a curriculum phase rather than keyboard geography.
     if (!coreForms.contains(material.form)) {
       final breadth = _alteredFormDecisionFor(state, material.form, hands);
       if (breadth != null) return breadth;
     }
 
-    // Both hands knowing this material at this span. Evidence about the work
-    // in front of the learner rather than a general verdict on their hands,
-    // and about the notes rather than the polish: see [supportsHandsTogether].
-    //
-    // This was a floor on the two hand-execution means, and it made playing
-    // together a reward for fluency rather than an early coordination skill.
-    // A beginner who played forty scales almost perfectly was still at -0.46
-    // and -0.27 against a floor of zero, so every hands-together candidate sat
-    // provisional, execution progression could not admit one, and the altered
-    // minor phase gate that requires hands-together exposure was unreachable
-    // behind it. The means still shape the prediction, which is where a
-    // general estimate belongs; what they no longer do is veto the attempt.
-    //
-    // Once hands-together has a record of its own here it goes on through
-    // that, like any other execution context.
+    // Each hand having separately demonstrated this material at this span:
+    // evidence about the work in front of the learner rather than a general
+    // verdict on their hands, and about the pitches rather than the polish.
+    // See [supportsHandsTogether].
     if (hands == HandConfiguration.together) {
       if (!handsTogetherPrerequisiteSatisfied(state, exercise)) {
         return const EligibilityDecision(
@@ -199,10 +171,9 @@ class SchedulerPipeline {
       }
     }
 
-    // Two octaves before one is the one ordering on the execution axis every
-    // source agrees on, and the information term will otherwise reach for the
-    // span nobody has attempted precisely because nobody has. The material is
-    // untouched: one octave of it stays fully eligible.
+    // One octave before two is the one execution ordering every source agrees
+    // on, and the information term otherwise reaches for the span nobody has
+    // attempted precisely because nobody has. One octave stays fully eligible.
     if (exercise.conditions.octaves > 1) {
       final floor = config.eligibility.multiOctaveExecutionFloor;
       final execution = _executionMeanFor(state, hands);
@@ -218,8 +189,8 @@ class SchedulerPipeline {
     }
 
     // Natural minor asks for nothing: it is where minor topology comes from,
-    // and requiring familiarity to earn the only material that produces it
-    // would keep every minor scale outranked forever.
+    // so gating it on minor familiarity would outrank every minor scale
+    // forever.
     if (material.form == ScaleForm.harmonicMinor ||
         material.form == ScaleForm.melodicMinor) {
       final floor = config.eligibility.minorTopologyFloor;
@@ -239,31 +210,16 @@ class SchedulerPipeline {
     }
 
     if (band != AdmissionBand.foundation) {
-      // Difficulty is compositional, and the floor was reading only half of
-      // it. New keyboard geography is one thing to take on; a harder way of
-      // playing is another, and asking for both at once is what the floor is
-      // protecting against. Met at the gentlest conditions the catalog
-      // offers, a key is a smaller ask than the band alone suggests, so it is
-      // judged against the band before it.
+      // The material's own record is a stronger claim than a general execution
+      // mean: a learner who has played this key, in this hand, at this span
+      // has already answered what the floor asks. At this span rather than any
+      // span, because two octaves of a key is a geography one octave has not
+      // shown.
       //
-      // One band, not a waiver. It puts D major in front of a beginner at one
-      // octave in one hand, which is where the next scales after the
-      // foundation ought to come from, and leaves D flat major where it was.
-      // Already played, in this hand, at this span. The floor asks whether a
-      // learner is fluent enough for an unfamiliar key geography, and somebody
-      // who has got through this one has answered that about this one: a
-      // general execution mean is a weaker claim than the material's own
-      // record, exactly as it was for hands together.
-      //
-      // Without this the floor left the learner's own frontier ineligible. A
-      // device sitting demonstrated C natural minor left hand at a hundred and
-      // twenty-six, and every candidate at that tempo stayed provisional while
-      // the sixty-beat one was fully eligible through the gentleness discount
-      // below. Tier decides before anything else, so eleven consecutive slots
-      // went to work the learner was two rungs past.
-      //
-      // At this span, not at any span: two octaves of a key is a geography one
-      // octave of it has not shown.
+      // Difficulty is compositional, so the floor below discounts by one band
+      // when the key is met at the gentlest conditions the catalog offers.
+      // Unfamiliar geography and a harder way of playing are separate asks,
+      // and the floor protects against taking both at once.
       final demonstrated =
           state.materialExecution[(material.materialId, hands)]
               ?.demonstratedTempoAt(exercise.conditions.octaves) ??
@@ -295,10 +251,8 @@ class SchedulerPipeline {
       );
     }
 
-    // Foundation means no *material* prerequisite. An execution condition can
-    // still hold it back: hands-together work on C major is checked above and
-    // may be provisional, which is the decomposition working rather than a
-    // contradiction.
+    // Foundation means no *material* prerequisite. An execution condition
+    // checked above may still hold the exercise back.
     return const EligibilityDecision(
       EligibilityTier.fullyEligible,
       'foundation material, and no material prerequisite applies',
@@ -309,43 +263,28 @@ class SchedulerPipeline {
   /// Whether [exercise] would be this hand's first encounter with its
   /// material.
   ///
-  /// Per hand, not per material. Knowing the notes of a scale is a fact about
-  /// the material and travels with the learner; playing it under the other
-  /// hand is a fingering nobody has attempted, and material memory alone
-  /// cannot tell the two apart. Read per material, the second hand had no
-  /// admission path at all: introduction was silent because the scale was
-  /// known, consolidation because it had been retrieved, and execution
-  /// progression because that hand had no frontier to step from. A device
-  /// sitting kept every scale on the hand that met it first, for thirty
-  /// attempts.
+  /// Per hand rather than per material. Knowing the notes travels with the
+  /// learner, but playing them with the other hand is a fingering nobody has
+  /// attempted, and material memory alone cannot tell the two apart.
   ///
-  /// Hands-together is not an introduction. Both hands at once is a transition
-  /// off two frontiers that already exist, with its own prerequisite and its
-  /// own conservative entry tempo, which is execution progression's step to
-  /// offer rather than this one's.
+  /// Hands together is not an introduction. It is a transition off two
+  /// frontiers that already exist, with its own prerequisite and entry tempo,
+  /// which execution progression offers instead.
   bool isIntroduction(LearnerState state, Exercise exercise) =>
       exercise.conditions.hands != HandConfiguration.together &&
       !state.hasPlayed(exercise.material.materialId, exercise.conditions.hands);
 
   /// Whether [exercise] may be met for the first time at all.
   ///
-  /// A different question from eligibility, and the only place the two come
-  /// apart. Eligibility orders candidates: provisional means deferred while
-  /// something better exists, which is right for an execution condition like
-  /// octave span, where the material is appropriate and one way of playing it
-  /// is not. It is wrong for a curriculum phase. A device sitting introduced
-  /// harmonic and melodic minor six times before hands-together work appeared
-  /// once, each time through the introduction exception, because "not fully
-  /// eligible" was never the same claim as "not to be introduced".
+  /// The only place this comes apart from eligibility, which merely orders
+  /// candidates: provisional means deferred while something better exists,
+  /// which is right for an execution condition and wrong for a curriculum
+  /// phase. The altered forms are therefore a barrier rather than a
+  /// disadvantage, and only against meeting one for the first time. Recovery
+  /// of one already introduced is a separate question.
   ///
-  /// So the altered forms are a barrier rather than a disadvantage. Recovery
-  /// of one already introduced is a separate question and is left alone; what
-  /// this forbids is meeting one for the first time.
-  ///
-  /// Asked directly rather than read off the eligibility reason, because that
-  /// reason is whichever rule refused first and a two-octave harmonic minor
-  /// reports the span. Deciding a barrier from a diagnostic that stops at the
-  /// first answer is how this went wrong once already.
+  /// Asked directly rather than read off the eligibility reason, which is
+  /// whichever rule refused first.
   bool isIntroducible(LearnerState state, Exercise exercise) =>
       _alteredFormDecisionFor(
         state,
@@ -354,36 +293,24 @@ class SchedulerPipeline {
       ) ==
       null;
 
-  /// Whether an altered minor form has to wait for a foundation under it.
+  /// Whether an altered minor form has to wait for a foundation under it, or
+  /// null when it does not and the ordinary rules decide.
   ///
-  /// Returns null when it does not, so the ordinary rules decide.
+  /// A curriculum phase transition rather than a threshold, so it asks for
+  /// three observable markers of the phase, none of which harmonic minor needs
+  /// mechanically. `docs/domain-model/material-admission.md` carries the
+  /// curriculum rationale for each.
   ///
-  /// Harmonic minor is not another unseen scale; it is a new idea about what
-  /// minor means, layered on a major and natural-minor foundation. So this is
-  /// a curriculum phase transition rather than a threshold, and it asks for
-  /// the evidence that a phase has actually been reached:
-  ///
-  /// - both hands observed separately, because a scale learned in one hand is
-  ///   not a scale learned;
-  /// - some hands-together work on ordinary material, which is what marks the
-  ///   move from having met some shapes to studying scales;
+  /// - both hands observed separately;
+  /// - some hands-together exposure on ordinary material, which applies to
+  ///   one-hand candidates too because it marks the phase rather than a need
+  ///   for two hands;
   /// - retrieval breadth across major and natural minor, counted per hand.
   ///
-  /// The hands-together condition applies to one-hand candidates too, and
-  /// deliberately. Nothing about harmonic minor mechanically needs two hands.
-  /// It is being used as the marker of the phase, and a phase the learner has
-  /// not reached is not reached for right-hand work either.
-  ///
-  /// Every one of these asks whether a channel has been *observed* rather than
-  /// where its mean sits. Placement seeds means from what somebody said about
-  /// themselves, so a mean test would let the onboarding answer masquerade as
-  /// demonstrated musicianship, which is the trap natural minor already taught
-  /// in a different form.
-  ///
-  /// Waived by observed fluent hands-together coordination, and only by that;
-  /// see [_hasFluentHandsTogether]. Making somebody who arrived playing scales
-  /// demonstrate half a curriculum first would be an artificial path through
-  /// material they know, and making them play it once to show it is not.
+  /// Each asks whether a channel has been *observed* rather than where its mean
+  /// sits, because placement seeds means from what the learner said about
+  /// themselves. Waived by observed fluent hands-together coordination, and
+  /// only by that; see [_hasFluentHandsTogether].
   EligibilityDecision? _alteredFormDecisionFor(
     LearnerState state,
     ScaleForm form,
@@ -439,13 +366,12 @@ class SchedulerPipeline {
   /// How many ordinary-form scales [hand] has played and had retrieved, and
   /// how many admission bands they span.
   ///
-  /// Two facts joined because neither is enough alone. Memory is keyed by
-  /// material and knows a scale was retrieved without knowing which hand was
-  /// playing; execution residuals are keyed by material and hand and know a
-  /// hand played it without knowing whether anything was remembered. Requiring
-  /// both is the closest this state can come to "this hand has this scale",
-  /// and it is a projection rather than a record: a scale retrieved by one
-  /// hand and merely played by the other counts for both.
+  /// Memory knows a scale was retrieved without knowing which hand played;
+  /// execution residuals know a hand played it without knowing whether
+  /// anything was remembered. Requiring both is the closest this state comes to
+  /// "this hand has this scale", and it is a projection rather than a record: a
+  /// scale retrieved by one hand and merely played by the other counts for
+  /// both.
   (int, int) _ordinaryBreadthFor(LearnerState state, HandConfiguration hand) {
     final spread = <AdmissionBand>{};
     var retrieved = 0;
@@ -462,18 +388,10 @@ class SchedulerPipeline {
 
   /// Whether hands-together playing has been observed and is fluent.
   ///
-  /// The escape hatch from the phase graph, and the only one. The ordinary
-  /// path establishes the phase developmentally; this establishes that the
-  /// learner is already past it, so it asks about the dimension that defines
-  /// the phase rather than about one hand.
-  ///
-  /// A scale played hands together well enough to produce competent
-  /// coordination evidence is a scale played with two hands that each work, so
-  /// this does not need to check them separately. Strictly it does not prove
-  /// high single-hand execution, since two mediocre hands can be well
-  /// synchronized; a curriculum waiver does not need that proof, only evidence
-  /// strong enough that marching the learner through the prerequisites would
-  /// be artificial.
+  /// The only escape hatch from the phase graph. The ordinary path establishes
+  /// the phase developmentally; this establishes that the learner is already
+  /// past it, so it asks about the dimension that defines the phase rather than
+  /// about either hand separately.
   ///
   /// Observed and fluent, both. Placement seeds this mean from the onboarding
   /// answer, so the mean alone would let a self-report skip the phase, and
@@ -491,16 +409,12 @@ class SchedulerPipeline {
   /// The tempo [exercise]'s material is introduced at.
   ///
   /// What this learner's playing hand has shown on material they already own,
-  /// or the slow end of ordinary practice when they have shown nothing. So a
-  /// beginner still meets their first scale at sixty, and somebody who has
-  /// been working in the seventies meets their next one there rather than
-  /// being walked back to sixty every time the catalog opens a little wider.
+  /// or the slow end of ordinary practice when they have shown nothing, so that
+  /// a working pace is not walked back every time the catalog opens wider.
   ///
-  /// Capped for the later bands. Transfer across fingering families is exactly
-  /// what nothing here measures yet, so a key whose geography is new is met
-  /// unhurried whatever the hand has managed on keys it knows: a new shape and
-  /// a new speed at once is the compounding this has been avoiding everywhere
-  /// else.
+  /// Held back one rung for the later bands. Transfer across fingering families
+  /// is what nothing here measures yet, so a key whose geography is new is met
+  /// unhurried whatever the hand has managed on keys it knows.
   double entryTempoFor(LearnerState state, Exercise exercise) {
     final gentle = config.eligibility.gentleTempoBpm;
     final transferable = transferableTempoFor(
@@ -512,14 +426,9 @@ class SchedulerPipeline {
     // conservative about. The gentle tempo is the only honest default.
     if (transferable <= 0) return gentle;
 
-    // One rung, and exactly one. Geography and speed are different axes: an
-    // unfamiliar fingering is a real additional ask, so the full pace is
-    // overconfident, and the learner's own pace is direct behavioral evidence,
-    // so dropping to the bottom of the ladder treats it as though it barely
-    // existed. This used to be `min(transferable, gentle)`, which took a
-    // learner playing at a hundred and twenty down to sixty for anything past
-    // early transfer, and made the same sitting meet one scale at the pace and
-    // the next at the floor.
+    // One rung, and exactly one. An unfamiliar fingering is a real additional
+    // ask, so the full pace is overconfident; the learner's own pace is direct
+    // behavioral evidence, so the bottom of the ladder discards it.
     return admissionBandOf(
           exercise.material,
         ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer)
@@ -598,53 +507,18 @@ class SchedulerPipeline {
       config.challenge.pMin <= prediction.overallP &&
       prediction.overallP <= config.challenge.pMax;
 
-  /// Whether [exercise] is a proactive step back toward independence.
-  ///
-  /// The mirror of recovery: the same task at exactly one rung less support
-  /// than the one the learner last succeeded under, where recovery is the same
-  /// task at one rung more. That makes the ladder traversable in both
-  /// directions and gives it a top, since a material established unguided has
-  /// no less supportive rung to be probed toward.
-  ///
-  /// It used to name one fixed rung, on the reasoning that a successful probe
-  /// re-anchors the clock and ordinary admission takes it from there.
-  /// Simulating three learners showed ordinary admission never gets there:
-  /// every winning slot across all three carried a bypass, so nothing ever
-  /// climbed past previewed and no profile played anything from memory
-  /// unaided. The step from previewed to unguided is a real question in its
-  /// own right anyway. Producing a scale moments after being shown it and
-  /// producing it cold are different achievements, whatever they share as a
-  /// retrieval channel.
-  ///
-  /// Paced by how long the rung has been established rather than by how long
-  /// ago retrieval last happened. Those are different questions, and sharing
-  /// the retrieval clock made every success at the established rung push the
-  /// next step away: a learner who never missed a note waited longer for
-  /// independence the more they practised. Producing a scale seconds after
-  /// being shown it still proves little, so the establishment clock is short
-  /// rather than absent.
   /// The one tempo a probe about guidance is asked at.
   ///
-  /// **A probe holds every condition but the axis it asks about.** That is the
-  /// rule this implements for tempo, and it is the rule a probe on any other
-  /// axis has to implement in its own direction: a probe testing span holds
-  /// guidance and tempo, one testing hands holds span and tempo. A probe that
+  /// **A probe holds every condition but the axis it asks about.** A probe that
   /// moves two axes has asked two questions and can answer neither, because
-  /// nothing in the outcome says which one the learner responded to.
-  ///
-  /// It is not enough to leave the other axes alone in the construction, since
-  /// nothing constructs a probe here: these are predicates over generated
-  /// candidates, and the ranking key reads none of the execution conditions.
-  /// An unconstrained axis is therefore not held, it is chosen by the order of
-  /// a constant. A guidance probe dropped a learner from a hundred and twenty
-  /// six to sixty for exactly that reason, and the slower exercise then read as
-  /// underchallenged and drew a tempo probe along behind it: a mechanism
-  /// undoing its own question a slot later.
+  /// nothing in the outcome says which one the learner responded to. Holding
+  /// has to be explicit here: these are predicates over generated candidates
+  /// rather than constructed exercises, and the ranking key reads none of the
+  /// execution conditions, so an unconstrained axis is chosen by the order of a
+  /// constant.
   ///
   /// The frontier for this material, hand and span, which is where the learner
-  /// already is. [entryTempoFor] when that span has never been managed: a
-  /// material can have an established guidance rung without having been played
-  /// this wide, and the learner's pace is the best answer there.
+  /// already is, or [entryTempoFor] when that span has never been managed.
   double heldTempoFor(LearnerState state, Exercise exercise) {
     final frontier =
         state
@@ -657,6 +531,19 @@ class SchedulerPipeline {
     return frontier > 0 ? frontier : entryTempoFor(state, exercise);
   }
 
+  /// Whether [exercise] is a proactive step back toward independence.
+  ///
+  /// The mirror of recovery: the same task at exactly one rung less support
+  /// than the one the learner last succeeded under, where recovery is the same
+  /// task at one rung more. That makes the ladder traversable in both
+  /// directions and gives it a top, since a material established unguided has
+  /// no less supportive rung to be probed toward.
+  ///
+  /// Paced by how long the rung has been established rather than by how long
+  /// ago retrieval last happened. Sharing the retrieval clock would make every
+  /// success at the established rung push the next step away. Producing a scale
+  /// seconds after being shown it still proves little, so the establishment
+  /// clock is short rather than absent.
   bool isGuidanceProbe(LearnerState state, Exercise exercise, DateTime at) {
     final memory = state.materialMemory[exercise.material.materialId];
     final established = memory?.establishedIndependence;
@@ -673,19 +560,15 @@ class SchedulerPipeline {
   /// currently established.
   ///
   /// The counterpart to [isGuidanceProbe], which climbs from an established
-  /// rung and so cannot help where there is none. Two ways to have none: the
-  /// material has never been retrieved at all, or it was retrieved and then
-  /// failed, which unsettles the rung. Recovery answers a failure by adding
-  /// support and can walk a material down to full cueing, where retrieval is
-  /// never observed and nothing can re-establish anything. This is what keeps
-  /// offering a retrieval-observing candidate instead of settling there
-  /// permanently.
+  /// rung and so cannot help where there is none: the material has never been
+  /// retrieved, or it failed and unsettled the rung. Recovery can otherwise
+  /// walk a material down to full cueing, where retrieval is never observed and
+  /// nothing re-establishes anything.
   ///
   /// Its clock is the last factual attempt of any kind rather than the last
   /// success, since after a failure there may be no success to count from, and
-  /// the wait is the long one: coming back to something that just went wrong
-  /// is a question about retention, unlike stepping up from a rung that is
-  /// working.
+  /// the wait is the long one: returning to something that just went wrong is a
+  /// question about retention.
   bool isBootstrapProbe(LearnerState state, Exercise exercise, DateTime at) {
     if (exercise.guidance != GuidanceContext.notesPreviewedOnly) return false;
     final memory = state.materialMemory[exercise.material.materialId];
@@ -702,15 +585,10 @@ class SchedulerPipeline {
   /// been practised under support without retrieval being observed.
   ///
   /// Support raises predicted success, so as memory weakens the ordinary band
-  /// comes to prefer continuous cueing. Cueing observes no retrieval, so
-  /// nothing arrives to say whether the support is still needed, and the
-  /// preference persists on evidence that can never be collected. A whole
-  /// sitting can go by teaching the scheduler nothing about the question it is
-  /// implicitly answering.
-  ///
-  /// So after enough supported attempts on a material, one retrieval-observing
-  /// question is asked whatever its predicted success. The band optimises for
-  /// an appropriate challenge; this is the exception that keeps it answerable.
+  /// comes to prefer continuous cueing. Cueing observes no retrieval, so the
+  /// preference then persists on evidence that can never be collected. After
+  /// enough supported attempts, one retrieval-observing question is asked
+  /// whatever its predicted success.
   bool isObservationProbe(
     LearnerState state,
     Exercise exercise,
@@ -746,20 +624,17 @@ class SchedulerPipeline {
   /// band.
   ///
   /// Precedence is [AdmissionException]'s declaration order, consulted until
-  /// one of them answers. The order is policy and not an accident of layout:
-  /// an override is an explicit instruction and beats every inference;
+  /// one of them answers. The order is policy rather than an accident of
+  /// layout: an override is an explicit instruction and beats every inference;
   /// recovery beats the tempo probe because something that just went wrong
   /// matters more than something that went too easily; the observation probe
   /// comes before the introduction floor because a drought is a drought
   /// whether the candidate that ends it is new or familiar.
   ///
   /// Some exceptions answer for a candidate they do not admit, which is why
-  /// [_Verdict] distinguishes refusing from having nothing to say. A recovery
+  /// [_Verdict] distinguishes refusing from having nothing to say: a recovery
   /// context refuses everything but its target, and material below the
-  /// introduction floor is refused rather than passed along. Writing those as
-  /// a bare `return null` in a chain of ifs is what made this a list: a null
-  /// reads as "nothing applied", so moving a clause below one silently made it
-  /// unreachable, which is a bug this code has already had once.
+  /// introduction floor is refused rather than passed along.
   ChallengeBypass? challengeBypassFor({
     required LearnerState state,
     required Exercise exercise,
@@ -792,27 +667,14 @@ class SchedulerPipeline {
               : const _Silent(),
         // The slot has nothing appropriate left to introduce, and something
         // already met that has never been produced from memory. Offering it
-        // again is better work than reaching for material a learner has not
-        // earned, and without this there is nothing else the slot can do: for
-        // a beginner in a first sitting every other path to seen material is
-        // shut. It is out of the ordinary band, no rung is established so the
-        // guidance probe cannot climb, the bootstrap probe is days away, and
-        // the observation probe counts supported attempts that a previewed
-        // introduction resets. Introducing was the only move available, which
-        // is why introductions kept happening.
-        //
-        // No refusal is needed against the introduction below. This admits
-        // fully eligible work, that one admits provisional work, and the tier
-        // leads the ranking key, so consolidation wins where it applies and
-        // steps aside where it does not.
+        // again is better work than reaching for material the learner has not
+        // earned.
         //
         // The previewed rung, and only that one, for the reason the bootstrap
         // probe uses it: where no rung is established, that is the retrieval
         // test to offer. A cued repeat cannot turn a scale that has been shown
-        // into one that has been produced however often it is offered, and an
-        // unguided one hands out independence that is supposed to be earned,
-        // which would make failing every retrieval a way to be asked harder
-        // questions.
+        // into one that has been produced, and an unguided one hands out
+        // independence that is supposed to be earned.
         AdmissionException.consolidation =>
           introducibleTier == EligibilityTier.fullyEligible ||
                   eligibility != EligibilityTier.fullyEligible ||
@@ -824,17 +686,14 @@ class SchedulerPipeline {
                   _ => const _Silent(),
                 },
 
-        // Difficulty is what an introduction is allowed to bypass, and only
-        // that. A prerequisite says the material is inappropriate for a
-        // separate reason, so introducing something is never a licence to
-        // introduce anything: while the slot has an introducible candidate in
-        // a higher tier, a lower one is not reachable here at all.
+        // Difficulty is what an introduction may bypass, and only that. A
+        // prerequisite says the material is inappropriate for a separate
+        // reason, so while the slot has an introducible candidate in a higher
+        // tier, a lower one is unreachable here.
         //
-        // The tier is checked before the floor deliberately. Reversing them
-        // would let a provisional candidate that clears the introduction
-        // minimum beat a fully eligible one that does not, which is
-        // probability leapfrogging a prerequisite. Nothing introduced is the
-        // right answer there.
+        // Tier is checked before the probability floor: reversing them would
+        // let a provisional candidate that clears the introduction minimum beat
+        // a fully eligible one that does not.
         AdmissionException.newMaterial =>
           !isIntroduction(state, exercise)
               ? const _Silent()
@@ -842,11 +701,9 @@ class SchedulerPipeline {
               ? const _Refuses()
               : eligibility != introducibleTier
               ? const _Refuses()
-              // One tempo, and a chosen one. An introduction used to be
-              // offered at every tempo generation listed, and nothing in the
-              // ranking key reads tempo, so which of them a learner met was
-              // decided by the order of a constant. Sixty always won, and it
-              // looked like a policy.
+              // One tempo, and a chosen one: nothing in the ranking key reads
+              // tempo, so an unconstrained introduction meets whichever tempo
+              // generation happened to list first.
               : exercise.conditions.tempoBpm != entryTempoFor(state, exercise)
               ? const _Refuses()
               : prediction.overallP >= config.challenge.pIntroductionMin
@@ -861,16 +718,11 @@ class SchedulerPipeline {
               ? const _Admits(ChallengeBypass.bootstrapProbe)
               : const _Silent(),
 
-        // Deepening material the learner owns. Owns, rather than has been
-        // shown: somebody who played a scale perfectly while it was in front
-        // of them has demonstrated the motor conditions and not the scale, and
-        // answering that with a faster one races execution ahead of what they
-        // know. Establishing the material is consolidation's job, and this
-        // begins where that ends.
-        //
-        // Silent rather than refusing on every failure. It is an opportunity
-        // to admit familiar work outside the ordinary band, not a policy that
-        // should stop another exception having something to say.
+        // Deepening material the learner owns rather than has been shown:
+        // playing a scale perfectly while it is in front of them demonstrates
+        // the motor conditions and not the scale, so a faster one would race
+        // execution ahead of what they know. Establishing the material is
+        // consolidation's job, and this begins where that ends.
         AdmissionException.executionProgression =>
           switch (state.materialMemory[exercise.material.materialId]) {
             final memory?
@@ -919,15 +771,12 @@ class SchedulerPipeline {
     final target = failed == null ? null : recoveryTarget(failed);
     final probe = target == null ? session.tempoProbe : null;
     final safety = safetyFor(session);
-    // Refined once, here, and every set-level fact below reads the refined
-    // set. Computing one of them from the raw candidates while the loop
-    // evaluates the refined ones would make two different universes out of
-    // one slot.
-    // An exclusive target has to be in the set it narrows. Recovery and the
+    // Refined once here, so that every set-level fact below reads the same
+    // universe the candidate loop evaluates.
+    //
+    // An exclusive target has to be in the set it narrows: recovery and the
     // tempo probe both refuse everything but one exact exercise, so a target
-    // the candidates do not contain leaves the slot admitting nothing at all,
-    // which is how the tempo probe reaching a metronome rung would otherwise
-    // have broken it: generation has no candidate at a hundred and four.
+    // the candidates do not contain would leave the slot admitting nothing.
     final neighbours = withExecutionNeighbours(state, candidates);
     final refined = [
       ...neighbours,
@@ -1015,20 +864,13 @@ class SchedulerPipeline {
       eligibility: eligibility.tier,
       introducibleTier: introducibleTier,
     );
-    // A recovery context is exclusive: narrowing which candidate gets the
-    // label is not enough, since a candidate that happens to fall in the
+    // A recovery context is exclusive: a candidate that happens to fall in the
     // ordinary band or qualify as new material must not survive alongside the
-    // target. Something went wrong and the next thing asked for is the answer
-    // to that.
+    // target. Something went wrong, and the next thing asked for answers it.
     //
-    // A tempo probe is not. It used to be, and it made the same scale come
-    // back immediately at the speed it was just played, nearly every time
-    // something was met: play C major at sixty, play it again at a hundred and
-    // twenty. That was the only way to learn a learner's pace when a frontier
-    // could only record what was asked for. Pace is recorded now, so material
-    // arrives near them and the probe has much less to do; leaving it as an
-    // ordinary exception lets it win a slot when it is the most useful thing
-    // there and lose one to a scale nobody has played.
+    // A tempo probe is not exclusive. Pace is recorded on the frontier, so the
+    // probe competes as an ordinary exception: it wins a slot when it is the
+    // most useful thing there and loses one to a scale nobody has played.
     final narrowed = recoveryTarget;
     final survived = narrowed != null && override == null
         ? bypass == ChallengeBypass.recovery
@@ -1123,17 +965,15 @@ class SchedulerPipeline {
   /// The independence probe to service when one has waited long enough, or
   /// null.
   ///
-  /// A selection-stage rule beside the repetition guard rather than a rank
-  /// term or another bypass, and each of those was considered. Ranking is
-  /// strictly lexicographic, so an urgency term would not age gracefully: it
-  /// would dominate everything below it the instant it differed. And a bypass
-  /// would not help, because the probe is already admitted and already ranked.
-  /// It is losing the contest, not missing from it.
+  /// A selection-stage rule rather than a rank term or another bypass. Ranking
+  /// is strictly lexicographic, so an urgency term would dominate everything
+  /// below it the instant it differed, and a bypass would not help because the
+  /// probe is already admitted and ranked. It is losing the contest, not
+  /// missing from it.
   ///
-  /// The highest-ranked probe rather than whichever has waited longest.
-  /// Admission and ranking still choose which independence question is the
-  /// right one to ask; fairness only guarantees that the kind of question
-  /// eventually gets asked.
+  /// The highest-ranked probe rather than whichever has waited longest:
+  /// admission and ranking still choose which independence question to ask,
+  /// and this only guarantees that the kind of question eventually gets asked.
   ///
   /// Inert whenever a probe would have won anyway, and silent when none is
   /// ranked: a learner who has established no rung has no independence
