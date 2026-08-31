@@ -18,6 +18,36 @@ void main() {
     direction: direction,
   );
 
+  group('hands moving contrary to each other', () {
+    List<int>? contraryFingers(Hand hand) => fingeringFor(
+      Exercise.linear(
+        material: TechnicalMaterial('C', ScaleForm.major),
+        hands: HandConfiguration.together,
+        octaves: 1,
+        direction: ScaleDirection.up,
+        handMotion: HandMotion.contrary,
+      ),
+      hand,
+    );
+
+    test('the ascending hand is fingered as it always was', () {
+      expect(digits(contraryFingers(Hand.right)!), '12312345');
+    });
+
+    test('the descending hand takes its pattern from the far end', () {
+      // Walking down from the shared tonic, the left hand begins on the finger
+      // that would have ended an ascent.
+      expect(digits(contraryFingers(Hand.left)!), '12312345');
+    });
+
+    test('the hands use homologous fingers throughout', () {
+      // Why contrary motion is the easier first coordination task: both thumbs
+      // start together and the crossings fall in the same places, where
+      // parallel motion pairs different fingers against each other.
+      expect(contraryFingers(Hand.left), contraryFingers(Hand.right));
+    });
+  });
+
   group('one octave matches the catalog summaries', () {
     test('the conventional white-key hands', () {
       expect(
@@ -25,7 +55,12 @@ void main() {
         '12312345',
       );
       expect(
-        digits(fingeringFor(scale('C', ScaleForm.major), Hand.left)!),
+        digits(
+          fingeringFor(
+            scale('C', ScaleForm.major, hands: HandConfiguration.left),
+            Hand.left,
+          )!,
+        ),
         '54321321',
       );
       expect(
@@ -33,7 +68,12 @@ void main() {
         '12341234',
       );
       expect(
-        digits(fingeringFor(scale('B', ScaleForm.major), Hand.left)!),
+        digits(
+          fingeringFor(
+            scale('B', ScaleForm.major, hands: HandConfiguration.left),
+            Hand.left,
+          )!,
+        ),
         '43214321',
       );
     });
@@ -52,7 +92,12 @@ void main() {
         '21231234',
       );
       expect(
-        digits(fingeringFor(scale('Ab', ScaleForm.major), Hand.left)!),
+        digits(
+          fingeringFor(
+            scale('Ab', ScaleForm.major, hands: HandConfiguration.left),
+            Hand.left,
+          )!,
+        ),
         '32143213',
       );
     });
@@ -122,7 +167,15 @@ void main() {
       );
       expect(
         digits(
-          fingeringFor(scale('C', ScaleForm.major, octaves: 2), Hand.left)!,
+          fingeringFor(
+            scale(
+              'C',
+              ScaleForm.major,
+              octaves: 2,
+              hands: HandConfiguration.left,
+            ),
+            Hand.left,
+          )!,
         ),
         '543213214321321',
       );

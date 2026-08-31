@@ -306,11 +306,15 @@ Map<Hand, int> _tonicsFor(
 /// around at its own outside end, which for contrary motion is the point the
 /// hands are furthest apart. [ExecutionConditions.octaves] is per hand, so
 /// contrary motion covers twice the keyboard that parallel motion does.
-Map<Hand, List<int>> _pathsFor(
-  ExecutionConditions conditions,
-  List<Hand> hands,
-  int topDegree,
-) {
+Map<Hand, List<int>> handPathsFor(
+  ExecutionConditions conditions, {
+  required int degreesPerOctave,
+}) {
+  final hands = [
+    if (conditions.hands.usesLeftHand) Hand.left,
+    if (conditions.hands.usesRightHand) Hand.right,
+  ];
+  final topDegree = degreesPerOctave * conditions.octaves;
   final ascending = [
     for (var degree = 0; degree <= topDegree; degree++) degree,
   ];
@@ -363,8 +367,7 @@ ExerciseRealization realize(Exercise exercise) {
     if (conditions.hands.usesLeftHand) Hand.left,
     if (conditions.hands.usesRightHand) Hand.right,
   ];
-  final topDegree = intervals.length * conditions.octaves;
-  final paths = _pathsFor(conditions, hands, topDegree);
+  final paths = handPathsFor(conditions, degreesPerOctave: intervals.length);
   final tonics = _tonicsFor(conditions, hands, pitchClassOf(material.tonic));
 
   // Every hand plays at every moment in V1, so the paths are read in lockstep.

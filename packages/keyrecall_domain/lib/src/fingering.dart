@@ -2,6 +2,7 @@ import 'package:meta/meta.dart';
 
 import 'execution_conditions.dart';
 import 'exercise.dart';
+import 'pitch_spelling.dart';
 import 'realization.dart';
 import 'technical_material.dart';
 
@@ -148,18 +149,33 @@ ScaleFingering? canonicalFingering(TechnicalMaterial material, Hand hand) =>
     _canonical[material.materialId]?[hand];
 
 /// The finger for each moment of [exercise], for [hand], or null when the
-/// scale has no canonical fingering.
+/// scale has no canonical fingering or [hand] does not play it.
 ///
-/// A descent reverses the ascending stream, which holds for every scale in the
-/// catalog and is a property of this dataset rather than a rule about
-/// fingering in general.
+/// Read off the same degree path the notes are, so the fingers follow wherever
+/// the hand goes rather than re-deriving the traversal here. A descent reverses
+/// the ascending stream, which holds for every scale in the catalog and is a
+/// property of this dataset rather than a rule about fingering in general.
+///
+/// A hand whose line runs below its tonic is indexed from the far end: the
+/// thumb it starts on is the finger that would have ended an ascent. That is
+/// the same reversal, taken per degree instead of per sequence, and it is what
+/// makes the return leg of a contrary traversal fall out unaided.
 List<int>? fingeringFor(Exercise exercise, Hand hand) {
   final pattern = canonicalFingering(exercise.material, hand);
   if (pattern == null) return null;
 
+  final intervals = scaleFormIntervals[exercise.material.form]!;
+  final path = handPathsFor(
+    exercise.conditions,
+    degreesPerOctave: intervals.length,
+  )[hand];
+  if (path == null) return null;
+
   final ascending = pattern.ascending(exercise.conditions.octaves);
-  return switch (exercise.conditions.direction) {
-    ScaleDirection.up => ascending,
-    ScaleDirection.upDown => [...ascending, ...ascending.reversed.skip(1)],
-  };
+  final topDegree = ascending.length - 1;
+  final descends = path.any((degree) => degree < 0);
+  return [
+    for (final degree in path)
+      ascending[descends ? topDegree + degree : degree],
+  ];
 }
