@@ -60,18 +60,16 @@ Future<void> main(List<String> arguments) async {
       '  product    = availability x execution x coordination\n'
       '  bottleneck = availability x min(execution, coordination)\n'
       '  logit      = availability x sigmoid(logit execution + logit coord)\n'
-      '  coord out  = prior band was in, coordination-aware band is out\n'
+      '  caused     = availability x execution clears the floor, but the '
+      'bottleneck does not\n'
       '  coord in   = prior band was out, coordination-aware band is in\n'
-      '  override   = a named exception admitted a coord-out candidate\n'
-      '  bound      = coordination is the weaker below-band motor factor\n'
-      '  bound pass = an exception admitted such a candidate\n',
+      '  weaker     = coordination is the weaker below-band motor factor\n'
+      '  pass       = a named exception admitted that candidate\n',
     )
     ..writeln(
       '${'archetype'.padRight(15)}${'HT'.padLeft(9)}${'prior'.padLeft(10)}'
       '${'product'.padLeft(10)}${'bottleneck'.padLeft(12)}'
-      '${'logit'.padLeft(10)}${'coord out'.padLeft(11)}'
-      '${'coord in'.padLeft(10)}${'bound'.padLeft(10)}'
-      '${'bound pass'.padLeft(12)}${'won'.padLeft(8)}',
+      '${'logit'.padLeft(10)}${'coord in'.padLeft(10)}',
     );
 
   for (final archetype in archetypes) {
@@ -82,24 +80,50 @@ Future<void> main(List<String> arguments) async {
       '${counts.productBand.toString().padLeft(10)}'
       '${counts.newBand.toString().padLeft(12)}'
       '${counts.logitBand.toString().padLeft(10)}'
-      '${counts.coordinationOut.toString().padLeft(11)}'
-      '${counts.coordinationIn.toString().padLeft(10)}'
+      '${counts.coordinationIn.toString().padLeft(10)}',
+    );
+  }
+
+  stdout
+    ..writeln()
+    ..writeln(
+      '${'archetype'.padRight(15)}${'caused'.padLeft(10)}'
+      '${'pass'.padLeft(10)}${'won'.padLeft(8)}'
+      '${'weaker'.padLeft(10)}${'pass'.padLeft(10)}${'won'.padLeft(8)}',
+    );
+  for (final archetype in archetypes) {
+    final counts = byArchetype[archetype] ?? _Counts();
+    stdout.writeln(
+      '${archetype.padRight(15)}'
+      '${counts.coordinationOut.toString().padLeft(10)}'
+      '${counts.coordinationOutOverridden.toString().padLeft(10)}'
+      '${counts.coordinationOutWon.toString().padLeft(8)}'
       '${counts.coordinationBound.toString().padLeft(10)}'
-      '${counts.boundOverridden.toString().padLeft(12)}'
+      '${counts.boundOverridden.toString().padLeft(10)}'
       '${counts.boundWon.toString().padLeft(8)}',
     );
-    final reasons = counts.boundOverrides.keys.toList()
-      ..sort(
-        (a, b) =>
-            counts.boundOverrides[b]!.compareTo(counts.boundOverrides[a]!),
-      );
-    for (final reason in reasons) {
-      stdout.writeln(
-        '  ${reason.padRight(24)}'
-        '${counts.boundOverrides[reason].toString().padLeft(8)} candidates, '
-        '${(counts.boundWinners[reason] ?? 0).toString().padLeft(4)} winners',
-      );
-    }
+    _writeReasons(
+      'caused',
+      counts.coordinationOutOverrides,
+      counts.coordinationOutWinners,
+    );
+    _writeReasons('weaker', counts.boundOverrides, counts.boundWinners);
+  }
+}
+
+void _writeReasons(
+  String label,
+  Map<String, int> admitted,
+  Map<String, int> winners,
+) {
+  final reasons = admitted.keys.toList()
+    ..sort((a, b) => admitted[b]!.compareTo(admitted[a]!));
+  for (final reason in reasons) {
+    stdout.writeln(
+      '  ${'$label $reason'.padRight(31)}'
+      '${admitted[reason].toString().padLeft(8)} candidates, '
+      '${(winners[reason] ?? 0).toString().padLeft(4)} winners',
+    );
   }
 }
 
@@ -111,9 +135,13 @@ class _Counts {
   int logitBand = 0;
   int coordinationOut = 0;
   int coordinationIn = 0;
+  int coordinationOutOverridden = 0;
+  int coordinationOutWon = 0;
   int coordinationBound = 0;
   int boundOverridden = 0;
   int boundWon = 0;
+  final Map<String, int> coordinationOutOverrides = {};
+  final Map<String, int> coordinationOutWinners = {};
   final Map<String, int> boundOverrides = {};
   final Map<String, int> boundWinners = {};
 
@@ -125,10 +153,14 @@ class _Counts {
     logitBand += other.logitBand;
     coordinationOut += other.coordinationOut;
     coordinationIn += other.coordinationIn;
+    coordinationOutOverridden += other.coordinationOutOverridden;
+    coordinationOutWon += other.coordinationOutWon;
     coordinationBound += other.coordinationBound;
     boundOverridden += other.boundOverridden;
     boundWon += other.boundWon;
     for (final source in [
+      (other.coordinationOutOverrides, coordinationOutOverrides),
+      (other.coordinationOutWinners, coordinationOutWinners),
       (other.boundOverrides, boundOverrides),
       (other.boundWinners, boundWinners),
     ]) {
@@ -144,6 +176,7 @@ Map<String, _Counts> _countsFor(List<TrajectoryJob> jobs, int slots) {
 
   for (final job in jobs) {
     final counts = byArchetype.putIfAbsent(job.archetypeId, _Counts.new);
+    final coordinationOut = <int, Set<Exercise>>{};
     final coordinationBound = <int, Set<Exercise>>{};
     final trajectory = runTrajectory(
       player: playerOf(job.archetypeId),
@@ -164,7 +197,16 @@ Map<String, _Counts> _countsFor(List<TrajectoryJob> jobs, int slots) {
           if (current) counts.newBand++;
           if (_logitBand(trace.prediction)) counts.logitBand++;
           if (!prior && current) counts.coordinationIn++;
-          if (prior && !current) counts.coordinationOut++;
+          if (_coordinationCausedLowerRefusal(trace.prediction)) {
+            counts.coordinationOut++;
+            coordinationOut.putIfAbsent(slot, () => {}).add(trace.exercise);
+            if (trace.challengeSurvived) {
+              counts.coordinationOutOverridden++;
+              final reason = trace.challengeBypass?.id ?? 'ordinary band';
+              counts.coordinationOutOverrides[reason] =
+                  (counts.coordinationOutOverrides[reason] ?? 0) + 1;
+            }
+          }
 
           final bound =
               trace.prediction.coordinationP < trace.prediction.executionP &&
@@ -182,6 +224,12 @@ Map<String, _Counts> _countsFor(List<TrajectoryJob> jobs, int slots) {
     );
 
     for (final slot in trajectory.slots) {
+      if (coordinationOut[slot.index]?.contains(slot.chosen) == true) {
+        counts.coordinationOutWon++;
+        final reason = slot.winner.challengeBypass?.id ?? 'ordinary band';
+        counts.coordinationOutWinners[reason] =
+            (counts.coordinationOutWinners[reason] ?? 0) + 1;
+      }
       if (coordinationBound[slot.index]?.contains(slot.chosen) != true) {
         continue;
       }
@@ -197,6 +245,11 @@ bool _priorBand(Prediction prediction) {
   final probability = prediction.materialAvailableP * prediction.executionP;
   return _inBand(probability);
 }
+
+bool _coordinationCausedLowerRefusal(Prediction prediction) =>
+    prediction.materialAvailableP * prediction.executionP >=
+        v1SchedulerConfig.challenge.pMin &&
+    prediction.overallP < v1SchedulerConfig.challenge.pMin;
 
 bool _productBand(Prediction prediction) {
   final probability =
