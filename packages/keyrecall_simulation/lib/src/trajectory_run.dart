@@ -146,6 +146,7 @@ Trajectory runTrajectory({
         ]..sort((a, b) => b.rankKey!.compareTo(a.rankKey!)),
         performedTempoBpm: playing.performedTempoFor(exercise),
         outcome: outcome,
+        managedExecution: learner.executionWasManaged(outcome),
         frontierBefore: frontierBefore,
         frontierAfter: frontierAfter,
         pacedBefore: pacedBefore,

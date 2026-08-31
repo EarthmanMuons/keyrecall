@@ -83,6 +83,8 @@ String renderTrajectoryCase(TrajectoryCase selected) {
     'entry_tempo_regression' => _entryTempoTimeline(trajectory, anomaly),
     'entry_tempo_band_step_down' => _entryTempoTimeline(trajectory, anomaly),
     'hands_together_stall' => _handsTogetherTimeline(trajectory, anomaly),
+    'progression_stall' => _progressionTimeline(trajectory, anomaly),
+    'progression_struggle' => _progressionTimeline(trajectory, anomaly),
     _ => _nearbyTimeline(trajectory, anomaly),
   };
   return [
@@ -232,6 +234,37 @@ String _handsTogetherDiagnostic(HandsTogetherDiagnostic diagnostic) =>
     '${diagnostic.maximumOverallP.toStringAsFixed(2)} '
     'elig=${diagnostic.eligibilityCodes.join(',')} '
     'bypass=${diagnostic.bypasses.isEmpty ? '-' : diagnostic.bypasses.join(',')}';
+
+String _progressionTimeline(Trajectory trajectory, Anomaly anomaly) {
+  const window = 12;
+  final anchor = anomaly.slot;
+  if (anchor == null || anchor >= trajectory.slots.length) {
+    return anomaly.census ?? '';
+  }
+  final start = (anchor - window + 1).clamp(0, trajectory.slots.length);
+  return [
+    'progression window:',
+    for (final slot in trajectory.slots.sublist(start, anchor + 1))
+      _progressionLine(slot),
+  ].join('\n');
+}
+
+String _progressionLine(TrajectorySlot slot) {
+  final exercise = slot.chosen;
+  final span = exercise.conditions.octaves;
+  final before = slot.frontierBefore[span] ?? 0;
+  final after = slot.frontierAfter[span] ?? 0;
+  return '  ${slot.index.toString().padLeft(2)} '
+      '${exercise.material.materialId.padRight(19)} '
+      '${exercise.conditions.hands.id.padRight(5)} ${span}oct '
+      'asked=${exercise.conditions.tempoBpm.toStringAsFixed(0).padLeft(3)} '
+      'played=${slot.performedTempoBpm.toStringAsFixed(0).padLeft(3)} '
+      '${(slot.winner.challengeBypass?.id ?? 'ordinary').padRight(19)} '
+      'completed=${slot.outcome.completed} '
+      'managed=${slot.managedExecution} '
+      'motor=${slot.outcome.motorScore.toStringAsFixed(2)} '
+      'frontier=${before.toStringAsFixed(0)}->${after.toStringAsFixed(0)}';
+}
 
 String _nearbyTimeline(Trajectory trajectory, Anomaly anomaly) {
   final anchor = anomaly.slot ?? trajectory.slots.length - 1;

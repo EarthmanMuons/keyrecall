@@ -158,6 +158,7 @@ Future<void> main(List<String> arguments) async {
             alternatives: alternatives,
             performedTempoBpm: playing.performedTempoFor(exercise),
             outcome: outcome,
+            managedExecution: learner.executionWasManaged(outcome),
             frontierBefore: frontierBefore,
             frontierAfter: {
               ...?state

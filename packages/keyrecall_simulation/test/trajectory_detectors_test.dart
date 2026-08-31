@@ -165,13 +165,28 @@ void main() {
   });
 
   group('progression stall', () {
-    test('completion without a frontier change remains stalled', () {
+    test('managed completion without a frontier change remains stalled', () {
       final slots = [
         for (var i = 0; i < 12; i++)
           _slot(i, frontierBefore: const {1: 60}, frontierAfter: const {1: 60}),
       ];
 
       expect(_find('progression_stall', slots), hasLength(1));
+    });
+
+    test('completion below the motor threshold is learner struggle', () {
+      final slots = [
+        for (var i = 0; i < 12; i++)
+          _slot(
+            i,
+            outcome: _outcome(continuity: 0.4, temporalStability: 0.4),
+            frontierBefore: const {1: 60},
+            frontierAfter: const {1: 60},
+          ),
+      ];
+
+      expect(_find('progression_stall', slots), isEmpty);
+      expect(_find('progression_struggle', slots), hasLength(1));
     });
 
     test('an actual frontier change resets the stall', () {
@@ -270,9 +285,7 @@ void main() {
         ),
         _slot(
           2,
-          winner: _trace(
-            _exercise(guidance: GuidanceContext.continuouslyCued),
-          ),
+          winner: _trace(_exercise(guidance: GuidanceContext.continuouslyCued)),
         ),
       ];
 
@@ -412,6 +425,7 @@ TrajectorySlot _slot(
   HandsTogetherStages? handsTogether,
 }) {
   final selected = winner ?? _trace(_exercise());
+  final result = outcome ?? _outcome();
   return TrajectorySlot(
     index: index,
     at: _at(index),
@@ -419,7 +433,8 @@ TrajectorySlot _slot(
     winner: selected,
     alternatives: alternatives,
     performedTempoBpm: selected.exercise.conditions.tempoBpm,
-    outcome: outcome ?? _outcome(),
+    outcome: result,
+    managedExecution: const LearnerModel().executionWasManaged(result),
     frontierBefore: frontierBefore,
     frontierAfter: frontierAfter ?? frontierBefore,
     pacedBefore: 0,
@@ -490,14 +505,16 @@ Exercise _exercise({
 Outcome _outcome({
   bool completed = true,
   FactualRetrieval retrieval = FactualRetrieval.succeeded,
+  double continuity = 1,
+  double temporalStability = 1,
 }) => Outcome(
   started: true,
   retrieval: retrieval,
   completed: completed,
   materialRetrieval: 1,
   pitchIntegrity: 1,
-  continuity: 1,
-  temporalStability: 1,
+  continuity: continuity,
+  temporalStability: temporalStability,
   achievedTempoRatio: 1,
   topologyAccuracy: 1,
 );

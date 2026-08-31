@@ -110,6 +110,9 @@ class TrajectorySlot {
   /// What the learner did.
   final Outcome outcome;
 
+  /// Whether production accepted the outcome as demonstrated execution.
+  final bool managedExecution;
+
   /// The frontier for the chosen material and hand, before the attempt.
   final Map<int, double> frontierBefore;
 
@@ -138,6 +141,7 @@ class TrajectorySlot {
     required this.alternatives,
     required this.performedTempoBpm,
     required this.outcome,
+    required this.managedExecution,
     required this.frontierBefore,
     required this.frontierAfter,
     required this.pacedBefore,

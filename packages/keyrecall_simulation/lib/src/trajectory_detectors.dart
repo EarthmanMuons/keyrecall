@@ -349,36 +349,48 @@ Iterable<Anomaly> _materialConcentration(Trajectory trajectory) sync* {
 }
 
 /// **Observation.** Neither a frontier nor the material set advanced for a
-/// long stretch despite the learner completing what they were asked for.
+/// long stretch containing several completed attempts.
 ///
-/// Meeting material does not count as a stall. A learner working through
-/// scales they have never played is going somewhere, and a run of
-/// introductions is breadth rather than a frontier that will not move.
+/// Managed completions make this a scheduler stall. Other completions are
+/// learner struggle because they did not demonstrate execution.
 Iterable<Anomaly> _progressionStall(Trajectory trajectory) sync* {
   const window = 12;
   var since = 0;
   var completedSince = 0;
+  var managedSince = 0;
+  var unstartedIntroductionsSince = 0;
   for (final slot in trajectory.slots) {
+    final newMaterial =
+        slot.winner.challengeBypass == ChallengeBypass.newMaterial;
     final advanced =
-        slot.frontierAdvanced ||
-        (slot.winner.challengeBypass == ChallengeBypass.newMaterial &&
-            slot.outcome.started);
+        slot.frontierAdvanced || (newMaterial && slot.outcome.started);
     if (advanced) {
       since = 0;
       completedSince = 0;
+      managedSince = 0;
+      unstartedIntroductionsSince = 0;
       continue;
     }
     if (slot.outcome.completed) completedSince++;
+    if (slot.managedExecution) managedSince++;
+    if (newMaterial) unstartedIntroductionsSince++;
     since++;
     if (since == window && completedSince >= window ~/ 2) {
+      final stalled = managedSince >= window ~/ 2;
       yield Anomaly(
-        detector: 'progression_stall',
+        detector: stalled ? 'progression_stall' : 'progression_struggle',
         severity: AnomalySeverity.observation,
         slot: slot.index,
-        magnitude: completedSince.toDouble(),
+        magnitude: stalled
+            ? managedSince.toDouble()
+            : (completedSince - managedSince).toDouble(),
         summary:
-            'no frontier advanced and no material was introduced across '
-            '$window slots, $completedSince of them completed',
+            'no frontier advanced and no new-material attempt started across '
+            '$window slots; $completedSince completed, $managedSince '
+            'demonstrated execution, and $unstartedIntroductionsSince '
+            'new-material '
+            '${unstartedIntroductionsSince == 1 ? 'attempt' : 'attempts'} '
+            'did not start',
         census: censusOf(slot),
       );
     }

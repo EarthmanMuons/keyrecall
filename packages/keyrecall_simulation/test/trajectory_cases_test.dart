@@ -121,6 +121,27 @@ void main() {
     expect(rendered, contains('elig=BAND_EXECUTION_FLOOR'));
     expect(rendered, contains('15 P=true'));
   });
+
+  test('progression cases show the detector window and frontier evidence', () {
+    final slots = [
+      for (var i = 0; i < 12; i++)
+        _slot(i, frontierBefore: const {1: 72}, frontierAfter: const {1: 72}),
+    ];
+    final trajectory = Trajectory(playerId: 'test', seed: 4, slots: slots);
+    final anomaly = detectAnomalies(
+      trajectory,
+      requestedSlots: slots.length,
+    ).singleWhere((item) => item.detector == 'progression_stall');
+
+    final rendered = renderTrajectoryCase(
+      TrajectoryCase(trajectory: trajectory, anomaly: anomaly),
+    );
+
+    expect(rendered, contains('  0 '));
+    expect(rendered, contains(' 11 '));
+    expect(rendered, contains('motor=1.00'));
+    expect(rendered, contains('frontier=72->72'));
+  });
 }
 
 TrajectorySlot _slot(
@@ -128,6 +149,8 @@ TrajectorySlot _slot(
   CandidateTrace? winner,
   double transferableBefore = 0,
   HandsTogetherStages? handsTogether,
+  Map<int, double> frontierBefore = const {},
+  Map<int, double> frontierAfter = const {},
 }) {
   final selected = winner ?? _trace(_exercise());
   return TrajectorySlot(
@@ -138,8 +161,9 @@ TrajectorySlot _slot(
     alternatives: const [],
     performedTempoBpm: selected.exercise.conditions.tempoBpm,
     outcome: _outcome(),
-    frontierBefore: const {},
-    frontierAfter: const {},
+    managedExecution: true,
+    frontierBefore: frontierBefore,
+    frontierAfter: frontierAfter,
     pacedBefore: 0,
     transferableBefore: transferableBefore,
     candidates: const CandidateStageCounts(

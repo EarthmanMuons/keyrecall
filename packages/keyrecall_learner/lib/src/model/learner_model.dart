@@ -78,6 +78,11 @@ class LearnerModel {
   void propagate(LearnerState state, DateTime at) =>
       state.propagateTo(at, params);
 
+  /// Whether an outcome demonstrated the execution it was asked for.
+  bool executionWasManaged(Outcome outcome) =>
+      outcome.completed &&
+      outcome.motorScore >= params.materialExecution.demonstratedMotorScore;
+
   /// The competency mean used for prediction, including the hand-transfer
   /// adjustment.
   ///
@@ -422,10 +427,7 @@ class LearnerModel {
     // somebody could not get through is not the place to go on from, and a
     // maximum rather than the latest so that working slowly on something
     // already taken faster does not walk it back down.
-    if (!outcome.completed ||
-        outcome.motorScore < params.materialExecution.demonstratedMotorScore) {
-      return;
-    }
+    if (!executionWasManaged(outcome)) return;
     residual.demonstrate(
       octaves: exercise.conditions.octaves,
       tempoBpm: exercise.conditions.tempoBpm,
