@@ -33,6 +33,31 @@ class _Silent extends _Verdict {
   const _Silent();
 }
 
+/// Answers about a learner that every candidate in one decision shares.
+///
+/// [SchedulerPipeline.eligibilityFor] asks several questions of learner state
+/// alone: how broad a hand's ordinary repertoire is, where its execution mean
+/// sits, whether coordination is fluent. Those do not vary across the ten
+/// thousand candidates a slot evaluates, and the repertoire question walks the
+/// whole catalog, so asking them per candidate was most of what a decision
+/// cost for a learner whose material sits behind the altered-form gate.
+///
+/// Scoped to one decision and holding the state it answers about, so nothing
+/// has to invalidate it: it is discarded before that state moves. Passing none
+/// computes everything fresh, which is what a caller asking a single question
+/// wants.
+class DecisionFacts {
+  /// The state every answer here is about.
+  final LearnerState state;
+
+  final Map<HandConfiguration, (int, int)> _breadth = {};
+  final Map<HandConfiguration, double> _executionMean = {};
+  final Map<ScaleForm, double> _minorTopology = {};
+  bool? _fluentHandsTogether;
+
+  DecisionFacts(this.state);
+}
+
 /// The candidates considered and the selection made for one attempt slot.
 class SelectionResult {
   final List<CandidateTrace> traces;
@@ -134,7 +159,11 @@ class SchedulerPipeline {
   /// Provisional rather than forbidden, in every case: a provisional candidate
   /// is outranked by anything fully eligible and stays reachable when nothing
   /// else is.
-  EligibilityDecision eligibilityFor(LearnerState state, Exercise exercise) {
+  EligibilityDecision eligibilityFor(
+    LearnerState state,
+    Exercise exercise, {
+    DecisionFacts? facts,
+  }) {
     final material = exercise.material;
     final band = admissionBandOf(material);
     final hands = exercise.conditions.hands;
@@ -153,7 +182,12 @@ class SchedulerPipeline {
     // An altered minor form is a new idea rather than a new key, so its
     // prerequisite is a curriculum phase rather than keyboard geography.
     if (!coreForms.contains(material.form)) {
-      final breadth = _alteredFormDecisionFor(state, material.form, hands);
+      final breadth = _alteredFormDecisionFor(
+        state,
+        material.form,
+        hands,
+        facts,
+      );
       if (breadth != null) return breadth;
     }
 
@@ -176,7 +210,7 @@ class SchedulerPipeline {
     // attempted precisely because nobody has. One octave stays fully eligible.
     if (exercise.conditions.octaves > 1) {
       final floor = config.eligibility.multiOctaveExecutionFloor;
-      final execution = _executionMeanFor(state, hands);
+      final execution = _executionMeanFor(state, hands, facts);
       if (execution < floor) {
         return EligibilityDecision(
           EligibilityTier.provisionallyEligible,
@@ -194,7 +228,7 @@ class SchedulerPipeline {
     if (material.form == ScaleForm.harmonicMinor ||
         material.form == ScaleForm.melodicMinor) {
       final floor = config.eligibility.minorTopologyFloor;
-      final familiar = _bestMinorTopology(state, exclude: material.form);
+      final familiar = _bestMinorTopology(state, material.form, facts);
       if (familiar < floor) {
         return EligibilityDecision(
           EligibilityTier.provisionallyEligible,
@@ -235,7 +269,7 @@ class SchedulerPipeline {
 
       final asked = _isGentlest(exercise.conditions) ? _bandBefore(band) : band;
       final floor = config.eligibility.executionFloorFor(asked);
-      final execution = _executionMeanFor(state, hands);
+      final execution = _executionMeanFor(state, hands, facts);
       if (execution < floor) {
         return EligibilityDecision(
           EligibilityTier.provisionallyEligible,
@@ -285,11 +319,16 @@ class SchedulerPipeline {
   ///
   /// Asked directly rather than read off the eligibility reason, which is
   /// whichever rule refused first.
-  bool isIntroducible(LearnerState state, Exercise exercise) =>
+  bool isIntroducible(
+    LearnerState state,
+    Exercise exercise, {
+    DecisionFacts? facts,
+  }) =>
       _alteredFormDecisionFor(
         state,
         exercise.material.form,
         exercise.conditions.hands,
+        facts,
       ) ==
       null;
 
@@ -315,6 +354,7 @@ class SchedulerPipeline {
     LearnerState state,
     ScaleForm form,
     HandConfiguration hands,
+    DecisionFacts? facts,
   ) {
     final required = switch (form) {
       ScaleForm.harmonicMinor => config.eligibility.harmonicMinorCoreRetrievals,
@@ -323,7 +363,7 @@ class SchedulerPipeline {
     };
     if (required == 0) return null;
 
-    if (_hasFluentHandsTogether(state)) return null;
+    if (_hasFluentHandsTogether(state, facts)) return null;
 
     for (final hand in HandConfiguration.values) {
       if (hand == HandConfiguration.together) continue;
@@ -348,7 +388,7 @@ class SchedulerPipeline {
     final bands = config.eligibility.coreRetrievalBands;
     for (final hand in HandConfiguration.values) {
       if (hand == HandConfiguration.together) continue;
-      final (retrieved, spread) = _ordinaryBreadthFor(state, hand);
+      final (retrieved, spread) = _ordinaryBreadthFor(state, hand, facts);
       if (retrieved >= required && spread >= bands) continue;
       return EligibilityDecision(
         EligibilityTier.provisionallyEligible,
@@ -372,7 +412,13 @@ class SchedulerPipeline {
   /// "this hand has this scale", and it is a projection rather than a record: a
   /// scale retrieved by one hand and merely played by the other counts for
   /// both.
-  (int, int) _ordinaryBreadthFor(LearnerState state, HandConfiguration hand) {
+  (int, int) _ordinaryBreadthFor(
+    LearnerState state,
+    HandConfiguration hand,
+    DecisionFacts? facts,
+  ) {
+    final memo = facts?._breadth[hand];
+    if (memo != null) return memo;
     final spread = <AdmissionBand>{};
     var retrieved = 0;
     for (final material in allScales) {
@@ -383,7 +429,9 @@ class SchedulerPipeline {
       retrieved++;
       spread.add(admissionBandOf(material));
     }
-    return (retrieved, spread.length);
+    final breadth = (retrieved, spread.length);
+    facts?._breadth[hand] = breadth;
+    return breadth;
   }
 
   /// Whether hands-together playing has been observed and is fluent.
@@ -396,10 +444,16 @@ class SchedulerPipeline {
   /// Observed and fluent, both. Placement seeds this mean from the onboarding
   /// answer, so the mean alone would let a self-report skip the phase, and
   /// exposure alone would let one ragged first attempt do it.
-  bool _hasFluentHandsTogether(LearnerState state) =>
-      state.isObserved(Competency.handsTogetherCoordination) &&
-      state.competency(Competency.handsTogetherCoordination).mean >=
-          config.eligibility.fluentHandsTogetherFloor;
+  bool _hasFluentHandsTogether(LearnerState state, DecisionFacts? facts) {
+    final memo = facts?._fluentHandsTogether;
+    if (memo != null) return memo;
+    final fluent =
+        state.isObserved(Competency.handsTogetherCoordination) &&
+        state.competency(Competency.handsTogetherCoordination).mean >=
+            config.eligibility.fluentHandsTogetherFloor;
+    facts?._fluentHandsTogether = fluent;
+    return fluent;
+  }
 
   static Competency _executionCompetencyOf(HandConfiguration hand) =>
       hand == HandConfiguration.right
@@ -454,14 +508,22 @@ class SchedulerPipeline {
       : AdmissionBand.values[band.index - 1];
 
   /// The weaker hand's execution when both play, otherwise the playing hand's.
-  double _executionMeanFor(LearnerState state, HandConfiguration hands) {
+  double _executionMeanFor(
+    LearnerState state,
+    HandConfiguration hands, [
+    DecisionFacts? facts,
+  ]) {
+    final memo = facts?._executionMean[hands];
+    if (memo != null) return memo;
     final rh = state.competency(Competency.rhScaleExecution).mean;
     final lh = state.competency(Competency.lhScaleExecution).mean;
-    return switch (hands) {
+    final mean = switch (hands) {
       HandConfiguration.right => rh,
       HandConfiguration.left => lh,
       HandConfiguration.together => rh < lh ? rh : lh,
     };
+    facts?._executionMean[hands] = mean;
+    return mean;
   }
 
   /// The best minor topology the learner has, ignoring [exclude].
@@ -471,13 +533,20 @@ class SchedulerPipeline {
   /// strength of A natural minor, not of itself. Note that it is any minor
   /// topology rather than the same tonic's, since the curricula give no
   /// support for a per-key ladder either.
-  double _bestMinorTopology(LearnerState state, {required ScaleForm exclude}) {
+  double _bestMinorTopology(
+    LearnerState state,
+    ScaleForm exclude,
+    DecisionFacts? facts,
+  ) {
+    final memo = facts?._minorTopology[exclude];
+    if (memo != null) return memo;
     var best = double.negativeInfinity;
     for (final form in ScaleForm.values) {
       if (form == ScaleForm.major || form == exclude) continue;
       final mean = state.competency(form.topologyCompetency).mean;
       if (mean > best) best = mean;
     }
+    facts?._minorTopology[exclude] = best;
     return best;
   }
 
@@ -603,13 +672,14 @@ class SchedulerPipeline {
   /// whether something more appropriate is also waiting to be introduced.
   EligibilityTier? introducibleTier(
     LearnerState state,
-    List<Exercise> candidates,
-  ) {
+    List<Exercise> candidates, {
+    DecisionFacts? facts,
+  }) {
     EligibilityTier? best;
     for (final exercise in candidates) {
       if (!isIntroduction(state, exercise)) continue;
-      if (!isIntroducible(state, exercise)) continue;
-      final tier = eligibilityFor(state, exercise).tier;
+      if (!isIntroducible(state, exercise, facts: facts)) continue;
+      final tier = eligibilityFor(state, exercise, facts: facts).tier;
       if (best == null || tier.index > best.index) best = tier;
       if (best == EligibilityTier.fullyEligible) break;
     }
@@ -642,6 +712,7 @@ class SchedulerPipeline {
     required int supportedAttempts,
     required EligibilityTier eligibility,
     required EligibilityTier? introducibleTier,
+    DecisionFacts? facts,
   }) {
     for (final exception in AdmissionException.values) {
       final verdict = switch (exception) {
@@ -693,7 +764,7 @@ class SchedulerPipeline {
         AdmissionException.newMaterial =>
           !isIntroduction(state, exercise)
               ? const _Silent()
-              : !isIntroducible(state, exercise)
+              : !isIntroducible(state, exercise, facts: facts)
               ? const _Refuses()
               : eligibility != introducibleTier
               ? const _Refuses()
@@ -779,7 +850,10 @@ class SchedulerPipeline {
       for (final exclusive in [target, probe])
         if (exclusive != null && !neighbours.contains(exclusive)) exclusive,
     ];
-    final introducible = introducibleTier(state, refined);
+    // One memo for the slot, so the questions eligibility asks of state alone
+    // are answered once rather than once per candidate.
+    final facts = DecisionFacts(state);
+    final introducible = introducibleTier(state, refined, facts: facts);
 
     // Guidance changes material availability, but not independent retrieval,
     // execution, or topology. Generation emits each realization under all
@@ -801,6 +875,7 @@ class SchedulerPipeline {
           tempoProbe: probe,
           override: overrides[exercise],
           introducibleTier: introducible,
+          facts: facts,
           retrievalCache: retrievalCache,
           executionCache: executionCache,
           topologyCache: topologyCache,
@@ -818,6 +893,7 @@ class SchedulerPipeline {
     required Exercise? tempoProbe,
     required ChallengeBypass? override,
     required EligibilityTier? introducibleTier,
+    required DecisionFacts facts,
     required Map<String, double> retrievalCache,
     required Map<Exercise, double> executionCache,
     required Map<Exercise, double> topologyCache,
@@ -846,7 +922,7 @@ class SchedulerPipeline {
     // Ahead of admission rather than beside ranking: the introduction
     // exception reads the tier, so eligibility now decides what may be
     // admitted as well as how admitted candidates are ordered.
-    final eligibility = eligibilityFor(state, exercise);
+    final eligibility = eligibilityFor(state, exercise, facts: facts);
     final withinBand = isWithinChallengeBand(prediction);
     final bypass = challengeBypassFor(
       state: state,
@@ -859,6 +935,7 @@ class SchedulerPipeline {
       supportedAttempts: session.supportedAttemptsSinceObservation,
       eligibility: eligibility.tier,
       introducibleTier: introducibleTier,
+      facts: facts,
     );
     // A recovery context is exclusive: a candidate that happens to fall in the
     // ordinary band or qualify as new material must not survive alongside the
