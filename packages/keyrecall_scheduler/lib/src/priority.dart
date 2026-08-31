@@ -69,8 +69,7 @@ double information(
       _memoryUncertainty(state, materialId, params) *
       retrievalOpportunity(exercise);
 
-  final residual =
-      state.materialExecution[(materialId, exercise.conditions.hands)];
+  final residual = state.materialExecution[executionContextOf(exercise)];
   final executionTerm =
       residual?.residualVariance ?? params.materialExecution.priorVariance;
 

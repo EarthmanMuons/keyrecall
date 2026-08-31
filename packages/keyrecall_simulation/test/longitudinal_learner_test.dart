@@ -218,12 +218,14 @@ void main() {
             .materialExecution[(
               fSharpHarmonicMinor.materialId,
               HandConfiguration.right,
+              HandMotion.parallel,
             )]!
             .residualMean -
         state
             .materialExecution[(
               dHarmonicMinor.materialId,
               HandConfiguration.right,
+              HandMotion.parallel,
             )]!
             .residualMean;
 

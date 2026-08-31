@@ -77,7 +77,7 @@ void main() {
           t0;
       state
               .materialExecutionFor(
-                (material.materialId, hands),
+                (material.materialId, hands, HandMotion.parallel),
                 t0,
                 v1PrototypeLearnerParams,
               )
@@ -326,7 +326,7 @@ void main() {
         for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
           shown
                   .materialExecutionFor(
-                    (material.materialId, hands),
+                    (material.materialId, hands, HandMotion.parallel),
                     t0,
                     v1PrototypeLearnerParams,
                   )
@@ -385,7 +385,7 @@ void main() {
         for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
           narrow
                   .materialExecutionFor(
-                    (material.materialId, hands),
+                    (material.materialId, hands, HandMotion.parallel),
                     t0,
                     v1PrototypeLearnerParams,
                   )
@@ -549,7 +549,7 @@ void main() {
     /// Record that [hands] has managed C major at [span].
     void demonstrated(LearnerState state, HandConfiguration hands, int span) {
       state.materialExecutionFor(
-          ('C_MAJOR', hands),
+          ('C_MAJOR', hands, HandMotion.parallel),
           t0,
           v1PrototypeLearnerParams,
         )

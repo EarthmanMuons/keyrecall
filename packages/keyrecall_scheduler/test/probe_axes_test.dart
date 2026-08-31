@@ -27,7 +27,7 @@ void main() {
       ..establishedIndependenceAt = t0;
     if (tempoBpm != null) {
       state.materialExecutionFor(
-          (material.materialId, HandConfiguration.right),
+          (material.materialId, HandConfiguration.right, HandMotion.parallel),
           t0,
           learnerParams,
         )
@@ -59,7 +59,12 @@ void main() {
 
   test('it holds the frontier for this span, not the widest one', () {
     final state = established(tempoBpm: 126);
-    state.materialExecution[(material.materialId, HandConfiguration.right)]!
+    state
+        .materialExecution[(
+          material.materialId,
+          HandConfiguration.right,
+          HandMotion.parallel,
+        )]!
         .demonstrate(octaves: 2, tempoBpm: 96);
 
     expect(

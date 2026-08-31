@@ -366,7 +366,16 @@ ExerciseRealization realize(Exercise exercise) {
   final topDegree = intervals.length * conditions.octaves;
   final paths = _pathsFor(conditions, hands, topDegree);
   final tonics = _tonicsFor(conditions, hands, pitchClassOf(material.tonic));
+
+  // Every hand plays at every moment in V1, so the paths are read in lockstep.
+  // Independent here means the degrees may differ, not the event structure; a
+  // pattern where one hand rests or subdivides would need moments built from
+  // the union of the paths rather than from a shared index.
   final positions = paths.values.first.length;
+  assert(
+    paths.values.every((path) => path.length == positions),
+    'every hand path covers every moment',
+  );
 
   return ExerciseRealization([
     for (var position = 0; position < positions; position++)

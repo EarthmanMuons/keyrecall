@@ -137,8 +137,17 @@ class LearnerState {
   /// as by material, which makes them the only place a hand-scoped question
   /// about a specific scale can be answered at all. Memory is per material:
   /// it knows a scale was retrieved and not which hand was playing.
+  /// Motion-agnostic, deliberately. The question is whether this hand
+  /// configuration has met this material at all, which parallel and contrary
+  /// hands-together work both answer; where they differ is what each has
+  /// demonstrated, which the frontiers keep apart.
   bool hasPlayed(String materialId, HandConfiguration hands) =>
-      materialExecution[(materialId, hands)]?.lastEvidenceAt != null;
+      materialExecution.entries.any(
+        (entry) =>
+            entry.key.$1 == materialId &&
+            entry.key.$2 == hands &&
+            entry.value.lastEvidenceAt != null,
+      );
 
   MaterialExecutionState materialExecutionFor(
     ExecutionContext context,

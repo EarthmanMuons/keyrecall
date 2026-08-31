@@ -221,7 +221,7 @@ class SchedulerPipeline {
       // Unfamiliar geography and a harder way of playing are separate asks,
       // and the floor protects against taking both at once.
       final demonstrated =
-          state.materialExecution[(material.materialId, hands)]
+          state.materialExecution[executionContextOf(exercise)]
               ?.demonstratedTempoAt(exercise.conditions.octaves) ??
           0;
       if (demonstrated > 0) {
@@ -521,11 +521,7 @@ class SchedulerPipeline {
   /// already is, or [entryTempoFor] when that span has never been managed.
   double heldTempoFor(LearnerState state, Exercise exercise) {
     final frontier =
-        state
-            .materialExecution[(
-              exercise.material.materialId,
-              exercise.conditions.hands,
-            )]
+        state.materialExecution[executionContextOf(exercise)]
             ?.demonstratedTempoAt(exercise.conditions.octaves) ??
         0;
     return frontier > 0 ? frontier : entryTempoFor(state, exercise);

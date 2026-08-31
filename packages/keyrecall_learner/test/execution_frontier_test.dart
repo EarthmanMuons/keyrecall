@@ -56,7 +56,7 @@ void main() {
       at: at,
     );
     return state.materialExecutionFor(
-      ('C_MAJOR', exercise.conditions.hands),
+      ('C_MAJOR', exercise.conditions.hands, HandMotion.parallel),
       at,
       params,
     );
@@ -180,7 +180,11 @@ void main() {
 
     expect(
       state
-          .materialExecutionFor(('C_MAJOR', HandConfiguration.left), t0, params)
+          .materialExecutionFor(
+            ('C_MAJOR', HandConfiguration.left, HandMotion.parallel),
+            t0,
+            params,
+          )
           .demonstratedOctaves,
       0,
       reason:
@@ -190,7 +194,7 @@ void main() {
     expect(
       state
           .materialExecutionFor(
-            ('C_MAJOR', HandConfiguration.together),
+            ('C_MAJOR', HandConfiguration.together, HandMotion.parallel),
             t0,
             params,
           )
@@ -207,7 +211,7 @@ void main() {
     after(state, scale(octaves: 2, tempoBpm: 84), played(quality: 1.0));
 
     final copied = state.copy().materialExecutionFor(
-      ('C_MAJOR', HandConfiguration.right),
+      ('C_MAJOR', HandConfiguration.right, HandMotion.parallel),
       t0,
       params,
     );

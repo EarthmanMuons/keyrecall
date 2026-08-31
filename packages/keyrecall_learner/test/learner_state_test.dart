@@ -49,7 +49,7 @@ void main() {
       () {
         final state = model.newState(at: t0);
         final residual = state.materialExecutionFor(
-          (cMajor.materialId, HandConfiguration.right),
+          (cMajor.materialId, HandConfiguration.right, HandMotion.parallel),
           t0,
           params,
         )..residualMean = -1.0;
@@ -79,7 +79,7 @@ void main() {
       // per-layer check would advance some layers before hitting the stale
       // one.
       state.materialExecutionFor(
-        (cMajor.materialId, HandConfiguration.right),
+        (cMajor.materialId, HandConfiguration.right, HandMotion.parallel),
         t0.plusDays(20),
         params,
       );
@@ -174,7 +174,7 @@ void main() {
     final state = model.newState(at: t0);
     state.materialMemoryFor(cMajor.materialId, params);
     state.materialExecutionFor(
-      (cMajor.materialId, HandConfiguration.right),
+      (cMajor.materialId, HandConfiguration.right, HandMotion.parallel),
       t0,
       params,
     );
@@ -183,7 +183,11 @@ void main() {
     state.competency(Competency.rhScaleExecution).mean += 1.0;
     state.materialMemory[cMajor.materialId]!.logCurrentHalfLife += 1.0;
     state
-            .materialExecution[(cMajor.materialId, HandConfiguration.right)]!
+            .materialExecution[(
+              cMajor.materialId,
+              HandConfiguration.right,
+              HandMotion.parallel,
+            )]!
             .residualMean +=
         1.0;
 
@@ -194,7 +198,11 @@ void main() {
     );
     expect(
       snapshot
-          .materialExecution[(cMajor.materialId, HandConfiguration.right)]!
+          .materialExecution[(
+            cMajor.materialId,
+            HandConfiguration.right,
+            HandMotion.parallel,
+          )]!
           .residualMean,
       0.0,
     );

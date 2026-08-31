@@ -31,7 +31,7 @@ void main() {
       ..factualLastRetrievalAt = t0;
     for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
       state.materialExecutionFor(
-          (material.materialId, hands),
+          (material.materialId, hands, HandMotion.parallel),
           t0,
           learnerParams,
         )
@@ -53,7 +53,11 @@ void main() {
     final state = readyForBoth();
     state
             .materialExecutionFor(
-              (material.materialId, HandConfiguration.together),
+              (
+                material.materialId,
+                HandConfiguration.together,
+                HandMotion.parallel,
+              ),
               t0,
               learnerParams,
             )

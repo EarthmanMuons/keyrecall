@@ -33,7 +33,7 @@ void main() {
     double? pacedBpm,
   }) =>
       state.materialExecutionFor(
-          (materialId, hands),
+          (materialId, hands, HandMotion.parallel),
           t0,
           v1PrototypeLearnerParams,
         )

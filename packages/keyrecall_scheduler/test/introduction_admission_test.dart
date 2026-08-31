@@ -75,7 +75,11 @@ void main() {
   void played(LearnerState state, Exercise exercise) {
     state
             .materialExecutionFor(
-              (exercise.material.materialId, exercise.conditions.hands),
+              (
+                exercise.material.materialId,
+                exercise.conditions.hands,
+                HandMotion.parallel,
+              ),
               t0,
               v1PrototypeLearnerParams,
             )

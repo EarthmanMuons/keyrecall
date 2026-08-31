@@ -73,7 +73,7 @@ void main() {
         ..logConsolidatedHalfLife = math.log(0.001);
       state
               .materialExecutionFor(
-                (materialId, HandConfiguration.together),
+                (materialId, HandConfiguration.together, HandMotion.parallel),
                 t0,
                 learnerParams,
               )
@@ -176,7 +176,7 @@ void main() {
         for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
           state
                   .materialExecutionFor(
-                    (material.materialId, hands),
+                    (material.materialId, hands, HandMotion.parallel),
                     t0,
                     learnerParams,
                   )

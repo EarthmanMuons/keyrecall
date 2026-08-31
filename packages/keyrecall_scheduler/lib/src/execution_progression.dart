@@ -53,9 +53,8 @@ ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
   final tempo = conditions.tempoBpm;
 
   double demonstratedAt(HandConfiguration hands, int octaves) =>
-      state.materialExecution[(materialId, hands)]?.demonstratedTempoAt(
-        octaves,
-      ) ??
+      state.materialExecution[(materialId, hands, conditions.handMotion)]
+          ?.demonstratedTempoAt(octaves) ??
       0;
 
   if (conditions.hands == HandConfiguration.together) {
@@ -111,7 +110,7 @@ RealizationRank realizationRankFor(LearnerState state, Exercise exercise) {
 
   final conditions = exercise.conditions;
   final demonstrated =
-      state.materialExecution[(exercise.material.materialId, conditions.hands)]
+      state.materialExecution[executionContextOf(exercise)]
           ?.demonstratedTempoAt(conditions.octaves) ??
       0;
   if (demonstrated <= 0) return RealizationRank.unmeasured;
@@ -133,10 +132,11 @@ double handsTogetherEntryTempo(
   String materialId,
   int span,
 ) {
+  // A single hand has no motion of its own, so its readiness is the canonical
+  // parallel record whatever motion the hands will meet in.
   double readyAt(HandConfiguration hands) =>
-      state.materialExecution[(materialId, hands)]?.coordinationReadyTempoAt(
-        span,
-      ) ??
+      state.materialExecution[(materialId, hands, HandMotion.parallel)]
+          ?.coordinationReadyTempoAt(span) ??
       0;
 
   final right = readyAt(HandConfiguration.right);
@@ -169,7 +169,11 @@ bool handsTogetherPrerequisiteSatisfied(LearnerState state, Exercise exercise) {
   final materialId = exercise.material.materialId;
   final span = exercise.conditions.octaves;
   final together =
-      state.materialExecution[(materialId, HandConfiguration.together)];
+      state.materialExecution[(
+        materialId,
+        HandConfiguration.together,
+        exercise.conditions.handMotion,
+      )];
   return (together?.demonstratedTempoAt(span) ?? 0) > 0 ||
       (together?.demonstratedTempoAt(span - 1) ?? 0) > 0 ||
       supportsHandsTogether(state, materialId, span);
@@ -228,8 +232,7 @@ double unmeasuredEntryTempo(
   required double gentleTempoBpm,
 }) {
   final conditions = exercise.conditions;
-  final residual =
-      state.materialExecution[(exercise.material.materialId, conditions.hands)];
+  final residual = state.materialExecution[executionContextOf(exercise)];
 
   final narrower = residual?.demonstratedTempoAt(conditions.octaves - 1) ?? 0;
   if (narrower > 0) return narrower;
@@ -317,8 +320,9 @@ List<Exercise> withExecutionNeighbours(
   LearnerState state,
   List<Exercise> candidates,
 ) {
-  double demonstratedAt(String materialId, HandConfiguration hands, int span) =>
-      state.materialExecution[(materialId, hands)]?.demonstratedTempoAt(span) ??
+  double demonstratedAt(Exercise candidate, int span) =>
+      state.materialExecution[executionContextOf(candidate)]
+          ?.demonstratedTempoAt(span) ??
       0;
 
   final variants = <Exercise>{};
@@ -326,8 +330,8 @@ List<Exercise> withExecutionNeighbours(
     final conditions = candidate.conditions;
     final materialId = candidate.material.materialId;
     final span = conditions.octaves;
-    final atSpan = demonstratedAt(materialId, conditions.hands, span);
-    final atNarrower = demonstratedAt(materialId, conditions.hands, span - 1);
+    final atSpan = demonstratedAt(candidate, span);
+    final atNarrower = demonstratedAt(candidate, span - 1);
 
     final wanted = <double>{
       // Meeting something new at a tempo this hand has shown elsewhere. Its

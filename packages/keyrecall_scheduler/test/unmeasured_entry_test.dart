@@ -26,7 +26,7 @@ void main() {
       ..memoryAnchorAt = t0
       ..factualLastRetrievalAt = t0;
     state.materialExecutionFor(
-        (material.materialId, HandConfiguration.right),
+        (material.materialId, HandConfiguration.right, HandMotion.parallel),
         t0,
         learnerParams,
       )
@@ -119,7 +119,7 @@ void main() {
     final state = stateAt(PlacementTier.advanced);
     for (final tonic in ['C', 'G', 'F']) {
       state.materialExecutionFor(
-          ('${tonic}_MAJOR', HandConfiguration.right),
+          ('${tonic}_MAJOR', HandConfiguration.right, HandMotion.parallel),
           t0,
           learnerParams,
         )

@@ -54,7 +54,7 @@ void seedAllMaterials(LearnerState state) {
     for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
       state
               .materialExecutionFor(
-                (material.materialId, hands),
+                (material.materialId, hands, HandMotion.parallel),
                 t0,
                 learnerParams,
               )

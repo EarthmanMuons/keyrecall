@@ -169,6 +169,7 @@ void main() {
           state.materialExecution[(
             fSharpHarmonicMinor.materialId,
             HandConfiguration.right,
+            HandMotion.parallel,
           )]!;
       expect(residual.residualMean, lessThan(0.0));
       expect(

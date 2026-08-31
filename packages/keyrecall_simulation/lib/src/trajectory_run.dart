@@ -72,11 +72,7 @@ Trajectory runTrajectory({
     }
 
     final exercise = chosen.exercise;
-    final residual =
-        state.materialExecution[(
-          exercise.material.materialId,
-          exercise.conditions.hands,
-        )];
+    final residual = state.materialExecution[executionContextOf(exercise)];
     final frontierBefore = {...?residual?.demonstratedTempoByOctaves};
     final pacedBefore = residual?.pacedTempoBpm ?? 0;
     final transferableBefore = transferableTempoFor(
@@ -133,10 +129,7 @@ Trajectory runTrajectory({
     );
     final frontierAfter = {
       ...?state
-          .materialExecution[(
-            exercise.material.materialId,
-            exercise.conditions.hands,
-          )]
+          .materialExecution[executionContextOf(exercise)]
           ?.demonstratedTempoByOctaves,
     };
     recorded.add(

@@ -180,9 +180,10 @@ Map<String, Object?> encodeLearnerState(LearnerState state) => {
   },
   'material_execution': {
     for (final entry in state.materialExecution.entries)
-      '${entry.key.$1}/${entry.key.$2.id}': {
+      '${entry.key.$1}/${entry.key.$2.id}/${entry.key.$3.id}': {
         'material_id': entry.value.materialId,
         'hands': entry.value.hands.id,
+        'hand_motion': entry.value.handMotion.id,
         'residual_mean': entry.value.residualMean,
         'residual_variance': entry.value.residualVariance,
         'updated_at': encodeTime(entry.value.updatedAt),
@@ -293,6 +294,9 @@ LearnerState decodeLearnerState(
       materialId: requireString(value, 'material_id', location: location),
       hands: HandConfiguration.fromId(
         requireString(value, 'hands', location: location),
+      ),
+      handMotion: HandMotion.fromId(
+        requireString(value, 'hand_motion', location: location),
       ),
       residualMean: requireDouble(value, 'residual_mean', location: location),
       residualVariance: variance,

@@ -56,7 +56,7 @@ void main() {
     for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
       state
               .materialExecutionFor(
-                ('${tonic}_MAJOR', hands),
+                ('${tonic}_MAJOR', hands, HandMotion.parallel),
                 t0,
                 v1PrototypeLearnerParams,
               )

@@ -28,7 +28,7 @@ void main() {
     if (retrieved) memory.factualLastRetrievalAt = t0;
     for (final configuration in hands) {
       state.materialExecutionFor(
-          ('C_MAJOR', configuration),
+          ('C_MAJOR', configuration, HandMotion.parallel),
           t0,
           v1PrototypeLearnerParams,
         )

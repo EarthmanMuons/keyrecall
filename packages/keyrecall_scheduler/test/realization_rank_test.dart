@@ -21,7 +21,7 @@ void main() {
       ..memoryAnchorAt = t0
       ..factualLastRetrievalAt = t0;
     state.materialExecutionFor(
-        (material.materialId, HandConfiguration.right),
+        (material.materialId, HandConfiguration.right, HandMotion.parallel),
         t0,
         learnerParams,
       )

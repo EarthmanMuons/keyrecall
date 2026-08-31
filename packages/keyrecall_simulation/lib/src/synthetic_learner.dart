@@ -249,7 +249,8 @@ enum SyntheticProfile {
           selfReportTier: PlacementTier.advanced,
           trueCompetencies: flat(1.5),
           trueMaterialExecution: {
-            ('F#_HARMONIC_MINOR', HandConfiguration.right): -1.8,
+            ('F#_HARMONIC_MINOR', HandConfiguration.right, HandMotion.parallel):
+                -1.8,
           },
         );
     }
@@ -372,8 +373,7 @@ Outcome sampleOutcome({
       ) /
       math.max(1, motorRelevant.length);
   motorAbility +=
-      profile.trueMaterialExecution[(materialId, exercise.conditions.hands)] ??
-      0.0;
+      profile.trueMaterialExecution[executionContextOf(exercise)] ?? 0.0;
   final motorQuality = _sigmoid(
     motorAbility -
         _trueDifficulty(exercise) +

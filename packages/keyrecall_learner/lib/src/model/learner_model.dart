@@ -181,11 +181,7 @@ class LearnerModel {
       competencyTerm += entry.value * effectiveCompetencyMean(state, entry.key);
     }
 
-    final residual =
-        state.materialExecution[(
-          exercise.material.materialId,
-          exercise.conditions.hands,
-        )];
+    final residual = state.materialExecution[executionContextOf(exercise)];
 
     return _sigmoid(
       competencyTerm +
@@ -323,7 +319,7 @@ class LearnerModel {
     if (weights.materialExecution > 0.0) {
       _updateExecutionResidual(
         state: state,
-        context: (materialId, exercise.conditions.hands),
+        context: executionContextOf(exercise),
         exercise: exercise,
         outcome: outcome,
         weight: weights.materialExecution,

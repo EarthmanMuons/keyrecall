@@ -84,11 +84,7 @@ Future<void> main(List<String> arguments) async {
       slotCount++;
 
       final exercise = chosen.exercise;
-      final residual =
-          state.materialExecution[(
-            exercise.material.materialId,
-            exercise.conditions.hands,
-          )];
+      final residual = state.materialExecution[executionContextOf(exercise)];
       final frontierBefore = {...?residual?.demonstratedTempoByOctaves};
       final pacedBefore = residual?.pacedTempoBpm ?? 0;
       final transferableBefore = transferableTempoFor(
@@ -162,10 +158,7 @@ Future<void> main(List<String> arguments) async {
             frontierBefore: frontierBefore,
             frontierAfter: {
               ...?state
-                  .materialExecution[(
-                    exercise.material.materialId,
-                    exercise.conditions.hands,
-                  )]
+                  .materialExecution[executionContextOf(exercise)]
                   ?.demonstratedTempoByOctaves,
             },
             pacedBefore: pacedBefore,

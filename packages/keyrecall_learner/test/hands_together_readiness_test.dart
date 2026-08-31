@@ -33,6 +33,7 @@ void main() {
     return state.materialExecution[(
       material.materialId,
       HandConfiguration.right,
+      HandMotion.parallel,
     )]!;
   }
 

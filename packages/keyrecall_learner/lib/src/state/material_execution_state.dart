@@ -10,7 +10,28 @@ import 'monotonic_time.dart';
 ///
 /// Material identity excludes the hand, so the same scale carries a separate
 /// residual for each hand configuration it is played under.
-typedef ExecutionContext = (String materialId, HandConfiguration hands);
+///
+/// Hand motion is part of the key because parallel and contrary hands-together
+/// work are different coordination patterns: a frontier reached one way should
+/// not certify execution the learner has never demonstrated the other way. A
+/// single hand is always [HandMotion.parallel], which keeps the key uniform
+/// rather than nullable.
+typedef ExecutionContext = (
+  String materialId,
+  HandConfiguration hands,
+  HandMotion handMotion,
+);
+
+/// The context [exercise] reads its execution evidence from and writes it to.
+///
+/// The one place a context is derived from an exercise, so an axis added to the
+/// key reaches every caller at once instead of being remembered at each of
+/// them.
+ExecutionContext executionContextOf(Exercise exercise) => (
+  exercise.material.materialId,
+  exercise.conditions.hands,
+  exercise.conditions.handMotion,
+);
 
 /// A persistent execution deviation this material and context show, beyond
 /// what the shared competencies and task difficulty already explain.
@@ -25,6 +46,9 @@ class MaterialExecutionState {
 
   /// Which hand configuration this residual is for.
   final HandConfiguration hands;
+
+  /// Which hand motion this residual is for.
+  final HandMotion handMotion;
 
   /// The deviation, in logit units, added to the shared execution prediction.
   double residualMean;
@@ -85,6 +109,7 @@ class MaterialExecutionState {
   MaterialExecutionState({
     required this.materialId,
     required this.hands,
+    this.handMotion = HandMotion.parallel,
     required this.residualMean,
     required this.residualVariance,
     required this.updatedAt,
@@ -103,13 +128,14 @@ class MaterialExecutionState {
   ) => MaterialExecutionState(
     materialId: context.$1,
     hands: context.$2,
+    handMotion: context.$3,
     residualMean: 0.0,
     residualVariance: params.priorVariance,
     updatedAt: at,
   );
 
   /// This residual's key in the learner state's execution map.
-  ExecutionContext get context => (materialId, hands);
+  ExecutionContext get context => (materialId, hands, handMotion);
 
   /// Advances this residual to [now] without evidence.
   ///
@@ -137,6 +163,7 @@ class MaterialExecutionState {
   MaterialExecutionState copy() => MaterialExecutionState(
     materialId: materialId,
     hands: hands,
+    handMotion: handMotion,
     residualMean: residualMean,
     residualVariance: residualVariance,
     updatedAt: updatedAt,
