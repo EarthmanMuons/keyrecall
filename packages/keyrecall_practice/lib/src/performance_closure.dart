@@ -45,28 +45,18 @@ class ClosedAttempt {
 ///
 /// The criterion is [AlignmentReading.isComplete]: every expected position was
 /// accounted for by something that arrived. Reaching the final position is not
-/// enough on its own, and asking the aligner alone to answer a lifecycle
-/// question was the mistake. It looks for the cheapest explanation of what
-/// arrived, and for a scale ending on a note it does not start on, the
-/// cheapest explanation of one played note can be "this was the last one, and
-/// everything before it was missed" -- true, cheaper than any alternative, and
-/// not somebody finishing.
+/// enough on its own, because the aligner looks for the cheapest explanation of
+/// what arrived, and for a scale ending on a note it does not start on, one
+/// played note can be explained as "the last one, everything before it missed".
 ///
-/// A traversal's worth of wrong notes does end the attempt, and that is a
-/// decision rather than an oversight. Under the alignment policy a
-/// substitution costs less than dropping one note and adding another, so any
-/// transcript that long accounts for every position whatever it contains: at
-/// that point "played it badly" and "played something else" differ only in
-/// whether the notes were right, which is correctness, which no rung permits
-/// reading, and which would turn the app's silence into a verdict.
+/// A traversal's worth of wrong notes does end the attempt, deliberately. A
+/// substitution costs less than a deletion plus an insertion, so a transcript
+/// that long accounts for every position whatever it contains, and separating
+/// it from a good performance would mean reading correctness, which no rung
+/// permits.
 ///
-/// So this separates progress from correctness exactly as far as it can, and
-/// the guarantee it makes is the one that matters: an attempt that has not
-/// been through the exercise does not end on its own, however cheaply the
-/// aligner can explain what arrived as having arrived at the end.
-///
-/// A learner who genuinely leaves notes out finishes with Done, which is
-/// always there.
+/// A learner who genuinely leaves notes out finishes with Done, which is always
+/// there.
 bool hasCoveredTraversal({
   required Exercise exercise,
   required PerformanceTranscript transcript,

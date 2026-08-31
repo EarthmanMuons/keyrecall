@@ -58,36 +58,25 @@ class PracticeStateError extends StateError {
 /// Committing in that order is one of this package's central guarantees:
 /// nothing the session keeps moves until the attempt is history.
 ///
-/// The two failure modes the ordering exists to prevent:
-///
 /// **A crash after presenting** leaves a decision with no outcome. On the next
-/// [open] it surfaces as [pending], and the caller must resolve it explicitly
-/// by committing a real outcome or calling [abandonPending]. Nothing invents an
+/// [open] it surfaces as [pending], and the caller must resolve it by
+/// committing a real outcome or calling [abandonPending]. Nothing invents an
 /// outcome, because nothing observed one.
 ///
 /// **A crash during commit** is safe in either order it can fail. The attempt
 /// id is chosen at decide time and is the journal's idempotency key, so on
-/// restart the journal either already contains the attempt, in which case the
-/// stale decision is simply cleared, or it does not, in which case the attempt
-/// is still pending. The update is never applied twice, because learner state
-/// is not stored: it is replayed from the journal, and the journal holds each
-/// attempt exactly once.
+/// restart the journal either already holds the attempt, and the stale decision
+/// is cleared, or it does not, and the attempt is still pending. The update is
+/// never applied twice, because learner state is replayed from the journal
+/// rather than stored.
 ///
-/// **Retrying is not the same as overlapping.** All of that makes a failed
-/// step safe to run again *after* it has stopped, and says nothing about
-/// running two at once. A session is a single-writer object: [decide],
-/// [commit], and [abandonPending] each read and mutate the same state, and
-/// none of them holds a lock. A caller must let one finish before starting the
-/// next.
-///
-/// Do not read the idempotency key as permission to enter [commit] twice
-/// concurrently. Two overlapping commits do not collapse into one: the second
-/// folds the same outcome into a copy of state whose age depends on how the
-/// two interleaved, so it produces a *different* record under the same attempt
-/// id, and the journal rejects that as a collision rather than absorbing it as
-/// a retry. Nothing here is corrupted, but the caller is handed a failure it
-/// cannot act on, and the attempt it thought it recorded may be the one that
-/// was rejected.
+/// **Retrying is not the same as overlapping.** A session is a single-writer
+/// object: [decide], [commit] and [abandonPending] each read and mutate the
+/// same state and none holds a lock, so a caller must let one finish before
+/// starting the next. The idempotency key is not permission to enter [commit]
+/// twice concurrently: the second fold produces a different record under the
+/// same attempt id, which the journal rejects as a collision rather than
+/// absorbing as a retry.
 class PracticeSession {
   /// The learner model in force.
   final LearnerModel learner;
@@ -315,12 +304,10 @@ class PracticeSession {
   /// The decision is cleared last. A crash between the append and the clear
   /// leaves a stale slot that the next [open] recognizes as already committed.
   ///
-  /// Single-writer: callers must serialize commits for a session and must not
-  /// start one while another is still running. Retrying a commit that has
-  /// already failed is safe; entering this method twice concurrently is not,
-  /// for the reason given on [PracticeSession]. A UI driving this from a
-  /// button has to make that button single-flight rather than relying on the
-  /// attempt id to deduplicate.
+  /// Single-writer: retrying a commit that has already failed is safe, and
+  /// entering this method twice concurrently is not, for the reason given on
+  /// [PracticeSession]. A UI driving this from a button has to make that button
+  /// single-flight rather than relying on the attempt id to deduplicate.
   ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
   Future<AttemptRecord> commit(Outcome outcome, {DateTime? observedWallTime}) =>

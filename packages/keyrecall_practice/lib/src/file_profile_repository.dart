@@ -23,17 +23,14 @@ import 'profile_repository.dart';
 /// > reopen that learner, with no file outside it.
 ///
 /// Which matters because the genesis is tiny and the history it governs is
-/// not. A profile's creation instant is what placement is anchored at and its
-/// placement is the prior every posterior descends from, so keeping the only
-/// copy of both in one shared file would let a hundred lost bytes strand every
-/// megabyte of intact evidence on the install.
+/// not: a profile's creation instant anchors placement, and placement is the
+/// prior every posterior descends from, so one shared file holding the only
+/// copy of both could strand every profile's intact evidence.
 ///
-/// So the roster is scanned rather than stored, and `profiles.json` holds only
-/// the selection. Scanning is not guessing from directory names, which would
-/// attach somebody to a history that is not theirs; it is reading each
-/// profile's own record of itself. A directory with no `profile.json` is
-/// orphaned storage rather than a person, which is exactly what a deleted
-/// profile's leftover history is.
+/// The roster is therefore scanned rather than stored, and `profiles.json`
+/// holds only the selection. Scanning reads each profile's own record of itself
+/// rather than guessing from directory names, so a directory with no
+/// `profile.json` is orphaned storage rather than a person.
 ///
 /// A directory is named by profile id permanently, so renaming rewrites one
 /// small file and moves nothing. Every write goes to a temporary name and is

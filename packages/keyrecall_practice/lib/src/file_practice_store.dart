@@ -20,15 +20,13 @@ import 'practice_store.dart';
 /// history be reopened without the install's index; see
 /// [FileProfileRepository].
 ///
-/// A database would work too, and the port exists so one can be swapped in.
-/// Files are the natural first fit: the journal is already append-only JSON
-/// lines, appending is the one write pattern that never rewrites history, and a
-/// person can read a journal with ordinary tools when something goes wrong.
+/// The port exists so a database can be swapped in. Files are the natural first
+/// fit: the journal is already append-only JSON lines, appending never rewrites
+/// history, and a person can read a journal with ordinary tools.
 ///
-/// Durability comes from two mechanisms. Attempts are appended and flushed, so
-/// a committed attempt survives the process. The single-slot files are written
-/// to a temporary name and renamed over the target, so a reader sees either the
-/// old content or the new one and never a half-written file.
+/// Attempts are appended and flushed, so a committed attempt survives the
+/// process. Single-slot files are written to a temporary name and renamed over
+/// the target, so a reader never sees a half-written file.
 class FilePracticeStore implements PracticeStore {
   /// Directory holding one subdirectory per profile.
   final Directory root;

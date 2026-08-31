@@ -180,21 +180,15 @@ abstract interface class ProfileRepository {
 
   /// Forgets [profileId], and returns the profile that was removed.
   ///
-  /// Only the index entry goes. Erasing the practice history is a separate
-  /// call to the practice store, and deliberately so: forgetting who somebody
-  /// is and destroying what they played are different decisions, and a
-  /// repository that owned both would make the smaller one impossible to ask
-  /// for alone.
+  /// Only the index entry goes. Erasing the practice history is a separate call
+  /// to the practice store, because forgetting who somebody is and destroying
+  /// what they played are different decisions.
   ///
   /// Deleting the active profile moves the selection to the oldest remaining
-  /// one. The app has to run as somebody, and the alternative is an install
-  /// with a history and nobody selected, which every caller would then have to
-  /// resolve for itself.
-  ///
-  /// Deleting the last profile is the one case that leaves nothing selected.
-  /// A repository that answers "who exists" does not invent a person to keep
-  /// the slot filled; a caller that wants one asks for it, which is what
-  /// [ProfileRepositoryDefaults.selectedOrDefault] is.
+  /// one, since the app has to run as somebody. Deleting the last profile is
+  /// the one case that leaves nothing selected: a caller that wants a person
+  /// invented asks for one through
+  /// [ProfileRepositoryDefaults.selectedOrDefault].
   ///
   /// Throws [ArgumentError] when no such profile exists.
   Future<Profile> delete(String profileId);
@@ -211,16 +205,12 @@ extension ProfileRepositoryDefaults on ProfileRepository {
   /// The active profile, the oldest one when profiles exist but none is
   /// selected, or null when this install has nobody on it.
   ///
-  /// Deliberately does not create anybody. An install with no profile is a
-  /// real state with a real answer, and the answer is a question for the
-  /// person sitting there: a profile carries an immutable placement, so one
-  /// conjured to keep the slot filled is a learner started from a prior nobody
-  /// chose and nobody can change afterwards. Resolving that belongs to
-  /// whatever can ask.
+  /// Deliberately does not create anybody. A profile carries an immutable
+  /// placement, so one conjured to keep the slot filled is a learner started
+  /// from a prior nobody chose and nobody can change afterwards.
   ///
-  /// Profiles existing with none selected is the one case worth repairing
-  /// here, because it should not arise and inventing another person to resolve
-  /// it would be the worse repair.
+  /// Profiles existing with none selected is the one case repaired here, by
+  /// choosing among the people who already exist.
   Future<Profile?> selectedOrOldest() async {
     final active = await selected();
     if (active != null) return active;
