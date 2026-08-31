@@ -25,15 +25,49 @@ class HandsTogetherStages {
   final Set<String> eligible;
   final Set<String> admitted;
   final Set<String> selectable;
+  final Map<String, HandsTogetherDiagnostic> diagnostics;
 
   const HandsTogetherStages({
     required this.prerequisiteSatisfied,
     required this.eligible,
     required this.admitted,
     required this.selectable,
+    this.diagnostics = const {},
   });
 
   Set<String> get fullyEligibleSelectable => eligible.intersection(selectable);
+}
+
+class HandsTogetherDiagnostic {
+  final int evaluated;
+  final int fullyEligible;
+  final int withinChallengeBand;
+  final int admitted;
+  final int selectable;
+  final int coordinationTransitions;
+  final int advancing;
+  final int fullyEligibleAdvancing;
+  final bool hasFactualRetrieval;
+  final double minimumOverallP;
+  final double maximumOverallP;
+  final Set<String> eligibilityCodes;
+  final Set<String> bypasses;
+
+  const HandsTogetherDiagnostic({
+    required this.evaluated,
+    required this.fullyEligible,
+    required this.withinChallengeBand,
+    required this.admitted,
+    required this.selectable,
+    required this.coordinationTransitions,
+    required this.advancing,
+    required this.fullyEligibleAdvancing,
+    required this.hasFactualRetrieval,
+    required this.minimumOverallP,
+    required this.maximumOverallP,
+    required this.eligibilityCodes,
+    required this.bypasses,
+  });
 }
 
 /// A decision slot that produced no selection.

@@ -84,6 +84,23 @@ void main() {
             eligible: const {tracked},
             admitted: const {tracked},
             selectable: i == 0 ? const {} : const {tracked},
+            diagnostics: const {
+              tracked: HandsTogetherDiagnostic(
+                evaluated: 4,
+                fullyEligible: 0,
+                withinChallengeBand: 0,
+                admitted: 1,
+                selectable: 1,
+                coordinationTransitions: 2,
+                advancing: 1,
+                fullyEligibleAdvancing: 0,
+                hasFactualRetrieval: false,
+                minimumOverallP: 0.2,
+                maximumOverallP: 0.4,
+                eligibilityCodes: {'BAND_EXECUTION_FLOOR'},
+                bypasses: {'guidance_probe'},
+              ),
+            },
           ),
         ),
     ];
@@ -92,12 +109,16 @@ void main() {
       trajectory,
       requestedSlots: slots.length,
     ).singleWhere((item) => item.detector == 'hands_together_stall');
+    expect(anomaly.magnitude, 15);
 
     final rendered = renderTrajectoryCase(
       TrajectoryCase(trajectory: trajectory, anomaly: anomaly),
     );
 
     expect(rendered, contains('guarded=true'));
+    expect(rendered, contains('C=true'));
+    expect(rendered, contains('retrieved=false'));
+    expect(rendered, contains('elig=BAND_EXECUTION_FLOOR'));
     expect(rendered, contains('15 P=true'));
   });
 }

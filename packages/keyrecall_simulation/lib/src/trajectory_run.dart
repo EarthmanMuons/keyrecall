@@ -106,6 +106,11 @@ Trajectory runTrajectory({
         for (final trace in handsTogetherSelectable)
           trace.exercise.material.materialId,
       },
+      diagnostics: _handsTogetherDiagnostics(
+        state,
+        handsTogetherTraces,
+        handsTogetherSelectable,
+      ),
     );
     final candidateCounts = _candidateCounts(
       candidates.length,
@@ -173,3 +178,70 @@ CandidateStageCounts _candidateCounts(
   admitted: traces.where((trace) => trace.isRanked).length,
   selectable: selectable.length,
 );
+
+Map<String, HandsTogetherDiagnostic> _handsTogetherDiagnostics(
+  LearnerState state,
+  Iterable<CandidateTrace> traces,
+  Iterable<CandidateTrace> selectable,
+) {
+  final byMaterial = <String, List<CandidateTrace>>{};
+  for (final trace in traces) {
+    (byMaterial[trace.exercise.material.materialId] ??= []).add(trace);
+  }
+  final selectableCounts = <String, int>{};
+  for (final trace in selectable) {
+    final id = trace.exercise.material.materialId;
+    selectableCounts[id] = (selectableCounts[id] ?? 0) + 1;
+  }
+  return {
+    for (final entry in byMaterial.entries)
+      entry.key: _handsTogetherDiagnostic(
+        entry.value,
+        selectableCounts[entry.key] ?? 0,
+        state.materialMemory[entry.key]?.hasFactualRetrieval == true,
+      ),
+  };
+}
+
+HandsTogetherDiagnostic _handsTogetherDiagnostic(
+  List<CandidateTrace> traces,
+  int selectable,
+  bool hasFactualRetrieval,
+) {
+  final probabilities = [for (final trace in traces) trace.prediction.overallP]
+    ..sort();
+  return HandsTogetherDiagnostic(
+    evaluated: traces.length,
+    fullyEligible: traces
+        .where(
+          (trace) => trace.eligibility.tier == EligibilityTier.fullyEligible,
+        )
+        .length,
+    withinChallengeBand: traces
+        .where((trace) => trace.isWithinChallengeBand)
+        .length,
+    admitted: traces.where((trace) => trace.isRanked).length,
+    selectable: selectable,
+    coordinationTransitions: traces
+        .where((trace) => trace.terms.coordinationTransition)
+        .length,
+    advancing: traces
+        .where((trace) => trace.terms.realization == RealizationRank.advancing)
+        .length,
+    fullyEligibleAdvancing: traces
+        .where(
+          (trace) =>
+              trace.terms.realization == RealizationRank.advancing &&
+              trace.eligibility.tier == EligibilityTier.fullyEligible,
+        )
+        .length,
+    hasFactualRetrieval: hasFactualRetrieval,
+    minimumOverallP: probabilities.first,
+    maximumOverallP: probabilities.last,
+    eligibilityCodes: {for (final trace in traces) trace.eligibility.code.id},
+    bypasses: {
+      for (final trace in traces)
+        if (trace.challengeBypass case final bypass?) bypass.id,
+    },
+  );
+}

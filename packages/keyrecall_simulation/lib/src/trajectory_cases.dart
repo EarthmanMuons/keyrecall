@@ -198,6 +198,7 @@ String _handsTogetherLine(TrajectorySlot slot, String material) {
   final stages = slot.handsTogether;
   final admitted = stages.admitted.contains(material);
   final selectable = stages.selectable.contains(material);
+  final competitive = stages.fullyEligibleSelectable.contains(material);
   final chosen = slot.chosen;
   final selected =
       chosen.material.materialId == material &&
@@ -208,13 +209,29 @@ String _handsTogetherLine(TrajectorySlot slot, String material) {
         trace.exercise.conditions.hands == HandConfiguration.together,
   );
   final best = candidates.isEmpty ? null : candidates.first.rankKey;
+  final diagnostic = stages.diagnostics[material];
   return '  ${slot.index.toString().padLeft(2)} '
       'P=${stages.prerequisiteSatisfied.contains(material)} '
       'E=${stages.eligible.contains(material)} A=$admitted S=$selectable '
+      'C=$competitive '
       'guarded=${admitted && !selectable} selected=$selected '
       'chosen=${chosen.material.materialId}/${chosen.conditions.hands.id} '
-      'htRank=${best ?? '-'}';
+      'htRank=${best ?? '-'}'
+      '${diagnostic == null ? '' : ' ${_handsTogetherDiagnostic(diagnostic)}'}';
 }
+
+String _handsTogetherDiagnostic(HandsTogetherDiagnostic diagnostic) =>
+    'htTrace='
+    '${diagnostic.fullyEligible}/${diagnostic.evaluated}E '
+    '${diagnostic.withinChallengeBand}band '
+    '${diagnostic.admitted}A ${diagnostic.selectable}S '
+    '${diagnostic.coordinationTransitions}T ${diagnostic.advancing}adv '
+    '${diagnostic.fullyEligibleAdvancing}fullAdv '
+    'retrieved=${diagnostic.hasFactualRetrieval} '
+    'p=${diagnostic.minimumOverallP.toStringAsFixed(2)}..'
+    '${diagnostic.maximumOverallP.toStringAsFixed(2)} '
+    'elig=${diagnostic.eligibilityCodes.join(',')} '
+    'bypass=${diagnostic.bypasses.isEmpty ? '-' : diagnostic.bypasses.join(',')}';
 
 String _nearbyTimeline(Trajectory trajectory, Anomaly anomaly) {
   final anchor = anomaly.slot ?? trajectory.slots.length - 1;

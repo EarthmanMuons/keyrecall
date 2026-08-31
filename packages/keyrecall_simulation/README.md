@@ -97,6 +97,7 @@ dart run keyrecall_simulation:cases \
 ```
 
 The report includes a detector-specific timeline and the decisive census.
+Use `--summary-only` to compare selected cases without printing their timelines.
 
 ## Comparing against the reference
 

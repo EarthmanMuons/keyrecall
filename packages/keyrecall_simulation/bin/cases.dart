@@ -15,6 +15,7 @@ Future<void> main(List<String> arguments) async {
     ..addOption('slots', defaultsTo: '50')
     ..addOption('limit', defaultsTo: '3', help: 'Cases per archetype.')
     ..addOption('order', allowed: ['first', 'worst'], defaultsTo: 'first')
+    ..addFlag('summary-only', negatable: false)
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
   if (options.flag('help')) {
@@ -84,7 +85,15 @@ Future<void> main(List<String> arguments) async {
   for (final selectedCase in selected) {
     stdout
       ..writeln()
-      ..writeln(renderTrajectoryCase(selectedCase));
+      ..writeln(
+        options.flag('summary-only')
+            ? '${selectedCase.trajectory.playerId} seed '
+                  '${selectedCase.trajectory.seed}\n'
+                  '${selectedCase.anomaly.detector} '
+                  'magnitude=${selectedCase.anomaly.magnitude.toStringAsFixed(2)}\n'
+                  '${selectedCase.anomaly.summary}'
+            : renderTrajectoryCase(selectedCase),
+      );
   }
 }
 

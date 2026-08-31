@@ -403,15 +403,33 @@ Iterable<Anomaly> _handsTogetherStall(Trajectory trajectory) sync* {
     if (chosen != null && chosen >= ready.value) continue;
     final waited = trajectory.slots.length - ready.value - 1;
     if (waited < 15) continue;
+    final waiting = trajectory.slots.skip(ready.value + 1);
+    final eligible = waiting
+        .where((slot) => slot.handsTogether.eligible.contains(ready.key))
+        .length;
+    final admitted = waiting
+        .where((slot) => slot.handsTogether.admitted.contains(ready.key))
+        .length;
+    final selectable = waiting
+        .where((slot) => slot.handsTogether.selectable.contains(ready.key))
+        .length;
+    final competitive = waiting
+        .where(
+          (slot) =>
+              slot.handsTogether.fullyEligibleSelectable.contains(ready.key),
+        )
+        .length;
     yield Anomaly(
       detector: 'hands_together_stall',
       severity: AnomalySeverity.observation,
-      magnitude: waited.toDouble(),
+      magnitude: competitive.toDouble(),
       subject: ready.key,
       summary:
           'the hands-together prerequisite passed for ${ready.key} at slot '
-          '${ready.value}, but it was not selected in the following $waited '
-          'slots',
+          '${ready.value}; across the following $waited slots it was fully '
+          'eligible in $eligible, admitted in $admitted, selectable in '
+          '$selectable, fully eligible and selectable in $competitive, and '
+          'never selected',
     );
   }
 }
