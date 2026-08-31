@@ -25,6 +25,7 @@ Trajectory runTrajectory({
   InstrumentProfile? instrument,
   List<Exercise>? generated,
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
+  void Function(int slot, LearnerState state)? observeState,
 }) {
   final rng = PythonCompatibleRandom(seed);
   final at0 = start ?? DateTime.utc(2026);
@@ -46,6 +47,9 @@ Trajectory runTrajectory({
       Duration(seconds: (index * minutesPerSlot * 60).round()),
     );
     learner.propagate(state, at);
+    // Read what is needed immediately: this is the live state, and the slot
+    // below moves it.
+    observeState?.call(index, state);
 
     final selection = pipeline.decide(
       state: state,

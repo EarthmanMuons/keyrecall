@@ -81,6 +81,22 @@ ones, which is why the refused ones have to be read as they go past:
 each slot. Anything asking which stage refused a candidate, or under which
 guidance rung, reads that rather than the trajectory.
 
+**An absent rank key means ranking was not reached, not that the data is
+missing.** A `CandidateTrace` answers the qualification stages for every
+candidate, because "why not that one?" has to be answerable from the trace. It
+does not answer ranking for a candidate that never competed: there is no key,
+because a key it could not have competed on would be a number presented as
+though it meant something. Most candidates are in that position, so the same
+contract is what stops a slot computing ranking terms for the ninety-five per
+cent that cannot consume them.
+
+The practical consequence for anything reading traces, in telemetry or analysis:
+a property of a candidate is asked of the candidate, and only what the scheduler
+_decided_ is read off the trace. A diagnostic wanting to know whether a refused
+candidate was advancing calls `realizationRankFor` itself rather than reaching
+for a rank term, which keeps instrumentation from requiring production to
+compute things it does not need.
+
 ## The census
 
 Every trip carries the candidate census for its slot: the winner, everything it
