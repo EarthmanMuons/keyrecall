@@ -3,12 +3,12 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'attempt_trace.dart';
 
-/// Renders [trace] in the JSON-lines shape the Python prototype emits.
+/// Renders [trace] as a JSON line, one per attempt.
 ///
-/// Field names, nesting, and units deliberately match
-/// `analysis/learner-model/simulate.py` so a Dart run and a reference run can
-/// be diffed attempt by attempt. Timestamps become days elapsed from [epoch],
-/// which is what the prototype's absolute clock measures.
+/// The shape came from the research prototype this model was designed in, so a
+/// run could be diffed against it attempt by attempt. That prototype is
+/// retired; the shape stays because the recorded runs and external analysis
+/// read it. Timestamps become days elapsed from [epoch].
 ///
 /// This is the comparison format, not the production journal format: it exists
 /// to prove the port reproduces the reference, and it should follow the
@@ -84,7 +84,7 @@ Map<String, Object?> _outcomeJson(Outcome outcome) => {
   'topology_accuracy': outcome.topologyAccuracy,
 };
 
-/// Renders [state] in the snapshot shape the Python prototype emits.
+/// Renders [state] as a snapshot, in the same shape [attemptTraceToJson] uses.
 Map<String, Object?> learnerStateToJson(
   LearnerState state, {
   required DateTime epoch,

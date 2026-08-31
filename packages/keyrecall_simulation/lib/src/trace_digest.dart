@@ -10,9 +10,9 @@ import 'attempt_trace.dart';
 ///
 /// Hashed as the first line, so the digest is a statement about a named record
 /// shape rather than about whatever the simulation happens to record. Bump it
-/// deliberately when [discreteDigestFields] changes, and update
-/// `tool/reference_digest.py` in the same step.
-const String discreteDigestSchema = 'reference-digest-v1';
+/// deliberately when [discreteDigestFields] changes, and regenerate the pinned
+/// values in the same step.
+const String discreteDigestSchema = 'discrete-trace-digest-v2';
 
 /// Schema tag for [fullTraceDigest]. See [discreteDigestSchema].
 const String fullDigestSchema = 'full-trace-digest-v1';
@@ -29,6 +29,7 @@ const List<String> discreteDigestFields = [
   'hands',
   'octaves',
   'direction',
+  'hand_motion',
   'tempo_bpm',
   'guidance_independence',
   'opportunities',
@@ -46,12 +47,9 @@ const List<String> discreteDigestFields = [
 /// few digits, and rounding them to force hash equality would make the check
 /// less principled than the tolerance comparison it sits beside.
 ///
-/// Exact across implementations, so it answers one question precisely: did the
-/// two runs make the same decisions and sample the same categorical outcomes?
-/// A mismatch means the trajectories diverged, not that arithmetic drifted.
-///
-/// The reference implementation hashes the same schema; see
-/// `tool/reference_digest.py`.
+/// Exact, so it answers one question precisely: did two runs make the same
+/// decisions and sample the same categorical outcomes? A mismatch means the
+/// trajectories diverged, not that arithmetic drifted.
 String discreteTraceDigest(Iterable<AttemptTrace> traces) => _digest(
   discreteDigestSchema,
   traces.map((trace) => _encodeRecord(_discreteFields(trace))),
@@ -125,6 +123,7 @@ List<String> _discreteFields(AttemptTrace trace) {
     conditions.hands.id,
     _encodeInt(conditions.octaves),
     conditions.direction.id,
+    conditions.handMotion.id,
     _encodeDiscreteNumber(conditions.tempoBpm),
     _encodeInt(exercise.guidance.independence),
     opportunities.join(','),

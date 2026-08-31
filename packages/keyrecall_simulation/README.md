@@ -25,25 +25,21 @@ policy dead ends that no amount of reading the code will surface.
 - **The scheduler in the loop.** Plug a `SchedulerAgent` in as the simulation's
   chooser and the real pipeline decides what to present. No second update loop
   is involved.
-- **Reference equivalence.** `PythonCompatibleRandom` reproduces CPython's
-  `random.Random` stream exactly, and `attemptTraceToJson` emits the same
-  records `analysis/learner-model/simulate.py` does, so a Dart run can be diffed
-  against the reference implementation attempt by attempt rather than only in
-  distribution.
+- **Reproducible draws.** `PythonCompatibleRandom` reproduces CPython's
+  `random.Random` stream exactly, so a run is deterministic in its seed and a
+  pathological one is a fixture rather than an anecdote.
 
-## What the reference numbers are now
+## What the pinned numbers are
 
-They are **evidence, not an obligation**. The Python prototype under `analysis/`
-was the reference implementation the Dart model was written against and then
-checked against attempt by attempt. That reproduction is what the pinned digests
-and recorded reference runs preserve, and it is finished: the Dart
-implementation is canonical and carries no forward-parity requirement. See
-`analysis/README.md`.
+They are **regression pins against this implementation**. They began as evidence
+that the Dart model reproduced the Python prototype it was designed in, attempt
+by attempt; that prototype has been retired and the reproduction lives in the
+Git history. See `analysis/README.md`.
 
 So a mismatch means **this implementation changed**. That may be a defect or it
 may be intended, and the pins are updated when it is intended, the way any
-regression pin is. What they no longer mean is "Dart and Python disagree, and
-one of them is wrong".
+regression pin is. What they never mean any more is that two implementations
+disagree and one of them is wrong.
 
 The digest runs choose exercises with `randomExercise` rather than through the
 scheduler, which is why they still hold: they exercise the model, and Dart-only
@@ -96,8 +92,8 @@ dart run keyrecall_simulation:cases \
   --limit 5
 ```
 
-The report includes a detector-specific timeline and the decisive census.
-Use `--summary-only` to compare selected cases without printing their timelines.
+The report includes a detector-specific timeline and the decisive census. Use
+`--summary-only` to compare selected cases without printing their timelines.
 
 ## Comparing against the reference
 
@@ -112,39 +108,16 @@ The hashed record is declared in `discreteDigestFields` and tagged with
 `discreteDigestSchema`, which is hashed as the first line. The digest is
 therefore a statement about a named record shape, not about whatever the
 simulation happens to record, so adding a diagnostic field later cannot look
-like a behavioral change. Changing the field set means bumping the schema on
-both sides. The Python side computes the same digest:
+like a behavioral change. Changing the field set means bumping the schema and
+regenerating the pins in the same step, which is what hand motion joining
+execution identity required.
 
-```console
-python3 tool/reference_digest.py --all
-```
+`reference_equivalence_test.dart` pins final-state scalars from a recorded run
+at a 1e-9 tolerance, which is the diagnosable failure: it says roughly where a
+divergence entered, where a digest mismatch only says that one did.
 
-A mismatch means the runs diverged, not that arithmetic drifted.
-
-**Do the numbers still agree?** Run both simulators and diff:
-
-```console
-dart run keyrecall_simulation:simulate --profile advanced --attempts 80 --seed 4 --out dart.jsonl
-python3 analysis/learner-model/simulate.py --profile advanced --attempts 80 --seed 4 --out py.jsonl
-```
-
-Measured worst-case divergence is about 1e-11 relative. Most of it is the
-activation anchor: supported practice moves it partway toward the present, and
-this implementation stores a real `DateTime` rounded to the microsecond while
-the prototype carries an unbounded float day count. Sub-millisecond against a
-multi-day half-life, and it then propagates into retrievability and the sampled
-observations. `reference_equivalence_test.dart` pins final-state scalars from a
-reference run at a 1e-9 tolerance.
-
-Two field-level differences in that diff are expected. The Dart records carry
-`outcome.retrieval_succeeded`, which the Python trace omits. And where the
-prototype samples "notes previewed" together with "cues visible", Dart reports
-`notes_previewed: false`, because visible cues supply the material either way
-and the domain model has no fourth guidance value for that combination.
-
-**Did anything here change at all?** `fullTraceDigest` hashes everything a run
-computed, at full precision. That one is a regression sentinel for this
-implementation rather than a cross-language check.
+**Did anything change at all?** `fullTraceDigest` hashes everything a run
+computed, at full precision, and is the strictest sentinel here.
 
 `PythonCompatibleRandom` needs 64-bit integers, so all of this runs on native
 targets rather than the web.

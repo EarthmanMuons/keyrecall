@@ -49,11 +49,9 @@ final List<TechnicalMaterial> allScales = List.unmodifiable([
 
 /// The reference corpus the simulation runs against.
 ///
-/// Seven materials covering all four forms, matched note for note by the
-/// Python prototype in `analysis/learner-model/simulate.py`. The pinned trace
-/// digests are a cross-implementation equivalence check, so changing this list
-/// makes the two implementations disagree: it is a fixture, not a product
-/// decision, and what a learner is offered is [offeredScales].
+/// Seven materials covering all four forms. The pinned trace digests hash runs
+/// over exactly this list, so changing it invalidates them: it is a fixture,
+/// not a product decision, and what a learner is offered is [offeredScales].
 final List<TechnicalMaterial> v1ScaleCatalog = List.unmodifiable([
   TechnicalMaterial('C', ScaleForm.major),
   TechnicalMaterial('G', ScaleForm.major),

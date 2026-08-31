@@ -16,10 +16,15 @@ import 'support/fixtures.dart';
 void main() {
   final material = materials.first;
 
-  Exercise together({int octaves = 1, double tempoBpm = 60}) => exerciseFor(
+  Exercise together({
+    int octaves = 1,
+    double tempoBpm = 60,
+    HandMotion handMotion = HandMotion.parallel,
+  }) => exerciseFor(
     material,
     hands: HandConfiguration.together,
     octaves: octaves,
+    handMotion: handMotion,
     tempoBpm: tempoBpm,
   );
 
@@ -129,6 +134,59 @@ void main() {
 
       expect(transition, isNot(ordinary));
       expect(transition.hashCode, isNot(ordinary.hashCode));
+    });
+  });
+
+  group('one transition, whichever way the hands move', () {
+    test('both motions are pending before either is played', () {
+      final state = readyForBoth();
+
+      expect(isCoordinationTransition(state, together()), isTrue);
+      expect(
+        isCoordinationTransition(
+          state,
+          together(handMotion: HandMotion.contrary),
+        ),
+        isTrue,
+      );
+    });
+
+    test('playing one ends it for both', () {
+      // Once per material, not once per motion. The event is the learner
+      // moving from never having coordinated this scale to having done so;
+      // meeting the other motion afterwards is ordinary execution
+      // progression, which ExecutionAdvance.span and .tempo already offer.
+      final state = readyForBoth();
+      state
+              .materialExecutionFor(
+                (
+                  material.materialId,
+                  HandConfiguration.together,
+                  HandMotion.contrary,
+                ),
+                t0,
+                learnerParams,
+              )
+              .lastEvidenceAt =
+          t0;
+
+      expect(isCoordinationTransition(state, together()), isFalse);
+      expect(
+        isCoordinationTransition(
+          state,
+          together(handMotion: HandMotion.contrary),
+        ),
+        isFalse,
+      );
+    });
+
+    test('the two are distinct candidates', () {
+      final parallel = together();
+      final contrary = together(handMotion: HandMotion.contrary);
+
+      expect(parallel, isNot(contrary));
+      expect(parallel.hashCode, isNot(contrary.hashCode));
+      expect(parallel.hasSameRealizationAs(contrary), isFalse);
     });
   });
 }

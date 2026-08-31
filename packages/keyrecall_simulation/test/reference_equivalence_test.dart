@@ -4,18 +4,15 @@ import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// State a reference run under `analysis/learner-model/` produced.
+/// Final-state scalars a recorded run produced.
 ///
-/// Recorded from the Python prototype the V1 model was designed in, by running
-/// the same profile, seed, and attempt count. Every number here is downstream
-/// of every prediction, evidence weight, and memory transition in the run, so
-/// any divergence anywhere shows up as a mismatch.
-///
-/// These numbers were the evidence that the reproduction succeeded, and are a
-/// regression pin now: a mismatch means this implementation changed, which may
-/// be intended, and the values are then regenerated from a Dart run. The
-/// prototype is frozen provenance rather than something to reconcile against.
-/// See `analysis/README.md`.
+/// Every number here is downstream of every prediction, evidence weight, and
+/// memory transition in the run, so any divergence anywhere shows up as a
+/// mismatch. They began as the evidence that the Dart model reproduced the
+/// Python prototype it was designed in, and are a regression pin against this
+/// implementation now that the prototype is retired: a mismatch means this
+/// implementation changed, which may be intended, and the values are then
+/// regenerated from a Dart run. See `analysis/README.md`.
 class ReferenceRun {
   final SyntheticProfile profile;
   final int seed;

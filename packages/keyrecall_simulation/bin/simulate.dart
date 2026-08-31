@@ -1,9 +1,6 @@
 /// Runs a synthetic learner through practice attempts and emits a JSON-lines
 /// trace of predictions, outcomes, evidence, and state.
 ///
-/// The Dart counterpart of `analysis/learner-model/simulate.py`, emitting the
-/// same records so the two can be diffed directly:
-///
 /// ```console
 /// dart run keyrecall_simulation:simulate --profile advanced --attempts 60 --seed 0
 /// ```

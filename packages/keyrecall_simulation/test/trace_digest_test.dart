@@ -28,20 +28,14 @@ class PinnedDigests {
 /// Both digests are tagged with a schema version, so these pins are
 /// statements about a named record shape rather than about whatever the
 /// simulation happens to record. Changing the hashed field set means bumping
-/// the schema on both sides.
-///
-/// Regenerate the discrete column from the reference implementation:
-///
-/// ```console
-/// python3 tool/reference_digest.py --all
-/// ```
+/// the schema and regenerating these values in the same step.
 ///
 /// The discrete column was matched by the Python prototype at
-/// `v1-prototype-0`, which is the evidence that the Dart model reproduces it.
-/// Both columns are regression pins now: a mismatch means this implementation
-/// changed, and the prototype is frozen provenance rather than something to
-/// reconcile against. See `analysis/README.md`. A full mismatch means this
-/// implementation's behavior changed somewhere; the pinned reference scalars
+/// `v1-prototype-0`, which was the evidence that the Dart model reproduced it.
+/// Both columns are regression pins against this implementation now that the
+/// prototype is retired: a mismatch means this implementation changed. See
+/// `analysis/README.md`. A full mismatch means the behavior changed somewhere;
+/// the pinned reference scalars
 /// and the tolerance comparison in `reference_equivalence_test.dart` are the
 /// diagnosable failures that say where.
 const List<PinnedDigests> pinnedRuns = [
@@ -50,32 +44,32 @@ const List<PinnedDigests> pinnedRuns = [
     seed: 4,
     attempts: 80,
     discrete:
-        '9f40161a316a3d9276f30e985475113eb2b81e1182f733cf7f76a0436500c5c3',
-    full: 'f1d62ff98f677532308b8e4e179fd3d92f0828ecda33d666c2734a88d8ecef56',
+        '7738a3fa3fcd45fad5def4c9b19bf468d6d903cf2b680bc7433d0384d7ca6675',
+    full: 'b98eae069fca6e930389fbd811da69618a6ebab8b4af4ef0875cce48c0c44d48',
   ),
   PinnedDigests(
     profile: SyntheticProfile.beginner,
     seed: 4,
     attempts: 80,
     discrete:
-        'fbc235ede210611b454596f2e6c69986f749b551424022c91fcbce1cba6cbda0',
-    full: '22528397b471a5d02710a647755cac8e71ffcadc4088b9100e67ff769e667257',
+        'eb6e6b7ca584fa6b37cc457842bf1f873919a233a529ece1d108eb13b9fce128',
+    full: '40eaab8b193ef6181e9621f2d1c6677b0c25f2c669322addc3945cb4fb60bc48',
   ),
   PinnedDigests(
     profile: SyntheticProfile.returning,
     seed: 4,
     attempts: 80,
     discrete:
-        'a6ae0d8472c65a3419226181ad97f7a2335d96c44bb0956bbbfdad90799688b2',
-    full: '4561512eb4528d4d746fc18461f433f684b8247a6360f2f7e9b147097685cbb3',
+        '558a181e55893357dc069c675bbf2142c71afc79940170805fd0d9cb18c9a8b6',
+    full: 'a183d01b014b0b2cf65d345554b5272915b5e3e96f62623081891447f5f395ad',
   ),
   PinnedDigests(
     profile: SyntheticProfile.techniqueStrongMemoryWeak,
     seed: 4,
     attempts: 80,
     discrete:
-        '02f465ce275e69079bdce6d36ba502195c2052f85d1685506289260d345e12d2',
-    full: '4351b3caab418a6fc9a66de5f6cfd490af95995e037ff4b13517ce2035773bfc',
+        '8314f455000ca11aa03fc72c5e44d011f2eae949b49607f1ae4884eb22655c5f',
+    full: 'c921d7b28733011ecff261aa6879ddebc5828b6c1ace9a7ae3997747cdbc1263',
   ),
 ];
 
@@ -115,14 +109,14 @@ void main() {
       );
       final digest = discreteTraceDigest(simulation.run(1));
       expect(digest, isNotEmpty);
-      expect(discreteDigestFields, hasLength(11));
-      expect(discreteDigestFields.toSet(), hasLength(11));
+      expect(discreteDigestFields, hasLength(12));
+      expect(discreteDigestFields.toSet(), hasLength(12));
     });
 
     test('the schema tag participates in the hash', () {
       // A digest computed under a different schema must not silently compare
       // equal to one computed under this schema.
-      expect(discreteDigestSchema, 'reference-digest-v1');
+      expect(discreteDigestSchema, 'discrete-trace-digest-v2');
       expect(fullDigestSchema, 'full-trace-digest-v1');
       expect(discreteDigestSchema, isNot(fullDigestSchema));
 

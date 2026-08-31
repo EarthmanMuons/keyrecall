@@ -29,12 +29,14 @@ Exercise exerciseFor(
   // octave-span prerequisite decide its eligibility tier for it.
   int octaves = 1,
   ScaleDirection direction = ScaleDirection.upDown,
+  HandMotion handMotion = HandMotion.parallel,
   double tempoBpm = 80,
 }) => Exercise.linear(
   material: material,
   hands: hands,
   octaves: octaves,
   direction: direction,
+  handMotion: handMotion,
   tempoBpm: tempoBpm,
   guidance: guidance,
 );

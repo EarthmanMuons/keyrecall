@@ -9,6 +9,16 @@ const List<int> generatedOctaves = [1, 2];
 /// Directions candidate generation offers.
 const List<ScaleDirection> generatedDirections = ScaleDirection.values;
 
+/// Hand motions candidate generation offers for a given hand configuration.
+///
+/// A single hand has no motion relative to another, so only two hands carry
+/// the choice. Every scale and form the catalog holds realizes and fingers
+/// under both, so nothing narrows this further by material.
+List<HandMotion> generatedHandMotions(HandConfiguration hands) =>
+    hands == HandConfiguration.together
+    ? HandMotion.values
+    : const [HandMotion.parallel];
+
 /// Tempi candidate generation offers, in beats per minute.
 const List<double> generatedTempi = [60, 80, 100, 120];
 
@@ -30,14 +40,16 @@ List<Exercise> generateCandidates(
       for (final octaves in generatedOctaves)
         if (instrument.supportsOctaveSpan(octaves))
           for (final direction in generatedDirections)
-            for (final tempoBpm in generatedTempi)
-              for (final guidance in GuidanceContext.ladder)
-                Exercise.linear(
-                  material: material,
-                  hands: hands,
-                  octaves: octaves,
-                  direction: direction,
-                  tempoBpm: tempoBpm,
-                  guidance: guidance,
-                ),
+            for (final handMotion in generatedHandMotions(hands))
+              for (final tempoBpm in generatedTempi)
+                for (final guidance in GuidanceContext.ladder)
+                  Exercise.linear(
+                    material: material,
+                    hands: hands,
+                    octaves: octaves,
+                    direction: direction,
+                    handMotion: handMotion,
+                    tempoBpm: tempoBpm,
+                    guidance: guidance,
+                  ),
 ];
