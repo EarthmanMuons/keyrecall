@@ -332,9 +332,11 @@ void main() {
       var sawInformationDifference = false;
       for (final trace in lowTraces) {
         final other = highTraces[trace.exercise]!;
-        if ((trace.terms.information - other.terms.information).abs() > 1e-9) {
-          sawInformationDifference = true;
-        }
+        // Asked of the term directly: most candidates never reach ranking
+        // and so carry no key to read it off.
+        final lowI = information(low, trace.exercise, learnerParams);
+        final highI = information(high, trace.exercise, learnerParams);
+        if ((lowI - highI).abs() > 1e-9) sawInformationDifference = true;
         expect(trace.isWithinChallengeBand, other.isWithinChallengeBand);
         expect(trace.challengeBypass, other.challengeBypass);
       }
@@ -500,14 +502,17 @@ void main() {
       );
       expect(fully.eligibility.tier, EligibilityTier.fullyEligible);
       expect(
-        provisional.terms.retention,
-        greaterThanOrEqualTo(fully.terms.retention),
+        provisional.rankKey!.retention,
+        greaterThanOrEqualTo(fully.rankKey!.retention),
       );
       expect(
-        provisional.terms.information,
-        greaterThan(fully.terms.information),
+        provisional.rankKey!.information,
+        greaterThan(fully.rankKey!.information),
       );
-      expect(provisional.terms.diversity, greaterThan(fully.terms.diversity));
+      expect(
+        provisional.rankKey!.diversity,
+        greaterThan(fully.rankKey!.diversity),
+      );
 
       expect(pipeline.selectBest(traces), same(fully));
     });
@@ -636,7 +641,6 @@ void main() {
       expect(trace.isWithinChallengeBand, other.isWithinChallengeBand);
       expect(trace.challengeBypass, other.challengeBypass);
       expect(trace.challengeSurvived, other.challengeSurvived);
-      expect(trace.terms, other.terms);
       expect(trace.rankKey, other.rankKey);
     }
   });

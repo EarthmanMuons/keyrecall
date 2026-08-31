@@ -165,7 +165,7 @@ Map<String, _Counts> _countsFor(List<TrajectoryJob> jobs, int slots) {
       final materialId = exercise.material.materialId;
       final motion = exercise.conditions.handMotion;
 
-      if (slot.winner.terms.coordinationTransition) {
+      if (slot.winner.coordinationTransition) {
         introducedAt.putIfAbsent(materialId, () => slot.index);
         introducedWith.putIfAbsent(materialId, () => motion);
       }

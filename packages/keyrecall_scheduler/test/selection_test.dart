@@ -39,7 +39,6 @@ CandidateTrace admittedTrace(
     challengeBypass: null,
     challengeSurvived: true,
     priorityStatus: StageStatus.reached,
-    terms: terms,
     rankKey: terms,
   );
 }

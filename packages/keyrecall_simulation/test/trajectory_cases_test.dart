@@ -210,7 +210,6 @@ CandidateTrace _trace(Exercise exercise, {ChallengeBypass? bypass}) {
     challengeBypass: bypass,
     challengeSurvived: true,
     priorityStatus: StageStatus.reached,
-    terms: rank,
     rankKey: rank,
   );
 }

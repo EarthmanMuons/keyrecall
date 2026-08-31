@@ -960,25 +960,36 @@ class SchedulerPipeline {
         : StageStatus.notReached;
 
     final transition = isCoordinationTransition(state, exercise);
-    final terms = RankKey(
-      tier: eligibility.tier,
-      coordinationTransition: transition,
-      contraryCoordination:
-          transition && exercise.conditions.handMotion == HandMotion.contrary,
-      retention: retention(prediction, exercise),
-      information: informationCache.putIfAbsent(
-        informationKeyFor(exercise),
-        () => information(state, exercise, learner.params),
-      ),
-      diversity: diversity(exercise, session),
-      goals: goals(exercise),
-      realization: realizationRankFor(state, exercise),
-      realizationFit: realizationFitFor(
-        state,
-        exercise,
-        gentleTempoBpm: config.eligibility.gentleTempoBpm,
-      ),
-    );
+
+    // Ranking terms only for candidates that reached ranking. Nothing here
+    // participates in deciding whether ranking is reached, which is what makes
+    // this a computation the pipeline declines rather than a decision it
+    // changes: everything above is already settled.
+    //
+    // Most candidates never get here. A slot evaluates ten thousand and for
+    // most learners fewer than one in twenty survives admission.
+    final rankKey = priorityStatus.isReached
+        ? RankKey(
+            tier: eligibility.tier,
+            coordinationTransition: transition,
+            contraryCoordination:
+                transition &&
+                exercise.conditions.handMotion == HandMotion.contrary,
+            retention: retention(prediction, exercise),
+            information: informationCache.putIfAbsent(
+              informationKeyFor(exercise),
+              () => information(state, exercise, learner.params),
+            ),
+            diversity: diversity(exercise, session),
+            goals: goals(exercise),
+            realization: realizationRankFor(state, exercise),
+            realizationFit: realizationFitFor(
+              state,
+              exercise,
+              gentleTempoBpm: config.eligibility.gentleTempoBpm,
+            ),
+          )
+        : null;
 
     return CandidateTrace(
       exercise: exercise,
@@ -986,6 +997,7 @@ class SchedulerPipeline {
           exercise.conditions.hands == HandConfiguration.together
           ? handsTogetherPrerequisiteSatisfied(state, exercise)
           : null,
+      coordinationTransition: transition,
       eligibility: eligibility,
       safety: safety,
       challengeStatus: challengeStatus,
@@ -994,8 +1006,7 @@ class SchedulerPipeline {
       challengeBypass: bypass,
       challengeSurvived: survived,
       priorityStatus: priorityStatus,
-      terms: terms,
-      rankKey: priorityStatus.isReached ? terms : null,
+      rankKey: rankKey,
     );
   }
 

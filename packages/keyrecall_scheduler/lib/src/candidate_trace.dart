@@ -440,11 +440,17 @@ class RankKey implements Comparable<RankKey> {
 
 /// Everything the pipeline computed about one candidate.
 ///
-/// Stage values are always populated, including for candidates an earlier
-/// stage already excluded, because a "why not that one?" question should be
-/// answerable from the trace alone. [challengeStatus] and [priorityStatus] say
-/// which of those values reflect a real decision, and [rankKey] is populated
-/// only when priority ranking genuinely ran.
+/// Qualification values are always populated, including for candidates an
+/// earlier stage already excluded, because a "why not that one?" question
+/// should be answerable from the trace alone. [challengeStatus] says which of
+/// those reflect a real decision.
+///
+/// **Ranking is different: its values are absent rather than computed.** A
+/// candidate that never reached ranking has no [rankKey], because it never
+/// competed on one and a key it could not use is a number presented as though
+/// it meant something. Most candidates are in that position, so this is also
+/// what keeps a slot from computing ranking terms for the ninety-five per cent
+/// of candidates that cannot consume them.
 @immutable
 class CandidateTrace {
   /// The candidate this trace describes.
@@ -452,6 +458,15 @@ class CandidateTrace {
 
   /// Whether the hands-together prerequisite passed for this candidate.
   final bool? handsTogetherPrerequisiteSatisfied;
+
+  /// Whether this is the learner's first chance to play this material with
+  /// both hands, having just earned it.
+  ///
+  /// A fact about the candidate rather than a ranking term, so it is recorded
+  /// for every candidate and not only for the ones that reached ranking. The
+  /// question a diagnostic asks is which candidates were transitions and what
+  /// became of them, which is unanswerable if refusing one erases the fact.
+  final bool coordinationTransition;
 
   /// Stage 2a: the prerequisite verdict.
   final EligibilityDecision eligibility;
@@ -478,16 +493,14 @@ class CandidateTrace {
   /// Whether the pipeline really reached priority ranking for this candidate.
   final StageStatus priorityStatus;
 
-  /// Stage 4: the ranking terms, always computed for diagnostics.
-  final RankKey terms;
-
-  /// The key this candidate actually competed on, or null when priority
-  /// ranking was never reached.
+  /// Stage 4: the key this candidate competed on, or null when priority
+  /// ranking was never reached and no ranking term was computed.
   final RankKey? rankKey;
 
   const CandidateTrace({
     required this.exercise,
     this.handsTogetherPrerequisiteSatisfied,
+    this.coordinationTransition = false,
     required this.eligibility,
     required this.safety,
     required this.challengeStatus,
@@ -496,7 +509,6 @@ class CandidateTrace {
     required this.challengeBypass,
     required this.challengeSurvived,
     required this.priorityStatus,
-    required this.terms,
     required this.rankKey,
   });
 

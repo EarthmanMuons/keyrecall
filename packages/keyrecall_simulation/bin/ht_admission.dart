@@ -160,7 +160,7 @@ Map<String, _Counts> _countsFor(List<_Job> jobs, int slots) {
       observeTraces: (_, traces) {
         final transitions = [
           for (final trace in traces)
-            if (trace.terms.coordinationTransition) trace,
+            if (trace.coordinationTransition) trace,
         ];
         if (transitions.isEmpty) return;
 
@@ -199,7 +199,7 @@ Map<String, _Counts> _countsFor(List<_Job> jobs, int slots) {
     for (final slot in trajectory.slots) {
       final exercise = slot.winner.exercise;
       final materialId = exercise.material.materialId;
-      if (slot.winner.terms.coordinationTransition) {
+      if (slot.winner.coordinationTransition) {
         counts.won++;
         if (exercise.conditions.handMotion == HandMotion.contrary) {
           counts.wonContrary++;
@@ -208,7 +208,7 @@ Map<String, _Counts> _countsFor(List<_Job> jobs, int slots) {
         }
       }
       if (playedTogether.contains(materialId) &&
-          slot.winner.terms.coordinationTransition) {
+          slot.winner.coordinationTransition) {
         counts.transitionAfterFirst++;
       }
       if (exercise.conditions.hands == HandConfiguration.together) {

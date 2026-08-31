@@ -195,6 +195,7 @@ Map<String, HandsTogetherDiagnostic> _handsTogetherDiagnostics(
   return {
     for (final entry in byMaterial.entries)
       entry.key: _handsTogetherDiagnostic(
+        state,
         entry.value,
         selectableCounts[entry.key] ?? 0,
         state.materialMemory[entry.key]?.hasFactualRetrieval == true,
@@ -203,6 +204,7 @@ Map<String, HandsTogetherDiagnostic> _handsTogetherDiagnostics(
 }
 
 HandsTogetherDiagnostic _handsTogetherDiagnostic(
+  LearnerState state,
   List<CandidateTrace> traces,
   int selectable,
   bool hasFactualRetrieval,
@@ -222,16 +224,24 @@ HandsTogetherDiagnostic _handsTogetherDiagnostic(
     admitted: traces.where((trace) => trace.isRanked).length,
     selectable: selectable,
     coordinationTransitions: traces
-        .where((trace) => trace.terms.coordinationTransition)
+        .where((trace) => trace.coordinationTransition)
         .length,
+    // Asked of the state directly rather than read off a rank key, because
+    // most of these candidates never reached ranking and so have none. The
+    // question is about the candidate, not about what it competed on.
     advancing: traces
-        .where((trace) => trace.terms.realization == RealizationRank.advancing)
+        .where(
+          (trace) =>
+              realizationRankFor(state, trace.exercise) ==
+              RealizationRank.advancing,
+        )
         .length,
     fullyEligibleAdvancing: traces
         .where(
           (trace) =>
-              trace.terms.realization == RealizationRank.advancing &&
-              trace.eligibility.tier == EligibilityTier.fullyEligible,
+              trace.eligibility.tier == EligibilityTier.fullyEligible &&
+              realizationRankFor(state, trace.exercise) ==
+                  RealizationRank.advancing,
         )
         .length,
     hasFactualRetrieval: hasFactualRetrieval,

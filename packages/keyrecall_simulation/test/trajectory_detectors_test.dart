@@ -485,7 +485,6 @@ CandidateTrace _trace(
     challengeBypass: bypass,
     challengeSurvived: true,
     priorityStatus: StageStatus.reached,
-    terms: rank,
     rankKey: rank,
   );
 }
