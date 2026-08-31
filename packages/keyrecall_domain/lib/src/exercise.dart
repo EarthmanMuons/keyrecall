@@ -73,6 +73,7 @@ class Exercise {
     required HandConfiguration hands,
     int octaves = 1,
     ScaleDirection direction = ScaleDirection.upDown,
+    HandMotion handMotion = HandMotion.parallel,
     double tempoBpm = 80,
     GuidanceContext guidance = GuidanceContext.unguided,
   }) {
@@ -80,6 +81,7 @@ class Exercise {
       hands: hands,
       octaves: octaves,
       direction: direction,
+      handMotion: handMotion,
       tempoBpm: tempoBpm,
     );
     return Exercise(
@@ -113,6 +115,7 @@ class Exercise {
       hands: conditions.hands,
       octaves: conditions.octaves,
       direction: conditions.direction,
+      handMotion: conditions.handMotion,
       tempoBpm: tempoBpm,
     ),
     pattern: pattern,

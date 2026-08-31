@@ -63,6 +63,33 @@ enum ScaleDirection {
   );
 }
 
+/// How the two hands move relative to each other.
+///
+/// Orthogonal to [ScaleDirection], which is the traversal of one line in time:
+/// both hands traverse the same `upDown` exercise whether they move together or
+/// apart.
+enum HandMotion {
+  /// Both hands play the same scale degree at each position, an octave or more
+  /// apart. The only motion a single hand can be said to have.
+  parallel('PARALLEL'),
+
+  /// The hands mirror each other, the right ascending as the left descends.
+  contrary('CONTRARY');
+
+  const HandMotion(this.id);
+
+  /// Stable identifier used in persisted state and traces.
+  final String id;
+
+  /// The motion with the given [id].
+  ///
+  /// Throws [ArgumentError] when no motion matches.
+  static HandMotion fromId(String id) => values.firstWhere(
+    (motion) => motion.id == id,
+    orElse: () => throw ArgumentError.value(id, 'id', 'unknown hand motion'),
+  );
+}
+
 /// How an exercise is performed: hand, direction, octave span, and tempo.
 ///
 /// These are parameters of one performance, not part of material identity.
@@ -79,10 +106,19 @@ class ExecutionConditions {
   /// Which way the traversal runs.
   final ScaleDirection direction;
 
+  /// How the hands move relative to each other.
+  ///
+  /// Meaningful only when [hands] is [HandConfiguration.together]. A single
+  /// hand carries [HandMotion.parallel] as the canonical value, which keeps
+  /// this off the nullable path that identity, hashing and the frontier key
+  /// would otherwise have to carry.
+  final HandMotion handMotion;
+
   /// The requested tempo in beats per minute.
   final double tempoBpm;
 
-  /// Throws [ArgumentError] for a span or tempo that cannot be played.
+  /// Throws [ArgumentError] for a span or tempo that cannot be played, or for
+  /// [HandMotion.contrary] with anything but two hands.
   ///
   /// The motor-difficulty score takes the log of the tempo ratio, so a
   /// nonpositive or non-finite tempo would silently produce a meaningless
@@ -95,10 +131,19 @@ class ExecutionConditions {
     required this.hands,
     this.octaves = 1,
     this.direction = ScaleDirection.upDown,
+    this.handMotion = HandMotion.parallel,
     this.tempoBpm = 80,
   }) {
     if (octaves < 1) {
       throw ArgumentError.value(octaves, 'octaves', 'must be at least 1');
+    }
+    if (handMotion == HandMotion.contrary &&
+        hands != HandConfiguration.together) {
+      throw ArgumentError.value(
+        handMotion.id,
+        'handMotion',
+        'contrary motion needs both hands, not ${hands.id}',
+      );
     }
     if (!tempoBpm.isFinite || tempoBpm <= 0) {
       throw ArgumentError.value(
@@ -115,13 +160,16 @@ class ExecutionConditions {
       other.hands == hands &&
       other.octaves == octaves &&
       other.direction == direction &&
+      other.handMotion == handMotion &&
       other.tempoBpm == tempoBpm;
 
   @override
-  int get hashCode => Object.hash(hands, octaves, direction, tempoBpm);
+  int get hashCode =>
+      Object.hash(hands, octaves, direction, handMotion, tempoBpm);
 
   @override
   String toString() =>
       'ExecutionConditions(${hands.id}, ${octaves}oct, '
-      '${direction.id}, ${tempoBpm.toStringAsFixed(0)}bpm)';
+      '${direction.id}, ${handMotion.id}, '
+      '${tempoBpm.toStringAsFixed(0)}bpm)';
 }

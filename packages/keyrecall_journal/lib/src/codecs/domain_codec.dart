@@ -22,6 +22,7 @@ Map<String, Object?> encodeExercise(Exercise exercise) {
     'hands': conditions.hands.id,
     'octaves': conditions.octaves,
     'direction': conditions.direction.id,
+    'hand_motion': conditions.handMotion.id,
     'requested_tempo_bpm': conditions.tempoBpm,
     'guidance': encodeGuidance(exercise.guidance),
     'opportunities':
@@ -55,6 +56,9 @@ Exercise decodeExercise(Map<String, Object?> json, {String? location}) {
     octaves: requireInt(json, 'octaves', location: location),
     direction: ScaleDirection.fromId(
       requireString(json, 'direction', location: location),
+    ),
+    handMotion: HandMotion.fromId(
+      requireString(json, 'hand_motion', location: location),
     ),
     tempoBpm: requireDouble(json, 'requested_tempo_bpm', location: location),
   );
