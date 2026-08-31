@@ -5,6 +5,7 @@ import 'execution_conditions.dart';
 import 'exercise.dart';
 import 'pitch_spelling.dart';
 import 'spelled_pitch.dart';
+import 'technical_material.dart';
 
 /// One hand, as a player rather than as a configuration.
 ///
@@ -269,6 +270,81 @@ int _tonicFor(Hand hand, int pitchClass, int octaves) => switch (hand) {
   Hand.left => _nearestTonic(_middleC - 12 * octaves, pitchClass),
 };
 
+/// Where each hand's line begins.
+///
+/// Parallel motion anchors each hand against its own register. Contrary motion
+/// starts them on one shared tonic, so the hands begin in unison and move
+/// apart, both thumbs on the same key.
+///
+/// **That placement is this realization's choice, not what contrary motion
+/// means.** [HandMotion.contrary] says only that the two trajectories run in
+/// opposite directions; hands that begin octaves apart and converge are
+/// contrary too. A later pattern that wants a different geometry chooses it
+/// here rather than by redefining the axis.
+Map<Hand, int> _tonicsFor(
+  ExecutionConditions conditions,
+  List<Hand> hands,
+  int pitchClass,
+) => switch (conditions.handMotion) {
+  HandMotion.parallel => {
+    for (final hand in hands)
+      hand: _tonicFor(hand, pitchClass, conditions.octaves),
+  },
+  HandMotion.contrary => {
+    for (final hand in hands) hand: _nearestTonic(_middleC, pitchClass),
+  },
+};
+
+/// Which scale degree each hand plays at each moment.
+///
+/// One entry per moment, in order, as a signed offset from that hand's own
+/// tonic. A hand walking below its tonic is an ordinary negative degree rather
+/// than a special case, which is what lets the two motions be two path
+/// assignments instead of two traversal algorithms.
+///
+/// [ScaleDirection] shapes each line on its own: `upDown` turns every line
+/// around at its own outside end, which for contrary motion is the point the
+/// hands are furthest apart. [ExecutionConditions.octaves] is per hand, so
+/// contrary motion covers twice the keyboard that parallel motion does.
+Map<Hand, List<int>> _pathsFor(
+  ExecutionConditions conditions,
+  List<Hand> hands,
+  int topDegree,
+) {
+  final ascending = [
+    for (var degree = 0; degree <= topDegree; degree++) degree,
+  ];
+  final outward = switch (conditions.direction) {
+    ScaleDirection.up => ascending,
+    // The apex is played once and the traversal turns around on it.
+    ScaleDirection.upDown => [...ascending, ...ascending.reversed.skip(1)],
+  };
+
+  return switch (conditions.handMotion) {
+    HandMotion.parallel => {for (final hand in hands) hand: outward},
+    HandMotion.contrary => {
+      for (final hand in hands)
+        hand: hand == Hand.right
+            ? outward
+            : [for (final degree in outward) -degree],
+    },
+  };
+}
+
+/// Which key [degree] lands on, counting from [tonic].
+///
+/// Floor division rather than truncation, so a degree below the tonic falls
+/// into the octave below it. For a degree at or above the tonic this is the
+/// ordinary reading, which is what keeps parallel motion unchanged.
+int _midiNoteAt({
+  required int tonic,
+  required int degree,
+  required List<int> intervals,
+}) {
+  final octave = (degree / intervals.length).floor();
+  return tonic + octave * 12 + intervals[degree - octave * intervals.length];
+}
+
 /// The notes [exercise] asks for, in order.
 ///
 /// Spelling follows the scale degree rather than the sounding pitch: the
@@ -283,49 +359,74 @@ ExerciseRealization realize(Exercise exercise) {
   final intervals = scaleFormIntervals[material.form]!;
   final conditions = exercise.conditions;
 
-  final degrees = intervals.length;
-  final topDegree = degrees * conditions.octaves;
-  final ascending = [
-    for (var degree = 0; degree <= topDegree; degree++) degree,
-  ];
-  final steps = switch (conditions.direction) {
-    ScaleDirection.up => ascending,
-    // The apex is played once and the traversal turns around on it.
-    ScaleDirection.upDown => [...ascending, ...ascending.reversed.skip(1)],
-  };
-
   final hands = [
     if (conditions.hands.usesLeftHand) Hand.left,
     if (conditions.hands.usesRightHand) Hand.right,
   ];
-  final tonicNotes = {
-    for (final hand in hands)
-      hand: _tonicFor(hand, pitchClassOf(material.tonic), conditions.octaves),
-  };
+  final topDegree = intervals.length * conditions.octaves;
+  final paths = _pathsFor(conditions, hands, topDegree);
+  final tonics = _tonicsFor(conditions, hands, pitchClassOf(material.tonic));
+  final positions = paths.values.first.length;
 
   return ExerciseRealization([
-    for (final (position, degree) in steps.indexed)
+    for (var position = 0; position < positions; position++)
       RealizationMoment(
         position: position,
         // One note to a beat, which is all a scale asks for and all the
         // conditions can currently express.
         metricOffset: position.toDouble(),
-        notes: [
-          for (final hand in hands)
-            RealizedNote(
-              hand: hand,
-              pitch: spellExpectedPitch(
-                material: material,
-                degree: degree,
-                midiNote:
-                    tonicNotes[hand]! +
-                    (degree ~/ degrees) * 12 +
-                    intervals[degree % degrees],
-              ),
-            ),
-        ],
+        notes: _notesAt(
+          position: position,
+          hands: hands,
+          paths: paths,
+          tonics: tonics,
+          material: material,
+          intervals: intervals,
+        ),
       ),
   ]);
+}
+
+/// What sounds at one moment, with hands that meet on a key sharing its note.
+///
+/// Keyed by the key rather than by the spelling, because it is the key the
+/// instrument reports: two hands on one note-on have to be one expected note or
+/// the attempt can never be complete. Insertion order is [hands] order, so
+/// hands that do not meet produce exactly what they did before.
+List<RealizedNote> _notesAt({
+  required int position,
+  required List<Hand> hands,
+  required Map<Hand, List<int>> paths,
+  required Map<Hand, int> tonics,
+  required TechnicalMaterial material,
+  required List<int> intervals,
+}) {
+  final byKey = <int, (SpelledPitch, Set<Hand>)>{};
+  for (final hand in hands) {
+    final degree = paths[hand]![position];
+    final midiNote = _midiNoteAt(
+      tonic: tonics[hand]!,
+      degree: degree,
+      intervals: intervals,
+    );
+    if (byKey[midiNote] case (_, final sharing)?) {
+      sharing.add(hand);
+      continue;
+    }
+    byKey[midiNote] = (
+      spellExpectedPitch(
+        material: material,
+        degree: degree,
+        midiNote: midiNote,
+      ),
+      {hand},
+    );
+  }
+
+  return [
+    for (final (pitch, sharing) in byKey.values)
+      RealizedNote.shared(hands: sharing, pitch: pitch),
+  ];
 }
 
 /// The [pitchClass] octave closest to [target], preferring the lower one when

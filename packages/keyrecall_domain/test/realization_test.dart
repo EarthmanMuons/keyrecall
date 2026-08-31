@@ -9,11 +9,13 @@ void main() {
     HandConfiguration hands = HandConfiguration.right,
     int octaves = 2,
     ScaleDirection direction = ScaleDirection.upDown,
+    HandMotion handMotion = HandMotion.parallel,
   }) => Exercise.linear(
     material: TechnicalMaterial(tonic, form),
     hands: hands,
     octaves: octaves,
     direction: direction,
+    handMotion: handMotion,
   );
 
   List<int> pitchesOf(ExerciseRealization realization, Hand hand) => [
@@ -178,6 +180,89 @@ void main() {
       );
       expect(together.lowestPitch, 48);
       expect(together.highestPitch, 72);
+    });
+  });
+
+  group('hands moving contrary to each other', () {
+    ExerciseRealization contrary({
+      int octaves = 1,
+      ScaleDirection direction = ScaleDirection.upDown,
+    }) => realize(
+      exerciseOf(
+        hands: HandConfiguration.together,
+        octaves: octaves,
+        direction: direction,
+        handMotion: HandMotion.contrary,
+      ),
+    );
+
+    test('the hands begin on one key, in unison', () {
+      final first = contrary().moments.first;
+
+      expect(first.notes.single.hands, {Hand.left, Hand.right});
+      expect(first.notes.single.midiNote, 60);
+    });
+
+    test('the lines run in opposite directions', () {
+      final realization = contrary(direction: ScaleDirection.up);
+
+      expect(pitchesOf(realization, Hand.right), [
+        60,
+        62,
+        64,
+        65,
+        67,
+        69,
+        71,
+        72,
+      ]);
+      expect(pitchesOf(realization, Hand.left), [
+        60,
+        59,
+        57,
+        55,
+        53,
+        52,
+        50,
+        48,
+      ]);
+    });
+
+    test('each line turns around at its own outside end', () {
+      final realization = contrary();
+
+      expect(realization.moments.length, 15);
+      expect(realization.moments.last.notes.single.hands, {
+        Hand.left,
+        Hand.right,
+      });
+      expect(realization.lowestPitch, 48);
+      expect(realization.highestPitch, 72);
+    });
+
+    test('the span is per hand, so the keyboard reach doubles', () {
+      final oneOctave = contrary();
+      final twoOctaves = contrary(octaves: 2);
+
+      expect(oneOctave.highestPitch - oneOctave.lowestPitch, 24);
+      expect(twoOctaves.highestPitch - twoOctaves.lowestPitch, 48);
+    });
+
+    test('the descending line is spelled on its own degrees', () {
+      final realization = contrary(direction: ScaleDirection.up);
+      final left = [
+        for (final moment in realization.moments)
+          '${moment.noteFor(Hand.left)!.pitch.label}'
+              '${moment.noteFor(Hand.left)!.pitch.octave}',
+      ];
+
+      expect(left, ['C4', 'B3', 'A3', 'G3', 'F3', 'E3', 'D3', 'C3']);
+    });
+
+    test('a unison is one note the exercise asks for', () {
+      // Fifteen moments, two of them unisons, so twenty-eight keys rather
+      // than thirty: the instrument reports one note-on for a shared key.
+      expect(contrary().noteCount, 28);
     });
   });
 
