@@ -2,6 +2,14 @@ import 'package:collection/collection.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
+const _handSetEquality = SetEquality<Hand>();
+
+/// The hands of an edit, in a stable order.
+String _handLabel(Set<Hand> hands) => [
+  for (final hand in Hand.values)
+    if (hands.contains(hand)) hand.id,
+].join('+');
+
 /// How an observed note differs from the one that was expected there.
 ///
 /// Descriptive, not a severity ranking. An octave error is plausibly a fact
@@ -38,32 +46,33 @@ sealed class NoteEdit {
 /// The expected note was played.
 @immutable
 final class Match extends NoteEdit {
-  /// The hand that was asked to play it.
-  final Hand hand;
+  /// The hands that were asked to play it.
+  final Set<Hand> hands;
 
   @override
   final int observedSequence;
 
-  const Match({required this.hand, required this.observedSequence});
+  const Match({required this.hands, required this.observedSequence});
 
   @override
   bool operator ==(Object other) =>
       other is Match &&
-      other.hand == hand &&
+      _handSetEquality.equals(other.hands, hands) &&
       other.observedSequence == observedSequence;
 
   @override
-  int get hashCode => Object.hash(hand, observedSequence);
+  int get hashCode =>
+      Object.hash(_handSetEquality.hash(hands), observedSequence);
 
   @override
-  String toString() => 'Match(${hand.id} <- $observedSequence)';
+  String toString() => 'Match(${_handLabel(hands)} <- $observedSequence)';
 }
 
 /// Something else was played for the expected note.
 @immutable
 final class Substitution extends NoteEdit {
-  /// The hand that was asked to play it.
-  final Hand hand;
+  /// The hands that were asked to play it.
+  final Set<Hand> hands;
 
   @override
   final int observedSequence;
@@ -75,7 +84,7 @@ final class Substitution extends NoteEdit {
   final SpelledPitch observed;
 
   const Substitution({
-    required this.hand,
+    required this.hands,
     required this.observedSequence,
     required this.expected,
     required this.observed,
@@ -89,17 +98,22 @@ final class Substitution extends NoteEdit {
   @override
   bool operator ==(Object other) =>
       other is Substitution &&
-      other.hand == hand &&
+      _handSetEquality.equals(other.hands, hands) &&
       other.observedSequence == observedSequence &&
       other.expected == expected &&
       other.observed == observed;
 
   @override
-  int get hashCode => Object.hash(hand, observedSequence, expected, observed);
+  int get hashCode => Object.hash(
+    _handSetEquality.hash(hands),
+    observedSequence,
+    expected,
+    observed,
+  );
 
   @override
   String toString() =>
-      'Substitution(${hand.id} <- $observedSequence, '
+      'Substitution(${_handLabel(hands)} <- $observedSequence, '
       '${expected.label} vs ${observed.label}, ${kind.id})';
 }
 
@@ -130,26 +144,28 @@ final class Insertion extends NoteEdit {
 /// An expected note that never arrived.
 @immutable
 final class Deletion extends NoteEdit {
-  /// The hand that was asked to play it.
-  final Hand hand;
+  /// The hands that were asked to play it.
+  final Set<Hand> hands;
 
   /// What was asked for.
   final SpelledPitch expected;
 
-  const Deletion({required this.hand, required this.expected});
+  const Deletion({required this.hands, required this.expected});
 
   @override
   int? get observedSequence => null;
 
   @override
   bool operator ==(Object other) =>
-      other is Deletion && other.hand == hand && other.expected == expected;
+      other is Deletion &&
+      _handSetEquality.equals(other.hands, hands) &&
+      other.expected == expected;
 
   @override
-  int get hashCode => Object.hash(hand, expected);
+  int get hashCode => Object.hash(_handSetEquality.hash(hands), expected);
 
   @override
-  String toString() => 'Deletion(${hand.id}, ${expected.label})';
+  String toString() => 'Deletion(${_handLabel(hands)}, ${expected.label})';
 }
 
 const _noteEditEquality = ListEquality<NoteEdit>();

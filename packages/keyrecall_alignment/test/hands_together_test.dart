@@ -65,7 +65,7 @@ void main() {
       );
       final leadingHand = [
         for (final operation in alignment.operations)
-          (operation.noteEdits.first as Match).hand,
+          (operation.noteEdits.first as Match).hands.single,
       ];
 
       expect(
@@ -84,8 +84,8 @@ void main() {
       );
 
       expect(alignment.operations.single.noteEdits, [
-        Match(hand: Hand.right, observedSequence: 0),
-        Match(hand: Hand.left, observedSequence: 1),
+        Match(hands: {Hand.right}, observedSequence: 0),
+        Match(hands: {Hand.left}, observedSequence: 1),
       ]);
     });
 
@@ -290,9 +290,72 @@ void main() {
       );
 
       expect(alignment.operations.single.noteEdits, [
-        isA<Substitution>().having((s) => s.hand, 'hand', Hand.left),
-        isA<Substitution>().having((s) => s.hand, 'hand', Hand.right),
+        isA<Substitution>().having((s) => s.hands.single, 'hand', Hand.left),
+        isA<Substitution>().having((s) => s.hands.single, 'hand', Hand.right),
       ]);
+    });
+
+    group('a note both hands meet on', () {
+      // What contrary motion starts and returns on: both thumbs, one key. The
+      // instrument reports one note-on, so the realization has to ask for one
+      // note or the attempt can never be complete.
+      RealizationMoment unison(int position, int midiNote) => RealizationMoment(
+        position: position,
+        metricOffset: position.toDouble(),
+        notes: [
+          RealizedNote.shared(
+            hands: {Hand.left, Hand.right},
+            pitch: pitch(midiNote),
+          ),
+        ],
+      );
+
+      test('is satisfied by one played note', () {
+        final alignment = align(
+          realization: ExerciseRealization([unison(0, 60), moment(1, 59, 62)]),
+          transcript: played([(60, 0), (59, 500), (62, 510)]),
+        );
+        final reading = AlignmentReading(alignment);
+
+        expect(reading.isComplete, isTrue);
+        expect(reading.deleted, 0);
+        expect(reading.substituted, 0);
+      });
+
+      test('credits both hands with playing it', () {
+        final alignment = align(
+          realization: ExerciseRealization([unison(0, 60)]),
+          transcript: played([(60, 0)]),
+        );
+
+        expect(alignment.operations.single.noteEdits, [
+          isA<Match>().having((match) => match.hands, 'hands', {
+            Hand.left,
+            Hand.right,
+          }),
+        ]);
+      });
+
+      test('counts once toward what the exercise asks for', () {
+        expect(ExerciseRealization([unison(0, 60)]).noteCount, 1);
+      });
+
+      test('still refuses a hand playing twice at once', () {
+        expect(
+          () => RealizationMoment(
+            position: 0,
+            metricOffset: 0,
+            notes: [
+              RealizedNote.shared(
+                hands: {Hand.left, Hand.right},
+                pitch: pitch(60),
+              ),
+              RealizedNote(hand: Hand.right, pitch: pitch(64)),
+            ],
+          ),
+          throwsArgumentError,
+        );
+      });
     });
   });
 }

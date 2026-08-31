@@ -325,13 +325,16 @@ bool _isRepeat(
   for (final neighbor in [index - 1, index + 1]) {
     if (neighbor < 0 || neighbor >= edits.length) continue;
     final (:realizationPosition, :edit) = edits[neighbor];
-    final hand = switch (edit) {
-      Match(:final hand) => hand,
-      Substitution(:final hand) => hand,
+    final hands = switch (edit) {
+      Match(:final hands) => hands,
+      Substitution(:final hands) => hands,
       _ => null,
     };
-    if (hand == null) continue;
-    final expected = realization.moments[realizationPosition!].noteFor(hand)!;
+    if (hands == null) continue;
+    // Any of them finds the same note: a note two hands meet on is one note.
+    final expected = realization.moments[realizationPosition!].noteFor(
+      hands.first,
+    )!;
     if (expected.pitch.pitchClass == observed.pitchClass) return true;
   }
   return false;

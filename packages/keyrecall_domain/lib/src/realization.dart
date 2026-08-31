@@ -20,34 +20,67 @@ enum Hand {
   final String id;
 }
 
-/// One note a hand is asked to play.
+const _handSetEquality = SetEquality<Hand>();
+
+/// One note the exercise asks for, and which hands play it.
+///
+/// Usually one hand. Both, where two lines meet on one key: contrary motion
+/// conventionally starts and returns in unison, and a piano sends one note-on
+/// however many thumbs are on the key. Modelling that as two notes would ask
+/// for an observation the instrument cannot produce, so the attempt could never
+/// read as complete.
 @immutable
 class RealizedNote {
-  /// Which hand plays it.
-  final Hand hand;
+  /// Which hands play it.
+  final Set<Hand> hands;
 
   /// The note as it is written, which is what a staff needs.
   final SpelledPitch pitch;
 
-  const RealizedNote({required this.hand, required this.pitch});
+  RealizedNote({required Hand hand, required SpelledPitch pitch})
+    : this.shared(hands: {hand}, pitch: pitch);
+
+  /// A note two hands meet on.
+  ///
+  /// Throws [ArgumentError] when no hand plays it.
+  RealizedNote.shared({required Set<Hand> hands, required this.pitch})
+    : hands = Set.unmodifiable(hands) {
+    if (hands.isEmpty) {
+      throw ArgumentError.value(hands, 'hands', 'a note needs a hand');
+    }
+  }
 
   /// The same note [octaves] higher, or lower for a negative count.
   RealizedNote shiftedByOctaves(int octaves) => octaves == 0
       ? this
-      : RealizedNote(hand: hand, pitch: pitch.shiftedByOctaves(octaves));
+      : RealizedNote.shared(
+          hands: hands,
+          pitch: pitch.shiftedByOctaves(octaves),
+        );
 
   /// Which key it is played on, which is what a keyboard and MIDI need.
   int get midiNote => pitch.midiNote;
 
+  /// Whether [hand] plays this note.
+  bool isPlayedBy(Hand hand) => hands.contains(hand);
+
   @override
   bool operator ==(Object other) =>
-      other is RealizedNote && other.hand == hand && other.pitch == pitch;
+      other is RealizedNote &&
+      _handSetEquality.equals(other.hands, hands) &&
+      other.pitch == pitch;
 
   @override
-  int get hashCode => Object.hash(hand, pitch);
+  int get hashCode => Object.hash(_handSetEquality.hash(hands), pitch);
 
   @override
-  String toString() => 'RealizedNote(${hand.id}, $pitch)';
+  String toString() {
+    final playing = [
+      for (final hand in Hand.values)
+        if (hands.contains(hand)) hand.id,
+    ];
+    return 'RealizedNote(${playing.join('+')}, $pitch)';
+  }
 }
 
 const _noteListEquality = ListEquality<RealizedNote>();
@@ -68,7 +101,8 @@ class RealizationMoment {
   /// Where the moment falls, in beats from the start.
   final double metricOffset;
 
-  /// The notes sounding at this moment, at most one per hand in V1.
+  /// The notes sounding at this moment, at most one per hand in V1. A note two
+  /// hands meet on appears once, carrying both.
   final List<RealizedNote> notes;
 
   /// The same moment [octaves] higher, or lower for a negative count.
@@ -90,19 +124,23 @@ class RealizationMoment {
     required this.metricOffset,
     required List<RealizedNote> notes,
   }) : notes = List.unmodifiable(notes) {
-    final hands = {for (final note in notes) note.hand};
-    if (hands.length != notes.length) {
-      throw ArgumentError.value(
-        notes,
-        'notes',
-        'a hand plays at most one note per moment',
-      );
+    final playing = <Hand>{};
+    for (final note in notes) {
+      for (final hand in note.hands) {
+        if (!playing.add(hand)) {
+          throw ArgumentError.value(
+            notes,
+            'notes',
+            'a hand plays at most one note per moment',
+          );
+        }
+      }
     }
   }
 
   /// The note [hand] plays here, or null when it plays nothing.
   RealizedNote? noteFor(Hand hand) =>
-      notes.firstWhereOrNull((note) => note.hand == hand);
+      notes.firstWhereOrNull((note) => note.isPlayedBy(hand));
 
   @override
   bool operator ==(Object other) =>
@@ -165,10 +203,11 @@ class ExerciseRealization {
   /// Which hands play at all.
   Set<Hand> get hands => {
     for (final moment in moments)
-      for (final note in moment.notes) note.hand,
+      for (final note in moment.notes) ...note.hands,
   };
 
-  /// How many notes are asked for, counting each hand's separately.
+  /// How many notes are asked for. A note two hands meet on counts once,
+  /// because one key press is all the instrument can report.
   int get noteCount =>
       moments.fold(0, (total, moment) => total + moment.notes.length);
 

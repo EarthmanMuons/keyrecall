@@ -275,7 +275,7 @@ List<MomentOperation> _traceBack(
             realizationPosition: i - 1,
             noteEdits: [
               for (final note in moments[i - 1].notes)
-                Deletion(hand: note.hand, expected: note.pitch),
+                Deletion(hands: note.hands, expected: note.pitch),
             ],
           ),
         );
@@ -345,13 +345,18 @@ class _MomentMatcher {
     final acted = <Hand, int>{
       for (final edit in edits)
         if (edit
-            case Match(:final hand, :final observedSequence) ||
-                Substitution(:final hand, :final observedSequence))
-          hand: arrival[observedSequence]!,
+            case Match(:final hands, :final observedSequence) ||
+                Substitution(:final hands, :final observedSequence))
+          for (final hand in hands) hand: arrival[observedSequence]!,
     };
     final left = acted[Hand.left];
     final right = acted[Hand.right];
 
+    // A note both hands meet on has one onset, so its asynchrony is zero by
+    // construction rather than by measurement: there is one key and the
+    // instrument reports pressing it once. Reading that as evidence of
+    // coordination would credit the learner for what the representation
+    // guarantees.
     return MomentCorrespondence(
       realizationPosition: moment,
       noteEdits: edits,
@@ -412,7 +417,7 @@ class _MomentMatcher {
     for (final (index, note) in notes.indexed) {
       final candidate = assignment[index];
       if (candidate == null) {
-        missing.add(Deletion(hand: note.hand, expected: note.pitch));
+        missing.add(Deletion(hands: note.hands, expected: note.pitch));
         continue;
       }
       played.add(candidate);
@@ -420,9 +425,9 @@ class _MomentMatcher {
       consumed.add((
         candidate,
         note.midiNote == arrival.midiNote
-            ? Match(hand: note.hand, observedSequence: arrival.sequence)
+            ? Match(hands: note.hands, observedSequence: arrival.sequence)
             : Substitution(
-                hand: note.hand,
+                hands: note.hands,
                 observedSequence: arrival.sequence,
                 expected: note.pitch,
                 observed: arrival.pitch,
