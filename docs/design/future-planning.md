@@ -895,6 +895,35 @@ correctness work.
 Not a timing assertion, which would be flaky; a command to run when evaluation
 feels slow, against the figures recorded here.
 
+### What the caching pass took, and what it did not
+
+Contrary motion took the candidate set from 6,912 to 9,216, and a decision then
+varied by learner rather than sitting near one number: 47ms for `developing`
+against 90ms for `uneven_hands`, on the same candidates. The difference was
+`eligibilityFor` asking questions of learner state alone once per candidate,
+where the repertoire question walks the whole catalog. Answering those once per
+decision brought `uneven_hands` to about 47ms and left `developing` unchanged,
+which is the shape a fix for a state-dependent pathology should have.
+
+Two caches paid and two did not, and the reason is the same in both directions:
+
+> Redundancy is not sufficient reason for a cache. The key has to be cheaper
+> than the work it avoids.
+
+`information` is computed for four and a half times more candidates than it has
+distinct answers, and caching it alone saved almost nothing, because deriving
+the key rebuilt the competency set. Deriving that set once per exercise instead
+made both the key and the term cheaper, and then the cache paid.
+
+The realization terms look like better candidates still: they ignore guidance,
+so a third of the candidate set shares an answer, and `evaluate` already holds
+the guidance-normalized realization to key them by. Caching them measured
+**slower**, 47.0-47.5ms against 46.4-46.6ms, because hashing an `Exercise` costs
+more than the two terms it avoids. Not taken.
+
+The remaining structural question is the two-phase trace above, which is worth
+more than any further memoization.
+
 ## 4.12 The remedial tempo range, and the coefficient that makes it inert
 
 Three separate facts, kept apart because only the third is a decision.
