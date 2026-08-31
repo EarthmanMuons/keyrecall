@@ -176,9 +176,9 @@ against a _preference_ in how the single one is spent. Since the transition is
 consumed by whichever hands-together exercise wins it, a parallel-motion winner
 spends the once-per-material budget on the harder of the two realizations.
 
-**The domain cannot express contrary motion, so this is not a scheduler change
-yet.** See section 5; the argument above is why the representation is worth
-adding, not a rule to implement now.
+**The domain now represents contrary motion but cannot yet produce it, so this
+is not a scheduler change yet.** See section 5; the argument above is why the
+representation was worth adding, not a rule to implement now.
 
 ## 3. Proposed policy shape
 
@@ -222,9 +222,9 @@ tempted to generalize this exception and the evidence does not support it.
   researched here concerns those axes.
 - **`BAND_EXECUTION_FLOOR` is not weakened generally.** It is bypassed for this
   one transition, on the material's-own-record argument, and nowhere else.
-- **No second transition by direction**, and no contrary-motion ranking
-  preference in this change. The domain cannot represent contrary motion; see
-  section 5.
+- **No second transition by direction or by hand motion**, and no
+  contrary-motion ranking preference in this change. Hand motion is a
+  realization condition, not a new skill state; see section 5.
 - **No ranking changes outside the coordination transition.** The rank key,
   repetition policy, and tempo policy are untouched. The audit gave no evidence
   to disturb them.
@@ -246,27 +246,50 @@ The literature supports the _shape_ of the rule, which is that per-hand pitch
 integrity rather than factual retrieval is the right channel to read. It
 supports no number in it.
 
-### Contrary motion is deferred to future domain support
+### Contrary motion: represented, not yet reachable
 
-**The domain cannot represent it.** `ScaleDirection` is `up` and `upDown`, and
-both describe the traversal of one scale line in time. A hands-together
-realization gives every hand the same scale degree at each position, so two
-hands are parallel by construction. Contrary motion is not a realization the
-catalog omits; it is not expressible.
+**The representation exists.** `HandMotion` is a persisted execution condition,
+carried in `ExecutionConditions` identity, equality, hashing and the journal,
+and rejected for anything but two hands. No exercise is contrary yet: nothing in
+realization or generation can produce one.
 
-The likely factoring keeps the two axes apart, because they are orthogonal: both
-hands can traverse an `upDown` exercise while moving contrary to each other, so
-folding contrary motion into `ScaleDirection` would conflate the temporal
-traversal of a line with the relationship between two lines.
+The two axes are kept apart because they are orthogonal. Both hands traverse the
+same `upDown` exercise whether they move together or apart, so folding contrary
+motion into `ScaleDirection` would conflate the temporal traversal of one line
+with the relationship between two.
 
 ```text
-traversal   up | upDown
-handMotion  parallel | contrary        hands-together exercises only
+ScaleDirection   up | upDown            the traversal of one line in time
+HandMotion       parallel | contrary    the relationship between two hands
+                                        contrary needs hands together
 ```
 
-The dependency chain runs representation, then realization and generation, then
-fingering and expected notes, then a transition-only ranking preference, and
-only then measurement. Nothing before the last step is a scheduler change.
+The dependency chain, with the first step done:
+
+```text
+[x] represent hand motion as a persisted execution condition
+[ ] realize contrary motion, and generate candidates for it
+[ ] give it fingering and expected notes
+[ ] prefer it in ranking while the coordination transition is unspent
+[ ] re-baseline the cohorts
+[ ] then calibrate the pitch-integrity threshold
+```
+
+Nothing before the fourth step is a scheduler change. Two consequences of the
+first step are recorded elsewhere: the transition stays once per material rather
+than becoming one per hand motion, in
+[`../domain-model/progression-graph.md`](../domain-model/progression-graph.md);
+and learner execution state is **not** keyed by hand motion today, so parallel
+and contrary hands-together work still share one frontier. Splitting that is the
+next model decision, and the argument for it is that a contrary-motion frontier
+should not certify parallel-motion execution nobody has demonstrated.
+
+The reference digest is the other loose end. `discreteDigestFields` has no hand
+motion column, which is harmless while every exercise is parallel and stops
+being harmless the moment one is not, since two runs differing only in hand
+motion would then hash the same. That digest is computed on both the Dart and
+frozen Python sides, so closing the gap and retiring the Python provenance are
+the same decision, taken when the second step above lands.
 
 **This ordering also gates the calibration above.** Contrary motion is the
 easier first coordination task, so a pitch-integrity threshold tuned while every

@@ -115,9 +115,21 @@ The ordering or transformation applied to technical material. V1 implements
 
 ### ExecutionConditions
 
-The requested hand configuration, direction, octave count, tempo, and related
-physical conditions of an exercise. These parameterize task difficulty rather
-than material identity.
+The requested hand configuration, direction, hand motion, octave count, tempo,
+and related physical conditions of an exercise. These parameterize task
+difficulty rather than material identity.
+
+### HandMotion
+
+How the two hands move relative to each other, `PARALLEL` or `CONTRARY`. Valid
+as `CONTRARY` only when the hand configuration is `TOGETHER`; a single hand
+carries `PARALLEL` as its canonical value. Distinct from [ScaleDirection]: both
+hands traverse the same `UP_DOWN` exercise whether they move together or apart.
+
+### ScaleDirection
+
+Which way a single scale line is traversed in time, `UP` or `UP_DOWN`. It says
+nothing about the relationship between two hands; see [HandMotion].
 
 ### Factual retrieval
 
@@ -399,8 +411,8 @@ See **Q-matrix**.
 ### TechnicalMaterial
 
 The underlying musical object being practiced. For V1 scales, identity is
-primarily tonic plus scale form. Hand, tempo, octave count, direction, pattern,
-and guidance are not part of material identity.
+primarily tonic plus scale form. Hand, tempo, octave count, direction, hand
+motion, pattern, and guidance are not part of material identity.
 
 ## Mathematical symbols
 

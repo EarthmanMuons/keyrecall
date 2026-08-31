@@ -49,9 +49,9 @@ early, and no evidence at all that D flat major has a latent difficulty of 0.73.
 
 **Grades bundle what this architecture separates.** A grade mixes key, hands
 together, octave span, articulation, arpeggios and examination logistics.
-KeyRecall already models hands, octaves, direction and tempo as execution
-conditions, so copying grade boundaries would re-bundle exactly what was pulled
-apart. The bands below are about material only.
+KeyRecall already models hands, octaves, direction, hand motion and tempo as
+execution conditions, so copying grade boundaries would re-bundle exactly what
+was pulled apart. The bands below are about material only.
 
 ## Novelty has three axes, and they move independently
 

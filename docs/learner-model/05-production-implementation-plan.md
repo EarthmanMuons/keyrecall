@@ -364,6 +364,7 @@ hands
 tempo
 octave span
 direction
+hand motion
 pattern, rhythm, and articulation when applicable
 guidance level and guidance features
 motor realization and competency opportunities
@@ -372,6 +373,12 @@ motor realization and competency opportunities
 If UI availability, user choice, or another product layer substitutes an
 exercise after scheduling, persist both the selected and presented definitions
 and a typed substitution reason.
+
+`hand_motion` is required on the wire rather than defaulted from absence. No
+released history exists to preserve, so a journal without it is a journal this
+build did not write, and failing loudly is better than a decode path that has to
+be carried forever. This is the exception a pre-release schema gets once; the
+versioned upgrade discipline in section 9 governs every change after it.
 
 ### 6.4 Outcome and factual observation
 

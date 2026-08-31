@@ -76,6 +76,8 @@ they can handle.
                                                  slower ──► faster
  unseen material ──► cued first encounter             [prediction only]
                     [REQUIRES]
+                                                 parallel ─── contrary
+                                                 [no edge; not yet generated]
 ```
 
 Reading it: solid `REQUIRES` edges are enforced at stage 2a and make the later
@@ -271,6 +273,35 @@ rather than the polish. Whether the gate should also be reachable through an
 admission exception is a separate question, specified in
 [`../design/coordination-transition-policy.md`](../design/coordination-transition-policy.md).
 
+### Hand motion
+
+**Edge:** none proposed, in either direction.
+
+**Sources:** pedagogy prefers contrary motion for a learner's first
+hands-together scale, and ABRSM puts contrary-motion C major a grade before any
+similar-motion hands-together scale. See
+[`../design/coordination-transition-policy.md`](../design/coordination-transition-policy.md).
+
+**Verdict: no `REQUIRES`, and specifically not a second coordination
+transition.** `HandMotion` is a realization condition like span or tempo, not a
+new skill state. The coordination transition stays **once per material**: the
+event it marks is a learner moving from never having coordinated this scale to
+having coordinated it, and meeting the other hand motion afterwards is ordinary
+execution progression on a skill that exists.
+
+The preference belongs in ranking rather than in a gate, and only while the
+single transition is unspent, so that the one slot it costs is spent on the
+easier realization. Nothing generates contrary motion yet, so the preference has
+nothing to prefer today.
+
+Whether parallel and contrary hands-together work progress independently depends
+on whether learner execution state is keyed by hand motion. **It is not today**:
+`ExecutionContext` is `(materialId, hands)`, so the two share one frontier. The
+persisted `Exercise` identity distinguishes them; the learner's execution state
+does not. Splitting it is the next model decision rather than one this axis has
+already made, and the argument for splitting is that a contrary-motion frontier
+should not certify parallel-motion execution the learner has never demonstrated.
+
 ### Direction and the reversal
 
 **Edge:** ascending → ascending and descending.
@@ -325,9 +356,9 @@ tempting to break.
 
 **A grade is not a band.** Grades bundle key, hands, octave span, articulation,
 tempo and examination logistics into one label. KeyRecall models hands, octaves,
-direction and tempo as execution conditions precisely so they can vary
-independently, and importing grade boundaries as admission tiers would re-bundle
-exactly what the architecture pulled apart. A syllabus overlay narrows
+direction, hand motion and tempo as execution conditions precisely so they can
+vary independently, and importing grade boundaries as admission tiers would
+re-bundle exactly what the architecture pulled apart. A syllabus overlay narrows
 **material**, and the conditions stay where they are.
 
 **The scope is the destination, not the route.** Selecting a grade should not

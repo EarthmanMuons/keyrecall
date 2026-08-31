@@ -138,16 +138,28 @@ bundle of independent choices:
 ```text
 TechnicalMaterial      what is being played: e.g. F# harmonic minor scale
 ExercisePattern        ordering/transformation: LINEAR in V1
-ExecutionConditions    hand, direction, octaves, tempo
+ExecutionConditions    hand, direction, hand motion, octaves, tempo
 GuidanceContext        cues shown before or during the attempt
 MotorRealization       canonical fingering and derived motor structure
 Opportunities          observable crossing, continuation, and reversal sites
 ```
 
-Material identity excludes hand, tempo, octaves, direction, and guidance. That
-is why an F-sharp harmonic minor scale has one memory state while its
-right-hand, left-hand, and hands-together performances can have different
+Material identity excludes hand, tempo, octaves, direction, hand motion, and
+guidance. That is why an F-sharp harmonic minor scale has one memory state while
+its right-hand, left-hand, and hands-together performances can have different
 execution states.
+
+Two of those axes are easily confused, and keeping them apart is load-bearing:
+
+```text
+ScaleDirection   the temporal traversal of one line      up | upDown
+HandMotion       the relationship between two hands      parallel | contrary
+                 contrary is valid only for hands together
+```
+
+Both hands traverse the same `upDown` exercise whether they move together or
+apart, so these are orthogonal. Folding contrary motion into `ScaleDirection`
+would conflate the shape of one line with the relationship between two.
 
 V1 supports major, natural minor, harmonic minor, and fixed-form melodic minor
 scales, the linear pattern, canonical fingerings, and right, left, and
