@@ -265,7 +265,12 @@ class _TimingCalibrationScreenState
   bool _playing = false;
 
   Future<void> _finish(int position, CalibrationCell cell) async {
-    final transcript = ref.read(attemptTranscriptProvider);
+    final capture = ref.read(attemptTranscriptProvider);
+    if (capture.isInterrupted) {
+      setState(() => _playing = false);
+      return;
+    }
+    final transcript = capture.transcript;
     if (transcript.isNotEmpty) {
       await ref
           .read(calibrationRunProvider.notifier)

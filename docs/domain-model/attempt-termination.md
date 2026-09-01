@@ -78,6 +78,7 @@ attempt, roughly:
 learnerStopped
 inactivityTimeout
 durationLimit
+inputInterrupted
 evaluativeCutoff
 ```
 
@@ -116,11 +117,10 @@ class MeasurementUnavailable extends MeasurementResult {
 }
 ```
 
-Two reasons: `notAvailable`, for the period before an aligner existed, and
-`nothingPlayed`, for a timeout that arrived with an empty transcript. Genuinely
-different failures such as insufficient evidence, an indeterminate alignment, or
-an input fault can be distinguished when they become reachable, under the same
-rule as everywhere else here.
+`notAvailable` records the period before an aligner existed, `nothingPlayed`
+records a timeout with an empty transcript, and `inputInterrupted` records an
+input reset that destroyed continuity. Interrupted captures never reach
+measurement.
 
 `nothingPlayed` is a claim about attribution rather than about a performance. A
 learner who ends an attempt having played nothing measures like any other

@@ -363,7 +363,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     if (_writing || current == null || !current.isAwaitingAnswer) return;
     // Presented rather than assumed: the session refuses a decline once
     // anything has been played, and it can only check that if it is shown.
-    final transcript = ref.read(attemptTranscriptProvider);
+    final transcript = ref.read(attemptTranscriptProvider).transcript;
 
     // No loading state: committing is an append and a scheduler decision, and
     // replacing the screen with a spinner for that is how an app teaches
@@ -409,7 +409,8 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   }) async {
     final current = state.value;
     if (_writing || current == null || !current.isAwaitingAnswer) return;
-    final transcript = ref.read(attemptTranscriptProvider);
+    final capture = ref.read(attemptTranscriptProvider);
+    final transcript = capture.transcript;
 
     // No loading state: committing is an append and a scheduler decision, and
     // replacing the screen with a spinner for that is how an app teaches
@@ -417,6 +418,21 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     _writing = true;
     try {
       state = await AsyncValue.guard(() async {
+        if (capture.isInterrupted) {
+          final record = await current.session.closeUnmeasured(
+            termination: AttemptTermination.inputInterrupted,
+            reason: MeasurementUnavailableReason.inputInterrupted,
+            observedWallTime: DateTime.now().toUtc(),
+          );
+          return _decide(
+            PracticeLoopState(
+              profile: current.profile,
+              session: current.session,
+              lastCommitted: record,
+            ),
+          );
+        }
+
         final unplayed =
             transcript.isEmpty &&
             termination != AttemptTermination.learnerStopped;

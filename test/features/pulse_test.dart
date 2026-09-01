@@ -61,7 +61,7 @@ void main() {
       await tester.tap(find.text('Ready'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 750 * 5));
-      transcripts.add(container.read(attemptTranscriptProvider));
+      transcripts.add(container.read(attemptTranscriptProvider).transcript);
     }
 
     expect(transcripts.map((t) => t.length).toSet(), {

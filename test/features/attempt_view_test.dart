@@ -271,11 +271,29 @@ void main() {
     );
   });
 
+  testWidgets('an input reset interrupts the attempt', (tester) async {
+    final finished = await pumpAttempt(tester, GuidanceContext.unguided);
+    await readyAndCountIn(tester);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AttemptView)),
+    );
+    container.read(demoInputProvider.notifier).playChord({60});
+    await tester.pump();
+
+    container.invalidate(demoTemporalEventsProvider);
+    await tester.pump();
+    await tester.pump();
+
+    expect(finished, [AttemptTermination.inputInterrupted]);
+    expect(container.read(attemptTranscriptProvider).isInterrupted, isTrue);
+  });
+
   group('playing before the attempt', () {
     /// What the transcript holds right now.
     PerformanceTranscript transcriptIn(WidgetTester tester) =>
         ProviderScope.containerOf(tester.element(find.byType(AttemptView)))
-            .read(attemptTranscriptProvider);
+            .read(attemptTranscriptProvider)
+            .transcript;
 
     testWidgets('is visible and is not evidence', (tester) async {
       await pumpAttempt(tester, GuidanceContext.unguided);

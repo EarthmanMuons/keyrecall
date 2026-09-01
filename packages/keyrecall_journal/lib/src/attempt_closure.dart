@@ -7,7 +7,7 @@ import 'package:meta/meta.dart';
 /// the performance went, and reading a failure out of one would be inventing
 /// evidence nobody observed. See `docs/domain-model/attempt-termination.md`.
 enum AttemptTermination {
-  /// The learner ended it. The only path that exists today.
+  /// The learner ended it.
   ///
   /// Deliberately not `learnerCompleted`: nothing can establish completion
   /// until measurement does, and tapping Done is the weaker claim.
@@ -27,6 +27,9 @@ enum AttemptTermination {
   /// that what happened is a question for the performance rather than for the
   /// learner.
   learnerDeclined('LEARNER_DECLINED'),
+
+  /// The input stream restarted while the attempt was being observed.
+  inputInterrupted('INPUT_INTERRUPTED'),
 
   /// The app stopped it because of how it was going. Only legitimate where the
   /// attempt's presentation already permits evaluative feedback.
@@ -68,7 +71,10 @@ enum MeasurementUnavailableReason {
   /// is a claim about the attempt and measures like any other; a timeout is a
   /// claim about the app, and the silence behind it could as easily be an
   /// interruption as a performance.
-  nothingPlayed('NOTHING_PLAYED');
+  nothingPlayed('NOTHING_PLAYED'),
+
+  /// The input stream restarted before the performance was fully observed.
+  inputInterrupted('INPUT_INTERRUPTED');
 
   const MeasurementUnavailableReason(this.id);
 

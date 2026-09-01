@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'package:keyrecall/features/input/input.dart';
+import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
 void main() {
@@ -152,6 +154,34 @@ void main() {
     );
   });
 
+  test('an input reset interrupts the attempt without evidence', () async {
+    final container = ProviderContainer(
+      overrides: [
+        storageRootProvider.overrideWith((ref) async => root),
+        attemptTranscriptProvider.overrideWith(_InterruptedCapture.new),
+      ],
+    );
+    addTearDown(container.dispose);
+    await place(container);
+    final before = await loopOf(container);
+    final learnerBefore = learnerStateHash(before.session.state);
+    expect(container.read(attemptTranscriptProvider).length, 3);
+    await container.read(practiceLoopProvider.notifier).finish();
+    final after = container.read(practiceLoopProvider).value!;
+    final closed = after.lastCommitted!;
+
+    expect(closed.closure.termination, AttemptTermination.inputInterrupted);
+    expect(
+      closed.closure.measurement,
+      isA<MeasurementUnavailable>().having(
+        (unavailable) => unavailable.reason,
+        'reason',
+        MeasurementUnavailableReason.inputInterrupted,
+      ),
+    );
+    expect(learnerStateHash(after.session.state), learnerBefore);
+  });
+
   test('history survives a relaunch', () async {
     final first = launch();
     await place(first);
@@ -286,4 +316,19 @@ void main() {
     expect(recovered.exercise, isNotNull);
     expect(recovered.attemptsRecorded, 0);
   });
+}
+
+class _InterruptedCapture extends AttemptTranscriptNotifier {
+  @override
+  AttemptCapture build() {
+    final material = TechnicalMaterial('C', ScaleForm.major);
+    var transcript = PerformanceTranscript.empty;
+    for (final (index, midiNote) in [60, 62, 64].indexed) {
+      transcript = transcript.appending(
+        pitch: spellObservedPitch(midiNote, material: material),
+        timestampMs: 1000 + index * 100,
+      );
+    }
+    return AttemptCapture(transcript: transcript, isInterrupted: true);
+  }
 }

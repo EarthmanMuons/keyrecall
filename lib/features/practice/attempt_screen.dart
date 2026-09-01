@@ -483,7 +483,14 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       _ => showsPitchCueDuringAttempt(guidance),
     };
     final echoes = presentation.performanceFeedback != PerformanceFeedback.none;
-    final transcript = ref.watch(attemptTranscriptProvider);
+    final capture = ref.watch(attemptTranscriptProvider);
+    final transcript = capture.transcript;
+
+    if (capture.isInterrupted && !_finishing) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_finish(AttemptTermination.inputInterrupted));
+      });
+    }
 
     if (transcript.isNotEmpty && transcript.length != _painted) {
       // The frame after the note is on screen is when it was actually seen.

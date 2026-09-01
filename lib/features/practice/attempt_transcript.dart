@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
@@ -8,9 +9,8 @@ import 'latency_probe.dart';
 /// What has been played during the attempt on screen.
 ///
 /// One note-on becomes one transcript note, spelled in the key the exercise
-/// named. Note-offs, the pedal, and resets are not transcript events: the
-/// transcript is what was played and in what order, and how long a key stayed
-/// down is a question for a layer that measures.
+/// named. Note-offs and the pedal are not transcript events. A reset interrupts
+/// the capture because the notes on either side are not one observation.
 ///
 /// Recording is explicit rather than continuous. Live input is always visible,
 /// so a learner can warm up, check the instrument, and settle their hands, and
@@ -27,17 +27,30 @@ import 'latency_probe.dart';
 /// partly synchronization-aware, which is exactly what a count-in-only rung is
 /// not.
 final attemptTranscriptProvider =
-    NotifierProvider<AttemptTranscriptNotifier, PerformanceTranscript>(
+    NotifierProvider<AttemptTranscriptNotifier, AttemptCapture>(
       AttemptTranscriptNotifier.new,
     );
 
-class AttemptTranscriptNotifier extends Notifier<PerformanceTranscript> {
+@immutable
+class AttemptCapture {
+  final PerformanceTranscript transcript;
+  final bool isInterrupted;
+
+  const AttemptCapture({required this.transcript, this.isInterrupted = false});
+
+  int get length => transcript.length;
+  bool get isEmpty => transcript.isEmpty;
+  bool get isNotEmpty => transcript.isNotEmpty;
+  List<PlayedNote> get notes => transcript.notes;
+}
+
+class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// The material being played, which is what spells an observation. Null when
   /// nothing is being recorded.
   TechnicalMaterial? _material;
 
   @override
-  PerformanceTranscript build() {
+  AttemptCapture build() {
     ref.listen<AsyncValue<InputTemporalEvent>>(inputTemporalEventsProvider, (
       _,
       next,
@@ -45,13 +58,13 @@ class AttemptTranscriptNotifier extends Notifier<PerformanceTranscript> {
       final event = next.value;
       if (event != null) _record(event);
     }, fireImmediately: true);
-    return PerformanceTranscript.empty;
+    return AttemptCapture(transcript: PerformanceTranscript.empty);
   }
 
   /// Starts a fresh transcript for an attempt at [material].
   void start(TechnicalMaterial material) {
     _material = material;
-    state = PerformanceTranscript.empty;
+    state = AttemptCapture(transcript: PerformanceTranscript.empty);
   }
 
   /// Stops recording, keeping what was played.
@@ -68,18 +81,25 @@ class AttemptTranscriptNotifier extends Notifier<PerformanceTranscript> {
   /// reading the wrong attempt.
   void discard() {
     _material = null;
-    state = PerformanceTranscript.empty;
+    state = AttemptCapture(transcript: PerformanceTranscript.empty);
   }
 
   void _record(InputTemporalEvent event) {
     final material = _material;
     if (material == null) return;
+    if (event is InputTemporalResetEvent) {
+      _material = null;
+      state = AttemptCapture(transcript: state.transcript, isInterrupted: true);
+      return;
+    }
     if (event is! InputTemporalNoteOnEvent) return;
 
     final sequence = state.length;
-    state = state.appending(
-      pitch: spellObservedPitch(event.noteNumber, material: material),
-      timestampMs: event.timestampMs,
+    state = AttemptCapture(
+      transcript: state.transcript.appending(
+        pitch: spellObservedPitch(event.noteNumber, material: material),
+        timestampMs: event.timestampMs,
+      ),
     );
     ref
         .read(latencyProbeProvider.notifier)
