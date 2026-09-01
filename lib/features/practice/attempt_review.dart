@@ -158,7 +158,7 @@ class AttemptReview extends StatelessWidget {
             children: [
               const Spacer(),
               Text(
-                diagnosis?.sentence ?? 'Got it.',
+                diagnosis?.sentence ?? unreadableSentence(record.closure),
                 style: theme.textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),

@@ -95,7 +95,12 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     final committed = loop.value?.lastCommitted;
     if (committed != null && committed.identity.attemptId != _reviewed) {
       return Scaffold(
-        appBar: const _PracticeAppBar(),
+        // The review is still about the attempt that just ran, so the bar
+        // keeps holding it. Next is what hands the screen back, and the bar
+        // comes back with it.
+        appBar: _PracticeAppBar(
+          running: _playing == null ? null : committed.exercise,
+        ),
         body: AttemptReview(
           record: committed,
           reading: loop.value?.lastReading,
@@ -160,39 +165,71 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
     final task = running;
 
     return AppBar(
+      // Both of them sit where a name sits, against the leading edge.
+      centerTitle: false,
       title: AnimatedSwitcher(
         duration: attemptTransition,
+        // The name and the controls are gone before the task arrives, so
+        // nothing is read through anything else: what animates is the task
+        // rising into the room they left.
+        //
+        // The outgoing child's animation counts down from one, so the interval
+        // that clears it early sits at the top of the range and the one that
+        // holds the arriving child back sits in the middle. They do not
+        // overlap: out by a fifth of the way through, in from a third.
+        switchOutCurve: const Interval(0.8, 1),
+        switchInCurve: const Interval(0.35, 1, curve: Curves.easeOutCubic),
+        // Against the leading edge while both are in the tree. The default
+        // centres them, which lands the arriving one in the middle of the bar
+        // and slides it left once the other is gone.
+        layoutBuilder: (current, previous) => Stack(
+          alignment: Alignment.centerLeft,
+          children: [...previous, ?current],
+        ),
+        transitionBuilder: (child, animation) => FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween(
+              begin: const Offset(0, 0.6),
+              end: Offset.zero,
+            ).animate(animation),
+            child: child,
+          ),
+        ),
         child: task == null
             ? const Wordmark(key: ValueKey('wordmark'))
             : _RunningTask(task, key: const ValueKey('task')),
       ),
       actions: [
-        // Collapsed rather than removed, so the task arriving beside them is
-        // one movement: the controls give up their width as it takes it.
-        AnimatedSize(
-          duration: attemptTransition,
-          curve: attemptCurve,
-          child: task != null
-              ? const SizedBox.shrink()
-              : Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Only when MIDI is the source: reading the connection
-                    // state starts the Bluetooth stack, which the synthetic
-                    // instrument has no use for.
-                    if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
-                      const _InstrumentButton(),
-                    _MenuButton(
-                      profile: active.isEmpty ? null : active.single.profile,
-                      // Who is practicing is worth saying on the bar only where
-                      // it is in question. On an install with one profile it is
-                      // nobody's doubt, and a coloured disc where the menu goes
-                      // would be decoration.
-                      showsProfile: roster.length > 1,
-                    ),
-                  ],
+        // Gone at once rather than animated out. They are what the task is
+        // replacing, and a control sliding around underneath it reads as two
+        // things happening instead of one.
+        if (task == null)
+          TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: attemptTransition,
+            curve: const Interval(0.35, 1),
+            builder: (context, arrival, child) =>
+                Opacity(opacity: arrival, child: child),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Only when MIDI is the source: reading the connection
+                // state starts the Bluetooth stack, which the synthetic
+                // instrument has no use for.
+                if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
+                  const _InstrumentButton(),
+                _MenuButton(
+                  profile: active.isEmpty ? null : active.single.profile,
+                  // Who is practicing is worth saying on the bar only where it
+                  // is in question. On an install with one profile it is
+                  // nobody's doubt, and a coloured disc where the menu goes
+                  // would be decoration.
+                  showsProfile: roster.length > 1,
                 ),
-        ),
+              ],
+            ),
+          ),
       ],
     );
   }
@@ -215,6 +252,7 @@ class _RunningTask extends StatelessWidget {
     final conditions = exercise.conditions;
 
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         HandsIcon(conditions.hands, size: 20),
         const SizedBox(width: 10),
@@ -373,7 +411,8 @@ class AttemptView extends ConsumerStatefulWidget {
   ConsumerState<AttemptView> createState() => _AttemptViewState();
 }
 
-class _AttemptViewState extends ConsumerState<AttemptView> {
+class _AttemptViewState extends ConsumerState<AttemptView>
+    with SingleTickerProviderStateMixin {
   /// Beats in the count-in. One bar of four, which also gives the learner time
   /// to get their hands from the screen to the keyboard.
   static const int _countInBeats = 4;
@@ -381,6 +420,12 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   /// How often the attempt's clocks are read against its windows. Short enough
   /// that the shortest of them lands where it says it does.
   static const Duration _watchdogTick = Duration(milliseconds: 250);
+
+  /// Drives what leaves the screen when the attempt takes it.
+  ///
+  /// Run from Ready whether or not anything is listening to it, so the
+  /// instrument's exit is timed by the same clock as the statement's.
+  late final AnimationController _handover;
 
   _Phase _phase = _Phase.ready;
   int _beatsLeft = _countInBeats;
@@ -414,6 +459,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   @override
   void initState() {
     super.initState();
+    _handover = AnimationController(vsync: this, duration: attemptTransition);
     _pulse = ref.read(pulseClickerProvider);
     // The previous attempt's notes are still in the transcript, because
     // closing an attempt reads them after recording stops. They are not this
@@ -430,6 +476,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 
   @override
   void dispose() {
+    _handover.dispose();
     _settling?.cancel();
     _countIn?.cancel();
     _watchdog?.cancel();
@@ -450,6 +497,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 
   /// Hands the screen over to the attempt, and counts in once it has settled.
   void _start() {
+    _handover.forward();
     setState(() {
       _phase = _Phase.countIn;
       _beatsLeft = _countInBeats;
@@ -608,10 +656,11 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     // cue on it, it is not: echoing into a score that already shows the
     // answer means saying which expected note each observation was, which is
     // a judgment. There the keyboard carries the echo instead.
+    //
+    // It changes hands at Ready rather than at the first beat, so the screen
+    // the count-in runs over is the screen the attempt is played on.
     final staffCarriesTranscript =
-        echoes &&
-        !showsCue &&
-        (_phase == _Phase.playing || _phase == _Phase.finishing);
+        echoes && !showsCue && _phase != _Phase.ready;
 
     final layout = Layout.of(context);
     // The statement is on screen only until the attempt starts, and the bar
@@ -640,6 +689,13 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         if (staffCarriesTranscript)
           TranscriptStaff(transcript: transcript, exercise: exercise),
       ],
+    );
+    final instrument = _Instrument(
+      exercise: exercise,
+      showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
+      echoes: echoes,
+      showsFingering: presentation.motorCue == MotorCue.fingering,
+      height: layout.instrumentHeight,
     );
     // Sized to what the phase actually needs, and animated between them: the
     // Ready block is three things tall and Done is one, and the music takes
@@ -707,17 +763,35 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         // everything above it changes. It runs past the safe area rather than
         // stopping short of it: it is a diagram, nothing on it is touched, and
         // the strip below it is height the music does not have.
-        if (!staffCarriesTranscript)
-          _Instrument(
-            exercise: exercise,
-            showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
-            echoes: echoes,
-            showsFingering: presentation.motorCue == MotorCue.fingering,
-            height: layout.instrumentHeight,
-          ),
+        //
+        // Where the rung has no further use for it, it leaves downward with
+        // the rest of the movement rather than vanishing under the count.
+        if (staffCarriesTranscript) _leaving(instrument) else instrument,
       ],
     );
   }
+
+  /// The instrument on its way off the bottom of the screen.
+  ///
+  /// Its top follows the shrinking edge down while the rest of it is clipped,
+  /// so it leaves the way a keyboard pushed off a table would, and it is out
+  /// of the tree once it is out of sight.
+  Widget _leaving(Widget instrument) => AnimatedBuilder(
+    animation: _handover,
+    child: instrument,
+    builder: (context, child) {
+      final gone = attemptCurve.transform(_handover.value);
+      return gone == 1
+          ? const SizedBox(width: double.infinity)
+          : ClipRect(
+              child: Align(
+                alignment: Alignment.topCenter,
+                heightFactor: 1 - gone,
+                child: child,
+              ),
+            );
+    },
+  );
 
   Widget _control() => switch (_phase) {
     _Phase.ready => Column(
@@ -775,6 +849,8 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         ),
       ),
     ),
+    // Done keeps the height the count had, so the music above it stays where
+    // it was laid out when the count ends.
     _Phase.playing =>
       _questioned
           ? _Question(
@@ -782,17 +858,23 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
               onDone: () => _finish(AttemptTermination.learnerStopped),
               onKeepPlaying: _keepPlaying,
             )
-          : Center(
-              child: FilledButton.tonal(
-                onPressed: () => _finish(AttemptTermination.learnerStopped),
-                child: const Text('Done'),
+          : SizedBox(
+              height: 88,
+              child: Center(
+                child: FilledButton.tonal(
+                  onPressed: () => _finish(AttemptTermination.learnerStopped),
+                  child: const Text('Done'),
+                ),
               ),
             ),
     // Still Done, just no longer pressable. Swapping in a spinner for an
     // append and a scheduler decision makes a wait out of something that is
     // not one, and moves the screen while the learner is still looking at it.
-    _Phase.finishing => const Center(
-      child: FilledButton.tonal(onPressed: null, child: Text('Done')),
+    _Phase.finishing => const SizedBox(
+      height: 88,
+      child: Center(
+        child: FilledButton.tonal(onPressed: null, child: Text('Done')),
+      ),
     ),
   };
 }
@@ -860,7 +942,7 @@ class _Question extends StatelessWidget {
         ),
         TextButton(
           onPressed: onKeepPlaying,
-          child: Text(played ? 'Keep playing' : 'Not yet'),
+          child: Text(played ? 'Keep playing' : 'Give me a moment'),
         ),
       ],
     );
@@ -890,30 +972,16 @@ class _TaskStatement extends StatelessWidget {
     return InkWell(
       onTap: () => showTaskHelp(context, exercise),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Flexible(
-                child: Text(
-                  materialName(exercise.material),
-                  style: theme.textTheme.displaySmall,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Icon(
-                  Icons.help_outline,
-                  size: 20,
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+          Text(
+            materialName(exercise.material),
+            style: theme.textTheme.displaySmall,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               HandsIcon(conditions.hands, size: 18),
               const SizedBox(width: 8),
@@ -933,6 +1001,7 @@ class _TaskStatement extends StatelessWidget {
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 6),
           Text(
@@ -940,6 +1009,7 @@ class _TaskStatement extends StatelessWidget {
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),

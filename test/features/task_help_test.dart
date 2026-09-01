@@ -46,12 +46,15 @@ void main() {
     expect(upOnly[1].$2, contains('right hand'));
   });
 
-  test('says the register is free, since the statement no longer does', () {
-    expect(taskHelpRegisterNote, contains('Any octave'));
+  test('says how far the scale runs in the terms this one runs in', () {
     expect(
-      taskHelpEntries(exerciseOf()).map((entry) => entry.$1),
-      isNot(contains(contains('C4'))),
-      reason: 'nothing pins the scale to the octave it happens to be drawn in',
+      taskHelpEntries(exerciseOf(direction: ScaleDirection.up))[3].$2,
+      isNot(contains('turns around')),
+      reason: 'a scale that only goes up never turns around',
+    );
+    expect(
+      taskHelpEntries(exerciseOf(direction: ScaleDirection.upDown))[3].$2,
+      contains('turns around'),
     );
   });
 }

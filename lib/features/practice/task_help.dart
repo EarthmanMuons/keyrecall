@@ -49,7 +49,10 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
     ),
     (
       octavesName(conditions.octaves),
-      'How far the scale runs before it stops or turns around.',
+      switch (conditions.direction) {
+        ScaleDirection.up => 'How far the scale runs before it stops.',
+        ScaleDirection.upDown => 'How far it runs before it turns around.',
+      },
     ),
     (
       '${conditions.tempoBpm.round()} bpm',
@@ -59,14 +62,6 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
     ),
   ];
 }
-
-/// The one thing the statement does not say.
-///
-/// Scoring is register-relative, so a learner who assumed otherwise is holding
-/// a rule the app does not have.
-const String taskHelpRegisterNote =
-    'Any octave counts. Start where your hand falls: playing the whole scale '
-    'higher or lower than it is written is the same scale, and is read as one.';
 
 class _TaskHelp extends StatelessWidget {
   const _TaskHelp(this.exercise);
@@ -89,7 +84,10 @@ class _TaskHelp extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text('What this asks for', style: theme.textTheme.titleLarge),
+                Text(
+                  'What you are practicing',
+                  style: theme.textTheme.titleLarge,
+                ),
                 const SizedBox(height: 16),
                 for (final (term, meaning) in entries) ...[
                   Text(term, style: theme.textTheme.titleMedium),
@@ -102,7 +100,6 @@ class _TaskHelp extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
                 ],
-                Text(taskHelpRegisterNote, style: theme.textTheme.bodyMedium),
               ],
             ),
           ),

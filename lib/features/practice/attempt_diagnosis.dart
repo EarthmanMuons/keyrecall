@@ -170,6 +170,22 @@ class AttemptDiagnosis {
 /// [reading] is the correspondence the closure was made from, which nothing
 /// persists. Without it the channel is still known and the place is not, so a
 /// replayed attempt diagnoses correctly and says less.
+/// What to say about an attempt nothing could be read from.
+///
+/// The reason, said as what happened rather than as a verdict: there is no
+/// performance behind these, so anything about how it went would be invented.
+String unreadableSentence(AttemptClosure closure) =>
+    switch (closure.measurement) {
+      MeasurementUnavailable(:final reason) => switch (reason) {
+        MeasurementUnavailableReason.nothingPlayed =>
+          'Nothing came through, so this one is still waiting for you.',
+        MeasurementUnavailableReason.inputInterrupted =>
+          'The instrument dropped out, so this one could not be read.',
+        _ => 'Recorded.',
+      },
+      _ => 'Recorded.',
+    };
+
 AttemptDiagnosis? diagnose({
   required Exercise exercise,
   required AttemptClosure closure,
