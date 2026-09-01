@@ -15,6 +15,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - `PracticeSession`, the attempt transaction: it persists the decision before
   presenting, commits the outcome as an attempt, and recovers from a run
   interrupted anywhere in that sequence.
+- Reopening a sitting rebuilds the scheduler's recency and realization-family
+  allocation windows from the tail of the journal, so restarting the app does
+  not clear the pacing pressure the work before it built up.
 - `PendingDecision`, the durable record of what was presented but not yet
   answered, deliberately outside the journal.
 - `PracticeStore`, the storage port, with an in-memory implementation and
