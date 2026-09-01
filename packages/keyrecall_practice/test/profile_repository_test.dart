@@ -496,6 +496,27 @@ void main() {
       );
       expect((await repository.list()).single.id, created.id);
     });
+
+    test('a profile stored under another id fails loudly', () async {
+      // The directory name is where the journal is looked up, so a record
+      // naming a different id would list a learner reading somebody else's
+      // history, or none.
+      final repository = FileProfileRepository(root, now: () => t0);
+      final created = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        placement: PlacementTier.someExperience,
+      );
+      final moved = Directory(
+        '${root.path}/3f2a6c18-0000-4000-8000-00000000beef',
+      )..createSync(recursive: true);
+      File(
+        '${root.path}/${created.id}/profile.json',
+      ).renameSync('${moved.path}/profile.json');
+      Directory('${root.path}/${created.id}').deleteSync(recursive: true);
+
+      expect(repository.list(), throwsA(isA<JournalFormatException>()));
+    });
   });
 
   group('with practice storage', () {

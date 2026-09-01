@@ -151,11 +151,20 @@ class FileProfileRepository implements ProfileRepository {
     for (final entry in root.listSync().whereType<Directory>()) {
       final file = File('${entry.path}/profile.json');
       if (!file.existsSync()) continue;
-      profiles.add(
-        Profile.fromJson(
-          asMap(_decode(file, 'profile'), 'profile', location: file.path),
-        ),
+      final profile = Profile.fromJson(
+        asMap(_decode(file, 'profile'), 'profile', location: file.path),
       );
+      // The directory name is where this profile's history is looked up, so a
+      // record naming a different id would list a learner whose journal is
+      // read from somewhere else.
+      final directoryName = entry.path.split(Platform.pathSeparator).last;
+      if (profile.id != directoryName) {
+        throw JournalFormatException(
+          'profile "${profile.id}" is stored in directory "$directoryName"',
+          location: file.path,
+        );
+      }
+      profiles.add(profile);
     }
 
     final selected = indexFile.existsSync()
