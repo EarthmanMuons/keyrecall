@@ -94,10 +94,11 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
 
     final profiles = await repository.list();
     final activeId = (await repository.selected())?.id;
-    return [
+    // Each summary reads one profile's journal, and the reads are independent.
+    return Future.wait([
       for (final profile in profiles)
-        await _summarize(profile, store, isActive: profile.id == activeId),
-    ];
+        _summarize(profile, store, isActive: profile.id == activeId),
+    ]);
   }
 
   /// Adds a profile and practices as it.

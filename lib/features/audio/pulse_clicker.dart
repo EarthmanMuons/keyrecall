@@ -141,6 +141,8 @@ class PulseClicker {
         // engine stop and restart, and every one of those is an audible seam.
         feedThreshold: _chunkFrames ~/ 2,
       );
+      // Before the generation check: a preparation that went stale still
+      // opened the engine, and only _opened tells _stop to release it.
       _opened = true;
       if (generation != _generation) return;
       _ready = true;

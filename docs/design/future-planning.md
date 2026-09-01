@@ -896,6 +896,11 @@ correctness work.
 Not a timing assertion, which would be flaky; a command to run when evaluation
 feels slow, against the figures recorded here.
 
+**Run it before the candidate space grows again.** Contrary motion alone took
+the set from 6,912 to 9,216. Another dimension of material, hand, motion,
+direction, octave, tempo or guidance multiplies rather than adds, and the
+learner waits for a decision between exercises.
+
 ### What the caching pass took, and what it did not
 
 Contrary motion took the candidate set from 6,912 to 9,216, and a decision then
@@ -981,6 +986,20 @@ the model's. Either can be wrong independently.
 Until the slope is measured, generating sub-sixty candidates would ship a
 difficulty axis the model has almost no reason to prefer. The candidate space
 and the coefficient have to move together.
+
+## 4.13 Transcript capture cost
+
+`PerformanceTranscript.appending` copies the whole note list per note, so
+recording n notes copies O(n^2) elements, and each one publishes new Riverpod
+state that repaints the staff.
+
+Deliberately not addressed. A scale is tens of notes, the copying is of a small
+list of immutable values, and the repaint per note is what makes the staff live.
+Both costs are what an attempt is for.
+
+The measurement that would change this is a profile of a real attempt, not the
+shape of the loop. Worth taking if a longer form than a scale is ever recorded
+as one transcript, or if the staff drops frames while somebody plays.
 
 ## 5. Domain expansion
 
