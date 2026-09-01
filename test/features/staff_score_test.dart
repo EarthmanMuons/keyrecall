@@ -258,22 +258,34 @@ void main() {
 
       expect(
         [for (final measure in empty.measures) measure.elements.length],
-        [4, 4, 4, 4],
+        [8, 8],
       );
       expect(
         [for (final measure in started.measures) measure.elements.length],
-        [4, 4, 4, 4],
+        [8, 8],
         reason: 'the notes land in the staff rather than stretching it',
       );
       expect(notesOf(started), hasLength(3));
       expect(reservedIds(started), hasLength(13));
     });
 
+    test('is written in the values the exercise was written in', () {
+      final notes = notesOf(transcriptOf(3, reserve: 15));
+
+      expect(
+        notes.map((note) => note.duration).toSet(),
+        {crisp.NoteDuration.eighth},
+        reason:
+            'this staff stands where the cue stood, so it is written at the '
+            'same size on the page',
+      );
+    });
+
     test('gives an extra bar to somebody who plays past the exercise', () {
-      expect(transcriptOf(17, reserve: 15).measures, hasLength(5));
+      expect(transcriptOf(17, reserve: 15).measures, hasLength(3));
       expect(
         reservedIds(transcriptOf(17, reserve: 15)),
-        hasLength(3),
+        hasLength(7),
         reason: 'the bar the extra notes opened is held to the end',
       );
     });

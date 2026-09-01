@@ -23,9 +23,6 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// Eighth notes in a bar of 4/4, which is the unit the bars are packed in.
 const int _eighthsPerMeasure = 8;
 
-/// Quarter notes in a bar, for the transcript, which writes one note a beat.
-const int _beatsPerMeasure = 4;
-
 /// How many eighths [duration] takes up.
 int _eighthsIn(crisp.NoteDuration duration) {
   final (numerator, denominator) = duration.fraction;
@@ -290,8 +287,11 @@ Set<String> reservedIds(crisp.Score score) => {
 ///
 /// Not a rhythmic transcription. Each note gets the same value and the same
 /// space, because nothing here has decided what a beat was, let alone whether
-/// a note fell on one. Bars are there to keep long attempts readable, not to
-/// claim a meter.
+/// a note fell on one. Eighths, and bars of eight, because that is how the
+/// exercise was written and this staff stands where that one stood; the value
+/// is a size on the page rather than a claim about when anything was played.
+/// Nothing lengthens at the end either: what arrived last is only the last
+/// thing so far.
 ///
 /// Nothing is placed in an expected position, left out, or marked, so the
 /// staff says only "this is what arrived".
@@ -304,7 +304,7 @@ crisp.Score transcriptScoreFor(
     for (final note in transcript.notes)
       crisp.NoteElement.note(
         _pitchOf(note.pitch),
-        crisp.NoteDuration.quarter,
+        crisp.NoteDuration.eighth,
         showAccidental: note.pitch.alteration != 0 ? true : null,
         id: transcriptElementId(note.sequence),
       ),
@@ -317,12 +317,13 @@ crisp.Score transcriptScoreFor(
   // note's width.
   final slots = played.length > reserve ? played.length : reserve;
   final held =
-      (slots / _beatsPerMeasure).ceil().clamp(1, slots + 1) * _beatsPerMeasure;
+      (slots / _eighthsPerMeasure).ceil().clamp(1, slots + 1) *
+      _eighthsPerMeasure;
   final elements = <crisp.MusicElement>[
     ...played,
     for (var index = played.length; index < held; index++)
       crisp.RestElement(
-        crisp.NoteDuration.quarter,
+        crisp.NoteDuration.eighth,
         id: reservedElementId(index),
       ),
   ];
@@ -332,11 +333,11 @@ crisp.Score transcriptScoreFor(
     keySignature: _noKeySignature,
     timeSignature: _fourFour,
     measures: [
-      for (var start = 0; start < elements.length; start += _beatsPerMeasure)
+      for (var start = 0; start < elements.length; start += _eighthsPerMeasure)
         crisp.Measure(
           elements.sublist(
             start,
-            (start + _beatsPerMeasure).clamp(0, elements.length),
+            (start + _eighthsPerMeasure).clamp(0, elements.length),
           ),
         ),
     ],
