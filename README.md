@@ -1,4 +1,8 @@
-# KeyRecall
+<p align="center">
+  <img width="200" src="assets/icon/keyrecall-logo.webp" alt="KeyRecall logo">
+</p>
+
+<h1 align="center">KeyRecall</h1>
 
 KeyRecall is an adaptive practice partner for piano technique. Connect a MIDI
 keyboard, play the scale it gives you, and it decides what you play next: which

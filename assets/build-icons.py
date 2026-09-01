@@ -20,9 +20,10 @@ Three placements, three different fits:
   adaptive  Android. Bound by the mark's DIAGONAL against the 66dp safe circle,
             not its width -- full-bleed would put the corners 77% past it.
 
-  badge     UI. Also diagonal-bound, but against a drawn circle. Uses the mark's
-            true circumscribed radius (25.73) rather than half the bbox diagonal
-            (26.28), since the 1.35 key corner radius pulls the extreme points in.
+  badge     UI and the README. Also diagonal-bound, but against a drawn circle.
+            Uses the mark's true circumscribed radius (25.73) rather than half
+            the bbox diagonal (26.28), since the 1.35 key corner radius pulls
+            the extreme points in.
 """
 
 from __future__ import annotations
@@ -197,30 +198,34 @@ WRAPS = {"square": wrap_square, "adaptive": wrap_adaptive, "badge": wrap_badge}
 
 TARGETS = [
     # --- iOS. Opaque, square, no pre-rounded corners; iOS masks and (26+) glasses it.
-    # default name (image_path): assets/icon/icon.png
+    # flutter_launcher_icons: image_path / image_path_android / image_path_ios
     Target("icon.png", "brand", px=1024, bg=BRAND_BG, wrap="square"),
     # iOS 18+ dark variant. Apple recommends transparent here.
-    # default name (image_path_ios_dark_transparent): assets/icon/icon_dark.png
-    Target("icon_dark.png", "brand", px=1024, wrap="square"),
+    # flutter_launcher_icons: image_path_ios_dark_transparent
+    Target("icon-dark.png", "brand", px=1024, wrap="square"),
     # iOS 18+ tinted (and iOS 26 clear) variant. Apple wants an opaque
     # GRAYSCALE image here and maps its luminance onto the system tint ramp, so
     # the background has to be black: a mid-grey one tints to a filled light
     # tile, which is the opposite of the dark-tile-with-light-glyph the rest of
     # the home screen shows. The mark is already achromatic, so no separate
     # desaturation pass is needed.
-    # default name (image_path_ios_tinted_grayscale): assets/icon/icon_tinted.png
-    Target("icon_tinted.png", "brand", px=1024, bg="#000000", wrap="square"),
+    # flutter_launcher_icons: image_path_ios_tinted_grayscale
+    Target("icon-tinted.png", "brand", px=1024, bg="#000000", wrap="square"),
     # --- Android adaptive. Flat mark: the launcher applies its own elevation,
     # and baked shadow spread falls outside the safe circle.
-    # default name (adaptive_icon_foreground): assets/icon/foreground.png
+    # flutter_launcher_icons: adaptive_icon_foreground
     Target("foreground.png", "flat", px=432, wrap="adaptive"),
-    # default name (adaptive_icon_monochrome): assets/icon/monochrome.png
+    # flutter_launcher_icons: adaptive_icon_monochrome
     Target("monochrome.png", "flat", px=432, wrap="adaptive", punch=True),
-    # --- Store listing. No default name in flutter_launcher_icons; kept custom.
-    Target("playstore.png", "brand", px=512, bg=BRAND_BG, wrap="square"),
+    # --- Store listing. Not consumed by flutter_launcher_icons.
+    Target("play-store.png", "brand", px=512, bg=BRAND_BG, wrap="square"),
     # --- In-app UI. Vector, tokens left intact so the circle can be themed at
     # runtime via --kr-badge / --kr-key / --kr-sharp.
     Target("keyrecall-badge.svg", "brand", fmt="svg", wrap="badge", bake_tokens=False),
+    # --- README. 200px to match the WhatChord logo, so the two repositories
+    # present at the same size. Transparent, because GitHub renders it against
+    # both themes.
+    Target("keyrecall-logo.webp", "brand", fmt="webp", px=200, wrap="badge"),
 ]
 
 
@@ -229,8 +234,10 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    if not args.dry_run and not shutil.which("inkscape"):
-        print("error: inkscape not on PATH", file=sys.stderr)
+    needed = ["inkscape"] + (["cwebp"] if any(t.fmt == "webp" for t in TARGETS) else [])
+    missing = [tool for tool in needed if not shutil.which(tool)]
+    if not args.dry_run and missing:
+        print(f"error: not on PATH: {', '.join(missing)}", file=sys.stderr)
         return 1
 
     if BUILD.exists():
@@ -251,8 +258,11 @@ def main() -> int:
             print(f"  {t.name:26} vector    tokens kept   {t.source}")
             continue
 
-        stage = TMP / (t.name[:-4] + ".svg")
+        stem = t.name.rsplit(".", 1)[0]
+        stage = TMP / (stem + ".svg")
         stage.write_text(svg)
+        # Inkscape rasterizes; WebP goes through a PNG it does not keep.
+        png = (TMP if t.fmt == "webp" else BUILD) / (stem + ".png")
         cmd = [
             "inkscape",
             str(stage),
@@ -260,14 +270,22 @@ def main() -> int:
             "--export-area-page",
             f"--export-width={t.px}",
             f"--export-height={t.px}",
-            f"--export-filename={BUILD / t.name}",
+            f"--export-filename={png}",
         ]
         if t.bg:
             cmd += [f"--export-background={t.bg}", "--export-background-opacity=255"]
+        # Lossless: the mark is flat fills and one gradient, which cwebp's
+        # lossless mode encodes smaller than quality 90 and without ringing
+        # around the key edges.
+        webp = ["cwebp", "-lossless", "-quiet", str(png), "-o", str(BUILD / t.name)]
         if args.dry_run:
             print(" ".join(cmd))
+            if t.fmt == "webp":
+                print(" ".join(webp))
         else:
             subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL)
+            if t.fmt == "webp":
+                subprocess.run(webp, check=True)
             print(
                 f"  {t.name:26} {t.px}px     bg={t.bg or 'transparent':<12} {t.source}"
             )
