@@ -1040,10 +1040,10 @@ class _Question extends StatelessWidget {
 /// What was asked for. Visible at every rung, because it is the task rather
 /// than a cue.
 ///
-/// Ranked rather than listed. The scale is what the task *is*; the hand and
-/// the shape of the traversal are how to play it; the tempo is a constraint on
-/// it. Four equally weighted boxes would say those matter equally, and a
-/// learner glancing up mid-position needs the identity first.
+/// Ranked rather than listed. The scale is what the task *is*, the hand is who
+/// plays it, and the shape and the tempo are how. Three equally weighted boxes
+/// would say those matter equally, and a learner glancing up mid-position
+/// needs the identity first.
 ///
 /// Tapping it explains it. The terms are the app's whole vocabulary, and the
 /// place somebody wonders what one means is the line it is written on.
@@ -1083,18 +1083,14 @@ class _TaskStatement extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 2),
+          // One line, the same one the bar carries during the attempt. The
+          // tempo had a line to itself for its own rank in the task, and what
+          // that cost was a line of music.
           Text(
             '${directionName(conditions.direction)} · '
-            '${octavesName(conditions.octaves)}',
-            style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 6),
-          Text(
+            '${octavesName(conditions.octaves)} · '
             '${conditions.tempoBpm.round()} bpm',
-            style: theme.textTheme.bodyMedium?.copyWith(
+            style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,
