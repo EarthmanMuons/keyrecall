@@ -18,7 +18,10 @@ import 'technical_material.dart';
 /// them admissible at once, and it should not stop the scheduler using easier
 /// related material that prepares for them.
 ///
-/// V1 has one goal, general fluency over the whole catalog.
+/// V1 runs one goal, general fluency over the whole catalog. A scoped goal is
+/// expressible so analysis can construct one, and `PracticeSession.open`
+/// refuses to run it: scoping the catalog reaches a slot that admits nothing,
+/// which `docs/design/future-planning.md` section 4.9 records.
 @immutable
 class PracticeGoal {
   /// What this goal is called.
@@ -42,6 +45,12 @@ class PracticeGoal {
   static const PracticeGoal generalFluency = PracticeGoal._(
     id: 'GENERAL_FLUENCY',
   );
+
+  /// Whether this goal names an explicit material scope.
+  ///
+  /// About the goal, not about any catalog it is applied to: a goal listing
+  /// every material is scoped, and narrows nothing.
+  bool get isScoped => targetMaterialIds != null;
 
   /// Whether [material] is in scope.
   bool includes(TechnicalMaterial material) =>

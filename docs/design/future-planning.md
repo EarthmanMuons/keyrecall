@@ -789,7 +789,8 @@ that span - which is also what supplies the entry tempo.
 ## 4.9 A sitting with nothing to offer
 
 `_NothingToPlay` is an error state, and simulation established that catalog
-breadth is the only thing currently keeping it off the screen.
+breadth is the only thing that keeps it off the screen. `PracticeSession.open`
+refuses a scoped goal for that reason.
 
 A learner who fails most of what they are given has each material walked toward
 support by recovery. Cued attempts never observe retrieval, so nothing
@@ -799,13 +800,18 @@ slot eleven and in three quarters of runs within a hundred and twenty slots;
 over the shipped forty-eight it never happens, at three times the length of a
 sweep. So breadth is an escape rather than a delay.
 
-That makes it a live path rather than a stress fixture, because
-`PracticeGoal.scopeOf` narrows the catalog to `targetMaterialIds`. A goal aimed
-at a handful of scales recreates the narrow catalog exactly. Before goals ship,
-this needs a principled floor: something a learner in that state can always be
-offered, which today's eight admission mechanisms between them do not guarantee.
+It is a live path rather than a stress fixture, because `PracticeGoal.scopeOf`
+narrows the catalog to `targetMaterialIds` and a goal aimed at a handful of
+scales recreates the narrow catalog exactly. Goals are therefore expressible but
+not runnable: `PracticeSession.open` throws for a scoped goal.
 
-Pinned in `keyrecall_simulation/test/sitting_ran_dry_test.dart`.
+Shipping goals means lifting that refusal, which needs a principled floor first:
+something a learner in that state can always be offered, which today's eight
+admission mechanisms between them do not guarantee.
+
+Pinned in `keyrecall_simulation/test/sitting_ran_dry_test.dart`, and the true
+beginner's invariant stays skipped in `trajectory_invariants_test.dart` until
+the floor exists.
 
 ## 4.10 Spend the slot after coordination is earned
 

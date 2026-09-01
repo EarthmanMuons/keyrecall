@@ -51,10 +51,9 @@ void main() {
   });
 
   test('so a goal that narrows the catalog can reach it', () {
-    // Not a stress fixture, then, but a live path: PracticeGoal.scopeOf cuts
-    // the catalog to targetMaterialIds, and a goal aimed at a handful of
-    // scales reproduces the condition the narrow catalog reaches. Breadth is
-    // what is currently keeping the error state off the screen.
+    // Why PracticeSession.open refuses a scoped goal: PracticeGoal.scopeOf
+    // cuts the catalog to targetMaterialIds, and a goal aimed at a handful of
+    // scales reproduces the condition the narrow catalog reaches.
     final goal = PracticeGoal(
       id: 'FIVE_SCALES',
       targetMaterialIds: {

@@ -140,7 +140,13 @@ class PracticeSession {
   /// than from whoever opened the session.
   ///
   /// [goal] narrows the material under consideration, and defaults to all of
-  /// it.
+  /// it. A scoped goal is refused: a narrowed catalog reaches a slot that
+  /// admits nothing, which `docs/design/future-planning.md` section 4.9
+  /// records and `sitting_ran_dry_test.dart` reproduces. Solving that
+  /// exhaustion is part of shipping goals rather than work general fluency
+  /// needs.
+  ///
+  /// Throws [UnsupportedError] for a scoped [goal].
   static Future<PracticeSession> open({
     required PracticeStore store,
     required Profile profile,
@@ -153,6 +159,13 @@ class PracticeSession {
     String? appBuildVersion,
     IdGenerator? nextId,
   }) async {
+    if (goal.isScoped) {
+      throw UnsupportedError(
+        'goal ${goal.id} names an explicit material scope, which the '
+        'scheduler can exhaust',
+      );
+    }
+
     final resolvedPipeline = pipeline ?? SchedulerPipeline(learner: learner);
     final generator = nextId ?? newProfileId;
     final journal = await store.loadJournal(

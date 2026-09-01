@@ -23,9 +23,9 @@ void main() {
   /// so removing an entry is the visible act of claiming it is fixed.
   const known = {
     'true_beginner':
-        'sitting_ran_dry on the narrow catalog only, and reachable in '
-        'production through a goal that scopes it. Pinned in '
-        'sitting_ran_dry_test.dart',
+        'sitting_ran_dry on the narrow catalog only. Out of reach in '
+        'production while PracticeSession.open refuses a scoped goal, and a '
+        'blocker for shipping goals. Pinned in sitting_ran_dry_test.dart',
   };
 
   for (final player in PlayerArchetypes.all) {
