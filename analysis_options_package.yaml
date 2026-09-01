@@ -1,0 +1,24 @@
+# The analyzer baseline every workspace package shares.
+#
+# The exclude block is here because Flutter tooling writes one into any
+# analysis options file that lacks it, which is how the per-package baselines
+# drifted apart before.
+
+analyzer:
+  exclude:
+    - build/**
+    - android/**
+    - ios/**
+    - web/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    discarded_futures: true
+    prefer_final_in_for_each: true
+    prefer_final_locals: true
+    unawaited_futures: true
