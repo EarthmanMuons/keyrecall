@@ -6,6 +6,8 @@ import 'package:keyrecall/features/practice/fingering.dart';
 import 'package:keyrecall/features/practice/staff_score.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   Exercise exerciseOf({
     String tonic = 'C',
     ScaleForm form = ScaleForm.major,
@@ -306,6 +308,41 @@ void main() {
 
     test('reserves nothing it was not asked to', () {
       expect(transcriptOf(0).measures, hasLength(1));
+    });
+  });
+
+  group('how many bars a system takes', () {
+    setUpAll(() => crisp.MusicFonts.load(crisp.MusicFont.bravura));
+
+    crisp.Score scaleOf({int octaves = 1}) => staffScoreFor(
+      realize(exerciseOf(octaves: octaves, direction: ScaleDirection.upDown)),
+      Hand.right,
+    );
+
+    test('a phone held upright gets one bar of eighths', () {
+      // An iPhone's width less the gutters the practice screen keeps.
+      const width = 345.0;
+      final score = scaleOf();
+
+      expect(barsPerSystem(score, width: width, minimumStaffSpace: 9), 1);
+      expect(
+        fittedStaffSpace(rowsOf(score, measuresPerRow: 1), width: width),
+        greaterThan(
+          fittedStaffSpace(rowsOf(score, measuresPerRow: 2), width: width)!,
+        ),
+        reason: 'the bar it gives up is the size the notes gain',
+      );
+    });
+
+    test('a wider pane keeps two', () {
+      expect(
+        barsPerSystem(scaleOf(), width: 520, minimumStaffSpace: 9),
+        greaterThan(1),
+      );
+    });
+
+    test('a system never falls below one bar', () {
+      expect(barsPerSystem(scaleOf(), width: 40, minimumStaffSpace: 9), 1);
     });
   });
 

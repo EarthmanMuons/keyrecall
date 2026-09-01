@@ -148,6 +148,32 @@ List<crisp.Score> rowsOf(crisp.Score score, {int measuresPerRow = 2}) => [
     ),
 ];
 
+/// The most bars one system can hold before the notes stop being legible.
+///
+/// Measured rather than looked up. What decides it is the width a bar of this
+/// score actually lays out at, which already accounts for how many notes are
+/// in it, how wide their accidentals are and what is written over them, so a
+/// scale in eighths takes fewer bars to the line than one in quarters without
+/// anything here being told about note values.
+///
+/// [minimumStaffSpace] is the floor a note is still worth reading at, and
+/// [cap] is as many bars as a system is ever given however wide the window is.
+int barsPerSystem(
+  crisp.Score score, {
+  required double width,
+  required double minimumStaffSpace,
+  int cap = 4,
+}) {
+  for (var bars = cap; bars > 1; bars--) {
+    final space = fittedStaffSpace(
+      rowsOf(score, measuresPerRow: bars),
+      width: width,
+    );
+    if (space != null && space >= minimumStaffSpace) return bars;
+  }
+  return 1;
+}
+
 /// The pixels per staff space at which [rows] fill [width].
 ///
 /// Read off the widest row so every row fits, and shared by all of them so a
@@ -214,20 +240,13 @@ crisp.GrandStaff grandStaffFor(
   ),
 );
 
-/// The grand staff broken into rows of [measuresPerRow] bars.
+/// [whole] broken into rows of [measuresPerRow] bars.
 ///
 /// Rows restate the clefs, which is what a new system does anyway.
-List<crisp.GrandStaff> grandStaffRowsFor(
-  ExerciseRealization realization, {
-  Map<Hand, List<int?>?> fingering = const {},
+List<crisp.GrandStaff> rowsOfGrandStaff(
+  crisp.GrandStaff whole, {
   int measuresPerRow = 2,
-  crisp.KeySignature? keySignature,
 }) {
-  final whole = grandStaffFor(
-    realization,
-    fingering: fingering,
-    keySignature: keySignature,
-  );
   final rows = <crisp.GrandStaff>[];
 
   for (
@@ -244,6 +263,25 @@ List<crisp.GrandStaff> grandStaffRowsFor(
     );
   }
   return rows;
+}
+
+/// The most bars a braced system can hold and stay legible.
+///
+/// [barsPerSystem], for two staves under a brace.
+int barsPerBracedSystem(
+  crisp.GrandStaff whole, {
+  required double width,
+  required double minimumStaffSpace,
+  int cap = 4,
+}) {
+  for (var bars = cap; bars > 1; bars--) {
+    final space = fittedGrandStaffSpace(
+      rowsOfGrandStaff(whole, measuresPerRow: bars),
+      width: width,
+    );
+    if (space != null && space >= minimumStaffSpace) return bars;
+  }
+  return 1;
 }
 
 /// The first [count] bars of [score], for a staff that is not drawing all of

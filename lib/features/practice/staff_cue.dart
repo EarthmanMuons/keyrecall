@@ -22,6 +22,14 @@ const double _fallbackStaffSpace = 7;
 const double _minimumStaffSpace = 5;
 const double _maximumStaffSpace = 16;
 
+/// The size a note is still comfortably read at, which is what decides how
+/// many bars a system is given.
+///
+/// Above [_minimumStaffSpace], which is where a staff stops being drawn any
+/// smaller whatever it costs. This one is where it stops being worth reading,
+/// so a system that would fall below it gives up a bar instead.
+const double _readableStaffSpace = 9;
+
 /// Rows of one staff, drawn as large as the width allows.
 ///
 /// Two bars to a row, and the same size on every row. A renderer packing
@@ -55,12 +63,23 @@ class FittedStaff extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final rows = rowsOf(score);
-    final measured = sizing == null ? rows : rowsOf(sizing!);
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Measured against everything the staff will hold, so the system it
+        // settles on is the one the whole exercise reads at rather than the
+        // one whatever is on screen so far happens to allow.
+        final whole = sizing ?? score;
+        final bars = barsPerSystem(
+          whole,
+          width: constraints.maxWidth,
+          minimumStaffSpace: _readableStaffSpace,
+        );
+        final rows = rowsOf(score, measuresPerRow: bars);
         final space = _spaceFor(
-          fittedStaffSpace(measured, width: constraints.maxWidth),
+          fittedStaffSpace(
+            rowsOf(whole, measuresPerRow: bars),
+            width: constraints.maxWidth,
+          ),
         );
         return Column(
           children: [
@@ -84,14 +103,26 @@ class FittedStaff extends StatelessWidget {
 
 /// Rows of a braced grand staff, drawn as large as the width allows.
 class FittedGrandStaff extends StatelessWidget {
-  const FittedGrandStaff({required this.rows, required this.theme, super.key});
+  const FittedGrandStaff({
+    required this.grandStaff,
+    required this.theme,
+    super.key,
+  });
 
-  final List<crisp.GrandStaff> rows;
+  final crisp.GrandStaff grandStaff;
   final crisp.CrispNotationTheme theme;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      final rows = rowsOfGrandStaff(
+        grandStaff,
+        measuresPerRow: barsPerBracedSystem(
+          grandStaff,
+          width: constraints.maxWidth,
+          minimumStaffSpace: _readableStaffSpace,
+        ),
+      );
       final space = _spaceFor(
         fittedGrandStaffSpace(rows, width: constraints.maxWidth),
       );
@@ -166,7 +197,7 @@ class StaffCue extends StatelessWidget {
 
     if (realization.hands.length > 1) {
       return FittedGrandStaff(
-        rows: grandStaffRowsFor(
+        grandStaff: grandStaffFor(
           realization,
           fingering: {
             if (showsFingering)
