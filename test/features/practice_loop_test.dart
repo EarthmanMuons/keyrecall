@@ -214,27 +214,6 @@ void main() {
       },
     );
 
-    test('can be abandoned, recording nothing', () async {
-      final crashed = launch();
-      await place(crashed);
-      await loopOf(crashed);
-      crashed.dispose();
-
-      final container = launch();
-      await place(container);
-      await loopOf(container);
-      await container.read(practiceLoopProvider.notifier).abandonPending();
-      final resolved = container.read(practiceLoopProvider).value!;
-
-      expect(resolved.pending, isNull);
-      expect(
-        resolved.attemptsRecorded,
-        0,
-        reason: 'nothing observed an outcome, so history claims none',
-      );
-      expect(resolved.presented, isNotNull);
-    });
-
     test('is never answered twice, whatever the relaunch finds', () async {
       // A commit is followed immediately by the next decision, so a relaunch
       // here finds that new decision pending. What must not happen is the

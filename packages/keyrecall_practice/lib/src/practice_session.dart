@@ -514,8 +514,11 @@ class PracticeSession {
 
   /// Discards an unresolved decision without recording anything.
   ///
-  /// The honest response to an interrupted attempt nobody observed. It moved no
-  /// state and produced no evidence, so history should not claim otherwise.
+  /// Costs nothing and recovers nothing: the decision moved no state and wrote
+  /// no evidence, and the sitting's own state is rebuilt from the journal, so
+  /// an abandoned slot leaves no trace to clean up. Presenting the decision
+  /// again is the better answer wherever the exercise can still be played,
+  /// which is why the app does that instead.
   Future<void> abandonPending() async {
     await store.clearPendingDecision(profile.id);
     _pending = null;

@@ -331,14 +331,16 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       materials: allScales,
     );
 
-    // An unresolved decision is not quietly discarded and not quietly
-    // answered. It was shown to someone; only a person can say what happened.
+    // An unresolved decision is presented again rather than discarded. It was
+    // shown to someone under an attempt id that is already durable, and
+    // playing it closes that same attempt: nothing here has to invent what
+    // happened, and nothing has to throw the slot away.
     if (session.pending != null) {
       return PracticeLoopState(
         profile: profile,
         session: session,
         pending: session.pending,
-        note: 'an attempt from an earlier run was never answered',
+        note: 'resuming an attempt an earlier run never closed',
       );
     }
     return _decide(PracticeLoopState(profile: profile, session: session));
@@ -438,31 +440,6 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             session: current.session,
             lastCommitted: closed.record,
             lastReading: closed.reading,
-          ),
-        );
-      });
-    } finally {
-      _writing = false;
-    }
-  }
-
-  /// Discards an unresolved decision without recording anything.
-  ///
-  /// Single-flight for the same reason [finish] is.
-  Future<void> abandonPending() async {
-    final current = state.value;
-    if (_writing || current?.pending == null) return;
-
-    _writing = true;
-    state = const AsyncValue.loading();
-    try {
-      state = await AsyncValue.guard(() async {
-        await current!.session.abandonPending();
-        return _decide(
-          PracticeLoopState(
-            profile: current.profile,
-            session: current.session,
-            note: 'the unanswered attempt was abandoned, recording nothing',
           ),
         );
       });

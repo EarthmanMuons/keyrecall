@@ -18,9 +18,11 @@ Nothing the session keeps moves until the attempt is history. The ordering
 exists to prevent three specific failures.
 
 **A crash after presenting** leaves a decision with no outcome. On the next
-`open` it surfaces as `pending`, and the caller resolves it explicitly: commit a
-real outcome, or `abandonPending()`. Nothing invents an outcome, because nothing
-observed one. An abandoned attempt moves no state and leaves no evidence, so
+`open` it surfaces as `pending`, and the caller resolves it explicitly rather
+than having one invented: present it again and close it from what is played, or
+`abandonPending()` where it cannot be presented. The attempt id was durable
+before the exercise was shown, so a resumed attempt lands in history under the
+id it was given. An abandoned one moves no state and leaves no evidence, so
 history does not claim it happened.
 
 **A crash during commit** is safe in either order it can fail. The attempt id is
@@ -57,19 +59,19 @@ final session = await PracticeSession.open(
   materials: v1ScaleCatalog,
 );
 
-if (session.pending != null) {
-  // The last run showed an exercise and never recorded what happened.
-  await session.abandonPending();
-}
-
-final presented = await session.decide(at: DateTime.now().toUtc());
-if (presented == null) {
+// A pending decision is one the last run showed and never closed. Present it
+// again rather than deciding past it: closing it writes the attempt under the
+// id it already has.
+final exercise =
+    session.pending?.exercise ??
+    (await session.decide(at: DateTime.now().toUtc()))?.exercise;
+if (exercise == null) {
   // Nothing was admitted. A real outcome, not an error: the slot is used
   // and no attempt is recorded.
   return;
 }
 
-// ... present presented.exercise, collect what happened ...
+// ... present exercise, collect what happened ...
 
 await session.closeFromPerformance(transcript);
 await session.saveCheckpoint(); // optional; only ever saves replay time

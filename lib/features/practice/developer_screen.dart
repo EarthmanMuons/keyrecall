@@ -2,7 +2,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
-import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../input/input.dart';
@@ -48,36 +47,33 @@ class _Loop extends ConsumerWidget {
   final PracticeLoopState loop;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final notifier = ref.read(practiceLoopProvider.notifier);
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        _Section(
-          title: 'Profile',
-          children: [
-            _Field('name', loop.profile.displayName),
-            _Field('id', loop.profile.id),
-            _Field('attempts recorded', '${loop.attemptsRecorded}'),
-            _Field('session', loop.session.sessionId),
+  Widget build(BuildContext context, WidgetRef ref) => ListView(
+    padding: const EdgeInsets.all(16),
+    children: [
+      _Section(
+        title: 'Profile',
+        children: [
+          _Field('name', loop.profile.displayName),
+          _Field('id', loop.profile.id),
+          _Field('attempts recorded', '${loop.attemptsRecorded}'),
+          _Field('session', loop.session.sessionId),
+          // A decision an earlier run persisted and never closed. The practice
+          // screen presents it like any other, under this same id, so it is
+          // reported here rather than being something to resolve.
+          if (loop.pending case final pending?) ...[
+            _Field('resumed attempt', pending.attemptId),
+            _Field('decided at', '${pending.decidedAt.toLocal()}'),
           ],
-        ),
-        if (loop.pending != null)
-          _PendingBanner(
-            pending: loop.pending!,
-            onAbandon: notifier.abandonPending,
-          ),
-        if (loop.note != null && loop.pending == null)
-          _Section(title: 'Note', children: [Text(loop.note!)]),
-        if (loop.presented != null)
-          _PredictionPanel(loop.presented!.prediction),
-        const _InputPanel(),
-        if (loop.lastCommitted != null) _CommittedPanel(loop.lastCommitted!),
-        const _Tools(),
-      ],
-    );
-  }
+        ],
+      ),
+      if (loop.note != null)
+        _Section(title: 'Note', children: [Text(loop.note!)]),
+      if (loop.presented != null) _PredictionPanel(loop.presented!.prediction),
+      const _InputPanel(),
+      if (loop.lastCommitted != null) _CommittedPanel(loop.lastCommitted!),
+      const _Tools(),
+    ],
+  );
 }
 
 class _PredictionPanel extends StatelessWidget {
@@ -97,34 +93,6 @@ class _PredictionPanel extends StatelessWidget {
   );
 
   static String _p(double value) => '${(value * 100).toStringAsFixed(1)}%';
-}
-
-class _PendingBanner extends StatelessWidget {
-  const _PendingBanner({required this.pending, required this.onAbandon});
-
-  final PendingDecision pending;
-  final Future<void> Function() onAbandon;
-
-  @override
-  Widget build(BuildContext context) => _Section(
-    title: 'Unanswered attempt',
-    tone: Theme.of(context).colorScheme.errorContainer,
-    children: [
-      const Text(
-        'An earlier run showed this exercise and never recorded what '
-        'happened. Play it on the practice screen, or abandon it and record '
-        'nothing.',
-      ),
-      const SizedBox(height: 8),
-      _Field('attempt', pending.attemptId),
-      _Field('decided at', '${pending.decidedAt.toLocal()}'),
-      const SizedBox(height: 8),
-      OutlinedButton(
-        onPressed: onAbandon,
-        child: const Text('Abandon, recording nothing'),
-      ),
-    ],
-  );
 }
 
 class _CommittedPanel extends StatelessWidget {
@@ -304,15 +272,13 @@ class _Tool extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.children, this.tone});
+  const _Section({required this.title, required this.children});
 
   final String title;
   final List<Widget> children;
-  final Color? tone;
 
   @override
   Widget build(BuildContext context) => Card(
-    color: tone,
     margin: const EdgeInsets.only(bottom: 16),
     child: Padding(
       padding: const EdgeInsets.all(16),
