@@ -138,7 +138,7 @@ class _PreviewState extends State<_Preview> {
         exercise: exercise,
         presentation: presentation,
         // Fabricated cases record nothing, so finishing one just leaves.
-        onFinish: () async {
+        onFinish: (_) async {
           if (!context.mounted) return;
           Navigator.of(context).pop();
         },

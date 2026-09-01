@@ -308,7 +308,7 @@ class _TimingCalibrationScreenState
         body: AttemptView(
           key: ValueKey(position),
           exercise: cell.exercise,
-          onFinish: () => _finish(position, cell),
+          onFinish: (_) => _finish(position, cell),
         ),
       );
     }

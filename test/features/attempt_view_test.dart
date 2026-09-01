@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
@@ -24,7 +25,7 @@ void main() {
   );
 
   /// Pumps one attempt and returns how many times it was finished.
-  Future<List<void>> pumpAttempt(
+  Future<List<AttemptTermination>> pumpAttempt(
     WidgetTester tester,
     GuidanceContext guidance, {
     PresentationConditions? presentation,
@@ -33,7 +34,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final finished = <void>[];
+    final finished = <AttemptTermination>[];
     await tester.pumpWidget(
       ProviderScope(
         overrides: [syntheticInstrument],
@@ -45,7 +46,7 @@ void main() {
               key: ValueKey(guidance.independence),
               exercise: exerciseUnder(guidance),
               presentation: presentation,
-              onFinish: () async => finished.add(null),
+              onFinish: (termination) async => finished.add(termination),
             ),
           ),
         ),
@@ -427,7 +428,7 @@ void main() {
             body: AttemptView(
               key: key,
               exercise: exerciseUnder(GuidanceContext.unguided),
-              onFinish: () async {},
+              onFinish: (_) async {},
               onDecline: () async {},
             ),
           ),
@@ -453,5 +454,85 @@ void main() {
           'those notes belong to the attempt that recorded them, and this '
           'screen can be asked about its own before it has played any',
     );
+  });
+
+  group('an attempt nobody is playing', () {
+    /// Plays the first few notes of the exercise, whatever it asks for.
+    void playSomething(WidgetTester tester) {
+      final realization = realize(exerciseUnder(GuidanceContext.unguided));
+      ProviderScope.containerOf(tester.element(find.byType(AttemptView)))
+          .read(demoInputProvider.notifier)
+          .playSequence([
+            for (final moment in realization.moments.take(3))
+              moment.noteFor(Hand.right)!.midiNote,
+          ], tempo: DemoInputTempo.brisk);
+    }
+
+    testWidgets('asks after the playing stops, and takes it back', (
+      tester,
+    ) async {
+      await pumpAttempt(tester, GuidanceContext.unguided);
+      await readyAndCountIn(tester);
+      playSomething(tester);
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text('Finished?'), findsNothing);
+
+      // A bar of silence at 80 bpm, and one more tick for the window to be
+      // read.
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('Finished?'), findsOneWidget);
+
+      playSomething(tester);
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        find.text('Finished?'),
+        findsNothing,
+        reason: 'playing again answers the question',
+      );
+    });
+
+    testWidgets('waits longer when nothing has been played at all', (
+      tester,
+    ) async {
+      await pumpAttempt(tester, GuidanceContext.unguided);
+      await readyAndCountIn(tester);
+
+      await tester.pump(const Duration(seconds: 5));
+      expect(
+        find.text('Still there?'),
+        findsNothing,
+        reason: 'getting hands to the keys is not being away from them',
+      );
+
+      await tester.pump(const Duration(seconds: 10));
+      expect(find.text('Still there?'), findsOneWidget);
+    });
+
+    testWidgets('closes itself once the silence is an abandonment', (
+      tester,
+    ) async {
+      final finished = await pumpAttempt(tester, GuidanceContext.unguided);
+      await readyAndCountIn(tester);
+      playSomething(tester);
+      await tester.pump(const Duration(seconds: 2));
+
+      await tester.pump(const Duration(seconds: 45));
+
+      expect(finished, [AttemptTermination.inactivityTimeout]);
+    });
+
+    testWidgets('says the learner stopped when the learner stopped', (
+      tester,
+    ) async {
+      final finished = await pumpAttempt(tester, GuidanceContext.unguided);
+      await readyAndCountIn(tester);
+      playSomething(tester);
+      await tester.pump(const Duration(seconds: 6));
+
+      await tester.tap(find.text('Done'));
+      await tester.pump();
+
+      expect(finished, [AttemptTermination.learnerStopped]);
+    });
   });
 }

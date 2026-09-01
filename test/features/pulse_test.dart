@@ -46,7 +46,7 @@ void main() {
                 key: ValueKey(support),
                 exercise: exerciseOf(),
                 presentation: under(support),
-                onFinish: () async {},
+                onFinish: (_) async {},
               ),
             ),
           ),

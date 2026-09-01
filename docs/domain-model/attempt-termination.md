@@ -1,9 +1,9 @@
 # Attempt termination policy
 
-- **Status:** Steps 1 to 3 and 5 are implemented; the app still only ends an
-  attempt when the learner taps Done.
+- **Status:** Steps 1 to 5 are implemented. `ReportedResult` is gone, so step 6
+  is done as well.
 - **Written:** August 25, 2026
-- **Revised:** August 27, 2026
+- **Revised:** August 31, 2026
 
 How an attempt ends is its own concern rather than part of alignment, because
 two of the three ways it can end need no notion of correctness at all.
@@ -66,8 +66,8 @@ long pause is ambiguous on its face: thinking, an interruption, a page turn, a
 slower execution than the one requested. Continuing to accept input while
 showing something like "still working?" resolves none of that wrongly.
 
-A much larger absolute safety limit may eventually close an abandoned attempt,
-and that closure is a fact about the app rather than about the performance.
+A much larger absolute safety limit closes an abandoned attempt, and that
+closure is a fact about the app rather than about the performance.
 
 ## Termination reason is evidence metadata, not outcome
 
@@ -81,9 +81,8 @@ durationLimit
 evaluativeCutoff
 ```
 
-Deliberately no `learnerCompleted` yet. Nothing can establish completion until
-measurement exists, and today's Done button means the learner ended it, which is
-a weaker claim.
+Deliberately no `learnerCompleted`. Completion is measurement's to establish;
+Done means the learner ended it, which is a weaker claim.
 
 The reason must stay beside the outcome rather than inside it, so that
 
@@ -117,10 +116,16 @@ class MeasurementUnavailable extends MeasurementResult {
 }
 ```
 
-One reason to begin with, `notAvailable`, for the period before an aligner
-exists. Genuinely different failures such as no input, insufficient evidence, an
-indeterminate alignment, or an input fault can be distinguished when they become
-reachable, under the same rule as everywhere else here.
+Two reasons: `notAvailable`, for the period before an aligner existed, and
+`nothingPlayed`, for a timeout that arrived with an empty transcript. Genuinely
+different failures such as insufficient evidence, an indeterminate alignment, or
+an input fault can be distinguished when they become reachable, under the same
+rule as everywhere else here.
+
+`nothingPlayed` is a claim about attribution rather than about a performance. A
+learner who ends an attempt having played nothing measures like any other
+attempt, because they said it was over; a timeout says only that the app stopped
+waiting, and the silence behind it could as easily be an interruption.
 
 No learner report. If the app can read the performance from the MIDI stream,
 asking for a subjective characterization afterwards is friction that buys a
@@ -132,7 +137,7 @@ an aligner:
 
 ```text
 terminationReason: inactivityTimeout
-measurement:       Unavailable(notAvailable)
+measurement:       Unavailable(nothingPlayed)
 ```
 
 **Termination does not depend on alignment.** It depends on the closure model
@@ -140,10 +145,9 @@ and the schema that persists it. Building it in that order is what gets the
 unavailable case exercised at all, rather than leaving it a paper state that
 first runs on the day measurement arrives and stops producing it.
 
-`ReportedResult` is scaffolding for the period before measurement exists. It is
-neither a future termination model nor a parallel evidence channel, and learner
-reflection, if it ever earns a place, belongs outside the evidence model as a
-pedagogical feature.
+Learner reflection, if it ever earns a place, belongs outside the evidence model
+as a pedagogical feature rather than as a second evidence channel beside
+measurement.
 
 ## Pending is not the same as closed without evidence
 
@@ -180,10 +184,9 @@ outcome nullable, which would keep the assumption and merely permit an absence;
 it is that termination is the mandatory lifecycle fact and measurement is
 independent evidence beside it.
 
-The closure stays one atomic append. When the first non-learner termination path
-becomes real, the persisted record gains the termination reason and the optional
-measurement together in the same schema bump, rather than appending a closure
-and amending it later.
+The closure stays one atomic append: the persisted record gains the termination
+reason and the measurement result together, rather than appending a closure and
+amending it later.
 
 ## What a closure without measurement may and may not move
 
@@ -208,23 +211,51 @@ journal lifecycle fact -> session and scheduler behavior
 3. ~~Prove closed-with-unavailable-measurement survives replay.~~ Done:
    `PracticeSession.closeUnmeasured` exists and is covered, though nothing in
    the app calls it yet.
-4. Add non-evaluative termination paths, which is what makes `closeUnmeasured`
-   reachable outside tests.
+4. ~~Add non-evaluative termination paths, which is what makes `closeUnmeasured`
+   reachable outside tests.~~ Done: silence and elapsed duration close an
+   attempt, and a timeout with nothing played closes unmeasured with
+   `nothingPlayed`.
 5. ~~Build alignment, which makes `Measured` reachable from an actual
    performance.~~ Done: `PracticeSession.closeFromPerformance` measures what was
    played, for one hand or two.
-6. Delete `ReportedResult`.
+6. ~~Delete `ReportedResult`.~~ Done: what an attempt records is measured or
+   declined, and nothing else.
 
 Steps 1 to 3 change storage and lifecycle without changing what the learner
 sees, so the schema bump lands while the only evidence producer is still the
 five buttons, and the evidence producer is replaced later against a lifecycle
 that is already correct.
 
+## The windows
+
+`AttemptWindows.forExercise` holds them, and they scale with the tempo the
+exercise asked for, because what a learner feels is a bar rather than a number
+of seconds. Floors keep a quick exercise from questioning somebody who is
+thinking.
+
+```text
+afterPlaying    4 beats, at least 3s    silence after a note: the traversal
+                                        has probably ended
+beforePlaying  12 beats, at least 12s   silence before the first note: hands
+                                        are still on their way to the keys
+abandon                          45s    nobody is coming back to answer
+limit          6x expected, at least 2m playing that never stops
+```
+
+The first two raise the question and nothing else: the transcript keeps
+recording, the keyboard keeps echoing, and a note arriving takes the question
+back down. The last two close the attempt.
+
+The floors and multiples are chosen rather than calibrated. They are one class
+of constant the grouping-window discipline does not reach, because the
+alternative to a chosen window here is an attempt that only ends when somebody
+taps Done, which is what this replaces.
+
 ## What is deliberately not decided
 
-The windows. How many beats of silence, what multiple of the expected duration,
-and how long the safety limit is are all uncalibrated, and the same discipline
-applies as to the grouping window: no constant before something supports it.
+Whether an attempt that timed out should be offered again. The scheduler treats
+the closure as a consumed slot and no competency change, which is honest but
+says nothing about whether the material was practised.
 
 Recovery is also the better answer to struggle in most cases. The scheduler
 already responds to a broken-down attempt by offering the same material one rung

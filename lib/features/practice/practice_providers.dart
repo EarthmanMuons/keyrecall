@@ -383,13 +383,22 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// Commits what was played and moves to the next exercise.
   ///
   /// The production path: what arrived on the wire becomes the evidence,
-  /// without anyone being asked how it went. An attempt the observation model
-  /// cannot read commits as unmeasured rather than being scored by hand, which
-  /// production should never reach, since it does not present material it
-  /// cannot read.
+  /// without anyone being asked how it went.
+  ///
+  /// [termination] says which of the ways an attempt can end this was. It is
+  /// metadata beside the evidence rather than part of it: an attempt somebody
+  /// stopped at six notes and one a timeout closed at six notes are different
+  /// observations of the same performance, and neither is a worse one.
+  ///
+  /// A timeout that arrives with nothing played closes unmeasured. Silence is
+  /// only a performance if somebody says it was, and nobody did: an
+  /// interruption and an attempt at nothing look identical from here, and
+  /// measuring would pick one.
   ///
   /// Single-flight for the same reason [decline] is.
-  Future<void> finish() async {
+  Future<void> finish({
+    AttemptTermination termination = AttemptTermination.learnerStopped,
+  }) async {
     final current = state.value;
     if (_writing || current == null || !current.isAwaitingAnswer) return;
     final transcript = ref.read(attemptTranscriptProvider);
@@ -400,8 +409,27 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     _writing = true;
     try {
       state = await AsyncValue.guard(() async {
+        final unplayed =
+            transcript.isEmpty &&
+            termination != AttemptTermination.learnerStopped;
+        if (unplayed) {
+          final record = await current.session.closeUnmeasured(
+            termination: termination,
+            reason: MeasurementUnavailableReason.nothingPlayed,
+            observedWallTime: DateTime.now().toUtc(),
+          );
+          return _decide(
+            PracticeLoopState(
+              profile: current.profile,
+              session: current.session,
+              lastCommitted: record,
+            ),
+          );
+        }
+
         final closed = await current.session.closeFromPerformance(
           transcript,
+          termination: termination,
           observedWallTime: DateTime.now().toUtc(),
         );
         return _decide(

@@ -16,6 +16,7 @@
 /// no business touching the attempt transaction.
 library;
 
+export 'src/attempt_windows.dart';
 export 'src/file_practice_store.dart';
 export 'src/file_profile_repository.dart';
 export 'src/pending_decision.dart';

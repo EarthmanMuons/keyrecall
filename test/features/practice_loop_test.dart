@@ -128,6 +128,30 @@ void main() {
     expect(after.presented, isNotNull);
   });
 
+  test('a timeout with nothing played commits no evidence', () async {
+    // Silence is only a performance if somebody says it was, and a timeout is
+    // nobody saying anything: measuring it would manufacture the retrieval
+    // failure the three-valued encoding exists to prevent.
+    final container = launch();
+    await place(container);
+    await loopOf(container);
+
+    await container
+        .read(practiceLoopProvider.notifier)
+        .finish(termination: AttemptTermination.inactivityTimeout);
+    final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
+
+    expect(closed.closure.termination, AttemptTermination.inactivityTimeout);
+    expect(
+      closed.closure.measurement,
+      isA<MeasurementUnavailable>().having(
+        (unavailable) => unavailable.reason,
+        'reason',
+        MeasurementUnavailableReason.nothingPlayed,
+      ),
+    );
+  });
+
   test('history survives a relaunch', () async {
     final first = launch();
     await place(first);

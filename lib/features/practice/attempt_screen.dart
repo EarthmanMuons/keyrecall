@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
@@ -84,7 +85,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
             value.presented?.decision.attemptId ?? value.pending?.attemptId,
           ),
           exercise: value.exercise!,
-          onFinish: notifier.finish,
+          onFinish: (termination) => notifier.finish(termination: termination),
           onDecline: notifier.decline,
         ),
         AsyncData() => const _NothingToPlay(),
@@ -217,8 +218,8 @@ class AttemptView extends ConsumerStatefulWidget {
   /// What the scheduler decided to present.
   final Exercise exercise;
 
-  /// Commits what was played and moves on.
-  final Future<void> Function() onFinish;
+  /// Commits what was played and moves on, saying how the attempt ended.
+  final Future<void> Function(AttemptTermination) onFinish;
 
   /// Records that the material could not be retrieved, and moves on.
   ///
@@ -239,11 +240,33 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   /// to get their hands from the screen to the keyboard.
   static const int _countInBeats = 4;
 
+  /// How often the attempt's clocks are read against its windows. Short enough
+  /// that the shortest of them lands where it says it does.
+  static const Duration _watchdogTick = Duration(milliseconds: 250);
+
   _Phase _phase = _Phase.ready;
   int _beatsLeft = _countInBeats;
   Timer? _countIn;
+  Timer? _watchdog;
   bool _finishing = false;
   int _painted = 0;
+
+  /// How long the attempt has been running, counted by the watchdog rather
+  /// than read off a clock, so the windows advance with the timers a test
+  /// drives.
+  Duration _elapsed = Duration.zero;
+
+  /// How long the current silence has run.
+  ///
+  /// Reset by a note arriving and by the learner saying they are still going,
+  /// so it measures the gap rather than the attempt.
+  Duration _quiet = Duration.zero;
+
+  /// Whether the attempt has asked whether it is over.
+  ///
+  /// An offer, never a seizure: input is still recorded, the instrument still
+  /// echoes, and a note arriving takes the question back down.
+  bool _questioned = false;
 
   /// Held rather than read on demand, because the pulse has to be silenced
   /// from [dispose], where reading a provider is no longer safe.
@@ -269,6 +292,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   @override
   void dispose() {
     _countIn?.cancel();
+    _watchdog?.cancel();
     // Leaving the screen ends the attempt, and a pulse that outlived it would
     // keep sounding over whatever comes next.
     unawaited(_pulse.stop());
@@ -332,28 +356,63 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         if (_beatsLeft <= 0) {
           timer.cancel();
           _phase = _Phase.playing;
+          _watchdog = Timer.periodic(_watchdogTick, (_) => _watch());
         }
       });
     });
   }
 
+  /// Reads the clocks against the attempt's windows.
+  ///
+  /// Nothing here looks at what was played, only at whether anything did and
+  /// how long ago. A window passing either raises the question or closes an
+  /// attempt nobody is answering; neither is a reading of the performance.
+  void _watch() {
+    if (!mounted || _finishing) return;
+    _elapsed += _watchdogTick;
+    _quiet += _watchdogTick;
+    final windows = AttemptWindows.forExercise(widget.exercise);
+
+    if (_elapsed >= windows.limit) {
+      unawaited(_finish(AttemptTermination.durationLimit));
+      return;
+    }
+    if (_quiet >= windows.abandon) {
+      unawaited(_finish(AttemptTermination.inactivityTimeout));
+      return;
+    }
+
+    final played = ref.read(attemptTranscriptProvider).isNotEmpty;
+    final asks =
+        _quiet >= (played ? windows.afterPlaying : windows.beforePlaying);
+    if (asks != _questioned) setState(() => _questioned = asks);
+  }
+
+  /// Says the learner is still going, which puts the question back down.
+  void _keepPlaying() => setState(() {
+    _quiet = Duration.zero;
+    _questioned = false;
+  });
+
   Future<void> _decline() async {
     if (_finishing) return;
     _finishing = true;
+    _watchdog?.cancel();
     unawaited(_pulse.stop());
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
     await widget.onDecline!();
   }
 
-  Future<void> _finish() async {
+  Future<void> _finish(AttemptTermination termination) async {
     if (_finishing) return;
     _finishing = true;
+    _watchdog?.cancel();
     unawaited(_pulse.stop());
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
     // What was played is the evidence. Nobody is asked how it went.
-    await widget.onFinish();
+    await widget.onFinish(termination);
   }
 
   @override
@@ -374,6 +433,10 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       // The frame after the note is on screen is when it was actually seen.
       final sequence = transcript.notes.last.sequence;
       _painted = transcript.length;
+      // Playing is the answer to the question, so it takes it back down. Set
+      // rather than announced: this frame is already being built.
+      _quiet = Duration.zero;
+      _questioned = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) ref.read(latencyProbeProvider.notifier).painted(sequence);
       });
@@ -382,7 +445,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
     if (_phase == _Phase.playing && _hasCoveredTraversal(transcript)) {
       // After the frame, so finishing does not run inside a build.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_finish());
+        if (mounted) unawaited(_finish(AttemptTermination.learnerStopped));
       });
     }
 
@@ -477,9 +540,19 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       ],
     ),
     _Phase.countIn => const SizedBox.shrink(),
-    _Phase.playing => Center(
-      child: FilledButton.tonal(onPressed: _finish, child: const Text('Done')),
-    ),
+    _Phase.playing =>
+      _questioned
+          ? _Question(
+              played: ref.watch(attemptTranscriptProvider).isNotEmpty,
+              onDone: () => _finish(AttemptTermination.learnerStopped),
+              onKeepPlaying: _keepPlaying,
+            )
+          : Center(
+              child: FilledButton.tonal(
+                onPressed: () => _finish(AttemptTermination.learnerStopped),
+                child: const Text('Done'),
+              ),
+            ),
     // Still Done, just no longer pressable. Swapping in a spinner for an
     // append and a scheduler decision makes a wait out of something that is
     // not one, and moves the screen while the learner is still looking at it.
@@ -487,6 +560,49 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       child: FilledButton.tonal(onPressed: null, child: Text('Done')),
     ),
   };
+}
+
+/// The offer a passed window makes: is this over?
+///
+/// A question rather than an ending. The instrument is still live behind it
+/// and a note takes it back down, so a learner who was thinking loses nothing
+/// by ignoring it. What it says depends only on whether anything has arrived,
+/// never on what arrived: silence after playing usually means the traversal is
+/// over, and silence before it usually means nobody is at the keys.
+class _Question extends StatelessWidget {
+  const _Question({
+    required this.played,
+    required this.onDone,
+    required this.onKeepPlaying,
+  });
+
+  final bool played;
+  final VoidCallback onDone;
+  final VoidCallback onKeepPlaying;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          played ? 'Finished?' : 'Still there?',
+          style: theme.textTheme.titleMedium,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          height: 64,
+          child: FilledButton(onPressed: onDone, child: const Text('Done')),
+        ),
+        TextButton(
+          onPressed: onKeepPlaying,
+          child: Text(played ? 'Keep playing' : 'Not yet'),
+        ),
+      ],
+    );
+  }
 }
 
 /// What was asked for. Visible at every rung, because it is the task rather

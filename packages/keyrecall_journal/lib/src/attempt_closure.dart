@@ -59,7 +59,16 @@ enum MeasurementUnavailableReason {
   /// The exercise used both hands, and relating two hands' notes to the
   /// moments they belong to needed observation grouping. Written by builds
   /// before that existed, and read back rather than produced.
-  handsTogetherCorrespondence('HANDS_TOGETHER_CORRESPONDENCE');
+  handsTogetherCorrespondence('HANDS_TOGETHER_CORRESPONDENCE'),
+
+  /// The attempt timed out with nothing played, so there is no performance to
+  /// read.
+  ///
+  /// Not the same as a learner ending an attempt they played nothing in. That
+  /// is a claim about the attempt and measures like any other; a timeout is a
+  /// claim about the app, and the silence behind it could as easily be an
+  /// interruption as a performance.
+  nothingPlayed('NOTHING_PLAYED');
 
   const MeasurementUnavailableReason(this.id);
 
