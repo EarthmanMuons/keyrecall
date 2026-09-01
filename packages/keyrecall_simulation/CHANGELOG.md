@@ -19,9 +19,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   diagnostic-only suppression when coordination is the weaker factor.
 - A realization-family pacing census covering allocation, yield, concentration,
   return paths, and motion balance across learner archetypes.
-- `RealizationFamilyPacing`, a rolling allocation-and-yield model over declared
-  realization-family keys, and `FamilyPacedPipeline`, which applies its pressure
-  at selection beside the repetition guard.
+- `PacingLog`, which accumulates the realization-family pacing decisions of one
+  trajectory. The mechanism itself was settled here and now ships in
+  `keyrecall_scheduler`.
 - A paired same-seed experiment comparing current scheduling against
   realization-family pressure across archetypes.
 - `FamilySetAside` and a diagnostic reporting how ready the best cross-family

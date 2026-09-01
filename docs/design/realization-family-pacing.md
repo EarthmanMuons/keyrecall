@@ -1,8 +1,8 @@
 # Realization-family pacing
 
-- **Status:** Mechanism settled and pinned by invariant tests; calibration
-  provisional; not yet promoted to the production scheduler.
-- **Written:** August 31, 2026.
+- **Status:** In the production scheduler behind `SchedulerConfig.pacing`;
+  mechanism pinned by invariant tests; calibration provisional.
+- **Written:** August 31, 2026. Promoted September 1, 2026.
 - **Scope:** Allocation among declared realization families over a practice
   trajectory. The families measured here are right hand, left hand, parallel
   hands together, and contrary hands together, but the mechanism reads family
@@ -54,18 +54,18 @@ For each synthetic archetype, report:
 These are observations, not pass/fail checks. They give a policy experiment a
 trajectory-level outcome to improve without choosing the policy in advance.
 
-## Current control surface
+## Control surface before pacing
 
-The scheduler has no realization-family allocation state. Session diversity
-counts recent material ids, so switching from C-major contrary hands together to
-G-major parallel hands together satisfies material diversity while leaving the
-family of work unchanged. The coordination-transition preference decides which
-motion receives one first exposure and then expires. Recovery exclusively
+The scheduler had no realization-family allocation state. Session diversity
+counted recent material ids, so switching from C-major contrary hands together
+to G-major parallel hands together satisfies material diversity while leaving
+the family of work unchanged. The coordination-transition preference decides
+which motion receives one first exposure and then expires. Recovery exclusively
 targets the failed exercise's supported sibling. None of these mechanisms asks
 how much recent work was right hand, left hand, or hands together, or what yield
 that family produced.
 
-This explains why removing one hands-together progression subtype can expose
+This explains why removing one hands-together progression subtype could expose
 another without materially changing the trajectory. Candidate-local ranking
 still sees a large set of admissible hands-together progression exercises, and
 no later stage compares that class of work with recent family allocation.
@@ -115,8 +115,8 @@ ordering alone.
 
 ## Generic pressure experiment
 
-`family_pacing_ab` runs each archetype twice on the same seed, once against the
-current pipeline and once against `FamilyPacedPipeline`, and reports allocation,
+`family_pacing_ab` runs each archetype twice on the same seed, once against an
+unpaced configuration and once against a paced one, and reports allocation,
 yield, concentration, breadth, and starvation for both arms.
 
 Families are declared string keys, not an enum the scheduler branches on. A
@@ -334,10 +334,21 @@ every cohort measured. The readiness gate is therefore a coarse safeguard
 against reallocating practice toward a generally less-prepared strand, not a
 predictor that the replacement will succeed.
 
+### Where it lives
+
+`SchedulerConfig.pacing` carries the policy, and a configuration whose `pacing`
+is null leaves allocation unpaced, which is what an experiment's control arm and
+any later kill switch use. The filter runs in `SchedulerPipeline.pace`, beside
+the repetition guard, and reports what it did as `SelectionResult.pacing`. The
+rolling window of family observations lives on `SessionState`, rebuilt from the
+tail of the journal when a sitting reopens, so a restart does not clear the
+pressure the work before it built up.
+
 ### Pinned invariants
 
 `realization_family_pacing_test.dart` holds the mechanism to these, at unit
-grain where the property is local and across every archetype where it is not:
+grain in `keyrecall_scheduler` where the property is local and across every
+archetype in `keyrecall_simulation` where it is not:
 
 - pressure alone never makes an inadmissible exercise admissible; the paced
   available set is always a subset of the admitted one;
@@ -354,10 +365,11 @@ grain where the property is local and across every archetype where it is not:
 ### Provisional calibration
 
 `window`, `shareFloor`, `minFamilyAttempts`, and `setAsideAt` are not part of
-the contract. They were chosen to make a measured allocation failure visible,
-the qualitative signature holds across the settings tried, and they carry no
-device or telemetry evidence. They stay provisional until practice data exists
-to calibrate against.
+the contract. They ship in `v1SchedulerConfig` as `PacingConfig`, at the values
+the experiments above were run at. They were chosen to make a measured
+allocation failure visible, the qualitative signature holds across the settings
+tried, and they carry no device or telemetry evidence. They stay provisional
+until practice data exists to calibrate against.
 
 ### Accepted limitation
 
