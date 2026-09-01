@@ -246,6 +246,18 @@ List<crisp.GrandStaff> grandStaffRowsFor(
   return rows;
 }
 
+/// The first [count] bars of [score], for a staff that is not drawing all of
+/// them yet.
+crisp.Score barsOf(crisp.Score score, int count) =>
+    _measuresOf(score, 0, count.clamp(1, score.measures.length));
+
+/// How many bars of a reserved staff are worth drawing for [notes] played.
+///
+/// The bar being filled, and the next one only once this one is full. What is
+/// held open is the width; what is drawn is the part of it somebody has
+/// reached, so an attempt does not open on empty bars nobody is in yet.
+int barsReachedBy(int notes) => notes ~/ _eighthsPerMeasure + 1;
+
 crisp.Score _measuresOf(crisp.Score score, int start, int end) => crisp.Score(
   clef: score.clef,
   keySignature: score.keySignature,

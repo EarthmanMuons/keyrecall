@@ -290,6 +290,20 @@ void main() {
       );
     });
 
+    test('draws the bar being filled, and the next only once it is', () {
+      expect(barsReachedBy(0), 1);
+      expect(barsReachedBy(7), 1, reason: 'still in the first bar');
+      expect(barsReachedBy(8), 2, reason: 'the bar filled, so the next opens');
+      expect(barsReachedBy(15), 2);
+    });
+
+    test('drawing fewer bars leaves the reserved ones to size by', () {
+      final reserved = transcriptOf(3, reserve: 15);
+
+      expect(reserved.measures, hasLength(2));
+      expect(barsOf(reserved, barsReachedBy(3)).measures, hasLength(1));
+    });
+
     test('reserves nothing it was not asked to', () {
       expect(transcriptOf(0).measures, hasLength(1));
     });

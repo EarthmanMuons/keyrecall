@@ -31,12 +31,21 @@ class FittedStaff extends StatelessWidget {
   const FittedStaff({
     required this.score,
     required this.theme,
+    this.sizing,
     this.elementColors = const {},
     this.showsNoteNames = false,
     super.key,
   });
 
   final crisp.Score score;
+
+  /// The score the staff is sized against, when it is not the one being drawn.
+  ///
+  /// What a staff that fills in over an attempt is measured by: the size comes
+  /// from everything it will hold, so nothing already on it moves or changes
+  /// size when the next note arrives.
+  final crisp.Score? sizing;
+
   final crisp.CrispNotationTheme theme;
 
   /// What to draw particular elements in, by id.
@@ -47,10 +56,11 @@ class FittedStaff extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rows = rowsOf(score);
+    final measured = sizing == null ? rows : rowsOf(sizing!);
     return LayoutBuilder(
       builder: (context, constraints) {
         final space = _spaceFor(
-          fittedStaffSpace(rows, width: constraints.maxWidth),
+          fittedStaffSpace(measured, width: constraints.maxWidth),
         );
         return Column(
           children: [
@@ -219,7 +229,9 @@ class TranscriptStaff extends StatelessWidget {
     );
 
     return FittedStaff(
-      score: score,
+      // Drawn as far as the performance has reached, sized by all of it.
+      score: barsOf(score, barsReachedBy(transcript.length)),
+      sizing: score,
       theme: staffTheme(context),
       // The slots are there to hold the space. Drawing them would say the
       // learner rested, which is a claim about a performance nobody has made.
