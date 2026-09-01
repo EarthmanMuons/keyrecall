@@ -40,8 +40,8 @@ enum PlacementTier {
 ///
 /// Three layers, each answering a different question: what transferable
 /// technique the learner has ([competencies]), whether one exact scale is
-/// independently available ([materialMemory]), and whether a material and
-/// hand context deviates from what the shared competencies predict
+/// independently available ([materialMemory]), and whether a material under
+/// one execution context deviates from what the shared competencies predict
 /// ([materialExecution]).
 ///
 /// Short-lived scheduling context belongs to session state instead, so a
@@ -53,7 +53,7 @@ class LearnerState {
   /// Memory state per material, keyed by material id.
   final Map<String, MaterialMemoryState> materialMemory;
 
-  /// Execution residual per material and hand configuration.
+  /// Execution residual per material, hand configuration, and hand motion.
   final Map<ExecutionContext, MaterialExecutionState> materialExecution;
 
   LearnerState({
@@ -118,6 +118,15 @@ class LearnerState {
 
   /// The execution residual for [context], creating it at its priors if
   /// absent.
+  MaterialExecutionState materialExecutionFor(
+    ExecutionContext context,
+    DateTime at,
+    LearnerParams params,
+  ) => materialExecution.putIfAbsent(
+    context,
+    () => MaterialExecutionState.prior(context, at, params.materialExecution),
+  );
+
   /// Whether [competency] has ever received informative evidence.
   ///
   /// The domain question every prerequisite really wants, asked once here so
@@ -148,15 +157,6 @@ class LearnerState {
             entry.key.$2 == hands &&
             entry.value.lastEvidenceAt != null,
       );
-
-  MaterialExecutionState materialExecutionFor(
-    ExecutionContext context,
-    DateTime at,
-    LearnerParams params,
-  ) => materialExecution.putIfAbsent(
-    context,
-    () => MaterialExecutionState.prior(context, at, params.materialExecution),
-  );
 
   /// The instant every propagating layer has been advanced to.
   ///

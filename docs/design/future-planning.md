@@ -344,9 +344,9 @@ routine competency addition.
 
 ### 2.2 New prediction and outcome channels
 
-V1 separates retrieval, supported availability, conditional execution, and
-topology. Rich observations such as expressive timing or velocity control are
-not automatically latent state.
+V1 separates retrieval, supported availability, conditional execution, bilateral
+coordination, and topology. Rich observations such as expressive timing or
+velocity control are not automatically latent state.
 
 If a future capability answers a genuinely new question and should influence
 prediction or challenge admission independently, it may require a new channel
@@ -365,11 +365,9 @@ admission workflow are defined in the competency extension guide.
 
 ### 2.3 Execution evidence at the achieved motor difficulty
 
-Measurement records `achievedTempoRatio` and nothing consumes it. That leaves a
-gap: a learner who plays a requested 120 BPM exercise perfectly evenly at 60 BPM
-scores 1.0 for continuity and stability, and the execution channel credits them
-at the difficulty of the tempo that was asked for rather than the one they
-played.
+This extension is implemented. A learner who plays a requested 120 BPM exercise
+perfectly evenly at 60 BPM still scores the performance that occurred for
+continuity and stability, while execution surprise is evaluated at 60 BPM.
 
 The fix is not to damp `motorScore`, which would conflate two separate
 questions:
@@ -379,12 +377,13 @@ how well did the motor execution go?
 how difficult was the motor execution that actually occurred?
 ```
 
-Instead the execution channel should evaluate its evidence at the difficulty of
-the performance that happened:
+The execution channel evaluates its evidence at the difficulty of the
+performance that happened:
 
 ```text
 requested difficulty   difficulty(conditions at the requested tempo)
-observed difficulty    difficulty(conditions at requestedTempo * achievedTempoRatio)
+observed difficulty    difficulty(conditions at min(requestedTempo,
+                                                     requestedTempo * achievedTempoRatio))
 
 execution evidence attributed at the observed difficulty
 every other channel evaluated normally
@@ -392,21 +391,19 @@ every other channel evaluated normally
 
 This adds no constant and no curve: the model already expresses how tempo
 changes motor difficulty, and this reads that function at the tempo actually
-sustained. Intermediate cases need no policy, since 93% of target is simply
-evidence at 93% of the tempo, and a steady performance above the requested tempo
-is legitimately evidence at a harder condition rather than something to cap.
+sustained. Intermediate cases need no policy, since 93% of target is evidence at
+93% of the tempo. Credit is capped at the requested tempo because the scheduler
+chose that challenge; playing faster does not turn the attempt into an
+unscheduled harder probe.
 
 It must stay execution-specific. Slow, careful practice genuinely strengthens
 factual scale memory, so achieved tempo may not touch retrieval, topology, or
 causal memory formation.
 
-One edge case needs an answer before this is implemented: an attempt with too
-few corresponding notes to establish a tempo at all produces
-`achievedTempoRatio == 0`, which must not become evidence at zero BPM. The
-execution channel's evidence should be unavailable there while topology and
-retrieval evidence stay perfectly usable, which means **whole-attempt
-measurement availability and per-channel evidence availability are different
-things**. That distinction does not exist in the learner API yet.
+An attempt with no measurable positive pace is attributed at the requested tempo
+rather than at zero BPM. `LearnerModel.v1Prototype` retains the earlier
+attribution semantics for historical replay; production models use demonstrated
+difficulty.
 
 ### 2.4 Population and hierarchical calibration
 
@@ -810,7 +807,7 @@ offered, which today's eight admission mechanisms between them do not guarantee.
 
 Pinned in `keyrecall_simulation/test/sitting_ran_dry_test.dart`.
 
-## 4.10 Hands together waits on the wrong scale
+## 4.10 Spend the slot after coordination is earned
 
 **The prerequisite is settled.** It read the execution frontier, which moves
 only on an attempt completed at or above `demonstratedMotorScore`; a weak hand
@@ -821,10 +818,9 @@ unevenly knows the scale and a hand playing the wrong ones smoothly does not. An
 uneven player went from qualifying in two simulated sittings of twenty to
 eighteen.
 
-**What remains is where the delay lives.** Once a fully eligible hands-together
-candidate is admitted - which happens in the same slot the prerequisite is first
-satisfied, at both the median and the ninetieth percentile - it waits a median
-of seven to nineteen slots to be chosen, and in some sittings is never chosen.
+The earlier scheduler let a fully eligible, admitted hands-together candidate
+wait a median of seven to nineteen slots after its prerequisite was first
+satisfied, and in some sittings never chose it.
 
 Attributing every slot of that wait says the cause is not what it looked like:
 
@@ -841,19 +837,18 @@ was waiting. So the narrow same-material preference this was expected to need -
 prefer the first hands-together realization of M over M's other realizations -
 would produce a satisfying regression test and move the latency by nothing.
 
-What the evidence asks for instead is at the material level: a material that has
-just become hands-together ready carries a bounded scheduling urgency, so the
-coordination opportunity does not decay unnoticed while the scheduler works
-through other scales. Bounded, because coordination should not permanently
-outrank everything else once it has been reached.
+Production now derives a once-per-material coordination transition and ranks it
+below eligibility but above retention. It remains owed until a hands-together
+attempt produces execution evidence, then ordinary ranking resumes. The urgency
+cannot accumulate or persist beyond that first observation.
 
 Measured by `keyrecall_simulation/bin/hands_together.dart` and
 `bin/ht_delay.dart`.
 
-**Admission is a separate question, and it now has its own document.** The delay
-above is about a candidate that was already admitted. Whether one should be
-admitted at all, relative to factual retrieval and the band floor, is specified
-in [`coordination-transition-policy.md`](coordination-transition-policy.md).
+**Admission remains a separate question.** The delay above concerned a candidate
+that was already admitted. Whether one should be admitted at all, relative to
+factual retrieval and the band floor, is proposed in
+[`coordination-transition-policy.md`](coordination-transition-policy.md).
 
 ## 4.11 Scheduler evaluation cost
 

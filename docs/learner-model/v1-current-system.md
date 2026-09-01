@@ -331,11 +331,11 @@ The material-specific exception gradually returns toward the shared prediction
 while uncertainty grows.
 
 The same record also carries the **execution frontier**: the fastest tempo this
-learner has managed at each octave span, for this material and this hand
-configuration. It sits here because it is the same kind of claim about the same
-thing, and it is keyed here because two octaves in the right hand says nothing
-about a left hand that has played one, and hands together is a third frontier
-again.
+learner has managed at each octave span, for this material, hand configuration,
+and hand motion. It sits here because it is the same kind of claim about the
+same thing. Two octaves in the right hand says nothing about a left hand that
+has played one, hands together is a third frontier, and contrary motion does not
+certify parallel execution.
 
 A tempo per span rather than a widest span and a fastest tempo. Those are two
 maxima and the pair of them is not a place anybody has been: one octave at 96
@@ -569,9 +569,11 @@ far apart the hands were at each moment both of them played, and localized
 motor-event behavior. V1 reduces these only where a particular state update
 needs a bounded target.
 
-Each prediction channel gets its own "surprise" number: actual outcome minus
-predicted outcome. A positive delta means the learner did better than expected;
-negative means worse. The four prediction errors are:
+Four predictions have independent observed targets and therefore their own
+"surprise" number: actual outcome minus predicted outcome. A positive delta
+means the learner did better than expected; negative means worse. Supported
+material availability is derived from retrieval and guidance, so it has no
+separate outcome or update error. The four errors are:
 
 ```math
 y_{\mathrm{motor}} =
@@ -1284,9 +1286,10 @@ The analysis led to five production conclusions.
 ### 12.1 Separate prediction channels are necessary
 
 A shared success signal allowed one weak layer to manufacture updates in
-another. Splitting retrieval availability, motor execution, and topology gave
-each state its own prediction error and improved correction across the synthetic
-profiles.
+another. Splitting independent retrieval, motor execution, bilateral
+coordination, and topology gave each state its own prediction error and improved
+correction across the synthetic profiles. Supported material availability is a
+derived prediction rather than an independently updated state.
 
 ### 12.2 "Not tested" must not mean "failed weakly"
 
@@ -1388,11 +1391,11 @@ local history; it is not the source of truth.
 
 KeyRecall V1 models a pianist with uncertain transferable competencies, one
 time-sensitive memory state per exact scale, and a shrinkage-based execution
-residual per scale and hand context. It predicts whether the material will be
-available, whether it can be executed under the requested conditions, and what
-topology knowledge the performance may reveal. It admits valid exercises through
-prerequisite, safety, and challenge stages, ranks them lexicographically by
-eligibility, actionable retention, information, diversity, and goals, and then
-updates only the state channels the attempt genuinely observed. The structure is
-frozen for initial production; all current numeric constants remain provisional,
-versioned, and subject to validation with real learner data.
+residual per scale and execution context. It predicts independent retrieval,
+supported material availability, execution under the requested conditions,
+bilateral coordination, and topology knowledge. It admits valid exercises
+through prerequisite, safety, and challenge stages, ranks them lexicographically
+by eligibility, actionable retention, information, diversity, and goals, and
+then updates only the state channels the attempt genuinely observed. The
+structure is frozen for initial production; all current numeric constants remain
+provisional, versioned, and subject to validation with real learner data.

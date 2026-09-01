@@ -300,13 +300,11 @@ easier: prediction scores the two identically, because nothing measured supports
 a quantitative difference between them. Without the term the choice still gets
 made, by the order `HandMotion.values` happens to list.
 
-Whether parallel and contrary hands-together work progress independently depends
-on whether learner execution state is keyed by hand motion. **It is not today**:
-`ExecutionContext` is `(materialId, hands)`, so the two share one frontier. The
-persisted `Exercise` identity distinguishes them; the learner's execution state
-does not. Splitting it is the next model decision rather than one this axis has
-already made, and the argument for splitting is that a contrary-motion frontier
-should not certify parallel-motion execution the learner has never demonstrated.
+Parallel and contrary hands-together work progress independently:
+`ExecutionContext` is `(materialId, hands, handMotion)`, so a frontier reached
+in one motion does not certify execution the learner has never demonstrated in
+the other. The coordination transition remains shared because it represents
+having begun coordinating that scale at all, not mastery of either realization.
 
 ### Direction and the reversal
 

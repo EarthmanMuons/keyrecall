@@ -51,7 +51,8 @@ final List<TechnicalMaterial> allScales = List.unmodifiable([
 ///
 /// Seven materials covering all four forms. The pinned trace digests hash runs
 /// over exactly this list, so changing it invalidates them: it is a fixture,
-/// not a product decision, and what a learner is offered is [offeredScales].
+/// not a product decision. Candidate generation and scheduling decide what a
+/// learner is offered from the selected catalog.
 final List<TechnicalMaterial> v1ScaleCatalog = List.unmodifiable([
   TechnicalMaterial('C', ScaleForm.major),
   TechnicalMaterial('G', ScaleForm.major),

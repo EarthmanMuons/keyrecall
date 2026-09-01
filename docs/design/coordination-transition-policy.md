@@ -1,7 +1,8 @@
 # The coordination transition
 
-- **Status:** Proposed, not built. A specification to implement and simulate
-  against, not a record of production behavior.
+- **Status:** The admission policy is proposed, not built. Contrary-motion
+  realization, generation, and transition ranking described below are current
+  production behavior.
 - **Written:** August 31, 2026
 - **Scope:** When hands-together work should become admissible, relative to
   factual retrieval and single-hand execution competence.
@@ -177,9 +178,10 @@ against a _preference_ in how the single one is spent. Since the transition is
 consumed by whichever hands-together exercise wins it, a parallel-motion winner
 spends the once-per-material budget on the harder of the two realizations.
 
-**The domain now represents contrary motion but cannot yet produce it, so this
-is not a scheduler change yet.** See section 5; the argument above is why the
-representation was worth adding, not a rule to implement now.
+The domain realizes and fingers contrary motion, candidate generation offers it,
+and ranking prefers it while the once-per-material coordination transition is
+unspent. Prediction does not assign it an invented difficulty advantage; the
+preference only decides which realization spends the transition.
 
 ## 3. Proposed policy shape
 
@@ -197,7 +199,7 @@ bypass, for this transition only
     BAND_EXECUTION_FLOOR
 retain
     handsTogetherEntryTempo, a rung below the slower hand
-    once-per-material consumption, ended by the first attempt
+    once-per-material consumption, ended by the first execution evidence
 ```
 
 Coordination readiness on both hands is already the entry condition of
@@ -209,8 +211,8 @@ Both bypasses are load-bearing and each carries a cohort: section 5 measures
 blocks `developing`, so a path that dropped either would leave one of them where
 it is.
 
-Contrary-motion preference is **not** part of this. It is deferred to future
-domain support, in section 5.
+Contrary-motion preference is **not** part of the proposed admission exception.
+It already operates later, among candidates that reached ranking.
 
 ## 4. Explicit non-changes
 
@@ -247,12 +249,12 @@ The literature supports the _shape_ of the rule, which is that per-hand pitch
 integrity rather than factual retrieval is the right channel to read. It
 supports no number in it.
 
-### Contrary motion: represented, not yet reachable
+### Contrary motion: implemented before admission calibration
 
-**The representation exists.** `HandMotion` is a persisted execution condition,
-carried in `ExecutionConditions` identity, equality, hashing and the journal,
-and rejected for anything but two hands. No exercise is contrary yet: nothing in
-realization or generation can produce one.
+`HandMotion` is a persisted execution condition, carried in
+`ExecutionConditions` identity, equality, hashing and the journal, and rejected
+for anything but two hands. Realization, fingering, candidate generation,
+execution state, and trace digests all distinguish the two motions.
 
 The two axes are kept apart because they are orthogonal. Both hands traverse the
 same `upDown` exercise whether they move together or apart, so folding contrary
@@ -265,38 +267,30 @@ HandMotion       parallel | contrary    the relationship between two hands
                                         contrary needs hands together
 ```
 
-The dependency chain, with the first step done:
+The dependency chain is now:
 
 ```text
 [x] represent hand motion as a persisted execution condition
-[ ] realize contrary motion, and generate candidates for it
-[ ] give it fingering and expected notes
-[ ] prefer it in ranking while the coordination transition is unspent
-[ ] re-baseline the cohorts
-[ ] then calibrate the pitch-integrity threshold
+[x] realize contrary motion and generate candidates for it
+[x] give it fingering and expected notes
+[x] prefer it in ranking while the coordination transition is unspent
+[x] re-baseline the cohorts
+[ ] calibrate the pitch-integrity threshold and admission exception
 ```
 
-Nothing before the fourth step is a scheduler change. Two consequences of the
-first step are recorded elsewhere: the transition stays once per material rather
-than becoming one per hand motion, in
-[`../domain-model/progression-graph.md`](../domain-model/progression-graph.md);
-and learner execution state is **not** keyed by hand motion today, so parallel
-and contrary hands-together work still share one frontier. Splitting that is the
-next model decision, and the argument for it is that a contrary-motion frontier
-should not certify parallel-motion execution nobody has demonstrated.
+The transition stays once per material rather than becoming one per hand motion,
+as recorded in
+[`../domain-model/progression-graph.md`](../domain-model/progression-graph.md).
+Execution state is keyed by hand motion, so a frontier demonstrated in contrary
+motion does not certify parallel execution.
 
-The reference digest is the other loose end. `discreteDigestFields` has no hand
-motion column, which is harmless while every exercise is parallel and stops
-being harmless the moment one is not, since two runs differing only in hand
-motion would then hash the same. That digest is computed on both the Dart and
-frozen Python sides, so closing the gap and retiring the Python provenance are
-the same decision, taken when the second step above lands.
+Hand motion is part of `discreteDigestFields`. Adding it ended live equivalence
+with the Python prototype, which could not express contrary motion; the Dart
+digests remain regression pins against the production implementation.
 
-**This ordering also gates the calibration above.** Contrary motion is the
-easier first coordination task, so a pitch-integrity threshold tuned while every
-first hands-together attempt is parallel motion would be tuned against a
-harder-than-intended task and would read as higher than it needs to be.
-Calibrate after the representation exists, not before.
+Contrary motion is the intended first coordination task, so the remaining
+pitch-integrity calibration now runs against the realization production will
+actually prefer.
 
 ### Three cohort facts, measured
 

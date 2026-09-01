@@ -225,11 +225,12 @@ produced two further failures (§10).
 
 ### 6.1 New-material introduction: a conditional envelope, not a blanket bypass
 
-Material this hand has not played (no `MaterialExecutionState` entry for
-`(materialId, hands)`) is admitted only if `overall_p >= p_introduction_min`, a
-separate, lower threshold than the steady-state band (§9: heuristic, currently
-0.15 vs. `p_min`'s 0.60) - still `overall_p`, still stage 3's own signal, just a
-different band for a first-contact candidate.
+Material this execution context has not played (no `MaterialExecutionState`
+entry for `(materialId, hands, handMotion)`) is admitted only if
+`overall_p >= p_introduction_min`, a separate, lower threshold than the
+steady-state band (§9: heuristic, currently 0.15 vs. `p_min`'s 0.60) - still
+`overall_p`, still stage 3's own signal, just a different band for a
+first-contact candidate.
 
 The tempo it is met at is one rung below the pace this hand has shown on
 material it owns, for a geography past the early-transfer band, and the pace
@@ -863,10 +864,11 @@ against the four-axis transition semantics.
 Pass 4 is parallelized across independent trials while preserving input order.
 `--workers` defaults to at most 8 local processes and `--workers 1` retains the
 serial path. Static candidate pools are generated once per agent, and
-guidance-independent retrieval/execution/topology prediction components are
-computed once per realization per pipeline call. The exhaustive repetition-cap
-property stores the complete set of admitted material IDs rather than every full
-`CandidateTrace`, so compact diagnostic runner-up logs remain bounded.
+guidance-independent retrieval, execution, coordination, and topology prediction
+components are computed once per realization per pipeline call. The exhaustive
+repetition-cap property stores the complete set of admitted material IDs rather
+than every full `CandidateTrace`, so compact diagnostic runner-up logs remain
+bounded.
 
 The optimization was checked at three levels:
 

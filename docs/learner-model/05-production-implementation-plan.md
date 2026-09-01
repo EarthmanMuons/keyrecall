@@ -342,7 +342,8 @@ eligibility_tier
 safety_status and suppression reason
 challenge_status
 challenge_bypass or scheduler_intent
-predicted retrieval, execution, topology, and overall probabilities
+predicted retrieval, supported availability, execution, coordination,
+    topology, and overall probabilities
 challenge-band bounds
 R / I / V / G priority terms
 final rank key

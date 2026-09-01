@@ -71,10 +71,11 @@ predictions.
 
 ### 3.2 Structural model expansion
 
-An ability that does not fit retrieval, conditional execution, or topology may
-need its own prediction, outcome, uncertainty, and error channel. Sight-reading
-fluency or expressive timing could fall into this category if KeyRecall later
-treats either as an independent target that influences challenge admission.
+An ability that does not fit retrieval, conditional execution, bilateral
+coordination, or topology may need its own prediction, outcome, uncertainty, and
+error channel. Sight-reading fluency or expressive timing could fall into this
+category if KeyRecall later treats either as an independent target that
+influences challenge admission.
 
 That is not “one more competency.” It changes the state/prediction contract and
 is a structural post-V1 decision. It must clear the learner-model reopening gate
