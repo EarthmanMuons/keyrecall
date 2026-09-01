@@ -370,6 +370,7 @@ void main() {
           challenge: config.challenge,
           diversity: config.diversity,
           probe: config.probe,
+          pacing: config.pacing,
         ),
       ),
       instrument: instrument,

@@ -24,7 +24,9 @@ candidate comes back with a `CandidateTrace` explaining what happened to it.
 4. **Priority ranking** orders survivors lexicographically by eligibility tier,
    retention, information, diversity, and goals. There is no hidden weighted
    sum. A repetition guard then keeps one material from winning forever, without
-   ever removing the only admitted option.
+   ever removing the only admitted option, and realization-family pacing sets
+   aside a strand of work that has been consuming the session without yielding
+   when another comparably ready strand is admitted.
 
 ## Usage
 
@@ -80,13 +82,14 @@ retrieval is categorically not a failure to recover from, which is why
 
 ## Configuration
 
-`v1SchedulerConfig` is the live registry, at version `v1-2`. It began as a
+`v1SchedulerConfig` is the live registry, at version `v1-3`. It began as a
 mirror of `analysis/scheduler/config.toml` at `v1-prototype-0` and has since
 moved past it, so a test now checks that the inherited values still match the
 archive while the version deliberately does not. The stage structure and
 information boundaries are frozen for initial production; the thresholds, probe
 intervals, and window sizes are placeholders awaiting calibration against real
-practice data.
+practice data. `pacing` is null in a configuration that leaves allocation
+unpaced.
 
 ## Documentation
 

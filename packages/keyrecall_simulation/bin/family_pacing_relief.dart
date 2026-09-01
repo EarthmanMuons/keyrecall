@@ -31,7 +31,7 @@ Future<void> main(List<String> arguments) async {
   final archetypes = options.option('archetypes')!.split(',');
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
-  final pacing = RealizationFamilyPacingConfig(
+  final pacing = PacingConfig(
     window: int.parse(options.option('window')!),
     shareFloor: double.parse(options.option('share-floor')!),
     minFamilyAttempts: int.parse(options.option('min-attempts')!),
@@ -279,24 +279,23 @@ void _writeMap(Map<String, int> values) {
 Map<String, _Relief> _runJobs(
   List<TrajectoryJob> jobs,
   int slots,
-  RealizationFamilyPacingConfig pacing,
+  PacingConfig pacing,
 ) {
   final results = <String, _Relief>{};
   for (final job in jobs) {
-    final pipeline = FamilyPacedPipeline(
-      learner: const LearnerModel(),
-      pacing: RealizationFamilyPacing(config: pacing),
-    );
+    final log = PacingLog();
     final trajectory = runTrajectory(
       player: playerOf(job.archetypeId),
       seed: job.seed,
       materials: allScales,
       slots: slots,
-      pipeline: pipeline,
+      pipeline: SchedulerPipeline(
+        learner: const LearnerModel(),
+        config: v1SchedulerConfig.withPacing(pacing),
+      ),
+      observePacing: (_, decision) => log.record(decision),
     );
-    results
-        .putIfAbsent(job.archetypeId, _Relief.new)
-        .observe(pipeline, trajectory);
+    results.putIfAbsent(job.archetypeId, _Relief.new).observe(log, trajectory);
   }
   return results;
 }
@@ -374,10 +373,10 @@ class _Relief {
 
   int get setAsides => points.length;
 
-  void observe(FamilyPacedPipeline pipeline, Trajectory trajectory) {
-    unrelieved += pipeline.unrelievedSlots;
-    unready += pipeline.unreadySlots;
-    for (final setAside in pipeline.setAsides) {
+  void observe(PacingLog log, Trajectory trajectory) {
+    unrelieved += log.unrelievedSlots;
+    unready += log.unreadySlots;
+    for (final setAside in log.setAsides) {
       final pressured = setAside.pressured;
       final relieving = setAside.relieving;
       final slot = setAside.slot < trajectory.slots.length

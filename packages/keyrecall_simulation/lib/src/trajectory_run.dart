@@ -26,6 +26,7 @@ Trajectory runTrajectory({
   List<Exercise>? generated,
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
+  void Function(int slot, PacingDecision pacing)? observePacing,
 }) {
   final rng = PythonCompatibleRandom(seed);
   final at0 = start ?? DateTime.utc(2026);
@@ -57,6 +58,7 @@ Trajectory runTrajectory({
       candidates: candidates,
       at: at,
     );
+    observePacing?.call(index, selection.pacing);
     final traces = selection.traces;
     final available = selection.selectable;
     final chosen = selection.selected;

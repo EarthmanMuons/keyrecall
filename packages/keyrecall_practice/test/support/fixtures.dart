@@ -100,6 +100,7 @@ SchedulerPipeline pipelineCappedAt(int attempts) => SchedulerPipeline(
     challenge: v1SchedulerConfig.challenge,
     diversity: v1SchedulerConfig.diversity,
     probe: v1SchedulerConfig.probe,
+    pacing: v1SchedulerConfig.pacing,
   ),
 );
 

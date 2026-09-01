@@ -5,6 +5,7 @@ import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
 import 'priority.dart';
+import 'realization_family_pacing.dart';
 import 'recovery.dart';
 import 'session_state.dart';
 import 'tempo_probe.dart';
@@ -64,10 +65,14 @@ class SelectionResult {
   final List<CandidateTrace> selectable;
   final CandidateTrace? selected;
 
+  /// What realization-family pacing did to the available set.
+  final PacingDecision pacing;
+
   const SelectionResult({
     required this.traces,
     required this.selectable,
     required this.selected,
+    required this.pacing,
   });
 }
 
@@ -106,7 +111,8 @@ class SchedulerPipeline {
       at: at,
       overrides: overrides,
     );
-    final available = selectable(traces, session);
+    final pacing = pace(applyRepetitionGuard(traces, session), session);
+    final available = pacing.selectable;
     final selected = chooseFrom(available, session);
     session.recordSelectionOpportunity(
       guidanceProbeAvailable: available.any(
@@ -120,6 +126,7 @@ class SchedulerPipeline {
       traces: traces,
       selectable: available,
       selected: selected,
+      pacing: pacing,
     );
   }
 
@@ -142,6 +149,13 @@ class SchedulerPipeline {
             ),
       config: config.diversity,
     );
+    if (config.pacing case final pacing?) {
+      session.recordFamilySelection(
+        exercise,
+        productive: outcome != null && learner.executionWasManaged(outcome),
+        config: pacing,
+      );
+    }
   }
 
   /// Stage 2a: the `REQUIRES` prerequisite gate.
@@ -1098,7 +1112,53 @@ class SchedulerPipeline {
   List<CandidateTrace> selectable(
     List<CandidateTrace> traces,
     SessionState session,
-  ) => applyRepetitionGuard(traces, session);
+  ) => pace(applyRepetitionGuard(traces, session), session).selectable;
+
+  /// Realization-family pacing applied to an already-guarded set.
+  ///
+  /// A selection-stage filter beside the repetition guard, not an admission
+  /// rule: a pressured candidate stays eligible and ranked, and wins the slot
+  /// whenever nothing from another family is admitted. Under lexicographic
+  /// ranking a penalty term could only break exact ties, so pressure has to
+  /// act on the available set to act at all.
+  ///
+  /// What it claims is a trajectory-level proposition: over a trajectory,
+  /// periodically making room for another reasonably ready technical strand
+  /// improves practice allocation. It does not claim that any particular
+  /// substitution teaches more than the candidate it displaced, which is why
+  /// relief asks only that the alternative is not a step backward.
+  PacingDecision pace(List<CandidateTrace> guarded, SessionState session) {
+    final policy = config.pacing;
+    if (policy == null) return PacingDecision.inactive(guarded);
+    final pressured = pressuredFamilies(
+      window: session.recentFamilies,
+      config: policy,
+    );
+    if (pressured.isEmpty) return PacingDecision.inactive(guarded);
+
+    final relieved = [
+      for (final trace in guarded)
+        if (!isPressured(trace.exercise, pressured)) trace,
+    ];
+    if (relieved.isEmpty) return PacingDecision.unrelieved(guarded);
+    if (relieved.length == guarded.length) {
+      return PacingDecision.inactive(guarded);
+    }
+
+    final setAside = FamilySetAside(
+      slot: session.attemptsThisSession,
+      pressuredFamilies: pressured,
+      pressured: selectBest([
+        for (final trace in guarded)
+          if (isPressured(trace.exercise, pressured)) trace,
+      ])!,
+      relieving: selectBest(relieved)!,
+    );
+    if (policy.requireReadyAlternative && !setAside.isRelievable) {
+      return PacingDecision.unready(guarded);
+    }
+    return PacingDecision.relieved(relieved, setAside);
+  }
 
   /// The canonical V1 choice from an already-narrowed set: the diagnostic
   /// fairness guard, then lexicographic ranking.

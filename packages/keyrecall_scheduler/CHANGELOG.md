@@ -17,7 +17,7 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   challenge, and priority stages, per-candidate `CandidateTrace` records,
   lexicographic `RankKey` ranking, the repetition guard, and the new-material,
   guidance-probe, bootstrap-probe, recovery, and override admission exceptions.
-- `v1SchedulerConfig`, at registry version `v1-2`. It began as
+- `v1SchedulerConfig`, at registry version `v1-3`. It began as
   `v1PrototypeSchedulerConfig`, mirroring `v1-prototype-0` in
   `analysis/scheduler/config.toml`, and was renamed when it stopped carrying
   only the prototype's values.
@@ -32,6 +32,14 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   and comfortably faster than requested opens a `ChallengeBypass.tempoProbe`
   context, which admits the same task at the fastest offered tempo the learner
   reached and nothing else. Exclusive and one decision long, like recovery.
+- Realization-family pacing at selection, configured by `SchedulerConfig.pacing`
+  and null where allocation is unpaced. Exercises declare the family keys they
+  consume; a family that holds much of a rolling window with little managed
+  execution to show for it has its candidates set aside, but only when another
+  family offers a candidate at least as ready and never when nothing else is
+  admitted. The window lives on `SessionState`, and `SelectionResult.pacing`
+  reports what the filter did with each slot. The constants are provisional; see
+  `docs/design/realization-family-pacing.md`.
 - A form-introduction prerequisite: harmonic and melodic minor wait on a breadth
   of retrieved major and natural-minor material, spread across bands, reported
   as `harmonicMinorRepertoireBreadth` and `melodicMinorRepertoireBreadth`.

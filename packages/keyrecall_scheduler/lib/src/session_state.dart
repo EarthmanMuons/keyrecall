@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'config/scheduler_config.dart';
+import 'realization_family_pacing.dart';
 
 /// Short-lived scheduling context for one practice sitting.
 ///
@@ -51,6 +52,12 @@ class SessionState {
   /// not in the contest to lose it.
   int unservedGuidanceProbeSelections;
 
+  /// What the realization families of recent selections yielded, oldest first.
+  ///
+  /// Held beside [recentMaterialIds] rather than derived from it: pacing reads
+  /// how productive the work was, which a material id does not carry.
+  final List<FamilyObservation> recentFamilies;
+
   SessionState({
     this.attemptsThisSession = 0,
     List<String>? recentMaterialIds,
@@ -58,7 +65,9 @@ class SessionState {
     this.tempoProbe,
     this.supportedAttemptsSinceObservation = 0,
     this.unservedGuidanceProbeSelections = 0,
-  }) : recentMaterialIds = recentMaterialIds ?? [];
+    List<FamilyObservation>? recentFamilies,
+  }) : recentMaterialIds = recentMaterialIds ?? [],
+       recentFamilies = recentFamilies ?? [];
 
   /// Whether a recovery context is currently active.
   bool get isRecovering => lastFailedExercise != null;
@@ -90,6 +99,25 @@ class SessionState {
     recentMaterialIds.add(exercise.material.materialId);
     while (recentMaterialIds.length > config.recentWindow) {
       recentMaterialIds.removeAt(0);
+    }
+  }
+
+  /// Records what the families [exercise] consumed yielded.
+  ///
+  /// [productive] is the yield signal pressure reads: managed execution, which
+  /// is deliberately demanding, so a family only stops accumulating pressure
+  /// once it produces work the learner can actually execute.
+  void recordFamilySelection(
+    Exercise exercise, {
+    required bool productive,
+    required PacingConfig config,
+    RealizationFamilyResolver families = handMotionFamilies,
+  }) {
+    recentFamilies.add(
+      FamilyObservation(families: families(exercise), productive: productive),
+    );
+    while (recentFamilies.length > config.window) {
+      recentFamilies.removeAt(0);
     }
   }
 

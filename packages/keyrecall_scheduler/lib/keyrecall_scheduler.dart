@@ -12,6 +12,7 @@ export 'src/candidate_trace.dart';
 export 'src/execution_progression.dart';
 export 'src/config/scheduler_config.dart';
 export 'src/priority.dart';
+export 'src/realization_family_pacing.dart';
 export 'src/recovery.dart';
 export 'src/scheduler_pipeline.dart';
 export 'src/session_state.dart';

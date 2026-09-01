@@ -57,6 +57,18 @@ void main() {
       expect(config.challenge.pIntroductionMin, greaterThan(0.0));
     });
 
+    test('paces realization families behind the readiness gate', () {
+      final pacing = config.pacing;
+      expect(pacing, isNotNull);
+      expect(
+        pacing!.requireReadyAlternative,
+        isTrue,
+        reason:
+            'relief toward a generally less prepared strand regressed every '
+            'cohort measured; see docs/design/realization-family-pacing.md',
+      );
+    });
+
     test('catches a repetition run before it outgrows the tracked history', () {
       expect(
         config.diversity.maxConsecutiveMaterialAttempts,

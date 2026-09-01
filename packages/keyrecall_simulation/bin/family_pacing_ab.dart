@@ -31,7 +31,7 @@ Future<void> main(List<String> arguments) async {
   final archetypes = options.option('archetypes')!.split(',');
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
-  final pacing = RealizationFamilyPacingConfig(
+  final pacing = PacingConfig(
     window: int.parse(options.option('window')!),
     shareFloor: double.parse(options.option('share-floor')!),
     minFamilyAttempts: int.parse(options.option('min-attempts')!),
@@ -230,35 +230,40 @@ void _writeMap(Map<String, int> values) {
 Map<String, _Comparison> _runJobs(
   List<TrajectoryJob> jobs,
   int slots,
-  RealizationFamilyPacingConfig pacing,
+  PacingConfig pacing,
 ) {
   final results = <String, _Comparison>{};
   for (final job in jobs) {
-    final pipeline = FamilyPacedPipeline(
-      learner: const LearnerModel(),
-      pacing: RealizationFamilyPacing(config: pacing),
-    );
+    final log = PacingLog();
     final current = runTrajectory(
       player: playerOf(job.archetypeId),
       seed: job.seed,
       materials: allScales,
       slots: slots,
+      pipeline: SchedulerPipeline(
+        learner: const LearnerModel(),
+        config: v1SchedulerConfig.withPacing(null),
+      ),
     );
     final paced = runTrajectory(
       player: playerOf(job.archetypeId),
       seed: job.seed,
       materials: allScales,
       slots: slots,
-      pipeline: pipeline,
+      pipeline: SchedulerPipeline(
+        learner: const LearnerModel(),
+        config: v1SchedulerConfig.withPacing(pacing),
+      ),
+      observePacing: (_, decision) => log.record(decision),
     );
     final comparison = results.putIfAbsent(job.archetypeId, _Comparison.new);
     comparison.runs++;
     comparison.current.absorb(_measure(current));
     comparison.paced.absorb(
       _measure(paced)
-        ..setAsideSlots = pipeline.setAsides.length
-        ..unrelievedSlots = pipeline.unrelievedSlots
-        ..unreadySlots = pipeline.unreadySlots,
+        ..setAsideSlots = log.setAsides.length
+        ..unrelievedSlots = log.unrelievedSlots
+        ..unreadySlots = log.unreadySlots,
     );
     final shared = current.slots.length < paced.slots.length
         ? current.slots.length

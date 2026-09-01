@@ -263,6 +263,57 @@ class ProbeConfig {
        );
 }
 
+/// Realization-family allocation limits.
+///
+/// Provisional. The mechanism and its invariants are what the paired
+/// experiments in `docs/design/realization-family-pacing.md` establish; these
+/// numbers were chosen to make a measured allocation failure visible and carry
+/// no device or telemetry evidence. Changing them changes how much pacing
+/// happens, not what pacing means.
+@immutable
+class PacingConfig {
+  /// How many recent selections allocation is read over.
+  final int window;
+
+  /// The share of the window a family may hold before pressure can build.
+  final double shareFloor;
+
+  /// Attempts a family needs in the window before it can be paced at all.
+  final int minFamilyAttempts;
+
+  /// The pressure at which a family's candidates are set aside.
+  final double setAsideAt;
+
+  /// Whether relief requires an alternative at least as ready as the candidate
+  /// it would displace.
+  ///
+  /// Without it, pressure assumes that poor yield means the learner should be
+  /// working on something else. For a learner failing everything, poor yield
+  /// instead means the foundational work is not finished, and every other
+  /// family is a worse use of the slot.
+  final bool requireReadyAlternative;
+
+  const PacingConfig({
+    required this.window,
+    required this.shareFloor,
+    required this.minFamilyAttempts,
+    required this.setAsideAt,
+    required this.requireReadyAlternative,
+  }) : assert(window > 0, 'the window must hold at least one selection'),
+       assert(
+         shareFloor >= 0 && shareFloor < 1,
+         'a family that may hold the whole window can never be paced',
+       ),
+       assert(
+         minFamilyAttempts > 0 && minFamilyAttempts <= window,
+         'a family must be able to reach its minimum inside the window',
+       ),
+       assert(
+         setAsideAt > 0 && setAsideAt <= 1,
+         'the set-aside threshold is a reachable pressure',
+       );
+}
+
 /// One versioned set of scheduler policy constants.
 ///
 /// Every value is a deliberately simple placeholder, not a tuned policy
@@ -292,6 +343,9 @@ class SchedulerConfig {
   /// Probe intervals.
   final ProbeConfig probe;
 
+  /// Realization-family pacing, or null where allocation is unpaced.
+  final PacingConfig? pacing;
+
   const SchedulerConfig({
     required this.modelVersion,
     required this.eligibility,
@@ -299,7 +353,21 @@ class SchedulerConfig {
     required this.challenge,
     required this.diversity,
     required this.probe,
+    required this.pacing,
   });
+
+  /// The same policy with [pacing] in force, or unpaced when it is null.
+  ///
+  /// A paired experiment needs two configurations differing in nothing else.
+  SchedulerConfig withPacing(PacingConfig? pacing) => SchedulerConfig(
+    modelVersion: modelVersion,
+    eligibility: eligibility,
+    safety: safety,
+    challenge: challenge,
+    diversity: diversity,
+    probe: probe,
+    pacing: pacing,
+  );
 }
 
 /// The V1 scheduler policy constants.
@@ -312,7 +380,7 @@ class SchedulerConfig {
 /// frozen for initial production; the numbers are starting points for
 /// calibration against real practice data.
 const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
-  modelVersion: 'v1-2',
+  modelVersion: 'v1-3',
   eligibility: EligibilityConfig(
     multiOctaveExecutionFloor: -0.5,
     gentleTempoBpm: 60,
@@ -340,5 +408,12 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     underchallengePitchIntegrity: 0.95,
     underchallengeContinuity: 0.9,
     underchallengeTemporalStability: 0.7,
+  ),
+  pacing: PacingConfig(
+    window: 12,
+    shareFloor: 0.5,
+    minFamilyAttempts: 4,
+    setAsideAt: 0.15,
+    requireReadyAlternative: true,
   ),
 );
