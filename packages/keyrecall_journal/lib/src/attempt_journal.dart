@@ -4,6 +4,7 @@ import 'package:meta/meta.dart';
 
 import 'attempt_record.dart';
 import 'canonical_json.dart';
+import 'profile.dart';
 import 'schema.dart';
 import 'upgrade.dart';
 
@@ -26,12 +27,9 @@ class JournalHeader {
   /// not mistake it for a point the model reasons from.
   final DateTime createdAt;
 
-  JournalHeader({required this.profileId, required DateTime createdAt})
-    : createdAt = createdAt.toUtc() {
-    if (profileId.isEmpty) {
-      throw ArgumentError.value(profileId, 'profileId', 'must not be empty');
-    }
-  }
+  JournalHeader({required String profileId, required DateTime createdAt})
+    : profileId = requireProfileId(profileId),
+      createdAt = createdAt.toUtc();
 
   /// Writes the header.
   Map<String, Object?> toJson() => {

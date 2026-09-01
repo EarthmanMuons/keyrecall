@@ -33,12 +33,19 @@ void main() {
     var at = 1000;
     for (final (index, moment) in realization.moments.indexed) {
       final spread = spreads[index];
-      final arrivals = <(int, int)>[
-        (moment.noteFor(Hand.left)!.midiNote, spread < 0 ? at - spread : at),
-        (moment.noteFor(Hand.right)!.midiNote, spread < 0 ? at : at + spread),
-      ];
-      for (final (order, (midiNote, timestampMs)) in arrivals.indexed) {
-        final hand = order == 0 ? Hand.left : Hand.right;
+      final arrivals = <(Hand, int, int)>[
+        (
+          Hand.left,
+          moment.noteFor(Hand.left)!.midiNote,
+          spread < 0 ? at - spread : at,
+        ),
+        (
+          Hand.right,
+          moment.noteFor(Hand.right)!.midiNote,
+          spread < 0 ? at : at + spread,
+        ),
+      ]..sort((left, right) => left.$3.compareTo(right.$3));
+      for (final (hand, midiNote, timestampMs) in arrivals) {
         if (index == atMoment && silent.contains(hand)) continue;
         transcript = transcript.appending(
           pitch: pitch(midiNote),

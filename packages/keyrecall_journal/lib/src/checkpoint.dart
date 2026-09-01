@@ -5,6 +5,7 @@ import 'attempt_record.dart';
 import 'canonical_json.dart' as canonical;
 import 'canonical_json.dart';
 import 'codecs/learner_codec.dart';
+import 'profile.dart';
 import 'schema.dart';
 
 /// A learner state saved so a later start does not have to replay everything.
@@ -82,6 +83,7 @@ class LearnerStateCheckpoint {
     required String throughAttemptId,
     required DateTime coversThrough,
   }) {
+    requireProfileId(profileId);
     final captured = state.copy();
     return LearnerStateCheckpoint._(
       schemaVersion: checkpointSchemaVersion,

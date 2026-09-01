@@ -23,11 +23,22 @@ class PlayedNote {
   /// or a tempo.
   final int timestampMs;
 
-  const PlayedNote({
+  PlayedNote({
     required this.sequence,
     required this.pitch,
     required this.timestampMs,
-  });
+  }) {
+    if (sequence < 0) {
+      throw ArgumentError.value(sequence, 'sequence', 'must not be negative');
+    }
+    if (timestampMs < 0) {
+      throw ArgumentError.value(
+        timestampMs,
+        'timestampMs',
+        'must not be negative',
+      );
+    }
+  }
 
   /// Which key it was.
   int get midiNote => pitch.midiNote;
@@ -71,7 +82,24 @@ class PerformanceTranscript {
   final List<PlayedNote> notes;
 
   PerformanceTranscript(List<PlayedNote> notes)
-    : notes = List.unmodifiable(notes);
+    : notes = List.unmodifiable(notes) {
+    for (final (index, note) in this.notes.indexed) {
+      if (note.sequence != index) {
+        throw ArgumentError.value(
+          notes,
+          'notes',
+          'sequence must be contiguous from zero',
+        );
+      }
+      if (index > 0 && note.timestampMs < this.notes[index - 1].timestampMs) {
+        throw ArgumentError.value(
+          notes,
+          'notes',
+          'timestamps must be in arrival order',
+        );
+      }
+    }
+  }
 
   /// Nothing played yet.
   static final PerformanceTranscript empty = PerformanceTranscript(const []);

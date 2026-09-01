@@ -54,7 +54,7 @@ class FileProfileRepository implements ProfileRepository {
 
   /// Where [profileId] records itself.
   File profileFileFor(String profileId) =>
-      File('${root.path}/$profileId/profile.json');
+      File('${root.path}/${requireProfileId(profileId)}/profile.json');
 
   @override
   Future<List<Profile>> list() async => (await _read()).profiles;

@@ -27,11 +27,19 @@ class PracticeGoal {
   /// The material this goal is working toward, or null for all of it.
   final Set<String>? targetMaterialIds;
 
-  const PracticeGoal({required this.id, this.targetMaterialIds});
+  factory PracticeGoal({required String id, Set<String>? targetMaterialIds}) =>
+      PracticeGoal._(
+        id: id,
+        targetMaterialIds: targetMaterialIds == null
+            ? null
+            : Set.unmodifiable(targetMaterialIds),
+      );
+
+  const PracticeGoal._({required this.id, this.targetMaterialIds});
 
   /// Everything the system supports: general scale fluency, no destination
   /// narrower than the catalog.
-  static const PracticeGoal generalFluency = PracticeGoal(
+  static const PracticeGoal generalFluency = PracticeGoal._(
     id: 'GENERAL_FLUENCY',
   );
 

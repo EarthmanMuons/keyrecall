@@ -83,7 +83,7 @@ void main() {
     // The census that found this, reconstructed: the same rank key on every
     // tempo, and sixty first in the list.
     final state = owningOneOctave();
-    final key = (Exercise exercise) => RankKey(
+    RankKey key(Exercise exercise) => RankKey(
       tier: EligibilityTier.fullyEligible,
       retention: 0.002,
       information: 1.604,

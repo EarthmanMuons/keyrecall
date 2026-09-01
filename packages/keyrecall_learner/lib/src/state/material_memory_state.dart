@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import '../elapsed_days.dart';
 import '../params/learner_params.dart';
+import 'monotonic_time.dart';
 
 /// Whether one exact material is independently retrievable, and how durably.
 ///
@@ -160,8 +161,8 @@ class MaterialMemoryState {
 
   /// `M(t)`: the modeled probability of unaided recall at [now].
   ///
-  /// Throws [StateError] before any anchor exists, because elapsed time is
-  /// undefined then; use [retrievabilityOrPrior] instead.
+  /// Throws [StateError] before any anchor exists, and [ArgumentError] when
+  /// [now] precedes it. Use [retrievabilityOrPrior] for unanchored memory.
   double retrievabilityAt(DateTime now) {
     final anchor = memoryAnchorAt;
     if (anchor == null) {
@@ -170,6 +171,7 @@ class MaterialMemoryState {
         'undefined; call retrievabilityOrPrior() instead',
       );
     }
+    requireForwardPropagation(now, anchor, '$materialId memory');
     return math
         .pow(2.0, -anchor.daysUntil(now) / currentHalfLifeDays)
         .toDouble();

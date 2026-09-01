@@ -250,7 +250,7 @@ class FilePracticeStore implements PracticeStore {
   }
 
   Directory _profileDirectory(String profileId) =>
-      Directory('${root.path}/$profileId');
+      Directory('${root.path}/${requireProfileId(profileId)}');
 
   File _journalFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/journal.jsonl');

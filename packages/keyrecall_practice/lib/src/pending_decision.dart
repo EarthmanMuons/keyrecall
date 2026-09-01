@@ -55,7 +55,7 @@ class PendingDecision {
 
   PendingDecision({
     required this.attemptId,
-    required this.profileId,
+    required String profileId,
     required this.sessionId,
     required this.indexInSession,
     required this.journalSequence,
@@ -64,7 +64,8 @@ class PendingDecision {
     required this.exercise,
     required this.decision,
     required this.stateBeforeHash,
-  }) : decidedAt = decidedAt.toUtc();
+  }) : profileId = requireProfileId(profileId),
+       decidedAt = decidedAt.toUtc();
 
   /// Writes the pending decision.
   Map<String, Object?> toJson() => {

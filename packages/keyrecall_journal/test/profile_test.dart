@@ -11,6 +11,21 @@ import 'support/fixtures.dart';
 /// A shared install has no single learner. The profile owns the history, and
 /// these are the guarantees that keeps two people's evidence apart.
 void main() {
+  test('profile ids are safe filesystem path segments', () {
+    for (final id in ['', '.', '..', '../another-profile', 'a/b', r'a\b']) {
+      expect(
+        () => Profile(
+          id: id,
+          displayName: 'Alice',
+          createdAt: t0,
+          placement: PlacementTier.someExperience,
+        ),
+        throwsArgumentError,
+        reason: id,
+      );
+    }
+  });
+
   group('profile identity', () {
     test('is opaque, so a rename keeps the history', () {
       final alice = Profile.create(

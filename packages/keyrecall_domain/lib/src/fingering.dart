@@ -28,7 +28,17 @@ class ScaleFingering {
   /// internal octave boundary.
   final int? terminalFinger;
 
-  const ScaleFingering({
+  factory ScaleFingering({
+    required List<int> entry,
+    required List<int> cycle,
+    int? terminalFinger,
+  }) => ScaleFingering._(
+    entry: List.unmodifiable(entry),
+    cycle: List.unmodifiable(cycle),
+    terminalFinger: terminalFinger,
+  );
+
+  const ScaleFingering._({
     required this.entry,
     required this.cycle,
     this.terminalFinger,
@@ -49,7 +59,7 @@ class ScaleFingering {
 // The conventional families, named for what they are rather than for one key.
 // Right hand, thumb on the tonic, fourth finger on the seventh degree; the
 // internal tonic continues on the thumb and only the last one takes five.
-const _rhThumbTonic = ScaleFingering(
+const _rhThumbTonic = ScaleFingering._(
   entry: [1],
   cycle: [2, 3, 1, 2, 3, 4, 1],
   terminalFinger: 5,
@@ -57,25 +67,25 @@ const _rhThumbTonic = ScaleFingering(
 
 /// Right hand with the thumb on the fourth degree as well, which is F major's
 /// exception and is reused by the F minors.
-const _rhThumbOnFour = ScaleFingering(
+const _rhThumbOnFour = ScaleFingering._(
   entry: [1],
   cycle: [2, 3, 4, 1, 2, 3, 1],
   terminalFinger: 4,
 );
 
-const _rh23123412 = ScaleFingering(entry: [2], cycle: [3, 1, 2, 3, 4, 1, 2]);
-const _rh23412312 = ScaleFingering(entry: [2], cycle: [3, 4, 1, 2, 3, 1, 2]);
-const _rh21231234 = ScaleFingering(entry: [2], cycle: [1, 2, 3, 1, 2, 3, 4]);
-const _rh31234123 = ScaleFingering(entry: [3], cycle: [1, 2, 3, 4, 1, 2, 3]);
-const _rh21234123 = ScaleFingering(entry: [2], cycle: [1, 2, 3, 4, 1, 2, 3]);
-const _rh34123123 = ScaleFingering(entry: [3], cycle: [4, 1, 2, 3, 1, 2, 3]);
+const _rh23123412 = ScaleFingering._(entry: [2], cycle: [3, 1, 2, 3, 4, 1, 2]);
+const _rh23412312 = ScaleFingering._(entry: [2], cycle: [3, 4, 1, 2, 3, 1, 2]);
+const _rh21231234 = ScaleFingering._(entry: [2], cycle: [1, 2, 3, 1, 2, 3, 4]);
+const _rh31234123 = ScaleFingering._(entry: [3], cycle: [1, 2, 3, 4, 1, 2, 3]);
+const _rh21234123 = ScaleFingering._(entry: [2], cycle: [1, 2, 3, 4, 1, 2, 3]);
+const _rh34123123 = ScaleFingering._(entry: [3], cycle: [4, 1, 2, 3, 1, 2, 3]);
 
-const _lh54321321 = ScaleFingering(entry: [5], cycle: [4, 3, 2, 1, 3, 2, 1]);
-const _lh43214321 = ScaleFingering(entry: [4], cycle: [3, 2, 1, 4, 3, 2, 1]);
-const _lh32143213 = ScaleFingering(entry: [3], cycle: [2, 1, 4, 3, 2, 1, 3]);
-const _lh43213214 = ScaleFingering(entry: [4], cycle: [3, 2, 1, 3, 2, 1, 4]);
-const _lh21432132 = ScaleFingering(entry: [2], cycle: [1, 4, 3, 2, 1, 3, 2]);
-const _lh21321432 = ScaleFingering(entry: [2], cycle: [1, 3, 2, 1, 4, 3, 2]);
+const _lh54321321 = ScaleFingering._(entry: [5], cycle: [4, 3, 2, 1, 3, 2, 1]);
+const _lh43214321 = ScaleFingering._(entry: [4], cycle: [3, 2, 1, 4, 3, 2, 1]);
+const _lh32143213 = ScaleFingering._(entry: [3], cycle: [2, 1, 4, 3, 2, 1, 3]);
+const _lh43213214 = ScaleFingering._(entry: [4], cycle: [3, 2, 1, 3, 2, 1, 4]);
+const _lh21432132 = ScaleFingering._(entry: [2], cycle: [1, 4, 3, 2, 1, 3, 2]);
+const _lh21321432 = ScaleFingering._(entry: [2], cycle: [1, 3, 2, 1, 4, 3, 2]);
 
 /// The canonical fingering for every scale V1 supports, by material id.
 ///

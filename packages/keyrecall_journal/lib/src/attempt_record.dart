@@ -8,6 +8,7 @@ import 'codecs/closure_codec.dart';
 import 'codecs/domain_codec.dart';
 import 'codecs/learner_codec.dart';
 import 'codecs/scheduler_codec.dart';
+import 'profile.dart';
 import 'schema.dart';
 import 'upgrade.dart';
 
@@ -88,15 +89,13 @@ class AttemptIdentity {
   final DateTime occurredAt;
 
   AttemptIdentity({
-    required this.profileId,
+    required String profileId,
     required this.attemptId,
     required this.sessionId,
     required this.indexInSession,
     required DateTime occurredAt,
-  }) : occurredAt = occurredAt.toUtc() {
-    if (profileId.isEmpty) {
-      throw ArgumentError.value(profileId, 'profileId', 'must not be empty');
-    }
+  }) : profileId = requireProfileId(profileId),
+       occurredAt = occurredAt.toUtc() {
     if (attemptId.isEmpty) {
       throw ArgumentError.value(attemptId, 'attemptId', 'must not be empty');
     }

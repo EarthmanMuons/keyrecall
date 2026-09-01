@@ -142,6 +142,14 @@ void main() {
       expect(memory.retrievabilityAt(t0.plusDays(4)), closeTo(0.5, 1e-12));
     });
 
+    test('does not predict before the memory anchor', () {
+      final state = model.newState(at: t0);
+      final memory = state.materialMemoryFor(cMajor.materialId, params);
+      anchorMemory(memory, t0.plusDays(1), currentHalfLifeDays: 4.0);
+
+      expect(() => memory.retrievabilityAt(t0), throwsArgumentError);
+    });
+
     test('refuses to report a decay curve before any anchor exists', () {
       final state = model.newState(at: t0);
       final memory = state.materialMemoryFor(cMajor.materialId, params);

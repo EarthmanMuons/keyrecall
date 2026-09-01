@@ -58,6 +58,40 @@ void main() {
     expect(second.length, 2);
   });
 
+  group('construction invariants', () {
+    final pitch = spellObservedPitch(66, material: material);
+
+    test('sequence is contiguous from zero', () {
+      expect(
+        () => PerformanceTranscript([
+          PlayedNote(sequence: 1, pitch: pitch, timestampMs: 1000),
+        ]),
+        throwsArgumentError,
+      );
+    });
+
+    test('timestamps preserve arrival order', () {
+      expect(
+        () => PerformanceTranscript([
+          PlayedNote(sequence: 0, pitch: pitch, timestampMs: 1001),
+          PlayedNote(sequence: 1, pitch: pitch, timestampMs: 1000),
+        ]),
+        throwsArgumentError,
+      );
+    });
+
+    test('individual positions and timestamps are nonnegative', () {
+      expect(
+        () => PlayedNote(sequence: -1, pitch: pitch, timestampMs: 0),
+        throwsArgumentError,
+      );
+      expect(
+        () => PlayedNote(sequence: 0, pitch: pitch, timestampMs: -1),
+        throwsArgumentError,
+      );
+    });
+  });
+
   group('spelling an observation', () {
     test('writes a scale member the way the scale writes it', () {
       // The seventh degree of F# harmonic minor is E#, not F.

@@ -24,6 +24,19 @@ void main() {
   File checkpointFile() => File('${root.path}/${alice.id}/checkpoint.json');
   File eraseMarker() => File('${root.path}/${alice.id}/practice-erasing');
 
+  test('a profile id cannot escape the storage root', () async {
+    final store = FilePracticeStore(root);
+    final escapedName = 'keyrecall-escape-${root.path.hashCode.abs()}';
+    final escaped = Directory('${root.parent.path}/$escapedName');
+
+    expect(escaped.existsSync(), isFalse);
+    await expectLater(
+      store.loadJournal('../$escapedName'),
+      throwsArgumentError,
+    );
+    expect(escaped.existsSync(), isFalse);
+  });
+
   group('durability', () {
     test('a committed attempt survives the process', () async {
       final session = await openSession(FilePracticeStore(root));

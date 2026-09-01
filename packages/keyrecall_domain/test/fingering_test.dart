@@ -3,6 +3,18 @@ import 'package:test/test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 void main() {
+  test('a fingering does not retain mutable caller lists', () {
+    final entry = [1];
+    final cycle = [2, 3, 1];
+    final fingering = ScaleFingering(entry: entry, cycle: cycle);
+
+    entry[0] = 5;
+    cycle.add(4);
+
+    expect(fingering.entry, [1]);
+    expect(fingering.cycle, [2, 3, 1]);
+  });
+
   String digits(List<int> fingers) => fingers.join();
 
   Exercise scale(

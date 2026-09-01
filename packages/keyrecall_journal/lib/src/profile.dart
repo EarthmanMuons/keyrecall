@@ -51,15 +51,13 @@ class Profile {
   final String? presentationHint;
 
   Profile({
-    required this.id,
+    required String id,
     required this.displayName,
     required DateTime createdAt,
     required this.placement,
     this.presentationHint,
-  }) : createdAt = createdAt.toUtc() {
-    if (id.isEmpty) {
-      throw ArgumentError.value(id, 'id', 'must not be empty');
-    }
+  }) : id = requireProfileId(id, 'id'),
+       createdAt = createdAt.toUtc() {
     if (displayName.isEmpty) {
       throw ArgumentError.value(
         displayName,
@@ -138,6 +136,16 @@ class Profile {
 }
 
 final Random _ids = Random.secure();
+
+final RegExp _profileIdPattern = RegExp(r'^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$');
+
+/// Returns [id] when it is safe to use as one filesystem path segment.
+String requireProfileId(String id, [String name = 'profileId']) {
+  if (!_profileIdPattern.hasMatch(id)) {
+    throw ArgumentError.value(id, name, 'must be a path-safe identifier');
+  }
+  return id;
+}
 
 /// A random RFC 4122 version 4 identifier.
 ///
