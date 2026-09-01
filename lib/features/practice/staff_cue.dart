@@ -31,12 +31,17 @@ class FittedStaff extends StatelessWidget {
   const FittedStaff({
     required this.score,
     required this.theme,
+    this.elementColors = const {},
     this.showsNoteNames = false,
     super.key,
   });
 
   final crisp.Score score;
   final crisp.CrispNotationTheme theme;
+
+  /// What to draw particular elements in, by id.
+  final Map<String, Color> elementColors;
+
   final bool showsNoteNames;
 
   @override
@@ -56,6 +61,7 @@ class FittedStaff extends StatelessWidget {
                   score: row,
                   theme: theme,
                   staffSpace: space,
+                  elementColors: elementColors,
                   showNoteNames: showsNoteNames,
                 ),
               ),
@@ -178,11 +184,13 @@ class StaffCue extends StatelessWidget {
 
 /// What the learner has played so far, written out.
 ///
-/// The same surface as [StaffCue] carrying different information: this one
-/// grows from observations and starts empty, so it discloses nothing about
-/// what is coming. One staff rather than two, in the clef the exercise's
-/// register suggests, since which hand played a note is not something the
-/// input stream says.
+/// The same surface as [StaffCue] carrying different information: this one is
+/// written from observations and starts with nothing on it, so it discloses
+/// nothing about what is coming. Its width is held from the first frame, which
+/// says how much is being asked for and not what any of it is.
+///
+/// One staff rather than two, in the clef the exercise's register suggests,
+/// since which hand played a note is not something the input stream says.
 class TranscriptStaff extends StatelessWidget {
   const TranscriptStaff({
     required this.transcript,
@@ -197,13 +205,27 @@ class TranscriptStaff extends StatelessWidget {
   final Exercise exercise;
 
   @override
-  Widget build(BuildContext context) => FittedStaff(
-    score: transcriptScoreFor(
+  Widget build(BuildContext context) {
+    final score = transcriptScoreFor(
       transcript,
       clef: exercise.conditions.hands == HandConfiguration.left
           ? crisp.Clef.bass
           : crisp.Clef.treble,
-    ),
-    theme: staffTheme(context),
-  );
+      // Room for what was asked for, held from the first frame. A staff that
+      // grew a note at a time would move every note already on it each time
+      // one arrived, which is the one thing a learner watching it cannot be
+      // reading past.
+      reserve: realize(exercise).moments.length,
+    );
+
+    return FittedStaff(
+      score: score,
+      theme: staffTheme(context),
+      // The slots are there to hold the space. Drawing them would say the
+      // learner rested, which is a claim about a performance nobody has made.
+      elementColors: {
+        for (final id in reservedIds(score)) id: Colors.transparent,
+      },
+    );
+  }
 }

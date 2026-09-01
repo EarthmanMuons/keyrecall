@@ -273,6 +273,19 @@ crisp.Pitch _pitchOf(SpelledPitch pitch) => crisp.Pitch(
 /// The id the element for the [sequence]th played note is drawn under.
 String transcriptElementId(int sequence) => 'played-$sequence';
 
+/// The id the [index]th held-open slot is drawn under.
+///
+/// A rest standing in for a note that has not arrived. Whoever renders the
+/// score draws it in nothing, so what it does is hold the space.
+String reservedElementId(int index) => 'reserved-$index';
+
+/// The slots in [score] that are held open rather than played.
+Set<String> reservedIds(crisp.Score score) => {
+  for (final measure in score.measures)
+    for (final element in measure.elements)
+      if (element is crisp.RestElement && element.id != null) element.id!,
+};
+
 /// What was played, written out in the order it arrived.
 ///
 /// Not a rhythmic transcription. Each note gets the same value and the same
@@ -285,8 +298,9 @@ String transcriptElementId(int sequence) => 'played-$sequence';
 crisp.Score transcriptScoreFor(
   PerformanceTranscript transcript, {
   required crisp.Clef clef,
+  int reserve = 0,
 }) {
-  final elements = <crisp.MusicElement>[
+  final played = <crisp.MusicElement>[
     for (final note in transcript.notes)
       crisp.NoteElement.note(
         _pitchOf(note.pitch),
@@ -296,21 +310,35 @@ crisp.Score transcriptScoreFor(
       ),
   ];
 
+  // Whole bars, enough for what the exercise asks for or for what arrived when
+  // that is more. The staff is the size it is going to be before anything is
+  // played, so notes land in it rather than stretching it a note at a time,
+  // and somebody who plays extra ones is given another bar rather than another
+  // note's width.
+  final slots = played.length > reserve ? played.length : reserve;
+  final held =
+      (slots / _beatsPerMeasure).ceil().clamp(1, slots + 1) * _beatsPerMeasure;
+  final elements = <crisp.MusicElement>[
+    ...played,
+    for (var index = played.length; index < held; index++)
+      crisp.RestElement(
+        crisp.NoteDuration.quarter,
+        id: reservedElementId(index),
+      ),
+  ];
+
   return crisp.Score(
     clef: clef,
     keySignature: _noKeySignature,
     timeSignature: _fourFour,
     measures: [
-      if (elements.isEmpty)
-        const crisp.Measure([])
-      else
-        for (var start = 0; start < elements.length; start += _beatsPerMeasure)
-          crisp.Measure(
-            elements.sublist(
-              start,
-              (start + _beatsPerMeasure).clamp(0, elements.length),
-            ),
+      for (var start = 0; start < elements.length; start += _beatsPerMeasure)
+        crisp.Measure(
+          elements.sublist(
+            start,
+            (start + _beatsPerMeasure).clamp(0, elements.length),
           ),
+        ),
     ],
   );
 }

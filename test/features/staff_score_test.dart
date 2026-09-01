@@ -237,6 +237,52 @@ void main() {
     });
   });
 
+  group('the staff a performance is written on', () {
+    crisp.Score transcriptOf(int notes, {int reserve = 0}) =>
+        transcriptScoreFor(
+          PerformanceTranscript([
+            for (var sequence = 0; sequence < notes; sequence++)
+              PlayedNote(
+                sequence: sequence,
+                pitch: SpelledPitch(letter: NoteLetter.c, octave: 4),
+                timestampMs: 500 * sequence,
+              ),
+          ]),
+          clef: crisp.Clef.treble,
+          reserve: reserve,
+        );
+
+    test('holds room for the whole exercise before anything is played', () {
+      final empty = transcriptOf(0, reserve: 15);
+      final started = transcriptOf(3, reserve: 15);
+
+      expect(
+        [for (final measure in empty.measures) measure.elements.length],
+        [4, 4, 4, 4],
+      );
+      expect(
+        [for (final measure in started.measures) measure.elements.length],
+        [4, 4, 4, 4],
+        reason: 'the notes land in the staff rather than stretching it',
+      );
+      expect(notesOf(started), hasLength(3));
+      expect(reservedIds(started), hasLength(13));
+    });
+
+    test('gives an extra bar to somebody who plays past the exercise', () {
+      expect(transcriptOf(17, reserve: 15).measures, hasLength(5));
+      expect(
+        reservedIds(transcriptOf(17, reserve: 15)),
+        hasLength(3),
+        reason: 'the bar the extra notes opened is held to the end',
+      );
+    });
+
+    test('reserves nothing it was not asked to', () {
+      expect(transcriptOf(0).measures, hasLength(1));
+    });
+  });
+
   group('breaking a staff into rows', () {
     crisp.Score scoreOf(int octaves) => staffScoreFor(
       realize(
