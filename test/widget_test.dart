@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'package:keyrecall/features/demo_input/demo_input.dart';
+import 'package:keyrecall/features/input/input.dart';
+import 'package:keyrecall/features/practice/developer_screen.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
-import 'package:keyrecall/features/practice/home_screen.dart';
 
 void main() {
   late Directory root;
@@ -38,6 +40,9 @@ void main() {
 
     // The panel sits behind the placement gate in the real app, so the install
     // is placed the way the first-run screen places it before it is pumped.
+    // The synthetic instrument, rather than the MIDI stack a test has no
+    // radio for.
+    container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
     await tester.runAsync(() async {
       await container
           .read(profileRosterProvider.notifier)
@@ -47,23 +52,11 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: HomeScreen()),
+        child: const MaterialApp(home: DeveloperScreen()),
       ),
     );
     await tester.pump();
     return container;
-  }
-
-  /// Taps [label] and lets the storage writes it starts actually finish.
-  ///
-  /// The tap has to happen inside [WidgetTester.runAsync] too: futures created
-  /// under the fake clock do not complete on their own.
-  Future<void> tapAndSettle(WidgetTester tester, String label) async {
-    await tester.runAsync(() async {
-      await tester.tap(find.text(label));
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-    });
-    await tester.pump();
   }
 
   testWidgets('a placed install reaches an exercise without asking more', (
@@ -71,31 +64,17 @@ void main() {
   ) async {
     await pumpPanel(tester);
 
-    expect(find.text('Play this'), findsOneWidget);
     expect(find.text('What the model expected'), findsOneWidget);
-    expect(find.text('Clean'), findsOneWidget);
-  });
-
-  testWidgets('reporting a result commits it and moves on', (tester) async {
-    await pumpPanel(tester);
-
-    await tapAndSettle(tester, 'Clean');
-
-    expect(find.text('Last committed'), findsOneWidget);
-    expect(
-      find.text('Play this'),
-      findsOneWidget,
-      reason: 'the loop presents the next exercise rather than stopping',
-    );
+    expect(find.text('Input'), findsOneWidget);
   });
 
   testWidgets('playing on the synthetic instrument shows up as live input', (
     tester,
   ) async {
-    await pumpPanel(tester);
+    final container = await pumpPanel(tester);
     expect(find.text('nothing yet'), findsNothing);
 
-    await tester.tap(find.text('Play something'));
+    container.read(demoInputProvider.notifier).playSequence(const [60, 62, 64]);
     await tester.pump(const Duration(seconds: 2));
 
     expect(

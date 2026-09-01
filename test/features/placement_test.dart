@@ -7,7 +7,8 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:keyrecall/features/practice/home_screen.dart';
+import 'package:keyrecall/features/input/input.dart';
+import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/placement.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
@@ -41,6 +42,9 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
+    // The synthetic instrument, rather than the MIDI stack a test has no
+    // radio for.
+    container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
     await tester.runAsync(() => container.read(profileRosterProvider.future));
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -68,7 +72,7 @@ void main() {
     await pumpGate(tester, container);
 
     expect(find.text('Where should we start?'), findsOneWidget);
-    expect(find.byType(HomeScreen), findsNothing);
+    expect(find.byType(AttemptScreen), findsNothing);
     for (final tier in PlacementTier.values) {
       expect(find.text(tier.headline), findsOneWidget);
     }
@@ -133,6 +137,6 @@ void main() {
     await pumpGate(tester, container);
 
     expect(find.text('Where should we start?'), findsNothing);
-    expect(find.byType(HomeScreen), findsOneWidget);
+    expect(find.byType(AttemptScreen), findsOneWidget);
   });
 }

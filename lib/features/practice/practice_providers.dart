@@ -10,7 +10,6 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'attempt_transcript.dart';
-import 'reported_result.dart';
 
 /// Where this install keeps its history.
 ///
@@ -389,7 +388,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// production should never reach, since it does not present material it
   /// cannot read.
   ///
-  /// Single-flight for the same reason [report] is.
+  /// Single-flight for the same reason [decline] is.
   Future<void> finish() async {
     final current = state.value;
     if (_writing || current == null || !current.isAwaitingAnswer) return;
@@ -419,48 +418,9 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     }
   }
 
-  /// Records what the person reported and moves to the next exercise.
-  ///
-  /// Scaffolding from before measurement existed, kept for the dev panel so
-  /// learner-state transitions can still be driven by hand. Not a product
-  /// path: a self-report is not a second kind of evidence.
-  ///
-  /// One write at a time. Two quick taps must not both reach
-  /// [PracticeSession.commit] with the same decision: the transaction below is
-  /// safe to *retry*, which is a different guarantee than being safe to enter
-  /// twice at once, and nothing down there was built to serialize concurrent
-  /// writers. A second pass folds the same outcome in from an already-advanced
-  /// state and produces a different record under the same attempt id, which
-  /// the journal then rejects as a collision.
-  Future<void> report(ReportedResult result) async {
-    final current = state.value;
-    if (_writing || current == null || !current.isAwaitingAnswer) return;
-    final exercise = current.exercise!;
-
-    _writing = true;
-    state = const AsyncValue.loading();
-    try {
-      state = await AsyncValue.guard(() async {
-        final record = await current.session.commit(
-          result.toOutcome(exercise),
-          observedWallTime: DateTime.now().toUtc(),
-        );
-        return _decide(
-          PracticeLoopState(
-            profile: current.profile,
-            session: current.session,
-            lastCommitted: record,
-          ),
-        );
-      });
-    } finally {
-      _writing = false;
-    }
-  }
-
   /// Discards an unresolved decision without recording anything.
   ///
-  /// Single-flight for the same reason [report] is.
+  /// Single-flight for the same reason [finish] is.
   Future<void> abandonPending() async {
     final current = state.value;
     if (_writing || current?.pending == null) return;

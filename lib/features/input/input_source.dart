@@ -14,11 +14,8 @@ enum InputSourceKind {
 
 /// Which input source is active.
 ///
-/// Starts on the synthetic one, so a launch with nothing plugged in still
-/// reaches a working practice loop. Connecting an instrument is what moves it,
-/// and that is an explicit decision rather than something inferred from a
-/// device appearing: a keyboard powering up nearby should not silently take
-/// over an attempt in progress.
+/// Starts on MIDI, because practice happens at an instrument. The synthetic
+/// source is driven from tests and simulations, which select it explicitly.
 final inputSourceProvider =
     NotifierProvider<InputSourceNotifier, InputSourceKind>(
       InputSourceNotifier.new,
@@ -26,7 +23,7 @@ final inputSourceProvider =
 
 class InputSourceNotifier extends Notifier<InputSourceKind> {
   @override
-  InputSourceKind build() => InputSourceKind.demo;
+  InputSourceKind build() => InputSourceKind.midi;
 
   /// Switches to [kind].
   void use(InputSourceKind kind) => state = kind;

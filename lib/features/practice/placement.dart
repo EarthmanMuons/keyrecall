@@ -2,7 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'home_screen.dart';
+import 'attempt_screen.dart';
 import 'practice_providers.dart';
 
 /// How a placement tier is put to somebody who has not been assessed.
@@ -201,7 +201,7 @@ class PlacementGate extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) =>
       switch (ref.watch(profileRosterProvider)) {
         AsyncData(:final value) when value.isEmpty => const PlacementScreen(),
-        AsyncData() || AsyncError() => const HomeScreen(),
+        AsyncData() || AsyncError() => const AttemptScreen(),
         _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
       };
 }

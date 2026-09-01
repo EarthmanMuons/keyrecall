@@ -2,12 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
-import 'package:keyrecall/features/practice/reported_result.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -25,6 +24,10 @@ void main() {
       overrides: [storageRootProvider.overrideWith((ref) async => root)],
     );
     addTearDown(container.dispose);
+    // The synthetic instrument, rather than the MIDI stack a test has no
+    // radio for. Nothing here plays it: what closing an attempt records is
+    // what arrived, and nothing arriving is a performance like any other.
+    container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
     return container;
   }
 
@@ -70,16 +73,14 @@ void main() {
   );
 
   test(
-    'reporting a result commits it and presents the next exercise',
+    'finishing an attempt commits it and presents the next exercise',
     () async {
       final container = launch();
       await place(container);
       final first = await loopOf(container);
       final firstId = first.presented!.decision.attemptId;
 
-      await container
-          .read(practiceLoopProvider.notifier)
-          .report(ReportedResult.clean);
+      await container.read(practiceLoopProvider.notifier).finish();
       final next = container.read(practiceLoopProvider).value!;
 
       expect(next.lastCommitted, isNotNull);
@@ -91,7 +92,7 @@ void main() {
     },
   );
 
-  test('a second report while one is in flight does nothing at all', () async {
+  test('a second finish while one is in flight does nothing at all', () async {
     // The transaction below is safe to retry, which is not the same as being
     // safe to enter twice at once. Entering twice does not corrupt history,
     // because the journal refuses the duplicate, but it refuses it by
@@ -110,10 +111,7 @@ void main() {
     addTearDown(subscription.close);
 
     final notifier = container.read(practiceLoopProvider.notifier);
-    await Future.wait([
-      notifier.report(ReportedResult.clean),
-      notifier.report(ReportedResult.clean),
-    ]);
+    await Future.wait([notifier.finish(), notifier.finish()]);
     final after = container.read(practiceLoopProvider).value!;
 
     expect(
@@ -134,9 +132,7 @@ void main() {
     final first = launch();
     await place(first);
     await loopOf(first);
-    await first
-        .read(practiceLoopProvider.notifier)
-        .report(ReportedResult.shaky);
+    await first.read(practiceLoopProvider.notifier).finish();
     first.dispose();
 
     final second = await loopOf(launch());
@@ -184,9 +180,7 @@ void main() {
         final container = launch();
         await place(container);
         await loopOf(container);
-        await container
-            .read(practiceLoopProvider.notifier)
-            .report(ReportedResult.brokeDown);
+        await container.read(practiceLoopProvider.notifier).finish();
         final resumed = container.read(practiceLoopProvider).value!;
 
         expect(resumed.attemptsRecorded, 1);
@@ -225,9 +219,7 @@ void main() {
       final container = launch();
       await place(container);
       await loopOf(container);
-      await container
-          .read(practiceLoopProvider.notifier)
-          .report(ReportedResult.clean);
+      await container.read(practiceLoopProvider.notifier).finish();
       final committed = container
           .read(practiceLoopProvider)
           .value!
@@ -252,27 +244,11 @@ void main() {
     });
   });
 
-  test('a fully cued exercise never records a retrieval observation', () {
-    // Not a UI concern but a correctness one: the buttons must not be able to
-    // manufacture evidence the guidance level rules out.
-    final cued = ReportedResult.clean;
-    for (final result in ReportedResult.values) {
-      expect(
-        result.toOutcome(_cuedExercise()).retrieval.isTested,
-        isFalse,
-        reason: '${result.name} claimed a retrieval test that never happened',
-      );
-    }
-    expect(cued.toOutcome(_unguidedExercise()).retrieval.isTested, isTrue);
-  });
-
   test('erasing recovers a journal this build cannot replay', () async {
     final before = launch();
     await place(before);
     final started = await loopOf(before);
-    await before
-        .read(practiceLoopProvider.notifier)
-        .report(ReportedResult.clean);
+    await before.read(practiceLoopProvider.notifier).finish();
 
     // The same history, recorded under the model that was live before the
     // tempo attribution change.
@@ -308,13 +284,3 @@ void main() {
     expect(recovered.attemptsRecorded, 0);
   });
 }
-
-Exercise _exerciseGuidedBy(GuidanceContext guidance) => Exercise.linear(
-  material: TechnicalMaterial('C', ScaleForm.major),
-  hands: HandConfiguration.together,
-  guidance: guidance,
-);
-
-Exercise _cuedExercise() => _exerciseGuidedBy(GuidanceContext.continuouslyCued);
-
-Exercise _unguidedExercise() => _exerciseGuidedBy(GuidanceContext.unguided);

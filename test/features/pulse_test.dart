@@ -6,6 +6,8 @@ import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 
+import '../support/synthetic_instrument.dart';
+
 /// Tempo support changes what the learner hears and nothing else.
 void main() {
   Exercise exerciseOf() => Exercise.linear(
@@ -32,7 +34,7 @@ void main() {
 
     final transcripts = <PerformanceTranscript>[];
     for (final support in TempoSupport.values) {
-      final container = ProviderContainer();
+      final container = ProviderContainer(overrides: [syntheticInstrument]);
       addTearDown(container.dispose);
 
       await tester.pumpWidget(

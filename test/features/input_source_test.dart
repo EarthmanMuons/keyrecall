@@ -54,6 +54,8 @@ void main() {
   setUp(() {
     container = ProviderContainer();
     addTearDown(container.dispose);
+    // The synthetic instrument, which is what these tests play.
+    container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
     recorder = _Recorder(container);
     addTearDown(recorder.close);
   });
@@ -292,8 +294,11 @@ void main() {
   });
 
   group('source selection', () {
-    test('starts synthetic, so a launch with no instrument still works', () {
-      expect(container.read(inputSourceProvider), InputSourceKind.demo);
+    test('starts on MIDI, because practice happens at an instrument', () {
+      expect(
+        ProviderContainer().read(inputSourceProvider),
+        InputSourceKind.midi,
+      );
       expect(InputSourceKind.demo.requiresInstrument, isFalse);
       expect(InputSourceKind.midi.requiresInstrument, isTrue);
     });
@@ -317,8 +322,8 @@ void main() {
       expect(container.read(inputSourceProvider), InputSourceKind.midi);
       notifier.toggle();
       expect(container.read(inputSourceProvider), InputSourceKind.demo);
-      notifier.use(InputSourceKind.midi);
-      expect(container.read(inputSourceProvider), InputSourceKind.midi);
+      notifier.use(InputSourceKind.demo);
+      expect(container.read(inputSourceProvider), InputSourceKind.demo);
     });
   });
 }

@@ -11,6 +11,8 @@ import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
 
+import '../support/synthetic_instrument.dart';
+
 void main() {
   /// Two octaves, so the task statement under test is the plural one. Every
   /// other exercise here takes the one-octave default.
@@ -34,6 +36,7 @@ void main() {
     final finished = <void>[];
     await tester.pumpWidget(
       ProviderScope(
+        overrides: [syntheticInstrument],
         child: MaterialApp(
           home: Scaffold(
             body: AttemptView(
@@ -413,7 +416,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final container = ProviderContainer();
+    final container = ProviderContainer(overrides: [syntheticInstrument]);
     addTearDown(container.dispose);
 
     Future<void> mount(Key key) => tester.pumpWidget(

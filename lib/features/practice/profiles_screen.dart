@@ -72,8 +72,7 @@ class _Roster extends ConsumerWidget {
         child: Padding(
           padding: EdgeInsets.all(32),
           child: Text(
-            'Nobody uses this install yet. Add a profile, or open the '
-            'practice loop and one will be made without asking.',
+            'Nobody uses this install yet. Add a profile to practice as.',
             textAlign: TextAlign.center,
           ),
         ),

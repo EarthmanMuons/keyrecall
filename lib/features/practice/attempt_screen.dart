@@ -1,7 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -10,14 +13,17 @@ import '../input/input.dart';
 import '../piano/piano.dart';
 import 'attempt_review.dart';
 import 'attempt_transcript.dart';
+import 'developer_screen.dart';
 import 'exercise_presentation.dart';
 import 'fingering.dart';
 import 'latency_probe.dart';
+import 'loop_failure.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
+import 'profiles_screen.dart';
 import 'staff_cue.dart';
 
-/// The first learner-facing practice screen: one exercise, presented.
+/// The app's home: one exercise, presented.
 ///
 /// The screen is the same at every rung. A task statement says what was asked
 /// for, an instrument shows what the learner is playing, and guidance controls
@@ -57,7 +63,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     final committed = loop.value?.lastCommitted;
     if (committed != null && committed.identity.attemptId != _reviewed) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Practice')),
+        appBar: const _PracticeAppBar(),
         body: AttemptReview(
           record: committed,
           reading: loop.value?.lastReading,
@@ -69,7 +75,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Practice')),
+      appBar: const _PracticeAppBar(),
       body: switch (loop) {
         AsyncData(:final value) when value.exercise != null => AttemptView(
           // A new decision restarts the view at Ready rather than inheriting
@@ -82,9 +88,96 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           onDecline: notifier.decline,
         ),
         AsyncData() => const _NothingToPlay(),
-        AsyncError(:final error) => Center(child: Text('$error')),
+        AsyncError(:final error, :final stackTrace) => LoopFailure(
+          error: error,
+          stackTrace: stackTrace,
+        ),
         _ => const Center(child: CircularProgressIndicator()),
       },
+    );
+  }
+}
+
+/// The bar over every practice state: who to practice as, what to practice
+/// on, and, off release, the panel that shows the loop working.
+///
+/// The instrument is here rather than in a settings screen because connecting
+/// one is the only setup this app has, and it is the thing somebody reaches
+/// for when notes are not arriving.
+class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
+  const _PracticeAppBar();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => AppBar(
+    title: const Text('Practice'),
+    actions: [
+      // Only when MIDI is the source: reading the connection state starts the
+      // Bluetooth stack, which the synthetic instrument has no use for.
+      if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
+        const _InstrumentButton(),
+      PopupMenuButton<_Destination>(
+        onSelected: (destination) =>
+            Navigator.of(context)
+                .push(MaterialPageRoute<void>(builder: destination.build)),
+        itemBuilder: (context) => [
+          for (final destination in _Destination.available)
+            PopupMenuItem(
+              value: destination,
+              child: ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(destination.icon),
+                title: Text(destination.label),
+              ),
+            ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// Where the practice screen's menu can go.
+enum _Destination {
+  profiles(Icons.people_outline, 'Profiles'),
+  developer(Icons.build_outlined, 'Developer');
+
+  const _Destination(this.icon, this.label);
+
+  final IconData icon;
+  final String label;
+
+  /// The destinations this build offers. The developer panel is not one of
+  /// them in release: a profile build is how this gets taken to a real
+  /// instrument across the room, and a release build is what a learner sees.
+  static List<_Destination> get available => [
+    profiles,
+    if (!kReleaseMode) developer,
+  ];
+
+  Widget build(BuildContext context) => switch (this) {
+    _Destination.profiles => const ProfilesScreen(),
+    _Destination.developer => const DeveloperScreen(),
+  };
+}
+
+/// Whether an instrument is connected, and the way to connect one.
+class _InstrumentButton extends ConsumerWidget {
+  const _InstrumentButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final connection = ref.watch(midiConnectionStateProvider);
+    return IconButton(
+      tooltip: connection.isConnected
+          ? 'Connected to ${connection.deviceDisplayName ?? 'an instrument'}'
+          : 'No instrument connected',
+      onPressed: () => MidiDeviceSheet.show(context),
+      icon: Icon(connection.isConnected ? Icons.piano : Icons.piano_off),
+      color: connection.isConnected
+          ? null
+          : Theme.of(context).colorScheme.error,
     );
   }
 }

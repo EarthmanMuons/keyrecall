@@ -12,6 +12,7 @@ void main() {
   setUp(() async {
     container = ProviderContainer();
     addTearDown(container.dispose);
+    container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
     // Something has to be watching before the stream opens, exactly as the
     // panel does.
     final subscription = container.listen(inputActivityProvider, (_, _) {});
