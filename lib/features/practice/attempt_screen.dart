@@ -21,6 +21,7 @@ import 'fingering.dart';
 import 'latency_probe.dart';
 import 'loop_failure.dart';
 import 'practice_providers.dart';
+import 'profile_avatar.dart';
 import 'presentation_policy.dart';
 import 'profiles_screen.dart';
 import 'staff_cue.dart';
@@ -113,30 +114,65 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) => AppBar(
-    title: const Text('Practice'),
-    actions: [
-      // Only when MIDI is the source: reading the connection state starts the
-      // Bluetooth stack, which the synthetic instrument has no use for.
-      if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
-        const _InstrumentButton(),
-      PopupMenuButton<_Destination>(
-        onSelected: (destination) =>
-            Navigator.of(context)
-                .push(MaterialPageRoute<void>(builder: destination.build)),
-        itemBuilder: (context) => [
-          for (final destination in _Destination.available)
-            PopupMenuItem(
-              value: destination,
-              child: ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(destination.icon),
-                title: Text(destination.label),
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Who is practicing is worth saying only where it is in question. On an
+    // install with one profile the answer is nobody's doubt, and a name in the
+    // bar would be decoration.
+    final roster = ref.watch(profileRosterProvider).value ?? const [];
+    final active = roster.where((summary) => summary.isActive).toList();
+    final shared = roster.length > 1 && active.isNotEmpty;
+
+    return AppBar(
+      title: shared
+          ? _PracticingAs(active.single.profile)
+          : const Text('Practice'),
+      actions: [
+        // Only when MIDI is the source: reading the connection state starts the
+        // Bluetooth stack, which the synthetic instrument has no use for.
+        if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
+          const _InstrumentButton(),
+        PopupMenuButton<_Destination>(
+          onSelected: (destination) =>
+              Navigator.of(context)
+                  .push(MaterialPageRoute<void>(builder: destination.build)),
+          itemBuilder: (context) => [
+            for (final destination in _Destination.available)
+              PopupMenuItem(
+                value: destination,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(destination.icon),
+                  title: Text(destination.label),
+                ),
               ),
-            ),
-        ],
-      ),
-    ],
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// Whose practice this is, in their colour, as the way to switch.
+class _PracticingAs extends StatelessWidget {
+  const _PracticingAs(this.profile);
+
+  final Profile profile;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(builder: (context) => const ProfilesScreen()),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ProfileAvatar(profile: profile, radius: 14),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(profile.displayName, overflow: TextOverflow.ellipsis),
+        ),
+      ],
+    ),
   );
 }
 

@@ -10,6 +10,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'attempt_transcript.dart';
+import 'profile_color.dart';
 
 /// Where this install keeps its history.
 ///
@@ -116,6 +117,10 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
         final created = await repository.create(
           displayName: displayName,
           placement: placement,
+          // Told apart from whoever is already here, which is the whole reason
+          // a second profile is being made.
+          presentationHint: ProfileColor.unusedAmong(await repository.list())
+              .name,
         );
         await repository.select(created.id);
         return (true, created);
@@ -140,6 +145,7 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
           await repository.create(
             displayName: defaultProfileName,
             placement: placement,
+            presentationHint: ProfileColor.values.first.name,
           ),
         );
       });

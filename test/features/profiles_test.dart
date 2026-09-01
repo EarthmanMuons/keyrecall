@@ -92,7 +92,7 @@ void main() {
     expect(
       find.descendant(
         of: find.widgetWithText(ListTile, 'Alice'),
-        matching: find.byIcon(Icons.check_circle),
+        matching: find.byIcon(Icons.check),
       ),
       findsOneWidget,
       reason: 'the first profile created is the one being practiced as',

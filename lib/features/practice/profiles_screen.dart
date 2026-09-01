@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:keyrecall_journal/keyrecall_journal.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'placement.dart';
+import 'profile_avatar.dart';
 import 'practice_providers.dart';
 
 /// Who uses this install: switch between them, add one, rename one, put one
@@ -103,11 +106,18 @@ class _ProfileTile extends ConsumerWidget {
     final notifier = ref.read(profileRosterProvider.notifier);
 
     return ListTile(
-      leading: Icon(
-        summary.isActive ? Icons.check_circle : Icons.circle_outlined,
-        color: summary.isActive ? theme.colorScheme.primary : null,
+      leading: Badge(
+        isLabelVisible: summary.isActive,
+        backgroundColor: theme.colorScheme.primary,
+        label: const Icon(Icons.check, size: 10),
+        child: ProfileAvatar(profile: profile),
       ),
-      title: Text(profile.displayName),
+      title: Text(
+        profile.displayName,
+        style: summary.isActive
+            ? const TextStyle(fontWeight: FontWeight.w600)
+            : null,
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -126,7 +136,9 @@ class _ProfileTile extends ConsumerWidget {
       isThreeLine: !kReleaseMode,
       // Tapping switches, which is the thing this screen is opened for. Every
       // other action is one menu away, so none of them can happen by accident.
-      onTap: summary.isActive ? null : () => notifier.select(profile.id),
+      onTap: summary.isActive
+          ? null
+          : () => _switchTo(context, notifier, profile),
       trailing: PopupMenuButton<_ProfileAction>(
         onSelected: (action) => _run(context, ref, action),
         itemBuilder: (context) => [
@@ -149,6 +161,23 @@ class _ProfileTile extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+
+  /// Switches, and says so.
+  ///
+  /// The list marks who is active, but the tap that changed it also leaves the
+  /// screen a moment later, so the confirmation names the person rather than
+  /// leaving somebody to check the mark on their way out.
+  static Future<void> _switchTo(
+    BuildContext context,
+    ProfileRosterNotifier notifier,
+    Profile profile,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    await notifier.select(profile.id);
+    messenger.showSnackBar(
+      SnackBar(content: Text('Now practicing as ${profile.displayName}')),
     );
   }
 
