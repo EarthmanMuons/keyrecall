@@ -24,10 +24,12 @@ Set<String> handMotionFamilies(Exercise exercise) =>
       },
     };
 
-/// Simulation constants for [RealizationFamilyPacing].
+/// Calibration for [RealizationFamilyPacing].
 ///
-/// Chosen to make a measurable allocation failure visible in a paired
-/// experiment. They are not a proposed production policy.
+/// Provisional. The mechanism and its invariants are what the paired
+/// experiments establish; these four numbers were chosen to make a measured
+/// allocation failure visible and have no device or telemetry evidence behind
+/// them. Changing them changes how much pacing happens, not what pacing means.
 class RealizationFamilyPacingConfig {
   /// How many recent selections allocation is read over.
   final int window;

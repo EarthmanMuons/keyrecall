@@ -15,8 +15,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - Hands-together evidence and coordination-aware admission diagnostics at
   independent-trajectory grain, distinguishing a coordination-caused band
   crossing from coordination merely being the weaker motor factor.
-- A paired same-seed experiment comparing current HT execution progression
-  with diagnostic-only suppression when coordination is the weaker factor.
+- A paired same-seed experiment comparing current HT execution progression with
+  diagnostic-only suppression when coordination is the weaker factor.
 - A realization-family pacing census covering allocation, yield, concentration,
   return paths, and motion balance across learner archetypes.
 - `RealizationFamilyPacing`, a rolling allocation-and-yield model over declared

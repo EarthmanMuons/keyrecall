@@ -1130,6 +1130,14 @@ Finally, a repetition guard prevents the same material from winning more than
 the configured consecutive-attempt cap when another admitted material exists. It
 never removes the only admitted option.
 
+The repetition guard counts materials, not kinds of work. Nothing in V1 asks how
+much of the recent session was right hand, left hand, or hands together, so
+rotating between materials satisfies it while the technical strand stays
+unchanged. A simulation-only mechanism that paces declared realization families
+at this same selection stage is described in
+[`docs/design/realization-family-pacing.md`](../design/realization-family-pacing.md);
+it is not part of V1.
+
 ### 8.5 What each scheduler stage may know
 
 | Stage        | Reads                                                   | Decides                    |

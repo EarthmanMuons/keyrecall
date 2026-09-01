@@ -28,6 +28,11 @@ policy dead ends that no amount of reading the code will surface.
 - **Reproducible draws.** `PythonCompatibleRandom` reproduces CPython's
   `random.Random` stream exactly, so a run is deterministic in its seed and a
   pathological one is a fixture rather than an anecdote.
+- **Policy experiments.** A pipeline subclass can change one decision and be run
+  against the unmodified one on identical seeds. `FamilyPacedPipeline` paces
+  allocation across declared realization families this way. `family_pacing_ab`
+  compares the resulting trajectories and `family_pacing_relief` reports what
+  each substitution replaced. Neither mechanism is in the production scheduler.
 
 ## What the pinned numbers are
 
@@ -124,6 +129,9 @@ targets rather than the web.
 
 ## Documentation
 
+[`docs/design/realization-family-pacing.md`](../../docs/design/realization-family-pacing.md)
+records the one policy experiment carried to a contract, including what it
+established and what it ruled out.
 [`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md)
 section 12 summarizes what the synthetic analysis established, and
 [`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)

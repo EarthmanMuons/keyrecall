@@ -1,9 +1,12 @@
 # Realization-family pacing
 
-- **Status:** Diagnostic framing, not production policy.
+- **Status:** Mechanism settled and pinned by invariant tests; calibration
+  provisional; not yet promoted to the production scheduler.
 - **Written:** August 31, 2026.
-- **Scope:** Allocation among right hand, left hand, parallel hands together,
-  and contrary hands together over a practice trajectory.
+- **Scope:** Allocation among declared realization families over a practice
+  trajectory. The families measured here are right hand, left hand, parallel
+  hands together, and contrary hands together, but the mechanism reads family
+  keys it cannot interpret.
 
 Candidate admission asks whether one exercise is defensible. Realization-family
 pacing asks whether another exercise from the same family is the best use of the
@@ -126,13 +129,13 @@ gaining a case for it.
 
 Pressure over a rolling window of recent selections is
 `max(0, share - floor) x (1 - managed fraction)`. It rises when a family holds
-much of the window and little of that work was productive, and falls both as
-the family produces managed execution and as the window fills with other
-families. A family over the set-aside pressure has its candidates removed from
-the available set, exactly where the repetition guard acts, and never when
-nothing else is admitted. Admission is untouched: a pressured candidate stays
-eligible and ranked, and still wins a slot where it is the only thing there.
-Ranking is lexicographic, so a penalty term could only have broken exact ties.
+much of the window and little of that work was productive, and falls both as the
+family produces managed execution and as the window fills with other families. A
+family over the set-aside pressure has its candidates removed from the available
+set, exactly where the repetition guard acts, and never when nothing else is
+admitted. Admission is untouched: a pressured candidate stays eligible and
+ranked, and still wins a slot where it is the only thing there. Ranking is
+lexicographic, so a penalty term could only have broken exact ties.
 
 ## Experiment results
 
@@ -178,17 +181,17 @@ are all less prepared from being paced at all.
 ## Alternative readiness at set-aside points
 
 `family_pacing_relief` records both sides of every substitution the filter
-makes: the best candidate pressure removed, the best candidate that replaced
-it, their predicted success, band membership, bypass category, and what the
+makes: the best candidate pressure removed, the best candidate that replaced it,
+their predicted success, band membership, bypass category, and what the
 replacement went on to do.
 
 Predicted success separates the cohorts cleanly:
 
-| | set-asides | relieving at least as ready | median gap | relieving managed |
-| --- | --- | --- | --- | --- |
-| `developing` | 43 | 95.3% | +0.059 | 28.6% |
-| `uneven_hands` | 18 | 44.4% | -0.030 | 21.4% |
-| `true_beginner` | 66 | 19.7% | -0.016 | 0.0% |
+|                 | set-asides | relieving at least as ready | median gap | relieving managed |
+| --------------- | ---------- | --------------------------- | ---------- | ----------------- |
+| `developing`    | 43         | 95.3%                       | +0.059     | 28.6%             |
+| `uneven_hands`  | 18         | 44.4%                       | -0.030     | 21.4%             |
+| `true_beginner` | 66         | 19.7%                       | -0.016     | 0.0%              |
 
 `developing` substitutes a hands-together progression candidate for a
 better-predicted single-hand one in 39 of 43 cases, and the replacement manages
@@ -199,25 +202,25 @@ anything. Low yield means the opposite thing in the two cohorts, and the
 readiness of the alternative is what says which.
 
 Band membership does not discriminate: no pressured candidate and no relieving
-candidate is inside the challenge band in any archetype, because every
-set-aside substitutes one bypass candidate for another. Eligibility does not
-either; both sides are fully eligible in every case. Predicted success is the
-only one of the three that separates them.
+candidate is inside the challenge band in any archetype, because every set-aside
+substitutes one bypass candidate for another. Eligibility does not either; both
+sides are fully eligible in every case. Predicted success is the only one of the
+three that separates them.
 
 ## Relievable pressure
 
 `requireReadyAlternative` adds one condition to relief: the best surviving
-candidate must be at least as ready as the best candidate pressure would
-remove. Pressure still detects concentration with poor yield; relief now also
-requires somewhere better to put the slot. The rule names no family and no
-learner stage, so a later strand inherits it without a clause of its own.
+candidate must be at least as ready as the best candidate pressure would remove.
+Pressure still detects concentration with poor yield; relief now also requires
+somewhere better to put the slot. The rule names no family and no learner stage,
+so a later strand inherits it without a clause of its own.
 
 Against the same ten paired runs per archetype:
 
-- `true_beginner` set-asides fall from 66 to 20 and its hands-together leak
-  from five attempts to one, in one run of ten rather than two. Frontier
-  advances rise from 11 to 15, better than the 11 the ungated filter produced,
-  so the single-hand pacing that survives the gate is the useful part of it.
+- `true_beginner` set-asides fall from 66 to 20 and its hands-together leak from
+  five attempts to one, in one run of ten rather than two. Frontier advances
+  rise from 11 to 15, better than the 11 the ungated filter produced, so the
+  single-hand pacing that survives the gate is the useful part of it.
 - `developing` is essentially unchanged: the same 29 hands-together slots move
   to single-hand work, concentration still falls to 65% median and 75% maximum
   of a 20-slot window, and the longest unmanaged run still falls to 6 median and
@@ -263,23 +266,23 @@ pressured one would retain only the set-asides that change nothing. Everything
 below is restricted to substitutions that actually changed the winner.
 
 Second, on those effective substitutions, no pre-decision fact separates useful
-relief from useless relief within a cohort. Useful means the replacement
-managed execution or advanced a frontier.
+relief from useless relief within a cohort. Useful means the replacement managed
+execution or advanced a frontier.
 
-| criterion | `developing` kept / useful | `uneven_hands` kept / useful | `true_beginner` kept / useful |
-| --- | --- | --- | --- |
-| any relief | 98 / 40% | 27 / 11% | 114 / 4% |
-| ready | 90 / 41% | 18 / 6% | 30 / 3% |
-| opportunity | 94 / 40% | 14 / 7% | 5 / 0% |
-| ready + opportunity | 87 / 41% | 6 / 0% | 2 / 0% |
-| holds rank | 96 / 41% | 24 / 13% | 112 / 4% |
+| criterion           | `developing` kept / useful | `uneven_hands` kept / useful | `true_beginner` kept / useful |
+| ------------------- | -------------------------- | ---------------------------- | ----------------------------- |
+| any relief          | 98 / 40%                   | 27 / 11%                     | 114 / 4%                      |
+| ready               | 90 / 41%                   | 18 / 6%                      | 30 / 3%                       |
+| opportunity         | 94 / 40%                   | 14 / 7%                      | 5 / 0%                        |
+| ready + opportunity | 87 / 41%                   | 6 / 0%                       | 2 / 0%                        |
+| holds rank          | 96 / 41%                   | 24 / 13%                     | 112 / 4%                      |
 
 For `developing` every criterion sits within a point of the 40% base rate, so
 none of them is doing any work. Realization rank cannot discriminate there
-because both useful and useless relief are `advancing`, 38 of 39 against 56 of
-59. For `uneven_hands`, the discriminating cohort, readiness and opportunity are
-worse than taking all relief, and their conjunction is 0 of 6. `true_beginner`
-sits at 4% whatever is required of the alternative.
+because both useful and useless relief are `advancing`, 38 of 39 against 56
+of 59. For `uneven_hands`, the discriminating cohort, readiness and opportunity
+are worse than taking all relief, and their conjunction is 0 of 6.
+`true_beginner` sits at 4% whatever is required of the alternative.
 
 The readiness result therefore held at the level of the cohort, not the slot.
 Relief is useful 40% of the time for `developing` and 4% of the time for
@@ -308,7 +311,71 @@ rank, or the retention and information terms.
 
 Two directions remain open, and they are different in kind. One is to model
 expected learning value directly, which is new machinery rather than a new
-reading of existing facts. The other is to accept that relief is only
-answerable at trajectory grain, keep the cohort-level readiness gate, and hold
-pacing to the paired-experiment outcomes rather than to a per-slot criterion.
-The second is cheaper and is what the evidence currently supports.
+reading of existing facts. The other is to accept that relief is only answerable
+at trajectory grain, keep the cohort-level readiness gate, and hold pacing to
+the paired-experiment outcomes rather than to a per-slot criterion. The second
+is cheaper and is what the evidence currently supports.
+
+## Production contract
+
+The mechanism is frozen at this shape. What it claims is a trajectory-level
+proposition:
+
+> Over a trajectory, periodically making room for another reasonably ready
+> technical strand improves practice allocation.
+
+It deliberately does not claim the slot-level one:
+
+> This particular alternative is expected to teach more than the candidate it
+> displaced.
+
+The experiments support the first for `developing` and rule out the second for
+every cohort measured. The readiness gate is therefore a coarse safeguard
+against reallocating practice toward a generally less-prepared strand, not a
+predictor that the replacement will succeed.
+
+### Pinned invariants
+
+`realization_family_pacing_test.dart` holds the mechanism to these, at unit
+grain where the property is local and across every archetype where it is not:
+
+- pressure alone never makes an inadmissible exercise admissible; the paced
+  available set is always a subset of the admitted one;
+- pacing never empties a selectable set;
+- no relief occurs without a cross-family alternative at least as ready, and the
+  relieving candidate never shares a family key with the pressured one;
+- successful work in a family relieves its pressure;
+- allocation to other families relieves a family's pressure;
+- overlapping family keys accumulate pressure on the shared strand, so
+  alternating between two motions still loads `hands:together`;
+- family names are opaque: an unrelated key vocabulary paces identically;
+- a trajectory where pressure never forms is identical to the unpaced one.
+
+### Provisional calibration
+
+`window`, `shareFloor`, `minFamilyAttempts`, and `setAsideAt` are not part of
+the contract. They were chosen to make a measured allocation failure visible,
+the qualitative signature holds across the settings tried, and they carry no
+device or telemetry evidence. They stay provisional until practice data exists
+to calibrate against.
+
+### Accepted limitation
+
+`uneven_hands` ends slightly behind the current scheduler under pacing, four
+frontier advances over ten runs. Its useful relief is new material rather than
+progression, which is exactly the kind the readiness gate declines. The
+retention term separates its useful from its useless relief, but on three useful
+events, and the same term is inert for `developing`. This is recorded as
+accepted rather than fixed: the sample is too small and too cohort-specific to
+justify changing generic behavior.
+
+### Extending it
+
+A new technical strand joins by declaring the family keys it consumes. It needs
+no scheduler branch, no clause in admission, recovery, ranking, or progression,
+and no entry in any enum the pacing algorithm reads. A rhythmic variant that
+belongs to both a hand strand and a rhythm strand declares both and accumulates
+pressure on each, the way hands-together work already does for its motion. What
+the mechanism cannot do is decide that one strand is pedagogically more valuable
+than another; it only notices that one has been consuming the session without
+yielding, and that something comparably prepared is available instead.

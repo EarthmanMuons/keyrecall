@@ -23,7 +23,14 @@ Kept apart deliberately, because they answer different questions.
 | ------------------------ | ----------------------------------------------------- | --------------------- |
 | Sweep (`bin/sweep.dart`) | does anything go wrong across many players and seeds? | deliberately, minutes |
 | Invariant tests          | do the structural properties still hold?              | every commit, seconds |
+| Paired experiments       | does a policy change trajectories for the better?     | while designing one   |
 | Device playing           | do the abstractions resemble real playing?            | ecological validation |
+
+A paired experiment runs the same archetype and seed against two pipelines and
+compares the trajectories. It is how a policy with no defensible per-slot
+criterion is judged at all; see
+[`realization-family-pacing.md`](realization-family-pacing.md) for a worked case
+and for what that grain of evidence can and cannot establish.
 
 Device sittings stop being a coverage mechanism. They become the check on
 whether the model's assumptions correspond to what a person at a keyboard
