@@ -46,6 +46,15 @@ const Curve attemptCurve = Curves.easeInOutCubic;
 /// somebody to read a new layout and catch a beat at the same time.
 const Duration attemptSettle = Duration(milliseconds: 400);
 
+/// The space under the last thing on the practice screen.
+const double _bottomInset = 16;
+
+/// How much taller a text button is than the text in it.
+///
+/// Material gives one a touch target whatever its text measures, and half of
+/// what that adds sits under the words as space nobody asked for.
+const double _touchTargetSlack = 14;
+
 /// The app's home: one exercise, presented.
 ///
 /// The screen is the same at every rung. A task statement says what was asked
@@ -500,6 +509,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   bool _hasCoveredTraversal(PerformanceTranscript transcript) =>
       hasCoveredTraversal(exercise: widget.exercise, transcript: transcript);
 
+  /// Whether the way out of an exercise nobody can retrieve is on screen.
+  bool get _showsDecline =>
+      _phase == _Phase.ready &&
+      widget.onDecline != null &&
+      widget.exercise.guidance.isRetrievalObserved;
+
   /// Whether the instrument has nothing left to carry once the attempt starts.
   ///
   /// The same reading the build makes of what each surface is for: with the
@@ -721,12 +736,22 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // Sized to what the phase actually needs, and animated between them: the
     // Ready block is three things tall and Done is one, and the music takes
     // the difference rather than the screen keeping it empty.
+    //
+    // A text button carries its own touch target, which is taller than its
+    // text and reads as space under it. Where one is showing, that height is
+    // taken off the bottom, so what is below the last thing on screen looks
+    // the same whichever thing it is.
     final controls = AnimatedSize(
       duration: attemptTransition,
       curve: attemptCurve,
       alignment: Alignment.bottomCenter,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(layout.gutter, 0, layout.gutter, 16),
+        padding: EdgeInsets.fromLTRB(
+          layout.gutter,
+          0,
+          layout.gutter,
+          _showsDecline ? _bottomInset - _touchTargetSlack : _bottomInset,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -842,8 +867,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         // What it says depends on what is on screen. With the notes shown for
         // study, nobody is being asked to remember anything yet, and a button
         // saying they do not is one they would have to translate.
-        if (widget.onDecline != null &&
-            widget.exercise.guidance.isRetrievalObserved) ...[
+        if (_showsDecline) ...[
           const SizedBox(height: 8),
           TextButton(
             onPressed: _decline,
