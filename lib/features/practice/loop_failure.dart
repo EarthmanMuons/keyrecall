@@ -28,11 +28,23 @@ class LoopFailure extends ConsumerWidget {
       padding: const EdgeInsets.all(24),
       children: [
         Text(
-          'Practice could not be opened.',
+          'This practice history could not be opened.',
           style: theme.textTheme.titleLarge,
         ),
         const SizedBox(height: 12),
-        Text('$error', style: theme.textTheme.bodyMedium),
+        Text(
+          'Try again first. If it keeps failing, starting over is the only '
+          'way in, and it throws away everything recorded so far.',
+          style: theme.textTheme.bodyMedium,
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '$error',
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+            fontFamily: 'monospace',
+          ),
+        ),
         const SizedBox(height: 24),
         OutlinedButton(
           onPressed: () => ref.invalidate(practiceLoopProvider),

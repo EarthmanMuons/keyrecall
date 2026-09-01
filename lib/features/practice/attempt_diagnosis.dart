@@ -106,7 +106,7 @@ class AttemptDiagnosis {
   /// The sentence to put on the screen.
   String get sentence {
     if (declined) return 'Noted. We will come back to it.';
-    if (!started) return 'Nothing came through.';
+    if (!started) return 'No notes came through.';
     if (!finished) {
       return where == null
           ? 'That one did not get all the way through.'

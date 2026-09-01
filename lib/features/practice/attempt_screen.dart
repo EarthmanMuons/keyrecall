@@ -836,7 +836,8 @@ class _Instrument extends ConsumerWidget {
 /// A line saying what is expected right now.
 ///
 /// Sits with the control it qualifies rather than with the notation it
-/// describes: "they disappear when you do" is about the button underneath it.
+/// describes: what the notes do when the attempt starts is about the button
+/// underneath it.
 class _Status extends StatelessWidget {
   const _Status({required this.phase, required this.guidance});
 
@@ -849,8 +850,8 @@ class _Status extends StatelessWidget {
 
     return Text(
       switch (guidance.independence) {
-        0 => 'The notes stay up while you play.',
-        1 => 'Study these, then start. They disappear when you do.',
+        0 => 'The notes stay on screen while you play.',
+        1 => 'Take a good look. The notes go away once you start.',
         _ => 'Play it from memory.',
       },
       style: Theme.of(context).textTheme.bodyMedium,
@@ -877,13 +878,13 @@ class _NothingToPlay extends ConsumerWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'The scheduler found nothing to offer.',
+            'Nothing to practice right now.',
             style: theme.textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
           Text(
-            'That should not happen. Stop whenever you like; this one is '
-            'worth reporting.',
+            'That should not happen, so it is worth reporting. Try again, or '
+            'stop here and come back later.',
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),

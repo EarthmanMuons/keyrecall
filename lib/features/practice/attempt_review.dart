@@ -158,7 +158,7 @@ class AttemptReview extends StatelessWidget {
             children: [
               const Spacer(),
               Text(
-                diagnosis?.sentence ?? 'Logged.',
+                diagnosis?.sentence ?? 'Got it.',
                 style: theme.textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),

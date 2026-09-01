@@ -65,7 +65,7 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
     if (state.isConnected) {
       Navigator.of(context).pop(state.device);
     } else {
-      setState(() => _error = state.message ?? 'could not connect');
+      setState(() => _error = state.message ?? 'Could not connect.');
     }
   }
 
@@ -119,7 +119,7 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
             if (devices.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
-                child: Text('Nothing found yet.'),
+                child: Text('No instruments found yet.'),
               )
             else
               Flexible(
@@ -157,11 +157,11 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
   static String _statusOf(MidiConnectionState connection) =>
       switch (connection.phase) {
         MidiConnectionPhase.connected =>
-          'connected to ${connection.deviceDisplayName ?? 'an instrument'}',
-        MidiConnectionPhase.connecting => 'connecting',
+          'Connected to ${connection.deviceDisplayName ?? 'an instrument'}',
+        MidiConnectionPhase.connecting => 'Connecting',
         MidiConnectionPhase.retrying =>
-          'retrying, attempt ${connection.attempt}',
-        MidiConnectionPhase.error => connection.message ?? 'connection failed',
-        _ => 'not connected',
+          'Trying again, attempt ${connection.attempt}',
+        MidiConnectionPhase.error => connection.message ?? 'Could not connect.',
+        _ => 'Not connected',
       };
 }

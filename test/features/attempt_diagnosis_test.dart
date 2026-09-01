@@ -245,7 +245,7 @@ void main() {
       final diagnosis = diagnosisOf(PerformanceTranscript.empty);
 
       expect(diagnosis.started, isFalse);
-      expect(diagnosis.sentence, 'Nothing came through.');
+      expect(diagnosis.sentence, 'No notes came through.');
     });
   });
 

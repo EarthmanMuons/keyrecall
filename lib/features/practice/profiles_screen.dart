@@ -77,7 +77,7 @@ class _Roster extends ConsumerWidget {
         child: Padding(
           padding: EdgeInsets.all(32),
           child: Text(
-            'Nobody uses this install yet. Add a profile to practice as.',
+            'Nobody practices here yet. Add a profile to get started.',
             textAlign: TextAlign.center,
           ),
         ),
@@ -183,9 +183,16 @@ class _ProfileTile extends ConsumerWidget {
 
   /// What this profile has recorded, said in one line.
   static String _history(ProfileSummary summary) {
-    if (summary.historyError != null) return 'history unreadable';
+    if (summary.historyError != null) return 'history could not be read';
+    // Counted rather than judged. A recorded attempt can be one somebody
+    // declined or walked away from, so anything saying they were completed
+    // would be claiming more than the number knows.
     final attempts = summary.attemptsRecorded ?? 0;
-    final counted = attempts == 1 ? '1 attempt' : '$attempts attempts';
+    final counted = switch (attempts) {
+      0 => 'nothing played yet',
+      1 => '1 exercise',
+      _ => '$attempts exercises',
+    };
     final created = summary.profile.createdAt.toLocal();
     // The placement is shown because nothing can change it. A permanent
     // answer somebody gave once should at least be readable back.
@@ -222,9 +229,9 @@ class _ProfileTile extends ConsumerWidget {
           // next to each other in the menu, and the difference between them
           // is the whole reason both exist.
           message:
-              'Every attempt recorded for this profile is deleted and the '
-              'learner model goes back to placement. The profile itself '
-              'stays. There is no undo.',
+              'Every attempt recorded for this profile is deleted, and '
+              'practice starts again from where they were first placed. The '
+              'profile itself stays. This cannot be undone.',
           confirmLabel: 'Erase',
         );
         if (erase) await notifier.eraseHistory(profile.id);
@@ -233,8 +240,8 @@ class _ProfileTile extends ConsumerWidget {
           context,
           title: 'Delete ${profile.displayName}?',
           message:
-              'The profile and everything it recorded are deleted. There is '
-              'no undo.',
+              'The profile and everything it recorded are deleted. This '
+              'cannot be undone.',
           confirmLabel: 'Delete',
         );
         if (delete) await notifier.remove(profile.id);
@@ -361,6 +368,11 @@ Future<bool> _confirm(
   return confirmed ?? false;
 }
 
+/// A roster that could not be read.
+///
+/// Nothing here guesses who exists from the directories on disk: an id is an
+/// identity, and guessing one would attach somebody to practice that is not
+/// theirs.
 class _Failure extends ConsumerWidget {
   const _Failure({required this.error});
 
@@ -371,10 +383,8 @@ class _Failure extends ConsumerWidget {
     padding: const EdgeInsets.all(16),
     children: [
       const Text(
-        'The profile index could not be read. Nothing here guesses who '
-        'exists from the directories on disk, because an id is an identity '
-        'and guessing one would attach somebody to practice that is not '
-        'theirs.',
+        'The list of profiles could not be read, so nobody can be shown here. '
+        'Practice that is already recorded is untouched.',
       ),
       const SizedBox(height: 12),
       Text('$error', style: const TextStyle(fontFamily: 'monospace')),

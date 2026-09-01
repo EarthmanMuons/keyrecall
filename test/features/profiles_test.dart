@@ -101,11 +101,11 @@ void main() {
     // The placement is on the row because nothing can change it, and Alice
     // and Bob were seeded at different tiers.
     expect(
-      find.text('0 attempts · some scales · added ${_today()}'),
+      find.text('nothing played yet · some scales · added ${_today()}'),
       findsOneWidget,
     );
     expect(
-      find.text('0 attempts · new to scales · added ${_today()}'),
+      find.text('nothing played yet · new to scales · added ${_today()}'),
       findsOneWidget,
     );
   });
