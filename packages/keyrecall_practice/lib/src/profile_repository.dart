@@ -132,11 +132,8 @@ class ProfileIndex {
 /// attempt transaction. What connects them is only the profile id, which is
 /// also what the per-profile practice storage is keyed on.
 ///
-/// Deleting removes an index entry and nothing else. The practice storage
-/// keyed on that id lives behind the other port, so a caller who wants that
-/// history gone erases it there first, in that order: a directory no index
-/// entry names is recoverable clutter, while an index entry whose history is
-/// already gone is a person the app cannot open.
+/// Deleting removes the profile record and nothing else. The practice storage
+/// keyed on that id lives behind the other port.
 abstract interface class ProfileRepository {
   /// Every profile, oldest first.
   Future<List<Profile>> list();

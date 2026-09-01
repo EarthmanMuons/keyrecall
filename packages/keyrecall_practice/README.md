@@ -111,6 +111,10 @@ Attempts are appended and flushed. The single-slot files are written to a
 temporary name and renamed over the target, so a reader sees the old content or
 the new one and never a half-written file.
 
+Erasing writes a marker before removing any practice file. If deletion is
+interrupted, the next access finishes it before exposing storage, so a journal,
+pending decision, and checkpoint from opposite sides of an erase cannot mix.
+
 A crash mid-append can leave a final line without its newline. That attempt was
 never committed, so the torn tail is dropped on read and truncated before the
 next append. A malformed line _anywhere else_ is real corruption of history and

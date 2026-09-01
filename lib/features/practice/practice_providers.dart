@@ -177,10 +177,6 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
 
   /// Deletes a profile and everything it recorded.
   ///
-  /// History first, then the index entry. A directory no index entry names is
-  /// clutter that can be swept up later; an index entry whose history is
-  /// already gone is a person the app would try to open and could not.
-  ///
   /// Deleting the profile being practiced as leaves the selection on the
   /// oldest one left. Deleting the last one leaves the install with nobody on
   /// it, which puts the app back at the placement question rather than
@@ -189,8 +185,8 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   /// than the tidy outcome.
   Future<void> remove(String profileId) => _mutate((repository, store) async {
     final active = await _isActive(repository, profileId);
-    await store.erase(profileId);
     await repository.delete(profileId);
+    await store.erase(profileId);
     return (active, null);
   });
 

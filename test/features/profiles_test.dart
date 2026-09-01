@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/practice_providers.dart';
@@ -176,6 +177,71 @@ void main() {
     );
     expect(loop!.profile.id, bob.id);
   });
+
+  test('profile authority is removed before history cleanup', () async {
+    final repository = FileProfileRepository(root);
+    final profile = await repository.create(
+      displayName: 'Alice',
+      placement: PlacementTier.someExperience,
+    );
+    final history = File('${root.path}/${profile.id}/journal.jsonl');
+    final store = _FailingEraseStore(FilePracticeStore(root));
+    final container = ProviderContainer(
+      overrides: [
+        profileRepositoryProvider.overrideWith((ref) async => repository),
+        practiceStoreProvider.overrideWith((ref) async => store),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(profileRosterProvider.future);
+    history.writeAsStringSync('orphaned history');
+
+    await expectLater(
+      container.read(profileRosterProvider.notifier).remove(profile.id),
+      throwsStateError,
+    );
+
+    expect(await repository.find(profile.id), isNull);
+    expect(history.existsSync(), isTrue);
+  });
+}
+
+class _FailingEraseStore implements PracticeStore {
+  final PracticeStore inner;
+
+  _FailingEraseStore(this.inner);
+
+  @override
+  Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) =>
+      inner.loadJournal(profileId, createdAt: createdAt);
+
+  @override
+  Future<void> appendAttempt(AttemptRecord record) =>
+      inner.appendAttempt(record);
+
+  @override
+  Future<PendingDecision?> loadPendingDecision(String profileId) =>
+      inner.loadPendingDecision(profileId);
+
+  @override
+  Future<void> savePendingDecision(PendingDecision decision) =>
+      inner.savePendingDecision(decision);
+
+  @override
+  Future<void> clearPendingDecision(String profileId) =>
+      inner.clearPendingDecision(profileId);
+
+  @override
+  Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) =>
+      inner.loadCheckpoint(profileId);
+
+  @override
+  Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
+      inner.saveCheckpoint(checkpoint);
+
+  @override
+  Future<void> erase(String profileId) =>
+      throw StateError('history cleanup failed');
 }
 
 /// Today, formatted the way a profile row reports when it was added.

@@ -47,6 +47,7 @@ class FilePracticeStore implements PracticeStore {
     String profileId, {
     DateTime? createdAt,
   }) async {
+    await _recoverErase(profileId);
     final file = _journalFile(profileId);
     if (!file.existsSync()) {
       return AttemptJournal(
@@ -63,6 +64,7 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<void> appendAttempt(AttemptRecord record) async {
+    await _recoverErase(record.profileId);
     final file = _journalFile(record.profileId);
     await file.parent.create(recursive: true);
     await _repairTornTail(file);
@@ -88,42 +90,57 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<PendingDecision?> loadPendingDecision(String profileId) async {
+    await _recoverErase(profileId);
     final file = _pendingFile(profileId);
     if (!file.existsSync()) return null;
     return PendingDecision.fromJson(
-      jsonDecode(await file.readAsString()) as Map<String, Object?>,
+      asMap(
+        await _decode(file, 'pending decision'),
+        'pending decision',
+        location: file.path,
+      ),
     );
   }
 
   @override
-  Future<void> savePendingDecision(PendingDecision decision) =>
-      _writeAtomically(
-        _pendingFile(decision.profileId),
-        canonicalJson(decision.toJson()),
-      );
+  Future<void> savePendingDecision(PendingDecision decision) async {
+    await _recoverErase(decision.profileId);
+    await _writeAtomically(
+      _pendingFile(decision.profileId),
+      canonicalJson(decision.toJson()),
+    );
+  }
 
   @override
   Future<void> clearPendingDecision(String profileId) async {
+    await _recoverErase(profileId);
     final file = _pendingFile(profileId);
     if (file.existsSync()) await file.delete();
   }
 
   @override
   Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) async {
+    await _recoverErase(profileId);
     final file = _checkpointFile(profileId);
     if (!file.existsSync()) return null;
     return LearnerStateCheckpoint.fromJson(
-      jsonDecode(await file.readAsString()) as Map<String, Object?>,
+      asMap(
+        await _decode(file, 'learner checkpoint'),
+        'learner checkpoint',
+        location: file.path,
+      ),
       params: params,
     );
   }
 
   @override
-  Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
-      _writeAtomically(
-        _checkpointFile(checkpoint.profileId),
-        canonicalJson(checkpoint.toJson()),
-      );
+  Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) async {
+    await _recoverErase(checkpoint.profileId);
+    await _writeAtomically(
+      _checkpointFile(checkpoint.profileId),
+      canonicalJson(checkpoint.toJson()),
+    );
+  }
 
   /// Reads the lines that were fully committed.
   ///
@@ -197,12 +214,38 @@ class FilePracticeStore implements PracticeStore {
   /// repository and this store are kept apart to preserve.
   @override
   Future<void> erase(String profileId) async {
+    final directory = _profileDirectory(profileId);
+    if (!directory.existsSync()) return;
+    await _writeAtomically(_eraseMarker(profileId), '');
+    await _finishErase(profileId);
+  }
+
+  Future<void> _recoverErase(String profileId) async {
+    if (_eraseMarker(profileId).existsSync()) await _finishErase(profileId);
+  }
+
+  Future<void> _finishErase(String profileId) async {
     for (final file in [
       _journalFile(profileId),
       _pendingFile(profileId),
       _checkpointFile(profileId),
+      File('${_pendingFile(profileId).path}.tmp'),
+      File('${_checkpointFile(profileId).path}.tmp'),
     ]) {
-      if (file.existsSync()) file.deleteSync();
+      if (file.existsSync()) await file.delete();
+    }
+    final marker = _eraseMarker(profileId);
+    if (marker.existsSync()) await marker.delete();
+  }
+
+  Future<Object?> _decode(File file, String what) async {
+    try {
+      return jsonDecode(await file.readAsString());
+    } on FormatException catch (error) {
+      throw JournalFormatException(
+        '$what is not valid JSON: ${error.message}',
+        location: file.path,
+      );
     }
   }
 
@@ -217,4 +260,7 @@ class FilePracticeStore implements PracticeStore {
 
   File _checkpointFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/checkpoint.json');
+
+  File _eraseMarker(String profileId) =>
+      File('${_profileDirectory(profileId).path}/practice-erasing');
 }

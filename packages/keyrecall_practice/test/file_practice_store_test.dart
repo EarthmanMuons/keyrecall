@@ -21,6 +21,8 @@ void main() {
 
   File journalFile() => File('${root.path}/${alice.id}/journal.jsonl');
   File pendingFile() => File('${root.path}/${alice.id}/pending.json');
+  File checkpointFile() => File('${root.path}/${alice.id}/checkpoint.json');
+  File eraseMarker() => File('${root.path}/${alice.id}/practice-erasing');
 
   group('durability', () {
     test('a committed attempt survives the process', () async {
@@ -84,6 +86,46 @@ void main() {
       expect(reloaded!.contentHash, saved!.contentHash);
       expect(reloaded.throughJournalSequence, saved.throughJournalSequence);
       expect(learnerStateHash(reloaded.state), learnerStateHash(session.state));
+    });
+
+    // Valid JSON that is not an object is the other half of the same failure:
+    // `as Map` would raise a TypeError, which escapes the format contract the
+    // session catches to replay from the journal.
+    for (final shape in ['[]', '42', 'null']) {
+      test(
+        'a checkpoint holding $shape falls back to journal replay',
+        () async {
+          final store = FilePracticeStore(root);
+          final session = await openSession(store);
+          await practise(session, attempts: 4);
+          final reached = learnerStateHash(session.state);
+          await session.saveCheckpoint();
+          checkpointFile().writeAsStringSync(shape);
+
+          await expectLater(
+            store.loadCheckpoint(alice.id),
+            throwsA(isA<JournalFormatException>()),
+          );
+          final reopened = await openSession(store, sessionId: 'session-2');
+
+          expect(reopened.journal.length, 4);
+          expect(learnerStateHash(reopened.state), reached);
+        },
+      );
+    }
+
+    test('a malformed checkpoint falls back to journal replay', () async {
+      final store = FilePracticeStore(root);
+      final session = await openSession(store);
+      await practise(session, attempts: 4);
+      final reached = learnerStateHash(session.state);
+      await session.saveCheckpoint();
+      checkpointFile().writeAsStringSync('{"incomplete"');
+
+      final reopened = await openSession(store, sessionId: 'session-2');
+
+      expect(reopened.journal.length, 4);
+      expect(learnerStateHash(reopened.state), reached);
     });
   });
 
@@ -184,5 +226,48 @@ void main() {
       expect(await store.loadPendingDecision(alice.id), isNull);
       expect(await store.loadCheckpoint(alice.id), isNull);
     });
+  });
+
+  // The marker protects writers as well as readers: a new generation must not
+  // land beside the one that was being deleted.
+  test('an interrupted erase finishes before storage is written', () async {
+    final store = FilePracticeStore(root);
+    final session = await openSession(store);
+    await practise(session, attempts: 3);
+    await session.saveCheckpoint();
+    await session.decide(at: t0.plusDays(10));
+    final decision = await store.loadPendingDecision(alice.id);
+    eraseMarker().writeAsStringSync('');
+
+    await store.savePendingDecision(decision!);
+
+    expect(journalFile().existsSync(), isFalse);
+    expect(checkpointFile().existsSync(), isFalse);
+    expect(eraseMarker().existsSync(), isFalse);
+    expect(pendingFile().existsSync(), isTrue);
+    expect(
+      (await store.loadPendingDecision(alice.id))?.attemptId,
+      decision.attemptId,
+    );
+  });
+
+  test('an interrupted erase finishes before storage is read', () async {
+    final store = FilePracticeStore(root);
+    final session = await openSession(store);
+    await practise(session, attempts: 3);
+    await session.saveCheckpoint();
+    await session.decide(at: t0.plusDays(10));
+    final profile = File('${root.path}/${alice.id}/profile.json')
+      ..writeAsStringSync('{}');
+    eraseMarker().writeAsStringSync('');
+
+    final journal = await store.loadJournal(alice.id);
+
+    expect(journal.isEmpty, isTrue);
+    expect(profile.existsSync(), isTrue);
+    expect(journalFile().existsSync(), isFalse);
+    expect(pendingFile().existsSync(), isFalse);
+    expect(checkpointFile().existsSync(), isFalse);
+    expect(eraseMarker().existsSync(), isFalse);
   });
 }
