@@ -397,6 +397,9 @@ void main() {
       );
       expect(find.text('4'), findsOneWidget);
 
+      // The count waits for the screen to hand the task to the bar before it
+      // sounds anything.
+      await tester.pump(attemptSettle);
       await tester.pump(const Duration(milliseconds: 750));
       expect(find.text('3'), findsOneWidget);
 

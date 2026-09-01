@@ -19,6 +19,7 @@ import 'attempt_transcript.dart';
 import 'developer_screen.dart';
 import 'exercise_presentation.dart';
 import 'fingering.dart';
+import 'hands_icon.dart';
 import 'latency_probe.dart';
 import 'loop_failure.dart';
 import 'practice_providers.dart';
@@ -27,6 +28,23 @@ import 'presentation_policy.dart';
 import 'profiles_screen.dart';
 import 'staff_cue.dart';
 import 'task_help.dart';
+
+/// How long the screen takes to hand the task over to the bar, and how it
+/// moves while it does.
+///
+/// One duration and one curve for every part of it. The statement leaving the
+/// screen, the bar's controls giving up their width, and the task arriving in
+/// their place are one movement, and they only read as one if they are timed
+/// as one.
+const Duration attemptTransition = Duration(milliseconds: 280);
+const Curve attemptCurve = Curves.easeInOutCubic;
+
+/// The pause between pressing Ready and the first counted beat.
+///
+/// The transition, and a moment on the other side of it. The count-in is the
+/// cue to start playing, and sounding it while the screen is still moving asks
+/// somebody to read a new layout and catch a beat at the same time.
+const Duration attemptSettle = Duration(milliseconds: 400);
 
 /// The app's home: one exercise, presented.
 ///
@@ -59,10 +77,11 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 
   /// The attempt being played right now, if one is.
   ///
-  /// The bar goes away for the length of it. Nothing on it is usable with both
-  /// hands on the keys, and what it costs is the height the music and the
-  /// keyboard are short of on a phone. It comes back by itself: an attempt
-  /// that ends puts a different one on screen.
+  /// The bar keeps its place and changes what it holds: nothing on it is
+  /// usable with both hands on the keys, so for the length of the attempt it
+  /// carries the task instead, and the screen below it is only what is being
+  /// played. It comes back by itself: an attempt that ends puts a different
+  /// one on screen.
   String? _playing;
 
   @override
@@ -93,7 +112,9 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     if (_playing != attemptId) _playing = null;
 
     return Scaffold(
-      appBar: _playing == null ? const _PracticeAppBar() : null,
+      appBar: _PracticeAppBar(
+        running: _playing == null ? null : loop.value?.exercise,
+      ),
       body: switch (loop) {
         AsyncData(:final value) when value.exercise != null => AttemptView(
           // A new decision restarts the view at Ready rather than inheriting
@@ -123,7 +144,11 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 /// notes are not arriving. Everything that is a setting goes behind the menu,
 /// which is where the settings this app has yet to grow will go too.
 class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  const _PracticeAppBar();
+  const _PracticeAppBar({this.running});
+
+  /// The attempt under way, whose task the bar carries instead of the app's
+  /// name and its controls.
+  final Exercise? running;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -132,20 +157,90 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final roster = ref.watch(profileRosterProvider).value ?? const [];
     final active = roster.where((summary) => summary.isActive).toList();
+    final task = running;
 
     return AppBar(
-      title: const Wordmark(),
+      title: AnimatedSwitcher(
+        duration: attemptTransition,
+        child: task == null
+            ? const Wordmark(key: ValueKey('wordmark'))
+            : _RunningTask(task, key: const ValueKey('task')),
+      ),
       actions: [
-        // Only when MIDI is the source: reading the connection state starts the
-        // Bluetooth stack, which the synthetic instrument has no use for.
-        if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
-          const _InstrumentButton(),
-        _MenuButton(
-          profile: active.isEmpty ? null : active.single.profile,
-          // Who is practicing is worth saying on the bar only where it is in
-          // question. On an install with one profile it is nobody's doubt, and
-          // a coloured disc where the menu goes would be decoration.
-          showsProfile: roster.length > 1,
+        // Collapsed rather than removed, so the task arriving beside them is
+        // one movement: the controls give up their width as it takes it.
+        AnimatedSize(
+          duration: attemptTransition,
+          curve: attemptCurve,
+          child: task != null
+              ? const SizedBox.shrink()
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Only when MIDI is the source: reading the connection
+                    // state starts the Bluetooth stack, which the synthetic
+                    // instrument has no use for.
+                    if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
+                      const _InstrumentButton(),
+                    _MenuButton(
+                      profile: active.isEmpty ? null : active.single.profile,
+                      // Who is practicing is worth saying on the bar only where
+                      // it is in question. On an install with one profile it is
+                      // nobody's doubt, and a coloured disc where the menu goes
+                      // would be decoration.
+                      showsProfile: roster.length > 1,
+                    ),
+                  ],
+                ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The task as the bar carries it while it is being played.
+///
+/// The statement's own words, in the room a bar has: the scale keeps its name,
+/// the hand becomes its mark, and the rest runs on one line under it. A
+/// learner glancing up mid-scale is checking what they were asked for, which
+/// is the same question the statement answers with the whole screen.
+class _RunningTask extends StatelessWidget {
+  const _RunningTask(this.exercise, {super.key});
+
+  final Exercise exercise;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final conditions = exercise.conditions;
+
+    return Row(
+      children: [
+        HandsIcon(conditions.hands, size: 20),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                materialName(exercise.material),
+                style: theme.textTheme.titleMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              Text(
+                '${directionName(conditions.direction)} · '
+                '${octavesName(conditions.octaves)} · '
+                '${conditions.tempoBpm.round()} bpm',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ],
     );
@@ -289,6 +384,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 
   _Phase _phase = _Phase.ready;
   int _beatsLeft = _countInBeats;
+  Timer? _settling;
   Timer? _countIn;
   Timer? _watchdog;
   bool _finishing = false;
@@ -334,6 +430,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 
   @override
   void dispose() {
+    _settling?.cancel();
     _countIn?.cancel();
     _watchdog?.cancel();
     // Leaving the screen ends the attempt, and a pulse that outlived it would
@@ -351,7 +448,19 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
   bool _hasCoveredTraversal(PerformanceTranscript transcript) =>
       hasCoveredTraversal(exercise: widget.exercise, transcript: transcript);
 
+  /// Hands the screen over to the attempt, and counts in once it has settled.
   void _start() {
+    setState(() {
+      _phase = _Phase.countIn;
+      _beatsLeft = _countInBeats;
+    });
+    widget.onUnderWay?.call();
+    _settling = Timer(attemptSettle, () {
+      if (mounted) _countInAndPlay();
+    });
+  }
+
+  void _countInAndPlay() {
     ref
         .read(attemptTranscriptProvider.notifier)
         .start(widget.exercise.material);
@@ -370,11 +479,6 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
               .round(),
     );
 
-    setState(() {
-      _phase = _Phase.countIn;
-      _beatsLeft = _countInBeats;
-    });
-    widget.onUnderWay?.call();
     // The clicks are rendered as one buffer, so the pulse is exact whatever
     // this timer does, and the audio catches up to the count rather than the
     // count waiting on the audio.
@@ -510,9 +614,20 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         (_phase == _Phase.playing || _phase == _Phase.finishing);
 
     final layout = Layout.of(context);
-    final task = Padding(
-      padding: EdgeInsets.fromLTRB(layout.gutter, 16, layout.gutter, 0),
-      child: _TaskStatement(exercise),
+    // The statement is on screen only until the attempt starts, and the bar
+    // takes it from there. Collapsed rather than hidden, so the music grows
+    // into the room it leaves as it leaves it.
+    final task = AnimatedCrossFade(
+      duration: attemptTransition,
+      sizeCurve: attemptCurve,
+      crossFadeState: _phase == _Phase.ready
+          ? CrossFadeState.showFirst
+          : CrossFadeState.showSecond,
+      firstChild: Padding(
+        padding: EdgeInsets.fromLTRB(layout.gutter, 16, layout.gutter, 0),
+        child: _TaskStatement(exercise),
+      ),
+      secondChild: const SizedBox(width: double.infinity),
     );
     final notation = _Notation(
       gutter: layout.gutter,
@@ -526,15 +641,23 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
           TranscriptStaff(transcript: transcript, exercise: exercise),
       ],
     );
-    final controls = Padding(
-      padding: EdgeInsets.fromLTRB(layout.gutter, 0, layout.gutter, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _Status(phase: _phase, guidance: guidance),
-          const SizedBox(height: 12),
-          _control(),
-        ],
+    // Sized to what the phase actually needs, and animated between them: the
+    // Ready block is three things tall and Done is one, and the music takes
+    // the difference rather than the screen keeping it empty.
+    final controls = AnimatedSize(
+      duration: attemptTransition,
+      curve: attemptCurve,
+      alignment: Alignment.bottomCenter,
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(layout.gutter, 0, layout.gutter, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Status(phase: _phase, guidance: guidance),
+            const SizedBox(height: 12),
+            _control(),
+          ],
+        ),
       ),
     );
 
@@ -617,12 +740,20 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         // performance rather than for the learner. Quiet beside Ready, because
         // it is the answer to a question the rung asked, not an escape from
         // the exercise.
+        //
+        // What it says depends on what is on screen. With the notes shown for
+        // study, nobody is being asked to remember anything yet, and a button
+        // saying they do not is one they would have to translate.
         if (widget.onDecline != null &&
             widget.exercise.guidance.isRetrievalObserved) ...[
           const SizedBox(height: 8),
           TextButton(
             onPressed: _decline,
-            child: const Text("I don't remember"),
+            child: Text(
+              widget.exercise.guidance.independence == 1
+                  ? "I can't play this from memory"
+                  : "I don't remember",
+            ),
           ),
         ],
       ],
@@ -782,12 +913,18 @@ class _TaskStatement extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          Text(
-            handsName(conditions.hands).toUpperCase(),
-            style: theme.textTheme.titleMedium?.copyWith(
-              letterSpacing: 1.2,
-              fontWeight: FontWeight.w600,
-            ),
+          Row(
+            children: [
+              HandsIcon(conditions.hands, size: 18),
+              const SizedBox(width: 8),
+              Text(
+                handsName(conditions.hands).toUpperCase(),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 2),
           Text(
