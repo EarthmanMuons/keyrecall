@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
+import 'package:keyrecall_midi/src/providers/midi_note_events_provider.dart';
 
 import 'fake_midi_ble_service.dart';
 

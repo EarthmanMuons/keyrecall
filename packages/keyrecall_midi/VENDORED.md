@@ -41,6 +41,10 @@ set of expected differences rather than a mystery.
 - Doc comments referring to `MidiConnectionStatus` and
   `midiConnectionStatusProvider` were reworded, because those symbols were not
   vendored and a dangling reference is worse than a slightly different comment.
+- `midiNoteEventsProvider` is no longer exported from the library file. The file
+  stays for comparison against upstream; what changed is that it is not part of
+  this package's public surface, because the normalized temporal stream should
+  be the only reading of the wire KeyRecall has.
 - Dropped: `midi_connection_status_provider.dart` and everything under `pages/`
   and `widgets/`. Those are presentation, and they carried WhatChord's design
   system and its chord and key features with them. KeyRecall will write its own

@@ -16,6 +16,12 @@
 /// stream keeps working when an instrument is switched off, carried out of
 /// range, or the app is backgrounded for an hour.
 ///
+/// `midiNoteEventsProvider` is deliberately not exported. It reports note-on
+/// and note-off as they arrive, so it does not read velocity-zero note-on as a
+/// release, does not resolve repeats, and substitutes note 0 for a message
+/// without one. Reading it as a performance would mistake a held chord for a
+/// scale.
+///
 /// Vendored from WhatChord; see VENDORED.md for what that means for changes.
 library;
 
@@ -37,7 +43,6 @@ export 'src/providers/midi_ble_service_provider.dart';
 export 'src/providers/midi_connection_notifier.dart';
 export 'src/providers/midi_device_manager.dart';
 export 'src/providers/midi_message_providers.dart';
-export 'src/providers/midi_note_events_provider.dart';
 export 'src/providers/midi_note_state_notifier.dart';
 export 'src/providers/midi_output_sender_provider.dart';
 export 'src/providers/midi_preferences_notifier.dart';
