@@ -1186,7 +1186,7 @@ class _Status extends StatelessWidget {
     return Text(
       switch (guidance.independence) {
         0 => 'The notes stay on screen while you play.',
-        1 => 'Take a good look. The notes go away once you start.',
+        1 => 'Study it. The notes go away when you start.',
         _ => 'Play it from memory.',
       },
       style: Theme.of(context).textTheme.bodyMedium,
