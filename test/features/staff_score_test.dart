@@ -211,4 +211,67 @@ void main() {
       }
     });
   });
+
+  group('breaking a staff into rows', () {
+    crisp.Score scoreOf(int octaves) => staffScoreFor(
+      realize(
+        Exercise.linear(
+          material: TechnicalMaterial('C', ScaleForm.major),
+          hands: HandConfiguration.right,
+          octaves: octaves,
+          guidance: GuidanceContext.unguided,
+        ),
+      ),
+      Hand.right,
+    );
+
+    test('every row holds the same number of bars but the last', () {
+      // One octave up and down is 15 notes: four bars, the last holding the
+      // single closing note.
+      final rows = rowsOf(scoreOf(1));
+
+      expect(rows.map((row) => row.measures.length), [2, 2]);
+    });
+
+    test('a trailing half row is kept rather than padded', () {
+      final rows = rowsOf(
+        crisp.Score(
+          clef: crisp.Clef.treble,
+          keySignature: const crisp.KeySignature(0),
+          timeSignature: const crisp.TimeSignature(4, 4),
+          measures: const [
+            crisp.Measure([]),
+            crisp.Measure([]),
+            crisp.Measure([]),
+          ],
+        ),
+      );
+
+      expect(rows.map((row) => row.measures.length), [2, 1]);
+    });
+
+    test('rows carry the clef and key the score was written in', () {
+      final score = scoreOf(2);
+
+      for (final row in rowsOf(score)) {
+        expect(row.clef, score.clef);
+        expect(row.keySignature, score.keySignature);
+        expect(row.timeSignature, score.timeSignature);
+      }
+    });
+
+    test('no note is lost or repeated in the break', () {
+      final score = scoreOf(2);
+      int notesIn(Iterable<crisp.Measure> measures) => [
+        for (final measure in measures)
+          for (final element in measure.elements)
+            if (element is crisp.NoteElement) element,
+      ].length;
+
+      expect(
+        notesIn(rowsOf(score).expand((row) => row.measures)),
+        notesIn(score.measures),
+      );
+    });
+  });
 }

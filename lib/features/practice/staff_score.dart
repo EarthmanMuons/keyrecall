@@ -79,6 +79,63 @@ crisp.Score staffScoreFor(
   );
 }
 
+/// [score] broken into rows of [measuresPerRow] bars.
+///
+/// A staff draws one system however long it is, so two octaves runs off the
+/// side of a phone. Breaking it into rows here rather than letting a renderer
+/// pack them to a width is what makes every row hold the same number of bars,
+/// which is what lets them all be drawn at one size.
+List<crisp.Score> rowsOf(crisp.Score score, {int measuresPerRow = 2}) => [
+  for (var start = 0; start < score.measures.length; start += measuresPerRow)
+    _measuresOf(
+      score,
+      start,
+      (start + measuresPerRow).clamp(0, score.measures.length),
+    ),
+];
+
+/// The pixels per staff space at which [rows] fill [width].
+///
+/// Read off the widest row so every row fits, and shared by all of them so a
+/// trailing half-row is drawn at the size of the rest rather than blown up to
+/// the width it happens to have to itself.
+///
+/// Null before the engraving font's metrics are loaded, since nothing can be
+/// measured until they are.
+double? fittedStaffSpace(List<crisp.Score> rows, {required double width}) {
+  final settings = _layoutSettings();
+  if (settings == null || rows.isEmpty) return null;
+
+  const engine = crisp.LayoutEngine();
+  final widest = rows
+      .map((row) => engine.layout(row, settings).width)
+      .reduce((a, b) => a > b ? a : b);
+  return widest <= 0 ? null : width / widest;
+}
+
+/// The pixels per staff space at which the braced [rows] fill [width].
+double? fittedGrandStaffSpace(
+  List<crisp.GrandStaff> rows, {
+  required double width,
+}) {
+  final settings = _layoutSettings();
+  if (settings == null || rows.isEmpty) return null;
+
+  final widest = rows
+      .map(
+        (row) =>
+            crisp.layoutGrandStaff(row, settings).width +
+            crisp.RenderGrandStaffView.braceInset,
+      )
+      .reduce((a, b) => a > b ? a : b);
+  return widest <= 0 ? null : width / widest;
+}
+
+crisp.LayoutSettings? _layoutSettings() {
+  final metadata = crisp.MusicFonts.metadataOrNull(crisp.MusicFont.bravura);
+  return metadata == null ? null : crisp.LayoutSettings(metadata: metadata);
+}
+
 /// Both staves, braced together, for an exercise played with both hands.
 ///
 /// Each staff carries its own hand's fingering, which is why a grand staff can
@@ -105,10 +162,7 @@ crisp.GrandStaff grandStaffFor(
 
 /// The grand staff broken into rows of [measuresPerRow] bars.
 ///
-/// A grand staff draws one system however long it is, so two octaves hands
-/// together runs off the side of a phone. Breaking it here keeps each row
-/// fitting the width, at the cost of restating the clefs on every row, which
-/// is what a new system does anyway.
+/// Rows restate the clefs, which is what a new system does anyway.
 List<crisp.GrandStaff> grandStaffRowsFor(
   ExerciseRealization realization, {
   Map<Hand, List<int?>?> fingering = const {},

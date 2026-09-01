@@ -55,17 +55,15 @@ void main() {
     return finished;
   }
 
-  /// How many notes the staff on screen is showing.
-  int staffNotes(WidgetTester tester) {
-    final staff = find.byType(crisp.MultiSystemView);
-    if (staff.evaluate().isEmpty) return 0;
-    final score = tester.widget<crisp.MultiSystemView>(staff).score;
-    return [
-      for (final measure in score.measures)
+  /// How many notes the staff on screen is showing, across every row of it.
+  int staffNotes(WidgetTester tester) => [
+    for (final staff in tester.widgetList<crisp.StaffView>(
+      find.byType(crisp.StaffView),
+    ))
+      for (final measure in staff.score.measures)
         for (final element in measure.elements)
           if (element is crisp.NoteElement) element,
-    ].length;
-  }
+  ].length;
 
   /// The notes the diagram is marking right now, or none when the keyboard is
   /// not on screen at all.
@@ -119,7 +117,7 @@ void main() {
       await readyAndCountIn(tester);
       expect(
         find.byType(PianoKeyboard).evaluate().length +
-            find.byType(crisp.MultiSystemView).evaluate().length,
+            find.byType(crisp.StaffView).evaluate().length,
         greaterThan(0),
         reason:
             'withdrawal takes information away, not the surfaces: the '
@@ -159,8 +157,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 750 * 5));
     expect(markers(tester), isEmpty);
     expect(
-      find.byType(crisp.MultiSystemView),
-      findsOneWidget,
+      find.byType(crisp.StaffView),
+      findsWidgets,
       reason:
           'with the cue withdrawn, the staff is free to carry what is '
           'actually played',
@@ -174,8 +172,8 @@ void main() {
     await readyAndCountIn(tester);
     expect(markers(tester), isEmpty);
     expect(
-      find.byType(crisp.MultiSystemView),
-      findsOneWidget,
+      find.byType(crisp.StaffView),
+      findsWidgets,
       reason:
           'what the learner sees of the attempt is what they played, '
           'which says nothing about what was asked for',
@@ -199,7 +197,7 @@ void main() {
         presentation: onStaff(GuidanceContext.continuouslyCued),
       );
 
-      expect(find.byType(crisp.MultiSystemView), findsOneWidget);
+      expect(find.byType(crisp.StaffView), findsWidgets);
       expect(
         markers(tester),
         isEmpty,
@@ -215,7 +213,7 @@ void main() {
         GuidanceContext.notesPreviewedOnly,
         presentation: onStaff(GuidanceContext.notesPreviewedOnly),
       );
-      expect(find.byType(crisp.MultiSystemView), findsOneWidget);
+      expect(find.byType(crisp.StaffView), findsWidgets);
 
       await readyAndCountIn(tester);
 
@@ -236,7 +234,7 @@ void main() {
         presentation: onStaff(GuidanceContext.unguided),
       );
 
-      expect(find.byType(crisp.MultiSystemView), findsNothing);
+      expect(find.byType(crisp.StaffView), findsNothing);
       expect(find.byType(crisp.GrandStaffView), findsNothing);
     });
   });
