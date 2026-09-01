@@ -17,7 +17,7 @@ class HandsIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hand = Icon(Icons.back_hand_outlined, size: size, color: color);
+    final hand = Icon(Icons.back_hand, size: size, color: color);
     final left = Transform.flip(flipX: true, child: hand);
 
     return Semantics(
