@@ -186,7 +186,7 @@ class PracticeSession {
       journal,
       model: learner,
       initial: initial,
-      from: await _usableCheckpoint(store, profile.id, learner),
+      from: await _usableCheckpoint(store, profile.id, learner, journal),
     );
     if (!replay.isFaithful) {
       throw JournalFormatException(
@@ -569,10 +569,15 @@ class PracticeSession {
     PracticeStore store,
     String profileId,
     LearnerModel learner,
+    AttemptJournal journal,
   ) async {
     try {
       final checkpoint = await store.loadCheckpoint(profileId);
       if (checkpoint == null) return null;
+      // A checkpoint covering history the journal does not hold is standing in
+      // for attempts that are gone, which is what an erase leaves behind if a
+      // sitting saves one after it.
+      if (checkpoint.throughJournalSequence >= journal.length) return null;
       return checkpoint.isUsableUnder(learner.params.modelVersion)
           ? checkpoint
           : null;

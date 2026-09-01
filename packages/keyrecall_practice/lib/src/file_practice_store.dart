@@ -6,6 +6,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'pending_decision.dart';
 import 'practice_store.dart';
+import 'profile_write_queue.dart';
 
 /// A [PracticeStore] backed by ordinary files, one directory per profile.
 ///
@@ -27,12 +28,18 @@ import 'practice_store.dart';
 /// Attempts are appended and flushed, so a committed attempt survives the
 /// process. Single-slot files are written to a temporary name and renamed over
 /// the target, so a reader never sees a half-written file.
+///
+/// Operations on one profile run one at a time. Each of them reads, decides,
+/// and writes, and letting two interleave at their suspension points would let
+/// the second decide from what the first has already replaced.
 class FilePracticeStore implements PracticeStore {
   /// Directory holding one subdirectory per profile.
   final Directory root;
 
   /// The registry a stored checkpoint is validated against when read.
   final LearnerParams params;
+
+  final ProfileWriteQueue _queue = ProfileWriteQueue();
 
   FilePracticeStore(this.root, {this.params = v1PrototypeLearnerParams});
 
@@ -43,10 +50,13 @@ class FilePracticeStore implements PracticeStore {
   }) => FilePracticeStore(Directory(path), params: params);
 
   @override
-  Future<AttemptJournal> loadJournal(
-    String profileId, {
+  Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) =>
+      _queue.run(profileId, () => _loadJournal(profileId, createdAt));
+
+  Future<AttemptJournal> _loadJournal(
+    String profileId,
     DateTime? createdAt,
-  }) async {
+  ) async {
     await _recoverErase(profileId);
     final file = _journalFile(profileId);
     if (!file.existsSync()) {
@@ -63,7 +73,10 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
-  Future<void> appendAttempt(AttemptRecord record) async {
+  Future<void> appendAttempt(AttemptRecord record) =>
+      _queue.run(record.profileId, () => _appendAttempt(record));
+
+  Future<void> _appendAttempt(AttemptRecord record) async {
     await _recoverErase(record.profileId);
     final file = _journalFile(record.profileId);
     await file.parent.create(recursive: true);
@@ -82,14 +95,17 @@ class FilePracticeStore implements PracticeStore {
     // Read-modify-validate before writing: the journal enforces contiguous
     // sequence, forward time, and conflicting-id detection, and those checks
     // have to run against what is actually on disk.
-    final journal = await loadJournal(record.profileId);
+    final journal = await _loadJournal(record.profileId, null);
     if (!journal.append(record)) return;
 
     await _appendLine(file, canonicalJson(record.toJson()));
   }
 
   @override
-  Future<PendingDecision?> loadPendingDecision(String profileId) async {
+  Future<PendingDecision?> loadPendingDecision(String profileId) =>
+      _queue.run(profileId, () => _loadPendingDecision(profileId));
+
+  Future<PendingDecision?> _loadPendingDecision(String profileId) async {
     await _recoverErase(profileId);
     final file = _pendingFile(profileId);
     if (!file.existsSync()) return null;
@@ -103,7 +119,10 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
-  Future<void> savePendingDecision(PendingDecision decision) async {
+  Future<void> savePendingDecision(PendingDecision decision) =>
+      _queue.run(decision.profileId, () => _savePendingDecision(decision));
+
+  Future<void> _savePendingDecision(PendingDecision decision) async {
     await _recoverErase(decision.profileId);
     await _writeAtomically(
       _pendingFile(decision.profileId),
@@ -112,14 +131,20 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
-  Future<void> clearPendingDecision(String profileId) async {
+  Future<void> clearPendingDecision(String profileId) =>
+      _queue.run(profileId, () => _clearPendingDecision(profileId));
+
+  Future<void> _clearPendingDecision(String profileId) async {
     await _recoverErase(profileId);
     final file = _pendingFile(profileId);
     if (file.existsSync()) await file.delete();
   }
 
   @override
-  Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) async {
+  Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) =>
+      _queue.run(profileId, () => _loadCheckpoint(profileId));
+
+  Future<LearnerStateCheckpoint?> _loadCheckpoint(String profileId) async {
     await _recoverErase(profileId);
     final file = _checkpointFile(profileId);
     if (!file.existsSync()) return null;
@@ -134,7 +159,10 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
-  Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) async {
+  Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
+      _queue.run(checkpoint.profileId, () => _saveCheckpoint(checkpoint));
+
+  Future<void> _saveCheckpoint(LearnerStateCheckpoint checkpoint) async {
     await _recoverErase(checkpoint.profileId);
     await _writeAtomically(
       _checkpointFile(checkpoint.profileId),
@@ -213,7 +241,10 @@ class FilePracticeStore implements PracticeStore {
   /// the smaller decision impossible to ask for, which is the seam the profile
   /// repository and this store are kept apart to preserve.
   @override
-  Future<void> erase(String profileId) async {
+  Future<void> erase(String profileId) =>
+      _queue.run(profileId, () => _erase(profileId));
+
+  Future<void> _erase(String profileId) async {
     final directory = _profileDirectory(profileId);
     if (!directory.existsSync()) return;
     await _writeAtomically(_eraseMarker(profileId), '');

@@ -18,6 +18,16 @@ import 'pending_decision.dart';
 /// must never leave a partially written attempt visible as history. Beyond
 /// that, the engine is free: a file, a database, or anything else that
 /// preserves those guarantees.
+///
+/// Operations on one profile must not interleave. Each of them reads, decides
+/// and writes, and callers are not one writer: a practice loop committing an
+/// attempt and a roster erasing that profile are separate objects with
+/// separate guards.
+///
+/// Ordering is all this gives. A caller holding state it read earlier can
+/// still act on history that has since been erased, which the journal's
+/// contiguous sequence catches on append and [PracticeSession] catches when
+/// reading a checkpoint that covers attempts the journal no longer has.
 abstract interface class PracticeStore {
   /// Every attempt recorded for [profileId], oldest first.
   ///

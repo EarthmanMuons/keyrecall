@@ -127,6 +127,27 @@ void main() {
       );
     }
 
+    test('a checkpoint covering history the journal lost is a miss', () async {
+      // What an erase between a commit and a checkpoint save leaves: the
+      // cache stands in for attempts that no longer exist, and starting from
+      // it would restore erased history as learner state.
+      final store = FilePracticeStore(root);
+      final session = await openSession(store);
+      await practise(session, attempts: 4);
+      final saved = await session.saveCheckpoint();
+      await store.erase(alice.id);
+      await store.saveCheckpoint(saved!);
+
+      final reopened = await openSession(store, sessionId: 'session-2');
+
+      expect(reopened.journal.isEmpty, isTrue);
+      expect(
+        learnerStateHash(reopened.state),
+        learnerStateHash(learner.placementState(alice.placement, at: t0)),
+        reason: 'an erased profile starts from placement, not from the cache',
+      );
+    });
+
     test('a malformed checkpoint falls back to journal replay', () async {
       final store = FilePracticeStore(root);
       final session = await openSession(store);
