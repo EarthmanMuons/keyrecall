@@ -43,8 +43,12 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
     (
       directionName(conditions.direction),
       switch (conditions.direction) {
-        ScaleDirection.up => 'Up to the top note, and stop there.',
-        ScaleDirection.upDown => 'Up to the top note, then back down again.',
+        ScaleDirection.up =>
+          'Start on ${tonicName(exercise.material)}, go up to the top note, '
+              'and stop there.',
+        ScaleDirection.upDown =>
+          'Start on ${tonicName(exercise.material)}, go up to the top note, '
+              'then back down again.',
       },
     ),
     (

@@ -9,6 +9,9 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 String materialName(TechnicalMaterial material) =>
     '${_prettyTonic(material.tonic)} ${_formName(material.form)}';
 
+/// The note the scale is named after, spelled the way it is written.
+String tonicName(TechnicalMaterial material) => _prettyTonic(material.tonic);
+
 /// Which hand or hands play, as a learner would say it.
 String handsName(HandConfiguration hands) => switch (hands) {
   HandConfiguration.right => 'Right hand',
