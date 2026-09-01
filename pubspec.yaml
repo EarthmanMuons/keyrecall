@@ -1,5 +1,5 @@
 name: keyrecall
-description: An adaptive piano technical-practice scheduler.
+description: An adaptive practice partner for piano technique.
 
 workspace:
   - packages/keyrecall_alignment
