@@ -7,15 +7,71 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// from [ExerciseRealization], so the staff and the keyboard diagram are two
 /// views of one answer to what the exercise asks for.
 ///
-/// Quarter notes in 4/4. Whether a key signature is written is the caller's
-/// to decide and not this layer's, because a signature is itself information:
-/// four sharps tell a learner most of E major before they play a note. The cue
-/// staff writes one, since it is showing them the scale on purpose. The staff
-/// that grows from what they played does not, because by then it would be
-/// telling them what they were supposed to have done.
+/// Eighth notes in 4/4, with the final tonic held for a quarter, which is how
+/// scales are written for practice: an even stream of notes, beamed by beat,
+/// arriving somewhere and stopping. The value is presentation and nothing
+/// else. What the exercise asks for is an even run of onsets ending on the
+/// tonic, and nothing measures how long the last one is held.
+///
+/// Whether a key signature is written is the caller's to decide and not this
+/// layer's, because a signature is itself information: four sharps tell a
+/// learner most of E major before they play a note. The cue staff writes one,
+/// since it is showing them the scale on purpose. The staff that grows from
+/// what they played does not, because by then it would be telling them what
+/// they were supposed to have done.
 
-/// Beats in a bar. One moment to a beat, so also moments in a bar.
+/// Eighth notes in a bar of 4/4, which is the unit the bars are packed in.
+const int _eighthsPerMeasure = 8;
+
+/// Quarter notes in a bar, for the transcript, which writes one note a beat.
 const int _beatsPerMeasure = 4;
+
+/// How many eighths [duration] takes up.
+int _eighthsIn(crisp.NoteDuration duration) {
+  final (numerator, denominator) = duration.fraction;
+  return numerator * _eighthsPerMeasure ~/ denominator;
+}
+
+/// The value the last note is written at, given the [eighths] left in its bar.
+///
+/// Long enough to finish the bar, so a scale is metrically whole however many
+/// notes it has: fourteen eighths leave a quarter, twenty-eight leave a half.
+/// The one remainder no single value spells is five eighths, which takes the
+/// longest value that fits and leaves the bar short rather than tying a note
+/// across a beat nobody is playing.
+crisp.NoteDuration _closingDuration(int eighths) => switch (eighths) {
+  0 || >= 8 => crisp.NoteDuration.whole,
+  7 => const crisp.NoteDuration(crisp.DurationBase.half, dots: 2),
+  6 => const crisp.NoteDuration(crisp.DurationBase.half, dots: 1),
+  >= 4 => crisp.NoteDuration.half,
+  3 => const crisp.NoteDuration(crisp.DurationBase.quarter, dots: 1),
+  2 => crisp.NoteDuration.quarter,
+  _ => crisp.NoteDuration.eighth,
+};
+
+/// [elements] packed into bars that hold [_eighthsPerMeasure] eighths each.
+///
+/// The last bar runs short wherever the material does not fill one. A scale is
+/// as long as it is, and padding it with rests would be writing music nobody
+/// asked for.
+List<crisp.Measure> _barsOf(List<crisp.NoteElement> elements) {
+  final bars = <crisp.Measure>[];
+  var bar = <crisp.MusicElement>[];
+  var filled = 0;
+
+  for (final element in elements) {
+    final eighths = _eighthsIn(element.duration);
+    if (filled + eighths > _eighthsPerMeasure) {
+      bars.add(crisp.Measure(bar));
+      bar = [];
+      filled = 0;
+    }
+    bar.add(element);
+    filled += eighths;
+  }
+  if (bar.isNotEmpty) bars.add(crisp.Measure(bar));
+  return bars;
+}
 
 const crisp.TimeSignature _fourFour = crisp.TimeSignature(4, 4);
 
@@ -39,43 +95,44 @@ crisp.Score staffScoreFor(
   List<int?>? fingering,
   crisp.KeySignature? keySignature,
 }) {
-  final elements = <crisp.MusicElement>[
+  final sounded = [
     for (final moment in realization.moments)
-      if (moment.noteFor(hand) case final note?)
-        crisp.NoteElement.note(
-          _pitchOf(note.pitch),
-          crisp.NoteDuration.quarter,
-          // Forced only where nothing establishes the accidentals for the
-          // reader. Under a signature the engraver decides, which is what
-          // puts harmonic minor's raised seventh on the page and leaves the
-          // notes the signature already covers alone.
-          showAccidental: keySignature != null
-              ? null
-              : note.pitch.alteration != 0
-              ? true
-              : null,
-          fingerings: switch (fingering?[moment.position]) {
-            // A null is a digit deliberately left off, not a missing one.
-            null => const <int>[],
-            final finger => [finger],
-          },
-          id: staffElementId(hand, moment.position),
-        ),
+      if (moment.noteFor(hand) case final note?) (moment, note),
+  ];
+  // Arrive and stop: the note the scale ends on is the only one nothing
+  // follows, and it is written long enough to finish the bar it lands in.
+  final closing = _closingDuration(
+    (_eighthsPerMeasure - (sounded.length - 1) % _eighthsPerMeasure) %
+        _eighthsPerMeasure,
+  );
+  final elements = <crisp.NoteElement>[
+    for (final (index, (moment, note)) in sounded.indexed)
+      crisp.NoteElement.note(
+        _pitchOf(note.pitch),
+        index == sounded.length - 1 ? closing : crisp.NoteDuration.eighth,
+        // Forced only where nothing establishes the accidentals for the
+        // reader. Under a signature the engraver decides, which is what puts
+        // harmonic minor's raised seventh on the page and leaves the notes the
+        // signature already covers alone.
+        showAccidental: keySignature != null
+            ? null
+            : note.pitch.alteration != 0
+            ? true
+            : null,
+        fingerings: switch (fingering?[moment.position]) {
+          // A null is a digit deliberately left off, not a missing one.
+          null => const <int>[],
+          final finger => [finger],
+        },
+        id: staffElementId(hand, moment.position),
+      ),
   ];
 
   return crisp.Score(
     clef: hand == Hand.left ? crisp.Clef.bass : crisp.Clef.treble,
     keySignature: keySignature ?? _noKeySignature,
     timeSignature: _fourFour,
-    measures: [
-      for (var start = 0; start < elements.length; start += _beatsPerMeasure)
-        crisp.Measure(
-          elements.sublist(
-            start,
-            (start + _beatsPerMeasure).clamp(0, elements.length),
-          ),
-        ),
-    ],
+    measures: _barsOf(elements),
   );
 }
 

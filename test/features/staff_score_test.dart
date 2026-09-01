@@ -25,13 +25,13 @@ void main() {
         if (element is crisp.NoteElement) element,
   ];
 
-  test('writes one quarter note per moment, in order', () {
+  test('writes the scale as an even stream of eighths, in order', () {
     final score = staffScoreFor(realize(exerciseOf()), Hand.right);
     final notes = notesOf(score);
 
     expect(notes.length, 8);
     expect(
-      notes.every((note) => note.duration == crisp.NoteDuration.quarter),
+      notes.take(7).every((note) => note.duration == crisp.NoteDuration.eighth),
       isTrue,
     );
     expect(notes.first.pitches.single, const crisp.Pitch(crisp.Step.c));
@@ -76,22 +76,47 @@ void main() {
     expect(notes[0].showAccidental, isNull);
   });
 
-  test('fills bars of four and lets the last one run short', () {
-    final score = staffScoreFor(realize(exerciseOf()), Hand.right);
+  test('ends on a note long enough to finish the bar it lands in', () {
+    /// The bar as eighths, so a bar of 4/4 is full at eight.
+    int eighthsIn(crisp.Measure measure) => [
+      for (final element in measure.elements)
+        if (element is crisp.NoteElement)
+          element.duration.fraction.$1 * 8 ~/ element.duration.fraction.$2,
+    ].fold(0, (total, eighths) => total + eighths);
 
-    expect(
-      [for (final measure in score.measures) measure.elements.length],
-      [4, 4],
-    );
+    for (final (octaves, direction) in [
+      (1, ScaleDirection.up),
+      (1, ScaleDirection.upDown),
+      (2, ScaleDirection.up),
+      (2, ScaleDirection.upDown),
+      (3, ScaleDirection.upDown),
+    ]) {
+      final score = staffScoreFor(
+        realize(exerciseOf(octaves: octaves, direction: direction)),
+        Hand.right,
+      );
 
-    final fifteen = staffScoreFor(
-      realize(exerciseOf(direction: ScaleDirection.upDown)),
+      expect(
+        [for (final measure in score.measures) eighthsIn(measure)],
+        everyElement(8),
+        reason:
+            'a scale of $octaves ${direction.name} is written whole, so no '
+            'system is short of the ones beside it',
+      );
+    }
+  });
+
+  test('the closing note is the only one that is not an eighth', () {
+    final score = staffScoreFor(
+      realize(exerciseOf(octaves: 2, direction: ScaleDirection.upDown)),
       Hand.right,
     );
-    expect(
-      [for (final measure in fifteen.measures) measure.elements.length],
-      [4, 4, 4, 3],
-    );
+    final notes = notesOf(score);
+
+    expect(notes.last.duration, crisp.NoteDuration.half);
+    expect(notes.take(notes.length - 1).map((note) => note.duration).toSet(), {
+      crisp.NoteDuration.eighth,
+    }, reason: 'the scale is an even run; only the arrival is written longer');
   });
 
   test('gives each hand its own clef and each note a stable id', () {
@@ -226,9 +251,9 @@ void main() {
     );
 
     test('every row holds the same number of bars but the last', () {
-      // One octave up and down is 15 notes: four bars, the last holding the
-      // single closing note.
-      final rows = rowsOf(scoreOf(1));
+      // Two octaves up and down is 29 notes: four bars of eighths, the last
+      // closing on a half note.
+      final rows = rowsOf(scoreOf(2));
 
       expect(rows.map((row) => row.measures.length), [2, 2]);
     });
