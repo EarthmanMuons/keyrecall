@@ -68,7 +68,7 @@ void main() {
       expect(reloaded!.attemptId, presented!.decision.attemptId);
       expect(reloaded.exercise, presented.exercise);
 
-      await session.commit(outcomeFor(presented.exercise));
+      await session.closeWithOutcome(outcomeFor(presented.exercise));
       expect(pendingFile().existsSync(), isFalse);
     });
 

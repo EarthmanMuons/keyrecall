@@ -124,7 +124,9 @@ Future<List<AttemptRecord>> practise(
     final presented = await session.decide(at: at);
     if (presented == null) continue;
     committed.add(
-      await session.commit(outcomeFor(presented.exercise, succeeded: succeed)),
+      await session.closeWithOutcome(
+        outcomeFor(presented.exercise, succeeded: succeed),
+      ),
     );
   }
   return committed;

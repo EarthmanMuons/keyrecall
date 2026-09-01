@@ -119,7 +119,7 @@ void main() {
 
       store.failNextAppend = true;
       await expectLater(
-        session.commit(outcomeFor(presented!.exercise)),
+        session.closeWithOutcome(outcomeFor(presented!.exercise)),
         throwsA(isA<_StorageFailure>()),
       );
 
@@ -145,11 +145,11 @@ void main() {
 
       store.failNextAppend = true;
       await expectLater(
-        session.commit(outcome),
+        session.closeWithOutcome(outcome),
         throwsA(isA<_StorageFailure>()),
       );
 
-      final record = await session.commit(outcome);
+      final record = await session.closeWithOutcome(outcome);
 
       expect(store.appendsPerformed, 1);
       expect(session.journal.length, 1);
@@ -159,7 +159,7 @@ void main() {
       final clean = InMemoryPracticeStore(createdAt: t0);
       final cleanSession = await openSession(clean);
       final cleanPresented = await cleanSession.decide(at: t0.plusDays(0.5));
-      await cleanSession.commit(outcomeFor(cleanPresented!.exercise));
+      await cleanSession.closeWithOutcome(outcomeFor(cleanPresented!.exercise));
 
       expect(
         learnerStateHash(session.state),
@@ -178,7 +178,7 @@ void main() {
 
         store.failNextAppend = true;
         await expectLater(
-          session.commit(outcomeFor(presented!.exercise)),
+          session.closeWithOutcome(outcomeFor(presented!.exercise)),
           throwsA(isA<_StorageFailure>()),
         );
 
@@ -199,11 +199,11 @@ void main() {
       for (var i = 0; i < 3; i++) {
         store.failNextAppend = true;
         await expectLater(
-          session.commit(outcome),
+          session.closeWithOutcome(outcome),
           throwsA(isA<_StorageFailure>()),
         );
       }
-      await session.commit(outcome);
+      await session.closeWithOutcome(outcome);
 
       expect(store.appendsPerformed, 1);
       expect(session.journal.length, 1);
@@ -225,12 +225,12 @@ void main() {
       final failures = <Object>[];
       await Future.wait([
         for (final observed in [t0.plusDays(0.5), t0.plusDays(0.6)])
-          session.commit(outcome, observedWallTime: observed).catchError((
-            Object error,
-          ) {
-            failures.add(error);
-            throw error;
-          }),
+          session
+              .closeWithOutcome(outcome, observedWallTime: observed)
+              .catchError((Object error) {
+                failures.add(error);
+                throw error;
+              }),
       ], eagerError: false).catchError((Object _) => <AttemptRecord>[]);
 
       expect(
@@ -338,7 +338,7 @@ void main() {
         final store = InMemoryPracticeStore(createdAt: t0);
         final session = await openSession(store);
         final presented = await session.decide(at: t0.plusDays(0.5));
-        await session.commit(outcomeFor(presented!.exercise));
+        await session.closeWithOutcome(outcomeFor(presented!.exercise));
         await practise(session, attempts: 2, startDay: 5);
 
         await store.savePendingDecision(presented.decision);

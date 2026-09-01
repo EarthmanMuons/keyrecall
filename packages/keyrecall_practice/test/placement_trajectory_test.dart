@@ -47,7 +47,7 @@ void main() {
       offered.add(presented.exercise);
       // Mostly right, which is what an appropriately pitched sequence should
       // produce and what keeps this from being a study of failure.
-      await session.commit(
+      await session.closeWithOutcome(
         outcomeFor(presented.exercise, succeeded: offered.length % 3 != 0),
         observedWallTime: at,
       );

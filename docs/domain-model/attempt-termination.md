@@ -178,11 +178,11 @@ decision persisted, attempt started, timeout fired, closure appended, app killed
     -> reopens as a closed attempt: the lifecycle ended before the crash
 ```
 
-`PracticeSession.commit` takes an `Outcome` today, which assumes a mandatory
-outcome is the central thing an attempt produces. The change is not to make that
-outcome nullable, which would keep the assumption and merely permit an absence;
-it is that termination is the mandatory lifecycle fact and measurement is
-independent evidence beside it.
+`PracticeSession.closeWithOutcome` takes an `Outcome`, on the assumption that a
+mandatory outcome is the central thing an attempt produces. The change was not
+to make that outcome nullable, which would keep the assumption and merely permit
+an absence; it is that termination is the mandatory lifecycle fact and
+measurement is independent evidence beside it.
 
 The closure stays one atomic append: the persisted record gains the termination
 reason and the measurement result together, rather than appending a closure and
@@ -207,7 +207,8 @@ journal lifecycle fact -> session and scheduler behavior
 1. ~~Introduce `AttemptClosure` and the persisted termination semantics.~~ Done:
    schema version 2, with a pure version 1 upgrade.
 2. ~~Route today's reporting scaffolding through it.~~ Done:
-   `PracticeSession.commit` closes as `learnerStopped` with a measurement.
+   `PracticeSession.closeWithOutcome` closes with a stated outcome, at whatever
+   termination the caller names.
 3. ~~Prove closed-with-unavailable-measurement survives replay.~~ Done:
    `PracticeSession.closeUnmeasured` exists and is covered, though nothing in
    the app calls it yet.

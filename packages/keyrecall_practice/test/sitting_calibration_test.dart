@@ -88,7 +88,7 @@ void main() {
         bypasses[bypass] = (bypasses[bypass] ?? 0) + 1;
 
         final observed = exercise.guidance.isRetrievalObserved;
-        await session.commit(
+        await session.closeWithOutcome(
           Outcome(
             started: quality > 0.2,
             retrieval: !observed

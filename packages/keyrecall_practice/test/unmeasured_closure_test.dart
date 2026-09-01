@@ -36,6 +36,30 @@ void main() {
     );
   });
 
+  test('evidence and termination are recorded independently', () async {
+    // A timeout that arrived with a performance behind it is measured like any
+    // other. Reading the termination as a verdict on the evidence, or the
+    // evidence as a claim about how the attempt ended, is exactly the
+    // inference the two fields are kept apart to prevent.
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final session = await openSession(store);
+    final presented = await session.decide(at: t0.plusDays(0.5));
+    final before = learnerStateHash(session.state);
+
+    final record = await session.closeWithOutcome(
+      outcomeFor(presented!.exercise),
+      termination: AttemptTermination.durationLimit,
+    );
+
+    expect(record.closure.termination, AttemptTermination.durationLimit);
+    expect(record.closure.measurement, isA<Measured>());
+    expect(
+      learnerStateHash(session.state),
+      isNot(before),
+      reason: 'the evidence applies whichever way the attempt ended',
+    );
+  });
+
   test('the attempt is over, not waiting to be answered', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final session = await openSession(store);
@@ -79,7 +103,7 @@ void main() {
     final session = await openSession(store);
     await session.decide(at: t0.plusDays(0.5));
     final presented = (await store.loadPendingDecision(alice.id))!;
-    await session.commit(outcomeFor(presented.exercise));
+    await session.closeWithOutcome(outcomeFor(presented.exercise));
     await session.decide(at: t0.plusDays(1.5));
     final afterMeasured = learnerStateHash(session.state);
     await session.closeUnmeasured(

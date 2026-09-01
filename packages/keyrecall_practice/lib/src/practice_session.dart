@@ -71,12 +71,12 @@ class PracticeStateError extends StateError {
 /// rather than stored.
 ///
 /// **Retrying is not the same as overlapping.** A session is a single-writer
-/// object: [decide], [commit] and [abandonPending] each read and mutate the
-/// same state and none holds a lock, so a caller must let one finish before
-/// starting the next. The idempotency key is not permission to enter [commit]
-/// twice concurrently: the second fold produces a different record under the
-/// same attempt id, which the journal rejects as a collision rather than
-/// absorbing as a retry.
+/// object: [decide], the close methods, and [abandonPending] each read and
+/// mutate the same state and none holds a lock, so a caller must let one
+/// finish before starting the next. The idempotency key is not permission to
+/// enter a close twice concurrently: the second fold produces a different
+/// record under the same attempt id, which the journal rejects as a collision
+/// rather than absorbing as a retry.
 class PracticeSession {
   /// The learner model in force.
   final LearnerModel learner;
@@ -211,7 +211,7 @@ class PracticeSession {
   /// Advances only when an attempt is committed durably. Anything that looks
   /// ahead works on a copy, or replay could not reproduce the timeline.
   ///
-  /// Read it again after each [commit] rather than holding the object across
+  /// Read it again after each close rather than holding the object across
   /// one: a commit replaces it wholesale, so a cached reference would quietly
   /// go stale.
   LearnerState get state => _state;
@@ -291,31 +291,43 @@ class PracticeSession {
     return presented;
   }
 
-  /// Records what happened and commits the attempt.
+  /// Ends the outstanding attempt with an outcome established elsewhere.
+  ///
+  /// The seam between this transaction and the observation model. A caller
+  /// that already knows how an attempt went states it here, which is what lets
+  /// the scheduler, the journal, and this transaction be exercised over
+  /// trajectories that no transcript could produce: an outcome is not
+  /// invertible into a performance that measures back to it, so routing those
+  /// through [closeFromPerformance] would make them assertions about
+  /// measurement instead. Learner-facing attempts do not come this way; they
+  /// are measured.
   ///
   /// The whole transition is computed on a copy, and canonical state is only
   /// replaced once the attempt is durably appended. That matters for a storage
   /// failure that does *not* kill the process: if the append throws, the
   /// session is left exactly where it started, the decision is still pending,
-  /// and calling [commit] again is safe. Applying the update first would leave
+  /// and calling this again is safe. Applying the update first would leave
   /// state ahead of the journal, and a retry would then fold the same outcome
   /// in twice from an already-advanced state.
   ///
   /// The decision is cleared last. A crash between the append and the clear
   /// leaves a stale slot that the next [open] recognizes as already committed.
   ///
-  /// Single-writer: retrying a commit that has already failed is safe, and
+  /// Single-writer: retrying a close that has already failed is safe, and
   /// entering this method twice concurrently is not, for the reason given on
   /// [PracticeSession]. A UI driving this from a button has to make that button
   /// single-flight rather than relying on the attempt id to deduplicate.
   ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
-  Future<AttemptRecord> commit(Outcome outcome, {DateTime? observedWallTime}) =>
-      _close(
-        termination: AttemptTermination.learnerStopped,
-        outcome: outcome,
-        observedWallTime: observedWallTime,
-      );
+  Future<AttemptRecord> closeWithOutcome(
+    Outcome outcome, {
+    AttemptTermination termination = AttemptTermination.learnerStopped,
+    DateTime? observedWallTime,
+  }) => _close(
+    termination: termination,
+    outcome: outcome,
+    observedWallTime: observedWallTime,
+  );
 
   /// Ends the outstanding attempt from what was played.
   ///
@@ -418,7 +430,8 @@ class PracticeSession {
   /// say the attempt ended rather than to claim anything about the
   /// performance.
   ///
-  /// The transaction discipline is the same as [commit]'s, for the same
+  /// The transaction discipline is the same as [closeWithOutcome]'s, for the
+  /// same
   /// reasons.
   ///
   /// Throws [PracticeStateError] when no attempt is outstanding.

@@ -73,7 +73,7 @@ void main() {
       }
 
       final observed = exercise.guidance.isRetrievalObserved;
-      await session.commit(
+      await session.closeWithOutcome(
         Outcome(
           started: quality > 0.2,
           retrieval: !observed

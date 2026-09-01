@@ -51,7 +51,7 @@ void main() {
       at: at,
     );
     practice.pipeline.recordOutcome(directSession, exercise, outcome);
-    await practice.commit(outcome);
+    await practice.closeWithOutcome(outcome);
 
     expect(learnerStateHash(practice.state), learnerStateHash(directState));
     expect(

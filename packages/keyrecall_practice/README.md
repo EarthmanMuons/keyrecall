@@ -31,7 +31,7 @@ is never applied twice because learner state is not stored: it is replayed from
 the journal, and the journal holds each attempt exactly once.
 
 **A storage failure that does not kill the process** is the third case, and it
-needs more than crash safety. `commit` computes the whole transition on a copy
+needs more than crash safety. A close computes the whole transition on a copy
 and replaces canonical state only once the append has succeeded, so a throwing
 append leaves the session exactly where it started with the decision still
 pending. Retrying is then genuinely safe. Applying the update first would leave
@@ -71,7 +71,7 @@ if (presented == null) {
 
 // ... present presented.exercise, collect what happened ...
 
-await session.commit(outcome);
+await session.closeFromPerformance(transcript);
 await session.saveCheckpoint(); // optional; only ever saves replay time
 ```
 

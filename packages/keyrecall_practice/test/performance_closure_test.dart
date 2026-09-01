@@ -51,7 +51,7 @@ void main() {
       );
       if (presented == null) continue;
       if (wanted(presented.exercise)) return presented;
-      await session.commit(outcomeFor(presented.exercise));
+      await session.closeWithOutcome(outcomeFor(presented.exercise));
     }
     throw StateError('no matching exercise was presented');
   }
@@ -284,7 +284,9 @@ void main() {
           cued = presented;
           break;
         }
-        await session.commit(outcomeFor(presented.exercise, succeeded: false));
+        await session.closeWithOutcome(
+          outcomeFor(presented.exercise, succeeded: false),
+        );
       }
 
       expect(cued, isNotNull);
@@ -311,7 +313,7 @@ void main() {
 
     // Clean, steady, unbroken, from memory, and well above the tempo asked
     // for: the task was beneath the learner rather than played badly fast.
-    await session.commit(
+    await session.closeWithOutcome(
       Outcome(
         started: true,
         retrieval: FactualRetrieval.succeeded,

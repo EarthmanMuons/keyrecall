@@ -24,7 +24,9 @@ void main() {
         reason: 'the decision must be durable before the exercise is shown',
       );
 
-      final record = await session.commit(outcomeFor(presented!.exercise));
+      final record = await session.closeWithOutcome(
+        outcomeFor(presented!.exercise),
+      );
 
       expect(record.identity.attemptId, presented.decision.attemptId);
       expect(record.exercise, presented.exercise);
@@ -45,7 +47,7 @@ void main() {
         reason: 'deciding evaluates a copy; it must not move canonical state',
       );
 
-      await session.commit(outcomeFor(presented!.exercise));
+      await session.closeWithOutcome(outcomeFor(presented!.exercise));
       expect(learnerStateHash(session.state), isNot(before));
     });
 
@@ -57,7 +59,9 @@ void main() {
 
         final decidedAt = t0.plusDays(0.5);
         final presented = await session.decide(at: decidedAt);
-        final record = await session.commit(outcomeFor(presented!.exercise));
+        final record = await session.closeWithOutcome(
+          outcomeFor(presented!.exercise),
+        );
 
         expect(
           record.identity.occurredAt,
@@ -81,7 +85,7 @@ void main() {
           continue;
         }
         admitted++;
-        await session.commit(outcomeFor(presented.exercise));
+        await session.closeWithOutcome(outcomeFor(presented.exercise));
       }
 
       expect(refused, greaterThan(0), reason: 'setup: expected a dry slot');
@@ -127,7 +131,7 @@ void main() {
       final presented = await session.decide(at: t0.plusDays(0.5));
 
       final reopened = await openSession(store);
-      final record = await reopened.commit(
+      final record = await reopened.closeWithOutcome(
         outcomeFor(reopened.pending!.exercise),
       );
 
@@ -172,7 +176,9 @@ void main() {
         final store = InMemoryPracticeStore(createdAt: t0);
         final session = await openSession(store);
         final presented = await session.decide(at: t0.plusDays(0.5));
-        final record = await session.commit(outcomeFor(presented!.exercise));
+        final record = await session.closeWithOutcome(
+          outcomeFor(presented!.exercise),
+        );
 
         // The append landed and then the process died before the slot was
         // cleared, which looks exactly like this from the next run's side.
@@ -215,7 +221,9 @@ void main() {
       final store = InMemoryPracticeStore(createdAt: t0);
       final session = await openSession(store);
       final presented = await session.decide(at: t0.plusDays(0.5));
-      final record = await session.commit(outcomeFor(presented!.exercise));
+      final record = await session.closeWithOutcome(
+        outcomeFor(presented!.exercise),
+      );
 
       await store.appendAttempt(record);
 
@@ -351,7 +359,7 @@ void main() {
       final session = await openSession(store);
 
       expect(
-        () => session.commit(outcomeOf()),
+        () => session.closeWithOutcome(outcomeOf()),
         throwsA(isA<PracticeStateError>()),
       );
     });
