@@ -101,7 +101,11 @@ class PulseClicker {
   int _fed = 0;
   final PulseAudioSink _sink;
   bool _ready = false;
+  bool _opened = false;
   bool _unavailable = false;
+  int _generation = 0;
+  Future<void>? _preparing;
+  Future<void>? _stopping;
   Timer? _release;
 
   /// Prepares the engine, if this device has one to give.
@@ -109,7 +113,21 @@ class PulseClicker {
   /// Cheap to call again: the engine is released after each count-in, so this
   /// is what brings it back for the next one.
   Future<void> prepare() async {
+    final stopping = _stopping;
+    if (stopping != null) await stopping;
     if (_ready || _unavailable) return;
+    final pending = _preparing;
+    if (pending != null) return pending;
+
+    late final Future<void> operation;
+    operation = _prepare(_generation).whenComplete(() {
+      if (identical(_preparing, operation)) _preparing = null;
+    });
+    _preparing = operation;
+    await operation;
+  }
+
+  Future<void> _prepare(int generation) async {
     try {
       // Only ever the rest of a pulse that is already playing. With no track
       // there is nothing to hand over: the engine stops itself when its queue
@@ -123,12 +141,15 @@ class PulseClicker {
         // engine stop and restart, and every one of those is an audible seam.
         feedThreshold: _chunkFrames ~/ 2,
       );
+      _opened = true;
+      if (generation != _generation) return;
       _ready = true;
     } on Object catch (error) {
       // A simulator without audio, a test binding with no plugins, a device
       // that refuses the category: all of them mean no click, and none of them
       // mean the attempt cannot proceed.
-      _unavailable = true;
+      if (generation == _generation) _unavailable = true;
+      _sink.setFeedCallback(null);
       if (kDebugMode) debugPrint('[audio] no count-in click: $error');
     }
   }
@@ -191,13 +212,29 @@ class PulseClicker {
   /// Public because an attempt can end before its last beat, and a metronome
   /// still ticking over a finished attempt is the app talking over the learner.
   Future<void> stop() async {
+    _generation++;
     _release?.cancel();
     _release = null;
     _track = null;
     _fed = 0;
-    if (!_ready) return;
     _ready = false;
     _sink.setFeedCallback(null);
+    final pending = _stopping;
+    if (pending != null) return pending;
+
+    late final Future<void> operation;
+    operation = _stop().whenComplete(() {
+      if (identical(_stopping, operation)) _stopping = null;
+    });
+    _stopping = operation;
+    await operation;
+  }
+
+  Future<void> _stop() async {
+    final preparing = _preparing;
+    if (preparing != null) await preparing;
+    if (!_opened) return;
+    _opened = false;
     try {
       await _sink.release();
     } on Object {

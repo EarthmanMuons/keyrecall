@@ -476,6 +476,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     if (_writing) return;
 
     _writing = true;
+    final current = state.value;
     state = const AsyncValue.loading();
     try {
       // The profile is resolved here rather than taken from the loop state,
@@ -486,9 +487,11 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       // situation it exists for.
       final repository = await ref.read(profileRepositoryProvider.future);
       final store = await ref.read(practiceStoreProvider.future);
-      final profile =
-          state.value?.profile ?? await repository.selectedOrOldest();
+      final profile = current?.profile ?? await repository.selectedOrOldest();
       if (profile != null) await store.erase(profile.id);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+      rethrow;
     } finally {
       _writing = false;
     }

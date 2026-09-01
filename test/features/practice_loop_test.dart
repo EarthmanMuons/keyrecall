@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
@@ -198,6 +199,31 @@ void main() {
     );
   });
 
+  test('erasing a loaded loop targets the profile on screen', () async {
+    final repository = FileProfileRepository(root);
+    final store = _RecordingEraseStore(root);
+    final container = ProviderContainer(
+      overrides: [
+        profileRepositoryProvider.overrideWith((ref) async => repository),
+        practiceStoreProvider.overrideWith((ref) async => store),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container
+        .read(profileRosterProvider.notifier)
+        .place(PlacementTier.someExperience);
+    final loop = await loopOf(container);
+    final other = await repository.create(
+      displayName: 'Bob',
+      placement: PlacementTier.beginner,
+    );
+    await repository.select(other.id);
+
+    await container.read(practiceLoopProvider.notifier).eraseHistory();
+
+    expect(store.erased, [loop.profile.id]);
+  });
+
   group('an attempt interrupted before it was answered', () {
     test(
       'surfaces as pending on the next launch, presenting nothing new',
@@ -330,5 +356,17 @@ class _InterruptedCapture extends AttemptTranscriptNotifier {
       );
     }
     return AttemptCapture(transcript: transcript, isInterrupted: true);
+  }
+}
+
+class _RecordingEraseStore extends FilePracticeStore {
+  final List<String> erased = [];
+
+  _RecordingEraseStore(super.root);
+
+  @override
+  Future<void> erase(String profileId) async {
+    erased.add(profileId);
+    await super.erase(profileId);
   }
 }
