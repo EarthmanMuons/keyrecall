@@ -458,53 +458,55 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         !showsCue &&
         (_phase == _Phase.playing || _phase == _Phase.finishing);
 
-    return Column(
-      children: [
-        // The task, then what to do about it, then the material. Notation
-        // grows with the exercise, so anything under it can be pushed off a
-        // phone: two octaves of a scale is four systems, and the control the
-        // learner is looking for cannot be the thing that scrolls away.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _TaskStatement(exercise),
-              const SizedBox(height: 16),
-              _Status(phase: _phase, guidance: guidance, beatsLeft: _beatsLeft),
-              const SizedBox(height: 16),
-              _control(),
-            ],
+    return SafeArea(
+      top: false,
+      child: Column(
+        children: [
+          // The task at the top, the material in the middle, and what to do
+          // about it at the bottom where a thumb already is. Notation grows with
+          // the exercise, so it takes the space that is left and scrolls inside
+          // it: the control the learner is looking for is the one thing that
+          // must never move.
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+            child: _TaskStatement(exercise),
           ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
-            children: [
-              if (showsCue && cueOnStaff(presentation.cueModality))
-                StaffCue(
-                  exercise: exercise,
-                  showsFingering: presentation.motorCue == MotorCue.fingering,
-                ),
-              if (staffCarriesTranscript)
-                TranscriptStaff(
-                  transcript: ref.watch(attemptTranscriptProvider),
-                  exercise: exercise,
-                ),
-            ],
+          Expanded(
+            child: _Notation(
+              children: [
+                if (showsCue && cueOnStaff(presentation.cueModality))
+                  StaffCue(
+                    exercise: exercise,
+                    showsFingering: presentation.motorCue == MotorCue.fingering,
+                  ),
+                if (staffCarriesTranscript)
+                  TranscriptStaff(transcript: transcript, exercise: exercise),
+              ],
+            ),
           ),
-        ),
-        // The instrument sits at the bottom edge, full width, the way a
-        // keyboard does: it is where playing shows up, so it stays put while
-        // everything above it changes.
-        if (!staffCarriesTranscript)
-          _Instrument(
-            exercise: exercise,
-            showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
-            echoes: echoes,
-            showsFingering: presentation.motorCue == MotorCue.fingering,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Status(phase: _phase, guidance: guidance),
+                const SizedBox(height: 12),
+                _control(),
+              ],
+            ),
           ),
-      ],
+          // The instrument sits at the bottom edge, full width, the way a
+          // keyboard does: it is where playing shows up, so it stays put while
+          // everything above it changes.
+          if (!staffCarriesTranscript)
+            _Instrument(
+              exercise: exercise,
+              showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
+              echoes: echoes,
+              showsFingering: presentation.motorCue == MotorCue.fingering,
+            ),
+        ],
+      ),
     );
   }
 
@@ -539,7 +541,23 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         ],
       ],
     ),
-    _Phase.countIn => const SizedBox.shrink(),
+    // The same height the Ready button had, so the count replaces it rather
+    // than moving everything around it.
+    _Phase.countIn => SizedBox(
+      height: 88,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$_beatsLeft',
+              style: Theme.of(context).textTheme.displaySmall,
+            ),
+            Text('Counting in', style: Theme.of(context).textTheme.bodyMedium),
+          ],
+        ),
+      ),
+    ),
     _Phase.playing =>
       _questioned
           ? _Question(
@@ -560,6 +578,32 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       child: FilledButton.tonal(onPressed: null, child: Text('Done')),
     ),
   };
+}
+
+/// The space the written music takes, whether or not there is any.
+///
+/// Centred while it fits and scrollable once it does not: an exercise runs from
+/// nothing on screen to four systems of it, and a staff pinned to the top of a
+/// tall phone reads as an afterthought at one octave.
+class _Notation extends StatelessWidget {
+  const _Notation({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: (constraints.maxHeight - 32).clamp(0.0, double.infinity),
+        ),
+        child: Center(
+          child: Column(mainAxisSize: MainAxisSize.min, children: children),
+        ),
+      ),
+    ),
+  );
 }
 
 /// The offer a passed window makes: is this over?
@@ -629,7 +673,7 @@ class _TaskStatement extends StatelessWidget {
           materialName(exercise.material),
           style: theme.textTheme.displaySmall,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           handsName(conditions.hands).toUpperCase(),
           style: theme.textTheme.titleMedium?.copyWith(
@@ -646,7 +690,7 @@ class _TaskStatement extends StatelessWidget {
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Text(
           '${conditions.tempoBpm.round()} bpm',
           style: theme.textTheme.bodyMedium?.copyWith(
@@ -725,41 +769,25 @@ class _Instrument extends ConsumerWidget {
 ///
 /// Sits with the control it qualifies rather than with the notation it
 /// describes: "they disappear when you do" is about the button underneath it.
-class _Status extends ConsumerWidget {
-  const _Status({
-    required this.phase,
-    required this.guidance,
-    required this.beatsLeft,
-  });
+class _Status extends StatelessWidget {
+  const _Status({required this.phase, required this.guidance});
 
   final _Phase phase;
   final GuidanceContext guidance;
-  final int beatsLeft;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
+  Widget build(BuildContext context) {
+    if (phase != _Phase.ready) return const SizedBox(height: 20);
 
-    if (phase == _Phase.countIn) {
-      return Column(
-        children: [
-          Text('$beatsLeft', style: theme.textTheme.displayLarge),
-          Text('Counting in', style: theme.textTheme.bodyMedium),
-        ],
-      );
-    }
-
-    final text = switch (phase) {
-      _Phase.ready => switch (guidance.independence) {
+    return Text(
+      switch (guidance.independence) {
         0 => 'The notes stay up while you play.',
         1 => 'Study these, then start. They disappear when you do.',
         _ => 'Play it from memory.',
       },
-      _ => '',
-    };
-    if (text.isEmpty) return const SizedBox(height: 20);
-
-    return Text(text, style: theme.textTheme.bodyMedium);
+      style: Theme.of(context).textTheme.bodyMedium,
+      textAlign: TextAlign.center,
+    );
   }
 }
 
