@@ -25,7 +25,7 @@ double _sigmoid(double logit) => 1.0 / (1.0 + math.exp(-logit));
 /// continuous cueing makes availability near-certain, previewed notes
 /// partially compensate for weak memory, and an unguided attempt uses the
 /// independent retrieval probability unchanged.
-double materialAvailableProbability(
+double _materialAvailableProbability(
   double independentRetrievalP,
   GuidanceContext guidance,
 ) => 1.0 - guidance.retrievalDemand * (1.0 - independentRetrievalP);
@@ -230,7 +230,7 @@ class LearnerModel {
     return _sigmoid(topologyTerm);
   }
 
-  /// All four channels for [exercise] at [at].
+  /// All five channels for [exercise] at [at].
   ///
   /// Read-only: it never inserts state, so predicting a candidate the
   /// scheduler goes on to reject leaves no trace in the learner.
@@ -244,19 +244,32 @@ class LearnerModel {
       exercise,
       at,
     );
-    return Prediction(
+    return predictionFromChannels(
+      guidance: exercise.guidance,
       independentRetrievalP: independentRetrievalP,
-      materialAvailableP: materialAvailableProbability(
-        independentRetrievalP,
-        exercise.guidance,
-      ),
       executionP: executionProbability(state, exercise),
-      coordinationP: includesCoordinationInChallenge
-          ? coordinationProbability(state, exercise)
-          : 1.0,
+      coordinationP: coordinationProbability(state, exercise),
       topologyP: topologyProbability(state, exercise),
     );
   }
+
+  /// Assembles the model prediction from already-computed channels.
+  Prediction predictionFromChannels({
+    required GuidanceContext guidance,
+    required double independentRetrievalP,
+    required double executionP,
+    required double coordinationP,
+    required double topologyP,
+  }) => Prediction(
+    independentRetrievalP: independentRetrievalP,
+    materialAvailableP: _materialAvailableProbability(
+      independentRetrievalP,
+      guidance,
+    ),
+    executionP: executionP,
+    coordinationP: includesCoordinationInChallenge ? coordinationP : 1.0,
+    topologyP: topologyP,
+  );
 
   /// Applies one attempt's evidence to [state], in place.
   ///

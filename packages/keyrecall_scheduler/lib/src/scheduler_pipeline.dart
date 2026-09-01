@@ -856,11 +856,12 @@ class SchedulerPipeline {
     final introducible = introducibleTier(state, refined, facts: facts);
 
     // Guidance changes material availability, but not independent retrieval,
-    // execution, or topology. Generation emits each realization under all
+    // execution, coordination, or topology. Generation emits each realization under all
     // three guidance levels, so those channels are computed once per
     // realization, keyed by the same exercise with guidance normalized away.
     final retrievalCache = <String, double>{};
     final executionCache = <Exercise, double>{};
+    final coordinationCache = <Exercise, double>{};
     final topologyCache = <Exercise, double>{};
     final informationCache = <InformationKey, double>{};
 
@@ -879,6 +880,7 @@ class SchedulerPipeline {
           facts: facts,
           retrievalCache: retrievalCache,
           executionCache: executionCache,
+          coordinationCache: coordinationCache,
           topologyCache: topologyCache,
           informationCache: informationCache,
         ),
@@ -898,6 +900,7 @@ class SchedulerPipeline {
     required DecisionFacts facts,
     required Map<String, double> retrievalCache,
     required Map<Exercise, double> executionCache,
+    required Map<Exercise, double> coordinationCache,
     required Map<Exercise, double> topologyCache,
     required Map<InformationKey, double> informationCache,
   }) {
@@ -906,17 +909,17 @@ class SchedulerPipeline {
       exercise.material.materialId,
       () => learner.independentRetrievalProbability(state, exercise, at),
     );
-    final prediction = Prediction(
+    final prediction = learner.predictionFromChannels(
+      guidance: exercise.guidance,
       independentRetrievalP: independentRetrievalP,
-      materialAvailableP: materialAvailableProbability(
-        independentRetrievalP,
-        exercise.guidance,
-      ),
       executionP: executionCache.putIfAbsent(
         realization,
         () => learner.executionProbability(state, exercise),
       ),
-      coordinationP: learner.coordinationProbability(state, exercise),
+      coordinationP: coordinationCache.putIfAbsent(
+        realization,
+        () => learner.coordinationProbability(state, exercise),
+      ),
       topologyP: topologyCache.putIfAbsent(
         realization,
         () => learner.topologyProbability(state, exercise),
