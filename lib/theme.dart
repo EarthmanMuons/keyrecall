@@ -138,3 +138,13 @@ const _tertiaryFixed = Color(0xFFF7E8B7);
 const _tertiaryFixedDim = Color(0xFFE8DAAA);
 const _onTertiaryFixed = Color(0xFF4B421F);
 const _onTertiaryFixedVariant = Color(0xFF695F38);
+
+/// The app's theme for one of the two schemes.
+///
+/// The bar sits a step off the surface behind it, so the app's own edge is
+/// distinct from what is being practised on: the same step the status bar
+/// above it takes, since the bar paints behind that inset.
+ThemeData keyRecallTheme(ColorScheme scheme) => ThemeData(
+  colorScheme: scheme,
+  appBarTheme: AppBarTheme(backgroundColor: scheme.surfaceContainerLow),
+);

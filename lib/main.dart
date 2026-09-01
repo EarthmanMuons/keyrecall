@@ -34,8 +34,8 @@ class KeyRecallApp extends ConsumerWidget {
 
     return MaterialApp(
       title: 'KeyRecall',
-      theme: ThemeData(colorScheme: lightColorScheme),
-      darkTheme: ThemeData(colorScheme: darkColorScheme),
+      theme: keyRecallTheme(lightColorScheme),
+      darkTheme: keyRecallTheme(darkColorScheme),
       // Above the navigator, so routes, sheets, and dialogs all read the same
       // layout.
       builder: (context, child) => LayoutScope(child: child!),
