@@ -163,6 +163,31 @@ void main() {
     });
   });
 
+  group('restyling', () {
+    forEachRepository('changes the presentation hint and nothing else', (
+      repository,
+    ) async {
+      final created = await repository.create(
+        displayName: 'Alice',
+        createdAt: t0,
+        presentationHint: 'teal',
+        placement: PlacementTier.someExperience,
+      );
+
+      final restyled = await repository.restyle(created.id, 'rose');
+
+      expect(restyled.id, created.id);
+      expect(restyled.createdAt, created.createdAt);
+      expect(restyled.displayName, created.displayName);
+      expect(restyled.presentationHint, 'rose');
+      expect((await repository.find(created.id))!.presentationHint, 'rose');
+    });
+
+    forEachRepository('refuses an unknown profile', (repository) async {
+      expect(() => repository.restyle('nobody', 'rose'), throwsArgumentError);
+    });
+  });
+
   group('selecting', () {
     forEachRepository('switches the active profile', (repository) async {
       final alice = await repository.create(

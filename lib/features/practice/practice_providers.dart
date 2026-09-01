@@ -158,6 +158,13 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
         return (await _isActive(repository, profileId), renamed);
       });
 
+  /// Changes the colour a profile is recognized by.
+  Future<Profile?> recolor(String profileId, ProfileColor color) =>
+      _mutate((repository, store) async {
+        final restyled = await repository.restyle(profileId, color.name);
+        return (await _isActive(repository, profileId), restyled);
+      });
+
   /// Makes [profileId] the profile the practice loop runs as.
   Future<Profile?> select(String profileId) =>
       _mutate((repository, store) async {

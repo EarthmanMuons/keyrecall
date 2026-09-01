@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'placement.dart';
 import 'profile_avatar.dart';
+import 'profile_color.dart';
 import 'practice_providers.dart';
 
 /// Who uses this install: switch between them, add one, rename one, put one
@@ -118,22 +117,7 @@ class _ProfileTile extends ConsumerWidget {
             ? const TextStyle(fontWeight: FontWeight.w600)
             : null,
       ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(_history(summary)),
-          // The id is what a journal file is named after, so it is worth
-          // having where storage is being looked at and nowhere else.
-          if (!kReleaseMode)
-            Text(
-              profile.id,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontFamily: 'monospace',
-              ),
-            ),
-        ],
-      ),
-      isThreeLine: !kReleaseMode,
+      subtitle: Text(_history(summary)),
       // Tapping switches, which is the thing this screen is opened for. Every
       // other action is one menu away, so none of them can happen by accident.
       onTap: summary.isActive
@@ -150,6 +134,10 @@ class _ProfileTile extends ConsumerWidget {
           const PopupMenuItem(
             value: _ProfileAction.rename,
             child: Text('Rename'),
+          ),
+          const PopupMenuItem(
+            value: _ProfileAction.recolor,
+            child: Text('Change color'),
           ),
           const PopupMenuItem(
             value: _ProfileAction.eraseHistory,
@@ -221,6 +209,9 @@ class _ProfileTile extends ConsumerWidget {
           confirmLabel: 'Rename',
         );
         if (name != null) await notifier.rename(profile.id, name);
+      case _ProfileAction.recolor:
+        final color = await _askForColor(context, profile);
+        if (color != null) await notifier.recolor(profile.id, color);
       case _ProfileAction.eraseHistory:
         final erase = await _confirm(
           context,
@@ -250,7 +241,55 @@ class _ProfileTile extends ConsumerWidget {
 }
 
 /// What the menu on a profile offers.
-enum _ProfileAction { select, rename, eraseHistory, delete }
+enum _ProfileAction { select, rename, recolor, eraseHistory, delete }
+
+/// Asks which colour to show a profile in, or null when nobody chose.
+///
+/// The palette is the whole choice. A colour is what a profile is picked out
+/// by at a glance, so the six that stay apart are the six on offer.
+Future<ProfileColor?> _askForColor(BuildContext context, Profile profile) =>
+    showDialog<ProfileColor>(
+      context: context,
+      builder: (context) {
+        final current = ProfileColor.of(profile);
+        return AlertDialog(
+          title: Text('Colour for ${profile.displayName}'),
+          content: Wrap(
+            spacing: 16,
+            runSpacing: 16,
+            children: [
+              for (final color in ProfileColor.values)
+                InkResponse(
+                  onTap: () => Navigator.of(context).pop(color),
+                  radius: 28,
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: color.color,
+                    child: color == current
+                        ? Icon(
+                            Icons.check,
+                            color:
+                                ThemeData.estimateBrightnessForColor(
+                                      color.color,
+                                    ) ==
+                                    Brightness.dark
+                                ? Colors.white
+                                : Colors.black87,
+                          )
+                        : null,
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
 
 /// Adds a profile and switches to it.
 Future<void> _addProfile(BuildContext context, WidgetRef ref) async {

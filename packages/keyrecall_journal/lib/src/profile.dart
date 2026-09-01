@@ -93,6 +93,18 @@ class Profile {
     presentationHint: presentationHint,
   );
 
+  /// This profile shown differently, keeping everything it is.
+  ///
+  /// The hint is presentation and nothing else, which is why changing it is
+  /// its own small operation rather than part of a general update.
+  Profile shownAs(String? presentationHint) => Profile(
+    id: id,
+    displayName: displayName,
+    createdAt: createdAt,
+    placement: placement,
+    presentationHint: presentationHint,
+  );
+
   /// Writes the profile.
   Map<String, Object?> toJson() => {
     'id': id,

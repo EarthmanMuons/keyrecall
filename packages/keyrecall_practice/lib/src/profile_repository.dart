@@ -169,6 +169,11 @@ abstract interface class ProfileRepository {
   /// Throws [ArgumentError] when no such profile exists.
   Future<Profile> rename(String profileId, String displayName);
 
+  /// Changes a profile's presentation hint, and nothing else.
+  ///
+  /// Throws [ArgumentError] when no such profile exists.
+  Future<Profile> restyle(String profileId, String? presentationHint);
+
   /// Makes [profileId] the active profile.
   ///
   /// Throws [ArgumentError] when no such profile exists, since a selection
@@ -262,17 +267,23 @@ class InMemoryProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<Profile> rename(String profileId, String displayName) async {
-    final existing = _requireProfile(profileId);
-    final renamed = existing.renamed(displayName);
+  Future<Profile> rename(String profileId, String displayName) async =>
+      _replace(profileId, (profile) => profile.renamed(displayName));
+
+  @override
+  Future<Profile> restyle(String profileId, String? presentationHint) async =>
+      _replace(profileId, (profile) => profile.shownAs(presentationHint));
+
+  Profile _replace(String profileId, Profile Function(Profile) change) {
+    final changed = change(_requireProfile(profileId));
     _index = ProfileIndex(
       profiles: [
         for (final profile in _index.profiles)
-          profile.id == profileId ? renamed : profile,
+          profile.id == profileId ? changed : profile,
       ],
       selectedProfileId: _index.selectedProfileId,
     );
-    return renamed;
+    return changed;
   }
 
   @override

@@ -90,20 +90,30 @@ class FileProfileRepository implements ProfileRepository {
   }
 
   @override
-  Future<Profile> rename(String profileId, String displayName) async {
+  Future<Profile> rename(String profileId, String displayName) =>
+      _replace(profileId, (profile) => profile.renamed(displayName));
+
+  @override
+  Future<Profile> restyle(String profileId, String? presentationHint) =>
+      _replace(profileId, (profile) => profile.shownAs(presentationHint));
+
+  /// Rewrites one profile's record of itself, leaving the selection alone.
+  Future<Profile> _replace(
+    String profileId,
+    Profile Function(Profile) change,
+  ) async {
     final index = await _read();
-    final existing = _require(index, profileId);
-    final renamed = existing.renamed(displayName);
+    final changed = change(_require(index, profileId));
     await _write(
       ProfileIndex(
         profiles: [
           for (final profile in index.profiles)
-            profile.id == profileId ? renamed : profile,
+            profile.id == profileId ? changed : profile,
         ],
         selectedProfileId: index.selectedProfileId,
       ),
     );
-    return renamed;
+    return changed;
   }
 
   @override
