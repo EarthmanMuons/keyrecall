@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -110,13 +112,18 @@ class _ProfileTile extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(_history(summary)),
-          Text(
-            profile.id,
-            style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
-          ),
+          // The id is what a journal file is named after, so it is worth
+          // having where storage is being looked at and nowhere else.
+          if (!kReleaseMode)
+            Text(
+              profile.id,
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontFamily: 'monospace',
+              ),
+            ),
         ],
       ),
-      isThreeLine: true,
+      isThreeLine: !kReleaseMode,
       // Tapping switches, which is the thing this screen is opened for. Every
       // other action is one menu away, so none of them can happen by accident.
       onTap: summary.isActive ? null : () => notifier.select(profile.id),
