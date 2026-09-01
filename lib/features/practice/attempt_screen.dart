@@ -515,16 +515,17 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       ),
     );
 
-    return SafeArea(
-      top: false,
-      child: Column(
-        children: [
-          // The task, the material, and what to do about it. Stacked while
-          // there is height for it, and side by side when there is not: a
-          // window on its side has no room to put a scale and a button under
-          // each other, and one wide enough to would be leaving the width
-          // empty.
-          Expanded(
+    return Column(
+      children: [
+        // The task, the material, and what to do about it. Stacked while
+        // there is height for it, and side by side when there is not: a
+        // window on its side has no room to put a scale and a button under
+        // each other, and one wide enough to would be leaving the width
+        // empty.
+        Expanded(
+          child: SafeArea(
+            top: false,
+            bottom: staffCarriesTranscript,
             child: layout.hasRoomBeside
                 ? Row(
                     // Stretched, so each pane is handed the full height to lay
@@ -554,19 +555,21 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
                     ],
                   ),
           ),
-          // The instrument sits at the bottom edge, full width, the way a
-          // keyboard does: it is where playing shows up, so it stays put while
-          // everything above it changes.
-          if (!staffCarriesTranscript)
-            _Instrument(
-              exercise: exercise,
-              showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
-              echoes: echoes,
-              showsFingering: presentation.motorCue == MotorCue.fingering,
-              height: layout.instrumentHeight,
-            ),
-        ],
-      ),
+        ),
+        // The instrument sits at the bottom edge, full width, the way a
+        // keyboard does: it is where playing shows up, so it stays put while
+        // everything above it changes. It runs past the safe area rather than
+        // stopping short of it: it is a diagram, nothing on it is touched, and
+        // the strip below it is height the music does not have.
+        if (!staffCarriesTranscript)
+          _Instrument(
+            exercise: exercise,
+            showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
+            echoes: echoes,
+            showsFingering: presentation.motorCue == MotorCue.fingering,
+            height: layout.instrumentHeight,
+          ),
+      ],
     );
   }
 
