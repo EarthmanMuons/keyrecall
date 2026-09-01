@@ -3,23 +3,10 @@ import 'package:meta/meta.dart';
 
 import 'execution_conditions.dart';
 import 'exercise.dart';
+import 'hand_path.dart';
 import 'pitch_spelling.dart';
 import 'spelled_pitch.dart';
 import 'technical_material.dart';
-
-/// One hand, as a player rather than as a configuration.
-///
-/// [HandConfiguration] says which hands an exercise asks for; this says which
-/// hand a particular note belongs to, so `together` is not a value here.
-enum Hand {
-  left('LEFT'),
-  right('RIGHT');
-
-  const Hand(this.id);
-
-  /// Stable identifier used in traces.
-  final String id;
-}
 
 const _handSetEquality = SetEquality<Hand>();
 
@@ -294,46 +281,6 @@ Map<Hand, int> _tonicsFor(
     for (final hand in hands) hand: _nearestTonic(_middleC, pitchClass),
   },
 };
-
-/// Which scale degree each hand plays at each moment.
-///
-/// One entry per moment, in order, as a signed offset from that hand's own
-/// tonic. A hand walking below its tonic is an ordinary negative degree rather
-/// than a special case, which is what lets the two motions be two path
-/// assignments instead of two traversal algorithms.
-///
-/// [ScaleDirection] shapes each line on its own: `upDown` turns every line
-/// around at its own outside end, which for contrary motion is the point the
-/// hands are furthest apart. [ExecutionConditions.octaves] is per hand, so
-/// contrary motion covers twice the keyboard that parallel motion does.
-Map<Hand, List<int>> handPathsFor(
-  ExecutionConditions conditions, {
-  required int degreesPerOctave,
-}) {
-  final hands = [
-    if (conditions.hands.usesLeftHand) Hand.left,
-    if (conditions.hands.usesRightHand) Hand.right,
-  ];
-  final topDegree = degreesPerOctave * conditions.octaves;
-  final ascending = [
-    for (var degree = 0; degree <= topDegree; degree++) degree,
-  ];
-  final outward = switch (conditions.direction) {
-    ScaleDirection.up => ascending,
-    // The apex is played once and the traversal turns around on it.
-    ScaleDirection.upDown => [...ascending, ...ascending.reversed.skip(1)],
-  };
-
-  return switch (conditions.handMotion) {
-    HandMotion.parallel => {for (final hand in hands) hand: outward},
-    HandMotion.contrary => {
-      for (final hand in hands)
-        hand: hand == Hand.right
-            ? outward
-            : [for (final degree in outward) -degree],
-    },
-  };
-}
 
 /// Which key [degree] lands on, counting from [tonic].
 ///

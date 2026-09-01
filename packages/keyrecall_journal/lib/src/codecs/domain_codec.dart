@@ -71,7 +71,7 @@ Exercise decodeExercise(Map<String, Object?> json, {String? location}) {
     );
   }
 
-  return Exercise(
+  return Exercise.recorded(
     material: material,
     conditions: conditions,
     pattern: ExercisePattern.fromId(

@@ -63,13 +63,11 @@ void main() {
 }
 ```
 
-## What is deliberately missing
+## Motor structure
 
-The derived motor structure. Fingering and the note sequence are both here now,
-but `MotorOpportunity` is still supplied by the caller, and `Exercise.linear`
-applies a provisional rule that can only read octave span and direction.
-Deriving those sites from the fingering is the work that rule is waiting for;
-widening the heuristic is not.
+`Exercise.linear` derives motor opportunities from the same hand paths and
+canonical fingerings that realize the exercise. Recorded exercises retain the
+opportunities stored with them so replay does not reinterpret history.
 
 Nothing here knows how a performance relates to what was asked for. That is
 `keyrecall_alignment`, and it is deliberately one directional: the domain says

@@ -35,9 +35,8 @@ const _opportunitySetEquality = SetEquality<MotorOpportunity>();
 /// the motor sites the resulting event structure exposes.
 ///
 /// An exercise is a bundle of independent choices rather than a catalog row.
-/// The canonical fingering and derived motor structure that would normally
-/// supply [opportunities] are not modeled yet, so callers pass them in;
-/// [Exercise.linear] applies the provisional structural rule.
+/// [Exercise.linear] derives [opportunities] from its hand paths and canonical
+/// fingering.
 @immutable
 class Exercise {
   /// What is being played.
@@ -55,19 +54,16 @@ class Exercise {
   /// The observable motor sites this exercise creates.
   final Set<MotorOpportunity> opportunities;
 
-  Exercise({
+  /// Rehydrates the motor structure persisted with a presented exercise.
+  Exercise.recorded({
     required this.material,
     required this.conditions,
     this.pattern = ExercisePattern.linear,
     this.guidance = GuidanceContext.unguided,
-    Set<MotorOpportunity> opportunities = const {},
+    required Set<MotorOpportunity> opportunities,
   }) : opportunities = Set.unmodifiable(opportunities);
 
-  /// A linear exercise whose opportunities follow from its conditions.
-  ///
-  /// The shorthand production code and scenarios use; see
-  /// [MotorOpportunity.forLinearTraversal] for what the derivation can and
-  /// cannot currently see.
+  /// A linear exercise with motor opportunities derived from its realization.
   factory Exercise.linear({
     required TechnicalMaterial material,
     required HandConfiguration hands,
@@ -84,18 +80,18 @@ class Exercise {
       handMotion: handMotion,
       tempoBpm: tempoBpm,
     );
-    return Exercise(
+    return Exercise.recorded(
       material: material,
       conditions: conditions,
       guidance: guidance,
-      opportunities: MotorOpportunity.forLinearTraversal(conditions),
+      opportunities: MotorOpportunity.forLinearTraversal(material, conditions),
     );
   }
 
   /// This exercise with [guidance] replaced and everything else held fixed.
   ///
   /// The only variation recovery and the probes are allowed to make.
-  Exercise withGuidance(GuidanceContext guidance) => Exercise(
+  Exercise withGuidance(GuidanceContext guidance) => Exercise.recorded(
     material: material,
     conditions: conditions,
     pattern: pattern,
@@ -109,7 +105,7 @@ class Exercise {
   /// one place a candidate is built this way: the next tempo rung is a
   /// learner-dependent value, so the static generator has no candidate at it
   /// and the scheduler makes one from the shape beside it.
-  Exercise atTempo(double tempoBpm) => Exercise(
+  Exercise atTempo(double tempoBpm) => Exercise.recorded(
     material: material,
     conditions: ExecutionConditions(
       hands: conditions.hands,

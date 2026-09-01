@@ -1,5 +1,9 @@
 import 'competency.dart';
 import 'execution_conditions.dart';
+import 'fingering.dart';
+import 'hand_path.dart';
+import 'pitch_spelling.dart';
+import 'technical_material.dart';
 
 /// An observable motor site an exercise's event structure creates.
 ///
@@ -35,17 +39,49 @@ enum MotorOpportunity {
         throw ArgumentError.value(id, 'id', 'unknown motor opportunity'),
   );
 
-  /// The opportunities a linear traversal under [conditions] creates.
-  ///
-  /// A provisional structural rule standing in for real motor-realization
-  /// data: no fingering catalog or event generator exists yet, so octave span
-  /// and direction are all this can read. Replace it with derivation from
-  /// generated events once the catalog lands, not with a wider heuristic.
+  /// The opportunities created by the material's realized hand paths.
   static Set<MotorOpportunity> forLinearTraversal(
+    TechnicalMaterial material,
     ExecutionConditions conditions,
-  ) => {
-    scalarCrossing,
-    if (conditions.octaves >= 2) multiOctaveContinuation,
-    if (conditions.direction == ScaleDirection.upDown) directionReversal,
-  };
+  ) {
+    final degreesPerOctave = scaleFormIntervals[material.form]!.length;
+    final paths = handPathsFor(conditions, degreesPerOctave: degreesPerOctave);
+    var hasCrossing = false;
+    var hasContinuation = false;
+    var hasReversal = false;
+
+    for (final MapEntry(key: hand, value: path) in paths.entries) {
+      final fingers = fingeringForConditions(
+        material: material,
+        conditions: conditions,
+        hand: hand,
+      );
+      if (fingers != null) {
+        for (var index = 1; index < path.length; index++) {
+          final degreeMotion = path[index] - path[index - 1];
+          final fingerMotion = fingers[index] - fingers[index - 1];
+          if (degreeMotion == 0 || fingerMotion == 0) continue;
+          final directionsAgree = degreeMotion * fingerMotion > 0;
+          if (directionsAgree == (hand == Hand.left)) hasCrossing = true;
+        }
+      }
+
+      for (var index = 1; index < path.length - 1; index++) {
+        final before = path[index] - path[index - 1];
+        final after = path[index + 1] - path[index];
+        if (before * after < 0) hasReversal = true;
+        if (path[index] != 0 &&
+            path[index].abs() % degreesPerOctave == 0 &&
+            before * after > 0) {
+          hasContinuation = true;
+        }
+      }
+    }
+
+    return {
+      if (hasCrossing) scalarCrossing,
+      if (hasContinuation) multiOctaveContinuation,
+      if (hasReversal) directionReversal,
+    };
+  }
 }

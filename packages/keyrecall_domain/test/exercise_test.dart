@@ -212,6 +212,67 @@ void main() {
     });
   });
 
+  group('derived motor opportunities', () {
+    Set<MotorOpportunity> opportunities({
+      int octaves = 1,
+      ScaleDirection direction = ScaleDirection.up,
+      HandConfiguration hands = HandConfiguration.right,
+      HandMotion handMotion = HandMotion.parallel,
+    }) => Exercise.linear(
+      material: cMajor,
+      hands: hands,
+      octaves: octaves,
+      direction: direction,
+      handMotion: handMotion,
+    ).opportunities;
+
+    test('follow crossings, internal tonic joins, and turns', () {
+      expect(opportunities(), {MotorOpportunity.scalarCrossing});
+      expect(opportunities(octaves: 2), {
+        MotorOpportunity.scalarCrossing,
+        MotorOpportunity.multiOctaveContinuation,
+      });
+      expect(opportunities(direction: ScaleDirection.upDown), {
+        MotorOpportunity.scalarCrossing,
+        MotorOpportunity.directionReversal,
+      });
+      expect(
+        opportunities(
+          octaves: 2,
+          direction: ScaleDirection.upDown,
+          hands: HandConfiguration.together,
+          handMotion: HandMotion.contrary,
+        ),
+        MotorOpportunity.values.toSet(),
+      );
+    });
+
+    test('crossings come from the canonical fingering', () {
+      for (final material in allScales) {
+        for (final hands in [HandConfiguration.left, HandConfiguration.right]) {
+          expect(
+            Exercise.linear(
+              material: material,
+              hands: hands,
+              direction: ScaleDirection.up,
+            ).opportunities,
+            contains(MotorOpportunity.scalarCrossing),
+            reason: '${material.materialId} ${hands.id}',
+          );
+        }
+      }
+
+      expect(
+        Exercise.linear(
+          material: TechnicalMaterial('Cb', ScaleForm.major),
+          hands: HandConfiguration.right,
+          direction: ScaleDirection.up,
+        ).opportunities,
+        isNot(contains(MotorOpportunity.scalarCrossing)),
+      );
+    });
+  });
+
   group('exercise equality', () {
     test('distinguishes guidance but not object identity', () {
       final unguided = Exercise.linear(

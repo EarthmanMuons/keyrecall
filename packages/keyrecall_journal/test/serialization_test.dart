@@ -253,6 +253,44 @@ void main() {
     });
   });
 
+  group('a recorded exercise', () {
+    // The journal is the historical record, so replay must reproduce the motor
+    // structure that was presented rather than what today's derivation would
+    // produce for the same material. Divergence here is not corruption: it is
+    // what a changed derivation looks like from the far side of a round trip.
+    test('keeps motor opportunities derivation would not produce', () {
+      final material = TechnicalMaterial('C', ScaleForm.major);
+      final conditions = ExecutionConditions(
+        hands: HandConfiguration.right,
+        octaves: 1,
+        direction: ScaleDirection.upDown,
+        handMotion: HandMotion.parallel,
+        tempoBpm: 80,
+      );
+      final derived = MotorOpportunity.forLinearTraversal(material, conditions);
+      final presented = {MotorOpportunity.multiOctaveContinuation};
+      expect(derived, isNot(presented));
+
+      final exercise = Exercise.recorded(
+        material: material,
+        conditions: conditions,
+        opportunities: presented,
+      );
+      final reread = decodeExercise(
+        jsonDecode(jsonEncode(encodeExercise(exercise)))
+            as Map<String, Object?>,
+      );
+
+      expect(reread.opportunities, presented);
+      expect(reread, exercise);
+      expect(
+        reread.structuralQ,
+        contains(Competency.multiOctaveContinuation),
+        reason: 'the stored structure is what the evidence was attributed to',
+      );
+    });
+  });
+
   group('canonical encoding', () {
     test('does not depend on the order fields were built in', () {
       expect(canonicalJson({'b': 1, 'a': 2}), canonicalJson({'a': 2, 'b': 1}));
