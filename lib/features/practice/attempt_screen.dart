@@ -55,6 +55,14 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   /// looking at a screen is not something the practice history should carry.
   String? _reviewed;
 
+  /// The attempt being played right now, if one is.
+  ///
+  /// The bar goes away for the length of it. Nothing on it is usable with both
+  /// hands on the keys, and what it costs is the height the music and the
+  /// keyboard are short of on a phone. It comes back by itself: an attempt
+  /// that ends puts a different one on screen.
+  String? _playing;
+
   @override
   Widget build(BuildContext context) {
     final loop = ref.watch(practiceLoopProvider);
@@ -77,18 +85,22 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
       );
     }
 
+    final attemptId =
+        loop.value?.presented?.decision.attemptId ??
+        loop.value?.pending?.attemptId;
+    if (_playing != attemptId) _playing = null;
+
     return Scaffold(
-      appBar: const _PracticeAppBar(),
+      appBar: _playing == null ? const _PracticeAppBar() : null,
       body: switch (loop) {
         AsyncData(:final value) when value.exercise != null => AttemptView(
           // A new decision restarts the view at Ready rather than inheriting
           // the previous attempt's phase.
-          key: ValueKey(
-            value.presented?.decision.attemptId ?? value.pending?.attemptId,
-          ),
+          key: ValueKey(attemptId),
           exercise: value.exercise!,
           onFinish: (termination) => notifier.finish(termination: termination),
           onDecline: notifier.decline,
+          onUnderWay: () => setState(() => _playing = attemptId),
         ),
         AsyncData() => const _NothingToPlay(),
         AsyncError(:final error, :final stackTrace) => LoopFailure(
@@ -248,6 +260,7 @@ class AttemptView extends ConsumerStatefulWidget {
     required this.exercise,
     required this.onFinish,
     this.onDecline,
+    this.onUnderWay,
     this.presentation,
     super.key,
   });
@@ -262,6 +275,11 @@ class AttemptView extends ConsumerStatefulWidget {
   ///
   /// Absent where there is no loop to record it, which is the debug case list.
   final Future<void> Function()? onDecline;
+
+  /// Says the attempt has started, for a screen that gives it the room the app
+  /// bar was taking. Never says it stopped: this view is replaced wholesale
+  /// when the attempt ends.
+  final VoidCallback? onUnderWay;
 
   /// What to present it under, when something other than practice policy is
   /// choosing. Only the debug case list passes this, to compare one exercise
@@ -368,6 +386,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
       _phase = _Phase.countIn;
       _beatsLeft = _countInBeats;
     });
+    widget.onUnderWay?.call();
     // The clicks are rendered as one buffer, so the pulse is exact whatever
     // this timer does, and the audio catches up to the count rather than the
     // count waiting on the audio.
