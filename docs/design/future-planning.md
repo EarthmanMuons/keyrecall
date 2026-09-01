@@ -1001,6 +1001,34 @@ The measurement that would change this is a profile of a real attempt, not the
 shape of the loop. Worth taking if a longer form than a scale is ever recorded
 as one transcript, or if the staff drops frames while somebody plays.
 
+## 4.14 A commit conceived before an erase
+
+Store operations for one profile run one at a time, so no two interleave. That
+is ordering, not agreement about which history an operation was conceived
+against, and one gap follows from the difference:
+
+```text
+1. a session reads an empty journal and prepares attempt sequence 0
+2. the roster erases that profile's history
+3. the session's append runs
+4. sequence 0 is contiguous against the journal the erase left
+5. the erased history now holds that attempt
+```
+
+Every other stale write is already refused. A sequence above zero is not
+contiguous against an emptied journal, and a checkpoint covering attempts the
+journal no longer has is a cache miss rather than a seed. Only the first attempt
+of a profile with no history lands silently.
+
+The principled fix is a history generation: a token a session takes when it
+opens and presents on every write, so a store can refuse work conceived against
+a history it has since destroyed. It was not taken here because it is a change
+to `PracticeStore` and to everything implementing it, which is more than the
+size of the hole.
+
+Reproduced by driving `PracticeLoopNotifier.finish` and
+`ProfileRosterNotifier.eraseHistory` concurrently over one store.
+
 ## 5. Domain expansion
 
 The long-term technical-practice domain may include:

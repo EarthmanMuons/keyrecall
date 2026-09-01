@@ -19,15 +19,19 @@ import 'pending_decision.dart';
 /// that, the engine is free: a file, a database, or anything else that
 /// preserves those guarantees.
 ///
-/// Operations on one profile must not interleave. Each of them reads, decides
-/// and writes, and callers are not one writer: a practice loop committing an
-/// attempt and a roster erasing that profile are separate objects with
-/// separate guards.
+/// Operations on one profile must not interleave, within one store. Each of
+/// them reads, decides and writes, and callers are not one writer: a practice
+/// loop committing an attempt and a roster erasing that profile are separate
+/// objects with separate guards. Two stores over one root serialize nothing
+/// against each other, so an install has one store per storage root.
 ///
-/// Ordering is all this gives. A caller holding state it read earlier can
-/// still act on history that has since been erased, which the journal's
-/// contiguous sequence catches on append and [PracticeSession] catches when
-/// reading a checkpoint that covers attempts the journal no longer has.
+/// Ordering is all this gives, and a caller holding state it read earlier can
+/// still act on history that has since been erased. A checkpoint covering
+/// attempts the journal no longer has is refused by [PracticeSession], and the
+/// journal's contiguous sequence refuses a stale append, except from a session
+/// that read the journal empty: sequence zero is valid against the journal an
+/// erase leaves, so that attempt survives the erase. See
+/// `docs/design/future-planning.md` section 4.14.
 abstract interface class PracticeStore {
   /// Every attempt recorded for [profileId], oldest first.
   ///
