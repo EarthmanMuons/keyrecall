@@ -700,6 +700,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     );
     final notation = _Notation(
       gutter: layout.gutter,
+      follows: staffCarriesTranscript,
       children: [
         if (showsCue && cueOnStaff(presentation.cueModality))
           StaffCue(
@@ -907,26 +908,90 @@ class _AttemptViewState extends ConsumerState<AttemptView>
 /// Centred while it fits and scrollable once it does not: an exercise runs from
 /// nothing on screen to four systems of it, and a staff pinned to the top of a
 /// tall phone reads as an afterthought at one octave.
-class _Notation extends StatelessWidget {
-  const _Notation({required this.gutter, required this.children});
+class _Notation extends StatefulWidget {
+  const _Notation({
+    required this.gutter,
+    required this.children,
+    this.follows = false,
+  });
 
   final double gutter;
   final List<Widget> children;
 
+  /// Whether the music is being written as it is played, which decides both
+  /// where it sits and whether it moves.
+  ///
+  /// Something still being written grows downward, so it is held to the top:
+  /// centring it would move every system already on screen each time another
+  /// one opened. Something finished is centred, because then there is nothing
+  /// left to come and the empty half of the screen is just empty.
+  final bool follows;
+
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) => SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(gutter, 16, gutter, 16),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minHeight: (constraints.maxHeight - 32).clamp(0.0, double.infinity),
+  State<_Notation> createState() => _NotationState();
+}
+
+class _NotationState extends State<_Notation> {
+  final ScrollController _scroll = ScrollController();
+
+  @override
+  void didUpdateWidget(_Notation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.follows) _keepUp();
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    super.dispose();
+  }
+
+  /// Keeps the system being played on screen once there are more of them than
+  /// fit, letting the ones already played leave off the top.
+  ///
+  /// Only ever forward. A learner who has scrolled back to look at something
+  /// is reading, and dragging them to the end of it would be answering a
+  /// question they did not ask.
+  void _keepUp() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scroll.hasClients) return;
+      final end = _scroll.position.maxScrollExtent;
+      if (end <= _scroll.offset) return;
+      unawaited(
+        _scroll.animateTo(
+          end,
+          duration: attemptTransition,
+          curve: attemptCurve,
         ),
-        child: Center(
-          child: Column(mainAxisSize: MainAxisSize.min, children: children),
-        ),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final music = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: widget.children,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        controller: _scroll,
+        padding: EdgeInsets.fromLTRB(widget.gutter, 16, widget.gutter, 16),
+        child: widget.follows
+            ? music
+            : ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: (constraints.maxHeight - 32).clamp(
+                    0.0,
+                    double.infinity,
+                  ),
+                ),
+                child: Center(child: music),
+              ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// The offer a passed window makes: is this over?
