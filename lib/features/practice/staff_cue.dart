@@ -30,11 +30,13 @@ const double _maximumStaffSpace = 16;
 /// so a system that would fall below it gives up a bar instead.
 const double _readableStaffSpace = 9;
 
-/// Rows of one staff, drawn as large as the width allows.
+/// One staff, wrapped into systems and drawn as large as the width allows.
 ///
-/// Two bars to a row, and the same size on every row. A renderer packing
-/// measures to a width gives whatever number happens to fit at a size chosen in
-/// advance, which on a phone is a small staff with space left over.
+/// The size is chosen here and the line breaking is left to the engraver. A
+/// renderer packing measures to a width needs a size chosen in advance, which
+/// on a phone is a small staff with space left over; picking the size first
+/// and handing it over means the systems are as large as they can be and are
+/// still broken, restated and justified the way an engraver would.
 class FittedStaff extends StatelessWidget {
   const FittedStaff({
     required this.score,
@@ -74,27 +76,18 @@ class FittedStaff extends StatelessWidget {
           width: constraints.maxWidth,
           minimumStaffSpace: _readableStaffSpace,
         );
-        final rows = rowsOf(score, measuresPerRow: bars);
         final space = _spaceFor(
           fittedStaffSpace(
             rowsOf(whole, measuresPerRow: bars),
             width: constraints.maxWidth,
           ),
         );
-        return Column(
-          children: [
-            for (final row in rows)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: crisp.StaffView(
-                  score: row,
-                  theme: theme,
-                  staffSpace: space,
-                  elementColors: elementColors,
-                  showNoteNames: showsNoteNames,
-                ),
-              ),
-          ],
+        return crisp.MultiSystemView(
+          score: score,
+          theme: theme,
+          staffSpace: space,
+          elementColors: elementColors,
+          showNoteNames: showsNoteNames,
         );
       },
     );

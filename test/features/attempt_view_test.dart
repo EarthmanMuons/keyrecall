@@ -57,8 +57,8 @@ void main() {
 
   /// How many notes the staff on screen is showing, across every row of it.
   int staffNotes(WidgetTester tester) => [
-    for (final staff in tester.widgetList<crisp.StaffView>(
-      find.byType(crisp.StaffView),
+    for (final staff in tester.widgetList<crisp.MultiSystemView>(
+      find.byType(crisp.MultiSystemView),
     ))
       for (final measure in staff.score.measures)
         for (final element in measure.elements)
@@ -117,7 +117,7 @@ void main() {
       await readyAndCountIn(tester);
       expect(
         find.byType(PianoKeyboard).evaluate().length +
-            find.byType(crisp.StaffView).evaluate().length,
+            find.byType(crisp.MultiSystemView).evaluate().length,
         greaterThan(0),
         reason:
             'withdrawal takes information away, not the surfaces: the '
@@ -157,7 +157,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 750 * 5));
     expect(markers(tester), isEmpty);
     expect(
-      find.byType(crisp.StaffView),
+      find.byType(crisp.MultiSystemView),
       findsWidgets,
       reason:
           'with the cue withdrawn, the staff is free to carry what is '
@@ -172,7 +172,7 @@ void main() {
     await readyAndCountIn(tester);
     expect(markers(tester), isEmpty);
     expect(
-      find.byType(crisp.StaffView),
+      find.byType(crisp.MultiSystemView),
       findsWidgets,
       reason:
           'what the learner sees of the attempt is what they played, '
@@ -197,7 +197,7 @@ void main() {
         presentation: onStaff(GuidanceContext.continuouslyCued),
       );
 
-      expect(find.byType(crisp.StaffView), findsWidgets);
+      expect(find.byType(crisp.MultiSystemView), findsWidgets);
       expect(
         markers(tester),
         isEmpty,
@@ -213,7 +213,7 @@ void main() {
         GuidanceContext.notesPreviewedOnly,
         presentation: onStaff(GuidanceContext.notesPreviewedOnly),
       );
-      expect(find.byType(crisp.StaffView), findsWidgets);
+      expect(find.byType(crisp.MultiSystemView), findsWidgets);
 
       await readyAndCountIn(tester);
 
@@ -234,7 +234,7 @@ void main() {
         presentation: onStaff(GuidanceContext.unguided),
       );
 
-      expect(find.byType(crisp.StaffView), findsNothing);
+      expect(find.byType(crisp.MultiSystemView), findsNothing);
       expect(find.byType(crisp.GrandStaffView), findsNothing);
     });
   });
