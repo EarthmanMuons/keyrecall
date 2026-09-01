@@ -26,6 +26,7 @@ import 'profile_avatar.dart';
 import 'presentation_policy.dart';
 import 'profiles_screen.dart';
 import 'staff_cue.dart';
+import 'task_help.dart';
 
 /// The app's home: one exercise, presented.
 ///
@@ -742,6 +743,9 @@ class _Question extends StatelessWidget {
 /// the shape of the traversal are how to play it; the tempo is a constraint on
 /// it. Four equally weighted boxes would say those matter equally, and a
 /// learner glancing up mid-position needs the identity first.
+///
+/// Tapping it explains it. The terms are the app's whole vocabulary, and the
+/// place somebody wonders what one means is the line it is written on.
 class _TaskStatement extends StatelessWidget {
   const _TaskStatement(this.exercise);
 
@@ -752,38 +756,56 @@ class _TaskStatement extends StatelessWidget {
     final theme = Theme.of(context);
     final conditions = exercise.conditions;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          materialName(exercise.material),
-          style: theme.textTheme.displaySmall,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          handsName(conditions.hands).toUpperCase(),
-          style: theme.textTheme.titleMedium?.copyWith(
-            letterSpacing: 1.2,
-            fontWeight: FontWeight.w600,
+    return InkWell(
+      onTap: () => showTaskHelp(context, exercise),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Flexible(
+                child: Text(
+                  materialName(exercise.material),
+                  style: theme.textTheme.displaySmall,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Icon(
+                  Icons.help_outline,
+                  size: 20,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          '${directionName(conditions.direction)} · '
-          '${octavesName(conditions.octaves)} · '
-          '${startingNotesName(realize(exercise))}',
-          style: theme.textTheme.bodyLarge?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+          const SizedBox(height: 8),
+          Text(
+            handsName(conditions.hands).toUpperCase(),
+            style: theme.textTheme.titleMedium?.copyWith(
+              letterSpacing: 1.2,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${conditions.tempoBpm.round()} bpm',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+          const SizedBox(height: 2),
+          Text(
+            '${directionName(conditions.direction)} · '
+            '${octavesName(conditions.octaves)}',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
-      ],
+          const SizedBox(height: 6),
+          Text(
+            '${conditions.tempoBpm.round()} bpm',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

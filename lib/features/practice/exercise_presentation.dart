@@ -20,29 +20,6 @@ String handsName(HandConfiguration hands) => switch (hands) {
 String octavesName(int octaves) =>
     octaves == 1 ? '1 octave' : '$octaves octaves';
 
-/// Where each hand starts, as a learner would read it off a keyboard.
-///
-/// A suggestion rather than part of the task. Which octave to begin in is a
-/// convention this app chose so a staff has somewhere to draw the scale, and
-/// scoring is register-relative: playing it perfectly an octave from where the
-/// exercise placed it is the same scale and reads as one. This says where the
-/// notation put it, so a learner reading the staff and a learner reading this
-/// line put their hand in the same place.
-String startingNotesName(ExerciseRealization realization) {
-  final starts = [
-    for (final hand in [Hand.left, Hand.right])
-      if (realization.moments.first.noteFor(hand) case final note?)
-        _scientificName(note.pitch),
-  ];
-  return 'from ${starts.join(' and ')}';
-}
-
-/// A pitch as its letter, any accidental, and its octave number, which is how
-/// a keyboard is labelled and how one player tells another where to put their
-/// hand.
-String _scientificName(SpelledPitch pitch) =>
-    '${_prettyTonic(pitch.label)}${pitch.midiNote ~/ 12 - 1}';
-
 /// Which way it runs.
 String directionName(ScaleDirection direction) =>
     direction == ScaleDirection.up ? 'Up' : 'Up and down';

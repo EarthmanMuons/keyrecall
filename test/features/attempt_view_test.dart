@@ -93,7 +93,7 @@ void main() {
 
       for (final fact in const [
         'RIGHT HAND',
-        'Up and down · 2 octaves · from C4',
+        'Up and down · 2 octaves',
         '80 bpm',
       ]) {
         expect(
