@@ -44,6 +44,8 @@ docs/
 │   ├── progression-graph.md         what precedes what, and where each
 │                                    edge is enforced
 │   ├── material-admission.md        what may be introduced now, and why
+│   ├── validation-boundaries.md     which constructors throw, and which
+│                                    assert
 │   ├── fingering-taxonomy.md
 │   ├── motor-taxonomy.md
 │   └── v1-domain-model.md

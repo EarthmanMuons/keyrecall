@@ -65,7 +65,15 @@ class AlignmentPolicy {
     this.insertionCost = 3,
     this.deletionCost = 3,
     this.maxGroupingPreference = 2,
-  });
+  }) : assert(
+         substitutionCost >= 0 && insertionCost >= 0 && deletionCost >= 0,
+         'no explanation may cost less than a match',
+       ),
+       assert(
+         maxGroupingPreference >= 0 &&
+             maxGroupingPreference <= substitutionCost,
+         'grouping proposes, so it may not outbid a correspondence decision',
+       );
 
   /// The V1 policy.
   static const AlignmentPolicy standard = AlignmentPolicy();

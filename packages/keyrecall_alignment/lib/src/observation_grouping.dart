@@ -22,6 +22,10 @@ class ObservationGroupingPolicy {
     this.confidentlySameMs = 30,
     this.confidentlySeparateMs = 250,
   }) : assert(
+         confidentlySameMs >= 0,
+         'a gap between arrivals cannot be negative',
+       ),
+       assert(
          confidentlySameMs < confidentlySeparateMs,
          'the confident edges must leave a region between them',
        );

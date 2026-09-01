@@ -84,7 +84,22 @@ class MeasurementPolicy {
     this.synchronizedAsynchronyMs = 30,
     this.uncoordinatedAsynchronyMs = 150,
     this.coordinationTailWeight = 0.35,
-  });
+  }) : assert(
+         steadyDispersion < unsteadyDispersion,
+         'steadiness reads between its ends',
+       ),
+       assert(
+         unbrokenIntervalRatio < brokenIntervalRatio,
+         'continuity reads between its ends',
+       ),
+       assert(
+         synchronizedAsynchronyMs < uncoordinatedAsynchronyMs,
+         'coordination reads between its ends',
+       ),
+       assert(
+         coordinationTailWeight >= 0 && coordinationTailWeight <= 1,
+         'the tail carries a fraction of the coordination score',
+       );
 
   /// The V1 policy.
   static const MeasurementPolicy standard = MeasurementPolicy();

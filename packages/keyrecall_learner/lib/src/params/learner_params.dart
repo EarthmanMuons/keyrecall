@@ -372,6 +372,10 @@ class PlacementParams {
 /// registry; [v1PrototypeLearnerParams] mirrors it, and a test reconciles the
 /// two. Attempt records must persist [modelVersion] so replay does not
 /// reinterpret old evidence under new constants.
+///
+/// A calibrated constant rather than loaded configuration, so its sections
+/// hold their invariants by assertion; see
+/// `docs/domain-model/validation-boundaries.md`.
 @immutable
 class LearnerParams {
   /// Identifier of this parameter set, recorded with every attempt.

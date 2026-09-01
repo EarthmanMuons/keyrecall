@@ -268,6 +268,10 @@ class ProbeConfig {
 /// Every value is a deliberately simple placeholder, not a tuned policy
 /// decision. `analysis/scheduler/config.toml` is the authoritative registry;
 /// [v1SchedulerConfig] mirrors it, and a test reconciles the two.
+///
+/// A calibrated constant rather than loaded configuration, so its sections
+/// hold their invariants by assertion; see
+/// `docs/domain-model/validation-boundaries.md`.
 @immutable
 class SchedulerConfig {
   /// Identifier of this configuration, recorded with every decision.
