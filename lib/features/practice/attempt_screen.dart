@@ -421,10 +421,11 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// that the shortest of them lands where it says it does.
   static const Duration _watchdogTick = Duration(milliseconds: 250);
 
-  /// Drives what leaves the screen when the attempt takes it.
+  /// Where the instrument sits, from `0` in place to `1` off the bottom.
   ///
-  /// Run from Ready whether or not anything is listening to it, so the
-  /// instrument's exit is timed by the same clock as the statement's.
+  /// It arrives by running back to nought, so a new exercise slides the
+  /// keyboard up into the room the last attempt took it out of, and Ready
+  /// sends it down the way it came.
   late final AnimationController _handover;
 
   _Phase _phase = _Phase.ready;
@@ -459,7 +460,11 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   @override
   void initState() {
     super.initState();
-    _handover = AnimationController(vsync: this, duration: attemptTransition);
+    _handover = AnimationController(
+      vsync: this,
+      duration: attemptTransition,
+      value: 1,
+    )..reverse();
     _pulse = ref.read(pulseClickerProvider);
     // The previous attempt's notes are still in the transcript, because
     // closing an attempt reads them after recording stops. They are not this
@@ -495,9 +500,24 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   bool _hasCoveredTraversal(PerformanceTranscript transcript) =>
       hasCoveredTraversal(exercise: widget.exercise, transcript: transcript);
 
+  /// Whether the instrument has nothing left to carry once the attempt starts.
+  ///
+  /// The same reading the build makes of what each surface is for: with the
+  /// cue withdrawn and the echo going to the staff, the diagram is a picture
+  /// of an instrument nobody is being told anything about.
+  bool get _instrumentLeavesAtReady {
+    final presentation =
+        widget.presentation ??
+        presentationFor(widget.exercise.guidance, exercise: widget.exercise);
+    return presentation.performanceFeedback != PerformanceFeedback.none &&
+        !showsPitchCueDuringAttempt(widget.exercise.guidance);
+  }
+
   /// Hands the screen over to the attempt, and counts in once it has settled.
   void _start() {
-    _handover.forward();
+    // Only where the rung has no further use for it. At the cued rung the
+    // keyboard is the cue, and it stays where it is.
+    if (_instrumentLeavesAtReady) _handover.forward();
     setState(() {
       _phase = _Phase.countIn;
       _beatsLeft = _countInBeats;
@@ -766,30 +786,33 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         //
         // Where the rung has no further use for it, it leaves downward with
         // the rest of the movement rather than vanishing under the count.
-        if (staffCarriesTranscript) _leaving(instrument) else instrument,
+        _slot(instrument),
       ],
     );
   }
 
-  /// The instrument on its way off the bottom of the screen.
+  /// The instrument, wherever it is between the bottom edge and its place.
   ///
-  /// Its top follows the shrinking edge down while the rest of it is clipped,
-  /// so it leaves the way a keyboard pushed off a table would, and it is out
-  /// of the tree once it is out of sight.
-  Widget _leaving(Widget instrument) => AnimatedBuilder(
+  /// Its top follows the moving edge while the rest of it is clipped, so it
+  /// arrives and leaves the way a keyboard slid onto a table would, and it is
+  /// out of the tree whenever it is out of sight.
+  Widget _slot(Widget instrument) => AnimatedBuilder(
     animation: _handover,
     child: instrument,
     builder: (context, child) {
+      // Out of the tree once it has left, and not merely because it is at the
+      // bottom: it starts there on its way up.
+      if (_handover.status == AnimationStatus.completed) {
+        return const SizedBox(width: double.infinity);
+      }
       final gone = attemptCurve.transform(_handover.value);
-      return gone == 1
-          ? const SizedBox(width: double.infinity)
-          : ClipRect(
-              child: Align(
-                alignment: Alignment.topCenter,
-                heightFactor: 1 - gone,
-                child: child,
-              ),
-            );
+      return ClipRect(
+        child: Align(
+          alignment: Alignment.topCenter,
+          heightFactor: 1 - gone,
+          child: child,
+        ),
+      );
     },
   );
 
