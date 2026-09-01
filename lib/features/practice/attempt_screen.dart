@@ -10,6 +10,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import '../../wordmark.dart';
 import '../audio/pulse_clicker.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
@@ -113,8 +114,9 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   }
 }
 
-/// The bar over every practice state: who to practice as, what to practice
-/// on, and, off release, the panel that shows the loop working.
+/// The bar over every practice state: the app's name, who to practice as,
+/// what to practice on, and, off release, the panel that shows the loop
+/// working.
 ///
 /// The instrument is here rather than in a settings screen because connecting
 /// one is the only setup this app has, and it is the thing somebody reaches
@@ -127,89 +129,52 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Who is practicing is worth saying only where it is in question. On an
-    // install with one profile the answer is nobody's doubt, and a name in the
-    // bar would be decoration.
     final roster = ref.watch(profileRosterProvider).value ?? const [];
     final active = roster.where((summary) => summary.isActive).toList();
-    final shared = roster.length > 1 && active.isNotEmpty;
 
     return AppBar(
-      title: shared
-          ? _PracticingAs(active.single.profile)
-          : const Text('Practice'),
+      title: const Wordmark(),
       actions: [
+        // A profile build is how this gets taken to a real instrument across
+        // the room, and a release build is what a learner sees. It leads the
+        // actions so the ones a release keeps sit where they always do.
+        if (!kReleaseMode)
+          IconButton(
+            tooltip: 'Developer',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => const DeveloperScreen(),
+              ),
+            ),
+            icon: const Icon(Icons.build_outlined),
+          ),
         // Only when MIDI is the source: reading the connection state starts the
         // Bluetooth stack, which the synthetic instrument has no use for.
         if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
           const _InstrumentButton(),
-        PopupMenuButton<_Destination>(
-          onSelected: (destination) =>
-              Navigator.of(context)
-                  .push(MaterialPageRoute<void>(builder: destination.build)),
-          itemBuilder: (context) => [
-            for (final destination in _Destination.available)
-              PopupMenuItem(
-                value: destination,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(destination.icon),
-                  title: Text(destination.label),
-                ),
-              ),
-          ],
-        ),
+        if (active.isNotEmpty) _ProfileButton(active.single.profile),
       ],
     );
   }
 }
 
 /// Whose practice this is, in their colour, as the way to switch.
-class _PracticingAs extends StatelessWidget {
-  const _PracticingAs(this.profile);
+///
+/// The colour is the whole point of it: on an install more than one person
+/// uses, a glance at the bar says whose history the next attempt lands in.
+class _ProfileButton extends StatelessWidget {
+  const _ProfileButton(this.profile);
 
   final Profile profile;
 
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: () => Navigator.of(context).push(
+  Widget build(BuildContext context) => IconButton(
+    tooltip: 'Practicing as ${profile.displayName}',
+    onPressed: () => Navigator.of(context).push(
       MaterialPageRoute<void>(builder: (context) => const ProfilesScreen()),
     ),
-    child: Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ProfileAvatar(profile: profile, radius: 14),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Text(profile.displayName, overflow: TextOverflow.ellipsis),
-        ),
-      ],
-    ),
+    icon: ProfileAvatar(profile: profile, radius: 15, icon: Icons.person),
   );
-}
-
-/// Where the practice screen's menu can go.
-enum _Destination {
-  profiles(Icons.people_outline, 'Profiles'),
-  developer(Icons.build_outlined, 'Developer');
-
-  const _Destination(this.icon, this.label);
-
-  final IconData icon;
-  final String label;
-
-  /// The destinations this build offers. The developer panel is not one of
-  /// them in release: a profile build is how this gets taken to a real
-  /// instrument across the room, and a release build is what a learner sees.
-  static List<_Destination> get available => [
-    profiles,
-    if (!kReleaseMode) developer,
-  ];
-
-  Widget build(BuildContext context) => switch (this) {
-    _Destination.profiles => const ProfilesScreen(),
-    _Destination.developer => const DeveloperScreen(),
-  };
 }
 
 /// Whether an instrument is connected, and the way to connect one.

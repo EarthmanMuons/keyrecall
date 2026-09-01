@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../wordmark.dart';
 import 'attempt_screen.dart';
 import 'practice_providers.dart';
 
@@ -162,7 +163,7 @@ class PlacementScreen extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text('KeyRecall', style: theme.textTheme.titleMedium),
+                  Wordmark(style: theme.textTheme.titleMedium),
                   const SizedBox(height: 8),
                   Text(
                     'Where should we start?',
