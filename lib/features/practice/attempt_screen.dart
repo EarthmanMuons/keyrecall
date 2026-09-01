@@ -114,13 +114,13 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   }
 }
 
-/// The bar over every practice state: the app's name, who to practice as,
-/// what to practice on, and, off release, the panel that shows the loop
-/// working.
+/// The bar over every practice state: the app's name, the instrument, and a
+/// menu holding everything else.
 ///
-/// The instrument is here rather than in a settings screen because connecting
-/// one is the only setup this app has, and it is the thing somebody reaches
-/// for when notes are not arriving.
+/// The instrument is the one control kept out of the menu, because connecting
+/// one is the only setup this app has and it is what somebody reaches for when
+/// notes are not arriving. Everything that is a setting goes behind the menu,
+/// which is where the settings this app has yet to grow will go too.
 class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
   const _PracticeAppBar();
 
@@ -135,45 +135,67 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
     return AppBar(
       title: const Wordmark(),
       actions: [
-        // A profile build is how this gets taken to a real instrument across
-        // the room, and a release build is what a learner sees. It leads the
-        // actions so the ones a release keeps sit where they always do.
-        if (!kReleaseMode)
-          IconButton(
-            tooltip: 'Developer',
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (context) => const DeveloperScreen(),
-              ),
-            ),
-            icon: const Icon(Icons.build_outlined),
-          ),
         // Only when MIDI is the source: reading the connection state starts the
         // Bluetooth stack, which the synthetic instrument has no use for.
         if (ref.watch(inputSourceProvider) == InputSourceKind.midi)
           const _InstrumentButton(),
-        if (active.isNotEmpty) _ProfileButton(active.single.profile),
+        _MenuButton(
+          profile: active.isEmpty ? null : active.single.profile,
+          // Who is practicing is worth saying on the bar only where it is in
+          // question. On an install with one profile it is nobody's doubt, and
+          // a coloured disc where the menu goes would be decoration.
+          showsProfile: roster.length > 1,
+        ),
       ],
     );
   }
 }
 
-/// Whose practice this is, in their colour, as the way to switch.
+/// Everything the practice screen offers that is not the instrument.
 ///
-/// The colour is the whole point of it: on an install more than one person
-/// uses, a glance at the bar says whose history the next attempt lands in.
-class _ProfileButton extends StatelessWidget {
-  const _ProfileButton(this.profile);
+/// Wears the active profile's colour where more than one person practices
+/// here, so a glance at the bar says whose history the next attempt lands in.
+class _MenuButton extends StatelessWidget {
+  const _MenuButton({required this.profile, required this.showsProfile});
 
-  final Profile profile;
+  final Profile? profile;
+  final bool showsProfile;
 
   @override
-  Widget build(BuildContext context) => IconButton(
-    tooltip: 'Practicing as ${profile.displayName}',
-    onPressed: () => Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (context) => const ProfilesScreen()),
-    ),
-    icon: ProfileAvatar(profile: profile, radius: 15, icon: Icons.person),
+  Widget build(BuildContext context) => PopupMenuButton<VoidCallback>(
+    onSelected: (open) => open(),
+    icon: showsProfile && profile != null
+        ? ProfileAvatar(profile: profile!, radius: 15, icon: Icons.person)
+        : null,
+    itemBuilder: (context) => [
+      PopupMenuItem(
+        value: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (context) => const ProfilesScreen()),
+        ),
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: profile == null
+              ? const Icon(Icons.people_outline)
+              : ProfileAvatar(profile: profile!, radius: 16),
+          title: Text(profile?.displayName ?? 'Profiles'),
+        ),
+      ),
+      // A profile build is how this gets taken to a real instrument across the
+      // room, and a release build is what a learner sees.
+      if (!kReleaseMode)
+        PopupMenuItem(
+          value: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => const DeveloperScreen(),
+            ),
+          ),
+          child: const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.build_outlined),
+            title: Text('Developer'),
+          ),
+        ),
+    ],
   );
 }
 
