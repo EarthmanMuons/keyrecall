@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'features/practice/placement.dart';
+import 'layout.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -35,6 +36,9 @@ class KeyRecallApp extends ConsumerWidget {
       title: 'KeyRecall',
       theme: ThemeData(colorScheme: lightColorScheme),
       darkTheme: ThemeData(colorScheme: darkColorScheme),
+      // Above the navigator, so routes, sheets, and dialogs all read the same
+      // layout.
+      builder: (context, child) => LayoutScope(child: child!),
       home: const PlacementGate(),
     );
   }

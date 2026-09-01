@@ -9,6 +9,7 @@ import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../../layout.dart';
 import '../audio/pulse_clicker.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
@@ -458,42 +459,73 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
         !showsCue &&
         (_phase == _Phase.playing || _phase == _Phase.finishing);
 
+    final layout = Layout.of(context);
+    final task = Padding(
+      padding: EdgeInsets.fromLTRB(layout.gutter, 16, layout.gutter, 0),
+      child: _TaskStatement(exercise),
+    );
+    final notation = _Notation(
+      gutter: layout.gutter,
+      children: [
+        if (showsCue && cueOnStaff(presentation.cueModality))
+          StaffCue(
+            exercise: exercise,
+            showsFingering: presentation.motorCue == MotorCue.fingering,
+          ),
+        if (staffCarriesTranscript)
+          TranscriptStaff(transcript: transcript, exercise: exercise),
+      ],
+    );
+    final controls = Padding(
+      padding: EdgeInsets.fromLTRB(layout.gutter, 0, layout.gutter, 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _Status(phase: _phase, guidance: guidance),
+          const SizedBox(height: 12),
+          _control(),
+        ],
+      ),
+    );
+
     return SafeArea(
       top: false,
       child: Column(
         children: [
-          // The task at the top, the material in the middle, and what to do
-          // about it at the bottom where a thumb already is. Notation grows with
-          // the exercise, so it takes the space that is left and scrolls inside
-          // it: the control the learner is looking for is the one thing that
-          // must never move.
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-            child: _TaskStatement(exercise),
-          ),
+          // The task, the material, and what to do about it. Stacked while
+          // there is height for it, and side by side when there is not: a
+          // window on its side has no room to put a scale and a button under
+          // each other, and one wide enough to would be leaving the width
+          // empty.
           Expanded(
-            child: _Notation(
-              children: [
-                if (showsCue && cueOnStaff(presentation.cueModality))
-                  StaffCue(
-                    exercise: exercise,
-                    showsFingering: presentation.motorCue == MotorCue.fingering,
+            child: layout.hasRoomBeside
+                ? Row(
+                    // Stretched, so each pane is handed the full height to lay
+                    // itself out in.
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // The task takes what the control leaves and
+                            // scrolls inside it: a window on its side can be
+                            // shorter than the two of them together.
+                            Expanded(child: SingleChildScrollView(child: task)),
+                            controls,
+                          ],
+                        ),
+                      ),
+                      Expanded(flex: 2, child: notation),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      task,
+                      Expanded(child: notation),
+                      controls,
+                    ],
                   ),
-                if (staffCarriesTranscript)
-                  TranscriptStaff(transcript: transcript, exercise: exercise),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _Status(phase: _phase, guidance: guidance),
-                const SizedBox(height: 12),
-                _control(),
-              ],
-            ),
           ),
           // The instrument sits at the bottom edge, full width, the way a
           // keyboard does: it is where playing shows up, so it stays put while
@@ -504,6 +536,7 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
               showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
               echoes: echoes,
               showsFingering: presentation.motorCue == MotorCue.fingering,
+              height: layout.instrumentHeight,
             ),
         ],
       ),
@@ -586,14 +619,15 @@ class _AttemptViewState extends ConsumerState<AttemptView> {
 /// nothing on screen to four systems of it, and a staff pinned to the top of a
 /// tall phone reads as an afterthought at one octave.
 class _Notation extends StatelessWidget {
-  const _Notation({required this.children});
+  const _Notation({required this.gutter, required this.children});
 
+  final double gutter;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) => SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      padding: EdgeInsets.fromLTRB(gutter, 16, gutter, 16),
       child: ConstrainedBox(
         constraints: BoxConstraints(
           minHeight: (constraints.maxHeight - 32).clamp(0.0, double.infinity),
@@ -714,6 +748,7 @@ class _Instrument extends ConsumerWidget {
     required this.showsCue,
     required this.echoes,
     required this.showsFingering,
+    required this.height,
   });
 
   final Exercise exercise;
@@ -726,6 +761,9 @@ class _Instrument extends ConsumerWidget {
 
   /// Whether the fingers are named on the marked keys.
   final bool showsFingering;
+
+  /// How tall the diagram is drawn.
+  final double height;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -760,7 +798,7 @@ class _Instrument extends ConsumerWidget {
       // No pitch-class filter: a wrong note lights up like any other. Marking
       // it as out of scale would be evaluative feedback, which no rung offers
       // yet and which changes what an attempt observes.
-      height: 160,
+      height: height,
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import '../../layout.dart';
 import 'attempt_diagnosis.dart';
 import 'exercise_presentation.dart';
 
@@ -143,59 +144,68 @@ class AttemptReview extends StatelessWidget {
             previous: record.exercise,
           );
 
+    final layout = Layout.of(context);
+
     return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Spacer(),
-          Text(
-            diagnosis?.sentence ?? 'Logged.',
-            style: theme.textTheme.headlineMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 32),
-          if (upcoming != null) ...[
-            Text(
-              'Next',
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              materialName(upcoming.exercise.material),
-              style: theme.textTheme.titleLarge,
-              textAlign: TextAlign.center,
-            ),
-            if (reason != null) ...[
-              const SizedBox(height: 4),
+      padding: EdgeInsets.all(layout.gutter),
+      // Centred and bounded: this screen is read, and a sentence running the
+      // width of a tablet is one nobody finishes.
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: layout.readableWidth),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
               Text(
-                reason,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+                diagnosis?.sentence ?? 'Logged.',
+                style: theme.textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),
-            ],
-          ],
-          const Spacer(),
-          if (!kReleaseMode) ...[
-            _Measured(record: record, next: upcoming, diagnosis: diagnosis),
-            const SizedBox(height: 16),
-          ],
-          SizedBox(
-            height: 88,
-            child: FilledButton(
-              onPressed: onNext,
-              style: FilledButton.styleFrom(
-                textStyle: theme.textTheme.headlineSmall,
+              const SizedBox(height: 32),
+              if (upcoming != null) ...[
+                Text(
+                  'Next',
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  materialName(upcoming.exercise.material),
+                  style: theme.textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                if (reason != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    reason,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ],
+              const Spacer(),
+              if (!kReleaseMode) ...[
+                _Measured(record: record, next: upcoming, diagnosis: diagnosis),
+                const SizedBox(height: 16),
+              ],
+              SizedBox(
+                height: 88,
+                child: FilledButton(
+                  onPressed: onNext,
+                  style: FilledButton.styleFrom(
+                    textStyle: theme.textTheme.headlineSmall,
+                  ),
+                  child: Text(upcoming == null ? 'Done' : 'Next'),
+                ),
               ),
-              child: Text(upcoming == null ? 'Done' : 'Next'),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
