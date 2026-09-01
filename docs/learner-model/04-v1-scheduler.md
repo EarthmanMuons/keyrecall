@@ -518,6 +518,13 @@ admission decision or stage 2's eligibility tier (§7.1).
 
 ### 7.3 Selection: repetition guard, then rank
 
+> **Live selection has one more step.** The V1 prototype recorded below selected
+> by applying the repetition guard and then ranking. The production scheduler
+> adds a realization-family pacing filter between the guard and the final
+> choice; see the `keyrecall_scheduler` README and
+> [`../design/realization-family-pacing.md`](../design/realization-family-pacing.md).
+> The architecture below otherwise remains a record of the Python design.
+
 Computing `rank_key(e)` for every admitted candidate (§7.1-§7.2) is not the same
 act as choosing among them. A narrow, named **repetition guard** sits between
 the two: a material selected more than a configured number of consecutive times

@@ -1029,6 +1029,27 @@ size of the hole.
 Reproduced by driving `PracticeLoopNotifier.finish` and
 `ProfileRosterNotifier.eraseHistory` concurrently over one store.
 
+## 4.15 A rebuilt window reinterprets history under the current model
+
+Reopening a sitting rebuilds the realization-family pacing window from the tail
+of the journal, and each record's `productive` flag is recomputed by asking the
+_current_ `LearnerModel.executionWasManaged` about a historical outcome. The
+window is therefore derivable from the journal rather than separately persisted,
+which is what keeps pacing state out of the schema, but its reconstruction is
+interpreted by whatever learner version is running now.
+
+If the managed-execution criterion moves, the same journal yields a different
+window, so a sitting reopened after an upgrade can carry different pressure than
+the one that was interrupted. Nothing is corrupted by this: the window is a
+short rolling summary that the next dozen attempts replace, and the journal, the
+learner state, and replay are untouched.
+
+It belongs with the replay and versioning semantics rather than with pacing:
+records carry the model versions they were decided under, and the question is
+whether a derived session window should be reconstructed under the version that
+observed each attempt or under the version reading it now. Worth settling when a
+learner version actually changes that criterion, not before.
+
 ## 5. Domain expansion
 
 The long-term technical-practice domain may include:
