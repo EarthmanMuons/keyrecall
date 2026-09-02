@@ -95,7 +95,6 @@ class _WelcomeStepState extends State<_WelcomeStep> {
         Text(
           'Practice scales. We’ll choose what comes next.',
           style: theme.textTheme.headlineSmall,
-          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 12),
         Text(
@@ -104,21 +103,15 @@ class _WelcomeStepState extends State<_WelcomeStep> {
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
-          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 32),
-        Text(
-          placementQuestion,
-          style: theme.textTheme.titleLarge,
-          textAlign: TextAlign.center,
-        ),
+        Text(placementQuestion, style: theme.textTheme.titleLarge),
         const SizedBox(height: 4),
         Text(
           placementReassurance,
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
-          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
         PlacementChoices(
