@@ -99,8 +99,8 @@ class _WelcomeStepState extends State<_WelcomeStep> {
         ),
         const SizedBox(height: 12),
         Text(
-          'Play the exercise you’re given. KeyRecall listens and adapts as '
-          'you go. Stop whenever you want.',
+          'KeyRecall learns from how you play and adjusts what you practice '
+          'as your skills develop.',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -152,6 +152,17 @@ class _ReadyStep extends ConsumerWidget {
 
     return _OnboardingPage(
       children: [
+        // The mark the practice bar carries for the instrument, so the button
+        // that leads back here is recognizable when it is needed.
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Icon(
+            Icons.piano,
+            size: 32,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
         Text('Connect your piano', style: theme.textTheme.headlineSmall),
         const SizedBox(height: 12),
         Text(
