@@ -120,9 +120,9 @@ class AttemptDiagnosis {
             : 'Played cleanly and steadily throughout.',
       AttemptFault.notes => _notesSentence,
       AttemptFault.continuity =>
-        'The notes were right; the pause$_where broke it up.',
+        'The notes were right, but the pause interrupted the flow$_where.',
       AttemptFault.steadiness =>
-        'The notes were right; the pulse kept moving around.',
+        'The notes were right, but the pulse kept moving around.',
       AttemptFault.coordination =>
         'Both hands had the notes, but they came apart$_where.',
     };

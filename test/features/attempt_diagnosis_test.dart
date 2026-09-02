@@ -169,7 +169,7 @@ void main() {
       expect(diagnosis.fault, AttemptFault.continuity);
       expect(
         diagnosis.sentence,
-        'The notes were right; the pause at the turn broke it up.',
+        'The notes were right, but the pause interrupted the flow at the turn.',
       );
     });
 
@@ -187,7 +187,7 @@ void main() {
       );
       expect(
         diagnosis.sentence,
-        'The notes were right; the pulse kept moving around.',
+        'The notes were right, but the pulse kept moving around.',
       );
     });
   });
@@ -216,7 +216,10 @@ void main() {
       final diagnosis = diagnosisOf(withSpread(from: 0), of: together);
 
       expect(diagnosis.fault, isNull);
-      expect(diagnosis.sentence, 'Played cleanly, hands together the whole way.');
+      expect(
+        diagnosis.sentence,
+        'Played cleanly, hands together the whole way.',
+      );
     });
 
     test('hands that came apart are named, and placed', () {
