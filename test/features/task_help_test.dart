@@ -62,6 +62,14 @@ void main() {
     expect(entry.$2, contains('back together'));
   });
 
+  test('counts octaves per hand only when both hands play', () {
+    expect(taskHelpEntries(exerciseOf())[3].$2, contains('the hand runs'));
+    expect(
+      taskHelpEntries(exerciseOf(hands: HandConfiguration.together))[3].$2,
+      contains('each hand runs'),
+    );
+  });
+
   test('says how far the scale runs in the terms this one runs in', () {
     expect(
       taskHelpEntries(exerciseOf(direction: ScaleDirection.up))[3].$2,

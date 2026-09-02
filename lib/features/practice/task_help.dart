@@ -36,6 +36,9 @@ Future<void> showTermHelp(
 /// so the entry somebody is looking for reads exactly as the line they tapped.
 List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
   final conditions = exercise.conditions;
+  final runner = conditions.hands == HandConfiguration.together
+      ? 'each hand'
+      : 'the hand';
 
   return <(String term, String meaning)>[
     (
@@ -74,10 +77,8 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
     (
       octavesName(conditions.octaves),
       switch (conditions.direction) {
-        ScaleDirection.up => 'How far each hand runs before it stops.',
-        ScaleDirection.upDown =>
-          'How far each hand runs before it turns '
-              'around.',
+        ScaleDirection.up => 'How far $runner runs before it stops.',
+        ScaleDirection.upDown => 'How far $runner runs before it turns around.',
       },
     ),
     (
