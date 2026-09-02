@@ -86,6 +86,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   String? _reviewed;
 
   final Set<String> _feedbackRecorded = {};
+  final Set<String> _detailsRecorded = {};
 
   /// The attempt being played right now, if one is.
   ///
@@ -137,6 +138,15 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           history: history,
           reading: loop.value?.lastReading,
           next: loop.value?.presented,
+          onDetailsViewed: () {
+            final attemptId = committed.identity.attemptId;
+            if (!_detailsRecorded.add(attemptId)) return;
+            unawaited(
+              notifier.recordAttemptDetailsViewed(committed).catchError((_) {
+                _detailsRecorded.remove(attemptId);
+              }),
+            );
+          },
           onNext: () =>
               setState(() => _reviewed = committed.identity.attemptId),
         ),

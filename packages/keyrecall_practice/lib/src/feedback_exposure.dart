@@ -9,7 +9,10 @@ enum PostAttemptFeedback {
   summary('SUMMARY'),
 
   /// Names or interprets a performance fault; a summary may accompany it.
-  diagnostic('DIAGNOSTIC');
+  diagnostic('DIAGNOSTIC'),
+
+  /// Event-local performance traces the learner actively opened.
+  detailedDiagnostic('DETAILED_DIAGNOSTIC');
 
   const PostAttemptFeedback(this.id);
 

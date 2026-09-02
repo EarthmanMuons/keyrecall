@@ -43,6 +43,16 @@ summary is one tap target. It opens a bottom sheet that explains only the
 dimensions visible for this attempt in plain musical language and states that
 they describe the attempt rather than the learner's overall skill.
 
+When the transient performance reading is still available, Details locates the
+attempt's evidence along its traversal. Pulse and hands-together Coordination
+use centered traces. Notes and Flow remain discrete departures and gaps, and
+Tempo remains an overall achieved-versus-target statement. The reading and its
+traces are discarded with the review rather than persisted.
+
+Opening Details is recorded separately from the automatically shown review as a
+detailed diagnostic feedback exposure. Reopening it does not create another
+exposure for the same attempt.
+
 ## Progress evidence
 
 Progress statements come from named events with explicit truth conditions. The

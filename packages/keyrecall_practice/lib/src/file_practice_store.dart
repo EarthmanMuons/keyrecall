@@ -153,7 +153,13 @@ class FilePracticeStore implements PracticeStore {
       throw StateError('feedback refers to an attempt that is not recorded');
     }
     final existing = await _loadFeedbackExposures(exposure.profileId);
-    if (existing.any((item) => item.attemptId == exposure.attemptId)) return;
+    if (existing.any(
+      (item) =>
+          item.attemptId == exposure.attemptId &&
+          item.postAttemptFeedback == exposure.postAttemptFeedback,
+    )) {
+      return;
+    }
     await _appendLine(file, canonicalJson(exposure.toJson()));
   }
 

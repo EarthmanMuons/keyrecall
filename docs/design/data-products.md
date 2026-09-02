@@ -23,6 +23,10 @@ OBSERVATIONAL
 FeedbackExposure ──────► lose it and feedback effects cannot be reconstructed
 ```
 
+The high-resolution reading behind an immediate attempt review is deliberately
+absent from this diagram. It lives only until the learner moves on. If the
+learner opens its detailed traces, the exposure is retained, not the trace.
+
 One rule follows from that shape and does most of the work here: **aggregation
 is allowed in the projections and forbidden in the journal.**
 

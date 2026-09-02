@@ -55,6 +55,8 @@ abstract interface class PracticeStore {
   Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId);
 
   /// Durably records what was shown after an attempt.
+  ///
+  /// Idempotent for the same attempt and post-attempt feedback level.
   Future<void> appendFeedbackExposure(FeedbackExposure exposure);
 
   /// The unresolved decision for [profileId], if a run was interrupted between
@@ -95,7 +97,8 @@ class InMemoryPracticeStore implements PracticeStore {
   final Map<String, AttemptJournal> _journals = {};
   final Map<String, PendingDecision> _pending = {};
   final Map<String, LearnerStateCheckpoint> _checkpoints = {};
-  final Map<String, Map<String, FeedbackExposure>> _feedback = {};
+  final Map<String, Map<(String, PostAttemptFeedback), FeedbackExposure>>
+  _feedback = {};
 
   /// When the journal for [profileId] was created, for a first run.
   final DateTime createdAt;
@@ -127,8 +130,11 @@ class InMemoryPracticeStore implements PracticeStore {
     )) {
       throw StateError('feedback refers to an attempt that is not recorded');
     }
-    final byAttempt = _feedback.putIfAbsent(exposure.profileId, () => {});
-    byAttempt.putIfAbsent(exposure.attemptId, () => exposure);
+    final exposures = _feedback.putIfAbsent(exposure.profileId, () => {});
+    exposures.putIfAbsent((
+      exposure.attemptId,
+      exposure.postAttemptFeedback,
+    ), () => exposure);
   }
 
   @override

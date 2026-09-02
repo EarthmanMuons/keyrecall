@@ -117,14 +117,24 @@ void main() {
           ProgressEventKind.firstIndependentCompletion,
         ],
       );
+      final details = FeedbackExposure(
+        profileId: alice.id,
+        attemptId: record.identity.attemptId,
+        shownAt: t0.plusDays(2),
+        postAttemptFeedback: PostAttemptFeedback.detailedDiagnostic,
+        progressFeedback: ProgressFeedback.none,
+        progressEvents: const [],
+      );
 
       await store.appendFeedbackExposure(exposure);
       await store.appendFeedbackExposure(exposure);
+      await store.appendFeedbackExposure(details);
+      await store.appendFeedbackExposure(details);
       final loaded = await FilePracticeStore(
         root,
       ).loadFeedbackExposures(alice.id);
 
-      expect(loaded, [exposure]);
+      expect(loaded, [exposure, details]);
       expect(feedbackFile().readAsStringSync(), endsWith('\n'));
 
       final legacyJson = Map<String, Object?>.of(exposure.toJson())

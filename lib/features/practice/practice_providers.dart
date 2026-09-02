@@ -546,6 +546,20 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     );
   }
 
+  Future<void> recordAttemptDetailsViewed(AttemptRecord record) async {
+    final store = await ref.read(practiceStoreProvider.future);
+    await store.appendFeedbackExposure(
+      FeedbackExposure(
+        profileId: record.profileId,
+        attemptId: record.identity.attemptId,
+        shownAt: DateTime.now().toUtc(),
+        postAttemptFeedback: PostAttemptFeedback.detailedDiagnostic,
+        progressFeedback: ProgressFeedback.none,
+        progressEvents: const [],
+      ),
+    );
+  }
+
   /// Asks the scheduler for the next exercise.
   ///
   /// A slot that admits nothing is a real answer rather than an error, and it
