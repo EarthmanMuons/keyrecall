@@ -143,20 +143,11 @@ class _ProfileTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
     final profile = summary.profile;
     final notifier = ref.read(profileRosterProvider.notifier);
 
     return ListTile(
-      // The mark carries the page's own colour rather than the palette's, so
-      // it stays legible over any profile colour, including the ones close to
-      // the accent.
-      leading: Badge(
-        isLabelVisible: summary.isActive,
-        backgroundColor: theme.colorScheme.surface,
-        label: Icon(Icons.check, size: 12, color: theme.colorScheme.primary),
-        child: ProfileAvatar(profile: profile),
-      ),
+      leading: _ProfileMark(profile: profile, isActive: summary.isActive),
       title: Text(
         profile.displayName,
         style: summary.isActive
@@ -282,6 +273,45 @@ class _ProfileTile extends ConsumerWidget {
 
 /// What the menu on a profile offers.
 enum _ProfileAction { select, edit, eraseHistory, delete }
+
+/// The profile's disc, marked when this is the one being practiced as.
+///
+/// The mark is filled with the accent and ringed in the page's own colour, so
+/// it reads as an object sitting on the disc rather than as part of it, even
+/// where the profile's colour is close to the accent.
+class _ProfileMark extends StatelessWidget {
+  const _ProfileMark({required this.profile, required this.isActive});
+
+  final Profile profile;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final avatar = ProfileAvatar(profile: profile);
+    if (!isActive) return avatar;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        avatar,
+        Positioned(
+          top: -2,
+          right: -2,
+          child: Container(
+            padding: const EdgeInsets.all(2),
+            decoration: BoxDecoration(
+              color: scheme.primary,
+              shape: BoxShape.circle,
+              border: Border.all(color: scheme.surface, width: 2),
+            ),
+            child: Icon(Icons.check, size: 11, color: scheme.surface),
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 /// How a profile is recognized: what it is called, and the colour it wears.
 ///
