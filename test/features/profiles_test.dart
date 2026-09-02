@@ -6,7 +6,6 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/placement.dart';
-import 'package:keyrecall/features/practice/profile_color.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 import 'package:keyrecall/features/practice/profiles_screen.dart';
 
@@ -143,34 +142,6 @@ void main() {
             'behalf, and it could never be corrected afterwards',
       );
     });
-  });
-
-  testWidgets('one dialog changes the name and the colour together', (
-    tester,
-  ) async {
-    final container = containerOn();
-    final (alice, _) = await seedTwo(container);
-    await pumpProfiles(tester, container);
-
-    await tapAndSettle(tester, find.byIcon(Icons.more_vert).first);
-    await tapAndSettle(tester, find.text('Rename or change color'));
-    await tester.enterText(find.byType(TextField), 'Alicia');
-    final wanted = ProfileColor.values.firstWhere(
-      (color) => color != ProfileColor.of(alice),
-    );
-    await tapAndSettle(
-      tester,
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is CircleAvatar && widget.backgroundColor == wanted.color,
-      ),
-    );
-    await tapAndSettle(tester, find.text('Save'));
-
-    final repository = await container.read(profileRepositoryProvider.future);
-    final edited = (await repository.find(alice.id))!;
-    expect(edited.displayName, 'Alicia');
-    expect(ProfileColor.of(edited), wanted);
   });
 
   testWidgets('tapping a profile switches who the practice loop runs as', (

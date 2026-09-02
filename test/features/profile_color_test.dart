@@ -53,9 +53,4 @@ void main() {
 
     expect(ProfileColor.unusedAmong(crowd), isA<ProfileColor>());
   });
-
-  test('the initial is one upper-case letter', () {
-    expect(profileInitial(profileNamed('alice')), 'A');
-    expect(profileInitial(profileNamed('Me')), 'M');
-  });
 }

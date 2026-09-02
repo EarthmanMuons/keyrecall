@@ -179,15 +179,15 @@ class _ProfileTile extends ConsumerWidget {
             ),
           const PopupMenuItem(
             value: _ProfileAction.edit,
-            child: Text('Rename or change color'),
+            child: Text('Edit profile'),
           ),
           const PopupMenuItem(
             value: _ProfileAction.eraseHistory,
-            child: Text('Erase history, keep the profile'),
+            child: Text('Clear history'),
           ),
           const PopupMenuItem(
             value: _ProfileAction.delete,
-            child: Text('Delete profile and history'),
+            child: Text('Delete profile'),
           ),
         ],
       ),

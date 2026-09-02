@@ -186,7 +186,7 @@ void main() {
     Future<void> deleteAlice(WidgetTester tester) async {
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Delete profile and history'));
+      await tester.tap(find.text('Delete profile'));
       await tester.pumpAndSettle();
       await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
       await tester.pumpAndSettle();

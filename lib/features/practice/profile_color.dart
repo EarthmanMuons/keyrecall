@@ -54,10 +54,3 @@ enum ProfileColor {
     );
   }
 }
-
-/// The letters shown when there is no room for a name.
-///
-/// One character, because a profile is told apart by its colour first and this
-/// only has to disambiguate two people who chose the same one.
-String profileInitial(Profile profile) =>
-    profile.displayName.characters.first.toUpperCase();

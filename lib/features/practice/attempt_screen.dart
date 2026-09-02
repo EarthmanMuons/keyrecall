@@ -344,7 +344,7 @@ class _MenuButton extends StatelessWidget {
   Widget build(BuildContext context) => PopupMenuButton<VoidCallback>(
     onSelected: (open) => open(),
     icon: showsProfile && profile != null
-        ? ProfileAvatar(profile: profile!, radius: 15, icon: Icons.person)
+        ? ProfileAvatar(profile: profile!, radius: 15)
         : null,
     itemBuilder: (context) => [
       PopupMenuItem(

@@ -3,24 +3,16 @@ import 'package:material_ui/material_ui.dart';
 
 import 'profile_color.dart';
 
-/// A profile as a coloured disc with its initial in it.
+/// A profile as a coloured disc.
 ///
 /// The same mark wherever a profile is shown, so switching between them is
-/// recognizing a colour rather than reading a list.
+/// recognizing a colour rather than reading a list. The name is always beside
+/// it, so the disc carries the colour and nothing the name already says.
 class ProfileAvatar extends StatelessWidget {
-  const ProfileAvatar({
-    required this.profile,
-    this.radius = 20,
-    this.icon,
-    super.key,
-  });
+  const ProfileAvatar({required this.profile, this.radius = 20, super.key});
 
   final Profile profile;
   final double radius;
-
-  /// Shown in place of the initial, where the disc says which profile is in
-  /// force rather than which one a row is for.
-  final IconData? icon;
 
   @override
   Widget build(BuildContext context) {
@@ -36,16 +28,7 @@ class ProfileAvatar extends StatelessWidget {
     return CircleAvatar(
       radius: radius,
       backgroundColor: color,
-      child: icon != null
-          ? Icon(icon, size: radius * 1.2, color: onColor)
-          : Text(
-              profileInitial(profile),
-              style: TextStyle(
-                fontSize: radius,
-                fontWeight: FontWeight.w600,
-                color: onColor,
-              ),
-            ),
+      child: Icon(Icons.person, size: radius * 1.2, color: onColor),
     );
   }
 }
