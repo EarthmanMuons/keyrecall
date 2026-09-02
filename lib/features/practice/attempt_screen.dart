@@ -172,6 +172,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           onFinish: (termination) => notifier.finish(termination: termination),
           onDecline: notifier.decline,
           onUnderWay: () => setState(() => _playing = attemptId),
+          onBackToReady: () => setState(() => _playing = null),
         ),
         AsyncData() => const _NothingToPlay(),
         AsyncError(:final error, :final stackTrace) => LoopFailure(
@@ -407,6 +408,9 @@ enum _Phase {
   /// performing from memory have a clean boundary.
   countIn,
 
+  /// The count-in has been interrupted before the observation begins.
+  paused,
+
   /// The attempt itself.
   playing,
 
@@ -425,6 +429,7 @@ class AttemptView extends ConsumerStatefulWidget {
     required this.onFinish,
     this.onDecline,
     this.onUnderWay,
+    this.onBackToReady,
     this.presentation,
     super.key,
   });
@@ -440,10 +445,12 @@ class AttemptView extends ConsumerStatefulWidget {
   /// Absent where there is no loop to record it, which is the debug case list.
   final Future<void> Function()? onDecline;
 
-  /// Says the attempt has started, for a screen that gives it the room the app
-  /// bar was taking. Never says it stopped: this view is replaced wholesale
-  /// when the attempt ends.
+  /// Says the presentation has started, for a screen that gives it the room
+  /// the app bar was taking.
   final VoidCallback? onUnderWay;
+
+  /// Says the presentation returned to Ready before the attempt began.
+  final VoidCallback? onBackToReady;
 
   /// What to present it under, when something other than practice policy is
   /// choosing. Only the debug case list passes this, to compare one exercise
@@ -567,20 +574,23 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // Only where the rung has no further use for it. At the cued rung the
     // keyboard is the cue, and it stays where it is.
     if (_instrumentLeavesAtReady) _handover.forward();
+    widget.onUnderWay?.call();
+    _beginCountIn();
+  }
+
+  void _beginCountIn() {
+    _settling?.cancel();
+    _countIn?.cancel();
     setState(() {
       _phase = _Phase.countIn;
       _beatsLeft = _countInBeats;
     });
-    widget.onUnderWay?.call();
     _settling = Timer(attemptSettle, () {
       if (mounted) _countInAndPlay();
     });
   }
 
   void _countInAndPlay() {
-    ref
-        .read(attemptTranscriptProvider.notifier)
-        .start(widget.exercise.material);
     final tempoSupport =
         (widget.presentation ??
                 presentationFor(
@@ -621,10 +631,33 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         if (_beatsLeft <= 0) {
           timer.cancel();
           _phase = _Phase.playing;
+          ref
+              .read(attemptTranscriptProvider.notifier)
+              .start(widget.exercise.material);
           _watchdog = Timer.periodic(_watchdogTick, (_) => _watch());
         }
       });
     });
+  }
+
+  void _pause() {
+    if (_phase != _Phase.countIn) return;
+    _settling?.cancel();
+    _countIn?.cancel();
+    unawaited(_pulse.stop());
+    ref.read(attemptTranscriptProvider.notifier).discard();
+    setState(() => _phase = _Phase.paused);
+  }
+
+  void _backToReady() {
+    if (_phase != _Phase.paused) return;
+    ref.read(attemptTranscriptProvider.notifier).discard();
+    _handover.reverse();
+    setState(() {
+      _phase = _Phase.ready;
+      _beatsLeft = _countInBeats;
+    });
+    widget.onBackToReady?.call();
   }
 
   /// Reads the clocks against the attempt's windows.
@@ -762,19 +795,23 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       ),
       secondChild: const SizedBox(width: double.infinity),
     );
-    final notation = _Notation(
-      gutter: layout.gutter,
-      follows: staffCarriesTranscript,
-      children: [
-        if (showsCue && cueOnStaff(presentation.cueModality))
-          StaffCue(
-            exercise: exercise,
-            showsFingering: presentation.motorCue == MotorCue.fingering,
-            locates: echoes && _phase == _Phase.playing,
-          ),
-        if (staffCarriesTranscript)
-          TranscriptStaff(transcript: transcript, exercise: exercise),
-      ],
+    final notation = AnimatedOpacity(
+      duration: attemptTransition,
+      opacity: _phase == _Phase.paused ? 0.35 : 1,
+      child: _Notation(
+        gutter: layout.gutter,
+        follows: staffCarriesTranscript,
+        children: [
+          if (showsCue && cueOnStaff(presentation.cueModality))
+            StaffCue(
+              exercise: exercise,
+              showsFingering: presentation.motorCue == MotorCue.fingering,
+              locates: echoes && _phase == _Phase.playing,
+            ),
+          if (staffCarriesTranscript)
+            TranscriptStaff(transcript: transcript, exercise: exercise),
+        ],
+      ),
     );
     final instrument = _Instrument(
       exercise: exercise,
@@ -813,57 +850,63 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       ),
     );
 
-    return Column(
-      children: [
-        // The task, the material, and what to do about it. Stacked while
-        // there is height for it, and side by side when there is not: a
-        // window on its side has no room to put a scale and a button under
-        // each other, and one wide enough to would be leaving the width
-        // empty.
-        Expanded(
-          child: SafeArea(
-            top: false,
-            bottom: staffCarriesTranscript,
-            child: layout.hasRoomBeside
-                ? Row(
-                    // Stretched, so each pane is handed the full height to lay
-                    // itself out in.
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // The task takes what the control leaves and
-                            // scrolls inside it: a window on its side can be
-                            // shorter than the two of them together.
-                            Expanded(child: SingleChildScrollView(child: task)),
-                            controls,
-                          ],
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: _phase == _Phase.countIn ? _pause : null,
+      child: Column(
+        children: [
+          // The task, the material, and what to do about it. Stacked while
+          // there is height for it, and side by side when there is not: a
+          // window on its side has no room to put a scale and a button under
+          // each other, and one wide enough to would be leaving the width
+          // empty.
+          Expanded(
+            child: SafeArea(
+              top: false,
+              bottom: staffCarriesTranscript,
+              child: layout.hasRoomBeside
+                  ? Row(
+                      // Stretched, so each pane is handed the full height to lay
+                      // itself out in.
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // The task takes what the control leaves and
+                              // scrolls inside it: a window on its side can be
+                              // shorter than the two of them together.
+                              Expanded(
+                                child: SingleChildScrollView(child: task),
+                              ),
+                              controls,
+                            ],
+                          ),
                         ),
-                      ),
-                      Expanded(flex: 2, child: notation),
-                    ],
-                  )
-                : Column(
-                    children: [
-                      task,
-                      Expanded(child: notation),
-                      controls,
-                    ],
-                  ),
+                        Expanded(flex: 2, child: notation),
+                      ],
+                    )
+                  : Column(
+                      children: [
+                        task,
+                        Expanded(child: notation),
+                        controls,
+                      ],
+                    ),
+            ),
           ),
-        ),
-        // The instrument sits at the bottom edge, full width, the way a
-        // keyboard does: it is where playing shows up, so it stays put while
-        // everything above it changes. It runs past the safe area rather than
-        // stopping short of it: it is a diagram, nothing on it is touched, and
-        // the strip below it is height the music does not have.
-        //
-        // Where the rung has no further use for it, it leaves downward with
-        // the rest of the movement rather than vanishing under the count.
-        _slot(instrument),
-      ],
+          // The instrument sits at the bottom edge, full width, the way a
+          // keyboard does: it is where playing shows up, so it stays put while
+          // everything above it changes. It runs past the safe area rather than
+          // stopping short of it: it is a diagram, nothing on it is touched, and
+          // the strip below it is height the music does not have.
+          //
+          // Where the rung has no further use for it, it leaves downward with
+          // the rest of the movement rather than vanishing under the count.
+          _slot(instrument),
+        ],
+      ),
     );
   }
 
@@ -945,6 +988,26 @@ class _AttemptViewState extends ConsumerState<AttemptView>
             Text('Counting in', style: Theme.of(context).textTheme.bodyMedium),
           ],
         ),
+      ),
+    ),
+    _Phase.paused => SizedBox(
+      height: 88,
+      child: Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: _backToReady,
+              child: const Text('Back to Ready'),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: FilledButton(
+              onPressed: _beginCountIn,
+              child: const Text('Resume'),
+            ),
+          ),
+        ],
       ),
     ),
     // Done keeps the height the count had, so the music above it stays where
@@ -1343,6 +1406,13 @@ class _Status extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (phase == _Phase.paused) {
+      return Text(
+        'Paused',
+        style: Theme.of(context).textTheme.bodyMedium,
+        textAlign: TextAlign.center,
+      );
+    }
     if (phase != _Phase.ready) return const SizedBox(height: 20);
 
     return Text(

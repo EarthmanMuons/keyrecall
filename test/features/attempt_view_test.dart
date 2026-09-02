@@ -329,12 +329,12 @@ void main() {
         transcriptIn(tester).isEmpty,
         isTrue,
         reason:
-            'the transcript begins at Ready, so noodling beforehand is '
-            'not the opening of the performance',
+            'the transcript begins after the count-in, so noodling '
+            'beforehand is not the opening of the performance',
       );
     });
 
-    testWidgets('what arrives after Ready is', (tester) async {
+    testWidgets('what arrives after the downbeat is', (tester) async {
       await pumpAttempt(tester, GuidanceContext.unguided);
       final container = ProviderScope.containerOf(
         tester.element(find.byType(AttemptView)),
@@ -405,6 +405,84 @@ void main() {
       await tester.pump(const Duration(milliseconds: 750 * 4));
       expect(find.text('Counting in'), findsNothing);
     }
+  });
+
+  testWidgets('tapping the count-in pauses before the attempt begins', (
+    tester,
+  ) async {
+    final finished = await pumpAttempt(tester, GuidanceContext.unguided);
+    await tester.tap(find.text('Ready'));
+    await tester.pump(attemptSettle);
+    await tester.pump(const Duration(milliseconds: 750 * 2));
+    expect(find.text('2'), findsOneWidget);
+
+    await tester.tap(find.text('Counting in'));
+    await tester.pump();
+
+    expect(find.text('Paused'), findsOneWidget);
+    expect(find.text('Resume'), findsOneWidget);
+    expect(find.text('Back to Ready'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 4));
+    expect(find.text('Paused'), findsOneWidget);
+    expect(finished, isEmpty);
+  });
+
+  testWidgets('resuming starts a fresh count-in', (tester) async {
+    await pumpAttempt(tester, GuidanceContext.unguided);
+    await tester.tap(find.text('Ready'));
+    await tester.pump(attemptSettle);
+    await tester.pump(const Duration(milliseconds: 750 * 2));
+    await tester.tap(find.text('Counting in'));
+    await tester.pump();
+
+    await tester.tap(find.text('Resume'));
+    await tester.pump();
+
+    expect(find.text('Counting in'), findsOneWidget);
+    expect(find.text('4'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 399));
+    await tester.pump(const Duration(milliseconds: 750));
+    expect(
+      find.text('4'),
+      findsOneWidget,
+      reason: 'Resume leaves the same 400 ms to return to the keyboard',
+    );
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(find.text('3'), findsOneWidget);
+  });
+
+  testWidgets('back from a paused count-in restores Ready', (tester) async {
+    await pumpAttempt(tester, GuidanceContext.notesPreviewedOnly);
+    expect(markers(tester), isNotEmpty);
+    await tester.tap(find.text('Ready'));
+    await tester.pump();
+    expect(markers(tester), isEmpty);
+    await tester.tap(find.text('Counting in'));
+    await tester.pump();
+
+    await tester.tap(find.text('Back to Ready'));
+    await tester.pump(attemptTransition);
+
+    expect(find.text('Ready'), findsOneWidget);
+    expect(markers(tester), isNotEmpty);
+  });
+
+  testWidgets('the count-in is outside the evidence window', (tester) async {
+    await pumpAttempt(tester, GuidanceContext.unguided);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AttemptView)),
+    );
+    await tester.tap(find.text('Ready'));
+    await tester.pump(attemptSettle);
+    container.read(demoInputProvider.notifier).playChord({60});
+    await tester.pump();
+
+    expect(container.read(attemptTranscriptProvider).isEmpty, isTrue);
+
+    await tester.pump(const Duration(milliseconds: 750 * 4));
+    container.read(demoInputProvider.notifier).playChord({62});
+    await tester.pump();
+    expect(container.read(attemptTranscriptProvider).length, 1);
   });
 
   testWidgets('finishing commits what was played, asking nothing', (

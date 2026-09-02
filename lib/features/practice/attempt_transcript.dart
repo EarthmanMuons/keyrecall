@@ -18,14 +18,8 @@ import 'latency_probe.dart';
 /// have been played, and exploratory notes would otherwise make the attempt
 /// look started and arrive in the alignment as extra notes.
 ///
-/// The window opens at Ready, so the count-in is inside the attempt. Coming in
-/// early is a fact about the performance rather than noise, and dropping those
-/// notes would make an eager entry look like a missing one.
-///
-/// There is deliberately no grace period after Ready. Ignoring real events for
-/// falling early relative to the count-in would make the observation model
-/// partly synchronization-aware, which is exactly what a count-in-only rung is
-/// not.
+/// The window opens after the count-in. Until that downbeat the exercise is
+/// presented but no performance is being observed.
 final attemptTranscriptProvider =
     NotifierProvider<AttemptTranscriptNotifier, AttemptCapture>(
       AttemptTranscriptNotifier.new,
