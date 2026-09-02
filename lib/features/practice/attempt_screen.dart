@@ -1046,23 +1046,111 @@ class _NotationState extends State<_Notation> {
     );
 
     return LayoutBuilder(
-      builder: (context, constraints) => SingleChildScrollView(
+      builder: (context, constraints) => _FadingEdges(
         controller: _scroll,
-        padding: EdgeInsets.fromLTRB(widget.gutter, 16, widget.gutter, 16),
-        child: widget.follows
-            ? music
-            : ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: (constraints.maxHeight - 32).clamp(
-                    0.0,
-                    double.infinity,
+        child: SingleChildScrollView(
+          controller: _scroll,
+          padding: EdgeInsets.fromLTRB(widget.gutter, 16, widget.gutter, 16),
+          child: widget.follows
+              ? music
+              : ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: (constraints.maxHeight - 32).clamp(
+                      0.0,
+                      double.infinity,
+                    ),
                   ),
+                  child: Center(child: music),
                 ),
-                child: Center(child: music),
-              ),
+        ),
       ),
     );
   }
+}
+
+/// How deep the music fades into an edge it runs past.
+const double _fadeExtent = 28;
+
+/// Fades whichever edge the music continues past.
+///
+/// A staff cut off by a hard edge reads as a staff that ends there. What is
+/// off screen is above or below rather than missing, and a fade is how a
+/// surface says so without spending height on saying it.
+class _FadingEdges extends StatefulWidget {
+  const _FadingEdges({required this.controller, required this.child});
+
+  /// The scroll position the edges are read from, for the first frame: before
+  /// anything scrolls or resizes, nothing has told this widget anything.
+  final ScrollController controller;
+
+  final Widget child;
+
+  @override
+  State<_FadingEdges> createState() => _FadingEdgesState();
+}
+
+class _FadingEdgesState extends State<_FadingEdges> {
+  double _above = 0;
+  double _below = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.controller.hasClients) {
+        _read(widget.controller.position);
+      }
+    });
+  }
+
+  /// How much of [_fadeExtent] each edge is worth, so an edge a few pixels
+  /// from the end fades by a few pixels rather than switching on.
+  void _read(ScrollMetrics metrics) {
+    final above = ((metrics.extentBefore) / _fadeExtent).clamp(0.0, 1.0);
+    final below = ((metrics.extentAfter) / _fadeExtent).clamp(0.0, 1.0);
+    if (above == _above && below == _below) return;
+    setState(() {
+      _above = above;
+      _below = below;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) =>
+      NotificationListener<ScrollNotification>(
+        onNotification: (notification) {
+          _read(notification.metrics);
+          return false;
+        },
+        child: NotificationListener<ScrollMetricsNotification>(
+          onNotification: (notification) {
+            _read(notification.metrics);
+            return false;
+          },
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final fade = constraints.maxHeight <= 0
+                  ? 0.0
+                  : (_fadeExtent / constraints.maxHeight).clamp(0.0, 0.4);
+              return ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0, fade, 1 - fade, 1],
+                  colors: [
+                    Colors.black.withValues(alpha: 1 - _above),
+                    Colors.black,
+                    Colors.black,
+                    Colors.black.withValues(alpha: 1 - _below),
+                  ],
+                ).createShader(bounds),
+                child: widget.child,
+              );
+            },
+          ),
+        ),
+      );
 }
 
 /// The offer a passed window makes: is this over?
