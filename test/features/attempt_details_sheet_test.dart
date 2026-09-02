@@ -87,6 +87,10 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('COORDINATION'), findsOneWidget);
+    expect(
+      find.text('How far apart the hands arrived. Furthest apart: 12 ms.'),
+      findsOneWidget,
+    );
     expect(find.text('58 BPM overall · target 60'), findsOneWidget);
     final pulse = tester.widget<LineChart>(find.byType(LineChart).first);
     expect(pulse.data.lineBarsData, hasLength(2));

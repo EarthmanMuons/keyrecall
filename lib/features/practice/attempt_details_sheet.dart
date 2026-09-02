@@ -86,7 +86,7 @@ class AttemptDetailsSheet extends StatelessWidget {
                     upperLabel: 'early',
                     centerLabel: 'on pulse',
                     lowerLabel: 'late',
-                    showsLargestDeviation: true,
+                    deviationLabel: 'Largest deviation',
                   ),
                 ],
                 if (trace.coordination.isNotEmpty) ...[
@@ -100,6 +100,7 @@ class AttemptDetailsSheet extends StatelessWidget {
                     upperLabel: 'RH early',
                     centerLabel: 'together',
                     lowerLabel: 'LH early',
+                    deviationLabel: 'Furthest apart',
                   ),
                 ],
                 const SizedBox(height: 28),
@@ -390,7 +391,7 @@ class _TraceSection extends StatelessWidget {
     required this.upperLabel,
     required this.centerLabel,
     required this.lowerLabel,
-    this.showsLargestDeviation = false,
+    this.deviationLabel,
   });
 
   final String title;
@@ -401,7 +402,10 @@ class _TraceSection extends StatelessWidget {
   final String upperLabel;
   final String centerLabel;
   final String lowerLabel;
-  final bool showsLargestDeviation;
+
+  /// What the widest point of this trace is called, when saying it helps read
+  /// the chart.
+  final String? deviationLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -418,10 +422,10 @@ class _TraceSection extends StatelessWidget {
       0,
       -points.map((point) => point.value).reduce(math.min),
     );
-    final description = showsLargestDeviation
-        ? '$explanation Largest deviation: '
-              '${_durationText(math.max(upper, lower))}.'
-        : explanation;
+    final description = deviationLabel == null
+        ? explanation
+        : '$explanation $deviationLabel: '
+              '${_durationText(math.max(upper, lower))}.';
     final lastPosition = math.max(1, momentCount - 1).toDouble();
     final horizontalPadding = math.max(
       _minimumTraceHorizontalPadding,
