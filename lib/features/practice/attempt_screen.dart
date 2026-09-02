@@ -104,7 +104,8 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 
     // The attempt just finished takes the screen until it is dismissed, even
     // though the next exercise is already decided behind it. That is the point:
-    // the decision happens while the review is being read, so Next never waits.
+    // the decision happens while the review is being read, so Continue never
+    // waits.
     final committed = loop.value?.lastCommitted;
     if (committed != null && committed.identity.attemptId != _reviewed) {
       final history = loop.value!.session.journal.records;
@@ -128,8 +129,8 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
       }
       return Scaffold(
         // The review is still about the attempt that just ran, so the bar
-        // keeps holding it. Next is what hands the screen back, and the bar
-        // comes back with it.
+        // keeps holding it. Continue hands the screen back, and the bar comes
+        // back with it.
         appBar: _PracticeAppBar(
           running: _playing == null ? null : committed.exercise,
         ),

@@ -107,9 +107,9 @@ String? differenceTo(Exercise next, Exercise previous) {
 /// What just happened, and what is next.
 ///
 /// Shown between attempts, over a decision that has already been made: the
-/// scheduler runs while this is being read, so Next is instant rather than
-/// being the moment the work starts. Nothing on this screen is waited on and
-/// nothing animates in.
+/// scheduler runs while this is being read, so continuing is instant rather
+/// than being the moment the work starts. Nothing on this screen is waited on
+/// and nothing animates in.
 class AttemptReview extends StatelessWidget {
   const AttemptReview({
     required this.record,
@@ -201,39 +201,41 @@ class AttemptReview extends StatelessWidget {
                                   ),
                           ),
                         ),
+                        if (detailTrace != null) ...[
+                          const SizedBox(height: 4),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: TextButton.icon(
+                              onPressed: () async {
+                                final details = showAttemptDetails(
+                                  context,
+                                  exercise: record.exercise,
+                                  trace: detailTrace,
+                                  achievedTempoBpm: summary.achievedTempoBpm,
+                                );
+                                onDetailsViewed?.call();
+                                await details;
+                              },
+                              icon: const Icon(Icons.query_stats),
+                              label: const Text('View details'),
+                            ),
+                          ),
+                        ],
                       ],
                       if (progress != null) ...[
                         const SizedBox(height: 24),
                         Text(
                           progress,
-                          style: theme.textTheme.titleMedium,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                      if (detailTrace != null && summary != null) ...[
-                        const SizedBox(height: 8),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: TextButton.icon(
-                            onPressed: () async {
-                              final details = showAttemptDetails(
-                                context,
-                                exercise: record.exercise,
-                                trace: detailTrace,
-                                achievedTempoBpm: summary.achievedTempoBpm,
-                              );
-                              onDetailsViewed?.call();
-                              await details;
-                            },
-                            icon: const Icon(Icons.query_stats),
-                            label: const Text('Details'),
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
                           ),
+                          textAlign: TextAlign.center,
                         ),
                       ],
                       const SizedBox(height: 32),
                       if (upcoming != null) ...[
                         Text(
-                          'Next',
+                          'Up next',
                           style: theme.textTheme.labelLarge?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),
@@ -264,7 +266,7 @@ class AttemptReview extends StatelessWidget {
                           style: FilledButton.styleFrom(
                             textStyle: theme.textTheme.headlineSmall,
                           ),
-                          child: Text(upcoming == null ? 'Done' : 'Next'),
+                          child: Text(upcoming == null ? 'Done' : 'Continue'),
                         ),
                       ),
                     ],
@@ -393,12 +395,18 @@ class _TempoRow extends StatelessWidget {
               width: 96,
               child: Text('Tempo', style: theme.textTheme.labelLarge),
             ),
-            Text('$achievedText BPM', style: theme.textTheme.bodyMedium),
-            const Spacer(),
-            Text(
-              'target $targetText',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+            Text.rich(
+              TextSpan(
+                style: theme.textTheme.bodyMedium,
+                children: [
+                  TextSpan(text: '$achievedText BPM'),
+                  TextSpan(
+                    text: ' · target $targetText',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

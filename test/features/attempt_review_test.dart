@@ -3,6 +3,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/attempt_review.dart';
@@ -29,6 +30,46 @@ void main() {
   );
 
   final previous = exerciseOf();
+
+  PresentedAttempt presented(Exercise exercise) => PresentedAttempt(
+    PendingDecision(
+      attemptId: 'next-attempt',
+      profileId: 'profile',
+      sessionId: 'session',
+      indexInSession: 1,
+      journalSequence: 1,
+      decidedAt: DateTime.utc(2026),
+      provenance: const ModelProvenance(
+        learnerModelVersion: 'learner',
+        schedulerModelVersion: 'scheduler',
+      ),
+      exercise: exercise,
+      decision: const SchedulerDecision(
+        prediction: Prediction(
+          independentRetrievalP: 0.5,
+          materialAvailableP: 0.5,
+          executionP: 0.5,
+          coordinationP: 1,
+          topologyP: 0.5,
+        ),
+        eligibilityTier: EligibilityTier.fullyEligible,
+        eligibilityReason: null,
+        safetyReason: 'safe',
+        withinChallengeBand: true,
+        challengeBandMin: 0.4,
+        challengeBandMax: 0.7,
+        challengeBypass: ChallengeBypass.newMaterial,
+        rankKey: RankKey(
+          tier: EligibilityTier.fullyEligible,
+          retention: 0,
+          information: 0,
+          diversity: 0,
+          goals: 0,
+        ),
+      ),
+      stateBeforeHash: 'state',
+    ),
+  );
 
   group('what is different about the next exercise', () {
     test('says nothing when nothing about the playing changed', () {
@@ -135,7 +176,7 @@ void main() {
             record: record,
             history: [record],
             reading: reading,
-            next: null,
+            next: presented(exerciseOf(material: gMajor)),
             onNext: () {},
             onDetailsViewed: () => detailsViewed++,
           ),
@@ -150,7 +191,9 @@ void main() {
       find.text('First clean right-hand pass from memory at 122 BPM.'),
       findsOneWidget,
     );
-    expect(find.text('122 BPM'), findsOneWidget);
+    expect(find.text('122 BPM · target 60'), findsOneWidget);
+    expect(find.text('Up next'), findsOneWidget);
+    expect(find.text('G major'), findsOneWidget);
     await tester.tap(find.text('Notes'));
     await tester.pumpAndSettle();
     expect(find.text('What KeyRecall heard'), findsOneWidget);
@@ -170,13 +213,23 @@ void main() {
     expect(find.text('Coordination'), findsNothing);
     Navigator.of(tester.element(find.text('What KeyRecall heard'))).pop();
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Details'));
+    expect(
+      tester.getTopLeft(find.text('View details')).dy,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.text('First clean right-hand pass from memory at 122 BPM.'),
+            )
+            .dy,
+      ),
+    );
+    await tester.tap(find.text('View details'));
     await tester.pumpAndSettle();
     expect(find.text('Attempt details'), findsOneWidget);
     expect(detailsViewed, 1);
     Navigator.of(tester.element(find.text('Attempt details'))).pop();
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Done'), 200);
-    expect(find.text('Done'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Continue'), 200);
+    expect(find.text('Continue'), findsOneWidget);
   });
 }
