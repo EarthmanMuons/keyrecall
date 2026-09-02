@@ -11,6 +11,8 @@ import 'attempt_detail_trace.dart';
 const double _minimumTraceHorizontalPadding = 0.15;
 const double _traceHorizontalPaddingFraction = 0.015;
 
+/// Stops below the practice app bar, which keeps the run it belongs to on
+/// screen and keeps the drag handle clear of the camera cutout.
 Future<void> showAttemptDetails(
   BuildContext context, {
   required Exercise exercise,
@@ -20,6 +22,12 @@ Future<void> showAttemptDetails(
   context: context,
   showDragHandle: true,
   isScrollControlled: true,
+  constraints: BoxConstraints(
+    maxHeight:
+        MediaQuery.sizeOf(context).height -
+        MediaQuery.paddingOf(context).top -
+        kToolbarHeight,
+  ),
   builder: (context) => AttemptDetailsSheet(
     exercise: exercise,
     trace: trace,
@@ -189,11 +197,29 @@ class _NoteStrip extends StatelessWidget {
                       trace.momentCount,
                       constraints.maxWidth,
                     ) -
-                    7,
-                child: Icon(Icons.close, size: 14, color: colors.error),
+                    8,
+                child: const _ExtraNoteMarker(),
               ),
         ],
       ),
+    );
+  }
+}
+
+/// An extra note, which lands wherever it was played and so can land on a
+/// moment that matched. Filled rather than drawn over, so what shows is the
+/// intrusion rather than the note underneath it.
+class _ExtraNoteMarker extends StatelessWidget {
+  const _ExtraNoteMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      width: 16,
+      height: 16,
+      decoration: BoxDecoration(shape: BoxShape.circle, color: colors.error),
+      child: Icon(Icons.close, size: 11, color: colors.onError),
     );
   }
 }
@@ -386,6 +412,9 @@ class _TraceSection extends StatelessWidget {
                         titlesData: const FlTitlesData(show: false),
                         borderData: FlBorderData(show: false),
                         extraLinesData: ExtraLinesData(
+                          // Behind the trace, so the baseline and the turn
+                          // read as the paper rather than as marks on it.
+                          extraLinesOnTop: false,
                           horizontalLines: [
                             HorizontalLine(
                               y: 0,
