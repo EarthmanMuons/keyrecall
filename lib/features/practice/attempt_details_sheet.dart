@@ -175,7 +175,7 @@ class _NotesDetail extends StatelessWidget {
       if (trace.extraNotes > 0) '${trace.extraNotes} extra',
     ].join(' · ');
     final realization = realize(exercise);
-    final departureLines = _departureLines(trace.noteDepartures, realization);
+    final departureLines = _departureLines(trace, realization);
     final semantics = [
       summary.isEmpty ? 'Notes: all matched' : 'Notes: $summary',
       ...departureLines,
@@ -659,25 +659,116 @@ List<List<AttemptTracePoint>> _contiguousSegments(
 }
 
 List<String> _departureLines(
-  List<NoteDeparture> departures,
+  AttemptDetailTrace trace,
   ExerciseRealization realization,
 ) {
   final lines = <String>[];
   for (final kind in NoteDepartureKind.values) {
-    final located = [
-      for (final departure in departures)
-        if (departure.kind == kind) _departureLocator(departure, realization),
-    ];
+    final located = kind == NoteDepartureKind.missing
+        ? _missingLocators(trace, realization)
+        : {
+            for (final departure in trace.noteDepartures)
+              if (departure.kind == kind)
+                _departureLocator(departure, realization),
+          }.toList();
     if (located.isNotEmpty) {
       final label = switch (kind) {
         NoteDepartureKind.changed => 'Changed',
         NoteDepartureKind.missing => 'Missing',
         NoteDepartureKind.extra => 'Extra',
       };
-      lines.add('$label: ${located.join(', ')}');
+      lines.add('$label: ${_compactLocators(located)}');
     }
   }
   return lines;
+}
+
+List<String> _missingLocators(
+  AttemptDetailTrace trace,
+  ExerciseRealization realization,
+) {
+  final fullMoments = {
+    for (final (position, status) in trace.notes.indexed)
+      if (status == NoteMomentStatus.missing) position,
+  };
+  final located = <({int position, String text})>[];
+  for (final run in _contiguousPositions(fullMoments)) {
+    if (run.length >= 2 && run.last == trace.momentCount - 1) {
+      located.add((
+        position: run.first,
+        text:
+            '${_momentLocator(realization, run.first)} and everything after it',
+      ));
+    } else if (run.length >= 2 && run.first == 0) {
+      located.add((
+        position: run.first,
+        text: 'everything through ${_momentLocator(realization, run.last)}',
+      ));
+    } else if (run.length >= 3) {
+      located.add((
+        position: run.first,
+        text: _momentRangeLocator(realization, run.first, run.last),
+      ));
+    } else {
+      located.addAll(
+        run.map(
+          (position) =>
+              (position: position, text: _momentLocator(realization, position)),
+        ),
+      );
+    }
+  }
+  final partialLocators = <String>{};
+  for (final departure in trace.noteDepartures) {
+    if (departure.kind != NoteDepartureKind.missing ||
+        fullMoments.contains(departure.position.round())) {
+      continue;
+    }
+    final text = _departureLocator(departure, realization);
+    if (partialLocators.add(text)) {
+      located.add((position: departure.position.round(), text: text));
+    }
+  }
+  located.sort((a, b) => a.position.compareTo(b.position));
+  return [for (final locator in located) locator.text];
+}
+
+List<List<int>> _contiguousPositions(Set<int> positions) {
+  final runs = <List<int>>[];
+  for (final position in positions.toList()..sort()) {
+    if (runs.isEmpty || position != runs.last.last + 1) {
+      runs.add([position]);
+    } else {
+      runs.last.add(position);
+    }
+  }
+  return runs;
+}
+
+String _momentLocator(ExerciseRealization realization, int position) =>
+    '${_momentLabel(realization, position)} '
+    '${landmarkAt(position, realization).phrase}';
+
+String _momentRangeLocator(
+  ExerciseRealization realization,
+  int first,
+  int last,
+) {
+  final firstLandmark = landmarkAt(first, realization);
+  final lastLandmark = landmarkAt(last, realization);
+  if (firstLandmark == lastLandmark) {
+    return '${_momentLabel(realization, first)} through '
+        '${_momentLabel(realization, last)} ${firstLandmark.phrase}';
+  }
+  return '${_momentLocator(realization, first)} through '
+      '${_momentLocator(realization, last)}';
+}
+
+String _compactLocators(List<String> locators) {
+  if (locators.length <= 3) return locators.join(', ');
+  final remaining = locators.length - 2;
+  final noun = remaining == 1 ? 'location' : 'locations';
+  return '${locators.take(2).join(', ')}, and $remaining more $noun';
 }
 
 String _departureLocator(

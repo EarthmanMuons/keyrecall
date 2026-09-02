@@ -99,4 +99,150 @@ void main() {
     expect(pulse.data.extraLinesData.verticalLines.single.x, 7);
     expect(pulse.data.extraLinesData.verticalLines.single.dashArray, [4, 4]);
   });
+
+  testWidgets('details summarize a missing suffix', (tester) async {
+    final suffixExercise = Exercise.linear(
+      material: TechnicalMaterial('A', ScaleForm.naturalMinor),
+      hands: HandConfiguration.together,
+      direction: ScaleDirection.upDown,
+      tempoBpm: 104,
+    );
+    final realization = realize(suffixExercise);
+    final missing = [
+      for (final moment in realization.moments.skip(8))
+        for (final note in moment.notes)
+          NoteDeparture(
+            kind: NoteDepartureKind.missing,
+            noteLabel: note.pitch.prettyLabel,
+            position: moment.position.toDouble(),
+          ),
+    ];
+    final trace = AttemptDetailTrace(
+      momentCount: realization.moments.length,
+      pulse: const [],
+      coordination: const [],
+      notes: [
+        ...List.filled(8, NoteMomentStatus.matched),
+        ...List.filled(7, NoteMomentStatus.missing),
+      ],
+      noteDepartures: missing,
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AttemptDetailsSheet(
+            exercise: suffixExercise,
+            trace: trace,
+            achievedTempoBpm: 104,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('14 missing'), findsOneWidget);
+    expect(
+      find.text('Missing: G at the turn and everything after it'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('F on the way down'), findsNothing);
+  });
+
+  testWidgets('details summarize an internal run and isolated misses', (
+    tester,
+  ) async {
+    final realization = realize(exercise);
+    final positions = [1, 2, 3, 6];
+    final trace = AttemptDetailTrace(
+      momentCount: realization.moments.length,
+      pulse: const [],
+      coordination: const [],
+      notes: [
+        for (
+          var position = 0;
+          position < realization.moments.length;
+          position++
+        )
+          positions.contains(position)
+              ? NoteMomentStatus.missing
+              : NoteMomentStatus.matched,
+      ],
+      noteDepartures: [
+        for (final position in positions)
+          NoteDeparture(
+            kind: NoteDepartureKind.missing,
+            noteLabel:
+                realization.moments[position].notes.first.pitch.prettyLabel,
+            position: position.toDouble(),
+          ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AttemptDetailsSheet(
+            exercise: exercise,
+            trace: trace,
+            achievedTempoBpm: 60,
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.text('Missing: D through F on the way up, B at the turn'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('details cap long lists of separate locations', (tester) async {
+    final realization = realize(exercise);
+    final positions = [1, 3, 5, 10];
+    final trace = AttemptDetailTrace(
+      momentCount: realization.moments.length,
+      pulse: const [],
+      coordination: const [],
+      notes: [
+        for (
+          var position = 0;
+          position < realization.moments.length;
+          position++
+        )
+          positions.contains(position)
+              ? NoteMomentStatus.departed
+              : NoteMomentStatus.matched,
+      ],
+      noteDepartures: [
+        for (final position in positions)
+          NoteDeparture(
+            kind: NoteDepartureKind.changed,
+            noteLabel:
+                realization.moments[position].notes.first.pitch.prettyLabel,
+            position: position.toDouble(),
+          ),
+      ],
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AttemptDetailsSheet(
+            exercise: exercise,
+            trace: trace,
+            achievedTempoBpm: 60,
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('4 changed'), findsOneWidget);
+    expect(
+      find.text(
+        'Changed: D on the way up, F on the way up, and 2 more locations',
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('A on the way up'), findsNothing);
+  });
 }
