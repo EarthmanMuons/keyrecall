@@ -9,6 +9,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../layout.dart';
 import 'attempt_diagnosis.dart';
 import 'attempt_feedback.dart';
+import 'attempt_summary_help.dart';
 import 'exercise_presentation.dart';
 
 /// Why the scheduler chose what it chose, when it can be said honestly.
@@ -252,23 +253,37 @@ class _AttemptSummaryView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _QualityRow(label: 'Notes', value: summary.notes),
-        const SizedBox(height: 12),
-        _QualityRow(label: 'Flow', value: summary.flow),
-        const SizedBox(height: 12),
-        _QualityRow(label: 'Pulse', value: summary.pulse),
-        if (summary.coordination case final coordination?) ...[
-          const SizedBox(height: 12),
-          _QualityRow(label: 'Coordination', value: coordination),
-        ],
-        const SizedBox(height: 12),
-        _TempoRow(
-          achieved: summary.achievedTempoBpm,
-          target: summary.targetTempoBpm,
+    void showHelp() => showAttemptSummaryHelp(
+      context,
+      includesCoordination: summary.coordination != null,
+    );
+
+    return Semantics(
+      button: true,
+      label: 'Explain attempt measurements',
+      onTap: showHelp,
+      child: InkWell(
+        excludeFromSemantics: true,
+        onTap: showHelp,
+        child: Column(
+          children: [
+            _QualityRow(label: 'Notes', value: summary.notes),
+            const SizedBox(height: 12),
+            _QualityRow(label: 'Flow', value: summary.flow),
+            const SizedBox(height: 12),
+            _QualityRow(label: 'Pulse', value: summary.pulse),
+            if (summary.coordination case final coordination?) ...[
+              const SizedBox(height: 12),
+              _QualityRow(label: 'Coordination', value: coordination),
+            ],
+            const SizedBox(height: 12),
+            _TempoRow(
+              achieved: summary.achievedTempoBpm,
+              target: summary.targetTempoBpm,
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

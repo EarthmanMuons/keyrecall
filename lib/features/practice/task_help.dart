@@ -10,12 +10,24 @@ import 'exercise_presentation.dart';
 /// "Up and down" means is looking at those words, and a glossary of every term
 /// the app can produce would make them find their own again.
 Future<void> showTaskHelp(BuildContext context, Exercise exercise) =>
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) => _TaskHelp(exercise),
+    showTermHelp(
+      context,
+      title: 'What you are practicing',
+      entries: taskHelpEntries(exercise),
     );
+
+Future<void> showTermHelp(
+  BuildContext context, {
+  required String title,
+  required List<(String term, String meaning)> entries,
+  String? introduction,
+}) => showModalBottomSheet<void>(
+  context: context,
+  showDragHandle: true,
+  isScrollControlled: true,
+  builder: (context) =>
+      _TermHelp(title: title, introduction: introduction, entries: entries),
+);
 
 /// What each term on the task statement means, in the order the statement
 /// puts them.
@@ -67,17 +79,21 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
   ];
 }
 
-class _TaskHelp extends StatelessWidget {
-  const _TaskHelp(this.exercise);
+class _TermHelp extends StatelessWidget {
+  const _TermHelp({
+    required this.title,
+    required this.entries,
+    this.introduction,
+  });
 
-  final Exercise exercise;
+  final String title;
+  final String? introduction;
+  final List<(String term, String meaning)> entries;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final layout = Layout.of(context);
-    final entries = taskHelpEntries(exercise);
-
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.fromLTRB(layout.gutter, 0, layout.gutter, 24),
@@ -88,10 +104,11 @@ class _TaskHelp extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'What you are practicing',
-                  style: theme.textTheme.titleLarge,
-                ),
+                Text(title, style: theme.textTheme.titleLarge),
+                if (introduction case final introduction?) ...[
+                  const SizedBox(height: 8),
+                  Text(introduction, style: theme.textTheme.bodyMedium),
+                ],
                 const SizedBox(height: 16),
                 for (final (term, meaning) in entries) ...[
                   Text(term, style: theme.textTheme.titleMedium),

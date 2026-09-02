@@ -468,6 +468,10 @@ no progress event and show no progress statement. Repeated reliability compares
 the same material, pattern, and execution conditions, including tempo, while
 allowing guidance to vary.
 
+The summary block opens a plain-language explanation of its visible dimensions.
+It describes what the app listened for and states that the measurements belong
+to this attempt rather than to the learner's overall skill.
+
 The evidence is written to the attempt journal in full before the review is
 read. Feedback exposure is an observational companion to that journal and does
 not alter evidence weight. Its effect on later attempts can be estimated from

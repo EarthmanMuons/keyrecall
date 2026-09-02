@@ -120,11 +120,13 @@ void main() {
 
     await tester.pumpWidget(
       MaterialApp(
-        home: AttemptReview(
-          record: record,
-          history: [record],
-          next: null,
-          onNext: () {},
+        home: Scaffold(
+          body: AttemptReview(
+            record: record,
+            history: [record],
+            next: null,
+            onNext: () {},
+          ),
         ),
       ),
     );
@@ -135,6 +137,22 @@ void main() {
       find.text('First clean right-hand pass from memory at 60 BPM.'),
       findsOneWidget,
     );
+    await tester.tap(find.text('Notes'));
+    await tester.pumpAndSettle();
+    expect(find.text('What KeyRecall heard'), findsOneWidget);
+    expect(
+      find.text(
+        'These lines describe this attempt, not your overall skill level.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('How evenly the notes were spaced in time.'),
+      findsOneWidget,
+    );
+    expect(find.text('Coordination'), findsNothing);
+    Navigator.of(tester.element(find.text('What KeyRecall heard'))).pop();
+    await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Done'), 200);
     expect(find.text('Done'), findsOneWidget);
   });
