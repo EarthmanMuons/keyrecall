@@ -179,7 +179,20 @@ class AttemptReview extends StatelessWidget {
                       ),
                       if (summary != null) ...[
                         const SizedBox(height: 28),
-                        _AttemptSummaryView(summary),
+                        _AttemptSummaryView(
+                          summary,
+                          onHelp: () => showAttemptSummaryHelp(
+                            context,
+                            includesCoordination: summary.coordination != null,
+                            debugDetails: kReleaseMode
+                                ? null
+                                : _Measured(
+                                    record: record,
+                                    next: upcoming,
+                                    diagnosis: diagnosis,
+                                  ),
+                          ),
+                        ),
                       ],
                       if (progress != null) ...[
                         const SizedBox(height: 24),
@@ -216,14 +229,6 @@ class AttemptReview extends StatelessWidget {
                         ],
                       ],
                       const Spacer(),
-                      if (!kReleaseMode) ...[
-                        _Measured(
-                          record: record,
-                          next: upcoming,
-                          diagnosis: diagnosis,
-                        ),
-                        const SizedBox(height: 16),
-                      ],
                       SizedBox(
                         height: 88,
                         child: FilledButton(
@@ -247,24 +252,20 @@ class AttemptReview extends StatelessWidget {
 }
 
 class _AttemptSummaryView extends StatelessWidget {
-  const _AttemptSummaryView(this.summary);
+  const _AttemptSummaryView(this.summary, {required this.onHelp});
 
   final AttemptSummary summary;
+  final VoidCallback onHelp;
 
   @override
   Widget build(BuildContext context) {
-    void showHelp() => showAttemptSummaryHelp(
-      context,
-      includesCoordination: summary.coordination != null,
-    );
-
     return Semantics(
       button: true,
       label: 'Explain attempt measurements',
-      onTap: showHelp,
+      onTap: onHelp,
       child: InkWell(
         excludeFromSemantics: true,
-        onTap: showHelp,
+        onTap: onHelp,
         child: Column(
           children: [
             _QualityRow(label: 'Notes', value: summary.notes),
@@ -381,13 +382,7 @@ class _TempoRow extends StatelessWidget {
 
 String _tempoText(double bpm) => bpm.round().toString();
 
-/// The numbers behind the sentence above it.
-///
-/// Debug and profile only. The learner is told one true thing; this is for
-/// whoever is deciding whether that thing was the right one to say, and for
-/// watching values that now change what is learned. Achieved tempo especially:
-/// it sets the difficulty execution evidence is attributed at, so a systematic
-/// offset between the click and the transcript clock would show up here first.
+/// Development details for evaluating diagnosis and learner updates.
 class _Measured extends StatelessWidget {
   const _Measured({
     required this.record,
@@ -423,9 +418,6 @@ class _Measured extends StatelessWidget {
           ('pitch integrity', outcome.pitchIntegrity.toStringAsFixed(3)),
           ('continuity', outcome.continuity.toStringAsFixed(3)),
           ('temporal stability', outcome.temporalStability.toStringAsFixed(3)),
-          // The one number a coordination fault is read from, and the one the
-          // panel used to leave out: every other row could read 1.000 while
-          // the diagnosis said the hands came apart.
           (
             'coordination',
             outcome.coordination?.toStringAsFixed(3) ?? 'one hand',

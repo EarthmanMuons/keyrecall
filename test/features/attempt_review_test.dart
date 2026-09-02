@@ -133,6 +133,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Notes'), findsOneWidget);
+    expect(find.textContaining('termination'), findsNothing);
     expect(
       find.text('First clean right-hand pass from memory at 122 BPM.'),
       findsOneWidget,
@@ -151,6 +152,9 @@ void main() {
       find.text('How evenly the notes were spaced in time.'),
       findsOneWidget,
     );
+    expect(find.text('Measurement details'), findsOneWidget);
+    expect(find.textContaining('termination'), findsOneWidget);
+    expect(find.textContaining('motor score'), findsOneWidget);
     expect(find.text('Coordination'), findsNothing);
     Navigator.of(tester.element(find.text('What KeyRecall heard'))).pop();
     await tester.pumpAndSettle();

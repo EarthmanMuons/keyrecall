@@ -26,6 +26,7 @@ List<(String term, String meaning)> attemptSummaryHelpEntries({
 Future<void> showAttemptSummaryHelp(
   BuildContext context, {
   required bool includesCoordination,
+  Widget? debugDetails,
 }) => showTermHelp(
   context,
   title: 'What KeyRecall heard',
@@ -33,4 +34,6 @@ Future<void> showAttemptSummaryHelp(
   entries: attemptSummaryHelpEntries(
     includesCoordination: includesCoordination,
   ),
+  appendixTitle: debugDetails == null ? null : 'Measurement details',
+  appendix: debugDetails,
 );
