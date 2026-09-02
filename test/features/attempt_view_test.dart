@@ -1,16 +1,15 @@
+import 'package:crisp_notation/crisp_notation.dart' as crisp;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:crisp_notation/crisp_notation.dart' as crisp;
-
 import 'package:keyrecall/features/demo_input/demo_input.dart';
 import 'package:keyrecall/features/input/input.dart';
-import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
+import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/screen_wake_lock.dart';
 
 import '../support/synthetic_instrument.dart';

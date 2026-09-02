@@ -1,12 +1,11 @@
-import 'package:keyrecall_journal/keyrecall_journal.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'placement.dart';
+import 'practice_providers.dart';
 import 'profile_avatar.dart';
 import 'profile_color.dart';
-import 'practice_providers.dart';
 
 /// Who uses this install: switch between them, add one, rename one, put one
 /// back at placement, or remove one entirely.

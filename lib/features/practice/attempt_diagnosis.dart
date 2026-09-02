@@ -1,9 +1,10 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
-import 'package:flutter/foundation.dart';
 
 /// Which evidence channel an attempt's fault came from.
 ///

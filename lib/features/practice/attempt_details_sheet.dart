@@ -5,8 +5,8 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
-import 'attempt_diagnosis.dart';
 import 'attempt_detail_trace.dart';
+import 'attempt_diagnosis.dart';
 
 const double _minimumTraceHorizontalPadding = 0.15;
 const double _traceHorizontalPaddingFraction = 0.015;

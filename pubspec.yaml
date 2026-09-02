@@ -25,11 +25,13 @@ environment:
   sdk: ^3.13.1
 
 dependencies:
+  crisp_notation: ^0.4.4
+  cupertino_icons: ^1.0.8
+  fl_chart: ^1.2.0
+  flutter_pcm_sound: ^3.3.3
+  flutter_riverpod: ^3.0.3
   flutter:
     sdk: flutter
-
-  fl_chart: ^1.2.0
-
   keyrecall_alignment:
     path: packages/keyrecall_alignment
   keyrecall_domain:
@@ -52,11 +54,6 @@ dependencies:
     path: packages/keyrecall_scheduler
   keyrecall_simulation:
     path: packages/keyrecall_simulation
-
-  crisp_notation: ^0.4.4
-  cupertino_icons: ^1.0.8
-  flutter_pcm_sound: ^3.3.3
-  flutter_riverpod: ^3.0.3
   material_ui: ^1.1.0
   path_provider: ^2.1.5
   shared_preferences: ^2.5.4
