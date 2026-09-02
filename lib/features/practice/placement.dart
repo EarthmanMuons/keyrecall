@@ -5,9 +5,9 @@ import 'package:material_ui/material_ui.dart';
 ///
 /// Described by what a learner can already do rather than by a label they have
 /// to award themselves. "Intermediate" asks for a judgment about a word; "I
-/// can play familiar scales with one hand from memory" asks about a morning at
-/// the piano. The three progress across breadth, retrieval, execution and
-/// coordination, which is what the prior is summarizing.
+/// can play familiar scales from memory" asks about a morning at the piano.
+/// The three progress across breadth, retrieval, fluency and coordination,
+/// which is what the prior is summarizing.
 ///
 /// The enum keeps its own names. What a tier is called in the model and how it
 /// is put to a person are different problems.
@@ -21,10 +21,10 @@ extension PlacementTierCopy on PlacementTier {
   String get detail => switch (this) {
     PlacementTier.beginner => 'I may need help with the notes or fingering.',
     PlacementTier.someExperience =>
-      'I can play familiar scales with one hand from memory.',
+      'I can play familiar scales from memory, but I’m still building '
+          'fluency.',
     PlacementTier.advanced =>
-      'I can play several scales from memory, with both hands at a steady '
-          'tempo.',
+      'I can play many scales from memory, hands together at a steady tempo.',
   };
 
   /// The short form, for a list that has room for a few words.
@@ -38,8 +38,12 @@ extension PlacementTierCopy on PlacementTier {
 /// What the placement question says, wherever it is asked.
 const placementQuestion = 'Where should we start?';
 
-/// Why the answer is not worth agonizing over.
-const placementReassurance = 'This only affects your starting point.';
+/// How exactly the answer has to fit.
+///
+/// The screen has already said that practice adapts to playing. What is left
+/// to say is how much care the choice deserves, which is little.
+const placementReassurance =
+    'Pick the closest match. It doesn’t have to be exact.';
 
 /// The three answers, with the chosen one marked.
 ///
