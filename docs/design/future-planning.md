@@ -1,7 +1,7 @@
 # Future Planning
 
 - **Status:** Deliberately deferred design space
-- **Last aligned:** August 21, 2026
+- **Last aligned:** September 2, 2026
 - **Scope:** Post-V1 architectural seams, empirical hypotheses, domain growth,
   and product ideas worth preserving
 
@@ -429,53 +429,6 @@ the project learns how pianists learn
 ```
 
 Population fitting must not become a prerequisite for local operation.
-
-### 2.5 Feedback after an attempt is its own channel
-
-`PerformanceFeedback` says what a learner sees of their own playing **during**
-an attempt: nothing, a neutral echo, or an evaluative display. Showing them
-afterwards what was measured is a different axis.
-
-It is not decoration. What a learner carries out of one attempt changes the next
-one: told which notes were wrong, they will attend to those, which is useful
-practice and also makes the following attempt a different observation from an
-unaided one. It is recorded separately as `FeedbackExposure`, after the review
-has rendered. An exposure names the diagnostic level, whether personal progress
-was shown, and every progress event represented by that statement. Keeping this
-out of the already committed attempt record distinguishes what was shown from
-what was intended to be shown without changing evidence replay.
-
-The questions it raises are the ones the during-attempt axis already answered in
-its own terms: whether it is neutral or evaluative, whether it is available at
-every guidance rung, and whether an attempt that was reviewed afterwards is the
-same evidence as one that was not.
-
-The review has three outputs:
-
-```text
-attempt diagnosis   what happened
-attempt summary     what the major measurements looked like
-progress evidence   what this attempt established over time, if anything
-```
-
-The diagnosis keeps its single-fault priority. The summary shows Notes, Flow,
-Pulse, optional Coordination, and achieved tempo against the target; these are
-performance observations rather than learner-state deltas. Progress statements
-come only from named events with truth conditions. The first events cover a
-first clean completion, a first independent completion, and the point where
-three clean attempts establish repeated reliability. Most attempts establish
-no progress event and show no progress statement. Repeated reliability compares
-the same material, pattern, and execution conditions, including tempo, while
-allowing guidance to vary.
-
-The summary block opens a plain-language explanation of its visible dimensions.
-It describes what the app listened for and states that the measurements belong
-to this attempt rather than to the learner's overall skill.
-
-The evidence is written to the attempt journal in full before the review is
-read. Feedback exposure is an observational companion to that journal and does
-not alter evidence weight. Its effect on later attempts can be estimated from
-the preserved history rather than assumed in advance.
 
 ## 3. Learner-model extensions
 
@@ -1160,6 +1113,9 @@ prediction, evidence path, or decision:
 - When does additional interleaving improve later performance rather than only
   change immediate difficulty?
 - How do user goals affect adherence and learning without distorting inference?
+- Do particular post-attempt feedback levels measurably affect subsequent
+  observations? Feedback exposure is recorded separately today, and does not
+  change evidence weight.
 
 Use learner- and time-based holdouts, preserve repeated-measures structure,
 report uncertainty and coverage, and retain immutable original histories for

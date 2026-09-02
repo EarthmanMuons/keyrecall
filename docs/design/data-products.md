@@ -1,8 +1,9 @@
-# The four data products
+# The five data products
 
 - **Status:** Current. The authority for what each store is for, what may be
   lost from it, and where aggregation is allowed.
 - **Written:** August 29, 2026
+- **Revised:** September 2, 2026
 
 KeyRecall keeps several things about a learner, and they are easy to confuse
 because they overlap in content. They differ in the only way that matters:
@@ -17,6 +18,9 @@ AttemptJournal ────────► lose it and the history is gone
    ├──► Fluency history ► lose it and a chart is rebuilt
    │
    └──► Telemetry ──────► never held locally; a projection at an export boundary
+
+OBSERVATIONAL
+FeedbackExposure ──────► lose it and feedback effects cannot be reconstructed
 ```
 
 One rule follows from that shape and does most of the work here: **aggregation
@@ -86,7 +90,7 @@ model migration, debugging, export, and historical reinterpretation. It is not
 worth entertaining until a measurement demands it, and the measurement says the
 opposite.
 
-## The four products
+## The five products
 
 ### 1. Attempt journal — authoritative
 
@@ -101,14 +105,33 @@ not record the prior it was computed against cannot reproduce itself.
 
 Nothing may be aggregated, summarized, or dropped.
 
-### 2. Checkpoint — disposable acceleration
+### 2. Feedback exposure — observational companion
+
+Append-only and retained locally, but not learner evidence. It records what the
+post-attempt review actually showed after that review renders:
+
+- the post-attempt feedback level;
+- whether personal progress appeared; and
+- every named progress event represented by the displayed statement.
+
+An exposure is scoped to a profile and idempotent on attempt id. It cannot be
+recorded unless the authoritative journal already contains that attempt. A lost
+exposure does not change learner-state replay, but it does destroy the record
+needed to estimate how feedback affected later observations.
+
+Feedback exposure never changes evidence weight. Any effect on later attempts is
+learned from preserved exposure and attempt histories rather than assumed by the
+update model. The learner-facing contract is documented in
+[Practice presentation](practice-presentation.md).
+
+### 3. Checkpoint — disposable acceleration
 
 A snapshot of learner state at a journal position, verified against the journal
 before it is trusted and discarded when it does not match. Losing one costs
 replay time and nothing else. It is not historical evidence and must never be
 read as such.
 
-### 3. Fluency history — a rebuildable projection
+### 4. Fluency history — a rebuildable projection
 
 Does not exist yet. This is where the time-series thinking belongs.
 
@@ -125,7 +148,7 @@ and it buys something else: when a later learner model changes what fluency
 means, the projection is regenerated under the new model rather than being
 discovered to have destructively summarized the only evidence there was.
 
-### 4. Telemetry — a projection at an export boundary
+### 5. Telemetry — a projection at an export boundary
 
 Opt-in, minimized, versioned, and **not a journal upload**. Its schema is
 defined by the analyses it supports, field by field, in
@@ -215,6 +238,7 @@ Each profile now records itself beside its own history:
 <profile-id>/
   profile.json      id, creation instant, placement: the replay genesis
   journal.jsonl
+  feedback.jsonl
   checkpoint.json
 ```
 

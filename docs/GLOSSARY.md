@@ -1,7 +1,7 @@
 # KeyRecall Glossary
 
 - **Status:** Canonical V1 terminology
-- **Last aligned:** August 29, 2026
+- **Last aligned:** September 2, 2026
 
 This file is a concise lookup reference for current terms. It does not record
 design history, supersessions, open questions, or mathematical derivations. See
@@ -100,6 +100,14 @@ first ranking key, not a weighted utility term.
 An attempt-specific measure of how informative an observation is about one state
 channel. Competencies use `w[a,k]`; material memory and execution use distinct
 `w_M` and `w_r` values. There is no universal attempt confidence scalar.
+
+### Feedback exposure
+
+An append-only observation of what the post-attempt review actually showed. It
+records the feedback level, whether personal progress appeared, and every named
+progress event represented by the displayed statement. It is keyed to an
+authoritative attempt but does not participate in learner-state replay or alter
+evidence weight.
 
 ### Exercise
 

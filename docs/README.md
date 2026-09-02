@@ -1,7 +1,7 @@
 # KeyRecall Documentation Map
 
 - **Status:** Current navigation and authority map
-- **Last aligned:** August 29, 2026
+- **Last aligned:** September 2, 2026
 
 ## Start here
 
@@ -28,8 +28,10 @@ docs/
 │
 ├── design/
 │   ├── product-vision.md
+│   ├── practice-presentation.md     attempt presentation, review, summary, and
+│   │                                progress evidence
 │   ├── data-products.md             journal, checkpoint, fluency history, and
-│   │                                telemetry: what may be lost from each
+│   │                                feedback exposure and telemetry
 │   ├── future-planning.md           deferred seams, hypotheses, and closed ideas
 │   ├── trajectory-simulation.md     synthetic players, invariants against
 │   │                                observations, and the candidate census
@@ -87,6 +89,7 @@ implementation rather than evidence about another one.
 | Future competency admission, validation, and calibration workflow   | `learner-model/competency-extension-guide.md`           |
 | Canonical terminology and symbols                                   | `GLOSSARY.md`                                           |
 | Product thesis, UX, privacy principles                              | `design/product-vision.md`                              |
+| Attempt presentation and post-attempt review                        | `design/practice-presentation.md`                       |
 | What each store is for, and where aggregation is allowed            | `design/data-products.md`                               |
 | Deferred architectural, product, and domain hypotheses              | `design/future-planning.md`                             |
 | Synthetic players, trajectory detectors, and the sweep              | `design/trajectory-simulation.md`                       |
