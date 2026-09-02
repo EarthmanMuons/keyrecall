@@ -76,17 +76,7 @@ class _Roster extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (summaries.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text(
-            'Nobody practices here yet. Add a profile to get started.',
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
+    if (summaries.isEmpty) return const _NobodyHere();
 
     return ListView.separated(
       // Clear of the button that adds a profile.
@@ -94,6 +84,54 @@ class _Roster extends ConsumerWidget {
       itemCount: summaries.length,
       separatorBuilder: (context, index) => const Divider(height: 1),
       itemBuilder: (context, index) => _ProfileTile(summaries[index]),
+    );
+  }
+}
+
+/// An install with nobody on it.
+///
+/// Reached by deleting the last profile, so it says what the screen is for
+/// rather than only that it is empty. Sat above the centre line, clear of the
+/// button that answers it.
+class _NobodyHere extends StatelessWidget {
+  const _NobodyHere();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Align(
+      alignment: const Alignment(0, -0.3),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 360),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.people_outline,
+                size: 44,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Nobody practices here yet',
+                style: theme.textTheme.headlineSmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Add a profile to start practicing. Everyone who plays here '
+                'gets their own history and progress.',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

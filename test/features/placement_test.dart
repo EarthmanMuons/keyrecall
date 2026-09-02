@@ -196,6 +196,7 @@ void main() {
       final container = containerOn();
       final navigator = await openProfiles(tester, container);
       await deleteAlice(tester);
+      expect(find.text('Nobody practices here yet'), findsOneWidget);
 
       navigator.currentState!.pop();
       await tester.pumpAndSettle();
