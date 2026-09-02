@@ -93,7 +93,7 @@ class _WelcomeStepState extends State<_WelcomeStep> {
         Center(child: Wordmark(style: theme.textTheme.titleMedium)),
         const SizedBox(height: 28),
         Text(
-          'Practice scales. We’ll choose what comes next.',
+          'Practice scales.\nWe’ll choose what comes next.',
           style: theme.textTheme.headlineSmall,
         ),
         const SizedBox(height: 12),
