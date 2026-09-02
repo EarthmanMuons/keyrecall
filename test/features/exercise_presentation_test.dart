@@ -23,8 +23,38 @@ void main() {
       expect(handsName(HandConfiguration.together), 'Hands together');
       expect(octavesName(1), '1 octave');
       expect(octavesName(2), '2 octaves');
-      expect(directionName(ScaleDirection.up), 'Up');
-      expect(directionName(ScaleDirection.upDown), 'Up and down');
+      expect(
+        traversalName(
+          ExecutionConditions(
+            hands: HandConfiguration.right,
+            direction: ScaleDirection.up,
+          ),
+        ),
+        'Up',
+      );
+      expect(
+        traversalName(ExecutionConditions(hands: HandConfiguration.right)),
+        'Up and down',
+      );
+      expect(
+        traversalName(
+          ExecutionConditions(
+            hands: HandConfiguration.together,
+            handMotion: HandMotion.contrary,
+            direction: ScaleDirection.up,
+          ),
+        ),
+        'Contrary motion, apart',
+      );
+      expect(
+        traversalName(
+          ExecutionConditions(
+            hands: HandConfiguration.together,
+            handMotion: HandMotion.contrary,
+          ),
+        ),
+        'Contrary motion, apart and back',
+      );
     });
   });
 

@@ -21,7 +21,7 @@ import 'exercise_presentation.dart';
 /// [differenceTo] rather than guessing.
 ///
 /// A hand change is said whatever the reason was. The screen names the scale
-/// and nothing else, so the same name under "Up next" is the same exercise as
+/// and nothing else, so the same name under "Next exercise" is the same one as
 /// far as anybody reading it can tell, and the scheduler counts a scale in one
 /// hand as material it has never seen.
 String? reasonForNext({
@@ -104,6 +104,11 @@ String? differenceTo(Exercise next, Exercise previous) {
       HandConfiguration.left => 'Left hand alone this time.',
     };
   }
+  if (conditions.handMotion != was.handMotion) {
+    return conditions.handMotion == HandMotion.contrary
+        ? 'Hands moving apart this time, then back together.'
+        : 'Both hands the same way this time.';
+  }
   if (next.guidance != previous.guidance) {
     if (next.guidance == GuidanceContext.continuouslyCued) {
       return 'The notes stay up for this one.';
@@ -119,9 +124,12 @@ String? differenceTo(Exercise next, Exercise previous) {
         : '${conditions.octaves} octaves this time.';
   }
   if (conditions.direction != was.direction) {
-    return switch (conditions.direction) {
-      ScaleDirection.up => 'Just up this time.',
-      ScaleDirection.upDown => 'Up and back down this time.',
+    return switch ((conditions.handMotion, conditions.direction)) {
+      (HandMotion.contrary, ScaleDirection.up) => 'Just apart this time.',
+      (HandMotion.contrary, ScaleDirection.upDown) =>
+        'Apart and back together this time.',
+      (_, ScaleDirection.up) => 'Just up this time.',
+      (_, ScaleDirection.upDown) => 'Up and back down this time.',
     };
   }
   if (conditions.tempoBpm != was.tempoBpm) {
@@ -253,7 +261,7 @@ class AttemptReview extends StatelessWidget {
                       const Spacer(),
                       if (upcoming != null) ...[
                         Text(
-                          'Up next',
+                          'Next exercise',
                           style: theme.textTheme.labelLarge?.copyWith(
                             color: theme.colorScheme.onSurfaceVariant,
                           ),

@@ -7,8 +7,8 @@ import 'exercise_presentation.dart';
 /// What each line of the task statement means, for the exercise on screen.
 ///
 /// Written against this exercise rather than in general: somebody asking what
-/// "Up and down" means is looking at those words, and a glossary of every term
-/// the app can produce would make them find their own again.
+/// "Contrary motion" means is looking at those words, and a glossary of every
+/// term the app can produce would make them find their own again.
 Future<void> showTaskHelp(BuildContext context, Exercise exercise) =>
     showTermHelp(
       context,
@@ -53,12 +53,20 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
       },
     ),
     (
-      directionName(conditions.direction),
-      switch (conditions.direction) {
-        ScaleDirection.up =>
+      traversalName(conditions),
+      switch ((conditions.handMotion, conditions.direction)) {
+        (HandMotion.contrary, ScaleDirection.up) =>
+          'Both hands start on ${tonicName(exercise.material)} and move apart, '
+              'the right going up as the left goes down, stopping at their '
+              'outer notes.',
+        (HandMotion.contrary, ScaleDirection.upDown) =>
+          'Both hands start on ${tonicName(exercise.material)} and move apart, '
+              'the right going up as the left goes down, then back together '
+              'again.',
+        (_, ScaleDirection.up) =>
           'Start on ${tonicName(exercise.material)}, go up to the top note, '
               'and stop there.',
-        ScaleDirection.upDown =>
+        (_, ScaleDirection.upDown) =>
           'Start on ${tonicName(exercise.material)}, go up to the top note, '
               'then back down again.',
       },
@@ -66,8 +74,10 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
     (
       octavesName(conditions.octaves),
       switch (conditions.direction) {
-        ScaleDirection.up => 'How far the scale runs before it stops.',
-        ScaleDirection.upDown => 'How far it runs before it turns around.',
+        ScaleDirection.up => 'How far each hand runs before it stops.',
+        ScaleDirection.upDown =>
+          'How far each hand runs before it turns '
+              'around.',
       },
     ),
     (

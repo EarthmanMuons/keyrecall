@@ -311,7 +311,7 @@ class _RunningTask extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               Text(
-                '${directionName(conditions.direction)} · '
+                '${traversalName(conditions)} · '
                 '${octavesName(conditions.octaves)} · '
                 '${conditions.tempoBpm.round()} bpm',
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -1249,7 +1249,7 @@ class _TaskStatement extends StatelessWidget {
           // tempo had a line to itself for its own rank in the task, and what
           // that cost was a line of music.
           Text(
-            '${directionName(conditions.direction)} · '
+            '${traversalName(conditions)} · '
             '${octavesName(conditions.octaves)} · '
             '${conditions.tempoBpm.round()} bpm',
             style: theme.textTheme.bodyLarge?.copyWith(

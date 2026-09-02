@@ -23,9 +23,15 @@ String handsName(HandConfiguration hands) => switch (hands) {
 String octavesName(int octaves) =>
     octaves == 1 ? '1 octave' : '$octaves octaves';
 
-/// Which way it runs.
-String directionName(ScaleDirection direction) =>
-    direction == ScaleDirection.up ? 'Up' : 'Up and down';
+/// Which way it runs, and for two hands, how they run against each other.
+String traversalName(ExecutionConditions conditions) =>
+    switch ((conditions.handMotion, conditions.direction)) {
+      (HandMotion.contrary, ScaleDirection.up) => 'Contrary motion, apart',
+      (HandMotion.contrary, ScaleDirection.upDown) =>
+        'Contrary motion, apart and back',
+      (_, ScaleDirection.up) => 'Up',
+      (_, ScaleDirection.upDown) => 'Up and down',
+    };
 
 /// The learner-facing name of a guidance rung.
 String guidanceName(GuidanceContext guidance) =>

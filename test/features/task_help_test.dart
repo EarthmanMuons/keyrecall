@@ -8,6 +8,7 @@ void main() {
   Exercise exerciseOf({
     HandConfiguration hands = HandConfiguration.right,
     ScaleDirection direction = ScaleDirection.up,
+    HandMotion handMotion = HandMotion.parallel,
     int octaves = 1,
     double tempoBpm = 60,
   }) => Exercise.linear(
@@ -15,6 +16,7 @@ void main() {
     hands: hands,
     octaves: octaves,
     direction: direction,
+    handMotion: handMotion,
     tempoBpm: tempoBpm,
   );
 
@@ -30,7 +32,7 @@ void main() {
     expect(taskHelpEntries(exercise).map((entry) => entry.$1), [
       materialName(exercise.material),
       handsName(conditions.hands),
-      directionName(conditions.direction),
+      traversalName(conditions),
       octavesName(conditions.octaves),
       '72 bpm',
     ]);
@@ -44,6 +46,20 @@ void main() {
 
     expect(upOnly[2].$2, isNot(andBack[2].$2));
     expect(upOnly[1].$2, contains('right hand'));
+  });
+
+  test('describes contrary motion without the notation', () {
+    final entry = taskHelpEntries(
+      exerciseOf(
+        hands: HandConfiguration.together,
+        handMotion: HandMotion.contrary,
+        direction: ScaleDirection.upDown,
+      ),
+    )[2];
+
+    expect(entry.$1, 'Contrary motion, apart and back');
+    expect(entry.$2, contains('apart'));
+    expect(entry.$2, contains('back together'));
   });
 
   test('says how far the scale runs in the terms this one runs in', () {
