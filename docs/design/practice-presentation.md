@@ -49,7 +49,7 @@ Progress statements come from named events with explicit truth conditions. The
 current events are:
 
 - first clean completion;
-- first independent completion; and
+- first independent completion, for a completed unguided attempt; and
 - repeated reliability, established when the last three comparable attempts were
   clean.
 

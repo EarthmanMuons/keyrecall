@@ -379,9 +379,7 @@ class _TempoRow extends StatelessWidget {
   }
 }
 
-String _tempoText(double bpm) => bpm == bpm.roundToDouble()
-    ? bpm.round().toString()
-    : bpm.toStringAsFixed(1);
+String _tempoText(double bpm) => bpm.round().toString();
 
 /// The numbers behind the sentence above it.
 ///

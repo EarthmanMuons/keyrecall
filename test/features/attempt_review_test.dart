@@ -93,7 +93,7 @@ void main() {
       pitchIntegrity: 1,
       continuity: 1,
       temporalStability: 1,
-      achievedTempoRatio: 1,
+      achievedTempoRatio: 2.033,
       topologyAccuracy: 1,
     );
     final record = AttemptRecord(
@@ -134,9 +134,10 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Notes'), findsOneWidget);
     expect(
-      find.text('First clean right-hand pass from memory at 60 BPM.'),
+      find.text('First clean right-hand pass from memory at 122 BPM.'),
       findsOneWidget,
     );
+    expect(find.text('122 BPM'), findsOneWidget);
     await tester.tap(find.text('Notes'));
     await tester.pumpAndSettle();
     expect(find.text('What KeyRecall heard'), findsOneWidget);

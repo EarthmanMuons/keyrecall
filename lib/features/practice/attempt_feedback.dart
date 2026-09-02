@@ -80,8 +80,8 @@ List<ProgressEvent> progressEventsFor(
     events.add(const ProgressEvent(ProgressEventKind.repeatedReliability));
   }
 
-  if (outcome.retrieval == FactualRetrieval.succeeded &&
-      !earlier.any(_recordWasRetrieved)) {
+  if (_recordWasCompletedIndependently(current) &&
+      !earlier.any(_recordWasCompletedIndependently)) {
     events.add(
       const ProgressEvent(ProgressEventKind.firstIndependentCompletion),
     );
@@ -126,10 +126,12 @@ bool _recordIsClean(AttemptRecord record) =>
       MeasurementUnavailable() => false,
     };
 
-bool _recordWasRetrieved(AttemptRecord record) =>
+bool _recordWasCompletedIndependently(AttemptRecord record) =>
     switch (record.closure.measurement) {
       Measured(:final outcome) =>
-        outcome.completed && outcome.retrieval == FactualRetrieval.succeeded,
+        record.exercise.guidance == GuidanceContext.unguided &&
+            outcome.completed &&
+            outcome.retrieval == FactualRetrieval.succeeded,
       MeasurementUnavailable() => false,
     };
 
@@ -153,6 +155,4 @@ String _achievedTempo(AttemptRecord record) {
   );
 }
 
-String _formatTempo(double bpm) => bpm == bpm.roundToDouble()
-    ? bpm.round().toString()
-    : bpm.toStringAsFixed(1);
+String _formatTempo(double bpm) => bpm.round().toString();

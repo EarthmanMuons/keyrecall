@@ -166,6 +166,34 @@ void main() {
     expect(progressEventsFor(cued, history: [cued]), isEmpty);
   });
 
+  test('a previewed completion does not claim independent retrieval', () {
+    final previewed = record(
+      0,
+      outcome(notes: 0.9),
+      task: exercise.withGuidance(GuidanceContext.notesPreviewedOnly),
+    );
+    final unguided = record(1, outcome(notes: 0.9));
+
+    expect(progressEventsFor(previewed, history: [previewed]), isEmpty);
+    expect(
+      progressEventsFor(
+        unguided,
+        history: [previewed, unguided],
+      ).map((event) => event.type),
+      [ProgressEventKind.firstIndependentCompletion],
+    );
+  });
+
+  test('progress statements present tempo in whole BPM', () {
+    final clean = record(0, outcome(tempo: 2.033));
+    final events = progressEventsFor(clean, history: [clean]);
+
+    expect(
+      progressStatementFor(clean, events),
+      'First clean right-hand pass from memory at 122 BPM.',
+    );
+  });
+
   test('reliability compares the same execution across guidance levels', () {
     final attempts = [
       record(
@@ -186,7 +214,10 @@ void main() {
         attempts.last,
         history: attempts,
       ).map((event) => event.type),
-      [ProgressEventKind.repeatedReliability],
+      [
+        ProgressEventKind.repeatedReliability,
+        ProgressEventKind.firstIndependentCompletion,
+      ],
     );
   });
 
