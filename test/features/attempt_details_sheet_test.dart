@@ -79,9 +79,20 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('Pulse'), findsOneWidget);
+    expect(
+      find.text(
+        "How early or late the spacing between notes fell around this run's pulse. "
+        'Largest deviation: 30 ms.',
+      ),
+      findsOneWidget,
+    );
     expect(find.text('Coordination'), findsOneWidget);
     expect(find.text('58 BPM overall · target 60'), findsOneWidget);
     final pulse = tester.widget<LineChart>(find.byType(LineChart).first);
     expect(pulse.data.lineBarsData, hasLength(2));
+    expect(pulse.data.minX, closeTo(-0.21, 0.001));
+    expect(pulse.data.maxX, closeTo(14.21, 0.001));
+    expect(pulse.data.extraLinesData.verticalLines.single.x, 7);
+    expect(pulse.data.extraLinesData.verticalLines.single.dashArray, [4, 4]);
   });
 }

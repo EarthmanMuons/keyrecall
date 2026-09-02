@@ -8,6 +8,9 @@ import '../../layout.dart';
 import 'attempt_diagnosis.dart';
 import 'attempt_detail_trace.dart';
 
+const double _minimumTraceHorizontalPadding = 0.15;
+const double _traceHorizontalPaddingFraction = 0.015;
+
 Future<void> showAttemptDetails(
   BuildContext context, {
   required Exercise exercise,
@@ -64,14 +67,14 @@ class AttemptDetailsSheet extends StatelessWidget {
                   const SizedBox(height: 28),
                   _TraceSection(
                     title: 'Pulse',
-                    explanation:
-                        "Each interval's distance from this run's pulse.",
+                    explanation: "How early or late the spacing between notes fell around this run's pulse.",
                     points: trace.pulse,
                     momentCount: trace.momentCount,
                     direction: exercise.conditions.direction,
                     upperLabel: 'early',
                     centerLabel: 'on pulse',
                     lowerLabel: 'late',
+                    showsLargestDeviation: true,
                   ),
                 ],
                 if (trace.coordination.isNotEmpty) ...[
@@ -301,6 +304,7 @@ class _TraceSection extends StatelessWidget {
     required this.upperLabel,
     required this.centerLabel,
     required this.lowerLabel,
+    this.showsLargestDeviation = false,
   });
 
   final String title;
@@ -311,6 +315,7 @@ class _TraceSection extends StatelessWidget {
   final String upperLabel;
   final String centerLabel;
   final String lowerLabel;
+  final bool showsLargestDeviation;
 
   @override
   Widget build(BuildContext context) {
@@ -327,6 +332,18 @@ class _TraceSection extends StatelessWidget {
       0,
       -points.map((point) => point.value).reduce(math.min),
     );
+    final largestDeviation = math.max(upper, lower).round();
+    final description = showsLargestDeviation
+        ? '$explanation Largest deviation: $largestDeviation ms.'
+        : explanation;
+    final lastPosition = math.max(1, momentCount - 1).toDouble();
+    final horizontalPadding = math.max(
+      _minimumTraceHorizontalPadding,
+      lastPosition * _traceHorizontalPaddingFraction,
+    );
+    final turnPosition = direction == ScaleDirection.upDown
+        ? (momentCount - 1) / 2
+        : null;
     return Semantics(
       label:
           '$title trace. Farthest $upperLabel ${upper.round()} milliseconds; '
@@ -337,7 +354,7 @@ class _TraceSection extends StatelessWidget {
           children: [
             Text(title, style: theme.textTheme.titleMedium),
             const SizedBox(height: 4),
-            Text(explanation, style: theme.textTheme.bodyMedium),
+            Text(description, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 12),
             SizedBox(
               height: 150,
@@ -359,8 +376,8 @@ class _TraceSection extends StatelessWidget {
                   Expanded(
                     child: LineChart(
                       LineChartData(
-                        minX: 0,
-                        maxX: math.max(1, momentCount - 1).toDouble(),
+                        minX: -horizontalPadding,
+                        maxX: lastPosition + horizontalPadding,
                         minY: -range,
                         maxY: range,
                         clipData: const FlClipData.all(),
@@ -375,6 +392,16 @@ class _TraceSection extends StatelessWidget {
                               color: theme.colorScheme.outlineVariant,
                               strokeWidth: 1,
                             ),
+                          ],
+                          verticalLines: [
+                            if (turnPosition != null)
+                              VerticalLine(
+                                x: turnPosition,
+                                color: theme.colorScheme.outlineVariant
+                                    .withValues(alpha: 0.65),
+                                strokeWidth: 1,
+                                dashArray: const [4, 4],
+                              ),
                           ],
                         ),
                         lineBarsData: [
