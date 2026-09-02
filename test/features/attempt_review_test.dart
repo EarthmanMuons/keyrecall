@@ -31,6 +31,30 @@ void main() {
 
   final previous = exerciseOf();
 
+  SchedulerDecision decisionOf(ChallengeBypass? bypass) => SchedulerDecision(
+    prediction: const Prediction(
+      independentRetrievalP: 0.5,
+      materialAvailableP: 0.5,
+      executionP: 0.5,
+      coordinationP: 1,
+      topologyP: 0.5,
+    ),
+    eligibilityTier: EligibilityTier.fullyEligible,
+    eligibilityReason: null,
+    safetyReason: 'safe',
+    withinChallengeBand: true,
+    challengeBandMin: 0.4,
+    challengeBandMax: 0.7,
+    challengeBypass: bypass,
+    rankKey: const RankKey(
+      tier: EligibilityTier.fullyEligible,
+      retention: 0,
+      information: 0,
+      diversity: 0,
+      goals: 0,
+    ),
+  );
+
   PresentedAttempt presented(Exercise exercise) => PresentedAttempt(
     PendingDecision(
       attemptId: 'next-attempt',
@@ -44,29 +68,7 @@ void main() {
         schedulerModelVersion: 'scheduler',
       ),
       exercise: exercise,
-      decision: const SchedulerDecision(
-        prediction: Prediction(
-          independentRetrievalP: 0.5,
-          materialAvailableP: 0.5,
-          executionP: 0.5,
-          coordinationP: 1,
-          topologyP: 0.5,
-        ),
-        eligibilityTier: EligibilityTier.fullyEligible,
-        eligibilityReason: null,
-        safetyReason: 'safe',
-        withinChallengeBand: true,
-        challengeBandMin: 0.4,
-        challengeBandMax: 0.7,
-        challengeBypass: ChallengeBypass.newMaterial,
-        rankKey: RankKey(
-          tier: EligibilityTier.fullyEligible,
-          retention: 0,
-          information: 0,
-          diversity: 0,
-          goals: 0,
-        ),
-      ),
+      decision: decisionOf(ChallengeBypass.newMaterial),
       stateBeforeHash: 'state',
     ),
   );
@@ -117,6 +119,41 @@ void main() {
       expect(
         differenceTo(exerciseOf(tempoBpm: 72), previous),
         'A little quicker.',
+      );
+    });
+  });
+
+  group('why the next exercise is what it is', () {
+    String? reasonFor(ChallengeBypass? bypass, Exercise next) => reasonForNext(
+      decision: decisionOf(bypass),
+      next: next,
+      previous: previous,
+    );
+
+    test('names the hand whatever the reason was', () {
+      final otherHand = exerciseOf(hands: HandConfiguration.left);
+
+      expect(
+        reasonFor(ChallengeBypass.newMaterial, otherHand),
+        'New with the left hand, so it comes with the notes.',
+      );
+      expect(
+        reasonFor(ChallengeBypass.consolidation, otherHand),
+        'Now the left hand, from memory.',
+      );
+      expect(
+        reasonFor(
+          ChallengeBypass.tempoProbe,
+          exerciseOf(hands: HandConfiguration.together),
+        ),
+        'Now both hands, at the speed you played it.',
+      );
+    });
+
+    test('says the same scale is new when the hand it is new in is not', () {
+      expect(
+        reasonFor(ChallengeBypass.newMaterial, exerciseOf(material: gMajor)),
+        'New here, so it comes with the notes.',
       );
     });
   });

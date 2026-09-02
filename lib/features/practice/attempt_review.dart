@@ -19,34 +19,64 @@ import 'exercise_presentation.dart';
 /// lexicographic key against candidates the decision does not keep, so which
 /// term decided it is not something this can know, and it falls back to
 /// [differenceTo] rather than guessing.
+///
+/// A hand change is said whatever the reason was. The screen names the scale
+/// and nothing else, so the same name under "Up next" is the same exercise as
+/// far as anybody reading it can tell, and the scheduler counts a scale in one
+/// hand as material it has never seen.
 String? reasonForNext({
   required SchedulerDecision decision,
   required Exercise next,
   required Exercise previous,
 }) {
   final sameMaterial = next.material == previous.material;
+  final hands = next.conditions.hands == previous.conditions.hands
+      ? null
+      : switch (next.conditions.hands) {
+          HandConfiguration.together => 'both hands',
+          HandConfiguration.right => 'the right hand',
+          HandConfiguration.left => 'the left hand',
+        };
 
   return switch (decision.challengeBypass) {
-    ChallengeBypass.recovery =>
-      sameMaterial
-          ? 'The same scale again, with more of it shown.'
-          : 'Going back a step.',
-    ChallengeBypass.newMaterial => 'New here, so it comes with the notes.',
-    ChallengeBypass.consolidation =>
-      sameMaterial
-          ? 'That one again, this time from memory.'
-          : 'One you have met, this time from memory.',
-    ChallengeBypass.executionProgression =>
-      sameMaterial
-          ? 'The same one, a step further.'
-          : 'One you know, a step further.',
+    ChallengeBypass.recovery => switch (hands) {
+      final hands? => 'Now $hands, with more of it shown.',
+      null =>
+        sameMaterial
+            ? 'The same scale again, with more of it shown.'
+            : 'Going back a step.',
+    },
+    ChallengeBypass.newMaterial => switch (hands) {
+      final hands? => 'New with $hands, so it comes with the notes.',
+      null => 'New here, so it comes with the notes.',
+    },
+    ChallengeBypass.consolidation => switch (hands) {
+      final hands? => 'Now $hands, from memory.',
+      null =>
+        sameMaterial
+            ? 'That one again, this time from memory.'
+            : 'One you have met, this time from memory.',
+    },
+    ChallengeBypass.executionProgression => switch (hands) {
+      final hands? => 'Now $hands, a step further.',
+      null =>
+        sameMaterial
+            ? 'The same one, a step further.'
+            : 'One you know, a step further.',
+    },
     ChallengeBypass.guidanceProbe ||
     ChallengeBypass.bootstrapProbe ||
-    ChallengeBypass.observationProbe => 'Time to try this one with less help.',
-    ChallengeBypass.tempoProbe =>
-      sameMaterial
-          ? 'That looked easy. Same scale, at the speed you played it.'
-          : 'That looked easy, so this one is quicker.',
+    ChallengeBypass.observationProbe => switch (hands) {
+      final hands? => 'Now $hands, with less help.',
+      null => 'Time to try this one with less help.',
+    },
+    ChallengeBypass.tempoProbe => switch (hands) {
+      final hands? => 'Now $hands, at the speed you played it.',
+      null =>
+        sameMaterial
+            ? 'That looked easy. Same scale, at the speed you played it.'
+            : 'That looked easy, so this one is quicker.',
+    },
     ChallengeBypass.override ||
     null => differenceTo(next, previous) ?? (sameMaterial ? 'Again.' : null),
   };
