@@ -72,4 +72,4 @@ flutter:
   uses-material-design: true
 
   assets:
-    - assets/icon/icon.png
+    - assets/icon/keyrecall-badge.webp

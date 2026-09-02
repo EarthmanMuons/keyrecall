@@ -226,6 +226,10 @@ TARGETS = [
     # present at the same size. Transparent, because GitHub renders it against
     # both themes.
     Target("keyrecall-logo.webp", "brand", fmt="webp", px=200, wrap="badge"),
+    # --- Onboarding. The same badge the README shows, raster because Flutter
+    # has no SVG decoder of its own, and at 512px so it stays sharp at 3x on
+    # the largest size the welcome screen draws it.
+    Target("keyrecall-badge.webp", "brand", fmt="webp", px=512, wrap="badge"),
 ]
 
 

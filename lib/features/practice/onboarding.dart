@@ -89,9 +89,9 @@ class _WelcomeStepState extends State<_WelcomeStep> {
     return _OnboardingPage(
       children: [
         const Center(child: AppMark()),
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
         Center(child: Wordmark(style: theme.textTheme.titleMedium)),
-        const SizedBox(height: 12),
+        const SizedBox(height: 28),
         Text(
           'Practice scales. We’ll choose what comes next.',
           style: theme.textTheme.headlineSmall,
