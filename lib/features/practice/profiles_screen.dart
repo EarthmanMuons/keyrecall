@@ -178,12 +178,8 @@ class _ProfileTile extends ConsumerWidget {
               child: Text('Practice as this profile'),
             ),
           const PopupMenuItem(
-            value: _ProfileAction.rename,
-            child: Text('Rename'),
-          ),
-          const PopupMenuItem(
-            value: _ProfileAction.recolor,
-            child: Text('Change color'),
+            value: _ProfileAction.edit,
+            child: Text('Rename or change color'),
           ),
           const PopupMenuItem(
             value: _ProfileAction.eraseHistory,
@@ -247,17 +243,15 @@ class _ProfileTile extends ConsumerWidget {
     switch (action) {
       case _ProfileAction.select:
         await notifier.select(profile.id);
-      case _ProfileAction.rename:
-        final name = await _askForName(
-          context,
-          title: 'Rename profile',
-          initial: profile.displayName,
-          confirmLabel: 'Rename',
-        );
-        if (name != null) await notifier.rename(profile.id, name);
-      case _ProfileAction.recolor:
-        final color = await _askForColor(context, profile);
-        if (color != null) await notifier.recolor(profile.id, color);
+      case _ProfileAction.edit:
+        final edits = await _editProfile(context, profile);
+        if (edits == null) return;
+        if (edits.name != profile.displayName) {
+          await notifier.rename(profile.id, edits.name);
+        }
+        if (edits.color != ProfileColor.of(profile)) {
+          await notifier.recolor(profile.id, edits.color);
+        }
       case _ProfileAction.eraseHistory:
         final erase = await _confirm(
           context,
@@ -287,31 +281,88 @@ class _ProfileTile extends ConsumerWidget {
 }
 
 /// What the menu on a profile offers.
-enum _ProfileAction { select, rename, recolor, eraseHistory, delete }
+enum _ProfileAction { select, edit, eraseHistory, delete }
 
-/// Asks which colour to show a profile in, or null when nobody chose.
+/// How a profile is recognized: what it is called, and the colour it wears.
 ///
-/// The palette is the whole choice. A colour is what a profile is picked out
-/// by at a glance, so the six that stay apart are the six on offer.
-Future<ProfileColor?> _askForColor(BuildContext context, Profile profile) =>
-    showDialog<ProfileColor>(
-      context: context,
-      builder: (context) {
-        final current = ProfileColor.of(profile);
-        return AlertDialog(
-          title: Text('Colour for ${profile.displayName}'),
-          content: Wrap(
+/// One dialog because it is one decision. A name and a colour are both answers
+/// to the same question of which row in the list is yours, and asking them
+/// separately made changing both a trip through the menu twice.
+///
+/// Returns null when nothing was confirmed.
+Future<({String name, ProfileColor color})?> _editProfile(
+  BuildContext context,
+  Profile profile,
+) => showDialog<({String name, ProfileColor color})>(
+  context: context,
+  builder: (context) => _ProfileDialog(profile),
+);
+
+/// The editor, stateful so the field's controller outlives the dialog's
+/// closing animation; see [_NameDialog].
+class _ProfileDialog extends StatefulWidget {
+  const _ProfileDialog(this.profile);
+
+  final Profile profile;
+
+  @override
+  State<_ProfileDialog> createState() => _ProfileDialogState();
+}
+
+class _ProfileDialogState extends State<_ProfileDialog> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.profile.displayName,
+  );
+  late ProfileColor _color = ProfileColor.of(widget.profile);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  /// Empty is refused rather than accepted and cleaned up, because a profile
+  /// with no name is one nobody can pick out of the list.
+  void _submit() {
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+    Navigator.of(context).pop((name: name, color: _color));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return AlertDialog(
+      title: const Text('Edit profile'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+            decoration: const InputDecoration(labelText: 'Name'),
+            onSubmitted: (_) => _submit(),
+          ),
+          const SizedBox(height: 24),
+          Text('Colour', style: theme.textTheme.labelLarge),
+          const SizedBox(height: 12),
+          // The palette is the whole choice. A colour is what a profile is
+          // picked out by at a glance, so the six that stay apart are the six
+          // on offer.
+          Wrap(
             spacing: 16,
             runSpacing: 16,
             children: [
               for (final color in ProfileColor.values)
                 InkResponse(
-                  onTap: () => Navigator.of(context).pop(color),
+                  onTap: () => setState(() => _color = color),
                   radius: 28,
                   child: CircleAvatar(
                     radius: 22,
                     backgroundColor: color.color,
-                    child: color == current
+                    child: color == _color
                         ? Icon(
                             Icons.check,
                             color:
@@ -327,15 +378,18 @@ Future<ProfileColor?> _askForColor(BuildContext context, Profile profile) =>
                 ),
             ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-          ],
-        );
-      },
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _submit, child: const Text('Save')),
+      ],
     );
+  }
+}
 
 /// Adds a profile and switches to it.
 Future<void> _addProfile(BuildContext context, WidgetRef ref) async {
