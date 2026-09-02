@@ -27,6 +27,7 @@ import 'practice_providers.dart';
 import 'presentation_policy.dart';
 import 'profile_avatar.dart';
 import 'profiles_screen.dart';
+import 'screen_wake_lock.dart';
 import 'staff_cue.dart';
 import 'task_help.dart';
 
@@ -463,7 +464,7 @@ class AttemptView extends ConsumerStatefulWidget {
 }
 
 class _AttemptViewState extends ConsumerState<AttemptView>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   /// Beats in the count-in. One bar of four, which also gives the learner time
   /// to get their hands from the screen to the keyboard.
   static const int _countInBeats = 4;
@@ -507,16 +508,20 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// Held rather than read on demand, because the pulse has to be silenced
   /// from [dispose], where reading a provider is no longer safe.
   late final PulseClicker _pulse;
+  late final ScreenWakeLock _screenWakeLock;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _handover = AnimationController(
       vsync: this,
       duration: attemptTransition,
       value: 1,
     )..reverse();
     _pulse = ref.read(pulseClickerProvider);
+    _screenWakeLock = ref.read(screenWakeLockProvider);
+    _screenWakeLock.setEnabled(true).ignore();
     // The previous attempt's notes are still in the transcript, because
     // closing an attempt reads them after recording stops. They are not this
     // attempt's, and this screen can be asked about them before it has
@@ -532,6 +537,8 @@ class _AttemptViewState extends ConsumerState<AttemptView>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _screenWakeLock.setEnabled(false).ignore();
     _handover.dispose();
     _settling?.cancel();
     _countIn?.cancel();
@@ -540,6 +547,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // keep sounding over whatever comes next.
     unawaited(_pulse.stop());
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _screenWakeLock.setEnabled(true).ignore();
+    }
   }
 
   /// Whether the attempt has reached the end of what was asked for.

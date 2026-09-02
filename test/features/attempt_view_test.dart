@@ -11,6 +11,7 @@ import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
+import 'package:keyrecall/features/practice/screen_wake_lock.dart';
 
 import '../support/synthetic_instrument.dart';
 
@@ -104,6 +105,40 @@ void main() {
         );
       }
     }
+  });
+
+  testWidgets('keeps the screen awake while an exercise is visible', (
+    tester,
+  ) async {
+    final wakeLock = _RecordingScreenWakeLock();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          syntheticInstrument,
+          screenWakeLockProvider.overrideWithValue(wakeLock),
+        ],
+        child: MaterialApp(
+          home: Scaffold(
+            body: AttemptView(
+              exercise: exerciseUnder(GuidanceContext.unguided),
+              onFinish: (_) async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(wakeLock.states, [true]);
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+
+    expect(wakeLock.states, [true, true]);
+
+    await tester.pumpWidget(const SizedBox());
+
+    expect(wakeLock.states, [true, true, false]);
   });
 
   testWidgets('a surface for playing is on screen at every rung and phase', (
@@ -551,4 +586,11 @@ void main() {
           'screen can be asked about its own before it has played any',
     );
   });
+}
+
+class _RecordingScreenWakeLock implements ScreenWakeLock {
+  final states = <bool>[];
+
+  @override
+  Future<void> setEnabled(bool enabled) async => states.add(enabled);
 }
