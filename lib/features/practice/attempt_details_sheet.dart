@@ -22,18 +22,22 @@ Future<void> showAttemptDetails(
   context: context,
   showDragHandle: true,
   isScrollControlled: true,
-  constraints: BoxConstraints(
-    maxHeight:
-        MediaQuery.sizeOf(context).height -
-        MediaQuery.paddingOf(context).top -
-        kToolbarHeight,
-  ),
+  constraints: BoxConstraints(maxHeight: _detailsMaxHeight(context)),
   builder: (context) => AttemptDetailsSheet(
     exercise: exercise,
     trace: trace,
     achievedTempoBpm: achievedTempoBpm,
   ),
 );
+
+/// Everything below the app bar. The inset comes from the view rather than
+/// from the media query, which a scaffold has already spent on its own bar.
+double _detailsMaxHeight(BuildContext context) {
+  final view = View.of(context);
+  return MediaQuery.sizeOf(context).height -
+      view.viewPadding.top / view.devicePixelRatio -
+      kToolbarHeight;
+}
 
 class AttemptDetailsSheet extends StatelessWidget {
   const AttemptDetailsSheet({
@@ -101,12 +105,22 @@ class AttemptDetailsSheet extends StatelessWidget {
                 const SizedBox(height: 28),
                 const _SectionHeading('Tempo'),
                 const SizedBox(height: 4),
-                Text(
-                  '${achievedTempoBpm.round()} BPM overall · target '
-                  '${exercise.conditions.tempoBpm.round()}',
-                  style: theme.textTheme.bodyMedium,
+                Text.rich(
+                  TextSpan(
+                    style: theme.textTheme.bodyMedium,
+                    children: [
+                      TextSpan(text: '${achievedTempoBpm.round()} BPM overall'),
+                      TextSpan(
+                        text:
+                            ' · target '
+                            '${exercise.conditions.tempoBpm.round()}',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 24),
               ],
             ),
           ),
@@ -182,7 +196,13 @@ class _NotesDetail extends StatelessWidget {
               for (final line in departureLines) Text(line),
             ],
             const SizedBox(height: 14),
-            SizedBox(height: 24, child: _NoteStrip(trace)),
+            SizedBox(
+              height: 24,
+              child: _NoteStrip(
+                trace,
+                direction: exercise.conditions.direction,
+              ),
+            ),
             const SizedBox(height: 6),
             _TraversalLabels(direction: exercise.conditions.direction),
           ],
@@ -193,9 +213,10 @@ class _NotesDetail extends StatelessWidget {
 }
 
 class _NoteStrip extends StatelessWidget {
-  const _NoteStrip(this.trace);
+  const _NoteStrip(this.trace, {required this.direction});
 
   final AttemptDetailTrace trace;
+  final ScaleDirection direction;
 
   @override
   Widget build(BuildContext context) {
@@ -205,6 +226,7 @@ class _NoteStrip extends StatelessWidget {
         alignment: Alignment.center,
         clipBehavior: Clip.none,
         children: [
+          _TurnLine(direction: direction, momentCount: trace.momentCount),
           Container(height: 2, color: colors.outlineVariant),
           for (final (index, status) in trace.notes.indexed)
             Positioned(
@@ -247,6 +269,9 @@ class _ExtraNoteMarker extends StatelessWidget {
   }
 }
 
+/// One moment of the traversal, told apart by shape before color: the error
+/// and primary roles are both warm here, and a hue apart is not enough at ten
+/// pixels.
 class _NoteMarker extends StatelessWidget {
   const _NoteMarker(this.status);
 
@@ -255,11 +280,13 @@ class _NoteMarker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    return Container(
+    final marker = Container(
       width: 10,
       height: 10,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
+        shape: status == NoteMomentStatus.departed
+            ? BoxShape.rectangle
+            : BoxShape.circle,
         color: switch (status) {
           NoteMomentStatus.matched => colors.primary,
           NoteMomentStatus.departed => colors.error,
@@ -270,6 +297,9 @@ class _NoteMarker extends StatelessWidget {
             : null,
       ),
     );
+    return status == NoteMomentStatus.departed
+        ? Transform.rotate(angle: math.pi / 4, child: marker)
+        : marker;
   }
 }
 
@@ -300,6 +330,7 @@ class _FlowDetail extends StatelessWidget {
           _PositionStrip(
             position: gap.beforePosition.toDouble(),
             momentCount: trace.momentCount,
+            direction: exercise.conditions.direction,
           ),
           const SizedBox(height: 6),
           _TraversalLabels(direction: exercise.conditions.direction),
@@ -310,10 +341,15 @@ class _FlowDetail extends StatelessWidget {
 }
 
 class _PositionStrip extends StatelessWidget {
-  const _PositionStrip({required this.position, required this.momentCount});
+  const _PositionStrip({
+    required this.position,
+    required this.momentCount,
+    required this.direction,
+  });
 
   final double position;
   final int momentCount;
+  final ScaleDirection direction;
 
   @override
   Widget build(BuildContext context) {
@@ -324,6 +360,7 @@ class _PositionStrip extends StatelessWidget {
         builder: (context, constraints) => Stack(
           alignment: Alignment.center,
           children: [
+            _TurnLine(direction: direction, momentCount: momentCount),
             Container(height: 2, color: colors.outlineVariant),
             Positioned(
               left: _xFor(position, momentCount, constraints.maxWidth) - 5,
@@ -497,6 +534,62 @@ class _TraceSection extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Where the traversal turns around, drawn as the charts draw it.
+class _TurnLine extends StatelessWidget {
+  const _TurnLine({required this.direction, required this.momentCount});
+
+  final ScaleDirection direction;
+  final int momentCount;
+
+  @override
+  Widget build(BuildContext context) {
+    if (direction != ScaleDirection.upDown) return const SizedBox.shrink();
+    return Positioned.fill(
+      child: CustomPaint(
+        painter: _TurnLinePainter(
+          position: (momentCount - 1) / 2,
+          momentCount: momentCount,
+          color: Theme.of(context).colorScheme.outlineVariant
+              .withValues(alpha: 0.65),
+        ),
+      ),
+    );
+  }
+}
+
+class _TurnLinePainter extends CustomPainter {
+  const _TurnLinePainter({
+    required this.position,
+    required this.momentCount,
+    required this.color,
+  });
+
+  final double position;
+  final int momentCount;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final x = _xFor(position, momentCount, size.width);
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = 1;
+    for (var y = 0.0; y < size.height; y += 8) {
+      canvas.drawLine(
+        Offset(x, y),
+        Offset(x, math.min(y + 4, size.height)),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TurnLinePainter old) =>
+      old.position != position ||
+      old.momentCount != momentCount ||
+      old.color != color;
 }
 
 class _TraversalLabels extends StatelessWidget {
