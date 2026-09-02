@@ -1,7 +1,7 @@
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 
-import 'pending_decision.dart';
 import 'feedback_exposure.dart';
+import 'pending_decision.dart';
 
 /// Durable storage for one install's practice history.
 ///

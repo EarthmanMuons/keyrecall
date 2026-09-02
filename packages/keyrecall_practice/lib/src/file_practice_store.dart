@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'feedback_exposure.dart';
 import 'pending_decision.dart';
 import 'practice_store.dart';
 import 'profile_write_queue.dart';
-import 'feedback_exposure.dart';
 
 /// A [PracticeStore] backed by ordinary files, one directory per profile.
 ///
