@@ -318,15 +318,17 @@ void main() {
     );
     final realization = realize(together);
 
-    PerformanceTranscript transcriptOf(List<int> midiNotes) =>
-        PerformanceTranscript([
-          for (final (sequence, midiNote) in midiNotes.indexed)
-            PlayedNote(
-              sequence: sequence,
-              pitch: spellObservedPitch(midiNote, material: together.material),
-              timestampMs: 500 * sequence,
-            ),
-        ]);
+    PerformanceTranscript transcriptOf(
+      List<int> midiNotes, {
+      List<int>? timestamps,
+    }) => PerformanceTranscript([
+      for (final (sequence, midiNote) in midiNotes.indexed)
+        PlayedNote(
+          sequence: sequence,
+          pitch: spellObservedPitch(midiNote, material: together.material),
+          timestampMs: timestamps?[sequence] ?? 500 * sequence,
+        ),
+    ]);
 
     test('splits the registers between the hands, not through them', () {
       final split = registerSplitFor(realization);
@@ -380,6 +382,63 @@ void main() {
         hasLength(15),
         reason: 'eight slots a staff, less the one the note was written in',
       );
+    });
+
+    test('aligns loosely coordinated hands in one horizontal slot', () {
+      final split = registerSplitFor(realization);
+      final transcript = transcriptOf(
+        [split - 12, split + 12, split - 11, split + 13],
+        timestamps: [0, 70, 500, 590],
+      );
+      final grandStaff = transcriptGrandStaffFor(
+        transcript,
+        splitMidiNote: split,
+        reserve: realization.moments.length,
+      );
+
+      expect(grandStaffSlotsReachedBy(transcript, splitMidiNote: split), 2);
+      expect(notesOf(grandStaff.upper).map((note) => note.id), [
+        transcriptElementId(1),
+        transcriptElementId(3),
+      ]);
+      expect(notesOf(grandStaff.lower).map((note) => note.id), [
+        transcriptElementId(0),
+        transcriptElementId(2),
+      ]);
+      expect(
+        reservedGrandStaffIds(grandStaff),
+        hasLength(28),
+        reason: 'two played columns occupy four of two staffs\' 32 slots',
+      );
+    });
+
+    test('keeps close notes in one staff horizontally independent', () {
+      final split = registerSplitFor(realization);
+      final transcript = transcriptOf(
+        [split + 12, split + 13, split - 12],
+        timestamps: [0, 20, 40],
+      );
+
+      expect(grandStaffSlotsReachedBy(transcript, splitMidiNote: split), 2);
+      final grandStaff = transcriptGrandStaffFor(
+        transcript,
+        splitMidiNote: split,
+      );
+      expect(notesOf(grandStaff.upper).map((note) => note.id), [
+        transcriptElementId(0),
+        transcriptElementId(1),
+      ]);
+      expect(notesOf(grandStaff.lower).single.id, transcriptElementId(2));
+    });
+
+    test('separates opposite registers when timing leans apart', () {
+      final split = registerSplitFor(realization);
+      final transcript = transcriptOf(
+        [split - 12, split + 12],
+        timestamps: [0, 250],
+      );
+
+      expect(grandStaffSlotsReachedBy(transcript, splitMidiNote: split), 2);
     });
   });
 

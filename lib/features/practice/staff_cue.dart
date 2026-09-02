@@ -370,13 +370,19 @@ class TranscriptStaff extends StatelessWidget {
   Widget build(BuildContext context) {
     final realization = realize(exercise);
     if (realization.hands.length > 1) {
+      final splitMidiNote = registerSplitFor(realization);
       final whole = transcriptGrandStaffFor(
         transcript,
-        splitMidiNote: registerSplitFor(realization),
-        reserve: realization.noteCount,
+        splitMidiNote: splitMidiNote,
+        reserve: realization.moments.length,
       );
       return FittedGrandStaff(
-        grandStaff: barsOfGrandStaff(whole, barsReachedBy(transcript.length)),
+        grandStaff: barsOfGrandStaff(
+          whole,
+          barsReachedBy(
+            grandStaffSlotsReachedBy(transcript, splitMidiNote: splitMidiNote),
+          ),
+        ),
         sizing: whole,
         theme: staffTheme(context),
         // The slots are there to hold the space. Drawing them would say the

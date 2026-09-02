@@ -1,4 +1,5 @@
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
+import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 /// Turns a realization into the score a staff draws.
@@ -373,37 +374,73 @@ crisp.Score transcriptScoreFor(
 /// A note goes to the staff its register belongs to. Which hand played it is
 /// not something the input stream says, and it is not what a clef reports
 /// either: a grand staff writes low notes low, whoever played them. Every
-/// arrival takes a slot on both staves, so a note is written in one and the
-/// other holds the space, and nothing is claimed about which arrivals belonged
-/// to the same moment.
+/// Opposite-register arrivals that timing leans toward reading together share
+/// a slot. Notes in one register stay successive however close they arrive, so
+/// independent movement within a hand remains visible.
 crisp.GrandStaff transcriptGrandStaffFor(
   PerformanceTranscript transcript, {
   required int splitMidiNote,
   int reserve = 0,
 }) {
-  final slots = _slotsFor(transcript, reserve);
-  final upper = <crisp.MusicElement>[];
-  final lower = <crisp.MusicElement>[];
+  final playedSlots = _grandStaffSlotsFor(transcript, splitMidiNote);
+  final slots = _reservedSlots(playedSlots.length, reserve);
+  final upperElements = <crisp.MusicElement>[];
+  final lowerElements = <crisp.MusicElement>[];
 
   for (var index = 0; index < slots; index++) {
-    final note = index < transcript.length ? transcript.notes[index] : null;
-    final treble = note != null && note.midiNote >= splitMidiNote;
-    upper.add(
-      note != null && treble
-          ? _playedElement(note)
-          : _heldSlot(index, staff: 'treble'),
-    );
-    lower.add(
-      note != null && !treble
-          ? _playedElement(note)
-          : _heldSlot(index, staff: 'bass'),
-    );
+    final slot = index < playedSlots.length ? playedSlots[index] : null;
+    upperElements.add(switch (slot?.upper) {
+      final note? => _playedElement(note),
+      null => _heldSlot(index, staff: 'treble'),
+    });
+    lowerElements.add(switch (slot?.lower) {
+      final note? => _playedElement(note),
+      null => _heldSlot(index, staff: 'bass'),
+    });
   }
 
   return crisp.GrandStaff(
-    upper: _transcriptStaff(crisp.Clef.treble, upper),
-    lower: _transcriptStaff(crisp.Clef.bass, lower),
+    upper: _transcriptStaff(crisp.Clef.treble, upperElements),
+    lower: _transcriptStaff(crisp.Clef.bass, lowerElements),
   );
+}
+
+/// How many horizontal slots [transcript] has reached on a grand staff.
+int grandStaffSlotsReachedBy(
+  PerformanceTranscript transcript, {
+  required int splitMidiNote,
+}) => _grandStaffSlotsFor(transcript, splitMidiNote).length;
+
+List<({PlayedNote? upper, PlayedNote? lower})> _grandStaffSlotsFor(
+  PerformanceTranscript transcript,
+  int splitMidiNote,
+) {
+  final slots = <({PlayedNote? upper, PlayedNote? lower})>[];
+  final boundaries = groupObservations(transcript: transcript).boundaries;
+  const groupingPolicy = ObservationGroupingPolicy.standard;
+  final sharedSlotLimitMs =
+      (groupingPolicy.confidentlySameMs +
+          groupingPolicy.confidentlySeparateMs) ~/
+      2;
+
+  for (final (index, note) in transcript.notes.indexed) {
+    final upper = note.midiNote >= splitMidiNote;
+    final previous = slots.lastOrNull;
+    final joinsPrevious =
+        previous != null &&
+        boundaries[index - 1].gapMs <= sharedSlotLimitMs &&
+        (upper ? previous.upper == null : previous.lower == null);
+
+    if (joinsPrevious) {
+      slots[slots.length - 1] = (
+        upper: upper ? note : previous.upper,
+        lower: upper ? previous.lower : note,
+      );
+    } else {
+      slots.add((upper: upper ? note : null, lower: upper ? null : note));
+    }
+  }
+  return slots;
 }
 
 /// The register a played note is written in the treble staff from.
@@ -436,7 +473,11 @@ const int _middleC = 60;
 /// somebody who plays extra ones is given another bar rather than another
 /// note's width.
 int _slotsFor(PerformanceTranscript transcript, int reserve) {
-  final slots = transcript.length > reserve ? transcript.length : reserve;
+  return _reservedSlots(transcript.length, reserve);
+}
+
+int _reservedSlots(int played, int reserve) {
+  final slots = played > reserve ? played : reserve;
   return (slots / _eighthsPerMeasure).ceil().clamp(1, slots + 1) *
       _eighthsPerMeasure;
 }
