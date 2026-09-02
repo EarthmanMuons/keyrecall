@@ -85,7 +85,7 @@ void main() {
     ]);
     expect(
       progressStatementFor(clean, events),
-      'First clean right-hand pass at 60 BPM.',
+      'First clean right-hand run at 60 BPM.',
     );
   });
 
@@ -100,7 +100,7 @@ void main() {
     ]);
     expect(
       progressStatementFor(clean, events),
-      'First clean right-hand pass from memory at 60 BPM.',
+      'First clean right-hand run from memory at 60 BPM.',
     );
   });
 
@@ -190,7 +190,7 @@ void main() {
 
     expect(
       progressStatementFor(clean, events),
-      'First clean right-hand pass from memory at 122 BPM.',
+      'First clean right-hand run from memory at 122 BPM.',
     );
   });
 

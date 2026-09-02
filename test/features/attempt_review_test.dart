@@ -188,7 +188,7 @@ void main() {
     expect(find.text('Notes'), findsOneWidget);
     expect(find.textContaining('termination'), findsNothing);
     expect(
-      find.text('First clean right-hand pass from memory at 122 BPM.'),
+      find.text('First clean right-hand run from memory at 122 BPM.'),
       findsOneWidget,
     );
     expect(find.text('122 BPM · target 60'), findsOneWidget);
@@ -218,7 +218,7 @@ void main() {
       lessThan(
         tester
             .getTopLeft(
-              find.text('First clean right-hand pass from memory at 122 BPM.'),
+              find.text('First clean right-hand run from memory at 122 BPM.'),
             )
             .dy,
       ),

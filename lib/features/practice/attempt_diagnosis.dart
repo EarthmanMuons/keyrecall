@@ -116,8 +116,8 @@ class AttemptDiagnosis {
     return switch (fault) {
       null =>
         handsTogether
-            ? 'Clean pass, hands together the whole way.'
-            : 'Clean pass, steady the whole way.',
+            ? 'Played cleanly, hands together the whole way.'
+            : 'Played cleanly and steadily throughout.',
       AttemptFault.notes => _notesSentence,
       AttemptFault.continuity =>
         'The notes were right; the pause$_where broke it up.',

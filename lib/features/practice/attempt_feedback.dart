@@ -101,7 +101,7 @@ String? progressStatementFor(
     ProgressEventKind.firstIndependentCompletion,
   );
   if (firstClean && firstIndependent) {
-    return 'First clean ${_handsPhrase(current)} pass from memory at '
+    return 'First clean ${_handsPhrase(current)} run from memory at '
         '${_achievedTempo(current)} BPM.';
   }
   if (kinds.contains(ProgressEventKind.repeatedReliability) &&
@@ -111,7 +111,7 @@ String? progressStatementFor(
   }
   return switch (events.single.type) {
     ProgressEventKind.firstCleanCompletion =>
-      'First clean ${_handsPhrase(current)} pass at '
+      'First clean ${_handsPhrase(current)} run at '
           '${_achievedTempo(current)} BPM.',
     ProgressEventKind.firstIndependentCompletion =>
       'First time through from memory at ${_achievedTempo(current)} BPM.',

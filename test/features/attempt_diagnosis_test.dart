@@ -68,14 +68,14 @@ void main() {
     )!;
   }
 
-  group('a clean pass', () {
+  group('a clean run', () {
     test('says so, and names nothing that did not happen', () {
       final diagnosis = diagnosisOf(played(expected));
 
       expect(diagnosis.finished, isTrue);
       expect(diagnosis.fault, isNull);
       expect(diagnosis.where, isNull);
-      expect(diagnosis.sentence, 'Clean pass, steady the whole way.');
+      expect(diagnosis.sentence, 'Played cleanly and steadily throughout.');
     });
   });
 
@@ -216,7 +216,7 @@ void main() {
       final diagnosis = diagnosisOf(withSpread(from: 0), of: together);
 
       expect(diagnosis.fault, isNull);
-      expect(diagnosis.sentence, 'Clean pass, hands together the whole way.');
+      expect(diagnosis.sentence, 'Played cleanly, hands together the whole way.');
     });
 
     test('hands that came apart are named, and placed', () {
