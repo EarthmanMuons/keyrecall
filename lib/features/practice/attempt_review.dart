@@ -226,13 +226,7 @@ class AttemptReview extends StatelessWidget {
                       ],
                       if (progress != null) ...[
                         const SizedBox(height: 24),
-                        Text(
-                          progress,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          textAlign: TextAlign.start,
-                        ),
+                        _ProgressStatement(progress),
                       ],
                       const SizedBox(height: 40),
                       const Spacer(),
@@ -277,6 +271,64 @@ class AttemptReview extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A milestone, set apart from the commentary around it.
+///
+/// Progress events are rare, so this can afford to be noticed. The sentence
+/// stays factual and the container carries the emphasis, which keeps a
+/// measurement from reading as a reward.
+class _ProgressStatement extends StatelessWidget {
+  const _ProgressStatement(this.statement);
+
+  final String statement;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    return Semantics(
+      label: 'Progress. $statement',
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+          decoration: BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome,
+                    size: 16,
+                    color: colors.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Progress',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: colors.onPrimaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                statement,
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: colors.onPrimaryContainer,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ),
         ),
       ),

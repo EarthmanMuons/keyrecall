@@ -191,6 +191,7 @@ void main() {
       find.text('First clean right-hand run from memory at 122 BPM.'),
       findsOneWidget,
     );
+    expect(find.text('Progress'), findsOneWidget);
     expect(find.text('122 BPM · target 60'), findsOneWidget);
     expect(find.text('Up next'), findsOneWidget);
     expect(find.text('G major'), findsOneWidget);
