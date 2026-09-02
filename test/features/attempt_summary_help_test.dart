@@ -13,7 +13,7 @@ void main() {
       'Coordination',
       'Tempo',
     ]);
-    expect(attemptSummaryIntroduction, contains('this attempt'));
+    expect(attemptSummaryIntroduction, contains('this exercise attempt'));
     expect(attemptSummaryIntroduction, contains('not your overall skill'));
   });
 

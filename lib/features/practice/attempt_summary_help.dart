@@ -3,7 +3,8 @@ import 'package:material_ui/material_ui.dart';
 import 'task_help.dart';
 
 const String attemptSummaryIntroduction =
-    'These lines describe this attempt, not your overall skill level.';
+    'These lines describe this exercise attempt, not your overall skill '
+    'level.';
 
 List<(String term, String meaning)> attemptSummaryHelpEntries({
   required bool includesCoordination,
@@ -26,7 +27,6 @@ List<(String term, String meaning)> attemptSummaryHelpEntries({
 Future<void> showAttemptSummaryHelp(
   BuildContext context, {
   required bool includesCoordination,
-  Widget? debugDetails,
 }) => showTermHelp(
   context,
   title: 'What KeyRecall heard',
@@ -34,6 +34,4 @@ Future<void> showAttemptSummaryHelp(
   entries: attemptSummaryHelpEntries(
     includesCoordination: includesCoordination,
   ),
-  appendixTitle: debugDetails == null ? null : 'Measurement details',
-  appendix: debugDetails,
 );

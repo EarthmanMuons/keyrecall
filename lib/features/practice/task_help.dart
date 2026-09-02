@@ -21,19 +21,12 @@ Future<void> showTermHelp(
   required String title,
   required List<(String term, String meaning)> entries,
   String? introduction,
-  String? appendixTitle,
-  Widget? appendix,
 }) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
   isScrollControlled: true,
-  builder: (context) => _TermHelp(
-    title: title,
-    introduction: introduction,
-    entries: entries,
-    appendixTitle: appendixTitle,
-    appendix: appendix,
-  ),
+  builder: (context) =>
+      _TermHelp(title: title, introduction: introduction, entries: entries),
 );
 
 /// What each term on the task statement means, in the order the statement
@@ -91,15 +84,11 @@ class _TermHelp extends StatelessWidget {
     required this.title,
     required this.entries,
     this.introduction,
-    this.appendixTitle,
-    this.appendix,
   });
 
   final String title;
   final String? introduction;
   final List<(String term, String meaning)> entries;
-  final String? appendixTitle;
-  final Widget? appendix;
 
   @override
   Widget build(BuildContext context) {
@@ -131,15 +120,6 @@ class _TermHelp extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                ],
-                if (appendix case final appendix?) ...[
-                  const Divider(),
-                  const SizedBox(height: 16),
-                  if (appendixTitle case final title?) ...[
-                    Text(title, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 12),
-                  ],
-                  appendix,
                 ],
               ],
             ),

@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -194,13 +192,6 @@ class AttemptReview extends StatelessWidget {
                           onHelp: () => showAttemptSummaryHelp(
                             context,
                             includesCoordination: summary.coordination != null,
-                            debugDetails: kReleaseMode
-                                ? null
-                                : _Measured(
-                                    record: record,
-                                    next: upcoming,
-                                    diagnosis: diagnosis,
-                                  ),
                           ),
                         ),
                         if (detailTrace != null) ...[
@@ -472,78 +463,3 @@ class _TempoRow extends StatelessWidget {
 }
 
 String _tempoText(double bpm) => bpm.round().toString();
-
-/// Development details for evaluating diagnosis and learner updates.
-class _Measured extends StatelessWidget {
-  const _Measured({
-    required this.record,
-    required this.next,
-    required this.diagnosis,
-  });
-
-  final AttemptRecord record;
-  final PresentedAttempt? next;
-  final AttemptDiagnosis? diagnosis;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final decision = next?.decision.decision;
-    final rows = <(String, String)>[
-      ('termination', record.closure.termination.id),
-      if (diagnosis case final diagnosis?) ...[
-        ('fault', diagnosis.fault?.name ?? 'none'),
-        ('located', diagnosis.where?.name ?? 'nowhere'),
-      ],
-      ...switch (record.closure.measurement) {
-        Measured(:final outcome, :final weights) => [
-          ('retrieval', outcome.retrieval.name),
-          ('started / completed', '${outcome.started} / ${outcome.completed}'),
-          ('achieved tempo', outcome.achievedTempoRatio.toStringAsFixed(3)),
-          (
-            'attributed at',
-            '${(record.exercise.conditions.tempoBpm * outcome.achievedTempoRatio.clamp(0, 1)).round()} '
-                'of ${record.exercise.conditions.tempoBpm.round()} bpm',
-          ),
-          ('motor score', outcome.motorScore.toStringAsFixed(3)),
-          ('pitch integrity', outcome.pitchIntegrity.toStringAsFixed(3)),
-          ('continuity', outcome.continuity.toStringAsFixed(3)),
-          ('temporal stability', outcome.temporalStability.toStringAsFixed(3)),
-          (
-            'coordination',
-            outcome.coordination?.toStringAsFixed(3) ?? 'one hand',
-          ),
-          ('topology accuracy', outcome.topologyAccuracy.toStringAsFixed(3)),
-          (
-            'weights exec / mem',
-            '${weights.materialExecution.toStringAsFixed(2)} / '
-                '${weights.materialMemory.toStringAsFixed(2)}',
-          ),
-        ],
-        MeasurementUnavailable(:final reason) => [('unmeasured', reason.id)],
-      },
-      if (decision != null) ...[
-        ('next tier', decision.eligibilityTier.id),
-        ('next bypass', decision.challengeBypass?.id ?? 'none'),
-        ('next predicted', decision.prediction.overallP.toStringAsFixed(3)),
-      ],
-    ];
-
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: DefaultTextStyle(
-        style: theme.textTheme.bodySmall!.copyWith(
-          fontFamily: 'monospace',
-          color: theme.colorScheme.onSurfaceVariant,
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            for (final (label, value) in rows)
-              Text('${label.padRight(20)} $value'),
-          ],
-        ),
-      ),
-    );
-  }
-}
