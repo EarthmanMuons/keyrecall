@@ -175,15 +175,17 @@ class AttemptReview extends StatelessWidget {
               child: ConstrainedBox(
                 constraints: BoxConstraints(minHeight: constraints.maxHeight),
                 child: IntrinsicHeight(
+                  // What happened reads from the top left as feedback; what
+                  // comes next is anchored to the button, so the transition
+                  // sits in the same place however long the feedback runs.
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      const Spacer(),
                       Text(
                         diagnosis?.sentence ??
                             unreadableSentence(record.closure),
                         style: theme.textTheme.headlineMedium,
-                        textAlign: TextAlign.center,
+                        textAlign: TextAlign.start,
                       ),
                       if (summary != null) ...[
                         const SizedBox(height: 28),
@@ -229,10 +231,11 @@ class AttemptReview extends StatelessWidget {
                           style: theme.textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
-                          textAlign: TextAlign.center,
+                          textAlign: TextAlign.start,
                         ),
                       ],
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 40),
+                      const Spacer(),
                       if (upcoming != null) ...[
                         Text(
                           'Up next',
@@ -257,8 +260,8 @@ class AttemptReview extends StatelessWidget {
                             textAlign: TextAlign.center,
                           ),
                         ],
+                        const SizedBox(height: 32),
                       ],
-                      const Spacer(),
                       SizedBox(
                         height: 88,
                         child: FilledButton(
