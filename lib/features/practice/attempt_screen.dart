@@ -112,6 +112,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         ),
         body: AttemptReview(
           record: committed,
+          history: loop.value!.session.journal.records,
           reading: loop.value?.lastReading,
           next: loop.value?.presented,
           onNext: () =>

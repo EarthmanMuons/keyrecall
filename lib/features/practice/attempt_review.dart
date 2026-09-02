@@ -8,6 +8,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import '../../layout.dart';
 import 'attempt_diagnosis.dart';
+import 'attempt_feedback.dart';
 import 'exercise_presentation.dart';
 
 /// Why the scheduler chose what it chose, when it can be said honestly.
@@ -111,6 +112,7 @@ class AttemptReview extends StatelessWidget {
     required this.record,
     required this.next,
     required this.onNext,
+    required this.history,
     this.reading,
     super.key,
   });
@@ -124,6 +126,9 @@ class AttemptReview extends StatelessWidget {
   /// What has been decided to come next, if anything.
   final PresentedAttempt? next;
 
+  /// Attempts available when deriving longitudinal progress evidence.
+  final Iterable<AttemptRecord> history;
+
   /// Dismisses this and puts the next exercise on screen.
   final VoidCallback onNext;
 
@@ -136,6 +141,8 @@ class AttemptReview extends StatelessWidget {
       reading: reading,
     );
     final upcoming = next;
+    final summary = summarizeAttempt(record);
+    final progress = progressEventFor(record, history: history);
     final reason = upcoming == null
         ? null
         : reasonForNext(
@@ -162,6 +169,18 @@ class AttemptReview extends StatelessWidget {
                 style: theme.textTheme.headlineMedium,
                 textAlign: TextAlign.center,
               ),
+              if (summary != null) ...[
+                const SizedBox(height: 28),
+                _AttemptSummaryView(summary),
+              ],
+              if (progress != null) ...[
+                const SizedBox(height: 24),
+                Text(
+                  progress.sentence,
+                  style: theme.textTheme.titleMedium,
+                  textAlign: TextAlign.center,
+                ),
+              ],
               const SizedBox(height: 32),
               if (upcoming != null) ...[
                 Text(
@@ -210,6 +229,129 @@ class AttemptReview extends StatelessWidget {
     );
   }
 }
+
+class _AttemptSummaryView extends StatelessWidget {
+  const _AttemptSummaryView(this.summary);
+
+  final AttemptSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _QualityRow(label: 'Notes', value: summary.notes),
+        const SizedBox(height: 12),
+        _QualityRow(label: 'Flow', value: summary.flow),
+        const SizedBox(height: 12),
+        _QualityRow(label: 'Pulse', value: summary.pulse),
+        if (summary.coordination case final coordination?) ...[
+          const SizedBox(height: 12),
+          _QualityRow(label: 'Coordination', value: coordination),
+        ],
+        const SizedBox(height: 12),
+        _TempoRow(
+          achieved: summary.achievedTempoBpm,
+          target: summary.targetTempoBpm,
+        ),
+      ],
+    );
+  }
+}
+
+class _QualityRow extends StatelessWidget {
+  const _QualityRow({required this.label, required this.value});
+
+  final String label;
+  final double value;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bounded = value.clamp(0.0, 1.0);
+    return Semantics(
+      label: label,
+      value: '${(bounded * 100).round()} percent',
+      child: ExcludeSemantics(
+        child: Row(
+          children: [
+            SizedBox(
+              width: 96,
+              child: Text(label, style: theme.textTheme.labelLarge),
+            ),
+            Expanded(
+              child: SizedBox(
+                height: 14,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 5),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        height: 2,
+                        color: theme.colorScheme.outlineVariant,
+                      ),
+                      Align(
+                        alignment: Alignment(bounded * 2 - 1, 0),
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TempoRow extends StatelessWidget {
+  const _TempoRow({required this.achieved, required this.target});
+
+  final double achieved;
+  final double target;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final achievedText = _tempoText(achieved);
+    final targetText = _tempoText(target);
+    return Semantics(
+      label: 'Tempo',
+      value: '$achievedText BPM, target $targetText BPM',
+      child: ExcludeSemantics(
+        child: Row(
+          children: [
+            SizedBox(
+              width: 96,
+              child: Text('Tempo', style: theme.textTheme.labelLarge),
+            ),
+            Text('$achievedText BPM', style: theme.textTheme.bodyMedium),
+            const Spacer(),
+            Text(
+              'target $targetText',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _tempoText(double bpm) => bpm == bpm.roundToDouble()
+    ? bpm.round().toString()
+    : bpm.toStringAsFixed(1);
 
 /// The numbers behind the sentence above it.
 ///
