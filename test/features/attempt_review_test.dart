@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/attempt_review.dart';
@@ -117,6 +118,15 @@ void main() {
         memoryUpdate: const MemoryUpdateDiagnostics(),
       ),
     );
+    var transcript = PerformanceTranscript.empty;
+    for (final moment in realize(previous).moments) {
+      transcript = transcript.appending(
+        pitch: moment.noteFor(Hand.right)!.pitch,
+        timestampMs: transcript.length * 492,
+      );
+    }
+    final reading = readPerformance(exercise: previous, transcript: transcript);
+    var detailsViewed = 0;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -124,8 +134,10 @@ void main() {
           body: AttemptReview(
             record: record,
             history: [record],
+            reading: reading,
             next: null,
             onNext: () {},
+            onDetailsViewed: () => detailsViewed++,
           ),
         ),
       ),
@@ -157,6 +169,12 @@ void main() {
     expect(find.textContaining('motor score'), findsOneWidget);
     expect(find.text('Coordination'), findsNothing);
     Navigator.of(tester.element(find.text('What KeyRecall heard'))).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Details'));
+    await tester.pumpAndSettle();
+    expect(find.text('Attempt details'), findsOneWidget);
+    expect(detailsViewed, 1);
+    Navigator.of(tester.element(find.text('Attempt details'))).pop();
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Done'), 200);
     expect(find.text('Done'), findsOneWidget);

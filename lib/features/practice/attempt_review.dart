@@ -7,6 +7,8 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import 'attempt_detail_trace.dart';
+import 'attempt_details_sheet.dart';
 import 'attempt_diagnosis.dart';
 import 'attempt_feedback.dart';
 import 'attempt_summary_help.dart';
@@ -115,6 +117,7 @@ class AttemptReview extends StatelessWidget {
     required this.onNext,
     required this.history,
     this.reading,
+    this.onDetailsViewed,
     super.key,
   });
 
@@ -123,6 +126,8 @@ class AttemptReview extends StatelessWidget {
 
   /// What it was read from, when the closure came from a performance.
   final PerformanceReading? reading;
+
+  final VoidCallback? onDetailsViewed;
 
   /// What has been decided to come next, if anything.
   final PresentedAttempt? next;
@@ -143,6 +148,9 @@ class AttemptReview extends StatelessWidget {
     );
     final upcoming = next;
     final summary = summarizeAttempt(record);
+    final detailTrace = reading == null
+        ? null
+        : attemptDetailTraceFor(reading!);
     final progressEvents = progressEventsFor(record, history: history);
     final progress = progressStatementFor(record, progressEvents);
     final reason = upcoming == null
@@ -200,6 +208,26 @@ class AttemptReview extends StatelessWidget {
                           progress,
                           style: theme.textTheme.titleMedium,
                           textAlign: TextAlign.center,
+                        ),
+                      ],
+                      if (detailTrace != null && summary != null) ...[
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton.icon(
+                            onPressed: () async {
+                              final details = showAttemptDetails(
+                                context,
+                                exercise: record.exercise,
+                                trace: detailTrace,
+                                achievedTempoBpm: summary.achievedTempoBpm,
+                              );
+                              onDetailsViewed?.call();
+                              await details;
+                            },
+                            icon: const Icon(Icons.query_stats),
+                            label: const Text('Details'),
+                          ),
                         ),
                       ],
                       const SizedBox(height: 32),

@@ -28,6 +28,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  fl_chart: ^1.2.0
+
   keyrecall_alignment:
     path: packages/keyrecall_alignment
   keyrecall_domain:
