@@ -342,9 +342,10 @@ class _ProgressStatement extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'Progress',
+                    'PROGRESS',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: colors.onPrimaryContainer,
+                      letterSpacing: 1.1,
                     ),
                   ),
                 ],
