@@ -1,10 +1,9 @@
-import 'dart:io';
-
 import 'package:material_ui/material_ui.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/demo_input/demo_input.dart';
 import 'package:keyrecall/features/input/input.dart';
@@ -12,13 +11,6 @@ import 'package:keyrecall/features/practice/developer_screen.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
 void main() {
-  late Directory root;
-
-  setUp(() {
-    root = Directory.systemTemp.createTempSync('keyrecall_widget_test');
-    addTearDown(() => root.deleteSync(recursive: true));
-  });
-
   /// The panel is a tall stack of sections, and the default test window is
   /// short enough that the lower ones are never laid out.
   void useTallWindow(WidgetTester tester) {
@@ -27,14 +19,17 @@ void main() {
     addTearDown(tester.view.reset);
   }
 
-  /// Pumps the panel with its storage already opened.
-  ///
-  /// Opening a session is real file I/O, which the test binding's fake clock
-  /// does not advance, so it has to happen in [WidgetTester.runAsync].
   Future<ProviderContainer> pumpPanel(WidgetTester tester) async {
     useTallWindow(tester);
     final container = ProviderContainer(
-      overrides: [storageRootProvider.overrideWith((ref) async => root)],
+      overrides: [
+        profileRepositoryProvider.overrideWith(
+          (ref) async => InMemoryProfileRepository(),
+        ),
+        practiceStoreProvider.overrideWith(
+          (ref) async => InMemoryPracticeStore(),
+        ),
+      ],
     );
     addTearDown(container.dispose);
 
@@ -43,12 +38,10 @@ void main() {
     // The synthetic instrument, rather than the MIDI stack a test has no
     // radio for.
     container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
-    await tester.runAsync(() async {
-      await container
-          .read(profileRosterProvider.notifier)
-          .place(PlacementTier.someExperience);
-      await container.read(practiceLoopProvider.future);
-    });
+    await container
+        .read(profileRosterProvider.notifier)
+        .place(PlacementTier.someExperience);
+    await container.read(practiceLoopProvider.future);
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,

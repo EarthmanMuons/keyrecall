@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -10,36 +8,26 @@ import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 import 'package:keyrecall/features/practice/profiles_screen.dart';
 
-/// The profile screen driven the way somebody maintaining several histories
-/// would drive it.
-///
-/// Reading the roster and switching profiles only, which is the part of this
-/// screen the practice loop depends on. Adding, renaming, erasing, and
-/// deleting all run through a dialog, and driving a dialog that writes to disk
-/// means taps under the fake clock and file I/O under the real one at the same
-/// time; those tests spent longer fighting the harness than the code was worth.
-/// The repository operations underneath them are covered directly in
-/// keyrecall_practice, both in memory and on files.
 void main() {
-  late Directory root;
+  late InMemoryProfileRepository profiles;
+  late InMemoryPracticeStore practice;
 
   setUp(() {
-    root = Directory.systemTemp.createTempSync('keyrecall_profiles_ui_test');
-    addTearDown(() => root.deleteSync(recursive: true));
+    profiles = InMemoryProfileRepository();
+    practice = InMemoryPracticeStore();
   });
 
   ProviderContainer containerOn() {
     final container = ProviderContainer(
-      overrides: [storageRootProvider.overrideWith((ref) async => root)],
+      overrides: [
+        profileRepositoryProvider.overrideWith((ref) async => profiles),
+        practiceStoreProvider.overrideWith((ref) async => practice),
+      ],
     );
     addTearDown(container.dispose);
     return container;
   }
 
-  /// Pumps the screen with the roster already read from storage.
-  ///
-  /// Reading it is real file I/O, which the test binding's fake clock does not
-  /// advance, so it has to happen in [WidgetTester.runAsync].
   Future<void> pumpProfiles(
     WidgetTester tester,
     ProviderContainer container,
@@ -48,7 +36,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    await tester.runAsync(() => container.read(profileRosterProvider.future));
+    await container.read(profileRosterProvider.future);
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -58,13 +46,9 @@ void main() {
     await tester.pump();
   }
 
-  /// Taps [finder] and lets the storage writes it starts actually finish.
   Future<void> tapAndSettle(WidgetTester tester, Finder finder) async {
-    await tester.runAsync(() async {
-      await tester.tap(finder);
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-    });
-    await tester.pump();
+    await tester.tap(finder);
+    await tester.pumpAndSettle();
   }
 
   Future<(Profile, Profile)> seedTwo(ProviderContainer container) async {
@@ -85,7 +69,7 @@ void main() {
     tester,
   ) async {
     final container = containerOn();
-    await tester.runAsync(() => seedTwo(container));
+    await seedTwo(container);
     await pumpProfiles(tester, container);
 
     expect(find.text('Alice'), findsOneWidget);
@@ -126,10 +110,8 @@ void main() {
       expect(find.text('Where should we start?'), findsOneWidget);
       await tapAndSettle(tester, find.text('I’m new to scales.'));
 
-      final repository = await tester.runAsync(
-        () => container.read(profileRepositoryProvider.future),
-      );
-      final created = (await tester.runAsync(() => repository!.list()))!.single;
+      final repository = await container.read(profileRepositoryProvider.future);
+      final created = (await repository.list()).single;
       expect(created.displayName, 'Cass');
       expect(
         created.placement,
@@ -149,11 +131,9 @@ void main() {
       await nameAndContinue(tester, 'Cass');
       await tapAndSettle(tester, find.text('Cancel'));
 
-      final repository = await tester.runAsync(
-        () => container.read(profileRepositoryProvider.future),
-      );
+      final repository = await container.read(profileRepositoryProvider.future);
       expect(
-        await tester.runAsync(() => repository!.list()),
+        await repository.list(),
         isEmpty,
         reason:
             'a placement nobody chose is not one to invent on their '
@@ -166,26 +146,22 @@ void main() {
     tester,
   ) async {
     final container = containerOn();
-    final (_, bob) =
-        await tester.runAsync(() => seedTwo(container)) as (Profile, Profile);
+    final (_, bob) = await seedTwo(container);
     await pumpProfiles(tester, container);
 
     await tapAndSettle(tester, find.text('Bob'));
 
-    final loop = await tester.runAsync(
-      () => container.read(practiceLoopProvider.future),
-    );
-    expect(loop!.profile.id, bob.id);
+    final loop = await container.read(practiceLoopProvider.future);
+    expect(loop.profile.id, bob.id);
   });
 
   test('profile authority is removed before history cleanup', () async {
-    final repository = FileProfileRepository(root);
+    final repository = InMemoryProfileRepository();
     final profile = await repository.create(
       displayName: 'Alice',
       placement: PlacementTier.someExperience,
     );
-    final history = File('${root.path}/${profile.id}/journal.jsonl');
-    final store = _FailingEraseStore(FilePracticeStore(root));
+    final store = _FailingEraseStore(InMemoryPracticeStore());
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => repository),
@@ -194,15 +170,12 @@ void main() {
     );
     addTearDown(container.dispose);
     await container.read(profileRosterProvider.future);
-    history.writeAsStringSync('orphaned history');
-
     await expectLater(
       container.read(profileRosterProvider.notifier).remove(profile.id),
       throwsStateError,
     );
 
     expect(await repository.find(profile.id), isNull);
-    expect(history.existsSync(), isTrue);
   });
 }
 

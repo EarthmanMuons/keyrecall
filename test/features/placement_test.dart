@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -19,16 +17,20 @@ import 'package:keyrecall/features/practice/practice_providers.dart';
 /// and nothing can change it afterwards, so a profile that exists before
 /// somebody has chosen is a learner started from a tier nobody picked.
 void main() {
-  late Directory root;
+  late InMemoryProfileRepository profiles;
+  late InMemoryPracticeStore practice;
 
   setUp(() {
-    root = Directory.systemTemp.createTempSync('keyrecall_placement_ui_test');
-    addTearDown(() => root.deleteSync(recursive: true));
+    profiles = InMemoryProfileRepository();
+    practice = InMemoryPracticeStore();
   });
 
   ProviderContainer containerOn() {
     final container = ProviderContainer(
-      overrides: [storageRootProvider.overrideWith((ref) async => root)],
+      overrides: [
+        profileRepositoryProvider.overrideWith((ref) async => profiles),
+        practiceStoreProvider.overrideWith((ref) async => practice),
+      ],
     );
     addTearDown(container.dispose);
     return container;
@@ -45,7 +47,7 @@ void main() {
     // The synthetic instrument, rather than the MIDI stack a test has no
     // radio for.
     container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
-    await tester.runAsync(() => container.read(profileRosterProvider.future));
+    await container.read(profileRosterProvider.future);
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
@@ -55,15 +57,8 @@ void main() {
     await tester.pump();
   }
 
-  Future<List<Profile>> profilesIn(
-    WidgetTester tester,
-    ProviderContainer container,
-  ) async {
-    final repository = await tester.runAsync(
-      () => container.read(profileRepositoryProvider.future),
-    );
-    return (await tester.runAsync(() => repository!.list()))!;
-  }
+  Future<List<Profile>> profilesIn(ProviderContainer container) async =>
+      (await container.read(profileRepositoryProvider.future)).list();
 
   testWidgets('an install with nobody on it opens on the question', (
     tester,
@@ -92,7 +87,7 @@ void main() {
     // The screen has been built, the roster read, and the loop is behind the
     // gate. None of that may have brought a learner into existence.
     expect(
-      await profilesIn(tester, container),
+      await profilesIn(container),
       isEmpty,
       reason:
           'a profile written before the answer carries a placement nobody '
@@ -106,13 +101,10 @@ void main() {
     final container = containerOn();
     await pumpGate(tester, container);
 
-    await tester.runAsync(() async {
-      await tester.tap(find.text(PlacementTier.beginner.headline));
-      await Future<void>.delayed(const Duration(milliseconds: 300));
-    });
-    await tester.pump();
+    await tester.tap(find.text(PlacementTier.beginner.headline));
+    await tester.pumpAndSettle();
 
-    final created = (await profilesIn(tester, container)).single;
+    final created = (await profilesIn(container)).single;
     expect(created.placement, PlacementTier.beginner);
     expect(
       created.displayName,
@@ -127,13 +119,11 @@ void main() {
     tester,
   ) async {
     final container = containerOn();
-    await tester.runAsync(() async {
-      final repository = await container.read(profileRepositoryProvider.future);
-      await repository.create(
-        displayName: 'Alice',
-        placement: PlacementTier.advanced,
-      );
-    });
+    final repository = await container.read(profileRepositoryProvider.future);
+    await repository.create(
+      displayName: 'Alice',
+      placement: PlacementTier.advanced,
+    );
     await pumpGate(tester, container);
 
     expect(find.text('Where should we start?'), findsNothing);

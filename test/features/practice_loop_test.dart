@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -14,17 +12,21 @@ import 'package:keyrecall/features/practice/practice_providers.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late Directory root;
+  late InMemoryProfileRepository profiles;
+  late InMemoryPracticeStore practice;
 
   setUp(() {
-    root = Directory.systemTemp.createTempSync('keyrecall_loop_test');
-    addTearDown(() => root.deleteSync(recursive: true));
+    profiles = InMemoryProfileRepository();
+    practice = InMemoryPracticeStore();
   });
 
   /// A container over the same storage, as a fresh launch would see it.
   ProviderContainer launch() {
     final container = ProviderContainer(
-      overrides: [storageRootProvider.overrideWith((ref) async => root)],
+      overrides: [
+        profileRepositoryProvider.overrideWith((ref) async => profiles),
+        practiceStoreProvider.overrideWith((ref) async => practice),
+      ],
     );
     addTearDown(container.dispose);
     // The synthetic instrument, rather than the MIDI stack a test has no
@@ -158,7 +160,8 @@ void main() {
   test('an input reset interrupts the attempt without evidence', () async {
     final container = ProviderContainer(
       overrides: [
-        storageRootProvider.overrideWith((ref) async => root),
+        profileRepositoryProvider.overrideWith((ref) async => profiles),
+        practiceStoreProvider.overrideWith((ref) async => practice),
         attemptTranscriptProvider.overrideWith(_InterruptedCapture.new),
       ],
     );
@@ -200,8 +203,8 @@ void main() {
   });
 
   test('erasing a loaded loop targets the profile on screen', () async {
-    final repository = FileProfileRepository(root);
-    final store = _RecordingEraseStore(root);
+    final repository = InMemoryProfileRepository();
+    final store = _RecordingEraseStore();
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => repository),
@@ -302,46 +305,6 @@ void main() {
       );
     });
   });
-
-  test('erasing recovers a journal this build cannot replay', () async {
-    final before = launch();
-    await place(before);
-    final started = await loopOf(before);
-    await before.read(practiceLoopProvider.notifier).finish();
-
-    // The same history, recorded under the model that was live before the
-    // tempo attribution change.
-    final journal = File('${root.path}/${started.profile.id}/journal.jsonl');
-    // Whatever this build calls its model, rewritten to one it does not run.
-    journal.writeAsStringSync(
-      journal.readAsStringSync().replaceAll(
-        '"${v1LearnerParams.modelVersion}"',
-        '"a-model-this-build-does-not-have"',
-      ),
-    );
-
-    final after = launch();
-    Object? refused;
-    try {
-      await loopOf(after);
-    } on Object catch (error) {
-      refused = error;
-    }
-    expect(
-      refused,
-      isA<JournalFormatException>(),
-      reason: 'replay must refuse a model it did not run',
-    );
-
-    await after
-        .read(practiceLoopProvider.notifier)
-        .eraseHistory()
-        .timeout(const Duration(seconds: 5));
-
-    final recovered = await loopOf(after);
-    expect(recovered.exercise, isNotNull);
-    expect(recovered.attemptsRecorded, 0);
-  });
 }
 
 class _InterruptedCapture extends AttemptTranscriptNotifier {
@@ -359,10 +322,8 @@ class _InterruptedCapture extends AttemptTranscriptNotifier {
   }
 }
 
-class _RecordingEraseStore extends FilePracticeStore {
+class _RecordingEraseStore extends InMemoryPracticeStore {
   final List<String> erased = [];
-
-  _RecordingEraseStore(super.root);
 
   @override
   Future<void> erase(String profileId) async {

@@ -40,18 +40,16 @@ void main() {
             expect(setAside.pressured.isRanked, isTrue);
             expect(setAside.relieving.isRanked, isTrue);
           }
-        }
-      });
-
-      test('${player.id} is untouched where pressure never forms', () {
-        for (var seed = 0; seed < seeds; seed++) {
-          final log = PacingLog();
-          final trajectory = _run(seed, player, paced, log: log);
-          if (log.setAsides.isNotEmpty) continue;
-          expect(
-            [for (final slot in trajectory.slots) slot.chosen],
-            [for (final slot in _run(seed, player, unpaced).slots) slot.chosen],
-          );
+          if (log.setAsides.isEmpty) {
+            expect(
+              [for (final slot in trajectory.slots) slot.chosen],
+              [
+                for (final slot in _run(seed, player, unpaced).slots)
+                  slot.chosen,
+              ],
+              reason: 'seed $seed formed no pressure',
+            );
+          }
         }
       });
     }

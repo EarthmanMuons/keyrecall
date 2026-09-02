@@ -74,9 +74,17 @@ run_tests() {
 }
 
 for package in packages/*/; do
-  run_tests "${package%/}"
+  run_tests "${package%/}" &
+  test_pids="$test_pids $!"
 done
-run_tests .
+run_tests . &
+test_pids="$test_pids $!"
+
+test_status=0
+for test_pid in $test_pids; do
+  wait "$test_pid" || test_status=1
+done
+exit "$test_status"
 """
 
 [tasks."dart:check"]
