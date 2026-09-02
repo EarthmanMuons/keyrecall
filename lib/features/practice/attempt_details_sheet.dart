@@ -360,24 +360,29 @@ class _TraceSection extends StatelessWidget {
                           ],
                         ),
                         lineBarsData: [
-                          LineChartBarData(
-                            spots: [
-                              for (final point in points)
-                                FlSpot(point.position.toDouble(), point.value),
-                            ],
-                            isCurved: false,
-                            color: theme.colorScheme.primary,
-                            barWidth: 2,
-                            dotData: FlDotData(
-                              getDotPainter: (spot, percent, barData, index) =>
-                                  FlDotCirclePainter(
-                                    radius: 3,
-                                    color: theme.colorScheme.primary,
-                                    strokeWidth: 0,
+                          for (final segment in _contiguousSegments(points))
+                            LineChartBarData(
+                              spots: [
+                                for (final point in segment)
+                                  FlSpot(
+                                    point.position.toDouble(),
+                                    point.value,
                                   ),
+                              ],
+                              isCurved: false,
+                              color: theme.colorScheme.primary,
+                              barWidth: 2,
+                              dotData: FlDotData(
+                                getDotPainter:
+                                    (spot, percent, barData, index) =>
+                                        FlDotCirclePainter(
+                                          radius: 3,
+                                          color: theme.colorScheme.primary,
+                                          strokeWidth: 0,
+                                        ),
+                              ),
+                              belowBarData: BarAreaData(show: false),
                             ),
-                            belowBarData: BarAreaData(show: false),
-                          ),
                         ],
                       ),
                       duration: Duration.zero,
@@ -425,4 +430,18 @@ class _TraversalLabels extends StatelessWidget {
 double _xFor(num position, int momentCount, double width) {
   if (momentCount <= 1) return width / 2;
   return position / (momentCount - 1) * width;
+}
+
+List<List<AttemptTracePoint>> _contiguousSegments(
+  List<AttemptTracePoint> points,
+) {
+  final segments = <List<AttemptTracePoint>>[];
+  for (final point in points) {
+    if (segments.isEmpty || point.position != segments.last.last.position + 1) {
+      segments.add([point]);
+    } else {
+      segments.last.add(point);
+    }
+  }
+  return segments;
 }

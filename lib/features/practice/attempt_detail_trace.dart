@@ -61,6 +61,10 @@ AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
   final pulse = <AttemptTracePoint>[];
   if (medianInterval != null) {
     for (var index = 1; index < timedMoments.length; index++) {
+      if (timedMoments[index].realizationPosition !=
+          timedMoments[index - 1].realizationPosition + 1) {
+        continue;
+      }
       final interval =
           timedMoments[index].onsetMs - timedMoments[index - 1].onsetMs;
       pulse.add(

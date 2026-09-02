@@ -1,3 +1,4 @@
+import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:material_ui/material_ui.dart';
@@ -19,6 +20,8 @@ void main() {
       pulse: const [
         AttemptTracePoint(position: 1, value: 20),
         AttemptTracePoint(position: 2, value: -30),
+        AttemptTracePoint(position: 5, value: 10),
+        AttemptTracePoint(position: 6, value: 5),
       ],
       coordination: const [
         AttemptTracePoint(position: 1, value: 12),
@@ -52,5 +55,7 @@ void main() {
     expect(find.text('Pulse'), findsOneWidget);
     expect(find.text('Coordination'), findsOneWidget);
     expect(find.text('58 BPM overall · target 60'), findsOneWidget);
+    final pulse = tester.widget<LineChart>(find.byType(LineChart).first);
+    expect(pulse.data.lineBarsData, hasLength(2));
   });
 }

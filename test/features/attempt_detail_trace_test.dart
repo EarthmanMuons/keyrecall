@@ -43,6 +43,16 @@ void main() {
     expect(trace.pulse[2].value, -200);
   });
 
+  test('a missing realization moment leaves no pulse interval across it', () {
+    final played = [...expected]..removeAt(5);
+    final gaps = List<int>.filled(played.length - 1, 1000);
+
+    final trace = attemptDetailTraceFor(read(played, gaps));
+
+    expect(trace.notes[5], NoteMomentStatus.missing);
+    expect(trace.pulse.map((point) => point.position), isNot(contains(6)));
+  });
+
   test('note departures and the longest break retain traversal positions', () {
     final played = [...expected]..[3] = 66;
     final gaps = List<int>.filled(expected.length - 1, 1000)..[8] = 3200;
