@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
+import 'package:keyrecall/features/practice/onboarding.dart';
 import 'package:keyrecall/features/practice/placement.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
@@ -51,7 +52,7 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(home: PlacementGate()),
+        child: const MaterialApp(home: OnboardingGate()),
       ),
     );
     await tester.pump();
@@ -71,6 +72,11 @@ void main() {
     for (final tier in PlacementTier.values) {
       expect(find.text(tier.headline), findsOneWidget);
     }
+    expect(
+      tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+      isNull,
+      reason: 'there is nothing to continue to until a tier is chosen',
+    );
     expect(
       find.byType(TextField),
       findsNothing,
@@ -102,6 +108,24 @@ void main() {
     await pumpGate(tester, container);
 
     await tester.tap(find.text(PlacementTier.beginner.headline));
+    await tester.pumpAndSettle();
+    expect(
+      await profilesIn(container),
+      isEmpty,
+      reason: 'selecting is not answering; the answer is confirmed',
+    );
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(
+      await profilesIn(container),
+      isEmpty,
+      reason:
+          'the instrument step is still part of the first launch, and '
+          'quitting during it leaves the install unplaced',
+    );
+
+    await tester.tap(find.text('Start practicing'));
     await tester.pumpAndSettle();
 
     final created = (await profilesIn(container)).single;

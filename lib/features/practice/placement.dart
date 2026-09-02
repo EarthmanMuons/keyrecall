@@ -1,35 +1,29 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:material_ui/material_ui.dart';
-
-import '../../wordmark.dart';
-import 'attempt_screen.dart';
-import 'practice_providers.dart';
 
 /// How a placement tier is put to somebody who has not been assessed.
 ///
 /// Described by what a learner can already do rather than by a label they have
 /// to award themselves. "Intermediate" asks for a judgment about a word; "I
-/// can usually play a familiar scale with one hand without looking" asks about
-/// a morning at the piano. The three progress across breadth, retrieval,
-/// execution and coordination, which is what the prior is summarizing.
+/// can play familiar scales with one hand from memory" asks about a morning at
+/// the piano. The three progress across breadth, retrieval, execution and
+/// coordination, which is what the prior is summarizing.
 ///
 /// The enum keeps its own names. What a tier is called in the model and how it
 /// is put to a person are different problems.
 extension PlacementTierCopy on PlacementTier {
   String get headline => switch (this) {
-    PlacementTier.beginner => 'I’m new to scales.',
-    PlacementTier.someExperience => 'I’ve practiced some scales.',
-    PlacementTier.advanced => 'Scales are already familiar.',
+    PlacementTier.beginner => 'New to scales',
+    PlacementTier.someExperience => 'Some experience',
+    PlacementTier.advanced => 'Comfortable with scales',
   };
 
   String get detail => switch (this) {
     PlacementTier.beginner => 'I may need help with the notes or fingering.',
     PlacementTier.someExperience =>
-      'I can usually play a familiar scale with one hand without looking at '
-          'the notes.',
+      'I can play familiar scales with one hand from memory.',
     PlacementTier.advanced =>
-      'I can play several scales from memory, with both hands and at a steady '
+      'I can play several scales from memory, with both hands at a steady '
           'tempo.',
   };
 
@@ -42,6 +36,12 @@ extension PlacementTierCopy on PlacementTier {
 }
 
 /// What the placement question says, wherever it is asked.
+const placementQuestion = 'Where should we start?';
+
+/// Why the answer is not worth agonizing over.
+const placementReassurance = 'This only affects your starting point.';
+
+/// The three answers, with the chosen one marked.
 ///
 /// Asked once per profile and never again. Placement is the prior the whole
 /// history is computed from, so there is no edit control for it anywhere: a
@@ -49,66 +49,102 @@ extension PlacementTierCopy on PlacementTier {
 /// update a skill level, and erasing the history is the honest route to a
 /// different start.
 ///
-/// Nothing is preselected. A prefilled answer to a permanent question is one
-/// somebody confirms without reading.
-class PlacementQuestion extends StatelessWidget {
-  const PlacementQuestion({required this.onChosen, super.key});
+/// Selecting is separate from confirming, so a card is a choice rather than a
+/// door out of the screen. Nothing is preselected: a prefilled answer to a
+/// permanent question is one somebody confirms without reading.
+class PlacementChoices extends StatelessWidget {
+  const PlacementChoices({
+    required this.selected,
+    required this.onSelected,
+    super.key,
+  });
 
-  /// Takes the answer.
-  final void Function(PlacementTier) onChosen;
+  /// The tier chosen so far, if any.
+  final PlacementTier? selected;
+
+  /// Takes a tier as it is picked.
+  final void Function(PlacementTier) onSelected;
 
   @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          'This only sets your starting point. KeyRecall will adjust from how '
-          'you play.',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      for (final tier in PlacementTier.values) ...[
+        _PlacementChoice(
+          tier: tier,
+          isSelected: tier == selected,
+          onSelected: () => onSelected(tier),
         ),
-        const SizedBox(height: 16),
-        for (final tier in PlacementTier.values) ...[
-          _PlacementChoice(tier: tier, onChosen: () => onChosen(tier)),
-          const SizedBox(height: 8),
-        ],
+        if (tier != PlacementTier.values.last) const SizedBox(height: 8),
       ],
-    );
-  }
+    ],
+  );
 }
 
 /// One answer to the placement question.
 class _PlacementChoice extends StatelessWidget {
-  const _PlacementChoice({required this.tier, required this.onChosen});
+  const _PlacementChoice({
+    required this.tier,
+    required this.isSelected,
+    required this.onSelected,
+  });
 
   final PlacementTier tier;
-  final VoidCallback onChosen;
+  final bool isSelected;
+  final VoidCallback onSelected;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return OutlinedButton(
-      onPressed: onChosen,
-      style: OutlinedButton.styleFrom(
-        alignment: Alignment.centerLeft,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(tier.headline, style: theme.textTheme.titleMedium),
-          const SizedBox(height: 2),
-          Text(
-            tier.detail,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
+    final scheme = theme.colorScheme;
+
+    return Semantics(
+      selected: isSelected,
+      child: Material(
+        color: isSelected ? scheme.surfaceContainerHigh : Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(
+            color: isSelected ? scheme.primary : scheme.outlineVariant,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: InkWell(
+          onTap: onSelected,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  isSelected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  size: 20,
+                  color: isSelected ? scheme.primary : scheme.outline,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(tier.headline, style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        tier.detail,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -120,89 +156,52 @@ class _PlacementChoice extends StatelessWidget {
 Future<PlacementTier?> askForPlacement(BuildContext context) =>
     showDialog<PlacementTier>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Where should we start?'),
-        content: SingleChildScrollView(
-          child: PlacementQuestion(
-            onChosen: (tier) => Navigator.of(context).pop(tier),
+      builder: (context) => const _PlacementDialog(),
+    );
+
+class _PlacementDialog extends StatefulWidget {
+  const _PlacementDialog();
+
+  @override
+  State<_PlacementDialog> createState() => _PlacementDialogState();
+}
+
+class _PlacementDialogState extends State<_PlacementDialog> {
+  PlacementTier? _selected;
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+    title: const Text(placementQuestion),
+    content: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            placementReassurance,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+          const SizedBox(height: 16),
+          PlacementChoices(
+            selected: _selected,
+            onSelected: (tier) => setState(() => _selected = tier),
           ),
         ],
       ),
-    );
-
-/// The placement question as the whole screen, for an install with nobody on
-/// it yet.
-///
-/// The first launch has one decision and it is this one, because it is the one
-/// that cannot be made later: placement is the prior every attempt is
-/// interpreted against, and by the time somebody has practised enough to know
-/// their own answer, changing it would mean discarding the practice. There is
-/// no name prompt beside it. One person on one instrument is the ordinary
-/// case, and a name is a thing the profile screen can ask for if a second
-/// person ever appears.
-class PlacementScreen extends ConsumerWidget {
-  const PlacementScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Wordmark(style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Where should we start?',
-                    style: theme.textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  PlacementQuestion(
-                    onChosen: (tier) =>
-                        ref.read(profileRosterProvider.notifier).place(tier),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+    ),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(),
+        child: const Text('Cancel'),
       ),
-    );
-  }
-}
-
-/// The practice app, behind the one question a first launch has to ask.
-///
-/// The gate is whether this install has anybody on it, read from the roster
-/// rather than from a flag: an install with a profile has been placed, and one
-/// without has not. It sits above everything that reads the practice loop
-/// because opening a sitting conjures a default profile when none exists, and
-/// a profile conjured before the question is answered is one placed at a tier
-/// nobody chose and nobody can change.
-///
-/// A roster that cannot be read falls through to the app, which has its own
-/// account of unreadable storage and the ways out of it.
-class PlacementGate extends ConsumerWidget {
-  const PlacementGate({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) =>
-      switch (ref.watch(profileRosterProvider)) {
-        AsyncData(:final value) when value.isEmpty => const PlacementScreen(),
-        AsyncData() || AsyncError() => const AttemptScreen(),
-        _ => const Scaffold(body: Center(child: CircularProgressIndicator())),
-      };
+      FilledButton(
+        onPressed: _selected == null
+            ? null
+            : () => Navigator.of(context).pop(_selected),
+        child: const Text('Continue'),
+      ),
+    ],
+  );
 }

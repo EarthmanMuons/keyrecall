@@ -155,7 +155,7 @@ melodic minor
 Every one of those conditions asks whether a channel has been **observed**, not
 where its mean sits. Placement seeds means from what a learner said about
 themselves at onboarding, so a mean test lets a self-report stand in for
-demonstrated musicianship: choosing "scales are already familiar" once opened
+demonstrated musicianship: choosing "comfortable with scales" once opened
 every altered form before a note was played. `LearnerState.isObserved` is the
 question policy asks instead.
 

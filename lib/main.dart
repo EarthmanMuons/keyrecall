@@ -3,7 +3,7 @@ import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'features/practice/placement.dart';
+import 'features/practice/onboarding.dart';
 import 'layout.dart';
 import 'theme.dart';
 
@@ -39,7 +39,7 @@ class KeyRecallApp extends ConsumerWidget {
       // Above the navigator, so routes, sheets, and dialogs all read the same
       // layout.
       builder: (context, child) => LayoutScope(child: child!),
-      home: const PlacementGate(),
+      home: const OnboardingGate(),
     );
   }
 }

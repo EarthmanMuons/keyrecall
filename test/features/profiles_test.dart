@@ -5,6 +5,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:keyrecall/features/practice/placement.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 import 'package:keyrecall/features/practice/profiles_screen.dart';
 
@@ -108,7 +109,8 @@ void main() {
 
       await nameAndContinue(tester, 'Cass');
       expect(find.text('Where should we start?'), findsOneWidget);
-      await tapAndSettle(tester, find.text('I’m new to scales.'));
+      await tapAndSettle(tester, find.text(PlacementTier.beginner.headline));
+      await tapAndSettle(tester, find.text('Continue'));
 
       final repository = await container.read(profileRepositoryProvider.future);
       final created = (await repository.list()).single;
