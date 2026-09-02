@@ -632,7 +632,19 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     unawaited(_pulse.stop());
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
+    await _handOverTheScreen();
     await widget.onDecline!();
+  }
+
+  /// Sends the instrument off the bottom, if it is still there, and waits for
+  /// it to go.
+  ///
+  /// What an attempt ends with, so it ends the way it began: the review takes
+  /// a screen the keyboard has left rather than one it blinks out of.
+  Future<void> _handOverTheScreen() async {
+    if (_handover.isCompleted) return;
+    _handover.forward();
+    await Future<void>.delayed(attemptTransition);
   }
 
   Future<void> _finish(AttemptTermination termination) async {
@@ -642,6 +654,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     unawaited(_pulse.stop());
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
+    await _handOverTheScreen();
     // What was played is the evidence. Nobody is asked how it went.
     await widget.onFinish(termination);
   }
