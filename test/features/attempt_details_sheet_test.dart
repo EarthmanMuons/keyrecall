@@ -32,8 +32,25 @@ void main() {
         NoteMomentStatus.departed,
         NoteMomentStatus.missing,
       ],
-      extraNotePositions: const [3.5],
-      extraNotes: 1,
+      noteDepartures: const [
+        NoteDeparture(
+          kind: NoteDepartureKind.changed,
+          noteLabel: 'B',
+          position: 13,
+        ),
+        NoteDeparture(
+          kind: NoteDepartureKind.missing,
+          noteLabel: 'C',
+          position: 14,
+        ),
+        NoteDeparture(
+          kind: NoteDepartureKind.extra,
+          noteLabel: 'F♯',
+          position: 3.5,
+          beforePosition: 3,
+          afterPosition: 4,
+        ),
+      ],
       flowGap: const FlowGap(beforePosition: 9, durationMs: 2400),
     );
 
@@ -51,7 +68,16 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('1 changed · 1 missing · 1 extra'), findsOneWidget);
-    expect(find.text('Longest break · 2.4 s'), findsOneWidget);
+    expect(find.text('Changed: B on the way down'), findsOneWidget);
+    expect(find.text('Missing: C at the end'), findsOneWidget);
+    expect(
+      find.text('Extra: F♯ between F and G on the way up'),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Longest break · 2.4 s before A on the way down'),
+      findsOneWidget,
+    );
     expect(find.text('Pulse'), findsOneWidget);
     expect(find.text('Coordination'), findsOneWidget);
     expect(find.text('58 BPM overall · target 60'), findsOneWidget);

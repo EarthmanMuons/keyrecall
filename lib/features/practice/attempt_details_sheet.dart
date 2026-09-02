@@ -5,6 +5,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import 'attempt_diagnosis.dart';
 import 'attempt_detail_trace.dart';
 
 Future<void> showAttemptDetails(
@@ -113,19 +114,25 @@ class _NotesDetail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final departures = trace.notes
-        .where((status) => status == NoteMomentStatus.departed)
+    final departures = trace.noteDepartures
+        .where((departure) => departure.kind == NoteDepartureKind.changed)
         .length;
-    final missing = trace.notes
-        .where((status) => status == NoteMomentStatus.missing)
+    final missing = trace.noteDepartures
+        .where((departure) => departure.kind == NoteDepartureKind.missing)
         .length;
     final summary = [
       if (departures > 0) '$departures changed',
       if (missing > 0) '$missing missing',
       if (trace.extraNotes > 0) '${trace.extraNotes} extra',
     ].join(' · ');
+    final realization = realize(exercise);
+    final departureLines = _departureLines(trace.noteDepartures, realization);
+    final semantics = [
+      summary.isEmpty ? 'Notes: all matched' : 'Notes: $summary',
+      ...departureLines,
+    ].join('. ');
     return Semantics(
-      label: summary.isEmpty ? 'Notes: all matched' : 'Notes: $summary',
+      label: semantics,
       child: ExcludeSemantics(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -136,6 +143,10 @@ class _NotesDetail extends StatelessWidget {
               summary.isEmpty ? 'All notes matched.' : summary,
               style: theme.textTheme.bodyMedium,
             ),
+            if (departureLines.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              for (final line in departureLines) Text(line),
+            ],
             const SizedBox(height: 14),
             SizedBox(height: 24, child: _NoteStrip(trace)),
             const SizedBox(height: 6),
@@ -166,12 +177,18 @@ class _NoteStrip extends StatelessWidget {
               left: _xFor(index, trace.momentCount, constraints.maxWidth) - 5,
               child: _NoteMarker(status),
             ),
-          for (final position in trace.extraNotePositions)
-            Positioned(
-              left:
-                  _xFor(position, trace.momentCount, constraints.maxWidth) - 7,
-              child: Icon(Icons.close, size: 14, color: colors.error),
-            ),
+          for (final departure in trace.noteDepartures)
+            if (departure.kind == NoteDepartureKind.extra)
+              Positioned(
+                left:
+                    _xFor(
+                      departure.position,
+                      trace.momentCount,
+                      constraints.maxWidth,
+                    ) -
+                    7,
+                child: Icon(Icons.close, size: 14, color: colors.error),
+              ),
         ],
       ),
     );
@@ -214,17 +231,18 @@ class _FlowDetail extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final gap = trace.flowGap;
+    final realization = realize(exercise);
+    final gapDescription = gap == null
+        ? 'No pronounced break.'
+        : 'Longest break · ${(gap.durationMs / 1000).toStringAsFixed(1)} s '
+              'before ${_momentLabel(realization, gap.beforePosition)} '
+              '${landmarkAt(gap.beforePosition, realization).phrase}';
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Flow', style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
-        Text(
-          gap == null
-              ? 'No pronounced break.'
-              : 'Longest break · ${(gap.durationMs / 1000).toStringAsFixed(1)} s',
-          style: theme.textTheme.bodyMedium,
-        ),
+        Text(gapDescription, style: theme.textTheme.bodyMedium),
         if (gap != null) ...[
           const SizedBox(height: 14),
           _PositionStrip(
@@ -445,3 +463,61 @@ List<List<AttemptTracePoint>> _contiguousSegments(
   }
   return segments;
 }
+
+List<String> _departureLines(
+  List<NoteDeparture> departures,
+  ExerciseRealization realization,
+) {
+  final lines = <String>[];
+  for (final kind in NoteDepartureKind.values) {
+    final located = [
+      for (final departure in departures)
+        if (departure.kind == kind) _departureLocator(departure, realization),
+    ];
+    if (located.isNotEmpty) {
+      final label = switch (kind) {
+        NoteDepartureKind.changed => 'Changed',
+        NoteDepartureKind.missing => 'Missing',
+        NoteDepartureKind.extra => 'Extra',
+      };
+      lines.add('$label: ${located.join(', ')}');
+    }
+  }
+  return lines;
+}
+
+String _departureLocator(
+  NoteDeparture departure,
+  ExerciseRealization realization,
+) {
+  if (departure.kind != NoteDepartureKind.extra) {
+    final position = departure.position.round();
+    return '${departure.noteLabel} ${landmarkAt(position, realization).phrase}';
+  }
+
+  final before = departure.beforePosition;
+  final after = departure.afterPosition;
+  if (before != null && after != null && before != after) {
+    return '${departure.noteLabel} between '
+        '${_momentLabel(realization, before)} and '
+        '${_momentLabel(realization, after)} '
+        '${landmarkAt(after, realization).phrase}';
+  }
+  if (after != null && before == null) {
+    return '${departure.noteLabel} before '
+        '${_momentLabel(realization, after)} at the start';
+  }
+  if (before != null && after == null) {
+    return '${departure.noteLabel} after '
+        '${_momentLabel(realization, before)} at the end';
+  }
+  final position = before ?? after ?? departure.position.round();
+  return '${departure.noteLabel} near '
+      '${_momentLabel(realization, position)} '
+      '${landmarkAt(position, realization).phrase}';
+}
+
+String _momentLabel(ExerciseRealization realization, int position) => {
+  for (final note in realization.moments[position].notes)
+    note.pitch.prettyLabel,
+}.join(' + ');

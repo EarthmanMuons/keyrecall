@@ -12,6 +12,25 @@ class AttemptTracePoint {
 
 enum NoteMomentStatus { matched, departed, missing }
 
+enum NoteDepartureKind { changed, missing, extra }
+
+@immutable
+class NoteDeparture {
+  const NoteDeparture({
+    required this.kind,
+    required this.noteLabel,
+    required this.position,
+    this.beforePosition,
+    this.afterPosition,
+  });
+
+  final NoteDepartureKind kind;
+  final String noteLabel;
+  final double position;
+  final int? beforePosition;
+  final int? afterPosition;
+}
+
 @immutable
 class FlowGap {
   const FlowGap({required this.beforePosition, required this.durationMs});
@@ -27,21 +46,23 @@ class AttemptDetailTrace {
     required Iterable<AttemptTracePoint> pulse,
     required Iterable<AttemptTracePoint> coordination,
     required Iterable<NoteMomentStatus> notes,
-    required Iterable<double> extraNotePositions,
-    required this.extraNotes,
+    required Iterable<NoteDeparture> noteDepartures,
     this.flowGap,
   }) : pulse = List.unmodifiable(pulse),
        coordination = List.unmodifiable(coordination),
        notes = List.unmodifiable(notes),
-       extraNotePositions = List.unmodifiable(extraNotePositions);
+       noteDepartures = List.unmodifiable(noteDepartures);
 
   final int momentCount;
   final List<AttemptTracePoint> pulse;
   final List<AttemptTracePoint> coordination;
   final List<NoteMomentStatus> notes;
-  final List<double> extraNotePositions;
-  final int extraNotes;
+  final List<NoteDeparture> noteDepartures;
   final FlowGap? flowGap;
+
+  int get extraNotes => noteDepartures
+      .where((departure) => departure.kind == NoteDepartureKind.extra)
+      .length;
 }
 
 AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
@@ -80,24 +101,57 @@ AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
     measurement.expectedMoments,
     NoteMomentStatus.missing,
   );
-  final extraNotePositions = <double>[];
-  var extraNotes = 0;
+  final noteDepartures = <NoteDeparture>[];
   final operations = measurement.alignment.operations;
   for (final (index, operation) in operations.indexed) {
-    final inserted = operation.noteEdits.whereType<Insertion>().length;
-    extraNotes += inserted;
-    final insertionPosition = switch (operation) {
-      MomentCorrespondence(:final realizationPosition) =>
-        realizationPosition.toDouble(),
-      MomentInsertion() => _insertionPosition(operations, index),
+    final insertionLocation = switch (operation) {
+      MomentCorrespondence(:final realizationPosition) => (
+        position: realizationPosition.toDouble(),
+        before: realizationPosition,
+        after: realizationPosition,
+      ),
+      MomentInsertion() => _insertionLocation(operations, index),
       MomentDeletion() => null,
     };
-    if (insertionPosition != null) {
-      extraNotePositions.addAll(List.filled(inserted, insertionPosition));
+    for (final edit in operation.noteEdits) {
+      switch (edit) {
+        case Match():
+          break;
+        case Substitution(:final expected):
+          noteDepartures.add(
+            NoteDeparture(
+              kind: NoteDepartureKind.changed,
+              noteLabel: expected.prettyLabel,
+              position: operation.realizationPosition!.toDouble(),
+            ),
+          );
+        case Deletion(:final expected):
+          noteDepartures.add(
+            NoteDeparture(
+              kind: NoteDepartureKind.missing,
+              noteLabel: expected.prettyLabel,
+              position: operation.realizationPosition!.toDouble(),
+            ),
+          );
+        case Insertion(:final observed):
+          final location = insertionLocation!;
+          noteDepartures.add(
+            NoteDeparture(
+              kind: NoteDepartureKind.extra,
+              noteLabel: observed.prettyLabel,
+              position: location.position,
+              beforePosition: location.before,
+              afterPosition: location.after,
+            ),
+          );
+      }
     }
     switch (operation) {
       case MomentCorrespondence(:final realizationPosition, :final noteEdits):
-        notes[realizationPosition] = noteEdits.every((edit) => edit is Match)
+        notes[realizationPosition] =
+            noteEdits
+                .where((edit) => edit is! Insertion)
+                .every((edit) => edit is Match)
             ? NoteMomentStatus.matched
             : NoteMomentStatus.departed;
       case MomentDeletion():
@@ -133,13 +187,15 @@ AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
           ),
     ],
     notes: notes,
-    extraNotePositions: extraNotePositions,
-    extraNotes: extraNotes,
+    noteDepartures: noteDepartures,
     flowGap: flowGap,
   );
 }
 
-double _insertionPosition(List<MomentOperation> operations, int index) {
+({double position, int? before, int? after}) _insertionLocation(
+  List<MomentOperation> operations,
+  int index,
+) {
   int? before;
   for (var cursor = index - 1; cursor >= 0; cursor--) {
     if (operations[cursor].realizationPosition case final position?) {
@@ -154,7 +210,11 @@ double _insertionPosition(List<MomentOperation> operations, int index) {
       break;
     }
   }
-  if (before == null) return (after ?? 0).toDouble();
-  if (after == null) return before.toDouble();
-  return (before + after) / 2;
+  if (before == null) {
+    return (position: (after ?? 0).toDouble(), before: null, after: after);
+  }
+  if (after == null) {
+    return (position: before.toDouble(), before: before, after: null);
+  }
+  return (position: (before + after) / 2, before: before, after: after);
 }

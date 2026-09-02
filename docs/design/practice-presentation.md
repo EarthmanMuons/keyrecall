@@ -49,6 +49,11 @@ use centered traces. Notes and Flow remain discrete departures and gaps, and
 Tempo remains an overall achieved-versus-target statement. The reading and its
 traces are discarded with the review rather than persisted.
 
+Note departures are named with the exercise realization's musical spelling and
+a traversal landmark. Insertions name the observed note and its expected
+neighbors. Flow names the expected note after the longest measured break. Raw
+realization positions remain display coordinates and are not learner-facing.
+
 Opening Details is recorded separately from the automatically shown review as a
 detailed diagnostic feedback exposure. Reopening it does not create another
 exposure for the same attempt.

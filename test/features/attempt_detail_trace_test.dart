@@ -75,8 +75,44 @@ void main() {
     final trace = attemptDetailTraceFor(read(played, gaps));
 
     expect(trace.extraNotes, 1);
-    expect(trace.extraNotePositions, [1.5]);
+    final extra = trace.noteDepartures.singleWhere(
+      (departure) => departure.kind == NoteDepartureKind.extra,
+    );
+    expect(extra.noteLabel, 'E');
+    expect(extra.position, 1.5);
+    expect(extra.beforePosition, 1);
+    expect(extra.afterPosition, 2);
     expect(trace.notes, everyElement(NoteMomentStatus.matched));
+  });
+
+  test('expected departures retain the material spelling', () {
+    final harmonicMinor = Exercise.linear(
+      material: TechnicalMaterial('F#', ScaleForm.harmonicMinor),
+      hands: HandConfiguration.right,
+      direction: ScaleDirection.up,
+      tempoBpm: 60,
+    );
+    final realization = realize(harmonicMinor);
+    final played = [
+      for (final moment in realization.moments)
+        moment.noteFor(Hand.right)!.midiNote,
+    ]..removeAt(6);
+    var transcript = PerformanceTranscript.empty;
+    for (final (index, note) in played.indexed) {
+      transcript = transcript.appending(
+        pitch: spellObservedPitch(note, material: harmonicMinor.material),
+        timestampMs: index * 1000,
+      );
+    }
+
+    final trace = attemptDetailTraceFor(
+      readPerformance(exercise: harmonicMinor, transcript: transcript),
+    );
+    final missing = trace.noteDepartures.singleWhere(
+      (departure) => departure.kind == NoteDepartureKind.missing,
+    );
+
+    expect(missing.noteLabel, 'E♯');
   });
 
   test('coordination is centered with the leading hand above zero', () {
