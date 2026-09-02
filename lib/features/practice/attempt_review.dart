@@ -321,8 +321,9 @@ class _ProgressStatement extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colors = theme.colorScheme;
+    const heading = 'Progress';
     return Semantics(
-      label: 'Progress. $statement',
+      label: '$heading. $statement',
       child: ExcludeSemantics(
         child: Container(
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
@@ -342,7 +343,7 @@ class _ProgressStatement extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(
-                    'PROGRESS',
+                    heading.toUpperCase(),
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: colors.onPrimaryContainer,
                       letterSpacing: 1.1,
