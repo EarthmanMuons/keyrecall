@@ -107,7 +107,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     final committed = loop.value?.lastCommitted;
     if (committed != null && committed.identity.attemptId != _reviewed) {
       final history = loop.value!.session.journal.records;
-      final progress = progressEventFor(committed, history: history);
+      final progress = progressEventsFor(committed, history: history);
       if (!_feedbackRecorded.contains(committed.identity.attemptId)) {
         WidgetsBinding.instance.addPostFrameCallback((_) async {
           if (!mounted ||

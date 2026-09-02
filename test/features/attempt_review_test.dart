@@ -131,7 +131,10 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Notes'), findsOneWidget);
-    expect(find.text('First clean right-hand pass at 60 BPM.'), findsOneWidget);
+    expect(
+      find.text('First clean right-hand pass from memory at 60 BPM.'),
+      findsOneWidget,
+    );
     await tester.scrollUntilVisible(find.text('Done'), 200);
     expect(find.text('Done'), findsOneWidget);
   });

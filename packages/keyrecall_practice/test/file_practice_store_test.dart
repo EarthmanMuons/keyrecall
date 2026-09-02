@@ -112,7 +112,10 @@ void main() {
         shownAt: t0.plusDays(1),
         postAttemptFeedback: PostAttemptFeedback.diagnostic,
         progressFeedback: ProgressFeedback.personalProgress,
-        progressEvent: ProgressEventKind.firstCleanCompletion,
+        progressEvents: const [
+          ProgressEventKind.firstCleanCompletion,
+          ProgressEventKind.firstIndependentCompletion,
+        ],
       );
 
       await store.appendFeedbackExposure(exposure);
@@ -123,6 +126,13 @@ void main() {
 
       expect(loaded, [exposure]);
       expect(feedbackFile().readAsStringSync(), endsWith('\n'));
+
+      final legacyJson = Map<String, Object?>.of(exposure.toJson())
+        ..remove('progress_events')
+        ..['progress_event'] = ProgressEventKind.firstCleanCompletion.id;
+      expect(FeedbackExposure.fromJson(legacyJson).progressEvents, [
+        ProgressEventKind.firstCleanCompletion,
+      ]);
     });
 
     // Valid JSON that is not an object is the other half of the same failure:

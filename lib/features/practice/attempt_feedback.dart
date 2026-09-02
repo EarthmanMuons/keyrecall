@@ -43,12 +43,11 @@ AttemptSummary? summarizeAttempt(AttemptRecord record) =>
 @immutable
 class ProgressEvent {
   final ProgressEventKind type;
-  final String sentence;
 
-  const ProgressEvent(this.type, this.sentence);
+  const ProgressEvent(this.type);
 }
 
-ProgressEvent? progressEventFor(
+List<ProgressEvent> progressEventsFor(
   AttemptRecord current, {
   required Iterable<AttemptRecord> history,
 }) {
@@ -56,7 +55,9 @@ ProgressEvent? progressEventFor(
     Measured(:final outcome) => outcome,
     MeasurementUnavailable() => null,
   };
-  if (outcome == null || !outcome.started || !outcome.completed) return null;
+  if (outcome == null || !outcome.started || !outcome.completed) {
+    return const [];
+  }
 
   final earlier = history.where(
     (record) =>
@@ -65,19 +66,9 @@ ProgressEvent? progressEventFor(
         record.exercise.hasSameRealizationAs(current.exercise),
   );
 
+  final events = <ProgressEvent>[];
   if (_isClean(outcome) && !earlier.any(_recordIsClean)) {
-    final tempo = _formatTempo(
-      current.exercise.conditions.tempoBpm * outcome.achievedTempoRatio,
-    );
-    final hands = switch (current.exercise.conditions.hands) {
-      HandConfiguration.right => 'right-hand',
-      HandConfiguration.left => 'left-hand',
-      HandConfiguration.together => 'hands-together',
-    };
-    return ProgressEvent(
-      ProgressEventKind.firstCleanCompletion,
-      'First clean $hands pass at $tempo BPM.',
-    );
+    events.add(const ProgressEvent(ProgressEventKind.firstCleanCompletion));
   }
 
   final comparable = [...earlier, current]
@@ -86,22 +77,47 @@ ProgressEvent? progressEventFor(
       comparable.skip(comparable.length - 3).every(_recordIsClean) &&
       (comparable.length == 3 ||
           !_recordIsClean(comparable[comparable.length - 4]))) {
-    return const ProgressEvent(
-      ProgressEventKind.repeatedReliability,
-      'Clean on your last three attempts here.',
-    );
+    events.add(const ProgressEvent(ProgressEventKind.repeatedReliability));
   }
 
   if (outcome.retrieval == FactualRetrieval.succeeded &&
       !earlier.any(_recordWasRetrieved)) {
-    return ProgressEvent(
-      ProgressEventKind.firstIndependentCompletion,
-      'First time through from memory at '
-      '${_formatTempo(current.exercise.conditions.tempoBpm * outcome.achievedTempoRatio)} BPM.',
+    events.add(
+      const ProgressEvent(ProgressEventKind.firstIndependentCompletion),
     );
   }
 
-  return null;
+  return List.unmodifiable(events);
+}
+
+String? progressStatementFor(
+  AttemptRecord current,
+  List<ProgressEvent> events,
+) {
+  if (events.isEmpty) return null;
+  final kinds = events.map((event) => event.type).toSet();
+  final firstClean = kinds.contains(ProgressEventKind.firstCleanCompletion);
+  final firstIndependent = kinds.contains(
+    ProgressEventKind.firstIndependentCompletion,
+  );
+  if (firstClean && firstIndependent) {
+    return 'First clean ${_handsPhrase(current)} pass from memory at '
+        '${_achievedTempo(current)} BPM.';
+  }
+  if (kinds.contains(ProgressEventKind.repeatedReliability) &&
+      firstIndependent) {
+    return 'First time through from memory, and clean on your last three '
+        'attempts here.';
+  }
+  return switch (events.single.type) {
+    ProgressEventKind.firstCleanCompletion =>
+      'First clean ${_handsPhrase(current)} pass at '
+          '${_achievedTempo(current)} BPM.',
+    ProgressEventKind.firstIndependentCompletion =>
+      'First time through from memory at ${_achievedTempo(current)} BPM.',
+    ProgressEventKind.repeatedReliability =>
+      'Clean on your last three attempts here.',
+  };
 }
 
 bool _recordIsClean(AttemptRecord record) =>
@@ -122,6 +138,20 @@ bool _isClean(Outcome outcome) =>
     outcome.continuity == 1 &&
     outcome.temporalStability == 1 &&
     (outcome.coordination ?? 1) == 1;
+
+String _handsPhrase(AttemptRecord record) =>
+    switch (record.exercise.conditions.hands) {
+      HandConfiguration.right => 'right-hand',
+      HandConfiguration.left => 'left-hand',
+      HandConfiguration.together => 'hands-together',
+    };
+
+String _achievedTempo(AttemptRecord record) {
+  final outcome = (record.closure.measurement as Measured).outcome;
+  return _formatTempo(
+    record.exercise.conditions.tempoBpm * outcome.achievedTempoRatio,
+  );
+}
 
 String _formatTempo(double bpm) => bpm == bpm.roundToDouble()
     ? bpm.round().toString()

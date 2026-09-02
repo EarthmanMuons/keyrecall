@@ -78,10 +78,30 @@ void main() {
     final rough = record(0, outcome(pulse: 0.8));
     final clean = record(1, outcome());
 
-    final event = progressEventFor(clean, history: [rough, clean])!;
+    final events = progressEventsFor(clean, history: [rough, clean]);
 
-    expect(event.type, ProgressEventKind.firstCleanCompletion);
-    expect(event.sentence, 'First clean right-hand pass at 60 BPM.');
+    expect(events.map((event) => event.type), [
+      ProgressEventKind.firstCleanCompletion,
+    ]);
+    expect(
+      progressStatementFor(clean, events),
+      'First clean right-hand pass at 60 BPM.',
+    );
+  });
+
+  test('simultaneous clean and independent milestones are both preserved', () {
+    final clean = record(0, outcome());
+
+    final events = progressEventsFor(clean, history: [clean]);
+
+    expect(events.map((event) => event.type), [
+      ProgressEventKind.firstCleanCompletion,
+      ProgressEventKind.firstIndependentCompletion,
+    ]);
+    expect(
+      progressStatementFor(clean, events),
+      'First clean right-hand pass from memory at 60 BPM.',
+    );
   });
 
   test('three clean attempts establish reliability once', () {
@@ -94,19 +114,47 @@ void main() {
     ];
 
     expect(
-      progressEventFor(attempts[3], history: attempts)!.type,
-      ProgressEventKind.repeatedReliability,
+      progressEventsFor(
+        attempts[3],
+        history: attempts,
+      ).map((event) => event.type),
+      [ProgressEventKind.repeatedReliability],
     );
-    expect(progressEventFor(attempts[4], history: attempts), isNull);
+    expect(progressEventsFor(attempts[4], history: attempts), isEmpty);
+  });
+
+  test('reliability and first independent completion can coincide', () {
+    final attempts = [
+      record(0, outcome(retrieval: FactualRetrieval.notTested)),
+      record(1, outcome(retrieval: FactualRetrieval.notTested)),
+      record(2, outcome()),
+    ];
+
+    final events = progressEventsFor(attempts.last, history: attempts);
+
+    expect(events.map((event) => event.type), [
+      ProgressEventKind.repeatedReliability,
+      ProgressEventKind.firstIndependentCompletion,
+    ]);
+    expect(
+      progressStatementFor(attempts.last, events),
+      'First time through from memory, and clean on your last three attempts '
+      'here.',
+    );
   });
 
   test('first completed retrieval is distinct from clean execution', () {
     final recalled = record(0, outcome(notes: 0.9));
 
-    final event = progressEventFor(recalled, history: [recalled])!;
+    final events = progressEventsFor(recalled, history: [recalled]);
 
-    expect(event.type, ProgressEventKind.firstIndependentCompletion);
-    expect(event.sentence, 'First time through from memory at 60 BPM.');
+    expect(events.map((event) => event.type), [
+      ProgressEventKind.firstIndependentCompletion,
+    ]);
+    expect(
+      progressStatementFor(recalled, events),
+      'First time through from memory at 60 BPM.',
+    );
   });
 
   test('a cued completion does not claim independent retrieval', () {
@@ -115,6 +163,45 @@ void main() {
       outcome(notes: 0.9, retrieval: FactualRetrieval.notTested),
     );
 
-    expect(progressEventFor(cued, history: [cued]), isNull);
+    expect(progressEventsFor(cued, history: [cued]), isEmpty);
+  });
+
+  test('reliability compares the same execution across guidance levels', () {
+    final attempts = [
+      record(
+        0,
+        outcome(retrieval: FactualRetrieval.notTested),
+        task: exercise.withGuidance(GuidanceContext.continuouslyCued),
+      ),
+      record(
+        1,
+        outcome(),
+        task: exercise.withGuidance(GuidanceContext.notesPreviewedOnly),
+      ),
+      record(2, outcome()),
+    ];
+
+    expect(
+      progressEventsFor(
+        attempts.last,
+        history: attempts,
+      ).map((event) => event.type),
+      [ProgressEventKind.repeatedReliability],
+    );
+  });
+
+  test('reliability does not combine attempts at different tempos', () {
+    final attempts = [
+      record(0, outcome(), task: exercise.atTempo(48)),
+      record(1, outcome(), task: exercise.atTempo(60)),
+      record(2, outcome(), task: exercise.atTempo(72)),
+    ];
+
+    final kinds = progressEventsFor(
+      attempts.last,
+      history: attempts,
+    ).map((event) => event.type);
+
+    expect(kinds, isNot(contains(ProgressEventKind.repeatedReliability)));
   });
 }

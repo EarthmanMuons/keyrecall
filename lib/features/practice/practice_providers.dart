@@ -527,7 +527,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
 
   Future<void> recordFeedbackExposure({
     required AttemptRecord record,
-    required ProgressEvent? progress,
+    required List<ProgressEvent> progress,
   }) async {
     final store = await ref.read(practiceStoreProvider.future);
     await store.appendFeedbackExposure(
@@ -538,10 +538,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         postAttemptFeedback: record.closure.measurement is Measured
             ? PostAttemptFeedback.diagnostic
             : PostAttemptFeedback.none,
-        progressFeedback: progress == null
+        progressFeedback: progress.isEmpty
             ? ProgressFeedback.none
             : ProgressFeedback.personalProgress,
-        progressEvent: progress?.type,
+        progressEvents: progress.map((event) => event.type),
       ),
     );
   }

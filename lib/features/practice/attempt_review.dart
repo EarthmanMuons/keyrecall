@@ -142,7 +142,8 @@ class AttemptReview extends StatelessWidget {
     );
     final upcoming = next;
     final summary = summarizeAttempt(record);
-    final progress = progressEventFor(record, history: history);
+    final progressEvents = progressEventsFor(record, history: history);
+    final progress = progressStatementFor(record, progressEvents);
     final reason = upcoming == null
         ? null
         : reasonForNext(
@@ -182,7 +183,7 @@ class AttemptReview extends StatelessWidget {
                       if (progress != null) ...[
                         const SizedBox(height: 24),
                         Text(
-                          progress.sentence,
+                          progress,
                           style: theme.textTheme.titleMedium,
                           textAlign: TextAlign.center,
                         ),

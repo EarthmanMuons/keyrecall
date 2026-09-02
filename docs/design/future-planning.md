@@ -441,9 +441,9 @@ one: told which notes were wrong, they will attend to those, which is useful
 practice and also makes the following attempt a different observation from an
 unaided one. It is recorded separately as `FeedbackExposure`, after the review
 has rendered. An exposure names the diagnostic level, whether personal progress
-was shown, and the progress event behind that statement. Keeping this out of the
-already committed attempt record distinguishes what was shown from what was
-intended to be shown without changing evidence replay.
+was shown, and every progress event represented by that statement. Keeping this
+out of the already committed attempt record distinguishes what was shown from
+what was intended to be shown without changing evidence replay.
 
 The questions it raises are the ones the during-attempt axis already answered in
 its own terms: whether it is neutral or evaluative, whether it is available at
@@ -464,7 +464,9 @@ performance observations rather than learner-state deltas. Progress statements
 come only from named events with truth conditions. The first events cover a
 first clean completion, a first independent completion, and the point where
 three clean attempts establish repeated reliability. Most attempts establish
-no progress event and show no progress statement.
+no progress event and show no progress statement. Repeated reliability compares
+the same material, pattern, and execution conditions, including tempo, while
+allowing guidance to vary.
 
 The evidence is written to the attempt journal in full before the review is
 read. Feedback exposure is an observational companion to that journal and does

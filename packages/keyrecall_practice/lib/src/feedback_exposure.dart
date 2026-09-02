@@ -2,8 +2,13 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:meta/meta.dart';
 
 enum PostAttemptFeedback {
+  /// No measured performance feedback was shown.
   none('NONE'),
+
+  /// Aggregate performance measurements only.
   summary('SUMMARY'),
+
+  /// Names or interprets a performance fault; a summary may accompany it.
   diagnostic('DIAGNOSTIC');
 
   const PostAttemptFeedback(this.id);
@@ -54,7 +59,7 @@ class FeedbackExposure {
   final DateTime shownAt;
   final PostAttemptFeedback postAttemptFeedback;
   final ProgressFeedback progressFeedback;
-  final ProgressEventKind? progressEvent;
+  final List<ProgressEventKind> progressEvents;
 
   FeedbackExposure({
     required String profileId,
@@ -62,17 +67,21 @@ class FeedbackExposure {
     required DateTime shownAt,
     required this.postAttemptFeedback,
     required this.progressFeedback,
-    this.progressEvent,
+    required Iterable<ProgressEventKind> progressEvents,
   }) : profileId = requireProfileId(profileId),
-       shownAt = shownAt.toUtc() {
+       shownAt = shownAt.toUtc(),
+       progressEvents = List.unmodifiable(progressEvents) {
     if (attemptId.isEmpty) {
       throw ArgumentError.value(attemptId, 'attemptId');
     }
-    if ((progressEvent != null) !=
+    if (this.progressEvents.isNotEmpty !=
         (progressFeedback == ProgressFeedback.personalProgress)) {
       throw ArgumentError(
-        'a progress event is required exactly when progress was shown',
+        'progress events are required exactly when progress was shown',
       );
+    }
+    if (this.progressEvents.toSet().length != this.progressEvents.length) {
+      throw ArgumentError.value(progressEvents, 'progressEvents');
     }
   }
 
@@ -82,7 +91,7 @@ class FeedbackExposure {
     'shown_at': encodeTime(shownAt),
     'post_attempt_feedback': postAttemptFeedback.id,
     'progress_feedback': progressFeedback.id,
-    'progress_event': progressEvent?.id,
+    'progress_events': progressEvents.map((event) => event.id).toList(),
   };
 
   factory FeedbackExposure.fromJson(Map<String, Object?> json) =>
@@ -96,13 +105,7 @@ class FeedbackExposure {
         progressFeedback: ProgressFeedback.fromId(
           requireString(json, 'progress_feedback'),
         ),
-        progressEvent: switch (json['progress_event']) {
-          final String id => ProgressEventKind.fromId(id),
-          null => null,
-          _ => throw const JournalFormatException(
-            'progress_event must be a string or null',
-          ),
-        },
+        progressEvents: _decodeProgressEvents(json),
       );
 
   @override
@@ -113,7 +116,7 @@ class FeedbackExposure {
       other.shownAt == shownAt &&
       other.postAttemptFeedback == postAttemptFeedback &&
       other.progressFeedback == progressFeedback &&
-      other.progressEvent == progressEvent;
+      _sameEvents(other.progressEvents, progressEvents);
 
   @override
   int get hashCode => Object.hash(
@@ -122,6 +125,39 @@ class FeedbackExposure {
     shownAt,
     postAttemptFeedback,
     progressFeedback,
-    progressEvent,
+    Object.hashAll(progressEvents),
   );
+}
+
+List<ProgressEventKind> _decodeProgressEvents(Map<String, Object?> json) {
+  if (json.containsKey('progress_events')) {
+    final events = json['progress_events'];
+    if (events is! List<Object?>) {
+      throw const JournalFormatException('progress_events must be a list');
+    }
+    return [
+      for (final event in events)
+        if (event is String)
+          ProgressEventKind.fromId(event)
+        else
+          throw const JournalFormatException(
+            'progress_events must contain strings',
+          ),
+    ];
+  }
+  return switch (json['progress_event']) {
+    final String id => [ProgressEventKind.fromId(id)],
+    null => const [],
+    _ => throw const JournalFormatException(
+      'progress_event must be a string or null',
+    ),
+  };
+}
+
+bool _sameEvents(List<ProgressEventKind> a, List<ProgressEventKind> b) {
+  if (a.length != b.length) return false;
+  for (var index = 0; index < a.length; index++) {
+    if (a[index] != b[index]) return false;
+  }
+  return true;
 }
