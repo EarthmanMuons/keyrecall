@@ -15,10 +15,10 @@ import 'practice_providers.dart';
 ///
 /// The gate is whether this install has anybody on it, read from the roster
 /// rather than from a flag: an install with a profile has been placed, and one
-/// without has not. It sits above everything that reads the practice loop
-/// because opening a sitting conjures a default profile when none exists, and
-/// a profile conjured before the question is answered is one placed at a tier
-/// nobody chose and nobody can change.
+/// without has not. It holds however the roster emptied, so deleting the last
+/// profile puts the install back here rather than conjuring a replacement
+/// placed at a tier nobody chose. The practice loop refuses to open a sitting
+/// without a profile, and this is what keeps that unreachable.
 ///
 /// A roster that cannot be read falls through to the app, which has its own
 /// account of unreadable storage and the ways out of it.

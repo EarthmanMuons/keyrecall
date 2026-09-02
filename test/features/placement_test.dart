@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -10,6 +12,7 @@ import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/onboarding.dart';
 import 'package:keyrecall/features/practice/placement.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
+import 'package:keyrecall/features/practice/profiles_screen.dart';
 
 /// The one question a first launch asks, and what it must not do before it is
 /// answered.
@@ -137,6 +140,105 @@ void main() {
           'one person on one instrument stays the ordinary case, so the '
           'name is implicit and only the prior is asked for',
     );
+  });
+
+  group('an install emptied of profiles', () {
+    /// Seeds one profile, opens the app on it, and pushes the profiles screen
+    /// over it, which is the only way the roster is emptied by hand.
+    Future<GlobalKey<NavigatorState>> openProfiles(
+      WidgetTester tester,
+      ProviderContainer container,
+    ) async {
+      tester.view.physicalSize = const Size(1200, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
+      final repository = await container.read(profileRepositoryProvider.future);
+      await repository.create(
+        displayName: 'Alice',
+        placement: PlacementTier.advanced,
+      );
+      await container.read(profileRosterProvider.future);
+
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            navigatorKey: navigator,
+            home: const OnboardingGate(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AttemptScreen), findsOneWidget);
+
+      unawaited(
+        navigator.currentState!.push(
+          MaterialPageRoute<void>(builder: (context) => const ProfilesScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return navigator;
+    }
+
+    Future<void> deleteAlice(WidgetTester tester) async {
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Delete profile and history'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Delete'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('leaves the way back at the first launch', (tester) async {
+      final container = containerOn();
+      final navigator = await openProfiles(tester, container);
+      await deleteAlice(tester);
+
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AttemptScreen), findsNothing);
+      expect(
+        find.text(placementQuestion),
+        findsOneWidget,
+        reason:
+            'an install with nobody on it is unplaced however it got that '
+            'way, and the next learner is placed by the person who will be it',
+      );
+    });
+
+    testWidgets('is practicing again as soon as somebody is added', (
+      tester,
+    ) async {
+      final container = containerOn();
+      final navigator = await openProfiles(tester, container);
+      await deleteAlice(tester);
+
+      await tester.tap(find.text('Add profile'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), 'Bo');
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(PlacementTier.someExperience.headline));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Continue'));
+      await tester.pumpAndSettle();
+
+      navigator.currentState!.pop();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AttemptScreen), findsOneWidget);
+      expect(
+        find.text(placementQuestion),
+        findsNothing,
+        reason:
+            'a profile added by name carries its own answer, so the first '
+            'launch has nothing left to ask',
+      );
+    });
   });
 
   testWidgets('an install that has been placed goes straight to practice', (

@@ -38,7 +38,12 @@ class _ProfilesScreenState extends ConsumerState<ProfilesScreen> {
     // Read on arrival, every time. What each profile has recorded changes
     // while this screen is not on screen, since practicing is what changes it,
     // so a roster left over from the last visit is stale by construction.
-    ref.invalidate(profileRosterProvider);
+    //
+    // After the frame that pushed this route: invalidating while the route is
+    // still being built marks the scope above it dirty mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.invalidate(profileRosterProvider);
+    });
   }
 
   @override
