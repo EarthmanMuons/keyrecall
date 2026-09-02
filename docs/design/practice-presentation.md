@@ -23,12 +23,19 @@ as long as that key is held.
 The staff locator is an orientation aid rather than a reading of the
 performance, and the two are deliberately not the same thing. Each hand
 travels its own line, so one hand's mistake leaves the other's highlight
-alone. A hand takes an arrival that is the note it expects; failing that, one
-that uniquely matches either of the next two notes, so a skipped note costs a
-note rather than the rest of the run; failing that, one in another octave, so
-a scale played an octave out still travels. Two hands are offered every
+alone. A hand takes an arrival that is the note it expects, or failing that
+one that uniquely matches either of the next two notes, so a skipped note
+costs a note rather than the rest of the run. Two hands are offered every
 arrival, since the input stream does not say which hand played it, and a hand
 that matches exactly takes it before one that matches only by octave.
+
+Register agreement is an entry condition rather than something the locator
+recovers into. A hand whose first note falls in another octave is not playing
+what is written, and it stays dark for the whole traversal even if it later
+moves into the written register, because a cue that appears mid-run reads as
+an event and takes attention where a cue that was never there reads as one
+this performance does not get. Suppression is per hand, so a left hand in the
+written register is located while a right hand an octave out is not.
 
 What the tolerances never do is light anything. A notehead lights only while
 the key it is written for is down, so the staff never stands for a note that

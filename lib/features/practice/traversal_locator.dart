@@ -12,17 +12,20 @@ import 'staff_score.dart';
 /// that.
 ///
 /// Which those are: a hand travels on its own, so one hand's mistake leaves
-/// the other's highlight alone. An arrival the expected note did not match is
-/// looked for in the two notes after it, so a skipped note costs the locator
-/// a note rather than the rest of the run. An arrival in the wrong octave
-/// still moves the hand along, because a scale played an octave out is being
-/// played, and a locator that lost it there would be dark until the registers
-/// happened to agree again.
+/// the other's highlight alone, and an arrival the expected note did not
+/// match is looked for in the two notes after it, so a skipped note costs the
+/// locator a note rather than the rest of the run.
 ///
-/// What it does not give up is what it draws. A notehead lights only while
+/// The register is not one of them. A hand that enters the exercise in
+/// another octave is not playing the notes on the page, and it stays dark for
+/// the rest of the traversal rather than lighting up later wherever the
+/// registers happen to meet: a cue that was never there reads as a cue this
+/// performance does not get, and one that arrives mid-run reads as something
+/// happening, which is attention a learner is not being asked to spend.
+///
+/// What it draws is exact whatever it tolerates. A notehead lights only while
 /// the key it is written for is down, so nothing on the page ever stands for
-/// a note that was not played. The tolerances move the cursor; they never
-/// light anything.
+/// a note that was not played.
 
 /// How far past the note it is expecting a hand looks for an arrival.
 const int _lookahead = 2;
@@ -45,30 +48,41 @@ Set<String> locatedElementIds(
 
 /// The last moment of [realization] each hand's arrivals reached.
 ///
-/// A hand is absent until one of its notes arrives. Which hand played an
-/// arrival is not something the input stream says, so every hand is offered
-/// every note: a hand that matches it exactly takes it, and only if none does
-/// is it offered as a note in another octave. Otherwise the lower hand of an
-/// exercise in octaves would advance the upper one as well.
+/// A hand is absent until one of its notes arrives, and stays absent for the
+/// whole traversal if the note it entered on was in another octave.
+///
+/// Which hand played an arrival is not something the input stream says, so
+/// every hand is offered every note: a hand that matches it exactly takes it,
+/// and only if none does is it offered as a note in another octave. Otherwise
+/// the lower hand of an exercise in octaves would advance the upper one as
+/// well.
 Map<Hand, int> reachedMoments(
   ExerciseRealization realization,
   PerformanceTranscript transcript,
 ) {
   final lines = _linesOf(realization);
   final next = {for (final hand in lines.keys) hand: 0};
+  final entered = <Hand>{};
+  final displaced = <Hand>{};
   final reached = <Hand, int>{};
 
   for (final played in transcript.notes) {
     var hits = _hits(lines, next, played.midiNote, exact: true);
-    if (hits.isEmpty) {
-      hits = _hits(lines, next, played.midiNote, exact: false);
-    }
+    final octaveOut = hits.isEmpty;
+    if (octaveOut) hits = _hits(lines, next, played.midiNote, exact: false);
+
     for (final MapEntry(key: hand, value: index) in hits.entries) {
+      if (entered.add(hand) && octaveOut) displaced.add(hand);
       reached[hand] = lines[hand]![index].position;
       next[hand] = index + 1;
     }
   }
-  return reached;
+  // Still travelled, so the hand that did play in the written register is not
+  // dragged along by this one's arrivals.
+  return {
+    for (final MapEntry(key: hand, value: position) in reached.entries)
+      if (!displaced.contains(hand)) hand: position,
+  };
 }
 
 Map<Hand, int> _hits(

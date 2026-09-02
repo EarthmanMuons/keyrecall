@@ -135,7 +135,7 @@ void main() {
     );
   });
 
-  test('a hand travels through the octave it is played in, unlit', () {
+  test('a hand that enters in another octave stays dark for the run', () {
     final realization = realizationOf();
     final keys = keysOf(realization);
     final low = [for (final key in keys) key - 12];
@@ -149,17 +149,42 @@ void main() {
       isEmpty,
       reason: 'the staff writes the note an octave up, and it is not held',
     );
-    expect(reachedMoments(realization, playing(low.take(3).toList())), {
-      Hand.right: 2,
-    });
     expect(
       locatedElementIds(
         realization,
         transcript: playing([...low.take(3), keys[3]]),
         pressedNotes: {keys[3]},
       ),
-      {staffElementId(Hand.right, 3)},
-      reason: 'coming back to the written register lights it again',
+      isEmpty,
+      reason: 'coming back to the written register does not start it mid-run',
+    );
+  });
+
+  test('the hand in the written register is located, the other is not', () {
+    final realization = realizationOf(hands: HandConfiguration.together);
+    final left = [
+      for (final moment in realization.moments)
+        moment.noteFor(Hand.left)!.midiNote,
+    ];
+    final right = [
+      for (final moment in realization.moments)
+        moment.noteFor(Hand.right)!.midiNote,
+    ];
+    final transcript = playing([
+      left[0],
+      right[0] + 12,
+      left[1],
+      right[1] + 12,
+    ]);
+
+    expect(reachedMoments(realization, transcript), {Hand.left: 1});
+    expect(
+      locatedElementIds(
+        realization,
+        transcript: transcript,
+        pressedNotes: {left[1], right[1] + 12},
+      ),
+      {staffElementId(Hand.left, 1)},
     );
   });
 
