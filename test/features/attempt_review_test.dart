@@ -6,6 +6,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_review.dart';
 
 /// What the screen between attempts is allowed to say about what comes next.
@@ -158,6 +159,89 @@ void main() {
     });
   });
 
+  group('an attempt nothing was played in', () {
+    final silent = AttemptRecord(
+      journalSequence: 0,
+      identity: AttemptIdentity(
+        profileId: 'profile',
+        attemptId: 'attempt',
+        sessionId: 'session',
+        indexInSession: 0,
+        occurredAt: DateTime.utc(2026),
+      ),
+      provenance: const ModelProvenance(
+        learnerModelVersion: 'learner',
+        schedulerModelVersion: 'scheduler',
+      ),
+      exercise: previous,
+      closure: AttemptClosure.unmeasured(
+        termination: AttemptTermination.inactivityTimeout,
+        reason: MeasurementUnavailableReason.nothingPlayed,
+      ),
+    );
+
+    Future<void> pumpReview(
+      WidgetTester tester,
+      InstrumentReadiness instrument,
+    ) => tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: AttemptReview(
+            record: silent,
+            history: [silent],
+            next: presented(exerciseOf(material: gMajor)),
+            instrument: instrument,
+            onNext: () {},
+          ),
+        ),
+      ),
+    );
+
+    testWidgets('names the missing instrument when there is none', (
+      tester,
+    ) async {
+      await pumpReview(tester, InstrumentReadiness.disconnected);
+
+      expect(find.text('No piano connected.'), findsOneWidget);
+      expect(
+        find.text('Connect your piano, then try the exercise again.'),
+        findsOneWidget,
+      );
+      expect(find.widgetWithText(FilledButton, 'Connect'), findsOneWidget);
+    });
+
+    testWidgets('sends a connected learner to their own connection', (
+      tester,
+    ) async {
+      await pumpReview(tester, InstrumentReadiness.connected);
+
+      expect(find.text('No notes came through.'), findsOneWidget);
+      expect(
+        find.text(
+          'KeyRecall received nothing from your piano. Check that it’s '
+          'still connected, then try again.',
+        ),
+        findsOneWidget,
+        reason:
+            'a connected piano that sent nothing is a different problem from '
+            'one that was never attached',
+      );
+      expect(
+        find.widgetWithText(FilledButton, 'Check connection'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('offers nothing to connect where nothing was wanted', (
+      tester,
+    ) async {
+      await pumpReview(tester, InstrumentReadiness.notNeeded);
+
+      expect(find.textContaining('piano'), findsNothing);
+      expect(find.byIcon(Icons.piano), findsNothing);
+    });
+  });
+
   testWidgets('a measured review scrolls on a compact screen', (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(400, 600);
@@ -214,6 +298,7 @@ void main() {
             history: [record],
             reading: reading,
             next: presented(exerciseOf(material: gMajor)),
+            instrument: InstrumentReadiness.connected,
             onNext: () {},
             onDetailsViewed: () => detailsViewed++,
           ),

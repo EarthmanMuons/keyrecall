@@ -137,6 +137,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         body: AttemptReview(
           record: committed,
           history: history,
+          instrument: ref.watch(instrumentReadinessProvider),
           reading: loop.value?.lastReading,
           next: loop.value?.presented,
           onDetailsViewed: () {

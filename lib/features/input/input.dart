@@ -6,6 +6,7 @@
 library;
 
 export 'input_activity.dart';
+export 'instrument_readiness.dart';
 export 'midi_device_sheet.dart';
 export 'input_source.dart';
 export 'input_temporal_events_provider.dart';

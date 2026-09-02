@@ -5,6 +5,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import '../input/input.dart';
 import 'attempt_detail_trace.dart';
 import 'attempt_details_sheet.dart';
 import 'attempt_diagnosis.dart';
@@ -152,6 +153,7 @@ class AttemptReview extends StatelessWidget {
     required this.next,
     required this.onNext,
     required this.history,
+    required this.instrument,
     this.reading,
     this.onDetailsViewed,
     super.key,
@@ -173,6 +175,10 @@ class AttemptReview extends StatelessWidget {
 
   /// Dismisses this and puts the next exercise on screen.
   final VoidCallback onNext;
+
+  /// Whether an instrument is attached, which is what an attempt nothing was
+  /// played in is explained by.
+  final InstrumentReadiness instrument;
 
   @override
   Widget build(BuildContext context) {
@@ -197,6 +203,10 @@ class AttemptReview extends StatelessWidget {
             previous: record.exercise,
           );
 
+    final silence = nothingWasPlayed(record.closure)
+        ? _Silence.of(instrument)
+        : null;
+
     final layout = Layout.of(context);
 
     return Padding(
@@ -218,11 +228,16 @@ class AttemptReview extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        diagnosis?.sentence ??
+                        silence?.sentence ??
+                            diagnosis?.sentence ??
                             unreadableSentence(record.closure),
                         style: theme.textTheme.headlineMedium,
                         textAlign: TextAlign.start,
                       ),
+                      if (silence != null) ...[
+                        const SizedBox(height: 16),
+                        _SilenceHelp(silence),
+                      ],
                       if (summary != null) ...[
                         const SizedBox(height: 28),
                         _AttemptSummaryView(
@@ -303,6 +318,79 @@ class AttemptReview extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// What to say about an attempt nothing was played in, and the way out of it.
+///
+/// The instrument is the likely reason for silence, so the screen names the
+/// story it can support rather than leaving the learner to diagnose the app.
+enum _Silence {
+  /// Nothing is attached, which is the whole explanation.
+  disconnected(
+    sentence: 'No piano connected.',
+    remedy: 'Connect your piano, then try the exercise again.',
+    action: 'Connect',
+  ),
+
+  /// A piano is attached and none of its notes arrived.
+  unheard(
+    sentence: 'No notes came through.',
+    remedy:
+        'KeyRecall received nothing from your piano. Check that it’s still '
+        'connected, then try again.',
+    action: 'Check connection',
+  );
+
+  const _Silence({
+    required this.sentence,
+    required this.remedy,
+    required this.action,
+  });
+
+  /// What happened, in place of the diagnosis.
+  final String sentence;
+
+  /// What to do about it.
+  final String remedy;
+
+  /// The button that does it.
+  final String action;
+
+  /// The story [instrument] supports, or null where none was wanted.
+  static _Silence? of(InstrumentReadiness instrument) => switch (instrument) {
+    InstrumentReadiness.notNeeded => null,
+    InstrumentReadiness.disconnected => _Silence.disconnected,
+    InstrumentReadiness.connected => _Silence.unheard,
+  };
+}
+
+/// The remedy for silence, offered where the silence is reported.
+class _SilenceHelp extends StatelessWidget {
+  const _SilenceHelp(this.silence);
+
+  final _Silence silence;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          silence.remedy,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 12),
+        FilledButton.tonalIcon(
+          onPressed: () => MidiDeviceSheet.show(context),
+          icon: const Icon(Icons.piano),
+          label: Text(silence.action),
+        ),
+      ],
     );
   }
 }

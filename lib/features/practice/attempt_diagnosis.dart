@@ -164,12 +164,19 @@ class AttemptDiagnosis {
       'AttemptDiagnosis(finished: $finished, ${fault?.name ?? 'clean'})';
 }
 
-/// What to say about the attempt [closure] recorded, or null when nothing was
-/// measured.
+/// Whether the attempt closed with no playing behind it.
 ///
-/// [reading] is the correspondence the closure was made from, which nothing
-/// persists. Without it the channel is still known and the place is not, so a
-/// replayed attempt diagnoses correctly and says less.
+/// The measured and the unreadable paths both arrive at silence, and a screen
+/// offering a way out of it has to catch either. Declining is not silence: it
+/// is something the learner said, and it is evidence.
+bool nothingWasPlayed(AttemptClosure closure) =>
+    closure.termination != AttemptTermination.learnerDeclined &&
+    switch (closure.measurement) {
+      Measured(:final outcome) => !outcome.started,
+      MeasurementUnavailable(:final reason) =>
+        reason == MeasurementUnavailableReason.nothingPlayed,
+    };
+
 /// What to say about an attempt nothing could be read from.
 ///
 /// The reason, said as what happened rather than as a verdict: there is no
@@ -186,6 +193,12 @@ String unreadableSentence(AttemptClosure closure) =>
       _ => 'Recorded.',
     };
 
+/// What to say about the attempt [closure] recorded, or null when nothing was
+/// measured.
+///
+/// [reading] is the correspondence the closure was made from, which nothing
+/// persists. Without it the channel is still known and the place is not, so a
+/// replayed attempt diagnoses correctly and says less.
 AttemptDiagnosis? diagnose({
   required Exercise exercise,
   required AttemptClosure closure,
