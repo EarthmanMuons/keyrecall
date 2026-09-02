@@ -366,9 +366,9 @@ class _TraceSection extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(upperLabel, style: theme.textTheme.labelSmall),
-                        Text(centerLabel, style: theme.textTheme.labelSmall),
-                        Text(lowerLabel, style: theme.textTheme.labelSmall),
+                        Text(upperLabel, style: _annotationStyle(context)),
+                        Text(centerLabel, style: _annotationStyle(context)),
+                        Text(lowerLabel, style: _annotationStyle(context)),
                       ],
                     ),
                   ),
@@ -454,7 +454,7 @@ class _TraversalLabels extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final style = Theme.of(context).textTheme.labelSmall;
+    final style = _annotationStyle(context);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: switch (direction) {
@@ -470,6 +470,15 @@ class _TraversalLabels extends StatelessWidget {
       },
     );
   }
+}
+
+/// Chart annotation rather than content: the same size as the labels around
+/// it, a step back in emphasis.
+TextStyle? _annotationStyle(BuildContext context) {
+  final theme = Theme.of(context);
+  return theme.textTheme.labelSmall?.copyWith(
+    color: theme.colorScheme.onSurfaceVariant,
+  );
 }
 
 /// A duration as a musician would say it rather than as it was measured.
