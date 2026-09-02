@@ -160,69 +160,83 @@ class AttemptReview extends StatelessWidget {
       child: Center(
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: layout.readableWidth),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Text(
-                diagnosis?.sentence ?? unreadableSentence(record.closure),
-                style: theme.textTheme.headlineMedium,
-                textAlign: TextAlign.center,
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const Spacer(),
+                      Text(
+                        diagnosis?.sentence ??
+                            unreadableSentence(record.closure),
+                        style: theme.textTheme.headlineMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                      if (summary != null) ...[
+                        const SizedBox(height: 28),
+                        _AttemptSummaryView(summary),
+                      ],
+                      if (progress != null) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          progress.sentence,
+                          style: theme.textTheme.titleMedium,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                      const SizedBox(height: 32),
+                      if (upcoming != null) ...[
+                        Text(
+                          'Next',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          materialName(upcoming.exercise.material),
+                          style: theme.textTheme.titleLarge,
+                          textAlign: TextAlign.center,
+                        ),
+                        if (reason != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            reason,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                      ],
+                      const Spacer(),
+                      if (!kReleaseMode) ...[
+                        _Measured(
+                          record: record,
+                          next: upcoming,
+                          diagnosis: diagnosis,
+                        ),
+                        const SizedBox(height: 16),
+                      ],
+                      SizedBox(
+                        height: 88,
+                        child: FilledButton(
+                          onPressed: onNext,
+                          style: FilledButton.styleFrom(
+                            textStyle: theme.textTheme.headlineSmall,
+                          ),
+                          child: Text(upcoming == null ? 'Done' : 'Next'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              if (summary != null) ...[
-                const SizedBox(height: 28),
-                _AttemptSummaryView(summary),
-              ],
-              if (progress != null) ...[
-                const SizedBox(height: 24),
-                Text(
-                  progress.sentence,
-                  style: theme.textTheme.titleMedium,
-                  textAlign: TextAlign.center,
-                ),
-              ],
-              const SizedBox(height: 32),
-              if (upcoming != null) ...[
-                Text(
-                  'Next',
-                  style: theme.textTheme.labelLarge?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  materialName(upcoming.exercise.material),
-                  style: theme.textTheme.titleLarge,
-                  textAlign: TextAlign.center,
-                ),
-                if (reason != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    reason,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
-              ],
-              const Spacer(),
-              if (!kReleaseMode) ...[
-                _Measured(record: record, next: upcoming, diagnosis: diagnosis),
-                const SizedBox(height: 16),
-              ],
-              SizedBox(
-                height: 88,
-                child: FilledButton(
-                  onPressed: onNext,
-                  style: FilledButton.styleFrom(
-                    textStyle: theme.textTheme.headlineSmall,
-                  ),
-                  child: Text(upcoming == null ? 'Done' : 'Next'),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

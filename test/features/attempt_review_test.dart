@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/attempt_review.dart';
 
@@ -74,5 +77,62 @@ void main() {
         'A little quicker.',
       );
     });
+  });
+
+  testWidgets('a measured review scrolls on a compact screen', (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(400, 600);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+
+    final outcome = Outcome(
+      started: true,
+      retrieval: FactualRetrieval.succeeded,
+      completed: true,
+      materialRetrieval: 1,
+      pitchIntegrity: 1,
+      continuity: 1,
+      temporalStability: 1,
+      achievedTempoRatio: 1,
+      topologyAccuracy: 1,
+    );
+    final record = AttemptRecord(
+      journalSequence: 0,
+      identity: AttemptIdentity(
+        profileId: 'profile',
+        attemptId: 'attempt',
+        sessionId: 'session',
+        indexInSession: 0,
+        occurredAt: DateTime.utc(2026),
+      ),
+      provenance: const ModelProvenance(
+        learnerModelVersion: 'learner',
+        schedulerModelVersion: 'scheduler',
+      ),
+      exercise: previous,
+      closure: AttemptClosure.measured(
+        termination: AttemptTermination.learnerStopped,
+        outcome: outcome,
+        weights: evidenceWeightsFor(previous, outcome),
+        memoryUpdate: const MemoryUpdateDiagnostics(),
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AttemptReview(
+          record: record,
+          history: [record],
+          next: null,
+          onNext: () {},
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Notes'), findsOneWidget);
+    expect(find.text('First clean right-hand pass at 60 BPM.'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Done'), 200);
+    expect(find.text('Done'), findsOneWidget);
   });
 }
