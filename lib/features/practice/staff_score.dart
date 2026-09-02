@@ -240,9 +240,9 @@ crisp.GrandStaff grandStaffFor(
   ),
 );
 
-/// [whole] broken into rows of [measuresPerRow] bars.
-///
-/// Rows restate the clefs, which is what a new system does anyway.
+/// [whole] broken into rows of [measuresPerRow] bars, which is how wide a
+/// braced system of that many bars is measured. The engraver does the breaking
+/// it draws.
 List<crisp.GrandStaff> rowsOfGrandStaff(
   crisp.GrandStaff whole, {
   int measuresPerRow = 2,

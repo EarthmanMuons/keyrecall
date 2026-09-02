@@ -104,83 +104,50 @@ class FittedStaff extends StatelessWidget {
   }
 }
 
-/// Rows of a braced grand staff, drawn as large as the width allows.
+/// A braced grand staff, wrapped into systems and drawn as large as the width
+/// allows.
+///
+/// [FittedStaff] for two staves, and for the same reason: the size is chosen
+/// here and the line breaking is left to the engraver, which is what restates
+/// the clefs on a new system, writes the time signature once, and keeps the
+/// barlines of the two staves together.
+///
+/// Drawn by the interactive view, which is the braced one that takes element
+/// colors and packs systems to a width. Nothing is wired to it, so it stays a
+/// rendering.
 class FittedGrandStaff extends StatelessWidget {
   const FittedGrandStaff({
     required this.grandStaff,
     required this.theme,
+    this.sizing,
     this.staffGap = _standardStaffGap,
+    this.elementColors = const {},
     super.key,
   });
 
   final crisp.GrandStaff grandStaff;
+
+  /// Everything the staff will hold, when that is more than it is drawing.
+  final crisp.GrandStaff? sizing;
+
   final crisp.CrispNotationTheme theme;
 
   /// Staff spaces between the two staves.
   final double staffGap;
 
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final rows = rowsOfGrandStaff(
-        grandStaff,
-        measuresPerRow: barsPerBracedSystem(
-          grandStaff,
-          width: constraints.maxWidth,
-          minimumStaffSpace: _readableStaffSpace,
-        ),
-      );
-      final space = _spaceFor(
-        fittedGrandStaffSpace(rows, width: constraints.maxWidth),
-      );
-      return Column(
-        children: [
-          for (final row in rows)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: crisp.GrandStaffView(
-                grandStaff: row,
-                theme: theme,
-                staffSpace: space,
-                staffGap: staffGap,
-              ),
-            ),
-        ],
-      );
-    },
-  );
-}
-
-/// The braced counterpart of [FittedStaff].
-///
-/// Drawn by the interactive view because it is the one that takes element
-/// colors, which is what leaves the held-open slots unpainted. Nothing is
-/// wired to it, so it stays a rendering.
-class _FittedTranscriptGrandStaff extends StatelessWidget {
-  const _FittedTranscriptGrandStaff({
-    required this.grandStaff,
-    required this.sizing,
-    required this.theme,
-    required this.hidden,
-  });
-
-  final crisp.GrandStaff grandStaff;
-
-  /// Everything the staff will hold, which is what the size is measured from.
-  final crisp.GrandStaff sizing;
-
-  final crisp.CrispNotationTheme theme;
-  final Set<String> hidden;
+  /// What to draw particular elements in, by id.
+  final Map<String, Color> elementColors;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
+      final whole = sizing ?? grandStaff;
       final space = _spaceFor(
         fittedGrandStaffSpace(
           rowsOfGrandStaff(
-            sizing,
+            whole,
             measuresPerRow: barsPerBracedSystem(
-              sizing,
+              whole,
               width: constraints.maxWidth,
               minimumStaffSpace: _readableStaffSpace,
             ),
@@ -192,7 +159,8 @@ class _FittedTranscriptGrandStaff extends StatelessWidget {
         grandStaff: grandStaff,
         theme: theme,
         staffSpace: space,
-        elementColors: {for (final id in hidden) id: Colors.transparent},
+        staffGap: staffGap,
+        elementColors: elementColors,
       );
     },
   );
@@ -311,11 +279,16 @@ class TranscriptStaff extends StatelessWidget {
         splitMidiNote: registerSplitFor(realization),
         reserve: realization.noteCount,
       );
-      return _FittedTranscriptGrandStaff(
+      return FittedGrandStaff(
         grandStaff: barsOfGrandStaff(whole, barsReachedBy(transcript.length)),
         sizing: whole,
         theme: staffTheme(context),
-        hidden: reservedGrandStaffIds(whole),
+        // The slots are there to hold the space. Drawing them would say the
+        // learner rested, which is a claim about a performance nobody has
+        // made.
+        elementColors: {
+          for (final id in reservedGrandStaffIds(whole)) id: Colors.transparent,
+        },
       );
     }
 
