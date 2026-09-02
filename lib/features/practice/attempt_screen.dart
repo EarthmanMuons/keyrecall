@@ -582,6 +582,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   void _beginCountIn() {
     _settling?.cancel();
     _countIn?.cancel();
+    unawaited(_pulse.prepare());
     setState(() {
       _phase = _Phase.countIn;
       _beatsLeft = _countInBeats;

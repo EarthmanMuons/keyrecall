@@ -58,6 +58,31 @@ void main() {
     expect(sink.releaseCalls, 1);
     expect(sink.hasFeedCallback, isFalse);
   });
+
+  test('reopening waits for queued audio to flush', () async {
+    final sink = _DelayedFeedSink();
+    final clicker = PulseClicker(sink: sink);
+    final playing = clicker.play(
+      countInBeats: 4,
+      continuingBeats: 0,
+      beat: const Duration(milliseconds: 750),
+    );
+    await sink.feedStarted.future;
+
+    final stopping = clicker.stop();
+    final preparing = clicker.prepare();
+    await Future<void>.delayed(Duration.zero);
+
+    expect(sink.releaseCalls, 0);
+    expect(sink.prepareCalls, 1);
+
+    sink.completeFeed();
+    await Future.wait([playing, stopping, preparing]);
+
+    expect(sink.releaseCalls, 1);
+    expect(sink.prepareCalls, 2);
+    await clicker.stop();
+  });
 }
 
 class _RecordingSink implements PulseAudioSink {
@@ -118,6 +143,33 @@ class _DelayedSink implements PulseAudioSink {
 
   @override
   Future<void> feed(PcmArrayInt16 frames) async => feedCalls++;
+
+  @override
+  Future<void> release() async => releaseCalls++;
+}
+
+class _DelayedFeedSink implements PulseAudioSink {
+  final feedStarted = Completer<void>();
+  final _fed = Completer<void>();
+  int prepareCalls = 0;
+  int releaseCalls = 0;
+
+  void completeFeed() => _fed.complete();
+
+  @override
+  void setFeedCallback(void Function(int)? callback) {}
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async => prepareCalls++;
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async {
+    feedStarted.complete();
+    await _fed.future;
+  }
 
   @override
   Future<void> release() async => releaseCalls++;

@@ -106,6 +106,7 @@ class PulseClicker {
   int _generation = 0;
   Future<void>? _preparing;
   Future<void>? _stopping;
+  Future<void>? _feeding;
   Timer? _release;
 
   /// Prepares the engine, if this device has one to give.
@@ -235,6 +236,8 @@ class PulseClicker {
   Future<void> _stop() async {
     final preparing = _preparing;
     if (preparing != null) await preparing;
+    final feeding = _feeding;
+    if (feeding != null) await feeding;
     if (!_opened) return;
     _opened = false;
     try {
@@ -253,24 +256,20 @@ class PulseClicker {
   /// different chunks and could hand them over in either order. Whether that
   /// can happen depends on the plugin's callback timing, which is not
   /// something to leave to chance in the one place where order is the audio.
-  bool _feeding = false;
-
   Future<void> _feedNext() async {
-    if (!_ready || _feeding) return;
+    if (!_ready || _feeding != null) return;
     final track = _track;
     if (track == null || _fed >= track.length) return;
 
-    _feeding = true;
-    try {
-      final end = math.min(_fed + _chunkFrames, track.length);
-      final frames = Int16List.fromList(
-        Int16List.sublistView(track, _fed, end),
-      );
-      _fed = end;
-      await _feed(frames);
-    } finally {
-      _feeding = false;
-    }
+    final end = math.min(_fed + _chunkFrames, track.length);
+    final frames = Int16List.fromList(Int16List.sublistView(track, _fed, end));
+    _fed = end;
+    late final Future<void> operation;
+    operation = _feed(frames).whenComplete(() {
+      if (identical(_feeding, operation)) _feeding = null;
+    });
+    _feeding = operation;
+    await operation;
   }
 
   Future<void> _feed(Int16List frames) async {
