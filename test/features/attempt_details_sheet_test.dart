@@ -78,7 +78,7 @@ void main() {
       find.text('Longest break · 2.4 s before A on the way down'),
       findsOneWidget,
     );
-    expect(find.text('Pulse'), findsOneWidget);
+    expect(find.text('PULSE'), findsOneWidget);
     expect(
       find.text(
         "How early or late the spacing between notes fell around this run's pulse. "
@@ -86,7 +86,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Coordination'), findsOneWidget);
+    expect(find.text('COORDINATION'), findsOneWidget);
     expect(find.text('58 BPM overall · target 60'), findsOneWidget);
     final pulse = tester.widget<LineChart>(find.byType(LineChart).first);
     expect(pulse.data.lineBarsData, hasLength(2));

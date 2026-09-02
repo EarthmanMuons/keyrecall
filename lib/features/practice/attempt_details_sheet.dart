@@ -99,7 +99,7 @@ class AttemptDetailsSheet extends StatelessWidget {
                   ),
                 ],
                 const SizedBox(height: 28),
-                Text('Tempo', style: theme.textTheme.titleMedium),
+                const _SectionHeading('Tempo'),
                 const SizedBox(height: 4),
                 Text(
                   '${achievedTempoBpm.round()} BPM overall · target '
@@ -110,6 +110,29 @@ class AttemptDetailsSheet extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Set in capitals, which separates the channels from the sentences under
+/// them without another type size.
+class _SectionHeading extends StatelessWidget {
+  const _SectionHeading(this.title);
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Semantics(
+      header: true,
+      label: title,
+      child: ExcludeSemantics(
+        child: Text(
+          title.toUpperCase(),
+          style: theme.textTheme.titleMedium?.copyWith(letterSpacing: 1.1),
         ),
       ),
     );
@@ -148,7 +171,7 @@ class _NotesDetail extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Notes', style: theme.textTheme.titleMedium),
+            const _SectionHeading('Notes'),
             const SizedBox(height: 4),
             Text(
               summary.isEmpty ? 'All notes matched.' : summary,
@@ -269,7 +292,7 @@ class _FlowDetail extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Flow', style: theme.textTheme.titleMedium),
+        const _SectionHeading('Flow'),
         const SizedBox(height: 4),
         Text(gapDescription, style: theme.textTheme.bodyMedium),
         if (gap != null) ...[
@@ -378,7 +401,7 @@ class _TraceSection extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleMedium),
+            _SectionHeading(title),
             const SizedBox(height: 4),
             Text(description, style: theme.textTheme.bodyMedium),
             const SizedBox(height: 12),
