@@ -15,6 +15,27 @@ The practice screen presents one exercise. Guidance changes what information is
 placed on its staff and keyboard rather than replacing the task or instrument
 with a different screen.
 
+The neutral echo lights the keys that are currently held on the keyboard
+diagram, at Ready and throughout the attempt. The staff is static until the
+traversal starts. From then on it lights the note each hand has reached, for
+as long as that key is held.
+
+The staff locator is an orientation aid rather than a reading of the
+performance, and the two are deliberately not the same thing. Each hand
+travels its own line, so one hand's mistake leaves the other's highlight
+alone. A hand takes an arrival that is the note it expects; failing that, one
+that uniquely matches either of the next two notes, so a skipped note costs a
+note rather than the rest of the run; failing that, one in another octave, so
+a scale played an octave out still travels. Two hands are offered every
+arrival, since the input stream does not say which hand played it, and a hand
+that matches exactly takes it before one that matches only by octave.
+
+What the tolerances never do is light anything. A notehead lights only while
+the key it is written for is down, so the staff never stands for a note that
+was not played. Measurement is unaffected: it reads the same arrivals
+strictly and keeps every departure, including the octave errors and omissions
+the locator travels through.
+
 ## After an attempt
 
 The review has three outputs:

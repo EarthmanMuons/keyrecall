@@ -734,10 +734,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       });
     }
 
-    // With nothing cued, the staff is free to carry what was played. With a
-    // cue on it, it is not: echoing into a score that already shows the
-    // answer means saying which expected note each observation was, which is
-    // a judgment. There the keyboard carries the echo instead.
+    // With nothing cued, the staff is free to carry what was played in the
+    // order it arrived. With a cue on it, it is not: writing observations
+    // into a score that already shows the answer means saying which expected
+    // note each of them was, which is a judgment. A cue staff lights the note
+    // each hand has reached instead, which says where in the exercise a hand
+    // is rather than whether what it played was right.
     //
     // It changes hands at Ready rather than at the first beat, so the screen
     // the count-in runs over is the screen the attempt is played on.
@@ -768,6 +770,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           StaffCue(
             exercise: exercise,
             showsFingering: presentation.motorCue == MotorCue.fingering,
+            locates: echoes && _phase == _Phase.playing,
           ),
         if (staffCarriesTranscript)
           TranscriptStaff(transcript: transcript, exercise: exercise),

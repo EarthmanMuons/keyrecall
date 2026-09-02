@@ -1,9 +1,15 @@
+import 'package:flutter/foundation.dart';
+
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:material_ui/material_ui.dart';
 
+import '../input/input_activity.dart';
+import 'attempt_transcript.dart';
 import 'fingering.dart';
 import 'staff_score.dart';
+import 'traversal_locator.dart';
 
 /// Loads the engraving font's metrics before a staff needs them.
 ///
@@ -53,6 +59,7 @@ class FittedStaff extends StatelessWidget {
     required this.theme,
     this.sizing,
     this.elementColors = const {},
+    this.highlightedIds,
     this.showsNoteNames = false,
     super.key,
   });
@@ -70,6 +77,13 @@ class FittedStaff extends StatelessWidget {
 
   /// What to draw particular elements in, by id.
   final Map<String, Color> elementColors;
+
+  /// The elements drawn in the theme's highlight color, as they change.
+  ///
+  /// A listenable rather than a value so a change repaints the staff without
+  /// the size being measured again. The measuring is the expensive part, and
+  /// live input would otherwise redo it on every key.
+  final ValueListenable<Set<String>>? highlightedIds;
 
   final bool showsNoteNames;
 
@@ -92,12 +106,16 @@ class FittedStaff extends StatelessWidget {
             width: constraints.maxWidth,
           ),
         );
-        return crisp.MultiSystemView(
-          score: score,
-          theme: theme,
-          staffSpace: space,
-          elementColors: elementColors,
-          showNoteNames: showsNoteNames,
+        return _Highlighted(
+          highlightedIds,
+          (ids) => crisp.MultiSystemView(
+            score: score,
+            theme: theme,
+            staffSpace: space,
+            elementColors: elementColors,
+            highlightedIds: ids,
+            showNoteNames: showsNoteNames,
+          ),
         );
       },
     );
@@ -122,6 +140,7 @@ class FittedGrandStaff extends StatelessWidget {
     this.sizing,
     this.staffGap = _standardStaffGap,
     this.elementColors = const {},
+    this.highlightedIds,
     super.key,
   });
 
@@ -137,6 +156,9 @@ class FittedGrandStaff extends StatelessWidget {
 
   /// What to draw particular elements in, by id.
   final Map<String, Color> elementColors;
+
+  /// The elements drawn in the theme's highlight color, as they change.
+  final ValueListenable<Set<String>>? highlightedIds;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -155,15 +177,35 @@ class FittedGrandStaff extends StatelessWidget {
           width: constraints.maxWidth,
         ),
       );
-      return crisp.InteractiveGrandStaffView(
-        grandStaff: grandStaff,
-        theme: theme,
-        staffSpace: space,
-        staffGap: staffGap,
-        elementColors: elementColors,
+      return _Highlighted(
+        highlightedIds,
+        (ids) => crisp.InteractiveGrandStaffView(
+          grandStaff: grandStaff,
+          theme: theme,
+          staffSpace: space,
+          staffGap: staffGap,
+          elementColors: elementColors,
+          highlightedIds: ids,
+        ),
       );
     },
   );
+}
+
+/// A staff rebuilt on its highlights alone, below whatever measured it.
+class _Highlighted extends StatelessWidget {
+  const _Highlighted(this.ids, this.staff);
+
+  final ValueListenable<Set<String>>? ids;
+  final Widget Function(Set<String> ids) staff;
+
+  @override
+  Widget build(BuildContext context) => ids == null
+      ? staff(const {})
+      : ValueListenableBuilder(
+          valueListenable: ids!,
+          builder: (context, value, _) => staff(value),
+        );
 }
 
 double _spaceFor(double? fitted) => (fitted ?? _fallbackStaffSpace).clamp(
@@ -183,17 +225,19 @@ crisp.CrispNotationTheme staffTheme(BuildContext context) {
 
 /// The exercise's notes, written out.
 ///
-/// A cue surface, not a progress display: it draws what the exercise asks for
-/// and knows nothing about what has been played. Showing where the learner is,
-/// or filling notes in as they arrive, needs a layer that relates a
-/// performance to the realization, and that layer does not exist.
+/// A cue surface. It draws what the exercise asks for, and the only thing it
+/// says about the performance is which written note each hand has got to,
+/// and only while that note is being held: see [locates]. Filling notes in as
+/// they arrive, or marking any of them, needs a layer that reads a
+/// performance against the realization, and that layer does not exist.
 ///
 /// Both hands get a braced grand staff, one hand a single staff in its own
 /// clef.
-class StaffCue extends StatelessWidget {
+class StaffCue extends ConsumerStatefulWidget {
   const StaffCue({
     required this.exercise,
     this.showsFingering = false,
+    this.locates = false,
     super.key,
   });
 
@@ -206,9 +250,59 @@ class StaffCue extends StatelessWidget {
   /// channel is open rather than whenever the catalog happens to have one.
   final bool showsFingering;
 
+  /// Whether the note each hand has reached is lit while it is held.
+  ///
+  /// Orientation, not evaluation: it says which written note the learner has
+  /// their hands on, and it is worth saying only once the traversal is under
+  /// way. Before that the staff is static and the keyboard alone answers what
+  /// is being played, since a locator with nothing to locate would just be
+  /// lighting a pitch wherever it happens to be written.
+  ///
+  /// Held rather than sounding, so the pedal does not leave the staff lit
+  /// under hands that have moved on.
+  final bool locates;
+
+  @override
+  ConsumerState<StaffCue> createState() => _StaffCueState();
+}
+
+class _StaffCueState extends ConsumerState<StaffCue> {
+  /// Pushed to rather than rebuilt from: a staff that rebuilt on every key
+  /// would measure itself again for a repaint.
+  final _located = ValueNotifier<Set<String>>(const {});
+
+  @override
+  void initState() {
+    super.initState();
+    _relocate();
+  }
+
+  @override
+  void dispose() {
+    _located.dispose();
+    super.dispose();
+  }
+
+  void _relocate() => _located.value = locatedElementIds(
+    realize(widget.exercise),
+    transcript: ref.read(attemptTranscriptProvider).transcript,
+    pressedNotes: ref.read(inputActivityProvider).pressedNoteNumbers,
+  );
+
   @override
   Widget build(BuildContext context) {
+    final exercise = widget.exercise;
+    final showsFingering = widget.showsFingering;
     final realization = realize(exercise);
+
+    // Kept up to date whether or not it is being shown, so the frame the
+    // traversal starts on draws where the hands already are. Listened for
+    // rather than watched: the value goes to the staff without the size it
+    // was measured at being computed again.
+    ref.listen(inputActivityProvider, (_, _) => _relocate());
+    ref.listen(attemptTranscriptProvider, (_, _) => _relocate());
+
+    final located = widget.locates ? _located : null;
     final theme = staffTheme(context);
 
     // The cue is showing the scale on purpose, so it is written the way a
@@ -231,6 +325,7 @@ class StaffCue extends StatelessWidget {
           keySignature: keySignature,
         ),
         theme: theme,
+        highlightedIds: located,
       );
     }
     return FittedStaff(
@@ -243,6 +338,7 @@ class StaffCue extends StatelessWidget {
         keySignature: keySignature,
       ),
       theme: theme,
+      highlightedIds: located,
     );
   }
 }
