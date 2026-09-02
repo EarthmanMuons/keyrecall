@@ -32,15 +32,16 @@ void main() {
 
   test('pulse is interval deviation from the performed median', () {
     final gaps = List<int>.filled(expected.length - 1, 1000)
-      ..[0] = 800
-      ..[2] = 1200;
+      ..[0] = 900
+      ..[2] = 1100;
 
     final trace = attemptDetailTraceFor(read(expected, gaps));
 
+    expect(trace.flowGap, isNull);
     expect(trace.pulse[0].position, 1);
-    expect(trace.pulse[0].value, 200);
+    expect(trace.pulse[0].value, 100);
     expect(trace.pulse[2].position, 3);
-    expect(trace.pulse[2].value, -200);
+    expect(trace.pulse[2].value, -100);
   });
 
   test('a missing realization moment leaves no pulse interval across it', () {
@@ -66,6 +67,16 @@ void main() {
     );
     expect(trace.flowGap?.beforePosition, 9);
     expect(trace.flowGap?.durationMs, 3200);
+  });
+
+  test('the pronounced break belongs to flow rather than to pulse', () {
+    final gaps = List<int>.filled(expected.length - 1, 1000)..[8] = 3200;
+
+    final trace = attemptDetailTraceFor(read(expected, gaps));
+
+    expect(trace.flowGap?.beforePosition, 9);
+    expect(trace.pulse.map((point) => point.position), isNot(contains(9)));
+    expect(trace.pulse.map((point) => point.value.abs()), everyElement(0));
   });
 
   test('repeated notes remain visible as departures', () {

@@ -237,7 +237,7 @@ class _FlowDetail extends StatelessWidget {
     final realization = realize(exercise);
     final gapDescription = gap == null
         ? 'No pronounced break.'
-        : 'Longest break · ${(gap.durationMs / 1000).toStringAsFixed(1)} s '
+        : 'Longest break · ${_durationText(gap.durationMs)} '
               'before ${_momentLabel(realization, gap.beforePosition)} '
               '${landmarkAt(gap.beforePosition, realization).phrase}';
     return Column(
@@ -332,9 +332,9 @@ class _TraceSection extends StatelessWidget {
       0,
       -points.map((point) => point.value).reduce(math.min),
     );
-    final largestDeviation = math.max(upper, lower).round();
     final description = showsLargestDeviation
-        ? '$explanation Largest deviation: $largestDeviation ms.'
+        ? '$explanation Largest deviation: '
+              '${_durationText(math.max(upper, lower))}.'
         : explanation;
     final lastPosition = math.max(1, momentCount - 1).toDouble();
     final horizontalPadding = math.max(
@@ -346,8 +346,8 @@ class _TraceSection extends StatelessWidget {
         : null;
     return Semantics(
       label:
-          '$title trace. Farthest $upperLabel ${upper.round()} milliseconds; '
-          'farthest $lowerLabel ${lower.round()} milliseconds.',
+          '$title trace. Farthest $upperLabel ${_spokenDuration(upper)}; '
+          'farthest $lowerLabel ${_spokenDuration(lower)}.',
       child: ExcludeSemantics(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -471,6 +471,15 @@ class _TraversalLabels extends StatelessWidget {
     );
   }
 }
+
+/// A duration as a musician would say it rather than as it was measured.
+String _durationText(num ms) => ms.abs() < 1000
+    ? '${ms.round()} ms'
+    : '${(ms / 1000).toStringAsFixed(1)} s';
+
+String _spokenDuration(num ms) => ms.abs() < 1000
+    ? '${ms.round()} milliseconds'
+    : '${(ms / 1000).toStringAsFixed(1)} seconds';
 
 double _xFor(num position, int momentCount, double width) {
   if (momentCount <= 1) return width / 2;

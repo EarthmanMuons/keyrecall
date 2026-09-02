@@ -54,6 +54,10 @@ class AttemptDetailTrace {
        noteDepartures = List.unmodifiable(noteDepartures);
 
   final int momentCount;
+
+  /// Interval deviations, minus whichever interval [flowGap] already accounts
+  /// for. A pronounced break is a flow event; charting it here would show the
+  /// same pause twice and swamp the scale the rest is read against.
   final List<AttemptTracePoint> pulse;
   final List<AttemptTracePoint> coordination;
   final List<NoteMomentStatus> notes;
@@ -78,12 +82,30 @@ AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
       ))
         operation,
   ];
+  FlowGap? flowGap;
+  final gapPosition = measurement.longestGapBeforePosition;
+  if (gapPosition != null && reading.outcome.continuity < 1) {
+    for (var index = 1; index < timedMoments.length; index++) {
+      if (timedMoments[index].realizationPosition == gapPosition) {
+        flowGap = FlowGap(
+          beforePosition: gapPosition,
+          durationMs:
+              timedMoments[index].onsetMs - timedMoments[index - 1].onsetMs,
+        );
+        break;
+      }
+    }
+  }
+
   final medianInterval = measurement.medianIntervalMs;
   final pulse = <AttemptTracePoint>[];
   if (medianInterval != null) {
     for (var index = 1; index < timedMoments.length; index++) {
       if (timedMoments[index].realizationPosition !=
           timedMoments[index - 1].realizationPosition + 1) {
+        continue;
+      }
+      if (timedMoments[index].realizationPosition == flowGap?.beforePosition) {
         continue;
       }
       final interval =
@@ -157,21 +179,6 @@ AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
       case MomentDeletion():
       case MomentInsertion():
         break;
-    }
-  }
-
-  FlowGap? flowGap;
-  final gapPosition = measurement.longestGapBeforePosition;
-  if (gapPosition != null && reading.outcome.continuity < 1) {
-    for (var index = 1; index < timedMoments.length; index++) {
-      if (timedMoments[index].realizationPosition == gapPosition) {
-        flowGap = FlowGap(
-          beforePosition: gapPosition,
-          durationMs:
-              timedMoments[index].onsetMs - timedMoments[index - 1].onsetMs,
-        );
-        break;
-      }
     }
   }
 
