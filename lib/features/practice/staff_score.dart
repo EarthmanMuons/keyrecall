@@ -320,17 +320,25 @@ crisp.Pitch _pitchOf(SpelledPitch pitch) => crisp.Pitch(
 /// The id the element for the [sequence]th played note is drawn under.
 String transcriptElementId(int sequence) => 'played-$sequence';
 
-/// The id the [index]th held-open slot is drawn under.
+/// The id the [index]th held-open slot on [staff] is drawn under.
 ///
-/// A rest standing in for a note that has not arrived. Whoever renders the
-/// score draws it in nothing, so what it does is hold the space.
-String reservedElementId(int index) => 'reserved-$index';
+/// A rest standing in for a note that has not arrived, or for the staff the
+/// note that did arrive was not written on. Whoever renders the score draws it
+/// in nothing, so what it does is hold the space.
+String reservedElementId(int index, {String staff = 'staff'}) =>
+    'reserved-$staff-$index';
 
 /// The slots in [score] that are held open rather than played.
 Set<String> reservedIds(crisp.Score score) => {
   for (final measure in score.measures)
     for (final element in measure.elements)
       if (element is crisp.RestElement && element.id != null) element.id!,
+};
+
+/// The slots in [grandStaff] that are held open rather than played.
+Set<String> reservedGrandStaffIds(crisp.GrandStaff grandStaff) => {
+  ...reservedIds(grandStaff.upper),
+  ...reservedIds(grandStaff.lower),
 };
 
 /// What was played, written out in the order it arrived.
@@ -350,46 +358,124 @@ crisp.Score transcriptScoreFor(
   required crisp.Clef clef,
   int reserve = 0,
 }) {
-  final played = <crisp.MusicElement>[
-    for (final note in transcript.notes)
-      crisp.NoteElement.note(
-        _pitchOf(note.pitch),
-        crisp.NoteDuration.eighth,
-        showAccidental: note.pitch.alteration != 0 ? true : null,
-        id: transcriptElementId(note.sequence),
-      ),
-  ];
+  final slots = _slotsFor(transcript, reserve);
+  return _transcriptStaff(clef, [
+    for (var index = 0; index < slots; index++)
+      if (index < transcript.length)
+        _playedElement(transcript.notes[index])
+      else
+        _heldSlot(index),
+  ]);
+}
 
-  // Whole bars, enough for what the exercise asks for or for what arrived when
-  // that is more. The staff is the size it is going to be before anything is
-  // played, so notes land in it rather than stretching it a note at a time,
-  // and somebody who plays extra ones is given another bar rather than another
-  // note's width.
-  final slots = played.length > reserve ? played.length : reserve;
-  final held =
-      (slots / _eighthsPerMeasure).ceil().clamp(1, slots + 1) *
-      _eighthsPerMeasure;
-  final elements = <crisp.MusicElement>[
-    ...played,
-    for (var index = played.length; index < held; index++)
-      crisp.RestElement(
-        crisp.NoteDuration.eighth,
-        id: reservedElementId(index),
-      ),
-  ];
+/// What was played, written across both staves of a grand staff.
+///
+/// A note goes to the staff its register belongs to. Which hand played it is
+/// not something the input stream says, and it is not what a clef reports
+/// either: a grand staff writes low notes low, whoever played them. Every
+/// arrival takes a slot on both staves, so a note is written in one and the
+/// other holds the space, and nothing is claimed about which arrivals belonged
+/// to the same moment.
+crisp.GrandStaff transcriptGrandStaffFor(
+  PerformanceTranscript transcript, {
+  required int splitMidiNote,
+  int reserve = 0,
+}) {
+  final slots = _slotsFor(transcript, reserve);
+  final upper = <crisp.MusicElement>[];
+  final lower = <crisp.MusicElement>[];
 
-  return crisp.Score(
-    clef: clef,
-    keySignature: _noKeySignature,
-    timeSignature: _fourFour,
-    measures: [
-      for (var start = 0; start < elements.length; start += _eighthsPerMeasure)
-        crisp.Measure(
-          elements.sublist(
-            start,
-            (start + _eighthsPerMeasure).clamp(0, elements.length),
-          ),
-        ),
-    ],
+  for (var index = 0; index < slots; index++) {
+    final note = index < transcript.length ? transcript.notes[index] : null;
+    final treble = note != null && note.midiNote >= splitMidiNote;
+    upper.add(
+      note != null && treble
+          ? _playedElement(note)
+          : _heldSlot(index, staff: 'treble'),
+    );
+    lower.add(
+      note != null && !treble
+          ? _playedElement(note)
+          : _heldSlot(index, staff: 'bass'),
+    );
+  }
+
+  return crisp.GrandStaff(
+    upper: _transcriptStaff(crisp.Clef.treble, upper),
+    lower: _transcriptStaff(crisp.Clef.bass, lower),
   );
 }
+
+/// The register a played note is written in the treble staff from.
+///
+/// Halfway between the top of what the left hand was asked for and the bottom
+/// of what the right hand was, so what each hand was asked for lands on the
+/// staff it was written on. Where the two meet on one pitch that pitch goes
+/// above, which is where a reader looks for middle C. Middle C too where the
+/// exercise does not say.
+int registerSplitFor(ExerciseRealization realization) {
+  var leftTop = -1;
+  var rightBottom = 1 << 20;
+  for (final moment in realization.moments) {
+    if (moment.noteFor(Hand.left) case final note?) {
+      if (note.midiNote > leftTop) leftTop = note.midiNote;
+    }
+    if (moment.noteFor(Hand.right) case final note?) {
+      if (note.midiNote < rightBottom) rightBottom = note.midiNote;
+    }
+  }
+  if (leftTop < 0 || rightBottom > 1 << 19) return _middleC;
+  return (leftTop + rightBottom + 1) ~/ 2;
+}
+
+const int _middleC = 60;
+
+/// Whole bars, enough for what the exercise asks for or for what arrived when
+/// that is more. The staff is the size it is going to be before anything is
+/// played, so notes land in it rather than stretching it a note at a time, and
+/// somebody who plays extra ones is given another bar rather than another
+/// note's width.
+int _slotsFor(PerformanceTranscript transcript, int reserve) {
+  final slots = transcript.length > reserve ? transcript.length : reserve;
+  return (slots / _eighthsPerMeasure).ceil().clamp(1, slots + 1) *
+      _eighthsPerMeasure;
+}
+
+crisp.NoteElement _playedElement(PlayedNote note) => crisp.NoteElement.note(
+  _pitchOf(note.pitch),
+  crisp.NoteDuration.eighth,
+  showAccidental: note.pitch.alteration != 0 ? true : null,
+  id: transcriptElementId(note.sequence),
+);
+
+crisp.RestElement _heldSlot(int index, {String staff = 'staff'}) =>
+    crisp.RestElement(
+      crisp.NoteDuration.eighth,
+      id: reservedElementId(index, staff: staff),
+    );
+
+crisp.Score _transcriptStaff(
+  crisp.Clef clef,
+  List<crisp.MusicElement> elements,
+) => crisp.Score(
+  clef: clef,
+  keySignature: _noKeySignature,
+  timeSignature: _fourFour,
+  measures: [
+    for (var start = 0; start < elements.length; start += _eighthsPerMeasure)
+      crisp.Measure(
+        elements.sublist(
+          start,
+          (start + _eighthsPerMeasure).clamp(0, elements.length),
+        ),
+      ),
+  ],
+);
+
+/// The first [count] bars of [grandStaff], for a system that is not drawing
+/// all of them yet.
+crisp.GrandStaff barsOfGrandStaff(crisp.GrandStaff grandStaff, int count) =>
+    crisp.GrandStaff(
+      upper: barsOf(grandStaff.upper, count),
+      lower: barsOf(grandStaff.lower, count),
+    );

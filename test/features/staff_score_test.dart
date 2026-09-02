@@ -311,6 +311,78 @@ void main() {
     });
   });
 
+  group('the staff two hands are written on', () {
+    final together = exerciseOf(
+      hands: HandConfiguration.together,
+      direction: ScaleDirection.upDown,
+    );
+    final realization = realize(together);
+
+    PerformanceTranscript transcriptOf(List<int> midiNotes) =>
+        PerformanceTranscript([
+          for (final (sequence, midiNote) in midiNotes.indexed)
+            PlayedNote(
+              sequence: sequence,
+              pitch: spellObservedPitch(midiNote, material: together.material),
+              timestampMs: 500 * sequence,
+            ),
+        ]);
+
+    test('splits the registers between the hands, not through them', () {
+      final split = registerSplitFor(realization);
+      final left = [
+        for (final moment in realization.moments)
+          if (moment.noteFor(Hand.left) case final note?) note.midiNote,
+      ];
+      final right = [
+        for (final moment in realization.moments)
+          if (moment.noteFor(Hand.right) case final note?) note.midiNote,
+      ];
+
+      expect(right, everyElement(greaterThanOrEqualTo(split)));
+      expect(
+        left.where((midiNote) => !right.contains(midiNote)),
+        everyElement(lessThan(split)),
+        reason: 'the octave the hands share can only be written one way',
+      );
+    });
+
+    test('writes a played note on the staff its register belongs to', () {
+      final split = registerSplitFor(realization);
+      final grandStaff = transcriptGrandStaffFor(
+        transcriptOf([split - 12, split + 12]),
+        splitMidiNote: split,
+        reserve: realization.noteCount,
+      );
+
+      expect(notesOf(grandStaff.lower), hasLength(1));
+      expect(notesOf(grandStaff.upper), hasLength(1));
+      expect(
+        notesOf(grandStaff.lower).single.id,
+        transcriptElementId(0),
+        reason: 'the low note was played first and stays in its slot',
+      );
+      expect(notesOf(grandStaff.upper).single.id, transcriptElementId(1));
+    });
+
+    test('holds the slot open on the staff a note was not written on', () {
+      final split = registerSplitFor(realization);
+      final grandStaff = transcriptGrandStaffFor(
+        transcriptOf([split - 12]),
+        splitMidiNote: split,
+        reserve: 8,
+      );
+
+      expect(grandStaff.upper.measures, hasLength(1));
+      expect(grandStaff.lower.measures, hasLength(1));
+      expect(
+        reservedGrandStaffIds(grandStaff),
+        hasLength(15),
+        reason: 'eight slots a staff, less the one the note was written in',
+      );
+    });
+  });
+
   group('how many bars a system takes', () {
     setUpAll(() => crisp.MusicFonts.load(crisp.MusicFont.bravura));
 

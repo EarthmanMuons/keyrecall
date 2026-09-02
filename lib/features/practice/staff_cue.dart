@@ -30,6 +30,16 @@ const double _maximumStaffSpace = 16;
 /// so a system that would fall below it gives up a bar instead.
 const double _readableStaffSpace = 9;
 
+/// Staff spaces between the staves of a grand staff, and the wider gap a
+/// braced system needs when it is carrying fingering.
+///
+/// The engraver writes every digit above its note, so the lower staff's sit
+/// between the staves and collide with what is written over the upper one.
+/// Widening the gap is what this layer can do about that; the fix is a
+/// placement the engraver does not yet expose.
+const double _standardStaffGap = 4;
+const double _fingeredStaffGap = 9;
+
 /// One staff, wrapped into systems and drawn as large as the width allows.
 ///
 /// The size is chosen here and the line breaking is left to the engraver. A
@@ -99,11 +109,15 @@ class FittedGrandStaff extends StatelessWidget {
   const FittedGrandStaff({
     required this.grandStaff,
     required this.theme,
+    this.staffGap = _standardStaffGap,
     super.key,
   });
 
   final crisp.GrandStaff grandStaff;
   final crisp.CrispNotationTheme theme;
+
+  /// Staff spaces between the two staves.
+  final double staffGap;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -128,9 +142,57 @@ class FittedGrandStaff extends StatelessWidget {
                 grandStaff: row,
                 theme: theme,
                 staffSpace: space,
+                staffGap: staffGap,
               ),
             ),
         ],
+      );
+    },
+  );
+}
+
+/// The braced counterpart of [FittedStaff].
+///
+/// Drawn by the interactive view because it is the one that takes element
+/// colors, which is what leaves the held-open slots unpainted. Nothing is
+/// wired to it, so it stays a rendering.
+class _FittedTranscriptGrandStaff extends StatelessWidget {
+  const _FittedTranscriptGrandStaff({
+    required this.grandStaff,
+    required this.sizing,
+    required this.theme,
+    required this.hidden,
+  });
+
+  final crisp.GrandStaff grandStaff;
+
+  /// Everything the staff will hold, which is what the size is measured from.
+  final crisp.GrandStaff sizing;
+
+  final crisp.CrispNotationTheme theme;
+  final Set<String> hidden;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final space = _spaceFor(
+        fittedGrandStaffSpace(
+          rowsOfGrandStaff(
+            sizing,
+            measuresPerRow: barsPerBracedSystem(
+              sizing,
+              width: constraints.maxWidth,
+              minimumStaffSpace: _readableStaffSpace,
+            ),
+          ),
+          width: constraints.maxWidth,
+        ),
+      );
+      return crisp.InteractiveGrandStaffView(
+        grandStaff: grandStaff,
+        theme: theme,
+        staffSpace: space,
+        elementColors: {for (final id in hidden) id: Colors.transparent},
       );
     },
   );
@@ -190,6 +252,7 @@ class StaffCue extends StatelessWidget {
 
     if (realization.hands.length > 1) {
       return FittedGrandStaff(
+        staffGap: showsFingering ? _fingeredStaffGap : _standardStaffGap,
         grandStaff: grandStaffFor(
           realization,
           fingering: {
@@ -223,8 +286,9 @@ class StaffCue extends StatelessWidget {
 /// nothing about what is coming. Its width is held from the first frame, which
 /// says how much is being asked for and not what any of it is.
 ///
-/// One staff rather than two, in the clef the exercise's register suggests,
-/// since which hand played a note is not something the input stream says.
+/// One staff for one hand, a braced pair for two. Which hand played a note is
+/// not something the input stream says, so a note on the grand staff is placed
+/// by its register, which is what a clef reports anyway.
 class TranscriptStaff extends StatelessWidget {
   const TranscriptStaff({
     required this.transcript,
@@ -240,6 +304,21 @@ class TranscriptStaff extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final realization = realize(exercise);
+    if (realization.hands.length > 1) {
+      final whole = transcriptGrandStaffFor(
+        transcript,
+        splitMidiNote: registerSplitFor(realization),
+        reserve: realization.noteCount,
+      );
+      return _FittedTranscriptGrandStaff(
+        grandStaff: barsOfGrandStaff(whole, barsReachedBy(transcript.length)),
+        sizing: whole,
+        theme: staffTheme(context),
+        hidden: reservedGrandStaffIds(whole),
+      );
+    }
+
     final score = transcriptScoreFor(
       transcript,
       clef: exercise.conditions.hands == HandConfiguration.left
@@ -249,7 +328,7 @@ class TranscriptStaff extends StatelessWidget {
       // grew a note at a time would move every note already on it each time
       // one arrived, which is the one thing a learner watching it cannot be
       // reading past.
-      reserve: realize(exercise).moments.length,
+      reserve: realization.moments.length,
     );
 
     return FittedStaff(
