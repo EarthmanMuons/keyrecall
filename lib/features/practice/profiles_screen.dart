@@ -148,10 +148,13 @@ class _ProfileTile extends ConsumerWidget {
     final notifier = ref.read(profileRosterProvider.notifier);
 
     return ListTile(
+      // The mark carries the page's own colour rather than the palette's, so
+      // it stays legible over any profile colour, including the ones close to
+      // the accent.
       leading: Badge(
         isLabelVisible: summary.isActive,
-        backgroundColor: theme.colorScheme.primary,
-        label: const Icon(Icons.check, size: 10),
+        backgroundColor: theme.colorScheme.surface,
+        label: Icon(Icons.check, size: 12, color: theme.colorScheme.primary),
         child: ProfileAvatar(profile: profile),
       ),
       title: Text(
