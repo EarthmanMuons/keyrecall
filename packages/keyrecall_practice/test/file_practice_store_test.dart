@@ -22,6 +22,7 @@ void main() {
   File journalFile() => File('${root.path}/${alice.id}/journal.jsonl');
   File pendingFile() => File('${root.path}/${alice.id}/pending.json');
   File checkpointFile() => File('${root.path}/${alice.id}/checkpoint.json');
+  File feedbackFile() => File('${root.path}/${alice.id}/feedback.jsonl');
   File eraseMarker() => File('${root.path}/${alice.id}/practice-erasing');
 
   test('a profile id cannot escape the storage root', () async {
@@ -99,6 +100,29 @@ void main() {
       expect(reloaded!.contentHash, saved!.contentHash);
       expect(reloaded.throughJournalSequence, saved.throughJournalSequence);
       expect(learnerStateHash(reloaded.state), learnerStateHash(session.state));
+    });
+
+    test('feedback exposure is durable and idempotent', () async {
+      final store = FilePracticeStore(root);
+      final session = await openSession(store);
+      final record = (await practise(session, attempts: 1)).single;
+      final exposure = FeedbackExposure(
+        profileId: alice.id,
+        attemptId: record.identity.attemptId,
+        shownAt: t0.plusDays(1),
+        postAttemptFeedback: PostAttemptFeedback.diagnostic,
+        progressFeedback: ProgressFeedback.personalProgress,
+        progressEvent: ProgressEventKind.firstCleanCompletion,
+      );
+
+      await store.appendFeedbackExposure(exposure);
+      await store.appendFeedbackExposure(exposure);
+      final loaded = await FilePracticeStore(
+        root,
+      ).loadFeedbackExposures(alice.id);
+
+      expect(loaded, [exposure]);
+      expect(feedbackFile().readAsStringSync(), endsWith('\n'));
     });
 
     // Valid JSON that is not an object is the other half of the same failure:
@@ -277,6 +301,7 @@ void main() {
 
     expect(journalFile().existsSync(), isFalse);
     expect(checkpointFile().existsSync(), isFalse);
+    expect(feedbackFile().existsSync(), isFalse);
     expect(eraseMarker().existsSync(), isFalse);
     expect(pendingFile().existsSync(), isTrue);
     expect(

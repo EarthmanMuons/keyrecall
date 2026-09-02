@@ -14,6 +14,7 @@ import '../../wordmark.dart';
 import '../audio/pulse_clicker.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
+import 'attempt_feedback.dart';
 import 'attempt_review.dart';
 import 'attempt_transcript.dart';
 import 'developer_screen.dart';
@@ -23,8 +24,8 @@ import 'hands_icon.dart';
 import 'latency_probe.dart';
 import 'loop_failure.dart';
 import 'practice_providers.dart';
-import 'profile_avatar.dart';
 import 'presentation_policy.dart';
+import 'profile_avatar.dart';
 import 'profiles_screen.dart';
 import 'staff_cue.dart';
 import 'task_help.dart';
@@ -84,6 +85,8 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   /// looking at a screen is not something the practice history should carry.
   String? _reviewed;
 
+  final Set<String> _feedbackRecorded = {};
+
   /// The attempt being played right now, if one is.
   ///
   /// The bar keeps its place and changes what it holds: nothing on it is
@@ -103,6 +106,25 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     // the decision happens while the review is being read, so Next never waits.
     final committed = loop.value?.lastCommitted;
     if (committed != null && committed.identity.attemptId != _reviewed) {
+      final history = loop.value!.session.journal.records;
+      final progress = progressEventFor(committed, history: history);
+      if (!_feedbackRecorded.contains(committed.identity.attemptId)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) async {
+          if (!mounted ||
+              _feedbackRecorded.contains(committed.identity.attemptId)) {
+            return;
+          }
+          _feedbackRecorded.add(committed.identity.attemptId);
+          try {
+            await notifier.recordFeedbackExposure(
+              record: committed,
+              progress: progress,
+            );
+          } catch (_) {
+            _feedbackRecorded.remove(committed.identity.attemptId);
+          }
+        });
+      }
       return Scaffold(
         // The review is still about the attempt that just ran, so the bar
         // keeps holding it. Next is what hands the screen back, and the bar
@@ -112,7 +134,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         ),
         body: AttemptReview(
           record: committed,
-          history: loop.value!.session.journal.records,
+          history: history,
           reading: loop.value?.lastReading,
           next: loop.value?.presented,
           onNext: () =>

@@ -434,36 +434,42 @@ Population fitting must not become a prerequisite for local operation.
 
 `PerformanceFeedback` says what a learner sees of their own playing **during**
 an attempt: nothing, a neutral echo, or an evaluative display. Showing them
-afterwards what was measured is a different axis, and the practice screen
-deliberately shows nothing.
+afterwards what was measured is a different axis.
 
 It is not decoration. What a learner carries out of one attempt changes the next
 one: told which notes were wrong, they will attend to those, which is useful
 practice and also makes the following attempt a different observation from an
-unaided one. So it belongs in `PresentationConditions` as its own value,
-recorded per attempt, rather than arriving as UI polish.
+unaided one. It is recorded separately as `FeedbackExposure`, after the review
+has rendered. An exposure names the diagnostic level, whether personal progress
+was shown, and the progress event behind that statement. Keeping this out of the
+already committed attempt record distinguishes what was shown from what was
+intended to be shown without changing evidence replay.
 
 The questions it raises are the ones the during-attempt axis already answered in
 its own terms: whether it is neutral or evaluative, whether it is available at
 every guidance rung, and whether an attempt that was reviewed afterwards is the
 same evidence as one that was not.
 
-A first version exists, built when practising on a real instrument showed that
-an attempt ended without anything marking that it had. It answers the first
-question deliberately and leaves the other two open. It says one true positive
-thing about the attempt and names the next exercise, and it says why only when
-the reason is one of the scheduler's named exceptions. It never invents: an
-attempt that did not start gets no sentence.
+The review has three outputs:
 
-Positive-only is presentation, not omission. Nothing is withheld, because the
-evidence is written to the journal in full before anyone reads the screen, and a
-complete account of a run, good and bad, is what a fluency profile is for.
+```text
+attempt diagnosis   what happened
+attempt summary     what the major measurements looked like
+progress evidence   what this attempt established over time, if anything
+```
 
-What is still undesigned is the part that matters to evidence. The review is the
-same at every rung and is not recorded in `PresentationConditions`, so an
-attempt reviewed afterwards is not yet distinguishable from one that was not.
-That is fine while the review says so little, and it is the first thing to fix
-if it ever names individual notes.
+The diagnosis keeps its single-fault priority. The summary shows Notes, Flow,
+Pulse, optional Coordination, and achieved tempo against the target; these are
+performance observations rather than learner-state deltas. Progress statements
+come only from named events with truth conditions. The first events cover a
+first clean completion, a first independent completion, and the point where
+three clean attempts establish repeated reliability. Most attempts establish
+no progress event and show no progress statement.
+
+The evidence is written to the attempt journal in full before the review is
+read. Feedback exposure is an observational companion to that journal and does
+not alter evidence weight. Its effect on later attempts can be estimated from
+the preserved history rather than assumed in advance.
 
 ## 3. Learner-model extensions
 

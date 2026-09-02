@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/practice/attempt_feedback.dart';
 
@@ -79,7 +80,7 @@ void main() {
 
     final event = progressEventFor(clean, history: [rough, clean])!;
 
-    expect(event.type, ProgressEventType.firstCleanCompletion);
+    expect(event.type, ProgressEventKind.firstCleanCompletion);
     expect(event.sentence, 'First clean right-hand pass at 60 BPM.');
   });
 
@@ -94,7 +95,7 @@ void main() {
 
     expect(
       progressEventFor(attempts[3], history: attempts)!.type,
-      ProgressEventType.repeatedReliability,
+      ProgressEventKind.repeatedReliability,
     );
     expect(progressEventFor(attempts[4], history: attempts), isNull);
   });
@@ -104,7 +105,7 @@ void main() {
 
     final event = progressEventFor(recalled, history: [recalled])!;
 
-    expect(event.type, ProgressEventType.firstIndependentCompletion);
+    expect(event.type, ProgressEventKind.firstIndependentCompletion);
     expect(event.sentence, 'First time through from memory at 60 BPM.');
   });
 

@@ -220,6 +220,14 @@ class _FailingEraseStore implements PracticeStore {
       inner.appendAttempt(record);
 
   @override
+  Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId) =>
+      inner.loadFeedbackExposures(profileId);
+
+  @override
+  Future<void> appendFeedbackExposure(FeedbackExposure exposure) =>
+      inner.appendFeedbackExposure(exposure);
+
+  @override
   Future<PendingDecision?> loadPendingDecision(String profileId) =>
       inner.loadPendingDecision(profileId);
 

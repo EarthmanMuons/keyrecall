@@ -32,6 +32,14 @@ class FlakyPracticeStore implements PracticeStore {
   }
 
   @override
+  Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId) =>
+      inner.loadFeedbackExposures(profileId);
+
+  @override
+  Future<void> appendFeedbackExposure(FeedbackExposure exposure) =>
+      inner.appendFeedbackExposure(exposure);
+
+  @override
   Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) =>
       inner.loadJournal(profileId, createdAt: createdAt);
 
@@ -81,6 +89,14 @@ class MisfilingPracticeStore implements PracticeStore {
   @override
   Future<void> appendAttempt(AttemptRecord record) =>
       inner.appendAttempt(record);
+
+  @override
+  Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId) =>
+      inner.loadFeedbackExposures(profileId);
+
+  @override
+  Future<void> appendFeedbackExposure(FeedbackExposure exposure) =>
+      inner.appendFeedbackExposure(exposure);
 
   @override
   Future<void> savePendingDecision(PendingDecision decision) =>

@@ -1,13 +1,15 @@
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'pending_decision.dart';
+import 'feedback_exposure.dart';
 
 /// Durable storage for one install's practice history.
 ///
-/// The port the application transaction writes through. Three kinds of thing
+/// The port the application transaction writes through. Four kinds of thing
 /// live behind it, and they have different durability requirements on purpose:
 ///
 /// - **Attempts** are append-only and authoritative. Nothing rewrites them.
+/// - **Feedback exposures** are append-only observations of review screens.
 /// - **A pending decision** is a single mutable slot per profile. It is not
 ///   history; it records what was presented so an interrupted run can be
 ///   resolved rather than guessed at.
@@ -49,6 +51,12 @@ abstract interface class PracticeStore {
   /// commit cannot record the same evidence twice.
   Future<void> appendAttempt(AttemptRecord record);
 
+  /// Every post-attempt feedback exposure for [profileId], oldest first.
+  Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId);
+
+  /// Durably records what was shown after an attempt.
+  Future<void> appendFeedbackExposure(FeedbackExposure exposure);
+
   /// The unresolved decision for [profileId], if a run was interrupted between
   /// presenting an exercise and observing its outcome.
   Future<PendingDecision?> loadPendingDecision(String profileId);
@@ -87,6 +95,7 @@ class InMemoryPracticeStore implements PracticeStore {
   final Map<String, AttemptJournal> _journals = {};
   final Map<String, PendingDecision> _pending = {};
   final Map<String, LearnerStateCheckpoint> _checkpoints = {};
+  final Map<String, Map<String, FeedbackExposure>> _feedback = {};
 
   /// When the journal for [profileId] was created, for a first run.
   final DateTime createdAt;
@@ -103,6 +112,23 @@ class InMemoryPracticeStore implements PracticeStore {
   @override
   Future<void> appendAttempt(AttemptRecord record) async {
     _journalFor(record.profileId, null).append(record);
+  }
+
+  @override
+  Future<List<FeedbackExposure>> loadFeedbackExposures(
+    String profileId,
+  ) async => List.unmodifiable(_feedback[profileId]?.values ?? const []);
+
+  @override
+  Future<void> appendFeedbackExposure(FeedbackExposure exposure) async {
+    final journal = _journalFor(exposure.profileId, null);
+    if (!journal.records.any(
+      (record) => record.identity.attemptId == exposure.attemptId,
+    )) {
+      throw StateError('feedback refers to an attempt that is not recorded');
+    }
+    final byAttempt = _feedback.putIfAbsent(exposure.profileId, () => {});
+    byAttempt.putIfAbsent(exposure.attemptId, () => exposure);
   }
 
   @override
@@ -133,6 +159,7 @@ class InMemoryPracticeStore implements PracticeStore {
     _journals.remove(profileId);
     _pending.remove(profileId);
     _checkpoints.remove(profileId);
+    _feedback.remove(profileId);
   }
 
   AttemptJournal _journalFor(String profileId, DateTime? createdAt) =>

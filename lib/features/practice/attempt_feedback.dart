@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 /// The learner-facing measurements from one performance.
 @immutable
@@ -37,16 +39,10 @@ AttemptSummary? summarizeAttempt(AttemptRecord record) =>
       _ => null,
     };
 
-enum ProgressEventType {
-  firstCleanCompletion,
-  firstIndependentCompletion,
-  repeatedReliability,
-}
-
 /// A longitudinal fact established by the current attempt.
 @immutable
 class ProgressEvent {
-  final ProgressEventType type;
+  final ProgressEventKind type;
   final String sentence;
 
   const ProgressEvent(this.type, this.sentence);
@@ -79,7 +75,7 @@ ProgressEvent? progressEventFor(
       HandConfiguration.together => 'hands-together',
     };
     return ProgressEvent(
-      ProgressEventType.firstCleanCompletion,
+      ProgressEventKind.firstCleanCompletion,
       'First clean $hands pass at $tempo BPM.',
     );
   }
@@ -91,7 +87,7 @@ ProgressEvent? progressEventFor(
       (comparable.length == 3 ||
           !_recordIsClean(comparable[comparable.length - 4]))) {
     return const ProgressEvent(
-      ProgressEventType.repeatedReliability,
+      ProgressEventKind.repeatedReliability,
       'Clean on your last three attempts here.',
     );
   }
@@ -99,7 +95,7 @@ ProgressEvent? progressEventFor(
   if (outcome.retrieval == FactualRetrieval.succeeded &&
       !earlier.any(_recordWasRetrieved)) {
     return ProgressEvent(
-      ProgressEventType.firstIndependentCompletion,
+      ProgressEventKind.firstIndependentCompletion,
       'First time through from memory at '
       '${_formatTempo(current.exercise.conditions.tempoBpm * outcome.achievedTempoRatio)} BPM.',
     );

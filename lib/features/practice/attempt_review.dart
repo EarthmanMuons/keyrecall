@@ -1,10 +1,10 @@
 import 'package:flutter/foundation.dart';
 
-import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
+import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
 import 'attempt_diagnosis.dart';

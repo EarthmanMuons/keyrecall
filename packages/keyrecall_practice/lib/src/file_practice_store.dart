@@ -7,11 +7,13 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'pending_decision.dart';
 import 'practice_store.dart';
 import 'profile_write_queue.dart';
+import 'feedback_exposure.dart';
 
 /// A [PracticeStore] backed by ordinary files, one directory per profile.
 ///
 /// ```text
 /// <root>/<profileId>/journal.jsonl     append-only, authoritative
+/// <root>/<profileId>/feedback.jsonl    append-only exposure record
 /// <root>/<profileId>/pending.json      one slot, replaced or removed
 /// <root>/<profileId>/checkpoint.json   one slot, replaced
 /// ```
@@ -99,6 +101,60 @@ class FilePracticeStore implements PracticeStore {
     if (!journal.append(record)) return;
 
     await _appendLine(file, canonicalJson(record.toJson()));
+  }
+
+  @override
+  Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId) =>
+      _queue.run(profileId, () => _loadFeedbackExposures(profileId));
+
+  Future<List<FeedbackExposure>> _loadFeedbackExposures(
+    String profileId,
+  ) async {
+    await _recoverErase(profileId);
+    final file = _feedbackFile(profileId);
+    if (!file.existsSync()) return const [];
+    final contents = await _readCompleteContents(file);
+    if (contents.isEmpty) return const [];
+    try {
+      final exposures = [
+        for (final line in const LineSplitter().convert(contents))
+          FeedbackExposure.fromJson(
+            asMap(jsonDecode(line), 'feedback exposure', location: file.path),
+          ),
+      ];
+      if (exposures.any((exposure) => exposure.profileId != profileId)) {
+        throw JournalFormatException(
+          'feedback exposure belongs to another profile',
+          location: file.path,
+        );
+      }
+      return exposures;
+    } on FormatException catch (error) {
+      throw JournalFormatException(
+        'feedback exposure is not valid JSON: ${error.message}',
+        location: file.path,
+      );
+    }
+  }
+
+  @override
+  Future<void> appendFeedbackExposure(FeedbackExposure exposure) =>
+      _queue.run(exposure.profileId, () => _appendFeedbackExposure(exposure));
+
+  Future<void> _appendFeedbackExposure(FeedbackExposure exposure) async {
+    await _recoverErase(exposure.profileId);
+    final file = _feedbackFile(exposure.profileId);
+    await file.parent.create(recursive: true);
+    await _repairTornTail(file);
+    final journal = await _loadJournal(exposure.profileId, null);
+    if (!journal.records.any(
+      (record) => record.identity.attemptId == exposure.attemptId,
+    )) {
+      throw StateError('feedback refers to an attempt that is not recorded');
+    }
+    final existing = await _loadFeedbackExposures(exposure.profileId);
+    if (existing.any((item) => item.attemptId == exposure.attemptId)) return;
+    await _appendLine(file, canonicalJson(exposure.toJson()));
   }
 
   @override
@@ -198,6 +254,16 @@ class FilePracticeStore implements PracticeStore {
     return contents.substring(0, lastBreak);
   }
 
+  Future<String> _readCompleteContents(File file) async {
+    final contents = await file.readAsString();
+    if (contents.isEmpty) return '';
+    if (contents.endsWith('\n')) {
+      return contents.substring(0, contents.length - 1);
+    }
+    final lastBreak = contents.lastIndexOf('\n');
+    return lastBreak < 0 ? '' : contents.substring(0, lastBreak);
+  }
+
   /// Truncates an incomplete final line before appending after it.
   ///
   /// A crash mid-append leaves a record with no terminating newline. That
@@ -260,6 +326,7 @@ class FilePracticeStore implements PracticeStore {
       _journalFile(profileId),
       _pendingFile(profileId),
       _checkpointFile(profileId),
+      _feedbackFile(profileId),
       File('${_pendingFile(profileId).path}.tmp'),
       File('${_checkpointFile(profileId).path}.tmp'),
     ]) {
@@ -291,6 +358,9 @@ class FilePracticeStore implements PracticeStore {
 
   File _checkpointFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/checkpoint.json');
+
+  File _feedbackFile(String profileId) =>
+      File('${_profileDirectory(profileId).path}/feedback.jsonl');
 
   File _eraseMarker(String profileId) =>
       File('${_profileDirectory(profileId).path}/practice-erasing');

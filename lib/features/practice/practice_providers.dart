@@ -9,6 +9,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'attempt_feedback.dart';
 import 'attempt_transcript.dart';
 import 'profile_color.dart';
 
@@ -522,6 +523,27 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     final current = state.value;
     if (current == null) return;
     await current.session.saveCheckpoint();
+  }
+
+  Future<void> recordFeedbackExposure({
+    required AttemptRecord record,
+    required ProgressEvent? progress,
+  }) async {
+    final store = await ref.read(practiceStoreProvider.future);
+    await store.appendFeedbackExposure(
+      FeedbackExposure(
+        profileId: record.profileId,
+        attemptId: record.identity.attemptId,
+        shownAt: DateTime.now().toUtc(),
+        postAttemptFeedback: record.closure.measurement is Measured
+            ? PostAttemptFeedback.diagnostic
+            : PostAttemptFeedback.none,
+        progressFeedback: progress == null
+            ? ProgressFeedback.none
+            : ProgressFeedback.personalProgress,
+        progressEvent: progress?.type,
+      ),
+    );
   }
 
   /// Asks the scheduler for the next exercise.
