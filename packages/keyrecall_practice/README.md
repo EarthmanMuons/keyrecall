@@ -62,14 +62,17 @@ final session = await PracticeSession.open(
 // A pending decision is one the last run showed and never closed. Present it
 // again rather than deciding past it: closing it writes the attempt under the
 // id it already has.
-final exercise =
-    session.pending?.exercise ??
-    (await session.decide(at: DateTime.now().toUtc()))?.exercise;
-if (exercise == null) {
-  // Nothing was admitted. A real outcome, not an error: the slot is used
-  // and no attempt is recorded.
-  return;
-}
+final exercise = switch (session.pending) {
+  final PendingDecision pending => pending.exercise,
+  null => switch (
+    await session.decideOutcome(at: DateTime.now().toUtc()),
+  ) {
+    final PresentedAttempt presented => presented.exercise,
+    PracticeBlocked(:final reason) => throw StateError(
+      'practice blocked: ${reason.name}',
+    ),
+  },
+};
 
 // ... present exercise, collect what happened ...
 
@@ -84,9 +87,9 @@ origin on every run. `JournalHeader.createdAt` is storage provenance only;
 nothing derives a model timestamp from it.
 
 The session attempt cap counts **decision opportunities**, not presented
-attempts, so a slot that admits nothing still consumes one. That is deliberate:
-a sitting that keeps finding nothing to present has to end, and counting only
-presentations would let it run forever.
+attempts, so a blocked result still consumes one. It does not create a pending
+decision: only an exercise that was durably selected and shown can later become
+an attempt.
 
 ## Storage
 

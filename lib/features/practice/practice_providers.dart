@@ -565,16 +565,25 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// A slot that admits nothing is a real answer rather than an error, and it
   /// still consumes a slot, so the loop reports it instead of retrying.
   Future<PracticeLoopState> _decide(PracticeLoopState from) async {
-    final presented = await from.session.decide(at: DateTime.now().toUtc());
-    return PracticeLoopState(
-      profile: from.profile,
-      session: from.session,
-      presented: presented,
-      lastCommitted: from.lastCommitted,
-      lastReading: from.lastReading,
-      note: presented == null
-          ? 'the scheduler admitted nothing for this slot'
-          : from.note,
+    final decision = await from.session.decideOutcome(
+      at: DateTime.now().toUtc(),
     );
+    return switch (decision) {
+      final PresentedAttempt presented => PracticeLoopState(
+        profile: from.profile,
+        session: from.session,
+        presented: presented,
+        lastCommitted: from.lastCommitted,
+        lastReading: from.lastReading,
+        note: from.note,
+      ),
+      PracticeBlocked(:final reason) => PracticeLoopState(
+        profile: from.profile,
+        session: from.session,
+        lastCommitted: from.lastCommitted,
+        lastReading: from.lastReading,
+        note: 'practice blocked: ${reason.name}',
+      ),
+    };
   }
 }

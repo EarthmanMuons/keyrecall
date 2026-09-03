@@ -15,13 +15,18 @@ import 'practice_store.dart';
 /// [newProfileId], which is a random UUID.
 typedef IdGenerator = String Function();
 
+/// The result of asking a practice session what happens next.
+sealed class PracticeDecision {
+  const PracticeDecision();
+}
+
 /// What the scheduler decided to present, ready to show the learner.
 ///
-/// Returned by [PracticeSession.decide] once the decision is durable. Holding
-/// one means an exercise is outstanding: the transaction is open until it is
-/// committed or abandoned.
+/// Returned by [PracticeSession.decideOutcome] once the decision is durable.
+/// Holding one means an exercise is outstanding: the transaction is open
+/// until it is committed or abandoned.
 @immutable
-class PresentedAttempt {
+class PresentedAttempt extends PracticeDecision {
   /// The durable record of what was decided.
   final PendingDecision decision;
 
@@ -35,6 +40,15 @@ class PresentedAttempt {
 
   @override
   String toString() => 'PresentedAttempt(${decision.attemptId}, $exercise)';
+}
+
+/// Useful work was requested, but no exercise could be presented.
+@immutable
+class PracticeBlocked extends PracticeDecision {
+  final BlockedReason reason;
+  final SelectionBlocked selection;
+
+  PracticeBlocked(this.selection) : reason = selection.reason;
 }
 
 /// Thrown when the transaction is asked to do something out of order.
@@ -246,13 +260,14 @@ class PracticeSession {
 
   /// Decides what to present next and makes that decision durable.
   ///
-  /// Returns null when nothing was admitted, which is a real outcome rather
-  /// than an error: the slot is consumed and no attempt is recorded.
+  /// Returns [PresentedAttempt] after persisting it, or [PracticeBlocked]
+  /// without creating a pending attempt. Either result consumes the decision
+  /// opportunity.
   ///
   /// Throws [PracticeStateError] when an attempt is already outstanding or an
   /// unresolved decision is pending, since deciding again would abandon
   /// something a person may have been shown.
-  Future<PresentedAttempt?> decide({required DateTime at}) async {
+  Future<PracticeDecision> decideOutcome({required DateTime at}) async {
     if (_outstanding != null) {
       throw PracticeStateError(
         'an attempt is already outstanding; commit or abandon it first',
@@ -276,11 +291,10 @@ class PracticeSession {
       candidates: candidates,
       at: at,
     );
-    final chosen = switch (selection) {
-      CandidateSelected(:final candidate) => candidate,
-      SelectionBlocked() => null,
-    };
-    if (chosen == null) return null;
+    if (selection case final SelectionBlocked blocked) {
+      return PracticeBlocked(blocked);
+    }
+    final chosen = (selection as CandidateSelected).candidate;
 
     final decision = PendingDecision(
       attemptId: _nextId(),
@@ -306,6 +320,17 @@ class PracticeSession {
     _outstanding = presented;
     return presented;
   }
+
+  /// The presented attempt, or null for a blocked scheduling request.
+  ///
+  /// Compatibility for callers that have not yet adopted [decideOutcome]. New
+  /// product code must match the reasoned result instead of treating blocked
+  /// practice as ordinary absence.
+  Future<PresentedAttempt?> decide({required DateTime at}) async =>
+      switch (await decideOutcome(at: at)) {
+        final PresentedAttempt presented => presented,
+        PracticeBlocked() => null,
+      };
 
   /// Ends the outstanding attempt with an outcome established elsewhere.
   ///
