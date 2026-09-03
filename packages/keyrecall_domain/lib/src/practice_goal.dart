@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 
 import 'technical_material.dart';
+import 'curriculum.dart';
 
 /// What the learner is trying to learn.
 ///
@@ -18,10 +19,8 @@ import 'technical_material.dart';
 /// them admissible at once, and it should not stop the scheduler using easier
 /// related material that prepares for them.
 ///
-/// V1 runs one goal, general fluency over the whole catalog. A scoped goal is
-/// expressible so analysis can construct one, and `PracticeSession.open`
-/// refuses to run it: scoping the catalog reaches a slot that admits nothing,
-/// which `docs/design/future-planning.md` section 4.9 records.
+/// A goal may name materials directly for a custom scope or carry a versioned
+/// [Curriculum]. Scope resolution validates either form before scheduling.
 @immutable
 class PracticeGoal {
   /// What this goal is called.
@@ -30,15 +29,31 @@ class PracticeGoal {
   /// The material this goal is working toward, or null for all of it.
   final Set<String>? targetMaterialIds;
 
-  factory PracticeGoal({required String id, Set<String>? targetMaterialIds}) =>
-      PracticeGoal._(
-        id: id,
-        targetMaterialIds: targetMaterialIds == null
-            ? null
-            : Set.unmodifiable(targetMaterialIds),
-      );
+  /// The explicit curriculum this goal pursues, when it names one.
+  final Curriculum? curriculum;
 
-  const PracticeGoal._({required this.id, this.targetMaterialIds});
+  factory PracticeGoal({
+    required String id,
+    Set<String>? targetMaterialIds,
+    Curriculum? curriculum,
+  }) {
+    if (targetMaterialIds != null && curriculum != null) {
+      throw ArgumentError('a goal cannot name both materials and a curriculum');
+    }
+    return PracticeGoal._(
+      id: id,
+      targetMaterialIds: targetMaterialIds == null
+          ? null
+          : Set.unmodifiable(targetMaterialIds),
+      curriculum: curriculum,
+    );
+  }
+
+  const PracticeGoal._({
+    required this.id,
+    this.targetMaterialIds,
+    this.curriculum,
+  });
 
   /// Everything the system supports: general scale fluency, no destination
   /// narrower than the catalog.
@@ -50,7 +65,7 @@ class PracticeGoal {
   ///
   /// About the goal, not about any catalog it is applied to: a goal listing
   /// every material is scoped, and narrows nothing.
-  bool get isScoped => targetMaterialIds != null;
+  bool get isScoped => targetMaterialIds != null || curriculum != null;
 
   /// Whether [material] is in scope.
   bool includes(TechnicalMaterial material) =>

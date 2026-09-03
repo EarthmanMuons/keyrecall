@@ -45,6 +45,9 @@ enum ScaleForm {
 /// a parsing concern, and belongs at that boundary.
 @immutable
 class TechnicalMaterial {
+  /// The family resolver responsible for this material.
+  static const String scaleFamilyId = 'SCALE';
+
   /// The tonic's canonical letter name, such as `C` or `F#`.
   final String tonic;
 
@@ -79,6 +82,9 @@ class TechnicalMaterial {
 
   /// Stable identifier for this material, such as `F#_HARMONIC_MINOR`.
   String get materialId => '${tonic}_${form.id}';
+
+  /// The material-family identity used by curriculum requirements.
+  String get familyId => scaleFamilyId;
 
   @override
   bool operator ==(Object other) =>

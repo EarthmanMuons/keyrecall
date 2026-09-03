@@ -9,6 +9,7 @@ library;
 
 export 'src/admission_band.dart';
 export 'src/competency.dart';
+export 'src/curriculum.dart';
 export 'src/exercise.dart';
 export 'src/execution_conditions.dart';
 export 'src/exercise_fingering.dart';
