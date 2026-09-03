@@ -78,6 +78,10 @@ String? reasonForNext({
             ? 'That looked easy. Same scale, at the speed you played it.'
             : 'That looked easy, so this one is quicker.',
     },
+    ChallengeBypass.acquisitionFloor => switch (hands) {
+      final hands? => 'Starting with $hands and the notes in view.',
+      null => 'Starting with the notes in view.',
+    },
     ChallengeBypass.override ||
     null => differenceTo(next, previous) ?? (sameMaterial ? 'Again.' : null),
   };

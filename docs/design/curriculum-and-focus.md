@@ -1,6 +1,7 @@
 # Curriculum, goals, and focus
 
-- **Status:** Proposed contract for the next learner-facing curriculum layer
+- **Status:** Proposed curriculum contract; scheduler outcome and acquisition
+  floor seams implemented
 - **Written:** September 3, 2026
 - **Scope:** How a large technical-material domain becomes a small, intentional
   practice surface without changing learner inference or creating
@@ -204,8 +205,14 @@ repeated supported failures: requirements remain unresolved, but every ordinary
 and exceptional admission path is closed. Calling that state caught up would
 turn model failure into false progress.
 
-Scoped goals cannot ship until selection returns a reasoned result rather than
-an ambiguous null and unresolved scopes have a generic floor. The floor must:
+Scheduler selection now returns either `CandidateSelected` or
+`SelectionBlocked`; the scheduler cannot claim `CaughtUp` because it does not
+receive curriculum requirements or due state. A caller that knows requirements
+are unresolved may supply `AcquisitionFloorEntry` realizations. The pipeline
+consults them only after ordinary admission blocks and identifies a successful
+fallback with the `acquisition_floor` bypass.
+
+The floor:
 
 - stay within the resolved target/support scope;
 - ask the family for a safe entry realization through a common interface;
@@ -214,9 +221,13 @@ an ambiguous null and unresolved scopes have a generic floor. The floor must:
 - activate only after ordinary admission has no candidate; and
 - remain inactive when the curriculum is genuinely caught up.
 
-This floor is a scheduler mechanism, not an arpeggio or exam branch. Its
-trajectory behavior needs simulation over both narrow acquisition scopes and
-small completed scopes before `PracticeSession.open` accepts a scoped goal.
+This is a scheduler mechanism, not an arpeggio or exam branch. The scale family
+supplies continuously cued, one-octave, ascending single-hand realizations, and
+simulation establishes that they keep the seven-material acquisition scope
+actionable. `PracticeSession.open` still refuses scoped goals because no
+resolved-scope layer yet distinguishes unresolved work from caught-up work or
+invalid requirements. Passing the floor without that knowledge would make it
+fire in scopes that need no acquisition work.
 
 ## 7. The arpeggio proof
 

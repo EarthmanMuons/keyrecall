@@ -136,6 +136,9 @@ enum ChallengeBypass {
   /// A retrieval test for material that support has made invisible.
   observationProbe('observation_probe'),
 
+  /// A family-declared entry realization used after ordinary admission ends.
+  acquisitionFloor('acquisition_floor'),
+
   /// An explicit caller instruction, for diagnostics or a learner request.
   override('override');
 

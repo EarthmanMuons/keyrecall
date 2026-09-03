@@ -759,9 +759,9 @@ that span - which is also what supplies the entry tempo.
 
 ## 4.9 A sitting with nothing to offer
 
-`_NothingToPlay` is an error state, and simulation established that catalog
-breadth is the only thing that keeps it off the screen. `PracticeSession.open`
-refuses a scoped goal for that reason.
+`_NothingToPlay` remains an error state in the app. Scheduler absence is no
+longer ambiguous: `SchedulerPipeline.decide` returns `CandidateSelected` or
+`SelectionBlocked`, with admission exhaustion named as a blocked reason.
 
 A learner who fails most of what they are given has each material walked toward
 support by recovery. Cued attempts never observe retrieval, so nothing
@@ -776,13 +776,21 @@ narrows the catalog to `targetMaterialIds` and a goal aimed at a handful of
 scales recreates the narrow catalog exactly. Goals are therefore expressible but
 not runnable: `PracticeSession.open` throws for a scoped goal.
 
-Shipping goals means lifting that refusal, which needs a principled floor first:
-something a learner in that state can always be offered, which today's eight
-admission mechanisms between them do not guarantee.
+The scheduler now accepts family-declared `AcquisitionFloorEntry` realizations
+from a caller that knows requirements remain unresolved. It consults them only
+after ordinary admission blocks, keeps them inside the supplied candidate scope,
+and runs them through ordinary safety, eligibility, ranking, guards, and pacing
+under the named `acquisition_floor` bypass. No declared entry and a declared
+entry rejected by those remaining stages are distinct blocked reasons.
 
-Pinned in `keyrecall_simulation/test/sitting_ran_dry_test.dart`, and the true
-beginner's invariant stays skipped in `trajectory_invariants_test.dart` until
-the floor exists.
+The scale family supplies continuously cued, one-octave, ascending single-hand
+entries. They prevent the seven-material true-beginner trajectory from running
+dry in `keyrecall_simulation/test/sitting_ran_dry_test.dart`.
+
+`PracticeSession.open` still refuses a scoped goal. The missing layer is now
+scope resolution and requirement state: only that layer can distinguish
+unresolved work, which may invoke the floor, from caught-up work, which must
+not. It must also reject invalid requirement identities before scheduling.
 
 ## 4.10 Spend the slot after coordination is earned
 

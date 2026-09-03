@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'acquisition_floor.dart';
 import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
@@ -94,6 +95,12 @@ final class CandidateSelected extends SelectionResult {
 enum BlockedReason {
   /// No candidate survived ordinary challenge admission.
   admissionExhausted,
+
+  /// The unresolved requirements supplied no valid entry realization.
+  noSafeEntryRealization,
+
+  /// A supplied entry realization could not pass the remaining stages.
+  safeEntryRejected,
 }
 
 /// Useful work was requested, but the scheduler could not produce it.
@@ -135,17 +142,50 @@ class SchedulerPipeline {
     required List<Exercise> candidates,
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
+    AcquisitionFloor? acquisitionFloor,
   }) {
-    final traces = evaluate(
+    var traces = evaluate(
       state: state,
       session: session,
       candidates: candidates,
       at: at,
       overrides: overrides,
     );
-    final pacing = pace(applyRepetitionGuard(traces, session), session);
-    final available = pacing.selectable;
-    final selected = chooseFrom(available, session);
+    var pacing = pace(applyRepetitionGuard(traces, session), session);
+    var available = pacing.selectable;
+    var selected = chooseFrom(available, session);
+    var blockedReason = BlockedReason.admissionExhausted;
+
+    if (selected == null && acquisitionFloor != null) {
+      final floorOverrides = <Exercise, ChallengeBypass>{};
+      var everyEntryIsInScope = true;
+      for (final entry in acquisitionFloor.entries) {
+        if (candidates.contains(entry.exercise)) {
+          floorOverrides[entry.exercise] = ChallengeBypass.acquisitionFloor;
+        } else {
+          everyEntryIsInScope = false;
+        }
+      }
+
+      if (acquisitionFloor.entries.isEmpty) {
+        blockedReason = BlockedReason.noSafeEntryRealization;
+      } else if (!everyEntryIsInScope) {
+        blockedReason = BlockedReason.safeEntryRejected;
+      } else {
+        traces = evaluate(
+          state: state,
+          session: session,
+          candidates: candidates,
+          at: at,
+          overrides: {...overrides, ...floorOverrides},
+        );
+        pacing = pace(applyRepetitionGuard(traces, session), session);
+        available = pacing.selectable;
+        selected = chooseFrom(available, session);
+        blockedReason = BlockedReason.safeEntryRejected;
+      }
+    }
+
     session.recordSelectionOpportunity(
       guidanceProbeAvailable: available.any(
         (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
@@ -159,7 +199,7 @@ class SchedulerPipeline {
             traces: traces,
             selectable: available,
             pacing: pacing,
-            reason: BlockedReason.admissionExhausted,
+            reason: blockedReason,
           )
         : CandidateSelected(
             traces: traces,

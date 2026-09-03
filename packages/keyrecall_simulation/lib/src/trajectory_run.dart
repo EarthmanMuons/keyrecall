@@ -24,6 +24,7 @@ Trajectory runTrajectory({
   SchedulerPipeline pipeline = const SchedulerPipeline(learner: LearnerModel()),
   InstrumentProfile? instrument,
   List<Exercise>? generated,
+  AcquisitionFloor? acquisitionFloor,
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
@@ -57,6 +58,7 @@ Trajectory runTrajectory({
       session: session,
       candidates: candidates,
       at: at,
+      acquisitionFloor: acquisitionFloor,
     );
     observePacing?.call(index, selection.pacing);
     final traces = selection.traces;

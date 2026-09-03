@@ -1,5 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
+import 'acquisition_floor.dart';
+
 /// Hand configurations candidate generation offers.
 const List<HandConfiguration> generatedHands = HandConfiguration.values;
 
@@ -53,3 +55,18 @@ List<Exercise> generateCandidates(
                     guidance: guidance,
                   ),
 ];
+
+/// The scale family's safe starting realizations within [candidates].
+AcquisitionFloor scaleAcquisitionFloor(Iterable<Exercise> candidates) =>
+    AcquisitionFloor([
+      for (final exercise in candidates)
+        if (exercise.conditions.hands != HandConfiguration.together &&
+            exercise.conditions.octaves == 1 &&
+            exercise.conditions.direction == ScaleDirection.up &&
+            exercise.conditions.tempoBpm == generatedTempi.first &&
+            exercise.guidance == GuidanceContext.continuouslyCued)
+          AcquisitionFloorEntry(
+            requirementId: exercise.material.materialId,
+            exercise: exercise,
+          ),
+    ]);

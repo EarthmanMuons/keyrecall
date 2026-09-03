@@ -7,6 +7,7 @@
 /// [SchedulerPipeline.selectChoice] returns the one exercise to present.
 library;
 
+export 'src/acquisition_floor.dart';
 export 'src/candidate_generation.dart';
 export 'src/candidate_trace.dart';
 export 'src/execution_progression.dart';

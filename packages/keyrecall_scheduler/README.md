@@ -54,26 +54,30 @@ void main() {
     at: now,
   );
 
-  final choice = decision.selected;
-  if (choice == null) {
-    print('nothing admitted');
-    return;
-  }
-  print('present ${choice.exercise}');
-  print('because ${choice.eligibility.reason}, ${choice.terms}');
+  final candidate = switch (decision) {
+    CandidateSelected(:final candidate) => candidate,
+    SelectionBlocked(:final reason) => throw StateError(
+      'practice blocked: ${reason.name}',
+    ),
+  };
+  print('present ${candidate.exercise}');
+  print('because ${candidate.eligibility.reason}, ${candidate.rankKey}');
 }
 ```
 
-A decision opportunity that admits nothing is a real outcome, not an error. Keep
-attempt slots and selections distinct in session caps, replay, diagnostics, and
-telemetry.
+A decision opportunity returns either `CandidateSelected` or `SelectionBlocked`;
+absence is never silent. A caller that knows it is scheduling unresolved
+requirements may supply family-declared `AcquisitionFloorEntry` values. The
+pipeline consults them only after ordinary admission exhausts and admits an
+in-scope entry under the `acquisition_floor` bypass. No floor or a floor
+rejected by later stages remains blocked.
 
 ## Recording the result
 
 After the attempt is played, tell the session what happened:
 
 ```dart
-pipeline.recordOutcome(session, choice.exercise, outcome);
+pipeline.recordOutcome(session, candidate.exercise, outcome);
 ```
 
 Only a tested failure opens a recovery context. An attempt that never tested
