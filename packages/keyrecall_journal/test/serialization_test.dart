@@ -268,6 +268,7 @@ void main() {
 
       expect(reread, exercise);
       expect(reread.material, isA<ArpeggioMaterial>());
+      expect(reread.opportunitySites, exercise.opportunitySites);
     });
 
     // The journal is the historical record, so replay must reproduce the motor
@@ -298,6 +299,7 @@ void main() {
       );
 
       expect(reread.opportunities, presented);
+      expect(reread.opportunitySites, isEmpty);
       expect(reread, exercise);
       expect(
         reread.structuralQ,

@@ -41,6 +41,9 @@ const Map<ScaleForm, List<int>> scaleFormIntervals = {
   ScaleForm.melodicMinor: [0, 2, 3, 5, 7, 9, 11],
 };
 
+/// The motor demand created by a crossing in this material family.
+enum FingeringTransitionKind { scalarCrossing, arpeggioTransition }
+
 /// What is being played, independent of how it is played.
 ///
 /// Material identity deliberately excludes hand, tempo, octaves, direction,
@@ -72,6 +75,8 @@ sealed class TechnicalMaterial {
   MaterialTopology get topology;
 
   Competency get topologyCompetency;
+
+  FingeringTransitionKind get fingeringTransitionKind;
 
   ScaleForm? get scaleForm => null;
 
@@ -143,6 +148,10 @@ final class ArpeggioMaterial extends TechnicalMaterial {
 
   @override
   Competency get topologyCompetency => quality.topologyCompetency;
+
+  @override
+  FingeringTransitionKind get fingeringTransitionKind =>
+      FingeringTransitionKind.arpeggioTransition;
 
   @override
   Set<Competency> executionCompetenciesFor(HandConfiguration hands) => {
@@ -220,6 +229,10 @@ final class ScaleMaterial extends TechnicalMaterial {
 
   @override
   Competency get topologyCompetency => form.topologyCompetency;
+
+  @override
+  FingeringTransitionKind get fingeringTransitionKind =>
+      FingeringTransitionKind.scalarCrossing;
 
   @override
   Set<Competency> executionCompetenciesFor(HandConfiguration hands) =>

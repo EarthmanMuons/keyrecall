@@ -9,6 +9,12 @@ enum Hand {
 
   /// Stable identifier used in traces.
   final String id;
+
+  /// The hand with the given [id].
+  static Hand fromId(String id) => values.firstWhere(
+    (hand) => hand.id == id,
+    orElse: () => throw ArgumentError.value(id, 'id', 'unknown hand'),
+  );
 }
 
 /// Which signed scale degree each hand plays at each moment.

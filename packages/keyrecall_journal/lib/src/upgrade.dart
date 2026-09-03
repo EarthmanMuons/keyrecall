@@ -12,8 +12,9 @@ Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) {
   final version = json['schema_version'];
   return switch (version) {
     attemptSchemaVersion => json,
-    2 => _version2To3(json),
-    1 => _version2To3(_version1To2(json)),
+    3 => _version3To4(json),
+    2 => _version3To4(_version2To3(json)),
+    1 => _version3To4(_version2To3(_version1To2(json))),
     _ => throw JournalFormatException(
       'attempt schema version $version is not upgradable by this build, which '
       'writes version $attemptSchemaVersion',
@@ -43,8 +44,11 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
     switch (json['schema_version']) {
       attemptSchemaVersion => json,
-      2 => _version2To3(json),
-      1 => _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+      3 => _version3To4(json),
+      2 => _version3To4(_version2To3(json)),
+      1 => _version3To4(
+        _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+      ),
       final version => throw JournalFormatException(
         'pending decision schema version $version is not upgradable by this '
         'build, which writes version $attemptSchemaVersion',
@@ -60,7 +64,7 @@ Map<String, Object?> _stampedForward(
 }) {
   final version = json['schema_version'];
   if (version == attemptSchemaVersion) return json;
-  if (version == 1 || version == 2) {
+  if (version == 1 || version == 2 || version == 3) {
     return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
@@ -99,8 +103,7 @@ Map<String, Object?> _version1To2(Map<String, Object?> json) {
 /// historical meaning: overall probability remains availability times motor
 /// execution.
 Map<String, Object?> _version2To3(Map<String, Object?> json) {
-  final upgraded = Map<String, Object?>.of(json)
-    ..['schema_version'] = attemptSchemaVersion;
+  final upgraded = Map<String, Object?>.of(json)..['schema_version'] = 3;
   final decision = json['decision'];
   if (decision is! Map<String, Object?>) return upgraded;
   final prediction = decision['prediction'];
@@ -109,5 +112,17 @@ Map<String, Object?> _version2To3(Map<String, Object?> json) {
   upgraded['decision'] = Map<String, Object?>.of(decision)
     ..['prediction'] = (Map<String, Object?>.of(prediction)
       ..['coordination_p'] = 1.0);
+  return upgraded;
+}
+
+/// Version 3 stored opportunity kinds but not their event locations. Keeping
+/// the sites empty preserves that known structure without inventing evidence.
+Map<String, Object?> _version3To4(Map<String, Object?> json) {
+  final upgraded = Map<String, Object?>.of(json)..['schema_version'] = 4;
+  final exercise = json['exercise'];
+  if (exercise is Map<String, Object?>) {
+    upgraded['exercise'] = Map<String, Object?>.of(exercise)
+      ..['opportunity_sites'] = <Object?>[];
+  }
   return upgraded;
 }

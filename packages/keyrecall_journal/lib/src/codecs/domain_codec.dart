@@ -14,6 +14,14 @@ import '../schema.dart';
 /// fourth flag combination from looking like historical data.
 Map<String, Object?> encodeExercise(Exercise exercise) {
   final conditions = exercise.conditions;
+  final opportunitySites = exercise.opportunitySites.toList()
+    ..sort((left, right) {
+      final byMoment = left.momentIndex.compareTo(right.momentIndex);
+      if (byMoment != 0) return byMoment;
+      final byHand = left.hand.id.compareTo(right.hand.id);
+      if (byHand != 0) return byHand;
+      return left.opportunity.id.compareTo(right.opportunity.id);
+    });
   return {
     'material_id': exercise.material.materialId,
     'tonic': exercise.material.tonic,
@@ -35,6 +43,14 @@ Map<String, Object?> encodeExercise(Exercise exercise) {
     'opportunities':
         exercise.opportunities.map((opportunity) => opportunity.id).toList()
           ..sort(),
+    'opportunity_sites': [
+      for (final site in opportunitySites)
+        {
+          'opportunity': site.opportunity.id,
+          'hand': site.hand.id,
+          'moment_index': site.momentIndex,
+        },
+    ],
   };
 }
 
@@ -97,6 +113,13 @@ Exercise decodeExercise(Map<String, Object?> json, {String? location}) {
       location: location,
     );
   }
+  final opportunitySites = json['opportunity_sites'];
+  if (opportunitySites is! List) {
+    throw JournalFormatException(
+      'expected a list at "opportunity_sites"',
+      location: location,
+    );
+  }
 
   return Exercise.recorded(
     material: material,
@@ -114,8 +137,26 @@ Exercise decodeExercise(Map<String, Object?> json, {String? location}) {
           asString(id, 'motor opportunity', location: location),
         ),
     },
+    opportunitySites: {
+      for (final value in opportunitySites)
+        _decodeOpportunitySite(
+          asMap(value, 'motor opportunity site', location: location),
+          location: location,
+        ),
+    },
   );
 }
+
+MotorOpportunitySite _decodeOpportunitySite(
+  Map<String, Object?> json, {
+  String? location,
+}) => MotorOpportunitySite(
+  opportunity: MotorOpportunity.fromId(
+    requireString(json, 'opportunity', location: location),
+  ),
+  hand: Hand.fromId(requireString(json, 'hand', location: location)),
+  momentIndex: requireInt(json, 'moment_index', location: location),
+);
 
 /// Names of the three guidance rungs, most independent first.
 const Map<int, String> _guidanceNames = {

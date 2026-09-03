@@ -4,6 +4,7 @@ import 'package:meta/meta.dart';
 import 'competency.dart';
 import 'execution_conditions.dart';
 import 'guidance_context.dart';
+import 'hand_path.dart';
 import 'motor_opportunity.dart';
 import 'technical_material.dart';
 
@@ -30,6 +31,7 @@ enum ExercisePattern {
 }
 
 const _opportunitySetEquality = SetEquality<MotorOpportunity>();
+const _opportunitySiteSetEquality = SetEquality<MotorOpportunitySite>();
 
 /// One presentable practice task: material, pattern, conditions, guidance, and
 /// the motor sites the resulting event structure exposes.
@@ -54,6 +56,9 @@ class Exercise {
   /// The observable motor sites this exercise creates.
   final Set<MotorOpportunity> opportunities;
 
+  /// The exact hand and moment for each derived motor opportunity.
+  final Set<MotorOpportunitySite> opportunitySites;
+
   /// Rehydrates the motor structure persisted with a presented exercise.
   Exercise.recorded({
     required this.material,
@@ -61,7 +66,27 @@ class Exercise {
     this.pattern = ExercisePattern.linear,
     this.guidance = GuidanceContext.unguided,
     required Set<MotorOpportunity> opportunities,
-  }) : opportunities = Set.unmodifiable(opportunities);
+    Set<MotorOpportunitySite> opportunitySites = const {},
+  }) : opportunities = Set.unmodifiable(opportunities),
+       opportunitySites = Set.unmodifiable(opportunitySites) {
+    final paths = handPathsFor(
+      conditions,
+      degreesPerOctave: material.topology.degreesPerOctave,
+    );
+    if (opportunitySites.any(
+      (site) => !opportunities.contains(site.opportunity),
+    )) {
+      throw ArgumentError('every opportunity site must name an opportunity');
+    }
+    if (opportunitySites.any((site) {
+      final path = paths[site.hand];
+      return path == null ||
+          site.momentIndex <= 0 ||
+          site.momentIndex >= path.length;
+    })) {
+      throw ArgumentError('every opportunity site must name a played moment');
+    }
+  }
 
   /// A linear exercise with motor opportunities derived from its realization.
   factory Exercise.linear({
@@ -80,11 +105,16 @@ class Exercise {
       handMotion: handMotion,
       tempoBpm: tempoBpm,
     );
+    final opportunitySites = MotorOpportunity.sitesForLinearTraversal(
+      material,
+      conditions,
+    );
     return Exercise.recorded(
       material: material,
       conditions: conditions,
       guidance: guidance,
-      opportunities: MotorOpportunity.forLinearTraversal(material, conditions),
+      opportunities: {for (final site in opportunitySites) site.opportunity},
+      opportunitySites: opportunitySites,
     );
   }
 
@@ -97,6 +127,7 @@ class Exercise {
     pattern: pattern,
     guidance: guidance,
     opportunities: opportunities,
+    opportunitySites: opportunitySites,
   );
 
   /// This exercise at [tempoBpm], with everything else held fixed.
@@ -117,6 +148,7 @@ class Exercise {
     pattern: pattern,
     guidance: guidance,
     opportunities: opportunities,
+    opportunitySites: opportunitySites,
   );
 
   /// Whether [other] is the same motor task under different guidance.
@@ -124,7 +156,11 @@ class Exercise {
       material == other.material &&
       pattern == other.pattern &&
       conditions == other.conditions &&
-      _opportunitySetEquality.equals(opportunities, other.opportunities);
+      _opportunitySetEquality.equals(opportunities, other.opportunities) &&
+      _opportunitySiteSetEquality.equals(
+        opportunitySites,
+        other.opportunitySites,
+      );
 
   /// `Q[e,k]`: the competencies this exercise creates an opportunity to
   /// observe, generated from its composition.
@@ -156,6 +192,7 @@ class Exercise {
     conditions,
     guidance,
     _opportunitySetEquality.hash(opportunities),
+    _opportunitySiteSetEquality.hash(opportunitySites),
   );
 
   @override

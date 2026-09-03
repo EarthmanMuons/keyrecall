@@ -275,6 +275,41 @@ void main() {
         isNot(contains(MotorOpportunity.scalarCrossing)),
       );
     });
+
+    test('sites identify each hand and reached moment', () {
+      final exercise = Exercise.linear(
+        material: cMajor,
+        hands: HandConfiguration.together,
+        octaves: 2,
+        direction: ExerciseDirection.up,
+      );
+
+      expect(
+        exercise.opportunitySites,
+        containsAll({
+          const MotorOpportunitySite(
+            opportunity: MotorOpportunity.scalarCrossing,
+            hand: Hand.right,
+            momentIndex: 3,
+          ),
+          const MotorOpportunitySite(
+            opportunity: MotorOpportunity.scalarCrossing,
+            hand: Hand.left,
+            momentIndex: 5,
+          ),
+          const MotorOpportunitySite(
+            opportunity: MotorOpportunity.multiOctaveContinuation,
+            hand: Hand.right,
+            momentIndex: 7,
+          ),
+          const MotorOpportunitySite(
+            opportunity: MotorOpportunity.multiOctaveContinuation,
+            hand: Hand.left,
+            momentIndex: 7,
+          ),
+        }),
+      );
+    });
   });
 
   group('exercise equality', () {
@@ -319,6 +354,7 @@ void main() {
 
       expect(changed.conditions, original.conditions);
       expect(changed.opportunities, original.opportunities);
+      expect(changed.opportunitySites, original.opportunitySites);
       expect(changed.pattern, original.pattern);
       expect(changed.guidance, GuidanceContext.notesPreviewedOnly);
     });

@@ -18,7 +18,7 @@
 /// It is also not a precedent that every pre-release rearrangement bumps this.
 /// Ordinary churn before release should rewrite fixtures instead; a bump is for
 /// a change worth being able to prove survived.
-const int attemptSchemaVersion = 3;
+const int attemptSchemaVersion = 4;
 
 /// Version of the checkpoint wire format.
 ///

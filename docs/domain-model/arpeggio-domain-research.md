@@ -262,11 +262,11 @@ The pitch sequence, fingering stream, and hand path should derive at least:
 - direction reversal; and
 - hands-together synchronization opportunities.
 
-The architecture fixture's single `arpeggioTransition` opportunity is too coarse
-to claim final domain status. In particular, it currently marks every arpeggio
-whether or not an observed segment isolates a transition. Domain promotion
-requires a derived opportunity at each actual fingering boundary and tests that
-ordinary chord-tone intervals do not create transition evidence.
+Each `arpeggioTransition` opportunity is derived at an actual crossing in the
+realized fingering stream and records its hand and reached moment. A one-octave
+`1 2 3 5` right-hand arpeggio therefore creates no transition opportunity,
+while a continued `3 -> 1` boundary does. Ordinary chord-tone intervals do not
+create transition evidence merely because the material is an arpeggio.
 
 Standard MIDI can observe pitch, onset, release, velocity, continuity, and
 between-hand synchronization. It cannot observe the finger used. Fingering

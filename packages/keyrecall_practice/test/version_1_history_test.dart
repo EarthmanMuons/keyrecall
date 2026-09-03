@@ -34,6 +34,10 @@ void main() {
         .map((line) => jsonDecode(line) as Map<String, Object?>)
         .map((record) {
           record['schema_version'] = 1;
+          final exercise = record['exercise'];
+          if (exercise is Map<String, Object?>) {
+            exercise.remove('opportunity_sites');
+          }
           final closure = record.remove('closure') as Map<String, Object?>?;
           if (closure == null) return record;
           final measurement = closure['measurement']! as Map<String, Object?>;
@@ -50,6 +54,10 @@ void main() {
       final decision =
           jsonDecode(pending.readAsStringSync()) as Map<String, Object?>;
       decision['schema_version'] = 1;
+      final exercise = decision['exercise'];
+      if (exercise is Map<String, Object?>) {
+        exercise.remove('opportunity_sites');
+      }
       pending.writeAsStringSync(jsonEncode(decision));
     }
   }

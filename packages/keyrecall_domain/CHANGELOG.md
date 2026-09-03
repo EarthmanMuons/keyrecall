@@ -25,6 +25,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   `entry / cycle / terminal` record with explicit descent symmetry. Supported
   arpeggios use the same representation as scales, and unsupported records are
   absent rather than inferred.
+- Motor opportunities retain exact hand and moment sites. Crossing types come
+  from canonical fingering records, so arpeggio transitions occur only at
+  realized continuation boundaries.
 - `GuidanceContext` has exactly three constructible values. Notes previewed
   together with visible cues described the same condition as continuous cueing
   while comparing and hashing differently, and guidance is part of exercise

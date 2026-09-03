@@ -20,7 +20,7 @@ Map<String, Object?> version1(Map<String, Object?> current) {
 }
 
 Map<String, Object?> version2(Map<String, Object?> current) {
-  final old = Map<String, Object?>.of(current)..['schema_version'] = 2;
+  final old = version3(current)..['schema_version'] = 2;
   final decision = old['decision'];
   if (decision is! Map<String, Object?>) return old;
   final prediction = decision['prediction'];
@@ -28,6 +28,16 @@ Map<String, Object?> version2(Map<String, Object?> current) {
   old['decision'] = Map<String, Object?>.of(decision)
     ..['prediction'] = (Map<String, Object?>.of(prediction)
       ..remove('coordination_p'));
+  return old;
+}
+
+Map<String, Object?> version3(Map<String, Object?> current) {
+  final old = Map<String, Object?>.of(current)..['schema_version'] = 3;
+  final exercise = old['exercise'];
+  if (exercise is Map<String, Object?>) {
+    old['exercise'] = Map<String, Object?>.of(exercise)
+      ..remove('opportunity_sites');
+  }
   return old;
 }
 
@@ -143,6 +153,20 @@ void main() {
             1e-12,
           ),
         );
+      }
+    });
+  });
+
+  group('version 3 to current', () {
+    test('preserves opportunity kinds without inventing event locations', () {
+      for (final original in journal.records) {
+        final upgraded = AttemptRecord.fromJson(version3(original.toJson()));
+
+        expect(
+          upgraded.exercise.opportunities,
+          original.exercise.opportunities,
+        );
+        expect(upgraded.exercise.opportunitySites, isEmpty);
       }
     });
   });

@@ -4,6 +4,31 @@ import 'fingering.dart';
 import 'hand_path.dart';
 import 'technical_material.dart';
 
+/// One motor opportunity at the moment reached by its transition.
+class MotorOpportunitySite {
+  final MotorOpportunity opportunity;
+  final Hand hand;
+
+  /// The moment reached by the transition from the preceding moment.
+  final int momentIndex;
+
+  const MotorOpportunitySite({
+    required this.opportunity,
+    required this.hand,
+    required this.momentIndex,
+  }) : assert(momentIndex > 0);
+
+  @override
+  bool operator ==(Object other) =>
+      other is MotorOpportunitySite &&
+      other.opportunity == opportunity &&
+      other.hand == hand &&
+      other.momentIndex == momentIndex;
+
+  @override
+  int get hashCode => Object.hash(opportunity, hand, momentIndex);
+}
+
 /// An observable motor site an exercise's event structure creates.
 ///
 /// Opportunities are what makes localized diagnosis possible: an attempt can
@@ -41,16 +66,14 @@ enum MotorOpportunity {
         throw ArgumentError.value(id, 'id', 'unknown motor opportunity'),
   );
 
-  /// The opportunities created by the material's realized hand paths.
-  static Set<MotorOpportunity> forLinearTraversal(
+  /// The opportunity sites created by the material's realized hand paths.
+  static Set<MotorOpportunitySite> sitesForLinearTraversal(
     TechnicalMaterial material,
     ExecutionConditions conditions,
   ) {
     final degreesPerOctave = material.topology.degreesPerOctave;
     final paths = handPathsFor(conditions, degreesPerOctave: degreesPerOctave);
-    var hasCrossing = false;
-    var hasContinuation = false;
-    var hasReversal = false;
+    final sites = <MotorOpportunitySite>{};
 
     for (final MapEntry(key: hand, value: path) in paths.entries) {
       final fingers = fingeringForConditions(
@@ -64,27 +87,57 @@ enum MotorOpportunity {
           final fingerMotion = fingers[index] - fingers[index - 1];
           if (degreeMotion == 0 || fingerMotion == 0) continue;
           final directionsAgree = degreeMotion * fingerMotion > 0;
-          if (directionsAgree == (hand == Hand.left)) hasCrossing = true;
+          if (directionsAgree == (hand == Hand.left)) {
+            sites.add(
+              MotorOpportunitySite(
+                opportunity: switch (material.fingeringTransitionKind) {
+                  FingeringTransitionKind.scalarCrossing => scalarCrossing,
+                  FingeringTransitionKind.arpeggioTransition =>
+                    arpeggioTransition,
+                },
+                hand: hand,
+                momentIndex: index,
+              ),
+            );
+          }
         }
       }
 
       for (var index = 1; index < path.length - 1; index++) {
         final before = path[index] - path[index - 1];
         final after = path[index + 1] - path[index];
-        if (before * after < 0) hasReversal = true;
+        if (before * after < 0) {
+          sites.add(
+            MotorOpportunitySite(
+              opportunity: directionReversal,
+              hand: hand,
+              momentIndex: index,
+            ),
+          );
+        }
         if (path[index] != 0 &&
             path[index].abs() % degreesPerOctave == 0 &&
             before * after > 0) {
-          hasContinuation = true;
+          sites.add(
+            MotorOpportunitySite(
+              opportunity: multiOctaveContinuation,
+              hand: hand,
+              momentIndex: index,
+            ),
+          );
         }
       }
     }
 
-    return {
-      if (material is ArpeggioMaterial) arpeggioTransition,
-      if (hasCrossing && material is! ArpeggioMaterial) scalarCrossing,
-      if (hasContinuation) multiOctaveContinuation,
-      if (hasReversal) directionReversal,
-    };
+    return Set.unmodifiable(sites);
   }
+
+  /// The opportunity kinds created by the material's realized hand paths.
+  static Set<MotorOpportunity> forLinearTraversal(
+    TechnicalMaterial material,
+    ExecutionConditions conditions,
+  ) => {
+    for (final site in sitesForLinearTraversal(material, conditions))
+      site.opportunity,
+  };
 }
