@@ -1,7 +1,7 @@
 # Future Planning
 
 - **Status:** Deliberately deferred design space
-- **Last aligned:** September 2, 2026
+- **Last aligned:** September 3, 2026
 - **Scope:** Post-V1 architectural seams, empirical hypotheses, domain growth,
   and product ideas worth preserving
 
@@ -487,8 +487,13 @@ material residuals, difficulty, and session effects.
 
 ### 4.1 Explicit user goals and focus
 
-V1 reserves `Goal(e)` but sets it to zero because no goal model exists. Future
-goals may include:
+The proposed contract now lives in
+[`curriculum-and-focus.md`](curriculum-and-focus.md). It separates the installed
+domain catalog, provenance-backed curricula, durable learner goals, and
+temporary focus. Scope controls candidate admission while `Goal(e)` expresses
+soft emphasis among admitted candidates.
+
+Future goals may include:
 
 - exam or curriculum requirements;
 - a selected scale-form or minor-scale focus;
@@ -498,9 +503,10 @@ goals may include:
 - free-practice requests; and
 - explicit learner overrides.
 
-Goal relevance belongs in the established goal term and product constraints. It
-must not silently redefine learner competence, evidence, prerequisites, or
-challenge prediction.
+Goal relevance belongs in the established goal term and product constraints. A
+hard "only these" focus instead narrows the candidate scope. Neither mechanism
+may redefine learner competence, evidence, prerequisites, or challenge
+prediction, and changing either must preserve all learned state.
 
 ### 4.2 Acquisition, development, and maintenance as practice regimes
 
@@ -1022,9 +1028,7 @@ The long-term technical-practice domain may include:
 - modes;
 - arpeggios and inversions;
 - contrary-motion exercises;
-- rhythmic and articulation variants;
 - scales in thirds, sixths, tenths, or other intervals;
-- broken-chord patterns;
 - advanced regimen-derived or Russian-style patterns;
 - symmetric, whole-tone, and diminished scales; and
 - additional provenance-backed technical-material families.
@@ -1037,6 +1041,12 @@ motor realization, structural opportunities, difficulty mapping, observations,
 and extension characterization. An arpeggio is not a scale with a different
 exercise pattern. Each family must also state explicitly which existing learner
 states should transfer into it and which states are intentionally new.
+
+Rhythmic and articulation variants and broken-chord patterns are not current
+expansion targets. Arpeggios are the next architectural proof because they are
+unlike scales in ways contrary motion is not. The cross-family contract and its
+acceptance criteria are specified in
+[`curriculum-and-focus.md`](curriculum-and-focus.md).
 
 ### 5.1 Alternative fingerings
 

@@ -49,9 +49,8 @@ The domain remains intentionally constrained. It does not need to become a
 general piano-learning application with repertoire, sight reading, ear training,
 video lessons, or theory courses. Scales and arpeggios alone can support years
 of progression: individual hands, hands together, multiple octaves, major/minor
-forms, modes, tempo development, articulation and rhythmic variants, contrary
-motion, arpeggios and inversions, interval scales, and advanced technical
-regimens.
+forms, modes, tempo development, contrary motion, arpeggios and inversions,
+interval scales, and advanced technical regimens.
 
 A major architectural principle is to distinguish **observable exercises** from
 **latent skills or knowledge components**. "C major, hands together, two octaves
@@ -647,16 +646,11 @@ Over months or years, C major can support:
 - hands separate and together;
 - parallel and contrary motion;
 - tempo development;
-- straight rhythm;
-- dotted/reverse-dotted rhythms;
-- grouped accents;
-- legato/staccato;
 - scales in thirds;
 - scales in sixths;
 - scales in tenths;
 - tonic arpeggios;
 - arpeggio inversions;
-- broken-chord patterns;
 - advanced regimen-derived patterns;
 - Russian-style technical patterns.
 
@@ -867,8 +861,6 @@ Characteristics:
 - longer ranges;
 - reduced visual scaffolding;
 - greater interleaving;
-- rhythmic variants;
-- articulation variants;
 - deliberate challenge near the player's frontier.
 
 ### 13.3 Maintenance

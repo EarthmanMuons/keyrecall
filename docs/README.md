@@ -1,7 +1,7 @@
 # KeyRecall Documentation Map
 
 - **Status:** Current navigation and authority map
-- **Last aligned:** September 2, 2026
+- **Last aligned:** September 3, 2026
 
 ## Start here
 
@@ -30,6 +30,8 @@ docs/
 │   ├── product-vision.md
 │   ├── practice-presentation.md     attempt presentation, review, summary, and
 │   │                                progress evidence
+│   ├── curriculum-and-focus.md      proposed catalog, curriculum, goal, focus,
+│   │                                and cross-family boundary
 │   ├── data-products.md             journal, checkpoint, fluency history, and
 │   │                                feedback exposure and telemetry
 │   ├── future-planning.md           deferred seams, hypotheses, and closed ideas
@@ -90,6 +92,7 @@ implementation rather than evidence about another one.
 | Canonical terminology and symbols                                   | `GLOSSARY.md`                                           |
 | Product thesis, UX, privacy principles                              | `design/product-vision.md`                              |
 | Attempt presentation and post-attempt review                        | `design/practice-presentation.md`                       |
+| Proposed curriculum, goals, focus, and cross-family contract        | `design/curriculum-and-focus.md`                        |
 | What each store is for, and where aggregation is allowed            | `design/data-products.md`                               |
 | Deferred architectural, product, and domain hypotheses              | `design/future-planning.md`                             |
 | Synthetic players, trajectory detectors, and the sweep              | `design/trajectory-simulation.md`                       |
