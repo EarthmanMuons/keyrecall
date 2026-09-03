@@ -254,6 +254,22 @@ void main() {
   });
 
   group('a recorded exercise', () {
+    test('round-trips arpeggio material identity', () {
+      final exercise = Exercise.linear(
+        material: proofArpeggios.first,
+        hands: HandConfiguration.right,
+        direction: ExerciseDirection.up,
+      );
+
+      final reread = decodeExercise(
+        jsonDecode(jsonEncode(encodeExercise(exercise)))
+            as Map<String, Object?>,
+      );
+
+      expect(reread, exercise);
+      expect(reread.material, isA<ArpeggioMaterial>());
+    });
+
     // The journal is the historical record, so replay must reproduce the motor
     // structure that was presented rather than what today's derivation would
     // produce for the same material. Divergence here is not corruption: it is
@@ -263,7 +279,7 @@ void main() {
       final conditions = ExecutionConditions(
         hands: HandConfiguration.right,
         octaves: 1,
-        direction: ScaleDirection.upDown,
+        direction: ExerciseDirection.upDown,
         handMotion: HandMotion.parallel,
         tempoBpm: 80,
       );

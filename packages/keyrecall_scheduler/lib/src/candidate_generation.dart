@@ -9,7 +9,7 @@ const List<HandConfiguration> generatedHands = HandConfiguration.values;
 const List<int> generatedOctaves = [1, 2];
 
 /// Directions candidate generation offers.
-const List<ScaleDirection> generatedDirections = ScaleDirection.values;
+const List<ExerciseDirection> generatedDirections = ExerciseDirection.values;
 
 /// Hand motions candidate generation offers for a given hand configuration.
 ///
@@ -78,7 +78,7 @@ AcquisitionFloor scaleAcquisitionFloorFor(
     for (final exercise in request.candidates)
       if (exercise.conditions.hands != HandConfiguration.together &&
           exercise.conditions.octaves == 1 &&
-          exercise.conditions.direction == ScaleDirection.up &&
+          exercise.conditions.direction == ExerciseDirection.up &&
           exercise.conditions.tempoBpm == generatedTempi.first &&
           exercise.guidance == GuidanceContext.continuouslyCued)
         AcquisitionFloorEntry(

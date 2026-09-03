@@ -331,7 +331,7 @@ Exercise _exercise(
   material: materials[material],
   hands: hands,
   octaves: 1,
-  direction: ScaleDirection.up,
+  direction: ExerciseDirection.up,
   tempoBpm: 60,
   handMotion: motion,
 );

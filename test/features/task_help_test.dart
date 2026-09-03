@@ -7,7 +7,7 @@ import 'package:keyrecall/features/practice/task_help.dart';
 void main() {
   Exercise exerciseOf({
     HandConfiguration hands = HandConfiguration.right,
-    ScaleDirection direction = ScaleDirection.up,
+    ExerciseDirection direction = ExerciseDirection.up,
     HandMotion handMotion = HandMotion.parallel,
     int octaves = 1,
     double tempoBpm = 60,
@@ -23,7 +23,7 @@ void main() {
   test('explains every term the task statement puts on screen', () {
     final exercise = exerciseOf(
       hands: HandConfiguration.together,
-      direction: ScaleDirection.upDown,
+      direction: ExerciseDirection.upDown,
       octaves: 2,
       tempoBpm: 72,
     );
@@ -41,7 +41,7 @@ void main() {
   test('says what each condition asks for, not just what it is called', () {
     final upOnly = taskHelpEntries(exerciseOf());
     final andBack = taskHelpEntries(
-      exerciseOf(direction: ScaleDirection.upDown),
+      exerciseOf(direction: ExerciseDirection.upDown),
     );
 
     expect(upOnly[2].$2, isNot(andBack[2].$2));
@@ -53,7 +53,7 @@ void main() {
       exerciseOf(
         hands: HandConfiguration.together,
         handMotion: HandMotion.contrary,
-        direction: ScaleDirection.upDown,
+        direction: ExerciseDirection.upDown,
       ),
     )[2];
 
@@ -72,12 +72,12 @@ void main() {
 
   test('says how far the scale runs in the terms this one runs in', () {
     expect(
-      taskHelpEntries(exerciseOf(direction: ScaleDirection.up))[3].$2,
+      taskHelpEntries(exerciseOf(direction: ExerciseDirection.up))[3].$2,
       isNot(contains('turns around')),
       reason: 'a scale that only goes up never turns around',
     );
     expect(
-      taskHelpEntries(exerciseOf(direction: ScaleDirection.upDown))[3].$2,
+      taskHelpEntries(exerciseOf(direction: ExerciseDirection.upDown))[3].$2,
       contains('turns around'),
     );
   });

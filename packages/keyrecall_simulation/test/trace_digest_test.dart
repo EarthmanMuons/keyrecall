@@ -45,7 +45,7 @@ const List<PinnedDigests> pinnedRuns = [
     attempts: 80,
     discrete:
         '7738a3fa3fcd45fad5def4c9b19bf468d6d903cf2b680bc7433d0384d7ca6675',
-    full: '592360275edc6c97896ba46b33846d10900c9db23eea35307ede5b291a1a1f94',
+    full: 'd1141b145255c3709ebc60e8b2480f34f44292ddd3075c5a1de67f95a7dc5b2a',
   ),
   PinnedDigests(
     profile: SyntheticProfile.beginner,
@@ -53,7 +53,7 @@ const List<PinnedDigests> pinnedRuns = [
     attempts: 80,
     discrete:
         'eb6e6b7ca584fa6b37cc457842bf1f873919a233a529ece1d108eb13b9fce128',
-    full: 'a759cc8c300e47ef0edc8520ae98ad4cdd1b49f50a1f1747ee17274abd6491b8',
+    full: 'c2b5119691fb1cfc804c2befe330aa83d150a5e200e7ef43ba2a71ecda84cdac',
   ),
   PinnedDigests(
     profile: SyntheticProfile.returning,
@@ -61,7 +61,7 @@ const List<PinnedDigests> pinnedRuns = [
     attempts: 80,
     discrete:
         '558a181e55893357dc069c675bbf2142c71afc79940170805fd0d9cb18c9a8b6',
-    full: '7f470cf0f56f5d74b0544b72cc672c632b6a8a698a702b5c61258526af58b818',
+    full: '6023dc07fe0d1a905d738823c8771bb26bcf4ea1e1f10ba407d3a9cbd86960a5',
   ),
   PinnedDigests(
     profile: SyntheticProfile.techniqueStrongMemoryWeak,
@@ -69,7 +69,7 @@ const List<PinnedDigests> pinnedRuns = [
     attempts: 80,
     discrete:
         '8314f455000ca11aa03fc72c5e44d011f2eae949b49607f1ae4884eb22655c5f',
-    full: 'e03908d26a50500dadf6219288ecc6cfcc4d51c49591643e05c09175773457fb',
+    full: '43ba13444b98420d0383c6bebe1b1f25183f80b063b4635e5a57fb329188f002',
   ),
 ];
 

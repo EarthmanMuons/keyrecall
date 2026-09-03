@@ -68,7 +68,7 @@ void main() {
       if (bypass == ChallengeBypass.tempoProbe) firstTempoProbe ??= slots;
       if (exercise.conditions.tempoBpm >= bpm * 0.8) firstNearPace ??= slots;
       if (independence == 2) firstUnguided ??= slots;
-      if (!coreForms.contains(exercise.material.form)) {
+      if (!coreForms.contains(exercise.material.scaleForm)) {
         firstAlteredMinor ??= slots;
       }
 

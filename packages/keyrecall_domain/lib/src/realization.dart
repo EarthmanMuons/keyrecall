@@ -307,7 +307,7 @@ int _midiNoteAt({
 /// the material cannot be spelled within double accidentals.
 ExerciseRealization realize(Exercise exercise) {
   final material = exercise.material;
-  final intervals = scaleFormIntervals[material.form]!;
+  final intervals = material.topology.semitoneOffsets;
   final conditions = exercise.conditions;
 
   final hands = [

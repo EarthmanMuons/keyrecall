@@ -41,15 +41,15 @@ enum HandConfiguration {
   };
 }
 
-/// Which way the exercise traverses the scale.
-enum ScaleDirection {
+/// Which way an exercise traverses its material.
+enum ExerciseDirection {
   /// Ascending only.
   up('UP'),
 
   /// Ascending, then descending, so the attempt contains a reversal.
   upDown('UP_DOWN');
 
-  const ScaleDirection(this.id);
+  const ExerciseDirection(this.id);
 
   /// Stable identifier used in persisted state and traces.
   final String id;
@@ -57,7 +57,7 @@ enum ScaleDirection {
   /// The direction with the given [id].
   ///
   /// Throws [ArgumentError] when no direction matches.
-  static ScaleDirection fromId(String id) => values.firstWhere(
+  static ExerciseDirection fromId(String id) => values.firstWhere(
     (direction) => direction.id == id,
     orElse: () => throw ArgumentError.value(id, 'id', 'unknown direction'),
   );
@@ -65,7 +65,7 @@ enum ScaleDirection {
 
 /// How the two hands move relative to each other.
 ///
-/// Orthogonal to [ScaleDirection], which is the traversal of one line in time:
+/// Orthogonal to [ExerciseDirection], the traversal of one line in time:
 /// both hands traverse the same `upDown` exercise whether they move together or
 /// apart.
 enum HandMotion {
@@ -104,7 +104,7 @@ class ExecutionConditions {
   final int octaves;
 
   /// Which way the traversal runs.
-  final ScaleDirection direction;
+  final ExerciseDirection direction;
 
   /// How the hands move relative to each other.
   ///
@@ -130,7 +130,7 @@ class ExecutionConditions {
   ExecutionConditions({
     required this.hands,
     this.octaves = 1,
-    this.direction = ScaleDirection.upDown,
+    this.direction = ExerciseDirection.upDown,
     this.handMotion = HandMotion.parallel,
     this.tempoBpm = 80,
   }) {

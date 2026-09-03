@@ -13,7 +13,7 @@ void main() {
     ScaleForm form = ScaleForm.major,
     HandConfiguration hands = HandConfiguration.right,
     int octaves = 1,
-    ScaleDirection direction = ScaleDirection.up,
+    ExerciseDirection direction = ExerciseDirection.up,
   }) => Exercise.linear(
     material: TechnicalMaterial(tonic, form),
     hands: hands,
@@ -87,11 +87,11 @@ void main() {
     ].fold(0, (total, eighths) => total + eighths);
 
     for (final (octaves, direction) in [
-      (1, ScaleDirection.up),
-      (1, ScaleDirection.upDown),
-      (2, ScaleDirection.up),
-      (2, ScaleDirection.upDown),
-      (3, ScaleDirection.upDown),
+      (1, ExerciseDirection.up),
+      (1, ExerciseDirection.upDown),
+      (2, ExerciseDirection.up),
+      (2, ExerciseDirection.upDown),
+      (3, ExerciseDirection.upDown),
     ]) {
       final score = staffScoreFor(
         realize(exerciseOf(octaves: octaves, direction: direction)),
@@ -110,7 +110,7 @@ void main() {
 
   test('the closing note is the only one that is not an eighth', () {
     final score = staffScoreFor(
-      realize(exerciseOf(octaves: 2, direction: ScaleDirection.upDown)),
+      realize(exerciseOf(octaves: 2, direction: ExerciseDirection.upDown)),
       Hand.right,
     );
     final notes = notesOf(score);
@@ -196,7 +196,10 @@ void main() {
     });
 
     test('writes the finger a crossing starts from, not just the thumb', () {
-      final exercise = exerciseOf(octaves: 2, direction: ScaleDirection.upDown);
+      final exercise = exerciseOf(
+        octaves: 2,
+        direction: ExerciseDirection.upDown,
+      );
       final full = fingeringFor(exercise, Hand.right)!;
       final shown = displayFingeringFor(exercise, Hand.right)!;
 
@@ -211,7 +214,10 @@ void main() {
     });
 
     test('never leaves a thumb crossing unwritten', () {
-      final exercise = exerciseOf(octaves: 2, direction: ScaleDirection.upDown);
+      final exercise = exerciseOf(
+        octaves: 2,
+        direction: ExerciseDirection.upDown,
+      );
       final full = fingeringFor(exercise, Hand.right)!;
       final shown = displayFingeringFor(exercise, Hand.right)!;
 
@@ -314,7 +320,7 @@ void main() {
   group('the staff two hands are written on', () {
     final together = exerciseOf(
       hands: HandConfiguration.together,
-      direction: ScaleDirection.upDown,
+      direction: ExerciseDirection.upDown,
     );
     final realization = realize(together);
 
@@ -446,7 +452,9 @@ void main() {
     setUpAll(() => crisp.MusicFonts.load(crisp.MusicFont.bravura));
 
     crisp.Score scaleOf({int octaves = 1}) => staffScoreFor(
-      realize(exerciseOf(octaves: octaves, direction: ScaleDirection.upDown)),
+      realize(
+        exerciseOf(octaves: octaves, direction: ExerciseDirection.upDown),
+      ),
       Hand.right,
     );
 

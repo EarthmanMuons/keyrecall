@@ -3,8 +3,8 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
-/// Retrieval health below which a covered scale warrants maintenance.
-const double scaleMaintenanceRetrievalFloor = 0.75;
+/// Retrieval health below which a covered requirement warrants maintenance.
+const double requirementMaintenanceRetrievalFloor = 0.75;
 
 /// Whether one requirement has been demonstrated to its completion target.
 enum RequirementCoverage { uncovered, covered }
@@ -71,11 +71,75 @@ typedef RequirementAssessor =
       required DateTime at,
     });
 
+/// Assesses coverage and current work for one material family.
+abstract interface class RequirementAssessmentFamily {
+  String get familyId;
+
+  RequirementState assess({
+    required ResolvedRequirement resolved,
+    required LearnerState state,
+    required AttemptJournal journal,
+    required LearnerModel learner,
+    required DateTime at,
+  });
+}
+
+class ScaleRequirementAssessment implements RequirementAssessmentFamily {
+  const ScaleRequirementAssessment();
+
+  @override
+  String get familyId => TechnicalMaterial.scaleFamilyId;
+
+  @override
+  RequirementState assess({
+    required ResolvedRequirement resolved,
+    required LearnerState state,
+    required AttemptJournal journal,
+    required LearnerModel learner,
+    required DateTime at,
+  }) => _assessDemonstratedRequirement(
+    resolved: resolved,
+    state: state,
+    journal: journal,
+    learner: learner,
+    at: at,
+  );
+}
+
+class ArpeggioRequirementAssessment implements RequirementAssessmentFamily {
+  const ArpeggioRequirementAssessment();
+
+  @override
+  String get familyId => TechnicalMaterial.arpeggioFamilyId;
+
+  @override
+  RequirementState assess({
+    required ResolvedRequirement resolved,
+    required LearnerState state,
+    required AttemptJournal journal,
+    required LearnerModel learner,
+    required DateTime at,
+  }) => _assessDemonstratedRequirement(
+    resolved: resolved,
+    state: state,
+    journal: journal,
+    learner: learner,
+    at: at,
+  );
+}
+
 /// Applies learner-relative coverage and work policy to a structural scope.
 class PracticeScopeEvaluator {
-  final RequirementAssessor assess;
+  final RequirementAssessor? assess;
+  final List<RequirementAssessmentFamily> families;
 
-  const PracticeScopeEvaluator({this.assess = assessScaleRequirement});
+  const PracticeScopeEvaluator({
+    this.assess,
+    this.families = const [
+      ScaleRequirementAssessment(),
+      ArpeggioRequirementAssessment(),
+    ],
+  });
 
   EvaluatedPracticeScope evaluate({
     required ResolvedPracticeScope scope,
@@ -86,7 +150,7 @@ class PracticeScopeEvaluator {
   }) {
     final requirements = [
       for (final resolved in scope.requirements)
-        assess(
+        (assess ?? _familyFor(resolved).assess)(
           resolved: resolved,
           state: state,
           journal: journal,
@@ -108,10 +172,29 @@ class PracticeScopeEvaluator {
       ),
     );
   }
+
+  RequirementAssessmentFamily _familyFor(ResolvedRequirement resolved) =>
+      families.firstWhere(
+        (family) => family.familyId == resolved.requirement.familyId,
+      );
 }
 
 /// The initial scale-family coverage and maintenance policy.
 RequirementState assessScaleRequirement({
+  required ResolvedRequirement resolved,
+  required LearnerState state,
+  required AttemptJournal journal,
+  required LearnerModel learner,
+  required DateTime at,
+}) => _assessDemonstratedRequirement(
+  resolved: resolved,
+  state: state,
+  journal: journal,
+  learner: learner,
+  at: at,
+);
+
+RequirementState _assessDemonstratedRequirement({
   required ResolvedRequirement resolved,
   required LearnerState state,
   required AttemptJournal journal,
@@ -143,7 +226,7 @@ RequirementState assessScaleRequirement({
   return RequirementState(
     resolved: resolved,
     coverage: RequirementCoverage.covered,
-    workStatus: retrieval < scaleMaintenanceRetrievalFloor
+    workStatus: retrieval < requirementMaintenanceRetrievalFloor
         ? RequirementWorkStatus.due
         : RequirementWorkStatus.healthy,
   );

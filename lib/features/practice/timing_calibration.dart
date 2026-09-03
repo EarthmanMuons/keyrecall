@@ -40,7 +40,7 @@ class CalibrationCell {
     material: TechnicalMaterial('C', ScaleForm.major),
     hands: HandConfiguration.right,
     octaves: octaves,
-    direction: ScaleDirection.upDown,
+    direction: ExerciseDirection.upDown,
     tempoBpm: tempoBpm,
     guidance: GuidanceContext.continuouslyCued,
   );
@@ -91,7 +91,7 @@ Map<String, Object?> takeToJson(
   'repetition': cell.repetition,
   'material': 'C_MAJOR',
   'hands': HandConfiguration.right.id,
-  'direction': ScaleDirection.upDown.id,
+  'direction': ExerciseDirection.upDown.id,
   'notes': [
     for (final note in transcript.notes)
       {'note': note.midiNote, 'ms': note.timestampMs},

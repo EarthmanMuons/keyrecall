@@ -73,12 +73,20 @@ void main() {
 
     test('a parameter set that cannot mean anything is rejected', () {
       expect(
-        () => HandTransferParams(rhoHand: 1.5, shrinkageTau: 0.5),
+        () => CompetencyTransferParams(
+          rhoHand: 1.5,
+          rhoFamily: 0.35,
+          shrinkageTau: 0.5,
+        ),
         throwsA(isA<AssertionError>()),
         reason: 'transfer cannot borrow more than the whole gap',
       );
       expect(
-        () => HandTransferParams(rhoHand: 0.3, shrinkageTau: 0.0),
+        () => CompetencyTransferParams(
+          rhoHand: 0.3,
+          rhoFamily: 0.35,
+          shrinkageTau: 0.0,
+        ),
         throwsA(isA<AssertionError>()),
       );
       expect(

@@ -14,7 +14,7 @@ void main() {
     material: material,
     hands: HandConfiguration.together,
     octaves: 1,
-    direction: ScaleDirection.up,
+    direction: ExerciseDirection.up,
   );
 
   /// The first four moments of that exercise.
@@ -64,7 +64,7 @@ void main() {
           material: material,
           hands: HandConfiguration.right,
           octaves: 1,
-          direction: ScaleDirection.up,
+          direction: ExerciseDirection.up,
         ),
       );
       var transcript = PerformanceTranscript.empty;

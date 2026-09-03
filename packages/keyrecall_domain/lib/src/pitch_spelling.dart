@@ -13,16 +13,6 @@ import 'technical_material.dart';
 /// guarantees that: knowing which expected note an observation lines up with
 /// is a judgment about the performance, and spelling must not smuggle one in.
 
-/// Semitones above the tonic in each scale form.
-///
-/// [ScaleForm.melodicMinor] is the fixed form, so a descent uses these too.
-const Map<ScaleForm, List<int>> scaleFormIntervals = {
-  ScaleForm.major: [0, 2, 4, 5, 7, 9, 11],
-  ScaleForm.naturalMinor: [0, 2, 3, 5, 7, 8, 10],
-  ScaleForm.harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
-  ScaleForm.melodicMinor: [0, 2, 3, 5, 7, 9, 11],
-};
-
 /// How the tonic of [material] is written.
 SpelledPitch tonicSpellingOf(TechnicalMaterial material) {
   final tonic = material.tonic;
@@ -59,7 +49,12 @@ SpelledPitch spellExpectedPitch({
   required int degree,
   required int midiNote,
 }) {
-  final letter = tonicSpellingOf(material).letter.stepsAbove(degree);
+  final topology = material.topology;
+  final cycle = (degree / topology.degreesPerOctave).floor();
+  final index = degree - cycle * topology.degreesPerOctave;
+  final letter = tonicSpellingOf(material).letter.stepsAbove(
+    cycle * NoteLetter.values.length + topology.letterOffsets[index],
+  );
   final pitch = SpelledPitch.forMidiNote(midiNote, letter: letter);
   if (pitch == null) {
     throw StateError(
@@ -82,11 +77,11 @@ SpelledPitch spellObservedPitch(
   required TechnicalMaterial material,
 }) {
   final tonic = tonicSpellingOf(material);
-  final intervals = scaleFormIntervals[material.form]!;
+  final topology = material.topology;
 
   var alterations = 0;
-  for (final (degree, interval) in intervals.indexed) {
-    final letter = tonic.letter.stepsAbove(degree);
+  for (final (degree, interval) in topology.semitoneOffsets.indexed) {
+    final letter = tonic.letter.stepsAbove(topology.letterOffsets[degree]);
     final memberPitchClass = (tonic.pitchClass + interval) % 12;
     if (memberPitchClass == midiNote % 12) {
       final member = SpelledPitch.forMidiNote(midiNote, letter: letter);

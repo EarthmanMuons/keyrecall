@@ -12,7 +12,7 @@ enum CurriculumRequirementRole { target, support }
 class ExerciseConstraints {
   final HandConfiguration? hands;
   final int? octaves;
-  final ScaleDirection? direction;
+  final ExerciseDirection? direction;
   final HandMotion? handMotion;
   final double? minimumTempoBpm;
 

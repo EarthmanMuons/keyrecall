@@ -217,7 +217,7 @@ class _NoteStrip extends StatelessWidget {
   const _NoteStrip(this.trace, {required this.direction});
 
   final AttemptDetailTrace trace;
-  final ScaleDirection direction;
+  final ExerciseDirection direction;
 
   @override
   Widget build(BuildContext context) {
@@ -350,7 +350,7 @@ class _PositionStrip extends StatelessWidget {
 
   final double position;
   final int momentCount;
-  final ScaleDirection direction;
+  final ExerciseDirection direction;
 
   @override
   Widget build(BuildContext context) {
@@ -398,7 +398,7 @@ class _TraceSection extends StatelessWidget {
   final String explanation;
   final List<AttemptTracePoint> points;
   final int momentCount;
-  final ScaleDirection direction;
+  final ExerciseDirection direction;
   final String upperLabel;
   final String centerLabel;
   final String lowerLabel;
@@ -431,7 +431,7 @@ class _TraceSection extends StatelessWidget {
       _minimumTraceHorizontalPadding,
       lastPosition * _traceHorizontalPaddingFraction,
     );
-    final turnPosition = direction == ScaleDirection.upDown
+    final turnPosition = direction == ExerciseDirection.upDown
         ? (momentCount - 1) / 2
         : null;
     return Semantics(
@@ -544,12 +544,12 @@ class _TraceSection extends StatelessWidget {
 class _TurnLine extends StatelessWidget {
   const _TurnLine({required this.direction, required this.momentCount});
 
-  final ScaleDirection direction;
+  final ExerciseDirection direction;
   final int momentCount;
 
   @override
   Widget build(BuildContext context) {
-    if (direction != ScaleDirection.upDown) return const SizedBox.shrink();
+    if (direction != ExerciseDirection.upDown) return const SizedBox.shrink();
     return Positioned.fill(
       child: CustomPaint(
         painter: _TurnLinePainter(
@@ -599,7 +599,7 @@ class _TurnLinePainter extends CustomPainter {
 class _TraversalLabels extends StatelessWidget {
   const _TraversalLabels({required this.direction});
 
-  final ScaleDirection direction;
+  final ExerciseDirection direction;
 
   @override
   Widget build(BuildContext context) {
@@ -607,11 +607,11 @@ class _TraversalLabels extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: switch (direction) {
-        ScaleDirection.up => [
+        ExerciseDirection.up => [
           Text('start', style: style),
           Text('top', style: style),
         ],
-        ScaleDirection.upDown => [
+        ExerciseDirection.upDown => [
           Text('up', style: style),
           Text('turn', style: style),
           Text('down', style: style),

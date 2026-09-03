@@ -84,7 +84,7 @@ void main() {
       HandConfiguration hands = HandConfiguration.right,
       HandMotion handMotion = HandMotion.parallel,
       int octaves = 1,
-      ScaleDirection direction = ScaleDirection.upDown,
+      ExerciseDirection direction = ExerciseDirection.upDown,
       GuidanceContext guidance = GuidanceContext.unguided,
     }) => Exercise.linear(
       material: material,
@@ -113,7 +113,7 @@ void main() {
     );
     expect(informationKeyFor(exercise(octaves: 2)), isNot(base));
     expect(
-      informationKeyFor(exercise(direction: ScaleDirection.up)),
+      informationKeyFor(exercise(direction: ExerciseDirection.up)),
       isNot(base),
     );
     expect(

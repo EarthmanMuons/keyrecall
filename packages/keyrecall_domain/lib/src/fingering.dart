@@ -2,7 +2,6 @@ import 'package:meta/meta.dart';
 
 import 'execution_conditions.dart';
 import 'hand_path.dart';
-import 'pitch_spelling.dart';
 import 'technical_material.dart';
 
 /// Which fingers play a scale, as a pattern that generates any octave span.
@@ -174,6 +173,21 @@ List<int>? fingeringForConditions({
   required ExecutionConditions conditions,
   required Hand hand,
 }) {
+  if (material is ArpeggioMaterial) {
+    if (conditions.octaves != 1) return null;
+    final ascending = switch (hand) {
+      Hand.right => const [1, 2, 3, 5],
+      Hand.left => const [5, 4, 2, 1],
+    };
+    final path = handPathsFor(
+      conditions,
+      degreesPerOctave: material.topology.degreesPerOctave,
+    )[hand];
+    if (path == null) return null;
+    return [for (final degree in path) ascending[degree.abs()]];
+  }
+  if (material is! ScaleMaterial) return null;
+
   final pattern = canonicalFingering(material, hand);
   if (pattern == null) return null;
 

@@ -9,7 +9,7 @@ void main() {
   final exercise = Exercise.linear(
     material: material,
     hands: HandConfiguration.right,
-    direction: ScaleDirection.upDown,
+    direction: ExerciseDirection.upDown,
     tempoBpm: 60,
   );
   final expected = [
@@ -100,7 +100,7 @@ void main() {
     final harmonicMinor = Exercise.linear(
       material: TechnicalMaterial('F#', ScaleForm.harmonicMinor),
       hands: HandConfiguration.right,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
       tempoBpm: 60,
     );
     final realization = realize(harmonicMinor);
@@ -130,7 +130,7 @@ void main() {
     final handsTogether = Exercise.linear(
       material: material,
       hands: HandConfiguration.together,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
       tempoBpm: 60,
     );
     var transcript = PerformanceTranscript.empty;

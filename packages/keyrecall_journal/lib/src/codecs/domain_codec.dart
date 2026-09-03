@@ -17,7 +17,14 @@ Map<String, Object?> encodeExercise(Exercise exercise) {
   return {
     'material_id': exercise.material.materialId,
     'tonic': exercise.material.tonic,
-    'form': exercise.material.form.id,
+    ...switch (exercise.material) {
+      ScaleMaterial(:final form) => {'form': form.id},
+      ArpeggioMaterial(:final quality, :final inversion) => {
+        'material_family': TechnicalMaterial.arpeggioFamilyId,
+        'quality': quality.id,
+        'inversion': inversion.id,
+      },
+    },
     'pattern': exercise.pattern.id,
     'hands': conditions.hands.id,
     'octaves': conditions.octaves,
@@ -33,10 +40,30 @@ Map<String, Object?> encodeExercise(Exercise exercise) {
 
 /// Reads an exercise back, rejecting anything the domain would not construct.
 Exercise decodeExercise(Map<String, Object?> json, {String? location}) {
-  final material = TechnicalMaterial(
-    requireString(json, 'tonic', location: location),
-    ScaleForm.fromId(requireString(json, 'form', location: location)),
-  );
+  final tonic = requireString(json, 'tonic', location: location);
+  final family = json['material_family'];
+  final TechnicalMaterial material;
+  if (family == null || family == TechnicalMaterial.scaleFamilyId) {
+    material = TechnicalMaterial(
+      tonic,
+      ScaleForm.fromId(requireString(json, 'form', location: location)),
+    );
+  } else if (family == TechnicalMaterial.arpeggioFamilyId) {
+    material = ArpeggioMaterial(
+      tonic,
+      ArpeggioQuality.fromId(
+        requireString(json, 'quality', location: location),
+      ),
+      inversion: ArpeggioInversion.fromId(
+        requireString(json, 'inversion', location: location),
+      ),
+    );
+  } else {
+    throw JournalFormatException(
+      'unknown material family "$family"',
+      location: location,
+    );
+  }
 
   // The stored id is redundant with tonic and form, and that redundancy is the
   // point: if they disagree, one of them was rewritten.
@@ -54,7 +81,7 @@ Exercise decodeExercise(Map<String, Object?> json, {String? location}) {
       requireString(json, 'hands', location: location),
     ),
     octaves: requireInt(json, 'octaves', location: location),
-    direction: ScaleDirection.fromId(
+    direction: ExerciseDirection.fromId(
       requireString(json, 'direction', location: location),
     ),
     handMotion: HandMotion.fromId(

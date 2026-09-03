@@ -8,6 +8,7 @@
 library;
 
 export 'src/admission_band.dart';
+export 'src/arpeggio_catalog.dart';
 export 'src/competency.dart';
 export 'src/curriculum.dart';
 export 'src/exercise.dart';
@@ -17,6 +18,7 @@ export 'src/fingering.dart';
 export 'src/guidance_context.dart';
 export 'src/hand_path.dart';
 export 'src/instrument_profile.dart';
+export 'src/material_topology.dart';
 export 'src/motor_opportunity.dart';
 export 'src/performance_transcript.dart';
 export 'src/pitch_spelling.dart';

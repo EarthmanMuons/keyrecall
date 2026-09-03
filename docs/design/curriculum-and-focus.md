@@ -233,15 +233,15 @@ all-or-nothing structural scope. `PracticeScopeEvaluator` separately derives
 coverage and due state. `PracticeSession` invokes the scheduler and acquisition
 floor only for due work, returns `PracticeCaughtUp` without consuming a
 scheduler opportunity, and returns `PracticeInvalidScope` before scheduling.
-General fluency retains its broad scheduling behavior; the due-work envelope
-and acquisition floor apply to deliberate narrow scopes.
+General fluency retains its broad scheduling behavior; the due-work envelope and
+acquisition floor apply to deliberate narrow scopes.
 
 ## 7. The arpeggio proof
 
 Contrary motion is a valuable scale realization but is too close to the current
-domain to test family extensibility. Arpeggios are the adversarial second
-family. Before implementing a full syllabus, a small mixed curriculum should
-prove all of the following:
+domain to test family extensibility. A deliberately small root-position major
+arpeggio fixture now provides the adversarial second family. The mixed
+curriculum proves all of the following:
 
 1. Scale and arpeggio topology remain genuinely distinct.
 2. Arpeggios declare both transferred and intentionally new learner state.
@@ -254,11 +254,13 @@ prove all of the following:
 9. Coverage and maintenance can be derived across the mixed requirement set.
 10. Exhaustion distinguishes caught-up from blocked behavior in both families.
 
-The fixture should be deliberately small: a major-scales-only curriculum and a
-pseudo-exam curriculum containing a few scales and root-position arpeggios are
-enough to stress the boundary. Canonical fingering, progression, transfer, and
-difficulty claims still require their own provenance before the family becomes
-learner-facing.
+The proof contains C, G, and D major root-position arpeggios, and its mixed
+pseudo-curriculum contains scale and arpeggio requirements. It is not a product
+catalog. Its one-octave fingering, acquisition floor, progression, family
+transfer coefficient, and foundation admission band are provisional architecture
+fixtures. Each needs provenance and validation before arpeggios become
+learner-facing. See [`arpeggio-family-proof.md`](arpeggio-family-proof.md) for
+the exact boundary.
 
 ## 8. Product surface
 

@@ -432,7 +432,7 @@ _Metrics _measure(_Run run) {
       material: allScales.first,
       hands: HandConfiguration.together,
       octaves: 1,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
       tempoBpm: 60,
     ),
   );

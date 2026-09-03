@@ -68,7 +68,7 @@ class Exercise {
     required TechnicalMaterial material,
     required HandConfiguration hands,
     int octaves = 1,
-    ScaleDirection direction = ScaleDirection.upDown,
+    ExerciseDirection direction = ExerciseDirection.upDown,
     HandMotion handMotion = HandMotion.parallel,
     double tempoBpm = 80,
     GuidanceContext guidance = GuidanceContext.unguided,
@@ -138,8 +138,8 @@ class Exercise {
   /// rebuilding the set every time was a measurable share of a decision for a
   /// value that cannot change.
   late final Set<Competency> structuralQ = Set.unmodifiable({
-    material.form.topologyCompetency,
-    ...conditions.hands.executionCompetencies,
+    material.topologyCompetency,
+    ...material.executionCompetenciesFor(conditions.hands),
     for (final opportunity in opportunities) opportunity.competency,
   });
 

@@ -9,7 +9,7 @@ void main() {
 
   ExerciseRealization realizationOf({
     HandConfiguration hands = HandConfiguration.right,
-    ScaleDirection direction = ScaleDirection.up,
+    ExerciseDirection direction = ExerciseDirection.up,
   }) => realize(
     Exercise.linear(
       material: material,
@@ -189,7 +189,7 @@ void main() {
   });
 
   test('a repeated pitch lights the moment reached, not every one of it', () {
-    final realization = realizationOf(direction: ScaleDirection.upDown);
+    final realization = realizationOf(direction: ExerciseDirection.upDown);
     final keys = keysOf(realization);
 
     expect(keys.first, keys.last, reason: 'the scale returns to its tonic');
@@ -243,7 +243,7 @@ void main() {
         material: material,
         hands: HandConfiguration.together,
         octaves: 1,
-        direction: ScaleDirection.up,
+        direction: ExerciseDirection.up,
         handMotion: HandMotion.contrary,
       ),
     );

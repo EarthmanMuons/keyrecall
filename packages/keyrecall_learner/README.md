@@ -17,12 +17,12 @@ replayed and must produce the same result.
   knowledge carries across the repertoire. Practice of any relevant material
   updates it, which is how transfer emerges. Nonuse erodes confidence without
   implying decline.
-- **`MaterialMemoryState`** per exact material: whether this scale is
+- **`MaterialMemoryState`** per exact material: whether this material is
   independently retrievable, tracked as current durability, retained
   consolidation, an activation anchor, and factual retrieval clocks.
 - **`MaterialExecutionState`** per material and hand: a shrinkage-based residual
-  for problems that are specific to one scale in one hand, rather than a reason
-  to lower the shared estimate.
+  for problems that are specific to one material in one hand, rather than a
+  reason to lower the shared estimate.
 
 ## Five predictions, not one
 
@@ -67,7 +67,7 @@ void main() {
   final state = model.placementState(PlacementTier.someExperience, at: now);
 
   final exercise = Exercise.linear(
-    material: const TechnicalMaterial('G', ScaleForm.major),
+    material: ScaleMaterial('G', ScaleForm.major),
     hands: HandConfiguration.right,
     guidance: GuidanceContext.notesPreviewedOnly,
   );

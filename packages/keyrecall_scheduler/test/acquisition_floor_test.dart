@@ -11,7 +11,7 @@ void main() {
   final entry = exerciseFor(
     material,
     guidance: GuidanceContext.continuouslyCued,
-    direction: ScaleDirection.up,
+    direction: ExerciseDirection.up,
     tempoBpm: generatedTempi.first,
   );
   final floor = AcquisitionFloor([
@@ -48,7 +48,7 @@ void main() {
     for (final entry in entries) {
       expect(entry.requirementId, material.materialId);
       expect(entry.exercise.conditions.octaves, 1);
-      expect(entry.exercise.conditions.direction, ScaleDirection.up);
+      expect(entry.exercise.conditions.direction, ExerciseDirection.up);
       expect(entry.exercise.conditions.tempoBpm, generatedTempi.first);
       expect(entry.exercise.guidance, GuidanceContext.continuouslyCued);
     }

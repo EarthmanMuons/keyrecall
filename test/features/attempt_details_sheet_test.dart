@@ -10,7 +10,7 @@ void main() {
   final exercise = Exercise.linear(
     material: TechnicalMaterial('C', ScaleForm.major),
     hands: HandConfiguration.together,
-    direction: ScaleDirection.upDown,
+    direction: ExerciseDirection.upDown,
     tempoBpm: 60,
   );
 
@@ -104,7 +104,7 @@ void main() {
     final suffixExercise = Exercise.linear(
       material: TechnicalMaterial('A', ScaleForm.naturalMinor),
       hands: HandConfiguration.together,
-      direction: ScaleDirection.upDown,
+      direction: ExerciseDirection.upDown,
       tempoBpm: 104,
     );
     final realization = realize(suffixExercise);

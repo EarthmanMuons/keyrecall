@@ -75,6 +75,8 @@ const Map<String, AdmissionBand> _minorBands = {
 /// Anything the catalog does not cover is treated as the latest band, which is
 /// the conservative reading of "we have no evidence about this".
 AdmissionBand admissionBandOf(TechnicalMaterial material) {
-  final bands = material.form == ScaleForm.major ? _majorBands : _minorBands;
+  final form = material.scaleForm;
+  if (form == null) return AdmissionBand.foundation;
+  final bands = form == ScaleForm.major ? _majorBands : _minorBands;
   return bands[material.tonic] ?? AdmissionBand.advancedKeyboard;
 }

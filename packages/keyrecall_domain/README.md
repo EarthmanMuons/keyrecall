@@ -11,10 +11,10 @@ learner, reads no state, and makes no pedagogical judgments; those belong to
 
 ## What is here
 
-- **Materials.** `TechnicalMaterial` pairs a tonic with a `ScaleForm`. Material
-  identity deliberately excludes hand, tempo, octaves, direction, and guidance,
-  which is why one scale has a single memory state while its right-hand,
-  left-hand, and hands-together performances carry separate execution state.
+- **Materials.** `TechnicalMaterial` is the shared identity contract for
+  family-owned `ScaleMaterial` and `ArpeggioMaterial` topologies. Identity
+  excludes hand, tempo, octaves, direction, and guidance, so realizations do not
+  fragment exact-material memory.
 - **Exercises.** An `Exercise` bundles a material, an `ExercisePattern`,
   `ExecutionConditions`, a `GuidanceContext`, and the `MotorOpportunity` sites
   its event structure exposes.
@@ -35,7 +35,8 @@ learner, reads no state, and makes no pedagogical judgments; those belong to
 - **Presentation conditions.** `PresentationConditions` records what an attempt
   was given on four independent channels: pitch cue, motor cue, performance
   feedback, and tempo support.
-- **Catalog, bands, and instrument.** `allScales` is everything supported;
+- **Catalog, bands, and instrument.** `allScales` is the learner-facing V1
+  catalog; `proofArpeggios` is a deliberately tiny architecture fixture;
   `admissionBandOf` says how early each is conventionally introduced;
   `CurriculumRequirement` identifies a stable target or support capability;
   `PracticeGoal` names a custom scope or versioned curriculum; and
@@ -50,7 +51,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 void main() {
   final exercise = Exercise.linear(
-    material: const TechnicalMaterial('F#', ScaleForm.harmonicMinor),
+    material: ScaleMaterial('F#', ScaleForm.harmonicMinor),
     hands: HandConfiguration.right,
     octaves: 2,
     tempoBpm: 100,

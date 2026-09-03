@@ -258,6 +258,7 @@ class SchedulerPipeline {
     DecisionFacts? facts,
   }) {
     final material = exercise.material;
+    final scaleForm = material.scaleForm;
     final band = admissionBandOf(material);
     final hands = exercise.conditions.hands;
 
@@ -274,13 +275,8 @@ class SchedulerPipeline {
 
     // An altered minor form is a new idea rather than a new key, so its
     // prerequisite is a curriculum phase rather than keyboard geography.
-    if (!coreForms.contains(material.form)) {
-      final breadth = _alteredFormDecisionFor(
-        state,
-        material.form,
-        hands,
-        facts,
-      );
+    if (scaleForm != null && !coreForms.contains(scaleForm)) {
+      final breadth = _alteredFormDecisionFor(state, scaleForm, hands, facts);
       if (breadth != null) return breadth;
     }
 
@@ -318,16 +314,16 @@ class SchedulerPipeline {
     // Natural minor asks for nothing: it is where minor topology comes from,
     // so gating it on minor familiarity would outrank every minor scale
     // forever.
-    if (material.form == ScaleForm.harmonicMinor ||
-        material.form == ScaleForm.melodicMinor) {
+    if (scaleForm == ScaleForm.harmonicMinor ||
+        scaleForm == ScaleForm.melodicMinor) {
       final floor = config.eligibility.minorTopologyFloor;
-      final familiar = _bestMinorTopology(state, material.form, facts);
+      final familiar = _bestMinorTopology(state, scaleForm!, facts);
       if (familiar < floor) {
         return EligibilityDecision(
           EligibilityTier.provisionallyEligible,
           'another minor form is at ${familiar.toStringAsFixed(2)}, '
           'floor ${floor.toStringAsFixed(2)}',
-          code: material.form == ScaleForm.melodicMinor
+          code: scaleForm == ScaleForm.melodicMinor
               // Fixed-form melodic minor is the least familiar of the three
               // and waits for either of the others.
               ? EligibilityReason.melodicFormPrerequisite
@@ -416,14 +412,17 @@ class SchedulerPipeline {
     LearnerState state,
     Exercise exercise, {
     DecisionFacts? facts,
-  }) =>
-      _alteredFormDecisionFor(
-        state,
-        exercise.material.form,
-        exercise.conditions.hands,
-        facts,
-      ) ==
-      null;
+  }) {
+    final form = exercise.material.scaleForm;
+    return form == null ||
+        _alteredFormDecisionFor(
+              state,
+              form,
+              exercise.conditions.hands,
+              facts,
+            ) ==
+            null;
+  }
 
   /// Whether an altered minor form has to wait for a foundation under it, or
   /// null when it does not and the ordinary rules decide.

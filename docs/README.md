@@ -32,6 +32,8 @@ docs/
 │   │                                progress evidence
 │   ├── curriculum-and-focus.md      proposed catalog, curriculum, goal, focus,
 │   │                                and cross-family boundary
+│   ├── arpeggio-family-proof.md     minimal heterogeneous-family architecture
+│   │                                proof and deliberate domain limits
 │   ├── data-products.md             journal, checkpoint, fluency history, and
 │   │                                feedback exposure and telemetry
 │   ├── future-planning.md           deferred seams, hypotheses, and closed ideas
@@ -102,7 +104,7 @@ implementation rather than evidence about another one.
 | Which prerequisite edges exist, and which are prediction instead    | `domain-model/progression-graph.md`                     |
 | Domain entities not superseded below                                | `domain-model/v1-domain-model.md`                       |
 | Research claims, citations, and limitations                         | `learner-model/01-research.md`                          |
-| Learner-state architecture and ten-Competency ontology              | `learner-model/02-v1-design.md`                         |
+| Learner-state architecture and competency ontology                  | `learner-model/v1-current-system.md`                    |
 | Detailed equations, derivations, and learner experiment record      | `learner-model/03-v1-math.md`                           |
 | Scheduler stage information boundaries and experiment record        | `learner-model/04-v1-scheduler.md`                      |
 | Attempt journal, replay, telemetry, and implementation gates        | `learner-model/05-production-implementation-plan.md`    |
@@ -134,7 +136,7 @@ production decision wins over an earlier proposal. In particular:
 
 1. The flat `Exercise`, `FingeringGroup`, `Component` ontology, and qualitative
    Q-matrix in `v1-domain-model.md` are superseded by the compositional
-   exercise, ten-Competency ontology, and `Q`/`q`/`w` mapping.
+   exercise, competency ontology, and `Q`/`q`/`w` mapping.
 2. Crossed-effects and single-logit equations in the research and early math
    sections are motivating precedents, not the production predictor. V1 uses
    separate retrieval availability, execution, and topology channels.

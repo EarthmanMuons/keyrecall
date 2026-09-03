@@ -9,7 +9,7 @@ import 'technical_material.dart';
 ///
 /// This is what the system supports, not what a learner is offered. What to
 /// practice next is the scheduler's question.
-final List<TechnicalMaterial> allScales = List.unmodifiable([
+final List<ScaleMaterial> allScales = List.unmodifiable([
   for (final tonic in [
     'C',
     'Db',
@@ -24,7 +24,7 @@ final List<TechnicalMaterial> allScales = List.unmodifiable([
     'Bb',
     'B',
   ])
-    TechnicalMaterial(tonic, ScaleForm.major),
+    ScaleMaterial(tonic, ScaleForm.major),
   for (final tonic in [
     'C',
     'C#',
@@ -44,7 +44,7 @@ final List<TechnicalMaterial> allScales = List.unmodifiable([
       ScaleForm.harmonicMinor,
       ScaleForm.melodicMinor,
     ])
-      TechnicalMaterial(tonic, form),
+      ScaleMaterial(tonic, form),
 ]);
 
 /// The reference corpus the simulation runs against.
@@ -53,14 +53,14 @@ final List<TechnicalMaterial> allScales = List.unmodifiable([
 /// over exactly this list, so changing it invalidates them: it is a fixture,
 /// not a product decision. Candidate generation and scheduling decide what a
 /// learner is offered from the selected catalog.
-final List<TechnicalMaterial> v1ScaleCatalog = List.unmodifiable([
-  TechnicalMaterial('C', ScaleForm.major),
-  TechnicalMaterial('G', ScaleForm.major),
-  TechnicalMaterial('F', ScaleForm.major),
-  TechnicalMaterial('A', ScaleForm.naturalMinor),
-  TechnicalMaterial('D', ScaleForm.harmonicMinor),
-  TechnicalMaterial('F#', ScaleForm.harmonicMinor),
-  TechnicalMaterial('E', ScaleForm.melodicMinor),
+final List<ScaleMaterial> v1ScaleCatalog = List.unmodifiable([
+  ScaleMaterial('C', ScaleForm.major),
+  ScaleMaterial('G', ScaleForm.major),
+  ScaleMaterial('F', ScaleForm.major),
+  ScaleMaterial('A', ScaleForm.naturalMinor),
+  ScaleMaterial('D', ScaleForm.harmonicMinor),
+  ScaleMaterial('F#', ScaleForm.harmonicMinor),
+  ScaleMaterial('E', ScaleForm.melodicMinor),
 ]);
 
 /// The forms a learner builds their sense of "a scale" out of.

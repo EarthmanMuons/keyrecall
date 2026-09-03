@@ -47,7 +47,7 @@ List<int?>? displayFingeringFor(Exercise exercise, Hand hand) {
   final fingers = fingeringFor(exercise, hand);
   if (fingers == null) return null;
 
-  final firstOctave = scaleFormIntervals[exercise.material.form]!.length;
+  final firstOctave = exercise.material.topology.degreesPerOctave;
 
   return [
     for (final (position, finger) in fingers.indexed)

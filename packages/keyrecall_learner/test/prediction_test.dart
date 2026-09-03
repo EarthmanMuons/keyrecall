@@ -84,7 +84,7 @@ void main() {
     final baseline = exerciseFor(
       cMajor,
       octaves: 1,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
       tempoBpm: params.difficulty.referenceTempoBpm,
     );
 
@@ -97,15 +97,15 @@ void main() {
         exerciseFor(
           cMajor,
           octaves: 1,
-          direction: ScaleDirection.up,
+          direction: ExerciseDirection.up,
           tempoBpm: 120,
         ),
-        exerciseFor(cMajor, octaves: 2, direction: ScaleDirection.up),
+        exerciseFor(cMajor, octaves: 2, direction: ExerciseDirection.up),
         exerciseFor(
           cMajor,
           hands: HandConfiguration.together,
           octaves: 1,
-          direction: ScaleDirection.up,
+          direction: ExerciseDirection.up,
         ),
         exerciseFor(cMajor, octaves: 1),
       ];

@@ -12,7 +12,7 @@ void main() {
       material: material,
       hands: HandConfiguration.right,
       octaves: 1,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
     ),
   );
   final expected = [

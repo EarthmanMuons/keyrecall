@@ -13,7 +13,7 @@ Map<String, (Exercise, PerformanceTranscript)> singleHandCases() {
       material: TechnicalMaterial('C', ScaleForm.major),
       hands: HandConfiguration.right,
       octaves: 1,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
     ),
     'rh-up-down': Exercise.linear(
       material: TechnicalMaterial('C', ScaleForm.major),
@@ -24,13 +24,13 @@ Map<String, (Exercise, PerformanceTranscript)> singleHandCases() {
       material: TechnicalMaterial('A', ScaleForm.harmonicMinor),
       hands: HandConfiguration.left,
       octaves: 1,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
     ),
     'rh-two-octaves': Exercise.linear(
       material: TechnicalMaterial('Bb', ScaleForm.major),
       hands: HandConfiguration.right,
       octaves: 2,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
     ),
   };
 

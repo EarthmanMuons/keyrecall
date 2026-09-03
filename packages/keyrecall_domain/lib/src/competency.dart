@@ -1,17 +1,21 @@
 /// A transferable capability the V1 learner model estimates.
 ///
 /// Practice of any material that creates an opportunity for a competency can
-/// update it, which is how transfer across the repertoire emerges. The ten
-/// values split into two prediction channels, [topologyCompetencies] and
-/// [motorCompetencies], that never update each other.
+/// update it, which is how transfer across the repertoire emerges. The values
+/// split into topology, motor, and coordination prediction channels that never
+/// update each other.
 enum Competency {
   majorScaleTopology('MAJOR_SCALE_TOPOLOGY'),
   naturalMinorTopology('NATURAL_MINOR_TOPOLOGY'),
   harmonicMinorTopology('HARMONIC_MINOR_TOPOLOGY'),
   melodicMinorTopology('MELODIC_MINOR_TOPOLOGY'),
+  majorArpeggioTopology('MAJOR_ARPEGGIO_TOPOLOGY'),
   rhScaleExecution('RH_SCALE_EXECUTION'),
   lhScaleExecution('LH_SCALE_EXECUTION'),
+  rhArpeggioExecution('RH_ARPEGGIO_EXECUTION'),
+  lhArpeggioExecution('LH_ARPEGGIO_EXECUTION'),
   scalarCrossing('SCALAR_CROSSING'),
+  arpeggioTransition('ARPEGGIO_TRANSITION'),
   multiOctaveContinuation('MULTI_OCTAVE_CONTINUATION'),
   directionReversal('DIRECTION_REVERSAL'),
   handsTogetherCoordination('HANDS_TOGETHER_COORDINATION');
@@ -48,6 +52,15 @@ enum Competency {
   Competency? get pairedHand => switch (this) {
     Competency.rhScaleExecution => Competency.lhScaleExecution,
     Competency.lhScaleExecution => Competency.rhScaleExecution,
+    Competency.rhArpeggioExecution => Competency.lhArpeggioExecution,
+    Competency.lhArpeggioExecution => Competency.rhArpeggioExecution,
+    _ => null,
+  };
+
+  /// The established competency that informs this new family, if any.
+  Competency? get familyTransferSource => switch (this) {
+    Competency.rhArpeggioExecution => Competency.rhScaleExecution,
+    Competency.lhArpeggioExecution => Competency.lhScaleExecution,
     _ => null,
   };
 }
@@ -58,6 +71,7 @@ const Set<Competency> topologyCompetencies = {
   Competency.naturalMinorTopology,
   Competency.harmonicMinorTopology,
   Competency.melodicMinorTopology,
+  Competency.majorArpeggioTopology,
 };
 
 /// Competencies scored by the motor prediction channel.
@@ -67,7 +81,10 @@ const Set<Competency> topologyCompetencies = {
 const Set<Competency> motorCompetencies = {
   Competency.rhScaleExecution,
   Competency.lhScaleExecution,
+  Competency.rhArpeggioExecution,
+  Competency.lhArpeggioExecution,
   Competency.scalarCrossing,
+  Competency.arpeggioTransition,
   Competency.multiOctaveContinuation,
   Competency.directionReversal,
 };

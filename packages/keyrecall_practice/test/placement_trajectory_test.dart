@@ -74,7 +74,7 @@ void main() {
         reason: 'both hands come before hands together',
       );
       expect(
-        offered.every((e) => coreForms.contains(e.material.form)),
+        offered.every((e) => coreForms.contains(e.material.scaleForm)),
         isTrue,
         reason: 'an altered minor form is a phase away, not a key away',
       );

@@ -51,7 +51,7 @@ double _trueDifficulty(Exercise exercise) {
       _trueHandBeta *
           (conditions.hands == HandConfiguration.together ? 1.0 : 0.0) +
       _trueDirectionBeta *
-          (conditions.direction == ScaleDirection.upDown ? 1.0 : 0.0);
+          (conditions.direction == ExerciseDirection.upDown ? 1.0 : 0.0);
 }
 
 /// The hidden truth about one material's retrievability.

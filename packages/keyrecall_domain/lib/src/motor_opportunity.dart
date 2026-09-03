@@ -2,7 +2,6 @@ import 'competency.dart';
 import 'execution_conditions.dart';
 import 'fingering.dart';
 import 'hand_path.dart';
-import 'pitch_spelling.dart';
 import 'technical_material.dart';
 
 /// An observable motor site an exercise's event structure creates.
@@ -12,6 +11,9 @@ import 'technical_material.dart';
 enum MotorOpportunity {
   /// A thumb-under or finger-over crossing site.
   scalarCrossing('SCALAR_CROSSING', Competency.scalarCrossing),
+
+  /// A thumb transition between chord tones in an arpeggio.
+  arpeggioTransition('ARPEGGIO_TRANSITION', Competency.arpeggioTransition),
 
   /// A join between octaves in a multi-octave traversal.
   multiOctaveContinuation(
@@ -44,7 +46,7 @@ enum MotorOpportunity {
     TechnicalMaterial material,
     ExecutionConditions conditions,
   ) {
-    final degreesPerOctave = scaleFormIntervals[material.form]!.length;
+    final degreesPerOctave = material.topology.degreesPerOctave;
     final paths = handPathsFor(conditions, degreesPerOctave: degreesPerOctave);
     var hasCrossing = false;
     var hasContinuation = false;
@@ -79,7 +81,8 @@ enum MotorOpportunity {
     }
 
     return {
-      if (hasCrossing) scalarCrossing,
+      if (material is ArpeggioMaterial) arpeggioTransition,
+      if (hasCrossing && material is! ArpeggioMaterial) scalarCrossing,
       if (hasContinuation) multiOctaveContinuation,
       if (hasReversal) directionReversal,
     };

@@ -286,21 +286,28 @@ class MaterialExecutionParams {
        );
 }
 
-/// Strength of the prediction-only adjustment between the two hands.
+/// Strength of prediction-only transfer between related competencies.
 @immutable
-class HandTransferParams {
+class CompetencyTransferParams {
   /// `rho_hand`: how much of the gap to the paired hand is borrowed at most.
   final double rhoHand;
 
-  /// `tau_hand`: variance scale at which the adjustment is half strength.
+  /// How much a new material family borrows from its declared source.
+  final double rhoFamily;
+
+  /// Variance scale at which either adjustment is half strength.
   final double shrinkageTau;
 
-  const HandTransferParams({required this.rhoHand, required this.shrinkageTau})
-    : assert(
-        rhoHand >= 0 && rhoHand <= 1,
-        'transfer borrows a fraction of the gap, never more than all of it',
-      ),
-      assert(shrinkageTau > 0, 'the shrinkage scale must be positive');
+  const CompetencyTransferParams({
+    required this.rhoHand,
+    required this.rhoFamily,
+    required this.shrinkageTau,
+  }) : assert(
+         rhoHand >= 0 && rhoHand <= 1,
+         'transfer borrows a fraction of the gap, never more than all of it',
+       ),
+       assert(rhoFamily >= 0 && rhoFamily <= 1),
+       assert(shrinkageTau > 0, 'the shrinkage scale must be positive');
 }
 
 /// Coefficients of the motor-difficulty score.
@@ -390,8 +397,8 @@ class LearnerParams {
   /// Execution-residual priors and update rates.
   final MaterialExecutionParams materialExecution;
 
-  /// Prediction-only hand-transfer strength.
-  final HandTransferParams handTransfer;
+  /// Prediction-only transfer between related competencies.
+  final CompetencyTransferParams competencyTransfer;
 
   /// Motor-difficulty coefficients.
   final DifficultyParams difficulty;
@@ -404,7 +411,7 @@ class LearnerParams {
     required this.competency,
     required this.materialMemory,
     required this.materialExecution,
-    required this.handTransfer,
+    required this.competencyTransfer,
     required this.difficulty,
     required this.placement,
   });
@@ -421,7 +428,7 @@ class LearnerParams {
     CompetencyParams? competency,
     MaterialMemoryParams? materialMemory,
     MaterialExecutionParams? materialExecution,
-    HandTransferParams? handTransfer,
+    CompetencyTransferParams? competencyTransfer,
     DifficultyParams? difficulty,
     PlacementParams? placement,
   }) => LearnerParams(
@@ -429,7 +436,7 @@ class LearnerParams {
     competency: competency ?? this.competency,
     materialMemory: materialMemory ?? this.materialMemory,
     materialExecution: materialExecution ?? this.materialExecution,
-    handTransfer: handTransfer ?? this.handTransfer,
+    competencyTransfer: competencyTransfer ?? this.competencyTransfer,
     difficulty: difficulty ?? this.difficulty,
     placement: placement ?? this.placement,
   );
@@ -492,8 +499,15 @@ const MaterialExecutionParams _v1MaterialExecution = MaterialExecutionParams(
   evidenceShrinkage: 0.3,
 );
 
-const HandTransferParams _v1HandTransfer = HandTransferParams(
+const CompetencyTransferParams _v1PrototypeTransfer = CompetencyTransferParams(
   rhoHand: 0.3,
+  rhoFamily: 0,
+  shrinkageTau: 0.5,
+);
+
+const CompetencyTransferParams _v1Transfer = CompetencyTransferParams(
+  rhoHand: 0.3,
+  rhoFamily: 0.35,
   shrinkageTau: 0.5,
 );
 
@@ -517,7 +531,7 @@ const LearnerParams v1PrototypeLearnerParams = LearnerParams(
   competency: _v1Competency,
   materialMemory: _v1MaterialMemory,
   materialExecution: _v1MaterialExecution,
-  handTransfer: _v1HandTransfer,
+  competencyTransfer: _v1PrototypeTransfer,
   difficulty: _v1Difficulty,
   placement: _v1Placement,
 );
@@ -533,11 +547,11 @@ const LearnerParams v1PrototypeLearnerParams = LearnerParams(
 /// is refused by [LearnerStateCheckpoint.isUsableUnder] rather than decoded
 /// into a state with silent zeros in it, and the journal is replayed instead.
 const LearnerParams v1LearnerParams = LearnerParams(
-  modelVersion: 'v1-6',
+  modelVersion: 'v1-7',
   competency: _v1Competency,
   materialMemory: _v1MaterialMemory,
   materialExecution: _v1MaterialExecution,
-  handTransfer: _v1HandTransfer,
+  competencyTransfer: _v1Transfer,
   difficulty: _v1Difficulty,
   placement: _v1Placement,
 );

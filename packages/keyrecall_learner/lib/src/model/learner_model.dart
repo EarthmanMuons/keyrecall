@@ -100,15 +100,25 @@ class LearnerModel {
   /// never recorded as a left-hand observation.
   double effectiveCompetencyMean(LearnerState state, Competency competency) {
     final target = state.competency(competency);
-    final paired = competency.pairedHand;
-    if (paired == null) return target.mean;
-
     final shrinkage =
-        target.variance / (target.variance + params.handTransfer.shrinkageTau);
-    return target.mean +
-        params.handTransfer.rhoHand *
-            shrinkage *
-            (state.competency(paired).mean - target.mean);
+        target.variance /
+        (target.variance + params.competencyTransfer.shrinkageTau);
+    var mean = target.mean;
+    final familySource = competency.familyTransferSource;
+    if (familySource != null) {
+      mean +=
+          params.competencyTransfer.rhoFamily *
+          shrinkage *
+          (state.competency(familySource).mean - target.mean);
+    }
+    final paired = competency.pairedHand;
+    if (paired != null) {
+      mean +=
+          params.competencyTransfer.rhoHand *
+          shrinkage *
+          (state.competency(paired).mean - target.mean);
+    }
+    return mean;
   }
 
   /// `D_motor(e)`: everything that makes the physical task harder. Positive is
@@ -125,7 +135,7 @@ class LearnerModel {
         difficulty.handBeta *
             (conditions.hands == HandConfiguration.together ? 1.0 : 0.0) +
         difficulty.directionBeta *
-            (conditions.direction == ScaleDirection.upDown ? 1.0 : 0.0);
+            (conditions.direction == ExerciseDirection.upDown ? 1.0 : 0.0);
   }
 
   /// The tempo an attempt actually demonstrated, in BPM.

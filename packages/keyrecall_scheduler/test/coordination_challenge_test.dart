@@ -11,7 +11,7 @@ void main() {
     material: materials.first,
     hands: HandConfiguration.together,
     octaves: 1,
-    direction: ScaleDirection.up,
+    direction: ExerciseDirection.up,
     tempoBpm: 60,
     guidance: GuidanceContext.continuouslyCued,
   );
@@ -19,7 +19,7 @@ void main() {
     material: materials.first,
     hands: HandConfiguration.right,
     octaves: 1,
-    direction: ScaleDirection.up,
+    direction: ExerciseDirection.up,
     tempoBpm: 60,
     guidance: GuidanceContext.continuouslyCued,
   );

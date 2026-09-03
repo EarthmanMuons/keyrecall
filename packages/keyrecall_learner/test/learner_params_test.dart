@@ -149,8 +149,12 @@ void main() {
       );
 
       final handTransfer = registry['hand_transfer']!;
-      expect(params.handTransfer.rhoHand, handTransfer['rho_hand']);
-      expect(params.handTransfer.shrinkageTau, handTransfer['shrinkage_tau']);
+      expect(params.competencyTransfer.rhoHand, handTransfer['rho_hand']);
+      expect(params.competencyTransfer.rhoFamily, 0);
+      expect(
+        params.competencyTransfer.shrinkageTau,
+        handTransfer['shrinkage_tau'],
+      );
 
       final difficulty = registry['difficulty']!;
       expect(params.difficulty.tempoBeta, difficulty['tempo_beta']);

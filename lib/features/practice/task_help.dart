@@ -58,18 +58,18 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
     (
       traversalName(conditions),
       switch ((conditions.handMotion, conditions.direction)) {
-        (HandMotion.contrary, ScaleDirection.up) =>
+        (HandMotion.contrary, ExerciseDirection.up) =>
           'Both hands start on ${tonicName(exercise.material)} and move apart, '
               'the right going up as the left goes down, stopping at their '
               'outer notes.',
-        (HandMotion.contrary, ScaleDirection.upDown) =>
+        (HandMotion.contrary, ExerciseDirection.upDown) =>
           'Both hands start on ${tonicName(exercise.material)} and move apart, '
               'the right going up as the left goes down, then back together '
               'again.',
-        (_, ScaleDirection.up) =>
+        (_, ExerciseDirection.up) =>
           'Start on ${tonicName(exercise.material)}, go up to the top note, '
               'and stop there.',
-        (_, ScaleDirection.upDown) =>
+        (_, ExerciseDirection.upDown) =>
           'Start on ${tonicName(exercise.material)}, go up to the top note, '
               'then back down again.',
       },
@@ -77,8 +77,9 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
     (
       octavesName(conditions.octaves),
       switch (conditions.direction) {
-        ScaleDirection.up => 'How far $runner runs before it stops.',
-        ScaleDirection.upDown => 'How far $runner runs before it turns around.',
+        ExerciseDirection.up => 'How far $runner runs before it stops.',
+        ExerciseDirection.upDown =>
+          'How far $runner runs before it turns around.',
       },
     ),
     (

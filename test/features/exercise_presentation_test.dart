@@ -27,7 +27,7 @@ void main() {
         traversalName(
           ExecutionConditions(
             hands: HandConfiguration.right,
-            direction: ScaleDirection.up,
+            direction: ExerciseDirection.up,
           ),
         ),
         'Up',
@@ -41,7 +41,7 @@ void main() {
           ExecutionConditions(
             hands: HandConfiguration.together,
             handMotion: HandMotion.contrary,
-            direction: ScaleDirection.up,
+            direction: ExerciseDirection.up,
           ),
         ),
         'Contrary motion, apart',

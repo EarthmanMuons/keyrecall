@@ -25,8 +25,8 @@ Map<Hand, List<int>> handPathsFor(
     for (var degree = 0; degree <= topDegree; degree++) degree,
   ];
   final outward = switch (conditions.direction) {
-    ScaleDirection.up => ascending,
-    ScaleDirection.upDown => [...ascending, ...ascending.reversed.skip(1)],
+    ExerciseDirection.up => ascending,
+    ExerciseDirection.upDown => [...ascending, ...ascending.reversed.skip(1)],
   };
 
   return switch (conditions.handMotion) {

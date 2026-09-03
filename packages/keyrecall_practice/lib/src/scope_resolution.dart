@@ -35,6 +35,25 @@ class ScalePracticeMaterialFamily implements PracticeMaterialFamily {
   ) => scaleAcquisitionFloorFor(requests);
 }
 
+/// The minimal arpeggio family's curriculum-resolution contract.
+class ArpeggioPracticeMaterialFamily implements PracticeMaterialFamily {
+  const ArpeggioPracticeMaterialFamily();
+
+  @override
+  String get familyId => TechnicalMaterial.arpeggioFamilyId;
+
+  @override
+  List<Exercise> generate(
+    InstrumentProfile instrument,
+    TechnicalMaterial material,
+  ) => _generateArpeggioCandidates(instrument, material as ArpeggioMaterial);
+
+  @override
+  AcquisitionFloor acquisitionFloorFor(
+    Iterable<AcquisitionFloorRequest> requests,
+  ) => _arpeggioAcquisitionFloorFor(requests);
+}
+
 /// Why a requested goal and focus could not become a practice scope.
 enum ScopeResolutionFailureCode {
   duplicateRequirementId,
@@ -91,6 +110,7 @@ class PracticeScopeResolver {
     Map<String, Set<String>> supportedVersionsByCurriculumId = const {},
     Iterable<PracticeMaterialFamily> families = const [
       ScalePracticeMaterialFamily(),
+      ArpeggioPracticeMaterialFamily(),
     ],
   }) : supportedVersionsByCurriculumId = Map.unmodifiable({
          for (final entry in supportedVersionsByCurriculumId.entries)
@@ -291,6 +311,9 @@ class PracticeScopeResolver {
     final materialIds = goal.targetMaterialIds;
     final selected =
         materialIds ?? {for (final material in catalog) material.materialId};
+    final catalogById = {
+      for (final material in catalog) material.materialId: material,
+    };
     return Curriculum(
       id: goal.id,
       version: '1',
@@ -298,10 +321,42 @@ class PracticeScopeResolver {
         for (final materialId in selected)
           CurriculumRequirement(
             id: '${goal.id}:$materialId',
-            familyId: TechnicalMaterial.scaleFamilyId,
+            familyId: catalogById[materialId]?.familyId ?? '',
             materialId: materialId,
           ),
       ],
     );
   }
 }
+
+List<Exercise> _generateArpeggioCandidates(
+  InstrumentProfile instrument,
+  ArpeggioMaterial material,
+) => [
+  for (final hands in HandConfiguration.values)
+    if (instrument.supportsOctaveSpan(1))
+      for (final guidance in GuidanceContext.ladder)
+        Exercise.linear(
+          material: material,
+          hands: hands,
+          direction: ExerciseDirection.up,
+          tempoBpm: generatedTempi.first,
+          guidance: guidance,
+        ),
+];
+
+AcquisitionFloor _arpeggioAcquisitionFloorFor(
+  Iterable<AcquisitionFloorRequest> requests,
+) => AcquisitionFloor([
+  for (final request in requests)
+    for (final exercise in request.candidates)
+      if (exercise.conditions.hands == HandConfiguration.right &&
+          exercise.conditions.octaves == 1 &&
+          exercise.conditions.direction == ExerciseDirection.up &&
+          exercise.conditions.tempoBpm == generatedTempi.first &&
+          exercise.guidance == GuidanceContext.continuouslyCued)
+        AcquisitionFloorEntry(
+          requirementId: request.requirementId,
+          exercise: exercise,
+        ),
+]);

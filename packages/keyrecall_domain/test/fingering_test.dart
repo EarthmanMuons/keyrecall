@@ -21,7 +21,7 @@ void main() {
     String tonic,
     ScaleForm form, {
     int octaves = 1,
-    ScaleDirection direction = ScaleDirection.up,
+    ExerciseDirection direction = ExerciseDirection.up,
     HandConfiguration hands = HandConfiguration.right,
   }) => Exercise.linear(
     material: TechnicalMaterial(tonic, form),
@@ -36,7 +36,7 @@ void main() {
         material: TechnicalMaterial('C', ScaleForm.major),
         hands: HandConfiguration.together,
         octaves: 1,
-        direction: ScaleDirection.up,
+        direction: ExerciseDirection.up,
         handMotion: HandMotion.contrary,
       ),
       hand,
@@ -209,7 +209,7 @@ void main() {
 
     test('a descent reverses the ascent', () {
       final upDown = fingeringFor(
-        scale('C', ScaleForm.major, direction: ScaleDirection.upDown),
+        scale('C', ScaleForm.major, direction: ExerciseDirection.upDown),
         Hand.right,
       )!;
 
@@ -246,7 +246,7 @@ void main() {
         'F#',
         ScaleForm.harmonicMinor,
         octaves: 2,
-        direction: ScaleDirection.upDown,
+        direction: ExerciseDirection.upDown,
       );
 
       expect(

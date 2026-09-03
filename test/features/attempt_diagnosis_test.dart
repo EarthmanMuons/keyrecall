@@ -18,7 +18,7 @@ void main() {
     material: material,
     hands: hands,
     octaves: 1,
-    direction: ScaleDirection.upDown,
+    direction: ExerciseDirection.upDown,
     tempoBpm: 60,
   );
 

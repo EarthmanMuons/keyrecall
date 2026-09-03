@@ -8,7 +8,7 @@ void main() {
     ScaleForm form = ScaleForm.major,
     HandConfiguration hands = HandConfiguration.right,
     int octaves = 2,
-    ScaleDirection direction = ScaleDirection.upDown,
+    ExerciseDirection direction = ExerciseDirection.upDown,
     HandMotion handMotion = HandMotion.parallel,
   }) => Exercise.linear(
     material: TechnicalMaterial(tonic, form),
@@ -26,7 +26,7 @@ void main() {
   group('what the exercise asks for', () {
     test('ascends an octave and lands on the upper tonic', () {
       final realization = realize(
-        exerciseOf(octaves: 1, direction: ScaleDirection.up),
+        exerciseOf(octaves: 1, direction: ExerciseDirection.up),
       );
 
       expect(pitchesOf(realization, Hand.right), [
@@ -43,7 +43,7 @@ void main() {
 
     test('turns around on the apex rather than playing it twice', () {
       final realization = realize(
-        exerciseOf(octaves: 1, direction: ScaleDirection.upDown),
+        exerciseOf(octaves: 1, direction: ExerciseDirection.upDown),
       );
       final pitches = pitchesOf(realization, Hand.right);
 
@@ -60,7 +60,7 @@ void main() {
     test('spans as many octaves as the conditions ask for', () {
       expect(
         realize(
-          exerciseOf(octaves: 2, direction: ScaleDirection.up),
+          exerciseOf(octaves: 2, direction: ExerciseDirection.up),
         ).moments.length,
         15,
       );
@@ -77,7 +77,7 @@ void main() {
           tonic: 'D',
           form: ScaleForm.harmonicMinor,
           octaves: 1,
-          direction: ScaleDirection.up,
+          direction: ExerciseDirection.up,
         ),
       );
 
@@ -186,7 +186,7 @@ void main() {
   group('hands moving contrary to each other', () {
     ExerciseRealization contrary({
       int octaves = 1,
-      ScaleDirection direction = ScaleDirection.upDown,
+      ExerciseDirection direction = ExerciseDirection.upDown,
     }) => realize(
       exerciseOf(
         hands: HandConfiguration.together,
@@ -204,7 +204,7 @@ void main() {
     });
 
     test('the lines run in opposite directions', () {
-      final realization = contrary(direction: ScaleDirection.up);
+      final realization = contrary(direction: ExerciseDirection.up);
 
       expect(pitchesOf(realization, Hand.right), [
         60,
@@ -249,7 +249,7 @@ void main() {
     });
 
     test('the descending line is spelled on its own degrees', () {
-      final realization = contrary(direction: ScaleDirection.up);
+      final realization = contrary(direction: ExerciseDirection.up);
       final left = [
         for (final moment in realization.moments)
           '${moment.noteFor(Hand.left)!.pitch.label}'
@@ -316,7 +316,7 @@ void main() {
           tonic: 'F#',
           form: ScaleForm.harmonicMinor,
           octaves: 1,
-          direction: ScaleDirection.up,
+          direction: ExerciseDirection.up,
         ),
       );
 
@@ -336,7 +336,7 @@ void main() {
           tonic: 'G#',
           form: ScaleForm.harmonicMinor,
           octaves: 1,
-          direction: ScaleDirection.up,
+          direction: ExerciseDirection.up,
         ),
       );
       final seventh = realization.moments[6].notes.single;

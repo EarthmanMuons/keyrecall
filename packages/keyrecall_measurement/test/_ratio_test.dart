@@ -6,7 +6,7 @@ import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 void main() {
   test('ratio', () {
     final material = TechnicalMaterial('C', ScaleForm.major);
-    for (final direction in ScaleDirection.values) {
+    for (final direction in ExerciseDirection.values) {
       final exercise = Exercise.linear(
         material: material,
         hands: HandConfiguration.right,

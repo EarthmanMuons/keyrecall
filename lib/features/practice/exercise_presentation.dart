@@ -6,8 +6,13 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// answer to give, and `realize` gives it.
 
 /// The learner-facing name of [material], such as `F♯ harmonic minor`.
-String materialName(TechnicalMaterial material) =>
-    '${_prettyTonic(material.tonic)} ${_formName(material.form)}';
+String materialName(TechnicalMaterial material) => switch (material) {
+  ScaleMaterial(:final tonic, :final form) =>
+    '${_prettyTonic(tonic)} ${_formName(form)}',
+  ArpeggioMaterial(:final tonic, :final quality, :final inversion) =>
+    '${_prettyTonic(tonic)} ${_arpeggioQualityName(quality)} '
+        '${_inversionName(inversion)} arpeggio',
+};
 
 /// The note the scale is named after, spelled the way it is written.
 String tonicName(TechnicalMaterial material) => _prettyTonic(material.tonic);
@@ -26,11 +31,11 @@ String octavesName(int octaves) =>
 /// Which way it runs, and for two hands, how they run against each other.
 String traversalName(ExecutionConditions conditions) =>
     switch ((conditions.handMotion, conditions.direction)) {
-      (HandMotion.contrary, ScaleDirection.up) => 'Contrary motion, apart',
-      (HandMotion.contrary, ScaleDirection.upDown) =>
+      (HandMotion.contrary, ExerciseDirection.up) => 'Contrary motion, apart',
+      (HandMotion.contrary, ExerciseDirection.upDown) =>
         'Contrary motion, apart and back',
-      (_, ScaleDirection.up) => 'Up',
-      (_, ScaleDirection.upDown) => 'Up and down',
+      (_, ExerciseDirection.up) => 'Up',
+      (_, ExerciseDirection.upDown) => 'Up and down',
     };
 
 /// The learner-facing name of a guidance rung.
@@ -49,6 +54,14 @@ String _formName(ScaleForm form) => switch (form) {
   ScaleForm.naturalMinor => 'natural minor',
   ScaleForm.harmonicMinor => 'harmonic minor',
   ScaleForm.melodicMinor => 'melodic minor',
+};
+
+String _arpeggioQualityName(ArpeggioQuality quality) => switch (quality) {
+  ArpeggioQuality.major => 'major',
+};
+
+String _inversionName(ArpeggioInversion inversion) => switch (inversion) {
+  ArpeggioInversion.root => 'root-position',
 };
 
 const Set<int> _whitePitchClasses = {0, 2, 4, 5, 7, 9, 11};

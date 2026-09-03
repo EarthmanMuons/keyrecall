@@ -6,7 +6,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 /// When the screen may decide an attempt is over without being told.
 void main() {
   Exercise exerciseOf({
-    ScaleDirection direction = ScaleDirection.up,
+    ExerciseDirection direction = ExerciseDirection.up,
     int octaves = 1,
   }) => Exercise.linear(
     material: TechnicalMaterial('D', ScaleForm.major),
@@ -36,7 +36,7 @@ void main() {
       material: TechnicalMaterial('D', ScaleForm.major),
       hands: HandConfiguration.together,
       octaves: 1,
-      direction: ScaleDirection.up,
+      direction: ExerciseDirection.up,
     );
 
     /// Every note of the first [moments] moments, the hands 10 ms apart.
@@ -91,7 +91,7 @@ void main() {
   });
 
   test('a whole traversal ends it', () {
-    for (final direction in ScaleDirection.values) {
+    for (final direction in ExerciseDirection.values) {
       final exercise = exerciseOf(direction: direction);
       expect(
         hasCoveredTraversal(
@@ -105,7 +105,7 @@ void main() {
   });
 
   test('no single note ends it, whatever it is', () {
-    for (final direction in ScaleDirection.values) {
+    for (final direction in ExerciseDirection.values) {
       for (final octaves in [1, 2]) {
         final exercise = exerciseOf(direction: direction, octaves: octaves);
         final expected = expectedOf(exercise);
@@ -177,7 +177,7 @@ void main() {
       // The guarantee that does hold, and the one the bug broke. Every
       // transcript shorter than the traversal, over every direction and octave
       // count, including the ones that reach the final position.
-      for (final direction in ScaleDirection.values) {
+      for (final direction in ExerciseDirection.values) {
         for (final octaves in [1, 2]) {
           final exercise = exerciseOf(direction: direction, octaves: octaves);
           final expected = expectedOf(exercise);

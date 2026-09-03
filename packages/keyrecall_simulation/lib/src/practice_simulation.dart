@@ -217,7 +217,7 @@ Exercise randomExercise(AttemptContext context) {
   final material = rng.choice(v1ScaleCatalog);
   final hands = rng.choice(HandConfiguration.values);
   final octaves = rng.choice(const [1, 2]);
-  final direction = rng.choice(ScaleDirection.values);
+  final direction = rng.choice(ExerciseDirection.values);
   final tempoBpm = rng.choice(const [60.0, 80.0, 100.0, 120.0]);
 
   // Two independent draws, collapsed onto the support ladder. Drawing both

@@ -28,7 +28,7 @@ Exercise exerciseFor(
   // One octave by default, so a test about some other stage does not have the
   // octave-span prerequisite decide its eligibility tier for it.
   int octaves = 1,
-  ScaleDirection direction = ScaleDirection.upDown,
+  ExerciseDirection direction = ExerciseDirection.upDown,
   HandMotion handMotion = HandMotion.parallel,
   double tempoBpm = 80,
 }) => Exercise.linear(

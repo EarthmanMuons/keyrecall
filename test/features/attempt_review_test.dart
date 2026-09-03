@@ -19,7 +19,7 @@ void main() {
     HandConfiguration hands = HandConfiguration.right,
     GuidanceContext guidance = GuidanceContext.unguided,
     int octaves = 1,
-    ScaleDirection direction = ScaleDirection.up,
+    ExerciseDirection direction = ExerciseDirection.up,
     double tempoBpm = 60,
   }) => Exercise.linear(
     material: material ?? cMajor,
@@ -114,7 +114,7 @@ void main() {
         '2 octaves this time.',
       );
       expect(
-        differenceTo(exerciseOf(direction: ScaleDirection.upDown), previous),
+        differenceTo(exerciseOf(direction: ExerciseDirection.upDown), previous),
         'Up and back down this time.',
       );
       expect(

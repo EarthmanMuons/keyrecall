@@ -30,7 +30,7 @@ Exercise exerciseFor(
   HandConfiguration hands = HandConfiguration.right,
   GuidanceContext guidance = GuidanceContext.unguided,
   int octaves = 2,
-  ScaleDirection direction = ScaleDirection.upDown,
+  ExerciseDirection direction = ExerciseDirection.upDown,
   double tempoBpm = 80,
 }) => Exercise.linear(
   material: material,

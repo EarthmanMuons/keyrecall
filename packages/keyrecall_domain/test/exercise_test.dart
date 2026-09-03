@@ -174,7 +174,7 @@ void main() {
         material: cMajor,
         hands: HandConfiguration.right,
         octaves: 1,
-        direction: ScaleDirection.up,
+        direction: ExerciseDirection.up,
       );
       final wide = Exercise.linear(
         material: cMajor,
@@ -215,7 +215,7 @@ void main() {
   group('derived motor opportunities', () {
     Set<MotorOpportunity> opportunities({
       int octaves = 1,
-      ScaleDirection direction = ScaleDirection.up,
+      ExerciseDirection direction = ExerciseDirection.up,
       HandConfiguration hands = HandConfiguration.right,
       HandMotion handMotion = HandMotion.parallel,
     }) => Exercise.linear(
@@ -232,18 +232,22 @@ void main() {
         MotorOpportunity.scalarCrossing,
         MotorOpportunity.multiOctaveContinuation,
       });
-      expect(opportunities(direction: ScaleDirection.upDown), {
+      expect(opportunities(direction: ExerciseDirection.upDown), {
         MotorOpportunity.scalarCrossing,
         MotorOpportunity.directionReversal,
       });
       expect(
         opportunities(
           octaves: 2,
-          direction: ScaleDirection.upDown,
+          direction: ExerciseDirection.upDown,
           hands: HandConfiguration.together,
           handMotion: HandMotion.contrary,
         ),
-        MotorOpportunity.values.toSet(),
+        {
+          MotorOpportunity.scalarCrossing,
+          MotorOpportunity.multiOctaveContinuation,
+          MotorOpportunity.directionReversal,
+        },
       );
     });
 
@@ -254,7 +258,7 @@ void main() {
             Exercise.linear(
               material: material,
               hands: hands,
-              direction: ScaleDirection.up,
+              direction: ExerciseDirection.up,
             ).opportunities,
             contains(MotorOpportunity.scalarCrossing),
             reason: '${material.materialId} ${hands.id}',
@@ -266,7 +270,7 @@ void main() {
         Exercise.linear(
           material: TechnicalMaterial('Cb', ScaleForm.major),
           hands: HandConfiguration.right,
-          direction: ScaleDirection.up,
+          direction: ExerciseDirection.up,
         ).opportunities,
         isNot(contains(MotorOpportunity.scalarCrossing)),
       );
@@ -331,8 +335,8 @@ void main() {
       for (final value in HandConfiguration.values) {
         expect(HandConfiguration.fromId(value.id), value);
       }
-      for (final value in ScaleDirection.values) {
-        expect(ScaleDirection.fromId(value.id), value);
+      for (final value in ExerciseDirection.values) {
+        expect(ExerciseDirection.fromId(value.id), value);
       }
       for (final value in MotorOpportunity.values) {
         expect(MotorOpportunity.fromId(value.id), value);
@@ -371,9 +375,19 @@ void main() {
   test('the hand-execution competencies pair with each other only', () {
     expect(Competency.rhScaleExecution.pairedHand, Competency.lhScaleExecution);
     expect(Competency.lhScaleExecution.pairedHand, Competency.rhScaleExecution);
+    expect(
+      Competency.rhArpeggioExecution.pairedHand,
+      Competency.lhArpeggioExecution,
+    );
+    expect(
+      Competency.lhArpeggioExecution.pairedHand,
+      Competency.rhArpeggioExecution,
+    );
     for (final competency in Competency.values) {
       if (competency == Competency.rhScaleExecution ||
-          competency == Competency.lhScaleExecution) {
+          competency == Competency.lhScaleExecution ||
+          competency == Competency.rhArpeggioExecution ||
+          competency == Competency.lhArpeggioExecution) {
         continue;
       }
       expect(competency.pairedHand, isNull);

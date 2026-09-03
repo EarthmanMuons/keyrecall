@@ -187,7 +187,7 @@ The mean is the current capability estimate. The variance is uncertainty about
 that estimate. The normal distribution is an interpretable engineering
 approximation; it is not a claim that human ability is literally Gaussian.
 
-V1 estimates ten competencies:
+The current model estimates fourteen competencies:
 
 ```text
 Pitch/form topology
@@ -195,13 +195,17 @@ Pitch/form topology
     NATURAL_MINOR_TOPOLOGY
     HARMONIC_MINOR_TOPOLOGY
     MELODIC_MINOR_TOPOLOGY
+    MAJOR_ARPEGGIO_TOPOLOGY
 
 Broad execution
     RH_SCALE_EXECUTION
     LH_SCALE_EXECUTION
+    RH_ARPEGGIO_EXECUTION
+    LH_ARPEGGIO_EXECUTION
 
 Localized technique
     SCALAR_CROSSING
+    ARPEGGIO_TRANSITION
     MULTI_OCTAVE_CONTINUATION
     DIRECTION_REVERSAL
     HANDS_TOGETHER_COORDINATION
@@ -228,7 +232,10 @@ without ever pretending we actually watched that hand play:
 
 The adjustment is largest while the target hand is uncertain and shrinks as its
 own direct evidence accumulates. It never records right-hand practice as a
-left-hand observation.
+left-hand observation. The provisional arpeggio family uses the same
+prediction-only mechanism to borrow cautiously from same-hand scale execution.
+Its topology, transition, exact-material memory, and execution residual remain
+new state, while hands-together coordination is shared.
 
 During nonuse, the mean estimate doesn't move. KeyRecall doesn't assume skill
 declined just because a learner took a break; only the model's confidence in

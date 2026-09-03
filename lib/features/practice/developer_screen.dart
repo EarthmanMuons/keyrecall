@@ -106,11 +106,7 @@ class _CommittedPanel extends StatelessWidget {
     children: [
       _Field('sequence', '#${record.journalSequence}'),
       _Field('attempt', record.identity.attemptId),
-      _Field(
-        'material',
-        '${record.exercise.material.tonic} '
-            '${record.exercise.material.form.id}',
-      ),
+      _Field('material', record.exercise.material.materialId),
       _Field('termination', record.closure.termination.id),
       ...switch (record.closure.measurement) {
         Measured(:final outcome) => [

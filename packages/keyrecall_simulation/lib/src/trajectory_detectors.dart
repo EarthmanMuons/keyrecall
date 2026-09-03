@@ -48,7 +48,7 @@ String _describeCandidate(CandidateTrace trace) {
   final c = trace.exercise.conditions;
   return '  ${trace.exercise.material.materialId.padRight(18)}'
       '${c.hands.id.padRight(9)}${c.octaves}oct '
-      '${c.direction == ScaleDirection.up ? 'up  ' : 'updn'} '
+      '${c.direction == ExerciseDirection.up ? 'up  ' : 'updn'} '
       '${c.tempoBpm.toStringAsFixed(0).padLeft(4)}bpm '
       'g=${trace.exercise.guidance.independence} '
       '${(trace.challengeBypass?.id ?? 'in-band').padRight(22)}'

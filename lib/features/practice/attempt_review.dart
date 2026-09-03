@@ -130,11 +130,11 @@ String? differenceTo(Exercise next, Exercise previous) {
   }
   if (conditions.direction != was.direction) {
     return switch ((conditions.handMotion, conditions.direction)) {
-      (HandMotion.contrary, ScaleDirection.up) => 'Just apart this time.',
-      (HandMotion.contrary, ScaleDirection.upDown) =>
+      (HandMotion.contrary, ExerciseDirection.up) => 'Just apart this time.',
+      (HandMotion.contrary, ExerciseDirection.upDown) =>
         'Apart and back together this time.',
-      (_, ScaleDirection.up) => 'Just up this time.',
-      (_, ScaleDirection.upDown) => 'Up and back down this time.',
+      (_, ExerciseDirection.up) => 'Just up this time.',
+      (_, ExerciseDirection.upDown) => 'Up and back down this time.',
     };
   }
   if (conditions.tempoBpm != was.tempoBpm) {

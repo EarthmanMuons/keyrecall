@@ -1,6 +1,8 @@
 import 'package:meta/meta.dart';
 
 import 'competency.dart';
+import 'execution_conditions.dart';
+import 'material_topology.dart';
 
 /// A scale form supported by V1.
 ///
@@ -31,11 +33,19 @@ enum ScaleForm {
   );
 }
 
+/// Semitones above the tonic in each scale form.
+const Map<ScaleForm, List<int>> scaleFormIntervals = {
+  ScaleForm.major: [0, 2, 4, 5, 7, 9, 11],
+  ScaleForm.naturalMinor: [0, 2, 3, 5, 7, 8, 10],
+  ScaleForm.harmonicMinor: [0, 2, 3, 5, 7, 8, 11],
+  ScaleForm.melodicMinor: [0, 2, 3, 5, 7, 9, 11],
+};
+
 /// What is being played, independent of how it is played.
 ///
 /// Material identity deliberately excludes hand, tempo, octaves, direction,
-/// and guidance, so one scale has a single memory state while its right-hand,
-/// left-hand, and hands-together performances carry separate execution state.
+/// and guidance, so realizations share one exact-material memory state while
+/// their hand-specific performances carry separate execution state.
 ///
 /// The tonic participates directly in [materialId], which persisted records
 /// key on, so it must already be canonical: `F#` and `f#` and `F♯` would
@@ -44,18 +54,132 @@ enum ScaleForm {
 /// hide the upstream bug that produced it. Normalizing user or file input is
 /// a parsing concern, and belongs at that boundary.
 @immutable
-class TechnicalMaterial {
+sealed class TechnicalMaterial {
   /// The family resolver responsible for this material.
   static const String scaleFamilyId = 'SCALE';
+  static const String arpeggioFamilyId = 'ARPEGGIO';
 
-  /// The tonic's canonical letter name, such as `C` or `F#`.
+  const TechnicalMaterial._();
+
+  factory TechnicalMaterial(String tonic, ScaleForm form) = ScaleMaterial;
+
+  String get tonic;
+
+  String get materialId;
+
+  String get familyId;
+
+  MaterialTopology get topology;
+
+  Competency get topologyCompetency;
+
+  ScaleForm? get scaleForm => null;
+
+  Set<Competency> executionCompetenciesFor(HandConfiguration hands);
+
+  /// Whether [tonic] is written the one way this domain accepts.
+  static bool isCanonicalTonic(String tonic) =>
+      ScaleMaterial.isCanonicalTonic(tonic);
+}
+
+/// The chord quality whose tones form an arpeggio.
+enum ArpeggioQuality {
+  major('MAJOR', Competency.majorArpeggioTopology);
+
+  const ArpeggioQuality(this.id, this.topologyCompetency);
+
+  final String id;
+  final Competency topologyCompetency;
+
+  static ArpeggioQuality fromId(String id) => values.firstWhere(
+    (quality) => quality.id == id,
+    orElse: () => throw ArgumentError.value(id, 'id', 'unknown quality'),
+  );
+}
+
+/// Which chord tone begins an arpeggio's repeating topology.
+enum ArpeggioInversion {
+  root('ROOT');
+
+  const ArpeggioInversion(this.id);
+
+  final String id;
+
+  static ArpeggioInversion fromId(String id) => values.firstWhere(
+    (inversion) => inversion.id == id,
+    orElse: () => throw ArgumentError.value(id, 'id', 'unknown inversion'),
+  );
+}
+
+/// An arpeggio identified by root, quality, and inversion.
+@immutable
+final class ArpeggioMaterial extends TechnicalMaterial {
+  @override
+  final String tonic;
+  final ArpeggioQuality quality;
+  final ArpeggioInversion inversion;
+
+  ArpeggioMaterial(
+    this.tonic,
+    this.quality, {
+    this.inversion = ArpeggioInversion.root,
+  }) : super._() {
+    if (!ScaleMaterial.isCanonicalTonic(tonic)) {
+      throw ArgumentError.value(tonic, 'tonic', 'must be canonical');
+    }
+  }
+
+  @override
+  String get materialId => '${tonic}_${quality.id}_${inversion.id}_ARPEGGIO';
+
+  @override
+  String get familyId => TechnicalMaterial.arpeggioFamilyId;
+
+  @override
+  late final MaterialTopology topology = MaterialTopology(
+    semitoneOffsets: const [0, 4, 7],
+    letterOffsets: const [0, 2, 4],
+  );
+
+  @override
+  Competency get topologyCompetency => quality.topologyCompetency;
+
+  @override
+  Set<Competency> executionCompetenciesFor(HandConfiguration hands) => {
+    if (hands.usesRightHand) Competency.rhArpeggioExecution,
+    if (hands.usesLeftHand) Competency.lhArpeggioExecution,
+    if (hands == HandConfiguration.together)
+      Competency.handsTogetherCoordination,
+  };
+
+  @override
+  bool operator ==(Object other) =>
+      other is ArpeggioMaterial &&
+      other.tonic == tonic &&
+      other.quality == quality &&
+      other.inversion == inversion;
+
+  @override
+  int get hashCode => Object.hash(tonic, quality, inversion);
+
+  @override
+  String toString() => materialId;
+}
+
+/// A scale identified by tonic and form.
+@immutable
+final class ScaleMaterial extends TechnicalMaterial {
+  @override
   final String tonic;
 
   /// The scale form built on [tonic].
   final ScaleForm form;
 
+  @override
+  ScaleForm get scaleForm => form;
+
   /// Throws [ArgumentError] if [tonic] is not already canonical.
-  TechnicalMaterial(this.tonic, this.form) {
+  ScaleMaterial(this.tonic, this.form) : super._() {
     if (!isCanonicalTonic(tonic)) {
       throw ArgumentError.value(
         tonic,
@@ -81,14 +205,29 @@ class TechnicalMaterial {
   }
 
   /// Stable identifier for this material, such as `F#_HARMONIC_MINOR`.
+  @override
   String get materialId => '${tonic}_${form.id}';
 
   /// The material-family identity used by curriculum requirements.
-  String get familyId => scaleFamilyId;
+  @override
+  String get familyId => TechnicalMaterial.scaleFamilyId;
+
+  @override
+  late final MaterialTopology topology = MaterialTopology(
+    semitoneOffsets: scaleFormIntervals[form]!,
+    letterOffsets: List.generate(scaleFormIntervals[form]!.length, (i) => i),
+  );
+
+  @override
+  Competency get topologyCompetency => form.topologyCompetency;
+
+  @override
+  Set<Competency> executionCompetenciesFor(HandConfiguration hands) =>
+      hands.executionCompetencies;
 
   @override
   bool operator ==(Object other) =>
-      other is TechnicalMaterial && other.tonic == tonic && other.form == form;
+      other is ScaleMaterial && other.tonic == tonic && other.form == form;
 
   @override
   int get hashCode => Object.hash(tonic, form);
@@ -113,7 +252,8 @@ class TechnicalMaterial {
 /// catalog's twelve are all covered; the guard is for a thirteenth arriving
 /// without anyone deciding how to write it.
 int keySignatureFifths(TechnicalMaterial material) {
-  final signatures = material.form == ScaleForm.major
+  final form = material.scaleForm;
+  final signatures = form == null || form == ScaleForm.major
       ? _majorFifths
       : _minorFifths;
   final fifths = signatures[material.tonic];
@@ -121,7 +261,7 @@ int keySignatureFifths(TechnicalMaterial material) {
     throw ArgumentError.value(
       material.tonic,
       'tonic',
-      'no standard key signature for this tonic in ${material.form.id}',
+      'no standard key signature for this tonic in ${material.materialId}',
     );
   }
   return fifths;
