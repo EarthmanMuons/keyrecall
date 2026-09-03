@@ -110,7 +110,7 @@ void main() {
       );
 
       expect(
-        result.selected?.challengeBypass,
+        (result as CandidateSelected).candidate.challengeBypass,
         isNot(ChallengeBypass.guidanceProbe),
       );
       expect(session.attemptsThisSession, 1);
@@ -128,7 +128,10 @@ void main() {
         at: t0.plusDays(1),
       );
 
-      expect(result.selected?.challengeBypass, ChallengeBypass.guidanceProbe);
+      expect(
+        (result as CandidateSelected).candidate.challengeBypass,
+        ChallengeBypass.guidanceProbe,
+      );
       expect(session.unservedGuidanceProbeSelections, 0);
     });
 

@@ -146,7 +146,10 @@ _Census? _dryCensus({
     );
     final traces = selection.traces;
     final available = selection.selectable;
-    final chosen = selection.selected;
+    final chosen = switch (selection) {
+      CandidateSelected(:final candidate) => candidate,
+      SelectionBlocked() => null,
+    };
 
     if (chosen == null) {
       final flags = <String>{};

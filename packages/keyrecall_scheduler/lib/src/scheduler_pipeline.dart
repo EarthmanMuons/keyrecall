@@ -59,11 +59,14 @@ class DecisionFacts {
   DecisionFacts(this.state);
 }
 
-/// The candidates considered and the selection made for one attempt slot.
-class SelectionResult {
+/// The candidates considered and the reasoned outcome of one attempt slot.
+///
+/// This layer cannot report that a curriculum is caught up: it sees exercises,
+/// not curriculum requirements or whether any work is due. An empty ordinary
+/// path is therefore [SelectionBlocked], never a successful absence.
+sealed class SelectionResult {
   final List<CandidateTrace> traces;
   final List<CandidateTrace> selectable;
-  final CandidateTrace? selected;
 
   /// What realization-family pacing did to the available set.
   final PacingDecision pacing;
@@ -71,8 +74,37 @@ class SelectionResult {
   const SelectionResult({
     required this.traces,
     required this.selectable,
-    required this.selected,
     required this.pacing,
+  });
+}
+
+/// The scheduler selected one candidate to present.
+final class CandidateSelected extends SelectionResult {
+  final CandidateTrace candidate;
+
+  const CandidateSelected({
+    required super.traces,
+    required super.selectable,
+    required super.pacing,
+    required this.candidate,
+  });
+}
+
+/// Why an unresolved scheduling request produced no usable candidate.
+enum BlockedReason {
+  /// No candidate survived ordinary challenge admission.
+  admissionExhausted,
+}
+
+/// Useful work was requested, but the scheduler could not produce it.
+final class SelectionBlocked extends SelectionResult {
+  final BlockedReason reason;
+
+  const SelectionBlocked({
+    required super.traces,
+    required super.selectable,
+    required super.pacing,
+    required this.reason,
   });
 }
 
@@ -122,12 +154,19 @@ class SchedulerPipeline {
           selected?.challengeBypass == ChallengeBypass.guidanceProbe,
     );
     session.attemptsThisSession++;
-    return SelectionResult(
-      traces: traces,
-      selectable: available,
-      selected: selected,
-      pacing: pacing,
-    );
+    return selected == null
+        ? SelectionBlocked(
+            traces: traces,
+            selectable: available,
+            pacing: pacing,
+            reason: BlockedReason.admissionExhausted,
+          )
+        : CandidateSelected(
+            traces: traces,
+            selectable: available,
+            pacing: pacing,
+            candidate: selected,
+          );
   }
 
   /// Records how a presented exercise ended in the current session.

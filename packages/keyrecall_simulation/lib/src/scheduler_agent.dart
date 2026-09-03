@@ -113,7 +113,10 @@ class SchedulerAgent {
       candidates: candidates,
       at: context.at,
     );
-    final winner = selection.selected;
+    final winner = switch (selection) {
+      CandidateSelected(:final candidate) => candidate,
+      SelectionBlocked() => null,
+    };
 
     final contenders =
         selection.selectable

@@ -61,7 +61,10 @@ Trajectory runTrajectory({
     observePacing?.call(index, selection.pacing);
     final traces = selection.traces;
     final available = selection.selectable;
-    final chosen = selection.selected;
+    final chosen = switch (selection) {
+      CandidateSelected(:final candidate) => candidate,
+      SelectionBlocked() => null,
+    };
     // Every candidate, which a slot does not retain: a sitting evaluates
     // thousands and only the selectable ones are worth carrying to the end.
     // A diagnostic asking what was refused has to see them as they go past.

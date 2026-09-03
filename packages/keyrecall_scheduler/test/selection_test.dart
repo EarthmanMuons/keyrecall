@@ -140,6 +140,26 @@ void main() {
       expect(pipeline.selectChoice(const [], SessionState()), isNull);
     });
 
+    test('reports exhausted admission instead of silent absence', () {
+      final result = pipeline.decide(
+        state: learner.placementState(
+          PlacementTier.someExperience,
+          at: DateTime.utc(2026),
+        ),
+        session: SessionState(),
+        candidates: const [],
+        at: DateTime.utc(2026),
+      );
+
+      expect(result, isA<SelectionBlocked>());
+      expect(
+        (result as SelectionBlocked).reason,
+        BlockedReason.admissionExhausted,
+      );
+      expect(result.traces, isEmpty);
+      expect(result.selectable, isEmpty);
+    });
+
     test('breaks exact ties toward the earlier candidate', () {
       final first = admittedTrace(exerciseA, retention: 0.5, information: 0.5);
       final second = admittedTrace(exerciseB, retention: 0.5, information: 0.5);

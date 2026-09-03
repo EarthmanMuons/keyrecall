@@ -23,7 +23,8 @@ void main() {
     );
     final presented = await practice.decide(at: at);
 
-    expect(presented?.exercise, direct.selected?.exercise);
+    final selected = direct as CandidateSelected;
+    expect(presented?.exercise, selected.candidate.exercise);
     expect(
       practice.session.attemptsThisSession,
       directSession.attemptsThisSession,
@@ -33,7 +34,7 @@ void main() {
       directSession.unservedGuidanceProbeSelections,
     );
 
-    final exercise = direct.selected!.exercise;
+    final exercise = selected.candidate.exercise;
     final outcome = outcomeOf(
       retrieval: exercise.guidance.isRetrievalObserved
           ? FactualRetrieval.succeeded

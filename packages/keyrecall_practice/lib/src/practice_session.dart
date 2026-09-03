@@ -276,7 +276,10 @@ class PracticeSession {
       candidates: candidates,
       at: at,
     );
-    final chosen = selection.selected;
+    final chosen = switch (selection) {
+      CandidateSelected(:final candidate) => candidate,
+      SelectionBlocked() => null,
+    };
     if (chosen == null) return null;
 
     final decision = PendingDecision(

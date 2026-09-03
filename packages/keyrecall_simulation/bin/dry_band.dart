@@ -161,7 +161,10 @@ _DrySlot? _dryStateFor({
       at: at,
     );
     final traces = selection.traces;
-    final chosen = selection.selected;
+    final chosen = switch (selection) {
+      CandidateSelected(:final candidate) => candidate,
+      SelectionBlocked() => null,
+    };
     if (chosen == null) return _DrySlot(index, traces, state);
 
     final exercise = chosen.exercise;
