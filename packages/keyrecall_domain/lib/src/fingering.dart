@@ -4,19 +4,19 @@ import 'execution_conditions.dart';
 import 'hand_path.dart';
 import 'technical_material.dart';
 
-/// Which fingers play a scale, as a pattern that generates any octave span.
+/// The authoritative fingering for one material and hand.
 ///
 /// A flat one-octave string cannot say this on its own: the finger that starts
 /// a traversal, the one that takes an internal octave boundary, and the one
-/// that ends it are three independent boundary conditions. C major right hand
-/// runs `1 2 3 1 2 3 4 5` over one octave, but its internal upper tonic takes
-/// the thumb so the scale can continue, and only the final one takes the
-/// fifth finger.
-///
-/// See `docs/domain-model/fingering-taxonomy.md` for the research this encodes
-/// and for the sources behind each pattern.
+/// that ends it are independent boundary conditions.
 @immutable
-class ScaleFingering {
+class CanonicalFingering {
+  /// The material this record realizes.
+  final String materialId;
+
+  /// The hand this record applies to.
+  final Hand hand;
+
   /// How the traversal begins, at the initial tonic.
   final List<int> entry;
 
@@ -27,24 +27,58 @@ class ScaleFingering {
   /// internal octave boundary.
   final int? terminalFinger;
 
-  factory ScaleFingering({
+  /// Whether descent uses the reversed ascending stream.
+  final bool reversesForDescending;
+
+  /// Where this canonical choice came from.
+  final FingeringProvenance provenance;
+
+  factory CanonicalFingering({
+    required String materialId,
+    required Hand hand,
     required List<int> entry,
     required List<int> cycle,
     int? terminalFinger,
-  }) => ScaleFingering._(
-    entry: List.unmodifiable(entry),
-    cycle: List.unmodifiable(cycle),
-    terminalFinger: terminalFinger,
-  );
+    required bool reversesForDescending,
+    required FingeringProvenance provenance,
+  }) {
+    if (materialId.isEmpty) {
+      throw ArgumentError.value(materialId, 'materialId', 'must not be empty');
+    }
+    if (entry.isEmpty || cycle.isEmpty) {
+      throw ArgumentError('entry and cycle must not be empty');
+    }
+    for (final finger in [...entry, ...cycle, ?terminalFinger]) {
+      if (finger < 1 || finger > 5) {
+        throw ArgumentError.value(finger, 'finger', 'must be between 1 and 5');
+      }
+    }
+    return CanonicalFingering._(
+      materialId: materialId,
+      hand: hand,
+      entry: List.unmodifiable(entry),
+      cycle: List.unmodifiable(cycle),
+      terminalFinger: terminalFinger,
+      reversesForDescending: reversesForDescending,
+      provenance: provenance,
+    );
+  }
 
-  const ScaleFingering._({
+  const CanonicalFingering._({
+    required this.materialId,
+    required this.hand,
     required this.entry,
     required this.cycle,
     this.terminalFinger,
+    required this.reversesForDescending,
+    required this.provenance,
   });
 
   /// The fingers for an ascending traversal of [octaves] octaves.
   List<int> ascending(int octaves) {
+    if (octaves < 1) {
+      throw ArgumentError.value(octaves, 'octaves', 'must be at least 1');
+    }
     final fingers = [
       ...entry,
       for (var octave = 0; octave < octaves; octave++) ...cycle,
@@ -53,12 +87,79 @@ class ScaleFingering {
     if (terminal != null) fingers[fingers.length - 1] = terminal;
     return fingers;
   }
+
+  /// The descending traversal, or null when reversal is not authoritative.
+  List<int>? descending(int octaves) => reversesForDescending
+      ? ascending(octaves).reversed.toList(growable: false)
+      : null;
+}
+
+/// Research provenance for one canonical fingering choice.
+@immutable
+class FingeringProvenance {
+  /// The work or dataset supporting the choice.
+  final String source;
+
+  /// The dated or named edition consulted.
+  final String sourceEdition;
+
+  /// The chapter, section, page, or record inside the source.
+  final String sourceLocation;
+
+  /// How the source participates in the canonical choice.
+  final CanonicalFingeringStatus status;
+
+  factory FingeringProvenance({
+    required String source,
+    required String sourceEdition,
+    required String sourceLocation,
+    required CanonicalFingeringStatus status,
+  }) {
+    if (source.isEmpty || sourceEdition.isEmpty || sourceLocation.isEmpty) {
+      throw ArgumentError('fingering provenance fields must not be empty');
+    }
+    return FingeringProvenance._(
+      source: source,
+      sourceEdition: sourceEdition,
+      sourceLocation: sourceLocation,
+      status: status,
+    );
+  }
+
+  const FingeringProvenance._({
+    required this.source,
+    required this.sourceEdition,
+    required this.sourceLocation,
+    required this.status,
+  });
+}
+
+/// How firmly the cited source supports a canonical fingering.
+enum CanonicalFingeringStatus {
+  /// The cited source states the pattern directly.
+  established,
+
+  /// KeyRecall selected the pattern after reconciling its research sources.
+  canonicalSelected,
+}
+
+@immutable
+class _FingeringShape {
+  final List<int> entry;
+  final List<int> cycle;
+  final int? terminalFinger;
+
+  const _FingeringShape._({
+    required this.entry,
+    required this.cycle,
+    this.terminalFinger,
+  });
 }
 
 // The conventional families, named for what they are rather than for one key.
 // Right hand, thumb on the tonic, fourth finger on the seventh degree; the
 // internal tonic continues on the thumb and only the last one takes five.
-const _rhThumbTonic = ScaleFingering._(
+const _rhThumbTonic = _FingeringShape._(
   entry: [1],
   cycle: [2, 3, 1, 2, 3, 4, 1],
   terminalFinger: 5,
@@ -66,25 +167,25 @@ const _rhThumbTonic = ScaleFingering._(
 
 /// Right hand with the thumb on the fourth degree as well, which is F major's
 /// exception and is reused by the F minors.
-const _rhThumbOnFour = ScaleFingering._(
+const _rhThumbOnFour = _FingeringShape._(
   entry: [1],
   cycle: [2, 3, 4, 1, 2, 3, 1],
   terminalFinger: 4,
 );
 
-const _rh23123412 = ScaleFingering._(entry: [2], cycle: [3, 1, 2, 3, 4, 1, 2]);
-const _rh23412312 = ScaleFingering._(entry: [2], cycle: [3, 4, 1, 2, 3, 1, 2]);
-const _rh21231234 = ScaleFingering._(entry: [2], cycle: [1, 2, 3, 1, 2, 3, 4]);
-const _rh31234123 = ScaleFingering._(entry: [3], cycle: [1, 2, 3, 4, 1, 2, 3]);
-const _rh21234123 = ScaleFingering._(entry: [2], cycle: [1, 2, 3, 4, 1, 2, 3]);
-const _rh34123123 = ScaleFingering._(entry: [3], cycle: [4, 1, 2, 3, 1, 2, 3]);
+const _rh23123412 = _FingeringShape._(entry: [2], cycle: [3, 1, 2, 3, 4, 1, 2]);
+const _rh23412312 = _FingeringShape._(entry: [2], cycle: [3, 4, 1, 2, 3, 1, 2]);
+const _rh21231234 = _FingeringShape._(entry: [2], cycle: [1, 2, 3, 1, 2, 3, 4]);
+const _rh31234123 = _FingeringShape._(entry: [3], cycle: [1, 2, 3, 4, 1, 2, 3]);
+const _rh21234123 = _FingeringShape._(entry: [2], cycle: [1, 2, 3, 4, 1, 2, 3]);
+const _rh34123123 = _FingeringShape._(entry: [3], cycle: [4, 1, 2, 3, 1, 2, 3]);
 
-const _lh54321321 = ScaleFingering._(entry: [5], cycle: [4, 3, 2, 1, 3, 2, 1]);
-const _lh43214321 = ScaleFingering._(entry: [4], cycle: [3, 2, 1, 4, 3, 2, 1]);
-const _lh32143213 = ScaleFingering._(entry: [3], cycle: [2, 1, 4, 3, 2, 1, 3]);
-const _lh43213214 = ScaleFingering._(entry: [4], cycle: [3, 2, 1, 3, 2, 1, 4]);
-const _lh21432132 = ScaleFingering._(entry: [2], cycle: [1, 4, 3, 2, 1, 3, 2]);
-const _lh21321432 = ScaleFingering._(entry: [2], cycle: [1, 3, 2, 1, 4, 3, 2]);
+const _lh54321321 = _FingeringShape._(entry: [5], cycle: [4, 3, 2, 1, 3, 2, 1]);
+const _lh43214321 = _FingeringShape._(entry: [4], cycle: [3, 2, 1, 4, 3, 2, 1]);
+const _lh32143213 = _FingeringShape._(entry: [3], cycle: [2, 1, 4, 3, 2, 1, 3]);
+const _lh43213214 = _FingeringShape._(entry: [4], cycle: [3, 2, 1, 3, 2, 1, 4]);
+const _lh21432132 = _FingeringShape._(entry: [2], cycle: [1, 4, 3, 2, 1, 3, 2]);
+const _lh21321432 = _FingeringShape._(entry: [2], cycle: [1, 3, 2, 1, 4, 3, 2]);
 
 /// The canonical fingering for every scale V1 supports, by material id.
 ///
@@ -92,7 +193,7 @@ const _lh21321432 = ScaleFingering._(entry: [2], cycle: [1, 3, 2, 1, 4, 3, 2]);
 /// exist and are research provenance rather than runtime behavior. Spellings
 /// follow the catalog's, so D flat major and C sharp minor are separate
 /// entries rather than one enharmonic pair.
-const Map<String, Map<Hand, ScaleFingering>> _canonical = {
+const Map<String, Map<Hand, _FingeringShape>> _scaleFingeringShapes = {
   // Major.
   'C_MAJOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'G_MAJOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
@@ -151,28 +252,77 @@ const Map<String, Map<Hand, ScaleFingering>> _canonical = {
   'Bb_MELODIC_MINOR': {Hand.right: _rh21231234, Hand.left: _lh21321432},
 };
 
-const Map<String, Map<Hand, List<int>>> _proofArpeggioFingerings = {
+const Map<String, Map<Hand, _FingeringShape>> _arpeggioFingeringShapes = {
   'C_MAJOR_ROOT_ARPEGGIO': {
-    Hand.right: [1, 2, 3, 5],
-    Hand.left: [5, 4, 2, 1],
+    Hand.right: _FingeringShape._(
+      entry: [1],
+      cycle: [2, 3, 1],
+      terminalFinger: 5,
+    ),
+    Hand.left: _FingeringShape._(entry: [5], cycle: [4, 2, 1]),
   },
   'G_MAJOR_ROOT_ARPEGGIO': {
-    Hand.right: [1, 2, 3, 5],
-    Hand.left: [5, 4, 2, 1],
+    Hand.right: _FingeringShape._(
+      entry: [1],
+      cycle: [2, 3, 1],
+      terminalFinger: 5,
+    ),
+    Hand.left: _FingeringShape._(entry: [5], cycle: [4, 2, 1]),
   },
   'D_MAJOR_ROOT_ARPEGGIO': {
-    Hand.right: [1, 2, 3, 5],
-    Hand.left: [5, 3, 2, 1],
+    Hand.right: _FingeringShape._(
+      entry: [1],
+      cycle: [2, 3, 1],
+      terminalFinger: 5,
+    ),
+    Hand.left: _FingeringShape._(entry: [5], cycle: [3, 2, 1]),
   },
 };
 
-/// The canonical fingering for [material] in [hand], or null when the catalog
-/// does not cover that scale.
-ScaleFingering? canonicalFingering(TechnicalMaterial material, Hand hand) =>
-    _canonical[material.materialId]?[hand];
+const _scaleFingeringProvenance = FingeringProvenance._(
+  source: 'KeyRecall Scale Fingering Taxonomy and Research',
+  sourceEdition: '2026-08-18',
+  sourceLocation: 'docs/domain-model/fingering-taxonomy.md §13',
+  status: CanonicalFingeringStatus.canonicalSelected,
+);
+
+const _arpeggioFingeringProvenance = FingeringProvenance._(
+  source: 'Michael Clark, Piano Basics',
+  sourceEdition: '2026',
+  sourceLocation: 'One-Octave Arpeggios §§31.1–31.4',
+  status: CanonicalFingeringStatus.established,
+);
+
+Map<String, Map<Hand, CanonicalFingering>> _canonicalRecords(
+  Map<String, Map<Hand, _FingeringShape>> shapes,
+  FingeringProvenance provenance,
+) => {
+  for (final material in shapes.entries)
+    material.key: {
+      for (final fingering in material.value.entries)
+        fingering.key: CanonicalFingering(
+          materialId: material.key,
+          hand: fingering.key,
+          entry: fingering.value.entry,
+          cycle: fingering.value.cycle,
+          terminalFinger: fingering.value.terminalFinger,
+          reversesForDescending: true,
+          provenance: provenance,
+        ),
+    },
+};
+
+final Map<String, Map<Hand, CanonicalFingering>> _canonicalFingerings = {
+  ..._canonicalRecords(_scaleFingeringShapes, _scaleFingeringProvenance),
+  ..._canonicalRecords(_arpeggioFingeringShapes, _arpeggioFingeringProvenance),
+};
+
+/// The canonical fingering for [material] in [hand], or null when unsupported.
+CanonicalFingering? canonicalFingering(TechnicalMaterial material, Hand hand) =>
+    _canonicalFingerings[material.materialId]?[hand];
 
 /// The finger for each moment under [conditions], for [hand], or null when the
-/// scale has no canonical fingering or [hand] does not play it.
+/// material has no canonical fingering or [hand] does not play it.
 ///
 /// Read off the same degree path the notes are, so the fingers follow wherever
 /// the hand goes rather than re-deriving the traversal here. A descent reverses
@@ -188,26 +338,17 @@ List<int>? fingeringForConditions({
   required ExecutionConditions conditions,
   required Hand hand,
 }) {
-  if (material is ArpeggioMaterial) {
-    if (conditions.octaves != 1) return null;
-    final ascending = _proofArpeggioFingerings[material.materialId]?[hand];
-    if (ascending == null) return null;
-    final path = handPathsFor(
-      conditions,
-      degreesPerOctave: material.topology.degreesPerOctave,
-    )[hand];
-    if (path == null) return null;
-    return [for (final degree in path) ascending[degree.abs()]];
-  }
-  if (material is! ScaleMaterial) return null;
-
   final pattern = canonicalFingering(material, hand);
   if (pattern == null) return null;
+  if (!pattern.reversesForDescending &&
+      (conditions.direction == ExerciseDirection.upDown ||
+          conditions.handMotion == HandMotion.contrary)) {
+    return null;
+  }
 
-  final intervals = scaleFormIntervals[material.form]!;
   final path = handPathsFor(
     conditions,
-    degreesPerOctave: intervals.length,
+    degreesPerOctave: material.topology.degreesPerOctave,
   )[hand];
   if (path == null) return null;
 

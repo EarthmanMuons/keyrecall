@@ -21,6 +21,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Canonical fingerings now use one family-neutral, provenance-bearing
+  `entry / cycle / terminal` record with explicit descent symmetry. Supported
+  arpeggios use the same representation as scales, and unsupported records are
+  absent rather than inferred.
 - `GuidanceContext` has exactly three constructible values. Notes previewed
   together with visible cues described the same condition as continuous cueing
   while comparing and hashing differently, and guidance is part of exercise

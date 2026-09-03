@@ -224,19 +224,18 @@ The floor must never substitute a broken chord or a different tonic.
 
 ## 6. Canonical fingering record
 
-The eventual record needs the same boundary-aware representation used for
-scales:
+The shared runtime record now uses the same boundary-aware representation for
+every material family:
 
 ```text
-ArpeggioFingering
+CanonicalFingering
+    materialId
     hand
     entry
     cycle
     terminal
-    source
-    source edition
-    source location
-    status
+    reversesForDescending
+    provenance
 ```
 
 `entry / cycle / terminal` is essential. A one-octave `1 2 3 5` string does not
@@ -249,7 +248,9 @@ the canonical record establishes that symmetry. It must not install reversal as
 a universal rule for future chord qualities and inversions.
 
 Every product catalog entry needs both hands. Unsupported or disputed records
-remain absent rather than receiving a rule-derived guess.
+remain absent rather than receiving a rule-derived guess. The record carries
+source, edition, location, and status without knowing which material family it
+serves.
 
 ## 7. Motor and observation model
 

@@ -627,15 +627,16 @@ Suggested statuses: `ESTABLISHED`, `CORROBORATED`, `ALTERNATIVE_REPORTED`,
 ## 14.5 Implementation status
 
 The canonical dataset is implemented in `keyrecall_domain`
-(`lib/src/fingering.dart`) as `entry / cycle / terminal_override`, keyed by
-material id so that D-flat major and C-sharp minor stay separate entries. All 48
-scales and 96 hand-specific patterns are present, including the continuation
-corrections in section 12. `fingeringFor(exercise, hand)` generates the finger
-stream for any octave span and direction.
+(`lib/src/fingering.dart`) as family-neutral `CanonicalFingering` records. Each
+record carries material and hand identity, `entry / cycle / terminal`, an
+explicit descent-reversal policy, and compact provenance. All 48 scales and 96
+hand-specific patterns are present, including the continuation corrections in
+section 12. `fingeringFor(exercise, hand)` generates the finger stream for any
+octave span and supported direction.
 
-The research apparatus in this document deliberately stays here: the runtime
-carries one canonical fingering per scale and hand, with no alternatives,
-sources, or confidence levels.
+Alternative records and source disagreements remain in this research document;
+runtime provenance identifies the selected authority rather than carrying the
+whole research apparatus.
 
 ## 15. Runtime Data Should Be Smaller
 

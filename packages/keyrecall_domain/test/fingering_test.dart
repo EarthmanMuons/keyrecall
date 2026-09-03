@@ -3,16 +3,62 @@ import 'package:test/test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 void main() {
+  final testProvenance = FingeringProvenance(
+    source: 'Test source',
+    sourceEdition: '1',
+    sourceLocation: 'p. 1',
+    status: CanonicalFingeringStatus.established,
+  );
+
   test('a fingering does not retain mutable caller lists', () {
     final entry = [1];
     final cycle = [2, 3, 1];
-    final fingering = ScaleFingering(entry: entry, cycle: cycle);
+    final fingering = CanonicalFingering(
+      materialId: 'TEST_MATERIAL',
+      hand: Hand.right,
+      entry: entry,
+      cycle: cycle,
+      reversesForDescending: true,
+      provenance: testProvenance,
+    );
 
     entry[0] = 5;
     cycle.add(4);
 
     expect(fingering.entry, [1]);
     expect(fingering.cycle, [2, 3, 1]);
+  });
+
+  test('a canonical record carries identity and provenance', () {
+    final fingering = canonicalFingering(
+      ArpeggioMaterial('D', ArpeggioQuality.major),
+      Hand.left,
+    )!;
+
+    expect(fingering.materialId, 'D_MAJOR_ROOT_ARPEGGIO');
+    expect(fingering.hand, Hand.left);
+    expect(fingering.provenance.source, 'Michael Clark, Piano Basics');
+    expect(fingering.provenance.sourceEdition, '2026');
+    expect(fingering.provenance.status, CanonicalFingeringStatus.established);
+  });
+
+  test('descent exists only when the record establishes reversal', () {
+    final unsupported = CanonicalFingering(
+      materialId: 'TEST_MATERIAL',
+      hand: Hand.right,
+      entry: [1],
+      cycle: [2, 3, 1],
+      terminalFinger: 5,
+      reversesForDescending: false,
+      provenance: testProvenance,
+    );
+    final supported = canonicalFingering(
+      ArpeggioMaterial('C', ArpeggioQuality.major),
+      Hand.right,
+    )!;
+
+    expect(unsupported.descending(1), isNull);
+    expect(supported.descending(1), [5, 3, 2, 1]);
   });
 
   String digits(List<int> fingers) => fingers.join();
@@ -216,6 +262,40 @@ void main() {
       expect(digits(upDown), '123123454321321');
       expect(upDown.length, 15);
     });
+
+    test('arpeggios replace a terminal finger at internal boundaries', () {
+      final c = ArpeggioMaterial('C', ArpeggioQuality.major);
+      final d = ArpeggioMaterial('D', ArpeggioQuality.major);
+
+      expect(canonicalFingering(c, Hand.right)!.ascending(1), [1, 2, 3, 5]);
+      expect(canonicalFingering(c, Hand.right)!.ascending(2), [
+        1,
+        2,
+        3,
+        1,
+        2,
+        3,
+        5,
+      ]);
+      expect(canonicalFingering(c, Hand.left)!.ascending(2), [
+        5,
+        4,
+        2,
+        1,
+        4,
+        2,
+        1,
+      ]);
+      expect(canonicalFingering(d, Hand.left)!.ascending(2), [
+        5,
+        3,
+        2,
+        1,
+        3,
+        2,
+        1,
+      ]);
+    });
   });
 
   group('coverage', () {
@@ -238,6 +318,14 @@ void main() {
           isNotNull,
           reason: form.id,
         );
+      }
+    });
+
+    test('unsupported arpeggios do not inherit a guessed fingering', () {
+      final unsupported = ArpeggioMaterial('F', ArpeggioQuality.major);
+
+      for (final hand in Hand.values) {
+        expect(canonicalFingering(unsupported, hand), isNull);
       }
     });
 

@@ -227,7 +227,7 @@ Where each box lives now that the app exists:
 
 | Conceptual                | Implemented as                            |
 | ------------------------- | ----------------------------------------- |
-| Scale Definition          | `TechnicalMaterial`, `ScaleFingering`     |
+| Scale Definition          | `TechnicalMaterial`, `CanonicalFingering` |
 | Exercise Generator        | `generateCandidates`, gated by `REQUIRES` |
 | Expected Event Stream     | `ExerciseRealization`                     |
 | MIDI Performance          | `PerformanceTranscript`                   |

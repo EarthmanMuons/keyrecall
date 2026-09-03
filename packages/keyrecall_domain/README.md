@@ -29,11 +29,10 @@ learner, reads no state, and makes no pedagogical judgments; those belong to
   for, spelled by scale degree, so a staff and a keyboard diagram read one
   answer. `PerformanceTranscript` is the other side: what was played, in arrival
   order, with no relation to what was expected.
-- **Fingering.** `canonicalFingering` covers all 48 scales in both hands as
-  `entry / cycle / terminal`, which generates any octave span rather than
-  storing one-octave strings. The arpeggio proof carries sourced one-octave
-  fingerings for C, G, and D major while its full boundary-aware dataset remains
-  research work.
+- **Fingering.** Family-neutral `CanonicalFingering` records carry material and
+  hand identity, `entry / cycle / terminal`, explicit descent symmetry, and
+  compact provenance. They cover all 48 scales in both hands and the sourced C,
+  G, and D major arpeggio fixture without guessing unsupported materials.
 - **Presentation conditions.** `PresentationConditions` records what an attempt
   was given on four independent channels: pitch cue, motor cue, performance
   feedback, and tempo support.
