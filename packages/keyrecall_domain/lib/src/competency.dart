@@ -10,6 +10,7 @@ enum Competency {
   harmonicMinorTopology('HARMONIC_MINOR_TOPOLOGY'),
   melodicMinorTopology('MELODIC_MINOR_TOPOLOGY'),
   majorArpeggioTopology('MAJOR_ARPEGGIO_TOPOLOGY'),
+  minorArpeggioTopology('MINOR_ARPEGGIO_TOPOLOGY'),
   rhScaleExecution('RH_SCALE_EXECUTION'),
   lhScaleExecution('LH_SCALE_EXECUTION'),
   rhArpeggioExecution('RH_ARPEGGIO_EXECUTION'),
@@ -72,6 +73,7 @@ const Set<Competency> topologyCompetencies = {
   Competency.harmonicMinorTopology,
   Competency.melodicMinorTopology,
   Competency.majorArpeggioTopology,
+  Competency.minorArpeggioTopology,
 };
 
 /// Competencies scored by the motor prediction channel.

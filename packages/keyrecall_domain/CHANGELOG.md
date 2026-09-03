@@ -21,6 +21,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Major and minor triad arpeggios represent root, first-inversion, and
+  second-inversion topology as distinct material identities. C minor root
+  position joins the non-product fixture with sourced fingering.
 - Canonical fingerings now use one family-neutral, provenance-bearing
   `entry / cycle / terminal` record with explicit descent symmetry. Supported
   arpeggios use the same representation as scales, and unsupported records are

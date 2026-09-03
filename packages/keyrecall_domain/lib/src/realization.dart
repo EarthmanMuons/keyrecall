@@ -315,7 +315,12 @@ ExerciseRealization realize(Exercise exercise) {
     if (conditions.hands.usesRightHand) Hand.right,
   ];
   final paths = handPathsFor(conditions, degreesPerOctave: intervals.length);
-  final tonics = _tonicsFor(conditions, hands, pitchClassOf(material.tonic));
+  final tonics = _tonicsFor(
+    conditions,
+    hands,
+    (pitchClassOf(material.tonic) + material.topology.originSemitoneOffset) %
+        12,
+  );
 
   // Every hand plays at every moment in V1, so the paths are read in lockstep.
   // Independent here means the degrees may differ, not the event structure; a

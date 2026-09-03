@@ -4,4 +4,5 @@ import 'technical_material.dart';
 final List<ArpeggioMaterial> proofArpeggios = List.unmodifiable([
   for (final root in ['C', 'G', 'D'])
     ArpeggioMaterial(root, ArpeggioQuality.major),
+  ArpeggioMaterial('C', ArpeggioQuality.minor),
 ]);

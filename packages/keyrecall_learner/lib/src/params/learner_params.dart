@@ -547,7 +547,7 @@ const LearnerParams v1PrototypeLearnerParams = LearnerParams(
 /// is refused by [LearnerStateCheckpoint.isUsableUnder] rather than decoded
 /// into a state with silent zeros in it, and the journal is replayed instead.
 const LearnerParams v1LearnerParams = LearnerParams(
-  modelVersion: 'v1-7',
+  modelVersion: 'v1-8',
   competency: _v1Competency,
   materialMemory: _v1MaterialMemory,
   materialExecution: _v1MaterialExecution,

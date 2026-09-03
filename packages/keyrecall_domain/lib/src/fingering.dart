@@ -252,7 +252,7 @@ const Map<String, Map<Hand, _FingeringShape>> _scaleFingeringShapes = {
   'Bb_MELODIC_MINOR': {Hand.right: _rh21231234, Hand.left: _lh21321432},
 };
 
-const Map<String, Map<Hand, _FingeringShape>> _arpeggioFingeringShapes = {
+const Map<String, Map<Hand, _FingeringShape>> _majorArpeggioFingeringShapes = {
   'C_MAJOR_ROOT_ARPEGGIO': {
     Hand.right: _FingeringShape._(
       entry: [1],
@@ -279,6 +279,17 @@ const Map<String, Map<Hand, _FingeringShape>> _arpeggioFingeringShapes = {
   },
 };
 
+const Map<String, Map<Hand, _FingeringShape>> _minorArpeggioFingeringShapes = {
+  'C_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _FingeringShape._(
+      entry: [1],
+      cycle: [2, 3, 1],
+      terminalFinger: 5,
+    ),
+    Hand.left: _FingeringShape._(entry: [5], cycle: [4, 2, 1]),
+  },
+};
+
 const _scaleFingeringProvenance = FingeringProvenance._(
   source: 'KeyRecall Scale Fingering Taxonomy and Research',
   sourceEdition: '2026-08-18',
@@ -290,6 +301,13 @@ const _arpeggioFingeringProvenance = FingeringProvenance._(
   source: 'Michael Clark, Piano Basics',
   sourceEdition: '2026',
   sourceLocation: 'One-Octave Arpeggios §§31.1–31.4',
+  status: CanonicalFingeringStatus.established,
+);
+
+const _minorArpeggioFingeringProvenance = FingeringProvenance._(
+  source: 'Michael Clark, Piano Basics',
+  sourceEdition: '2026',
+  sourceLocation: 'Two-Octave Minor Arpeggios',
   status: CanonicalFingeringStatus.established,
 );
 
@@ -314,7 +332,14 @@ Map<String, Map<Hand, CanonicalFingering>> _canonicalRecords(
 
 final Map<String, Map<Hand, CanonicalFingering>> _canonicalFingerings = {
   ..._canonicalRecords(_scaleFingeringShapes, _scaleFingeringProvenance),
-  ..._canonicalRecords(_arpeggioFingeringShapes, _arpeggioFingeringProvenance),
+  ..._canonicalRecords(
+    _majorArpeggioFingeringShapes,
+    _arpeggioFingeringProvenance,
+  ),
+  ..._canonicalRecords(
+    _minorArpeggioFingeringShapes,
+    _minorArpeggioFingeringProvenance,
+  ),
 };
 
 /// The canonical fingering for [material] in [hand], or null when unsupported.

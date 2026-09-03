@@ -53,7 +53,9 @@ SpelledPitch spellExpectedPitch({
   final cycle = (degree / topology.degreesPerOctave).floor();
   final index = degree - cycle * topology.degreesPerOctave;
   final letter = tonicSpellingOf(material).letter.stepsAbove(
-    cycle * NoteLetter.values.length + topology.letterOffsets[index],
+    topology.originLetterOffset +
+        cycle * NoteLetter.values.length +
+        topology.letterOffsets[index],
   );
   final pitch = SpelledPitch.forMidiNote(midiNote, letter: letter);
   if (pitch == null) {
@@ -81,8 +83,11 @@ SpelledPitch spellObservedPitch(
 
   var alterations = 0;
   for (final (degree, interval) in topology.semitoneOffsets.indexed) {
-    final letter = tonic.letter.stepsAbove(topology.letterOffsets[degree]);
-    final memberPitchClass = (tonic.pitchClass + interval) % 12;
+    final letter = tonic.letter.stepsAbove(
+      topology.originLetterOffset + topology.letterOffsets[degree],
+    );
+    final memberPitchClass =
+        (tonic.pitchClass + topology.originSemitoneOffset + interval) % 12;
     if (memberPitchClass == midiNote % 12) {
       final member = SpelledPitch.forMidiNote(midiNote, letter: letter);
       if (member != null) return member;

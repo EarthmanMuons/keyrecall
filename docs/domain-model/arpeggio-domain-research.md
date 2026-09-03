@@ -113,8 +113,8 @@ useful support for topology preparation, but it does not justify adding broken
 chords to KeyRecall's exercise domain.
 
 No one source above settles every black-key tonic, minor tonic, inversion, and
-hand. The product fingering dataset therefore remains open beyond the C, G, and
-D major root-position fixture.
+hand. The non-product fingering fixture therefore remains limited to C, G, and
+D major root position and C minor root position.
 
 ### 3.3 Transfer evidence
 
@@ -217,10 +217,11 @@ active unresolved requirement
     -> continuously cued
 ```
 
-Only the fingering for the C, G, and D fixture is now sourced. Right-hand-only,
-upward-only entry remains a provisional KeyRecall policy. It must be compared
-with a two-hand choice and an up-and-down entry during domain characterization.
-The floor must never substitute a broken chord or a different tonic.
+Only the fingering for the C, G, and D major and C minor root-position fixture
+is now sourced. Right-hand-only, upward-only entry remains a provisional
+KeyRecall policy. It must be compared with a two-hand choice and an up-and-down
+entry during domain characterization. The floor must never substitute a broken
+chord or a different tonic.
 
 ## 6. Canonical fingering record
 

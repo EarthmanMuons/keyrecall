@@ -58,10 +58,13 @@ String _formName(ScaleForm form) => switch (form) {
 
 String _arpeggioQualityName(ArpeggioQuality quality) => switch (quality) {
   ArpeggioQuality.major => 'major',
+  ArpeggioQuality.minor => 'minor',
 };
 
 String _inversionName(ArpeggioInversion inversion) => switch (inversion) {
   ArpeggioInversion.root => 'root-position',
+  ArpeggioInversion.first => 'first-inversion',
+  ArpeggioInversion.second => 'second-inversion',
 };
 
 const Set<int> _whitePitchClasses = {0, 2, 4, 5, 7, 9, 11};

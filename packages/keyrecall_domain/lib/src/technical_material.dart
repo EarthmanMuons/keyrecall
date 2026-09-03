@@ -89,7 +89,8 @@ sealed class TechnicalMaterial {
 
 /// The chord quality whose tones form an arpeggio.
 enum ArpeggioQuality {
-  major('MAJOR', Competency.majorArpeggioTopology);
+  major('MAJOR', Competency.majorArpeggioTopology),
+  minor('MINOR', Competency.minorArpeggioTopology);
 
   const ArpeggioQuality(this.id, this.topologyCompetency);
 
@@ -104,7 +105,9 @@ enum ArpeggioQuality {
 
 /// Which chord tone begins an arpeggio's repeating topology.
 enum ArpeggioInversion {
-  root('ROOT');
+  root('ROOT'),
+  first('FIRST'),
+  second('SECOND');
 
   const ArpeggioInversion(this.id);
 
@@ -141,10 +144,40 @@ final class ArpeggioMaterial extends TechnicalMaterial {
   String get familyId => TechnicalMaterial.arpeggioFamilyId;
 
   @override
-  late final MaterialTopology topology = MaterialTopology(
-    semitoneOffsets: const [0, 4, 7],
-    letterOffsets: const [0, 2, 4],
-  );
+  late final MaterialTopology topology = switch ((quality, inversion)) {
+    (ArpeggioQuality.major, ArpeggioInversion.root) => MaterialTopology(
+      semitoneOffsets: const [0, 4, 7],
+      letterOffsets: const [0, 2, 4],
+    ),
+    (ArpeggioQuality.major, ArpeggioInversion.first) => MaterialTopology(
+      originSemitoneOffset: 4,
+      originLetterOffset: 2,
+      semitoneOffsets: const [0, 3, 8],
+      letterOffsets: const [0, 2, 5],
+    ),
+    (ArpeggioQuality.major, ArpeggioInversion.second) => MaterialTopology(
+      originSemitoneOffset: 7,
+      originLetterOffset: 4,
+      semitoneOffsets: const [0, 5, 9],
+      letterOffsets: const [0, 3, 5],
+    ),
+    (ArpeggioQuality.minor, ArpeggioInversion.root) => MaterialTopology(
+      semitoneOffsets: const [0, 3, 7],
+      letterOffsets: const [0, 2, 4],
+    ),
+    (ArpeggioQuality.minor, ArpeggioInversion.first) => MaterialTopology(
+      originSemitoneOffset: 3,
+      originLetterOffset: 2,
+      semitoneOffsets: const [0, 4, 9],
+      letterOffsets: const [0, 2, 5],
+    ),
+    (ArpeggioQuality.minor, ArpeggioInversion.second) => MaterialTopology(
+      originSemitoneOffset: 7,
+      originLetterOffset: 4,
+      semitoneOffsets: const [0, 5, 8],
+      letterOffsets: const [0, 3, 5],
+    ),
+  };
 
   @override
   Competency get topologyCompetency => quality.topologyCompetency;

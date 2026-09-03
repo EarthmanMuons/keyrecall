@@ -11,6 +11,99 @@ void main() {
     expect(material, isNot(TechnicalMaterial('C', ScaleForm.major)));
   });
 
+  test('quality and inversion each produce distinct material identity', () {
+    expect(
+      ArpeggioMaterial(
+        'C',
+        ArpeggioQuality.major,
+        inversion: ArpeggioInversion.first,
+      ).materialId,
+      'C_MAJOR_FIRST_ARPEGGIO',
+    );
+    expect(
+      ArpeggioMaterial(
+        'C',
+        ArpeggioQuality.minor,
+        inversion: ArpeggioInversion.second,
+      ).materialId,
+      'C_MINOR_SECOND_ARPEGGIO',
+    );
+  });
+
+  test('all triad qualities and inversions realize their ordered topology', () {
+    final cases = [
+      (
+        ArpeggioQuality.major,
+        ArpeggioInversion.root,
+        [0, 4, 7, 12],
+        ['C', 'E', 'G', 'C'],
+      ),
+      (
+        ArpeggioQuality.major,
+        ArpeggioInversion.first,
+        [0, 3, 8, 12],
+        ['E', 'G', 'C', 'E'],
+      ),
+      (
+        ArpeggioQuality.major,
+        ArpeggioInversion.second,
+        [0, 5, 9, 12],
+        ['G', 'C', 'E', 'G'],
+      ),
+      (
+        ArpeggioQuality.minor,
+        ArpeggioInversion.root,
+        [0, 3, 7, 12],
+        ['C', 'Eb', 'G', 'C'],
+      ),
+      (
+        ArpeggioQuality.minor,
+        ArpeggioInversion.first,
+        [0, 4, 9, 12],
+        ['Eb', 'G', 'C', 'Eb'],
+      ),
+      (
+        ArpeggioQuality.minor,
+        ArpeggioInversion.second,
+        [0, 5, 8, 12],
+        ['G', 'C', 'Eb', 'G'],
+      ),
+    ];
+
+    for (final (quality, inversion, intervals, spellings) in cases) {
+      final exercise = Exercise.linear(
+        material: ArpeggioMaterial('C', quality, inversion: inversion),
+        hands: HandConfiguration.right,
+        direction: ExerciseDirection.up,
+        tempoBpm: 60,
+      );
+      final pitches = [
+        for (final moment in realize(exercise).moments)
+          moment.notes.single.pitch,
+      ];
+      final firstMidi = pitches.first.midiNote;
+
+      expect(
+        pitches.map((pitch) => pitch.midiNote - firstMidi),
+        intervals,
+        reason: '$quality $inversion intervals',
+      );
+      expect(
+        pitches.map(
+          (pitch) =>
+              '${pitch.letter.label}${switch (pitch.alteration) {
+                -1 => 'b',
+                0 => '',
+                1 => '#',
+                _ => pitch.alteration,
+              }}',
+        ),
+        spellings,
+        reason: '$quality $inversion spelling',
+      );
+    }
+  });
+
   test('topology realizes chord tones rather than scale degrees', () {
     final exercise = Exercise.linear(
       material: material,
@@ -158,5 +251,35 @@ void main() {
       ),
       [5, 3, 2, 1],
     );
+  });
+
+  test('only sourced new arpeggio combinations have fingering records', () {
+    final cMinor = ArpeggioMaterial('C', ArpeggioQuality.minor);
+    final cMajorFirst = ArpeggioMaterial(
+      'C',
+      ArpeggioQuality.major,
+      inversion: ArpeggioInversion.first,
+    );
+
+    expect(canonicalFingering(cMinor, Hand.right)?.ascending(2), [
+      1,
+      2,
+      3,
+      1,
+      2,
+      3,
+      5,
+    ]);
+    expect(canonicalFingering(cMinor, Hand.left)?.ascending(2), [
+      5,
+      4,
+      2,
+      1,
+      4,
+      2,
+      1,
+    ]);
+    expect(canonicalFingering(cMajorFirst, Hand.right), isNull);
+    expect(canonicalFingering(cMajorFirst, Hand.left), isNull);
   });
 }

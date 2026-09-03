@@ -255,20 +255,24 @@ void main() {
 
   group('a recorded exercise', () {
     test('round-trips arpeggio material identity', () {
-      final exercise = Exercise.linear(
-        material: proofArpeggios.first,
-        hands: HandConfiguration.right,
-        direction: ExerciseDirection.up,
-      );
+      for (final quality in ArpeggioQuality.values) {
+        for (final inversion in ArpeggioInversion.values) {
+          final exercise = Exercise.linear(
+            material: ArpeggioMaterial('C', quality, inversion: inversion),
+            hands: HandConfiguration.right,
+            direction: ExerciseDirection.up,
+          );
 
-      final reread = decodeExercise(
-        jsonDecode(jsonEncode(encodeExercise(exercise)))
-            as Map<String, Object?>,
-      );
+          final reread = decodeExercise(
+            jsonDecode(jsonEncode(encodeExercise(exercise)))
+                as Map<String, Object?>,
+          );
 
-      expect(reread, exercise);
-      expect(reread.material, isA<ArpeggioMaterial>());
-      expect(reread.opportunitySites, exercise.opportunitySites);
+          expect(reread, exercise);
+          expect(reread.material, isA<ArpeggioMaterial>());
+          expect(reread.opportunitySites, exercise.opportunitySites);
+        }
+      }
     });
 
     // The journal is the historical record, so replay must reproduce the motor

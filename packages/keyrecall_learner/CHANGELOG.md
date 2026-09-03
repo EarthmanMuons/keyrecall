@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- Learner model `v1-8` adds minor-arpeggio topology as a distinct competency.
+
 ### Added
 
 - Initial port of the KeyRecall V1 learner model from the Python prototype under
