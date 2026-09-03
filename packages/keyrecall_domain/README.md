@@ -37,7 +37,8 @@ learner, reads no state, and makes no pedagogical judgments; those belong to
   feedback, and tempo support.
 - **Catalog, bands, and instrument.** `allScales` is everything supported;
   `admissionBandOf` says how early each is conventionally introduced;
-  `PracticeGoal` classifies material against a destination; and
+  `CurriculumRequirement` identifies a stable target or support capability;
+  `PracticeGoal` names a custom scope or versioned curriculum; and
   `InstrumentProfile` gates what the connected instrument can play.
   `v1ScaleCatalog` is a fixture the frozen Python prototype matches, not a
   product list.

@@ -1,7 +1,8 @@
 # Curriculum, goals, and focus
 
-- **Status:** Proposed curriculum contract; scheduler outcome and acquisition
-  floor seams implemented
+- **Status:** Structural scope resolution, requirement state, terminal practice
+  outcomes, and acquisition floor implemented; goal persistence and emphasis
+  ranking remain proposed
 - **Written:** September 3, 2026
 - **Scope:** How a large technical-material domain becomes a small, intentional
   practice surface without changing learner inference or creating
@@ -224,10 +225,16 @@ The floor:
 This is a scheduler mechanism, not an arpeggio or exam branch. The scale family
 supplies continuously cued, one-octave, ascending single-hand realizations, and
 simulation establishes that they keep the seven-material acquisition scope
-actionable. `PracticeSession.open` still refuses scoped goals because no
-resolved-scope layer yet distinguishes unresolved work from caught-up work or
-invalid requirements. Passing the floor without that knowledge would make it
-fire in scopes that need no acquisition work.
+actionable.
+
+`PracticeScopeResolver` now resolves every requirement, support relation,
+realization constraint, curriculum edition, and focus reference as one
+all-or-nothing structural scope. `PracticeScopeEvaluator` separately derives
+coverage and due state. `PracticeSession` invokes the scheduler and acquisition
+floor only for due work, returns `PracticeCaughtUp` without consuming a
+scheduler opportunity, and returns `PracticeInvalidScope` before scheduling.
+General fluency retains its broad scheduling behavior; the due-work envelope
+and acquisition floor apply to deliberate narrow scopes.
 
 ## 7. The arpeggio proof
 

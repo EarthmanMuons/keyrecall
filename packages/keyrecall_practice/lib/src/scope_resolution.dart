@@ -2,6 +2,39 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
+/// Resolves candidates and safe entries for one technical-material family.
+abstract interface class PracticeMaterialFamily {
+  String get familyId;
+
+  List<Exercise> generate(
+    InstrumentProfile instrument,
+    TechnicalMaterial material,
+  );
+
+  AcquisitionFloor acquisitionFloorFor(
+    Iterable<AcquisitionFloorRequest> requests,
+  );
+}
+
+/// The scale family's curriculum-resolution contract.
+class ScalePracticeMaterialFamily implements PracticeMaterialFamily {
+  const ScalePracticeMaterialFamily();
+
+  @override
+  String get familyId => TechnicalMaterial.scaleFamilyId;
+
+  @override
+  List<Exercise> generate(
+    InstrumentProfile instrument,
+    TechnicalMaterial material,
+  ) => generateCandidates(instrument, [material]);
+
+  @override
+  AcquisitionFloor acquisitionFloorFor(
+    Iterable<AcquisitionFloorRequest> requests,
+  ) => scaleAcquisitionFloorFor(requests);
+}
+
 /// Why a requested goal and focus could not become a practice scope.
 enum ScopeResolutionFailureCode {
   duplicateRequirementId,
@@ -12,6 +45,7 @@ enum ScopeResolutionFailureCode {
   unresolvedSupport,
   focusOutsideGoal,
   emptyExclusiveFocus,
+  noTargetRequirements,
 }
 
 /// One deterministic configuration failure found during scope resolution.
@@ -51,13 +85,37 @@ final class InvalidPracticeScope extends ScopeResolution {
 /// Resolves curriculum identities and realizations without reading learner state.
 class PracticeScopeResolver {
   final Map<String, Set<String>> supportedVersionsByCurriculumId;
+  final Map<String, PracticeMaterialFamily> _families;
 
   PracticeScopeResolver({
     Map<String, Set<String>> supportedVersionsByCurriculumId = const {},
+    Iterable<PracticeMaterialFamily> families = const [
+      ScalePracticeMaterialFamily(),
+    ],
   }) : supportedVersionsByCurriculumId = Map.unmodifiable({
          for (final entry in supportedVersionsByCurriculumId.entries)
            entry.key: Set.unmodifiable(entry.value),
+       }),
+       _families = Map.unmodifiable({
+         for (final family in families) family.familyId: family,
        });
+
+  AcquisitionFloor acquisitionFloorFor(
+    Iterable<ResolvedRequirement> requirements,
+  ) {
+    final resolved = requirements.toList();
+    return AcquisitionFloor([
+      for (final family in _families.values)
+        ...family.acquisitionFloorFor([
+          for (final requirement in resolved)
+            if (requirement.requirement.familyId == family.familyId)
+              AcquisitionFloorRequest(
+                requirementId: requirement.requirement.id,
+                candidates: requirement.candidates,
+              ),
+        ]).entries,
+    ]);
+  }
 
   ScopeResolution resolve({
     required PracticeGoal goal,
@@ -139,11 +197,15 @@ class PracticeScopeResolver {
             (exclusiveIds == null || exclusiveIds.contains(requirement.id)))
           requirement.id,
     };
-    if (exclusiveIds != null && activeTargetIds.isEmpty) {
+    if (activeTargetIds.isEmpty) {
       failures.add(
-        const ScopeResolutionFailure(
-          code: ScopeResolutionFailureCode.emptyExclusiveFocus,
-          reference: 'exclusive focus targets',
+        ScopeResolutionFailure(
+          code: exclusiveIds == null
+              ? ScopeResolutionFailureCode.noTargetRequirements
+              : ScopeResolutionFailureCode.emptyExclusiveFocus,
+          reference: exclusiveIds == null
+              ? 'curriculum targets'
+              : 'exclusive focus targets',
         ),
       );
     }
@@ -172,7 +234,8 @@ class PracticeScopeResolver {
         );
         continue;
       }
-      if (material.familyId != requirement.familyId) {
+      final family = _families[requirement.familyId];
+      if (family == null || material.familyId != family.familyId) {
         failures.add(
           ScopeResolutionFailure(
             code: ScopeResolutionFailureCode.unknownFamily,
@@ -182,10 +245,11 @@ class PracticeScopeResolver {
         );
         continue;
       }
-      final candidates = generateCandidates(instrument, [
-        material,
-      ]).where(requirement.constraints.matches).toList();
-      if (candidates.isEmpty) {
+      final candidates = family.generate(instrument, material);
+      final targetCandidates = candidates
+          .where(requirement.constraints.matches)
+          .toList();
+      if (targetCandidates.isEmpty) {
         failures.add(
           ScopeResolutionFailure(
             code: ScopeResolutionFailureCode.unrealizableRequirement,
@@ -199,6 +263,7 @@ class PracticeScopeResolver {
         ResolvedRequirement(
           requirement: requirement,
           material: material,
+          targetCandidates: targetCandidates,
           candidates: candidates,
           emphasis: focus.emphasisByRequirementId[requirement.id] ?? 1,
         ),
@@ -211,6 +276,7 @@ class PracticeScopeResolver {
         goalId: goal.id,
         curriculumId: curriculum.id,
         curriculumVersion: curriculum.version,
+        isNarrow: goal.isScoped || focus.exclusiveRequirementIds != null,
         requirements: resolved,
       ),
     );

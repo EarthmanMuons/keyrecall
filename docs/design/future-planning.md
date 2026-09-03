@@ -771,10 +771,9 @@ slot eleven and in three quarters of runs within a hundred and twenty slots;
 over the shipped forty-eight it never happens, at three times the length of a
 sweep. So breadth is an escape rather than a delay.
 
-It is a live path rather than a stress fixture, because `PracticeGoal.scopeOf`
-narrows the catalog to `targetMaterialIds` and a goal aimed at a handful of
-scales recreates the narrow catalog exactly. Goals are therefore expressible but
-not runnable: `PracticeSession.open` throws for a scoped goal.
+It is a live path rather than a stress fixture, because a goal aimed at a
+handful of scales recreates the narrow catalog exactly. Scoped goals now resolve
+through stable curriculum requirements before a practice decision is made.
 
 The scheduler now accepts family-declared `AcquisitionFloorEntry` realizations
 from a caller that knows requirements remain unresolved. It consults them only
@@ -787,10 +786,12 @@ The scale family supplies continuously cued, one-octave, ascending single-hand
 entries. They prevent the seven-material true-beginner trajectory from running
 dry in `keyrecall_simulation/test/sitting_ran_dry_test.dart`.
 
-`PracticeSession.open` still refuses a scoped goal. The missing layer is now
-scope resolution and requirement state: only that layer can distinguish
-unresolved work, which may invoke the floor, from caught-up work, which must
-not. It must also reject invalid requirement identities before scheduling.
+`PracticeScopeResolver` rejects unknown identities, family mismatches,
+unrealizable constraints, dangling support, invalid focus, and unsupported
+registered editions without returning a partial scope. Requirement evaluation
+keeps coverage orthogonal to due and actionable work. `PracticeSession` can
+therefore return selected, blocked, caught-up, or invalid-scope outcomes with
+the correct layer ownership and opportunity accounting.
 
 ## 4.10 Spend the slot after coordination is earned
 

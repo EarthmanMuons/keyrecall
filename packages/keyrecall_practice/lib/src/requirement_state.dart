@@ -3,6 +3,9 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
+/// Retrieval health below which a covered scale warrants maintenance.
+const double scaleMaintenanceRetrievalFloor = 0.75;
+
 /// Whether one requirement has been demonstrated to its completion target.
 enum RequirementCoverage { uncovered, covered }
 
@@ -140,7 +143,7 @@ RequirementState assessScaleRequirement({
   return RequirementState(
     resolved: resolved,
     coverage: RequirementCoverage.covered,
-    workStatus: retrieval < 0.75
+    workStatus: retrieval < scaleMaintenanceRetrievalFloor
         ? RequirementWorkStatus.due
         : RequirementWorkStatus.healthy,
   );

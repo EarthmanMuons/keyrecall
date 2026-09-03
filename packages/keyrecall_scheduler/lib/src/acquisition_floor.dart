@@ -21,3 +21,15 @@ class AcquisitionFloor {
   AcquisitionFloor(Iterable<AcquisitionFloorEntry> entries)
     : entries = List.unmodifiable(entries);
 }
+
+/// One actionable requirement asking its family for safe entry realizations.
+@immutable
+class AcquisitionFloorRequest {
+  final String requirementId;
+  final Iterable<Exercise> candidates;
+
+  const AcquisitionFloorRequest({
+    required this.requirementId,
+    required this.candidates,
+  });
+}

@@ -54,6 +54,20 @@ void main() {
     }
   });
 
+  test('family entries retain the requirement they support', () {
+    final candidates = generateCandidates(instrument, [material]);
+    final entries = scaleAcquisitionFloorFor([
+      AcquisitionFloorRequest(
+        requirementId: 'C_MAJOR_HT_TWO_OCTAVES',
+        candidates: candidates,
+      ),
+    ]).entries;
+
+    expect(entries.map((entry) => entry.requirementId).toSet(), {
+      'C_MAJOR_HT_TWO_OCTAVES',
+    });
+  });
+
   test('ordinary admission wins without consulting the floor', () {
     final result = pipeline.decide(
       state: stateAt(PlacementTier.beginner),

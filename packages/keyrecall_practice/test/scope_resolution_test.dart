@@ -43,12 +43,22 @@ void main() {
       isNot(material.materialId),
     );
     expect(
-      result.scope.requirements.single.candidates,
+      result.scope.requirements.single.targetCandidates,
       everyElement(
         predicate<Exercise>(
           (exercise) =>
               exercise.conditions.hands == HandConfiguration.together &&
               exercise.conditions.octaves == 2,
+        ),
+      ),
+    );
+    expect(
+      result.scope.requirements.single.candidates,
+      contains(
+        predicate<Exercise>(
+          (exercise) =>
+              exercise.conditions.hands == HandConfiguration.right &&
+              exercise.conditions.octaves == 1,
         ),
       ),
     );

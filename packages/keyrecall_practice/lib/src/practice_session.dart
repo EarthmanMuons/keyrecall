@@ -8,6 +8,8 @@ import 'package:meta/meta.dart';
 import 'pending_decision.dart';
 import 'performance_closure.dart';
 import 'practice_store.dart';
+import 'requirement_state.dart';
+import 'scope_resolution.dart';
 
 /// Generates the ids a transaction needs.
 ///
@@ -30,7 +32,10 @@ class PresentedAttempt extends PracticeDecision {
   /// The durable record of what was decided.
   final PendingDecision decision;
 
-  const PresentedAttempt(this.decision);
+  /// Curriculum coverage at the instant this exercise was selected.
+  final ScopeCoverage? coverage;
+
+  const PresentedAttempt(this.decision, {this.coverage});
 
   /// The exercise to present.
   Exercise get exercise => decision.exercise;
@@ -47,8 +52,27 @@ class PresentedAttempt extends PracticeDecision {
 class PracticeBlocked extends PracticeDecision {
   final BlockedReason reason;
   final SelectionBlocked selection;
+  final ScopeCoverage coverage;
 
-  PracticeBlocked(this.selection) : reason = selection.reason;
+  PracticeBlocked(this.selection, {required this.coverage})
+    : reason = selection.reason;
+}
+
+/// No requirement in the active scope warrants work now.
+@immutable
+class PracticeCaughtUp extends PracticeDecision {
+  final ScopeCoverage coverage;
+
+  const PracticeCaughtUp(this.coverage);
+}
+
+/// The requested goal or focus could not be resolved completely.
+@immutable
+class PracticeInvalidScope extends PracticeDecision {
+  final List<ScopeResolutionFailure> failures;
+
+  PracticeInvalidScope(Iterable<ScopeResolutionFailure> failures)
+    : failures = List.unmodifiable(failures);
 }
 
 /// Thrown when the transaction is asked to do something out of order.
@@ -107,8 +131,10 @@ class PracticeSession {
   /// This sitting's id, which scopes the attempt cap and the recency window.
   final String sessionId;
 
-  /// The candidate set for this sitting.
-  final List<Exercise> candidates;
+  final List<TechnicalMaterial> _materials;
+  final InstrumentProfile _instrument;
+  final PracticeScopeResolver _scopeResolver;
+  final PracticeScopeEvaluator _scopeEvaluator;
 
   /// The build recorded on each attempt, when the app knows it.
   final String? appBuildVersion;
@@ -121,6 +147,7 @@ class PracticeSession {
 
   PendingDecision? _pending;
   PresentedAttempt? _outstanding;
+  late ScopeResolution _scopeResolution;
 
   PracticeSession._({
     required this.learner,
@@ -128,7 +155,12 @@ class PracticeSession {
     required this.store,
     required this.profile,
     required this.sessionId,
-    required this.candidates,
+    required List<TechnicalMaterial> materials,
+    required InstrumentProfile instrument,
+    required PracticeScopeResolver scopeResolver,
+    required PracticeScopeEvaluator scopeEvaluator,
+    required PracticeGoal goal,
+    required PracticeFocus focus,
     required this.appBuildVersion,
     required IdGenerator nextId,
     required LearnerState state,
@@ -139,7 +171,13 @@ class PracticeSession {
        _state = state,
        _session = session,
        _journal = journal,
-       _pending = pending;
+       _pending = pending,
+       _materials = List.unmodifiable(materials),
+       _instrument = instrument,
+       _scopeResolver = scopeResolver,
+       _scopeEvaluator = scopeEvaluator {
+    _scopeResolution = _resolve(goal, focus);
+  }
 
   /// Opens a sitting for [profile], recovering whatever the last run left.
   ///
@@ -153,14 +191,7 @@ class PracticeSession {
   /// after it and the prior it propagates from comes from the profile rather
   /// than from whoever opened the session.
   ///
-  /// [goal] narrows the material under consideration, and defaults to all of
-  /// it. A scoped goal is refused: a narrowed catalog reaches a slot that
-  /// admits nothing, which `docs/design/future-planning.md` section 4.9
-  /// records and `sitting_ran_dry_test.dart` reproduces. Solving that
-  /// exhaustion is part of shipping goals rather than work general fluency
-  /// needs.
-  ///
-  /// Throws [UnsupportedError] for a scoped [goal].
+  /// [goal] and [focus] resolve structurally before any scheduling decision.
   static Future<PracticeSession> open({
     required PracticeStore store,
     required Profile profile,
@@ -169,17 +200,13 @@ class PracticeSession {
     SchedulerPipeline? pipeline,
     InstrumentProfile? instrument,
     PracticeGoal goal = PracticeGoal.generalFluency,
+    PracticeFocus focus = PracticeFocus.unrestricted,
+    PracticeScopeResolver? scopeResolver,
+    PracticeScopeEvaluator scopeEvaluator = const PracticeScopeEvaluator(),
     String? sessionId,
     String? appBuildVersion,
     IdGenerator? nextId,
   }) async {
-    if (goal.isScoped) {
-      throw UnsupportedError(
-        'goal ${goal.id} names an explicit material scope, which the '
-        'scheduler can exhaust',
-      );
-    }
-
     final resolvedPipeline = pipeline ?? SchedulerPipeline(learner: learner);
     final generator = nextId ?? newProfileId;
     final journal = await store.loadJournal(
@@ -217,13 +244,12 @@ class PracticeSession {
       store: store,
       profile: profile,
       sessionId: sessionId ?? generator(),
-      // The goal says what the learner is working toward. What they are ready
-      // for is the scheduler's REQUIRES gate, which ranks rather than
-      // excludes.
-      candidates: generateCandidates(
-        instrument ?? InstrumentProfile(),
-        goal.scopeOf(materials),
-      ).toList(),
+      materials: materials,
+      instrument: instrument ?? InstrumentProfile(),
+      scopeResolver: scopeResolver ?? PracticeScopeResolver(),
+      scopeEvaluator: scopeEvaluator,
+      goal: goal,
+      focus: focus,
       appBuildVersion: appBuildVersion,
       nextId: generator,
       state: replay.state,
@@ -249,6 +275,14 @@ class PracticeSession {
   /// The scheduler's view of this sitting.
   SessionState get session => _session;
 
+  /// The current structural candidate envelope, empty for an invalid scope.
+  List<Exercise> get candidates => switch (_scopeResolution) {
+    ValidPracticeScope(:final scope) => List.unmodifiable({
+      for (final requirement in scope.requirements) ...requirement.candidates,
+    }),
+    InvalidPracticeScope() => const [],
+  };
+
   /// A decision from an interrupted run that was never answered.
   ///
   /// Present means the last run showed an exercise and did not record what
@@ -258,11 +292,22 @@ class PracticeSession {
   /// Whether an exercise is currently outstanding.
   bool get hasOutstandingAttempt => _outstanding != null;
 
+  /// Applies a new goal or focus to the next undecided slot.
+  ///
+  /// An outstanding or recovered decision remains unchanged until it closes or
+  /// is abandoned.
+  void updateScope({
+    required PracticeGoal goal,
+    PracticeFocus focus = PracticeFocus.unrestricted,
+  }) {
+    _scopeResolution = _resolve(goal, focus);
+  }
+
   /// Decides what to present next and makes that decision durable.
   ///
-  /// Returns [PresentedAttempt] after persisting it, or [PracticeBlocked]
-  /// without creating a pending attempt. Either result consumes the decision
-  /// opportunity.
+  /// Invalid and caught-up scopes return before scheduling and consume no
+  /// decision opportunity. A selected or blocked scheduling attempt consumes
+  /// one.
   ///
   /// Throws [PracticeStateError] when an attempt is already outstanding or an
   /// unresolved decision is pending, since deciding again would abandon
@@ -280,19 +325,44 @@ class PracticeSession {
       );
     }
 
-    // Evaluated against a scratch copy. This may admit nothing, and canonical
-    // state must advance only on a committed attempt.
+    final resolution = _scopeResolution;
+    if (resolution case InvalidPracticeScope(:final failures)) {
+      return PracticeInvalidScope(failures);
+    }
+    final scope = (resolution as ValidPracticeScope).scope;
+
     final scratch = _state.copy();
     learner.propagate(scratch, at);
+
+    final evaluated = _scopeEvaluator.evaluate(
+      scope: scope,
+      state: scratch,
+      journal: _journal,
+      learner: learner,
+      at: at,
+    );
+    if (scope.isNarrow && evaluated.isCaughtUp) {
+      return PracticeCaughtUp(evaluated.coverage);
+    }
+    final due = scope.isNarrow
+        ? evaluated.dueRequirements.toList()
+        : evaluated.requirements;
+    final candidates = <Exercise>{
+      for (final state in due) ...state.resolved.candidates,
+    }.toList();
+    final acquisitionFloor = scope.isNarrow
+        ? _scopeResolver.acquisitionFloorFor(due.map((state) => state.resolved))
+        : null;
 
     final selection = pipeline.decide(
       state: scratch,
       session: _session,
       candidates: candidates,
       at: at,
+      acquisitionFloor: acquisitionFloor,
     );
     if (selection case final SelectionBlocked blocked) {
-      return PracticeBlocked(blocked);
+      return PracticeBlocked(blocked, coverage: evaluated.coverage);
     }
     final chosen = (selection as CandidateSelected).candidate;
 
@@ -316,7 +386,7 @@ class PracticeSession {
     // Durable before the exercise is shown. Everything after this point is
     // recoverable; before it, nothing was presented.
     await store.savePendingDecision(decision);
-    final presented = PresentedAttempt(decision);
+    final presented = PresentedAttempt(decision, coverage: evaluated.coverage);
     _outstanding = presented;
     return presented;
   }
@@ -329,7 +399,9 @@ class PracticeSession {
   Future<PresentedAttempt?> decide({required DateTime at}) async =>
       switch (await decideOutcome(at: at)) {
         final PresentedAttempt presented => presented,
-        PracticeBlocked() => null,
+        PracticeBlocked() ||
+        PracticeCaughtUp() ||
+        PracticeInvalidScope() => null,
       };
 
   /// Ends the outstanding attempt with an outcome established elsewhere.
@@ -591,6 +663,14 @@ class PracticeSession {
     }
     return PresentedAttempt(pending);
   }
+
+  ScopeResolution _resolve(PracticeGoal goal, PracticeFocus focus) =>
+      _scopeResolver.resolve(
+        goal: goal,
+        focus: focus,
+        catalog: _materials,
+        instrument: _instrument,
+      );
 
   /// Reads the checkpoint only if it is safe to start from.
   static Future<LearnerStateCheckpoint?> _usableCheckpoint(

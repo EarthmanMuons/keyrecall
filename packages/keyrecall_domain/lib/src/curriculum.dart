@@ -124,15 +124,18 @@ class PracticeFocus {
 class ResolvedRequirement {
   final CurriculumRequirement requirement;
   final TechnicalMaterial material;
+  final List<Exercise> targetCandidates;
   final List<Exercise> candidates;
   final double emphasis;
 
   ResolvedRequirement({
     required this.requirement,
     required this.material,
+    Iterable<Exercise>? targetCandidates,
     required Iterable<Exercise> candidates,
     this.emphasis = 1,
-  }) : candidates = List.unmodifiable(candidates);
+  }) : targetCandidates = List.unmodifiable(targetCandidates ?? candidates),
+       candidates = List.unmodifiable(candidates);
 }
 
 /// A valid structural practice scope, before learner-relative evaluation.
@@ -141,12 +144,14 @@ class ResolvedPracticeScope {
   final String goalId;
   final String curriculumId;
   final String curriculumVersion;
+  final bool isNarrow;
   final List<ResolvedRequirement> requirements;
 
   ResolvedPracticeScope({
     required this.goalId,
     required this.curriculumId,
     required this.curriculumVersion,
+    required this.isNarrow,
     required Iterable<ResolvedRequirement> requirements,
   }) : requirements = List.unmodifiable(requirements);
 

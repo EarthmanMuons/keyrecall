@@ -562,8 +562,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
 
   /// Asks the scheduler for the next exercise.
   ///
-  /// A slot that admits nothing is a real answer rather than an error, and it
-  /// still consumes a slot, so the loop reports it instead of retrying.
+  /// Every terminal practice outcome is surfaced instead of retried.
   Future<PracticeLoopState> _decide(PracticeLoopState from) async {
     final decision = await from.session.decideOutcome(
       at: DateTime.now().toUtc(),
@@ -583,6 +582,22 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastCommitted: from.lastCommitted,
         lastReading: from.lastReading,
         note: 'practice blocked: ${reason.name}',
+      ),
+      PracticeCaughtUp() => PracticeLoopState(
+        profile: from.profile,
+        session: from.session,
+        lastCommitted: from.lastCommitted,
+        lastReading: from.lastReading,
+        note: 'practice caught up',
+      ),
+      PracticeInvalidScope(:final failures) => PracticeLoopState(
+        profile: from.profile,
+        session: from.session,
+        lastCommitted: from.lastCommitted,
+        lastReading: from.lastReading,
+        note:
+            'invalid practice scope: '
+            '${failures.map((failure) => failure.code.name).join(', ')}',
       ),
     };
   }

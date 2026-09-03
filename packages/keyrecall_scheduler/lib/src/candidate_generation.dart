@@ -58,15 +58,31 @@ List<Exercise> generateCandidates(
 
 /// The scale family's safe starting realizations within [candidates].
 AcquisitionFloor scaleAcquisitionFloor(Iterable<Exercise> candidates) =>
-    AcquisitionFloor([
-      for (final exercise in candidates)
-        if (exercise.conditions.hands != HandConfiguration.together &&
-            exercise.conditions.octaves == 1 &&
-            exercise.conditions.direction == ScaleDirection.up &&
-            exercise.conditions.tempoBpm == generatedTempi.first &&
-            exercise.guidance == GuidanceContext.continuouslyCued)
-          AcquisitionFloorEntry(
-            requirementId: exercise.material.materialId,
-            exercise: exercise,
+    scaleAcquisitionFloorFor([
+      for (final materialId in {
+        for (final exercise in candidates) exercise.material.materialId,
+      })
+        AcquisitionFloorRequest(
+          requirementId: materialId,
+          candidates: candidates.where(
+            (exercise) => exercise.material.materialId == materialId,
           ),
+        ),
     ]);
+
+/// Safe scale-family entries for the supplied actionable requirements.
+AcquisitionFloor scaleAcquisitionFloorFor(
+  Iterable<AcquisitionFloorRequest> requests,
+) => AcquisitionFloor([
+  for (final request in requests)
+    for (final exercise in request.candidates)
+      if (exercise.conditions.hands != HandConfiguration.together &&
+          exercise.conditions.octaves == 1 &&
+          exercise.conditions.direction == ScaleDirection.up &&
+          exercise.conditions.tempoBpm == generatedTempi.first &&
+          exercise.guidance == GuidanceContext.continuouslyCued)
+        AcquisitionFloorEntry(
+          requirementId: request.requirementId,
+          exercise: exercise,
+        ),
+]);

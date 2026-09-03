@@ -71,6 +71,10 @@ final exercise = switch (session.pending) {
     PracticeBlocked(:final reason) => throw StateError(
       'practice blocked: ${reason.name}',
     ),
+    PracticeCaughtUp() => null,
+    PracticeInvalidScope(:final failures) => throw ArgumentError(
+      'invalid practice scope: $failures',
+    ),
   },
 };
 
@@ -86,10 +90,11 @@ with. A wall clock the caller does not control would give replay a different
 origin on every run. `JournalHeader.createdAt` is storage provenance only;
 nothing derives a model timestamp from it.
 
-The session attempt cap counts **decision opportunities**, not presented
-attempts, so a blocked result still consumes one. It does not create a pending
-decision: only an exercise that was durably selected and shown can later become
-an attempt.
+The session attempt cap counts scheduler **decision opportunities**, not only
+presented attempts, so a blocked result still consumes one. Caught-up and
+invalid-scope results return before scheduling and consume none. None creates a
+pending decision: only an exercise that was durably selected and shown can
+later become an attempt.
 
 ## Storage
 

@@ -85,6 +85,59 @@ void main() {
     expect(evaluated.coverage.isComplete, isFalse);
     expect(evaluated.isCaughtUp, isTrue);
   });
+
+  test('the same scope, state, history, and time evaluate identically', () {
+    final evaluator = PracticeScopeEvaluator(
+      assess:
+          ({
+            required resolved,
+            required state,
+            required journal,
+            required learner,
+            required at,
+          }) => RequirementState(
+            resolved: resolved,
+            coverage: RequirementCoverage.uncovered,
+            workStatus: RequirementWorkStatus.due,
+          ),
+    );
+    final state = learner.newState(at: t0);
+    final journal = AttemptJournal(
+      JournalHeader(profileId: alice.id, createdAt: t0),
+    );
+    final scope = _scope();
+
+    EvaluatedPracticeScope evaluate() => evaluator.evaluate(
+      scope: scope,
+      state: state,
+      journal: journal,
+      learner: learner,
+      at: t0,
+    );
+
+    final first = evaluate();
+    final second = evaluate();
+    expect(first.coverage.coveredTargets, second.coverage.coveredTargets);
+    expect(first.coverage.targetCount, second.coverage.targetCount);
+    expect(
+      first.requirements.map(
+        (state) => (
+          state.resolved.requirement.id,
+          state.coverage,
+          state.workStatus,
+          state.resolved.candidates,
+        ),
+      ),
+      second.requirements.map(
+        (state) => (
+          state.resolved.requirement.id,
+          state.coverage,
+          state.workStatus,
+          state.resolved.candidates,
+        ),
+      ),
+    );
+  });
 }
 
 ResolvedPracticeScope _scope() {
@@ -100,6 +153,7 @@ ResolvedPracticeScope _scope() {
     goalId: 'GOAL',
     curriculumId: 'CURRICULUM',
     curriculumVersion: '1',
+    isNarrow: true,
     requirements: [
       for (final id in ['A', 'B', 'C', 'D'])
         ResolvedRequirement(
