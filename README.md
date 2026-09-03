@@ -1,5 +1,5 @@
 <p align="center">
-  <img width="200" src="assets/icon/keyrecall-logo.webp" alt="KeyRecall logo">
+  <img width="200" src="assets/icon/keyrecall-badge.webp" alt="KeyRecall logo">
 </p>
 
 <h1 align="center">KeyRecall</h1>

@@ -48,7 +48,7 @@ MARK_CX, MARK_CY = 24.4, 24.005  # bbox center; the wider key gap pushed it righ
 MARK_R = 25.728  # circumscribed radius about (MARK_CX, MARK_CY)
 CANVAS, SAFE_D = 108.0, 66.0
 SQUARE_INSET = 0.14  # clear margin per edge on the mark's wide axis
-SQUARE_OPTICAL = 0.015  # leftward optical correction, fraction of the canvas
+MARK_OPTICAL = 0.015  # leftward optical correction, fraction of the canvas
 BADGE_R, BADGE_FILL = 22.0, 0.84  # Material 44dp circle keyline; mark fills 84%
 
 SOURCES = {
@@ -152,12 +152,10 @@ def wrap_square(svg: str) -> str:
 
     Then shifted left off true center. The three receding keys run at 25/50/75%,
     so the mark's ink centroid sits ~7% of the canvas right of its bbox center
-    and a geometrically centered mark reads as having a fat left margin. Only
-    the square fit does this: it is the one placement with slack to spend, and
-    the diagonal-bound fits are already up against a hard boundary.
+    and a geometrically centered mark reads as having a fat left margin.
     """
     return place(svg, 48.0, (1 - 2 * SQUARE_INSET) * 48.0 / MARK_W,
-                 SQUARE_OPTICAL * 48.0)
+                 MARK_OPTICAL * 48.0)
 
 
 def wrap_adaptive(svg: str) -> str:
@@ -176,8 +174,9 @@ def wrap_badge(svg: str) -> str:
     so putting both on one element would scale the clip circle too.
     """
     scale = BADGE_R * BADGE_FILL / MARK_R
-    tx, ty = 24 - MARK_CX * scale, 24 - MARK_CY * scale
-    reach = BADGE_R * BADGE_FILL + (0.85 + 3 * 0.8) * scale  # shadow offset + ~3 sigma
+    nudge = MARK_OPTICAL * 48.0
+    tx, ty = 24 - MARK_CX * scale - nudge, 24 - MARK_CY * scale
+    reach = BADGE_R * BADGE_FILL + (0.85 + 3 * 0.8) * scale + nudge
     assert reach < BADGE_R, f"shadow reaches {reach:.2f}, circle is {BADGE_R}"
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" '
@@ -222,13 +221,9 @@ TARGETS = [
     # --- In-app UI. Vector, tokens left intact so the circle can be themed at
     # runtime via --kr-badge / --kr-key / --kr-sharp.
     Target("keyrecall-badge.svg", "brand", fmt="svg", wrap="badge", bake_tokens=False),
-    # --- README. 200px to match the WhatChord logo, so the two repositories
-    # present at the same size. Transparent, because GitHub renders it against
-    # both themes.
-    Target("keyrecall-logo.webp", "brand", fmt="webp", px=200, wrap="badge"),
-    # --- Onboarding. The same badge the README shows, raster because Flutter
-    # has no SVG decoder of its own, and at 512px so it stays sharp at 3x on
-    # the largest size the welcome screen draws it.
+    # --- Onboarding and README. Raster because Flutter has no SVG decoder of
+    # its own, and at 512px so it stays sharp at 3x on the largest size the
+    # welcome screen draws it.
     Target("keyrecall-badge.webp", "brand", fmt="webp", px=512, wrap="badge"),
 ]
 
