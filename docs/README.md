@@ -50,6 +50,8 @@ docs/
 │   ├── progression-graph.md         what precedes what, and where each
 │                                    edge is enforced
 │   ├── material-admission.md        what may be introduced now, and why
+│   ├── arpeggio-domain-research.md  arpeggio vocabulary, evidence, and
+│   │                                promotion gates
 │   ├── validation-boundaries.md     which constructors throw, and which
 │                                    assert
 │   ├── fingering-taxonomy.md
@@ -100,6 +102,7 @@ implementation rather than evidence about another one.
 | Synthetic players, trajectory detectors, and the sweep              | `design/trajectory-simulation.md`                       |
 | Proposed hands-together admission policy, and its evidence chain    | `design/coordination-transition-policy.md`              |
 | Canonical scale fingering                                           | `domain-model/fingering-taxonomy.md`                    |
+| Arpeggio identity, progression evidence, and promotion gates        | `domain-model/arpeggio-domain-research.md`              |
 | Derived motor family, phase, crossing, and continuation structure   | `domain-model/motor-taxonomy.md`                        |
 | Which prerequisite edges exist, and which are prediction instead    | `domain-model/progression-graph.md`                     |
 | Domain entities not superseded below                                | `domain-model/v1-domain-model.md`                       |

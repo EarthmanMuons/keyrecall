@@ -48,4 +48,39 @@ void main() {
     );
     expect(exercise.structuralQ, isNot(contains(Competency.rhScaleExecution)));
   });
+
+  test('proof fingerings preserve their left-hand families', () {
+    final conditions = ExecutionConditions(
+      hands: HandConfiguration.left,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+      handMotion: HandMotion.parallel,
+      tempoBpm: 60,
+    );
+
+    expect(
+      fingeringForConditions(
+        material: ArpeggioMaterial('C', ArpeggioQuality.major),
+        conditions: conditions,
+        hand: Hand.left,
+      ),
+      [5, 4, 2, 1],
+    );
+    expect(
+      fingeringForConditions(
+        material: ArpeggioMaterial('G', ArpeggioQuality.major),
+        conditions: conditions,
+        hand: Hand.left,
+      ),
+      [5, 4, 2, 1],
+    );
+    expect(
+      fingeringForConditions(
+        material: ArpeggioMaterial('D', ArpeggioQuality.major),
+        conditions: conditions,
+        hand: Hand.left,
+      ),
+      [5, 3, 2, 1],
+    );
+  });
 }

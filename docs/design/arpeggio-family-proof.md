@@ -22,10 +22,11 @@ fixture. The available realizations are one octave, upward, at the initial
 tempo, in either single hand or hands together, across the ordinary guidance
 ladder.
 
-The fingering and safe entry are deliberately provisional. The family supplies a
-continuously cued right-hand realization as its acquisition floor, unlike the
-scale family's two single-hand entries. The scheduler evaluates and ranks either
-floor through the same generic path.
+The C, G, and D root-position fingerings are sourced; notably, D major uses
+left-hand `5 3 2 1` rather than C and G's `5 4 2 1`. The safe entry remains
+provisional. The family supplies a continuously cued right-hand realization as
+its acquisition floor, unlike the scale family's two single-hand entries. The
+scheduler evaluates and ranks either floor through the same generic path.
 
 ## Learner state
 
@@ -52,6 +53,8 @@ prediction semantics changed.
 - the common scheduler presents work across beginner, experienced, and advanced
   placement priors.
 
-Arpeggio inversions, multi-octave work, provenance-backed fingerings, tempo
-targets, examination requirements, introduction order, and learner-facing UI
-remain outside this proof.
+Arpeggio inversions, multi-octave work, a complete provenance-backed fingering
+dataset, tempo targets, examination requirements, introduction order, and
+learner-facing UI remain outside this proof. The evidence, current domain
+decisions, and promotion gates are recorded in
+[`arpeggio-domain-research.md`](../domain-model/arpeggio-domain-research.md).

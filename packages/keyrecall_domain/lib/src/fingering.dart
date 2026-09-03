@@ -151,6 +151,21 @@ const Map<String, Map<Hand, ScaleFingering>> _canonical = {
   'Bb_MELODIC_MINOR': {Hand.right: _rh21231234, Hand.left: _lh21321432},
 };
 
+const Map<String, Map<Hand, List<int>>> _proofArpeggioFingerings = {
+  'C_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: [1, 2, 3, 5],
+    Hand.left: [5, 4, 2, 1],
+  },
+  'G_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: [1, 2, 3, 5],
+    Hand.left: [5, 4, 2, 1],
+  },
+  'D_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: [1, 2, 3, 5],
+    Hand.left: [5, 3, 2, 1],
+  },
+};
+
 /// The canonical fingering for [material] in [hand], or null when the catalog
 /// does not cover that scale.
 ScaleFingering? canonicalFingering(TechnicalMaterial material, Hand hand) =>
@@ -175,10 +190,8 @@ List<int>? fingeringForConditions({
 }) {
   if (material is ArpeggioMaterial) {
     if (conditions.octaves != 1) return null;
-    final ascending = switch (hand) {
-      Hand.right => const [1, 2, 3, 5],
-      Hand.left => const [5, 4, 2, 1],
-    };
+    final ascending = _proofArpeggioFingerings[material.materialId]?[hand];
+    if (ascending == null) return null;
     final path = handPathsFor(
       conditions,
       degreesPerOctave: material.topology.degreesPerOctave,

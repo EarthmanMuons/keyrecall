@@ -31,7 +31,9 @@ learner, reads no state, and makes no pedagogical judgments; those belong to
   order, with no relation to what was expected.
 - **Fingering.** `canonicalFingering` covers all 48 scales in both hands as
   `entry / cycle / terminal`, which generates any octave span rather than
-  storing one-octave strings.
+  storing one-octave strings. The arpeggio proof carries sourced one-octave
+  fingerings for C, G, and D major while its full boundary-aware dataset remains
+  research work.
 - **Presentation conditions.** `PresentationConditions` records what an attempt
   was given on four independent channels: pitch cue, motor cue, performance
   feedback, and tempo support.

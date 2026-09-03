@@ -256,11 +256,14 @@ curriculum proves all of the following:
 
 The proof contains C, G, and D major root-position arpeggios, and its mixed
 pseudo-curriculum contains scale and arpeggio requirements. It is not a product
-catalog. Its one-octave fingering, acquisition floor, progression, family
-transfer coefficient, and foundation admission band are provisional architecture
-fixtures. Each needs provenance and validation before arpeggios become
-learner-facing. See [`arpeggio-family-proof.md`](arpeggio-family-proof.md) for
-the exact boundary.
+catalog. Its acquisition floor, progression, family transfer coefficient, and
+foundation admission band are provisional architecture fixtures. The fixture's
+one-octave fingerings are now sourced, including D major's distinct left-hand
+pattern, but the complete catalog and motor model remain unvalidated. See
+[`arpeggio-family-proof.md`](arpeggio-family-proof.md) for the exact
+architecture boundary and
+[`arpeggio-domain-research.md`](../domain-model/arpeggio-domain-research.md) for
+the domain specification and promotion gates.
 
 ## 8. Product surface
 
