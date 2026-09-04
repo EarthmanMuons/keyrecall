@@ -97,6 +97,36 @@ the top of the ladder, but that one is confounded by selection rather than
 interpretable: a fast rung is only offered to a learner whose frontier is
 already there, so the population at 144 BPM is not the population at 60.
 
+## What a real attempt has to carry
+
+The controls are the part that would be discovered missing too late, so what
+this census reads is recorded here against where it already lives. Every field
+is in the journal today:
+
+| Census input            | Where it comes from                                  |
+| ----------------------- | ---------------------------------------------------- |
+| predicted execution     | `execution_p` on the recorded decision               |
+| predicted topology      | `topology_p` on the recorded decision                |
+| observed motor          | `continuity` and `temporal_stability` on the outcome |
+| observed topology       | `topology_accuracy` on the outcome                   |
+| material identity       | the recorded exercise's material                     |
+| hand configuration      | the recorded exercise's execution conditions         |
+| span, direction, motion | the same                                             |
+| requested tempo         | the same                                             |
+| guidance rung           | the recorded exercise's guidance                     |
+| fingering geometry      | derived from the catalog, not stored                 |
+
+Two things to keep rather than to add. The scheduler decision is optional on an
+attempt record, and an attempt without one is skipped: a residual needs the
+prediction that was actually made, and recomputing it later would be measuring a
+different model. And geometry is derived from the catalog by material and hand,
+so a catalog change is a change to the analysis of attempts already recorded,
+which is the right dependency but worth knowing about.
+
+Nothing here argues for new telemetry. It argues for not dropping any of the
+above from what an attempt records, since the confound controls are exactly the
+fields a payload trim would look able to spare.
+
 ## What this does and does not establish
 
 It does not say a fingering-family competency is unwarranted in a real learner.
