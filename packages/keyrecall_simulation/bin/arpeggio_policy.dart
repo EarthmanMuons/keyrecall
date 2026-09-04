@@ -13,7 +13,7 @@ Future<void> main(List<String> arguments) async {
     ..addOption('jobs', defaultsTo: '8')
     ..addOption(
       'mode',
-      allowed: ['baseline', 'transfer'],
+      allowed: ['baseline', 'transfer', 'breadth'],
       defaultsTo: 'baseline',
     );
   final options = parser.parse(arguments);
@@ -26,6 +26,7 @@ Future<void> main(List<String> arguments) async {
     'transfer' => ArpeggioPolicyArm.sensitivityArms.where(
       (arm) => arm.id.startsWith('transfer_'),
     ),
+    'breadth' => ArpeggioPolicyArm.breadthArms,
     _ => throw StateError('unreachable mode $mode'),
   };
   final scopes = mode == 'baseline'
@@ -92,6 +93,81 @@ Future<void> main(List<String> arguments) async {
         '${_meanDelta(pairs, (run) => run.firstScaleSlot)}\t'
         '${_meanDelta(pairs, (run) => run.firstTwoOctaveScaleSlot)}\t'
         '${_meanDelta(pairs, (run) => run.firstHandsTogetherScaleSlot)}',
+      );
+    }
+  }
+
+  const window = 20;
+  stdout
+    ..writeln()
+    ..writeln('introduction pressure')
+    ..writeln(
+      'arm\tscope\tplayer\truns\tintroductions\tintro_peak_$window\t'
+      'unresolved_peak\tunresolved_mean\twithheld_slots\twithheld_candidates',
+    );
+  for (final group in _grouped(runs)) {
+    final first = group.first;
+    stdout.writeln(
+      [
+        first.armId,
+        first.scope.name,
+        first.playerId,
+        '${group.length}',
+        _mean(group.map((run) => run.introductionSlots.length)),
+        '${group.map((run) => run.maxIntroductionsIn(window)).reduce(_max)}',
+        '${group.map((run) => run.maxActiveUnresolved).reduce(_max)}',
+        _meanOf(group.map((run) => run.meanActiveUnresolved)),
+        _mean(group.map((run) => run.withheldSlots)),
+        _mean(group.map((run) => run.withheldCandidates)),
+      ].join('\t'),
+    );
+  }
+
+  stdout
+    ..writeln()
+    ..writeln('introduction follow-through within $window slots')
+    ..writeln(
+      'arm\tscope\tplayer\tfamily\tintroduced\tone_and_done\t'
+      'revisit_p50\trevisit_max\trevisited\tother_hand\tdeeper_span',
+    );
+  for (final group in _grouped(runs)) {
+    final first = group.first;
+    for (final familyId in _families) {
+      final exposures = [
+        for (final run in group)
+          for (final exposure in run.exposures)
+            if (exposure.familyId == familyId) exposure,
+      ];
+      if (exposures.isEmpty) continue;
+      final observable = exposures
+          .where((exposure) => exposure.introducedAtSlot <= slots - window)
+          .toList();
+      final gaps = exposures.map((e) => e.revisitGap).whereType<int>().toList()
+        ..sort();
+      String within(int? Function(MaterialExposure) read) => observable.isEmpty
+          ? '-'
+          : (observable
+                        .where(
+                          (exposure) =>
+                              exposure.reached(read(exposure), window),
+                        )
+                        .length /
+                    observable.length)
+                .toStringAsFixed(3);
+      stdout.writeln(
+        [
+          first.armId,
+          first.scope.name,
+          first.playerId,
+          familyId,
+          '${exposures.length}',
+          '${exposures.where((exposure) => exposure.selections == 1).length}',
+          gaps.isEmpty ? '-' : '${gaps[(gaps.length - 1) ~/ 2]}',
+          gaps.isEmpty ? '-' : '${gaps.last}',
+          within((exposure) => exposure.revisitedAtSlot),
+          within((exposure) => exposure.otherHandAtSlot),
+          within((exposure) => exposure.deeperSpanAtSlot),
+        ].join('\t'),
       );
     }
   }
@@ -265,6 +341,20 @@ String _row(List<ArpeggioPolicyRun> runs) {
 
 int _stops(List<ArpeggioPolicyRun> runs, EligibilityReason reason) =>
     _sum(runs.map((run) => run.progressionStops[reason] ?? 0));
+
+const _families = [
+  TechnicalMaterial.scaleFamilyId,
+  TechnicalMaterial.arpeggioFamilyId,
+];
+
+int _max(int a, int b) => a > b ? a : b;
+
+String _mean(Iterable<int> values) =>
+    _meanOf(values.map((value) => value.toDouble()));
+
+String _meanOf(Iterable<double> values) => values.isEmpty
+    ? '-'
+    : (values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1);
 
 int _sum(Iterable<int> values) => values.fold(0, (sum, value) => sum + value);
 

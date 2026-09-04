@@ -23,14 +23,57 @@ class ArpeggioPolicyArm {
   final String id;
   final double rhoFamily;
   final ArpeggioPracticePolicy practicePolicy;
+  final IntroductionConfig? introductions;
 
   const ArpeggioPolicyArm({
     required this.id,
     required this.rhoFamily,
     this.practicePolicy = const ArpeggioPracticePolicy(),
+    this.introductions,
   });
 
   static const baseline = ArpeggioPolicyArm(id: 'baseline', rhoFamily: 0.35);
+
+  /// Counterfactual controls on how much unresolved new material may be open.
+  ///
+  /// Diagnostic upper bounds rather than proposed policy: the question is
+  /// whether controlling introduction breadth removes the observed churn, and
+  /// what it costs in depth, family allocation, and scale displacement.
+  static const breadthArms = [
+    baseline,
+    ArpeggioPolicyArm(
+      id: 'breadth_catalog_2',
+      rhoFamily: 0.35,
+      introductions: IntroductionConfig(
+        concurrentUnresolved: 2,
+        scope: IntroductionScope.catalog,
+      ),
+    ),
+    ArpeggioPolicyArm(
+      id: 'breadth_catalog_4',
+      rhoFamily: 0.35,
+      introductions: IntroductionConfig(
+        concurrentUnresolved: 4,
+        scope: IntroductionScope.catalog,
+      ),
+    ),
+    ArpeggioPolicyArm(
+      id: 'breadth_catalog_8',
+      rhoFamily: 0.35,
+      introductions: IntroductionConfig(
+        concurrentUnresolved: 8,
+        scope: IntroductionScope.catalog,
+      ),
+    ),
+    ArpeggioPolicyArm(
+      id: 'breadth_family_4',
+      rhoFamily: 0.35,
+      introductions: IntroductionConfig(
+        concurrentUnresolved: 4,
+        scope: IntroductionScope.family,
+      ),
+    ),
+  ];
 
   static const sensitivityArms = [
     baseline,
@@ -65,6 +108,39 @@ class ArpeggioPolicyArm {
   ];
 }
 
+/// One material's exposure history within a trajectory.
+///
+/// Slot counts say how much practice a material received; they cannot say
+/// whether a scheduler returned to what it introduced. Introduction breadth is
+/// a trajectory-grain question, so it needs the first exposure, the first
+/// revisit, and the first work that deepened the material beyond it.
+class MaterialExposure {
+  final String materialId;
+  final String familyId;
+  final int introducedAtSlot;
+  final HandConfiguration introducedHands;
+  final int introducedOctaves;
+  int selections;
+  int? revisitedAtSlot;
+  int? otherHandAtSlot;
+  int? deeperSpanAtSlot;
+
+  MaterialExposure({
+    required this.materialId,
+    required this.familyId,
+    required this.introducedAtSlot,
+    required this.introducedHands,
+    required this.introducedOctaves,
+    this.selections = 1,
+  });
+
+  int? get revisitGap =>
+      revisitedAtSlot == null ? null : revisitedAtSlot! - introducedAtSlot;
+
+  bool reached(int? slot, int within) =>
+      slot != null && slot - introducedAtSlot <= within;
+}
+
 class ArpeggioPolicyRun {
   final String armId;
   final ArpeggioPolicyScope scope;
@@ -92,6 +168,11 @@ class ArpeggioPolicyRun {
   final int admittedArpeggioCandidatesInBand;
   final Map<EligibilityReason, int> progressionStops;
   final List<double> admittedArpeggioPredictions;
+  final List<MaterialExposure> exposures;
+  final List<int> introductionSlots;
+  final List<int> unresolvedByDecision;
+  final int withheldSlots;
+  final int withheldCandidates;
   final ArpeggioPolicyTerminal terminal;
 
   ArpeggioPolicyRun({
@@ -121,6 +202,11 @@ class ArpeggioPolicyRun {
     required this.admittedArpeggioCandidatesInBand,
     required Map<EligibilityReason, int> progressionStops,
     required Iterable<double> admittedArpeggioPredictions,
+    required Iterable<MaterialExposure> exposures,
+    required Iterable<int> introductionSlots,
+    required Iterable<int> unresolvedByDecision,
+    required this.withheldSlots,
+    required this.withheldCandidates,
     required this.terminal,
   }) : familySelections = Map.unmodifiable(familySelections),
        arpeggioMaterialSelections = Map.unmodifiable(
@@ -133,7 +219,10 @@ class ArpeggioPolicyRun {
        progressionStops = Map.unmodifiable(progressionStops),
        admittedArpeggioPredictions = List.unmodifiable(
          admittedArpeggioPredictions,
-       );
+       ),
+       exposures = List.unmodifiable(exposures),
+       introductionSlots = List.unmodifiable(introductionSlots),
+       unresolvedByDecision = List.unmodifiable(unresolvedByDecision);
 
   double get arpeggioSelectionShare => selections == 0
       ? 0
@@ -144,6 +233,28 @@ class ArpeggioPolicyRun {
       arpeggioCandidatesEvaluated == 0
       ? 0
       : (progressionStops[reason] ?? 0) / arpeggioCandidatesEvaluated;
+
+  int get maxActiveUnresolved => unresolvedByDecision.fold(
+    0,
+    (peak, count) => count > peak ? count : peak,
+  );
+
+  double get meanActiveUnresolved => unresolvedByDecision.isEmpty
+      ? 0
+      : unresolvedByDecision.reduce((a, b) => a + b) /
+            unresolvedByDecision.length;
+
+  /// The most introductions any [window] consecutive slots contained.
+  int maxIntroductionsIn(int window) {
+    var peak = 0;
+    for (final start in introductionSlots) {
+      final count = introductionSlots
+          .where((slot) => slot >= start && slot < start + window)
+          .length;
+      if (count > peak) peak = count;
+    }
+    return peak;
+  }
 }
 
 Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
@@ -155,7 +266,10 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
 }) async {
   final at0 = DateTime.utc(2026);
   final learner = LearnerModel(params: _paramsFor(arm));
-  final pipeline = _RecordingPipeline(learner: learner);
+  final pipeline = _RecordingPipeline(
+    learner: learner,
+    config: v1SchedulerConfig.withIntroductions(arm.introductions),
+  );
   final fixture = _fixtureFor(scope);
   final session = await PracticeSession.open(
     store: InMemoryPracticeStore(createdAt: at0),
@@ -193,7 +307,7 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
     switch (decision) {
       case PresentedAttempt(:final exercise):
         final selection = pipeline.lastSelection!;
-        accumulator.record(slot, selection);
+        accumulator.record(slot, selection, pipeline.lastState!);
         await session.closeWithOutcome(
           playing.play(exercise, random),
           observedWallTime: at,
@@ -201,7 +315,7 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
       case PracticeCaughtUp():
         return accumulator.finish(ArpeggioPolicyTerminal.caughtUp);
       case PracticeBlocked():
-        accumulator.record(slot, pipeline.lastSelection!);
+        accumulator.record(slot, pipeline.lastSelection!, pipeline.lastState!);
         return accumulator.finish(ArpeggioPolicyTerminal.blocked);
       case PracticeInvalidScope():
         return accumulator.finish(ArpeggioPolicyTerminal.invalid);
@@ -294,8 +408,9 @@ class _ArpeggioPolicyTask {
 
 class _RecordingPipeline extends SchedulerPipeline {
   SelectionResult? lastSelection;
+  LearnerState? lastState;
 
-  _RecordingPipeline({required super.learner});
+  _RecordingPipeline({required super.learner, required super.config});
 
   @override
   SelectionResult decide({
@@ -307,6 +422,7 @@ class _RecordingPipeline extends SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     PracticeEntryPolicy? practiceEntryPolicy,
   }) {
+    lastState = state;
     lastSelection = super.decide(
       state: state,
       session: session,
@@ -331,6 +447,11 @@ class _PolicyAccumulator {
   final Map<HandConfiguration, int> arpeggioHandSelections = {};
   final Map<EligibilityReason, int> progressionStops = {};
   final List<double> admittedArpeggioPredictions = [];
+  final Map<String, MaterialExposure> exposures = {};
+  final List<int> introductionSlots = [];
+  final List<int> unresolvedByDecision = [];
+  int withheldSlots = 0;
+  int withheldCandidates = 0;
   int schedulerDecisions = 0;
   int selections = 0;
   int floorInvocations = 0;
@@ -356,8 +477,17 @@ class _PolicyAccumulator {
     required this.seed,
   });
 
-  void record(int slot, SelectionResult selection) {
+  void record(int slot, SelectionResult selection, LearnerState state) {
     schedulerDecisions++;
+    if (selection.introductions.withheld > 0) {
+      withheldSlots++;
+      withheldCandidates += selection.introductions.withheld;
+    }
+    unresolvedByDecision.add(
+      exposures.keys
+          .where((id) => state.materialMemory[id]?.hasFactualRetrieval != true)
+          .length,
+    );
     final floorInvoked = selection.traces.any(
       (trace) =>
           trace.exercise.material.familyId ==
@@ -388,6 +518,7 @@ class _PolicyAccumulator {
     final familyId = exercise.material.familyId;
     selections++;
     familySelections[familyId] = (familySelections[familyId] ?? 0) + 1;
+    _recordExposure(slot, chosen);
     if (familyId == TechnicalMaterial.arpeggioFamilyId &&
         chosen.challengeBypass == ChallengeBypass.acquisitionFloor) {
       floorSelections++;
@@ -429,6 +560,33 @@ class _PolicyAccumulator {
     }
   }
 
+  void _recordExposure(int slot, CandidateTrace chosen) {
+    final exercise = chosen.exercise;
+    final conditions = exercise.conditions;
+    final exposure = exposures[exercise.material.materialId];
+    if (exposure == null) {
+      exposures[exercise.material.materialId] = MaterialExposure(
+        materialId: exercise.material.materialId,
+        familyId: exercise.material.familyId,
+        introducedAtSlot: slot,
+        introducedHands: conditions.hands,
+        introducedOctaves: conditions.octaves,
+      );
+    } else {
+      exposure.selections++;
+      exposure.revisitedAtSlot ??= slot;
+      if (conditions.hands != exposure.introducedHands) {
+        exposure.otherHandAtSlot ??= slot;
+      }
+      if (conditions.octaves > exposure.introducedOctaves) {
+        exposure.deeperSpanAtSlot ??= slot;
+      }
+    }
+    if (chosen.challengeBypass == ChallengeBypass.newMaterial) {
+      introductionSlots.add(slot);
+    }
+  }
+
   ArpeggioPolicyRun finish(ArpeggioPolicyTerminal terminal) =>
       ArpeggioPolicyRun(
         armId: armId,
@@ -457,6 +615,11 @@ class _PolicyAccumulator {
         admittedArpeggioCandidatesInBand: admittedArpeggioCandidatesInBand,
         progressionStops: progressionStops,
         admittedArpeggioPredictions: admittedArpeggioPredictions,
+        exposures: exposures.values,
+        introductionSlots: introductionSlots,
+        unresolvedByDecision: unresolvedByDecision,
+        withheldSlots: withheldSlots,
+        withheldCandidates: withheldCandidates,
         terminal: terminal,
       );
 }

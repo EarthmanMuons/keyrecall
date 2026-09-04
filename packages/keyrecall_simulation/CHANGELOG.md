@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- The arpeggio census reports introduction pressure and follow-through:
+  introductions per twenty-slot window, open unresolved material, revisit gaps,
+  and second-attempt, other-hand, and wider-span rates within twenty slots of a
+  first exposure. A `breadth` mode runs concurrent-introduction counterfactuals
+  against the paired scale-only control.
 - Full-catalog arpeggio characterization now compares the two-material fixture,
   all 24 root-position arpeggios, and the full mixed scale/arpeggio corpus. It
   reports fingering-family and hand-configuration concentration and can run
