@@ -74,18 +74,72 @@ class SchedulerBenchmarkRun {
         );
 }
 
-/// Drives one archetype through [warmupSlots] and measures [measuredSlots].
+/// A benchmark session warmed to a chosen state, stepped one decision at a
+/// time.
 ///
-/// The real session, scope evaluator, learner model, and scheduler, over the
-/// same catalogs the decision-cost census uses. Warm-up matters twice here:
-/// it is how a learner reaches the state whose decisions are expensive, and on
-/// a release build it is also how the code under measurement gets warm.
-Future<SchedulerBenchmarkRun> runSchedulerBenchmark({
-  required String caseName,
+/// Stepping is separate from measuring a run because the interesting question
+/// on a device is what one decision does to a frame, and that has to be driven
+/// from a frame callback rather than from a loop.
+class BenchmarkSession {
+  final PracticeSession session;
+  final int catalogMaterials;
+  final DateTime _at0;
+  final _TimedPipeline _pipeline;
+  final PlayerState _playing;
+  final PythonCompatibleRandom _random;
+  int _slot;
+
+  BenchmarkSession._({
+    required this.session,
+    required this.catalogMaterials,
+    required DateTime at0,
+    required _TimedPipeline pipeline,
+    required PlayerState playing,
+    required PythonCompatibleRandom random,
+    required int slot,
+  }) : _at0 = at0,
+       _pipeline = pipeline,
+       _playing = playing,
+       _random = random,
+       _slot = slot;
+
+  /// Decides one slot, plays it, and reports what the decision cost.
+  ///
+  /// Null once the scope stops presenting work, which ends a run rather than
+  /// failing it.
+  Future<BenchmarkDecision?> step() async {
+    final slot = _slot++;
+    final at = _at0.add(Duration(minutes: slot + 1));
+    final wall = Stopwatch()..start();
+    final decision = await session.decideOutcome(at: at);
+    wall.stop();
+    if (decision case PresentedAttempt(:final exercise)) {
+      await session.closeWithOutcome(
+        _playing.play(exercise, _random),
+        observedWallTime: at,
+      );
+      return BenchmarkDecision(
+        slot: slot,
+        decide: _pipeline.lastDecide,
+        wall: wall.elapsed,
+        generated: _pipeline.lastGenerated,
+        evaluated: _pipeline.lastEvaluated,
+        ranked: _pipeline.lastRanked,
+      );
+    }
+    return null;
+  }
+}
+
+/// Opens a session on [scope] and warms it through [warmupSlots].
+///
+/// Warm-up matters twice: it is how a learner reaches the state whose decisions
+/// are expensive, and on a release build it is also how the code under
+/// measurement gets warm.
+Future<BenchmarkSession> openBenchmarkSession({
   required ArpeggioPolicyScope scope,
   required SyntheticPlayer player,
   required int warmupSlots,
-  required int measuredSlots,
   int seed = 0,
   void Function(int completed, int total)? onProgress,
 }) async {
@@ -113,42 +167,51 @@ Future<SchedulerBenchmarkRun> runSchedulerBenchmark({
     ),
     sessionId: 'benchmark-${scope.name}-${player.id}',
   );
-  final playing = player.begin();
-  final random = PythonCompatibleRandom(seed);
-  final decisions = <BenchmarkDecision>[];
-  final total = warmupSlots + measuredSlots;
+  final benchmark = BenchmarkSession._(
+    session: session,
+    catalogMaterials: fixture.materials.length,
+    at0: at0,
+    pipeline: pipeline,
+    playing: player.begin(),
+    random: PythonCompatibleRandom(seed),
+    slot: 0,
+  );
+  for (var slot = 0; slot < warmupSlots; slot++) {
+    if (await benchmark.step() == null) break;
+    onProgress?.call(slot + 1, warmupSlots);
+  }
+  return benchmark;
+}
 
-  for (var slot = 0; slot < total; slot++) {
-    final at = at0.add(Duration(minutes: slot + 1));
-    final wall = Stopwatch()..start();
-    final decision = await session.decideOutcome(at: at);
-    wall.stop();
-    if (slot >= warmupSlots) {
-      decisions.add(
-        BenchmarkDecision(
-          slot: slot,
-          decide: pipeline.lastDecide,
-          wall: wall.elapsed,
-          generated: pipeline.lastGenerated,
-          evaluated: pipeline.lastEvaluated,
-          ranked: pipeline.lastRanked,
-        ),
-      );
-    }
-    onProgress?.call(slot + 1, total);
-    if (decision case PresentedAttempt(:final exercise)) {
-      await session.closeWithOutcome(
-        playing.play(exercise, random),
-        observedWallTime: at,
-      );
-    } else {
-      break;
-    }
+/// Drives one archetype through [warmupSlots] and measures [measuredSlots].
+Future<SchedulerBenchmarkRun> runSchedulerBenchmark({
+  required String caseName,
+  required ArpeggioPolicyScope scope,
+  required SyntheticPlayer player,
+  required int warmupSlots,
+  required int measuredSlots,
+  int seed = 0,
+  void Function(int completed, int total)? onProgress,
+}) async {
+  final benchmark = await openBenchmarkSession(
+    scope: scope,
+    player: player,
+    warmupSlots: warmupSlots,
+    seed: seed,
+    onProgress: (completed, total) =>
+        onProgress?.call(completed, warmupSlots + measuredSlots),
+  );
+  final decisions = <BenchmarkDecision>[];
+  for (var measured = 0; measured < measuredSlots; measured++) {
+    final decision = await benchmark.step();
+    if (decision == null) break;
+    decisions.add(decision);
+    onProgress?.call(warmupSlots + measured + 1, warmupSlots + measuredSlots);
   }
 
   return SchedulerBenchmarkRun(
     caseName: caseName,
-    catalogMaterials: fixture.materials.length,
+    catalogMaterials: benchmark.catalogMaterials,
     decisions: decisions,
   );
 }

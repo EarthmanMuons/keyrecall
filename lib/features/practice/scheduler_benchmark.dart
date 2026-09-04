@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -21,8 +22,7 @@ class SchedulerBenchmarkScreen extends StatefulWidget {
       _SchedulerBenchmarkScreenState();
 }
 
-class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen>
-    with SingleTickerProviderStateMixin {
+class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
   static const _cases = [
     (name: 'cold, weak', player: 'true_beginner', warmup: 0, measured: 1),
     (name: 'steady, weak', player: 'true_beginner', warmup: 40, measured: 20),
@@ -129,7 +129,6 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen>
       '',
     ];
 
-    final stalls = _FrameStalls(this)..start();
     final onIsolate = <String, SchedulerBenchmarkRun>{};
     for (final benchmark in _cases) {
       onIsolate[benchmark.name] = await runSchedulerBenchmark(
@@ -144,13 +143,12 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen>
             _reportProgress(benchmark.name, completed, total),
       );
     }
-    final worstStall = stalls.stop();
 
     lines
       ..add('on the UI isolate')
       ..add(
         'case'.padRight(18) +
-            'materials'.padLeft(10) +
+            'decisions'.padLeft(11) +
             'generated'.padLeft(11) +
             'ranked'.padLeft(8) +
             'decide p50'.padLeft(12) +
@@ -162,22 +160,38 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen>
       final run = onIsolate[benchmark.name]!;
       lines.add(
         run.caseName.padRight(18) +
-            '${run.catalogMaterials}'.padLeft(10) +
+            '${run.decisions.length}'.padLeft(11) +
             '${run.generated}'.padLeft(11) +
             '${run.ranked}'.padLeft(8) +
             _ms(run.medianDecide).padLeft(12) +
-            _ms(run.p95Decide).padLeft(12) +
+            _spread(run, _ms(run.p95Decide)).padLeft(12) +
             _ms(run.medianWall).padLeft(10) +
-            _ms(run.p95Wall).padLeft(10),
+            _spread(run, _ms(run.p95Wall)).padLeft(10),
       );
     }
 
     lines
       ..add('')
-      ..add(
-        'longest gap between frames while the above ran: '
-        '${_ms(worstStall)}',
-      )
+      ..add('one decision run from a frame callback')
+      ..add('case'.padRight(18) + 'frame gap'.padLeft(12));
+    for (final benchmark in _cases.where((one) => one.warmup > 0)) {
+      _reportProgress('${benchmark.name}, frame', 0, 1);
+      final session = await openBenchmarkSession(
+        scope: ArpeggioPolicyScope.fullMixed,
+        player: PlayerArchetypes.all.firstWhere(
+          (archetype) => archetype.id == benchmark.player,
+        ),
+        warmupSlots: benchmark.warmup,
+        onProgress: (completed, total) =>
+            _reportProgress('${benchmark.name}, frame', completed, total),
+      );
+      lines.add(
+        benchmark.name.padRight(18) +
+            _ms(await _stallOfOneDecision(session)).padLeft(12),
+      );
+    }
+
+    lines
       ..add('')
       ..add('on a worker isolate')
       ..add(
@@ -230,6 +244,10 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen>
     return file.path;
   }
 
+  /// A p95 over one observation is that observation, so it is not reported.
+  static String _spread(SchedulerBenchmarkRun run, String value) =>
+      run.decisions.length < 2 ? '-' : value;
+
   static String _ms(Duration duration) =>
       '${(duration.inMicroseconds / 1000).toStringAsFixed(1)} ms';
 
@@ -243,31 +261,28 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen>
         );
 }
 
-/// The longest the interface went without a frame.
+/// How long the interface goes without a frame while one decision runs.
 ///
-/// A ticker runs once per frame, so the gap between its callbacks is what a
-/// blocked UI isolate looks like from the outside. This is the product number
-/// the scheduler timing feeds into: a decision nobody waits for is a different
-/// thing from one that holds a tap.
-class _FrameStalls {
-  final TickerProvider vsync;
-  Ticker? _ticker;
-  Duration _previous = Duration.zero;
-  Duration _worst = Duration.zero;
-
-  _FrameStalls(this.vsync);
-
-  void start() {
-    _ticker = vsync.createTicker((elapsed) {
-      final gap = elapsed - _previous;
-      if (gap > _worst) _worst = gap;
-      _previous = elapsed;
-    })..start();
-  }
-
-  Duration stop() {
-    _ticker?.dispose();
-    _ticker = null;
-    return _worst;
-  }
+/// Driven from a frame callback and measured to the next one, because that is
+/// the shape of the product question: a decision that happens during a
+/// transition either holds it or does not. A loop of decisions cannot answer
+/// it, since the awaits between them resolve as microtasks and no frame is
+/// produced for the whole run.
+Future<Duration> _stallOfOneDecision(BenchmarkSession session) {
+  final completer = Completer<Duration>();
+  final binding = SchedulerBinding.instance;
+  binding.addPostFrameCallback((_) async {
+    final watch = Stopwatch()..start();
+    try {
+      await session.step();
+      // Still running: what the interface loses is the decision plus whatever
+      // it takes to produce the next frame afterwards.
+      binding.addPostFrameCallback((_) => completer.complete(watch.elapsed));
+      binding.scheduleFrame();
+    } on Object catch (error, stackTrace) {
+      completer.completeError(error, stackTrace);
+    }
+  });
+  binding.scheduleFrame();
+  return completer.future;
 }
