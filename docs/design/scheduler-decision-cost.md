@@ -239,43 +239,48 @@ mature learner's scheduler should consider.
 
 `SchedulerBenchmarkScreen`, reachable from the practice overflow menu, runs the
 same catalogs through the same session in a release build and writes its report
-beside the trajectory exports. iPhone 15 Pro, iOS 26.6.1, release:
+beside the trajectory exports. Release builds, mature full mixed catalog:
 
-| Case             | Decisions | Ranked | Decide p50 | Decide p95 | Frame gap |
-| ---------------- | --------: | -----: | ---------: | ---------: | --------: |
-| cold, weak       |         1 |    192 |    19.3 ms |          - |         - |
-| steady, weak     |        20 |      1 |    24.6 ms |    33.3 ms |   32.3 ms |
-| mature, advanced |        20 |  8,483 |    81.2 ms |    91.0 ms |   84.9 ms |
+| Device        | Decide p50 | Decide p95 | Worker round trip p50 |
+| ------------- | ---------: | ---------: | --------------------: |
+| iPhone 15 Pro |    81.0 ms |    91.6 ms |               79.9 ms |
+| Pixel 9a      |   177.8 ms |   199.1 ms |              186.2 ms |
 
-Frame gap is one decision driven from a post-frame callback, measured through to
-the next frame produced. It is the product number: what the interface loses when
-a decision lands in a transition.
+The weak cases are comfortable on both: 24.5 ms and 45.2 ms at the steady state,
+cold decisions cheaper still.
 
-Four things follow.
+**Compute does not move with placement.** A worker that owns the scope answers
+from a state the slot sends it, and its round trip matches the on-isolate
+decision to within measurement noise on both devices. Moving scheduling off the
+UI isolate therefore costs nothing and the message shape is viable: the learner
+state and the sitting cross by copy, and the candidate envelope never moves at
+all because the worker resolves it once from the catalog.
 
-**The stall is the decision, and nothing else.** Frame gap tracks decide time at
-both states, and the whole slot costs about 2 ms more than the scheduler alone.
-There is no second cost hiding in requirement evaluation or persistence.
+**Placement decides whether the interface keeps drawing.** Frames observed while
+one mature decision runs:
 
-**The device matches the development machine.** 81 ms against 82 ms for the
-mature case. The desktop census is representative for hardware of this class,
-which is not yet a claim about a midrange Android phone.
+| Device        | Placement | Worst gap | Frames |
+| ------------- | --------- | --------: | -----: |
+| iPhone 15 Pro | UI        |   94.4 ms |      1 |
+| iPhone 15 Pro | worker    |    9.8 ms |     21 |
+| Pixel 9a      | UI        |  219.9 ms |      1 |
+| Pixel 9a      | worker    |   40.7 ms |     20 |
 
-**Isolate placement changes blocking, not cost.** A worker isolate computes the
-same decision in 86.3 ms against 81.2 ms on the UI isolate. Moving scheduling
-off the UI isolate would buy responsiveness and no speed, and the cold case
-shows its startup is cheap.
+On the UI isolate the decision produces exactly one frame, which is the block
+itself. On a worker the interface keeps drawing throughout, at roughly a frame
+per refresh interval.
 
-**The weak case is comfortable and the mature one is marginal.** A 32 ms gap is
-two frames at 60 Hz. An 85 ms gap is five, or ten at the 120 Hz this device
-runs, which is a visible hitch if it lands during an animation and probably
-imperceptible if it lands where a learner has just finished an attempt.
+The residual worker gap is not zero and is not noise: copying the learner state
+happens on the sending isolate, so a slot still holds the interface for as long
+as that takes. It is 9.8 ms on the iPhone and 40.7 ms on the Pixel, against 94.4
+and 219.9 for the decision itself.
 
-That last point is what the remaining decision turns on, and it is about where
-the decision sits in the transition rather than about the scheduler. If a
-midrange Android phone multiplies 85 ms by two, the question stops being
-marginal, and the cheaper answer is the isolate placement this table already
-prices rather than a smaller search space.
+**What this settles.** A fifth of a second of frozen interface on a current
+midrange phone is perceptible wherever in a transition it lands, and the
+alternative costs nothing in compute. Scheduling belongs off the UI isolate. The
+bounded-choice policy question stays closed: nothing here argues that a mature
+learner should be offered fewer alternatives, only that computing them should
+not be done on the isolate that draws.
 
 ## Preserving the traces
 
