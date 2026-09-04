@@ -138,6 +138,23 @@ class ResolvedRequirement {
        candidates = List.unmodifiable(candidates);
 }
 
+/// The distinct candidates [requirements] resolve to, in requirement order.
+///
+/// Requirements over one material resolve to equal candidate sets, because
+/// generation reads the material and the instrument and nothing else. The
+/// material is therefore the identity that dedupes them, and rediscovering
+/// that by hashing every exercise is a large share of a decision once the
+/// catalog is wide.
+List<Exercise> distinctCandidatesOf(
+  Iterable<ResolvedRequirement> requirements,
+) {
+  final seen = <String>{};
+  return [
+    for (final requirement in requirements)
+      if (seen.add(requirement.material.materialId)) ...requirement.candidates,
+  ];
+}
+
 /// A valid structural practice scope, before learner-relative evaluation.
 @immutable
 class ResolvedPracticeScope {

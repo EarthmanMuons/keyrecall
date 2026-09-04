@@ -277,9 +277,9 @@ class PracticeSession {
 
   /// The current structural candidate envelope, empty for an invalid scope.
   List<Exercise> get candidates => switch (_scopeResolution) {
-    ValidPracticeScope(:final scope) => List.unmodifiable({
-      for (final requirement in scope.requirements) ...requirement.candidates,
-    }),
+    ValidPracticeScope(:final scope) => List.unmodifiable(
+      distinctCandidatesOf(scope.requirements),
+    ),
     InvalidPracticeScope() => const [],
   };
 
@@ -348,9 +348,7 @@ class PracticeSession {
     final due = scope.isNarrow
         ? evaluated.dueRequirements.toList()
         : evaluated.requirements;
-    final candidates = <Exercise>{
-      for (final state in due) ...state.resolved.candidates,
-    }.toList();
+    final candidates = distinctCandidatesOf(due.map((state) => state.resolved));
     final acquisitionFloor = scope.isNarrow
         ? _scopeResolver.acquisitionFloorFor(due.map((state) => state.resolved))
         : null;

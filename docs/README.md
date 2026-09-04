@@ -41,6 +41,8 @@ docs/
 │   │                                observations, and the candidate census
 │   ├── introduction-breadth.md      how much unresolved new material may be
 │   │                                open at once, and what capping it does
+│   ├── scheduler-decision-cost.md   what one decision costs, and how it grows
+│   │                                with the catalog
 │   └── coordination-transition-policy.md
 │                                    proposed: when hands-together becomes
 │                                    admissible, and the evidence for it
@@ -105,6 +107,7 @@ implementation rather than evidence about another one.
 | Deferred architectural, product, and domain hypotheses              | `design/future-planning.md`                             |
 | Synthetic players, trajectory detectors, and the sweep              | `design/trajectory-simulation.md`                       |
 | Introduction breadth census and the concurrency counterfactuals     | `design/introduction-breadth.md`                        |
+| Decision-grain cost census and the catalog scaling term             | `design/scheduler-decision-cost.md`                     |
 | Proposed hands-together admission policy, and its evidence chain    | `design/coordination-transition-policy.md`              |
 | Canonical scale fingering                                           | `domain-model/fingering-taxonomy.md`                    |
 | Arpeggio identity, progression evidence, and promotion gates        | `domain-model/arpeggio-domain-research.md`              |

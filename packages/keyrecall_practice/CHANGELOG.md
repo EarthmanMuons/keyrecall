@@ -10,6 +10,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- Candidate assembly deduplicates by material rather than by exercise, which
+  removed about 60 ms from every full-catalog decision.
+
 ### Added
 
 - Resolved practice scopes carry each active material family's entry tempo into
