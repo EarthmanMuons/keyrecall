@@ -172,22 +172,22 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
 
     lines
       ..add('')
-      ..add('one decision run from a frame callback')
-      ..add('case'.padRight(18) + 'frame gap'.padLeft(12));
-    for (final benchmark in _cases.where((one) => one.warmup > 0)) {
-      _reportProgress('${benchmark.name}, frame', 0, 1);
-      final session = await openBenchmarkSession(
-        scope: ArpeggioPolicyScope.fullMixed,
-        player: PlayerArchetypes.all.firstWhere(
-          (archetype) => archetype.id == benchmark.player,
-        ),
-        warmupSlots: benchmark.warmup,
-        onProgress: (completed, total) =>
-            _reportProgress('${benchmark.name}, frame', completed, total),
+      ..add('frames while one decision runs')
+      ..add(
+        'case'.padRight(18) +
+            'placement'.padRight(10) +
+            'worst gap'.padLeft(12) +
+            'frames'.padLeft(8),
       );
+    for (final benchmark in _cases.where((one) => one.warmup > 0)) {
+      _reportProgress('${benchmark.name}, frames', 0, 1);
+      final session = await _matureSession(benchmark);
+      final observed = await _framesDuring(session.step);
       lines.add(
         benchmark.name.padRight(18) +
-            _ms(await _stallOfOneDecision(session)).padLeft(12),
+            'ui'.padRight(10) +
+            _ms(observed.worst).padLeft(12) +
+            '${observed.frames}'.padLeft(8),
       );
     }
 
@@ -231,16 +231,7 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
   /// a slot that sends it the state to decide from.
   Future<void> _measureOwningWorker(List<String> lines) async {
     final mature = _cases.last;
-    _reportProgress('${mature.name}, owning worker', 0, 1);
-    final session = await openBenchmarkSession(
-      scope: ArpeggioPolicyScope.fullMixed,
-      player: PlayerArchetypes.all.firstWhere(
-        (archetype) => archetype.id == mature.player,
-      ),
-      warmupSlots: mature.warmup,
-      onProgress: (completed, total) =>
-          _reportProgress('${mature.name}, owning worker', completed, total),
-    );
+    final session = await _matureSession(mature);
     final worker = await SchedulerWorker.start(
       ArpeggioPolicyScope.fullMixed.name,
     );
@@ -256,25 +247,48 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
         roundTrips.add(watch.elapsedMicroseconds);
       }
       roundTrips.sort();
-      final gap = await _stallOfOneRoundTrip(worker, session);
+      final observed = await _framesDuring(
+        () => worker.decide(
+          state: session.learnerState,
+          session: session.sessionState,
+          at: session.nextAt,
+        ),
+      );
       lines
+        ..add(
+          mature.name.padRight(18) +
+              'worker'.padRight(10) +
+              _ms(observed.worst).padLeft(12) +
+              '${observed.frames}'.padLeft(8),
+        )
         ..add('')
         ..add('a worker that owns the scope, at the mature state')
         ..add(
-          'round trips'.padRight(18) +
-              'p50'.padLeft(12) +
-              'p95'.padLeft(12) +
-              'frame gap'.padLeft(12),
+          'round trips'.padRight(18) + 'p50'.padLeft(12) + 'p95'.padLeft(12),
         )
         ..add(
           '${roundTrips.length}'.padRight(18) +
               _quantile(roundTrips, 0.5).padLeft(12) +
-              _quantile(roundTrips, 0.95).padLeft(12) +
-              _ms(gap).padLeft(12),
+              _quantile(roundTrips, 0.95).padLeft(12),
         );
     } finally {
       worker.stop();
     }
+  }
+
+  Future<BenchmarkSession> _matureSession(
+    ({String name, String player, int warmup, int measured}) benchmark,
+  ) {
+    _reportProgress('${benchmark.name}, warming', 0, benchmark.warmup);
+    return openBenchmarkSession(
+      scope: ArpeggioPolicyScope.fullMixed,
+      player: PlayerArchetypes.all.firstWhere(
+        (archetype) => archetype.id == benchmark.player,
+      ),
+      warmupSlots: benchmark.warmup,
+      onProgress: (completed, total) =>
+          _reportProgress('${benchmark.name}, warming', completed, total),
+    );
   }
 
   void _reportProgress(String name, int completed, int total) {
@@ -313,56 +327,51 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
         );
 }
 
-/// The same measurement for a decision the UI isolate only waits on.
+/// What the interface manages while one decision runs.
 ///
-/// The number to compare against the on-isolate gap: the state still has to
-/// cross the boundary, but nothing here occupies the isolate that draws.
-Future<Duration> _stallOfOneRoundTrip(
-  SchedulerWorker worker,
-  BenchmarkSession session,
-) {
-  final completer = Completer<Duration>();
+/// The worst interval between consecutive frames, and how many frames happened
+/// at all. Measuring to the next frame after the work finishes cannot tell the
+/// two placements apart, because it counts the wait itself whether or not the
+/// isolate was free to draw during it. Asking for frames throughout can: a
+/// blocked isolate produces one long interval and almost no frames, and a free
+/// one keeps drawing while it waits.
+Future<({Duration worst, int frames})> _framesDuring(
+  Future<void> Function() work,
+) async {
   final binding = SchedulerBinding.instance;
-  binding.addPostFrameCallback((_) async {
-    final watch = Stopwatch()..start();
-    try {
-      await worker.decide(
-        state: session.learnerState,
-        session: session.sessionState,
-        at: session.nextAt,
-      );
-      binding.addPostFrameCallback((_) => completer.complete(watch.elapsed));
-      binding.scheduleFrame();
-    } on Object catch (error, stackTrace) {
-      completer.completeError(error, stackTrace);
-    }
-  });
-  binding.scheduleFrame();
-  return completer.future;
-}
+  final watch = Stopwatch()..start();
+  var previous = Duration.zero;
+  var worst = Duration.zero;
+  var frames = 0;
+  var running = true;
 
-/// How long the interface goes without a frame while one decision runs.
-///
-/// Driven from a frame callback and measured to the next one, because that is
-/// the shape of the product question: a decision that happens during a
-/// transition either holds it or does not. A loop of decisions cannot answer
-/// it, since the awaits between them resolve as microtasks and no frame is
-/// produced for the whole run.
-Future<Duration> _stallOfOneDecision(BenchmarkSession session) {
-  final completer = Completer<Duration>();
-  final binding = SchedulerBinding.instance;
-  binding.addPostFrameCallback((_) async {
-    final watch = Stopwatch()..start();
-    try {
-      await session.step();
-      // Still running: what the interface loses is the decision plus whatever
-      // it takes to produce the next frame afterwards.
-      binding.addPostFrameCallback((_) => completer.complete(watch.elapsed));
-      binding.scheduleFrame();
-    } on Object catch (error, stackTrace) {
-      completer.completeError(error, stackTrace);
+  void observe(Duration _) {
+    final now = watch.elapsed;
+    final gap = now - previous;
+    if (gap > worst) worst = gap;
+    previous = now;
+    frames++;
+    if (running) {
+      binding
+        ..addPostFrameCallback(observe)
+        ..scheduleFrame();
     }
-  });
-  binding.scheduleFrame();
-  return completer.future;
+  }
+
+  binding
+    ..addPostFrameCallback(observe)
+    ..scheduleFrame();
+  await work();
+  running = false;
+
+  final closed = Completer<void>();
+  binding
+    ..addPostFrameCallback((_) {
+      final gap = watch.elapsed - previous;
+      if (gap > worst) worst = gap;
+      closed.complete();
+    })
+    ..scheduleFrame();
+  await closed.future;
+  return (worst: worst, frames: frames);
 }
