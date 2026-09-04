@@ -52,6 +52,18 @@ double retention(Prediction prediction, Exercise exercise) =>
 /// differing in those alone share an answer.
 typedef InformationKey = (ExecutionContext, int, GuidanceContext);
 
+/// What the guidance-independent prediction channels vary with.
+///
+/// Execution, coordination, and topology read the material, the pattern, and
+/// the execution conditions; guidance changes only material availability. A
+/// realization is therefore identified by those three, and every exercise the
+/// scheduler sees derives its opportunity structure from them.
+typedef RealizationKey = (String, String, ExecutionConditions);
+
+/// The [RealizationKey] for [exercise].
+RealizationKey realizationKeyOf(Exercise exercise) =>
+    (exercise.material.materialId, exercise.pattern.id, exercise.conditions);
+
 /// The [InformationKey] for [exercise].
 InformationKey informationKeyFor(Exercise exercise) => (
   executionContextOf(exercise),

@@ -13,8 +13,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 ### Added
 
 - `decision_cost`, a decision-grain performance census reporting survivors by
-  pipeline stage, distinct materials and realizations, and phase timings across
-  four catalog sizes and four trajectory positions.
+  pipeline stage, distinct materials and realizations, neighbor expansion, and
+  phase timings across four catalog sizes and four trajectory positions.
 - The arpeggio census reports introduction pressure and follow-through:
   introductions per twenty-slot window, open unresolved material, revisit gaps,
   and second-attempt, other-hand, and wider-span rates within twenty slots of a

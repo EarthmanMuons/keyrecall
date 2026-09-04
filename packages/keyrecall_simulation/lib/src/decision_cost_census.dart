@@ -64,8 +64,19 @@ class DecisionCostSample {
     required this.slotTotal,
   });
 
-  /// How much of the generated set survives to ranking.
-  double get rankedShare => generated == 0 ? 0 : ranked / generated;
+  /// How much of the evaluated set survives to ranking.
+  ///
+  /// Against the evaluated count rather than the generated one, because
+  /// evaluation adds execution neighbors that were never generated and those
+  /// can rank. A share whose numerator can exceed its denominator is not a
+  /// share.
+  double get rankedShare => evaluated == 0 ? 0 : ranked / evaluated;
+
+  /// How much evaluation adds to the generated set.
+  ///
+  /// Neighbor expansion, measured on its own so a frontier change can be read
+  /// against it.
+  double get neighborExpansion => generated == 0 ? 0 : evaluated / generated;
 
   /// How much of the generated set is a distinct execution realization.
   ///

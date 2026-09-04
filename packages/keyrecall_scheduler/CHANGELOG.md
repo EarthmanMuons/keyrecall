@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `RealizationKey`, what the guidance-independent prediction channels vary with.
+  The per-slot execution, coordination, and topology caches key on it rather
+  than on an exercise standing for a realization, which removes an allocation
+  and three set comparisons per candidate.
 - `IntroductionConfig`, an experimental cap on how much introduced-but-
   unretrieved material one scope may hold open at a time. It filters the
   available set beside realization-family pacing, never empties it, leaves

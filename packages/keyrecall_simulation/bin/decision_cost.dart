@@ -40,7 +40,8 @@ Future<void> main(List<String> arguments) async {
       'scope\tplayer\tslot\tmaterials\tgenerated\tevaluated\tmaterials_seen\t'
       'realizations\tfully_eligible\tprovisional\tchallenge_reached\t'
       'challenge_survived\tranked\tinformation_keys\tguarded\tafter_cap\t'
-      'selectable\tranked_share\trealization_share\tus_per_candidate\t'
+      'selectable\tranked_of_evaluated\tevaluated_of_generated\t'
+      'realization_share\tus_per_candidate\t'
       'us_per_material\trequirements_ms\tevaluate_ms\tguard_ms\tcap_ms\t'
       'pace_ms\tdecide_ms\tassemble_ms\tslot_ms',
     );
@@ -65,6 +66,7 @@ Future<void> main(List<String> arguments) async {
         sample.afterIntroductionCap,
         sample.selectable,
         sample.rankedShare.toStringAsFixed(4),
+        sample.neighborExpansion.toStringAsFixed(3),
         sample.realizationShare.toStringAsFixed(3),
         sample.microsecondsPerCandidate.toStringAsFixed(1),
         sample.microsecondsPerMaterial.toStringAsFixed(1),

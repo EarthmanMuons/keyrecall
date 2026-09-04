@@ -1122,13 +1122,18 @@ class SchedulerPipeline {
     );
 
     // Guidance changes material availability, but not independent retrieval,
-    // execution, coordination, or topology. Generation emits each realization under all
-    // three guidance levels, so those channels are computed once per
-    // realization, keyed by the same exercise with guidance normalized away.
+    // execution, coordination, or topology. Generation emits each realization
+    // under all three guidance levels, so those channels are computed once per
+    // realization.
+    //
+    // Keyed by what a realization is rather than by an exercise standing for
+    // one: an `Exercise` key costs an allocation per candidate and compares
+    // its opportunity sets on every hit, which a slot pays ten thousand times
+    // for a value the material, pattern, and conditions already determine.
     final retrievalCache = <String, double>{};
-    final executionCache = <Exercise, double>{};
-    final coordinationCache = <Exercise, double>{};
-    final topologyCache = <Exercise, double>{};
+    final executionCache = <RealizationKey, double>{};
+    final coordinationCache = <RealizationKey, double>{};
+    final topologyCache = <RealizationKey, double>{};
     final informationCache = <InformationKey, double>{};
 
     return [
@@ -1166,13 +1171,13 @@ class SchedulerPipeline {
     required EligibilityTier? introducibleTier,
     required DecisionFacts facts,
     required Map<String, double> retrievalCache,
-    required Map<Exercise, double> executionCache,
-    required Map<Exercise, double> coordinationCache,
-    required Map<Exercise, double> topologyCache,
+    required Map<RealizationKey, double> executionCache,
+    required Map<RealizationKey, double> coordinationCache,
+    required Map<RealizationKey, double> topologyCache,
     required Map<InformationKey, double> informationCache,
     required PracticeEntryPolicy practiceEntryPolicy,
   }) {
-    final realization = exercise.withGuidance(GuidanceContext.unguided);
+    final realization = realizationKeyOf(exercise);
     final independentRetrievalP = retrievalCache.putIfAbsent(
       exercise.material.materialId,
       () => learner.independentRetrievalProbability(state, exercise, at),

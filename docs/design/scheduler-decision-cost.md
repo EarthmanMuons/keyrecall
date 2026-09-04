@@ -62,9 +62,29 @@ For a weak learner in the mixed scope, 99.99% of a decision's work is spent on
 candidates that never reach ranking. That is the eager-expansion cost, and it is
 exactly what the acceptance target below is about.
 
-## Two reductions that changed no decision
+## Where a candidate's time actually went
 
-Profiling found two costs that were not about pedagogy at all.
+Timing the stages of one candidate's evaluation put the cost somewhere the stage
+counts do not suggest. Over one full-mixed decision:
+
+| Sub-step                   | True beginner | Advanced |
+| -------------------------- | ------------: | -------: |
+| prediction channels        |         77.1% |    67.0% |
+| realization key            |         20.6% |    19.4% |
+| rank key                   |          1.8% |    13.3% |
+| eligibility, bypass, trace |          0.5% |     0.3% |
+
+Eligibility, admission, and trace construction are free. Nearly nine tenths of a
+decision was the guidance-sharing machinery itself: allocating a normalized
+exercise per candidate to key the channel caches with, then hashing and
+comparing it three times. The comparison walks two opportunity sets.
+
+That reframes the guidance axis. Its cost was never the pedagogy the extra
+candidates carry; it was the identity of the thing the caches were keyed on.
+
+## Three reductions that changed no decision
+
+Profiling found three costs that were not about pedagogy at all.
 
 **Exercise hashing was recomputed on every lookup.** The hash combines two set
 hashes, and a slot hashes every candidate through set membership and three keyed
@@ -77,23 +97,31 @@ exercises to rediscover that two requirements share a material.
 `distinctCandidatesOf` keys that on the material instead, which is O(materials)
 rather than O(candidates).
 
+**Channel caches were keyed by an exercise standing for a realization.**
+Execution, coordination, and topology read the material, the pattern, and the
+execution conditions; guidance changes only material availability. Keying the
+caches on those three directly removes an allocation per candidate and replaces
+three set-comparing lookups with three record lookups. `RealizationKey` is
+pinned to partition the generated catalog exactly as the normalized exercise
+did.
+
 Together, on the same matrix:
 
 | Scope, archetype, slot        | Before | After |
 | ----------------------------- | -----: | ----: |
-| 48 scales, true beginner, 40  |  112.9 |  62.5 |
-| 48 scales, advanced, 80       |  184.6 | 120.3 |
-| full mixed, true beginner, 40 |  130.8 |  57.1 |
-| full mixed, developing, 80    |  146.1 |  87.4 |
-| full mixed, advanced, 80      |  199.3 | 128.8 |
+| 48 scales, true beginner, 40  |  112.9 |  16.4 |
+| 48 scales, advanced, 80       |  184.6 |  81.5 |
+| full mixed, true beginner, 40 |  130.8 |  20.9 |
+| full mixed, developing, 80    |  146.1 |  43.0 |
+| full mixed, advanced, 80      |  199.3 |  89.9 |
 
 Milliseconds per decision. Candidate assembly fell from about 60 ms to 0.1 ms
 and is no longer a term. Requirement evaluation was never one, at well under a
 millisecond even over 360 requirements: the journal scan it performs is cheap
 because the material check fails first.
 
-Both changes are equivalence-preserving by construction, and the whole suite
-passes unchanged, including the pinned calibration and trajectory tests.
+All three changes are equivalence-preserving by construction, and the whole
+suite passes unchanged, including the pinned calibration and trajectory tests.
 
 ## What remains, and the acceptance target
 
