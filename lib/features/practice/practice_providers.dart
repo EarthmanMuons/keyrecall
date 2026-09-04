@@ -35,14 +35,47 @@ final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
   return FilePracticeStore(root);
 });
 
-/// Every technical material this build supports.
+/// Whether this run is offering the experimental arpeggio catalog.
+///
+/// A developer switch and not a preference. The arpeggio family is complete
+/// enough to schedule and not finished enough to practice: it generates one
+/// ascending realization at one tempo where a scale generates a tempo ladder,
+/// and the coefficient governing what its evidence borrows from scale
+/// competency is a fixture nobody has validated against real playing. Turning
+/// it on is how those become observable on an instrument rather than a
+/// decision to ship them.
+///
+/// Deliberately not stored. It is off again on the next launch, because an
+/// experiment that outlives the run that asked for it is one somebody
+/// eventually mistakes for the product.
+final experimentalArpeggiosProvider =
+    NotifierProvider<ExperimentalArpeggiosNotifier, bool>(
+      ExperimentalArpeggiosNotifier.new,
+    );
+
+class ExperimentalArpeggiosNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  /// Offers or withdraws the arpeggio catalog for the rest of this run.
+  ///
+  /// The loop reads the catalog, so this reopens the sitting. A focus that
+  /// named arpeggios and can no longer resolve them becomes an invalid scope,
+  /// which the practice screen offers a way out of.
+  void use(bool enabled) => state = enabled;
+}
+
+/// Every technical material this build offers.
 ///
 /// What the app can represent, not what anybody is offered: the goal narrows it
 /// and the scheduler chooses from what is left. A provider so a screen can ask
 /// what exists without reaching for a catalog constant, and so a test can
 /// install a small one.
 final practiceCatalogProvider = Provider<List<TechnicalMaterial>>(
-  (ref) => allScales,
+  (ref) => [
+    ...allScales,
+    if (ref.watch(experimentalArpeggiosProvider)) ...allRootPositionArpeggios,
+  ],
 );
 
 /// What the active profile is working toward, and drawing from now.

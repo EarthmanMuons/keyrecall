@@ -431,6 +431,23 @@ selects both families without introducing a family-specific scheduler path.
 Full-catalog policy characterization is complete. Learner-model extension
 analysis and instrument validation remain open.
 
+The app can offer the arpeggio catalog from a developer-only switch, off on
+every launch and absent from a release build. It exists to make the open gates
+observable on an instrument rather than to ship them, so a session run under it
+is diagnostic and not calibration evidence. Four things are worth watching, in
+this order:
+
+1. where progression stalls, since arpeggios generate one ascending realization
+   at one tempo while a scale generates a tempo ladder;
+2. whether the family transfer coefficient produces obviously overconfident or
+   underconfident first predictions;
+3. whether pacing interleaves the families rather than alternating them
+   mechanically; and
+4. where learner-facing copy still says "scale" for material that is not one.
+
+Changing the coefficient to make a device session feel better would turn a
+diagnostic into calibration under gates that remain open.
+
 The first policy-sensitivity census is recorded in
 [`arpeggio-policy-characterization.md`](arpeggio-policy-characterization.md). It
 keeps every production value unchanged and identifies initial tempo as the

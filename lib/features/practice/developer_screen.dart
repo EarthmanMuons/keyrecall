@@ -235,6 +235,20 @@ class _Tools extends ConsumerWidget {
         },
       ),
       _Tool(
+        icon: Icons.science_outlined,
+        title: 'Enable experimental arpeggios',
+        subtitle:
+            'Offers the arpeggio catalog to this run only. Its generation '
+            'policy and family transfer are unvalidated fixtures.',
+        trailing: Switch(
+          value: ref.watch(experimentalArpeggiosProvider),
+          onChanged: ref.read(experimentalArpeggiosProvider.notifier).use,
+        ),
+        onTap: () => ref
+            .read(experimentalArpeggiosProvider.notifier)
+            .use(!ref.read(experimentalArpeggiosProvider)),
+      ),
+      _Tool(
         icon: Icons.restart_alt,
         title: 'Reopen the sitting',
         subtitle: 'Read it back from storage, as a relaunch would',
@@ -250,6 +264,7 @@ class _Tool extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.trailing,
   });
 
   final IconData icon;
@@ -257,12 +272,16 @@ class _Tool extends StatelessWidget {
   final String subtitle;
   final VoidCallback onTap;
 
+  /// What the tool shows about its own state, for the ones that hold any.
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) => ListTile(
     contentPadding: EdgeInsets.zero,
     leading: Icon(icon),
     title: Text(title),
     subtitle: Text(subtitle),
+    trailing: trailing,
     onTap: onTap,
   );
 }
