@@ -318,6 +318,7 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
         accumulator.record(slot, pipeline.lastSelection!, pipeline.lastState!);
         return accumulator.finish(ArpeggioPolicyTerminal.blocked);
       case PracticeInvalidScope():
+      case PracticeSuperseded():
         return accumulator.finish(ArpeggioPolicyTerminal.invalid);
     }
   }
@@ -416,7 +417,12 @@ class _RecordingPipeline extends SchedulerPipeline {
   _RecordingPipeline({required super.learner, required super.config});
 
   @override
-  SelectionResult decide({
+  ({
+    SelectionResult result,
+    bool guidanceProbeAvailable,
+    bool guidanceProbeSelected,
+  })
+  evaluateSlot({
     required LearnerState state,
     required SessionState session,
     required List<Exercise> candidates,
@@ -426,7 +432,7 @@ class _RecordingPipeline extends SchedulerPipeline {
     PracticeEntryPolicy? practiceEntryPolicy,
   }) {
     lastState = state;
-    lastSelection = super.decide(
+    final slot = super.evaluateSlot(
       state: state,
       session: session,
       candidates: candidates,
@@ -435,7 +441,8 @@ class _RecordingPipeline extends SchedulerPipeline {
       acquisitionFloor: acquisitionFloor,
       practiceEntryPolicy: practiceEntryPolicy,
     );
-    return lastSelection!;
+    lastSelection = slot.result;
+    return slot;
   }
 }
 

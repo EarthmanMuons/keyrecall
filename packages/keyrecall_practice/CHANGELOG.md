@@ -20,8 +20,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 ### Added
 
 - `SchedulerHost`, the seam a session decides through, and `SchedulerVerdict`,
-  one slot's decision reduced to what a session acts on. `InProcessScheduler`
-  keeps the existing behavior and is the default.
+  one slot's decision reduced to what a session acts on, carrying the epoch it
+  answered and a `SittingDecisionEffect` to apply. `InProcessScheduler` keeps
+  the existing behavior and is the default.
+- `PracticeSession.decisionEpoch`, the version of the scheduler inputs a session
+  owns, and `PracticeSuperseded`, the outcome of a verdict that arrives for
+  inputs that have since moved.
 - Resolved practice scopes carry each active material family's entry tempo into
   the generic scheduler policy used for that scope.
 - `ArpeggioPracticePolicy`, which lets simulation vary the provisional initial

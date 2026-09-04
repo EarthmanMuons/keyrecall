@@ -576,6 +576,9 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastReading: from.lastReading,
         note: from.note,
       ),
+      // The inputs moved while the decision was being computed. The loop asks
+      // again rather than showing an answer about a session that has changed.
+      PracticeSuperseded() => from,
       PracticeBlocked(:final reason) => PracticeLoopState(
         profile: from.profile,
         session: from.session,

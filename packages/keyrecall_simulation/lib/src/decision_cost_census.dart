@@ -274,7 +274,12 @@ class _ProfilingPipeline extends SchedulerPipeline {
   }
 
   @override
-  SelectionResult decide({
+  ({
+    SelectionResult result,
+    bool guidanceProbeAvailable,
+    bool guidanceProbeSelected,
+  })
+  evaluateSlot({
     required LearnerState state,
     required SessionState session,
     required List<Exercise> candidates,
@@ -285,7 +290,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
   }) {
     _generated = candidates.length;
     _decide.start();
-    final result = super.decide(
+    final slot = super.evaluateSlot(
       state: state,
       session: session,
       candidates: candidates,
@@ -295,7 +300,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
       practiceEntryPolicy: practiceEntryPolicy,
     );
     _decide.stop();
-    return result;
+    return slot;
   }
 
   @override

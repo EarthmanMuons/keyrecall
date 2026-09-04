@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `SchedulerPipeline.evaluateSlot`, the decision and what it owes the sitting,
+  without recording it. `decide` applies that itself and is unchanged.
 - `ExecutionMemo`, holding the transferable entry pace and hands-together entry
   tempo for one decision. Both were recomputed per candidate, and the first
   scans every execution residual the learner has.

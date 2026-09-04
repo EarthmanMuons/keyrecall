@@ -63,6 +63,19 @@ class PracticeBlocked extends PracticeDecision {
   const PracticeBlocked(this.reason, {required this.coverage, this.selection});
 }
 
+/// A verdict arrived for scheduler inputs that are no longer current.
+///
+/// Not a failure: something legitimately changed while the decision was being
+/// computed, and the answer is about a session state that has moved. Deciding
+/// again produces a current one.
+@immutable
+class PracticeSuperseded extends PracticeDecision {
+  /// The epoch the discarded verdict answered.
+  final int epoch;
+
+  const PracticeSuperseded(this.epoch);
+}
+
 /// No requirement in the active scope warrants work now.
 @immutable
 class PracticeCaughtUp extends PracticeDecision {
@@ -152,6 +165,16 @@ class PracticeSession {
   final AttemptJournal _journal;
 
   LearnerState _state;
+
+  /// Which version of this session's scheduler inputs is current.
+  ///
+  /// Optimistic concurrency for an answer computed elsewhere, and nothing to do
+  /// with the state hashes recorded on attempts: those establish that persisted
+  /// history is what it claims to be, while this establishes that an
+  /// asynchronous verdict was computed from inputs that still hold. It advances
+  /// whenever anything a scheduling decision reads changes, not only when an
+  /// attempt commits.
+  int _epoch = 0;
 
   PendingDecision? _pending;
   PresentedAttempt? _outstanding;
@@ -287,6 +310,12 @@ class PracticeSession {
   /// The scheduler's view of this sitting.
   SessionState get session => _session;
 
+  /// Which version of this session's scheduler inputs is current.
+  ///
+  /// A verdict computed elsewhere carries the epoch it answered, and one that
+  /// no longer matches is discarded rather than applied.
+  int get decisionEpoch => _epoch;
+
   /// The current structural candidate envelope, empty for an invalid scope.
   List<Exercise> get candidates => switch (_scopeResolution) {
     ValidPracticeScope(:final scope) => List.unmodifiable(
@@ -313,6 +342,7 @@ class PracticeSession {
     PracticeFocus focus = PracticeFocus.unrestricted,
   }) {
     _scopeResolution = _resolve(goal, focus);
+    _epoch++;
   }
 
   /// Decides what to present next and makes that decision durable.
@@ -365,7 +395,9 @@ class PracticeSession {
         ? _scopeResolver.acquisitionFloorFor(due.map((state) => state.resolved))
         : null;
 
+    final epoch = _epoch;
     final verdict = await scheduler.decide(
+      epoch: epoch,
       state: scratch,
       session: _session,
       candidates: candidates,
@@ -373,6 +405,11 @@ class PracticeSession {
       acquisitionFloor: acquisitionFloor,
       practiceEntryPolicy: validScope.entryPolicy,
     );
+    // Nothing is applied and nothing is written: while this was computed, the
+    // inputs it answers about stopped being the current ones.
+    if (verdict.epoch != _epoch) return PracticeSuperseded(verdict.epoch);
+
+    verdict.effect.applyTo(_session);
     if (verdict.chosen == null) {
       return PracticeBlocked(
         verdict.blockedReason!,
@@ -417,6 +454,7 @@ class PracticeSession {
         final PresentedAttempt presented => presented,
         PracticeBlocked() ||
         PracticeCaughtUp() ||
+        PracticeSuperseded() ||
         PracticeInvalidScope() => null,
       };
 
@@ -629,6 +667,7 @@ class PracticeSession {
     await store.appendAttempt(record);
 
     _state = next;
+    _epoch++;
     _journal.append(record);
     // The exercise was presented either way, so the sitting knows it was. A
     // retrieval failure is a claim about the performance, and an unmeasured
@@ -652,6 +691,7 @@ class PracticeSession {
     await store.clearPendingDecision(profile.id);
     _pending = null;
     _outstanding = null;
+    _epoch++;
   }
 
   /// Saves a checkpoint at the current position, if there is history to cover.

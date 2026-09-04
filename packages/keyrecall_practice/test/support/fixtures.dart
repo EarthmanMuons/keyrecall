@@ -75,12 +75,14 @@ Future<PracticeSession> openSession(
   PlacementTier placement = PlacementTier.someExperience,
   List<TechnicalMaterial>? materials,
   SchedulerPipeline? pipeline,
+  SchedulerHost? scheduler,
 }) => PracticeSession.open(
   store: store,
   profile: profile ?? alicePlacedAt(placement),
   materials: materials ?? fixtureMaterials,
   learner: learner,
   pipeline: pipeline,
+  scheduler: scheduler,
   sessionId: sessionId,
   nextId: ids ?? countingIds(),
 );

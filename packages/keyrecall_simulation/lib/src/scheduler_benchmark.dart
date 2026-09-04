@@ -282,7 +282,12 @@ class _TimedPipeline extends SchedulerPipeline {
   _TimedPipeline({required super.learner});
 
   @override
-  SelectionResult decide({
+  ({
+    SelectionResult result,
+    bool guidanceProbeAvailable,
+    bool guidanceProbeSelected,
+  })
+  evaluateSlot({
     required LearnerState state,
     required SessionState session,
     required List<Exercise> candidates,
@@ -295,7 +300,7 @@ class _TimedPipeline extends SchedulerPipeline {
     _watch
       ..reset()
       ..start();
-    final result = super.decide(
+    final slot = super.evaluateSlot(
       state: state,
       session: session,
       candidates: candidates,
@@ -306,9 +311,9 @@ class _TimedPipeline extends SchedulerPipeline {
     );
     _watch.stop();
     lastDecide = _watch.elapsed;
-    lastEvaluated = result.traces.length;
-    lastRanked = result.traces.where((trace) => trace.isRanked).length;
-    return result;
+    lastEvaluated = slot.result.traces.length;
+    lastRanked = slot.result.traces.where((trace) => trace.isRanked).length;
+    return slot;
   }
 }
 

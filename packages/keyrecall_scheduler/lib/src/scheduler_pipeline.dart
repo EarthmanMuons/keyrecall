@@ -156,6 +156,43 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     PracticeEntryPolicy? practiceEntryPolicy,
   }) {
+    final slot = evaluateSlot(
+      state: state,
+      session: session,
+      candidates: candidates,
+      at: at,
+      overrides: overrides,
+      acquisitionFloor: acquisitionFloor,
+      practiceEntryPolicy: practiceEntryPolicy,
+    );
+    session.recordSelectionOpportunity(
+      guidanceProbeAvailable: slot.guidanceProbeAvailable,
+      guidanceProbeSelected: slot.guidanceProbeSelected,
+    );
+    session.attemptsThisSession++;
+    return slot.result;
+  }
+
+  /// The same decision, and what it owes the sitting, without recording it.
+  ///
+  /// Separated so a caller deciding on a copy of the sitting can apply the
+  /// bookkeeping to the one it owns. A worker isolate sees a copy by
+  /// construction, and the two facts below are the whole of what deciding
+  /// changes about a sitting.
+  ({
+    SelectionResult result,
+    bool guidanceProbeAvailable,
+    bool guidanceProbeSelected,
+  })
+  evaluateSlot({
+    required LearnerState state,
+    required SessionState session,
+    required List<Exercise> candidates,
+    required DateTime at,
+    Map<Exercise, ChallengeBypass> overrides = const {},
+    AcquisitionFloor? acquisitionFloor,
+    PracticeEntryPolicy? practiceEntryPolicy,
+  }) {
     final entryPolicy =
         practiceEntryPolicy ??
         PracticeEntryPolicy.uniform(config.eligibility.gentleTempoBpm);
@@ -213,29 +250,28 @@ class SchedulerPipeline {
       }
     }
 
-    session.recordSelectionOpportunity(
+    return (
+      result: selected == null
+          ? SelectionBlocked(
+              traces: traces,
+              selectable: available,
+              pacing: pacing,
+              introductions: introductions,
+              reason: blockedReason,
+            )
+          : CandidateSelected(
+              traces: traces,
+              selectable: available,
+              pacing: pacing,
+              introductions: introductions,
+              candidate: selected,
+            ),
       guidanceProbeAvailable: available.any(
         (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
       ),
       guidanceProbeSelected:
           selected?.challengeBypass == ChallengeBypass.guidanceProbe,
     );
-    session.attemptsThisSession++;
-    return selected == null
-        ? SelectionBlocked(
-            traces: traces,
-            selectable: available,
-            pacing: pacing,
-            introductions: introductions,
-            reason: blockedReason,
-          )
-        : CandidateSelected(
-            traces: traces,
-            selectable: available,
-            pacing: pacing,
-            introductions: introductions,
-            candidate: selected,
-          );
   }
 
   /// Records how a presented exercise ended in the current session.
