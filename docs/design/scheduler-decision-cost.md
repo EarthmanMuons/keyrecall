@@ -1,7 +1,7 @@
 # Scheduler decision cost
 
-- **Status:** Census and four equivalence-preserving reductions. Desktop
-  profiling closed pending a release-build device benchmark.
+- **Status:** Census, four equivalence-preserving reductions, and an iOS release
+  benchmark. An Android device measurement is outstanding.
 - **Written:** September 4, 2026
 - **Scope:** What one scheduling decision costs, and how that cost grows with
   the catalog. The stress case is the production-scale corpus, 48 scales and 24
@@ -218,10 +218,10 @@ history are all removed, and no decision changed:
 | production-scale advanced     |    199 |    82 |
 
 Milliseconds per decision, JIT, on a development machine. Neither number is the
-product metric. The next evidence that can change an architecture decision comes
-from a release build on target hardware, measuring scheduler computation and
-user-visible transition latency separately, at median and p95 over repeated
-decisions, with the scheduler on and off the UI isolate.
+product metric. That comes from a release build on target hardware, measuring
+scheduler computation and user-visible transition latency separately, at median
+and p95 over repeated decisions, with the scheduler on and off the UI isolate.
+The first such measurement is below.
 
 The criterion is product-grounded rather than a universal number:
 
@@ -234,6 +234,48 @@ mature learner many admissible alternatives, and the scheduler's search space
 should not be made artificially smaller to reduce it. If it does not, the next
 problem is a policy one: how many simultaneously admissible alternatives a
 mature learner's scheduler should consider.
+
+## On device
+
+`SchedulerBenchmarkScreen`, reachable from the practice overflow menu, runs the
+same catalogs through the same session in a release build and writes its report
+beside the trajectory exports. iPhone 15 Pro, iOS 26.6.1, release:
+
+| Case             | Decisions | Ranked | Decide p50 | Decide p95 | Frame gap |
+| ---------------- | --------: | -----: | ---------: | ---------: | --------: |
+| cold, weak       |         1 |    192 |    19.3 ms |          - |         - |
+| steady, weak     |        20 |      1 |    24.6 ms |    33.3 ms |   32.3 ms |
+| mature, advanced |        20 |  8,483 |    81.2 ms |    91.0 ms |   84.9 ms |
+
+Frame gap is one decision driven from a post-frame callback, measured through to
+the next frame produced. It is the product number: what the interface loses when
+a decision lands in a transition.
+
+Four things follow.
+
+**The stall is the decision, and nothing else.** Frame gap tracks decide time at
+both states, and the whole slot costs about 2 ms more than the scheduler alone.
+There is no second cost hiding in requirement evaluation or persistence.
+
+**The device matches the development machine.** 81 ms against 82 ms for the
+mature case. The desktop census is representative for hardware of this class,
+which is not yet a claim about a midrange Android phone.
+
+**Isolate placement changes blocking, not cost.** A worker isolate computes the
+same decision in 86.3 ms against 81.2 ms on the UI isolate. Moving scheduling
+off the UI isolate would buy responsiveness and no speed, and the cold case
+shows its startup is cheap.
+
+**The weak case is comfortable and the mature one is marginal.** A 32 ms gap is
+two frames at 60 Hz. An 85 ms gap is five, or ten at the 120 Hz this device
+runs, which is a visible hitch if it lands during an animation and probably
+imperceptible if it lands where a learner has just finished an attempt.
+
+That last point is what the remaining decision turns on, and it is about where
+the decision sits in the transition rather than about the scheduler. If a
+midrange Android phone multiplies 85 ms by two, the question stops being
+marginal, and the cheaper answer is the isolate placement this table already
+prices rather than a smaller search space.
 
 ## Preserving the traces
 
