@@ -99,6 +99,7 @@ implementation rather than evidence about another one.
 | ------------------------------------------------------------------- | ------------------------------------------------------- |
 | Integrated initial-production behavior                              | `learner-model/v1-current-system.md`                    |
 | Future competency admission, validation, and calibration workflow   | `learner-model/competency-extension-guide.md`           |
+| Whether model residuals argue for another arpeggio competency       | `learner-model/arpeggio-residual-census.md`             |
 | Canonical terminology and symbols                                   | `GLOSSARY.md`                                           |
 | Product thesis, UX, privacy principles                              | `design/product-vision.md`                              |
 | Attempt presentation and post-attempt review                        | `design/practice-presentation.md`                       |

@@ -20,6 +20,7 @@ export 'src/practice_simulation.dart';
 export 'src/player_archetypes.dart';
 export 'src/pacing_log.dart';
 export 'src/python_compatible_random.dart';
+export 'src/residual_census.dart';
 export 'src/scheduler_agent.dart';
 export 'src/scheduler_benchmark.dart';
 export 'src/synthetic_learner.dart';

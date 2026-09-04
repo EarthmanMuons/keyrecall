@@ -15,6 +15,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - `runSchedulerBenchmark`, which drives an archetype to a chosen state over a
   chosen catalog and reports median, p95, and worst decision cost. A
   primitives-only entry point lets a worker isolate run it.
+- `residual_census`, which reads model prediction error back out of a journal
+  and asks whether a material, hand, or fingering-geometry cell repeats it.
+  Split-half over each cell's own attempts, against controls that a cell has to
+  survive.
 - `decision_cost`, a decision-grain performance census reporting survivors by
   pipeline stage, distinct materials and realizations, neighbor expansion, and
   phase timings across four catalog sizes and four trajectory positions.
