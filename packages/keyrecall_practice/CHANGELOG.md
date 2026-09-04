@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- `SchedulerHost` binds the resolved scope it decides against and takes the due
+  requirement ids for a slot, so a host that decides elsewhere establishes the
+  candidate envelope once rather than sending it with every request.
 - `PracticeBlocked` carries the blocked reason directly, and its full selection
   only where the decision was computed in this isolate.
 - Candidate assembly deduplicates by material rather than by exercise, which
@@ -23,6 +26,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   one slot's decision reduced to what a session acts on, carrying the epoch it
   answered and a `SittingDecisionEffect` to apply. `InProcessScheduler` keeps
   the existing behavior and is the default.
+- `IsolateScheduler`, a host that decides on a worker isolate holding the
+  sitting's resolved scope. Requirement ids travel instead of the candidate
+  envelope, and only the winning candidate comes back. Losing a worker fails
+  that request alone, applying nothing and writing nothing.
 - `PracticeSession.decisionEpoch`, the version of the scheduler inputs a session
   owns, and `PracticeSuperseded`, the outcome of a verdict that arrives for
   inputs that have since moved.

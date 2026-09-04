@@ -3,6 +3,22 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
+/// The candidates [dueRequirementIds] name, against [scope].
+///
+/// The requirement ids travel instead of the exercises: a slot's envelope is
+/// ten thousand of them, and a host that already holds the scope can rebuild
+/// the subset from a list of strings.
+List<Exercise> candidatesDueIn(
+  ResolvedPracticeScope scope,
+  List<String> dueRequirementIds,
+) {
+  final due = dueRequirementIds.toSet();
+  return distinctCandidatesOf([
+    for (final requirement in scope.requirements)
+      if (due.contains(requirement.requirement.id)) requirement,
+  ]);
+}
+
 /// What deciding a slot owes the sitting.
 ///
 /// The scheduler records two things against a sitting as part of deciding, and
@@ -83,16 +99,29 @@ class SchedulerVerdict {
 /// A host never touches the sitting it is given. What deciding owes the
 /// sitting comes back as a [SittingDecisionEffect], which the session applies
 /// once it has established that the answer is still current.
+/// A host holds the resolved scope it decides against for as long as that
+/// scope is the sitting's, so the candidate envelope is established once
+/// rather than travelling with every request. Binding again replaces it.
 abstract interface class SchedulerHost {
+  /// Adopts [scope], discarding whatever was bound before.
+  Future<void> bind(ResolvedPracticeScope scope, PracticeEntryPolicy entry);
+
+  /// The decision for the slot at [at], answering [epoch].
+  ///
+  /// [dueRequirementIds] names the requirements whose candidates the slot may
+  /// choose between, against the bound scope.
   Future<SchedulerVerdict> decide({
     required int epoch,
     required LearnerState state,
     required SessionState session,
-    required List<Exercise> candidates,
+    required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
-    PracticeEntryPolicy? practiceEntryPolicy,
   });
+
+  /// Releases whatever computes decisions. A host is disposable: a session
+  /// that loses one binds another and asks again from the state it owns.
+  Future<void> dispose();
 }
 
 /// Decides in the calling isolate.
@@ -103,25 +132,39 @@ abstract interface class SchedulerHost {
 class InProcessScheduler implements SchedulerHost {
   final SchedulerPipeline pipeline;
 
-  const InProcessScheduler(this.pipeline);
+  ResolvedPracticeScope? _scope;
+  PracticeEntryPolicy? _entry;
+
+  InProcessScheduler(this.pipeline);
+
+  @override
+  Future<void> bind(
+    ResolvedPracticeScope scope,
+    PracticeEntryPolicy entry,
+  ) async {
+    _scope = scope;
+    _entry = entry;
+  }
+
+  @override
+  Future<void> dispose() async {}
 
   @override
   Future<SchedulerVerdict> decide({
     required int epoch,
     required LearnerState state,
     required SessionState session,
-    required List<Exercise> candidates,
+    required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
-    PracticeEntryPolicy? practiceEntryPolicy,
   }) async {
     final slot = pipeline.evaluateSlot(
       state: state,
       session: session,
-      candidates: candidates,
+      candidates: candidatesDueIn(_scope!, dueRequirementIds),
       at: at,
       acquisitionFloor: acquisitionFloor,
-      practiceEntryPolicy: practiceEntryPolicy,
+      practiceEntryPolicy: _entry,
     );
     final effect = SittingDecisionEffect(
       guidanceProbeAvailable: slot.guidanceProbeAvailable,

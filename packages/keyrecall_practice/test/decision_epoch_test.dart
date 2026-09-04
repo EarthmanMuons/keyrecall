@@ -121,23 +121,28 @@ class _InterceptingScheduler implements SchedulerHost {
   _InterceptingScheduler(this.inner, {this.whileDeciding});
 
   @override
+  Future<void> bind(ResolvedPracticeScope scope, PracticeEntryPolicy entry) =>
+      inner.bind(scope, entry);
+
+  @override
+  Future<void> dispose() => inner.dispose();
+
+  @override
   Future<SchedulerVerdict> decide({
     required int epoch,
     required LearnerState state,
     required SessionState session,
-    required List<Exercise> candidates,
+    required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
-    PracticeEntryPolicy? practiceEntryPolicy,
   }) async {
     final verdict = await inner.decide(
       epoch: epoch,
       state: state,
       session: session,
-      candidates: candidates,
+      dueRequirementIds: dueRequirementIds,
       at: at,
       acquisitionFloor: acquisitionFloor,
-      practiceEntryPolicy: practiceEntryPolicy,
     );
     whileDeciding?.call();
     return verdict;

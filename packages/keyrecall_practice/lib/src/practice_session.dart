@@ -176,6 +176,9 @@ class PracticeSession {
   /// attempt commits.
   int _epoch = 0;
 
+  /// Whether [scheduler] holds the scope currently in force.
+  bool _bound = false;
+
   PendingDecision? _pending;
   PresentedAttempt? _outstanding;
   late ScopeResolution _scopeResolution;
@@ -343,6 +346,7 @@ class PracticeSession {
   }) {
     _scopeResolution = _resolve(goal, focus);
     _epoch++;
+    _bound = false;
   }
 
   /// Decides what to present next and makes that decision durable.
@@ -390,20 +394,24 @@ class PracticeSession {
     final due = scope.isNarrow
         ? evaluated.dueRequirements.toList()
         : evaluated.requirements;
-    final candidates = distinctCandidatesOf(due.map((state) => state.resolved));
     final acquisitionFloor = scope.isNarrow
         ? _scopeResolver.acquisitionFloorFor(due.map((state) => state.resolved))
         : null;
 
+    if (!_bound) {
+      await scheduler.bind(scope, validScope.entryPolicy);
+      _bound = true;
+    }
     final epoch = _epoch;
     final verdict = await scheduler.decide(
       epoch: epoch,
       state: scratch,
       session: _session,
-      candidates: candidates,
+      dueRequirementIds: [
+        for (final requirement in due) requirement.resolved.requirement.id,
+      ],
       at: at,
       acquisitionFloor: acquisitionFloor,
-      practiceEntryPolicy: validScope.entryPolicy,
     );
     // Nothing is applied and nothing is written: while this was computed, the
     // inputs it answers about stopped being the current ones.

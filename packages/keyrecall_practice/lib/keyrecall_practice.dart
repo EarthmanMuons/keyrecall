@@ -26,5 +26,6 @@ export 'src/practice_session.dart';
 export 'src/practice_store.dart';
 export 'src/profile_repository.dart';
 export 'src/requirement_state.dart';
+export 'src/isolate_scheduler.dart';
 export 'src/scheduler_host.dart';
 export 'src/scope_resolution.dart';
