@@ -146,7 +146,7 @@ const _onTertiaryFixedVariant = Color(0xFF695F38);
 /// above it takes, since the bar paints behind that inset.
 ThemeData keyRecallTheme(ColorScheme scheme) => ThemeData(
   colorScheme: scheme,
-  // One colour, scrolled under or not. The elevation tint Material applies
+  // One color, scrolled under or not. The elevation tint Material applies
   // when content passes beneath the bar arrives in a step rather than a
   // gradient, which reads as the bar changing rather than as depth.
   appBarTheme: AppBarTheme(

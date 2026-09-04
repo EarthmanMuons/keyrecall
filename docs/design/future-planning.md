@@ -716,7 +716,7 @@ What it does not remove is the underlying scarcity. A beginner has five
 foundation materials, and once all five have been met every remaining
 introduction is provisional, so the deliberate fallback engages and
 early-transfer material starts appearing around the thirteenth attempt. That is
-the specified behaviour rather than a leak — provisional means deferred while
+the specified behavior rather than a leak — provisional means deferred while
 something better exists, not forbidden — but it means the real question is
 narrower than it looked:
 

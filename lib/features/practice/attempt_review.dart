@@ -215,7 +215,7 @@ class AttemptReview extends StatelessWidget {
 
     return Padding(
       padding: EdgeInsets.all(layout.gutter),
-      // Centred and bounded: this screen is read, and a sentence running the
+      // Centered and bounded: this screen is read, and a sentence running the
       // width of a tablet is one nobody finishes.
       child: Center(
         child: ConstrainedBox(

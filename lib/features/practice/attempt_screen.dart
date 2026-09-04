@@ -226,7 +226,7 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
         switchOutCurve: const Interval(0.8, 1),
         switchInCurve: const Interval(0.35, 1, curve: Curves.easeOutCubic),
         // Against the leading edge while both are in the tree. The default
-        // centres them, which lands the arriving one in the middle of the bar
+        // centers them, which lands the arriving one in the middle of the bar
         // and slides it left once the other is gone.
         layoutBuilder: (current, previous) => Stack(
           alignment: Alignment.centerLeft,
@@ -269,7 +269,7 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
                   profile: active.isEmpty ? null : active.single.profile,
                   // Who is practicing is worth saying on the bar only where it
                   // is in question. On an install with one profile it is
-                  // nobody's doubt, and a coloured disc where the menu goes
+                  // nobody's doubt, and a colored disc where the menu goes
                   // would be decoration.
                   showsProfile: roster.length > 1,
                 ),
@@ -333,7 +333,7 @@ class _RunningTask extends StatelessWidget {
 
 /// Everything the practice screen offers that is not the instrument.
 ///
-/// Wears the active profile's colour where more than one person practices
+/// Wears the active profile's color where more than one person practices
 /// here, so a glance at the bar says whose history the next attempt lands in.
 class _MenuButton extends StatelessWidget {
   const _MenuButton({required this.profile, required this.showsProfile});
@@ -1058,7 +1058,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
 
 /// The space the written music takes, whether or not there is any.
 ///
-/// Centred while it fits and scrollable once it does not: an exercise runs from
+/// Centered while it fits and scrollable once it does not: an exercise runs from
 /// nothing on screen to four systems of it, and a staff pinned to the top of a
 /// tall phone reads as an afterthought at one octave.
 class _Notation extends StatefulWidget {
@@ -1075,8 +1075,8 @@ class _Notation extends StatefulWidget {
   /// where it sits and whether it moves.
   ///
   /// Something still being written grows downward, so it is held to the top:
-  /// centring it would move every system already on screen each time another
-  /// one opened. Something finished is centred, because then there is nothing
+  /// centering it would move every system already on screen each time another
+  /// one opened. Something finished is centered, because then there is nothing
   /// left to come and the empty half of the screen is just empty.
   final bool follows;
 

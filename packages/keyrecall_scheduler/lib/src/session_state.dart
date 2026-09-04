@@ -29,7 +29,7 @@ class SessionState {
   /// null.
   ///
   /// The target itself for the same reason recovery holds one: the point is a
-  /// specific harder question, not a general licence to pick something harder.
+  /// specific harder question, not a general license to pick something harder.
   Exercise? tempoProbe;
 
   /// Attempts in a row under support, without retrieval being observed at all.

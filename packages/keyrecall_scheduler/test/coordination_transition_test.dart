@@ -268,7 +268,7 @@ void main() {
           candidates: [exercise],
           at: t0,
         )
-        // Evaluation adds execution neighbours, so the trace for the exercise
+        // Evaluation adds execution neighbors, so the trace for the exercise
         // asked about is picked out rather than assumed to be the only one.
         .firstWhere((trace) => trace.exercise == exercise);
 

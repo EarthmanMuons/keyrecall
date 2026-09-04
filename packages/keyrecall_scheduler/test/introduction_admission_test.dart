@@ -108,7 +108,7 @@ void main() {
     expect(
       introduces(state, twoOctaves, both),
       isFalse,
-      reason: 'introducing something is not a licence to introduce anything',
+      reason: 'introducing something is not a license to introduce anything',
     );
   });
 

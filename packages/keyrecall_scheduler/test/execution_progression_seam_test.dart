@@ -167,7 +167,7 @@ void main() {
     // and the winner might be from either.
     final state = owning([HandConfiguration.right]);
     final raw = generateCandidates(InstrumentProfile(), catalog);
-    final refined = withExecutionNeighbours(state, raw);
+    final refined = withExecutionNeighbors(state, raw);
 
     expect(refined.length, greaterThan(raw.length));
     expect(

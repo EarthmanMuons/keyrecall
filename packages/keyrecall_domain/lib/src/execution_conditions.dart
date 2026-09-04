@@ -124,7 +124,7 @@ class ExecutionConditions {
   /// nonpositive or non-finite tempo would silently produce a meaningless
   /// difficulty rather than failing where the bad value entered.
   /// One octave, because that is the least-assumptive scale there is: it is
-  /// foundation behaviour on every axis, and two octaves carries a
+  /// foundation behavior on every axis, and two octaves carries a
   /// prerequisite of its own. A default that asks a harder question than the
   /// caller meant is invisible policy.
   ExecutionConditions({

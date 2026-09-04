@@ -13,14 +13,14 @@ void main() {
     presentationHint: hint,
   );
 
-  test('a recorded colour is the one shown', () {
+  test('a recorded color is the one shown', () {
     expect(
       ProfileColor.of(profileNamed('Alice', hint: ProfileColor.teal.name)),
       ProfileColor.teal,
     );
   });
 
-  test('a profile recorded before colours gets a stable one anyway', () {
+  test('a profile recorded before colors gets a stable one anyway', () {
     final profile = profileNamed('Alice');
 
     expect(ProfileColor.of(profile), ProfileColor.of(profile));
@@ -33,7 +33,7 @@ void main() {
     );
   });
 
-  test('a new profile does not take a colour already in use', () {
+  test('a new profile does not take a color already in use', () {
     final here = [
       profileNamed('Alice', hint: ProfileColor.amber.name),
       profileNamed('Bob', hint: ProfileColor.teal.name),
@@ -45,7 +45,7 @@ void main() {
     expect(next, isNot(ProfileColor.teal));
   });
 
-  test('more people than colours wraps rather than refusing', () {
+  test('more people than colors wraps rather than refusing', () {
     final crowd = [
       for (final color in ProfileColor.values)
         profileNamed(color.name, id: color.name, hint: color.name),

@@ -137,7 +137,7 @@ class AttemptDiagnosis {
   ///
   /// A wrong note and an extra note are different things and are named
   /// differently, but only while the attempt made one kind of mistake. An
-  /// attempt that made both is totalled instead: naming one kind would hide
+  /// attempt that made both is totaled instead: naming one kind would hide
   /// the other, and naming both is the changelog this is meant not to be.
   String get _notesSentence {
     final slipped = slippedNotes;

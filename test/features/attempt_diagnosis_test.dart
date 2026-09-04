@@ -137,7 +137,7 @@ void main() {
       expect(diagnosis.sentence, '2 pitches slipped.');
     });
 
-    test('a wrong note and an extra one are totalled, not ranked', () {
+    test('a wrong note and an extra one are totaled, not ranked', () {
       final diagnosis = diagnosisOf(
         played(
           [...expected]

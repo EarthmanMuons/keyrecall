@@ -120,7 +120,7 @@ class Layout {
   /// How wide content that is read rather than looked at may get.
   ///
   /// A line of text running the full width of a tablet is a line nobody
-  /// finishes, so text-shaped screens centre inside this instead.
+  /// finishes, so text-shaped screens center inside this instead.
   double get readableWidth => 640;
 
   /// Whether the screen has room to put two things beside each other.

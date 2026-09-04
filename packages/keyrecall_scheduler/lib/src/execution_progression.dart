@@ -87,7 +87,7 @@ ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
   }
 
   // A span nobody has reached, entered at a tempo the narrower one was
-  // managed at. One neighbour rather than every slower tempo under the
+  // managed at. One neighbor rather than every slower tempo under the
   // ceiling, so widening does not also become a cloud of tempo choices.
   if (atNarrower > 0 && tempo == atNarrower) return ExecutionAdvance.span;
 
@@ -329,7 +329,7 @@ bool isCoordinationTransition(LearnerState state, Exercise exercise) =>
 /// either, holding one invariant: **every exercise it adds is a tempo variant
 /// of a shape generation already produced.** Same material, hands, span,
 /// direction and guidance.
-List<Exercise> withExecutionNeighbours(
+List<Exercise> withExecutionNeighbors(
   LearnerState state,
   List<Exercise> candidates,
 ) {

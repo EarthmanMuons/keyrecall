@@ -11,7 +11,7 @@
 /// KeyRecall uses it as an **adjacency relation** rather than a candidate set.
 /// Generating all thirty-nine would multiply the candidate space by ten to
 /// express a question that is always local — is the next rung up useful work
-/// yet — and answering that needs two neighbours, not a catalog.
+/// yet — and answering that needs two neighbors, not a catalog.
 const List<double> metronomeLadder = [
   40, 42, 44, 46, 48, 50, 52, 54, 56, 58, //
   60, 63, 66, 69, //

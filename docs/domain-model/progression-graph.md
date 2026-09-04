@@ -47,7 +47,7 @@ first.
 
 **Difficulty does not restrain it.** The `information` term actively prefers the
 condition nobody has attempted, precisely because nobody has. That is correct
-behaviour for an active-learning scheduler, and it means an untried axis is
+behavior for an active-learning scheduler, and it means an untried axis is
 sought out rather than deferred. Where the ordering is genuinely unanimous
 across sources, something has to counterbalance that.
 

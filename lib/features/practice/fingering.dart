@@ -61,7 +61,7 @@ List<int?>? displayFingeringFor(Exercise exercise, Hand hand) {
   ];
 }
 
-/// Whether the finger at [position] is not the neighbour of the one before it.
+/// Whether the finger at [position] is not the neighbor of the one before it.
 ///
 /// A scale moves by step, so an adjacent finger is what a reader expects.
 /// Anything else is a thumb passing under or a finger crossing over, which is

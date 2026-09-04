@@ -956,7 +956,7 @@ The observation probe answers a loop the ordinary band creates on its own.
 Support raises predicted success, so as memory weakens continuous cueing is what
 lands inside the band, and continuous cueing observes no retrieval. Nothing then
 arrives to say whether the support is still needed, and the preference persists
-on evidence that can never be collected: the scheduler optimises the challenge
+on evidence that can never be collected: the scheduler optimizes the challenge
 so well that it stops gathering what it would take to stop. After a run of
 attempts in which retrieval went unobserved, one retrieval-observing question is
 admitted whatever its predicted success.

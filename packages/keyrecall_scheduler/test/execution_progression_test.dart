@@ -269,7 +269,7 @@ void main() {
     });
 
     test('an introduction is offered at that tempo and no other', () {
-      // The behaviour this replaced: every generated tempo was admitted and
+      // The behavior this replaced: every generated tempo was admitted and
       // nothing in the ranking key reads tempo, so which one a learner met
       // was decided by the order of a constant.
       final state = learner();
@@ -310,7 +310,7 @@ void main() {
     });
   });
 
-  group('the neighbours the generator does not contain', () {
+  group('the neighbors the generator does not contain', () {
     List<Exercise> generatedForC() => generateCandidates(InstrumentProfile(), [
       TechnicalMaterial('C', ScaleForm.major),
     ]);
@@ -331,7 +331,7 @@ void main() {
         isFalse,
       );
 
-      final wider = withExecutionNeighbours(state, generated).where(
+      final wider = withExecutionNeighbors(state, generated).where(
         (e) =>
             e.conditions.octaves == 2 &&
             e.conditions.tempoBpm == 63 &&
@@ -356,7 +356,7 @@ void main() {
         isFalse,
       );
 
-      final together = withExecutionNeighbours(state, generated).where(
+      final together = withExecutionNeighbors(state, generated).where(
         (e) =>
             e.conditions.hands == HandConfiguration.together &&
             e.conditions.tempoBpm == tempoBefore(63) &&
@@ -370,7 +370,7 @@ void main() {
       );
     });
 
-    test('a neighbour is added for a span that has been managed', () {
+    test('a neighbor is added for a span that has been managed', () {
       final state = learner();
       demonstrate(state, HandConfiguration.right, tempoBpm: 60);
       final generated = generateCandidates(InstrumentProfile(), [
@@ -383,7 +383,7 @@ void main() {
         reason: 'sixty-three exists only because somebody managed sixty',
       );
       expect(
-        withExecutionNeighbours(state, generated).any(
+        withExecutionNeighbors(state, generated).any(
           (e) =>
               e.conditions.tempoBpm == 63 &&
               e.conditions.hands == HandConfiguration.right &&
@@ -403,7 +403,7 @@ void main() {
       demonstrate(state, HandConfiguration.right, tempoBpm: 63);
       final generated = generatedForC();
 
-      final offered = withExecutionNeighbours(state, generated);
+      final offered = withExecutionNeighbors(state, generated);
       expect(
         offered.any(
           (e) =>
@@ -429,7 +429,7 @@ void main() {
       ]);
 
       expect(
-        withExecutionNeighbours(learner(), generated),
+        withExecutionNeighbors(learner(), generated),
         hasLength(generated.length),
       );
     });
@@ -443,7 +443,7 @@ void main() {
         TechnicalMaterial('C', ScaleForm.major),
       ]);
 
-      final added = withExecutionNeighbours(
+      final added = withExecutionNeighbors(
         state,
         generated,
       ).where((e) => !generated.contains(e));

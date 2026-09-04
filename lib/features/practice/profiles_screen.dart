@@ -90,7 +90,7 @@ class _Roster extends ConsumerWidget {
 /// An install with nobody on it.
 ///
 /// Reached by deleting the last profile, so it says what the screen is for
-/// rather than only that it is empty. Sat above the centre line, clear of the
+/// rather than only that it is empty. Sat above the center line, clear of the
 /// button that answers it.
 class _NobodyHere extends StatelessWidget {
   const _NobodyHere();
@@ -275,9 +275,9 @@ enum _ProfileAction { select, edit, eraseHistory, delete }
 
 /// The profile's disc, marked when this is the one being practiced as.
 ///
-/// The mark is filled with the accent and ringed in the page's own colour, so
+/// The mark is filled with the accent and ringed in the page's own color, so
 /// it reads as an object sitting on the disc rather than as part of it, even
-/// where the profile's colour is close to the accent.
+/// where the profile's color is close to the accent.
 class _ProfileMark extends StatelessWidget {
   const _ProfileMark({required this.profile, required this.isActive});
 
@@ -312,9 +312,9 @@ class _ProfileMark extends StatelessWidget {
   }
 }
 
-/// How a profile is recognized: what it is called, and the colour it wears.
+/// How a profile is recognized: what it is called, and the color it wears.
 ///
-/// One dialog because it is one decision. A name and a colour are both answers
+/// One dialog because it is one decision. A name and a color are both answers
 /// to the same question of which row in the list is yours, and asking them
 /// separately made changing both a trip through the menu twice.
 ///
@@ -375,9 +375,9 @@ class _ProfileDialogState extends State<_ProfileDialog> {
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 24),
-          Text('Colour', style: theme.textTheme.labelLarge),
+          Text('Color', style: theme.textTheme.labelLarge),
           const SizedBox(height: 12),
-          // The palette is the whole choice. A colour is what a profile is
+          // The palette is the whole choice. A color is what a profile is
           // picked out by at a glance, so the six that stay apart are the six
           // on offer.
           Wrap(

@@ -193,8 +193,8 @@ class PlayerState {
     final performed = performedTempoFor(exercise);
     final natural = naturalTempoFor(conditions.hands);
 
-    double noisy(double centre) =>
-        rng.nextGaussian(centre, player.noise).clamp(0.0, 1.0);
+    double noisy(double center) =>
+        rng.nextGaussian(center, player.noise).clamp(0.0, 1.0);
 
     // Playing above your comfortable pace is what costs; playing below it is
     // free, because nobody struggles to play a scale slowly. Span costs

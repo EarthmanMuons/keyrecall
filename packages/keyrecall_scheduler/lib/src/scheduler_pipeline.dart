@@ -1086,11 +1086,11 @@ class SchedulerPipeline {
     // An exclusive target has to be in the set it narrows: recovery and the
     // tempo probe both refuse everything but one exact exercise, so a target
     // the candidates do not contain would leave the slot admitting nothing.
-    final neighbours = withExecutionNeighbours(state, candidates);
+    final neighbors = withExecutionNeighbors(state, candidates);
     final refined = [
-      ...neighbours,
+      ...neighbors,
       for (final exclusive in [target, probe])
-        if (exclusive != null && !neighbours.contains(exclusive)) exclusive,
+        if (exclusive != null && !neighbors.contains(exclusive)) exclusive,
     ];
     // One memo for the slot, so the questions eligibility asks of state alone
     // are answered once rather than once per candidate.

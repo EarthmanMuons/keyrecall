@@ -136,7 +136,7 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   ///
   /// Placing an install that already has somebody on it returns them
   /// unchanged, because the question was already answered and a second answer
-  /// would be one the history cannot honour.
+  /// would be one the history cannot honor.
   Future<Profile?> place(PlacementTier placement) =>
       _mutate((repository, store) async {
         final existing = await repository.selectedOrOldest();
@@ -159,7 +159,7 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
         return (await _isActive(repository, profileId), renamed);
       });
 
-  /// Changes the colour a profile is recognized by.
+  /// Changes the color a profile is recognized by.
   Future<Profile?> recolor(String profileId, ProfileColor color) =>
       _mutate((repository, store) async {
         final restyled = await repository.restyle(profileId, color.name);

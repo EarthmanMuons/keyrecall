@@ -157,7 +157,7 @@ void main() {
   });
 
   test('the frontier moves at the demonstrated score and not below it', () {
-    // Where the new scheduling behaviour switches on, made explicit so a
+    // Where the new scheduling behavior switches on, made explicit so a
     // device sitting can say whether the midpoint is the right place for it.
     // Below the line nothing advances and there is nothing adjacent to offer;
     // at it, the next step becomes reachable.

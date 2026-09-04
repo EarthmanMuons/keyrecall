@@ -213,7 +213,7 @@ double _spaceFor(double? fitted) => (fitted ?? _fallbackStaffSpace).clamp(
   _maximumStaffSpace,
 );
 
-/// The theme a staff is drawn in, taken from the app's colours.
+/// The theme a staff is drawn in, taken from the app's colors.
 crisp.CrispNotationTheme staffTheme(BuildContext context) {
   final scheme = Theme.of(context).colorScheme;
   return crisp.CrispNotationTheme.standard.copyWith(

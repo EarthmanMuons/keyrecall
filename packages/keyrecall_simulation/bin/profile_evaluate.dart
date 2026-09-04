@@ -44,7 +44,7 @@ Future<void> main(List<String> arguments) async {
   final session = SessionState();
   final at = DateTime.utc(2026).add(Duration(minutes: slot));
   final generated = generateCandidates(InstrumentProfile(), allScales);
-  final candidates = withExecutionNeighbours(state, generated);
+  final candidates = withExecutionNeighbors(state, generated);
 
   stdout.writeln(
     'one decision for ${player.id} at slot $slot\n'
@@ -74,8 +74,8 @@ Future<void> main(List<String> arguments) async {
       at: at,
     );
   });
-  timed('withExecutionNeighbours', 20, () {
-    withExecutionNeighbours(state, generated);
+  timed('withExecutionNeighbors', 20, () {
+    withExecutionNeighbors(state, generated);
   });
   timed('eligibilityFor', 20, () {
     for (final exercise in candidates) {

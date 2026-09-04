@@ -77,7 +77,7 @@ Map<Hand, int> reachedMoments(
       next[hand] = index + 1;
     }
   }
-  // Still travelled, so the hand that did play in the written register is not
+  // Still traveled, so the hand that did play in the written register is not
   // dragged along by this one's arrivals.
   return {
     for (final MapEntry(key: hand, value: position) in reached.entries)

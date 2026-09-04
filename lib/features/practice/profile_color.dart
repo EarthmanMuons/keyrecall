@@ -1,11 +1,11 @@
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:material_ui/material_ui.dart';
 
-/// The colour a profile is recognized by.
+/// The color a profile is recognized by.
 ///
 /// One install, more than one person: a name in a list says who is who when
-/// somebody reads it, and a colour says it at a glance from across the room.
-/// The palette is small on purpose, since colours only tell people apart while
+/// somebody reads it, and a color says it at a glance from across the room.
+/// The palette is small on purpose, since colors only tell people apart while
 /// they stay apart.
 ///
 /// Carried in [Profile.presentationHint], which the journal keeps as an
@@ -23,14 +23,14 @@ enum ProfileColor {
 
   final int _value;
 
-  /// The colour itself.
+  /// The color itself.
   Color get color => Color(_value);
 
-  /// The colour [profile] is shown in.
+  /// The color [profile] is shown in.
   ///
-  /// A profile recorded before colours existed has no hint, and gets one
+  /// A profile recorded before colors existed has no hint, and gets one
   /// derived from its id instead of none: it is stable for the life of the
-  /// profile, which is all a recognizable colour has to be.
+  /// profile, which is all a recognizable color has to be.
   static ProfileColor of(Profile profile) {
     final named = values.where(
       (color) => color.name == profile.presentationHint,
@@ -40,11 +40,11 @@ enum ProfileColor {
         : values[profile.id.hashCode.abs() % values.length];
   }
 
-  /// The colour to give a new profile, given who is already here.
+  /// The color to give a new profile, given who is already here.
   ///
   /// The first one nobody is using, so a second person is never handed the
-  /// colour of the first. Past the palette it wraps, because a repeated colour
-  /// is a worse outcome than no colour only until there are six people on one
+  /// color of the first. Past the palette it wraps, because a repeated color
+  /// is a worse outcome than no color only until there are six people on one
   /// piano.
   static ProfileColor unusedAmong(Iterable<Profile> profiles) {
     final taken = profiles.map(ProfileColor.of).toSet();

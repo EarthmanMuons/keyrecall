@@ -14,7 +14,7 @@ const _handSetEquality = SetEquality<Hand>();
 ///
 /// Usually one hand. Both, where two lines meet on one key: contrary motion
 /// conventionally starts and returns in unison, and a piano sends one note-on
-/// however many thumbs are on the key. Modelling that as two notes would ask
+/// however many thumbs are on the key. Modeling that as two notes would ask
 /// for an observation the instrument cannot produce, so the attempt could never
 /// read as complete.
 @immutable
