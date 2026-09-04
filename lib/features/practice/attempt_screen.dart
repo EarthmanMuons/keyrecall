@@ -26,6 +26,7 @@ import 'loop_failure.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
 import 'profile_avatar.dart';
+import 'scheduler_benchmark.dart';
 import 'profiles_screen.dart';
 import 'screen_wake_lock.dart';
 import 'staff_cue.dart';
@@ -358,6 +359,21 @@ class _MenuButton extends StatelessWidget {
               ? const Icon(Icons.people_outline)
               : ProfileAvatar(profile: profile!, radius: 16),
           title: Text(profile?.displayName ?? 'Profiles'),
+        ),
+      ),
+      // Temporary, and deliberately not behind the build-mode check the
+      // developer screen is: what it measures is release-build scheduling cost
+      // on real hardware, which is the one thing a profile build cannot say.
+      PopupMenuItem(
+        value: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => const SchedulerBenchmarkScreen(),
+          ),
+        ),
+        child: const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.speed),
+          title: Text('Scheduler benchmark'),
         ),
       ),
       // A profile build is how this gets taken to a real instrument across the

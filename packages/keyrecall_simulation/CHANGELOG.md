@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `runSchedulerBenchmark`, which drives an archetype to a chosen state over a
+  chosen catalog and reports median, p95, and worst decision cost. A
+  primitives-only entry point lets a worker isolate run it.
 - `decision_cost`, a decision-grain performance census reporting survivors by
   pipeline stage, distinct materials and realizations, neighbor expansion, and
   phase timings across four catalog sizes and four trajectory positions.
