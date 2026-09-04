@@ -72,6 +72,10 @@ final exercise = switch (session.pending) {
       'practice blocked: ${reason.name}',
     ),
     PracticeCaughtUp() => null,
+    // Something the session owns changed while the decision was being
+    // computed, so the answer is about inputs that have moved. Deciding again
+    // produces a current one.
+    PracticeSuperseded() => null,
     PracticeInvalidScope(:final failures) => throw ArgumentError(
       'invalid practice scope: $failures',
     ),
@@ -84,6 +88,14 @@ await session.closeFromPerformance(transcript);
 await session.saveCheckpoint(); // optional; only ever saves replay time
 ```
 
+A session decides through a `SchedulerHost`, which chooses where the decision is
+computed and nothing else. Passing none decides on the calling isolate, which is
+what a test and a simulation want. The app passes an `IsolateScheduler`, because
+a mature full-catalog decision blocks its isolate for a fifth of a second on a
+mid-range phone. Either way the session binds the scope, the learner, and the
+policy constants, applies the returned sitting effect, and writes the pending
+decision itself.
+
 Placement state is anchored at `Profile.createdAt`, so every attempt must fall
 at or after it, and the caller supplies the instant a new journal is stamped
 with. A wall clock the caller does not control would give replay a different
@@ -93,8 +105,8 @@ nothing derives a model timestamp from it.
 The session attempt cap counts scheduler **decision opportunities**, not only
 presented attempts, so a blocked result still consumes one. Caught-up and
 invalid-scope results return before scheduling and consume none. None creates a
-pending decision: only an exercise that was durably selected and shown can
-later become an attempt.
+pending decision: only an exercise that was durably selected and shown can later
+become an attempt.
 
 ## Storage
 

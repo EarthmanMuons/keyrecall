@@ -1,14 +1,14 @@
 # keyrecall_scheduler
 
 The V1 scheduler behind [KeyRecall](https://github.com/EarthmanMuons/keyrecall):
-given what the system currently believes about a pianist, which valid scale
+given what the system currently believes about a pianist, which valid technical
 exercise should they play next. Pure Dart, no Flutter dependencies.
 
 The scheduler is a staged policy, not a scoring function. Each stage answers one
 question and may read only what its information boundary permits, and every
 candidate comes back with a `CandidateTrace` explaining what happened to it.
 
-## The four stages
+## The stages
 
 1. **Candidate generation** (`generateCandidates`) reads the catalog and the
    `InstrumentProfile`, and nothing else. It takes no learner or session
@@ -18,15 +18,21 @@ candidate comes back with a `CandidateTrace` explaining what happened to it.
    outrank a fully eligible one. The safety gate reads session state only and is
    hard.
 3. **Challenge admission** keeps ordinary candidates inside a probability band,
-   with four named exceptions: new material, guidance probe, bootstrap probe,
-   and recovery. Recovery is reactive and exclusive: after a retrieval failure,
-   only the same motor task with one more step of guidance survives.
+   and admits outside it only through a named exception: an explicit override,
+   recovery, a tempo, observation, guidance, or bootstrap probe, consolidation,
+   new material, or execution progression. Each is recorded as the bypass it
+   was. Recovery is reactive and exclusive: after a retrieval failure, only the
+   same motor task with one more step of guidance survives.
 4. **Priority ranking** orders survivors lexicographically by eligibility tier,
-   retention, information, diversity, and goals. There is no hidden weighted
-   sum. A repetition guard then keeps one material from winning forever, without
-   ever removing the only admitted option, and realization-family pacing sets
-   aside a strand of work that has been consuming the session without yielding
-   when another comparably ready strand is admitted.
+   coordination transition, retention, information, diversity, goals,
+   realization rank, and realization fit. There is no hidden weighted sum.
+
+Selection then narrows what ranking produced, without ever emptying it: a
+repetition guard keeps one material from winning forever, an optional
+introduction cap withholds first exposures while a scope already holds its
+budget of unretrieved material, and realization-family pacing sets aside a
+strand that has been consuming the session without yielding when another
+comparably ready strand is admitted.
 
 ## Usage
 

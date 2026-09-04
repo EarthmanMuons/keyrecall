@@ -154,13 +154,13 @@ execution states.
 Two of those axes are easily confused, and keeping them apart is load-bearing:
 
 ```text
-ScaleDirection   the temporal traversal of one line      up | upDown
+ExerciseDirection the temporal traversal of one line     up | upDown
 HandMotion       the relationship between two hands      parallel | contrary
                  contrary is valid only for hands together
 ```
 
 Both hands traverse the same `upDown` exercise whether they move together or
-apart, so these are orthogonal. Folding contrary motion into `ScaleDirection`
+apart, so these are orthogonal. Folding contrary motion into `ExerciseDirection`
 would conflate the shape of one line with the relationship between two.
 
 V1 supports major, natural minor, harmonic minor, and fixed-form melodic minor
@@ -187,7 +187,7 @@ The mean is the current capability estimate. The variance is uncertainty about
 that estimate. The normal distribution is an interpretable engineering
 approximation; it is not a claim that human ability is literally Gaussian.
 
-The current model estimates fourteen competencies:
+The current model estimates fifteen competencies:
 
 ```text
 Pitch/form topology
@@ -196,6 +196,7 @@ Pitch/form topology
     HARMONIC_MINOR_TOPOLOGY
     MELODIC_MINOR_TOPOLOGY
     MAJOR_ARPEGGIO_TOPOLOGY
+    MINOR_ARPEGGIO_TOPOLOGY
 
 Broad execution
     RH_SCALE_EXECUTION

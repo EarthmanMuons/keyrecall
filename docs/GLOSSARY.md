@@ -1,7 +1,7 @@
 # KeyRecall Glossary
 
 - **Status:** Canonical V1 terminology
-- **Last aligned:** September 2, 2026
+- **Last aligned:** September 4, 2026
 
 This file is a concise lookup reference for current terms. It does not record
 design history, supersessions, open questions, or mathematical derivations. See
@@ -19,6 +19,20 @@ anchor to the attempt time. Productive supported practice may move an existing
 anchor partway toward the present without recording a retrieval success.
 
 Activation is distinct from current durability and retained consolidation.
+
+### Acquisition floor
+
+The safe entry realizations a family offers for its unresolved requirements,
+supplied to the scheduler when nothing else is admissible. It is a family's
+answer to "what may this learner be given at all", not a ranking term: the
+scheduler reaches for it only after ordinary admission produces nothing, and a
+slot it cannot fill is a reasoned block rather than an absence.
+
+### Admission band
+
+The probability window ordinary candidates must land in to be admitted, `pMin`
+to `pMax`, with a lower `pIntroductionMin` for material never practiced. A
+candidate outside it survives only through a [Challenge bypass].
 
 ### Attempt
 
@@ -51,6 +65,13 @@ state.
 A domain-valid `Exercise` considered by the scheduler. Candidate generation uses
 domain and instrument constraints but no learner state.
 
+### Challenge bypass
+
+The named reason a candidate outside the [Admission band] was admitted anyway:
+an override, recovery, a tempo or guidance or bootstrap or observation probe,
+consolidation, new material, or execution progression. Every admitted candidate
+carries either a bypass or membership in the band, and the trace records which.
+
 ### Cold-start estimate
 
 The estimated probability of independently retrieving exact material before the
@@ -63,15 +84,10 @@ A persistent, transferable latent learner capability estimated from relevant
 practice across materials. `Competency` is the canonical term; older documents
 may use `KnowledgeComponent`, `KC`, or `Component`.
 
-V1 estimates ten competencies: four scale-topology competencies, right- and
-left-hand scale execution, scalar crossing, multi-octave continuation, direction
+V1 estimates fifteen competencies: four scale-topology and two arpeggio-topology
+competencies, right- and left-hand execution for each of the two families,
+scalar crossing, arpeggio transition, multi-octave continuation, direction
 reversal, and hands-together coordination.
-
-### CompetencyCategory
-
-An organizational label over competencies with no estimated learner state of its
-own. `SCALE_TOPOLOGY` and `SCALE_EXECUTION` are categories, not latent
-variables.
 
 ### Consolidation
 
@@ -82,6 +98,15 @@ See **Retained consolidation**.
 The half-life currently governing decay from `memory_anchor_at`. It is positive,
 may be corrected by factual elapsed retrieval evidence, and never exceeds
 retained consolidation.
+
+### Decision epoch
+
+The version of the scheduler inputs a `PracticeSession` owns, advanced whenever
+anything a decision reads changes: a committed attempt, an abandoned decision, a
+scope change. A verdict computed on a worker carries the epoch it answered, and
+one that no longer matches is discarded rather than applied. Optimistic
+concurrency, and deliberately not one of the state hashes: those establish that
+persisted history is what it claims to be.
 
 ### Derived evidence
 
@@ -131,13 +156,14 @@ difficulty rather than material identity.
 
 How the two hands move relative to each other, `PARALLEL` or `CONTRARY`. Valid
 as `CONTRARY` only when the hand configuration is `TOGETHER`; a single hand
-carries `PARALLEL` as its canonical value. Distinct from [ScaleDirection]: both
-hands traverse the same `UP_DOWN` exercise whether they move together or apart.
+carries `PARALLEL` as its canonical value. Distinct from [ExerciseDirection]:
+both hands traverse the same `UP_DOWN` exercise whether they move together or
+apart.
 
-### ScaleDirection
+### ExerciseDirection
 
-Which way a single scale line is traversed in time, `UP` or `UP_DOWN`. It says
-nothing about the relationship between two hands; see [HandMotion].
+Which way a line is traversed in time, `UP` or `UP_DOWN`. It says nothing about
+the relationship between two hands; see [HandMotion].
 
 ### Factual retrieval
 
@@ -155,9 +181,12 @@ then hidden remain a lower-demand factual test.
 
 ### FingeringPattern
 
-The concrete canonical fingering for one scale, form, hand, and direction. It is
-authoritative domain data. The retired `FingeringGroup` term should not be used
-as a synonym.
+The concrete canonical fingering for one material and hand: authoritative domain
+data, and the analysis vocabulary of
+[`fingering-taxonomy.md`](domain-model/fingering-taxonomy.md). The implemented
+type is `CanonicalFingering`, reached by `canonicalFingering(material, hand)`,
+and it covers arpeggios as well as scales. The retired `FingeringGroup` term
+should not be used as a synonym.
 
 ### Fluency Profile
 
@@ -310,12 +339,26 @@ is keyed by learner and `TechnicalMaterial`, not by hand or exercise variant.
 ### MotorFamily
 
 A higher-level equivalence class over mechanically derived motor realizations.
-`DIATONIC_3_4_CYCLE` is domain structure, not learner state.
+`DIATONIC_3_4_CYCLE` is domain structure, not learner state. Analysis
+vocabulary, from [`motor-taxonomy.md`](domain-model/motor-taxonomy.md) and
+`analysis/scale-motor/motor-realizations.yaml`; nothing in the packages
+implements it, and whether it earns a competency is the open question the
+residual census exists to answer.
 
 ### MotorRealization
 
 The mechanically derived realization of a `FingeringPattern`, including phases,
-crossings, continuations, reversals, and other technical events.
+crossings, continuations, reversals, and other technical events. Analysis
+vocabulary from the same source. What the packages carry is narrower:
+`MotorOpportunitySite` for where such an event occurs, and `ExerciseRealization`
+for the notes an exercise resolves to.
+
+### Material family
+
+The declared grouping a `TechnicalMaterial` belongs to, `SCALE` or `ARPEGGIO`,
+which decides its candidate generation, its acquisition floor, its entry tempo,
+and which execution and topology competencies it loads. Families are declared
+keys rather than an enum the scheduler branches on.
 
 ### Observation
 
@@ -362,6 +405,30 @@ rather than a candidate set: it defines what the next and previous tempo are.
 Its steps grow with the tempo, which is the right shape for a quantity where a
 fixed count of beats per minute does not mean a fixed amount at both ends.
 
+### Realization key
+
+What the guidance-independent prediction channels vary with: material, pattern,
+and execution conditions. Execution, coordination, and topology are computed
+once per realization and shared across the guidance rungs above it.
+
+### Introduction cap
+
+An experimental limit on how much introduced-but-unretrieved material one scope
+may hold open at once, carried by `IntroductionConfig` and null in the shipped
+configuration. It filters the available set beside [Realization-family pacing],
+never empties it, and leaves admission untouched. See
+[`design/introduction-breadth.md`](design/introduction-breadth.md).
+
+### Realization-family pacing
+
+Allocation control over the declared families a realization consumes, such as
+right hand, left hand, hands together, and motion. Pressure is
+`max(0, share - floor) x (1 - managed fraction)` over a rolling window, and a
+family over the set-aside threshold has its candidates removed from the
+available set where a comparably ready alternative exists. It never makes an
+inadmissible exercise admissible and never empties a selectable set. See
+[`design/realization-family-pacing.md`](design/realization-family-pacing.md).
+
 ### Recovery
 
 An exclusive challenge-band exception immediately after a factual retrieval
@@ -373,6 +440,14 @@ one step more guidance.
 A selection-time policy that prevents an over-repeated material from winning
 when another admitted material exists. It never removes the only admitted
 option.
+
+### Rho
+
+A transfer coefficient, and not a measured correlation: `rhoHand` and
+`rhoFamily` are the fraction of the gap to a paired hand or a source family that
+a competency may borrow when predicting, bounded to `[0, 1]` and shrunk by how
+uncertain the borrower is. Prediction only, never an update: borrowing changes
+what is expected of an exercise and never what an attempt teaches.
 
 ### Retained consolidation
 
@@ -400,17 +475,29 @@ Faster reacquisition after apparent forgetting because retained consolidation
 survives below current readiness. A learner with prior durable practice need not
 behave like a true beginner even when current performance is similar.
 
-### SchedulerSafetyPolicy
+### Safety stage
 
-Conservative workload constraints applied before challenge admission. V1
-implements a session-attempt cap, unset in production, and makes no medical or
-injury diagnosis from performance data.
+Conservative workload constraints applied before challenge admission, carried by
+`SafetyConfig`. V1 implements a session-attempt cap, unset in production, and
+makes no medical or injury diagnosis from performance data.
 
 ### SessionState
 
-Transient scheduler context within a practice session, currently including the
-attempt count, recent-material history, and the last failed exercise. It is
-separate from persistent `LearnerState`.
+Transient scheduler context within a practice session: the attempt count, recent
+material history, the last failed exercise, an open tempo probe, unserved
+guidance-probe opportunities, and the rolling window of realization families
+that [Realization-family pacing] reads. It is separate from persistent
+`LearnerState`, and a sitting rebuilds it from the journal rather than storing
+it.
+
+### Scheduler host
+
+Where a decision is computed, and nothing else. A session binds the resolved
+scope, the learner, and the policy constants, then asks for one slot's decision;
+the host answers with the winning candidate or a reason there was none, plus the
+effect to apply to the sitting. Production computes on a worker isolate so the
+isolate that draws stays free; tests decide in process. See
+[`design/scheduler-decision-cost.md`](design/scheduler-decision-cost.md).
 
 ### Structural opportunity
 
@@ -450,6 +537,9 @@ motion, pattern, and guidance are not part of material identity.
 | -------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `KnowledgeComponent`, `KC`, `Component`            | `Competency`                                                                   |
 | `FingeringGroup`                                   | `FingeringPattern`, `MotorRealization`, or `MotorFamily`, according to meaning |
+| `ScaleDirection`                                   | `ExerciseDirection`                                                            |
+| `CompetencyCategory`                               | nothing; competencies have no implemented grouping                             |
+| `SchedulerSafetyPolicy`                            | `SafetyConfig`                                                                 |
 | flat `Exercise` record                             | compositional `Exercise`                                                       |
 | discrete acquisition/development/maintenance state | derived Fluency Profile language                                               |
 | `PRIMARY`/`SECONDARY` Q entries                    | `Q`, predictor loading `q`, and attempt evidence `w`                           |
