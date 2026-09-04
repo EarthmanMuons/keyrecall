@@ -270,7 +270,7 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
     learner: learner,
     config: v1SchedulerConfig.withIntroductions(arm.introductions),
   );
-  final fixture = _fixtureFor(scope);
+  final fixture = arpeggioPolicyFixture(scope);
   final session = await PracticeSession.open(
     store: InMemoryPracticeStore(createdAt: at0),
     profile: Profile(
@@ -645,7 +645,8 @@ LearnerParams _paramsFor(ArpeggioPolicyArm arm) {
   );
 }
 
-({List<TechnicalMaterial> materials, PracticeGoal goal}) _fixtureFor(
+/// The catalog and goal one policy scope practices over.
+({List<TechnicalMaterial> materials, PracticeGoal goal}) arpeggioPolicyFixture(
   ArpeggioPolicyScope scope,
 ) {
   final cMajorArpeggio = allRootPositionArpeggios.firstWhere(

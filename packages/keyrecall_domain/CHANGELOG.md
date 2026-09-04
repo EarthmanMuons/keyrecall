@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `Exercise.hashCode` is computed once per exercise rather than on every
+  lookup.
 - Initial extraction of the KeyRecall V1 practice domain into a standalone pure
   Dart package: `TechnicalMaterial` and `ScaleForm`, `Exercise` with
   `ExercisePattern`, `ExecutionConditions`, and `GuidanceContext`,

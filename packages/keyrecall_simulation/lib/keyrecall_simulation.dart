@@ -15,6 +15,7 @@ library;
 export 'src/arpeggio_policy_experiment.dart';
 export 'src/attempt_trace.dart';
 export 'src/clusters.dart';
+export 'src/decision_cost_census.dart';
 export 'src/practice_simulation.dart';
 export 'src/player_archetypes.dart';
 export 'src/pacing_log.dart';

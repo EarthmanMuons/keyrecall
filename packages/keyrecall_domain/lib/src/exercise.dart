@@ -185,8 +185,11 @@ class Exercise {
       other.guidance == guidance &&
       hasSameRealizationAs(other);
 
+  /// Computed once: a scheduling slot hashes ten thousand candidates through
+  /// set membership and several keyed caches, and two of the six components
+  /// are themselves set hashes.
   @override
-  int get hashCode => Object.hash(
+  late final int hashCode = Object.hash(
     material,
     pattern,
     conditions,
