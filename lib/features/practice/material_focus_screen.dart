@@ -155,6 +155,25 @@ class _MaterialFocusScreenState extends ConsumerState<MaterialFocusScreen> {
   }
 }
 
+/// What one action does, under the action itself.
+class _Explanation extends StatelessWidget {
+  const _Explanation(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      text,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+      textAlign: TextAlign.center,
+    );
+  }
+}
+
 /// One row of choices, none of which is required.
 class _Facet extends StatelessWidget {
   const _Facet({required this.title, required this.children});
@@ -235,25 +254,26 @@ class _Actions extends StatelessWidget {
               style: theme.textTheme.titleMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
+            // Each action says what it does under itself. The difference
+            // between emphasizing and excluding is the whole decision here,
+            // and a paragraph under both of them asks somebody to hold two
+            // buttons in their head while they read it.
             FilledButton(
               onPressed: onEmphasize,
               child: const Text('Focus on these'),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
+            _Explanation(
+              'Emphasize these while keeping other useful material in the mix.',
+            ),
+            const SizedBox(height: 16),
             OutlinedButton(
               onPressed: onExclude,
               child: const Text('Practice only these'),
             ),
-            const SizedBox(height: 4),
-            Text(
-              'Focusing keeps other useful practice in the mix. Practicing '
-              'only these leaves everything else out until you change it back.',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              textAlign: TextAlign.center,
-            ),
+            const SizedBox(height: 6),
+            _Explanation('Temporarily exclude everything else.'),
           ],
         ),
       ),

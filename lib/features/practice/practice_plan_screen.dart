@@ -4,13 +4,14 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
 import 'focus_sheet.dart';
+import 'goal_sheet.dart';
 import 'practice_providers.dart';
 
-/// What this learner is working toward, and what they are drawing from now.
+/// The two things a learner controls about what they are asked to play.
 ///
-/// Not settings. A goal is the boundary the whole curriculum is read against
-/// and is meant to be left alone; a focus is temporary intent that should be
-/// easy to see and easy to drop. Putting them together says which is which.
+/// Not settings. A goal is the material everything is chosen from and is meant
+/// to be left alone; a focus is temporary intent that should be easy to see and
+/// easy to drop. Naming both on one screen is what says which is which.
 class PracticePlanScreen extends ConsumerWidget {
   const PracticePlanScreen({super.key});
 
@@ -18,25 +19,25 @@ class PracticePlanScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final layout = Layout.of(context);
+    final catalog = ref.watch(practiceCatalogProvider);
     final plan = ref.watch(practicePlanProvider).value ?? PracticePlan.normal;
-    final loop = ref.watch(practiceLoopProvider).value;
-    final coverage = loop?.coverage;
+    final coverage = ref.watch(practiceLoopProvider).value?.coverage;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your practice')),
+      appBar: AppBar(title: const Text('Goals & focus')),
       body: ListView(
         padding: EdgeInsets.symmetric(horizontal: layout.gutter, vertical: 8),
         children: [
-          _Heading('Goal'),
+          const _Heading('Goal'),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(
               goalName(plan.goalId),
               style: theme.textTheme.titleMedium,
             ),
-            subtitle: const Text(
-              'Everything KeyRecall supports. Named syllabus goals come later.',
-            ),
+            subtitle: Text(goalDescription(catalog)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => showGoalSheet(context),
           ),
           if (coverage != null)
             Padding(
@@ -50,7 +51,7 @@ class PracticePlanScreen extends ConsumerWidget {
               ),
             ),
           const Divider(height: 32),
-          _Heading('Focus'),
+          const _Heading('Focus'),
           ListTile(
             contentPadding: EdgeInsets.zero,
             title: Text(focusName(plan), style: theme.textTheme.titleMedium),
@@ -72,12 +73,6 @@ class PracticePlanScreen extends ConsumerWidget {
     );
   }
 }
-
-/// What a goal is called where a learner reads it.
-String goalName(String goalId) => switch (goalId) {
-  'GENERAL_FLUENCY' => 'General piano technique',
-  _ => goalId,
-};
 
 /// The focus in force, as a learner would say it.
 String focusName(PracticePlan plan) => switch (plan.focus) {

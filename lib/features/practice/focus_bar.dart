@@ -38,7 +38,7 @@ class FocusBar extends ConsumerWidget {
           child: Row(
             children: [
               Icon(
-                focused ? Icons.filter_alt : Icons.auto_awesome_outlined,
+                focused ? Icons.filter_alt : Icons.auto_mode,
                 size: 18,
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -52,8 +52,10 @@ class FocusBar extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 8),
+              // The same word in both states. What is in force is what the
+              // line says; the action beside it is the same action either way.
               Text(
-                focused ? 'Change' : 'Focus',
+                'Change',
                 style: theme.textTheme.labelLarge?.copyWith(
                   color: theme.colorScheme.primary,
                 ),

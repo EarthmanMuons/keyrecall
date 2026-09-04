@@ -388,7 +388,7 @@ class _MenuButton extends StatelessWidget {
         child: const ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.flag_outlined),
-          title: Text('Your practice'),
+          title: Text('Goals & focus'),
         ),
       ),
       // Temporary, and deliberately not behind the build-mode check the
