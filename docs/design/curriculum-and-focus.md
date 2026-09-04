@@ -1,8 +1,8 @@
 # Curriculum, goals, and focus
 
 - **Status:** Structural scope resolution, requirement state, terminal practice
-  outcomes, and acquisition floor implemented; goal persistence and emphasis
-  ranking remain proposed
+  outcomes, acquisition floor, goal persistence, emphasis ranking, and the first
+  focus surface implemented; named external curricula remain proposed
 - **Written:** September 3, 2026
 - **Scope:** How a large technical-material domain becomes a small, intentional
   practice surface without changing learner inference or creating
@@ -267,15 +267,46 @@ the domain specification and promotion gates.
 
 ## 8. Product surface
 
-The default experience should select a curated general-technique curriculum and
-start practice. It should not expose the catalog as an onboarding checklist.
-
-A later goals surface can offer named curricula, a custom material set, and a
-temporary focus. Its compact contract is:
+The default experience selects general technique and starts practice. It does
+not expose the catalog as an onboarding checklist. Its compact contract is:
 
 > The learner chooses what they are working toward when they care to. KeyRecall
 > decides what to practice next.
 
-Progress should report requirements covered separately from work currently due.
-When an intentionally narrow focus is caught up, that is a successful outcome,
-not pressure to broaden it.
+`PracticePlan` is the durable half: a goal id and, when the learner asked for
+one, a focus expressed as material characteristics rather than as a list of ids.
+It is stored per profile beside that profile's history, resolves against the
+installed catalog, and is read before a sitting opens so the first slot of a run
+is decided under it. Changing it reopens the sitting; an outstanding attempt is
+unaffected, because its decision is already durable and returns as pending.
+
+The surface has three layers, and the default one is not a control:
+
+```text
+practicing normally   no focus, the ordinary state of the app
+named focuses         one tap, derived from what the active catalog holds
+specific material     facets, ending in emphasize or practice only these
+```
+
+Named focuses are contextual rather than a taxonomy. A suggestion that reaches
+nothing in the active goal is not offered, and neither is one that reaches all
+of it, since that is what practicing normally already does. The chooser for
+specific material is facet-shaped rather than tree-shaped because hand
+configuration, motion, and span cut across families and forms, and each would
+otherwise need the tree rebuilt around it.
+
+The soft and hard modes are named where they differ rather than hidden behind
+one control. A learner who has gone as far as choosing particular material is
+the one person who wants to be asked which they mean.
+
+Two things this surface does not yet express. A focus resolves to curriculum
+requirements, so it selects material and not realization conditions: hands
+together and contrary motion are not focusable yet, and offering them needs
+requirement-level constraints a custom curriculum can carry. A recovery context
+is exclusive and outranks scope, so the exercise a learner has just failed is
+offered again even under an exclusive focus.
+
+Progress reports requirements covered separately from work currently due. When
+an intentionally narrow focus is caught up, the learner is told that nothing in
+this focus needs practice and offered the way back to practicing normally,
+rather than pressed to broaden it.

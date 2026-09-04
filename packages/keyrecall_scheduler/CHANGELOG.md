@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `GoalEmphasis`, the weight a focus puts on each material it asks for. `G(e)`
+  reads it instead of returning a stub zero, centered so a slot with nothing
+  emphasized ranks exactly as before. It enters through `evaluate`,
+  `evaluateSlot`, and `decide`, and orders admitted candidates only: eligibility
+  and challenge are untouched, and goal relevance remains the last key before
+  the realization terms.
 - `SchedulerPipeline.evaluateSlot`, the decision and what it owes the sitting,
   without recording it. `decide` applies that itself and is unchanged.
 - `ExecutionMemo`, holding the transferable entry pace and hands-together entry

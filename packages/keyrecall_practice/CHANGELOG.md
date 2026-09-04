@@ -24,6 +24,17 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `PracticePlan`, what one profile is working toward and what it is drawing from
+  now, with `MaterialFocus` expressing a focus as material characteristics
+  rather than as a list of ids. It resolves against a catalog into the goal and
+  focus scope resolution already takes, emphasizing or excluding.
+- `PracticeStore.loadPracticePlan` and `savePracticePlan`, one overwritable slot
+  per profile. `FilePracticeStore` keeps it in `plan.json`, and erasing a
+  profile takes it along.
+- `catalogRequirementId`, the requirement id a goal with no curriculum of its
+  own gives a material, so a focus can address what that goal generated.
+- `goalEmphasisOf`, the emphasis a resolved scope puts on each of its materials,
+  which both hosts derive once from the bound scope.
 - `SchedulerHost`, the seam a session decides through, and `SchedulerVerdict`,
   one slot's decision reduced to what a session acts on, carrying the epoch it
   answered and a `SittingDecisionEffect` to apply. `InProcessScheduler` keeps
