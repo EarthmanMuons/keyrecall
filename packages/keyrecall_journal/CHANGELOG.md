@@ -34,8 +34,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 ### Changed
 
 - Attempt schema 4 records exact motor-opportunity sites. Version 1 through 3
-  records and pending decisions retain their opportunity kinds without
-  inventing event locations.
+  records and pending decisions retain their opportunity kinds without inventing
+  event locations.
 - Attempt schema 3 records coordination prediction. Version 1 and 2 records and
   pending decisions upgrade with a coordination probability of one, preserving
   their former challenge semantics.

@@ -17,31 +17,31 @@ with a different screen.
 
 The neutral echo lights the keys that are currently held on the keyboard
 diagram, at Ready and throughout the attempt. The staff is static until the
-traversal starts. From then on it lights the note each hand has reached, for
-as long as that key is held.
+traversal starts. From then on it lights the note each hand has reached, for as
+long as that key is held.
 
 The staff locator is an orientation aid rather than a reading of the
-performance, and the two are deliberately not the same thing. Each hand
-travels its own line, so one hand's mistake leaves the other's highlight
-alone. A hand takes an arrival that is the note it expects, or failing that
-one that uniquely matches either of the next two notes, so a skipped note
-costs a note rather than the rest of the run. Two hands are offered every
-arrival, since the input stream does not say which hand played it, and a hand
-that matches exactly takes it before one that matches only by octave.
+performance, and the two are deliberately not the same thing. Each hand travels
+its own line, so one hand's mistake leaves the other's highlight alone. A hand
+takes an arrival that is the note it expects, or failing that one that uniquely
+matches either of the next two notes, so a skipped note costs a note rather than
+the rest of the run. Two hands are offered every arrival, since the input stream
+does not say which hand played it, and a hand that matches exactly takes it
+before one that matches only by octave.
 
 Register agreement is an entry condition rather than something the locator
 recovers into. A hand whose first note falls in another octave is not playing
 what is written, and it stays dark for the whole traversal even if it later
-moves into the written register, because a cue that appears mid-run reads as
-an event and takes attention where a cue that was never there reads as one
-this performance does not get. Suppression is per hand, so a left hand in the
-written register is located while a right hand an octave out is not.
+moves into the written register, because a cue that appears mid-run reads as an
+event and takes attention where a cue that was never there reads as one this
+performance does not get. Suppression is per hand, so a left hand in the written
+register is located while a right hand an octave out is not.
 
-What the tolerances never do is light anything. A notehead lights only while
-the key it is written for is down, so the staff never stands for a note that
-was not played. Measurement is unaffected: it reads the same arrivals
-strictly and keeps every departure, including the octave errors and omissions
-the locator travels through.
+What the tolerances never do is light anything. A notehead lights only while the
+key it is written for is down, so the staff never stands for a note that was not
+played. Measurement is unaffected: it reads the same arrivals strictly and keeps
+every departure, including the octave errors and omissions the locator travels
+through.
 
 ## After an attempt
 
@@ -77,8 +77,8 @@ use centered traces. Notes and Flow remain discrete departures and gaps, and
 Tempo remains an overall achieved-versus-target statement. The reading and its
 traces are discarded with the review rather than persisted.
 
-Note departures are named with the exercise realization's musical spelling and
-a traversal landmark. Insertions name the observed note and its expected
+Note departures are named with the exercise realization's musical spelling and a
+traversal landmark. Insertions name the observed note and its expected
 neighbors. Flow names the expected note after the longest measured break. Raw
 realization positions remain display coordinates and are not learner-facing.
 
