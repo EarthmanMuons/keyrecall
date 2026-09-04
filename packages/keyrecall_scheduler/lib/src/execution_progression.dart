@@ -51,6 +51,7 @@ ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
   final materialId = exercise.material.materialId;
   final span = conditions.octaves;
   final tempo = conditions.tempoBpm;
+  final previousSpan = exercise.material.progression.previousSpan(span) ?? 0;
 
   double demonstratedAt(HandConfiguration hands, int octaves) =>
       state.materialExecution[(materialId, hands, conditions.handMotion)]
@@ -62,7 +63,7 @@ ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
     // configuration has a frontier of its own. After that it goes on like any
     // other, through its own record.
     if (demonstratedAt(HandConfiguration.together, span) <= 0 &&
-        demonstratedAt(HandConfiguration.together, span - 1) <= 0) {
+        demonstratedAt(HandConfiguration.together, previousSpan) <= 0) {
       return tempo == handsTogetherEntryTempo(state, materialId, span)
           ? ExecutionAdvance.handsTogether
           : ExecutionAdvance.none;
@@ -70,7 +71,7 @@ ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
   }
 
   final atSpan = demonstratedAt(conditions.hands, span);
-  final atNarrower = demonstratedAt(conditions.hands, span - 1);
+  final atNarrower = demonstratedAt(conditions.hands, previousSpan);
 
   // Both axes past what has been demonstrated: wider than anything managed,
   // and faster than the narrower span was managed at.
@@ -168,6 +169,7 @@ bool handsTogetherPrerequisiteSatisfied(LearnerState state, Exercise exercise) {
   if (exercise.conditions.hands != HandConfiguration.together) return true;
   final materialId = exercise.material.materialId;
   final span = exercise.conditions.octaves;
+  final previousSpan = exercise.material.progression.previousSpan(span) ?? 0;
   final together =
       state.materialExecution[(
         materialId,
@@ -175,7 +177,7 @@ bool handsTogetherPrerequisiteSatisfied(LearnerState state, Exercise exercise) {
         exercise.conditions.handMotion,
       )];
   return (together?.demonstratedTempoAt(span) ?? 0) > 0 ||
-      (together?.demonstratedTempoAt(span - 1) ?? 0) > 0 ||
+      (together?.demonstratedTempoAt(previousSpan) ?? 0) > 0 ||
       supportsHandsTogether(state, materialId, span);
 }
 
@@ -234,7 +236,12 @@ double unmeasuredEntryTempo(
   final conditions = exercise.conditions;
   final residual = state.materialExecution[executionContextOf(exercise)];
 
-  final narrower = residual?.demonstratedTempoAt(conditions.octaves - 1) ?? 0;
+  final previousSpan = exercise.material.progression.previousSpan(
+    conditions.octaves,
+  );
+  final narrower = previousSpan == null
+      ? 0.0
+      : residual?.demonstratedTempoAt(previousSpan) ?? 0;
   if (narrower > 0) return narrower;
 
   final transferable = transferableTempoFor(
@@ -332,8 +339,9 @@ List<Exercise> withExecutionNeighbours(
     final conditions = candidate.conditions;
     final materialId = candidate.material.materialId;
     final span = conditions.octaves;
+    final previousSpan = candidate.material.progression.previousSpan(span) ?? 0;
     final atSpan = demonstratedAt(candidate, span);
-    final atNarrower = demonstratedAt(candidate, span - 1);
+    final atNarrower = demonstratedAt(candidate, previousSpan);
 
     final wanted = <double>{
       // Meeting something new at a tempo this hand has shown elsewhere. Its

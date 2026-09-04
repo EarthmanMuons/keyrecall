@@ -53,7 +53,7 @@ class DecisionFacts {
   final LearnerState state;
 
   final Map<HandConfiguration, (int, int)> _breadth = {};
-  final Map<HandConfiguration, double> _executionMean = {};
+  final Map<(String, HandConfiguration), double> _executionMean = {};
   final Map<ScaleForm, double> _minorTopology = {};
   bool? _fluentHandsTogether;
 
@@ -280,11 +280,21 @@ class SchedulerPipeline {
       if (breadth != null) return breadth;
     }
 
+    if (!_materialPrerequisitesSatisfied(state, exercise)) {
+      return EligibilityDecision(
+        EligibilityTier.provisionallyEligible,
+        '${material.materialId} requires demonstrated work on '
+        '${material.progression.prerequisiteMaterialIds.join(', ')}',
+        code: EligibilityReason.materialProgressionPrerequisite,
+      );
+    }
+
     // Each hand having separately demonstrated this material at this span:
     // evidence about the work in front of the learner rather than a general
     // verdict on their hands, and about the pitches rather than the polish.
     // See [supportsHandsTogether].
-    if (hands == HandConfiguration.together) {
+    if (hands == HandConfiguration.together &&
+        material.progression.requiresSeparateHandsBeforeTogether) {
       if (!handsTogetherPrerequisiteSatisfied(state, exercise)) {
         return const EligibilityDecision(
           EligibilityTier.provisionallyEligible,
@@ -298,8 +308,20 @@ class SchedulerPipeline {
     // on, and the information term otherwise reaches for the span nobody has
     // attempted precisely because nobody has. One octave stays fully eligible.
     if (exercise.conditions.octaves > 1) {
+      if (material.progression.requiresPreviousSpanEvidence &&
+          !_previousSpanPrerequisiteSatisfied(state, exercise)) {
+        final previous = material.progression.previousSpan(
+          exercise.conditions.octaves,
+        );
+        return EligibilityDecision(
+          EligibilityTier.provisionallyEligible,
+          '${exercise.conditions.octaves} octaves require demonstrated '
+          '$previous-octave work in this realization',
+          code: EligibilityReason.octaveSpanPrerequisite,
+        );
+      }
       final floor = config.eligibility.multiOctaveExecutionFloor;
-      final execution = _executionMeanFor(state, hands, facts);
+      final execution = _executionMeanFor(state, material, hands, facts);
       if (execution < floor) {
         return EligibilityDecision(
           EligibilityTier.provisionallyEligible,
@@ -358,7 +380,7 @@ class SchedulerPipeline {
 
       final asked = _isGentlest(exercise.conditions) ? _bandBefore(band) : band;
       final floor = config.eligibility.executionFloorFor(asked);
-      final execution = _executionMeanFor(state, hands, facts);
+      final execution = _executionMeanFor(state, material, hands, facts);
       if (execution < floor) {
         return EligibilityDecision(
           EligibilityTier.provisionallyEligible,
@@ -552,6 +574,41 @@ class SchedulerPipeline {
       ? Competency.rhScaleExecution
       : Competency.lhScaleExecution;
 
+  bool _materialPrerequisitesSatisfied(LearnerState state, Exercise exercise) {
+    final prerequisites = exercise.material.progression.prerequisiteMaterialIds;
+    if (prerequisites.isEmpty) return true;
+    final hands = [
+      if (exercise.conditions.hands.usesRightHand) HandConfiguration.right,
+      if (exercise.conditions.hands.usesLeftHand) HandConfiguration.left,
+    ];
+    return prerequisites.every(
+      (materialId) => hands.every(
+        (hand) => state.materialExecution.entries.any(
+          (entry) =>
+              entry.key.$1 == materialId &&
+              entry.key.$2 == hand &&
+              entry.value.demonstratedTempoByOctaves.isNotEmpty,
+        ),
+      ),
+    );
+  }
+
+  bool _previousSpanPrerequisiteSatisfied(
+    LearnerState state,
+    Exercise exercise,
+  ) {
+    final span = exercise.conditions.octaves;
+    final previous = exercise.material.progression.previousSpan(span);
+    if (previous == null) return false;
+    final demonstrated =
+        state.materialExecution[executionContextOf(exercise)]
+            ?.demonstratedTempoAt(previous) ??
+        0;
+    if (demonstrated > 0) return true;
+    return exercise.conditions.hands == HandConfiguration.together &&
+        supportsHandsTogether(state, exercise.material.materialId, span);
+  }
+
   /// The tempo [exercise]'s material is introduced at.
   ///
   /// What this learner's playing hand has shown on material they already own,
@@ -602,19 +659,27 @@ class SchedulerPipeline {
   /// The weaker hand's execution when both play, otherwise the playing hand's.
   double _executionMeanFor(
     LearnerState state,
+    TechnicalMaterial material,
     HandConfiguration hands, [
     DecisionFacts? facts,
   ]) {
-    final memo = facts?._executionMean[hands];
+    final cacheKey = (material.familyId, hands);
+    final memo = facts?._executionMean[cacheKey];
     if (memo != null) return memo;
-    final rh = state.competency(Competency.rhScaleExecution).mean;
-    final lh = state.competency(Competency.lhScaleExecution).mean;
+    final rhCompetency = material
+        .executionCompetenciesFor(HandConfiguration.right)
+        .single;
+    final lhCompetency = material
+        .executionCompetenciesFor(HandConfiguration.left)
+        .single;
+    final rh = state.competency(rhCompetency).mean;
+    final lh = state.competency(lhCompetency).mean;
     final mean = switch (hands) {
       HandConfiguration.right => rh,
       HandConfiguration.left => lh,
       HandConfiguration.together => rh < lh ? rh : lh,
     };
-    facts?._executionMean[hands] = mean;
+    facts?._executionMean[cacheKey] = mean;
     return mean;
   }
 

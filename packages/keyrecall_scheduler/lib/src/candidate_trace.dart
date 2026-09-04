@@ -56,6 +56,9 @@ enum EligibilityReason {
   /// A multi-octave traversal asks for one octave first.
   octaveSpanPrerequisite('OCTAVE_SPAN_PREREQUISITE'),
 
+  /// This material family requires another material phase first.
+  materialProgressionPrerequisite('MATERIAL_PROGRESSION_PREREQUISITE'),
+
   /// An altered minor form asks for both hands to have been observed
   /// separately first.
   alteredFormHandsFoundation('ALTERED_FORM_HANDS_FOUNDATION'),

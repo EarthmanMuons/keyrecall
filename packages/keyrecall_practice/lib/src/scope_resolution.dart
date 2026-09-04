@@ -334,16 +334,27 @@ List<Exercise> _generateArpeggioCandidates(
   ArpeggioMaterial material,
 ) => [
   for (final hands in HandConfiguration.values)
-    if (instrument.supportsOctaveSpan(1))
-      for (final guidance in GuidanceContext.ladder)
-        Exercise.linear(
-          material: material,
-          hands: hands,
-          direction: ExerciseDirection.up,
-          tempoBpm: generatedTempi.first,
-          guidance: guidance,
-        ),
+    if (_hasCanonicalFingering(material, hands))
+      for (final octaves in material.progression.octaveSpans)
+        if (instrument.supportsOctaveSpan(octaves))
+          for (final guidance in GuidanceContext.ladder)
+            Exercise.linear(
+              material: material,
+              hands: hands,
+              octaves: octaves,
+              direction: ExerciseDirection.up,
+              tempoBpm: generatedTempi.first,
+              guidance: guidance,
+            ),
 ];
+
+bool _hasCanonicalFingering(
+  ArpeggioMaterial material,
+  HandConfiguration hands,
+) =>
+    (!hands.usesRightHand ||
+        canonicalFingering(material, Hand.right) != null) &&
+    (!hands.usesLeftHand || canonicalFingering(material, Hand.left) != null);
 
 AcquisitionFloor _arpeggioAcquisitionFloorFor(
   Iterable<AcquisitionFloorRequest> requests,

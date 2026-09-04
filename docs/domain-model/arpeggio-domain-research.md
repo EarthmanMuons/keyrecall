@@ -198,6 +198,12 @@ The first two mirror established scale conditions but must be evaluated against
 arpeggio execution evidence. Scale mastery cannot satisfy an arpeggio span or
 hands-together prerequisite by itself.
 
+The runtime expresses this ordering through each material's declarative
+progression. Arpeggios declare the `1 -> 2 -> 4` span sequence, separate-hand
+readiness for hands together, and root-position material prerequisites for
+inversions. Generic scheduler stages evaluate those declarations against exact
+material and arpeggio-execution evidence.
+
 Root position before inversion is a family introduction rule, not a claim that
 every root-position arpeggio is mechanically easier than every inversion. The
 curricula agree on the broad ordering while differing substantially on when
@@ -344,6 +350,12 @@ Before replacing `proofArpeggios` with a learner-facing catalog:
 9. Map external curricula only through versioned curriculum requirements.
 10. Preserve caught-up, blocked, invalid-scope, replay, and family-boundary
     invariants in mixed scopes.
+
+Gates 2 through 5 are implemented for the non-product fixture. Mixed-family
+trajectory characterization exercises every placement prior and selects both
+families without introducing a family-specific scheduler path. Catalog-wide
+fingering coverage, policy characterization, extension analysis, and instrument
+validation remain open.
 
 ## 10. Current decisions and open claims
 

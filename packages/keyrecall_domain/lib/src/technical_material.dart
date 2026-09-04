@@ -44,6 +44,40 @@ const Map<ScaleForm, List<int>> scaleFormIntervals = {
 /// The motor demand created by a crossing in this material family.
 enum FingeringTransitionKind { scalarCrossing, arpeggioTransition }
 
+/// Structural ordering declared by a material family.
+@immutable
+class MaterialProgression {
+  final List<int> octaveSpans;
+  final bool requiresPreviousSpanEvidence;
+  final bool requiresSeparateHandsBeforeTogether;
+  final Set<String> prerequisiteMaterialIds;
+
+  MaterialProgression({
+    required Iterable<int> octaveSpans,
+    this.requiresPreviousSpanEvidence = false,
+    this.requiresSeparateHandsBeforeTogether = true,
+    Iterable<String> prerequisiteMaterialIds = const {},
+  }) : octaveSpans = List.unmodifiable(octaveSpans),
+       prerequisiteMaterialIds = Set.unmodifiable(prerequisiteMaterialIds) {
+    if (this.octaveSpans.isEmpty ||
+        this.octaveSpans.first < 1 ||
+        this.octaveSpans.indexed.any(
+          (entry) => entry.$1 > 0 && entry.$2 <= this.octaveSpans[entry.$1 - 1],
+        )) {
+      throw ArgumentError('octave spans must be positive and increasing');
+    }
+  }
+
+  int? previousSpan(int span) {
+    final index = octaveSpans.indexOf(span);
+    return index > 0 ? octaveSpans[index - 1] : null;
+  }
+}
+
+final MaterialProgression _scaleProgression = MaterialProgression(
+  octaveSpans: const [1, 2],
+);
+
 /// What is being played, independent of how it is played.
 ///
 /// Material identity deliberately excludes hand, tempo, octaves, direction,
@@ -77,6 +111,8 @@ sealed class TechnicalMaterial {
   Competency get topologyCompetency;
 
   FingeringTransitionKind get fingeringTransitionKind;
+
+  MaterialProgression get progression;
 
   ScaleForm? get scaleForm => null;
 
@@ -187,6 +223,21 @@ final class ArpeggioMaterial extends TechnicalMaterial {
       FingeringTransitionKind.arpeggioTransition;
 
   @override
+  late final MaterialProgression progression = MaterialProgression(
+    octaveSpans: const [1, 2, 4],
+    requiresPreviousSpanEvidence: true,
+    prerequisiteMaterialIds: inversion == ArpeggioInversion.root
+        ? const {}
+        : {
+            ArpeggioMaterial(
+              tonic,
+              quality,
+              inversion: ArpeggioInversion.root,
+            ).materialId,
+          },
+  );
+
+  @override
   Set<Competency> executionCompetenciesFor(HandConfiguration hands) => {
     if (hands.usesRightHand) Competency.rhArpeggioExecution,
     if (hands.usesLeftHand) Competency.lhArpeggioExecution,
@@ -266,6 +317,9 @@ final class ScaleMaterial extends TechnicalMaterial {
   @override
   FingeringTransitionKind get fingeringTransitionKind =>
       FingeringTransitionKind.scalarCrossing;
+
+  @override
+  MaterialProgression get progression => _scaleProgression;
 
   @override
   Set<Competency> executionCompetenciesFor(HandConfiguration hands) =>

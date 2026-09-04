@@ -47,6 +47,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Eligibility evaluates family-declared material, hand-configuration, and span
+  prerequisites through generic scheduler stages. Execution thresholds use the
+  candidate family's competencies, so evidence from another family cannot
+  satisfy progression by accident.
 - Challenge admission now consumes coordination-aware overall prediction for
   hands-together candidates. Admission exceptions are otherwise unchanged.
 - The configuration classes assert their own bounds, so the shipped registry is

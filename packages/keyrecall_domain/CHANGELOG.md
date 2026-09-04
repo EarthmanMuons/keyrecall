@@ -21,6 +21,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Material families now declare their supported octave sequence, whether wider
+  spans require local evidence, whether hands-together work requires separate
+  hands, and any prerequisite material identities. Arpeggios declare
+  `1 -> 2 -> 4` spans and root position before inversions.
 - Major and minor triad arpeggios represent root, first-inversion, and
   second-inversion topology as distinct material identities. C minor root
   position joins the non-product fixture with sourced fingering.

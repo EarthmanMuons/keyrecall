@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- Mixed scale/arpeggio trajectory characterization across every placement prior
+  and multiple seeds, including explicit blocked termination when no candidate
+  remains admitted.
 - Hands-together evidence and coordination-aware admission diagnostics at
   independent-trajectory grain, distinguishing a coordination-caused band
   crossing from coordination merely being the weaker motor factor.

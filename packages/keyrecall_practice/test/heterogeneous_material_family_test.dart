@@ -20,6 +20,9 @@ void main() {
   final arpeggioG = proofArpeggios.firstWhere(
     (material) => material.tonic == 'G',
   );
+  final arpeggioCMinor = proofArpeggios.firstWhere(
+    (material) => material.quality == ArpeggioQuality.minor,
+  );
   final materials = <TechnicalMaterial>[scaleC, scaleG, arpeggioC, arpeggioG];
   final curriculum = Curriculum(
     id: 'PSEUDO_TECHNIQUE_1',
@@ -179,6 +182,46 @@ void main() {
       expect(requirement.material, arpeggioC);
     },
   );
+
+  test('the sourced family generates one, two, and four-octave shapes', () {
+    final candidates = const ArpeggioPracticeMaterialFamily().generate(
+      InstrumentProfile(),
+      arpeggioCMinor,
+    );
+
+    expect(candidates.map((exercise) => exercise.conditions.octaves).toSet(), {
+      1,
+      2,
+      4,
+    });
+    expect(
+      candidates.map((exercise) => exercise.conditions.hands).toSet(),
+      HandConfiguration.values.toSet(),
+    );
+  });
+
+  test('topology without canonical fingering is not a practice candidate', () {
+    final inversion = ArpeggioMaterial(
+      'C',
+      ArpeggioQuality.major,
+      inversion: ArpeggioInversion.first,
+    );
+    final resolution = resolver.resolve(
+      goal: PracticeGoal(
+        id: 'UNSUPPORTED_INVERSION',
+        targetMaterialIds: {inversion.materialId},
+      ),
+      focus: PracticeFocus.unrestricted,
+      catalog: [inversion],
+      instrument: InstrumentProfile(),
+    );
+
+    expect(resolution, isA<InvalidPracticeScope>());
+    expect(
+      (resolution as InvalidPracticeScope).failures.single.code,
+      ScopeResolutionFailureCode.unrealizableRequirement,
+    );
+  });
 }
 
 CurriculumRequirement _requirement(String id, TechnicalMaterial material) =>

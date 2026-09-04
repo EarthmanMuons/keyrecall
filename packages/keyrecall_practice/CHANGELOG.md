@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- Arpeggio families generate one-, two-, and four-octave realizations only when
+  canonical fingerings exist for every requested hand. Unsupported inversion
+  requirements resolve as unrealizable instead of receiving guessed exercises.
 - `PracticeSession`, the attempt transaction: it persists the decision before
   presenting, commits the outcome as an attempt, and recovers from a run
   interrupted anywhere in that sequence.
