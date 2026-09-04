@@ -35,9 +35,31 @@ class ScalePracticeMaterialFamily implements PracticeMaterialFamily {
   ) => scaleAcquisitionFloorFor(requests);
 }
 
+enum ArpeggioAcquisitionFloorShape {
+  rightHandAscending,
+  separateHandsAscending,
+  rightHandAscendingAndDescending,
+}
+
+@immutable
+class ArpeggioPracticePolicy {
+  final double initialTempoBpm;
+  final ArpeggioAcquisitionFloorShape acquisitionFloorShape;
+
+  const ArpeggioPracticePolicy({
+    this.initialTempoBpm = 60,
+    this.acquisitionFloorShape =
+        ArpeggioAcquisitionFloorShape.rightHandAscending,
+  }) : assert(initialTempoBpm > 0);
+}
+
 /// The minimal arpeggio family's curriculum-resolution contract.
 class ArpeggioPracticeMaterialFamily implements PracticeMaterialFamily {
-  const ArpeggioPracticeMaterialFamily();
+  final ArpeggioPracticePolicy policy;
+
+  const ArpeggioPracticeMaterialFamily({
+    this.policy = const ArpeggioPracticePolicy(),
+  });
 
   @override
   String get familyId => TechnicalMaterial.arpeggioFamilyId;
@@ -46,12 +68,16 @@ class ArpeggioPracticeMaterialFamily implements PracticeMaterialFamily {
   List<Exercise> generate(
     InstrumentProfile instrument,
     TechnicalMaterial material,
-  ) => _generateArpeggioCandidates(instrument, material as ArpeggioMaterial);
+  ) => _generateArpeggioCandidates(
+    instrument,
+    material as ArpeggioMaterial,
+    policy,
+  );
 
   @override
   AcquisitionFloor acquisitionFloorFor(
     Iterable<AcquisitionFloorRequest> requests,
-  ) => _arpeggioAcquisitionFloorFor(requests);
+  ) => _arpeggioAcquisitionFloorFor(requests, policy);
 }
 
 /// Why a requested goal and focus could not become a practice scope.
@@ -332,21 +358,29 @@ class PracticeScopeResolver {
 List<Exercise> _generateArpeggioCandidates(
   InstrumentProfile instrument,
   ArpeggioMaterial material,
+  ArpeggioPracticePolicy policy,
 ) => [
   for (final hands in HandConfiguration.values)
     if (_hasCanonicalFingering(material, hands))
       for (final octaves in material.progression.octaveSpans)
         if (instrument.supportsOctaveSpan(octaves))
-          for (final guidance in GuidanceContext.ladder)
-            Exercise.linear(
-              material: material,
-              hands: hands,
-              octaves: octaves,
-              direction: ExerciseDirection.up,
-              tempoBpm: generatedTempi.first,
-              guidance: guidance,
-            ),
+          for (final direction in _arpeggioDirections(policy))
+            for (final guidance in GuidanceContext.ladder)
+              Exercise.linear(
+                material: material,
+                hands: hands,
+                octaves: octaves,
+                direction: direction,
+                tempoBpm: policy.initialTempoBpm,
+                guidance: guidance,
+              ),
 ];
+
+List<ExerciseDirection> _arpeggioDirections(ArpeggioPracticePolicy policy) =>
+    policy.acquisitionFloorShape ==
+        ArpeggioAcquisitionFloorShape.rightHandAscendingAndDescending
+    ? const [ExerciseDirection.up, ExerciseDirection.upDown]
+    : const [ExerciseDirection.up];
 
 bool _hasCanonicalFingering(
   ArpeggioMaterial material,
@@ -358,16 +392,32 @@ bool _hasCanonicalFingering(
 
 AcquisitionFloor _arpeggioAcquisitionFloorFor(
   Iterable<AcquisitionFloorRequest> requests,
+  ArpeggioPracticePolicy policy,
 ) => AcquisitionFloor([
   for (final request in requests)
     for (final exercise in request.candidates)
-      if (exercise.conditions.hands == HandConfiguration.right &&
+      if (_isFloorHand(exercise.conditions.hands, policy) &&
           exercise.conditions.octaves == 1 &&
-          exercise.conditions.direction == ExerciseDirection.up &&
-          exercise.conditions.tempoBpm == generatedTempi.first &&
+          exercise.conditions.direction == _floorDirection(policy) &&
+          exercise.conditions.tempoBpm == policy.initialTempoBpm &&
           exercise.guidance == GuidanceContext.continuouslyCued)
         AcquisitionFloorEntry(
           requirementId: request.requirementId,
           exercise: exercise,
         ),
 ]);
+
+bool _isFloorHand(HandConfiguration hands, ArpeggioPracticePolicy policy) =>
+    switch (policy.acquisitionFloorShape) {
+      ArpeggioAcquisitionFloorShape.rightHandAscending ||
+      ArpeggioAcquisitionFloorShape.rightHandAscendingAndDescending =>
+        hands == HandConfiguration.right,
+      ArpeggioAcquisitionFloorShape.separateHandsAscending =>
+        hands != HandConfiguration.together,
+    };
+
+ExerciseDirection _floorDirection(ArpeggioPracticePolicy policy) =>
+    policy.acquisitionFloorShape ==
+        ArpeggioAcquisitionFloorShape.rightHandAscendingAndDescending
+    ? ExerciseDirection.upDown
+    : ExerciseDirection.up;

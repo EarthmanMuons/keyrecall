@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `ArpeggioPracticePolicy`, which lets simulation vary the provisional initial
+  tempo and compare right-hand, separate-hand, and ascending-and-descending
+  acquisition floors without changing the shipped defaults.
 - Arpeggio families generate one-, two-, and four-octave realizations only when
   canonical fingerings exist for every requested hand. Unsupported inversion
   requirements resolve as unrealizable instead of receiving guessed exercises.

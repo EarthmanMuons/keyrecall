@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -197,6 +198,71 @@ void main() {
     expect(
       candidates.map((exercise) => exercise.conditions.hands).toSet(),
       HandConfiguration.values.toSet(),
+    );
+  });
+
+  test('counterfactual policy changes entry tempo without changing spans', () {
+    final candidates = const ArpeggioPracticeMaterialFamily(
+      policy: ArpeggioPracticePolicy(initialTempoBpm: 72),
+    ).generate(InstrumentProfile(), arpeggioC);
+
+    expect(candidates.map((exercise) => exercise.conditions.tempoBpm).toSet(), {
+      72,
+    });
+    expect(candidates.map((exercise) => exercise.conditions.octaves).toSet(), {
+      1,
+      2,
+      4,
+    });
+  });
+
+  test('counterfactual floor can offer both separate hands', () {
+    const family = ArpeggioPracticeMaterialFamily(
+      policy: ArpeggioPracticePolicy(
+        acquisitionFloorShape:
+            ArpeggioAcquisitionFloorShape.separateHandsAscending,
+      ),
+    );
+    final candidates = family.generate(InstrumentProfile(), arpeggioC);
+    final floor = family.acquisitionFloorFor([
+      AcquisitionFloorRequest(
+        requirementId: 'C_MAJOR_ARPEGGIO',
+        candidates: candidates,
+      ),
+    ]);
+
+    expect(
+      floor.entries.map((entry) => entry.exercise.conditions.hands).toSet(),
+      {HandConfiguration.right, HandConfiguration.left},
+    );
+  });
+
+  test('counterfactual floor can use ascending and descending traversal', () {
+    const family = ArpeggioPracticeMaterialFamily(
+      policy: ArpeggioPracticePolicy(
+        acquisitionFloorShape:
+            ArpeggioAcquisitionFloorShape.rightHandAscendingAndDescending,
+      ),
+    );
+    final candidates = family.generate(InstrumentProfile(), arpeggioC);
+    final floor = family.acquisitionFloorFor([
+      AcquisitionFloorRequest(
+        requirementId: 'C_MAJOR_ARPEGGIO',
+        candidates: candidates,
+      ),
+    ]);
+
+    expect(
+      candidates.map((exercise) => exercise.conditions.direction).toSet(),
+      ExerciseDirection.values.toSet(),
+    );
+    expect(
+      floor.entries.map((entry) => entry.exercise.conditions.direction).toSet(),
+      {ExerciseDirection.upDown},
+    );
+    expect(
+      floor.entries.map((entry) => entry.exercise.conditions.hands).toSet(),
+      {HandConfiguration.right},
     );
   });
 
