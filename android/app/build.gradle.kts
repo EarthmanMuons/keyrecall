@@ -6,7 +6,7 @@ plugins {
 
 android {
     namespace = "com.earthmanmuons.keyrecall"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 37 // TODO: revert to flutter.compileSdkVersion once upstream is at least 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
