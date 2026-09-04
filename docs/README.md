@@ -52,6 +52,8 @@ docs/
 │   ├── material-admission.md        what may be introduced now, and why
 │   ├── arpeggio-domain-research.md  arpeggio vocabulary, evidence, and
 │   │                                promotion gates
+│   ├── arpeggio-policy-characterization.md
+│   │                                fixture policy census and sensitivities
 │   ├── validation-boundaries.md     which constructors throw, and which
 │                                    assert
 │   ├── fingering-taxonomy.md
@@ -103,6 +105,7 @@ implementation rather than evidence about another one.
 | Proposed hands-together admission policy, and its evidence chain    | `design/coordination-transition-policy.md`              |
 | Canonical scale fingering                                           | `domain-model/fingering-taxonomy.md`                    |
 | Arpeggio identity, progression evidence, and promotion gates        | `domain-model/arpeggio-domain-research.md`              |
+| Arpeggio fixture policy sensitivities and trajectory census         | `domain-model/arpeggio-policy-characterization.md`      |
 | Derived motor family, phase, crossing, and continuation structure   | `domain-model/motor-taxonomy.md`                        |
 | Which prerequisite edges exist, and which are prediction instead    | `domain-model/progression-graph.md`                     |
 | Domain entities not superseded below                                | `domain-model/v1-domain-model.md`                       |

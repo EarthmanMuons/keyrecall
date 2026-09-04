@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- An arpeggio-policy census over real scoped practice sessions, reporting
+  family allocation, acquisition-floor dependence, progression gates,
+  prediction ranges, terminal outcomes, and scale-milestone shifts. Paired
+  arms vary family transfer, floor shape, and initial tempo without changing
+  production policy.
 - Mixed scale/arpeggio trajectory characterization across every placement prior
   and multiple seeds, including explicit blocked termination when no candidate
   remains admitted.

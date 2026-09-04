@@ -100,6 +100,16 @@ dart run keyrecall_simulation:cases \
 The report includes a detector-specific timeline and the decisive census. Use
 `--summary-only` to compare selected cases without printing their timelines.
 
+To compare provisional arpeggio policy across narrow and mixed curricula:
+
+```console
+dart run keyrecall_simulation:arpeggio_policy --seeds 4 --slots 80
+```
+
+This is a diagnostic sweep rather than a CI test. It reports family allocation,
+floor use, progression gates, prediction ranges, terminal outcomes, and paired
+scale-milestone shifts for the baseline and one-variable counterfactual arms.
+
 ## Comparing against the reference
 
 Three gates, each answering a different question.
@@ -132,6 +142,8 @@ targets rather than the web.
 [`docs/design/realization-family-pacing.md`](../../docs/design/realization-family-pacing.md)
 records the one policy experiment carried to a contract, including what it
 established and what it ruled out.
+[`docs/domain-model/arpeggio-policy-characterization.md`](../../docs/domain-model/arpeggio-policy-characterization.md)
+records the diagnostic arpeggio-policy baseline and its counterfactuals.
 [`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md)
 section 12 summarizes what the synthetic analysis established, and
 [`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)

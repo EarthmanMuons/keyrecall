@@ -357,6 +357,12 @@ families without introducing a family-specific scheduler path. Catalog-wide
 fingering coverage, policy characterization, extension analysis, and instrument
 validation remain open.
 
+The first policy-sensitivity census is recorded in
+[`arpeggio-policy-characterization.md`](arpeggio-policy-characterization.md).
+It keeps every production value unchanged and identifies initial tempo as the
+fixture's highest-sensitivity assumption because changing generated tempo alone
+does not change the scheduler's generic entry-tempo contract.
+
 ## 10. Current decisions and open claims
 
 | Question                                       | Decision                                                   |
