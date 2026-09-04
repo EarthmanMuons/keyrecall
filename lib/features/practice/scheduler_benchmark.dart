@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:isolate';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -189,21 +188,24 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen>
       );
     for (final benchmark in _cases) {
       _reportProgress('${benchmark.name}, worker', 0, 1);
-      final micros = await Isolate.run(
-        () => runSchedulerBenchmarkMicroseconds(
+      // Per case, so one failure costs its own row rather than the run: the
+      // measured cases above are expensive to reach and worth keeping.
+      try {
+        final sorted = (await runSchedulerBenchmarkOnWorker(
           scopeName: ArpeggioPolicyScope.fullMixed.name,
           playerId: benchmark.player,
           warmupSlots: benchmark.warmup,
           measuredSlots: benchmark.measured,
-        ),
-      );
-      final sorted = micros.toList()..sort();
-      lines.add(
-        benchmark.name.padRight(18) +
-            '${sorted.length}'.padLeft(11) +
-            _quantile(sorted, 0.5).padLeft(12) +
-            _quantile(sorted, 0.95).padLeft(12),
-      );
+        )).toList()..sort();
+        lines.add(
+          benchmark.name.padRight(18) +
+              '${sorted.length}'.padLeft(11) +
+              _quantile(sorted, 0.5).padLeft(12) +
+              _quantile(sorted, 0.95).padLeft(12),
+        );
+      } on Object catch (error) {
+        lines.add('${benchmark.name.padRight(18)}failed: $error');
+      }
     }
 
     return lines.join('\n');

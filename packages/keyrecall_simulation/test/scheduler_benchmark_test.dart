@@ -3,6 +3,20 @@ import 'package:test/test.dart';
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 void main() {
+  group('the worker boundary', () {
+    test('sends nothing but the parameters', () async {
+      final micros = await runSchedulerBenchmarkOnWorker(
+        scopeName: ArpeggioPolicyScope.smallFixture.name,
+        playerId: 'developing',
+        warmupSlots: 1,
+        measuredSlots: 2,
+      );
+
+      expect(micros, hasLength(2));
+      expect(micros.every((value) => value > 0), isTrue);
+    });
+  });
+
   group('reported statistics', () {
     // The census convention: a quantile names a measured decision rather than
     // interpolating between two, so an even count takes the upper middle.

@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
@@ -150,6 +152,28 @@ Future<SchedulerBenchmarkRun> runSchedulerBenchmark({
     decisions: decisions,
   );
 }
+
+/// Runs the benchmark on a worker isolate and returns its decision costs.
+///
+/// Top level, and deliberately: a closure written inside a widget's method
+/// captures that method's context, so `Isolate.run` is handed the whole element
+/// tree and refuses to send it. Here the closure can reach nothing but these
+/// parameters, all of which are primitives.
+Future<List<int>> runSchedulerBenchmarkOnWorker({
+  required String scopeName,
+  required String playerId,
+  required int warmupSlots,
+  required int measuredSlots,
+  int seed = 0,
+}) => Isolate.run(
+  () => runSchedulerBenchmarkMicroseconds(
+    scopeName: scopeName,
+    playerId: playerId,
+    warmupSlots: warmupSlots,
+    measuredSlots: measuredSlots,
+    seed: seed,
+  ),
+);
 
 /// The benchmark behind a boundary only primitives cross.
 ///
