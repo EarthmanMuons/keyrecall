@@ -430,6 +430,7 @@ class _RecordingPipeline extends SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
     lastState = state;
     final slot = super.evaluateSlot(
@@ -440,6 +441,7 @@ class _RecordingPipeline extends SchedulerPipeline {
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
       practiceEntryPolicy: practiceEntryPolicy,
+      emphasis: emphasis,
     );
     lastSelection = slot.result;
     return slot;

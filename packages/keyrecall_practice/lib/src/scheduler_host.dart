@@ -19,6 +19,24 @@ List<Exercise> candidatesDueIn(
   ]);
 }
 
+/// The emphasis [scope] puts on each of its materials.
+///
+/// Requirements are what a focus weights and candidates are generated per
+/// material, so two requirements over one material contribute the stronger of
+/// their weights rather than each other's.
+GoalEmphasis goalEmphasisOf(ResolvedPracticeScope scope) {
+  final weights = <String, double>{};
+  for (final requirement in scope.requirements) {
+    if (requirement.emphasis == GoalEmphasis.unemphasized) continue;
+    final materialId = requirement.material.materialId;
+    final held = weights[materialId];
+    if (held == null || requirement.emphasis > held) {
+      weights[materialId] = requirement.emphasis;
+    }
+  }
+  return weights.isEmpty ? GoalEmphasis.none : GoalEmphasis(weights);
+}
+
 /// What deciding a slot owes the sitting.
 ///
 /// The scheduler records two things against a sitting as part of deciding, and
@@ -143,6 +161,7 @@ class InProcessScheduler implements SchedulerHost {
 
   ResolvedPracticeScope? _scope;
   PracticeEntryPolicy? _entry;
+  GoalEmphasis _emphasis = GoalEmphasis.none;
 
   InProcessScheduler(this.pipeline);
 
@@ -157,6 +176,7 @@ class InProcessScheduler implements SchedulerHost {
   }) async {
     _scope = scope;
     _entry = entry;
+    _emphasis = goalEmphasisOf(scope);
   }
 
   @override
@@ -178,6 +198,7 @@ class InProcessScheduler implements SchedulerHost {
       at: at,
       acquisitionFloor: acquisitionFloor,
       practiceEntryPolicy: _entry,
+      emphasis: _emphasis,
     );
     final effect = SittingDecisionEffect(
       guidanceProbeAvailable: slot.guidanceProbeAvailable,

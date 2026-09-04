@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'goal_emphasis.dart';
 import 'session_state.dart';
 
 /// How capable this candidate is of generating genuine retrieval evidence.
@@ -144,6 +145,8 @@ double diversity(Exercise exercise, SessionState session) =>
 
 /// `G(e)`: learner-goal relevance.
 ///
-/// Explicitly stubbed at zero rather than faked: no goal data model exists
-/// yet, and a guessed value would silently reorder candidates.
-double goals(Exercise exercise) => 0.0;
+/// The emphasis a focus put on this material, centered on zero so a slot with
+/// no focus in force ranks exactly as it did before one could be expressed.
+/// Only the ordering is read, never the magnitude.
+double goals(Exercise exercise, GoalEmphasis emphasis) =>
+    emphasis.of(exercise) - GoalEmphasis.unemphasized;

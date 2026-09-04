@@ -348,8 +348,7 @@ class RankKey implements Comparable<RankKey> {
   /// `V(e)`: negative count of this material in the recent window.
   final double diversity;
 
-  /// `G(e)`: learner-goal relevance, explicitly zero until a goal data model
-  /// exists.
+  /// `G(e)`: learner-goal relevance, zero for everything no focus emphasized.
   final double goals;
 
   /// Where this realization sits against the learner's frontier for its

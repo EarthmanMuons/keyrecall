@@ -237,9 +237,15 @@ void main() {
       expect(diversity(exerciseB, session), 0.0);
     });
 
-    test('goals stay explicitly zero until a goal model exists', () {
-      expect(goals(exerciseA), 0.0);
-      expect(goals(exerciseB), 0.0);
+    test('goals stay zero for material no focus emphasized', () {
+      expect(goals(exerciseA, GoalEmphasis.none), 0.0);
+      expect(goals(exerciseB, GoalEmphasis.none), 0.0);
+    });
+
+    test('goals rank emphasized material above the rest of the scope', () {
+      final emphasis = GoalEmphasis({materialA.materialId: 2});
+      expect(goals(exerciseA, emphasis), greaterThan(0));
+      expect(goals(exerciseB, emphasis), 0.0);
     });
   });
 

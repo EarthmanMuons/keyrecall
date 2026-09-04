@@ -208,6 +208,7 @@ class CountingPipeline extends SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
     decisions++;
     return super.decide(

@@ -5,6 +5,7 @@ import 'acquisition_floor.dart';
 import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
+import 'goal_emphasis.dart';
 import 'introduction_breadth.dart';
 import 'practice_entry_policy.dart';
 import 'priority.dart';
@@ -155,6 +156,7 @@ class SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
     final slot = evaluateSlot(
       state: state,
@@ -164,6 +166,7 @@ class SchedulerPipeline {
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
       practiceEntryPolicy: practiceEntryPolicy,
+      emphasis: emphasis,
     );
     session.recordSelectionOpportunity(
       guidanceProbeAvailable: slot.guidanceProbeAvailable,
@@ -192,6 +195,7 @@ class SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
     final entryPolicy =
         practiceEntryPolicy ??
@@ -203,6 +207,7 @@ class SchedulerPipeline {
       at: at,
       overrides: overrides,
       practiceEntryPolicy: entryPolicy,
+      emphasis: emphasis,
     );
     var introductions = capIntroductions(
       applyRepetitionGuard(traces, session),
@@ -1162,6 +1167,7 @@ class SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
     final entryPolicy =
         practiceEntryPolicy ??
@@ -1226,6 +1232,7 @@ class SchedulerPipeline {
           topologyCache: topologyCache,
           informationCache: informationCache,
           practiceEntryPolicy: entryPolicy,
+          emphasis: emphasis,
         ),
     ];
   }
@@ -1247,6 +1254,7 @@ class SchedulerPipeline {
     required Map<RealizationKey, double> topologyCache,
     required Map<InformationKey, double> informationCache,
     required PracticeEntryPolicy practiceEntryPolicy,
+    required GoalEmphasis emphasis,
   }) {
     final realization = realizationKeyOf(exercise);
     final independentRetrievalP = retrievalCache.putIfAbsent(
@@ -1339,7 +1347,7 @@ class SchedulerPipeline {
               () => information(state, exercise, learner.params),
             ),
             diversity: diversity(exercise, session),
-            goals: goals(exercise),
+            goals: goals(exercise, emphasis),
             realization: realizationRankFor(
               state,
               exercise,

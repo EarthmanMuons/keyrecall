@@ -11,6 +11,7 @@ export 'src/acquisition_floor.dart';
 export 'src/candidate_generation.dart';
 export 'src/candidate_trace.dart';
 export 'src/execution_progression.dart';
+export 'src/goal_emphasis.dart';
 export 'src/introduction_breadth.dart';
 export 'src/config/scheduler_config.dart';
 export 'src/priority.dart';

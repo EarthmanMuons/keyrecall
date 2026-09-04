@@ -287,6 +287,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
     _generated = candidates.length;
     _decide.start();
@@ -298,6 +299,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
       practiceEntryPolicy: practiceEntryPolicy,
+      emphasis: emphasis,
     );
     _decide.stop();
     return slot;
@@ -311,6 +313,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
     _evaluate.start();
     _traces = super.evaluate(
@@ -320,6 +323,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
       at: at,
       overrides: overrides,
       practiceEntryPolicy: practiceEntryPolicy,
+      emphasis: emphasis,
     );
     _evaluate.stop();
     return _traces;

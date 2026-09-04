@@ -88,6 +88,14 @@ class ArpeggioPracticeMaterialFamily implements PracticeMaterialFamily {
   ) => _arpeggioAcquisitionFloorFor(requests, policy);
 }
 
+/// The requirement id a goal with no curriculum of its own gives [materialId].
+///
+/// A goal that names materials rather than a curriculum still has to produce
+/// requirements a focus can name, so the scheme is public: nothing else can
+/// address them.
+String catalogRequirementId(String goalId, String materialId) =>
+    '$goalId:$materialId';
+
 /// Why a requested goal and focus could not become a practice scope.
 enum ScopeResolutionFailureCode {
   duplicateRequirementId,
@@ -362,7 +370,7 @@ class PracticeScopeResolver {
       requirements: [
         for (final materialId in selected)
           CurriculumRequirement(
-            id: '${goal.id}:$materialId',
+            id: catalogRequirementId(goal.id, materialId),
             familyId: catalogById[materialId]?.familyId ?? '',
             materialId: materialId,
           ),

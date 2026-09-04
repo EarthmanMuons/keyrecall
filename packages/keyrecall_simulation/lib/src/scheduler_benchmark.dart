@@ -295,6 +295,7 @@ class _TimedPipeline extends SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
     lastGenerated = candidates.length;
     _watch
@@ -308,6 +309,7 @@ class _TimedPipeline extends SchedulerPipeline {
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
       practiceEntryPolicy: practiceEntryPolicy,
+      emphasis: emphasis,
     );
     _watch.stop();
     lastDecide = _watch.elapsed;

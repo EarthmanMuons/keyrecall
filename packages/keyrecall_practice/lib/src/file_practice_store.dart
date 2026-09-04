@@ -6,6 +6,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'feedback_exposure.dart';
 import 'pending_decision.dart';
+import 'practice_plan.dart';
 import 'practice_store.dart';
 import 'profile_write_queue.dart';
 
@@ -16,6 +17,7 @@ import 'profile_write_queue.dart';
 /// <root>/<profileId>/feedback.jsonl    append-only exposure record
 /// <root>/<profileId>/pending.json      one slot, replaced or removed
 /// <root>/<profileId>/checkpoint.json   one slot, replaced
+/// <root>/<profileId>/plan.json         one slot, replaced
 /// ```
 ///
 /// The directory is shared with the profile's own record of itself, which the
@@ -203,6 +205,32 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
+  Future<PracticePlan?> loadPracticePlan(String profileId) =>
+      _queue.run(profileId, () => _loadPracticePlan(profileId));
+
+  Future<PracticePlan?> _loadPracticePlan(String profileId) async {
+    await _recoverErase(profileId);
+    final file = _planFile(profileId);
+    if (!file.existsSync()) return null;
+    return PracticePlan.fromJson(
+      asMap(
+        await _decode(file, 'practice plan'),
+        'practice plan',
+        location: file.path,
+      ),
+    );
+  }
+
+  @override
+  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
+      _queue.run(profileId, () => _savePracticePlan(profileId, plan));
+
+  Future<void> _savePracticePlan(String profileId, PracticePlan plan) async {
+    await _recoverErase(profileId);
+    await _writeAtomically(_planFile(profileId), canonicalJson(plan.toJson()));
+  }
+
+  @override
   Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) =>
       _queue.run(profileId, () => _loadCheckpoint(profileId));
 
@@ -333,8 +361,10 @@ class FilePracticeStore implements PracticeStore {
       _pendingFile(profileId),
       _checkpointFile(profileId),
       _feedbackFile(profileId),
+      _planFile(profileId),
       File('${_pendingFile(profileId).path}.tmp'),
       File('${_checkpointFile(profileId).path}.tmp'),
+      File('${_planFile(profileId).path}.tmp'),
     ]) {
       if (file.existsSync()) await file.delete();
     }
@@ -364,6 +394,9 @@ class FilePracticeStore implements PracticeStore {
 
   File _checkpointFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/checkpoint.json');
+
+  File _planFile(String profileId) =>
+      File('${_profileDirectory(profileId).path}/plan.json');
 
   File _feedbackFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/feedback.jsonl');

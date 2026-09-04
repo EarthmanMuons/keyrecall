@@ -2,6 +2,7 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'feedback_exposure.dart';
 import 'pending_decision.dart';
+import 'practice_plan.dart';
 
 /// Durable storage for one install's practice history.
 ///
@@ -15,6 +16,9 @@ import 'pending_decision.dart';
 ///   resolved rather than guessed at.
 /// - **Checkpoints** are a single overwritable slot per profile, and losing one
 ///   costs only replay time.
+/// - **A practice plan** is a single overwritable slot per profile. It is
+///   intent rather than evidence: what the learner is working toward and what
+///   they asked to draw from, which nothing in the journal can reconstruct.
 ///
 /// Implementations must make [appendAttempt] durable before it returns, and
 /// must never leave a partially written attempt visible as history. Beyond
@@ -74,6 +78,15 @@ abstract interface class PracticeStore {
   /// Called after the attempt is committed, or after it is abandoned.
   Future<void> clearPendingDecision(String profileId);
 
+  /// What [profileId] is working toward, or null where nobody has said.
+  ///
+  /// Absent is not the same as the default plan: a caller that wants to know
+  /// whether the question was ever answered can still tell.
+  Future<PracticePlan?> loadPracticePlan(String profileId);
+
+  /// Saves [plan] for [profileId], replacing any earlier one.
+  Future<void> savePracticePlan(String profileId, PracticePlan plan);
+
   /// The most recent checkpoint for [profileId], if one was saved.
   Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId);
 
@@ -97,6 +110,7 @@ class InMemoryPracticeStore implements PracticeStore {
   final Map<String, AttemptJournal> _journals = {};
   final Map<String, PendingDecision> _pending = {};
   final Map<String, LearnerStateCheckpoint> _checkpoints = {};
+  final Map<String, PracticePlan> _plans = {};
   final Map<String, Map<(String, PostAttemptFeedback), FeedbackExposure>>
   _feedback = {};
 
@@ -152,6 +166,15 @@ class InMemoryPracticeStore implements PracticeStore {
   }
 
   @override
+  Future<PracticePlan?> loadPracticePlan(String profileId) async =>
+      _plans[profileId];
+
+  @override
+  Future<void> savePracticePlan(String profileId, PracticePlan plan) async {
+    _plans[profileId] = plan;
+  }
+
+  @override
   Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) async =>
       _checkpoints[profileId];
 
@@ -166,6 +189,7 @@ class InMemoryPracticeStore implements PracticeStore {
     _pending.remove(profileId);
     _checkpoints.remove(profileId);
     _feedback.remove(profileId);
+    _plans.remove(profileId);
   }
 
   AttemptJournal _journalFor(String profileId, DateTime? createdAt) =>

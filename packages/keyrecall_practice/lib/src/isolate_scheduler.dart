@@ -205,6 +205,7 @@ class _Worker {
   ) async {
     final (replies, scope, entry, learner, config) = start;
     final pipeline = SchedulerPipeline(learner: learner, config: config);
+    final emphasis = goalEmphasisOf(scope);
     final requests = ReceivePort();
     replies.send(requests.sendPort);
     await for (final message in requests) {
@@ -217,6 +218,7 @@ class _Worker {
         at: request.at,
         acquisitionFloor: request.acquisitionFloor,
         practiceEntryPolicy: entry,
+        emphasis: emphasis,
       );
       replies.send(
         _DecisionResponse(

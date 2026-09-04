@@ -64,6 +64,14 @@ class FlakyPracticeStore implements PracticeStore {
       inner.saveCheckpoint(checkpoint);
 
   @override
+  Future<PracticePlan?> loadPracticePlan(String profileId) =>
+      inner.loadPracticePlan(profileId);
+
+  @override
+  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
+      inner.savePracticePlan(profileId, plan);
+
+  @override
   Future<void> erase(String profileId) => inner.erase(profileId);
 }
 
@@ -113,6 +121,14 @@ class MisfilingPracticeStore implements PracticeStore {
   @override
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
       inner.saveCheckpoint(checkpoint);
+
+  @override
+  Future<PracticePlan?> loadPracticePlan(String profileId) =>
+      inner.loadPracticePlan(profileId);
+
+  @override
+  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
+      inner.savePracticePlan(profileId, plan);
 
   @override
   Future<void> erase(String profileId) => inner.erase(profileId);
