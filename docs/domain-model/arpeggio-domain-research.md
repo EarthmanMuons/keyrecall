@@ -428,8 +428,8 @@ Before adding arpeggios to the active learner-facing catalog:
 Gates 1 through 5 are implemented for the supported root-position corpus.
 Mixed-family trajectory characterization exercises every placement prior and
 selects both families without introducing a family-specific scheduler path.
-Full-catalog policy characterization, extension analysis, and instrument
-validation remain open.
+Full-catalog policy characterization is complete. Learner-model extension
+analysis and instrument validation remain open.
 
 The first policy-sensitivity census is recorded in
 [`arpeggio-policy-characterization.md`](arpeggio-policy-characterization.md). It
