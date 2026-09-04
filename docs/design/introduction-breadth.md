@@ -189,15 +189,69 @@ not run it. The runner now pairs it per arm, but the 480-trajectory census that
 would fill the gap was abandoned: at roughly four seconds per slot-limited
 trajectory it approached an hour, which is the cost this work stopped for.
 
+## What adding arpeggios costs the scales
+
+The paired scale-only control now runs per arm: 480 trajectories, 1081 seconds,
+the same seeds and archetypes as the arms above.
+
+```console
+dart run keyrecall_simulation:arpeggio_policy \
+  --mode breadth --seeds 4 --slots 80 --jobs 8
+```
+
+**The control is not fixed.** A cap applies to scales too, so the scale-only
+trajectory it pairs against is itself a different trajectory in every arm: the
+developing archetype meets 12.8 scale materials at baseline and 9.5 at the
+tightest budget. A paired milestone delta therefore compares two moving
+quantities, and the deltas below cannot be read across arms as though only the
+mixed side had changed.
+
+**Displacement is unchanged wherever the cap does not bind.** Intermediate,
+advanced, tempo-noncompliant, uneven-hands, and coordination-limited archetypes
+report the same shift in every arm, to the tenth of a slot: first two-octave
+scale 2.8 to 4.0 slots later, first hands-together scale 13.0 to 45.0 later.
+Those cohorts never hold enough unresolved material for a budget of two to bind,
+so the arpeggio family displaces their scale depth exactly as much whatever the
+policy.
+
+**Within a scope, the comparison reads cleanly.** How much of its scale
+follow-through the developing archetype keeps when arpeggios are added, as the
+share of scale materials revisited within twenty slots of introduction:
+
+| Arm                 | Scale only | Full mixed |  Lost |
+| ------------------- | ---------: | ---------: | ----: |
+| baseline            |      0.967 |      0.500 | 0.467 |
+| `breadth_catalog_2` |      1.000 |      0.900 | 0.100 |
+| `breadth_catalog_4` |      1.000 |      0.588 | 0.412 |
+| `breadth_catalog_8` |      0.967 |      0.500 | 0.467 |
+| `breadth_family_4`  |      1.000 |      0.500 | 0.500 |
+
+At the tightest budget, adding twenty-four arpeggios costs this learner a tenth
+of its scale follow-through instead of half of it, and its one-and-done scale
+introductions fall from 5 of 22 to 0 of 10. Arpeggios are still introduced
+coherently: nine materials, 40.0% of slots, and hands-together arpeggio work in
+three seeds of four at slot 16.7 against 29.3 at baseline.
+
+**It buys pace for one more cohort and follow-through for none.** The
+fast-but-placed-low profile's first hands-together scale moves from 26.0 slots
+later to 21.3 at budgets of two and four, while its scale revisit share is
+unmoved at 0.350 against 0.353. And wider-span scale work within twenty slots of
+introduction stays at 0.000 in every arm and every scope, which is the same
+result the arpeggio side gave: controlling breadth changes which material a slot
+goes to and not whether progression on it is admissible.
+
+**What the gap closing establishes.** Breadth control preserves scale depth for
+exactly the cohort that accumulates unresolved material, only at the tightest
+budget tried, and at the cost of a much narrower repertoire: nine materials
+against twenty-four. Every other cohort is unaffected in both directions. That
+is a real allocation effect rather than a change in family share, and it is
+narrow enough that promoting a policy on it would be promoting it for one
+synthetic archetype.
+
 ## Where that leaves the roadmap
 
-The census cost is the immediate blocker. Decision cost grows with the catalog,
-and the full mixed scope is the production-scale case rather than an offline
-one: the same pipeline runs on a phone. Scheduler decision cost comes before the
-remaining allocation questions.
-
-Breadth is otherwise a controlled variable rather than a confound, and the
-remaining questions separate cleanly:
+Breadth is a controlled variable rather than a confound, and the remaining
+questions separate cleanly:
 
 - introduction allocation has a mechanism and a measured signature, and needs a
   real trajectory rather than another synthetic arm to calibrate;
