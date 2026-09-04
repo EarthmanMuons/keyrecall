@@ -1,7 +1,7 @@
 # Arpeggio policy characterization
 
-- **Status:** Diagnostic baseline; no policy promoted
-- **Date:** September 3, 2026
+- **Status:** Family-coherent rerun; no policy promoted
+- **Date:** September 4, 2026
 - **Fixture:** Sourced C major and C minor root-position arpeggios
 
 ## Question
@@ -24,6 +24,31 @@ The experiment varies one assumption at a time:
 
 The baseline remains `rhoFamily = 0.35`, RH ascending acquisition at 60 BPM.
 None of the arms changes production configuration.
+
+## Entry-tempo contract
+
+The first census found that arpeggio candidate generation could vary its
+initial tempo while generic scheduler mechanisms continued to treat 60 BPM as
+the entry realization. Scope resolution now carries a family-neutral
+`PracticeEntryPolicy` into the scheduler. Candidate generation, acquisition
+floor generation, new-material admission, gentle-condition admission,
+unmeasured-realization fit, and guidance/retrieval probes therefore use one
+family entry tempo.
+
+The remaining tempo rules have different ownership:
+
+- `generatedTempi` is the scale family's offered tempo set, whose first value
+  is also that family's declared entry tempo;
+- `EligibilityConfig.gentleTempoBpm` is the fallback for scheduler callers that
+  do not supply a resolved practice policy;
+- transferable entry pace remains learner evidence, discounted by admission
+  band where appropriate;
+- hands-together entry remains one rung below the slower ready hand; and
+- tempo and span progression remain adjacent moves from demonstrated
+  frontiers.
+
+Thus a family entry tempo replaces no evidence-derived pace. It supplies the
+cold-start fact that was previously implicit in the scale generator.
 
 ## Method
 
@@ -81,7 +106,7 @@ slots later. Those shifts describe allocation in a curriculum with more than
 twice as many requirements; they do not by themselves establish
 over-concentration.
 
-## Sensitivity observations
+## Initial sensitivity observations
 
 Changing `rhoFamily` from 0.35 to 0 or 0.70 produced small admitted-prediction
 changes and almost no progression-timing changes in this fixture. The largest
@@ -95,25 +120,48 @@ maximum floor run. The ascending-and-descending arm mostly lowered admitted
 prediction quantiles, as expected from adding reversal difficulty, without
 creating a new terminal failure.
 
-Initial tempo was the high-sensitivity assumption. At 50 BPM the true
+Initial tempo appeared to be the high-sensitivity assumption. At 50 BPM the true
 beginner's single-material floor rate rose to 40.6% with a maximum run of 44.
 At 70 BPM it rose to 78.1%, including one complete 80-selection floor run.
 Developing and several intermediate profiles also lost early left-hand or
 hands-together milestones.
 
-This is not evidence that 50 or 70 BPM is intrinsically worse. It exposes a
-mechanism coupling: generic unmeasured-entry and execution-progression policy
-currently names 60 BPM through its offered tempo lattice. An arpeggio family
-cannot safely choose a different initial tempo by changing candidate generation
-alone. Any tempo experiment must vary the complete entry-policy contract.
+Those outcomes exposed mechanism coupling rather than evidence that 50 or 70
+BPM was intrinsically worse. The family varied candidate generation alone while
+generic entry mechanisms still named 60 BPM.
+
+## Family-coherent rerun
+
+The same 704 trajectories were rerun after resolving entry tempo by family.
+The 60-BPM baseline results and paired scale-milestone shifts were unchanged.
+
+Neither tempo arm blocked or became invalid. The maximum floor run was three at
+both 50 and 70 BPM; the former 44- and 80-selection runs disappeared. Every
+true-beginner seed reached the left hand at both tempi. Other than the true
+beginner, no archetype used the floor in either single-arpeggio tempo arm.
+
+Tempo still affects predicted difficulty and therefore practice allocation. In
+the true beginner's single-arpeggio scope, the floor-selection rate was 5.0% at
+50 BPM, 17.5% at baseline, and 52.8% at 70 BPM. The corresponding mixed-scope
+arpeggio shares were 50.9%, 39.7%, and 56.9%. At 50 BPM, three of four
+single-arpeggio runs and two of four mixed runs reached hands-together work;
+none did so at 60 or 70 BPM within the horizon. These are coherent consequences
+of challenge prediction and synthetic outcomes, not evidence for choosing one
+tempo.
+
+For intermediate and advanced archetypes, the first separate-hand, two-octave,
+and four-octave milestones were nearly invariant across the three tempi.
+Hands-together reach varied by seed at 70 BPM in some mixed trajectories, but
+without floor dependence or a terminal failure. That remains a policy
+sensitivity to revisit with real observations.
 
 ## Decision
 
 No parameter changes follow from this experiment. The 60-BPM fixture remains
 provisional, `rhoFamily = 0.35` remains uncalibrated, and the RH ascending floor
-remains unpromoted.
+remains unpromoted. The coherent contract removes the structural blocker to
+expanding provenance-backed major/minor root-position fingering coverage.
 
-Before catalog expansion, the next policy work should make entry tempo a
-coherent family-aware contract rather than a generator-only value, then repeat
-the sensitivity census. Real pianist observations remain necessary to choose a
-tempo, transfer coefficient, or acquisition-floor shape.
+Real pianist observations remain necessary to choose a tempo, transfer
+coefficient, or acquisition-floor shape. Full-catalog characterization must be
+repeated before learner-facing promotion.

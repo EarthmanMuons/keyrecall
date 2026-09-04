@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- The arpeggio entry-tempo census now varies the complete resolved family
+  policy, distinguishing challenge sensitivity from entry-contract mismatch.
 - An arpeggio-policy census over real scoped practice sessions, reporting
   family allocation, acquisition-floor dependence, progression gates,
   prediction ranges, terminal outcomes, and scale-milestone shifts. Paired

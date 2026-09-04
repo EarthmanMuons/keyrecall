@@ -238,7 +238,9 @@ itself otherwise. Geography and speed are different axes: an unfamiliar
 fingering is a real additional ask, so the full pace is overconfident, and the
 learner's own pace is direct behavioral evidence, so dropping further treats it
 as though it barely existed. Where no pace has been shown there is nothing to
-discount and the gentlest tempo on the ladder is the only honest default.
+discount and the material family's resolved entry tempo is the only honest
+default. The scale family declares the existing 60-BPM default; other families
+may declare a different entry without changing generic scheduler policy.
 
 This replaced a cap at that gentlest tempo, which predated pace being measured.
 Simulation raised it about five thousand times across every archetype past a

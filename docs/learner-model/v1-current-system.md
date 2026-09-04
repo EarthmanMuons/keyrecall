@@ -1001,8 +1001,9 @@ different question.
 
 The guidance, bootstrap, and observation probes all ask one question about
 support, and all three hold the execution conditions the learner is already at:
-the frontier tempo for that material, hand, and span, or the entry tempo where
-that span has never been managed.
+the frontier tempo for that material, hand, and span, or the resolved family
+entry tempo where that span has never been managed and no transferable pace is
+available.
 
 This is a rule about probes, not about tempo. A probe that moved two axes would
 ask two questions and answer neither, since nothing in the outcome says which
