@@ -191,9 +191,11 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
       );
     }
 
+    await _measureOwningWorker(lines);
+
     lines
       ..add('')
-      ..add('on a worker isolate')
+      ..add('scope rebuilt on a worker isolate per case')
       ..add(
         'case'.padRight(18) +
             'decisions'.padLeft(11) +
@@ -223,6 +225,56 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
     }
 
     return lines.join('\n');
+  }
+
+  /// The production message shape: a worker that resolved the scope once, and
+  /// a slot that sends it the state to decide from.
+  Future<void> _measureOwningWorker(List<String> lines) async {
+    final mature = _cases.last;
+    _reportProgress('${mature.name}, owning worker', 0, 1);
+    final session = await openBenchmarkSession(
+      scope: ArpeggioPolicyScope.fullMixed,
+      player: PlayerArchetypes.all.firstWhere(
+        (archetype) => archetype.id == mature.player,
+      ),
+      warmupSlots: mature.warmup,
+      onProgress: (completed, total) =>
+          _reportProgress('${mature.name}, owning worker', completed, total),
+    );
+    final worker = await SchedulerWorker.start(
+      ArpeggioPolicyScope.fullMixed.name,
+    );
+    try {
+      final roundTrips = <int>[];
+      for (var trip = 0; trip < mature.measured; trip++) {
+        final watch = Stopwatch()..start();
+        await worker.decide(
+          state: session.learnerState,
+          session: session.sessionState,
+          at: session.nextAt,
+        );
+        roundTrips.add(watch.elapsedMicroseconds);
+      }
+      roundTrips.sort();
+      final gap = await _stallOfOneRoundTrip(worker, session);
+      lines
+        ..add('')
+        ..add('a worker that owns the scope, at the mature state')
+        ..add(
+          'round trips'.padRight(18) +
+              'p50'.padLeft(12) +
+              'p95'.padLeft(12) +
+              'frame gap'.padLeft(12),
+        )
+        ..add(
+          '${roundTrips.length}'.padRight(18) +
+              _quantile(roundTrips, 0.5).padLeft(12) +
+              _quantile(roundTrips, 0.95).padLeft(12) +
+              _ms(gap).padLeft(12),
+        );
+    } finally {
+      worker.stop();
+    }
   }
 
   void _reportProgress(String name, int completed, int total) {
@@ -259,6 +311,34 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
             microseconds: sorted[((sorted.length - 1) * probability).round()],
           ),
         );
+}
+
+/// The same measurement for a decision the UI isolate only waits on.
+///
+/// The number to compare against the on-isolate gap: the state still has to
+/// cross the boundary, but nothing here occupies the isolate that draws.
+Future<Duration> _stallOfOneRoundTrip(
+  SchedulerWorker worker,
+  BenchmarkSession session,
+) {
+  final completer = Completer<Duration>();
+  final binding = SchedulerBinding.instance;
+  binding.addPostFrameCallback((_) async {
+    final watch = Stopwatch()..start();
+    try {
+      await worker.decide(
+        state: session.learnerState,
+        session: session.sessionState,
+        at: session.nextAt,
+      );
+      binding.addPostFrameCallback((_) => completer.complete(watch.elapsed));
+      binding.scheduleFrame();
+    } on Object catch (error, stackTrace) {
+      completer.completeError(error, stackTrace);
+    }
+  });
+  binding.scheduleFrame();
+  return completer.future;
 }
 
 /// How long the interface goes without a frame while one decision runs.

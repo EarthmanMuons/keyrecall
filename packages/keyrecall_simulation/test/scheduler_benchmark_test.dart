@@ -17,6 +17,36 @@ void main() {
     });
   });
 
+  group('the worker that owns a scope', () {
+    test('decides from a state sent across the boundary', () async {
+      final benchmark = await openBenchmarkSession(
+        scope: ArpeggioPolicyScope.smallFixture,
+        player: PlayerArchetypes.developing,
+        warmupSlots: 3,
+      );
+      final worker = await SchedulerWorker.start(
+        ArpeggioPolicyScope.smallFixture.name,
+      );
+      addTearDown(worker.stop);
+
+      final chosen = await worker.decide(
+        state: benchmark.learnerState,
+        session: benchmark.sessionState,
+        at: benchmark.nextAt,
+      );
+
+      expect(chosen, isNotNull);
+      expect(
+        chosen!.material.materialId,
+        isIn(
+          benchmark.session.candidates.map(
+            (candidate) => candidate.material.materialId,
+          ),
+        ),
+      );
+    });
+  });
+
   group('reported statistics', () {
     // The census convention: a quantile names a measured decision rather than
     // interpolating between two, so an even count takes the upper middle.

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:isolate';
 
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -102,6 +103,15 @@ class BenchmarkSession {
        _playing = playing,
        _random = random,
        _slot = slot;
+
+  /// The learner state the next decision reads.
+  LearnerState get learnerState => session.state;
+
+  /// The sitting the next decision reads.
+  SessionState get sessionState => session.session;
+
+  /// When the next decision happens.
+  DateTime get nextAt => _at0.add(Duration(minutes: _slot + 1));
 
   /// Decides one slot, plays it, and reports what the decision cost.
   ///
@@ -299,5 +309,91 @@ class _TimedPipeline extends SchedulerPipeline {
     lastEvaluated = result.traces.length;
     lastRanked = result.traces.where((trace) => trace.isRanked).length;
     return result;
+  }
+}
+
+/// A worker isolate that owns a scope and answers one decision at a time.
+///
+/// The production message shape, as far as a benchmark can stand in for it:
+/// the state a slot decides from goes across and the chosen exercise comes
+/// back. The candidate envelope never moves, because the worker resolves it
+/// once from the catalog the same way the session does.
+class SchedulerWorker {
+  final SendPort _requests;
+  final ReceivePort _responses;
+  final StreamIterator<Object?> _incoming;
+
+  SchedulerWorker._(this._requests, this._responses, this._incoming);
+
+  /// Spawns a worker holding [scopeName]'s resolved scope.
+  static Future<SchedulerWorker> start(String scopeName) async {
+    final responses = ReceivePort();
+    final incoming = StreamIterator<Object?>(responses);
+    await Isolate.spawn(_serve, (responses.sendPort, scopeName));
+    await incoming.moveNext();
+    return SchedulerWorker._(
+      incoming.current! as SendPort,
+      responses,
+      incoming,
+    );
+  }
+
+  /// The exercise the scheduler would present, or null where it is blocked.
+  Future<Exercise?> decide({
+    required LearnerState state,
+    required SessionState session,
+    required DateTime at,
+  }) async {
+    _requests.send((state, session, at));
+    await _incoming.moveNext();
+    return _incoming.current as Exercise?;
+  }
+
+  void stop() {
+    _requests.send(null);
+    _responses.close();
+  }
+
+  static Future<void> _serve((SendPort, String) start) async {
+    final (replies, scopeName) = start;
+    final scope = ArpeggioPolicyScope.values.byName(scopeName);
+    final fixture = arpeggioPolicyFixture(scope);
+    final resolution =
+        PracticeScopeResolver(
+              families: const [
+                ScalePracticeMaterialFamily(),
+                ArpeggioPracticeMaterialFamily(),
+              ],
+            ).resolve(
+              goal: fixture.goal,
+              focus: PracticeFocus.unrestricted,
+              catalog: fixture.materials,
+              instrument: InstrumentProfile(),
+            )
+            as ValidPracticeScope;
+    final candidates = distinctCandidatesOf(resolution.scope.requirements);
+    final pipeline = SchedulerPipeline(
+      learner: const LearnerModel(params: v1PrototypeLearnerParams),
+    );
+
+    final requests = ReceivePort();
+    replies.send(requests.sendPort);
+    await for (final request in requests) {
+      if (request == null) break;
+      final (state, session, at) =
+          request as (LearnerState, SessionState, DateTime);
+      final selection = pipeline.decide(
+        state: state,
+        session: session,
+        candidates: candidates,
+        at: at,
+        practiceEntryPolicy: resolution.entryPolicy,
+      );
+      replies.send(switch (selection) {
+        CandidateSelected(:final candidate) => candidate.exercise,
+        SelectionBlocked() => null,
+      });
+    }
+    requests.close();
   }
 }
