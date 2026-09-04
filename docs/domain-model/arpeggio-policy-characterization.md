@@ -286,8 +286,8 @@ floor remains unpromoted.
 The full corpus does not reveal tonic or fingering-family concentration. It does
 reveal that broad new-material availability can dominate acquisition-floor use
 and defer within-material progression, while deeper scale milestones move
-substantially in the mixed scope. That is the concrete input to the next
-learner-model extension analysis: determine whether shared arpeggio execution
-plus material-hand residuals represent the observation structure adequately, and
-separate state-model limitations from introduction-allocation policy before any
-product promotion.
+substantially in the mixed scope. Introduction allocation was taken up first, in
+[`../design/introduction-breadth.md`](../design/introduction-breadth.md), so
+that the learner-model extension analysis can ask whether shared arpeggio
+execution plus material-hand residuals represent the observation structure
+adequately without breadth confounding the answer.

@@ -339,8 +339,11 @@ Future<List<ArpeggioPolicyRun>> runArpeggioPolicyMatrix({
   final tasks = <_ArpeggioPolicyTask>[];
   for (final arm in arms) {
     for (final scope in scopes) {
+      // The scale-only control pairs with the mixed scope, so an arm runs it
+      // only where the arm can change what a scale-only trajectory does.
       if (scope == ArpeggioPolicyScope.scaleOnly &&
-          arm.id != ArpeggioPolicyArm.baseline.id) {
+          arm.id != ArpeggioPolicyArm.baseline.id &&
+          arm.introductions == null) {
         continue;
       }
       for (final player in players ?? PlayerArchetypes.all) {

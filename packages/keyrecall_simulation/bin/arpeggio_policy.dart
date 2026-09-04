@@ -29,12 +29,18 @@ Future<void> main(List<String> arguments) async {
     'breadth' => ArpeggioPolicyArm.breadthArms,
     _ => throw StateError('unreachable mode $mode'),
   };
-  final scopes = mode == 'baseline'
-      ? ArpeggioPolicyScope.values
-      : const [
-          ArpeggioPolicyScope.fullArpeggioCorpus,
-          ArpeggioPolicyScope.fullMixed,
-        ];
+  final scopes = switch (mode) {
+    'transfer' => const [
+      ArpeggioPolicyScope.fullArpeggioCorpus,
+      ArpeggioPolicyScope.fullMixed,
+    ],
+    'breadth' => const [
+      ArpeggioPolicyScope.scaleOnly,
+      ArpeggioPolicyScope.fullArpeggioCorpus,
+      ArpeggioPolicyScope.fullMixed,
+    ],
+    _ => ArpeggioPolicyScope.values,
+  };
 
   final stopwatch = Stopwatch()..start();
   final runs = await runArpeggioPolicyMatrix(
@@ -64,36 +70,39 @@ Future<void> main(List<String> arguments) async {
     stdout.writeln(_row(group));
   }
 
-  if (mode == 'baseline') {
+  if (mode != 'transfer') {
     stdout
       ..writeln()
-      ..writeln('baseline full-mixed shift from scale-only milestones')
-      ..writeln('player\tpaired\tfirst_scale\tfirst_2oct\tfirst_ht');
-    for (final player in PlayerArchetypes.all) {
-      final pairs = <(ArpeggioPolicyRun, ArpeggioPolicyRun)>[];
-      for (var seed = 0; seed < seeds; seed++) {
-        final scale = _find(
-          runs,
-          ArpeggioPolicyArm.baseline.id,
-          ArpeggioPolicyScope.scaleOnly,
-          player.id,
-          seed,
+      ..writeln('full-mixed shift from scale-only milestones')
+      ..writeln('arm\tplayer\tpaired\tfirst_scale\tfirst_2oct\tfirst_ht');
+    for (final armId in {for (final run in runs) run.armId}) {
+      for (final player in PlayerArchetypes.all) {
+        final pairs = <(ArpeggioPolicyRun, ArpeggioPolicyRun)>[];
+        for (var seed = 0; seed < seeds; seed++) {
+          final scale = _find(
+            runs,
+            armId,
+            ArpeggioPolicyScope.scaleOnly,
+            player.id,
+            seed,
+          );
+          final mixed = _find(
+            runs,
+            armId,
+            ArpeggioPolicyScope.fullMixed,
+            player.id,
+            seed,
+          );
+          if (scale != null && mixed != null) pairs.add((scale, mixed));
+        }
+        if (pairs.isEmpty) continue;
+        stdout.writeln(
+          '$armId\t${player.id}\t${pairs.length}\t'
+          '${_meanDelta(pairs, (run) => run.firstScaleSlot)}\t'
+          '${_meanDelta(pairs, (run) => run.firstTwoOctaveScaleSlot)}\t'
+          '${_meanDelta(pairs, (run) => run.firstHandsTogetherScaleSlot)}',
         );
-        final mixed = _find(
-          runs,
-          ArpeggioPolicyArm.baseline.id,
-          ArpeggioPolicyScope.fullMixed,
-          player.id,
-          seed,
-        );
-        if (scale != null && mixed != null) pairs.add((scale, mixed));
       }
-      stdout.writeln(
-        '${player.id}\t${pairs.length}\t'
-        '${_meanDelta(pairs, (run) => run.firstScaleSlot)}\t'
-        '${_meanDelta(pairs, (run) => run.firstTwoOctaveScaleSlot)}\t'
-        '${_meanDelta(pairs, (run) => run.firstHandsTogetherScaleSlot)}',
-      );
     }
   }
 

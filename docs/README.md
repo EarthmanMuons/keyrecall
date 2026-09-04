@@ -39,6 +39,8 @@ docs/
 │   ├── future-planning.md           deferred seams, hypotheses, and closed ideas
 │   ├── trajectory-simulation.md     synthetic players, invariants against
 │   │                                observations, and the candidate census
+│   ├── introduction-breadth.md      how much unresolved new material may be
+│   │                                open at once, and what capping it does
 │   └── coordination-transition-policy.md
 │                                    proposed: when hands-together becomes
 │                                    admissible, and the evidence for it
@@ -102,6 +104,7 @@ implementation rather than evidence about another one.
 | What each store is for, and where aggregation is allowed            | `design/data-products.md`                               |
 | Deferred architectural, product, and domain hypotheses              | `design/future-planning.md`                             |
 | Synthetic players, trajectory detectors, and the sweep              | `design/trajectory-simulation.md`                       |
+| Introduction breadth census and the concurrency counterfactuals     | `design/introduction-breadth.md`                        |
 | Proposed hands-together admission policy, and its evidence chain    | `design/coordination-transition-policy.md`              |
 | Canonical scale fingering                                           | `domain-model/fingering-taxonomy.md`                    |
 | Arpeggio identity, progression evidence, and promotion gates        | `domain-model/arpeggio-domain-research.md`              |
