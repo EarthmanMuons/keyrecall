@@ -8,14 +8,14 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// The learner-facing name of [material], such as `F♯ harmonic minor`.
 String materialName(TechnicalMaterial material) => switch (material) {
   ScaleMaterial(:final tonic, :final form) =>
-    '${_prettyTonic(tonic)} ${_formName(form)}',
+    '${prettyTonic(tonic)} ${_formName(form)}',
   ArpeggioMaterial(:final tonic, :final quality, :final inversion) =>
-    '${_prettyTonic(tonic)} ${_arpeggioQualityName(quality)} '
+    '${prettyTonic(tonic)} ${_arpeggioQualityName(quality)} '
         '${_inversionName(inversion)} arpeggio',
 };
 
 /// The note the scale is named after, spelled the way it is written.
-String tonicName(TechnicalMaterial material) => _prettyTonic(material.tonic);
+String tonicName(TechnicalMaterial material) => prettyTonic(material.tonic);
 
 /// Which hand or hands play, as a learner would say it.
 String handsName(HandConfiguration hands) => switch (hands) {
@@ -46,7 +46,8 @@ String guidanceName(GuidanceContext guidance) =>
       _ => 'unguided',
     };
 
-String _prettyTonic(String tonic) =>
+/// A key written the way a learner reads it, with real accidental signs.
+String prettyTonic(String tonic) =>
     tonic.replaceAll('#', '♯').replaceAll('b', '♭');
 
 String _formName(ScaleForm form) => switch (form) {

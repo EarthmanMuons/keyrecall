@@ -20,9 +20,11 @@ import 'attempt_transcript.dart';
 import 'developer_screen.dart';
 import 'exercise_presentation.dart';
 import 'fingering.dart';
+import 'focus_bar.dart';
 import 'hands_icon.dart';
 import 'latency_probe.dart';
 import 'loop_failure.dart';
+import 'practice_plan_screen.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
 import 'profile_avatar.dart';
@@ -166,18 +168,34 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
       appBar: _PracticeAppBar(
         running: _playing == null ? null : loop.value?.exercise,
       ),
+      // The strip goes over whatever the loop produced, and only while nothing
+      // is being played: what it says is about the next exercise, and during
+      // one it would be a control nobody can reach.
       body: switch (loop) {
-        AsyncData(:final value) when value.exercise != null => AttemptView(
-          // A new decision restarts the view at Ready rather than inheriting
-          // the previous attempt's phase.
-          key: ValueKey(attemptId),
-          exercise: value.exercise!,
-          onFinish: (termination) => notifier.finish(termination: termination),
-          onDecline: notifier.decline,
-          onUnderWay: () => setState(() => _playing = attemptId),
-          onBackToReady: () => setState(() => _playing = null),
+        AsyncData(:final value) when value.exercise != null => Column(
+          children: [
+            if (_playing == null) const FocusBar(),
+            Expanded(
+              child: AttemptView(
+                // A new decision restarts the view at Ready rather than
+                // inheriting the previous attempt's phase.
+                key: ValueKey(attemptId),
+                exercise: value.exercise!,
+                onFinish: (termination) =>
+                    notifier.finish(termination: termination),
+                onDecline: notifier.decline,
+                onUnderWay: () => setState(() => _playing = attemptId),
+                onBackToReady: () => setState(() => _playing = null),
+              ),
+            ),
+          ],
         ),
-        AsyncData() => const _NothingToPlay(),
+        AsyncData(:final value) => Column(
+          children: [
+            const FocusBar(),
+            Expanded(child: _NothingToPlay(state: value)),
+          ],
+        ),
         AsyncError(:final error, :final stackTrace) => LoopFailure(
           error: error,
           stackTrace: stackTrace,
@@ -359,6 +377,18 @@ class _MenuButton extends StatelessWidget {
               ? const Icon(Icons.people_outline)
               : ProfileAvatar(profile: profile!, radius: 16),
           title: Text(profile?.displayName ?? 'Profiles'),
+        ),
+      ),
+      PopupMenuItem(
+        value: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => const PracticePlanScreen(),
+          ),
+        ),
+        child: const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.flag_outlined),
+          title: Text('Your practice'),
         ),
       ),
       // Temporary, and deliberately not behind the build-mode check the
@@ -1459,40 +1489,76 @@ class _Status extends StatelessWidget {
   }
 }
 
-/// A slot that admitted nothing.
+/// A slot that produced nothing to play.
 ///
-/// Not an ending. Sittings are unbounded and the scheduler has eight ways to
-/// admit a candidate outside the ordinary band, so reaching this means every
-/// one of them declined and the reason is worth knowing. It read as running
-/// out of material once, while a hundred and fifty candidates were still
-/// admissible and only the attempt cap had been hit.
+/// Three different situations, and only one of them is a defect. A narrow
+/// focus that is caught up is a successful outcome and says so; a scope that
+/// cannot be resolved is a configuration error the learner can back out of by
+/// dropping the focus; and everything else is the scheduler declining every
+/// admission path it has, which is worth reporting. That last one read as
+/// running out of material once, while a hundred and fifty candidates were
+/// still admissible and only the attempt cap had been hit.
 class _NothingToPlay extends ConsumerWidget {
-  const _NothingToPlay();
+  const _NothingToPlay({required this.state});
+
+  final PracticeLoopState state;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final layout = Layout.of(context);
+    final focused = state.plan.isFocused;
+    final (title, body) = switch (state.idle) {
+      PracticeIdleReason.caughtUp when focused => (
+        'Nothing in this focus needs practice.',
+        'You are caught up on what you asked for. Review it anyway, widen the '
+            'focus, or stop here.',
+      ),
+      PracticeIdleReason.caughtUp => (
+        'Nothing needs practice right now.',
+        'You are caught up on your goal. Come back when it has had time to '
+            'settle.',
+      ),
+      PracticeIdleReason.invalidScope => (
+        'This focus cannot be practiced.',
+        'Part of what it names is not in the catalog this build installs. '
+            'Practicing normally will get you moving again.',
+      ),
+      _ => (
+        'Nothing to practice right now.',
+        'That should not happen, so it is worth reporting. Try again, or stop '
+            'here and come back later.',
+      ),
+    };
+
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Nothing to practice right now.',
-            style: theme.textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'That should not happen, so it is worth reporting. Try again, or '
-            'stop here and come back later.',
-            style: theme.textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          FilledButton(
-            onPressed: () => ref.read(practiceLoopProvider.notifier).reopen(),
-            child: const Text('Try again'),
-          ),
-        ],
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: layout.gutter),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: theme.textTheme.titleMedium),
+            const SizedBox(height: 8),
+            Text(
+              body,
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            if (focused)
+              FilledButton(
+                onPressed: () =>
+                    ref.read(practicePlanProvider.notifier).practiceNormally(),
+                child: const Text('Practice normally'),
+              )
+            else
+              FilledButton(
+                onPressed: () =>
+                    ref.read(practiceLoopProvider.notifier).reopen(),
+                child: const Text('Try again'),
+              ),
+          ],
+        ),
       ),
     );
   }

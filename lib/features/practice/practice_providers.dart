@@ -35,6 +35,60 @@ final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
   return FilePracticeStore(root);
 });
 
+/// Every technical material this build supports.
+///
+/// What the app can represent, not what anybody is offered: the goal narrows it
+/// and the scheduler chooses from what is left. A provider so a screen can ask
+/// what exists without reaching for a catalog constant, and so a test can
+/// install a small one.
+final practiceCatalogProvider = Provider<List<TechnicalMaterial>>(
+  (ref) => allScales,
+);
+
+/// What the active profile is working toward, and drawing from now.
+///
+/// Absent storage means nobody has been asked, which is [PracticePlan.normal]:
+/// a goal over everything, and no focus.
+final practicePlanProvider =
+    AsyncNotifierProvider<PracticePlanNotifier, PracticePlan>(
+      PracticePlanNotifier.new,
+      retry: (_, _) => null,
+    );
+
+class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
+  @override
+  Future<PracticePlan> build() async {
+    final repository = await ref.watch(profileRepositoryProvider.future);
+    final store = await ref.watch(practiceStoreProvider.future);
+    final profile = await repository.selectedOrOldest();
+    if (profile == null) return PracticePlan.normal;
+    return await store.loadPracticePlan(profile.id) ?? PracticePlan.normal;
+  }
+
+  /// Records [plan] and applies it to the next undecided slot.
+  ///
+  /// The loop reads this provider, so replacing the plan reopens the sitting
+  /// against the new scope. An attempt already on screen is unaffected: its
+  /// decision is durable, and the reopened sitting finds it pending and
+  /// presents the same exercise again.
+  Future<void> apply(PracticePlan plan) async {
+    final repository = await ref.read(profileRepositoryProvider.future);
+    final store = await ref.read(practiceStoreProvider.future);
+    final profile = await repository.selectedOrOldest();
+    if (profile == null) return;
+
+    await store.savePracticePlan(profile.id, plan);
+    state = AsyncValue.data(plan);
+  }
+
+  /// Drops the focus, keeping the goal.
+  Future<void> practiceNormally() async {
+    final plan = state.value;
+    if (plan == null || !plan.isFocused) return;
+    await apply(plan.practicingNormally());
+  }
+}
+
 /// Where a scheduling decision is computed.
 ///
 /// A worker isolate in the app, and overridden with an `InProcessScheduler`
@@ -224,7 +278,12 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
       final (touchedActive, result) = await change(repository, store);
 
       ref.invalidateSelf();
-      if (touchedActive) ref.invalidate(practiceLoopProvider);
+      if (touchedActive) {
+        // The plan first: the loop reads it, and reopening a sitting against
+        // the previous profile's scope would decide one slot under it.
+        ref.invalidate(practicePlanProvider);
+        ref.invalidate(practiceLoopProvider);
+      }
       return result;
     } finally {
       _writing = false;
@@ -260,11 +319,32 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   }
 }
 
+/// Why the loop has nothing to present.
+enum PracticeIdleReason {
+  /// Every admission path declined, which should not happen.
+  blocked,
+
+  /// Nothing in the active scope warrants work now.
+  caughtUp,
+
+  /// The goal or focus could not be resolved against this catalog.
+  invalidScope,
+}
+
 /// Everything the panel needs to show about the loop's current position.
 @immutable
 class PracticeLoopState {
   /// Whose sitting this is.
   final Profile profile;
+
+  /// The goal and focus this sitting was opened under.
+  final PracticePlan plan;
+
+  /// Curriculum coverage as of the last decision, where one reported it.
+  final ScopeCoverage? coverage;
+
+  /// Why there is nothing to present, when there is nothing.
+  final PracticeIdleReason? idle;
 
   /// The open sitting.
   final PracticeSession session;
@@ -290,7 +370,10 @@ class PracticeLoopState {
 
   const PracticeLoopState({
     required this.profile,
+    required this.plan,
     required this.session,
+    this.coverage,
+    this.idle,
     this.presented,
     this.pending,
     this.lastCommitted,
@@ -352,11 +435,19 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     // holds the sitting's scope and nothing else; this isolate stays
     // authoritative for state and for what is written.
     final scheduler = ref.watch(schedulerHostProvider);
+    // The plan is read before the sitting opens rather than applied to it
+    // afterwards, so the first slot of a sitting is decided under the scope the
+    // learner last asked for.
+    final catalog = ref.watch(practiceCatalogProvider);
+    final plan = await ref.watch(practicePlanProvider.future);
+    final scope = plan.resolve(catalog);
     final session = await PracticeSession.open(
       store: store,
       profile: profile,
-      materials: allScales,
+      materials: catalog,
       scheduler: scheduler,
+      goal: scope.goal,
+      focus: scope.focus,
     );
 
     // An unresolved decision is presented again rather than discarded. It was
@@ -366,12 +457,15 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     if (session.pending != null) {
       return PracticeLoopState(
         profile: profile,
+        plan: plan,
         session: session,
         pending: session.pending,
         note: 'resuming an attempt an earlier run never closed',
       );
     }
-    return _decide(PracticeLoopState(profile: profile, session: session));
+    return _decide(
+      PracticeLoopState(profile: profile, plan: plan, session: session),
+    );
   }
 
   /// Records that the learner could not retrieve the material, and moves on.
@@ -400,6 +494,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         return _decide(
           PracticeLoopState(
             profile: current.profile,
+            plan: current.plan,
             session: current.session,
             lastCommitted: record,
           ),
@@ -449,6 +544,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           return _decide(
             PracticeLoopState(
               profile: current.profile,
+              plan: current.plan,
               session: current.session,
               lastCommitted: record,
             ),
@@ -467,6 +563,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           return _decide(
             PracticeLoopState(
               profile: current.profile,
+              plan: current.plan,
               session: current.session,
               lastCommitted: record,
             ),
@@ -481,6 +578,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         return _decide(
           PracticeLoopState(
             profile: current.profile,
+            plan: current.plan,
             session: current.session,
             lastCommitted: closed.record,
             lastReading: closed.reading,
@@ -522,6 +620,9 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       _writing = false;
     }
     ref.invalidateSelf();
+    // Erasing takes the plan with the history, so what is on screen has to be
+    // read again rather than assumed.
+    ref.invalidate(practicePlanProvider);
     // The switcher shows what each profile has recorded, and one of those
     // counts just went to zero.
     ref.invalidate(profileRosterProvider);
@@ -587,8 +688,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     return switch (decision) {
       final PresentedAttempt presented => PracticeLoopState(
         profile: from.profile,
+        plan: from.plan,
         session: from.session,
         presented: presented,
+        coverage: presented.coverage ?? from.coverage,
         lastCommitted: from.lastCommitted,
         lastReading: from.lastReading,
         note: from.note,
@@ -596,23 +699,32 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       // The inputs moved while the decision was being computed. The loop asks
       // again rather than showing an answer about a session that has changed.
       PracticeSuperseded() => from,
-      PracticeBlocked(:final reason) => PracticeLoopState(
+      PracticeBlocked(:final reason, :final coverage) => PracticeLoopState(
         profile: from.profile,
+        plan: from.plan,
         session: from.session,
+        coverage: coverage,
+        idle: PracticeIdleReason.blocked,
         lastCommitted: from.lastCommitted,
         lastReading: from.lastReading,
         note: 'practice blocked: ${reason.name}',
       ),
-      PracticeCaughtUp() => PracticeLoopState(
+      PracticeCaughtUp(:final coverage) => PracticeLoopState(
         profile: from.profile,
+        plan: from.plan,
         session: from.session,
+        coverage: coverage,
+        idle: PracticeIdleReason.caughtUp,
         lastCommitted: from.lastCommitted,
         lastReading: from.lastReading,
         note: 'practice caught up',
       ),
       PracticeInvalidScope(:final failures) => PracticeLoopState(
         profile: from.profile,
+        plan: from.plan,
         session: from.session,
+        coverage: from.coverage,
+        idle: PracticeIdleReason.invalidScope,
         lastCommitted: from.lastCommitted,
         lastReading: from.lastReading,
         note:
