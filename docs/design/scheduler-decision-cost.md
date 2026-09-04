@@ -239,7 +239,10 @@ mature learner's scheduler should consider.
 
 `SchedulerBenchmarkScreen`, reachable from the practice overflow menu, runs the
 same catalogs through the same session in a release build and writes its report
-beside the trajectory exports. Release builds, mature full mixed catalog:
+beside the trajectory exports. It sits outside the build-mode check that hides
+the developer screen, deliberately: what it measures is release-build scheduling
+cost, which a profile build cannot say. It comes out before the app is
+published. Release builds, mature full mixed catalog:
 
 | Device        | Decide p50 | Decide p95 | Worker round trip p50 |
 | ------------- | ---------: | ---------: | --------------------: |
