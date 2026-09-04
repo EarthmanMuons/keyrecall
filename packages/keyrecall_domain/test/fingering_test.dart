@@ -37,8 +37,11 @@ void main() {
 
     expect(fingering.materialId, 'D_MAJOR_ROOT_ARPEGGIO');
     expect(fingering.hand, Hand.left);
-    expect(fingering.provenance.source, 'Michael Clark, Piano Basics');
-    expect(fingering.provenance.sourceEdition, '2026');
+    expect(
+      fingering.provenance.source,
+      'St. Olaf College, Keyboard Proficiency Requirements Level III',
+    );
+    expect(fingering.provenance.sourceEdition, 'Revision 052720');
     expect(fingering.provenance.status, CanonicalFingeringStatus.established);
   });
 
@@ -322,7 +325,11 @@ void main() {
     });
 
     test('unsupported arpeggios do not inherit a guessed fingering', () {
-      final unsupported = ArpeggioMaterial('F', ArpeggioQuality.major);
+      final unsupported = ArpeggioMaterial(
+        'C',
+        ArpeggioQuality.major,
+        inversion: ArpeggioInversion.first,
+      );
 
       for (final hand in Hand.values) {
         expect(canonicalFingering(unsupported, hand), isNull);

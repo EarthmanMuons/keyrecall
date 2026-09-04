@@ -16,9 +16,11 @@ arpeggios in root position. Hands, octave span, traversal direction, tempo, and
 guidance are realization conditions. Inversion changes the ordered pitch
 topology and remains part of material identity.
 
-This is not approval to make `proofArpeggios` learner-facing. A complete
-canonical fingering dataset, family-specific motor characterization, and
-observational validation still precede catalog promotion.
+The complete root-position fingering corpus is now represented by
+`allRootPositionArpeggios`. It is a supported domain catalog for policy
+characterization, not approval to add arpeggios to the product's active
+learner-facing catalog. Family-specific motor characterization and observational
+validation still precede that promotion.
 
 ## 2. Deliberate boundary
 
@@ -106,15 +108,37 @@ Its
 gives `123 + 123 + 5` in the right hand and `5 + 421 + 421` in the left for
 white-key minor tonics.
 
+The
+[St. Olaf College Keyboard Proficiency Requirements Level III](https://wp.stolaf.edu/music-handbook/files/2020/06/ProficiencyL3_052720.pdf),
+revision 052720, is the canonical source for the complete root-position corpus.
+Appendix 2, pp. 15--16, notates multi-octave ascent and descent for all major
+and minor fingering groups. Unlike a terminal one-octave chart, those examples
+establish the entry finger, each internal continuation, the terminal finger, and
+descending reversal in one source. The appendix uses G-flat major; KeyRecall
+normalizes that physical-key pattern to its catalog spelling, F-sharp major.
+
+Two authored teaching charts were retained as comparison sources:
+
+- Joy Morin's
+  [_Scale & Arpeggio Fingerings for Piano_](https://colorinmypiano.com/download/Scale__Arpeggio_Fingerings_for_Piano_2_Octave.pdf),
+  2011, pp. 1--3; and
+- Chad Twedt's
+  [_Scale and Arpeggio Fingering Sheet_](https://blog.twedt.com/wp-content/uploads/2012/02/Scale-and-Arpeggio-Fingering.pdf),
+  2011, p. 2.
+
+They corroborate the main geometry families but preserve genuine alternatives
+for B-flat major and a terminal disagreement for B-flat minor LH. Section 6
+records the exact differences and canonical choices.
+
 The book's course sequence places triad recognition and inversions before
 one-octave major arpeggios, then expands major arpeggios to two octaves. Minor
 triads and inversions similarly precede one-octave minor arpeggios. That is
 useful support for topology preparation, but it does not justify adding broken
 chords to KeyRecall's exercise domain.
 
-No one source above settles every black-key tonic, minor tonic, inversion, and
-hand. The non-product fingering fixture therefore remains limited to C, G, and
-D major root position and C minor root position.
+No source reviewed settles inversion fingering to the same acceptance bar.
+Inversion records therefore remain absent even though inversion topology is
+represented.
 
 ### 3.3 Transfer evidence
 
@@ -223,11 +247,10 @@ active unresolved requirement
     -> continuously cued
 ```
 
-Only the fingering for the C, G, and D major and C minor root-position fixture
-is now sourced. Right-hand-only, upward-only entry remains a provisional
-KeyRecall policy. It must be compared with a two-hand choice and an up-and-down
-entry during domain characterization. The floor must never substitute a broken
-chord or a different tonic.
+All 24 major and minor root-position materials in the supported corpus now have
+sourced records for both hands. Right-hand-only, upward-only entry remains a
+provisional KeyRecall policy. The floor must never substitute a broken chord or
+a different tonic.
 
 ## 6. Canonical fingering record
 
@@ -259,6 +282,57 @@ remain absent rather than receiving a rule-derived guess. The record carries
 source, edition, location, and status without knowing which material family it
 serves.
 
+### 6.1 Canonical root-position corpus
+
+The catalog tonic spellings match the scale catalog:
+
+```text
+major: C Db D Eb E F F# G Ab A Bb B
+minor: C C# D Eb E F F# G G# A Bb B
+```
+
+The compact strings below are one-octave terminal summaries. Runtime records
+store the generative boundary form and assert descending reversal individually.
+
+| Materials                 | RH        | LH        | Runtime status     |
+| ------------------------- | --------- | --------- | ------------------ |
+| C, F, G major             | `1 2 3 5` | `5 4 2 1` | established        |
+| D, A, E, B major          | `1 2 3 5` | `5 3 2 1` | established        |
+| Db, Eb, Ab major          | `2 1 2 4` | `2 1 4 2` | established        |
+| F# major                  | `1 2 3 5` | `5 3 2 1` | canonical selected |
+| Bb major                  | `2 1 2 4` | `3 2 1 3` | canonical selected |
+| C, D, E, F, G, A, B minor | `1 2 3 5` | `5 4 2 1` | established        |
+| Eb minor                  | `1 2 3 5` | `5 4 2 1` | established        |
+| C#, F#, G# minor          | `2 1 2 4` | `2 1 4 2` | established        |
+| Bb minor                  | `2 3 1 2` | `3 2 1 3` | canonical selected |
+
+F-sharp major is marked selected because St. Olaf states the same physical-key
+pattern under the enharmonic spelling G-flat major. B-flat major and minor are
+marked selected because the comparison sources disagree:
+
+| Record      | St. Olaf                 | Morin                                  | Twedt                    | Choice   |
+| ----------- | ------------------------ | -------------------------------------- | ------------------------ | -------- |
+| Bb major RH | `2 + 124...`             | `2 + 124...`; alternative `2 + 312...` | `4 + 124...`             | St. Olaf |
+| Bb major LH | `3 + 213...`             | `2 + 142...`; alternative `3 + 213...` | `3 + 213...`             | St. Olaf |
+| Bb minor LH | `3 + 213...`, terminal 3 | `3 + 213...`, terminal 2               | `3 + 213...`, terminal 3 | St. Olaf |
+
+St. Olaf is canonical in these cases because its institutional requirement shows
+the selected fingering through repeated internal boundaries and through descent.
+The alternatives remain research evidence only. No runtime record is created for
+G-flat major, A-flat minor, or any inversion.
+
+### 6.2 Mechanical acceptance invariant
+
+For every supported root-position material, both hands, spans 1, 2, and 4, and
+upward or up-and-down traversal, tests assert:
+
+- the finger stream and realized moments have equal length;
+- every finger is in `1..5`;
+- each internal continuation reproduces the record's cycle;
+- descending streams exist only from that record's reversal assertion; and
+- every derived arpeggio-transition site is exactly an actual fingering
+  crossing.
+
 ## 7. Motor and observation model
 
 The pitch sequence, fingering stream, and hand path should derive at least:
@@ -271,9 +345,9 @@ The pitch sequence, fingering stream, and hand path should derive at least:
 
 Each `arpeggioTransition` opportunity is derived at an actual crossing in the
 realized fingering stream and records its hand and reached moment. A one-octave
-`1 2 3 5` right-hand arpeggio therefore creates no transition opportunity,
-while a continued `3 -> 1` boundary does. Ordinary chord-tone intervals do not
-create transition evidence merely because the material is an arpeggio.
+`1 2 3 5` right-hand arpeggio therefore creates no transition opportunity, while
+a continued `3 -> 1` boundary does. Ordinary chord-tone intervals do not create
+transition evidence merely because the material is an arpeggio.
 
 Standard MIDI can observe pitch, onset, release, velocity, continuity, and
 between-hand synchronization. It cannot observe the finger used. Fingering
@@ -331,7 +405,7 @@ ordering of arpeggios.
 
 ## 9. Promotion gates
 
-Before replacing `proofArpeggios` with a learner-facing catalog:
+Before adding arpeggios to the active learner-facing catalog:
 
 1. Normalize canonical major and minor triad fingerings for every included tonic
    and hand, with source locations and preserved disagreements.
@@ -351,15 +425,15 @@ Before replacing `proofArpeggios` with a learner-facing catalog:
 10. Preserve caught-up, blocked, invalid-scope, replay, and family-boundary
     invariants in mixed scopes.
 
-Gates 2 through 5 are implemented for the non-product fixture. Mixed-family
-trajectory characterization exercises every placement prior and selects both
-families without introducing a family-specific scheduler path. Catalog-wide
-fingering coverage, policy characterization, extension analysis, and instrument
+Gates 1 through 5 are implemented for the supported root-position corpus.
+Mixed-family trajectory characterization exercises every placement prior and
+selects both families without introducing a family-specific scheduler path.
+Full-catalog policy characterization, extension analysis, and instrument
 validation remain open.
 
 The first policy-sensitivity census is recorded in
-[`arpeggio-policy-characterization.md`](arpeggio-policy-characterization.md).
-It keeps every production value unchanged and identifies initial tempo as the
+[`arpeggio-policy-characterization.md`](arpeggio-policy-characterization.md). It
+keeps every production value unchanged and identifies initial tempo as the
 fixture's highest-sensitivity assumption because changing generated tempo alone
 does not change the scheduler's generic entry-tempo contract.
 

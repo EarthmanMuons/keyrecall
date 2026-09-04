@@ -148,11 +148,13 @@ class _FingeringShape {
   final List<int> entry;
   final List<int> cycle;
   final int? terminalFinger;
+  final bool reversesForDescending;
 
   const _FingeringShape._({
     required this.entry,
     required this.cycle,
     this.terminalFinger,
+    required this.reversesForDescending,
   });
 }
 
@@ -163,6 +165,7 @@ const _rhThumbTonic = _FingeringShape._(
   entry: [1],
   cycle: [2, 3, 1, 2, 3, 4, 1],
   terminalFinger: 5,
+  reversesForDescending: true,
 );
 
 /// Right hand with the thumb on the fourth degree as well, which is F major's
@@ -171,21 +174,70 @@ const _rhThumbOnFour = _FingeringShape._(
   entry: [1],
   cycle: [2, 3, 4, 1, 2, 3, 1],
   terminalFinger: 4,
+  reversesForDescending: true,
 );
 
-const _rh23123412 = _FingeringShape._(entry: [2], cycle: [3, 1, 2, 3, 4, 1, 2]);
-const _rh23412312 = _FingeringShape._(entry: [2], cycle: [3, 4, 1, 2, 3, 1, 2]);
-const _rh21231234 = _FingeringShape._(entry: [2], cycle: [1, 2, 3, 1, 2, 3, 4]);
-const _rh31234123 = _FingeringShape._(entry: [3], cycle: [1, 2, 3, 4, 1, 2, 3]);
-const _rh21234123 = _FingeringShape._(entry: [2], cycle: [1, 2, 3, 4, 1, 2, 3]);
-const _rh34123123 = _FingeringShape._(entry: [3], cycle: [4, 1, 2, 3, 1, 2, 3]);
+const _rh23123412 = _FingeringShape._(
+  entry: [2],
+  cycle: [3, 1, 2, 3, 4, 1, 2],
+  reversesForDescending: true,
+);
+const _rh23412312 = _FingeringShape._(
+  entry: [2],
+  cycle: [3, 4, 1, 2, 3, 1, 2],
+  reversesForDescending: true,
+);
+const _rh21231234 = _FingeringShape._(
+  entry: [2],
+  cycle: [1, 2, 3, 1, 2, 3, 4],
+  reversesForDescending: true,
+);
+const _rh31234123 = _FingeringShape._(
+  entry: [3],
+  cycle: [1, 2, 3, 4, 1, 2, 3],
+  reversesForDescending: true,
+);
+const _rh21234123 = _FingeringShape._(
+  entry: [2],
+  cycle: [1, 2, 3, 4, 1, 2, 3],
+  reversesForDescending: true,
+);
+const _rh34123123 = _FingeringShape._(
+  entry: [3],
+  cycle: [4, 1, 2, 3, 1, 2, 3],
+  reversesForDescending: true,
+);
 
-const _lh54321321 = _FingeringShape._(entry: [5], cycle: [4, 3, 2, 1, 3, 2, 1]);
-const _lh43214321 = _FingeringShape._(entry: [4], cycle: [3, 2, 1, 4, 3, 2, 1]);
-const _lh32143213 = _FingeringShape._(entry: [3], cycle: [2, 1, 4, 3, 2, 1, 3]);
-const _lh43213214 = _FingeringShape._(entry: [4], cycle: [3, 2, 1, 3, 2, 1, 4]);
-const _lh21432132 = _FingeringShape._(entry: [2], cycle: [1, 4, 3, 2, 1, 3, 2]);
-const _lh21321432 = _FingeringShape._(entry: [2], cycle: [1, 3, 2, 1, 4, 3, 2]);
+const _lh54321321 = _FingeringShape._(
+  entry: [5],
+  cycle: [4, 3, 2, 1, 3, 2, 1],
+  reversesForDescending: true,
+);
+const _lh43214321 = _FingeringShape._(
+  entry: [4],
+  cycle: [3, 2, 1, 4, 3, 2, 1],
+  reversesForDescending: true,
+);
+const _lh32143213 = _FingeringShape._(
+  entry: [3],
+  cycle: [2, 1, 4, 3, 2, 1, 3],
+  reversesForDescending: true,
+);
+const _lh43213214 = _FingeringShape._(
+  entry: [4],
+  cycle: [3, 2, 1, 3, 2, 1, 4],
+  reversesForDescending: true,
+);
+const _lh21432132 = _FingeringShape._(
+  entry: [2],
+  cycle: [1, 4, 3, 2, 1, 3, 2],
+  reversesForDescending: true,
+);
+const _lh21321432 = _FingeringShape._(
+  entry: [2],
+  cycle: [1, 3, 2, 1, 4, 3, 2],
+  reversesForDescending: true,
+);
 
 /// The canonical fingering for every scale V1 supports, by material id.
 ///
@@ -252,43 +304,146 @@ const Map<String, Map<Hand, _FingeringShape>> _scaleFingeringShapes = {
   'Bb_MELODIC_MINOR': {Hand.right: _rh21231234, Hand.left: _lh21321432},
 };
 
-const Map<String, Map<Hand, _FingeringShape>> _majorArpeggioFingeringShapes = {
+const _rhArpeggio1235 = _FingeringShape._(
+  entry: [1],
+  cycle: [2, 3, 1],
+  terminalFinger: 5,
+  reversesForDescending: true,
+);
+const _lhArpeggio5421 = _FingeringShape._(
+  entry: [5],
+  cycle: [4, 2, 1],
+  reversesForDescending: true,
+);
+const _lhArpeggio5321 = _FingeringShape._(
+  entry: [5],
+  cycle: [3, 2, 1],
+  reversesForDescending: true,
+);
+const _rhArpeggio2124 = _FingeringShape._(
+  entry: [2],
+  cycle: [1, 2, 4],
+  reversesForDescending: true,
+);
+const _lhArpeggio2142 = _FingeringShape._(
+  entry: [2],
+  cycle: [1, 4, 2],
+  reversesForDescending: true,
+);
+const _rhArpeggio2312 = _FingeringShape._(
+  entry: [2],
+  cycle: [3, 1, 2],
+  reversesForDescending: true,
+);
+const _lhArpeggio3213 = _FingeringShape._(
+  entry: [3],
+  cycle: [2, 1, 3],
+  reversesForDescending: true,
+);
+
+const Map<String, Map<Hand, _FingeringShape>>
+_establishedArpeggioFingeringShapes = {
   'C_MAJOR_ROOT_ARPEGGIO': {
-    Hand.right: _FingeringShape._(
-      entry: [1],
-      cycle: [2, 3, 1],
-      terminalFinger: 5,
-    ),
-    Hand.left: _FingeringShape._(entry: [5], cycle: [4, 2, 1]),
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
   },
-  'G_MAJOR_ROOT_ARPEGGIO': {
-    Hand.right: _FingeringShape._(
-      entry: [1],
-      cycle: [2, 3, 1],
-      terminalFinger: 5,
-    ),
-    Hand.left: _FingeringShape._(entry: [5], cycle: [4, 2, 1]),
+  'Db_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio2124,
+    Hand.left: _lhArpeggio2142,
   },
   'D_MAJOR_ROOT_ARPEGGIO': {
-    Hand.right: _FingeringShape._(
-      entry: [1],
-      cycle: [2, 3, 1],
-      terminalFinger: 5,
-    ),
-    Hand.left: _FingeringShape._(entry: [5], cycle: [3, 2, 1]),
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5321,
+  },
+  'Eb_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio2124,
+    Hand.left: _lhArpeggio2142,
+  },
+  'E_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5321,
+  },
+  'F_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'G_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'Ab_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio2124,
+    Hand.left: _lhArpeggio2142,
+  },
+  'A_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5321,
+  },
+  'B_MAJOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5321,
+  },
+  'C_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'C#_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio2124,
+    Hand.left: _lhArpeggio2142,
+  },
+  'D_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'Eb_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'E_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'F_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'F#_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio2124,
+    Hand.left: _lhArpeggio2142,
+  },
+  'G_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'G#_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio2124,
+    Hand.left: _lhArpeggio2142,
+  },
+  'A_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
+  },
+  'B_MINOR_ROOT_ARPEGGIO': {
+    Hand.right: _rhArpeggio1235,
+    Hand.left: _lhArpeggio5421,
   },
 };
 
-const Map<String, Map<Hand, _FingeringShape>> _minorArpeggioFingeringShapes = {
-  'C_MINOR_ROOT_ARPEGGIO': {
-    Hand.right: _FingeringShape._(
-      entry: [1],
-      cycle: [2, 3, 1],
-      terminalFinger: 5,
-    ),
-    Hand.left: _FingeringShape._(entry: [5], cycle: [4, 2, 1]),
-  },
-};
+const Map<String, Map<Hand, _FingeringShape>> _selectedArpeggioFingeringShapes =
+    {
+      'F#_MAJOR_ROOT_ARPEGGIO': {
+        Hand.right: _rhArpeggio1235,
+        Hand.left: _lhArpeggio5321,
+      },
+      'Bb_MAJOR_ROOT_ARPEGGIO': {
+        Hand.right: _rhArpeggio2124,
+        Hand.left: _lhArpeggio3213,
+      },
+      'Bb_MINOR_ROOT_ARPEGGIO': {
+        Hand.right: _rhArpeggio2312,
+        Hand.left: _lhArpeggio3213,
+      },
+    };
 
 const _scaleFingeringProvenance = FingeringProvenance._(
   source: 'KeyRecall Scale Fingering Taxonomy and Research',
@@ -297,18 +452,18 @@ const _scaleFingeringProvenance = FingeringProvenance._(
   status: CanonicalFingeringStatus.canonicalSelected,
 );
 
-const _arpeggioFingeringProvenance = FingeringProvenance._(
-  source: 'Michael Clark, Piano Basics',
-  sourceEdition: '2026',
-  sourceLocation: 'One-Octave Arpeggios §§31.1–31.4',
+const _establishedArpeggioFingeringProvenance = FingeringProvenance._(
+  source: 'St. Olaf College, Keyboard Proficiency Requirements Level III',
+  sourceEdition: 'Revision 052720',
+  sourceLocation: 'Appendix 2: Arpeggio Fingerings, pp. 15–16',
   status: CanonicalFingeringStatus.established,
 );
 
-const _minorArpeggioFingeringProvenance = FingeringProvenance._(
-  source: 'Michael Clark, Piano Basics',
-  sourceEdition: '2026',
-  sourceLocation: 'Two-Octave Minor Arpeggios',
-  status: CanonicalFingeringStatus.established,
+const _selectedArpeggioFingeringProvenance = FingeringProvenance._(
+  source: 'KeyRecall Root-Position Arpeggio Fingering Research',
+  sourceEdition: '2026-09-04',
+  sourceLocation: 'docs/domain-model/arpeggio-domain-research.md §6',
+  status: CanonicalFingeringStatus.canonicalSelected,
 );
 
 Map<String, Map<Hand, CanonicalFingering>> _canonicalRecords(
@@ -324,7 +479,7 @@ Map<String, Map<Hand, CanonicalFingering>> _canonicalRecords(
           entry: fingering.value.entry,
           cycle: fingering.value.cycle,
           terminalFinger: fingering.value.terminalFinger,
-          reversesForDescending: true,
+          reversesForDescending: fingering.value.reversesForDescending,
           provenance: provenance,
         ),
     },
@@ -333,12 +488,12 @@ Map<String, Map<Hand, CanonicalFingering>> _canonicalRecords(
 final Map<String, Map<Hand, CanonicalFingering>> _canonicalFingerings = {
   ..._canonicalRecords(_scaleFingeringShapes, _scaleFingeringProvenance),
   ..._canonicalRecords(
-    _majorArpeggioFingeringShapes,
-    _arpeggioFingeringProvenance,
+    _establishedArpeggioFingeringShapes,
+    _establishedArpeggioFingeringProvenance,
   ),
   ..._canonicalRecords(
-    _minorArpeggioFingeringShapes,
-    _minorArpeggioFingeringProvenance,
+    _selectedArpeggioFingeringShapes,
+    _selectedArpeggioFingeringProvenance,
   ),
 };
 

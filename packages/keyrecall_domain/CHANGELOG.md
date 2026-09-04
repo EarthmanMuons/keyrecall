@@ -21,6 +21,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- The supported arpeggio corpus now covers all 12 canonical major and minor
+  root-position tonics in both hands. Every record carries source status,
+  explicit descent symmetry, and generative one-, two-, and four-octave
+  fingering, while inversions and unsupported enharmonic spellings remain
+  absent.
 - Material families now declare their supported octave sequence, whether wider
   spans require local evidence, whether hands-together work requires separate
   hands, and any prerequisite material identities. Arpeggios declare

@@ -53,8 +53,9 @@ prediction semantics changed.
 - the common scheduler presents work across beginner, experienced, and advanced
   placement priors.
 
-Arpeggio inversions, multi-octave work, a complete provenance-backed fingering
-dataset, tempo targets, examination requirements, introduction order, and
+The later `allRootPositionArpeggios` corpus supplies complete major/minor
+root-position fingering coverage without changing this fixture. Arpeggio
+inversions, tempo targets, examination requirements, introduction order, and
 learner-facing UI remain outside this proof. The evidence, current domain
 decisions, and promotion gates are recorded in
 [`arpeggio-domain-research.md`](../domain-model/arpeggio-domain-research.md).

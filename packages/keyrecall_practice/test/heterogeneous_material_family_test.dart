@@ -201,6 +201,32 @@ void main() {
     );
   });
 
+  test('catalog and fingering availability alone determine candidates', () {
+    const family = ArpeggioPracticeMaterialFamily();
+    final instrument = InstrumentProfile();
+    final shapesByMaterial = {
+      for (final material in allRootPositionArpeggios)
+        material.materialId: {
+          for (final exercise in family.generate(instrument, material))
+            exercise.conditions,
+        },
+    };
+
+    expect(shapesByMaterial, hasLength(allRootPositionArpeggios.length));
+    expect(shapesByMaterial.values, everyElement(isNotEmpty));
+    final expectedShapes = shapesByMaterial.values.first;
+    for (final shapes in shapesByMaterial.values.skip(1)) {
+      expect(shapes, expectedShapes);
+    }
+
+    final unsupported = ArpeggioMaterial(
+      'C',
+      ArpeggioQuality.major,
+      inversion: ArpeggioInversion.first,
+    );
+    expect(family.generate(instrument, unsupported), isEmpty);
+  });
+
   test('counterfactual policy changes entry tempo without changing spans', () {
     final candidates = const ArpeggioPracticeMaterialFamily(
       policy: ArpeggioPracticePolicy(initialTempoBpm: 72),

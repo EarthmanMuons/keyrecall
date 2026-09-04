@@ -203,7 +203,11 @@ void main() {
     'an unsupported fingering does not acquire a family-wide transition',
     () {
       final exercise = Exercise.linear(
-        material: ArpeggioMaterial('F', ArpeggioQuality.major),
+        material: ArpeggioMaterial(
+          'C',
+          ArpeggioQuality.major,
+          inversion: ArpeggioInversion.first,
+        ),
         hands: HandConfiguration.right,
         octaves: 2,
         direction: ExerciseDirection.up,
@@ -253,7 +257,7 @@ void main() {
     );
   });
 
-  test('only sourced new arpeggio combinations have fingering records', () {
+  test('root position is supported without leaking into inversions', () {
     final cMinor = ArpeggioMaterial('C', ArpeggioQuality.minor);
     final cMajorFirst = ArpeggioMaterial(
       'C',
@@ -282,4 +286,272 @@ void main() {
     expect(canonicalFingering(cMajorFirst, Hand.right), isNull);
     expect(canonicalFingering(cMajorFirst, Hand.left), isNull);
   });
+
+  group('root-position fingering corpus', () {
+    final expected = <String, (String, String, CanonicalFingeringStatus)>{
+      'C_MAJOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'Db_MAJOR_ROOT_ARPEGGIO': (
+        '2124',
+        '2142',
+        CanonicalFingeringStatus.established,
+      ),
+      'D_MAJOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5321',
+        CanonicalFingeringStatus.established,
+      ),
+      'Eb_MAJOR_ROOT_ARPEGGIO': (
+        '2124',
+        '2142',
+        CanonicalFingeringStatus.established,
+      ),
+      'E_MAJOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5321',
+        CanonicalFingeringStatus.established,
+      ),
+      'F_MAJOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'F#_MAJOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5321',
+        CanonicalFingeringStatus.canonicalSelected,
+      ),
+      'G_MAJOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'Ab_MAJOR_ROOT_ARPEGGIO': (
+        '2124',
+        '2142',
+        CanonicalFingeringStatus.established,
+      ),
+      'A_MAJOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5321',
+        CanonicalFingeringStatus.established,
+      ),
+      'Bb_MAJOR_ROOT_ARPEGGIO': (
+        '2124',
+        '3213',
+        CanonicalFingeringStatus.canonicalSelected,
+      ),
+      'B_MAJOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5321',
+        CanonicalFingeringStatus.established,
+      ),
+      'C_MINOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'C#_MINOR_ROOT_ARPEGGIO': (
+        '2124',
+        '2142',
+        CanonicalFingeringStatus.established,
+      ),
+      'D_MINOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'Eb_MINOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'E_MINOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'F_MINOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'F#_MINOR_ROOT_ARPEGGIO': (
+        '2124',
+        '2142',
+        CanonicalFingeringStatus.established,
+      ),
+      'G_MINOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'G#_MINOR_ROOT_ARPEGGIO': (
+        '2124',
+        '2142',
+        CanonicalFingeringStatus.established,
+      ),
+      'A_MINOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+      'Bb_MINOR_ROOT_ARPEGGIO': (
+        '2312',
+        '3213',
+        CanonicalFingeringStatus.canonicalSelected,
+      ),
+      'B_MINOR_ROOT_ARPEGGIO': (
+        '1235',
+        '5421',
+        CanonicalFingeringStatus.established,
+      ),
+    };
+
+    test('covers every canonical major and minor tonic in both hands', () {
+      expect(allRootPositionArpeggios, hasLength(24));
+      expect(
+        allRootPositionArpeggios.map((material) => material.materialId).toSet(),
+        expected.keys.toSet(),
+      );
+
+      for (final material in allRootPositionArpeggios) {
+        final expectedRecord = expected[material.materialId]!;
+        final right = canonicalFingering(material, Hand.right)!;
+        final left = canonicalFingering(material, Hand.left)!;
+
+        expect(right.ascending(1).join(), expectedRecord.$1);
+        expect(left.ascending(1).join(), expectedRecord.$2);
+        expect(right.provenance.status, expectedRecord.$3);
+        expect(left.provenance.status, expectedRecord.$3);
+        for (final record in [right, left]) {
+          expect(record.provenance.source, isNotEmpty);
+          expect(record.provenance.sourceEdition, isNotEmpty);
+          expect(record.provenance.sourceLocation, isNotEmpty);
+          expect(record.reversesForDescending, isTrue);
+        }
+      }
+    });
+
+    test('entry, cycle, and terminal realize every supported traversal', () {
+      for (final material in allRootPositionArpeggios) {
+        for (final hand in Hand.values) {
+          final record = canonicalFingering(material, hand)!;
+          final hands = hand == Hand.right
+              ? HandConfiguration.right
+              : HandConfiguration.left;
+
+          for (final octaves in material.progression.octaveSpans) {
+            final ascending = record.ascending(octaves);
+            expect(
+              record.descending(octaves),
+              ascending.reversed,
+              reason: '${material.materialId} $hand $octaves descending',
+            );
+            expect(
+              ascending,
+              everyElement(inInclusiveRange(1, 5)),
+              reason: '${material.materialId} $hand $octaves fingers',
+            );
+            for (var octave = 0; octave < octaves - 1; octave++) {
+              final cycleStart =
+                  record.entry.length +
+                  octave * material.topology.degreesPerOctave;
+              expect(
+                ascending.sublist(
+                  cycleStart,
+                  cycleStart + material.topology.degreesPerOctave,
+                ),
+                record.cycle,
+                reason:
+                    '${material.materialId} $hand octave ${octave + 1} cycle',
+              );
+            }
+
+            for (final direction in ExerciseDirection.values) {
+              final exercise = Exercise.linear(
+                material: material,
+                hands: hands,
+                octaves: octaves,
+                direction: direction,
+              );
+              final fingers = fingeringFor(exercise, hand)!;
+              final moments = realize(exercise).moments;
+
+              expect(
+                fingers.length,
+                moments.length,
+                reason:
+                    '${material.materialId} $hand $octaves $direction length',
+              );
+              expect(
+                fingers,
+                everyElement(inInclusiveRange(1, 5)),
+                reason:
+                    '${material.materialId} $hand $octaves $direction fingers',
+              );
+
+              final path = handPathsFor(
+                exercise.conditions,
+                degreesPerOctave: material.topology.degreesPerOctave,
+              )[hand]!;
+              final crossingIndices = {
+                for (var index = 1; index < path.length; index++)
+                  if (_isCrossing(path, fingers, hand, index)) index,
+              };
+              final transitionIndices = {
+                for (final site in exercise.opportunitySites)
+                  if (site.opportunity == MotorOpportunity.arpeggioTransition &&
+                      site.hand == hand)
+                    site.momentIndex,
+              };
+              expect(
+                transitionIndices,
+                crossingIndices,
+                reason:
+                    '${material.materialId} $hand $octaves $direction crossings',
+              );
+            }
+          }
+        }
+      }
+    });
+
+    test('unsupported spellings and inversions remain absent', () {
+      final unsupported = [
+        ArpeggioMaterial('Gb', ArpeggioQuality.major),
+        ArpeggioMaterial('Ab', ArpeggioQuality.minor),
+        ArpeggioMaterial(
+          'C',
+          ArpeggioQuality.minor,
+          inversion: ArpeggioInversion.first,
+        ),
+        ArpeggioMaterial(
+          'C',
+          ArpeggioQuality.major,
+          inversion: ArpeggioInversion.second,
+        ),
+      ];
+
+      for (final material in unsupported) {
+        for (final hand in Hand.values) {
+          expect(
+            canonicalFingering(material, hand),
+            isNull,
+            reason: '${material.materialId} $hand',
+          );
+        }
+      }
+    });
+  });
+}
+
+bool _isCrossing(List<int> path, List<int> fingers, Hand hand, int index) {
+  final degreeMotion = path[index] - path[index - 1];
+  final fingerMotion = fingers[index] - fingers[index - 1];
+  if (degreeMotion == 0 || fingerMotion == 0) return false;
+  return degreeMotion * fingerMotion > 0 == (hand == Hand.left);
 }

@@ -31,13 +31,15 @@ learner, reads no state, and makes no pedagogical judgments; those belong to
   order, with no relation to what was expected.
 - **Fingering.** Family-neutral `CanonicalFingering` records carry material and
   hand identity, `entry / cycle / terminal`, explicit descent symmetry, and
-  compact provenance. They cover all 48 scales in both hands and the sourced C,
-  G, and D major arpeggio fixture without guessing unsupported materials.
+  compact provenance. They cover all 48 scales and all 24 supported major and
+  minor root-position arpeggios in both hands without guessing unsupported
+  materials.
 - **Presentation conditions.** `PresentationConditions` records what an attempt
   was given on four independent channels: pitch cue, motor cue, performance
   feedback, and tempo support.
 - **Catalog, bands, and instrument.** `allScales` is the learner-facing V1
-  catalog; `proofArpeggios` is a deliberately tiny architecture fixture;
+  catalog; `allRootPositionArpeggios` is the supported arpeggio corpus while
+  `proofArpeggios` remains a deliberately tiny architecture fixture;
   `admissionBandOf` says how early each is conventionally introduced;
   `CurriculumRequirement` identifies a stable target or support capability;
   `PracticeGoal` names a custom scope or versioned curriculum; and
