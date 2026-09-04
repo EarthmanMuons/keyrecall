@@ -54,6 +54,9 @@ class DecisionFacts {
   /// The state every answer here is about.
   final LearnerState state;
 
+  /// Frontier and coordination answers the execution helpers memoize.
+  final ExecutionMemo execution = ExecutionMemo();
+
   final Map<HandConfiguration, (int, int)> _breadth = {};
   final Map<(String, HandConfiguration), double> _executionMean = {};
   final Map<ScaleForm, double> _minorTopology = {};
@@ -325,7 +328,11 @@ class SchedulerPipeline {
     // See [supportsHandsTogether].
     if (hands == HandConfiguration.together &&
         material.progression.requiresSeparateHandsBeforeTogether) {
-      if (!handsTogetherPrerequisiteSatisfied(state, exercise)) {
+      if (!handsTogetherPrerequisiteSatisfied(
+        state,
+        exercise,
+        memo: facts?.execution,
+      )) {
         return const EligibilityDecision(
           EligibilityTier.provisionallyEligible,
           'each hand has still to learn this alone at this span',
@@ -339,7 +346,11 @@ class SchedulerPipeline {
     // attempted precisely because nobody has. One octave stays fully eligible.
     if (exercise.conditions.octaves > 1) {
       if (material.progression.requiresPreviousSpanEvidence &&
-          !_previousSpanPrerequisiteSatisfied(state, exercise)) {
+          !_previousSpanPrerequisiteSatisfied(
+            state,
+            exercise,
+            memo: facts?.execution,
+          )) {
         final previous = material.progression.previousSpan(
           exercise.conditions.octaves,
         );
@@ -627,8 +638,9 @@ class SchedulerPipeline {
 
   bool _previousSpanPrerequisiteSatisfied(
     LearnerState state,
-    Exercise exercise,
-  ) {
+    Exercise exercise, {
+    ExecutionMemo? memo,
+  }) {
     final span = exercise.conditions.octaves;
     final previous = exercise.material.progression.previousSpan(span);
     if (previous == null) return false;
@@ -638,7 +650,12 @@ class SchedulerPipeline {
         0;
     if (demonstrated > 0) return true;
     return exercise.conditions.hands == HandConfiguration.together &&
-        supportsHandsTogether(state, exercise.material.materialId, span);
+        supportsHandsTogether(
+          state,
+          exercise.material.materialId,
+          span,
+          memo: memo,
+        );
   }
 
   /// The tempo [exercise]'s material is introduced at.
@@ -654,6 +671,7 @@ class SchedulerPipeline {
     LearnerState state,
     Exercise exercise, {
     PracticeEntryPolicy? practiceEntryPolicy,
+    ExecutionMemo? memo,
   }) {
     final entryPolicy =
         practiceEntryPolicy ??
@@ -662,6 +680,7 @@ class SchedulerPipeline {
       state,
       exercise.conditions.hands,
       exercise.conditions.octaves,
+      memo: memo,
     );
     // Nobody has seen this learner play, so there is no evidence to be
     // conservative about. The gentle tempo is the only honest default.
@@ -786,6 +805,7 @@ class SchedulerPipeline {
     LearnerState state,
     Exercise exercise, {
     PracticeEntryPolicy? practiceEntryPolicy,
+    ExecutionMemo? memo,
   }) {
     final frontier =
         state.materialExecution[executionContextOf(exercise)]
@@ -797,6 +817,7 @@ class SchedulerPipeline {
             state,
             exercise,
             practiceEntryPolicy: practiceEntryPolicy,
+            memo: memo,
           );
   }
 
@@ -818,6 +839,7 @@ class SchedulerPipeline {
     Exercise exercise,
     DateTime at, {
     PracticeEntryPolicy? practiceEntryPolicy,
+    ExecutionMemo? memo,
   }) {
     final memory = state.materialMemory[exercise.material.materialId];
     final established = memory?.establishedIndependence;
@@ -829,6 +851,7 @@ class SchedulerPipeline {
           state,
           exercise,
           practiceEntryPolicy: practiceEntryPolicy,
+          memo: memo,
         )) {
       return false;
     }
@@ -853,6 +876,7 @@ class SchedulerPipeline {
     Exercise exercise,
     DateTime at, {
     PracticeEntryPolicy? practiceEntryPolicy,
+    ExecutionMemo? memo,
   }) {
     if (exercise.guidance != GuidanceContext.notesPreviewedOnly) return false;
     final memory = state.materialMemory[exercise.material.materialId];
@@ -864,6 +888,7 @@ class SchedulerPipeline {
           state,
           exercise,
           practiceEntryPolicy: practiceEntryPolicy,
+          memo: memo,
         )) {
       return false;
     }
@@ -883,6 +908,7 @@ class SchedulerPipeline {
     Exercise exercise,
     int supportedAttempts, {
     PracticeEntryPolicy? practiceEntryPolicy,
+    ExecutionMemo? memo,
   }) =>
       exercise.guidance == GuidanceContext.notesPreviewedOnly &&
       exercise.conditions.tempoBpm ==
@@ -890,6 +916,7 @@ class SchedulerPipeline {
             state,
             exercise,
             practiceEntryPolicy: practiceEntryPolicy,
+            memo: memo,
           ) &&
       supportedAttempts >= config.probe.supportedAttemptsBeforeObservation;
 
@@ -971,6 +998,7 @@ class SchedulerPipeline {
                 exercise,
                 supportedAttempts,
                 practiceEntryPolicy: practiceEntryPolicy,
+                memo: facts?.execution,
               )
               ? const _Admits(ChallengeBypass.observationProbe)
               : const _Silent(),
@@ -1018,6 +1046,7 @@ class SchedulerPipeline {
                       state,
                       exercise,
                       practiceEntryPolicy: practiceEntryPolicy,
+                      memo: facts?.execution,
                     )
               ? const _Refuses()
               : prediction.overallP >= config.challenge.pIntroductionMin
@@ -1029,6 +1058,7 @@ class SchedulerPipeline {
                 exercise,
                 at,
                 practiceEntryPolicy: practiceEntryPolicy,
+                memo: facts?.execution,
               )
               ? const _Admits(ChallengeBypass.guidanceProbe)
               : const _Silent(),
@@ -1038,6 +1068,7 @@ class SchedulerPipeline {
                 exercise,
                 at,
                 practiceEntryPolicy: practiceEntryPolicy,
+                memo: facts?.execution,
               )
               ? const _Admits(ChallengeBypass.bootstrapProbe)
               : const _Silent(),
@@ -1052,7 +1083,11 @@ class SchedulerPipeline {
             final memory?
                 when memory.hasFactualRetrieval &&
                     eligibility == EligibilityTier.fullyEligible &&
-                    executionAdvanceFor(state, exercise).isAdjacentStep =>
+                    executionAdvanceFor(
+                      state,
+                      exercise,
+                      memo: facts?.execution,
+                    ).isAdjacentStep =>
               const _Admits(ChallengeBypass.executionProgression),
             _ => const _Silent(),
           },
@@ -1242,7 +1277,11 @@ class SchedulerPipeline {
         ? StageStatus.reached
         : StageStatus.notReached;
 
-    final transition = isCoordinationTransition(state, exercise);
+    final transition = isCoordinationTransition(
+      state,
+      exercise,
+      memo: facts.execution,
+    );
 
     // Ranking terms only for candidates that reached ranking. Nothing here
     // participates in deciding whether ranking is reached, which is what makes
@@ -1265,11 +1304,16 @@ class SchedulerPipeline {
             ),
             diversity: diversity(exercise, session),
             goals: goals(exercise),
-            realization: realizationRankFor(state, exercise),
+            realization: realizationRankFor(
+              state,
+              exercise,
+              memo: facts.execution,
+            ),
             realizationFit: realizationFitFor(
               state,
               exercise,
               practiceEntryPolicy: practiceEntryPolicy,
+              memo: facts.execution,
             ),
           )
         : null;
@@ -1278,7 +1322,11 @@ class SchedulerPipeline {
       exercise: exercise,
       handsTogetherPrerequisiteSatisfied:
           exercise.conditions.hands == HandConfiguration.together
-          ? handsTogetherPrerequisiteSatisfied(state, exercise)
+          ? handsTogetherPrerequisiteSatisfied(
+              state,
+              exercise,
+              memo: facts.execution,
+            )
           : null,
       coordinationTransition: transition,
       eligibility: eligibility,

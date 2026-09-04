@@ -82,9 +82,9 @@ comparing it three times. The comparison walks two opportunity sets.
 That reframes the guidance axis. Its cost was never the pedagogy the extra
 candidates carry; it was the identity of the thing the caches were keyed on.
 
-## Three reductions that changed no decision
+## Four reductions that changed no decision
 
-Profiling found three costs that were not about pedagogy at all.
+Profiling found four costs that were not about pedagogy at all.
 
 **Exercise hashing was recomputed on every lookup.** The hash combines two set
 hashes, and a slot hashes every candidate through set membership and three keyed
@@ -109,11 +109,11 @@ Together, on the same matrix:
 
 | Scope, archetype, slot        | Before | After |
 | ----------------------------- | -----: | ----: |
-| 48 scales, true beginner, 40  |  112.9 |  16.4 |
-| 48 scales, advanced, 80       |  184.6 |  81.5 |
-| full mixed, true beginner, 40 |  130.8 |  20.9 |
-| full mixed, developing, 80    |  146.1 |  43.0 |
-| full mixed, advanced, 80      |  199.3 |  89.9 |
+| 48 scales, true beginner, 40  |  112.9 |  17.9 |
+| 48 scales, advanced, 80       |  184.6 |  82.0 |
+| full mixed, true beginner, 40 |  130.8 |  21.5 |
+| full mixed, developing, 80    |  146.1 |  37.7 |
+| full mixed, advanced, 80      |  199.3 |  82.0 |
 
 Milliseconds per decision. Candidate assembly fell from about 60 ms to 0.1 ms
 and is no longer a term. Requirement evaluation was never one, at well under a
@@ -122,6 +122,44 @@ because the material check fails first.
 
 All three changes are equivalence-preserving by construction, and the whole
 suite passes unchanged, including the pinned calibration and trajectory tests.
+
+## Inside the remaining decision
+
+Timing each stage of candidate evaluation again, on the mature advanced decision
+this time, separates real prediction from work spent on candidates that share
+one:
+
+| Work                                        |  Calls | Share |
+| ------------------------------------------- | -----: | ----: |
+| channel and information cache misses        |  9,986 |   11% |
+| cache lookups on candidates sharing a value | 44,000 |   30% |
+| per-candidate admission, rank terms, trace  | 13,059 |   59% |
+
+The answer to "thousands of distinct expensive predictions, or a few hundred
+predictions and a great many cheap-but-not-cheap-enough lookups" is the second.
+Only about a tenth of the mature advanced decision computes a prediction that
+has not already been computed for another candidate.
+
+Two of those per-candidate helpers were asking a question of learner state and
+throwing the answer away. `transferableTempoFor` scans, filters, and sorts every
+execution residual the learner has, and reads only the hand: at most three
+distinct answers, recomputed once per candidate. `handsTogetherEntryTempo`
+varies with the material and the span. `ExecutionMemo` holds both for the life
+of one decision, on the same boundary the eligibility memo already uses.
+
+Its measured effect is modest, taking the mature advanced decision from about 90
+ms to about 82 ms, which is only just outside run-to-run variation. The better
+argument for it is that the scan it removes grows with the learner's practice
+history, so it was the one term that would get worse with use rather than with
+the catalog.
+
+## A note on the numbers
+
+Every timing here is one run of one seed on a development machine, and repeated
+runs of the same matrix vary by roughly 5%, occasionally more on the heaviest
+cells. Differences of a few percent between arms are not resolvable at this
+sample size; the reductions recorded above are all multiples, except the memo,
+which is reported as small for that reason.
 
 ## What remains, and the acceptance target
 

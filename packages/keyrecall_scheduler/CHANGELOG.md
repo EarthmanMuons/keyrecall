@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `ExecutionMemo`, holding the transferable entry pace and hands-together entry
+  tempo for one decision. Both were recomputed per candidate, and the first
+  scans every execution residual the learner has.
 - `RealizationKey`, what the guidance-independent prediction channels vary with.
   The per-slot execution, coordination, and topology caches key on it rather
   than on an exercise standing for a realization, which removes an allocation

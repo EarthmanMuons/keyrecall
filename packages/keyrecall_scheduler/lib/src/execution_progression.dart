@@ -47,7 +47,11 @@ enum ExecutionAdvance {
 /// never played the material has no frontier and therefore no adjacent step:
 /// meeting material is introduction's business, and this is only about going
 /// on from somewhere.
-ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
+ExecutionAdvance executionAdvanceFor(
+  LearnerState state,
+  Exercise exercise, {
+  ExecutionMemo? memo,
+}) {
   final conditions = exercise.conditions;
   final materialId = exercise.material.materialId;
   final span = conditions.octaves;
@@ -65,7 +69,8 @@ ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
     // other, through its own record.
     if (demonstratedAt(HandConfiguration.together, span) <= 0 &&
         demonstratedAt(HandConfiguration.together, previousSpan) <= 0) {
-      return tempo == handsTogetherEntryTempo(state, materialId, span)
+      return tempo ==
+              handsTogetherEntryTempo(state, materialId, span, memo: memo)
           ? ExecutionAdvance.handsTogether
           : ExecutionAdvance.none;
     }
@@ -105,8 +110,12 @@ ExecutionAdvance executionAdvanceFor(LearnerState state, Exercise exercise) {
 ///
 /// Read at the span being played, because the frontier is a lattice and the
 /// tempo somebody manages at one octave says nothing about two.
-RealizationRank realizationRankFor(LearnerState state, Exercise exercise) {
-  if (executionAdvanceFor(state, exercise).isAdjacentStep) {
+RealizationRank realizationRankFor(
+  LearnerState state,
+  Exercise exercise, {
+  ExecutionMemo? memo,
+}) {
+  if (executionAdvanceFor(state, exercise, memo: memo).isAdjacentStep) {
     return RealizationRank.advancing;
   }
 
@@ -132,8 +141,12 @@ RealizationRank realizationRankFor(LearnerState state, Exercise exercise) {
 double handsTogetherEntryTempo(
   LearnerState state,
   String materialId,
-  int span,
-) {
+  int span, {
+  ExecutionMemo? memo,
+}) {
+  final cached = memo?.handsTogetherEntry[(materialId, span)];
+  if (cached != null) return cached;
+
   // A single hand has no motion of its own, so its readiness is the canonical
   // parallel record whatever motion the hands will meet in.
   double readyAt(HandConfiguration hands) =>
@@ -143,12 +156,25 @@ double handsTogetherEntryTempo(
 
   final right = readyAt(HandConfiguration.right);
   final left = readyAt(HandConfiguration.left);
-  if (right <= 0 || left <= 0) return 0;
-
   // A rung below the slower hand. Putting the hands together is a new motor
   // task rather than the two old ones at once, and every source that discusses
   // it says to slow down when they first meet.
-  return tempoBefore(right < left ? right : left);
+  final entry = right <= 0 || left <= 0
+      ? 0.0
+      : tempoBefore(right < left ? right : left);
+  memo?.handsTogetherEntry[(materialId, span)] = entry;
+  return entry;
+}
+
+/// Answers these helpers ask of learner state alone, memoized for one decision.
+///
+/// The same questions the eligibility memo exists for, and the same boundary:
+/// scoped to one decision and discarded before the state it answers about
+/// moves. A slot asks them of ten thousand candidates, and their answers vary
+/// with the hand or the material and span rather than with the candidate.
+class ExecutionMemo {
+  final Map<HandConfiguration, double> transferableTempo = {};
+  final Map<(String, int), double> handsTogetherEntry = {};
 }
 
 /// Whether each hand has separately demonstrated enough of [materialId] at
@@ -162,11 +188,19 @@ double handsTogetherEntryTempo(
 /// rather than the simultaneous remediation of two parts. A weak hand rarely
 /// clears the frontier's motor bar, and waiting for it to is waiting for the
 /// wrong thing.
-bool supportsHandsTogether(LearnerState state, String materialId, int span) =>
-    handsTogetherEntryTempo(state, materialId, span) > 0;
+bool supportsHandsTogether(
+  LearnerState state,
+  String materialId,
+  int span, {
+  ExecutionMemo? memo,
+}) => handsTogetherEntryTempo(state, materialId, span, memo: memo) > 0;
 
 /// Whether the learner may play [exercise] with both hands at its span.
-bool handsTogetherPrerequisiteSatisfied(LearnerState state, Exercise exercise) {
+bool handsTogetherPrerequisiteSatisfied(
+  LearnerState state,
+  Exercise exercise, {
+  ExecutionMemo? memo,
+}) {
   if (exercise.conditions.hands != HandConfiguration.together) return true;
   final materialId = exercise.material.materialId;
   final span = exercise.conditions.octaves;
@@ -179,7 +213,7 @@ bool handsTogetherPrerequisiteSatisfied(LearnerState state, Exercise exercise) {
       )];
   return (together?.demonstratedTempoAt(span) ?? 0) > 0 ||
       (together?.demonstratedTempoAt(previousSpan) ?? 0) > 0 ||
-      supportsHandsTogether(state, materialId, span);
+      supportsHandsTogether(state, materialId, span, memo: memo);
 }
 
 /// The tempo this learner's [hands] play at on material they already own, or
@@ -199,16 +233,19 @@ bool handsTogetherPrerequisiteSatisfied(LearnerState state, Exercise exercise) {
 double transferableTempoFor(
   LearnerState state,
   HandConfiguration hands,
-  int span,
-) {
+  int span, {
+  ExecutionMemo? memo,
+}) {
+  final cached = memo?.transferableTempo[hands];
+  if (cached != null) return cached;
   final paced = <double>[
     for (final residual in state.materialExecution.values)
       if (residual.hands == hands)
         if (residual.pacedTempoBpm > 0) residual.pacedTempoBpm,
   ]..sort();
-  if (paced.isEmpty) return 0;
-
-  return paced[paced.length ~/ 2];
+  final transferable = paced.isEmpty ? 0.0 : paced[paced.length ~/ 2];
+  memo?.transferableTempo[hands] = transferable;
+  return transferable;
 }
 
 /// The tempo a realization with no frontier at its span should be entered at.
@@ -234,6 +271,7 @@ double unmeasuredEntryTempo(
   LearnerState state,
   Exercise exercise, {
   required PracticeEntryPolicy practiceEntryPolicy,
+  ExecutionMemo? memo,
 }) {
   final conditions = exercise.conditions;
   final residual = state.materialExecution[executionContextOf(exercise)];
@@ -250,6 +288,7 @@ double unmeasuredEntryTempo(
     state,
     conditions.hands,
     conditions.octaves,
+    memo: memo,
   );
   return transferable > 0
       ? transferable
@@ -269,14 +308,17 @@ double realizationFitFor(
   LearnerState state,
   Exercise exercise, {
   required PracticeEntryPolicy practiceEntryPolicy,
+  ExecutionMemo? memo,
 }) {
-  if (realizationRankFor(state, exercise) != RealizationRank.unmeasured) {
+  if (realizationRankFor(state, exercise, memo: memo) !=
+      RealizationRank.unmeasured) {
     return 0;
   }
   final target = unmeasuredEntryTempo(
     state,
     exercise,
     practiceEntryPolicy: practiceEntryPolicy,
+    memo: memo,
   );
   return -(tempoRungOf(exercise.conditions.tempoBpm) - tempoRungOf(target))
       .abs()
@@ -305,7 +347,11 @@ double realizationFitFor(
 /// and up against up-down is not a second first encounter. Costing one slot per
 /// scale rather than one per realization is what justifies overriding retention
 /// at all.
-bool isCoordinationTransition(LearnerState state, Exercise exercise) =>
+bool isCoordinationTransition(
+  LearnerState state,
+  Exercise exercise, {
+  ExecutionMemo? memo,
+}) =>
     exercise.conditions.hands == HandConfiguration.together &&
     !state.hasPlayed(
       exercise.material.materialId,
@@ -315,6 +361,7 @@ bool isCoordinationTransition(LearnerState state, Exercise exercise) =>
       state,
       exercise.material.materialId,
       exercise.conditions.octaves,
+      memo: memo,
     );
 
 /// The exercises one adjacent execution step from where this learner already
