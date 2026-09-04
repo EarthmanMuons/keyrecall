@@ -5,8 +5,9 @@ import 'acquisition_floor.dart';
 import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
-import 'priority.dart';
+import 'introduction_breadth.dart';
 import 'practice_entry_policy.dart';
+import 'priority.dart';
 import 'realization_family_pacing.dart';
 import 'recovery.dart';
 import 'session_state.dart';
@@ -73,10 +74,14 @@ sealed class SelectionResult {
   /// What realization-family pacing did to the available set.
   final PacingDecision pacing;
 
+  /// What the introduction cap did to the available set.
+  final IntroductionDecision introductions;
+
   const SelectionResult({
     required this.traces,
     required this.selectable,
     required this.pacing,
+    required this.introductions,
   });
 }
 
@@ -88,6 +93,7 @@ final class CandidateSelected extends SelectionResult {
     required super.traces,
     required super.selectable,
     required super.pacing,
+    required super.introductions,
     required this.candidate,
   });
 }
@@ -112,6 +118,7 @@ final class SelectionBlocked extends SelectionResult {
     required super.traces,
     required super.selectable,
     required super.pacing,
+    required super.introductions,
     required this.reason,
   });
 }
@@ -157,7 +164,12 @@ class SchedulerPipeline {
       overrides: overrides,
       practiceEntryPolicy: entryPolicy,
     );
-    var pacing = pace(applyRepetitionGuard(traces, session), session);
+    var introductions = capIntroductions(
+      applyRepetitionGuard(traces, session),
+      traces,
+      state,
+    );
+    var pacing = pace(introductions.selectable, session);
     var available = pacing.selectable;
     var selected = chooseFrom(available, session);
     var blockedReason = BlockedReason.admissionExhausted;
@@ -186,7 +198,12 @@ class SchedulerPipeline {
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
         );
-        pacing = pace(applyRepetitionGuard(traces, session), session);
+        introductions = capIntroductions(
+          applyRepetitionGuard(traces, session),
+          traces,
+          state,
+        );
+        pacing = pace(introductions.selectable, session);
         available = pacing.selectable;
         selected = chooseFrom(available, session);
         blockedReason = BlockedReason.safeEntryRejected;
@@ -206,12 +223,14 @@ class SchedulerPipeline {
             traces: traces,
             selectable: available,
             pacing: pacing,
+            introductions: introductions,
             reason: blockedReason,
           )
         : CandidateSelected(
             traces: traces,
             selectable: available,
             pacing: pacing,
+            introductions: introductions,
             candidate: selected,
           );
   }
@@ -1350,10 +1369,70 @@ class SchedulerPipeline {
   /// recording what happened to the choice are looking at the same set. A
   /// candidate the repetition guard removed was not passed over; it was not
   /// there.
+  ///
+  /// The introduction cap reads learner state, so a caller that has none
+  /// answers the question the guards alone can answer.
   List<CandidateTrace> selectable(
     List<CandidateTrace> traces,
-    SessionState session,
-  ) => pace(applyRepetitionGuard(traces, session), session).selectable;
+    SessionState session, {
+    LearnerState? state,
+  }) => pace(
+    capIntroductions(
+      applyRepetitionGuard(traces, session),
+      traces,
+      state,
+    ).selectable,
+    session,
+  ).selectable;
+
+  /// The introduction cap applied to an already-guarded set.
+  ///
+  /// A selection-stage filter beside realization-family pacing, and an
+  /// allocation question rather than an admission one: a withheld first
+  /// exposure stays eligible and ranked, and wins the slot whenever nothing
+  /// already met is available. What it acts on is the trajectory a wide
+  /// catalog produces, where every slot can defensibly open something new
+  /// while the material already open goes unresolved.
+  IntroductionDecision capIntroductions(
+    List<CandidateTrace> guarded,
+    List<CandidateTrace> traces,
+    LearnerState? state,
+  ) {
+    final policy = config.introductions;
+    if (policy == null || state == null) {
+      return IntroductionDecision.inactive(guarded);
+    }
+    final unresolved = unresolvedIntroductions(
+      state: state,
+      materialFamilies: {
+        for (final trace in traces)
+          trace.exercise.material.materialId: trace.exercise.material.familyId,
+      },
+      config: policy,
+    );
+
+    bool isCapped(CandidateTrace trace) =>
+        widensCatalog(trace, state) &&
+        (unresolved[policy.scopeKeyFor(trace.exercise.material.familyId)] ??
+                0) >=
+            policy.concurrentUnresolved;
+
+    final held = [
+      for (final trace in guarded)
+        if (!isCapped(trace)) trace,
+    ];
+    if (held.length == guarded.length) {
+      return IntroductionDecision.inactive(guarded, unresolved: unresolved);
+    }
+    if (held.isEmpty) {
+      return IntroductionDecision.unrelieved(guarded, unresolved: unresolved);
+    }
+    return IntroductionDecision.withheld(
+      held,
+      unresolved: unresolved,
+      withheld: guarded.length - held.length,
+    );
+  }
 
   /// Realization-family pacing applied to an already-guarded set.
   ///
@@ -1415,6 +1494,7 @@ class SchedulerPipeline {
   /// silently omits both guards and can reproduce perseveration.
   CandidateTrace? selectChoice(
     List<CandidateTrace> traces,
-    SessionState session,
-  ) => chooseFrom(selectable(traces, session), session);
+    SessionState session, {
+    LearnerState? state,
+  }) => chooseFrom(selectable(traces, session, state: state), session);
 }

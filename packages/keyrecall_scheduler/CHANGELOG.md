@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `IntroductionConfig`, an experimental cap on how much introduced-but-
+  unretrieved material one scope may hold open at a time. It filters the
+  available set beside realization-family pacing, never empties it, leaves
+  admission untouched, and is null in `v1SchedulerConfig`. `SelectionResult`
+  reports what it did as `introductions`.
 - `PracticeEntryPolicy`, the family-neutral entry-tempo contract used by
   introduction, gentle admission, unmeasured-realization fit, and probes.
 - Initial port of the KeyRecall V1 scheduler from the Python prototype under

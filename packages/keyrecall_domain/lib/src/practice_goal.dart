@@ -1,7 +1,7 @@
 import 'package:meta/meta.dart';
 
-import 'technical_material.dart';
 import 'curriculum.dart';
+import 'technical_material.dart';
 
 /// What the learner is trying to learn.
 ///

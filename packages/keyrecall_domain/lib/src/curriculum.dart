@@ -1,7 +1,7 @@
 import 'package:meta/meta.dart';
 
-import 'exercise.dart';
 import 'execution_conditions.dart';
+import 'exercise.dart';
 import 'technical_material.dart';
 
 /// Whether a curriculum requirement is an outcome or preparation for one.

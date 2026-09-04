@@ -1,6 +1,8 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
+import '../introduction_breadth.dart';
+
 /// Thresholds for the `REQUIRES` prerequisite gate.
 @immutable
 class EligibilityConfig {
@@ -314,6 +316,36 @@ class PacingConfig {
        );
 }
 
+/// How many unresolved introductions may be open at once.
+///
+/// Admission asks whether one unseen material is defensible now. This asks
+/// whether another one should be opened while earlier introductions are still
+/// unresolved, which candidate-local reasoning cannot see: in a wide catalog
+/// every slot has another defensible first exposure available, so novelty can
+/// become the path of least resistance without any single decision being wrong.
+@immutable
+class IntroductionConfig {
+  /// Unresolved introductions a scope may hold before the cap acts.
+  final int concurrentUnresolved;
+
+  /// What that budget is counted over.
+  final IntroductionScope scope;
+
+  const IntroductionConfig({
+    required this.concurrentUnresolved,
+    required this.scope,
+  }) : assert(
+         concurrentUnresolved > 0,
+         'a budget of zero would withhold every first exposure',
+       );
+
+  /// The budget key [familyId] draws from.
+  String scopeKeyFor(String familyId) => switch (scope) {
+    IntroductionScope.family => familyId,
+    IntroductionScope.catalog => 'catalog',
+  };
+}
+
 /// One versioned set of scheduler policy constants.
 ///
 /// Every value is a deliberately simple placeholder, not a tuned policy
@@ -346,6 +378,9 @@ class SchedulerConfig {
   /// Realization-family pacing, or null where allocation is unpaced.
   final PacingConfig? pacing;
 
+  /// The introduction cap, or null where breadth is uncapped.
+  final IntroductionConfig? introductions;
+
   const SchedulerConfig({
     required this.modelVersion,
     required this.eligibility,
@@ -354,6 +389,7 @@ class SchedulerConfig {
     required this.diversity,
     required this.probe,
     required this.pacing,
+    this.introductions,
   });
 
   /// The same policy with [pacing] in force, or unpaced when it is null.
@@ -367,7 +403,21 @@ class SchedulerConfig {
     diversity: diversity,
     probe: probe,
     pacing: pacing,
+    introductions: introductions,
   );
+
+  /// The same policy with [introductions] in force, or uncapped when null.
+  SchedulerConfig withIntroductions(IntroductionConfig? introductions) =>
+      SchedulerConfig(
+        modelVersion: modelVersion,
+        eligibility: eligibility,
+        safety: safety,
+        challenge: challenge,
+        diversity: diversity,
+        probe: probe,
+        pacing: pacing,
+        introductions: introductions,
+      );
 }
 
 /// The V1 scheduler policy constants.
