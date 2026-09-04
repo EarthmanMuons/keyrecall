@@ -282,6 +282,31 @@ bounded-choice policy question stays closed: nothing here argues that a mature
 learner should be offered fewer alternatives, only that computing them should
 not be done on the isolate that draws.
 
+## Where the decision is computed
+
+Scheduling runs on a worker isolate. `SchedulerHost` is the seam, and it decides
+placement and nothing else: the session binds the resolved scope, the learner,
+and the policy constants, so a host cannot decide with anything the session did
+not give it. That is not a refinement. The first version let the host default
+its own learner, and the worker silently ran the frozen prototype's constants
+while the session ran the current ones, which a provider-level equivalence test
+caught by presenting different exercises from identical state.
+
+What travels per slot is the epoch, a propagated learner state, the sitting, a
+timestamp, and the ids of the requirements due. The ten thousand exercises those
+ids resolve to never move, because the worker holds the scope for as long as
+that scope is the sitting's. Only the winning candidate comes back.
+
+The main isolate stays authoritative. It owns the state, applies the sitting
+effect, and writes the pending decision. The worker owns one scope and a
+pipeline, writes nothing, and cannot mutate a sitting it only ever sees a copy
+of. Losing one fails the request in flight and nothing else.
+
+Pinned by test: the two placements produce the same exercise and the same
+post-decision sitting; a verdict answering a superseded epoch applies nothing
+and writes nothing; a lost worker leaves no outstanding attempt and no persisted
+decision; provider disposal tears the worker down.
+
 ## Preserving the traces
 
 `CandidateTrace` is what every characterization in this repository reads, so
