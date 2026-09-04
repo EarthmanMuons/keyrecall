@@ -1,3 +1,5 @@
+import 'dart:isolate';
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
@@ -10,9 +12,9 @@ import 'synthetic_player.dart';
 
 enum ArpeggioPolicyScope {
   scaleOnly,
-  singleArpeggio,
-  majorMinorArpeggios,
-  mixed,
+  smallFixture,
+  fullArpeggioCorpus,
+  fullMixed,
 }
 
 enum ArpeggioPolicyTerminal { slotLimit, caughtUp, blocked, invalid }
@@ -72,6 +74,8 @@ class ArpeggioPolicyRun {
   final int selections;
   final Map<String, int> familySelections;
   final Map<String, int> arpeggioMaterialSelections;
+  final Map<String, int> arpeggioFingeringFamilySelections;
+  final Map<HandConfiguration, int> arpeggioHandSelections;
   final int floorInvocations;
   final int floorSelections;
   final int longestFloorRun;
@@ -99,6 +103,8 @@ class ArpeggioPolicyRun {
     required this.selections,
     required Map<String, int> familySelections,
     required Map<String, int> arpeggioMaterialSelections,
+    required Map<String, int> arpeggioFingeringFamilySelections,
+    required Map<HandConfiguration, int> arpeggioHandSelections,
     required this.floorInvocations,
     required this.floorSelections,
     required this.longestFloorRun,
@@ -120,6 +126,10 @@ class ArpeggioPolicyRun {
        arpeggioMaterialSelections = Map.unmodifiable(
          arpeggioMaterialSelections,
        ),
+       arpeggioFingeringFamilySelections = Map.unmodifiable(
+         arpeggioFingeringFamilySelections,
+       ),
+       arpeggioHandSelections = Map.unmodifiable(arpeggioHandSelections),
        progressionStops = Map.unmodifiable(progressionStops),
        admittedArpeggioPredictions = List.unmodifiable(
          admittedArpeggioPredictions,
@@ -201,13 +211,18 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
 }
 
 Future<List<ArpeggioPolicyRun>> runArpeggioPolicyMatrix({
-  Iterable<ArpeggioPolicyArm> arms = ArpeggioPolicyArm.sensitivityArms,
+  Iterable<ArpeggioPolicyArm> arms = const [ArpeggioPolicyArm.baseline],
   Iterable<ArpeggioPolicyScope> scopes = ArpeggioPolicyScope.values,
   Iterable<SyntheticPlayer>? players,
   int seeds = 4,
   int slots = 80,
+  int parallelism = 1,
+  void Function(int completed, int total)? onProgress,
 }) async {
-  final runs = <ArpeggioPolicyRun>[];
+  if (parallelism < 1) {
+    throw ArgumentError.value(parallelism, 'parallelism', 'must be positive');
+  }
+  final tasks = <_ArpeggioPolicyTask>[];
   for (final arm in arms) {
     for (final scope in scopes) {
       if (scope == ArpeggioPolicyScope.scaleOnly &&
@@ -216,8 +231,8 @@ Future<List<ArpeggioPolicyRun>> runArpeggioPolicyMatrix({
       }
       for (final player in players ?? PlayerArchetypes.all) {
         for (var seed = 0; seed < seeds; seed++) {
-          runs.add(
-            await runArpeggioPolicyTrajectory(
+          tasks.add(
+            _ArpeggioPolicyTask(
               arm: arm,
               scope: scope,
               player: player,
@@ -229,7 +244,52 @@ Future<List<ArpeggioPolicyRun>> runArpeggioPolicyMatrix({
       }
     }
   }
-  return runs;
+  final runs = List<ArpeggioPolicyRun?>.filled(tasks.length, null);
+  var next = 0;
+  var completed = 0;
+
+  Future<void> work() async {
+    while (next < tasks.length) {
+      final index = next++;
+      final task = tasks[index];
+      runs[index] = await Isolate.run(task.run);
+      onProgress?.call(++completed, tasks.length);
+    }
+  }
+
+  await Future.wait([
+    for (
+      var worker = 0;
+      worker < parallelism && worker < tasks.length;
+      worker++
+    )
+      work(),
+  ]);
+  return [for (final run in runs) run!];
+}
+
+class _ArpeggioPolicyTask {
+  final ArpeggioPolicyArm arm;
+  final ArpeggioPolicyScope scope;
+  final SyntheticPlayer player;
+  final int seed;
+  final int slots;
+
+  const _ArpeggioPolicyTask({
+    required this.arm,
+    required this.scope,
+    required this.player,
+    required this.seed,
+    required this.slots,
+  });
+
+  Future<ArpeggioPolicyRun> run() => runArpeggioPolicyTrajectory(
+    arm: arm,
+    scope: scope,
+    player: player,
+    seed: seed,
+    slots: slots,
+  );
 }
 
 class _RecordingPipeline extends SchedulerPipeline {
@@ -267,6 +327,8 @@ class _PolicyAccumulator {
   final int seed;
   final Map<String, int> familySelections = {};
   final Map<String, int> arpeggioMaterialSelections = {};
+  final Map<String, int> arpeggioFingeringFamilySelections = {};
+  final Map<HandConfiguration, int> arpeggioHandSelections = {};
   final Map<EligibilityReason, int> progressionStops = {};
   final List<double> admittedArpeggioPredictions = [];
   int schedulerDecisions = 0;
@@ -341,8 +403,16 @@ class _PolicyAccumulator {
       final materialId = exercise.material.materialId;
       arpeggioMaterialSelections[materialId] =
           (arpeggioMaterialSelections[materialId] ?? 0) + 1;
-      firstArpeggioSlot ??= slot;
       final conditions = exercise.conditions;
+      arpeggioHandSelections[conditions.hands] =
+          (arpeggioHandSelections[conditions.hands] ?? 0) + 1;
+      for (final hand in Hand.values) {
+        if (!_usesHand(conditions.hands, hand)) continue;
+        final family = _fingeringFamily(exercise.material, hand);
+        arpeggioFingeringFamilySelections[family] =
+            (arpeggioFingeringFamilySelections[family] ?? 0) + 1;
+      }
+      firstArpeggioSlot ??= slot;
       if (conditions.hands.usesRightHand) firstRightHandArpeggioSlot ??= slot;
       if (conditions.hands.usesLeftHand) firstLeftHandArpeggioSlot ??= slot;
       if (conditions.hands == HandConfiguration.together) {
@@ -369,6 +439,8 @@ class _PolicyAccumulator {
         selections: selections,
         familySelections: familySelections,
         arpeggioMaterialSelections: arpeggioMaterialSelections,
+        arpeggioFingeringFamilySelections: arpeggioFingeringFamilySelections,
+        arpeggioHandSelections: arpeggioHandSelections,
         floorInvocations: floorInvocations,
         floorSelections: floorSelections,
         longestFloorRun: longestFloorRun,
@@ -410,36 +482,30 @@ LearnerParams _paramsFor(ArpeggioPolicyArm arm) {
 ({List<TechnicalMaterial> materials, PracticeGoal goal}) _fixtureFor(
   ArpeggioPolicyScope scope,
 ) {
-  final cMajorScale = v1ScaleCatalog.firstWhere(
-    (material) => material.tonic == 'C' && material.form == ScaleForm.major,
-  );
-  final gMajorScale = v1ScaleCatalog.firstWhere(
-    (material) => material.tonic == 'G' && material.form == ScaleForm.major,
-  );
-  final cMajorArpeggio = proofArpeggios.firstWhere(
+  final cMajorArpeggio = allRootPositionArpeggios.firstWhere(
     (material) =>
         material.tonic == 'C' && material.quality == ArpeggioQuality.major,
   );
-  final cMinorArpeggio = proofArpeggios.firstWhere(
+  final cMinorArpeggio = allRootPositionArpeggios.firstWhere(
     (material) =>
         material.tonic == 'C' && material.quality == ArpeggioQuality.minor,
   );
-  final scales = [cMajorScale, gMajorScale];
+  final scales = allScales;
   final arpeggios = switch (scope) {
     ArpeggioPolicyScope.scaleOnly => <ArpeggioMaterial>[],
-    ArpeggioPolicyScope.singleArpeggio => [cMajorArpeggio],
-    ArpeggioPolicyScope.majorMinorArpeggios ||
-    ArpeggioPolicyScope.mixed => [cMajorArpeggio, cMinorArpeggio],
+    ArpeggioPolicyScope.smallFixture => [cMajorArpeggio, cMinorArpeggio],
+    ArpeggioPolicyScope.fullArpeggioCorpus ||
+    ArpeggioPolicyScope.fullMixed => allRootPositionArpeggios,
   };
   final materials = <TechnicalMaterial>[
     if (scope == ArpeggioPolicyScope.scaleOnly ||
-        scope == ArpeggioPolicyScope.mixed)
+        scope == ArpeggioPolicyScope.fullMixed)
       ...scales,
     ...arpeggios,
   ];
   final requirements = <CurriculumRequirement>[
     if (scope == ArpeggioPolicyScope.scaleOnly ||
-        scope == ArpeggioPolicyScope.mixed)
+        scope == ArpeggioPolicyScope.fullMixed)
       ..._scaleRequirements(scales),
     for (final material in arpeggios) ..._arpeggioRequirements(material),
   ];
@@ -496,4 +562,14 @@ CurriculumRequirement _requirement(
 IdGenerator _countingIds(String prefix) {
   var next = 0;
   return () => '$prefix-${next++}';
+}
+
+bool _usesHand(HandConfiguration hands, Hand hand) => switch (hand) {
+  Hand.left => hands.usesLeftHand,
+  Hand.right => hands.usesRightHand,
+};
+
+String _fingeringFamily(TechnicalMaterial material, Hand hand) {
+  final fingers = canonicalFingering(material, hand)!.ascending(1).join();
+  return '${hand == Hand.right ? 'RH' : 'LH'} $fingers';
 }
