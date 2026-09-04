@@ -7,6 +7,9 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/placement.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
+
+import '../support/scheduler_override.dart';
+
 import 'package:keyrecall/features/practice/profiles_screen.dart';
 
 void main() {
@@ -22,6 +25,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => profiles),
+        inProcessScheduling,
         practiceStoreProvider.overrideWith((ref) async => practice),
       ],
     );
@@ -167,6 +171,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => repository),
+        inProcessScheduling,
         practiceStoreProvider.overrideWith((ref) async => store),
       ],
     );

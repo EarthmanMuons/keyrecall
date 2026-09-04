@@ -12,9 +12,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
-- `SchedulerHost` binds the resolved scope it decides against and takes the due
-  requirement ids for a slot, so a host that decides elsewhere establishes the
-  candidate envelope once rather than sending it with every request.
+- `SchedulerHost` binds the resolved scope it decides against, along with the
+  learner and policy constants to decide with, and takes the due requirement ids
+  for a slot. A host that decides elsewhere establishes the candidate envelope
+  once rather than sending it with every request, and cannot decide with a
+  different learner than the session's.
 - `PracticeBlocked` carries the blocked reason directly, and its full selection
   only where the decision was computed in this isolate.
 - Candidate assembly deduplicates by material rather than by exercise, which

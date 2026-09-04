@@ -9,6 +9,8 @@ import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/developer_screen.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
+import 'support/scheduler_override.dart';
+
 void main() {
   /// The panel is a tall stack of sections, and the default test window is
   /// short enough that the lower ones are never laid out.
@@ -25,6 +27,7 @@ void main() {
         profileRepositoryProvider.overrideWith(
           (ref) async => InMemoryProfileRepository(),
         ),
+        inProcessScheduling,
         practiceStoreProvider.overrideWith(
           (ref) async => InMemoryPracticeStore(),
         ),

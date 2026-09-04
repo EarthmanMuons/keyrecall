@@ -121,8 +121,13 @@ class _InterceptingScheduler implements SchedulerHost {
   _InterceptingScheduler(this.inner, {this.whileDeciding});
 
   @override
-  Future<void> bind(ResolvedPracticeScope scope, PracticeEntryPolicy entry) =>
-      inner.bind(scope, entry);
+  Future<void> bind({
+    required ResolvedPracticeScope scope,
+    required PracticeEntryPolicy entry,
+    required LearnerModel learner,
+    required SchedulerConfig config,
+  }) =>
+      inner.bind(scope: scope, entry: entry, learner: learner, config: config);
 
   @override
   Future<void> dispose() => inner.dispose();

@@ -12,6 +12,9 @@ import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/onboarding.dart';
 import 'package:keyrecall/features/practice/placement.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
+
+import '../support/scheduler_override.dart';
+
 import 'package:keyrecall/features/practice/profiles_screen.dart';
 
 /// The one question a first launch asks, and what it must not do before it is
@@ -33,6 +36,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => profiles),
+        inProcessScheduling,
         practiceStoreProvider.overrideWith((ref) async => practice),
       ],
     );

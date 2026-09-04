@@ -35,6 +35,17 @@ final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
   return FilePracticeStore(root);
 });
 
+/// Where a scheduling decision is computed.
+///
+/// A worker isolate in the app, and overridden with an `InProcessScheduler`
+/// wherever a test wants the decision on the calling isolate. Disposed with the
+/// provider, which is what tears the worker down: nothing else owns it.
+final schedulerHostProvider = Provider<SchedulerHost>((ref) {
+  final scheduler = IsolateScheduler();
+  ref.onDispose(scheduler.dispose);
+  return scheduler;
+});
+
 /// One profile as the management screen shows it.
 ///
 /// Carries the history count beside the profile because that is what tells two
@@ -336,10 +347,16 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     if (profile == null) {
       throw StateError('no profile on this install has been placed yet');
     }
+    // Scheduling is the expensive part of a slot and blocks whatever isolate
+    // computes it, so it does not happen on the one that draws. The worker
+    // holds the sitting's scope and nothing else; this isolate stays
+    // authoritative for state and for what is written.
+    final scheduler = ref.watch(schedulerHostProvider);
     final session = await PracticeSession.open(
       store: store,
       profile: profile,
       materials: allScales,
+      scheduler: scheduler,
     );
 
     // An unresolved decision is presented again rather than discarded. It was

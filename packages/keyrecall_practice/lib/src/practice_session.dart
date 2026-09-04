@@ -399,7 +399,12 @@ class PracticeSession {
         : null;
 
     if (!_bound) {
-      await scheduler.bind(scope, validScope.entryPolicy);
+      await scheduler.bind(
+        scope: scope,
+        entry: validScope.entryPolicy,
+        learner: learner,
+        config: pipeline.config,
+      );
       _bound = true;
     }
     final epoch = _epoch;

@@ -9,6 +9,8 @@ import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
+import '../support/scheduler_override.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -25,6 +27,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => profiles),
+        inProcessScheduling,
         practiceStoreProvider.overrideWith((ref) async => practice),
       ],
     );
@@ -161,6 +164,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => profiles),
+        inProcessScheduling,
         practiceStoreProvider.overrideWith((ref) async => practice),
         attemptTranscriptProvider.overrideWith(_InterruptedCapture.new),
       ],
@@ -208,6 +212,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => repository),
+        inProcessScheduling,
         practiceStoreProvider.overrideWith((ref) async => store),
       ],
     );

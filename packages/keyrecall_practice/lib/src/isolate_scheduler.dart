@@ -34,26 +34,20 @@ class SchedulerWorkerLost implements Exception {
 /// a worker that dies mid-decision fails that request and nothing else, and the
 /// session decides again from the state it never gave up.
 class IsolateScheduler implements SchedulerHost {
-  final LearnerParams learnerParams;
-  final SchedulerConfig config;
-
   _Worker? _worker;
 
-  IsolateScheduler({
-    this.learnerParams = v1PrototypeLearnerParams,
-    this.config = v1SchedulerConfig,
-  });
-
   @override
-  Future<void> bind(
-    ResolvedPracticeScope scope,
-    PracticeEntryPolicy entry,
-  ) async {
+  Future<void> bind({
+    required ResolvedPracticeScope scope,
+    required PracticeEntryPolicy entry,
+    required LearnerModel learner,
+    required SchedulerConfig config,
+  }) async {
     await dispose();
     _worker = await _Worker.start(
       scope: scope,
       entry: entry,
-      learnerParams: learnerParams,
+      learner: learner,
       config: config,
     );
   }
@@ -72,7 +66,7 @@ class IsolateScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
-  }) {
+  }) async {
     final worker = _worker;
     if (worker == null) {
       throw StateError('no scope is bound; bind one before deciding');
@@ -151,7 +145,7 @@ class _Worker {
   static Future<_Worker> start({
     required ResolvedPracticeScope scope,
     required PracticeEntryPolicy entry,
-    required LearnerParams learnerParams,
+    required LearnerModel learner,
     required SchedulerConfig config,
   }) async {
     final responses = ReceivePort();
@@ -160,7 +154,7 @@ class _Worker {
       responses.sendPort,
       scope,
       entry,
-      learnerParams,
+      learner,
       config,
     ));
     late final _Worker worker;
@@ -204,16 +198,13 @@ class _Worker {
       SendPort,
       ResolvedPracticeScope,
       PracticeEntryPolicy,
-      LearnerParams,
+      LearnerModel,
       SchedulerConfig,
     )
     start,
   ) async {
-    final (replies, scope, entry, learnerParams, config) = start;
-    final pipeline = SchedulerPipeline(
-      learner: LearnerModel(params: learnerParams),
-      config: config,
-    );
+    final (replies, scope, entry, learner, config) = start;
+    final pipeline = SchedulerPipeline(learner: learner, config: config);
     final requests = ReceivePort();
     replies.send(requests.sendPort);
     await for (final message in requests) {

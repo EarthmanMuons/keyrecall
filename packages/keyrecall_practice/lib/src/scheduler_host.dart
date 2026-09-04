@@ -104,7 +104,16 @@ class SchedulerVerdict {
 /// rather than travelling with every request. Binding again replaces it.
 abstract interface class SchedulerHost {
   /// Adopts [scope], discarding whatever was bound before.
-  Future<void> bind(ResolvedPracticeScope scope, PracticeEntryPolicy entry);
+  ///
+  /// The learner and the policy constants travel with it rather than being a
+  /// host's own default, because a host deciding with different ones would
+  /// decide differently for reasons nothing in a trace would show.
+  Future<void> bind({
+    required ResolvedPracticeScope scope,
+    required PracticeEntryPolicy entry,
+    required LearnerModel learner,
+    required SchedulerConfig config,
+  });
 
   /// The decision for the slot at [at], answering [epoch].
   ///
@@ -137,11 +146,15 @@ class InProcessScheduler implements SchedulerHost {
 
   InProcessScheduler(this.pipeline);
 
+  /// The learner and config are the pipeline's already: a session builds this
+  /// host from the pipeline it uses, so the two cannot differ.
   @override
-  Future<void> bind(
-    ResolvedPracticeScope scope,
-    PracticeEntryPolicy entry,
-  ) async {
+  Future<void> bind({
+    required ResolvedPracticeScope scope,
+    required PracticeEntryPolicy entry,
+    required LearnerModel learner,
+    required SchedulerConfig config,
+  }) async {
     _scope = scope;
     _entry = entry;
   }
