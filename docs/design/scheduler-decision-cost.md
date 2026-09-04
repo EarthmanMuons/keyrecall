@@ -1,7 +1,7 @@
 # Scheduler decision cost
 
-- **Status:** Census and two equivalence-preserving reductions. The dominant
-  term is identified and unaddressed.
+- **Status:** Census and four equivalence-preserving reductions. Desktop
+  profiling closed pending a release-build device benchmark.
 - **Written:** September 4, 2026
 - **Scope:** What one scheduling decision costs, and how that cost grows with
   the catalog. The stress case is the production-scale corpus, 48 scales and 24
@@ -120,8 +120,8 @@ and is no longer a term. Requirement evaluation was never one, at well under a
 millisecond even over 360 requirements: the journal scan it performs is cheap
 because the material check fails first.
 
-All three changes are equivalence-preserving by construction, and the whole
-suite passes unchanged, including the pinned calibration and trajectory tests.
+All four changes are equivalence-preserving by construction, and the whole suite
+passes unchanged, including the pinned calibration and trajectory tests.
 
 ## Inside the remaining decision
 
@@ -163,9 +163,13 @@ which is reported as small for that reason.
 
 ## What remains, and the acceptance target
 
-Candidate evaluation is now essentially the whole decision: 125 ms of the 129 ms
-full-mixed worst case. Three properties of the generated set say where that
-goes:
+Candidate evaluation is now essentially the whole decision: 78 ms of the 82 ms
+full-mixed worst case. The two cohorts have diverged, and only one of them is
+about waste. A weak learner's full-mixed decision costs about 21 ms while
+ranking one candidate in ten thousand. An advanced learner's costs about 82 ms
+while genuinely ranking 8,245.
+
+Three properties of the generated set say where the remaining work goes:
 
 - **Guidance triples every realization.** A third of candidates are distinct
   execution realizations; the other two thirds differ only in guidance and share
@@ -177,8 +181,8 @@ goes:
 - **Almost nothing reaches ranking.** Ranked share is under 2% for the two weak
   archetypes across the whole horizon.
 
-The target for the next tranche is therefore algorithmic rather than a
-millisecond threshold:
+The target for any further reduction is algorithmic rather than a millisecond
+threshold:
 
 > Holding learner state and the selected exercise constant, doubling catalog
 > breadth should double only material-level filtering. Prediction and ranking
@@ -190,6 +194,46 @@ exercises, so that a material contributes the handful of realizations that could
 plausibly be selected rather than its whole Cartesian product. That crosses into
 what a material family may decide, so it is a design question rather than a
 refactor, and it is deliberately not settled here.
+
+One caution the census already supplies. Tempo looks like the cleanest frontier
+axis, because entry, adjacency, probes, and recovery all name specific tempi.
+But those rules bound admission by exception only. Ordinary band admission asks
+prediction, and prediction reads tempo, so a capable learner can hold several
+tempi of one realization inside the band at once. A tempo frontier is therefore
+provably safe only for a learner whose material admits through the exceptions,
+which is the cohort already down at 21 ms. Bounding the advanced case means
+bounding candidates that could genuinely be selected, which is a policy question
+about how many simultaneous alternatives practice should consider, not an
+optimization.
+
+## Where this branch stops
+
+Desktop profiling is done. Accidental hashing and assembly overhead, the
+guidance-sharing cache identity, and the frontier scans that grew with practice
+history are all removed, and no decision changed:
+
+| Case                          | Before | After |
+| ----------------------------- | -----: | ----: |
+| production-scale weak learner |    131 |    21 |
+| production-scale advanced     |    199 |    82 |
+
+Milliseconds per decision, JIT, on a development machine. Neither number is the
+product metric. The next evidence that can change an architecture decision comes
+from a release build on target hardware, measuring scheduler computation and
+user-visible transition latency separately, at median and p95 over repeated
+decisions, with the scheduler on and off the UI isolate.
+
+The criterion is product-grounded rather than a universal number:
+
+> Scheduling must not create a perceptible delay in the exercise transition on
+> target hardware, and mature full-catalog decisions must leave enough headroom
+> for future catalog expansion.
+
+If a release build clears that, the remaining 82 ms is the price of offering a
+mature learner many admissible alternatives, and the scheduler's search space
+should not be made artificially smaller to reduce it. If it does not, the next
+problem is a policy one: how many simultaneously admissible alternatives a
+mature learner's scheduler should consider.
 
 ## Preserving the traces
 
