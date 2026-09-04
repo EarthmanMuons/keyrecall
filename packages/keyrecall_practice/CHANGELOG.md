@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- Resolved practice scopes carry each active material family's entry tempo into
+  the generic scheduler policy used for that scope.
 - `ArpeggioPracticePolicy`, which lets simulation vary the provisional initial
   tempo and compare right-hand, separate-hand, and ascending-and-descending
   acquisition floors without changing the shipped defaults.

@@ -207,6 +207,7 @@ class CountingPipeline extends SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
+    PracticeEntryPolicy? practiceEntryPolicy,
   }) {
     decisions++;
     return super.decide(
@@ -216,6 +217,7 @@ class CountingPipeline extends SchedulerPipeline {
       at: at,
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
+      practiceEntryPolicy: practiceEntryPolicy,
     );
   }
 }

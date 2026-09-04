@@ -2,6 +2,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'candidate_trace.dart';
+import 'practice_entry_policy.dart';
 
 /// Which execution axis a candidate advances, against what the learner has
 /// demonstrated on its material.
@@ -219,7 +220,8 @@ double transferableTempoFor(
 ///    fingering they already play with an octave added;
 /// 2. failing that, the pace this hand shows on material it owns, which is
 ///    what an unseen scale is met at;
-/// 3. failing that, [gentleTempoBpm], because nobody has seen them play.
+/// 3. failing that, the material family's entry tempo, because nobody has seen
+///    them play.
 ///
 /// The first is what makes this different from [transferableTempoFor]: a
 /// learner widening B flat major has evidence about B flat major in that hand,
@@ -231,7 +233,7 @@ double transferableTempoFor(
 double unmeasuredEntryTempo(
   LearnerState state,
   Exercise exercise, {
-  required double gentleTempoBpm,
+  required PracticeEntryPolicy practiceEntryPolicy,
 }) {
   final conditions = exercise.conditions;
   final residual = state.materialExecution[executionContextOf(exercise)];
@@ -249,7 +251,9 @@ double unmeasuredEntryTempo(
     conditions.hands,
     conditions.octaves,
   );
-  return transferable > 0 ? transferable : gentleTempoBpm;
+  return transferable > 0
+      ? transferable
+      : practiceEntryPolicy.tempoFor(exercise.material);
 }
 
 /// How well [exercise] matches the realization this learner should be entering
@@ -264,7 +268,7 @@ double unmeasuredEntryTempo(
 double realizationFitFor(
   LearnerState state,
   Exercise exercise, {
-  required double gentleTempoBpm,
+  required PracticeEntryPolicy practiceEntryPolicy,
 }) {
   if (realizationRankFor(state, exercise) != RealizationRank.unmeasured) {
     return 0;
@@ -272,7 +276,7 @@ double realizationFitFor(
   final target = unmeasuredEntryTempo(
     state,
     exercise,
-    gentleTempoBpm: gentleTempoBpm,
+    practiceEntryPolicy: practiceEntryPolicy,
   );
   return -(tempoRungOf(exercise.conditions.tempoBpm) - tempoRungOf(target))
       .abs()

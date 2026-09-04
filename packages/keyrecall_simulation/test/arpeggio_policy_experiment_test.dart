@@ -42,33 +42,22 @@ void main() {
     expect(run.admittedArpeggioPredictions, isNotEmpty);
   });
 
-  test('entry-tempo sensitivity makes floor dependence observable', () async {
-    final slower = ArpeggioPolicyArm.sensitivityArms.firstWhere(
-      (arm) => arm.id == 'tempo_50',
-    );
-    final baseline = await runArpeggioPolicyTrajectory(
-      arm: ArpeggioPolicyArm.baseline,
-      scope: ArpeggioPolicyScope.singleArpeggio,
-      player: PlayerArchetypes.trueBeginner,
-      seed: 0,
-      slots: 20,
-    );
-    final counterfactual = await runArpeggioPolicyTrajectory(
-      arm: slower,
-      scope: ArpeggioPolicyScope.singleArpeggio,
-      player: PlayerArchetypes.trueBeginner,
-      seed: 0,
-      slots: 20,
-    );
+  test('entry-tempo counterfactuals escape the acquisition floor', () async {
+    for (final id in ['tempo_50', 'tempo_70']) {
+      final arm = ArpeggioPolicyArm.sensitivityArms.firstWhere(
+        (arm) => arm.id == id,
+      );
+      final run = await runArpeggioPolicyTrajectory(
+        arm: arm,
+        scope: ArpeggioPolicyScope.singleArpeggio,
+        player: PlayerArchetypes.trueBeginner,
+        seed: 0,
+        slots: 20,
+      );
 
-    expect(
-      counterfactual.floorSelections,
-      greaterThan(baseline.floorSelections),
-    );
-    expect(
-      counterfactual.longestFloorRun,
-      greaterThan(baseline.longestFloorRun),
-    );
+      expect(run.firstLeftHandArpeggioSlot, isNotNull, reason: id);
+      expect(run.longestFloorRun, lessThan(20), reason: id);
+    }
   });
 
   test(

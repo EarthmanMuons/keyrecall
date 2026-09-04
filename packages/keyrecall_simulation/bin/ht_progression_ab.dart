@@ -465,6 +465,7 @@ class _CoordinationWeakerSuppressedPipeline extends SchedulerPipeline {
     required EligibilityTier eligibility,
     required EligibilityTier? introducibleTier,
     DecisionFacts? facts,
+    PracticeEntryPolicy? practiceEntryPolicy,
   }) {
     final bypass = super.challengeBypassFor(
       state: state,
@@ -478,6 +479,7 @@ class _CoordinationWeakerSuppressedPipeline extends SchedulerPipeline {
       eligibility: eligibility,
       introducibleTier: introducibleTier,
       facts: facts,
+      practiceEntryPolicy: practiceEntryPolicy,
     );
     if (bypass != ChallengeBypass.executionProgression ||
         exercise.conditions.hands != HandConfiguration.together ||

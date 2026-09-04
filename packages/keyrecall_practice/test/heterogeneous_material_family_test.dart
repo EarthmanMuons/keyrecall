@@ -216,6 +216,27 @@ void main() {
     });
   });
 
+  test('scope resolution carries each family entry tempo', () {
+    final resolution =
+        PracticeScopeResolver(
+              families: const [
+                ScalePracticeMaterialFamily(),
+                ArpeggioPracticeMaterialFamily(
+                  policy: ArpeggioPracticePolicy(initialTempoBpm: 72),
+                ),
+              ],
+            ).resolve(
+              goal: goal,
+              focus: PracticeFocus.unrestricted,
+              catalog: materials,
+              instrument: InstrumentProfile(),
+            )
+            as ValidPracticeScope;
+
+    expect(resolution.entryPolicy.tempoFor(scaleC), generatedTempi.first);
+    expect(resolution.entryPolicy.tempoFor(arpeggioC), 72);
+  });
+
   test('counterfactual floor can offer both separate hands', () {
     const family = ArpeggioPracticeMaterialFamily(
       policy: ArpeggioPracticePolicy(

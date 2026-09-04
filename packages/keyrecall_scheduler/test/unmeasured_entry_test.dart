@@ -16,6 +16,7 @@ import 'support/fixtures.dart';
 /// B flat major, with identical rank keys, while playing at ninety-five.
 void main() {
   const gentle = 60.0;
+  const entryPolicy = PracticeEntryPolicy.uniform(gentle);
   final material = TechnicalMaterial('Bb', ScaleForm.major);
 
   /// A learner who owns one octave of B flat major in the right hand at
@@ -44,7 +45,7 @@ void main() {
     final state = owningOneOctave();
 
     expect(
-      unmeasuredEntryTempo(state, wider(60), gentleTempoBpm: gentle),
+      unmeasuredEntryTempo(state, wider(60), practiceEntryPolicy: entryPolicy),
       120,
       reason: 'the fingering is one they play; the octave is the new ask',
     );
@@ -72,8 +73,11 @@ void main() {
 
   test('so the fit is what separates them', () {
     final state = owningOneOctave();
-    double fitOf(double tempoBpm) =>
-        realizationFitFor(state, wider(tempoBpm), gentleTempoBpm: gentle);
+    double fitOf(double tempoBpm) => realizationFitFor(
+      state,
+      wider(tempoBpm),
+      practiceEntryPolicy: entryPolicy,
+    );
 
     expect(fitOf(116), greaterThan(fitOf(100)));
     expect(fitOf(100), greaterThan(fitOf(60)));
@@ -93,7 +97,7 @@ void main() {
       realizationFit: realizationFitFor(
         state,
         exercise,
-        gentleTempoBpm: gentle,
+        practiceEntryPolicy: entryPolicy,
       ),
     );
 
@@ -127,7 +131,10 @@ void main() {
         ..lastEvidenceAt = t0;
     }
 
-    expect(unmeasuredEntryTempo(state, wider(60), gentleTempoBpm: gentle), 104);
+    expect(
+      unmeasuredEntryTempo(state, wider(60), practiceEntryPolicy: entryPolicy),
+      104,
+    );
   });
 
   test('and a learner nobody has seen play still starts gently', () {
@@ -135,7 +142,7 @@ void main() {
       unmeasuredEntryTempo(
         stateAt(PlacementTier.advanced),
         wider(60),
-        gentleTempoBpm: gentle,
+        practiceEntryPolicy: entryPolicy,
       ),
       gentle,
     );

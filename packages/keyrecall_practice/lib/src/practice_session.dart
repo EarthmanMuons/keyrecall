@@ -329,7 +329,8 @@ class PracticeSession {
     if (resolution case InvalidPracticeScope(:final failures)) {
       return PracticeInvalidScope(failures);
     }
-    final scope = (resolution as ValidPracticeScope).scope;
+    final validScope = resolution as ValidPracticeScope;
+    final scope = validScope.scope;
 
     final scratch = _state.copy();
     learner.propagate(scratch, at);
@@ -360,6 +361,7 @@ class PracticeSession {
       candidates: candidates,
       at: at,
       acquisitionFloor: acquisitionFloor,
+      practiceEntryPolicy: validScope.entryPolicy,
     );
     if (selection case final SelectionBlocked blocked) {
       return PracticeBlocked(blocked, coverage: evaluated.coverage);

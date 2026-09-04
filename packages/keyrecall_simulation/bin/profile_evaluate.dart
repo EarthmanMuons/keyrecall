@@ -128,7 +128,11 @@ Future<void> main(List<String> arguments) async {
   });
   timed('realizationFitFor', 20, () {
     for (final exercise in candidates) {
-      realizationFitFor(state, exercise, gentleTempoBpm: 60);
+      realizationFitFor(
+        state,
+        exercise,
+        practiceEntryPolicy: const PracticeEntryPolicy.uniform(60),
+      );
     }
   });
   timed('isCoordinationTransition', 20, () {

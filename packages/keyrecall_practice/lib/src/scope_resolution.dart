@@ -6,6 +6,8 @@ import 'package:meta/meta.dart';
 abstract interface class PracticeMaterialFamily {
   String get familyId;
 
+  double get entryTempoBpm;
+
   List<Exercise> generate(
     InstrumentProfile instrument,
     TechnicalMaterial material,
@@ -22,6 +24,9 @@ class ScalePracticeMaterialFamily implements PracticeMaterialFamily {
 
   @override
   String get familyId => TechnicalMaterial.scaleFamilyId;
+
+  @override
+  double get entryTempoBpm => generatedTempi.first;
 
   @override
   List<Exercise> generate(
@@ -63,6 +68,9 @@ class ArpeggioPracticeMaterialFamily implements PracticeMaterialFamily {
 
   @override
   String get familyId => TechnicalMaterial.arpeggioFamilyId;
+
+  @override
+  double get entryTempoBpm => policy.initialTempoBpm;
 
   @override
   List<Exercise> generate(
@@ -115,8 +123,9 @@ sealed class ScopeResolution {
 /// A complete structural scope ready for learner-relative evaluation.
 final class ValidPracticeScope extends ScopeResolution {
   final ResolvedPracticeScope scope;
+  final PracticeEntryPolicy entryPolicy;
 
-  const ValidPracticeScope(this.scope);
+  const ValidPracticeScope(this.scope, {required this.entryPolicy});
 }
 
 /// A scope whose requested identities or constraints do not all resolve.
@@ -325,6 +334,13 @@ class PracticeScopeResolver {
         isNarrow: goal.isScoped || focus.exclusiveRequirementIds != null,
         requirements: resolved,
       ),
+      entryPolicy: PracticeEntryPolicy.byFamily({
+        for (final familyId in {
+          for (final requirement in activeRequirements) requirement.familyId,
+        })
+          if (_families[familyId] case final family?)
+            familyId: family.entryTempoBpm,
+      }, defaultTempoBpm: generatedTempi.first),
     );
   }
 

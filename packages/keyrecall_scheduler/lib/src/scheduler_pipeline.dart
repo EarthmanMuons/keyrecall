@@ -6,6 +6,7 @@ import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
 import 'priority.dart';
+import 'practice_entry_policy.dart';
 import 'realization_family_pacing.dart';
 import 'recovery.dart';
 import 'session_state.dart';
@@ -143,13 +144,18 @@ class SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
+    PracticeEntryPolicy? practiceEntryPolicy,
   }) {
+    final entryPolicy =
+        practiceEntryPolicy ??
+        PracticeEntryPolicy.uniform(config.eligibility.gentleTempoBpm);
     var traces = evaluate(
       state: state,
       session: session,
       candidates: candidates,
       at: at,
       overrides: overrides,
+      practiceEntryPolicy: entryPolicy,
     );
     var pacing = pace(applyRepetitionGuard(traces, session), session);
     var available = pacing.selectable;
@@ -178,6 +184,7 @@ class SchedulerPipeline {
           candidates: candidates,
           at: at,
           overrides: {...overrides, ...floorOverrides},
+          practiceEntryPolicy: entryPolicy,
         );
         pacing = pace(applyRepetitionGuard(traces, session), session);
         available = pacing.selectable;
@@ -256,7 +263,11 @@ class SchedulerPipeline {
     LearnerState state,
     Exercise exercise, {
     DecisionFacts? facts,
+    PracticeEntryPolicy? practiceEntryPolicy,
   }) {
+    final entryPolicy =
+        practiceEntryPolicy ??
+        PracticeEntryPolicy.uniform(config.eligibility.gentleTempoBpm);
     final material = exercise.material;
     final scaleForm = material.scaleForm;
     final band = admissionBandOf(material);
@@ -378,7 +389,9 @@ class SchedulerPipeline {
         );
       }
 
-      final asked = _isGentlest(exercise.conditions) ? _bandBefore(band) : band;
+      final asked = _isGentlest(exercise, entryPolicy)
+          ? _bandBefore(band)
+          : band;
       final floor = config.eligibility.executionFloorFor(asked);
       final execution = _executionMeanFor(state, material, hands, facts);
       if (execution < floor) {
@@ -618,8 +631,14 @@ class SchedulerPipeline {
   /// Held back one rung for the later bands. Transfer across fingering families
   /// is what nothing here measures yet, so a key whose geography is new is met
   /// unhurried whatever the hand has managed on keys it knows.
-  double entryTempoFor(LearnerState state, Exercise exercise) {
-    final gentle = config.eligibility.gentleTempoBpm;
+  double entryTempoFor(
+    LearnerState state,
+    Exercise exercise, {
+    PracticeEntryPolicy? practiceEntryPolicy,
+  }) {
+    final entryPolicy =
+        practiceEntryPolicy ??
+        PracticeEntryPolicy.uniform(config.eligibility.gentleTempoBpm);
     final transferable = transferableTempoFor(
       state,
       exercise.conditions.hands,
@@ -627,7 +646,7 @@ class SchedulerPipeline {
     );
     // Nobody has seen this learner play, so there is no evidence to be
     // conservative about. The gentle tempo is the only honest default.
-    if (transferable <= 0) return gentle;
+    if (transferable <= 0) return entryPolicy.tempoFor(exercise.material);
 
     // One rung, and exactly one. An unfamiliar fingering is a real additional
     // ask, so the full pace is overconfident; the learner's own pace is direct
@@ -639,16 +658,15 @@ class SchedulerPipeline {
         : tempoBefore(transferable);
   }
 
-  /// Whether these are the gentlest conditions the catalog offers a scale
-  /// under.
+  /// Whether these are the gentlest conditions the family offers.
   ///
   /// One octave, one hand, at the slow end of ordinary practice. Not the
   /// guidance rung, which is a separate ladder with its own rules about first
   /// encounters and about what independence has to be earned.
-  bool _isGentlest(ExecutionConditions conditions) =>
-      conditions.octaves == 1 &&
-      conditions.hands != HandConfiguration.together &&
-      conditions.tempoBpm <= config.eligibility.gentleTempoBpm;
+  bool _isGentlest(Exercise exercise, PracticeEntryPolicy entryPolicy) =>
+      exercise.conditions.octaves == 1 &&
+      exercise.conditions.hands != HandConfiguration.together &&
+      exercise.conditions.tempoBpm <= entryPolicy.tempoFor(exercise.material);
 
   /// The band before [band], or [band] itself when it is the first.
   static AdmissionBand _bandBefore(AdmissionBand band) =>
@@ -745,12 +763,22 @@ class SchedulerPipeline {
   ///
   /// The frontier for this material, hand and span, which is where the learner
   /// already is, or [entryTempoFor] when that span has never been managed.
-  double heldTempoFor(LearnerState state, Exercise exercise) {
+  double heldTempoFor(
+    LearnerState state,
+    Exercise exercise, {
+    PracticeEntryPolicy? practiceEntryPolicy,
+  }) {
     final frontier =
         state.materialExecution[executionContextOf(exercise)]
             ?.demonstratedTempoAt(exercise.conditions.octaves) ??
         0;
-    return frontier > 0 ? frontier : entryTempoFor(state, exercise);
+    return frontier > 0
+        ? frontier
+        : entryTempoFor(
+            state,
+            exercise,
+            practiceEntryPolicy: practiceEntryPolicy,
+          );
   }
 
   /// Whether [exercise] is a proactive step back toward independence.
@@ -766,13 +794,23 @@ class SchedulerPipeline {
   /// success at the established rung push the next step away. Producing a scale
   /// seconds after being shown it still proves little, so the establishment
   /// clock is short rather than absent.
-  bool isGuidanceProbe(LearnerState state, Exercise exercise, DateTime at) {
+  bool isGuidanceProbe(
+    LearnerState state,
+    Exercise exercise,
+    DateTime at, {
+    PracticeEntryPolicy? practiceEntryPolicy,
+  }) {
     final memory = state.materialMemory[exercise.material.materialId];
     final established = memory?.establishedIndependence;
     final since = memory?.establishedIndependenceAt;
     if (established == null || since == null) return false;
     if (exercise.guidance.independence != established + 1) return false;
-    if (exercise.conditions.tempoBpm != heldTempoFor(state, exercise)) {
+    if (exercise.conditions.tempoBpm !=
+        heldTempoFor(
+          state,
+          exercise,
+          practiceEntryPolicy: practiceEntryPolicy,
+        )) {
       return false;
     }
     return since.daysUntil(at) >= config.probe.minDaysSinceSupportEstablished;
@@ -791,13 +829,23 @@ class SchedulerPipeline {
   /// success, since after a failure there may be no success to count from, and
   /// the wait is the long one: returning to something that just went wrong is a
   /// question about retention.
-  bool isBootstrapProbe(LearnerState state, Exercise exercise, DateTime at) {
+  bool isBootstrapProbe(
+    LearnerState state,
+    Exercise exercise,
+    DateTime at, {
+    PracticeEntryPolicy? practiceEntryPolicy,
+  }) {
     if (exercise.guidance != GuidanceContext.notesPreviewedOnly) return false;
     final memory = state.materialMemory[exercise.material.materialId];
     if (memory == null || memory.establishedIndependence != null) return false;
     final lastAttempt = memory.lastRetrievalAttemptAt;
     if (lastAttempt == null) return false;
-    if (exercise.conditions.tempoBpm != heldTempoFor(state, exercise)) {
+    if (exercise.conditions.tempoBpm !=
+        heldTempoFor(
+          state,
+          exercise,
+          practiceEntryPolicy: practiceEntryPolicy,
+        )) {
       return false;
     }
     return lastAttempt.daysUntil(at) >= config.probe.minDaysSinceLastRetrieval;
@@ -814,10 +862,16 @@ class SchedulerPipeline {
   bool isObservationProbe(
     LearnerState state,
     Exercise exercise,
-    int supportedAttempts,
-  ) =>
+    int supportedAttempts, {
+    PracticeEntryPolicy? practiceEntryPolicy,
+  }) =>
       exercise.guidance == GuidanceContext.notesPreviewedOnly &&
-      exercise.conditions.tempoBpm == heldTempoFor(state, exercise) &&
+      exercise.conditions.tempoBpm ==
+          heldTempoFor(
+            state,
+            exercise,
+            practiceEntryPolicy: practiceEntryPolicy,
+          ) &&
       supportedAttempts >= config.probe.supportedAttemptsBeforeObservation;
 
   /// The highest eligibility tier that has anything left to introduce, or null
@@ -831,12 +885,18 @@ class SchedulerPipeline {
     LearnerState state,
     List<Exercise> candidates, {
     DecisionFacts? facts,
+    PracticeEntryPolicy? practiceEntryPolicy,
   }) {
     EligibilityTier? best;
     for (final exercise in candidates) {
       if (!isIntroduction(state, exercise)) continue;
       if (!isIntroducible(state, exercise, facts: facts)) continue;
-      final tier = eligibilityFor(state, exercise, facts: facts).tier;
+      final tier = eligibilityFor(
+        state,
+        exercise,
+        facts: facts,
+        practiceEntryPolicy: practiceEntryPolicy,
+      ).tier;
       if (best == null || tier.index > best.index) best = tier;
       if (best == EligibilityTier.fullyEligible) break;
     }
@@ -870,6 +930,7 @@ class SchedulerPipeline {
     required EligibilityTier eligibility,
     required EligibilityTier? introducibleTier,
     DecisionFacts? facts,
+    PracticeEntryPolicy? practiceEntryPolicy,
   }) {
     for (final exception in AdmissionException.values) {
       final verdict = switch (exception) {
@@ -886,7 +947,12 @@ class SchedulerPipeline {
           ChallengeBypass.tempoProbe,
         ),
         AdmissionException.observationProbe =>
-          isObservationProbe(state, exercise, supportedAttempts)
+          isObservationProbe(
+                state,
+                exercise,
+                supportedAttempts,
+                practiceEntryPolicy: practiceEntryPolicy,
+              )
               ? const _Admits(ChallengeBypass.observationProbe)
               : const _Silent(),
         // The slot has nothing appropriate left to introduce, and something
@@ -928,17 +994,32 @@ class SchedulerPipeline {
               // One tempo, and a chosen one: nothing in the ranking key reads
               // tempo, so an unconstrained introduction meets whichever tempo
               // generation happened to list first.
-              : exercise.conditions.tempoBpm != entryTempoFor(state, exercise)
+              : exercise.conditions.tempoBpm !=
+                    entryTempoFor(
+                      state,
+                      exercise,
+                      practiceEntryPolicy: practiceEntryPolicy,
+                    )
               ? const _Refuses()
               : prediction.overallP >= config.challenge.pIntroductionMin
               ? const _Admits(ChallengeBypass.newMaterial)
               : const _Refuses(),
         AdmissionException.guidanceProbe =>
-          isGuidanceProbe(state, exercise, at)
+          isGuidanceProbe(
+                state,
+                exercise,
+                at,
+                practiceEntryPolicy: practiceEntryPolicy,
+              )
               ? const _Admits(ChallengeBypass.guidanceProbe)
               : const _Silent(),
         AdmissionException.bootstrapProbe =>
-          isBootstrapProbe(state, exercise, at)
+          isBootstrapProbe(
+                state,
+                exercise,
+                at,
+                practiceEntryPolicy: practiceEntryPolicy,
+              )
               ? const _Admits(ChallengeBypass.bootstrapProbe)
               : const _Silent(),
 
@@ -990,7 +1071,11 @@ class SchedulerPipeline {
     required List<Exercise> candidates,
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
+    PracticeEntryPolicy? practiceEntryPolicy,
   }) {
+    final entryPolicy =
+        practiceEntryPolicy ??
+        PracticeEntryPolicy.uniform(config.eligibility.gentleTempoBpm);
     final failed = session.lastFailedExercise;
     final target = failed == null ? null : recoveryTarget(failed);
     final probe = target == null ? session.tempoProbe : null;
@@ -1010,7 +1095,12 @@ class SchedulerPipeline {
     // One memo for the slot, so the questions eligibility asks of state alone
     // are answered once rather than once per candidate.
     final facts = DecisionFacts(state);
-    final introducible = introducibleTier(state, refined, facts: facts);
+    final introducible = introducibleTier(
+      state,
+      refined,
+      facts: facts,
+      practiceEntryPolicy: entryPolicy,
+    );
 
     // Guidance changes material availability, but not independent retrieval,
     // execution, coordination, or topology. Generation emits each realization under all
@@ -1040,6 +1130,7 @@ class SchedulerPipeline {
           coordinationCache: coordinationCache,
           topologyCache: topologyCache,
           informationCache: informationCache,
+          practiceEntryPolicy: entryPolicy,
         ),
     ];
   }
@@ -1060,6 +1151,7 @@ class SchedulerPipeline {
     required Map<Exercise, double> coordinationCache,
     required Map<Exercise, double> topologyCache,
     required Map<InformationKey, double> informationCache,
+    required PracticeEntryPolicy practiceEntryPolicy,
   }) {
     final realization = exercise.withGuidance(GuidanceContext.unguided);
     final independentRetrievalP = retrievalCache.putIfAbsent(
@@ -1086,7 +1178,12 @@ class SchedulerPipeline {
     // Ahead of admission rather than beside ranking: the introduction
     // exception reads the tier, so eligibility now decides what may be
     // admitted as well as how admitted candidates are ordered.
-    final eligibility = eligibilityFor(state, exercise, facts: facts);
+    final eligibility = eligibilityFor(
+      state,
+      exercise,
+      facts: facts,
+      practiceEntryPolicy: practiceEntryPolicy,
+    );
     final withinBand = isWithinChallengeBand(prediction);
     final bypass = challengeBypassFor(
       state: state,
@@ -1100,6 +1197,7 @@ class SchedulerPipeline {
       eligibility: eligibility.tier,
       introducibleTier: introducibleTier,
       facts: facts,
+      practiceEntryPolicy: practiceEntryPolicy,
     );
     // A recovery context is exclusive: a candidate that happens to fall in the
     // ordinary band or qualify as new material must not survive alongside the
@@ -1147,7 +1245,7 @@ class SchedulerPipeline {
             realizationFit: realizationFitFor(
               state,
               exercise,
-              gentleTempoBpm: config.eligibility.gentleTempoBpm,
+              practiceEntryPolicy: practiceEntryPolicy,
             ),
           )
         : null;

@@ -12,6 +12,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `PracticeEntryPolicy`, the family-neutral entry-tempo contract used by
+  introduction, gentle admission, unmeasured-realization fit, and probes.
 - Initial port of the KeyRecall V1 scheduler from the Python prototype under
   `analysis/scheduler/`: candidate generation, the eligibility, safety,
   challenge, and priority stages, per-candidate `CandidateTrace` records,
@@ -47,6 +49,8 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Scheduler decisions can consume resolved family entry tempi while retaining
+  the configured gentle tempo as the default for direct callers.
 - Eligibility evaluates family-declared material, hand-configuration, and span
   prerequisites through generic scheduler stages. Execution thresholds use the
   candidate family's competencies, so evidence from another family cannot
