@@ -12,11 +12,16 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- `PracticeBlocked` carries the blocked reason directly, and its full selection
+  only where the decision was computed in this isolate.
 - Candidate assembly deduplicates by material rather than by exercise, which
   removed about 60 ms from every full-catalog decision.
 
 ### Added
 
+- `SchedulerHost`, the seam a session decides through, and `SchedulerVerdict`,
+  one slot's decision reduced to what a session acts on. `InProcessScheduler`
+  keeps the existing behavior and is the default.
 - Resolved practice scopes carry each active material family's entry tempo into
   the generic scheduler policy used for that scope.
 - `ArpeggioPracticePolicy`, which lets simulation vary the provisional initial

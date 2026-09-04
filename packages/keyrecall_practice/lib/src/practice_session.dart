@@ -9,6 +9,7 @@ import 'pending_decision.dart';
 import 'performance_closure.dart';
 import 'practice_store.dart';
 import 'requirement_state.dart';
+import 'scheduler_host.dart';
 import 'scope_resolution.dart';
 
 /// Generates the ids a transaction needs.
@@ -51,11 +52,15 @@ class PresentedAttempt extends PracticeDecision {
 @immutable
 class PracticeBlocked extends PracticeDecision {
   final BlockedReason reason;
-  final SelectionBlocked selection;
+
+  /// Every candidate the slot considered, where it was decided in this
+  /// isolate. Null where a worker decided it, which sends back the reason and
+  /// not ten thousand traces.
+  final SelectionResult? selection;
+
   final ScopeCoverage coverage;
 
-  PracticeBlocked(this.selection, {required this.coverage})
-    : reason = selection.reason;
+  const PracticeBlocked(this.reason, {required this.coverage, this.selection});
 }
 
 /// No requirement in the active scope warrants work now.
@@ -122,6 +127,9 @@ class PracticeSession {
   /// The scheduler in force.
   final SchedulerPipeline pipeline;
 
+  /// Where a decision is computed.
+  final SchedulerHost scheduler;
+
   /// Where history is kept.
   final PracticeStore store;
 
@@ -152,6 +160,7 @@ class PracticeSession {
   PracticeSession._({
     required this.learner,
     required this.pipeline,
+    required this.scheduler,
     required this.store,
     required this.profile,
     required this.sessionId,
@@ -198,6 +207,7 @@ class PracticeSession {
     required List<TechnicalMaterial> materials,
     LearnerModel learner = const LearnerModel(),
     SchedulerPipeline? pipeline,
+    SchedulerHost? scheduler,
     InstrumentProfile? instrument,
     PracticeGoal goal = PracticeGoal.generalFluency,
     PracticeFocus focus = PracticeFocus.unrestricted,
@@ -208,6 +218,7 @@ class PracticeSession {
     IdGenerator? nextId,
   }) async {
     final resolvedPipeline = pipeline ?? SchedulerPipeline(learner: learner);
+    final resolvedScheduler = scheduler ?? InProcessScheduler(resolvedPipeline);
     final generator = nextId ?? newProfileId;
     final journal = await store.loadJournal(
       profile.id,
@@ -241,6 +252,7 @@ class PracticeSession {
     return PracticeSession._(
       learner: learner,
       pipeline: resolvedPipeline,
+      scheduler: resolvedScheduler,
       store: store,
       profile: profile,
       sessionId: sessionId ?? generator(),
@@ -353,7 +365,7 @@ class PracticeSession {
         ? _scopeResolver.acquisitionFloorFor(due.map((state) => state.resolved))
         : null;
 
-    final selection = pipeline.decide(
+    final verdict = await scheduler.decide(
       state: scratch,
       session: _session,
       candidates: candidates,
@@ -361,10 +373,14 @@ class PracticeSession {
       acquisitionFloor: acquisitionFloor,
       practiceEntryPolicy: validScope.entryPolicy,
     );
-    if (selection case final SelectionBlocked blocked) {
-      return PracticeBlocked(blocked, coverage: evaluated.coverage);
+    if (verdict.chosen == null) {
+      return PracticeBlocked(
+        verdict.blockedReason!,
+        selection: verdict.result,
+        coverage: evaluated.coverage,
+      );
     }
-    final chosen = (selection as CandidateSelected).candidate;
+    final chosen = verdict.chosen!;
 
     final decision = PendingDecision(
       attemptId: _nextId(),
