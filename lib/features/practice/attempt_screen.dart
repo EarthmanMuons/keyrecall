@@ -313,16 +313,35 @@ class _RunningTask extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                materialName(exercise.material),
-                style: theme.textTheme.titleMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              // The tempo rides on the identity's line as a small trailing
+              // item, where it takes a predictable amount of room and leaves
+              // the name the rest. It is not part of the name: a tempo is an
+              // execution condition, and joining the two would say a scale at
+              // 60 and the same scale at 100 were different material.
+              Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      materialName(exercise.material),
+                      style: theme.textTheme.titleMedium,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${conditions.tempoBpm.round()} bpm',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
+              // The hand is the mark at the front of the row, so the line
+              // under the name says what is left: how it runs, and how far.
               Text(
                 '${traversalName(conditions)} · '
-                '${octavesName(conditions.octaves)} · '
-                '${conditions.tempoBpm.round()} bpm',
+                '${octavesName(conditions.octaves)}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -425,16 +444,20 @@ class _FocusButton extends ConsumerWidget {
     final plan = ref.watch(practicePlanProvider).value ?? PracticePlan.normal;
     final tooltip = focusButtonLabel(plan);
 
+    // The same glyph either way, so the control keeps one identity. What
+    // changes is the container it sits in and the color of the mark, which is
+    // two cues for one binary state and no new symbol to learn.
     return plan.isFocused
         ? IconButton.filledTonal(
             tooltip: tooltip,
+            color: Theme.of(context).colorScheme.primary,
             onPressed: () => showFocusSheet(context),
             icon: const Icon(Icons.filter_alt),
           )
         : IconButton(
             tooltip: tooltip,
             onPressed: () => showFocusSheet(context),
-            icon: const Icon(Icons.filter_alt_outlined),
+            icon: const Icon(Icons.filter_alt),
           );
   }
 }
