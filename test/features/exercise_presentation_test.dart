@@ -196,6 +196,16 @@ void main() {
       expect(showsPitchCueDuringAttempt(GuidanceContext.unguided), isFalse);
     });
   });
+
+  group('what a material is called in a sentence', () {
+    test('each family uses its own word', () {
+      expect(materialNoun(TechnicalMaterial('C', ScaleForm.major)), 'scale');
+      expect(
+        materialNoun(ArpeggioMaterial('C', ArpeggioQuality.major)),
+        'arpeggio',
+      );
+    });
+  });
 }
 
 /// The MIDI note [steps] white keys above [firstWhiteMidi].

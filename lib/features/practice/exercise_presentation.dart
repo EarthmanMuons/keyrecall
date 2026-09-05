@@ -14,7 +14,16 @@ String materialName(TechnicalMaterial material) => switch (material) {
         '${_inversionName(inversion)} arpeggio',
 };
 
-/// The note the scale is named after, spelled the way it is written.
+/// What this kind of material is called inside a sentence.
+///
+/// The family's own word, because a learner playing an arpeggio is not playing
+/// a scale and copy that says so is copy they have to translate.
+String materialNoun(TechnicalMaterial material) => switch (material) {
+  ScaleMaterial() => 'scale',
+  ArpeggioMaterial() => 'arpeggio',
+};
+
+/// The note the material is named after, spelled the way it is written.
 String tonicName(TechnicalMaterial material) => prettyTonic(material.tonic);
 
 /// Which hand or hands play, as a learner would say it.

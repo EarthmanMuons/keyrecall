@@ -44,7 +44,8 @@ String? reasonForNext({
       final hands? => 'Now $hands, with more of it shown.',
       null =>
         sameMaterial
-            ? 'The same scale again, with more of it shown.'
+            ? 'The same ${materialNoun(next.material)} again, with more of '
+                  'it shown.'
             : 'Going back a step.',
     },
     ChallengeBypass.newMaterial => switch (hands) {
@@ -75,7 +76,8 @@ String? reasonForNext({
       final hands? => 'Now $hands, at the speed you played it.',
       null =>
         sameMaterial
-            ? 'That looked easy. Same scale, at the speed you played it.'
+            ? 'That looked easy. Same ${materialNoun(next.material)}, at the '
+                  'speed you played it.'
             : 'That looked easy, so this one is quicker.',
     },
     ChallengeBypass.acquisitionFloor => switch (hands) {

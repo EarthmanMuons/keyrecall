@@ -43,8 +43,8 @@ List<(String term, String meaning)> taskHelpEntries(Exercise exercise) {
   return <(String term, String meaning)>[
     (
       materialName(exercise.material),
-      'The scale to play. Its notes are the ones the exercise is asking you '
-          'to remember.',
+      'The ${materialNoun(exercise.material)} to play. Its notes are the ones '
+          'the exercise is asking you to remember.',
     ),
     (
       handsName(conditions.hands),

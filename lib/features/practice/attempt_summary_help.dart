@@ -12,8 +12,8 @@ List<(String term, String meaning)> attemptSummaryHelpEntries({
   ('Notes', 'How closely the notes you played matched the exercise.'),
   (
     'Flow',
-    'Whether you kept moving through the scale without stopping or breaking '
-        'it up.',
+    'Whether you kept moving through the exercise without stopping or '
+        'breaking it up.',
   ),
   ('Pulse', 'How evenly the notes were spaced in time.'),
   if (includesCoordination)
