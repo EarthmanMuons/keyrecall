@@ -7,6 +7,7 @@ import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
 import 'goal_emphasis.dart';
 import 'introduction_breadth.dart';
+import 'novelty_load.dart';
 import 'practice_entry_policy.dart';
 import 'priority.dart';
 import 'realization_family_pacing.dart';
@@ -215,7 +216,11 @@ class SchedulerPipeline {
       state,
     );
     var pacing = pace(introductions.selectable, session);
-    var available = pacing.selectable;
+    var available = withNoveltySupported(
+      withoutFreshEcho(pacing.selectable, session),
+      state,
+      config.novelty,
+    );
     var selected = chooseFrom(available, session);
     var blockedReason = BlockedReason.admissionExhausted;
 

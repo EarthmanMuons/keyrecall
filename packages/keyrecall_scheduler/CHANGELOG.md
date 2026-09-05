@@ -12,6 +12,17 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- A novelty-load rule: each execution condition a candidate would be the
+  learner's first of takes a rung of guidance support back, so two arriving
+  together keep the notes on screen and three are met with the material in view.
+  It counts hand configuration, contrary motion, and span, per material, and
+  leaves recovery, tempo probes, and acquisition floors alone. Configured by
+  `SchedulerConfig.novelty` and never empties the available set.
+- A one-slot anti-echo hold on the tempo probe. A probe opened by the attempt
+  just played is held back from the very next slot while anything else is worth
+  doing, and survives into the slot after, where it competes normally.
+  `SessionState.tempoProbeIsFresh` is what ages it.
+
 - `GoalEmphasis`, the weight a focus puts on each material it asks for. `G(e)`
   reads it instead of returning a stub zero, centered so a slot with nothing
   emphasized ranks exactly as before. It enters through `evaluate`,

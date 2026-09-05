@@ -13,6 +13,7 @@ export 'src/candidate_trace.dart';
 export 'src/execution_progression.dart';
 export 'src/goal_emphasis.dart';
 export 'src/introduction_breadth.dart';
+export 'src/novelty_load.dart';
 export 'src/config/scheduler_config.dart';
 export 'src/priority.dart';
 export 'src/practice_entry_policy.dart';

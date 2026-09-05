@@ -356,6 +356,23 @@ class IntroductionConfig {
 /// hold their invariants by assertion; see
 /// `docs/domain-model/validation-boundaries.md`.
 @immutable
+/// How much support a candidate's novel execution conditions ask for.
+///
+/// [independenceAllowance] is the guidance rung a candidate with no novel
+/// condition may reach, and each novel one takes a rung back. At three, one
+/// new way of playing may still be asked for from memory, two keep the notes
+/// on screen, and three are met with the material in view throughout.
+///
+/// Provisional. It is a product decision about first encounters rather than a
+/// measured effect, and the count it reads is deliberately narrow: hand
+/// configuration, motion, and span.
+class NoveltyConfig {
+  final int independenceAllowance;
+
+  const NoveltyConfig({this.independenceAllowance = 3})
+    : assert(independenceAllowance >= 0);
+}
+
 class SchedulerConfig {
   /// Identifier of this configuration, recorded with every decision.
   final String modelVersion;
@@ -381,6 +398,10 @@ class SchedulerConfig {
   /// The introduction cap, or null where breadth is uncapped.
   final IntroductionConfig? introductions;
 
+  /// What novel execution conditions ask of guidance, or null where they ask
+  /// nothing.
+  final NoveltyConfig? novelty;
+
   const SchedulerConfig({
     required this.modelVersion,
     required this.eligibility,
@@ -390,6 +411,7 @@ class SchedulerConfig {
     required this.probe,
     required this.pacing,
     this.introductions,
+    this.novelty,
   });
 
   /// The same policy with [pacing] in force, or unpaced when it is null.
@@ -404,6 +426,7 @@ class SchedulerConfig {
     probe: probe,
     pacing: pacing,
     introductions: introductions,
+    novelty: novelty,
   );
 
   /// The same policy with [introductions] in force, or uncapped when null.
@@ -417,7 +440,21 @@ class SchedulerConfig {
         probe: probe,
         pacing: pacing,
         introductions: introductions,
+        novelty: novelty,
       );
+
+  /// The same policy with [novelty] in force, or unconstrained when null.
+  SchedulerConfig withNovelty(NoveltyConfig? novelty) => SchedulerConfig(
+    modelVersion: modelVersion,
+    eligibility: eligibility,
+    safety: safety,
+    challenge: challenge,
+    diversity: diversity,
+    probe: probe,
+    pacing: pacing,
+    introductions: introductions,
+    novelty: novelty,
+  );
 }
 
 /// The V1 scheduler policy constants.
@@ -466,4 +503,5 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     setAsideAt: 0.15,
     requireReadyAlternative: true,
   ),
+  novelty: NoveltyConfig(),
 );
