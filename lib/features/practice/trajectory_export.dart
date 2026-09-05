@@ -24,6 +24,10 @@ String trajectoryRow(int index, AttemptRecord record) {
     exercise.material.materialId.padRight(18),
     admissionBandOf(exercise.material).id.padRight(22),
     conditions.hands.id.padRight(8),
+    // Motion is what separates two hands moving together from two hands
+    // mirroring each other, which is a different exercise and was invisible
+    // in this table while every column above it read the same.
+    conditions.handMotion.id.padRight(8),
     '${conditions.octaves}oct',
     conditions.direction.id.padRight(7),
     '${conditions.tempoBpm.round()}bpm'.padLeft(7),
@@ -69,6 +73,7 @@ String trajectoryOf(Profile profile, AttemptJournal journal) => [
     'material'.padRight(18),
     'band'.padRight(22),
     'hands'.padRight(8),
+    'motion'.padRight(8),
     'span',
     'direction'.padRight(7),
     'tempo'.padLeft(7),
