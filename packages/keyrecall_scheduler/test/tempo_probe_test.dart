@@ -175,7 +175,97 @@ void main() {
       expect(survivors.single.challengeBypass, ChallengeBypass.recovery);
     });
 
-    test('it lasts exactly one decision', () {
+    test('the slot right after the attempt holds it back', () {
+      // The echo the sitting notices: the same realization, one rung faster,
+      // in the very next slot. It is held rather than dropped.
+      final exercise = at(60);
+      final probe = probeFor(exercise, playedAt(1.7))!;
+      final session = SessionState(tempoProbe: probe, tempoProbeIsFresh: true);
+
+      final result = pipeline.decide(
+        state: stateAt(PlacementTier.advanced),
+        session: session,
+        candidates: allCandidates(),
+        at: t0,
+      );
+
+      expect(result, isA<CandidateSelected>());
+      final chosen = (result as CandidateSelected).candidate.exercise;
+      expect(chosen, isNot(probe), reason: 'something else was worth doing');
+
+      // Closing that attempt is what ages the probe, and it opens none of
+      // its own.
+      pipeline.recordOutcome(session, chosen, playedAt(1.0));
+
+      expect(session.tempoProbe, probe, reason: 'held, not spent');
+      expect(session.tempoProbeIsFresh, isFalse);
+    });
+
+    test('a slot with nothing else in it presents the probe anyway', () {
+      final exercise = at(60);
+      final probe = probeFor(exercise, playedAt(1.7))!;
+      final session = SessionState(tempoProbe: probe, tempoProbeIsFresh: true);
+
+      final result = pipeline.decide(
+        state: stateAt(PlacementTier.beginner),
+        session: session,
+        candidates: [probe],
+        at: t0,
+      );
+
+      expect((result as CandidateSelected).candidate.exercise, probe);
+    });
+
+    test('one intervening attempt is the whole of the wait', () {
+      final exercise = at(60);
+      final probe = probeFor(exercise, playedAt(1.7))!;
+      final session = SessionState(tempoProbe: probe, tempoProbeIsFresh: true);
+
+      // The intervening attempt, which opens no probe of its own.
+      session.recordSelection(
+        exerciseFor(materials[1]),
+        retrievalObserved: true,
+        retrievalFailed: false,
+        config: config.diversity,
+      );
+
+      expect(session.tempoProbe, probe);
+      expect(session.tempoProbeIsFresh, isFalse);
+
+      final traces = pipeline.evaluate(
+        state: stateAt(PlacementTier.advanced),
+        session: session,
+        candidates: allCandidates(),
+        at: t0,
+      );
+      final probed = traces.where(
+        (trace) => trace.challengeBypass == ChallengeBypass.tempoProbe,
+      );
+
+      expect(probed.map((trace) => trace.exercise), [probe]);
+    });
+
+    test('a newer underchallenge replaces the one being held', () {
+      final probe = probeFor(at(60), playedAt(1.7))!;
+      final session = SessionState(tempoProbe: probe, tempoProbeIsFresh: true);
+      final newer = probeFor(
+        exerciseFor(materials[1], tempoBpm: 60),
+        playedAt(1.7),
+      )!;
+
+      session.recordSelection(
+        exerciseFor(materials[1], tempoBpm: 60),
+        retrievalObserved: true,
+        retrievalFailed: false,
+        tempoProbe: newer,
+        config: config.diversity,
+      );
+
+      expect(session.tempoProbe, newer);
+      expect(session.tempoProbeIsFresh, isTrue);
+    });
+
+    test('it lasts exactly one decision it could win', () {
       final session = SessionState(tempoProbe: at(100));
 
       session.recordSelection(

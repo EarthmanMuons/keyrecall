@@ -32,6 +32,15 @@ class SessionState {
   /// specific harder question, not a general license to pick something harder.
   Exercise? tempoProbe;
 
+  /// Whether [tempoProbe] was opened by the attempt just recorded.
+  ///
+  /// A fresh probe is the same exercise the learner has this second finished,
+  /// one rung faster. Asking for it immediately is the echo a sitting notices:
+  /// it reads as the app repeating itself rather than as verification. The
+  /// slot after holds it back while anything else is worth doing, and the slot
+  /// after that lets it compete like any other candidate.
+  bool tempoProbeIsFresh;
+
   /// Attempts in a row under support, without retrieval being observed at all.
   ///
   /// Continuous cueing never observes retrieval, so practice under it produces
@@ -63,6 +72,7 @@ class SessionState {
     List<String>? recentMaterialIds,
     this.lastFailedExercise,
     this.tempoProbe,
+    this.tempoProbeIsFresh = false,
     this.supportedAttemptsSinceObservation = 0,
     this.unservedGuidanceProbeSelections = 0,
     List<FamilyObservation>? recentFamilies,
@@ -79,8 +89,10 @@ class SessionState {
   /// clears the context like a success does.
   ///
   /// [tempoProbe] is the harder exercise to ask for next when this one was
-  /// clearly too easy, and null otherwise. Like the recovery context it lasts
-  /// exactly one decision.
+  /// clearly too easy, and null otherwise. It lasts one decision it could win:
+  /// a probe held back from the slot right after the attempt that opened it
+  /// survives into the next one, where nothing holds it back. A newer probe
+  /// replaces it, because the most recent underchallenge is the live question.
   ///
   /// [retrievalObserved] says whether the attempt was at a rung that could have
   /// shown retrieval succeeding or failing, whichever it did.
@@ -95,7 +107,17 @@ class SessionState {
         ? 0
         : supportedAttemptsSinceObservation + 1;
     lastFailedExercise = retrievalFailed ? exercise : null;
-    this.tempoProbe = tempoProbe;
+    if (tempoProbe != null) {
+      this.tempoProbe = tempoProbe;
+      tempoProbeIsFresh = true;
+    } else if (tempoProbeIsFresh && exercise != this.tempoProbe) {
+      // Held back rather than taken, so it is no longer an echo of the attempt
+      // that has just been played and competes from here.
+      tempoProbeIsFresh = false;
+    } else {
+      this.tempoProbe = null;
+      tempoProbeIsFresh = false;
+    }
     recentMaterialIds.add(exercise.material.materialId);
     while (recentMaterialIds.length > config.recentWindow) {
       recentMaterialIds.removeAt(0);

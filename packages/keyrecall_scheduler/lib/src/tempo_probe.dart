@@ -1,7 +1,32 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
+import 'session_state.dart';
+
+/// What the slot may choose between, with a fresh echo held back.
+///
+/// A probe opened by the attempt that has just been played asks for the same
+/// realization one rung faster. Verifying that pace is worth a slot; verifying
+/// it in the very next slot is the app repeating itself, and one intervening
+/// attempt is the whole of what separates the two.
+///
+/// Held back only while something else is worth doing. A slot with nothing but
+/// the probe in it presents the probe: the alternative is presenting nothing,
+/// and the pace still wants verifying.
+List<CandidateTrace> withoutFreshEcho(
+  List<CandidateTrace> selectable,
+  SessionState session,
+) {
+  final probe = session.tempoProbe;
+  if (probe == null || !session.tempoProbeIsFresh) return selectable;
+  final rest = [
+    for (final trace in selectable)
+      if (trace.exercise != probe) trace,
+  ];
+  return rest.isEmpty ? selectable : rest;
+}
 
 /// Whether [outcome] shows [exercise] was clearly too easy.
 ///
