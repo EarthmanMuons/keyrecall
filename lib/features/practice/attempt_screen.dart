@@ -174,6 +174,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           // the previous attempt's phase.
           key: ValueKey(attemptId),
           exercise: value.exercise!,
+          metBefore: value.hasMet(value.exercise!.material),
           onFinish: (termination) => notifier.finish(termination: termination),
           onDecline: notifier.decline,
           onUnderWay: () => setState(() => _playing = attemptId),
@@ -516,6 +517,7 @@ class AttemptView extends ConsumerStatefulWidget {
     this.onUnderWay,
     this.onBackToReady,
     this.presentation,
+    this.metBefore = true,
     super.key,
   });
 
@@ -541,6 +543,14 @@ class AttemptView extends ConsumerStatefulWidget {
   /// choosing. Only the debug case list passes this, to compare one exercise
   /// in more than one modality.
   final PresentationConditions? presentation;
+
+  /// Whether this material has ever been presented to this learner.
+  ///
+  /// Only the words change. Nothing can be forgotten that was never shown, so
+  /// saying so on a first meeting asks somebody to accept a failure that is
+  /// not theirs, at the moment KeyRecall is deliberately probing past what it
+  /// has seen them do.
+  final bool metBefore;
 
   @override
   ConsumerState<AttemptView> createState() => _AttemptViewState();
@@ -1064,9 +1074,10 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           TextButton(
             onPressed: _decline,
             child: Text(
-              widget.exercise.guidance.independence == 1
-                  ? "I can't play this from memory"
-                  : "I don't remember",
+              declineLabel(
+                widget.exercise.guidance,
+                metBefore: widget.metBefore,
+              ),
             ),
           ),
         ],

@@ -197,6 +197,33 @@ void main() {
     });
   });
 
+  group('the way out of an attempt', () {
+    test('is about playing where the notes were studied first', () {
+      // The previewed rung showed them, so what is in question is producing
+      // them again rather than knowing them at all.
+      expect(
+        declineLabel(GuidanceContext.notesPreviewedOnly, metBefore: true),
+        "I can't play this from memory",
+      );
+      expect(
+        declineLabel(GuidanceContext.notesPreviewedOnly, metBefore: false),
+        "I can't play this from memory",
+      );
+    });
+
+    test('is about forgetting only where there is something to forget', () {
+      expect(
+        declineLabel(GuidanceContext.unguided, metBefore: true),
+        "I don't remember",
+      );
+      expect(
+        declineLabel(GuidanceContext.unguided, metBefore: false),
+        "I don't know this yet",
+        reason: 'nothing shown for the first time can have been forgotten',
+      );
+    });
+  });
+
   group('what a material is called in a sentence', () {
     test('each family uses its own word', () {
       expect(materialNoun(TechnicalMaterial('C', ScaleForm.major)), 'scale');

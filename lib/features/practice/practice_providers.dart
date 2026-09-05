@@ -423,6 +423,16 @@ class PracticeLoopState {
 
   /// How many attempts this profile has recorded, ever.
   int get attemptsRecorded => session.journal.records.length;
+
+  /// Whether [material] has ever been presented to this learner.
+  ///
+  /// Presented rather than learned: what it answers is whether a screen may
+  /// say the learner has forgotten something, and nothing shown for the first
+  /// time can have been forgotten. The attempt on screen is not in the journal
+  /// yet, so this reads as of the moment it was decided.
+  bool hasMet(TechnicalMaterial material) => session.journal.records.any(
+    (record) => record.exercise.material.materialId == material.materialId,
+  );
 }
 
 /// Drives the practice loop: decide, present, collect, commit, decide again.
