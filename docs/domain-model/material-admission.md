@@ -102,6 +102,29 @@ band. That is a choice about what to teach first rather than a claim that it is
 motor-difficult: its fingering is the harmonic minor's everywhere except the two
 right hands the raised sixth changes.
 
+Arpeggios are banded by rule rather than by table, because what changes from one
+root-position arpeggio to the next is where the hand sits rather than which
+syllabus grade names it:
+
+| Band                  | Arpeggios                               |
+| --------------------- | --------------------------------------- |
+| Foundation            | every tone a white key                  |
+| Early transfer        | white root, black keys inside the shape |
+| Intermediate keyboard | black root, still a white key inside    |
+| Advanced keyboard     | every tone a black key                  |
+
+A white-key triad is played thumb on its root. A black root is what forces the
+second finger to start and the thumb to find a white key inside the shape, which
+is a new motor pattern rather than a new key signature. The rule places six
+arpeggios at foundation: C, G and F major, and A, D and E minor. It is a prior
+like the scale table above and not a difficulty measurement, and it stands until
+the arpeggio pedagogy pass revisits the memberships.
+
+A material neither family places falls to the latest band. That is the
+conservative reading of having no evidence: before this rule existed, every
+arpeggio answered `foundation` by falling through the scale lookup, and a
+beginner's first device session was offered C sharp minor and D flat major.
+
 The bands are not a sequence to march through. Interleaving within and across a
 band is the point, and both Faber and Piano Marvel argue for working a group of
 scales together rather than perfecting one before touching the next.

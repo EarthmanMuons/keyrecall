@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- `admissionBandOf` places arpeggios by the geography of their chord rather than
+  answering `foundation` for everything without a scale form. A white-key triad
+  is foundation material, a white root with black keys inside it is early
+  transfer, a black root is later still, and an all-black triad is the latest
+  band. Material neither family places now falls to the latest band, as the
+  documented intent already said.
+
 ### Added
 
 - `Exercise.hashCode` is computed once per exercise rather than on every lookup.
