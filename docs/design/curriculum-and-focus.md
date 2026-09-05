@@ -280,6 +280,18 @@ installed catalog, and is read before a sitting opens so the first slot of a run
 is decided under it. Changing it reopens the sitting; an outstanding attempt is
 unaffected, because its decision is already durable and returns as pending.
 
+Where each of them lives is part of what they mean. A goal is durable, so it
+sits behind the menu with the rest of what is true between sittings. A focus is
+temporary and about the next exercise, so it is one control on the practice
+screen itself. Nothing holds both, because a page that did taught that they were
+the same kind of thing.
+
+The focus control is an icon rather than a row, and says nothing at all while
+none is set: practicing normally is the ordinary state of the app and not a mode
+anybody has to manage. An active focus is shown as selected rather than merely
+different, since the learner who needs it is the one returning days later
+wondering why they keep being asked for minor material.
+
 The surface has three layers, and the default one is not a control:
 
 ```text

@@ -6,6 +6,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/input/input.dart';
+import 'package:keyrecall/features/practice/focus_sheet.dart';
 import 'package:keyrecall/features/practice/practice_focus.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
@@ -168,6 +169,26 @@ void main() {
     await container.read(practicePlanProvider.notifier).practiceNormally();
 
     expect(container.read(practicePlanProvider).value!.isFocused, isFalse);
+  });
+
+  test('the focus control says its state where the icon cannot', () {
+    expect(focusButtonLabel(PracticePlan.normal), 'Practice focus. None set.');
+    expect(
+      focusButtonLabel(PracticePlan.normal.focusedOn(_minorMaterial)),
+      'Practice focus. Minor material.',
+    );
+    expect(
+      focusButtonLabel(
+        PracticePlan.normal.focusedOn(
+          ActiveFocus(
+            label: '3 materials',
+            strength: FocusStrength.exclusive,
+            material: MaterialFocus(tonics: {'A'}),
+          ),
+        ),
+      ),
+      'Practice focus. Only 3 materials.',
+    );
   });
 
   test('suggestions describe the catalog rather than a fixed taxonomy', () {

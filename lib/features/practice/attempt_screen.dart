@@ -20,11 +20,11 @@ import 'attempt_transcript.dart';
 import 'developer_screen.dart';
 import 'exercise_presentation.dart';
 import 'fingering.dart';
-import 'focus_bar.dart';
+import 'focus_sheet.dart';
 import 'hands_icon.dart';
 import 'latency_probe.dart';
 import 'loop_failure.dart';
-import 'practice_plan_screen.dart';
+import 'goal_screen.dart';
 import 'practice_providers.dart';
 import 'presentation_policy.dart';
 import 'profile_avatar.dart';
@@ -168,34 +168,18 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
       appBar: _PracticeAppBar(
         running: _playing == null ? null : loop.value?.exercise,
       ),
-      // The strip goes over whatever the loop produced, and only while nothing
-      // is being played: what it says is about the next exercise, and during
-      // one it would be a control nobody can reach.
       body: switch (loop) {
-        AsyncData(:final value) when value.exercise != null => Column(
-          children: [
-            if (_playing == null) const FocusBar(),
-            Expanded(
-              child: AttemptView(
-                // A new decision restarts the view at Ready rather than
-                // inheriting the previous attempt's phase.
-                key: ValueKey(attemptId),
-                exercise: value.exercise!,
-                onFinish: (termination) =>
-                    notifier.finish(termination: termination),
-                onDecline: notifier.decline,
-                onUnderWay: () => setState(() => _playing = attemptId),
-                onBackToReady: () => setState(() => _playing = null),
-              ),
-            ),
-          ],
+        AsyncData(:final value) when value.exercise != null => AttemptView(
+          // A new decision restarts the view at Ready rather than inheriting
+          // the previous attempt's phase.
+          key: ValueKey(attemptId),
+          exercise: value.exercise!,
+          onFinish: (termination) => notifier.finish(termination: termination),
+          onDecline: notifier.decline,
+          onUnderWay: () => setState(() => _playing = attemptId),
+          onBackToReady: () => setState(() => _playing = null),
         ),
-        AsyncData(:final value) => Column(
-          children: [
-            const FocusBar(),
-            Expanded(child: _NothingToPlay(state: value)),
-          ],
-        ),
+        AsyncData(:final value) => _NothingToPlay(state: value),
         AsyncError(:final error, :final stackTrace) => LoopFailure(
           error: error,
           stackTrace: stackTrace,
@@ -279,6 +263,9 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // First, because it is the only one of these about what is
+                // practiced rather than about the app around it.
+                const _FocusButton(),
                 // Only when MIDI is the source: reading the connection
                 // state starts the Bluetooth stack, which the synthetic
                 // instrument has no use for.
@@ -381,14 +368,12 @@ class _MenuButton extends StatelessWidget {
       ),
       PopupMenuItem(
         value: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (context) => const PracticePlanScreen(),
-          ),
+          MaterialPageRoute<void>(builder: (context) => const GoalScreen()),
         ),
         child: const ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.flag_outlined),
-          title: Text('Goals & focus'),
+          title: Text('Goal'),
         ),
       ),
       // Temporary, and deliberately not behind the build-mode check the
@@ -423,6 +408,35 @@ class _MenuButton extends StatelessWidget {
         ),
     ],
   );
+}
+
+/// What practice is drawing from, and the way to change it.
+///
+/// An icon rather than a row across the screen. A focus is exceptional intent
+/// and practicing normally is not a mode anybody has to manage, so the default
+/// state should take no room and say nothing. Selected styling is what an
+/// active focus gets: somebody returning three days later has to be able to
+/// see that something is in force, and the label says which.
+class _FocusButton extends ConsumerWidget {
+  const _FocusButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final plan = ref.watch(practicePlanProvider).value ?? PracticePlan.normal;
+    final tooltip = focusButtonLabel(plan);
+
+    return plan.isFocused
+        ? IconButton.filledTonal(
+            tooltip: tooltip,
+            onPressed: () => showFocusSheet(context),
+            icon: const Icon(Icons.filter_alt),
+          )
+        : IconButton(
+            tooltip: tooltip,
+            onPressed: () => showFocusSheet(context),
+            icon: const Icon(Icons.filter_alt_outlined),
+          );
+  }
 }
 
 /// Whether an instrument is connected, and the way to connect one.

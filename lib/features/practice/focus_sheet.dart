@@ -7,6 +7,15 @@ import 'material_focus_screen.dart';
 import 'practice_focus.dart';
 import 'practice_providers.dart';
 
+/// Whether a focus is in force, and what it is called, for a screen reader.
+///
+/// The control is an icon, so the state it carries has to be said somewhere.
+String focusButtonLabel(PracticePlan plan) => switch (plan.focus) {
+  null => 'Practice focus. None set.',
+  final focus when focus.isExclusive => 'Practice focus. Only ${focus.label}.',
+  final focus => 'Practice focus. ${focus.label}.',
+};
+
 /// What KeyRecall should draw from for now.
 ///
 /// Practicing normally is first and is the ordinary answer. The named focuses
