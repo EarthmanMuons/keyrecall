@@ -9,6 +9,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
+import 'attempt_diagnosis.dart';
 import 'attempt_feedback.dart';
 import 'attempt_transcript.dart';
 import 'profile_color.dart';
@@ -608,6 +609,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           termination: termination,
           observedWallTime: DateTime.now().toUtc(),
         );
+        await _recordCoordination(closed.record, closed.reading);
         return _decide(
           PracticeLoopState(
             profile: current.profile,
@@ -695,6 +697,56 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         progressEvents: progress.map((event) => event.type),
       ),
     );
+  }
+
+  /// Logs how far apart the hands arrived, for the calibration question about
+  /// what "together" should mean.
+  ///
+  /// Instrumentation rather than evidence, so a failed write is swallowed: the
+  /// attempt is already history, and losing a diagnostic line must not fail the
+  /// screen or the loop that produced it.
+  Future<void> _recordCoordination(
+    AttemptRecord record,
+    PerformanceReading? reading,
+  ) async {
+    final measurement = reading?.measurement;
+    if (measurement == null || measurement.handAsynchronies.isEmpty) return;
+    final measured = record.closure.measurement;
+    if (measured is! Measured) return;
+    final outcome = measured.outcome;
+
+    try {
+      final store = await ref.read(practiceStoreProvider.future);
+      final conditions = record.exercise.conditions;
+      await store.appendCoordinationSample(
+        CoordinationSample(
+          profileId: record.profileId,
+          attemptId: record.identity.attemptId,
+          observedAt: record.identity.occurredAt,
+          materialId: record.exercise.material.materialId,
+          familyId: record.exercise.material.familyId,
+          hands: conditions.hands.id,
+          handMotion: conditions.handMotion.id,
+          direction: conditions.direction.id,
+          octaves: conditions.octaves,
+          tempoBpm: conditions.tempoBpm,
+          achievedTempoRatio: outcome.achievedTempoRatio,
+          guidanceIndependence: record.exercise.guidance.independence,
+          coordinationScore: measurement.coordination ?? 1,
+          synchronizedAsynchronyMs: measurement.policy.synchronizedAsynchronyMs,
+          reportedAsFault:
+              diagnose(
+                exercise: record.exercise,
+                closure: record.closure,
+                reading: reading,
+              )?.fault ==
+              AttemptFault.coordination,
+          moments: measurement.handAsynchronies,
+        ),
+      );
+    } catch (_) {
+      // A diagnostic log nobody is waiting on.
+    }
   }
 
   Future<void> recordAttemptDetailsViewed(AttemptRecord record) async {

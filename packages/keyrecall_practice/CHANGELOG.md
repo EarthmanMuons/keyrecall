@@ -24,6 +24,16 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `CoordinationSample` and the store's coordination log, one append-only
+  diagnostic line per measured two-hand attempt. It keeps every measurable
+  moment's signed spread with its position, beside the realization, the achieved
+  tempo, the coordination score, the synchronized bound in force, and whether
+  the learner was told the hands came apart. Nothing replays it, erasing a
+  profile takes it along, and a failed write leaves the attempt alone: the
+  attempt record keeps a blended score that cannot be read back as the
+  milliseconds it came from, and whether that bound is the right one is a
+  question about the distribution.
+
 - `PracticePlan`, what one profile is working toward and what it is drawing from
   now, with `MaterialFocus` expressing a focus as material characteristics
   rather than as a list of ids. It resolves against a catalog into the goal and

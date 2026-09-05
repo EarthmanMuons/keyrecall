@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'coordination_log.dart';
 import 'feedback_exposure.dart';
 import 'pending_decision.dart';
 import 'practice_plan.dart';
@@ -18,6 +19,7 @@ import 'profile_write_queue.dart';
 /// <root>/<profileId>/pending.json      one slot, replaced or removed
 /// <root>/<profileId>/checkpoint.json   one slot, replaced
 /// <root>/<profileId>/plan.json         one slot, replaced
+/// <root>/<profileId>/coordination.jsonl append-only diagnostic log
 /// ```
 ///
 /// The directory is shared with the profile's own record of itself, which the
@@ -205,6 +207,47 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
+  Future<List<CoordinationSample>> loadCoordinationSamples(String profileId) =>
+      _queue.run(profileId, () => _loadCoordinationSamples(profileId));
+
+  Future<List<CoordinationSample>> _loadCoordinationSamples(
+    String profileId,
+  ) async {
+    await _recoverErase(profileId);
+    final file = _coordinationFile(profileId);
+    if (!file.existsSync()) return const [];
+    final contents = await _readCompleteContents(file);
+    if (contents.isEmpty) return const [];
+    try {
+      return [
+        for (final line in const LineSplitter().convert(contents))
+          CoordinationSample.fromJson(
+            asMap(jsonDecode(line), 'coordination sample', location: file.path),
+          ),
+      ];
+    } on FormatException catch (error) {
+      throw JournalFormatException(
+        'coordination sample is not valid JSON: ${error.message}',
+        location: file.path,
+      );
+    }
+  }
+
+  @override
+  Future<void> appendCoordinationSample(CoordinationSample sample) =>
+      _queue.run(sample.profileId, () => _appendCoordinationSample(sample));
+
+  Future<void> _appendCoordinationSample(CoordinationSample sample) async {
+    await _recoverErase(sample.profileId);
+    final file = _coordinationFile(sample.profileId);
+    await file.parent.create(recursive: true);
+    await _repairTornTail(file);
+    final existing = await _loadCoordinationSamples(sample.profileId);
+    if (existing.any((held) => held.attemptId == sample.attemptId)) return;
+    await _appendLine(file, canonicalJson(sample.toJson()));
+  }
+
+  @override
   Future<PracticePlan?> loadPracticePlan(String profileId) =>
       _queue.run(profileId, () => _loadPracticePlan(profileId));
 
@@ -362,6 +405,7 @@ class FilePracticeStore implements PracticeStore {
       _checkpointFile(profileId),
       _feedbackFile(profileId),
       _planFile(profileId),
+      _coordinationFile(profileId),
       File('${_pendingFile(profileId).path}.tmp'),
       File('${_checkpointFile(profileId).path}.tmp'),
       File('${_planFile(profileId).path}.tmp'),
@@ -394,6 +438,9 @@ class FilePracticeStore implements PracticeStore {
 
   File _checkpointFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/checkpoint.json');
+
+  File _coordinationFile(String profileId) =>
+      File('${_profileDirectory(profileId).path}/coordination.jsonl');
 
   File _planFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/plan.json');

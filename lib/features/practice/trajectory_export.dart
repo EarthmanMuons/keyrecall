@@ -83,6 +83,61 @@ String trajectoryOf(Profile profile, AttemptJournal journal) => [
     trajectoryRow(index, record),
 ].join('\n');
 
+/// The coordination log as a table, one line per measured two-hand attempt.
+///
+/// Instrumentation rather than history, so it is written beside the trajectory
+/// rather than into it: what it answers is whether the synchronized bound is
+/// the right bound, and that is a question about milliseconds the attempt
+/// record does not keep. The per-moment series is on the line, since which
+/// hand led and where the spread sat are the parts a median cannot answer.
+String coordinationTableOf(
+  Profile profile,
+  List<CoordinationSample> samples,
+) => [
+  'profile   ${profile.displayName} (${profile.id})',
+  'samples   ${samples.length}',
+  '',
+  'diagnostic instrumentation, not learner evidence',
+  'asynchrony is right minus left, in milliseconds, at each measurable moment',
+  '',
+  [
+    'attempt'.padRight(36),
+    'material'.padRight(24),
+    'hands'.padRight(8),
+    'motion'.padRight(9),
+    'span',
+    'tempo'.padLeft(7),
+    'played'.padLeft(7),
+    'rung',
+    'median'.padLeft(7),
+    'p90'.padLeft(6),
+    'bound'.padLeft(6),
+    'loose'.padLeft(6),
+    'told'.padRight(5),
+    'moments',
+  ].join(' '),
+  for (final sample in samples)
+    [
+      sample.attemptId.padRight(36),
+      sample.materialId.padRight(24),
+      sample.hands.padRight(8),
+      sample.handMotion.padRight(9),
+      '${sample.octaves}oct',
+      '${sample.tempoBpm.round()}bpm'.padLeft(7),
+      '${(sample.tempoBpm * sample.achievedTempoRatio).round()}bpm'.padLeft(7),
+      'g=${sample.guidanceIndependence}',
+      '${sample.medianAbsoluteMs.round()}ms'.padLeft(7),
+      '${sample.p90AbsoluteMs.round()}ms'.padLeft(6),
+      '${sample.synchronizedAsynchronyMs.round()}ms'.padLeft(6),
+      '${sample.looseMoments}/${sample.moments.length}'.padLeft(6),
+      (sample.reportedAsFault ? 'yes' : 'no').padRight(5),
+      [
+        for (final moment in sample.moments)
+          '${moment.position}:${moment.asynchronyMs}',
+      ].join(','),
+    ].join(' '),
+].join('\n');
+
 /// Writes the active profile's trajectory where the Files app and Finder can
 /// reach it.
 ///
@@ -113,5 +168,13 @@ Future<String> exportTrajectory(WidgetRef ref) async {
   );
   final file = File('${directory.path}/$stamp-${profile.displayName}.txt')
     ..writeAsStringSync(trajectoryOf(profile, journal));
+
+  // Beside it rather than in it, and only when a two-hand attempt has been
+  // measured: an empty table is a file somebody has to open to learn nothing.
+  final samples = await store.loadCoordinationSamples(profile.id);
+  if (samples.isNotEmpty) {
+    File('${directory.path}/$stamp-${profile.displayName}-coordination.txt')
+        .writeAsStringSync(coordinationTableOf(profile, samples));
+  }
   return file.path;
 }

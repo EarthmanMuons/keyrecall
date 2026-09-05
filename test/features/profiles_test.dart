@@ -228,6 +228,14 @@ class _FailingEraseStore implements PracticeStore {
       inner.saveCheckpoint(checkpoint);
 
   @override
+  Future<List<CoordinationSample>> loadCoordinationSamples(String profileId) =>
+      inner.loadCoordinationSamples(profileId);
+
+  @override
+  Future<void> appendCoordinationSample(CoordinationSample sample) =>
+      inner.appendCoordinationSample(sample);
+
+  @override
   Future<PracticePlan?> loadPracticePlan(String profileId) =>
       inner.loadPracticePlan(profileId);
 

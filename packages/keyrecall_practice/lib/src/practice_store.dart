@@ -1,5 +1,6 @@
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 
+import 'coordination_log.dart';
 import 'feedback_exposure.dart';
 import 'pending_decision.dart';
 import 'practice_plan.dart';
@@ -16,6 +17,9 @@ import 'practice_plan.dart';
 ///   resolved rather than guessed at.
 /// - **Checkpoints** are a single overwritable slot per profile, and losing one
 ///   costs only replay time.
+/// - **Coordination samples** are an append-only diagnostic log, not evidence.
+///   Nothing replays them and losing them costs only the ability to look back
+///   at how far apart the hands actually arrived.
 /// - **A practice plan** is a single overwritable slot per profile. It is
 ///   intent rather than evidence: what the learner is working toward and what
 ///   they asked to draw from, which nothing in the journal can reconstruct.
@@ -78,6 +82,14 @@ abstract interface class PracticeStore {
   /// Called after the attempt is committed, or after it is abandoned.
   Future<void> clearPendingDecision(String profileId);
 
+  /// Every coordination sample recorded for [profileId], oldest first.
+  Future<List<CoordinationSample>> loadCoordinationSamples(String profileId);
+
+  /// Appends [sample] to that profile's diagnostic log.
+  ///
+  /// Idempotent on the attempt id: an attempt observes its hands once.
+  Future<void> appendCoordinationSample(CoordinationSample sample);
+
   /// What [profileId] is working toward, or null where nobody has said.
   ///
   /// Absent is not the same as the default plan: a caller that wants to know
@@ -111,6 +123,7 @@ class InMemoryPracticeStore implements PracticeStore {
   final Map<String, PendingDecision> _pending = {};
   final Map<String, LearnerStateCheckpoint> _checkpoints = {};
   final Map<String, PracticePlan> _plans = {};
+  final Map<String, Map<String, CoordinationSample>> _coordination = {};
   final Map<String, Map<(String, PostAttemptFeedback), FeedbackExposure>>
   _feedback = {};
 
@@ -166,6 +179,18 @@ class InMemoryPracticeStore implements PracticeStore {
   }
 
   @override
+  Future<List<CoordinationSample>> loadCoordinationSamples(
+    String profileId,
+  ) async => List.unmodifiable(_coordination[profileId]?.values ?? const []);
+
+  @override
+  Future<void> appendCoordinationSample(CoordinationSample sample) async {
+    _coordination
+        .putIfAbsent(sample.profileId, () => {})
+        .putIfAbsent(sample.attemptId, () => sample);
+  }
+
+  @override
   Future<PracticePlan?> loadPracticePlan(String profileId) async =>
       _plans[profileId];
 
@@ -190,6 +215,7 @@ class InMemoryPracticeStore implements PracticeStore {
     _checkpoints.remove(profileId);
     _feedback.remove(profileId);
     _plans.remove(profileId);
+    _coordination.remove(profileId);
   }
 
   AttemptJournal _journalFor(String profileId, DateTime? createdAt) =>

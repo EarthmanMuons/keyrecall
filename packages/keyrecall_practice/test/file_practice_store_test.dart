@@ -23,6 +23,8 @@ void main() {
   File pendingFile() => File('${root.path}/${alice.id}/pending.json');
   File checkpointFile() => File('${root.path}/${alice.id}/checkpoint.json');
   File feedbackFile() => File('${root.path}/${alice.id}/feedback.jsonl');
+  File coordinationFile() =>
+      File('${root.path}/${alice.id}/coordination.jsonl');
   File eraseMarker() => File('${root.path}/${alice.id}/practice-erasing');
 
   test('a profile id cannot escape the storage root', () async {
@@ -36,6 +38,56 @@ void main() {
       throwsArgumentError,
     );
     expect(escaped.existsSync(), isFalse);
+  });
+
+  group('the coordination log', () {
+    CoordinationSample sampleFor(String attemptId) => CoordinationSample(
+      profileId: alice.id,
+      attemptId: attemptId,
+      observedAt: DateTime.utc(2026, 9, 5),
+      materialId: 'C_MAJOR',
+      familyId: 'SCALE',
+      hands: 'TOGETHER',
+      handMotion: 'PARALLEL',
+      direction: 'UP_DOWN',
+      octaves: 1,
+      tempoBpm: 60,
+      achievedTempoRatio: 1,
+      guidanceIndependence: 2,
+      coordinationScore: 0.9,
+      synchronizedAsynchronyMs: 30,
+      reportedAsFault: false,
+      moments: const [
+        (position: 0, asynchronyMs: 8),
+        (position: 1, asynchronyMs: -44),
+      ],
+    );
+
+    test(
+      'samples survive the process, in the order they were played',
+      () async {
+        final store = FilePracticeStore(root);
+
+        await store.appendCoordinationSample(sampleFor('first'));
+        await store.appendCoordinationSample(sampleFor('second'));
+
+        final read = await FilePracticeStore(
+          root,
+        ).loadCoordinationSamples(alice.id);
+        expect(read.map((sample) => sample.attemptId), ['first', 'second']);
+        expect(read.first.moments, hasLength(2));
+      },
+    );
+
+    test('an erase takes the log without touching the profile', () async {
+      final store = FilePracticeStore(root);
+      await store.appendCoordinationSample(sampleFor('first'));
+
+      await store.erase(alice.id);
+
+      expect(coordinationFile().existsSync(), isFalse);
+      expect(await store.loadCoordinationSamples(alice.id), isEmpty);
+    });
   });
 
   group('durability', () {
