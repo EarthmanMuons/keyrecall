@@ -212,6 +212,25 @@ void main() {
       return transcript;
     }
 
+    /// Both hands on the beat, the right hand [spreadMs] behind at [moments].
+    PerformanceTranscript withSpreadAt(
+      Set<int> looseMoments, {
+      required int spreadMs,
+    }) {
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, moment) in moments.indexed) {
+        final at = index * 1000;
+        final spread = looseMoments.contains(index) ? spreadMs : 0;
+        for (final hand in Hand.values) {
+          transcript = transcript.appending(
+            pitch: moment.noteFor(hand)!.pitch,
+            timestampMs: hand == Hand.right ? at + spread : at,
+          );
+        }
+      }
+      return transcript;
+    }
+
     test('together the whole way is its own clean sentence', () {
       final diagnosis = diagnosisOf(withSpread(from: 0), of: together);
 
@@ -229,6 +248,64 @@ void main() {
       );
 
       expect(diagnosis.fault, AttemptFault.coordination);
+      expect(
+        diagnosis.sentence,
+        'Both hands had the notes, but they came apart on the way down.',
+      );
+    });
+
+    test('one loose moment is not a claim about a segment', () {
+      // Short enough that one loose moment reaches the tail the coordination
+      // score reads, which is what makes this the case the rule is about.
+      final ascending = Exercise.linear(
+        material: material,
+        hands: HandConfiguration.together,
+        octaves: 1,
+        direction: ExerciseDirection.up,
+        tempoBpm: 60,
+      );
+      final ascent = realize(ascending).moments;
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, moment) in ascent.indexed) {
+        final at = index * 1000;
+        final spread = index == ascent.length - 1 ? 200 : 0;
+        for (final hand in Hand.values) {
+          transcript = transcript.appending(
+            pitch: moment.noteFor(hand)!.pitch,
+            timestampMs: hand == Hand.right ? at + spread : at,
+          );
+        }
+      }
+
+      final diagnosis = diagnosisOf(transcript, of: ascending);
+
+      expect(diagnosis.fault, AttemptFault.coordination);
+      expect(
+        diagnosis.sentence,
+        'Both hands had the notes, but they came apart.',
+        reason: 'the widest moment of a series is the widest wherever it fell',
+      );
+    });
+
+    test('loose moments that disagree about where name nowhere', () {
+      final diagnosis = diagnosisOf(
+        withSpreadAt(const {2, 11}, spreadMs: 200),
+        of: together,
+      );
+
+      expect(diagnosis.fault, AttemptFault.coordination);
+      expect(
+        diagnosis.sentence,
+        'Both hands had the notes, but they came apart.',
+      );
+    });
+
+    test('loose moments that agree about where say so', () {
+      final diagnosis = diagnosisOf(
+        withSpreadAt(const {10, 11, 12}, spreadMs: 200),
+        of: together,
+      );
+
       expect(
         diagnosis.sentence,
         'Both hands had the notes, but they came apart on the way down.',

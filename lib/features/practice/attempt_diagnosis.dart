@@ -4,6 +4,7 @@ import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 /// Which evidence channel an attempt's fault came from.
@@ -282,6 +283,12 @@ TraversalLandmark? _locate(
   final measurement = reading.measurement;
   final script = measurement.reading;
 
+  // Coordination is located from the whole series rather than from one moment
+  // in it, so it answers before the positions below.
+  if (fault == AttemptFault.coordination) {
+    return _coordinationLandmark(measurement, realize(exercise));
+  }
+
   final position = switch (fault) {
     null => script.firstAbsentPosition,
     // Only one wrong note has a place. Naming where the first of several
@@ -297,7 +304,7 @@ TraversalLandmark? _locate(
               null => null,
             },
     AttemptFault.continuity => measurement.longestGapBeforePosition,
-    AttemptFault.coordination => measurement.widestAsynchronyAtPosition,
+    AttemptFault.coordination => null,
     // Spread is a property of the whole traversal and happened nowhere in
     // particular. Pointing at its worst interval would name a moment that was
     // no different from the others.
@@ -305,6 +312,35 @@ TraversalLandmark? _locate(
   };
 
   return position == null ? null : landmarkAt(position, realize(exercise));
+}
+
+/// Where the hands came apart, or null when the moments do not agree.
+///
+/// A segment claim needs segment evidence. The widest moment of a series is
+/// the widest wherever it falls, so one loose moment locates nothing: saying
+/// the hands came apart on the way down is a statement about the descent and
+/// not about a note in it. Two or more loose moments locate the fault only
+/// when most of them sit in one part of the traversal.
+///
+/// Silence is the honest answer to the rest. The sentence reads "they came
+/// apart" with no place attached, which is what the reading supports.
+TraversalLandmark? _coordinationLandmark(
+  PerformanceMeasurement measurement,
+  ExerciseRealization realization,
+) {
+  final loose = measurement.looseMoments;
+  if (loose.length < 2) return null;
+
+  final byLandmark = <TraversalLandmark, int>{};
+  for (final moment in loose) {
+    final landmark = landmarkAt(moment.position, realization);
+    byLandmark[landmark] = (byLandmark[landmark] ?? 0) + 1;
+  }
+
+  for (final entry in byLandmark.entries) {
+    if (entry.value * 2 > loose.length) return entry.key;
+  }
+  return null;
 }
 
 /// Which landmark of [realization] the moment at [position] belongs to.

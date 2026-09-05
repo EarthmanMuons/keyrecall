@@ -6,6 +6,9 @@ import 'package:meta/meta.dart';
 
 import 'measurement_policy.dart';
 
+/// How far apart the hands were at one moment, and which moment.
+typedef HandAsynchrony = ({int position, int asynchronyMs});
+
 /// What was observed about one performance.
 ///
 /// Facts first: how much of the material appeared, how much of it was the
@@ -32,12 +35,17 @@ class PerformanceMeasurement {
   final int expectedMoments;
 
   /// How far apart the hands were at each moment both of them corresponded to
-  /// something that arrived, as right minus left.
+  /// something that arrived, as right minus left, and where.
   ///
   /// The series coordination is read from. Moments where a hand played nothing
-  /// are absent rather than zero, so the length is what was measurable rather
-  /// than what was asked for.
-  final List<int> handAsynchroniesMs;
+  /// are absent rather than zero, and so is a moment the two hands meet on one
+  /// key, which the instrument reports as one onset. The length is therefore
+  /// what was measurable rather than what was asked for.
+  ///
+  /// Positions travel with the values because where the hands were apart is a
+  /// different question from how far apart they got, and a summary that keeps
+  /// only the widest cannot answer it.
+  final List<HandAsynchrony> handAsynchronies;
 
   /// Expected notes that arrived at all, whatever octave they sounded in.
   final int materialProduced;
@@ -85,7 +93,7 @@ class PerformanceMeasurement {
     required this.reading,
     required this.expectedNotes,
     required this.expectedMoments,
-    required List<int> handAsynchroniesMs,
+    required List<HandAsynchrony> handAsynchronies,
     required this.materialProduced,
     required this.soundedCorrectly,
     required this.degreesCorrect,
@@ -97,7 +105,7 @@ class PerformanceMeasurement {
     this.medianIntervalMs,
     this.longestGapBeforePosition,
     this.widestAsynchronyAtPosition,
-  }) : handAsynchroniesMs = List.unmodifiable(handAsynchroniesMs);
+  }) : handAsynchronies = List.unmodifiable(handAsynchronies);
 
   /// Whether anything was played at all.
   bool get started =>
@@ -165,6 +173,20 @@ class PerformanceMeasurement {
   /// stopping.
   double get temporalStability =>
       dispersion == null ? 0 : policy.steadinessOf(dispersion!);
+
+  /// The measured spreads alone, in the order they were played.
+  List<int> get handAsynchroniesMs => [
+    for (final moment in handAsynchronies) moment.asynchronyMs,
+  ];
+
+  /// The moments the hands were further apart than the policy calls together.
+  ///
+  /// What a claim about where coordination went is allowed to rest on. A
+  /// series can have a widest moment without having a loose one.
+  List<HandAsynchrony> get looseMoments => [
+    for (final moment in handAsynchronies)
+      if (moment.asynchronyMs.abs() > policy.synchronizedAsynchronyMs) moment,
+  ];
 
   /// Moments both hands corresponded at, which is what coordination was read
   /// from.
@@ -289,10 +311,13 @@ PerformanceMeasurement measure({
     reading: AlignmentReading(alignment),
     expectedNotes: realization.noteCount,
     expectedMoments: realization.moments.length,
-    handAsynchroniesMs: [
+    handAsynchronies: [
       for (final operation in alignment.operations)
-        if (operation case MomentCorrespondence(:final handAsynchronyMs))
-          ?handAsynchronyMs,
+        if (operation case MomentCorrespondence(
+          :final realizationPosition,
+          handAsynchronyMs: final asynchrony?,
+        ))
+          (position: realizationPosition, asynchronyMs: asynchrony),
     ],
     materialProduced: produced,
     soundedCorrectly: sounded,
