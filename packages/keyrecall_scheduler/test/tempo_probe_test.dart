@@ -245,24 +245,52 @@ void main() {
       expect(probed.map((trace) => trace.exercise), [probe]);
     });
 
-    test('a newer underchallenge replaces the one being held', () {
+    test('a newer underchallenge does not displace one still waiting', () {
+      // Every attempt of an underchallenged learner opens a probe. Letting
+      // each new one replace the one being held would hold every probe
+      // forever, and the pace the holding was meant to verify would never be
+      // asked for at all.
       final probe = probeFor(at(60), playedAt(1.7))!;
       final session = SessionState(tempoProbe: probe, tempoProbeIsFresh: true);
-      final newer = probeFor(
-        exerciseFor(materials[1], tempoBpm: 60),
-        playedAt(1.7),
-      )!;
+      final other = exerciseFor(materials[1], tempoBpm: 60);
 
       session.recordSelection(
-        exerciseFor(materials[1], tempoBpm: 60),
+        other,
         retrievalObserved: true,
         retrievalFailed: false,
-        tempoProbe: newer,
+        tempoProbe: probeFor(other, playedAt(1.7)),
         config: config.diversity,
       );
 
-      expect(session.tempoProbe, newer);
-      expect(session.tempoProbeIsFresh, isTrue);
+      expect(session.tempoProbe, probe, reason: 'the one that has waited');
+      expect(session.tempoProbeIsFresh, isFalse, reason: 'and can compete now');
+    });
+
+    test('a probe is never held twice in a row', () {
+      // The pathological sitting: everything is played twice as fast as it was
+      // asked for, so every close opens a probe. One slot of holding is the
+      // whole of the delay.
+      final session = SessionState();
+      var heldInARow = 0;
+      var longestHold = 0;
+      for (var slot = 0; slot < 6; slot++) {
+        final exercise = exerciseFor(materials[slot % 3], tempoBpm: 60);
+        session.recordSelection(
+          exercise,
+          retrievalObserved: true,
+          retrievalFailed: false,
+          tempoProbe: probeFor(exercise, playedAt(2.0)),
+          config: config.diversity,
+        );
+        heldInARow = session.tempoProbeIsFresh ? heldInARow + 1 : 0;
+        if (heldInARow > longestHold) longestHold = heldInARow;
+      }
+
+      expect(
+        longestHold,
+        1,
+        reason: 'a probe that is always fresh is a probe never asked for',
+      );
     });
 
     test('it lasts exactly one decision it could win', () {

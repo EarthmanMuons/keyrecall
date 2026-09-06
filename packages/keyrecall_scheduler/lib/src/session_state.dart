@@ -91,8 +91,9 @@ class SessionState {
   /// [tempoProbe] is the harder exercise to ask for next when this one was
   /// clearly too easy, and null otherwise. It lasts one decision it could win:
   /// a probe held back from the slot right after the attempt that opened it
-  /// survives into the next one, where nothing holds it back. A newer probe
-  /// replaces it, because the most recent underchallenge is the live question.
+  /// survives into the next one, where nothing holds it back. One waiting to
+  /// compete keeps its place against a newer one, so that a sitting in which
+  /// every attempt is too easy still asks for a faster tempo every other slot.
   ///
   /// [retrievalObserved] says whether the attempt was at a rung that could have
   /// shown retrieval succeeding or failing, whichever it did.
@@ -107,16 +108,18 @@ class SessionState {
         ? 0
         : supportedAttemptsSinceObservation + 1;
     lastFailedExercise = retrievalFailed ? exercise : null;
-    if (tempoProbe != null) {
-      this.tempoProbe = tempoProbe;
-      tempoProbeIsFresh = true;
-    } else if (tempoProbeIsFresh && exercise != this.tempoProbe) {
+    if (tempoProbeIsFresh && exercise != this.tempoProbe) {
       // Held back rather than taken, so it is no longer an echo of the attempt
-      // that has just been played and competes from here.
+      // that has just been played and competes from here. A probe opened by
+      // that attempt is dropped rather than taking its place: a learner who is
+      // underchallenged every time opens one every time, and letting each new
+      // one displace the last would hold every probe forever and ask for none
+      // of them. What a dropped probe costs is the explicit verification, not
+      // the pace, which the outcome recorded either way.
       tempoProbeIsFresh = false;
     } else {
-      this.tempoProbe = null;
-      tempoProbeIsFresh = false;
+      this.tempoProbe = tempoProbe;
+      tempoProbeIsFresh = tempoProbe != null;
     }
     recentMaterialIds.add(exercise.material.materialId);
     while (recentMaterialIds.length > config.recentWindow) {

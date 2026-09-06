@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ## [Unreleased]
 
+### Fixed
+
+- A held tempo probe keeps its place against a newer one. Every attempt of an
+  underchallenged learner opens a probe, so letting each new one displace the
+  one being held held every probe forever and asked for none of them, leaving
+  the requested tempo where it was.
+
 ### Added
 
 - A novelty-load rule: each execution condition a candidate would be the
