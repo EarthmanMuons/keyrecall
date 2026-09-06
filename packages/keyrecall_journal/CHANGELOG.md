@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `replayJournal` takes an optional `observe` callback, called with the state
+  each attempt was decided against. A diagnostic seam: replay behaves
+  identically whether or not one is passed.
+
+### Added
+
 - Initial attempt-journal boundary: `AttemptRecord` with identity, model
   provenance, presented exercise, scheduler decision, observation, evidence
   weights, and memory attribution; an append-only `AttemptJournal` that is

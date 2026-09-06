@@ -24,6 +24,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `CoordinationSample.looseMomentsAt` and `scoreUnder`, which replay one series
+  against a synchronized bound it was not recorded under, so a threshold can be
+  argued from what the playing would have read rather than from how a sitting
+  felt.
+
 - `CoordinationSample` and the store's coordination log, one append-only
   diagnostic line per measured two-hand attempt. It keeps every measurable
   moment's signed spread with its position, beside the realization, the achieved

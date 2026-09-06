@@ -3,17 +3,84 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_measurement/keyrecall_measurement.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
 import 'practice_providers.dart';
 
+/// What the model knew about pace when an attempt was decided.
+///
+/// The journal records the tempo that was asked for and not the reason it was
+/// the tempo asked for, and the difference between those two is most of what a
+/// sitting that feels slow is about. Replaying the history exposes the three
+/// numbers the request is chosen against:
+///
+/// ```text
+/// frontier   the fastest rung this realization has been asked for and managed
+/// paced      the fastest this learner plays it unprompted, whatever was asked
+/// together   where hands-together work would enter, from the slower hand
+/// ```
+///
+/// A frontier well under a paced tempo is the shape of a learner who keeps
+/// playing faster than the request: pace is earned by being asked, so the
+/// frontier only moves when a probe asks.
+@immutable
+class TempoProvenance {
+  final double frontierBpm;
+  final double pacedBpm;
+  final double handsTogetherEntryBpm;
+
+  const TempoProvenance({
+    required this.frontierBpm,
+    required this.pacedBpm,
+    required this.handsTogetherEntryBpm,
+  });
+
+  static const TempoProvenance unknown = TempoProvenance(
+    frontierBpm: 0,
+    pacedBpm: 0,
+    handsTogetherEntryBpm: 0,
+  );
+
+  /// What [state] held about [exercise] before it was attempted.
+  factory TempoProvenance.of(LearnerState state, Exercise exercise) {
+    final conditions = exercise.conditions;
+    final record =
+        state.materialExecution[(
+          exercise.material.materialId,
+          conditions.hands,
+          conditions.handMotion,
+        )];
+    return TempoProvenance(
+      frontierBpm: record?.demonstratedTempoByOctaves[conditions.octaves] ?? 0,
+      pacedBpm: record?.pacedTempoBpm ?? 0,
+      handsTogetherEntryBpm: handsTogetherEntryTempo(
+        state,
+        exercise.material.materialId,
+        conditions.octaves,
+      ),
+    );
+  }
+}
+
+/// A tempo as the tables write it, or a dash where there is none.
+String _bpm(double tempoBpm) => tempoBpm <= 0 ? '-' : '${tempoBpm.round()}bpm';
+
 /// One attempt, as a line of the trajectory table.
 ///
 /// Everything needed to read a sequence and say why it went the way it did:
 /// what was asked for, whether it was appropriate, and what admitted it. The
-/// journal holds all of it already; this only arranges it.
-String trajectoryRow(int index, AttemptRecord record) {
+/// journal holds all of it already; this only arranges it, apart from the pace
+/// columns, which come from replaying the state each decision was made against.
+String trajectoryRow(
+  int index,
+  AttemptRecord record, {
+  TempoProvenance pace = TempoProvenance.unknown,
+}) {
   final exercise = record.exercise;
   final conditions = exercise.conditions;
   final decision = record.decision;
@@ -31,6 +98,9 @@ String trajectoryRow(int index, AttemptRecord record) {
     '${conditions.octaves}oct',
     conditions.direction.id.padRight(7),
     '${conditions.tempoBpm.round()}bpm'.padLeft(7),
+    _bpm(pace.frontierBpm).padLeft(7),
+    _bpm(pace.pacedBpm).padLeft(7),
+    _bpm(pace.handsTogetherEntryBpm).padLeft(7),
     'g=${exercise.guidance.independence}',
     (decision?.eligibilityTier.id ?? 'unscheduled').padRight(24),
     (decision?.eligibilityReason?.id ?? '').padRight(38),
@@ -60,7 +130,11 @@ String trajectoryRow(int index, AttemptRecord record) {
 /// prerequisite was binding, never that the others passed. That is enough to
 /// group stalls, which is what the reasons are coded for, and not enough to
 /// conclude anything about the rules it does not name.
-String trajectoryOf(Profile profile, AttemptJournal journal) => [
+String trajectoryOf(
+  Profile profile,
+  AttemptJournal journal, {
+  Map<String, TempoProvenance> pace = const {},
+}) => [
   'profile   ${profile.displayName} (${profile.id})',
   'placement ${profile.placement.id}',
   'created   ${profile.createdAt.toIso8601String()}',
@@ -77,6 +151,9 @@ String trajectoryOf(Profile profile, AttemptJournal journal) => [
     'span',
     'direction'.padRight(7),
     'tempo'.padLeft(7),
+    'front'.padLeft(7),
+    'paced'.padLeft(7),
+    'htentry'.padLeft(7),
     'rung',
     'tier'.padRight(24),
     'first_eligibility_reason'.padRight(38),
@@ -85,8 +162,53 @@ String trajectoryOf(Profile profile, AttemptJournal journal) => [
     'outcome (played = requested x achieved ratio)',
   ].join(' '),
   for (final (index, record) in journal.records.indexed)
-    trajectoryRow(index, record),
+    trajectoryRow(
+      index,
+      record,
+      pace: pace[record.identity.attemptId] ?? TempoProvenance.unknown,
+    ),
 ].join('\n');
+
+/// What the model knew about pace before each attempt in [journal].
+///
+/// Replayed rather than recorded. Nothing persists it, and a diagnosis that
+/// needs it is rare enough that recomputing beats widening what every attempt
+/// carries forever.
+Map<String, TempoProvenance> paceProvenanceOf(
+  Profile profile,
+  AttemptJournal journal, {
+  LearnerModel model = const LearnerModel(),
+}) {
+  final provenance = <String, TempoProvenance>{};
+  replayJournal(
+    journal,
+    model: model,
+    initial: model.placementState(profile.placement, at: profile.createdAt),
+    options: const ReplayOptions(mode: ReplayMode.counterfactual),
+    observe: (record, before) {
+      provenance[record.identity.attemptId] = TempoProvenance.of(
+        before,
+        record.exercise,
+      );
+    },
+  );
+  return provenance;
+}
+
+/// The bounds each coordination series is replayed against.
+///
+/// The one in force and three looser ones. Nothing here changes what a learner
+/// was told; it says what a different definition of together would have made
+/// of the same playing, which is the question a threshold can be argued from.
+const List<double> counterfactualBoundsMs = [30, 40, 50, 60];
+
+/// What one series would read at [boundMs]: loose moments, then the score.
+String _underBound(CoordinationSample sample, double boundMs) {
+  final policy = MeasurementPolicy(synchronizedAsynchronyMs: boundMs);
+  final loose = sample.looseMomentsAt(boundMs);
+  return '$loose/${sample.moments.length} '
+      '${sample.scoreUnder(policy).toStringAsFixed(2)}';
+}
 
 /// The coordination log as a table, one line per measured two-hand attempt.
 ///
@@ -104,6 +226,8 @@ String coordinationTableOf(
   '',
   'diagnostic instrumentation, not learner evidence',
   'asynchrony is right minus left, in milliseconds, at each measurable moment',
+  'the bound columns are counterfactual: what each series would have read at '
+      'that bound, leaving production policy alone',
   '',
   [
     'attempt'.padRight(36),
@@ -119,6 +243,8 @@ String coordinationTableOf(
     'bound'.padLeft(6),
     'loose'.padLeft(6),
     'told'.padRight(5),
+    for (final bound in counterfactualBoundsMs)
+      '@${bound.round()}ms'.padLeft(11),
     'moments',
   ].join(' '),
   for (final sample in samples)
@@ -136,6 +262,8 @@ String coordinationTableOf(
       '${sample.synchronizedAsynchronyMs.round()}ms'.padLeft(6),
       '${sample.looseMoments}/${sample.moments.length}'.padLeft(6),
       (sample.reportedAsFault ? 'yes' : 'no').padRight(5),
+      for (final bound in counterfactualBoundsMs)
+        _underBound(sample, bound).padLeft(11),
       [
         for (final moment in sample.moments)
           '${moment.position}:${moment.asynchronyMs}',
@@ -172,7 +300,9 @@ Future<String> exportTrajectory(WidgetRef ref) async {
     '-',
   );
   final file = File('${directory.path}/$stamp-${profile.displayName}.txt')
-    ..writeAsStringSync(trajectoryOf(profile, journal));
+    ..writeAsStringSync(
+      trajectoryOf(profile, journal, pace: paceProvenanceOf(profile, journal)),
+    );
 
   // Beside it rather than in it, and only when a two-hand attempt has been
   // measured: an empty table is a file somebody has to open to learn nothing.

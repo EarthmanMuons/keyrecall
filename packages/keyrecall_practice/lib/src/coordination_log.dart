@@ -96,10 +96,21 @@ class CoordinationSample {
       _nearestRank([for (final moment in moments) moment.asynchronyMs.abs()]);
 
   /// How many moments sat outside the bound that was in force.
-  int get looseMoments => [
+  int get looseMoments => looseMomentsAt(synchronizedAsynchronyMs);
+
+  /// How many moments would sit outside a bound of [asynchronyMs].
+  int looseMomentsAt(double asynchronyMs) => [
     for (final moment in moments)
-      if (moment.asynchronyMs.abs() > synchronizedAsynchronyMs) moment,
+      if (moment.asynchronyMs.abs() > asynchronyMs) moment,
   ].length;
+
+  /// The coordination score this series would have read under [policy].
+  ///
+  /// A counterfactual over the numbers, and nothing more. It says what the
+  /// score would have been, not what the learner would have been told, since
+  /// the sentence they saw depends on the rest of the performance too.
+  double scoreUnder(MeasurementPolicy policy) =>
+      policy.coordinationOf(medianMs: medianAbsoluteMs, p90Ms: p90AbsoluteMs);
 
   Map<String, Object?> toJson() => {
     'schema_version': coordinationLogSchemaVersion,

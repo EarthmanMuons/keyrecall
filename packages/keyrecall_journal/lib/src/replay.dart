@@ -151,12 +151,18 @@ class ReplayResult {
 /// the journal does not record makes that state unreachable by replay, which
 /// costs the journal its authority. The rule is narrow and mechanical: exactly
 /// one canonical propagation per recorded attempt, at that attempt's time.
+///
+/// [observe] is called for each attempt that moves state, with the state as it
+/// stood when that attempt was decided. It is a diagnostic seam: nothing it
+/// does may touch the state it is handed, and replay behaves identically
+/// whether or not one is passed.
 ReplayResult replayJournal(
   AttemptJournal journal, {
   required LearnerModel model,
   required LearnerState initial,
   ReplayOptions options = const ReplayOptions(),
   LearnerStateCheckpoint? from,
+  void Function(AttemptRecord record, LearnerState before)? observe,
 }) {
   final state = _seedState(
     initial: initial,
@@ -218,6 +224,8 @@ ReplayResult replayJournal(
         options,
       );
     }
+
+    observe?.call(record, state);
 
     final prediction = model.predict(state, record.exercise, at: at);
     final weights = evidenceWeightsFor(record.exercise, measured.outcome);
