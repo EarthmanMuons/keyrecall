@@ -358,6 +358,53 @@ warning. A dip that recovers is desirable difficulty. One that does not is the
 scheduler asking for something out of reach, and the two are only separable
 after the fact.
 
+### Whether the dose responds to the answer
+
+Support adapts already: a family that keeps failing gets more guidance. Nothing
+adapts the other quantity. `bin/family_exposure.dart` asks whether a family's
+**share of the sitting** contracts when the learner keeps giving the same
+answer, by reading each family's attempts, managed yield, longest run of
+attempts that yielded nothing, and its share of the ten slots following such a
+run. Sixteen sittings of ten across seventy days, four seeds.
+
+| archetype              | family           | share | after | yield | longest run | set-asides |
+| ---------------------- | ---------------- | ----- | ----- | ----- | ----------- | ---------- |
+| `coordination_limited` | `hands:together` | 36%   | 45%   | 0%    | 53          | 3          |
+| `developing`           | `hands:together` | 42%   | 31%   | 0%    | 60          | 24         |
+| `true_beginner`        | `hands:left`     | 56%   | 60%   | 0%    | 89          | 59         |
+| `uneven_hands`         | `hands:left`     | 22%   | 28%   | 4%    | 24          | 0          |
+| `advanced`             | `hands:together` | 21%   | 0%    | 86%   | 1           | 0          |
+
+**A learner can be asked the same unanswerable question fifty-three times in a
+row.** `coordination_limited` attempts hands-together work fifty-three times
+after it first appears, yields managed execution on none of them, and the
+family's share of the slots after a failed run is _higher_ than its share
+overall. `true_beginner` does the same with its left hand, eighty-nine times.
+The strong archetypes never reach a run of two, so nothing here is about the
+work being hard.
+
+Realization-family pacing is the mechanism that could answer this, and its
+trigger is the wrong shape for the case. Pressure is
+`share above the floor x unproductive fraction`, and the floor is half the
+window, so a family holding thirty-six per cent of a sitting accumulates no
+pressure however little it yields. That is why `coordination_limited` sees three
+set-asides across a run where nothing it coordinated ever worked.
+
+Where the floor is cleared the response is still weak rather than absent.
+`developing` clears it, is set aside twenty-four times, and its share falls from
+forty-two to thirty-one per cent. `true_beginner` clears it by more, is set
+aside fifty-nine times, and its share does not fall at all. Why relief does not
+translate into a smaller share is the open question: a set-aside substitutes one
+slot, and something appears to return the family immediately afterwards.
+
+Two things follow, and neither is settled here. The trigger a dose mechanism
+needs is **yield over recent attempts of a family**, independent of how much of
+the sitting it holds, since the family that most needs contracting is a minority
+of the sitting by the time it is failing. And a mechanism should contract rather
+than remove: the same evidence would justify a cooldown that relaxes on managed
+execution, on productive work in the prerequisites, and on time, with the family
+always able to surface when nothing else is useful.
+
 ### Reacquisition, in the strict sense, does not happen
 
 The census partitions every slot that moved nothing into work with no frontier

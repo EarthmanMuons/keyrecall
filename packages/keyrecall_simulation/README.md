@@ -132,6 +132,16 @@ dart run keyrecall_simulation:coordination_withheld --archetypes true_beginner
 The counterfactual is the candidate set rather than a second scheduler, so
 nothing about the learner, the player or the policy differs between the arms.
 
+To ask whether a hard family's share of a sitting responds to it failing:
+
+```console
+dart run keyrecall_simulation:family_exposure --seeds 6
+```
+
+Reports each realization family's share, managed yield, longest run of attempts
+that yielded nothing, and its share of the slots following such a run, beside
+the times realization-family pacing set it aside.
+
 ## Comparing against the reference
 
 Three gates, each answering a different question.
