@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
@@ -7,14 +8,10 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
-import '../support/scheduler_override.dart';
-
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  /// A launch over its own storage, scheduling where the app does unless
-  /// [inProcess].
-  Future<ProviderContainer> launch({bool inProcess = false}) async {
+  Future<ProviderContainer> launch({SchedulerHost? scheduler}) async {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith(
@@ -23,7 +20,8 @@ void main() {
         practiceStoreProvider.overrideWith(
           (ref) async => InMemoryPracticeStore(),
         ),
-        if (inProcess) inProcessScheduling,
+        if (scheduler != null)
+          schedulerHostProvider.overrideWith((ref) => scheduler),
       ],
     );
     container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
@@ -65,28 +63,87 @@ void main() {
   });
 
   test('placement does not change what the loop presents', () async {
-    final onWorker = await launch();
+    final scheduler = _ParityScheduler();
+    final onWorker = await launch(scheduler: scheduler);
     addTearDown(onWorker.dispose);
-    final inProcess = await launch(inProcess: true);
-    addTearDown(inProcess.dispose);
 
     for (var slot = 0; slot < 3; slot++) {
       final decided = onWorker.read(practiceLoopProvider).requireValue;
-      final directly = inProcess.read(practiceLoopProvider).requireValue;
-
       expect(decided.presented, isNotNull);
-      expect(
-        decided.presented!.exercise,
-        directly.presented!.exercise,
-        reason: 'slot $slot',
-      );
-      expect(
-        decided.session.session.attemptsThisSession,
-        directly.session.session.attemptsThisSession,
-      );
+      expect(decided.session.session.attemptsThisSession, scheduler.decisions);
 
       await onWorker.read(practiceLoopProvider.notifier).decline();
-      await inProcess.read(practiceLoopProvider.notifier).decline();
     }
+    expect(scheduler.decisions, greaterThanOrEqualTo(2));
   });
+}
+
+/// Compares hosts on identical inputs, including decision time and learner age.
+class _ParityScheduler extends IsolateScheduler {
+  late InProcessScheduler _direct;
+  int decisions = 0;
+
+  @override
+  Future<void> bind({
+    required ResolvedPracticeScope scope,
+    required PracticeEntryPolicy entry,
+    required LearnerModel learner,
+    required SchedulerConfig config,
+  }) async {
+    await super.bind(
+      scope: scope,
+      entry: entry,
+      learner: learner,
+      config: config,
+    );
+    _direct = InProcessScheduler(
+      SchedulerPipeline(learner: learner, config: config),
+    );
+    await _direct.bind(
+      scope: scope,
+      entry: entry,
+      learner: learner,
+      config: config,
+    );
+  }
+
+  @override
+  Future<SchedulerVerdict> decide({
+    required int epoch,
+    required LearnerState state,
+    required SessionState session,
+    required List<String> dueRequirementIds,
+    required DateTime at,
+    AcquisitionFloor? acquisitionFloor,
+  }) async {
+    final verdict = await super.decide(
+      epoch: epoch,
+      state: state,
+      session: session,
+      dueRequirementIds: dueRequirementIds,
+      at: at,
+      acquisitionFloor: acquisitionFloor,
+    );
+    final directly = await _direct.decide(
+      epoch: epoch,
+      state: state,
+      session: session,
+      dueRequirementIds: dueRequirementIds,
+      at: at,
+      acquisitionFloor: acquisitionFloor,
+    );
+    expect(verdict.chosen?.exercise, directly.chosen?.exercise);
+    expect(verdict.blockedReason, directly.blockedReason);
+    expect(verdict.diagnostics, directly.diagnostics);
+    expect(
+      verdict.effect.guidanceProbeAvailable,
+      directly.effect.guidanceProbeAvailable,
+    );
+    expect(
+      verdict.effect.guidanceProbeSelected,
+      directly.effect.guidanceProbeSelected,
+    );
+    decisions++;
+    return verdict;
+  }
 }
