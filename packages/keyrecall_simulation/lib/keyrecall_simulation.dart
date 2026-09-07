@@ -14,6 +14,7 @@ library;
 
 export 'src/arpeggio_policy_experiment.dart';
 export 'src/attempt_trace.dart';
+export 'src/calibration.dart';
 export 'src/clusters.dart';
 export 'src/decision_cost_census.dart';
 export 'src/practice_simulation.dart';

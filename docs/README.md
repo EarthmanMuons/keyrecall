@@ -41,6 +41,8 @@ docs/
 │   │                                observations, and the candidate census
 │   ├── family-dose-control.md       how often a family is offered, given what
 │   │                                its recent attempts produced
+│   ├── player-calibration.md        recovering a synthetic player from the
+│   │                                attempts of one sitting
 │   ├── introduction-breadth.md      how much unresolved new material may be
 │   │                                open at once, and what capping it does
 │   ├── scheduler-decision-cost.md   what one decision costs, and how it grows
@@ -110,6 +112,7 @@ implementation rather than evidence about another one.
 | Deferred architectural, product, and domain hypotheses              | `design/future-planning.md`                             |
 | Synthetic players, trajectory detectors, and the sweep              | `design/trajectory-simulation.md`                       |
 | Yield-based family dose control, and the evidence for it            | `design/family-dose-control.md`                         |
+| Fitting a synthetic player to a sitting, and what it identifies     | `design/player-calibration.md`                          |
 | Introduction breadth census and the concurrency counterfactuals     | `design/introduction-breadth.md`                        |
 | Decision-grain cost census and the catalog scaling term             | `design/scheduler-decision-cost.md`                     |
 | Proposed hands-together admission policy, and its evidence chain    | `design/coordination-transition-policy.md`              |

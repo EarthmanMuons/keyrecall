@@ -1,0 +1,142 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:test/test.dart';
+
+import 'package:keyrecall_simulation/keyrecall_simulation.dart';
+
+/// Whether a fit recovers a player it was not told about.
+///
+/// Ground truth is synthetic on purpose. A fit against a device sitting cannot
+/// be checked, because nobody knows the answer; a fit against a known player
+/// can, and an estimator that cannot recover a player it generated has no
+/// business being pointed at a person.
+void main() {
+  // The exercises a real sitting asked for, taken from a scheduler run so the
+  // fit answers the same questions a person answered.
+  final presented = [
+    for (final slot in runTrajectory(
+      player: PlayerArchetypes.intermediate,
+      seed: 5,
+      materials: v1ScaleCatalog,
+      slots: 60,
+    ).slots)
+      slot.chosen,
+  ];
+
+  SittingProfile sittingOf(SyntheticPlayer player) =>
+      profileOf(replay(player, presented, seed: 11));
+
+  List<PlayerFit> fitOf(
+    SyntheticPlayer truth, {
+    Set<PlayerParameter> vary = firstSitting,
+  }) => fitPlayers(
+    target: sittingOf(truth),
+    presented: presented,
+    vary: vary,
+    samples: 600,
+    keep: 20,
+    seed: 3,
+  );
+
+  test('a profile reads what a sitting did, not what it was asked', () {
+    final profile = sittingOf(PlayerArchetypes.tempoNoncompliant);
+
+    // Plays at its own pace whatever the count-in says, so the achieved tempo
+    // is its own and the ratio is nothing like one.
+    expect(profile.tempoRatio, greaterThan(1.2));
+    expect(profile.achievedTempo[HandConfiguration.right], greaterThan(100));
+    expect(profile.attempts, presented.length);
+  });
+
+  test('an ensemble recovers a natural tempo it was not given', () {
+    final truth = PlayerArchetypes.developing;
+    final ensemble = fitOf(truth);
+    final tempo = rangeOf(ensemble, (player) => player.naturalTempoRightBpm);
+
+    expect(
+      tempo.median,
+      closeTo(truth.naturalTempoRightBpm, truth.naturalTempoRightBpm * 0.3),
+      reason: 'fitted ${tempo.low} to ${tempo.high}',
+    );
+  });
+
+  test('an ensemble recovers a learner who ignores the count-in', () {
+    final ensemble = fitOf(PlayerArchetypes.tempoNoncompliant);
+    final compliance = rangeOf(ensemble, (player) => player.tempoCompliance);
+
+    expect(compliance.median, lessThan(0.5));
+  });
+
+  test('holding compliance reports a natural tempo it cannot see', () {
+    // The played tempo is a blend of the requested one and the natural one, so
+    // fixing one of them makes the fit answer about the fixture rather than
+    // the player. Pinned because it is the reason compliance is fitted with
+    // the initial conditions rather than after them.
+    final truth = PlayerArchetypes.developing;
+    final held = rangeOf(
+      fitOf(truth, vary: initialConditions),
+      (player) => player.naturalTempoRightBpm,
+    );
+    final joint = rangeOf(
+      fitOf(truth),
+      (player) => player.naturalTempoRightBpm,
+    );
+
+    expect(
+      (joint.median - truth.naturalTempoRightBpm).abs(),
+      lessThan((held.median - truth.naturalTempoRightBpm).abs()),
+    );
+  });
+
+  test('the ensemble is wide enough to say it is an ensemble', () {
+    // Several parameter sets reproduce one sitting, and a point estimate would
+    // claim a precision this cannot carry.
+    final tempo = rangeOf(
+      fitOf(PlayerArchetypes.developing),
+      (player) => player.naturalTempoRightBpm,
+    );
+
+    expect(tempo.high - tempo.low, greaterThan(tempo.median * 0.4));
+  });
+
+  test('an ensemble recovers which hand is the weaker one', () {
+    final ensemble = fitOf(PlayerArchetypes.unevenHands);
+    final right = rangeOf(ensemble, (player) => player.rightHandAbility);
+    final left = rangeOf(ensemble, (player) => player.leftHandAbility);
+
+    expect(right.median, greaterThan(left.median));
+  });
+
+  test('a fit only moves the parameters it was asked to', () {
+    final ensemble = fitOf(PlayerArchetypes.developing, vary: behavioralNoise);
+
+    for (final fit in ensemble) {
+      expect(fit.player.naturalTempoRightBpm, 100);
+      expect(fit.player.rightHandAbility, 0.5);
+    }
+  });
+
+  test('the closest candidate is closer than a wrong one', () {
+    final target = sittingOf(PlayerArchetypes.advanced);
+    final ensemble = fitOf(PlayerArchetypes.advanced);
+
+    expect(
+      ensemble.first.distance,
+      lessThan(
+        profileDistance(target, sittingOf(PlayerArchetypes.trueBeginner)),
+      ),
+    );
+  });
+
+  test('a distance skips what one sitting cannot answer', () {
+    final singleHanded = [
+      for (final exercise in presented)
+        if (exercise.conditions.hands != HandConfiguration.together) exercise,
+    ];
+    final profile = profileOf(
+      replay(PlayerArchetypes.developing, singleHanded, seed: 2),
+    );
+
+    expect(profile.handsTogetherPenalty, isNull);
+    expect(profileDistance(profile, profile), 0);
+  });
+}
