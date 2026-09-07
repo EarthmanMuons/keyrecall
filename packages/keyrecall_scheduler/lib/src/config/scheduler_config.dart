@@ -273,6 +273,53 @@ class ProbeConfig {
 /// no device or telemetry evidence. Changing them changes how much pacing
 /// happens, not what pacing means.
 @immutable
+/// Yield-based dose control for a realization family.
+///
+/// Distinct from [PacingConfig], which relieves concentration. This one reads
+/// what a family produced rather than how much of the sitting it held, because
+/// the family that most needs asking for less often is a minority of the
+/// sitting by the time it is failing.
+class DoseConfig {
+  /// How many recent selections yield is read over.
+  final int window;
+
+  /// Attempts a family needs in the window before it can be contracted.
+  ///
+  /// Evidence that the family has actually been tried, so that one or two
+  /// failed introductions cannot throttle it.
+  final int minAttempts;
+
+  /// The recent managed-execution rate at or above which nothing contracts.
+  final double yieldFloor;
+
+  /// Slots between attempts at full contraction.
+  final int maximumGap;
+
+  /// What productive prerequisite work multiplies a contraction by.
+  final double prerequisiteRelief;
+
+  const DoseConfig({
+    this.window = 12,
+    this.minAttempts = 4,
+    this.yieldFloor = 0.34,
+    this.maximumGap = 6,
+    this.prerequisiteRelief = 0.5,
+  }) : assert(window > 0, 'the window must hold at least one selection'),
+       assert(
+         minAttempts > 0 && minAttempts <= window,
+         'a family must be able to reach its minimum inside the window',
+       ),
+       assert(
+         yieldFloor > 0 && yieldFloor <= 1,
+         'a floor of zero could never contract anything',
+       ),
+       assert(maximumGap > 1, 'a gap of one is no contraction at all'),
+       assert(
+         prerequisiteRelief >= 0 && prerequisiteRelief <= 1,
+         'relief may soften a contraction, never invert it',
+       );
+}
+
 class PacingConfig {
   /// How many recent selections allocation is read over.
   final int window;
@@ -395,6 +442,10 @@ class SchedulerConfig {
   /// Realization-family pacing, or null where allocation is unpaced.
   final PacingConfig? pacing;
 
+  /// Yield-based family dose control, or null where a family's cadence does
+  /// not respond to what it produces.
+  final DoseConfig? dose;
+
   /// The introduction cap, or null where breadth is uncapped.
   final IntroductionConfig? introductions;
 
@@ -410,9 +461,21 @@ class SchedulerConfig {
     required this.diversity,
     required this.probe,
     required this.pacing,
+    this.dose,
     this.introductions,
     this.novelty,
   });
+
+  /// How many recent selections the family window has to hold.
+  ///
+  /// Pacing and dose control read the same window for different questions, so
+  /// it is kept for the longer of the two and nothing records it when neither
+  /// is configured.
+  int get familyWindow {
+    final paced = pacing?.window ?? 0;
+    final dosed = dose?.window ?? 0;
+    return paced > dosed ? paced : dosed;
+  }
 
   /// The same policy with [pacing] in force, or unpaced when it is null.
   ///
@@ -425,6 +488,22 @@ class SchedulerConfig {
     diversity: diversity,
     probe: probe,
     pacing: pacing,
+    dose: dose,
+    introductions: introductions,
+    novelty: novelty,
+  );
+
+  /// The same policy with [dose] in force, or with a family's cadence
+  /// unresponsive to what it yields when it is null.
+  SchedulerConfig withDose(DoseConfig? dose) => SchedulerConfig(
+    modelVersion: modelVersion,
+    eligibility: eligibility,
+    safety: safety,
+    challenge: challenge,
+    diversity: diversity,
+    probe: probe,
+    pacing: pacing,
+    dose: dose,
     introductions: introductions,
     novelty: novelty,
   );
@@ -439,6 +518,7 @@ class SchedulerConfig {
         diversity: diversity,
         probe: probe,
         pacing: pacing,
+        dose: dose,
         introductions: introductions,
         novelty: novelty,
       );
@@ -452,6 +532,7 @@ class SchedulerConfig {
     diversity: diversity,
     probe: probe,
     pacing: pacing,
+    dose: dose,
     introductions: introductions,
     novelty: novelty,
   );

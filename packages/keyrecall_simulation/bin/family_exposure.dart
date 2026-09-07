@@ -3,6 +3,7 @@ import 'dart:isolate';
 
 import 'package:args/args.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -31,6 +32,11 @@ Future<void> main(List<String> arguments) async {
     ..addOption('days', help: 'Explicit days, overriding the schedule.')
     ..addOption('window', defaultsTo: '10', help: 'Slots an answer may take.')
     ..addOption('streak', defaultsTo: '5', help: 'Failures that ask for one.')
+    ..addFlag(
+      'dose',
+      negatable: false,
+      help: 'Run with yield-based family dose control in force.',
+    )
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
   if (options.flag('help')) {
@@ -54,10 +60,11 @@ Future<void> main(List<String> arguments) async {
     for (final player in PlayerArchetypes.all)
       if (only == null || only.contains(player.id)) player,
   ];
+  final dose = options.flag('dose');
   final buckets = dealTrajectoryJobs(seeds, players: players);
   final batches = await Future.wait([
     for (final bucket in buckets)
-      Isolate.run(() => _exposures(bucket, sittings, window, streak)),
+      Isolate.run(() => _exposures(bucket, sittings, window, streak, dose)),
   ]);
   final rows = [for (final batch in batches) ...batch];
 
@@ -65,8 +72,8 @@ Future<void> main(List<String> arguments) async {
   stdout
     ..writeln()
     ..writeln(
-      '== family exposure: ${sittings.length} sittings of $slots, '
-      '$seeds seeds, $total slots',
+      '== family exposure${dose ? ', dose control in force' : ''}: '
+      '${sittings.length} sittings of $slots, $seeds seeds, $total slots',
     )
     ..writeln(
       '   share is of the run after the family first appeared; after is of '
@@ -162,8 +169,16 @@ List<_Row> _exposures(
   List<Sitting> sittings,
   int window,
   int streak,
+  bool dose,
 ) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
+  const learner = LearnerModel();
+  final pipeline = dose
+      ? SchedulerPipeline(
+          learner: learner,
+          config: v1SchedulerConfig.withDose(const DoseConfig()),
+        )
+      : const SchedulerPipeline(learner: learner);
   final rows = <_Row>[];
   for (final job in jobs) {
     // What pacing actually did, which only the run can say: a set-aside is a
@@ -175,6 +190,7 @@ List<_Row> _exposures(
       materials: allScales,
       sittings: sittings,
       generated: generated,
+      pipeline: pipeline,
       observePacing: (_, pacing) {
         if (pacing.setAside case final aside?) {
           for (final family in aside.pressuredFamilies) {

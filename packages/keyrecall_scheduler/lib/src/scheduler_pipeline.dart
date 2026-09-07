@@ -5,6 +5,7 @@ import 'acquisition_floor.dart';
 import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
+import 'family_dose.dart';
 import 'goal_emphasis.dart';
 import 'introduction_breadth.dart';
 import 'novelty_load.dart';
@@ -81,6 +82,9 @@ sealed class SelectionResult {
   /// What realization-family pacing did to the available set.
   final PacingDecision pacing;
 
+  /// What yield-based dose control did to the available set.
+  final DoseDecision dose;
+
   /// What the introduction cap did to the available set.
   final IntroductionDecision introductions;
 
@@ -89,6 +93,7 @@ sealed class SelectionResult {
     required this.traces,
     required this.selectable,
     required this.pacing,
+    this.dose = const DoseDecision.inactive([]),
     required this.introductions,
   });
 }
@@ -102,6 +107,7 @@ final class CandidateSelected extends SelectionResult {
     required super.traces,
     required super.selectable,
     required super.pacing,
+    super.dose,
     required super.introductions,
     required this.candidate,
   });
@@ -128,6 +134,7 @@ final class SelectionBlocked extends SelectionResult {
     required super.traces,
     required super.selectable,
     required super.pacing,
+    super.dose,
     required super.introductions,
     required this.reason,
   });
@@ -222,8 +229,9 @@ class SchedulerPipeline {
     var repeated = applyRepetitionGuard(echoed, session);
     var introductions = capIntroductions(repeated, traces, state);
     var pacing = pace(introductions.selectable, session);
+    var dosed = doseOf(pacing.selectable, session);
     var available = withNoveltySupported(
-      pacing.selectable,
+      dosed.selectable,
       state,
       config.novelty,
     );
@@ -263,7 +271,8 @@ class SchedulerPipeline {
         repeated = applyRepetitionGuard(echoed, session);
         introductions = capIntroductions(repeated, traces, state);
         pacing = pace(introductions.selectable, session);
-        available = pacing.selectable;
+        dosed = doseOf(pacing.selectable, session);
+        available = dosed.selectable;
         selected = chooseFrom(available, session);
         blockedReason = BlockedReason.safeEntryRejected;
       }
@@ -276,6 +285,7 @@ class SchedulerPipeline {
         'repetition': repeated,
         'introductions': introductions.selectable,
         'pacing': pacing.selectable,
+        'dose': dosed.selectable,
         'novelty': available,
       },
       winner: selected,
@@ -295,6 +305,7 @@ class SchedulerPipeline {
               traces: traces,
               selectable: available,
               pacing: pacing,
+              dose: dosed,
               introductions: introductions,
               reason: blockedReason,
             )
@@ -303,6 +314,7 @@ class SchedulerPipeline {
               traces: traces,
               selectable: available,
               pacing: pacing,
+              dose: dosed,
               introductions: introductions,
               candidate: selected,
             ),
@@ -333,11 +345,12 @@ class SchedulerPipeline {
             ),
       config: config.diversity,
     );
-    if (config.pacing case final pacing?) {
+    final familyWindow = config.familyWindow;
+    if (familyWindow > 0) {
       session.recordFamilySelection(
         exercise,
         productive: outcome != null && learner.executionWasManaged(outcome),
-        config: pacing,
+        window: familyWindow,
       );
     }
   }
@@ -1609,6 +1622,38 @@ class SchedulerPipeline {
       return PacingDecision.unready(guarded);
     }
     return PacingDecision.relieved(relieved, setAside);
+  }
+
+  /// Yield-based dose control applied to an already-paced set.
+  ///
+  /// A selection-stage filter beside [pace], and deliberately not part of it.
+  /// Pacing relieves concentration; this asks how often a family should be
+  /// offered given what it has been producing, which is a different question
+  /// with a different trigger, and a family can be subject to one and not the
+  /// other.
+  ///
+  /// It contracts rather than removes. A contracted family keeps its
+  /// eligibility, its rank and its place in the selectable set, and is held
+  /// back only when it was chosen more recently than its cadence allows.
+  /// Holding back everything would empty the slot, so a set with nothing else
+  /// in it is returned untouched: a learner with no other useful work keeps
+  /// being offered the hard thing.
+  DoseDecision doseOf(List<CandidateTrace> paced, SessionState session) {
+    final policy = config.dose;
+    if (policy == null) return DoseDecision.inactive(paced);
+    final contracted = familiesOverDose(
+      window: session.recentFamilies,
+      config: policy,
+    );
+    if (contracted.isEmpty) return DoseDecision.inactive(paced);
+
+    final held = [
+      for (final trace in paced)
+        if (!isOverDosed(trace.exercise, contracted)) trace,
+    ];
+    if (held.isEmpty) return DoseDecision.unrelieved(paced, contracted);
+    if (held.length == paced.length) return DoseDecision.inactive(paced);
+    return DoseDecision.contracted(held, contracted);
   }
 
   /// The canonical V1 choice from an already-narrowed set: the diagnostic

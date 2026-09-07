@@ -248,7 +248,7 @@ void _record(
 }) => session.recordFamilySelection(
   _exercise(hands, motion: motion),
   productive: productive,
-  config: _pacing,
+  window: _pacing.window,
   families: families,
 );
 

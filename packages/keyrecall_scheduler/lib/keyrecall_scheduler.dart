@@ -17,6 +17,7 @@ export 'src/novelty_load.dart';
 export 'src/config/scheduler_config.dart';
 export 'src/priority.dart';
 export 'src/practice_entry_policy.dart';
+export 'src/family_dose.dart';
 export 'src/realization_family_pacing.dart';
 export 'src/recovery.dart';
 export 'src/scheduler_pipeline.dart';

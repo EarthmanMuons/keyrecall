@@ -105,15 +105,16 @@ class SessionState {
           ? recent
           : recent.sublist(recent.length - window),
     );
-    if (config.pacing case final pacing?) {
-      final paced = history.length <= pacing.window
+    final familyWindow = config.familyWindow;
+    if (familyWindow > 0) {
+      final paced = history.length <= familyWindow
           ? history
-          : history.sublist(history.length - pacing.window);
+          : history.sublist(history.length - familyWindow);
       for (final prior in paced) {
         session.recordFamilySelection(
           prior.exercise,
           productive: prior.productive,
-          config: pacing,
+          window: familyWindow,
           families: families,
         );
       }
@@ -177,13 +178,13 @@ class SessionState {
   void recordFamilySelection(
     Exercise exercise, {
     required bool productive,
-    required PacingConfig config,
+    required int window,
     RealizationFamilyResolver families = handMotionFamilies,
   }) {
     recentFamilies.add(
       FamilyObservation(families: families(exercise), productive: productive),
     );
-    while (recentFamilies.length > config.window) {
+    while (recentFamilies.length > window) {
       recentFamilies.removeAt(0);
     }
   }
