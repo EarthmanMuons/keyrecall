@@ -107,7 +107,7 @@ Future<void> main(List<String> arguments) async {
       ..writeln(player.id)
       ..writeln(
         '   ${'family'.padRight(18)}first  att  share  after  yield  '
-        'longest  runs  toManaged  return  aside',
+        'longest  runs  toManaged  return  aside  reach  wait  onset',
       );
     final families = {for (final row in mine) row.family}.toList()..sort();
     for (final family in families) {
@@ -136,7 +136,36 @@ String _row(String family, List<_Row> rows) => [
   _recovery(rows).padLeft(10),
   _returnDelay(rows).padLeft(7),
   '${rows.fold(0, (total, row) => total + row.setAsides)}'.padLeft(6),
+  _reach(rows).padLeft(6),
+  _wait(rows).padLeft(5),
+  _percent(_median(rows.map((row) => row.shareAtOnset))).padLeft(6),
 ].join(' ');
+
+/// How the family's failing runs ended, most common first.
+String _reach(List<_Row> rows) {
+  final counts = <DoseReachability, int>{};
+  for (final row in rows) {
+    counts.update(row.reachability, (count) => count + 1, ifAbsent: () => 1);
+  }
+  final worst = counts.entries.reduce((a, b) => a.value >= b.value ? a : b);
+  return switch (worst.key) {
+    DoseReachability.reached => 'yes',
+    DoseReachability.recoveredFirst => 'recov',
+    DoseReachability.neverEnoughEvidence => 'never',
+    DoseReachability.neverFailed => '-',
+  };
+}
+
+/// Slots from a failing run starting to the family becoming contractible.
+String _wait(List<_Row> rows) {
+  final waits = [
+    for (final row in rows)
+      if (row.reachability == DoseReachability.reached) ?row.waitedSlots,
+  ];
+  return waits.isEmpty
+      ? '-'
+      : _median(waits.map((wait) => wait.toDouble())).toStringAsFixed(0);
+}
 
 String _returnDelay(List<_Row> rows) {
   final delays = [for (final row in rows) ?row.returnDelay];
@@ -181,6 +210,9 @@ class _Row {
   final int? slotsToNextManaged;
   final int? returnDelay;
   final int setAsides;
+  final DoseReachability reachability;
+  final int? waitedSlots;
+  final double shareAtOnset;
 
   const _Row({
     required this.archetype,
@@ -195,6 +227,9 @@ class _Row {
     required this.slotsToNextManaged,
     required this.returnDelay,
     required this.setAsides,
+    required this.reachability,
+    required this.waitedSlots,
+    required this.shareAtOnset,
   });
 }
 
@@ -234,12 +269,17 @@ List<_Row> _exposures(
         }
       },
     );
+    final latencies = {
+      for (final latency in doseLatencies(trajectory, config: policy))
+        latency.family: latency,
+    };
     for (final exposure in familyExposures(
       trajectory,
       window: window,
       streakLength: streak,
       setAsides: setAsides,
     )) {
+      final latency = latencies[exposure.family];
       rows.add(
         _Row(
           archetype: job.archetypeId,
@@ -254,6 +294,9 @@ List<_Row> _exposures(
           slotsToNextManaged: exposure.slotsToNextManaged,
           returnDelay: exposure.returnDelay,
           setAsides: exposure.setAsides,
+          reachability: latency?.reachability ?? DoseReachability.neverFailed,
+          waitedSlots: latency?.slots,
+          shareAtOnset: latency?.shareAtOnset ?? 0,
         ),
       );
     }

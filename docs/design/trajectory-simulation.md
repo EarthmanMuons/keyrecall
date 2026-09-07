@@ -459,8 +459,10 @@ this machine:
 
 Eight workers is both slower and an order of magnitude hungrier, which is what
 killed the first run. **A worker's heap is the limit, not its CPU**, because
-each holds its own catalog and the traces of the slot it is on, so the default
-is four rather than a processor count.
+each holds its own catalog and the traces of the slot it is on. Memory scales
+badly enough past four that more parallelism is slower, so the default is four
+rather than a processor count, and raising it back to one worker per processor
+is a change that makes the tool worse.
 
 What was deliberately not done: nothing in the production decision pipeline was
 touched to make sweeps faster, and trajectories still carry their full

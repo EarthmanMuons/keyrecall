@@ -63,4 +63,57 @@ void main() {
       expect(exposure.slotsToNextManaged, isNull);
     }
   });
+
+  group('whether a failing family can be contracted at all', () {
+    final latencies = {
+      for (final latency in doseLatencies(trajectory)) latency.family: latency,
+    };
+
+    test('every family the run touched is answered once', () {
+      expect(latencies.keys.toSet(), {
+        for (final exposure in exposures) exposure.family,
+      });
+    });
+
+    test('a family that never fails is never asked about', () {
+      for (final exposure in exposures) {
+        if (exposure.longestUnproductiveStreak >= 3) continue;
+        expect(
+          latencies[exposure.family]!.reachability,
+          DoseReachability.neverFailed,
+        );
+      }
+    });
+
+    test('reaching the minimum is dated, and not reaching it is not', () {
+      for (final latency in latencies.values) {
+        switch (latency.reachability) {
+          case DoseReachability.reached:
+          case DoseReachability.recoveredFirst:
+            expect(latency.slots, isNotNull);
+            expect(latency.attempts, isNotNull);
+          case DoseReachability.neverEnoughEvidence:
+            expect(latency.slots, isNotNull);
+          case DoseReachability.neverFailed:
+            expect(latency.slots, isNull);
+        }
+      }
+    });
+
+    test('an evidence minimum it cannot reach answers never', () {
+      // Nothing holds thirteen of the last twelve selections, so no family can
+      // ever be contracted and every failing one says so.
+      final unreachable = doseLatencies(
+        trajectory,
+        config: const DoseConfig(window: 12, minAttempts: 12),
+      );
+
+      expect(
+        unreachable.where(
+          (latency) => latency.reachability == DoseReachability.reached,
+        ),
+        isEmpty,
+      );
+    });
+  });
 }

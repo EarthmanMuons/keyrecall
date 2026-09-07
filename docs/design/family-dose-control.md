@@ -206,6 +206,45 @@ was: the floor at 0.34 sits between an arm that barely engages and one that
 engages on everything, and the gap is chosen from the saturation shape rather
 than from a difference the sweep could measure.
 
+### Whether six is reachable
+
+Raising the evidence minimum trades one failure mode for another. Too low and a
+healthy family is contracted off an unlucky run; too high and a family that is a
+small minority of every sitting fails indefinitely without ever holding six of
+the last twelve selections, so the mechanism is not slow to answer but unable
+to.
+
+`doseLatencies` measures which of those is happening. From the start of a
+family's failing run it reports whether the family ever became contractible, how
+many slots that took, and what share of the window the family held when the run
+began. Read against a baseline run as readily as a dosed one, because it asks
+what the policy could have said rather than what it did.
+
+Sixteen sittings of twelve across seventy days, three seeds:
+
+| archetype              | family            | share at onset | reached | slots waited |
+| ---------------------- | ----------------- | -------------- | ------- | ------------ |
+| `coordination_limited` | `hands:right`     | 42%            | yes     | 3            |
+| `coordination_limited` | `hands:together`  | 17%            | yes     | 8            |
+| `coordination_limited` | `motion:contrary` | 17%            | yes     | 31           |
+| `coordination_limited` | `motion:parallel` | 17%            | never   | -            |
+| `uneven_hands`         | `hands:left`      | 40%            | yes     | 5            |
+| `uneven_hands`         | `hands:together`  | 8%             | yes     | 12           |
+
+**Six of twelve is slow rather than blind, down to about a sixth of the
+sitting.** A family holding forty per cent of the window is contractible within
+a handful of slots; one holding a sixth takes eight to thirty-one; one holding
+under a tenth may take most of a run or never arrive. On a seventy-slot month
+rather than a seventy-day one, the same minority families read `never` where the
+long run eventually reaches them, so the reachability answer is a property of
+the run length as much as the policy.
+
+Whether that matters is a product question this does not settle. A family
+occupying seven per cent of practice and failing is a different situation from
+one occupying a third, and it is not obvious that the first wants contracting at
+all. If it does, `minAttempts` and `window` are coupled and want a grid of their
+own rather than another axis.
+
 ## What is unsettled
 
 Every constant. `window`, `minAttempts`, `yieldFloor`, `maximumGap`,

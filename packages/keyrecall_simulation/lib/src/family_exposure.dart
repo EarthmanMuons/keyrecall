@@ -184,3 +184,163 @@ int? _returnDelay(
   delays.sort();
   return delays[delays.length ~/ 2];
 }
+
+/// Whether a failing family ever accumulated enough evidence to be contracted.
+enum DoseReachability {
+  /// It became contractible, and [DoseLatency] says how long that took.
+  reached('reached'),
+
+  /// It produced managed execution before it got there, so contraction was
+  /// never warranted.
+  recoveredFirst('recovered_first'),
+
+  /// It kept failing and never held enough of the window at once.
+  ///
+  /// The failure mode a high evidence minimum buys: a family that is a small
+  /// minority of every sitting can fail indefinitely without ever holding
+  /// `minAttempts` of the last `window` selections, so the mechanism is not
+  /// slow to answer, it is structurally unable to.
+  neverEnoughEvidence('never_enough_evidence'),
+
+  /// It never failed for long enough to ask the question.
+  neverFailed('never_failed');
+
+  const DoseReachability(this.id);
+
+  final String id;
+}
+
+/// How long a family's failing run took to become contractible.
+class DoseLatency {
+  final String family;
+  final DoseReachability reachability;
+
+  /// Family attempts from the start of the failing run to the answer.
+  final int? attempts;
+
+  /// Slots of any kind over the same stretch.
+  final int? slots;
+
+  /// The family's share of the window when the run began.
+  ///
+  /// A family holding much of a sitting reaches the minimum in a few attempts;
+  /// one holding a little may need several sittings, which is the coupling
+  /// between the minimum and the window.
+  final double shareAtOnset;
+
+  const DoseLatency({
+    required this.family,
+    required this.reachability,
+    required this.attempts,
+    required this.slots,
+    required this.shareAtOnset,
+  });
+}
+
+/// What each family's first sustained failing run did, under [config].
+///
+/// Answers the question a parity column cannot: whether an evidence minimum is
+/// merely slow for a low-frequency family or blind to it. Read against a
+/// baseline run as readily as a dosed one, since it asks what the policy would
+/// have been able to say rather than what it did.
+///
+/// The window is reconstructed the way the scheduler holds it: the last
+/// [DoseConfig.window] selections, which carry across a sitting boundary
+/// exactly as `SessionState.resuming` carries them.
+List<DoseLatency> doseLatencies(
+  Trajectory trajectory, {
+  DoseConfig config = const DoseConfig(),
+  int failingRun = 3,
+  RealizationFamilyResolver families = handMotionFamilies,
+}) {
+  final slots = trajectory.slots;
+  final window = <FamilyObservation>[];
+  final onset = <String, int>{};
+  final unproductive = <String, int>{};
+  final attemptsSinceOnset = <String, int>{};
+  final shareAtOnset = <String, double>{};
+  final answered = <String, DoseLatency>{};
+  final touched = <String>{};
+
+  for (final (position, slot) in slots.indexed) {
+    // Asked before the slot is recorded, because that is the window the
+    // decision was made against.
+    for (final family in {...onset.keys}) {
+      if (answered.containsKey(family)) continue;
+      if (familyDose(family, window: window, config: config, at: slot.at) <=
+          0) {
+        continue;
+      }
+      answered[family] = DoseLatency(
+        family: family,
+        reachability: DoseReachability.reached,
+        attempts: attemptsSinceOnset[family],
+        slots: position - onset[family]!,
+        shareAtOnset: shareAtOnset[family] ?? 0,
+      );
+    }
+
+    for (final family in families(slot.chosen)) {
+      touched.add(family);
+      if (slot.managedExecution) {
+        if (onset.containsKey(family) && !answered.containsKey(family)) {
+          answered[family] = DoseLatency(
+            family: family,
+            reachability: DoseReachability.recoveredFirst,
+            attempts: attemptsSinceOnset[family],
+            slots: position - onset[family]!,
+            shareAtOnset: shareAtOnset[family] ?? 0,
+          );
+        }
+        unproductive[family] = 0;
+        onset.remove(family);
+        attemptsSinceOnset.remove(family);
+        continue;
+      }
+      unproductive[family] = (unproductive[family] ?? 0) + 1;
+      attemptsSinceOnset[family] = (attemptsSinceOnset[family] ?? 0) + 1;
+      // A run counts as failing once it is long enough to be more than one bad
+      // attempt, and the clock starts where the run started rather than where
+      // it became interesting.
+      if (unproductive[family] == failingRun && !onset.containsKey(family)) {
+        onset[family] = position - failingRun + 1;
+        attemptsSinceOnset[family] = failingRun;
+        shareAtOnset[family] = window.isEmpty
+            ? 0
+            : window
+                      .where(
+                        (observation) => observation.families.contains(family),
+                      )
+                      .length /
+                  window.length;
+      }
+    }
+
+    window.add(
+      FamilyObservation(
+        families: families(slot.chosen),
+        productive: slot.managedExecution,
+        at: slot.at,
+      ),
+    );
+    while (window.length > config.window) {
+      window.removeAt(0);
+    }
+  }
+
+  return [
+    for (final family in touched.toList()..sort())
+      answered[family] ??
+          DoseLatency(
+            family: family,
+            reachability: onset.containsKey(family)
+                ? DoseReachability.neverEnoughEvidence
+                : DoseReachability.neverFailed,
+            attempts: attemptsSinceOnset[family],
+            slots: onset.containsKey(family)
+                ? slots.length - onset[family]!
+                : null,
+            shareAtOnset: shareAtOnset[family] ?? 0,
+          ),
+  ];
+}
