@@ -218,6 +218,56 @@ attempt that is clean, complete and well above what was asked is rare, and the
 produces one at all. The device found the echo because a person does this
 occasionally rather than proportionally.
 
+## Characterizing a run across the calendar
+
+Five named schedules, in `LongitudinalSchedules`, rather than a sweep over gap
+lengths: `dense_week`, `normal_month`, `interrupted`, `sporadic` and
+`return_after_long_break`. The same twelve sittings dense, spread, interrupted
+or sporadic are four different questions, and the days are attendance rather
+than policy, since nothing in the app schedules a sitting.
+
+`censusOfRun` summarizes a trajectory one sitting at a time: slots that advanced
+a frontier, slots that met an unseen material, slots on known work that moved
+nothing, slots asking for less independence than that material has already
+shown, probes opened, answered and stranded, coverage, and the sitting each
+milestone was first reached in. `bin/longitudinal.dart` runs every archetype
+against every schedule and reports it.
+
+The reason this exists rather than more detector incidence is that a count of
+returning sittings that crossed a threshold cannot answer the question worth
+asking, which is whether a break costs a learner one sitting or traps them. So
+the census reports, for every gap, the share of the returning sitting spent
+reacquiring **and** how many sittings passed before anything moved forward
+again.
+
+### What the first characterization said
+
+Ten slots a sitting, four seeds, every archetype and schedule.
+
+Every archetype but one resumes progression in the returning sitting itself. The
+median sittings-to-progress after a break is zero across `normal_month`,
+`interrupted`, `sporadic` and `return_after_long_break`, so a gap costs a share
+of one sitting rather than a trajectory. The share itself scales with the
+learner: an advanced player spends ten to twenty per cent of a returning sitting
+on old work, an uneven-handed one about half.
+
+`true_beginner` is the exception, and it is a different shape rather than a
+worse number. It spends effectively the whole returning sitting reacquiring, and
+in roughly a third of its returns **nothing progresses for the rest of the
+run**. Its sittings never ran dry, so this is not the pinned narrow-catalog
+defect; it is the beginner's frontier failing to move again once a break has
+decayed it, which no fifty-slot run could show.
+
+`dense_week` reports no reacquisition at all, by construction: no gap in it
+reaches two days, so it has no returns to summarize. It is there as the control.
+
+The tempo probe reads as a mechanism that opens and is not answered. The
+advanced player opens ten probes across four seeds of `interrupted` and answers
+none of them, stranding two at a sitting boundary. Too few openings for
+`probe_verification_share` to trip on any single run, which is worth
+remembering: a mechanism that fires rarely needs the census rather than a
+per-run threshold.
+
 ## Making the sweep fast enough to iterate on
 
 A sweep that takes half an hour is not a development instrument, it is a thing

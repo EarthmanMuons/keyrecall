@@ -595,7 +595,7 @@ Iterable<Anomaly> _probeEcho(Trajectory trajectory) sync* {
 Iterable<Anomaly> _probeVerificationShare(Trajectory trajectory) sync* {
   final opened = trajectory.slots.where((slot) => slot.probe.opened).length;
   if (opened < 8) return;
-  final answered = trajectory.slots.where(_answeredAProbe).length;
+  final answered = trajectory.slots.where((slot) => slot.answeredProbe).length;
   final share = answered / opened;
   if (share >= 0.25) return;
   yield Anomaly(
@@ -606,11 +606,6 @@ Iterable<Anomaly> _probeVerificationShare(Trajectory trajectory) sync* {
         '$answered of $opened tempo probes were asked for '
         '(${(share * 100).round()}%)',
   );
-}
-
-bool _answeredAProbe(TrajectorySlot slot) {
-  final waiting = slot.probe.pendingBefore;
-  return waiting != null && !slot.probe.freshBefore && slot.chosen == waiting;
 }
 
 /// **Observation.** A sitting ended with a probe that had waited its turn.

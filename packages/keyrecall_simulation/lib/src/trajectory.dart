@@ -229,6 +229,12 @@ class TrajectorySlot {
   /// The demonstrated tempo at the span that was played, or zero.
   double get frontierAtSpan => frontierBefore[chosen.conditions.octaves] ?? 0;
 
+  /// Whether this slot asked for the probe that had been waiting to compete.
+  bool get answeredProbe {
+    final waiting = probe.pendingBefore;
+    return waiting != null && !probe.freshBefore && chosen == waiting;
+  }
+
   bool get frontierAdvanced => frontierAfter.entries.any(
     (entry) => entry.value > (frontierBefore[entry.key] ?? 0),
   );

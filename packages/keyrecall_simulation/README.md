@@ -110,6 +110,18 @@ This is a diagnostic sweep rather than a CI test. It reports family allocation,
 floor use, progression gates, prediction ranges, terminal outcomes, and paired
 scale-milestone shifts for the baseline and one-variable counterfactual arms.
 
+To characterize what practice and forgetting do to each other over months:
+
+```console
+dart run keyrecall_simulation:longitudinal --seeds 10 --slots 12
+```
+
+Every archetype against each named calendar schedule, reporting per returning
+sitting how much went to reacquisition and how many sittings passed before
+anything moved forward again.
+`dart run keyrecall_simulation:sweep --days 0,2,9,30` runs the anomaly detectors
+over the same kind of schedule.
+
 ## Comparing against the reference
 
 Three gates, each answering a different question.
