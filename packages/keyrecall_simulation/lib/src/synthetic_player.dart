@@ -48,6 +48,18 @@ class SyntheticPlayer {
   /// far off, which is how tempo actually works.
   final double tempoCompliance;
 
+  /// How often they ignore the count-in and play at their own pace anyway,
+  /// in `[0, 1]`.
+  ///
+  /// [tempoCompliance] is a disposition, and a constant one describes somebody
+  /// who misses the request by the same proportion every time. The learner the
+  /// device sittings found is not that: they follow the count-in nearly always
+  /// and occasionally play a scale they find easy at the speed they actually
+  /// play it. Only the second kind of attempt is clean, fast and above the
+  /// request at once, which is what opens a tempo probe, so no constant
+  /// compliance can express them.
+  final double sprintProbability;
+
   /// How well each hand executes, in logits, before difficulty.
   final double rightHandAbility;
   final double leftHandAbility;
@@ -92,6 +104,7 @@ class SyntheticPlayer {
     required this.leftHandAbility,
     required this.handsTogetherAbility,
     required this.familiarity,
+    this.sprintProbability = 0,
     this.spanPenalty = 0.4,
     this.materialFamiliarity = const {},
     this.noise = 0.10,
@@ -106,6 +119,7 @@ class SyntheticPlayer {
     double? naturalTempoRightBpm,
     double? naturalTempoLeftBpm,
     double? tempoCompliance,
+    double? sprintProbability,
     double? rightHandAbility,
     double? leftHandAbility,
     double? handsTogetherAbility,
@@ -120,6 +134,7 @@ class SyntheticPlayer {
     naturalTempoRightBpm: naturalTempoRightBpm ?? this.naturalTempoRightBpm,
     naturalTempoLeftBpm: naturalTempoLeftBpm ?? this.naturalTempoLeftBpm,
     tempoCompliance: tempoCompliance ?? this.tempoCompliance,
+    sprintProbability: sprintProbability ?? this.sprintProbability,
     rightHandAbility: rightHandAbility ?? this.rightHandAbility,
     leftHandAbility: leftHandAbility ?? this.leftHandAbility,
     handsTogetherAbility: handsTogetherAbility ?? this.handsTogetherAbility,
@@ -170,17 +185,25 @@ class PlayerState {
     ),
   };
 
-  /// The tempo this player actually plays [exercise] at.
+  /// The tempo this player played the last exercise at.
+  ///
+  /// Held rather than recomputed, because a sprint is drawn once and asking
+  /// again would answer about a different attempt.
+  double get lastPerformedTempoBpm => _lastPerformedTempoBpm;
+  double _lastPerformedTempoBpm = 0;
+
+  /// The tempo this player plays [exercise] at, sprinting or not.
   ///
   /// A geometric blend of what was asked and what is comfortable, so
   /// compliance reads the same in both directions: a follower plays what the
   /// count-in says, somebody who ignores it plays their own pace, and the
   /// people in between drift toward comfort by a fixed proportion of the
-  /// distance in log tempo.
-  double performedTempoFor(Exercise exercise) {
+  /// distance in log tempo. A sprint is that same person taking none of the
+  /// request for one attempt.
+  double performedTempoFor(Exercise exercise, {bool sprinting = false}) {
     final requested = exercise.conditions.tempoBpm;
     final natural = naturalTempoFor(exercise.conditions.hands);
-    final compliance = player.tempoCompliance.clamp(0.0, 1.0);
+    final compliance = sprinting ? 0.0 : player.tempoCompliance.clamp(0.0, 1.0);
     return math.exp(
       compliance * math.log(requested) + (1 - compliance) * math.log(natural),
     );
@@ -190,7 +213,15 @@ class PlayerState {
   Outcome play(Exercise exercise, PythonCompatibleRandom rng) {
     final conditions = exercise.conditions;
     final materialId = exercise.material.materialId;
-    final performed = performedTempoFor(exercise);
+    // Drawn only where the player has a sprint at all, so adding the knob
+    // leaves every existing archetype's draw sequence where it was.
+    final sprinting =
+        player.sprintProbability > 0 &&
+        rng.nextDouble() < player.sprintProbability;
+    final performed = _lastPerformedTempoBpm = performedTempoFor(
+      exercise,
+      sprinting: sprinting,
+    );
     final natural = naturalTempoFor(conditions.hands);
 
     double noisy(double center) =>

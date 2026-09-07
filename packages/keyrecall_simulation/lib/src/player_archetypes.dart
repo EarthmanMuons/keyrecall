@@ -105,6 +105,26 @@ abstract final class PlayerArchetypes {
     spanPenalty: 0.35,
   );
 
+  /// Follows the count-in, and now and then plays a scale at their own pace.
+  ///
+  /// Built from a device sitting rather than from a tier of ability: the
+  /// attempts that opened tempo probes there were the occasional ones, played
+  /// clean and well above the request, by somebody who had followed the
+  /// count-in all session.
+  static SyntheticPlayer get compliantThenSprints => SyntheticPlayer(
+    id: 'compliant_then_sprints',
+    placement: PlacementTier.someExperience,
+    naturalTempoRightBpm: 132,
+    naturalTempoLeftBpm: 120,
+    tempoCompliance: 0.85,
+    sprintProbability: 0.2,
+    rightHandAbility: 1.3,
+    leftHandAbility: 1.1,
+    handsTogetherAbility: 0.5,
+    familiarity: 0.8,
+    spanPenalty: 0.3,
+  );
+
   /// A strong right hand and a left that has not kept up.
   static SyntheticPlayer get unevenHands => SyntheticPlayer(
     id: 'uneven_hands',
@@ -141,6 +161,7 @@ abstract final class PlayerArchetypes {
     advanced,
     fastButPlacedLow,
     tempoNoncompliant,
+    compliantThenSprints,
     unevenHands,
     coordinationLimited,
   ];

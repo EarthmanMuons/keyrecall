@@ -85,7 +85,7 @@ void main() {
       playerId: 'test',
       seed: 0,
       slots: const [],
-      terminal: terminal,
+      terminals: [terminal],
     );
 
     final found = detectAnomalies(trajectory, requestedSlots: 1).single;
@@ -406,13 +406,157 @@ void main() {
       expect(describeCluster(unrelated), isNot(ClusterKind.coordinationPhase));
     });
   });
+
+  group('tempo probe detectors', () {
+    final probe = _exercise(tempoBpm: 72);
+
+    test('answering a probe in the slot after it opened is an invariant', () {
+      final found = _find('probe_echo', [
+        _slot(0, probe: ProbeState(pendingAfter: probe, freshAfter: true)),
+        _slot(
+          1,
+          winner: _trace(probe),
+          probe: ProbeState(
+            pendingBefore: probe,
+            freshBefore: true,
+            pendingAfter: probe,
+          ),
+        ),
+      ]);
+
+      expect(found.single.severity, AnomalySeverity.invariant);
+      expect(found.single.slot, 1);
+    });
+
+    test('answering one after an intervening slot is not', () {
+      expect(
+        _find('probe_echo', [
+          _slot(0, probe: ProbeState(pendingAfter: probe, freshAfter: true)),
+          _slot(
+            1,
+            probe: ProbeState(
+              pendingBefore: probe,
+              freshBefore: true,
+              pendingAfter: probe,
+            ),
+          ),
+          _slot(
+            2,
+            winner: _trace(probe),
+            probe: ProbeState(pendingBefore: probe),
+          ),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('a sitting ending on a probe that had waited its turn reports it', () {
+      final found = _find(
+        'probe_stranded',
+        [
+          _slot(0, probe: ProbeState(pendingAfter: probe, freshAfter: true)),
+          _slot(
+            1,
+            probe: ProbeState(
+              pendingBefore: probe,
+              freshBefore: true,
+              pendingAfter: probe,
+            ),
+          ),
+        ],
+        sittings: [Sitting(at: _at(0), slots: 2)],
+      );
+
+      expect(found.single.severity, AnomalySeverity.observation);
+      expect(found.single.summary, contains('72bpm'));
+    });
+
+    test('one opened by the last attempt is not stranded', () {
+      expect(
+        _find(
+          'probe_stranded',
+          [_slot(0, probe: ProbeState(pendingAfter: probe, freshAfter: true))],
+          sittings: [Sitting(at: _at(0), slots: 1)],
+        ),
+        isEmpty,
+      );
+    });
+  });
+
+  group('longitudinal detectors', () {
+    final away = DateTime.utc(2026).add(const Duration(days: 3));
+
+    test('a sitting after a break that only reacquires reports it', () {
+      final found = _find(
+        'reacquisition_burden',
+        [
+          _slot(0),
+          for (var i = 0; i < 8; i++)
+            _slot(i + 1, sitting: 1, at: away.add(Duration(minutes: i))),
+        ],
+        sittings: [
+          Sitting(at: _at(0), slots: 1),
+          Sitting(at: away, slots: 8),
+        ],
+      );
+
+      expect(found.single.summary, contains('after 3 days'));
+      expect(found.single.magnitude, 1.0);
+    });
+
+    test('a returning sitting that advances a frontier does not', () {
+      expect(
+        _find(
+          'reacquisition_burden',
+          [
+            _slot(0),
+            for (var i = 0; i < 8; i++)
+              _slot(
+                i + 1,
+                sitting: 1,
+                at: away.add(Duration(minutes: i)),
+                frontierBefore: const {1: 60},
+                frontierAfter: const {1: 72},
+              ),
+          ],
+          sittings: [
+            Sitting(at: _at(0), slots: 1),
+            Sitting(at: away, slots: 8),
+          ],
+        ),
+        isEmpty,
+      );
+    });
+
+    test('a sitting on the next day is not a break', () {
+      final soon = DateTime.utc(2026).add(const Duration(hours: 20));
+      expect(
+        _find(
+          'reacquisition_burden',
+          [
+            _slot(0),
+            for (var i = 0; i < 8; i++)
+              _slot(i + 1, sitting: 1, at: soon.add(Duration(minutes: i))),
+          ],
+          sittings: [
+            Sitting(at: _at(0), slots: 1),
+            Sitting(at: soon, slots: 8),
+          ],
+        ),
+        isEmpty,
+      );
+    });
+  });
 }
 
-List<Anomaly> _find(String detector, List<TrajectorySlot> slots) =>
-    detectAnomalies(
-      Trajectory(playerId: 'test', seed: 0, slots: slots),
-      requestedSlots: slots.length,
-    ).where((anomaly) => anomaly.detector == detector).toList();
+List<Anomaly> _find(
+  String detector,
+  List<TrajectorySlot> slots, {
+  List<Sitting> sittings = const [],
+}) => detectAnomalies(
+  Trajectory(playerId: 'test', seed: 0, slots: slots, sittings: sittings),
+  requestedSlots: slots.length,
+).where((anomaly) => anomaly.detector == detector).toList();
 
 TrajectorySlot _slot(
   int index, {
@@ -423,12 +567,16 @@ TrajectorySlot _slot(
   Map<int, double>? frontierAfter,
   double transferableBefore = 0,
   HandsTogetherStages? handsTogether,
+  int sitting = 0,
+  ProbeState probe = ProbeState.none,
+  DateTime? at,
 }) {
   final selected = winner ?? _trace(_exercise());
   final result = outcome ?? _outcome();
   return TrajectorySlot(
     index: index,
-    at: _at(index),
+    at: at ?? _at(index),
+    sitting: sitting,
     chosen: selected.exercise,
     winner: selected,
     alternatives: alternatives,
@@ -447,6 +595,7 @@ TrajectorySlot _slot(
       selectable: 1,
     ),
     handsTogether: handsTogether ?? _handsTogether(),
+    probe: probe,
   );
 }
 

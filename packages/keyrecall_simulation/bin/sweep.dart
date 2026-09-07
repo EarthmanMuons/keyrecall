@@ -35,6 +35,12 @@ Future<void> main(List<String> arguments) async {
     )
     ..addOption('slots', defaultsTo: '50', help: 'Attempts per sitting.')
     ..addOption(
+      'days',
+      help:
+          'Comma-separated days to sit down on, spreading the run across '
+          'simulated calendar time. One sitting when omitted.',
+    )
+    ..addOption(
       'census',
       defaultsTo: '3',
       help: 'How many worked examples to print per detector.',
@@ -48,6 +54,13 @@ Future<void> main(List<String> arguments) async {
 
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
+  final days = options.option('days');
+  final sittings = days == null
+      ? [Sitting(at: DateTime.utc(2026), slots: slots)]
+      : sittingsOnDays([
+          for (final day in days.split(',')) int.parse(day.trim()),
+        ], slots: slots);
+  final requested = slots * sittings.length;
   final censusLimit = int.parse(options.option('census')!);
 
   final incidence = <String, Map<String, int>>{};
@@ -71,7 +84,7 @@ Future<void> main(List<String> arguments) async {
 
   final running = [
     for (final bucket in buckets)
-      if (bucket.isNotEmpty) Isolate.run(() => _findingsFor(bucket, slots)),
+      if (bucket.isNotEmpty) Isolate.run(() => _findingsFor(bucket, sittings)),
   ];
   final findings = [for (final batch in await Future.wait(running)) ...batch];
   stdout.writeln(
@@ -102,7 +115,10 @@ Future<void> main(List<String> arguments) async {
 
   stdout
     ..writeln()
-    ..writeln('== anomaly incidence: $seeds seeds x $slots slots per archetype')
+    ..writeln(
+      '== anomaly incidence: $seeds seeds x $requested slots per archetype '
+      'across ${sittings.length} sitting(s)',
+    )
     ..writeln(
       '   counts are anomalies raised, so one run may contribute more '
       'than one',
@@ -183,19 +199,20 @@ class _Finding {
 }
 
 /// Every anomaly one bucket of trajectories produces, in its own isolate.
-List<_Finding> _findingsFor(List<_Job> jobs, int slots) {
+List<_Finding> _findingsFor(List<_Job> jobs, List<Sitting> sittings) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
+  final requested = sittings.fold(0, (total, s) => total + s.slots);
   return [
     for (final job in jobs)
       for (final anomaly in detectAnomalies(
-        runTrajectory(
+        runSittings(
           player: job.player,
           seed: job.seed,
           materials: allScales,
-          slots: slots,
+          sittings: sittings,
           generated: generated,
         ),
-        requestedSlots: slots,
+        requestedSlots: requested,
       ))
         _Finding(
           archetype: job.player.id,

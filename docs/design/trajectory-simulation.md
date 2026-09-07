@@ -175,6 +175,49 @@ frontier that would not move. Both encoded "what the scheduler currently does"
 as a property. The census made both obvious on one read, which is the argument
 for the census.
 
+## Sittings and simulated time
+
+A run is a list of sittings rather than a single unbroken sequence of slots.
+Each names the instant somebody sat down and how many attempts they made, and
+`runSittings` plays them in order; `runTrajectory` is the one-sitting case of
+it. Slot indices run across the whole run and every slot carries the sitting it
+belonged to, so a detector reads one ordered history and can still ask where the
+breaks were.
+
+**What crosses a break is what crosses it in the app.** Learner state persists
+and keeps decaying through the gap, which is the whole question a run across
+weeks asks. The sitting's own scheduling context is rebuilt on the far side
+through `SessionState.resuming`, which is the same function `PracticeSession`
+uses when the app reopens: the recency and pacing windows carry over from the
+tail of the history, and the attempt cap, the recovery context, the waiting
+tempo probe and the guidance counters do not.
+
+That boundary is load-bearing rather than a convenience. A harness that kept one
+`SessionState` for a whole run would let a probe opened in March be answered in
+April because an object survived, and every long-run conclusion drawn from it
+would be about the harness. Holding the two implementations to one function is
+what makes a longitudinal trajectory a claim about the product.
+
+Time advances two ways, and they are different questions. Within a sitting a
+slot is a minute; between sittings it is the calendar. A probe waits a bounded
+number of decisions by construction, so its latency is only ever interesting in
+elapsed time, and a detector that mixes the two measures neither.
+
+**A new scheduler mechanism ships with a detector or an invariant, not only a
+fixture test.** A test pins the case that motivated the mechanism; a detector is
+what makes the sweep able to say anything about it over a population. The tempo
+probe is the worked example: `probe_echo` asserts that a fresh probe never wins
+the slot after the attempt that opened it, and `probe_verification_share`,
+`probe_stranded` and `probe_defer_blocked` count what the mechanism does with
+the probes it opens.
+
+The first thing those counters said is that probes almost never open in
+simulation. Requests converge on the pace a player is already showing, so an
+attempt that is clean, complete and well above what was asked is rare, and the
+`compliant_then_sprints` archetype exists because no constant `tempoCompliance`
+produces one at all. The device found the echo because a person does this
+occasionally rather than proportionally.
+
 ## Making the sweep fast enough to iterate on
 
 A sweep that takes half an hour is not a development instrument, it is a thing

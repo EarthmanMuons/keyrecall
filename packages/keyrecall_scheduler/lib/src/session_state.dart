@@ -79,6 +79,48 @@ class SessionState {
   }) : recentMaterialIds = recentMaterialIds ?? [],
        recentFamilies = recentFamilies ?? [];
 
+  /// The state a sitting starts from when [history] came before it.
+  ///
+  /// The recency and pacing windows carry over from the tail of the history,
+  /// and nothing else does. The attempt cap, the recovery context, the waiting
+  /// tempo probe and the guidance counters are all conditions of the sitting
+  /// they arose in: a new sitting is not owed a probe opened before a break,
+  /// and a recovery context that outlived the failure it answered would answer
+  /// a question nobody is still asking.
+  ///
+  /// Allocation is a question about the recent past rather than about the last
+  /// attempt, so returning must not clear the pressure the work before it
+  /// built up.
+  factory SessionState.resuming(
+    List<PriorSelection> history, {
+    required SchedulerConfig config,
+    RealizationFamilyResolver families = handMotionFamilies,
+  }) {
+    final window = config.diversity.recentWindow;
+    final recent = [
+      for (final prior in history) prior.exercise.material.materialId,
+    ];
+    final session = SessionState(
+      recentMaterialIds: recent.length <= window
+          ? recent
+          : recent.sublist(recent.length - window),
+    );
+    if (config.pacing case final pacing?) {
+      final paced = history.length <= pacing.window
+          ? history
+          : history.sublist(history.length - pacing.window);
+      for (final prior in paced) {
+        session.recordFamilySelection(
+          prior.exercise,
+          productive: prior.productive,
+          config: pacing,
+          families: families,
+        );
+      }
+    }
+    return session;
+  }
+
   /// Whether a recovery context is currently active.
   bool get isRecovering => lastFailedExercise != null;
 
@@ -183,4 +225,15 @@ class SessionState {
   String toString() =>
       'SessionState(attempts: $attemptsThisSession, '
       'recent: ${recentMaterialIds.length}, recovering: $isRecovering)';
+}
+
+/// A selection a resumed sitting reads back out of its history.
+///
+/// [productive] is the yield signal pacing reads, which the exercise alone
+/// does not carry.
+class PriorSelection {
+  final Exercise exercise;
+  final bool productive;
+
+  const PriorSelection(this.exercise, {required this.productive});
 }

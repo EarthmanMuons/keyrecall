@@ -70,13 +70,76 @@ class HandsTogetherDiagnostic {
   });
 }
 
+/// One sitting of a run: when a person sat down, and for how many attempts.
+///
+/// Explicit instants rather than a gap from the last sitting, because what
+/// decays between them is a function of the calendar and reading a schedule
+/// back should not require adding durations up.
+class Sitting {
+  final DateTime at;
+  final int slots;
+
+  const Sitting({required this.at, required this.slots});
+}
+
+/// Sittings of [slots] attempts each, on the given [days] from [from].
+List<Sitting> sittingsOnDays(
+  List<int> days, {
+  required int slots,
+  DateTime? from,
+}) {
+  final start = from ?? DateTime.utc(2026);
+  return [
+    for (final day in days)
+      Sitting(
+        at: start.add(Duration(days: day)),
+        slots: slots,
+      ),
+  ];
+}
+
+/// The waiting tempo probe either side of one decision.
+///
+/// Both sides, because every question about the mechanism is about a
+/// transition: a probe opens when one is fresh afterwards and was not before,
+/// it is verified when the slot chose the one that was waiting, and it is lost
+/// when a waiting one was neither chosen nor still there afterwards.
+class ProbeState {
+  final Exercise? pendingBefore;
+  final bool freshBefore;
+  final Exercise? pendingAfter;
+  final bool freshAfter;
+
+  const ProbeState({
+    this.pendingBefore,
+    this.freshBefore = false,
+    this.pendingAfter,
+    this.freshAfter = false,
+  });
+
+  static const ProbeState none = ProbeState();
+
+  /// Whether this slot's attempt opened a probe.
+  ///
+  /// A probe is fresh only for the decision immediately after the attempt that
+  /// opened it, so the flag being set afterwards is the opening.
+  bool get opened => freshAfter;
+
+  /// Whether a fresh probe was held back from this slot.
+  bool get deferred => freshBefore;
+}
+
 /// A decision slot that produced no selection.
 class TerminalTrajectorySlot {
   final int index;
   final DateTime at;
+
+  /// Which sitting of the run it belongs to, from zero.
+  final int sitting;
   final List<CandidateTrace> traces;
   final List<CandidateTrace> selectable;
   final CandidateStageCounts candidates;
+  final ProbeState probe;
 
   const TerminalTrajectorySlot({
     required this.index,
@@ -84,16 +147,21 @@ class TerminalTrajectorySlot {
     required this.traces,
     required this.selectable,
     required this.candidates,
+    this.sitting = 0,
+    this.probe = ProbeState.none,
   });
 }
 
 /// One slot of a simulated sitting, with the state detectors need.
 class TrajectorySlot {
-  /// Which slot of the sitting this is, from zero.
+  /// Which slot of the run this is, from zero, counted across sittings.
   final int index;
 
   /// When it was decided.
   final DateTime at;
+
+  /// Which sitting of the run it belongs to, from zero.
+  final int sitting;
 
   /// What the learner was asked for.
   final Exercise chosen;
@@ -133,6 +201,9 @@ class TrajectorySlot {
   final CandidateStageCounts candidates;
   final HandsTogetherStages handsTogether;
 
+  /// The waiting tempo probe either side of this decision.
+  final ProbeState probe;
+
   const TrajectorySlot({
     required this.index,
     required this.at,
@@ -148,6 +219,8 @@ class TrajectorySlot {
     required this.transferableBefore,
     required this.candidates,
     required this.handsTogether,
+    this.sitting = 0,
+    this.probe = ProbeState.none,
   });
 
   /// Where the chosen realization sat against the frontier.
@@ -233,14 +306,28 @@ class Trajectory {
   /// Which seed produced it.
   final int seed;
 
-  /// The slots, in order.
+  /// The slots, in order, across every sitting.
   final List<TrajectorySlot> slots;
-  final TerminalTrajectorySlot? terminal;
+
+  /// The sittings the slots were played in, in order.
+  final List<Sitting> sittings;
+
+  /// The slots that admitted nothing, one per sitting that ran dry.
+  final List<TerminalTrajectorySlot> terminals;
 
   const Trajectory({
     required this.playerId,
     required this.seed,
     required this.slots,
-    this.terminal,
+    this.sittings = const [],
+    this.terminals = const [],
   });
+
+  /// The first sitting that ran dry, or null.
+  TerminalTrajectorySlot? get terminal =>
+      terminals.isEmpty ? null : terminals.first;
+
+  /// The slots of sitting [index], in order.
+  Iterable<TrajectorySlot> slotsOf(int index) =>
+      slots.where((slot) => slot.sitting == index);
 }

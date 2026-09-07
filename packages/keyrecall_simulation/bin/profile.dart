@@ -155,7 +155,7 @@ Future<void> main(List<String> arguments) async {
             chosen: exercise,
             winner: chosen,
             alternatives: alternatives,
-            performedTempoBpm: playing.performedTempoFor(exercise),
+            performedTempoBpm: playing.lastPerformedTempoBpm,
             outcome: outcome,
             managedExecution: learner.executionWasManaged(outcome),
             frontierBefore: frontierBefore,

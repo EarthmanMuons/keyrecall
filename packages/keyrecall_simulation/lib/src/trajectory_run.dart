@@ -6,7 +6,7 @@ import 'python_compatible_random.dart';
 import 'synthetic_player.dart';
 import 'trajectory.dart';
 
-/// Runs [player] through a sitting against the real pipeline.
+/// Runs [player] through one sitting against the real pipeline.
 ///
 /// Deterministic in every part: the same player, seed, length and catalog
 /// produce the same trajectory and therefore the same detector findings, so a
@@ -28,13 +28,51 @@ Trajectory runTrajectory({
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
+}) => runSittings(
+  player: player,
+  seed: seed,
+  materials: materials,
+  sittings: [Sitting(at: start ?? DateTime.utc(2026), slots: slots)],
+  minutesPerSlot: minutesPerSlot,
+  pipeline: pipeline,
+  instrument: instrument,
+  generated: generated,
+  acquisitionFloor: acquisitionFloor,
+  observeTraces: observeTraces,
+  observeState: observeState,
+  observePacing: observePacing,
+);
+
+/// Runs [player] through [sittings] spread across simulated calendar time.
+///
+/// What crosses a sitting boundary is what crosses it in the app. The learner
+/// state persists and keeps decaying through the gap, since that is the whole
+/// question a run across weeks asks; the sitting's own scheduling context is
+/// rebuilt the way a restart rebuilds it, through [SessionState.resuming], so
+/// a probe opened before a break cannot be answered after one just because the
+/// harness held the object.
+///
+/// Slot indices run across the whole run rather than restarting each sitting,
+/// so a detector reading a window of slots reads one ordered history and can
+/// ask which sitting a slot belonged to.
+Trajectory runSittings({
+  required SyntheticPlayer player,
+  required int seed,
+  required List<TechnicalMaterial> materials,
+  required List<Sitting> sittings,
+  double minutesPerSlot = 1.0,
+  SchedulerPipeline pipeline = const SchedulerPipeline(learner: LearnerModel()),
+  InstrumentProfile? instrument,
+  List<Exercise>? generated,
+  AcquisitionFloor? acquisitionFloor,
+  void Function(int slot, List<CandidateTrace> traces)? observeTraces,
+  void Function(int slot, LearnerState state)? observeState,
+  void Function(int slot, PacingDecision pacing)? observePacing,
 }) {
   final rng = PythonCompatibleRandom(seed);
-  final at0 = start ?? DateTime.utc(2026);
   final learner = pipeline.learner;
-  final state = learner.placementState(player.placement, at: at0);
+  final state = learner.placementState(player.placement, at: sittings.first.at);
   final playing = player.begin();
-  final session = SessionState();
   // Generation is learner-blind, so the same catalog and instrument give the
   // same candidates for every seed. A sweep passes one set in rather than
   // rebuilding it eight hundred times.
@@ -43,135 +81,163 @@ Trajectory runTrajectory({
       generateCandidates(instrument ?? InstrumentProfile(), materials);
 
   final recorded = <TrajectorySlot>[];
-  TerminalTrajectorySlot? terminal;
-  for (var index = 0; index < slots; index++) {
-    final at = at0.add(
-      Duration(seconds: (index * minutesPerSlot * 60).round()),
-    );
-    learner.propagate(state, at);
-    // Read what is needed immediately: this is the live state, and the slot
-    // below moves it.
-    observeState?.call(index, state);
-
-    final selection = pipeline.decide(
-      state: state,
-      session: session,
-      candidates: candidates,
-      at: at,
-      acquisitionFloor: acquisitionFloor,
-    );
-    observePacing?.call(index, selection.pacing);
-    final traces = selection.traces;
-    final available = selection.selectable;
-    final chosen = switch (selection) {
-      CandidateSelected(:final candidate) => candidate,
-      SelectionBlocked() => null,
-    };
-    // Every candidate, which a slot does not retain: a sitting evaluates
-    // thousands and only the selectable ones are worth carrying to the end.
-    // A diagnostic asking what was refused has to see them as they go past.
-    observeTraces?.call(index, traces);
-    if (chosen == null) {
-      terminal = TerminalTrajectorySlot(
-        index: index,
-        at: at,
-        traces: traces,
-        selectable: available,
-        candidates: _candidateCounts(candidates.length, traces, available),
+  final terminals = <TerminalTrajectorySlot>[];
+  final history = <PriorSelection>[];
+  var index = 0;
+  for (var sitting = 0; sitting < sittings.length; sitting++) {
+    final session = SessionState.resuming(history, config: pipeline.config);
+    for (var slot = 0; slot < sittings[sitting].slots; slot++, index++) {
+      final at = sittings[sitting].at.add(
+        Duration(seconds: (slot * minutesPerSlot * 60).round()),
       );
-      break;
-    }
+      learner.propagate(state, at);
+      final probeBefore = session.tempoProbe;
+      final probeFreshBefore = session.tempoProbeIsFresh;
+      // Read what is needed immediately: this is the live state, and the slot
+      // below moves it.
+      observeState?.call(index, state);
 
-    final exercise = chosen.exercise;
-    final residual = state.materialExecution[executionContextOf(exercise)];
-    final frontierBefore = {...?residual?.demonstratedTempoByOctaves};
-    final pacedBefore = residual?.pacedTempoBpm ?? 0;
-    final transferableBefore = transferableTempoFor(
-      state,
-      exercise.conditions.hands,
-      exercise.conditions.octaves,
-    );
-
-    final outcome = playing.play(exercise, rng);
-    final handsTogetherTraces = traces.where(
-      (trace) => trace.exercise.conditions.hands == HandConfiguration.together,
-    );
-    final handsTogetherSelectable = available.where(
-      (trace) => trace.exercise.conditions.hands == HandConfiguration.together,
-    );
-    final handsTogether = HandsTogetherStages(
-      prerequisiteSatisfied: {
-        for (final trace in handsTogetherTraces)
-          if (trace.handsTogetherPrerequisiteSatisfied == true)
-            trace.exercise.material.materialId,
-      },
-      eligible: {
-        for (final trace in handsTogetherTraces)
-          if (trace.eligibility.tier == EligibilityTier.fullyEligible)
-            trace.exercise.material.materialId,
-      },
-      admitted: {
-        for (final trace in handsTogetherTraces)
-          if (trace.isRanked) trace.exercise.material.materialId,
-      },
-      selectable: {
-        for (final trace in handsTogetherSelectable)
-          trace.exercise.material.materialId,
-      },
-      diagnostics: _handsTogetherDiagnostics(
-        state,
-        handsTogetherTraces,
-        handsTogetherSelectable,
-      ),
-    );
-    final candidateCounts = _candidateCounts(
-      candidates.length,
-      traces,
-      available,
-    );
-
-    learner.applyOutcome(
-      state: state,
-      exercise: exercise,
-      outcome: outcome,
-      weights: evidenceWeightsFor(exercise, outcome),
-      prediction: learner.predict(state, exercise, at: at),
-      at: at,
-    );
-    final frontierAfter = {
-      ...?state
-          .materialExecution[executionContextOf(exercise)]
-          ?.demonstratedTempoByOctaves,
-    };
-    recorded.add(
-      TrajectorySlot(
-        index: index,
+      final selection = pipeline.decide(
+        state: state,
+        session: session,
+        candidates: candidates,
         at: at,
-        chosen: exercise,
-        winner: chosen,
-        alternatives: [
-          for (final trace in available)
-            if (!identical(trace, chosen)) trace,
-        ]..sort((a, b) => b.rankKey!.compareTo(a.rankKey!)),
-        performedTempoBpm: playing.performedTempoFor(exercise),
+        acquisitionFloor: acquisitionFloor,
+      );
+      observePacing?.call(index, selection.pacing);
+      final traces = selection.traces;
+      final available = selection.selectable;
+      final chosen = switch (selection) {
+        CandidateSelected(:final candidate) => candidate,
+        SelectionBlocked() => null,
+      };
+      // Every candidate, which a slot does not retain: a sitting evaluates
+      // thousands and only the selectable ones are worth carrying to the end.
+      // A diagnostic asking what was refused has to see them as they go past.
+      observeTraces?.call(index, traces);
+      if (chosen == null) {
+        terminals.add(
+          TerminalTrajectorySlot(
+            index: index,
+            at: at,
+            sitting: sitting,
+            traces: traces,
+            selectable: available,
+            candidates: _candidateCounts(candidates.length, traces, available),
+            probe: ProbeState(
+              pendingBefore: probeBefore,
+              freshBefore: probeFreshBefore,
+              pendingAfter: probeBefore,
+              freshAfter: probeFreshBefore,
+            ),
+          ),
+        );
+        break;
+      }
+
+      final exercise = chosen.exercise;
+      final residual = state.materialExecution[executionContextOf(exercise)];
+      final frontierBefore = {...?residual?.demonstratedTempoByOctaves};
+      final pacedBefore = residual?.pacedTempoBpm ?? 0;
+      final transferableBefore = transferableTempoFor(
+        state,
+        exercise.conditions.hands,
+        exercise.conditions.octaves,
+      );
+
+      final outcome = playing.play(exercise, rng);
+      final handsTogetherTraces = traces.where(
+        (trace) =>
+            trace.exercise.conditions.hands == HandConfiguration.together,
+      );
+      final handsTogetherSelectable = available.where(
+        (trace) =>
+            trace.exercise.conditions.hands == HandConfiguration.together,
+      );
+      final handsTogether = HandsTogetherStages(
+        prerequisiteSatisfied: {
+          for (final trace in handsTogetherTraces)
+            if (trace.handsTogetherPrerequisiteSatisfied == true)
+              trace.exercise.material.materialId,
+        },
+        eligible: {
+          for (final trace in handsTogetherTraces)
+            if (trace.eligibility.tier == EligibilityTier.fullyEligible)
+              trace.exercise.material.materialId,
+        },
+        admitted: {
+          for (final trace in handsTogetherTraces)
+            if (trace.isRanked) trace.exercise.material.materialId,
+        },
+        selectable: {
+          for (final trace in handsTogetherSelectable)
+            trace.exercise.material.materialId,
+        },
+        diagnostics: _handsTogetherDiagnostics(
+          state,
+          handsTogetherTraces,
+          handsTogetherSelectable,
+        ),
+      );
+      final candidateCounts = _candidateCounts(
+        candidates.length,
+        traces,
+        available,
+      );
+
+      learner.applyOutcome(
+        state: state,
+        exercise: exercise,
         outcome: outcome,
-        managedExecution: learner.executionWasManaged(outcome),
-        frontierBefore: frontierBefore,
-        frontierAfter: frontierAfter,
-        pacedBefore: pacedBefore,
-        transferableBefore: transferableBefore,
-        candidates: candidateCounts,
-        handsTogether: handsTogether,
-      ),
-    );
-    pipeline.recordOutcome(session, exercise, outcome);
+        weights: evidenceWeightsFor(exercise, outcome),
+        prediction: learner.predict(state, exercise, at: at),
+        at: at,
+      );
+      final frontierAfter = {
+        ...?state
+            .materialExecution[executionContextOf(exercise)]
+            ?.demonstratedTempoByOctaves,
+      };
+      pipeline.recordOutcome(session, exercise, outcome);
+      final managedExecution = learner.executionWasManaged(outcome);
+      history.add(PriorSelection(exercise, productive: managedExecution));
+      recorded.add(
+        TrajectorySlot(
+          index: index,
+          at: at,
+          sitting: sitting,
+          chosen: exercise,
+          winner: chosen,
+          alternatives: [
+            for (final trace in available)
+              if (!identical(trace, chosen)) trace,
+          ]..sort((a, b) => b.rankKey!.compareTo(a.rankKey!)),
+          performedTempoBpm: playing.lastPerformedTempoBpm,
+          outcome: outcome,
+          managedExecution: managedExecution,
+          frontierBefore: frontierBefore,
+          frontierAfter: frontierAfter,
+          pacedBefore: pacedBefore,
+          transferableBefore: transferableBefore,
+          candidates: candidateCounts,
+          handsTogether: handsTogether,
+          probe: ProbeState(
+            pendingBefore: probeBefore,
+            freshBefore: probeFreshBefore,
+            pendingAfter: session.tempoProbe,
+            freshAfter: session.tempoProbeIsFresh,
+          ),
+        ),
+      );
+    }
   }
 
   return Trajectory(
     playerId: player.id,
     seed: seed,
     slots: recorded,
-    terminal: terminal,
+    sittings: sittings,
+    terminals: terminals,
   );
 }
 

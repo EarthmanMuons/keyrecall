@@ -829,44 +829,20 @@ class PracticeSession {
 
   /// Rebuilds what the scheduler needs to know about the sitting in progress.
   ///
-  /// Only the recency and pacing windows carry over, from the tail of the
-  /// journal. The attempt cap and any recovery context deliberately do not: a
-  /// restart is a new sitting, and a recovery context that outlived the failure
-  /// it responded to would answer a question nobody is still asking.
-  ///
-  /// Allocation, unlike recovery, is a question about the recent past rather
-  /// than about the last attempt, so reopening the app must not clear the
-  /// pressure the work before it built up.
+  /// A restart is a new sitting, so it carries what [SessionState.resuming]
+  /// carries and nothing else.
   static SessionState _rebuildSessionState(
     AttemptJournal journal,
     LearnerModel learner,
     SchedulerConfig config,
-  ) {
-    final records = journal.records;
-    final recent = records
-        .map((record) => record.exercise.material.materialId)
-        .toList();
-    final window = config.diversity.recentWindow;
-    final session = SessionState(
-      recentMaterialIds: recent.length <= window
-          ? recent
-          : recent.sublist(recent.length - window),
-    );
-    if (config.pacing case final pacing?) {
-      final paced = records.length <= pacing.window
-          ? records
-          : records.sublist(records.length - pacing.window);
-      for (final record in paced) {
-        session.recordFamilySelection(
-          record.exercise,
-          productive: switch (record.closure.measurement) {
-            Measured(:final outcome) => learner.executionWasManaged(outcome),
-            MeasurementUnavailable() => false,
-          },
-          config: pacing,
-        );
-      }
-    }
-    return session;
-  }
+  ) => SessionState.resuming([
+    for (final record in journal.records)
+      PriorSelection(
+        record.exercise,
+        productive: switch (record.closure.measurement) {
+          Measured(:final outcome) => learner.executionWasManaged(outcome),
+          MeasurementUnavailable() => false,
+        },
+      ),
+  ], config: config);
 }

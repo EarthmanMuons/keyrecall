@@ -56,6 +56,37 @@ void main() {
         );
       },
     );
+
+    test(
+      '${player.id} trips no structural invariant across months',
+      skip: known[player.id],
+      () {
+        // The same properties, over sittings spread across a calendar rather
+        // than one unbroken run: what decays between them is the only
+        // difference, and nothing about a break makes a defect acceptable.
+        final sittings = sittingsOnDays([0, 2, 9, 30, 90], slots: 8);
+        final found = <Anomaly>[];
+        for (var seed = 0; seed < 3; seed++) {
+          found.addAll(
+            detectAnomalies(
+              runSittings(
+                player: player,
+                seed: seed,
+                materials: v1ScaleCatalog,
+                sittings: sittings,
+              ),
+              requestedSlots: 40,
+            ).where((a) => a.severity == AnomalySeverity.invariant),
+          );
+        }
+
+        expect(
+          found,
+          isEmpty,
+          reason: found.map((a) => '${a.summary}\n${a.census}').join('\n\n'),
+        );
+      },
+    );
   }
 
   test('a detector reads the census it reports from', () {
