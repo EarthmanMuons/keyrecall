@@ -31,6 +31,46 @@ enum Milestone {
   }
 }
 
+/// What one slot of a sitting did, relative to the frontier it was asked
+/// against.
+///
+/// Exclusive, and ordered by what the slot achieved rather than by what it
+/// asked for. The distinction that matters most is [preFrontier] against
+/// [reacquiring]: work on a material nothing has ever been demonstrated on is
+/// acquisition, however many times the learner has seen it, and counting it as
+/// reacquisition makes every weak learner look like one who keeps losing
+/// ground.
+enum SlotWork {
+  /// Moved a demonstrated frontier.
+  advancing('advancing'),
+
+  /// Met a material this run had not seen, without moving a frontier.
+  introducing('introducing'),
+
+  /// Known material with nothing yet demonstrated for this hand.
+  preFrontier('pre_frontier'),
+
+  /// Below a frontier this hand has demonstrated.
+  reacquiring('reacquiring'),
+
+  /// At or past the frontier, and nothing moved.
+  consolidating('consolidating');
+
+  const SlotWork(this.id);
+
+  final String id;
+}
+
+/// How [slot] relates to the frontier, given whether its material is [known].
+SlotWork workOf(TrajectorySlot slot, {required bool known}) {
+  if (slot.frontierAdvanced) return SlotWork.advancing;
+  if (!known) return SlotWork.introducing;
+  if (slot.frontierBefore.isEmpty) return SlotWork.preFrontier;
+  return slot.realization == RealizationRank.surpassed
+      ? SlotWork.reacquiring
+      : SlotWork.consolidating;
+}
+
 /// What one sitting of a run did.
 ///
 /// Counted in slots rather than proportions, so a short sitting and a long one
@@ -48,11 +88,18 @@ class SittingSummary {
   /// Slots that moved a demonstrated frontier.
   final int advancing;
 
-  /// Slots that met a material this run had not seen before.
+  /// Slots that met a material this run had not seen before, without moving a
+  /// frontier.
   final int introductions;
 
-  /// Slots on material the run already knew, that moved no frontier.
+  /// Slots on known material with no frontier yet demonstrated for that hand.
+  final int preFrontier;
+
+  /// Slots below a frontier this hand had already demonstrated.
   final int reacquiring;
+
+  /// Slots at or past the frontier that moved nothing.
+  final int consolidating;
 
   /// Slots asking for less independence than that material had already shown,
   /// with no retrieval failure since.
@@ -62,16 +109,16 @@ class SittingSummary {
   /// forgetting being answered or the scheduler forgetting.
   final int supported;
 
-  /// Reacquiring slots where something that would have moved the learner on
-  /// was selectable and lost.
+  /// Slots that moved nothing, where something that would have moved the
+  /// learner on was selectable and lost.
   ///
   /// Split from [noProgressionSelectable] because the two say opposite things
   /// about where to look. Both are descriptive: neither says the scheduler
   /// chose wrongly, only whether it had the choice.
   final int progressionPassedOver;
 
-  /// Reacquiring slots where nothing that would have moved the learner on
-  /// survived to the selectable set.
+  /// Slots that moved nothing, where nothing that would have moved the learner
+  /// on survived to the selectable set.
   final int noProgressionSelectable;
 
   final int probesOpened;
@@ -97,7 +144,9 @@ class SittingSummary {
     required this.slots,
     required this.advancing,
     required this.introductions,
+    required this.preFrontier,
     required this.reacquiring,
+    required this.consolidating,
     required this.supported,
     required this.progressionPassedOver,
     required this.noProgressionSelectable,
@@ -202,7 +251,9 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
 
     var advancing = 0;
     var introductions = 0;
+    var preFrontier = 0;
     var reacquiring = 0;
+    var consolidating = 0;
     var supported = 0;
     var progressionPassedOver = 0;
     var noProgressionSelectable = 0;
@@ -212,12 +263,20 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
 
     for (final slot in slots) {
       final materialId = slot.chosen.material.materialId;
-      final known = seen.contains(materialId);
-      if (!known) introductions++;
-      if (slot.frontierAdvanced) {
-        advancing++;
-      } else if (known) {
-        reacquiring++;
+      final work = workOf(slot, known: seen.contains(materialId));
+      switch (work) {
+        case SlotWork.advancing:
+          advancing++;
+        case SlotWork.introducing:
+          introductions++;
+        case SlotWork.preFrontier:
+          preFrontier++;
+        case SlotWork.reacquiring:
+          reacquiring++;
+        case SlotWork.consolidating:
+          consolidating++;
+      }
+      if (work != SlotWork.advancing && work != SlotWork.introducing) {
         if (slot.alternatives.any((trace) => _progresses(trace, seen))) {
           progressionPassedOver++;
         } else {
@@ -256,7 +315,9 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
         slots: slots.length,
         advancing: advancing,
         introductions: introductions,
+        preFrontier: preFrontier,
         reacquiring: reacquiring,
+        consolidating: consolidating,
         supported: supported,
         progressionPassedOver: progressionPassedOver,
         noProgressionSelectable: noProgressionSelectable,

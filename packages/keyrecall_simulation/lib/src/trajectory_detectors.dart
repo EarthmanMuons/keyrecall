@@ -2,6 +2,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'longitudinal_census.dart';
 import 'trajectory.dart';
 
 /// The census printed whenever a detector trips.
@@ -661,9 +662,13 @@ Iterable<Anomaly> _probeDeferBlocked(Trajectory trajectory) sync* {
 /// **Observation.** The sitting after a break did nothing but reacquire.
 ///
 /// The question a run across weeks exists to ask: whether what decayed over a
-/// gap crowds out everything else on the way back. Counts the slots that
-/// neither advanced a frontier nor met an unseen material, so a sitting that
-/// consolidates while also moving something forward does not read as stalled.
+/// gap crowds out everything else on the way back.
+///
+/// Reacquisition in the strict sense of [SlotWork.reacquiring], asked below a
+/// frontier the hand has demonstrated. Work on a material with no frontier at
+/// all is acquisition however familiar it looks, and counting it here made
+/// every learner too weak to demonstrate anything read as one who keeps losing
+/// ground.
 ///
 /// Only after a real break, and only for a sitting long enough for the share
 /// to mean anything.
@@ -674,22 +679,18 @@ Iterable<Anomaly> _reacquisitionBurden(Trajectory trajectory) sync* {
   final seen = <String>{};
   for (var sitting = 0; sitting < trajectory.sittings.length; sitting++) {
     final slots = trajectory.slotsOf(sitting).toList();
-    final before = {...seen};
-    for (final slot in slots) {
-      seen.add(slot.chosen.material.materialId);
-    }
+    final work = [
+      for (final slot in slots)
+        workOf(slot, known: !seen.add(slot.chosen.material.materialId)),
+    ];
     if (sitting == 0 || slots.length < shortest) continue;
     final away = slots.first.at.difference(
       trajectory.slotsOf(sitting - 1).last.at,
     );
     if (away < gap) continue;
 
-    final reacquiring = slots
-        .where(
-          (slot) =>
-              !slot.frontierAdvanced &&
-              before.contains(slot.chosen.material.materialId),
-        )
+    final reacquiring = work
+        .where((kind) => kind == SlotWork.reacquiring)
         .length;
     if (reacquiring < slots.length * share) continue;
     yield Anomaly(
@@ -699,8 +700,8 @@ Iterable<Anomaly> _reacquisitionBurden(Trajectory trajectory) sync* {
       magnitude: reacquiring / slots.length,
       summary:
           'the sitting after ${away.inDays} days spent $reacquiring of '
-          '${slots.length} slots on material it already knew, without '
-          'advancing a frontier',
+          '${slots.length} slots below a frontier it had already '
+          'demonstrated',
       census: censusOf(slots.first),
     );
   }

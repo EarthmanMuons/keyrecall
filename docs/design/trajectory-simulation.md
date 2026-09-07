@@ -251,45 +251,96 @@ of one sitting rather than a trajectory. The share itself scales with the
 learner: an advanced player spends ten to twenty per cent of a returning sitting
 on old work, an uneven-handed one about half.
 
-`true_beginner` looked like the exception. It spends effectively the whole
-returning sitting reacquiring, and in roughly a third of its returns nothing
-progresses for the rest of the run. Its sittings never ran dry, so it is not the
-pinned narrow-catalog defect.
+`true_beginner` looked like the exception. It spent effectively the whole
+returning sitting on known work, and in roughly a third of its returns nothing
+progressed for the rest of the run. Its sittings never ran dry, so it was not
+the pinned narrow-catalog defect.
 
-It is not a defect in the scheduler either, and finding that out is what the
-census is for. A returning sitting was decomposed into the two ways a
-reacquiring slot happens: something that would have moved the learner on was
+It was not a defect in the scheduler either, and finding that out is what the
+census is for. The returning sitting was decomposed into the two ways a slot
+that moves nothing happens: something that would have moved the learner on was
 selectable and lost, or nothing progressing survived to the selectable set at
-all. The beginner splits about evenly between them, which explained nothing, so
+all. The beginner split about evenly between them, which explained nothing, so
 the run either side of the gap was read instead.
 
-**The beginner never progresses, gap or no gap.** Over three hundred attempts
-across sixty days it produces two outcomes the model accepts as demonstrated
-execution, and its motor score does not rise: 0.12 at the start and 0.14 at the
-end. `SyntheticPlayer` improves on an attempt that completes with a motor score
-above one half, and this archetype reaches that about twice in three hundred
-attempts, so it cannot learn. Its frontier therefore never moves, introductions
-are its only form of progress, and once the introductions stop every subsequent
-return reads as a learner who never resumed.
+**The beginner never progressed, gap or no gap.** Over three hundred attempts
+across sixty days it produced two outcomes the model accepted as demonstrated
+execution, and its motor score did not rise: 0.12 at the start and 0.14 at the
+end. Sitting length ruled out the other reading; at five, ten and twenty slots
+the returning share stayed at essentially a hundred per cent, so it was not
+failing to climb out of a sitting that ended too early.
 
-Sitting length rules out the other reading. At five, ten and twenty slots a
-sitting the returning share stays at essentially a hundred per cent, so the
-beginner is not failing to climb out of a sitting that ends too early.
+The cause was in the player. `SyntheticPlayer` improved only on an attempt that
+completed with a motor score above one half, which this archetype reached about
+twice in three hundred attempts. Low starting ability was therefore an inability
+to learn, and the two were impossible to tell apart.
 
-That is a fact about the player rather than about the scheduler, and every
-conclusion drawn from a beginner trajectory has to be read through it. A learner
-who cannot execute a scale should not earn a frontier; a learner who practises
-for two months and improves twice is not a beginner, it is a description of one
-nobody has calibrated.
+### Practice below the evidence threshold
 
-`dense_week` reports no reacquisition at all, by construction: no gap in it
-reaches two days, so it has no returns to summarize. It is there as the control.
+The two are different claims, and the simulator has to keep them apart:
+
+```text
+evidence credit   what KeyRecall has been shown, and may act on
+human learning    what happened to the person, shown or not
+```
+
+Evidence credit stays strict. A weak attempt must not establish a frontier, and
+`LearnerModel.demonstratedTempoBpm` still caps attribution at the tempo that was
+asked for. Human learning is now graded rather than gated: an attempt improves
+the player in proportion to `4q(1 - q)` in its motor quality, largest where the
+task sits at the edge of what they can do, halved when the attempt broke down
+before the end, and nothing at all when it never started. **Not demonstrated is
+not nothing learned.**
+
+No ceiling is needed. As ability grows the same task is executed better, which
+moves it away from the edge, so improvement slows unless the scheduler keeps
+asking for something harder.
+
+The shape that produces, over three hundred attempts across sixty days:
+
+| archetype       | frontier advances | first advance | milestones          |
+| --------------- | ----------------- | ------------- | ------------------- |
+| `true_beginner` | 11 to 19          | sitting 1-11  | hands together 9-14 |
+| `developing`    | 64 to 69          | sitting 0     | hands together 0-2  |
+| `advanced`      | 241 to 245        | sitting 0     | all by sitting 1    |
+
+The beginner learns slowly rather than not at all, and does not rocket: its
+motor score stays near 0.15 throughout, because the scheduler keeps pace with
+the improvement and asks for harder work. It falls in the last fifth of the run,
+which is worth returning to: coordination work arriving at sitting nine costs
+this learner more than they can execute.
+
+`learningRate` is now a knob worth fitting. Starting ability and rate of
+improvement are two hypotheses about a learner rather than one, which is the
+distinction a calibration from device data would otherwise silently collapse.
+
+### Reacquisition, in the strict sense, does not happen
+
+The census partitions every slot that moved nothing into work with no frontier
+yet, work below a frontier the hand has demonstrated, and work at or past one
+that failed to move it. Across every archetype and schedule, the middle category
+is **zero**.
+
+A demonstrated frontier is a maximum, and it does not decay. So decay never
+produces work below one: what a break actually produces is retrieval support on
+material the learner still owns, and consolidation at a frontier they cannot yet
+pass. The reacquisition burden a weak learner appeared to carry was acquisition
+all along, on material they had seen but never demonstrated anything on.
+
+Whether a frontier should decay is a product question this does not answer. It
+does say that nothing in the current model expresses losing ground, and that a
+detector counting known material as reacquisition will report every weak learner
+as one who keeps losing it.
+
+`dense_week` reports nothing about returning at all, by construction: no gap in
+it reaches two days, so it has no returns to summarize. It is there as the
+control.
 
 The tempo probe reads as a mechanism that opens and is not answered. The
-advanced player opens ten probes across four seeds of `interrupted` and answers
-none of them, stranding two at a sitting boundary. Too few openings for
-`probe_verification_share` to trip on any single run, which is worth
-remembering: a mechanism that fires rarely needs the census rather than a
+advanced player opens seven to ten probes across four seeds of `interrupted` and
+answers none of them, stranding one or two at a sitting boundary. Too few
+openings for `probe_verification_share` to trip on any single run, which is
+worth remembering: a mechanism that fires rarely needs the census rather than a
 per-run threshold.
 
 ## Making the sweep fast enough to iterate on

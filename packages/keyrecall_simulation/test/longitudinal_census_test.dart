@@ -41,20 +41,35 @@ void main() {
     }
   });
 
-  test('advancing and reacquiring slots are disjoint', () {
+  test('every slot is counted as exactly one kind of work', () {
     for (final sitting in census.sittings) {
       expect(
-        sitting.advancing + sitting.reacquiring,
-        lessThanOrEqualTo(sitting.slots),
+        sitting.advancing +
+            sitting.introductions +
+            sitting.preFrontier +
+            sitting.reacquiring +
+            sitting.consolidating,
+        sitting.slots,
       );
     }
   });
 
-  test('every reacquiring slot lands on one side of the split', () {
+  test('every slot that moved nothing lands on one side of the split', () {
     for (final sitting in census.sittings) {
       expect(
         sitting.progressionPassedOver + sitting.noProgressionSelectable,
-        sitting.reacquiring,
+        sitting.preFrontier + sitting.reacquiring + sitting.consolidating,
+      );
+    }
+  });
+
+  test('work with no frontier yet is not reacquisition', () {
+    for (final slot in trajectory.slots) {
+      if (slot.frontierBefore.isNotEmpty || slot.frontierAdvanced) continue;
+      expect(
+        workOf(slot, known: true),
+        SlotWork.preFrontier,
+        reason: 'slot ${slot.index} has nothing demonstrated to reacquire',
       );
     }
   });

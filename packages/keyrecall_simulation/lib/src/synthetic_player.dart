@@ -87,11 +87,15 @@ class SyntheticPlayer {
   /// anything.
   final double noise;
 
-  /// How much a successful attempt improves the ability it exercised.
+  /// How much practice at the edge of this player's ability improves it.
   ///
   /// Kept small and explicit. A player who never improves cannot show whether
   /// the scheduler notices improvement, and one who improves quickly hides
   /// whether it notices anything else.
+  ///
+  /// Separate from starting ability on purpose, so that "weak" and "slow to
+  /// improve" are two hypotheses rather than one. A calibration that could not
+  /// tell them apart would encode low skill as an inability to learn.
   final double learningRate;
 
   SyntheticPlayer({
@@ -286,7 +290,7 @@ class PlayerState {
         ? noisy(_sigmoid(abilityOf(conditions.hands) - 2.0 * strain))
         : null;
 
-    if (completed && motorQuality > 0.5) _improve(exercise, motorQuality);
+    _practise(exercise, motorQuality, completed: completed);
 
     return Outcome(
       started: true,
@@ -302,14 +306,34 @@ class PlayerState {
     );
   }
 
-  void _improve(Exercise exercise, double motorQuality) {
+  /// What an attempt of this quality teaches the person.
+  ///
+  /// **Practice below the quality the model credits still improves them.** The
+  /// two are different claims: a frontier is what KeyRecall has been shown, and
+  /// improvement is what happened to the player. Gating this on demonstrated
+  /// execution made low starting ability into an inability to learn, and the
+  /// beginner archetype produced two improving attempts in three hundred.
+  ///
+  /// Graded, and largest where the task sits at the edge of what they can do.
+  /// An attempt that falls apart teaches little, one they find trivial teaches
+  /// little else, and an attempt that broke down before the end is worth half
+  /// of one that held together. Nothing is learned from a scale that never
+  /// started.
+  ///
+  /// No ceiling is needed. As ability grows the same task is executed better,
+  /// which moves it away from the edge, so improvement slows unless the
+  /// scheduler keeps asking for something harder.
+  void _practise(
+    Exercise exercise,
+    double motorQuality, {
+    required bool completed,
+  }) {
+    final atTheEdge = 4 * motorQuality * (1 - motorQuality);
+    final gain = player.learningRate * atTheEdge * (completed ? 1.0 : 0.5);
     final hands = exercise.conditions.hands;
-    _ability[hands] = _ability[hands]! + player.learningRate;
+    _ability[hands] = _ability[hands]! + gain;
     final materialId = exercise.material.materialId;
-    _familiarity[materialId] = math.min(
-      0.99,
-      familiarityOf(materialId) + player.learningRate,
-    );
+    _familiarity[materialId] = math.min(0.99, familiarityOf(materialId) + gain);
   }
 }
 

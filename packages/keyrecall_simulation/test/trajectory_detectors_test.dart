@@ -486,13 +486,24 @@ void main() {
   group('longitudinal detectors', () {
     final away = DateTime.utc(2026).add(const Duration(days: 3));
 
+    // Below a frontier the hand has already demonstrated, which is what
+    // reacquisition means: known material with nothing demonstrated on it is
+    // acquisition however familiar it looks.
+    TrajectorySlot below(int index, {int sitting = 0, DateTime? at}) => _slot(
+      index,
+      sitting: sitting,
+      at: at,
+      winner: _trace(_exercise(), realization: RealizationRank.surpassed),
+      frontierBefore: const {1: 72},
+    );
+
     test('a sitting after a break that only reacquires reports it', () {
       final found = _find(
         'reacquisition_burden',
         [
-          _slot(0),
+          below(0),
           for (var i = 0; i < 8; i++)
-            _slot(i + 1, sitting: 1, at: away.add(Duration(minutes: i))),
+            below(i + 1, sitting: 1, at: away.add(Duration(minutes: i))),
         ],
         sittings: [
           Sitting(at: _at(0), slots: 1),
@@ -501,6 +512,7 @@ void main() {
       );
 
       expect(found.single.summary, contains('after 3 days'));
+      expect(found.single.summary, contains('below a frontier'));
       expect(found.single.magnitude, 1.0);
     });
 
@@ -509,7 +521,7 @@ void main() {
         _find(
           'reacquisition_burden',
           [
-            _slot(0),
+            below(0),
             for (var i = 0; i < 8; i++)
               _slot(
                 i + 1,
@@ -534,9 +546,9 @@ void main() {
         _find(
           'reacquisition_burden',
           [
-            _slot(0),
+            below(0),
             for (var i = 0; i < 8; i++)
-              _slot(i + 1, sitting: 1, at: soon.add(Duration(minutes: i))),
+              below(i + 1, sitting: 1, at: soon.add(Duration(minutes: i))),
           ],
           sittings: [
             Sitting(at: _at(0), slots: 1),

@@ -67,8 +67,8 @@ Future<void> main(List<String> arguments) async {
       ..writeln('== $schedule: days ${days.join(', ')}, $slots slots each')
       ..writeln(
         '   ${_header('archetype')} '
-        'reacq% pass none resume never sup%  cov  ht ctr 2oc ung  opn ans '
-        'str dry',
+        'pre% reacq% cons% pass none resume never sup%  cov  ht ctr 2oc ung  '
+        'opn ans str dry',
       );
     for (final player in players) {
       final mine = rows.where((row) => row.archetype == player.id).toList();
@@ -106,7 +106,9 @@ String _row(String archetype, List<_Row> rows) {
 
   return [
     archetype.padRight(24),
+    _percent(_median(rows.map((row) => row.preFrontierShare))).padLeft(4),
     _percent(_median(rows.map((row) => row.reacquisitionShare))).padLeft(6),
+    _percent(_median(rows.map((row) => row.consolidationShare))).padLeft(5),
     _total(rows.map((row) => row.progressionPassedOver)).padLeft(4),
     _total(rows.map((row) => row.noProgressionSelectable)).padLeft(4),
     (resumed.isEmpty ? '-' : _median(resumed).toStringAsFixed(1)).padLeft(6),
@@ -140,7 +142,9 @@ double _median(Iterable<double> values) {
 /// One run, flattened to what crosses an isolate boundary.
 class _Row {
   final String archetype;
+  final double preFrontierShare;
   final double reacquisitionShare;
+  final double consolidationShare;
   final double supportedShare;
 
   /// Over returning sittings only, the two ways a reacquiring slot happens.
@@ -156,7 +160,9 @@ class _Row {
 
   const _Row({
     required this.archetype,
+    required this.preFrontierShare,
     required this.reacquisitionShare,
+    required this.consolidationShare,
     required this.supportedShare,
     required this.progressionPassedOver,
     required this.noProgressionSelectable,
@@ -197,10 +203,21 @@ _Row _rowFor(TrajectoryJob job, LongitudinalCensus census) {
     archetype: job.archetypeId,
     // Over returning sittings only: the share of an ordinary sitting spent on
     // known work answers a different question.
-    reacquisitionShare: returning.isEmpty
-        ? 0
-        : returning.fold(0.0, (total, r) => total + r.reacquisitionShare) /
-              returning.length,
+    preFrontierShare: _shareOf(
+      returning,
+      census,
+      (sitting) => sitting.preFrontier,
+    ),
+    reacquisitionShare: _shareOf(
+      returning,
+      census,
+      (sitting) => sitting.reacquiring,
+    ),
+    consolidationShare: _shareOf(
+      returning,
+      census,
+      (sitting) => sitting.consolidating,
+    ),
     supportedShare: played == 0
         ? 0
         : census.sittings.fold(0, (total, s) => total + s.supported) / played,
@@ -224,4 +241,20 @@ _Row _rowFor(TrajectoryJob job, LongitudinalCensus census) {
     probesStranded: census.sittings.where((s) => s.probeStranded).length,
     dry: census.sittings.where((s) => s.ranDry).length,
   );
+}
+
+double _shareOf(
+  List<GapRecovery> returning,
+  LongitudinalCensus census,
+  int Function(SittingSummary sitting) count,
+) {
+  if (returning.isEmpty) return 0;
+  var slots = 0;
+  var matching = 0;
+  for (final recovery in returning) {
+    final sitting = census.sittings[recovery.sitting];
+    slots += sitting.slots;
+    matching += count(sitting);
+  }
+  return slots == 0 ? 0 : matching / slots;
 }
