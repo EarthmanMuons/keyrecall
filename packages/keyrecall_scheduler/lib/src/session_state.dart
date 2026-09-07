@@ -37,7 +37,7 @@ class SessionState {
   /// A fresh probe is the same exercise the learner has this second finished,
   /// one rung faster. Asking for it immediately is the echo a sitting notices:
   /// it reads as the app repeating itself rather than as verification. The
-  /// slot after holds it back while anything else is worth doing, and the slot
+  /// slot after holds it back unconditionally, and the slot
   /// after that lets it compete like any other candidate.
   bool tempoProbeIsFresh;
 
@@ -160,7 +160,7 @@ class SessionState {
     }
     // A slot the recovery or tempo context narrowed to one candidate was never
     // a contest, so nothing lost it.
-    if (isRecovering || tempoProbe != null) return;
+    if (isRecovering || (tempoProbe != null && !tempoProbeIsFresh)) return;
     if (!guidanceProbeAvailable) return;
     unservedGuidanceProbeSelections++;
   }

@@ -205,7 +205,7 @@ void main() {
       expect(session.tempoProbeIsFresh, isFalse);
     });
 
-    test('a slot with nothing else in it presents the probe anyway', () {
+    test('a slot with only a fresh probe blocks without consuming it', () {
       final exercise = at(60);
       final probe = probeFor(exercise, playedAt(1.7))!;
       final session = SessionState(tempoProbe: probe, tempoProbeIsFresh: true);
@@ -217,9 +217,38 @@ void main() {
         at: t0,
       );
 
-      expect((result as CandidateSelected).candidate.exercise, probe);
-      expect(result.diagnostics, contains('fresh_probe=true probe=selectable'));
-      expect(result.diagnostics, contains('pacing=1 echo=1 novelty=1'));
+      expect(result, isA<SelectionBlocked>());
+      expect(result.selectable, isEmpty);
+      expect(session.tempoProbe, probe);
+      expect(session.tempoProbeIsFresh, isTrue);
+      expect(
+        result.diagnostics,
+        contains('fresh_probe=true probe=removed:echo'),
+      );
+    });
+
+    test('a fresh probe leaves ordinary introduction admission open', () {
+      final probe = probeFor(at(60), playedAt(1.7))!;
+      final state = stateAt(PlacementTier.beginner);
+      final session = SessionState(tempoProbe: probe, tempoProbeIsFresh: true);
+      final result =
+          pipeline.decide(
+                state: state,
+                session: session,
+                candidates: allCandidates(),
+                at: t0,
+              )
+              as CandidateSelected;
+
+      expect(result.candidate.exercise, isNot(probe));
+      expect(result.candidate.challengeBypass, ChallengeBypass.newMaterial);
+      expect(result.selectable.length, greaterThan(1));
+      expect(result.diagnostics, contains('probe=removed:echo'));
+      expect(
+        pipeline.selectChoice(result.traces, session, state: state)!.exercise,
+        isNot(probe),
+      );
+      expect(session.tempoProbe, probe);
     });
 
     test('one intervening attempt is the whole of the wait', () {
@@ -272,32 +301,68 @@ void main() {
       expect(session.tempoProbeIsFresh, isFalse, reason: 'and can compete now');
     });
 
-    test('a probe is never held twice in a row', () {
-      // The pathological sitting: everything is played twice as fast as it was
-      // asked for, so every close opens a probe. One slot of holding is the
-      // whole of the delay.
-      final session = SessionState();
-      var heldInARow = 0;
-      var longestHold = 0;
-      for (var slot = 0; slot < 6; slot++) {
-        final exercise = exerciseFor(materials[slot % 3], tempoBpm: 60);
-        session.recordSelection(
-          exercise,
-          retrievalObserved: true,
-          retrievalFailed: false,
-          tempoProbe: probeFor(exercise, playedAt(2.0)),
-          config: config.diversity,
-        );
-        heldInARow = session.tempoProbeIsFresh ? heldInARow + 1 : 0;
-        if (heldInARow > longestHold) longestHold = heldInARow;
-      }
-
-      expect(
-        longestHold,
-        1,
-        reason: 'a probe that is always fresh is a probe never asked for',
-      );
-    });
+    test(
+      'always-underchallenged selections alternate defer and probe opportunities',
+      () {
+        final session = SessionState();
+        final state = stateAt(PlacementTier.beginner);
+        final candidates = [
+          for (final material in materials.take(3))
+            exerciseFor(
+              material,
+              tempoBpm: 60,
+              guidance: GuidanceContext.notesPreviewedOnly,
+            ),
+        ];
+        var deferred = 0;
+        var offered = 0;
+        for (var slot = 0; slot < 12; slot++) {
+          final waiting = session.tempoProbe;
+          final fresh = session.tempoProbeIsFresh;
+          final result =
+              pipeline.decide(
+                    state: state,
+                    session: session,
+                    candidates: candidates,
+                    at: t0,
+                  )
+                  as CandidateSelected;
+          if (waiting != null) {
+            if (fresh) {
+              expect(
+                result.candidate.exercise,
+                isNot(waiting),
+                reason: 'slot $slot must defer',
+              );
+              expect(
+                result.selectable.map((trace) => trace.exercise),
+                isNot(contains(waiting)),
+              );
+              deferred++;
+            } else {
+              expect(
+                result.candidate.exercise,
+                waiting,
+                reason: 'slot $slot verifies the waiting pace',
+              );
+              offered++;
+            }
+          }
+          pipeline.recordOutcome(
+            session,
+            result.candidate.exercise,
+            playedAt(2.0),
+          );
+          if (fresh) {
+            expect(session.tempoProbe, waiting);
+            expect(session.tempoProbeIsFresh, isFalse);
+          }
+        }
+        expect(deferred, greaterThanOrEqualTo(4));
+        expect(offered, greaterThanOrEqualTo(4));
+        expect(deferred - offered, inInclusiveRange(0, 1));
+      },
+    );
 
     test('it lasts exactly one decision it could win', () {
       final session = SessionState(tempoProbe: at(100));

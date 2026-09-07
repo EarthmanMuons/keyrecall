@@ -299,47 +299,65 @@ void main() {
     });
   });
 
-  test('an attempt that was clearly too easy asks a faster one next', () async {
-    final store = InMemoryPracticeStore(createdAt: t0);
-    final session = await openSession(store);
-    final presented = await presentUntil(
-      session,
-      (exercise) =>
-          oneHand(exercise) &&
-          exercise.guidance.isRetrievalObserved &&
-          exercise.conditions.tempoBpm < 100,
-    );
-    final easy = presented.exercise;
+  test(
+    'an underchallenged attempt defers its faster probe for one slot',
+    () async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store);
+      final presented = await presentUntil(
+        session,
+        (exercise) =>
+            oneHand(exercise) &&
+            exercise.guidance.isRetrievalObserved &&
+            exercise.conditions.tempoBpm < 100,
+      );
+      final easy = presented.exercise;
 
-    // Clean, steady, unbroken, from memory, and well above the tempo asked
-    // for: the task was beneath the learner rather than played badly fast.
-    await session.closeWithOutcome(
-      Outcome(
-        started: true,
-        retrieval: FactualRetrieval.succeeded,
-        completed: true,
-        materialRetrieval: 1.0,
-        pitchIntegrity: 1.0,
-        continuity: 1.0,
-        temporalStability: 1.0,
-        achievedTempoRatio: 100 / easy.conditions.tempoBpm,
-        topologyAccuracy: 1.0,
-      ),
-    );
+      // Clean, steady, unbroken, from memory, and well above the tempo asked
+      // for: the task was beneath the learner rather than played badly fast.
+      await session.closeWithOutcome(
+        Outcome(
+          started: true,
+          retrieval: FactualRetrieval.succeeded,
+          completed: true,
+          materialRetrieval: 1.0,
+          pitchIntegrity: 1.0,
+          continuity: 1.0,
+          temporalStability: 1.0,
+          achievedTempoRatio: 100 / easy.conditions.tempoBpm,
+          topologyAccuracy: 1.0,
+        ),
+      );
 
-    final next = await session.decide(at: t0.plusDays(1));
+      final probe = session.session.tempoProbe!;
+      final intervening = await session.decide(at: t0.plusDays(1));
+      expect(intervening, isNotNull);
+      expect(intervening!.exercise, isNot(probe));
+      expect(
+        intervening.decision.decision.challengeBypass,
+        isNot(ChallengeBypass.tempoProbe),
+      );
+      await session.closeWithOutcome(outcomeFor(intervening.exercise));
+      expect(session.session.tempoProbe, probe);
+      expect(session.session.tempoProbeIsFresh, isFalse);
 
-    expect(next, isNotNull);
-    expect(next!.exercise.material, easy.material);
-    expect(next.exercise.conditions.hands, easy.conditions.hands);
-    expect(next.exercise.conditions.octaves, easy.conditions.octaves);
-    expect(
-      next.exercise.conditions.tempoBpm,
-      greaterThan(easy.conditions.tempoBpm),
-      reason:
-          'the learner was already playing at this speed, so climbing toward '
-          'it one step at a time would spend slots learning nothing',
-    );
-    expect(next.decision.decision.challengeBypass, ChallengeBypass.tempoProbe);
-  });
+      final next = await session.decide(at: t0.plusDays(2));
+
+      expect(next, isNotNull);
+      expect(next!.exercise.material, easy.material);
+      expect(next.exercise.conditions.hands, easy.conditions.hands);
+      expect(next.exercise.conditions.octaves, easy.conditions.octaves);
+      expect(
+        next.exercise.conditions.tempoBpm,
+        greaterThan(easy.conditions.tempoBpm),
+        reason:
+            'the learner was already playing at this speed, so climbing toward '
+            'it one step at a time would spend slots learning nothing',
+      );
+      expect(
+        next.decision.decision.challengeBypass,
+        ChallengeBypass.tempoProbe,
+      );
+    },
+  );
 }

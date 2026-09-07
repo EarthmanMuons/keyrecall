@@ -114,6 +114,42 @@ void main() {
     );
   });
 
+  test('fallback supplies other work while a fresh probe is held', () {
+    final probe = entry.atTempo(100);
+    final session = SessionState(tempoProbe: probe, tempoProbeIsFresh: true);
+    final result =
+        pipeline.decide(
+              state: introducedState(),
+              session: session,
+              candidates: [entry],
+              at: t0,
+              acquisitionFloor: floor,
+            )
+            as CandidateSelected;
+
+    expect(result.candidate.exercise, entry);
+    expect(result.candidate.challengeBypass, ChallengeBypass.acquisitionFloor);
+    expect(result.diagnostics, contains('acquisition_fallback=true'));
+    expect(result.diagnostics, contains('probe=removed:echo'));
+    expect(session.tempoProbe, probe);
+  });
+
+  test('fallback cannot present the fresh probe even as an explicit entry', () {
+    final session = SessionState(tempoProbe: entry, tempoProbeIsFresh: true);
+    final result = pipeline.decide(
+      state: introducedState(),
+      session: session,
+      candidates: [entry],
+      at: t0,
+      acquisitionFloor: floor,
+    );
+
+    expect(result, isA<SelectionBlocked>());
+    expect(result.selectable, isEmpty);
+    expect(session.tempoProbe, entry);
+    expect(session.tempoProbeIsFresh, isTrue);
+  });
+
   test('an entry outside the active candidates is rejected', () {
     final result = pipeline.decide(
       state: introducedState(),

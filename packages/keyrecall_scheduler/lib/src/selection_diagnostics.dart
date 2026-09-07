@@ -70,7 +70,7 @@ String selectionDiagnostics({
         'fresh_probe=$freshProbe probe=${probe.isEmpty ? 'not_admitted' : status(probe.first)} '
         'guidance_service=$guidanceService',
     if (acquisitionFallback)
-      'acquisition_fallback=true; echo and novelty filters not applied',
+      'acquisition_fallback=true; novelty filter not applied',
     'rank order: tier, coordination_transition, contrary_coordination, '
         'retention, information, diversity, focus, realization, realization_fit; '
         'higher wins; exact ties use candidate order',

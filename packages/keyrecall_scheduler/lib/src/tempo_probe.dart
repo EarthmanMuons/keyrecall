@@ -12,20 +12,18 @@ import 'session_state.dart';
 /// it in the very next slot is the app repeating itself, and one intervening
 /// attempt is the whole of what separates the two.
 ///
-/// Held back only while something else is worth doing. A slot with nothing but
-/// the probe in it presents the probe: the alternative is presenting nothing,
-/// and the pace still wants verifying.
+/// The defer is unconditional. An empty set asks the slot's fallback for other
+/// work; it never makes a fresh probe presentable.
 List<CandidateTrace> withoutFreshEcho(
   List<CandidateTrace> selectable,
   SessionState session,
 ) {
   final probe = session.tempoProbe;
   if (probe == null || !session.tempoProbeIsFresh) return selectable;
-  final rest = [
+  return [
     for (final trace in selectable)
       if (trace.exercise != probe) trace,
   ];
-  return rest.isEmpty ? selectable : rest;
 }
 
 /// Whether [outcome] shows [exercise] was clearly too easy.

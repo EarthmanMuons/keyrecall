@@ -215,11 +215,18 @@ class SchedulerPipeline {
       practiceEntryPolicy: entryPolicy,
       emphasis: emphasis,
     );
-    var repeated = applyRepetitionGuard(traces, session);
+    var echoed = withoutFreshEcho(
+      traces.where((trace) => trace.isRanked).toList(),
+      session,
+    );
+    var repeated = applyRepetitionGuard(echoed, session);
     var introductions = capIntroductions(repeated, traces, state);
     var pacing = pace(introductions.selectable, session);
-    var echoed = withoutFreshEcho(pacing.selectable, session);
-    var available = withNoveltySupported(echoed, state, config.novelty);
+    var available = withNoveltySupported(
+      pacing.selectable,
+      state,
+      config.novelty,
+    );
     var selected = chooseFrom(available, session);
     var blockedReason = BlockedReason.admissionExhausted;
     var acquisitionFallback = false;
@@ -249,11 +256,14 @@ class SchedulerPipeline {
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
         );
-        repeated = applyRepetitionGuard(traces, session);
+        echoed = withoutFreshEcho(
+          traces.where((trace) => trace.isRanked).toList(),
+          session,
+        );
+        repeated = applyRepetitionGuard(echoed, session);
         introductions = capIntroductions(repeated, traces, state);
         pacing = pace(introductions.selectable, session);
         available = pacing.selectable;
-        echoed = available;
         selected = chooseFrom(available, session);
         blockedReason = BlockedReason.safeEntryRejected;
       }
@@ -262,10 +272,10 @@ class SchedulerPipeline {
     final diagnostics = selectionDiagnostics(
       traces: traces,
       stages: {
+        'echo': echoed,
         'repetition': repeated,
         'introductions': introductions.selectable,
         'pacing': pacing.selectable,
-        'echo': echoed,
         'novelty': available,
       },
       winner: selected,
@@ -1038,6 +1048,7 @@ class SchedulerPipeline {
     required ChallengeBypass? override,
     required Exercise? recoveryTarget,
     required Exercise? tempoProbe,
+    bool tempoProbeIsFresh = false,
     required int supportedAttempts,
     required EligibilityTier eligibility,
     required EligibilityTier? introducibleTier,
@@ -1053,11 +1064,10 @@ class SchedulerPipeline {
           exercise,
           ChallengeBypass.recovery,
         ),
-        AdmissionException.tempoProbe => _exactly(
-          tempoProbe,
-          exercise,
-          ChallengeBypass.tempoProbe,
-        ),
+        AdmissionException.tempoProbe =>
+          tempoProbeIsFresh && exercise != tempoProbe
+              ? const _Silent()
+              : _exactly(tempoProbe, exercise, ChallengeBypass.tempoProbe),
         AdmissionException.observationProbe =>
           isObservationProbe(
                 state,
@@ -1204,9 +1214,8 @@ class SchedulerPipeline {
     // Refined once here, so that every set-level fact below reads the same
     // universe the candidate loop evaluates.
     //
-    // An exclusive target has to be in the set it narrows: recovery and the
-    // tempo probe both refuse everything but one exact exercise, so a target
-    // the candidates do not contain would leave the slot admitting nothing.
+    // Recovery and tempo targets may fall between generated rungs. Include
+    // them explicitly so admission can offer the exact exercise.
     final neighbors = withExecutionNeighbors(state, candidates);
     final refined = [
       ...neighbors,
@@ -1321,6 +1330,7 @@ class SchedulerPipeline {
       override: override,
       recoveryTarget: recoveryTarget,
       tempoProbe: tempoProbe,
+      tempoProbeIsFresh: session.tempoProbeIsFresh,
       supportedAttempts: session.supportedAttemptsSinceObservation,
       eligibility: eligibility.tier,
       introducibleTier: introducibleTier,
@@ -1331,9 +1341,8 @@ class SchedulerPipeline {
     // ordinary band or qualify as new material must not survive alongside the
     // target. Something went wrong, and the next thing asked for answers it.
     //
-    // A tempo probe is not exclusive. Pace is recorded on the frontier, so the
-    // probe competes as an ordinary exception: it wins a slot when it is the
-    // most useful thing there and loses one to a scale nobody has played.
+    // Tempo probes leave in-band work reachable. A fresh probe also leaves
+    // ordinary admission exceptions open; selection holds the probe back.
     final narrowed = recoveryTarget;
     final survived = narrowed != null && override == null
         ? bypass == ChallengeBypass.recovery
@@ -1500,7 +1509,7 @@ class SchedulerPipeline {
     LearnerState? state,
   }) => pace(
     capIntroductions(
-      applyRepetitionGuard(traces, session),
+      applyRepetitionGuard(withoutFreshEcho(traces, session), session),
       traces,
       state,
     ).selectable,
