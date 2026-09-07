@@ -1,8 +1,9 @@
 # Family dose control
 
-- **Status:** Implemented behind `SchedulerConfig.dose`, and **not in the V1
-  policy**. Mechanism pinned by invariant tests; every constant provisional.
-- **Written:** September 7, 2026.
+- **Status:** In the production scheduler behind `SchedulerConfig.dose`.
+  Mechanism pinned by invariant tests; constants calibrated from synthetic
+  characterization rather than from device evidence.
+- **Written:** September 7, 2026. Promoted September 7, 2026.
 - **Scope:** How often a realization family is offered, given what its recent
   attempts produced. Distinct from realization-family pacing, which relieves
   concentration.

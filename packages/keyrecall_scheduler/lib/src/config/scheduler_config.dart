@@ -609,5 +609,13 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     setAsideAt: 0.15,
     requireReadyAlternative: true,
   ),
+  dose: DoseConfig(
+    window: 12,
+    minAttempts: 6,
+    yieldFloor: 0.34,
+    maximumGap: 6,
+    prerequisiteReliefFactor: 0.5,
+    evidenceHalfLifeDays: 7,
+  ),
   novelty: NoveltyConfig(),
 );

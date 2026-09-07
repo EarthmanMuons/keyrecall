@@ -261,7 +261,12 @@ List<_Run> _measure(
 ) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
   const learner = LearnerModel();
-  const baseline = SchedulerPipeline(learner: learner);
+  // The V1 policy carries dose control, so the arm the others are compared
+  // against is the one with it taken out.
+  final baseline = SchedulerPipeline(
+    learner: learner,
+    config: v1SchedulerConfig.withDose(null),
+  );
   final rows = <_Run>[];
 
   for (final job in jobs) {

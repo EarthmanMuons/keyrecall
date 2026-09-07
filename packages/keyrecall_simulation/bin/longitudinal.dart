@@ -34,8 +34,10 @@ Future<void> main(List<String> arguments) async {
     )
     ..addFlag(
       'dose',
-      negatable: false,
-      help: 'Run with yield-based family dose control in force.',
+      defaultsTo: true,
+      help:
+          'Yield-based family dose control, which the V1 policy carries. Pass '
+          '--no-dose for the arm without it.',
     )
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
@@ -73,7 +75,7 @@ Future<void> main(List<String> arguments) async {
       ..writeln()
       ..writeln(
         '== $schedule: days ${days.join(', ')}, $slots slots each'
-        '${dose ? ', dose control in force' : ''}',
+        '${dose ? '' : ', dose control removed'}',
       )
       ..writeln(
         '   ${_header('archetype')} '
@@ -212,11 +214,11 @@ List<_Row> _summarize(
   final sittings = LongitudinalSchedules.named(schedule, slots: slots);
   const learner = LearnerModel();
   final pipeline = dose
-      ? SchedulerPipeline(
+      ? const SchedulerPipeline(learner: learner)
+      : SchedulerPipeline(
           learner: learner,
-          config: v1SchedulerConfig.withDose(const DoseConfig()),
-        )
-      : const SchedulerPipeline(learner: learner);
+          config: v1SchedulerConfig.withDose(null),
+        );
   return [for (final job in jobs) _rowFor(job, sittings, generated, pipeline)];
 }
 

@@ -238,6 +238,10 @@ void main() {
     });
 
     test('nothing happens without a dose policy', () {
+      final undosed = SchedulerPipeline(
+        learner: const LearnerModel(),
+        config: pipeline.config.withDose(null),
+      );
       final session = SessionState(
         recentFamilies: window([
           ...runOf(HandConfiguration.right, 6, productive: true),
@@ -248,7 +252,7 @@ void main() {
         _trace(exerciseFor(HandConfiguration.together)),
         _trace(exerciseFor(HandConfiguration.right)),
       ];
-      final decision = pipeline.doseOf(paced, session, now);
+      final decision = undosed.doseOf(paced, session, now);
 
       expect(decision.disposition, DoseDisposition.inactive);
       expect(decision.selectable, paced);

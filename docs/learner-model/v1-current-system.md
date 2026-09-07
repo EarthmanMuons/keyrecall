@@ -1141,13 +1141,19 @@ Finally, a repetition guard prevents the same material from winning more than
 the configured consecutive-attempt cap when another admitted material exists. It
 never removes the only admitted option.
 
-The repetition guard counts materials, not kinds of work. Nothing in V1 asks how
-much of the recent session was right hand, left hand, or hands together, so
-rotating between materials satisfies it while the technical strand stays
-unchanged. A simulation-only mechanism that paces declared realization families
-at this same selection stage is described in
-[`docs/design/realization-family-pacing.md`](../design/realization-family-pacing.md);
-it is not part of V1.
+The repetition guard counts materials, not kinds of work, so rotating between
+materials satisfies it while the technical strand stays unchanged. Two further
+selection-stage filters read declared realization families instead, and answer
+different questions about the same slot.
+
+Realization-family pacing asks how much of the recent window one family holds
+and relieves concentration when much of that work is unproductive; see
+[`docs/design/realization-family-pacing.md`](../design/realization-family-pacing.md).
+Family dose control asks what a family's recent attempts produced, independent
+of how much of the sitting it holds, and lowers how often a persistently
+unproductive one is offered; see
+[`docs/design/family-dose-control.md`](../design/family-dose-control.md). Both
+are in V1, and neither ever empties a slot.
 
 ### 8.5 What each scheduler stage may know
 

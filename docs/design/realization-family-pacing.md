@@ -10,7 +10,13 @@
 
 Candidate admission asks whether one exercise is defensible. Realization-family
 pacing asks whether another exercise from the same family is the best use of the
-next slot. The distinction matters once several materials, spans, hand
+next slot.
+
+[`family-dose-control.md`](family-dose-control.md) answers the other half of
+that: pacing reads how much of a sitting a family holds, dose control reads what
+its recent attempts produced. In longitudinal runs the two never change the same
+slot, and dose control prevents most of the concentration pacing would otherwise
+relieve. The distinction matters once several materials, spans, hand
 configurations, and motions can all independently produce admissible progression
 candidates.
 

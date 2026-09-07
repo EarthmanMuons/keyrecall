@@ -11,11 +11,13 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// properties that hold whatever it is set to.
 void main() {
   const learner = LearnerModel();
-  const baseline = SchedulerPipeline(learner: learner);
-  final dosing = SchedulerPipeline(
+  // The V1 policy carries dose control, so the arm without it is the one that
+  // has to be built.
+  final baseline = SchedulerPipeline(
     learner: learner,
-    config: v1SchedulerConfig.withDose(const DoseConfig()),
+    config: v1SchedulerConfig.withDose(null),
   );
+  const dosing = SchedulerPipeline(learner: learner);
   final sittings = LongitudinalSchedules.named('normal_month', slots: 12);
 
   Trajectory run(SyntheticPlayer player, SchedulerPipeline pipeline) =>

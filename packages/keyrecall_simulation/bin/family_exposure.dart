@@ -34,15 +34,17 @@ Future<void> main(List<String> arguments) async {
     ..addOption('streak', defaultsTo: '5', help: 'Failures that ask for one.')
     ..addFlag(
       'dose',
-      negatable: false,
-      help: 'Run with yield-based family dose control in force.',
+      defaultsTo: true,
+      help:
+          'Yield-based family dose control, which the V1 policy carries. Pass '
+          '--no-dose for the arm without it.',
     )
     ..addOption(
       'half-life',
       defaultsTo: '7',
       help: 'Days a contraction\'s evidence takes to count half as much.',
     )
-    ..addOption('min-attempts', defaultsTo: '4')
+    ..addOption('min-attempts', defaultsTo: '6')
     ..addOption('yield-floor', defaultsTo: '0.34')
     ..addOption('max-gap', defaultsTo: '6')
     ..addOption(
@@ -97,7 +99,7 @@ Future<void> main(List<String> arguments) async {
     ..writeln()
     ..writeln(
       '== family exposure'
-      '${dose ? ', dose control ${_describe(policy)}' : ''}: '
+      '${dose ? ', dose control ${_describe(policy)}' : ', no dose control'}: '
       '${sittings.length} sittings of $slots, $seeds seeds, $total slots',
     )
     ..writeln(
@@ -249,12 +251,10 @@ List<_Row> _exposures(
 ) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
   const learner = LearnerModel();
-  final pipeline = dose
-      ? SchedulerPipeline(
-          learner: learner,
-          config: v1SchedulerConfig.withDose(policy),
-        )
-      : const SchedulerPipeline(learner: learner);
+  final pipeline = SchedulerPipeline(
+    learner: learner,
+    config: v1SchedulerConfig.withDose(dose ? policy : null),
+  );
   final rows = <_Row>[];
   for (final job in jobs) {
     // What pacing actually did, which only the run can say: a set-aside is a
