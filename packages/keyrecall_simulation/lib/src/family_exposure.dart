@@ -41,6 +41,14 @@ class FamilyExposure {
   /// at the median, or null where none followed.
   final int? slotsToNextManaged;
 
+  /// Slots into a returning sitting before the family is attempted again, at
+  /// the median, or null where it never was.
+  ///
+  /// Where time relaxation shows up. A contraction carried across a break is
+  /// evidence about a learner who has not touched the family in weeks, and
+  /// what ages is how far into the sitting they get before being asked again.
+  final int? returnDelay;
+
   /// Times realization-family pacing actually set this family aside.
   final int setAsides;
 
@@ -54,6 +62,7 @@ class FamilyExposure {
     required this.streaks,
     required this.shareAfterStreaks,
     required this.slotsToNextManaged,
+    required this.returnDelay,
     required this.setAsides,
   });
 }
@@ -61,16 +70,19 @@ class FamilyExposure {
 /// Every family [trajectory] touched, as an exposure.
 ///
 /// [window] is how many slots after an unproductive run count as its response,
-/// and [streakLength] how long a run has to be to ask for one. [setAsides]
-/// counts what pacing did, which only a run that observed it can supply.
+/// and [streakLength] how long a run has to be to ask for one. [returning] is
+/// the gap that makes a sitting a return. [setAsides] counts what pacing did,
+/// which only a run that observed it can supply.
 List<FamilyExposure> familyExposures(
   Trajectory trajectory, {
   int window = 10,
   int streakLength = 5,
+  Duration returning = const Duration(days: 2),
   Map<String, int> setAsides = const {},
   RealizationFamilyResolver families = handMotionFamilies,
 }) {
   final slots = trajectory.slots;
+  final returns = _returningSittings(trajectory, returning);
   final positions = <String, List<int>>{};
   for (final (position, slot) in slots.indexed) {
     for (final family in families(slot.chosen)) {
@@ -131,10 +143,44 @@ List<FamilyExposure> familyExposures(
         slotsToNextManaged: recoveries.isEmpty
             ? null
             : recoveries[recoveries.length ~/ 2],
+        returnDelay: _returnDelay(slots, returns, held),
         setAsides: setAsides[entry.key] ?? 0,
       ),
     );
   }
   exposures.sort((a, b) => a.family.compareTo(b.family));
   return exposures;
+}
+
+/// The positions each returning sitting starts at, oldest first.
+List<int> _returningSittings(Trajectory trajectory, Duration returning) {
+  final starts = <int>[];
+  for (var sitting = 1; sitting < trajectory.sittings.length; sitting++) {
+    final slots = trajectory.slotsOf(sitting).toList();
+    final previous = trajectory.slotsOf(sitting - 1).lastOrNull;
+    if (slots.isEmpty || previous == null) continue;
+    if (slots.first.at.difference(previous.at) < returning) continue;
+    starts.add(trajectory.slots.indexOf(slots.first));
+  }
+  return starts;
+}
+
+/// Slots into a returning sitting before a family held one, at the median.
+int? _returnDelay(
+  List<TrajectorySlot> slots,
+  List<int> returns,
+  List<int> held,
+) {
+  final delays = <int>[];
+  for (final start in returns) {
+    final sitting = slots[start].sitting;
+    final next = held.firstWhere(
+      (position) => position >= start && slots[position].sitting == sitting,
+      orElse: () => -1,
+    );
+    if (next >= 0) delays.add(next - start);
+  }
+  if (delays.isEmpty) return null;
+  delays.sort();
+  return delays[delays.length ~/ 2];
 }

@@ -182,7 +182,7 @@ Future<void> main(List<String> arguments) async {
           ),
         );
       });
-      pipeline.recordOutcome(session, exercise, outcome);
+      pipeline.recordOutcome(session, exercise, outcome, at: at);
     }
 
     time(

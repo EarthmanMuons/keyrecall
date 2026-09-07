@@ -229,7 +229,7 @@ class SchedulerPipeline {
     var repeated = applyRepetitionGuard(echoed, session);
     var introductions = capIntroductions(repeated, traces, state);
     var pacing = pace(introductions.selectable, session);
-    var dosed = doseOf(pacing.selectable, session);
+    var dosed = doseOf(pacing.selectable, session, at);
     var available = withNoveltySupported(
       dosed.selectable,
       state,
@@ -271,7 +271,7 @@ class SchedulerPipeline {
         repeated = applyRepetitionGuard(echoed, session);
         introductions = capIntroductions(repeated, traces, state);
         pacing = pace(introductions.selectable, session);
-        dosed = doseOf(pacing.selectable, session);
+        dosed = doseOf(pacing.selectable, session, at);
         available = dosed.selectable;
         selected = chooseFrom(available, session);
         blockedReason = BlockedReason.safeEntryRejected;
@@ -330,8 +330,9 @@ class SchedulerPipeline {
   void recordOutcome(
     SessionState session,
     Exercise exercise,
-    Outcome? outcome,
-  ) {
+    Outcome? outcome, {
+    required DateTime at,
+  }) {
     session.recordSelection(
       exercise,
       retrievalFailed: outcome?.retrieval == FactualRetrieval.failed,
@@ -351,6 +352,7 @@ class SchedulerPipeline {
         exercise,
         productive: outcome != null && learner.executionWasManaged(outcome),
         window: familyWindow,
+        at: at,
       );
     }
   }
@@ -1638,12 +1640,17 @@ class SchedulerPipeline {
   /// Holding back everything would empty the slot, so a set with nothing else
   /// in it is returned untouched: a learner with no other useful work keeps
   /// being offered the hard thing.
-  DoseDecision doseOf(List<CandidateTrace> paced, SessionState session) {
+  DoseDecision doseOf(
+    List<CandidateTrace> paced,
+    SessionState session,
+    DateTime at,
+  ) {
     final policy = config.dose;
     if (policy == null) return DoseDecision.inactive(paced);
     final contracted = familiesOverDose(
       window: session.recentFamilies,
       config: policy,
+      at: at,
     );
     if (contracted.isEmpty) return DoseDecision.inactive(paced);
 

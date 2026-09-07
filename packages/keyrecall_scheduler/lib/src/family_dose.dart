@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'candidate_trace.dart';
@@ -31,10 +33,17 @@ const Map<String, Set<String>> familyPrerequisites = {
 /// it. Somebody whose hands are improving separately is a different learner
 /// from one whose hands are not, and the coordination they cannot do yet is
 /// worth asking for sooner.
+///
+/// Time relaxes it too, through [at]. **What ages is the confidence that the
+/// family is still over its cadence, not the record of what it produced.** The
+/// attempts stay unproductive however long ago they were; what a two-month gap
+/// changes is whether last winter's failures should still be deciding how
+/// often the family is offered today.
 double familyDose(
   String family, {
   required List<FamilyObservation> window,
   required DoseConfig config,
+  required DateTime at,
 }) {
   final held = window.where(
     (observation) => observation.families.contains(family),
@@ -51,7 +60,28 @@ double familyDose(
         observation.productive &&
         observation.families.any(prerequisites.contains),
   );
-  return supported ? contraction * config.prerequisiteRelief : contraction;
+  final relieved = supported
+      ? contraction * config.prerequisiteRelief
+      : contraction;
+  return relieved * _confidence(held.last.at, at, config);
+}
+
+/// How much a contraction from evidence last seen at [seen] still counts at
+/// [at].
+///
+/// A half-life rather than an expiry, so evidence weakens rather than being
+/// discarded on a boundary nobody can defend, and never reaches zero: a family
+/// that has produced nothing is still a family that has produced nothing. What
+/// takes it out of contention is [doseGap] rounding a weak contraction back to
+/// no gap at all.
+///
+/// Time before the evidence is not relief. A window rebuilt at a sitting that
+/// starts before its own history is a corrupt clock, not a fresh start.
+double _confidence(DateTime seen, DateTime at, DoseConfig config) {
+  final elapsed = at.difference(seen);
+  if (elapsed <= Duration.zero) return 1;
+  final days = elapsed.inMinutes / Duration.minutesPerDay;
+  return math.pow(0.5, days / config.evidenceHalfLifeDays).toDouble();
 }
 
 /// The slots a family must leave between attempts at this contraction.
@@ -119,11 +149,17 @@ class DoseDecision {
 Map<String, double> familiesOverDose({
   required List<FamilyObservation> window,
   required DoseConfig config,
+  required DateTime at,
 }) {
   final families = {for (final observation in window) ...observation.families};
   final over = <String, double>{};
   for (final family in families) {
-    final contraction = familyDose(family, window: window, config: config);
+    final contraction = familyDose(
+      family,
+      window: window,
+      config: config,
+      at: at,
+    );
     if (contraction <= 0) continue;
     final since = attemptsSince(family, window);
     if (since == null || since >= doseGap(contraction, config) - 1) continue;

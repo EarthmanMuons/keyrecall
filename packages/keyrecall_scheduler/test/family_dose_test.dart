@@ -12,17 +12,25 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 /// from a learner with nothing else to do.
 void main() {
   const config = DoseConfig();
+  final now = DateTime.utc(2026, 3, 1);
 
   Exercise exerciseFor(HandConfiguration hands) => Exercise.linear(
     material: TechnicalMaterial('C', ScaleForm.major),
     hands: hands,
   );
 
-  List<FamilyObservation> window(List<(HandConfiguration, bool)> attempts) => [
-    for (final (hands, productive) in attempts)
+  /// The attempts as a window whose last one was [ago] before now.
+  List<FamilyObservation> window(
+    List<(HandConfiguration, bool)> attempts, {
+    Duration ago = Duration.zero,
+  }) => [
+    for (final (index, (hands, productive)) in attempts.indexed)
       FamilyObservation(
         families: handMotionFamilies(exerciseFor(hands)),
         productive: productive,
+        at: now
+            .subtract(ago)
+            .subtract(Duration(minutes: attempts.length - index)),
       ),
   ];
 
@@ -32,8 +40,16 @@ void main() {
     required bool productive,
   }) => [for (var i = 0; i < count; i++) (hands, productive)];
 
-  double doseOf(List<(HandConfiguration, bool)> attempts, String family) =>
-      familyDose(family, window: window(attempts), config: config);
+  double doseOf(
+    List<(HandConfiguration, bool)> attempts,
+    String family, {
+    Duration ago = Duration.zero,
+  }) => familyDose(
+    family,
+    window: window(attempts, ago: ago),
+    config: config,
+    at: now,
+  );
 
   group('what a contraction reads', () {
     test('a family with too little evidence is left alone', () {
@@ -51,8 +67,8 @@ void main() {
         ...runOf(HandConfiguration.right, 6, productive: false),
       ];
 
-      expect(doseOf(attempts, 'hands:together'), 1);
-      expect(doseOf(attempts, 'hands:right'), 1);
+      expect(doseOf(attempts, 'hands:together'), closeTo(1, 0.01));
+      expect(doseOf(attempts, 'hands:right'), closeTo(1, 0.01));
     });
 
     test('a family holding a minority of the window still contracts', () {
@@ -64,7 +80,7 @@ void main() {
         ...runOf(HandConfiguration.right, 8, productive: true),
       ];
 
-      expect(doseOf(attempts, 'hands:together'), 0.5);
+      expect(doseOf(attempts, 'hands:together'), closeTo(0.5, 0.01));
     });
 
     test('managed execution can only relax a contraction', () {
@@ -105,7 +121,56 @@ void main() {
         ...runOf(HandConfiguration.right, 6, productive: true),
       ];
 
-      expect(doseOf(attempts, 'hands:left'), 1);
+      expect(doseOf(attempts, 'hands:left'), closeTo(1, 0.01));
+    });
+  });
+
+  group('what time does to a contraction', () {
+    final failing = [
+      ...runOf(HandConfiguration.left, 6, productive: false),
+      ...runOf(HandConfiguration.right, 6, productive: false),
+    ];
+
+    test('evidence weakens with time away', () {
+      var previous = doseOf(failing, 'hands:left');
+      for (final days in [1, 7, 30, 90]) {
+        final aged = doseOf(failing, 'hands:left', ago: Duration(days: days));
+
+        expect(aged, lessThan(previous));
+        previous = aged;
+      }
+    });
+
+    test('time is relief, never a reason to contract harder', () {
+      for (final days in [0, 1, 7, 30, 90]) {
+        expect(
+          doseOf(failing, 'hands:left', ago: Duration(days: days)),
+          lessThanOrEqualTo(doseOf(failing, 'hands:left')),
+        );
+      }
+    });
+
+    test('a long break returns the family to an ordinary cadence', () {
+      final aged = doseOf(failing, 'hands:left', ago: const Duration(days: 60));
+
+      expect(doseGap(aged, config), 1);
+    });
+
+    test('time cannot manufacture yield', () {
+      // The evidence still says the family produced nothing. What ages is the
+      // confidence that its cadence should still be contracted, so a family
+      // coming back from a break is ordinary rather than favored.
+      final aged = doseOf(failing, 'hands:left', ago: const Duration(days: 60));
+
+      expect(aged, greaterThan(0));
+      expect(aged, lessThan(doseOf(failing, 'hands:left')));
+    });
+
+    test('evidence from after the decision is not relief', () {
+      expect(
+        doseOf(failing, 'hands:left', ago: const Duration(days: -30)),
+        closeTo(doseOf(failing, 'hands:left'), 0.01),
+      );
     });
   });
 
@@ -123,6 +188,7 @@ void main() {
       final contracted = familiesOverDose(
         window: session.recentFamilies,
         config: config,
+        at: now,
       );
 
       expect(contracted.keys, contains('hands:together'));
@@ -145,7 +211,11 @@ void main() {
       );
 
       expect(
-        familiesOverDose(window: session.recentFamilies, config: config),
+        familiesOverDose(
+          window: session.recentFamilies,
+          config: config,
+          at: now,
+        ),
         isEmpty,
       );
     });
@@ -161,7 +231,7 @@ void main() {
       final decision = SchedulerPipeline(
         learner: const LearnerModel(),
         config: dosing,
-      ).doseOf(only, session);
+      ).doseOf(only, session, now);
 
       expect(decision.disposition, DoseDisposition.unrelieved);
       expect(decision.selectable, only);
@@ -178,7 +248,7 @@ void main() {
         _trace(exerciseFor(HandConfiguration.together)),
         _trace(exerciseFor(HandConfiguration.right)),
       ];
-      final decision = pipeline.doseOf(paced, session);
+      final decision = pipeline.doseOf(paced, session, now);
 
       expect(decision.disposition, DoseDisposition.inactive);
       expect(decision.selectable, paced);
@@ -198,7 +268,7 @@ void main() {
       final decision = SchedulerPipeline(
         learner: const LearnerModel(),
         config: dosing,
-      ).doseOf(paced, session);
+      ).doseOf(paced, session, now);
 
       expect(decision.disposition, DoseDisposition.contracted);
       expect(decision.selectable, [paced.last]);

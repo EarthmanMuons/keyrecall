@@ -115,6 +115,7 @@ class SessionState {
           prior.exercise,
           productive: prior.productive,
           window: familyWindow,
+          at: prior.at,
           families: families,
         );
       }
@@ -179,10 +180,15 @@ class SessionState {
     Exercise exercise, {
     required bool productive,
     required int window,
+    required DateTime at,
     RealizationFamilyResolver families = handMotionFamilies,
   }) {
     recentFamilies.add(
-      FamilyObservation(families: families(exercise), productive: productive),
+      FamilyObservation(
+        families: families(exercise),
+        productive: productive,
+        at: at,
+      ),
     );
     while (recentFamilies.length > window) {
       recentFamilies.removeAt(0);
@@ -235,6 +241,11 @@ class SessionState {
 class PriorSelection {
   final Exercise exercise;
   final bool productive;
+  final DateTime at;
 
-  const PriorSelection(this.exercise, {required this.productive});
+  const PriorSelection(
+    this.exercise, {
+    required this.productive,
+    required this.at,
+  });
 }

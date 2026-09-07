@@ -198,9 +198,11 @@ Trajectory runSittings({
             .materialExecution[executionContextOf(exercise)]
             ?.demonstratedTempoByOctaves,
       };
-      pipeline.recordOutcome(session, exercise, outcome);
+      pipeline.recordOutcome(session, exercise, outcome, at: at);
       final managedExecution = learner.executionWasManaged(outcome);
-      history.add(PriorSelection(exercise, productive: managedExecution));
+      history.add(
+        PriorSelection(exercise, productive: managedExecution, at: at),
+      );
       recorded.add(
         TrajectorySlot(
           index: index,

@@ -152,7 +152,7 @@ class SchedulerAgent {
   /// observer.
   void observe(Exercise exercise, Outcome outcome, DateTime at) {
     records.last.outcome = outcome;
-    pipeline.recordOutcome(_session, exercise, outcome);
+    pipeline.recordOutcome(_session, exercise, outcome, at: at);
   }
 }
 

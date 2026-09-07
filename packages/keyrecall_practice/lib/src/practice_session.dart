@@ -696,7 +696,12 @@ class PracticeSession {
     // The exercise was presented either way, so the sitting knows it was. A
     // retrieval failure is a claim about the performance, and an unmeasured
     // attempt supports no such claim.
-    pipeline.recordOutcome(_session, decision.exercise, outcome);
+    pipeline.recordOutcome(
+      _session,
+      decision.exercise,
+      outcome,
+      at: record.identity.occurredAt,
+    );
     _outstanding = null;
     _pending = null;
 
@@ -843,6 +848,7 @@ class PracticeSession {
           Measured(:final outcome) => learner.executionWasManaged(outcome),
           MeasurementUnavailable() => false,
         },
+        at: record.identity.occurredAt,
       ),
   ], config: config);
 }

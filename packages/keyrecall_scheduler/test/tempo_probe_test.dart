@@ -199,7 +199,12 @@ void main() {
 
       // Closing that attempt is what ages the probe, and it opens none of
       // its own.
-      pipeline.recordOutcome(session, chosen, playedAt(1.0));
+      pipeline.recordOutcome(
+        session,
+        chosen,
+        playedAt(1.0),
+        at: DateTime.utc(2026),
+      );
 
       expect(session.tempoProbe, probe, reason: 'held, not spent');
       expect(session.tempoProbeIsFresh, isFalse);
@@ -352,6 +357,7 @@ void main() {
             session,
             result.candidate.exercise,
             playedAt(2.0),
+            at: DateTime.utc(2026),
           );
           if (fresh) {
             expect(session.tempoProbe, waiting);

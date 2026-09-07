@@ -73,6 +73,16 @@ evidence for contrary, so contrary is absent rather than guessed at. Somebody
 whose hands are improving separately is a different learner from one whose hands
 are not.
 
+**Time relaxes the contraction, and only the contraction.** A family's evidence
+counts half as much after `evidenceHalfLifeDays`, measured from its last attempt
+to the decision being made. What ages is the confidence that the family is still
+over its cadence, not the record of what it produced: the attempts stay
+unproductive however long ago they were, and a family returning from a break
+comes back at an ordinary cadence rather than a favored one. A half-life rather
+than an expiry, so nothing hinges on a boundary date, and time before the
+evidence is not relief, since a window that starts before its own history is a
+corrupt clock rather than a fresh start.
+
 **Contraction never removes.** A slot holding only contracted work returns it
 untouched. A learner with nothing else useful to do keeps being offered the hard
 thing, which is also why the mechanism cannot empty a sitting.
@@ -86,6 +96,7 @@ Asserted, because each states a direction rather than a strength:
 - a family under its minimum evidence is not contracted at all;
 - the cadence never exceeds `maximumGap`, and is one at no contraction;
 - a slot whose every candidate is contracted keeps them;
+- time away can only lower a contraction, and can never manufacture yield;
 - a learner whose families all yield practises the identical trajectory to one
   with no dose policy at all.
 
@@ -113,17 +124,37 @@ anything; its share falls but the post-failure ordering does not invert. A
 learner who cannot execute anything is not a dose problem, and the mechanism
 correctly declines to invent an alternative.
 
+### What ageing does, and where it shows
+
+Time relaxation is a boundary effect, and the aggregate share cannot see it. Six
+seeds of `return_after_long_break`, twelve slots a sitting, comparing a
+seven-day half-life against one long enough to be no ageing at all:
+
+| archetype              | family           | share   | slots into a return before it is offered |
+| ---------------------- | ---------------- | ------- | ---------------------------------------- |
+| `developing`           | `hands:together` | 37 / 36 | 0.0 / 2.5                                |
+| `coordination_limited` | `hands:together` | 22 / 21 | 1.0 / 2.0                                |
+| `uneven_hands`         | `hands:together` | 12 / 12 | 3.5 / 3.5                                |
+
+The share a family holds over a whole run is unchanged, which is the point:
+ageing does not loosen the mechanism inside a sitting, where the attempts are
+minutes apart. What changes is how far into a returning sitting the learner gets
+before the family is offered again. `sporadic` says the same thing, with
+`developing` offered coordination work at the first slot back rather than three
+and a half slots in.
+
 ## What is unsettled
 
-Every constant. `window`, `minAttempts`, `yieldFloor`, `maximumGap` and
-`prerequisiteRelief` are provisional, chosen to be legible rather than tuned,
-and a sweep either side of them is the work that would justify promoting this
-into the V1 policy.
+Every constant. `window`, `minAttempts`, `yieldFloor`, `maximumGap`,
+`prerequisiteRelief` and `evidenceHalfLifeDays` are provisional, chosen to be
+legible rather than tuned, and a sweep either side of them is the work that
+would justify promoting this into the V1 policy.
 
-Elapsed time relaxes nothing. The window is counted in attempts, so a family
-that failed before a two-month break is still contracted on the way back, and a
-break is arguably itself a reason to try again. Adding a time term means
-timestamping the window, which is a change to what a resumed sitting rebuilds.
+The one coarse probe run so far is of `maximumGap`, on `coordination_limited`
+over `normal_month` at four seeds. Its hands-together share reads 33, 28 and 27
+per cent at gaps of three, six and twelve, so the response saturates rather than
+running away, which is the shape a stable region would have. One archetype on
+one schedule is not that evidence, only a reason to expect it exists.
 
 Why a one-slot pacing set-aside does not reduce a family's share over a run is
 still unexplained, and dose control does not explain it: `true_beginner` was set

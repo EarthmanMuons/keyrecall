@@ -249,6 +249,7 @@ void _record(
   _exercise(hands, motion: motion),
   productive: productive,
   window: _pacing.window,
+  at: DateTime.utc(2026),
   families: families,
 );
 

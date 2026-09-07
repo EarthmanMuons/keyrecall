@@ -37,6 +37,15 @@ Future<void> main(List<String> arguments) async {
       negatable: false,
       help: 'Run with yield-based family dose control in force.',
     )
+    ..addOption(
+      'half-life',
+      defaultsTo: '7',
+      help: 'Days a contraction\'s evidence takes to count half as much.',
+    )
+    ..addOption('min-attempts', defaultsTo: '4')
+    ..addOption('yield-floor', defaultsTo: '0.34')
+    ..addOption('max-gap', defaultsTo: '6')
+    ..addOption('prereq-relief', defaultsTo: '0.5')
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
   if (options.flag('help')) {
@@ -61,10 +70,19 @@ Future<void> main(List<String> arguments) async {
       if (only == null || only.contains(player.id)) player,
   ];
   final dose = options.flag('dose');
+  final policy = DoseConfig(
+    minAttempts: int.parse(options.option('min-attempts')!),
+    yieldFloor: double.parse(options.option('yield-floor')!),
+    maximumGap: int.parse(options.option('max-gap')!),
+    prerequisiteRelief: double.parse(options.option('prereq-relief')!),
+    evidenceHalfLifeDays: double.parse(options.option('half-life')!),
+  );
   final buckets = dealTrajectoryJobs(seeds, players: players);
   final batches = await Future.wait([
     for (final bucket in buckets)
-      Isolate.run(() => _exposures(bucket, sittings, window, streak, dose)),
+      Isolate.run(
+        () => _exposures(bucket, sittings, window, streak, dose, policy),
+      ),
   ]);
   final rows = [for (final batch in batches) ...batch];
 
@@ -72,7 +90,8 @@ Future<void> main(List<String> arguments) async {
   stdout
     ..writeln()
     ..writeln(
-      '== family exposure${dose ? ', dose control in force' : ''}: '
+      '== family exposure'
+      '${dose ? ', dose control ${_describe(policy)}' : ''}: '
       '${sittings.length} sittings of $slots, $seeds seeds, $total slots',
     )
     ..writeln(
@@ -88,7 +107,7 @@ Future<void> main(List<String> arguments) async {
       ..writeln(player.id)
       ..writeln(
         '   ${'family'.padRight(18)}first  att  share  after  yield  '
-        'longest  runs  toManaged  aside',
+        'longest  runs  toManaged  return  aside',
       );
     final families = {for (final row in mine) row.family}.toList()..sort();
     for (final family in families) {
@@ -115,8 +134,16 @@ String _row(String family, List<_Row> rows) => [
   ).toStringAsFixed(0).padLeft(8),
   '${rows.fold(0, (total, row) => total + row.streaks)}'.padLeft(5),
   _recovery(rows).padLeft(10),
+  _returnDelay(rows).padLeft(7),
   '${rows.fold(0, (total, row) => total + row.setAsides)}'.padLeft(6),
 ].join(' ');
+
+String _returnDelay(List<_Row> rows) {
+  final delays = [for (final row in rows) ?row.returnDelay];
+  return delays.isEmpty
+      ? '-'
+      : _median(delays.map((delay) => delay.toDouble())).toStringAsFixed(1);
+}
 
 String _recovery(List<_Row> rows) {
   final slots = [for (final row in rows) ?row.slotsToNextManaged];
@@ -124,6 +151,11 @@ String _recovery(List<_Row> rows) {
       ? '-'
       : _median(slots.map((s) => s.toDouble())).toStringAsFixed(0);
 }
+
+String _describe(DoseConfig policy) =>
+    '(evidence ${policy.minAttempts}, floor ${policy.yieldFloor}, '
+    'gap ${policy.maximumGap}, relief ${policy.prerequisiteRelief}, '
+    'half-life ${policy.evidenceHalfLifeDays}d)';
 
 String _percent(double share) => '${(share * 100).round()}%';
 
@@ -147,6 +179,7 @@ class _Row {
   final int longestStreak;
   final int streaks;
   final int? slotsToNextManaged;
+  final int? returnDelay;
   final int setAsides;
 
   const _Row({
@@ -160,6 +193,7 @@ class _Row {
     required this.longestStreak,
     required this.streaks,
     required this.slotsToNextManaged,
+    required this.returnDelay,
     required this.setAsides,
   });
 }
@@ -170,13 +204,14 @@ List<_Row> _exposures(
   int window,
   int streak,
   bool dose,
+  DoseConfig policy,
 ) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
   const learner = LearnerModel();
   final pipeline = dose
       ? SchedulerPipeline(
           learner: learner,
-          config: v1SchedulerConfig.withDose(const DoseConfig()),
+          config: v1SchedulerConfig.withDose(policy),
         )
       : const SchedulerPipeline(learner: learner);
   final rows = <_Row>[];
@@ -217,6 +252,7 @@ List<_Row> _exposures(
           longestStreak: exposure.longestUnproductiveStreak,
           streaks: exposure.streaks,
           slotsToNextManaged: exposure.slotsToNextManaged,
+          returnDelay: exposure.returnDelay,
           setAsides: exposure.setAsides,
         ),
       );

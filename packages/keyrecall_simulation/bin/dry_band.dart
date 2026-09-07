@@ -177,7 +177,7 @@ _DrySlot? _dryStateFor({
       prediction: learner.predict(state, exercise, at: at),
       at: at,
     );
-    pipeline.recordOutcome(session, exercise, outcome);
+    pipeline.recordOutcome(session, exercise, outcome, at: at);
   }
   return null;
 }

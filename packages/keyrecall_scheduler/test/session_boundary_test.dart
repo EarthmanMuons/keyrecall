@@ -5,14 +5,16 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'support/fixtures.dart';
 
 /// What a new sitting inherits from the one before it, and what it does not.
+final DateTime _at = DateTime.utc(2026);
+
 void main() {
   final first = exerciseFor(materials.first);
   final second = exerciseFor(materials[1]);
 
   test('the recency window carries over', () {
     final resumed = SessionState.resuming([
-      PriorSelection(first, productive: true),
-      PriorSelection(second, productive: false),
+      PriorSelection(first, productive: true, at: _at),
+      PriorSelection(second, productive: false, at: _at),
     ], config: config);
 
     expect(resumed.recentMaterialIds, [
@@ -25,8 +27,8 @@ void main() {
     final window = config.diversity.recentWindow;
     final resumed = SessionState.resuming([
       for (var i = 0; i < window + 3; i++)
-        PriorSelection(first, productive: true),
-      PriorSelection(second, productive: true),
+        PriorSelection(first, productive: true, at: _at),
+      PriorSelection(second, productive: true, at: _at),
     ], config: config);
 
     expect(resumed.recentMaterialIds.length, window);
@@ -36,7 +38,7 @@ void main() {
   test('pacing pressure carries over with its yield', () {
     if (config.pacing == null) return;
     final resumed = SessionState.resuming([
-      PriorSelection(first, productive: false),
+      PriorSelection(first, productive: false, at: _at),
     ], config: config);
 
     expect(resumed.recentFamilies.single.productive, isFalse);
@@ -44,8 +46,8 @@ void main() {
 
   test('nothing the last sitting was in the middle of survives', () {
     final resumed = SessionState.resuming([
-      PriorSelection(first, productive: true),
-      PriorSelection(second, productive: true),
+      PriorSelection(first, productive: true, at: _at),
+      PriorSelection(second, productive: true, at: _at),
     ], config: config);
 
     expect(resumed.attemptsThisSession, 0);

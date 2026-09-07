@@ -26,13 +26,21 @@ Set<String> handMotionFamilies(Exercise exercise) =>
       },
     };
 
-/// The families one recent selection consumed, and what it yielded.
+/// The families one recent selection consumed, what it yielded, and when.
+///
+/// The time is what lets evidence age. Pacing does not read it: a family that
+/// crowded the window crowded it, however long ago the sitting was.
 @immutable
 class FamilyObservation {
   final Set<String> families;
   final bool productive;
+  final DateTime at;
 
-  const FamilyObservation({required this.families, required this.productive});
+  const FamilyObservation({
+    required this.families,
+    required this.productive,
+    required this.at,
+  });
 }
 
 /// `share above the floor x unproductive fraction`, in `[0, 1]`.

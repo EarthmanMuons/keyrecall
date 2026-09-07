@@ -139,8 +139,11 @@ dart run keyrecall_simulation:family_exposure --seeds 6
 ```
 
 Reports each realization family's share, managed yield, longest run of attempts
-that yielded nothing, and its share of the slots following such a run, beside
-the times realization-family pacing set it aside.
+that yielded nothing, its share of the slots following such a run, how far into
+a returning sitting it is offered again, and the times realization-family pacing
+set it aside. `--dose` runs the same thing with yield-based dose control in
+force, and every one of its constants is an option, so a sweep is a shell loop
+rather than another command.
 
 ## Comparing against the reference
 

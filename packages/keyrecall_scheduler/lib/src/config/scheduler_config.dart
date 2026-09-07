@@ -298,12 +298,21 @@ class DoseConfig {
   /// What productive prerequisite work multiplies a contraction by.
   final double prerequisiteRelief;
 
+  /// How many days a family's evidence takes to count half as much.
+  ///
+  /// Time away weakens the confidence that a family is still over its cadence.
+  /// It does not rewrite what the attempts produced, and it cannot manufacture
+  /// yield: a family that has never worked stays a family that has never
+  /// worked, and comes back at an ordinary cadence rather than a favored one.
+  final double evidenceHalfLifeDays;
+
   const DoseConfig({
     this.window = 12,
     this.minAttempts = 4,
     this.yieldFloor = 0.34,
     this.maximumGap = 6,
     this.prerequisiteRelief = 0.5,
+    this.evidenceHalfLifeDays = 7,
   }) : assert(window > 0, 'the window must hold at least one selection'),
        assert(
          minAttempts > 0 && minAttempts <= window,
@@ -317,6 +326,10 @@ class DoseConfig {
        assert(
          prerequisiteRelief >= 0 && prerequisiteRelief <= 1,
          'relief may soften a contraction, never invert it',
+       ),
+       assert(
+         evidenceHalfLifeDays > 0,
+         'evidence that halves in no time is evidence of nothing',
        );
 }
 

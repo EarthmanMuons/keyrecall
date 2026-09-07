@@ -51,7 +51,12 @@ void main() {
       prediction: prediction,
       at: at,
     );
-    practice.pipeline.recordOutcome(directSession, exercise, outcome);
+    practice.pipeline.recordOutcome(
+      directSession,
+      exercise,
+      outcome,
+      at: DateTime.utc(2026),
+    );
     await practice.closeWithOutcome(outcome);
 
     expect(learnerStateHash(practice.state), learnerStateHash(directState));
