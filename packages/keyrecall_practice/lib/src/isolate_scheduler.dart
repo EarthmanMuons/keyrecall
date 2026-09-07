@@ -27,8 +27,8 @@ class SchedulerWorkerLost implements Exception {
 /// A mature full-catalog decision costs a fifth of a second on a mid-range
 /// phone, and computing it elsewhere costs nothing but the state that travels:
 /// the learner state and the sitting cross by copy, the candidate envelope
-/// never moves because the worker holds the scope, and only the winning
-/// candidate comes back.
+/// never moves because the worker holds the scope. The winner and a compact
+/// competition report come back.
 ///
 /// Disposable by construction. It owns no durability and no lifecycle policy:
 /// a worker that dies mid-decision fails that request and nothing else, and the
@@ -103,6 +103,7 @@ class _DecisionRequest {
 }
 
 class _DecisionResponse {
+  final String diagnostics;
   final int epoch;
   final CandidateTrace? chosen;
   final BlockedReason? blockedReason;
@@ -110,6 +111,7 @@ class _DecisionResponse {
   final bool guidanceProbeSelected;
 
   const _DecisionResponse({
+    required this.diagnostics,
     required this.epoch,
     required this.chosen,
     required this.blockedReason,
@@ -123,8 +125,18 @@ class _DecisionResponse {
       guidanceProbeSelected: guidanceProbeSelected,
     );
     return chosen == null
-        ? SchedulerVerdict.blocked(blockedReason!, epoch: epoch, effect: effect)
-        : SchedulerVerdict.selected(chosen!, epoch: epoch, effect: effect);
+        ? SchedulerVerdict.blocked(
+            blockedReason!,
+            epoch: epoch,
+            effect: effect,
+            diagnostics: diagnostics,
+          )
+        : SchedulerVerdict.selected(
+            chosen!,
+            epoch: epoch,
+            effect: effect,
+            diagnostics: diagnostics,
+          );
   }
 }
 
@@ -222,6 +234,7 @@ class _Worker {
       );
       replies.send(
         _DecisionResponse(
+          diagnostics: slot.result.diagnostics,
           epoch: request.epoch,
           chosen: switch (slot.result) {
             CandidateSelected(:final candidate) => candidate,

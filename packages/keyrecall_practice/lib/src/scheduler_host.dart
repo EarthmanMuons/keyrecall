@@ -67,10 +67,12 @@ class SittingDecisionEffect {
 /// A [SelectionResult] holds a trace per candidate and a slot evaluates ten
 /// thousand, so the whole of it cannot cross an isolate boundary at a price
 /// worth paying. What a session does with it is narrower: the winning
-/// candidate or a reason there was none, plus the one set-level fact the
-/// sitting records.
+/// candidate or a reason there was none, a compact competition report, and the
+/// selection bookkeeping the sitting records.
 @immutable
 class SchedulerVerdict {
+  final String diagnostics;
+
   /// Which version of the session's scheduler inputs this answers.
   ///
   /// Echoed rather than interpreted: what makes a verdict stale is a question
@@ -94,6 +96,7 @@ class SchedulerVerdict {
 
   const SchedulerVerdict.selected(
     CandidateTrace this.chosen, {
+    this.diagnostics = '',
     required this.epoch,
     required this.effect,
     this.result,
@@ -101,6 +104,7 @@ class SchedulerVerdict {
 
   const SchedulerVerdict.blocked(
     BlockedReason this.blockedReason, {
+    this.diagnostics = '',
     required this.epoch,
     required this.effect,
     this.result,
@@ -210,12 +214,14 @@ class InProcessScheduler implements SchedulerHost {
         epoch: epoch,
         effect: effect,
         result: slot.result,
+        diagnostics: slot.result.diagnostics,
       ),
       SelectionBlocked(:final reason) => SchedulerVerdict.blocked(
         reason,
         epoch: epoch,
         effect: effect,
         result: slot.result,
+        diagnostics: slot.result.diagnostics,
       ),
     };
   }

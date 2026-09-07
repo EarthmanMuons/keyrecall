@@ -192,6 +192,10 @@ void main() {
       expect(result, isA<CandidateSelected>());
       final chosen = (result as CandidateSelected).candidate.exercise;
       expect(chosen, isNot(probe), reason: 'something else was worth doing');
+      expect(
+        result.diagnostics,
+        contains('fresh_probe=true probe=removed:echo'),
+      );
 
       // Closing that attempt is what ages the probe, and it opens none of
       // its own.
@@ -214,6 +218,8 @@ void main() {
       );
 
       expect((result as CandidateSelected).candidate.exercise, probe);
+      expect(result.diagnostics, contains('fresh_probe=true probe=selectable'));
+      expect(result.diagnostics, contains('pacing=1 echo=1 novelty=1'));
     });
 
     test('one intervening attempt is the whole of the wait', () {

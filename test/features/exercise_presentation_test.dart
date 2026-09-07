@@ -225,6 +225,22 @@ void main() {
   });
 
   group('what a material is called in a sentence', () {
+    test('root arpeggios have short titles while inversions stay distinct', () {
+      expect(
+        materialName(ArpeggioMaterial('C', ArpeggioQuality.major)),
+        'C major arpeggio',
+      );
+      expect(
+        materialName(
+          ArpeggioMaterial(
+            'C',
+            ArpeggioQuality.major,
+            inversion: ArpeggioInversion.first,
+          ),
+        ),
+        'C major first-inversion arpeggio',
+      );
+    });
     test('each family uses its own word', () {
       expect(materialNoun(TechnicalMaterial('C', ScaleForm.major)), 'scale');
       expect(

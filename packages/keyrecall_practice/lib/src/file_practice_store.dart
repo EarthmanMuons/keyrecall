@@ -20,6 +20,7 @@ import 'profile_write_queue.dart';
 /// <root>/<profileId>/checkpoint.json   one slot, replaced
 /// <root>/<profileId>/plan.json         one slot, replaced
 /// <root>/<profileId>/coordination.jsonl append-only diagnostic log
+/// <root>/<profileId>/selections.jsonl  append-only selection diagnostics
 /// ```
 ///
 /// The directory is shared with the profile's own record of itself, which the
@@ -209,6 +210,56 @@ class FilePracticeStore implements PracticeStore {
   @override
   Future<List<CoordinationSample>> loadCoordinationSamples(String profileId) =>
       _queue.run(profileId, () => _loadCoordinationSamples(profileId));
+
+  @override
+  Future<Map<String, String>> loadSelectionDiagnostics(String profileId) =>
+      _queue.run(profileId, () => _loadSelectionDiagnostics(profileId));
+
+  Future<Map<String, String>> _loadSelectionDiagnostics(
+    String profileId,
+  ) async {
+    await _recoverErase(profileId);
+    final file = _selectionFile(profileId);
+    if (!file.existsSync()) return {};
+    final contents = await _readCompleteContents(file);
+    final samples = <String, String>{};
+    try {
+      for (final line in const LineSplitter().convert(contents)) {
+        final json = asMap(
+          jsonDecode(line),
+          'selection diagnostic',
+          location: file.path,
+        );
+        samples.putIfAbsent(
+          requireString(json, 'attempt_id'),
+          () => requireString(json, 'diagnostics'),
+        );
+      }
+    } on FormatException catch (error) {
+      throw JournalFormatException(
+        'selection diagnostic is not valid JSON: ${error.message}',
+        location: file.path,
+      );
+    }
+    return samples;
+  }
+
+  @override
+  Future<void> appendSelectionDiagnostics(
+    String profileId,
+    String attemptId,
+    String diagnostics,
+  ) => _queue.run(profileId, () async {
+    final existing = await _loadSelectionDiagnostics(profileId);
+    if (existing.containsKey(attemptId)) return;
+    final file = _selectionFile(profileId);
+    await file.parent.create(recursive: true);
+    await _repairTornTail(file);
+    await _appendLine(
+      file,
+      canonicalJson({'attempt_id': attemptId, 'diagnostics': diagnostics}),
+    );
+  });
 
   Future<List<CoordinationSample>> _loadCoordinationSamples(
     String profileId,
@@ -406,6 +457,7 @@ class FilePracticeStore implements PracticeStore {
       _feedbackFile(profileId),
       _planFile(profileId),
       _coordinationFile(profileId),
+      _selectionFile(profileId),
       File('${_pendingFile(profileId).path}.tmp'),
       File('${_checkpointFile(profileId).path}.tmp'),
       File('${_planFile(profileId).path}.tmp'),
@@ -441,6 +493,9 @@ class FilePracticeStore implements PracticeStore {
 
   File _coordinationFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/coordination.jsonl');
+
+  File _selectionFile(String profileId) =>
+      File('${_profileDirectory(profileId).path}/selections.jsonl');
 
   File _planFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/plan.json');

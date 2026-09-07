@@ -58,6 +58,17 @@ void main() {
   }
 
   group('what coordination is read from', () {
+    test(
+      'the provisional bound forgives marginal arrivals but retains 45 ms',
+      () {
+        expect(measuredWith([16, 36, -15, -9]).coordination, 1);
+        expect(measuredWith([8, 0, -15, 38]).coordination, 1);
+        expect(
+          measuredWith([1, 45, -8, 0]).coordination,
+          closeTo(0.98409, 0.00001),
+        );
+      },
+    );
     test('a single-hand performance measures none of it', () {
       final rightHand = realize(
         Exercise.linear(

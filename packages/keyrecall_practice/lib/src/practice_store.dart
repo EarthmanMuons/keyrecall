@@ -7,7 +7,7 @@ import 'practice_plan.dart';
 
 /// Durable storage for one install's practice history.
 ///
-/// The port the application transaction writes through. Four kinds of thing
+/// The port the application transaction writes through. Several kinds of thing
 /// live behind it, and they have different durability requirements on purpose:
 ///
 /// - **Attempts** are append-only and authoritative. Nothing rewrites them.
@@ -20,6 +20,8 @@ import 'practice_plan.dart';
 /// - **Coordination samples** are an append-only diagnostic log, not evidence.
 ///   Nothing replays them and losing them costs only the ability to look back
 ///   at how far apart the hands actually arrived.
+/// - **Selection diagnostics** capture competition at decision time. Nothing
+///   replays them as learner evidence.
 /// - **A practice plan** is a single overwritable slot per profile. It is
 ///   intent rather than evidence: what the learner is working toward and what
 ///   they asked to draw from, which nothing in the journal can reconstruct.
@@ -43,6 +45,16 @@ import 'practice_plan.dart';
 /// erase leaves, so that attempt survives the erase. See
 /// `docs/design/future-planning.md` section 4.14.
 abstract interface class PracticeStore {
+  /// Decision-time diagnostics keyed by attempt id, separate from evidence.
+  Future<Map<String, String>> loadSelectionDiagnostics(String profileId);
+
+  /// Records one selection, idempotently on attempt id.
+  Future<void> appendSelectionDiagnostics(
+    String profileId,
+    String attemptId,
+    String diagnostics,
+  );
+
   /// Every attempt recorded for [profileId], oldest first.
   ///
   /// Returns an empty journal for a profile with no history yet, rather than
@@ -119,6 +131,24 @@ abstract interface class PracticeStore {
 /// enforces the same invariants as a durable store, so a test that passes here
 /// is testing the transaction rather than the file format.
 class InMemoryPracticeStore implements PracticeStore {
+  final Map<String, Map<String, String>> _selections = {};
+
+  @override
+  Future<Map<String, String>> loadSelectionDiagnostics(
+    String profileId,
+  ) async => Map.unmodifiable(_selections[profileId] ?? const {});
+
+  @override
+  Future<void> appendSelectionDiagnostics(
+    String profileId,
+    String attemptId,
+    String diagnostics,
+  ) async {
+    _selections
+        .putIfAbsent(profileId, () => {})
+        .putIfAbsent(attemptId, () => diagnostics);
+  }
+
   final Map<String, AttemptJournal> _journals = {};
   final Map<String, PendingDecision> _pending = {};
   final Map<String, LearnerStateCheckpoint> _checkpoints = {};
@@ -210,6 +240,7 @@ class InMemoryPracticeStore implements PracticeStore {
 
   @override
   Future<void> erase(String profileId) async {
+    _selections.remove(profileId);
     _journals.remove(profileId);
     _pending.remove(profileId);
     _checkpoints.remove(profileId);

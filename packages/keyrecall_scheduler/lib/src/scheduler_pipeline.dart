@@ -12,6 +12,7 @@ import 'practice_entry_policy.dart';
 import 'priority.dart';
 import 'realization_family_pacing.dart';
 import 'recovery.dart';
+import 'selection_diagnostics.dart';
 import 'session_state.dart';
 import 'tempo_probe.dart';
 
@@ -73,6 +74,7 @@ class DecisionFacts {
 /// not curriculum requirements or whether any work is due. An empty ordinary
 /// path is therefore [SelectionBlocked], never a successful absence.
 sealed class SelectionResult {
+  final String diagnostics;
   final List<CandidateTrace> traces;
   final List<CandidateTrace> selectable;
 
@@ -83,6 +85,7 @@ sealed class SelectionResult {
   final IntroductionDecision introductions;
 
   const SelectionResult({
+    this.diagnostics = '',
     required this.traces,
     required this.selectable,
     required this.pacing,
@@ -95,6 +98,7 @@ final class CandidateSelected extends SelectionResult {
   final CandidateTrace candidate;
 
   const CandidateSelected({
+    super.diagnostics,
     required super.traces,
     required super.selectable,
     required super.pacing,
@@ -120,6 +124,7 @@ final class SelectionBlocked extends SelectionResult {
   final BlockedReason reason;
 
   const SelectionBlocked({
+    super.diagnostics,
     required super.traces,
     required super.selectable,
     required super.pacing,
@@ -210,19 +215,14 @@ class SchedulerPipeline {
       practiceEntryPolicy: entryPolicy,
       emphasis: emphasis,
     );
-    var introductions = capIntroductions(
-      applyRepetitionGuard(traces, session),
-      traces,
-      state,
-    );
+    var repeated = applyRepetitionGuard(traces, session);
+    var introductions = capIntroductions(repeated, traces, state);
     var pacing = pace(introductions.selectable, session);
-    var available = withNoveltySupported(
-      withoutFreshEcho(pacing.selectable, session),
-      state,
-      config.novelty,
-    );
+    var echoed = withoutFreshEcho(pacing.selectable, session);
+    var available = withNoveltySupported(echoed, state, config.novelty);
     var selected = chooseFrom(available, session);
     var blockedReason = BlockedReason.admissionExhausted;
+    var acquisitionFallback = false;
 
     if (selected == null && acquisitionFloor != null) {
       final floorOverrides = <Exercise, ChallengeBypass>{};
@@ -240,6 +240,7 @@ class SchedulerPipeline {
       } else if (!everyEntryIsInScope) {
         blockedReason = BlockedReason.safeEntryRejected;
       } else {
+        acquisitionFallback = true;
         traces = evaluate(
           state: state,
           session: session,
@@ -248,21 +249,39 @@ class SchedulerPipeline {
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
         );
-        introductions = capIntroductions(
-          applyRepetitionGuard(traces, session),
-          traces,
-          state,
-        );
+        repeated = applyRepetitionGuard(traces, session);
+        introductions = capIntroductions(repeated, traces, state);
         pacing = pace(introductions.selectable, session);
         available = pacing.selectable;
+        echoed = available;
         selected = chooseFrom(available, session);
         blockedReason = BlockedReason.safeEntryRejected;
       }
     }
 
+    final diagnostics = selectionDiagnostics(
+      traces: traces,
+      stages: {
+        'repetition': repeated,
+        'introductions': introductions.selectable,
+        'pacing': pacing.selectable,
+        'echo': echoed,
+        'novelty': available,
+      },
+      winner: selected,
+      state: state,
+      pacing: pacing.disposition.name,
+      introductions:
+          '${introductions.disposition.name} unresolved=${introductions.unresolved}',
+      freshProbe: session.tempoProbeIsFresh,
+      tempoProbe: session.tempoProbe,
+      guidanceService: overdueGuidanceProbe(available, session) != null,
+      acquisitionFallback: acquisitionFallback,
+    );
     return (
       result: selected == null
           ? SelectionBlocked(
+              diagnostics: diagnostics,
               traces: traces,
               selectable: available,
               pacing: pacing,
@@ -270,6 +289,7 @@ class SchedulerPipeline {
               reason: blockedReason,
             )
           : CandidateSelected(
+              diagnostics: diagnostics,
               traces: traces,
               selectable: available,
               pacing: pacing,

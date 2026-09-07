@@ -11,7 +11,7 @@ String materialName(TechnicalMaterial material) => switch (material) {
     '${prettyTonic(tonic)} ${_formName(form)}',
   ArpeggioMaterial(:final tonic, :final quality, :final inversion) =>
     '${prettyTonic(tonic)} ${_arpeggioQualityName(quality)} '
-        '${_inversionName(inversion)} arpeggio',
+        '${_inversionName(inversion)}arpeggio',
 };
 
 /// What this kind of material is called inside a sentence.
@@ -87,9 +87,9 @@ String _arpeggioQualityName(ArpeggioQuality quality) => switch (quality) {
 };
 
 String _inversionName(ArpeggioInversion inversion) => switch (inversion) {
-  ArpeggioInversion.root => 'root-position',
-  ArpeggioInversion.first => 'first-inversion',
-  ArpeggioInversion.second => 'second-inversion',
+  ArpeggioInversion.root => '',
+  ArpeggioInversion.first => 'first-inversion ',
+  ArpeggioInversion.second => 'second-inversion ',
 };
 
 const Set<int> _whitePitchClasses = {0, 2, 4, 5, 7, 9, 11};

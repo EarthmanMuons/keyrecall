@@ -197,7 +197,7 @@ Map<String, TempoProvenance> paceProvenanceOf(
 
 /// The bounds each coordination series is replayed against.
 ///
-/// The one in force and three looser ones. Nothing here changes what a learner
+/// Fixed comparison bounds. Nothing here changes what a learner
 /// was told; it says what a different definition of together would have made
 /// of the same playing, which is the question a threshold can be argued from.
 const List<double> counterfactualBoundsMs = [30, 40, 50, 60];
@@ -311,5 +311,26 @@ Future<String> exportTrajectory(WidgetRef ref) async {
     File('${directory.path}/$stamp-${profile.displayName}-coordination.txt')
         .writeAsStringSync(coordinationTableOf(profile, samples));
   }
+  final selections = await store.loadSelectionDiagnostics(profile.id);
+  if (selections.isNotEmpty) {
+    File('${directory.path}/$stamp-${profile.displayName}-selections.txt')
+        .writeAsStringSync(selectionTableOf(profile, journal, selections));
+  }
   return file.path;
 }
+
+/// Recorded competition only; older attempts cannot reconstruct these sets.
+String selectionTableOf(
+  Profile profile,
+  AttemptJournal journal,
+  Map<String, String> selections,
+) => [
+  'profile   ${profile.displayName} (${profile.id})',
+  'diagnostic instrumentation, not learner evidence',
+  for (final (index, record) in journal.records.indexed) ...[
+    '',
+    'slot=$index attempt=${record.identity.attemptId}',
+    selections[record.identity.attemptId] ??
+        'selection diagnostics unavailable (not recorded)',
+  ],
+].join('\n');

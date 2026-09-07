@@ -20,6 +20,25 @@ void main() {
   });
 
   File journalFile() => File('${root.path}/${alice.id}/journal.jsonl');
+
+  test(
+    'selection diagnostics survive restart, retry, and profile erasure',
+    () async {
+      final store = FilePracticeStore(root);
+      await store.appendSelectionDiagnostics(
+        alice.id,
+        'attempt',
+        'original\nrank',
+      );
+      await store.appendSelectionDiagnostics(alice.id, 'attempt', 'duplicate');
+      final reopened = FilePracticeStore(root);
+      expect(await reopened.loadSelectionDiagnostics(alice.id), {
+        'attempt': 'original\nrank',
+      });
+      await reopened.erase(alice.id);
+      expect(await reopened.loadSelectionDiagnostics(alice.id), isEmpty);
+    },
+  );
   File pendingFile() => File('${root.path}/${alice.id}/pending.json');
   File checkpointFile() => File('${root.path}/${alice.id}/checkpoint.json');
   File feedbackFile() => File('${root.path}/${alice.id}/feedback.jsonl');

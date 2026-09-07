@@ -8,14 +8,13 @@ import 'support/fixtures.dart';
 
 void main() {
   test('a worker decides what deciding in process would have', () async {
+    final workerStore = InMemoryPracticeStore(createdAt: t0);
+    final directStore = InMemoryPracticeStore(createdAt: t0);
     final onWorker = await openSession(
-      InMemoryPracticeStore(createdAt: t0),
+      workerStore,
       scheduler: IsolateScheduler(),
     );
-    final inProcess = await openSession(
-      InMemoryPracticeStore(createdAt: t0),
-      sessionId: 'session-2',
-    );
+    final inProcess = await openSession(directStore, sessionId: 'session-2');
 
     for (var slot = 0; slot < 4; slot++) {
       final at = t0.plusDays(0.5 * (slot + 1));
@@ -23,6 +22,17 @@ void main() {
       final directly = await inProcess.decideOutcome(at: at);
 
       expect(decided, isA<PresentedAttempt>());
+      final workerDiagnostics = await workerStore.loadSelectionDiagnostics(
+        alice.id,
+      );
+      final directDiagnostics = await directStore.loadSelectionDiagnostics(
+        alice.id,
+      );
+      expect(workerDiagnostics.values.last, directDiagnostics.values.last);
+      expect(
+        workerDiagnostics.values.last,
+        contains('winner_vs_best_selectable_scale='),
+      );
       expect(
         (decided as PresentedAttempt).exercise,
         (directly as PresentedAttempt).exercise,

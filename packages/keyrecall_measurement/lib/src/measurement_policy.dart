@@ -56,8 +56,8 @@ class MeasurementPolicy {
   /// Hand asynchrony at or below which a moment reads as together, in
   /// milliseconds.
   ///
-  /// Comfortable playing in `analysis/onset-grouping/` kept every pair within
-  /// 30 ms, most within 11.
+  /// Provisional tolerance: comfortable device takes included isolated
+  /// 36 and 38 ms arrivals, with typical separation under 20 ms.
   final double synchronizedAsynchronyMs;
 
   /// Hand asynchrony at or above which a moment reads as not together at all.
@@ -81,7 +81,7 @@ class MeasurementPolicy {
     this.unsteadyDispersion = 0.67,
     this.unbrokenIntervalRatio = 1.15,
     this.brokenIntervalRatio = 3.00,
-    this.synchronizedAsynchronyMs = 30,
+    this.synchronizedAsynchronyMs = 40,
     this.uncoordinatedAsynchronyMs = 150,
     this.coordinationTailWeight = 0.35,
   }) : assert(

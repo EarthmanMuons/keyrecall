@@ -187,6 +187,17 @@ void main() {
 }
 
 class _FailingEraseStore implements PracticeStore {
+  @override
+  Future<Map<String, String>> loadSelectionDiagnostics(String profileId) =>
+      inner.loadSelectionDiagnostics(profileId);
+
+  @override
+  Future<void> appendSelectionDiagnostics(
+    String profileId,
+    String attemptId,
+    String diagnostics,
+  ) => inner.appendSelectionDiagnostics(profileId, attemptId, diagnostics);
+
   final PracticeStore inner;
 
   _FailingEraseStore(this.inner);
