@@ -50,6 +50,15 @@ void main() {
     }
   });
 
+  test('every reacquiring slot lands on one side of the split', () {
+    for (final sitting in census.sittings) {
+      expect(
+        sitting.progressionPassedOver + sitting.noProgressionSelectable,
+        sitting.reacquiring,
+      );
+    }
+  });
+
   test('the gap is the time since the last attempt, not the last sitting', () {
     for (final sitting in census.sittings.skip(1)) {
       final previous = trajectory.slotsOf(sitting.index - 1).last;

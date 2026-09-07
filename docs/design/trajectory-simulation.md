@@ -251,12 +251,36 @@ of one sitting rather than a trajectory. The share itself scales with the
 learner: an advanced player spends ten to twenty per cent of a returning sitting
 on old work, an uneven-handed one about half.
 
-`true_beginner` is the exception, and it is a different shape rather than a
-worse number. It spends effectively the whole returning sitting reacquiring, and
-in roughly a third of its returns **nothing progresses for the rest of the
-run**. Its sittings never ran dry, so this is not the pinned narrow-catalog
-defect; it is the beginner's frontier failing to move again once a break has
-decayed it, which no fifty-slot run could show.
+`true_beginner` looked like the exception. It spends effectively the whole
+returning sitting reacquiring, and in roughly a third of its returns nothing
+progresses for the rest of the run. Its sittings never ran dry, so it is not the
+pinned narrow-catalog defect.
+
+It is not a defect in the scheduler either, and finding that out is what the
+census is for. A returning sitting was decomposed into the two ways a
+reacquiring slot happens: something that would have moved the learner on was
+selectable and lost, or nothing progressing survived to the selectable set at
+all. The beginner splits about evenly between them, which explained nothing, so
+the run either side of the gap was read instead.
+
+**The beginner never progresses, gap or no gap.** Over three hundred attempts
+across sixty days it produces two outcomes the model accepts as demonstrated
+execution, and its motor score does not rise: 0.12 at the start and 0.14 at the
+end. `SyntheticPlayer` improves on an attempt that completes with a motor score
+above one half, and this archetype reaches that about twice in three hundred
+attempts, so it cannot learn. Its frontier therefore never moves, introductions
+are its only form of progress, and once the introductions stop every subsequent
+return reads as a learner who never resumed.
+
+Sitting length rules out the other reading. At five, ten and twenty slots a
+sitting the returning share stays at essentially a hundred per cent, so the
+beginner is not failing to climb out of a sitting that ends too early.
+
+That is a fact about the player rather than about the scheduler, and every
+conclusion drawn from a beginner trajectory has to be read through it. A learner
+who cannot execute a scale should not earn a frontier; a learner who practises
+for two months and improves twice is not a beginner, it is a description of one
+nobody has calibrated.
 
 `dense_week` reports no reacquisition at all, by construction: no gap in it
 reaches two days, so it has no returns to summarize. It is there as the control.

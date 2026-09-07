@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'trajectory.dart';
 
@@ -61,6 +62,18 @@ class SittingSummary {
   /// forgetting being answered or the scheduler forgetting.
   final int supported;
 
+  /// Reacquiring slots where something that would have moved the learner on
+  /// was selectable and lost.
+  ///
+  /// Split from [noProgressionSelectable] because the two say opposite things
+  /// about where to look. Both are descriptive: neither says the scheduler
+  /// chose wrongly, only whether it had the choice.
+  final int progressionPassedOver;
+
+  /// Reacquiring slots where nothing that would have moved the learner on
+  /// survived to the selectable set.
+  final int noProgressionSelectable;
+
   final int probesOpened;
   final int probesAnswered;
 
@@ -86,6 +99,8 @@ class SittingSummary {
     required this.introductions,
     required this.reacquiring,
     required this.supported,
+    required this.progressionPassedOver,
+    required this.noProgressionSelectable,
     required this.probesOpened,
     required this.probesAnswered,
     required this.probeStranded,
@@ -189,6 +204,8 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
     var introductions = 0;
     var reacquiring = 0;
     var supported = 0;
+    var progressionPassedOver = 0;
+    var noProgressionSelectable = 0;
     var probesOpened = 0;
     var probesAnswered = 0;
     final firsts = <Milestone>{};
@@ -201,6 +218,11 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
         advancing++;
       } else if (known) {
         reacquiring++;
+        if (slot.alternatives.any((trace) => _progresses(trace, seen))) {
+          progressionPassedOver++;
+        } else {
+          noProgressionSelectable++;
+        }
       }
 
       final shown = independence[materialId];
@@ -236,6 +258,8 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
         introductions: introductions,
         reacquiring: reacquiring,
         supported: supported,
+        progressionPassedOver: progressionPassedOver,
+        noProgressionSelectable: noProgressionSelectable,
         probesOpened: probesOpened,
         probesAnswered: probesAnswered,
         probeStranded:
@@ -255,3 +279,13 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
     sittings: summaries,
   );
 }
+
+/// Whether [trace] would have moved the learner on.
+///
+/// Either an unseen material or a realization past the frontier. Read off the
+/// selectable set, so a false answer means nothing progressing survived
+/// admission and the repetition guard, and cannot say which of those refused
+/// it: that question is asked of the traces, which a slot does not retain.
+bool _progresses(CandidateTrace trace, Set<String> seen) =>
+    !seen.contains(trace.exercise.material.materialId) ||
+    trace.rankKey?.realization == RealizationRank.advancing;

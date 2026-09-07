@@ -20,13 +20,16 @@ class TrajectoryJob {
 /// Round robin rather than one bucket per archetype: a true beginner's sitting
 /// costs a fraction of an advanced one, so grouping by archetype leaves the
 /// slowest one gating the whole run.
-List<List<TrajectoryJob>> dealTrajectoryJobs(int seeds) {
+List<List<TrajectoryJob>> dealTrajectoryJobs(
+  int seeds, {
+  List<SyntheticPlayer>? players,
+}) {
   final buckets = List.generate(
     Platform.numberOfProcessors,
     (_) => <TrajectoryJob>[],
   );
   var next = 0;
-  for (final player in PlayerArchetypes.all) {
+  for (final player in players ?? PlayerArchetypes.all) {
     for (var seed = 0; seed < seeds; seed++) {
       buckets[next++ % buckets.length].add(
         TrajectoryJob(archetypeId: player.id, seed: seed),

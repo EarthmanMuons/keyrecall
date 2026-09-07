@@ -23,6 +23,10 @@ Future<void> main(List<String> arguments) async {
     ..addOption('seeds', defaultsTo: '10', help: 'Seeds per archetype.')
     ..addOption('slots', defaultsTo: '12', help: 'Attempts per sitting.')
     ..addOption(
+      'archetypes',
+      help: 'Which archetypes to run. Every one when omitted.',
+    )
+    ..addOption(
       'schedules',
       defaultsTo: LongitudinalSchedules.all.keys.join(','),
       help: 'Which named schedules to run.',
@@ -37,6 +41,11 @@ Future<void> main(List<String> arguments) async {
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
   final schedules = options.option('schedules')!.split(',');
+  final only = options.option('archetypes')?.split(',');
+  final players = [
+    for (final player in PlayerArchetypes.all)
+      if (only == null || only.contains(player.id)) player,
+  ];
 
   final stopwatch = Stopwatch()..start();
   for (final schedule in schedules) {
@@ -46,7 +55,7 @@ Future<void> main(List<String> arguments) async {
       exitCode = 2;
       return;
     }
-    final buckets = dealTrajectoryJobs(seeds);
+    final buckets = dealTrajectoryJobs(seeds, players: players);
     final running = [
       for (final bucket in buckets)
         Isolate.run(() => _summarize(bucket, schedule, slots)),
@@ -58,9 +67,10 @@ Future<void> main(List<String> arguments) async {
       ..writeln('== $schedule: days ${days.join(', ')}, $slots slots each')
       ..writeln(
         '   ${_header('archetype')} '
-        'reacq% resume never sup%  cov  ht ctr 2oc ung  opn ans str dry',
+        'reacq% pass none resume never sup%  cov  ht ctr 2oc ung  opn ans '
+        'str dry',
       );
-    for (final player in PlayerArchetypes.all) {
+    for (final player in players) {
       final mine = rows.where((row) => row.archetype == player.id).toList();
       if (mine.isEmpty) continue;
       stdout.writeln('   ${_row(player.id, mine)}');
@@ -97,6 +107,8 @@ String _row(String archetype, List<_Row> rows) {
   return [
     archetype.padRight(24),
     _percent(_median(rows.map((row) => row.reacquisitionShare))).padLeft(6),
+    _total(rows.map((row) => row.progressionPassedOver)).padLeft(4),
+    _total(rows.map((row) => row.noProgressionSelectable)).padLeft(4),
     (resumed.isEmpty ? '-' : _median(resumed).toStringAsFixed(1)).padLeft(6),
     '$never'.padLeft(5),
     _percent(_median(rows.map((row) => row.supportedShare))).padLeft(5),
@@ -130,6 +142,10 @@ class _Row {
   final String archetype;
   final double reacquisitionShare;
   final double supportedShare;
+
+  /// Over returning sittings only, the two ways a reacquiring slot happens.
+  final int progressionPassedOver;
+  final int noProgressionSelectable;
   final List<int?> resumes;
   final int coverage;
   final Map<String, int> milestones;
@@ -142,6 +158,8 @@ class _Row {
     required this.archetype,
     required this.reacquisitionShare,
     required this.supportedShare,
+    required this.progressionPassedOver,
+    required this.noProgressionSelectable,
     required this.resumes,
     required this.coverage,
     required this.milestones,
@@ -186,6 +204,16 @@ _Row _rowFor(TrajectoryJob job, LongitudinalCensus census) {
     supportedShare: played == 0
         ? 0
         : census.sittings.fold(0, (total, s) => total + s.supported) / played,
+    progressionPassedOver: returning.fold(
+      0,
+      (total, recovery) =>
+          total + census.sittings[recovery.sitting].progressionPassedOver,
+    ),
+    noProgressionSelectable: returning.fold(
+      0,
+      (total, recovery) =>
+          total + census.sittings[recovery.sitting].noProgressionSelectable,
+    ),
     resumes: [for (final recovery in returning) recovery.sittingsToProgress],
     coverage: census.sittings.last.coverage,
     milestones: {
