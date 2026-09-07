@@ -30,7 +30,8 @@ const Map<String, Set<String>> familyPrerequisites = {
 /// introductions cannot throttle it.
 ///
 /// Productive prerequisite work relaxes the contraction rather than clearing
-/// it. Somebody whose hands are improving separately is a different learner
+/// it, by [DoseConfig.prerequisiteReliefFactor], which is a multiplier and so
+/// relieves more the lower it is. Somebody whose hands are improving separately is a different learner
 /// from one whose hands are not, and the coordination they cannot do yet is
 /// worth asking for sooner.
 ///
@@ -61,7 +62,7 @@ double familyDose(
         observation.families.any(prerequisites.contains),
   );
   final relieved = supported
-      ? contraction * config.prerequisiteRelief
+      ? contraction * config.prerequisiteReliefFactor
       : contraction;
   return relieved * _confidence(held.last.at, at, config);
 }

@@ -301,7 +301,14 @@ class DoseConfig {
   final int maximumGap;
 
   /// What productive prerequisite work multiplies a contraction by.
-  final double prerequisiteRelief;
+  ///
+  /// **A factor, so lower means more relief.** Zero lets prerequisite work
+  /// cancel a family's own failure outright, which on a learner whose separate
+  /// hands are improving takes coordination work to nearly half the sitting
+  /// and puts it beyond contracting at all. One means prerequisites buy
+  /// nothing. The point of the parameter is between them: soften the
+  /// conclusion, never veto the evidence.
+  final double prerequisiteReliefFactor;
 
   /// How many days a family's evidence takes to count half as much.
   ///
@@ -316,7 +323,7 @@ class DoseConfig {
     this.minAttempts = 6,
     this.yieldFloor = 0.34,
     this.maximumGap = 6,
-    this.prerequisiteRelief = 0.5,
+    this.prerequisiteReliefFactor = 0.5,
     this.evidenceHalfLifeDays = 7,
   }) : assert(window > 0, 'the window must hold at least one selection'),
        assert(
@@ -329,7 +336,7 @@ class DoseConfig {
        ),
        assert(maximumGap > 1, 'a gap of one is no contraction at all'),
        assert(
-         prerequisiteRelief >= 0 && prerequisiteRelief <= 1,
+         prerequisiteReliefFactor >= 0 && prerequisiteReliefFactor <= 1,
          'relief may soften a contraction, never invert it',
        ),
        assert(

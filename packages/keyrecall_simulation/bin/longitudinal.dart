@@ -3,6 +3,7 @@ import 'dart:isolate';
 
 import 'package:args/args.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -31,6 +32,11 @@ Future<void> main(List<String> arguments) async {
       defaultsTo: LongitudinalSchedules.all.keys.join(','),
       help: 'Which named schedules to run.',
     )
+    ..addFlag(
+      'dose',
+      negatable: false,
+      help: 'Run with yield-based family dose control in force.',
+    )
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
   if (options.flag('help')) {
@@ -41,6 +47,7 @@ Future<void> main(List<String> arguments) async {
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
   final schedules = options.option('schedules')!.split(',');
+  final dose = options.flag('dose');
   final only = options.option('archetypes')?.split(',');
   final players = [
     for (final player in PlayerArchetypes.all)
@@ -58,17 +65,20 @@ Future<void> main(List<String> arguments) async {
     final buckets = dealTrajectoryJobs(seeds, players: players);
     final running = [
       for (final bucket in buckets)
-        Isolate.run(() => _summarize(bucket, schedule, slots)),
+        Isolate.run(() => _summarize(bucket, schedule, slots, dose)),
     ];
     final rows = [for (final batch in await Future.wait(running)) ...batch];
 
     stdout
       ..writeln()
-      ..writeln('== $schedule: days ${days.join(', ')}, $slots slots each')
+      ..writeln(
+        '== $schedule: days ${days.join(', ')}, $slots slots each'
+        '${dose ? ', dose control in force' : ''}',
+      )
       ..writeln(
         '   ${_header('archetype')} '
         'pre% reacq% cons% pass none resume never sup%  cov  ht ctr 2oc ung  '
-        'opn ans str dry',
+        'opn ans str dry  dose  pace  both',
       );
     for (final player in players) {
       final mine = rows.where((row) => row.archetype == player.id).toList();
@@ -122,6 +132,9 @@ String _row(String archetype, List<_Row> rows) {
     _total(rows.map((row) => row.probesAnswered)).padLeft(4),
     _total(rows.map((row) => row.probesStranded)).padLeft(4),
     _total(rows.map((row) => row.dry)).padLeft(4),
+    _percent(_median(rows.map((row) => row.doseOnly))).padLeft(5),
+    _percent(_median(rows.map((row) => row.pacingOnly))).padLeft(5),
+    _percent(_median(rows.map((row) => row.both))).padLeft(5),
   ].join(' ');
 }
 
@@ -158,6 +171,16 @@ class _Row {
   final int probesStranded;
   final int dry;
 
+  /// Share of slots each mechanism changed, and the share both did.
+  ///
+  /// Counted together because they are not independent: what dose control
+  /// stops contracting can become concentration that pacing then relieves, and
+  /// a row showing only one of them cannot tell that apart from the family
+  /// being left alone.
+  final double doseOnly;
+  final double pacingOnly;
+  final double both;
+
   const _Row({
     required this.archetype,
     required this.preFrontierShare,
@@ -173,30 +196,61 @@ class _Row {
     required this.probesAnswered,
     required this.probesStranded,
     required this.dry,
+    required this.doseOnly,
+    required this.pacingOnly,
+    required this.both,
   });
 }
 
-List<_Row> _summarize(List<TrajectoryJob> jobs, String schedule, int slots) {
+List<_Row> _summarize(
+  List<TrajectoryJob> jobs,
+  String schedule,
+  int slots,
+  bool dose,
+) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
   final sittings = LongitudinalSchedules.named(schedule, slots: slots);
-  return [
-    for (final job in jobs)
-      _rowFor(
-        job,
-        censusOfRun(
-          runSittings(
-            player: playerOf(job.archetypeId),
-            seed: job.seed,
-            materials: allScales,
-            sittings: sittings,
-            generated: generated,
-          ),
-        ),
-      ),
-  ];
+  const learner = LearnerModel();
+  final pipeline = dose
+      ? SchedulerPipeline(
+          learner: learner,
+          config: v1SchedulerConfig.withDose(const DoseConfig()),
+        )
+      : const SchedulerPipeline(learner: learner);
+  return [for (final job in jobs) _rowFor(job, sittings, generated, pipeline)];
 }
 
-_Row _rowFor(TrajectoryJob job, LongitudinalCensus census) {
+_Row _rowFor(
+  TrajectoryJob job,
+  List<Sitting> sittings,
+  List<Exercise> generated,
+  SchedulerPipeline pipeline,
+) {
+  var dosed = 0;
+  var paced = 0;
+  var both = 0;
+  var pacedThisSlot = false;
+  final trajectory = runSittings(
+    player: playerOf(job.archetypeId),
+    seed: job.seed,
+    materials: allScales,
+    sittings: sittings,
+    generated: generated,
+    pipeline: pipeline,
+    // Pacing is reported before dose control for the same slot, and dose
+    // control acts on the set pacing produced, so the pair is counted second.
+    observePacing: (_, pacing) {
+      pacedThisSlot = pacing.disposition == PacingDisposition.relieved;
+      if (pacedThisSlot) paced++;
+    },
+    observeDose: (_, dose) {
+      if (dose.disposition != DoseDisposition.contracted) return;
+      dosed++;
+      if (pacedThisSlot) both++;
+    },
+  );
+  final census = censusOfRun(trajectory);
+  final slots = trajectory.slots.length;
   final returning = census.recoveries().toList();
   final played = census.sittings.fold(0, (total, s) => total + s.slots);
   return _Row(
@@ -240,6 +294,9 @@ _Row _rowFor(TrajectoryJob job, LongitudinalCensus census) {
     probesAnswered: census.sittings.fold(0, (t, s) => t + s.probesAnswered),
     probesStranded: census.sittings.where((s) => s.probeStranded).length,
     dry: census.sittings.where((s) => s.ranDry).length,
+    doseOnly: slots == 0 ? 0 : (dosed - both) / slots,
+    pacingOnly: slots == 0 ? 0 : (paced - both) / slots,
+    both: slots == 0 ? 0 : both / slots,
   );
 }
 

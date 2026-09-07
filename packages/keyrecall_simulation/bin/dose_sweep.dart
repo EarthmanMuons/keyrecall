@@ -38,7 +38,13 @@ Future<void> main(List<String> arguments) async {
     ..addOption('min-attempts', defaultsTo: '3,4,6,8')
     ..addOption('yield-floor', defaultsTo: '0.2,0.34,0.5,0.67')
     ..addOption('max-gap', defaultsTo: '3,4,6,8,12')
-    ..addOption('prereq-relief', defaultsTo: '0.5')
+    ..addOption(
+      'prereq-relief',
+      defaultsTo: '0.5',
+      help:
+          'What productive prerequisite work multiplies a contraction by, '
+          'so lower relieves more and zero cancels it outright.',
+    )
     ..addOption('half-life', defaultsTo: '7')
     ..addFlag(
       'grid',
@@ -77,14 +83,14 @@ Future<void> main(List<String> arguments) async {
           DoseConfig(
             yieldFloor: floor,
             maximumGap: gap.round(),
-            prerequisiteRelief: reliefs.first,
+            prerequisiteReliefFactor: reliefs.first,
             evidenceHalfLifeDays: halfLives.first,
           )
     else ...[
       for (final value in minAttempts) DoseConfig(minAttempts: value.round()),
       for (final value in yieldFloors) DoseConfig(yieldFloor: value),
       for (final value in gaps) DoseConfig(maximumGap: value.round()),
-      for (final value in reliefs) DoseConfig(prerequisiteRelief: value),
+      for (final value in reliefs) DoseConfig(prerequisiteReliefFactor: value),
       for (final value in halfLives) DoseConfig(evidenceHalfLifeDays: value),
     ],
   ];
@@ -180,8 +186,8 @@ String _label(DoseConfig? arm) {
     if (arm.minAttempts != centre.minAttempts) 'evidence ${arm.minAttempts}',
     if (arm.yieldFloor != centre.yieldFloor) 'floor ${arm.yieldFloor}',
     if (arm.maximumGap != centre.maximumGap) 'gap ${arm.maximumGap}',
-    if (arm.prerequisiteRelief != centre.prerequisiteRelief)
-      'relief ${arm.prerequisiteRelief}',
+    if (arm.prerequisiteReliefFactor != centre.prerequisiteReliefFactor)
+      'relief ${arm.prerequisiteReliefFactor}',
     if (arm.evidenceHalfLifeDays != centre.evidenceHalfLifeDays)
       'half-life ${arm.evidenceHalfLifeDays}d',
   ];

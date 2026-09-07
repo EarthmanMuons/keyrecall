@@ -45,7 +45,13 @@ Future<void> main(List<String> arguments) async {
     ..addOption('min-attempts', defaultsTo: '4')
     ..addOption('yield-floor', defaultsTo: '0.34')
     ..addOption('max-gap', defaultsTo: '6')
-    ..addOption('prereq-relief', defaultsTo: '0.5')
+    ..addOption(
+      'prereq-relief',
+      defaultsTo: '0.5',
+      help:
+          'What productive prerequisite work multiplies a contraction by, '
+          'so lower relieves more and zero cancels it outright.',
+    )
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
   if (options.flag('help')) {
@@ -74,7 +80,7 @@ Future<void> main(List<String> arguments) async {
     minAttempts: int.parse(options.option('min-attempts')!),
     yieldFloor: double.parse(options.option('yield-floor')!),
     maximumGap: int.parse(options.option('max-gap')!),
-    prerequisiteRelief: double.parse(options.option('prereq-relief')!),
+    prerequisiteReliefFactor: double.parse(options.option('prereq-relief')!),
     evidenceHalfLifeDays: double.parse(options.option('half-life')!),
   );
   final buckets = dealTrajectoryJobs(seeds, players: players);
@@ -183,7 +189,7 @@ String _recovery(List<_Row> rows) {
 
 String _describe(DoseConfig policy) =>
     '(evidence ${policy.minAttempts}, floor ${policy.yieldFloor}, '
-    'gap ${policy.maximumGap}, relief ${policy.prerequisiteRelief}, '
+    'gap ${policy.maximumGap}, relief ${policy.prerequisiteReliefFactor}, '
     'half-life ${policy.evidenceHalfLifeDays}d)';
 
 String _percent(double share) => '${(share * 100).round()}%';

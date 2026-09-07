@@ -245,6 +245,118 @@ one occupying a third, and it is not obvious that the first wants contracting at
 all. If it does, `minAttempts` and `window` are coupled and want a grid of their
 own rather than another axis.
 
+### The floor against the gap
+
+Nine cells at six attempts of evidence, on `normal_month`, two seeds, nine
+archetypes. Engagement, the share of slots altered, and parity:
+
+| floor | gap 3         | gap 6         | gap 12        |
+| ----- | ------------- | ------------- | ------------- |
+| 0.2   | 8% / 5% / 14  | 9% / 7% / 13  | 10% / 7% / 13 |
+| 0.34  | 10% / 7% / 14 | 10% / 7% / 13 | 11% / 8% / 12 |
+| 0.5   | 11% / 7% / 14 | 11% / 8% / 12 | 12% / 9% / 12 |
+
+A plateau rather than a ridge: engagement moves between eight and twelve per
+cent across the whole surface, and the centre sits in the middle of it.
+
+The interaction worth recording is with the evidence minimum rather than between
+these two. At four attempts the floor was a strong lever, sixteen per cent
+engagement at 0.2 against thirty-four at 0.67 with no run matching the baseline;
+at six the same floors span eight to twelve. **Requiring more evidence absorbs
+most of the floor's influence**, because a family that cannot accumulate six
+attempts is untouched whatever the floor would have said about it. Evidence is
+the control, and the floor is trim.
+
+### Prerequisite relief
+
+The aggregate sweep says relief does nothing: engagement runs from eight per
+cent at zero to ten at one, monotone and tiny. That reading is an artifact of
+the run length and of the cadence rounding, since a halved contraction still
+contracts, four slots instead of six.
+
+Read where it is meant to act, on coordination work over sixteen sittings of
+twelve, it is the strongest lever of the three. Hands-together family, four
+seeds:
+
+| relief | `developing` share | `coordination_limited` share | reachability |
+| ------ | ------------------ | ---------------------------- | ------------ |
+| 0.0    | 44%                | 33%                          | never        |
+| 0.5    | 35%                | 29%                          | reached      |
+| 1.0    | 32%                | 29%                          | reached      |
+
+At zero, productive separate-hand work cancels the contraction outright, and
+since both learners do have improving separate hands, coordination work grows to
+nearly half the sitting and `coordination_limited` never becomes contractible at
+all. That is relief overwhelming the family's own zero yield, which is the
+failure mode the parameter has to avoid. Pacing then picks up what dose control
+put down: set-asides for `developing` jump from none to thirty-eight, the two
+mechanisms substituting for each other at the extreme.
+
+Half and one differ little, and half sits on the side of asking for slightly
+more coordination from a learner whose hands are improving separately, which is
+what it is for. It stays at half.
+
+### The half-life
+
+Return delay on the ninety-day break schedule, four seeds, in slots into the
+returning sitting before coordination work is offered again:
+
+| half-life | `developing` | `coordination_limited` |
+| --------- | ------------ | ---------------------- |
+| 1 day     | 0.0          | 1.0                    |
+| 7 days    | 0.0          | 0.5                    |
+| 30 days   | 0.0          | 0.5                    |
+| no ageing | 2.5          | 1.0                    |
+
+One, seven and thirty days are indistinguishable, and only the arm that never
+ages differs. The arithmetic says why: ninety days is three half-lives at thirty
+and thirteen at seven, so both have decayed to a cadence of one or two slots by
+the time the learner returns. **The parameter matters only when it is comparable
+to the break it has to survive**, so for breaks of days to months the choice is
+binary between ageing and not, and seven days is defensible without being
+load-bearing.
+
+## The full longitudinal rerun
+
+Every archetype and schedule, four seeds, ten slots a sitting, run twice with
+nothing differing but the policy. The intervention columns count the share of
+slots each mechanism changed, and the share where both did.
+
+| archetype              | dose changed | pacing changed, dosed | pacing changed, baseline |
+| ---------------------- | ------------ | --------------------- | ------------------------ |
+| `true_beginner`        | 37%          | 0%                    | 9%                       |
+| `developing`           | 19%          | 0%                    | 1%                       |
+| `uneven_hands`         | 4%           | 0%                    | 0%                       |
+| `coordination_limited` | 2%           | 0%                    | 0%                       |
+| `advanced`             | 0%           | 0%                    | 0%                       |
+
+**The two mechanisms never acted in the same slot, and dose control replaced
+pacing rather than adding to it.** Every pacing set-aside the baseline made is
+gone, because contraction keeps the concentration that pacing was reacting to
+from forming. That is worth knowing before promotion: dose control is not an
+additional intervention on top of the existing one for these learners, it is a
+different and earlier one.
+
+Against the criteria the mechanism was built for:
+
+```text
+low-yield families contract          yes, and the post-failure share falls
+high-yield learners unchanged        yes, byte-identical for advanced
+low-share families left alone        yes, untouched under a tenth
+milestones still occur               yes, and the beginner reaches more
+no dry sittings                      none, on any schedule or archetype
+returning reflects the half-life     yes, at the boundary only
+```
+
+The one row that reads worse is the true beginner, which is the archetype where
+every family fails and no alternative is better. Its month schedule moves from
+84 to 89 per cent pre-frontier work and from nine to four per cent
+consolidation, and its returns that never progress again go from seven to
+eleven. Against that, it reaches hands together and two octaves where the
+baseline reached neither. A learner who cannot execute anything is not a dose
+problem, and contracting every one of its families at once is the mechanism
+having nothing useful to say rather than saying something wrong.
+
 ## What is unsettled
 
 Every constant. `window`, `minAttempts`, `yieldFloor`, `maximumGap`,
