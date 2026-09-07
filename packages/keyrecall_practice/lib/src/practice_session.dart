@@ -449,15 +449,19 @@ class PracticeSession {
       stateBeforeHash: learnerStateHash(scratch),
     );
 
+    if (verdict.diagnostics.isNotEmpty) {
+      try {
+        await store.appendSelectionDiagnostics(
+          profile.id,
+          decision.attemptId,
+          verdict.diagnostics,
+        );
+      } catch (_) {
+        // Losing diagnostics must not prevent practice.
+      }
+    }
     // Durable before the exercise is shown. Everything after this point is
     // recoverable; before it, nothing was presented.
-    if (verdict.diagnostics.isNotEmpty) {
-      await store.appendSelectionDiagnostics(
-        profile.id,
-        decision.attemptId,
-        verdict.diagnostics,
-      );
-    }
     await store.savePendingDecision(decision);
     final presented = PresentedAttempt(decision, coverage: evaluated.coverage);
     _outstanding = presented;

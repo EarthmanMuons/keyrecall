@@ -20,7 +20,14 @@ class FlakyPracticeStore implements PracticeStore {
     String profileId,
     String attemptId,
     String diagnostics,
-  ) => inner.appendSelectionDiagnostics(profileId, attemptId, diagnostics);
+  ) async {
+    selectionWritesAttempted++;
+    if (selectionFailure case final failure?) throw failure;
+    await inner.appendSelectionDiagnostics(profileId, attemptId, diagnostics);
+  }
+
+  Object? selectionFailure;
+  int selectionWritesAttempted = 0;
 
   final PracticeStore inner;
 
@@ -180,6 +187,38 @@ class _StorageFailure implements Exception {
 }
 
 void main() {
+  for (final failure in [
+    const _StorageFailure(),
+    JournalFormatException('malformed selection log'),
+  ]) {
+    test(
+      'selection logging failure does not cost a practice slot: $failure',
+      () async {
+        final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0))
+          ..selectionFailure = failure;
+        final session = await openSession(store);
+
+        final presented = await session.decide(at: t0.plusDays(0.5));
+
+        expect(store.selectionWritesAttempted, 1);
+        expect(presented, isNotNull);
+        expect(session.hasOutstandingAttempt, isTrue);
+        expect(
+          (await store.loadPendingDecision(alice.id))!.attemptId,
+          presented!.decision.attemptId,
+        );
+        expect(await store.loadSelectionDiagnostics(alice.id), isEmpty);
+
+        final record = await session.closeWithOutcome(
+          outcomeFor(presented.exercise),
+        );
+        expect(record.identity.attemptId, presented.decision.attemptId);
+        expect(session.journal.length, 1);
+        expect(await store.loadPendingDecision(alice.id), isNull);
+      },
+    );
+  }
+
   group('an append that fails without killing the process', () {
     test('leaves the session exactly where it was', () async {
       final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
