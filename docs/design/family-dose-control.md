@@ -51,7 +51,7 @@ Contraction is read from the same recent-selection window pacing uses, and
 nothing else:
 
 ```text
-evidence     at least minAttempts of the family in the window
+evidence     at least minAttempts of the family in the window (six of twelve)
 yield        managed executions over those attempts
 contraction  (yieldFloor - yield) / yieldFloor, zero at or above the floor
 relief       halved when productive prerequisite work is in the window
@@ -142,6 +142,69 @@ minutes apart. What changes is how far into a returning sitting the learner gets
 before the family is offered again. `sporadic` says the same thing, with
 `developing` offered coordination work at the first slot back rather than three
 and a half slots in.
+
+## The sweep
+
+One axis at a time from the centre, every archetype, two seeds, seven sittings
+of ten on `normal_month`, with the baseline carried alongside so parity is read
+rather than assumed. Contracted and changed are the share of slots the mechanism
+spoke at and the share it altered; parity is runs identical to the baseline
+trajectory.
+
+| arm         | contracted | changed | parity |
+| ----------- | ---------- | ------- | ------ |
+| baseline    | 0%         | 0%      | 18/18  |
+| evidence 3  | 26%        | 18%     | 7/18   |
+| evidence 4  | 19%        | 13%     | 7/18   |
+| evidence 6  | 10%        | 7%      | 13/18  |
+| evidence 8  | 2%         | 2%      | 14/18  |
+| floor 0.2   | 16%        | 12%     | 10/18  |
+| floor 0.5   | 24%        | 17%     | 6/18   |
+| floor 0.67  | 34%        | 25%     | 0/18   |
+| gap 3 to 12 | 19% to 22% | 12-16%  | 9-5/18 |
+
+**The engagement columns are what the sweep is for.** At four attempts of
+evidence the mechanism spoke at nearly a fifth of all slots and altered an
+eighth of them, which is far more intervention than a policy aimed at
+persistently failing families should need.
+
+`minAttempts` is the control on that, and `maximumGap` is nearly inert:
+engagement holds between nineteen and twenty-two per cent across gaps of three
+to twelve, because the gap decides how hard a contraction bites rather than how
+often the mechanism has an opinion. The floor runs the other way, and at 0.67 no
+run matches the baseline at all, which is the mechanism deciding that almost
+every family is unhealthy.
+
+### Where the intervention was landing
+
+Parity per archetype, against each one's overall managed-execution rate:
+
+| archetype                | managed | evidence 4 | evidence 6 |
+| ------------------------ | ------- | ---------- | ---------- |
+| `true_beginner`          | 1%      | 0/2        | 0/2        |
+| `developing`             | 24%     | 0/2        | 0/2        |
+| `uneven_hands`           | 44%     | 0/2        | 2/2        |
+| `coordination_limited`   | 59%     | 0/2        | 1/2        |
+| `fast_but_placed_low`    | 66%     | 1/2        | 2/2        |
+| `tempo_noncompliant`     | 71%     | 1/2        | 2/2        |
+| `intermediate`           | 72%     | 2/2        | 2/2        |
+| `compliant_then_sprints` | 75%     | 1/2        | 2/2        |
+| `advanced`               | 83%     | 2/2        | 2/2        |
+
+At four, the mechanism was perturbing learners producing managed execution on
+three attempts in four. **That is leakage, not dosing.** At six, every archetype
+above two thirds is untouched, and what remains is the learners whose families
+are actually failing.
+
+`coordination_limited` losing parity on one seed at six is the mechanism working
+rather than leaking: that learner's overall yield is fifty-nine per cent while
+its hands-together family yields nothing, and the contraction is family-level by
+construction.
+
+`minAttempts` is therefore six rather than four. Everything else stays where it
+was: the floor at 0.34 sits between an arm that barely engages and one that
+engages on everything, and the gap is chosen from the saturation shape rather
+than from a difference the sweep could measure.
 
 ## What is unsettled
 

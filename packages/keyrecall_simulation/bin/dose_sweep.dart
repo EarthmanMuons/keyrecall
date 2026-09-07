@@ -22,6 +22,13 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('seeds', defaultsTo: '4')
+    ..addOption(
+      'workers',
+      help:
+          'Isolates to run across. Every processor when omitted, which a long '
+          'sweep can be too hungry for: each holds its own candidate set and '
+          'the traces of the slot it is on.',
+    )
     ..addOption('slots', defaultsTo: '12', help: 'Attempts per sitting.')
     ..addOption('schedules', defaultsTo: 'normal_month,interrupted')
     ..addOption('archetypes', help: 'Every one when omitted.')
@@ -87,10 +94,10 @@ Future<void> main(List<String> arguments) async {
         for (var seed = 0; seed < seeds; seed++)
           TrajectoryJob(archetypeId: player.id, seed: seed),
     ];
-    final buckets = List.generate(
-      Platform.numberOfProcessors,
-      (_) => <TrajectoryJob>[],
-    );
+    final workers =
+        int.tryParse(options.option('workers') ?? '') ??
+        Platform.numberOfProcessors;
+    final buckets = List.generate(workers, (_) => <TrajectoryJob>[]);
     for (final (index, job) in jobs.indexed) {
       buckets[index % buckets.length].add(job);
     }

@@ -287,6 +287,11 @@ class DoseConfig {
   ///
   /// Evidence that the family has actually been tried, so that one or two
   /// failed introductions cannot throttle it.
+  ///
+  /// The strongest control on how often the mechanism speaks at all. At four
+  /// of twelve it engaged on learners producing managed execution three
+  /// attempts in four; at six it engages only on the families that are
+  /// actually failing.
   final int minAttempts;
 
   /// The recent managed-execution rate at or above which nothing contracts.
@@ -308,7 +313,7 @@ class DoseConfig {
 
   const DoseConfig({
     this.window = 12,
-    this.minAttempts = 4,
+    this.minAttempts = 6,
     this.yieldFloor = 0.34,
     this.maximumGap = 6,
     this.prerequisiteRelief = 0.5,

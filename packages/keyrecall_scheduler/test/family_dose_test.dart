@@ -54,8 +54,8 @@ void main() {
   group('what a contraction reads', () {
     test('a family with too little evidence is left alone', () {
       final attempts = [
-        ...runOf(HandConfiguration.together, 3, productive: false),
-        ...runOf(HandConfiguration.right, 9, productive: true),
+        ...runOf(HandConfiguration.together, 5, productive: false),
+        ...runOf(HandConfiguration.right, 7, productive: true),
       ];
 
       expect(doseOf(attempts, 'hands:together'), 0);
@@ -72,12 +72,12 @@ void main() {
     });
 
     test('a family holding a minority of the window still contracts', () {
-      // The case pacing cannot see: four attempts of twelve, none of which
-      // worked, is well under any share floor. Halved here rather than full,
+      // The case pacing cannot see: six attempts of twelve, none of which
+      // worked, is under any share floor. Halved here rather than full,
       // because the hands this learner is coordinating are working separately.
       final attempts = [
-        ...runOf(HandConfiguration.together, 4, productive: false),
-        ...runOf(HandConfiguration.right, 8, productive: true),
+        ...runOf(HandConfiguration.together, 6, productive: false),
+        ...runOf(HandConfiguration.right, 6, productive: true),
       ];
 
       expect(doseOf(attempts, 'hands:together'), closeTo(0.5, 0.01));
