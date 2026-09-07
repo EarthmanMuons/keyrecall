@@ -145,6 +145,18 @@ set it aside. `--dose` runs the same thing with yield-based dose control in
 force, and every one of its constants is an option, so a sweep is a shell loop
 rather than another command.
 
+To sweep dose control's constants and read what each one does:
+
+```console
+dart run keyrecall_simulation:dose_sweep --seeds 4 --slots 12
+```
+
+One arm per configuration, sweeping an axis at a time from the centre, with the
+baseline carried alongside so parity is read rather than assumed. `--grid`
+sweeps the yield floor against the maximum gap as a product instead. It reports
+how often the mechanism spoke, how often it changed the slot, what happened to
+low-yield families, and how many runs matched the no-dose trajectory exactly.
+
 ## Comparing against the reference
 
 Three gates, each answering a different question.

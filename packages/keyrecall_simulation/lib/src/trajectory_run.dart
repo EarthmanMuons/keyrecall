@@ -28,6 +28,7 @@ Trajectory runTrajectory({
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
+  void Function(int slot, DoseDecision dose)? observeDose,
 }) => runSittings(
   player: player,
   seed: seed,
@@ -41,6 +42,7 @@ Trajectory runTrajectory({
   observeTraces: observeTraces,
   observeState: observeState,
   observePacing: observePacing,
+  observeDose: observeDose,
 );
 
 /// Runs [player] through [sittings] spread across simulated calendar time.
@@ -68,6 +70,7 @@ Trajectory runSittings({
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
+  void Function(int slot, DoseDecision dose)? observeDose,
 }) {
   final rng = PythonCompatibleRandom(seed);
   final learner = pipeline.learner;
@@ -105,6 +108,7 @@ Trajectory runSittings({
         acquisitionFloor: acquisitionFloor,
       );
       observePacing?.call(index, selection.pacing);
+      observeDose?.call(index, selection.dose);
       final traces = selection.traces;
       final available = selection.selectable;
       final chosen = switch (selection) {
