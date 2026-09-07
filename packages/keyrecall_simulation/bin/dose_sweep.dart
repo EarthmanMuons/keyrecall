@@ -25,9 +25,12 @@ Future<void> main(List<String> arguments) async {
     ..addOption(
       'workers',
       help:
-          'Isolates to run across. Every processor when omitted, which a long '
-          'sweep can be too hungry for: each holds its own candidate set and '
-          'the traces of the slot it is on.',
+          'Isolates to run across, four when omitted. What limits a sweep is '
+          'each worker\'s heap rather than its CPU: every one holds its own '
+          'candidate set and the traces of the slot it is on. Measured on one '
+          'sweep, two workers took 289s at 0.6GB, four took 200s at 0.8GB, '
+          'and eight took 459s at 9.1GB, so past a point more workers are '
+          'both slower and the reason a sweep gets killed.',
     )
     ..addOption('slots', defaultsTo: '12', help: 'Attempts per sitting.')
     ..addOption('schedules', defaultsTo: 'normal_month,interrupted')
@@ -66,7 +69,6 @@ Future<void> main(List<String> arguments) async {
   final reliefs = numbers('prereq-relief');
   final halfLives = numbers('half-life');
 
-  const centre = DoseConfig();
   final arms = <DoseConfig?>[
     null,
     if (options.flag('grid'))
@@ -87,6 +89,10 @@ Future<void> main(List<String> arguments) async {
     ],
   ];
 
+  final workers =
+      int.tryParse(options.option('workers') ?? '') ??
+      (Platform.numberOfProcessors < 4 ? Platform.numberOfProcessors : 4);
+
   for (final schedule in options.option('schedules')!.split(',')) {
     final sittings = LongitudinalSchedules.named(schedule, slots: slots);
     final jobs = [
@@ -94,9 +100,6 @@ Future<void> main(List<String> arguments) async {
         for (var seed = 0; seed < seeds; seed++)
           TrajectoryJob(archetypeId: player.id, seed: seed),
     ];
-    final workers =
-        int.tryParse(options.option('workers') ?? '') ??
-        Platform.numberOfProcessors;
     final buckets = List.generate(workers, (_) => <TrajectoryJob>[]);
     for (final (index, job) in jobs.indexed) {
       buckets[index % buckets.length].add(job);
@@ -106,7 +109,7 @@ Future<void> main(List<String> arguments) async {
       ..writeln()
       ..writeln(
         '== dose sweep on $schedule: ${sittings.length} sittings of $slots, '
-        '$seeds seeds, ${players.length} archetypes',
+        '$seeds seeds, ${players.length} archetypes, $workers workers',
       )
       ..writeln(
         '   contracted and changed are the share of slots the mechanism spoke '
@@ -121,14 +124,26 @@ Future<void> main(List<String> arguments) async {
         'ht  parity  dry',
       );
 
-    for (final arm in arms) {
-      final batches = await Future.wait([
-        for (final bucket in buckets)
-          if (bucket.isNotEmpty)
-            Isolate.run(() => _measure(bucket, sittings, arm, centre)),
-      ]);
-      stdout.writeln(_row(arm, [for (final batch in batches) ...batch]));
+    // One isolate per bucket for the whole sweep rather than per arm. A worker
+    // generates the catalog once, runs each job's baseline once, and carries
+    // both across every arm: the baseline is otherwise re-simulated for every
+    // configuration, which is most of the work in a sweep of fifteen.
+    final stopwatch = Stopwatch()..start();
+    final batches = await Future.wait([
+      for (final bucket in buckets)
+        if (bucket.isNotEmpty)
+          Isolate.run(() => _measure(bucket, sittings, arms)),
+    ]);
+    for (final (index, arm) in arms.indexed) {
+      stdout.writeln(
+        _row(arm, [
+          for (final batch in batches)
+            for (final run in batch)
+              if (run.arm == index) run,
+        ]),
+      );
     }
+    stdout.writeln('   swept in ${stopwatch.elapsed.inSeconds}s');
   }
 }
 
@@ -206,6 +221,9 @@ class _Family {
 }
 
 class _Run {
+  /// Which arm produced it, as an index into the sweep's arms.
+  final int arm;
+
   final double contractedShare;
   final double changedShare;
   final List<_Family> families;
@@ -214,6 +232,7 @@ class _Run {
   final int dry;
 
   const _Run({
+    required this.arm,
     required this.contractedShare,
     required this.changedShare,
     required this.families,
@@ -223,35 +242,63 @@ class _Run {
   });
 }
 
+/// Every arm of the sweep, for one bucket of jobs, in one isolate.
+///
+/// The catalog is generated once and the baseline run once per job, both
+/// carried across every arm. Only the baseline's chosen sequence is retained
+/// for the parity comparison, digested to a string, so nothing holds a second
+/// trajectory while an arm is running.
 List<_Run> _measure(
   List<TrajectoryJob> jobs,
   List<Sitting> sittings,
-  DoseConfig? arm,
-  DoseConfig centre,
+  List<DoseConfig?> arms,
 ) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
   const learner = LearnerModel();
   const baseline = SchedulerPipeline(learner: learner);
-  final pipeline = arm == null
-      ? baseline
-      : SchedulerPipeline(
-          learner: learner,
-          config: v1SchedulerConfig.withDose(arm),
-        );
+  final rows = <_Run>[];
 
-  return [
-    for (final job in jobs)
-      _runOf(job, sittings, generated, pipeline, baseline, arm != null),
-  ];
+  for (final job in jobs) {
+    final chosen = _digestOf(
+      runSittings(
+        player: playerOf(job.archetypeId),
+        seed: job.seed,
+        materials: allScales,
+        sittings: sittings,
+        generated: generated,
+        pipeline: baseline,
+      ),
+    );
+    for (final (index, arm) in arms.indexed) {
+      final pipeline = arm == null
+          ? baseline
+          : SchedulerPipeline(
+              learner: learner,
+              config: v1SchedulerConfig.withDose(arm),
+            );
+      rows.add(_runOf(index, job, sittings, generated, pipeline, chosen));
+    }
+  }
+  return rows;
 }
 
+/// The chosen sequence of [trajectory], as one comparable string.
+String _digestOf(Trajectory trajectory) => [
+  for (final slot in trajectory.slots)
+    '${slot.chosen.material.materialId}|'
+        '${slot.chosen.conditions.hands.id}|'
+        '${slot.chosen.conditions.octaves}|'
+        '${slot.chosen.conditions.tempoBpm}|'
+        '${slot.chosen.guidance.independence}',
+].join(',');
+
 _Run _runOf(
+  int arm,
   TrajectoryJob job,
   List<Sitting> sittings,
   List<Exercise> generated,
   SchedulerPipeline pipeline,
-  SchedulerPipeline baseline,
-  bool dosing,
+  String baseline,
 ) {
   var spoke = 0;
   var changed = 0;
@@ -270,22 +317,9 @@ _Run _runOf(
   );
   final slots = trajectory.slots.length;
   final census = censusOfRun(trajectory);
-  final chosen = [for (final slot in trajectory.slots) slot.chosen];
-  final same =
-      !dosing ||
-      _sameAs(
-        chosen,
-        runSittings(
-          player: playerOf(job.archetypeId),
-          seed: job.seed,
-          materials: allScales,
-          sittings: sittings,
-          generated: generated,
-          pipeline: baseline,
-        ),
-      );
 
   return _Run(
+    arm: arm,
     contractedShare: slots == 0 ? 0 : spoke / slots,
     changedShare: slots == 0 ? 0 : changed / slots,
     families: [
@@ -300,15 +334,7 @@ _Run _runOf(
         ),
     ],
     handsTogetherSitting: census.milestones[Milestone.handsTogether],
-    matchesBaseline: same,
+    matchesBaseline: _digestOf(trajectory) == baseline,
     dry: census.sittings.where((sitting) => sitting.ranDry).length,
   );
-}
-
-bool _sameAs(List<Exercise> chosen, Trajectory other) {
-  if (other.slots.length != chosen.length) return false;
-  for (final (index, slot) in other.slots.indexed) {
-    if (slot.chosen != chosen[index]) return false;
-  }
-  return true;
 }

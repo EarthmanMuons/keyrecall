@@ -434,6 +434,40 @@ openings for `probe_verification_share` to trip on any single run, which is
 worth remembering: a mechanism that fires rarely needs the census rather than a
 per-run threshold.
 
+## What a sweep costs, and what makes it worse
+
+A parameter sweep is a different shape of cost from the trajectory sweep. It
+runs the same jobs many times over, and the first full one was killed by the
+machine running out of memory.
+
+Two redundancies did most of it. Every arm re-simulated the baseline for its
+parity comparison, so fifteen configurations meant fifteen identical baseline
+runs per job, and every arm spawned a fresh set of isolates that each
+regenerated the catalog. Both are gone: a worker now lives for the whole sweep,
+generates the catalog once, runs each job's baseline once, and keeps only the
+baseline's chosen sequence as a digest. That is seventeen trajectories per job
+where there were thirty-two.
+
+Parallelism past a point makes it worse rather than better. The same sweep, on
+this machine:
+
+| workers | wall  | peak resident |
+| ------- | ----- | ------------- |
+| 2       | 289 s | 0.6 GB        |
+| 4       | 200 s | 0.8 GB        |
+| 8       | 459 s | 9.1 GB        |
+
+Eight workers is both slower and an order of magnitude hungrier, which is what
+killed the first run. **A worker's heap is the limit, not its CPU**, because
+each holds its own catalog and the traces of the slot it is on, so the default
+is four rather than a processor count.
+
+What was deliberately not done: nothing in the production decision pipeline was
+touched to make sweeps faster, and trajectories still carry their full
+diagnostic state. The harness is worth having because a surprising row can be
+explained without a rerun, and the cost that mattered was doing the same work
+twice rather than the work itself.
+
 ## Making the sweep fast enough to iterate on
 
 A sweep that takes half an hour is not a development instrument, it is a thing
