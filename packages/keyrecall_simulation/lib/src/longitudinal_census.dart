@@ -233,14 +233,82 @@ class LongitudinalCensus {
 }
 
 /// Summarizes [trajectory] one sitting at a time.
+/// What one slot was, read in the order the run happened.
+///
+/// Held as its own reading because the answers depend on everything before the
+/// slot and nothing after it, so anything wanting a window of a run reads the
+/// same classification the census reports rather than recomputing it from a
+/// slice that starts in the middle.
+class SlotReading {
+  final SlotWork work;
+
+  /// Whether it asked for less independence than this material had shown, with
+  /// no retrieval failure since.
+  final bool supported;
+
+  /// Whether something progressing was selectable, for a slot that moved
+  /// nothing. Null when the slot moved something.
+  final bool? progressionPassedOver;
+
+  const SlotReading({
+    required this.work,
+    required this.supported,
+    required this.progressionPassedOver,
+  });
+
+  bool get movedNothing =>
+      work != SlotWork.advancing && work != SlotWork.introducing;
+}
+
+/// Every slot of [trajectory], classified in order.
+///
+/// Positional, so it lines up with `trajectory.slots` rather than with slot
+/// indices: a sitting that ran dry consumed an index nothing was recorded at.
+List<SlotReading> readRun(Trajectory trajectory) {
+  final seen = <String>{};
+  // The independence each material has shown, cleared by a retrieval failure
+  // the way `guidance_regression` clears it: support after a failure is the
+  // ladder working rather than sliding.
+  final independence = <String, int>{};
+  final readings = <SlotReading>[];
+
+  for (final slot in trajectory.slots) {
+    final materialId = slot.chosen.material.materialId;
+    final work = workOf(slot, known: seen.contains(materialId));
+    final shown = independence[materialId];
+    final asked = slot.chosen.guidance.independence;
+    readings.add(
+      SlotReading(
+        work: work,
+        supported: shown != null && asked < shown,
+        progressionPassedOver:
+            work == SlotWork.advancing || work == SlotWork.introducing
+            ? null
+            : slot.alternatives.any((trace) => _progresses(trace, seen)),
+      ),
+    );
+
+    if (slot.outcome.retrieval == FactualRetrieval.failed) {
+      independence.remove(materialId);
+    } else if (slot.outcome.retrieval == FactualRetrieval.succeeded &&
+        (shown == null || asked > shown)) {
+      independence[materialId] = asked;
+    }
+    seen.add(materialId);
+  }
+  return readings;
+}
+
+/// Summarizes [trajectory] one sitting at a time.
 LongitudinalCensus censusOfRun(Trajectory trajectory) {
+  final read = readRun(trajectory);
+  final readings = {
+    for (final (position, slot) in trajectory.slots.indexed)
+      slot.index: read[position],
+  };
   final summaries = <SittingSummary>[];
   final seen = <String>{};
   final reached = <Milestone>{};
-  // The independence each material has shown, cleared by a retrieval failure
-  // the way [guidance_regression] clears it: support after a failure is the
-  // ladder working rather than sliding.
-  final independence = <String, int>{};
 
   for (var index = 0; index < trajectory.sittings.length; index++) {
     final slots = trajectory.slotsOf(index).toList();
@@ -248,60 +316,18 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
     final previous = index == 0
         ? null
         : trajectory.slotsOf(index - 1).lastOrNull;
-
-    var advancing = 0;
-    var introductions = 0;
-    var preFrontier = 0;
-    var reacquiring = 0;
-    var consolidating = 0;
-    var supported = 0;
-    var progressionPassedOver = 0;
-    var noProgressionSelectable = 0;
-    var probesOpened = 0;
-    var probesAnswered = 0;
     final firsts = <Milestone>{};
 
+    int counting(bool Function(SlotReading reading) matches) =>
+        slots.where((slot) => matches(readings[slot.index]!)).length;
+
     for (final slot in slots) {
-      final materialId = slot.chosen.material.materialId;
-      final work = workOf(slot, known: seen.contains(materialId));
-      switch (work) {
-        case SlotWork.advancing:
-          advancing++;
-        case SlotWork.introducing:
-          introductions++;
-        case SlotWork.preFrontier:
-          preFrontier++;
-        case SlotWork.reacquiring:
-          reacquiring++;
-        case SlotWork.consolidating:
-          consolidating++;
-      }
-      if (work != SlotWork.advancing && work != SlotWork.introducing) {
-        if (slot.alternatives.any((trace) => _progresses(trace, seen))) {
-          progressionPassedOver++;
-        } else {
-          noProgressionSelectable++;
-        }
-      }
-
-      final shown = independence[materialId];
-      final asked = slot.chosen.guidance.independence;
-      if (shown != null && asked < shown) supported++;
-      if (slot.outcome.retrieval == FactualRetrieval.failed) {
-        independence.remove(materialId);
-      } else if (slot.outcome.retrieval == FactualRetrieval.succeeded &&
-          (shown == null || asked > shown)) {
-        independence[materialId] = asked;
-      }
-
-      if (slot.probe.opened) probesOpened++;
-      if (slot.answeredProbe) probesAnswered++;
+      seen.add(slot.chosen.material.materialId);
       for (final milestone in Milestone.values) {
         if (reached.contains(milestone) || !milestone.reachedBy(slot)) continue;
         reached.add(milestone);
         firsts.add(milestone);
       }
-      seen.add(materialId);
     }
 
     final last = slots.last;
@@ -313,16 +339,18 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
             ? Duration.zero
             : slots.first.at.difference(previous.at),
         slots: slots.length,
-        advancing: advancing,
-        introductions: introductions,
-        preFrontier: preFrontier,
-        reacquiring: reacquiring,
-        consolidating: consolidating,
-        supported: supported,
-        progressionPassedOver: progressionPassedOver,
-        noProgressionSelectable: noProgressionSelectable,
-        probesOpened: probesOpened,
-        probesAnswered: probesAnswered,
+        advancing: counting((r) => r.work == SlotWork.advancing),
+        introductions: counting((r) => r.work == SlotWork.introducing),
+        preFrontier: counting((r) => r.work == SlotWork.preFrontier),
+        reacquiring: counting((r) => r.work == SlotWork.reacquiring),
+        consolidating: counting((r) => r.work == SlotWork.consolidating),
+        supported: counting((r) => r.supported),
+        progressionPassedOver: counting((r) => r.progressionPassedOver == true),
+        noProgressionSelectable: counting(
+          (r) => r.progressionPassedOver == false,
+        ),
+        probesOpened: slots.where((slot) => slot.probe.opened).length,
+        probesAnswered: slots.where((slot) => slot.answeredProbe).length,
         probeStranded:
             last.probe.pendingAfter != null && !last.probe.freshAfter,
         ranDry: trajectory.terminals.any(
@@ -350,3 +378,81 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
 bool _progresses(CandidateTrace trace, Set<String> seen) =>
     !seen.contains(trace.exercise.material.materialId) ||
     trace.rankKey?.realization == RealizationRank.advancing;
+
+/// What arriving at a milestone did to execution quality.
+///
+/// A new motor demand should cost something; the question is how much and for
+/// how long. Compared over equal windows either side of the slot a milestone
+/// first appears, across every attempt rather than only the milestone's own,
+/// because what a sitting feels like is the whole of it.
+///
+/// Characterization, not a warning. A dip that recovers is desirable
+/// difficulty, and one that does not is a scheduler asking for something the
+/// learner cannot yet do; the numbers say which without a threshold deciding
+/// in advance.
+class MilestoneShock {
+  final Milestone milestone;
+
+  /// The slot the milestone first appeared in.
+  final int slot;
+
+  /// Median motor score over the window before, and the window after.
+  final double before;
+  final double after;
+
+  /// Slots until a window of that length reaches [before] again, or null when
+  /// the run ends first.
+  final int? recoveredAfter;
+
+  const MilestoneShock({
+    required this.milestone,
+    required this.slot,
+    required this.before,
+    required this.after,
+    required this.recoveredAfter,
+  });
+
+  double get delta => after - before;
+}
+
+/// The shock at each milestone [trajectory] reached, over [window] slots.
+///
+/// Milestones without a full window either side are skipped: half a window
+/// compared against a full one measures the run's edges.
+List<MilestoneShock> milestoneShocks(Trajectory trajectory, {int window = 15}) {
+  final slots = trajectory.slots;
+  final shocks = <MilestoneShock>[];
+  for (final milestone in Milestone.values) {
+    final at = slots.indexWhere(milestone.reachedBy);
+    if (at < window || at + window >= slots.length) continue;
+    final before = _medianMotor(slots, at - window, window);
+    final after = _medianMotor(slots, at, window);
+    int? recovered;
+    for (var start = at + 1; start + window <= slots.length; start++) {
+      if (_medianMotor(slots, start, window) < before) continue;
+      recovered = start - at;
+      break;
+    }
+    shocks.add(
+      MilestoneShock(
+        milestone: milestone,
+        slot: at,
+        before: before,
+        after: after,
+        recoveredAfter: recovered,
+      ),
+    );
+  }
+  return shocks;
+}
+
+double _medianMotor(List<TrajectorySlot> slots, int from, int count) {
+  final scores = [
+    for (final slot in slots.skip(from).take(count)) slot.outcome.motorScore,
+  ]..sort();
+  if (scores.isEmpty) return 0;
+  final middle = scores.length ~/ 2;
+  return scores.length.isOdd
+      ? scores[middle]
+      : (scores[middle - 1] + scores[middle]) / 2;
+}

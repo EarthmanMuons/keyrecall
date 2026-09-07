@@ -115,4 +115,23 @@ void main() {
       );
     }
   });
+
+  test('a milestone shock needs a full window either side', () {
+    final shocks = milestoneShocks(trajectory, window: 15);
+
+    for (final shock in shocks) {
+      expect(shock.slot, greaterThanOrEqualTo(15));
+      expect(shock.slot + 15, lessThan(trajectory.slots.length));
+      expect(shock.delta, shock.after - shock.before);
+    }
+  });
+
+  test('a shock is measured at the slot the milestone first appeared', () {
+    for (final shock in milestoneShocks(trajectory, window: 15)) {
+      expect(
+        trajectory.slots.indexWhere(shock.milestone.reachedBy),
+        shock.slot,
+      );
+    }
+  });
 }

@@ -323,6 +323,11 @@ class PlayerState {
   /// No ceiling is needed. As ability grows the same task is executed better,
   /// which moves it away from the edge, so improvement slows unless the
   /// scheduler keeps asking for something harder.
+  ///
+  /// The curve is **a shape assumption of this player model**, not a claim
+  /// about how people learn the piano. Motor quality is what the simulation
+  /// can see, and it is not the same quantity as pedagogical challenge; the
+  /// shape is provisional until something measured argues for another.
   void _practise(
     Exercise exercise,
     double motorQuality, {

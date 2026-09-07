@@ -314,6 +314,50 @@ this learner more than they can execute.
 improvement are two hypotheses about a learner rather than one, which is the
 distinction a calibration from device data would otherwise silently collapse.
 
+### What arriving at coordination costs
+
+The beginner's execution quality falls late in a long run, shortly after
+hands-together work first appears. Coincidence and cause are indistinguishable
+from one trajectory, so the same player and seed were run twice against the same
+schedule with the second arm's candidate set holding no hands-together work at
+all. Nothing else differs: same learner model, same scheduler, same player.
+Sixteen sittings of ten across seventy days, six seeds, measured from the slot
+the baseline first reached coordination.
+
+| archetype              | motor baseline / withheld | completed |
+| ---------------------- | ------------------------- | --------- |
+| `true_beginner`        | 0.14 / 0.19               | 30% / 41% |
+| `developing`           | 0.35 / 0.46               | 63% / 61% |
+| `uneven_hands`         | 0.70 / 0.78               | 72% / 72% |
+| `coordination_limited` | 0.70 / 0.79               | 49% / 75% |
+
+**It is composition rather than shock.** The milestone shock at coordination is
+real and short: the median motor score falls from 0.20 to 0.12 for the beginner
+and recovers within five slots in five of five runs. What persists is the share
+of every later sitting spent on work the learner cannot execute, and it persists
+because nothing withdraws coordination when it keeps failing.
+
+The effect is not specific to the beginner, which is the argument against
+reading the table as a defect. Withholding coordination raises execution quality
+for every archetype, including the two whose whole difficulty is coordination.
+It also raises frontier advances, and that comparison is unfair by construction:
+the withheld arm is practising an easier catalog, and single hands advance a
+frontier more readily than two do. Removing the hard thing always looks better
+on quality.
+
+`coordination_limited` is the row worth returning to. Completion falls from
+seventy-five per cent to forty-nine when coordination is available to a learner
+defined by not having it, and its supported-guidance share is the highest of any
+archetype. That is the scheduler continuing to ask a question this learner keeps
+answering the same way, which is a policy question rather than a defect, and one
+the harness can now pose.
+
+`milestoneShocks` reports this generically, for coordination, contrary motion,
+two octaves and unguided alike, as a delta and a recovery time rather than a
+warning. A dip that recovers is desirable difficulty. One that does not is the
+scheduler asking for something out of reach, and the two are only separable
+after the fact.
+
 ### Reacquisition, in the strict sense, does not happen
 
 The census partitions every slot that moved nothing into work with no frontier

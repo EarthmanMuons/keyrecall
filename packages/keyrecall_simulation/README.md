@@ -122,6 +122,16 @@ anything moved forward again.
 `dart run keyrecall_simulation:sweep --days 0,2,9,30` runs the anomaly detectors
 over the same kind of schedule.
 
+To ask what a milestone costs, by running the same player and seed with and
+without the work it introduces:
+
+```console
+dart run keyrecall_simulation:coordination_withheld --archetypes true_beginner
+```
+
+The counterfactual is the candidate set rather than a second scheduler, so
+nothing about the learner, the player or the policy differs between the arms.
+
 ## Comparing against the reference
 
 Three gates, each answering a different question.
