@@ -331,6 +331,10 @@ slots each mechanism changed, and the share where both did.
 | `coordination_limited` | 2%           | 0%                    | 0%                       |
 | `advanced`             | 0%           | 0%                    | 0%                       |
 
+Across all five schedules the same holds: dose control changes up to
+thirty-seven per cent of slots, pacing one or two per cent on four
+learner-and-schedule pairs, and neither ever changes the same slot as the other.
+
 **The two mechanisms never acted in the same slot, and dose control replaced
 pacing rather than adding to it.** Every pacing set-aside the baseline made is
 gone, because contraction keeps the concentration that pacing was reacting to

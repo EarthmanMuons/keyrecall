@@ -322,6 +322,51 @@ at trajectory grain, keep the cohort-level readiness gate, and hold pacing to
 the paired-experiment outcomes rather than to a per-slot criterion. The second
 is cheaper and is what the evidence currently supports.
 
+## What is left for pacing after dose control
+
+Family dose control was promoted into V1 on September 7, 2026, and it changes
+what pacing is for rather than duplicating it. Across all five named schedules,
+four seeds, nine archetypes, with both mechanisms in force:
+
+```text
+dose changed a slot     0-37%, and most of it on learners whose families fail
+pacing changed a slot   0-2%, on four learner-and-schedule pairs
+both changed one        never, on any schedule
+```
+
+Pacing set-asides that the no-dose arm made are almost all gone, because
+contraction keeps the concentration pacing reacts to from forming. What is left
+is a coherent and narrow job. The clearest case is `fast_but_placed_low`, which
+dose control never touches at all: pacing sets aside its left hand at seventy
+per cent yield and forty-four per cent share, and its hands-together work at
+sixty per cent yield and thirty-five per cent share. **Productive work that has
+taken over the sitting** is invisible to a mechanism that reads yield, and it is
+exactly what pacing was built for.
+
+So the division is by what makes the work worth interrupting:
+
+```text
+pacing         a family holds too much of the sitting, however well it goes
+dose control   a family produces nothing, however little of the sitting it holds
+```
+
+### The rebound, and why it is not being fixed
+
+A pacing set-aside lasts one slot, and in the no-dose arm a family could be set
+aside dozens of times without its share over a run falling at all: the true
+beginner was relieved fifty-nine times on its left hand with no reduction. The
+suspected cause is that relief has no persistence, so the substitution changes
+the window just enough for pressure to fall under the threshold, and the family
+returns immediately.
+
+That is worth understanding and is not worth fixing now. The case it was most
+visible in is the persistent-failure case, which dose control now intercepts
+before pacing sees it, and pacing fires on one or two per cent of slots in V1. A
+mechanism that rarely acts does not need hysteresis; if the residual cases grow,
+the trace to take is the pressure delta from the set-aside slot to the next,
+which distinguishes a threshold barely re-crossed from a window that genuinely
+turned over.
+
 ## Production contract
 
 The mechanism is frozen at this shape. What it claims is a trajectory-level
