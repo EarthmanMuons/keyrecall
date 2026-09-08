@@ -1228,3 +1228,41 @@ measured on slots to that frontier, weak-family held-out change, strong-family
 held-out change, and how many supported attempts it costs. A learner who
 consumes many and produces none has stopped being an allocation problem and
 become the beginner's.
+
+### A bounded chance, and what it did not buy
+
+Tried through a selection seam rather than in production, so the real pipeline
+decides and only its winner is replaced: while the target family has no
+execution frontier, and only until it has one, a slot may be spent on the
+single-hand, one-octave, continuously cued work. Four seeds per player, three
+bounds.
+
+| bound | slots to first frontier, per seed | bootstrap slots consumed |
+| ----- | --------------------------------- | ------------------------ |
+| 0     | none, 43, 5, 8 / none, 2, 2, 11   | none                     |
+| 3     | 63, 2, 2, 13 / none, 2, 2, none   | 3, 1, 1, 3               |
+| 8     | 21, 2, 2, 7 / 17, 2, 2, 7         | 8, 1, 1, 6               |
+
+**It does what it was built to do.** At a bound of eight every seed of both
+players reaches a first frontier, where without it two never do in eighty slots.
+It is cheap: most seeds spend one slot, and the two that spend the bound reach a
+frontier shortly after on ordinary work. Nothing runs away, because the first
+frontier ends it.
+
+**And the learner is no better for it.** Held-out weak-family execution moves
+from 0.06 to 0.04 and 0.06 to 0.01 with the bound, against 0.06 to 0.07 and 0.06
+to 0.03 without, which is to say it does not move at all at the resolution a
+twenty-four attempt reading has. The strong family gives up a little, 0.79 to
+0.78 and 0.90 to 0.88. There is no case here for shipping it.
+
+So the bootstrap-allocation hypothesis is answered, and answered no, twice over.
+The weak family was short of the productive work at admission, that was fixed,
+and outcomes did not move. It was then short of it at selection, that was tried,
+and outcomes did not move. **What is left is not an allocation problem.** These
+learners fail the gentlest work their family offers, which is where the true
+beginner already was, and the two open questions have converged after all.
+
+The thing worth taking from the negative result is the terminal classification
+it makes available. A family that spends its bounded chances and still has no
+frontier is under the floor rather than short of slots, and that is now a
+measurable condition rather than a suspicion.

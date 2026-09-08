@@ -27,6 +27,8 @@ Trajectory runTrajectory({
   List<Exercise>? generated,
   AcquisitionFloor? acquisitionFloor,
   AssessmentSet? assessment,
+  CandidateTrace? Function(SelectionResult selection, LearnerState state)?
+  chooseInstead,
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
@@ -42,6 +44,7 @@ Trajectory runTrajectory({
   generated: generated,
   acquisitionFloor: acquisitionFloor,
   assessment: assessment,
+  chooseInstead: chooseInstead,
   observeTraces: observeTraces,
   observeState: observeState,
   observePacing: observePacing,
@@ -71,6 +74,15 @@ Trajectory runSittings({
   List<Exercise>? generated,
   AcquisitionFloor? acquisitionFloor,
   AssessmentSet? assessment,
+
+  /// Substitutes what a slot asks for, leaving every other stage alone.
+  ///
+  /// The seam a paired experiment about selection needs: the decision is made
+  /// by the real pipeline and only its winner is replaced, so a policy can be
+  /// tried without a second run loop drifting away from this one. Returning
+  /// null keeps the pipeline's choice.
+  CandidateTrace? Function(SelectionResult selection, LearnerState state)?
+  chooseInstead,
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
@@ -158,10 +170,15 @@ Trajectory runSittings({
       observeDose?.call(index, selection.dose);
       final traces = selection.traces;
       final available = selection.selectable;
-      final chosen = switch (selection) {
+      final selected = switch (selection) {
         CandidateSelected(:final candidate) => candidate,
         SelectionBlocked() => null,
       };
+      // A slot the pipeline could not fill stays unfilled: the seam replaces a
+      // choice, it does not rescue a blocked decision.
+      final chosen = selected == null
+          ? null
+          : chooseInstead?.call(selection, state) ?? selected;
       // Every candidate, which a slot does not retain: a sitting evaluates
       // thousands and only the selectable ones are worth carrying to the end.
       // A diagnostic asking what was refused has to see them as they go past.
