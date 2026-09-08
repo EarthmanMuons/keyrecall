@@ -31,6 +31,7 @@ void main() {
           ('C_MAJOR', configuration, HandMotion.parallel),
           t0,
           v1PrototypeLearnerParams,
+          familyId: TechnicalMaterial.scaleFamilyId,
         )
         ..demonstrate(octaves: 1, tempoBpm: tempoBpm)
         ..readyForHandsTogether(octaves: 1, tempoBpm: tempoBpm)

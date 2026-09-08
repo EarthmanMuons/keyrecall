@@ -194,6 +194,7 @@ Trajectory runSittings({
         state,
         exercise.conditions.hands,
         exercise.conditions.octaves,
+        family: exercise.material.familyId,
       );
 
       final outcome = playing.play(exercise, rng);

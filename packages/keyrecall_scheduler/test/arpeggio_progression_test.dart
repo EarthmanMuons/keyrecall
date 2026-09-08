@@ -33,15 +33,16 @@ void main() {
 
   void demonstrate(
     LearnerState state,
-    String materialId,
+    TechnicalMaterial material,
     HandConfiguration hands,
     int octaves, {
     bool coordinationReady = false,
   }) {
     final residual = state.materialExecutionFor(
-      (materialId, hands, HandMotion.parallel),
+      (material.materialId, hands, HandMotion.parallel),
       at,
       v1LearnerParams,
+      familyId: material.familyId,
     )..demonstrate(octaves: octaves, tempoBpm: 60);
     if (coordinationReady) {
       residual.readyForHandsTogether(octaves: octaves, tempoBpm: 60);
@@ -58,7 +59,7 @@ void main() {
       EligibilityReason.materialProgressionPrerequisite,
     );
 
-    demonstrate(state, root.materialId, HandConfiguration.right, 1);
+    demonstrate(state, root, HandConfiguration.right, 1);
 
     expect(
       pipeline.eligibilityFor(state, candidate).tier,
@@ -75,8 +76,18 @@ void main() {
   test('scale mastery cannot unlock an inversion or wider arpeggio', () {
     final state = advanced();
     state.competency(Competency.rhScaleExecution).mean = 20;
-    demonstrate(state, 'C_MAJOR', HandConfiguration.right, 1);
-    demonstrate(state, 'C_MAJOR', HandConfiguration.right, 2);
+    demonstrate(
+      state,
+      TechnicalMaterial('C', ScaleForm.major),
+      HandConfiguration.right,
+      1,
+    );
+    demonstrate(
+      state,
+      TechnicalMaterial('C', ScaleForm.major),
+      HandConfiguration.right,
+      2,
+    );
 
     expect(
       pipeline.eligibilityFor(state, exercise(first)).code,
@@ -97,7 +108,7 @@ void main() {
       pipeline.eligibilityFor(state, two).code,
       EligibilityReason.octaveSpanPrerequisite,
     );
-    demonstrate(state, root.materialId, HandConfiguration.right, 1);
+    demonstrate(state, root, HandConfiguration.right, 1);
     expect(
       pipeline.eligibilityFor(state, two).tier,
       EligibilityTier.fullyEligible,
@@ -106,7 +117,7 @@ void main() {
       pipeline.eligibilityFor(state, four).code,
       EligibilityReason.octaveSpanPrerequisite,
     );
-    demonstrate(state, root.materialId, HandConfiguration.right, 2);
+    demonstrate(state, root, HandConfiguration.right, 2);
     expect(
       pipeline.eligibilityFor(state, four).tier,
       EligibilityTier.fullyEligible,
@@ -118,14 +129,14 @@ void main() {
     final together = exercise(root, hands: HandConfiguration.together);
     demonstrate(
       state,
-      'C_MAJOR',
+      TechnicalMaterial('C', ScaleForm.major),
       HandConfiguration.right,
       1,
       coordinationReady: true,
     );
     demonstrate(
       state,
-      'C_MAJOR',
+      TechnicalMaterial('C', ScaleForm.major),
       HandConfiguration.left,
       1,
       coordinationReady: true,
@@ -138,7 +149,7 @@ void main() {
 
     demonstrate(
       state,
-      root.materialId,
+      root,
       HandConfiguration.right,
       1,
       coordinationReady: true,
@@ -149,7 +160,7 @@ void main() {
     );
     demonstrate(
       state,
-      root.materialId,
+      root,
       HandConfiguration.left,
       1,
       coordinationReady: true,

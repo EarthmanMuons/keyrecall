@@ -80,6 +80,7 @@ void main() {
                 (material.materialId, hands, HandMotion.parallel),
                 t0,
                 v1PrototypeLearnerParams,
+                familyId: material.familyId,
               )
               .lastEvidenceAt =
           t0;
@@ -329,6 +330,7 @@ void main() {
                     (material.materialId, hands, HandMotion.parallel),
                     t0,
                     v1PrototypeLearnerParams,
+                    familyId: material.familyId,
                   )
                   .lastEvidenceAt =
               t0;
@@ -388,6 +390,7 @@ void main() {
                     (material.materialId, hands, HandMotion.parallel),
                     t0,
                     v1PrototypeLearnerParams,
+                    familyId: material.familyId,
                   )
                   .lastEvidenceAt =
               t0;
@@ -552,6 +555,7 @@ void main() {
           ('C_MAJOR', hands, HandMotion.parallel),
           t0,
           v1PrototypeLearnerParams,
+          familyId: TechnicalMaterial.scaleFamilyId,
         )
         ..demonstrate(octaves: span, tempoBpm: 60)
         ..readyForHandsTogether(octaves: span, tempoBpm: 60)

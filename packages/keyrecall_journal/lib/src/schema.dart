@@ -24,7 +24,13 @@ const int attemptSchemaVersion = 4;
 ///
 /// Independent of [attemptSchemaVersion]: checkpoints are disposable
 /// acceleration, so this one may move without the journal moving.
-const int checkpointSchemaVersion = 1;
+///
+/// Version 2 records the family each execution residual was earned in.
+/// Nothing infers it for a version 1 checkpoint: the id of a scale does not
+/// name its family, and manufacturing provenance that was never stored is
+/// worse than rebuilding from the attempts, which is what an unreadable
+/// checkpoint already asks for.
+const int checkpointSchemaVersion = 2;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

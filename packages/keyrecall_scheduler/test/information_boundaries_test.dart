@@ -76,6 +76,7 @@ void main() {
                 (materialId, HandConfiguration.together, HandMotion.parallel),
                 t0,
                 learnerParams,
+                familyId: TechnicalMaterial.scaleFamilyId,
               )
               .residualMean =
           -5.0;
@@ -179,6 +180,7 @@ void main() {
                     (material.materialId, hands, HandMotion.parallel),
                     t0,
                     learnerParams,
+                    familyId: material.familyId,
                   )
                   .lastEvidenceAt =
               t0;

@@ -59,6 +59,7 @@ void seedAllMaterials(LearnerState state) {
                 (material.materialId, hands, HandMotion.parallel),
                 t0,
                 learnerParams,
+                familyId: material.familyId,
               )
               .lastEvidenceAt =
           t0;

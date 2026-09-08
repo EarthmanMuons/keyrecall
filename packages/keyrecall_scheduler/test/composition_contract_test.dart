@@ -27,6 +27,7 @@ void main() {
                   executionContextOf(exercise),
                   t0,
                   learnerParams,
+                  familyId: TechnicalMaterial.scaleFamilyId,
                 )
                 .lastEvidenceAt =
             t0;
@@ -96,6 +97,7 @@ void main() {
           ('C_MAJOR', HandConfiguration.right, HandMotion.parallel),
           t0,
           learnerParams,
+          familyId: TechnicalMaterial.scaleFamilyId,
         )
         ..paced(120)
         ..lastEvidenceAt = t0;

@@ -30,6 +30,7 @@ void main() {
           (material.materialId, HandConfiguration.right, HandMotion.parallel),
           t0,
           learnerParams,
+          familyId: material.familyId,
         )
         ..demonstrate(octaves: 1, tempoBpm: tempoBpm)
         ..readyForHandsTogether(octaves: 1, tempoBpm: tempoBpm)

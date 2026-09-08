@@ -59,6 +59,7 @@ void main() {
       ('C_MAJOR', exercise.conditions.hands, HandMotion.parallel),
       at,
       params,
+      familyId: TechnicalMaterial.scaleFamilyId,
     );
   }
 
@@ -184,6 +185,7 @@ void main() {
             ('C_MAJOR', HandConfiguration.left, HandMotion.parallel),
             t0,
             params,
+            familyId: TechnicalMaterial.scaleFamilyId,
           )
           .demonstratedOctaves,
       0,
@@ -197,6 +199,7 @@ void main() {
             ('C_MAJOR', HandConfiguration.together, HandMotion.parallel),
             t0,
             params,
+            familyId: TechnicalMaterial.scaleFamilyId,
           )
           .demonstratedOctaves,
       0,
@@ -214,6 +217,7 @@ void main() {
       ('C_MAJOR', HandConfiguration.right, HandMotion.parallel),
       t0,
       params,
+      familyId: TechnicalMaterial.scaleFamilyId,
     );
     expect(copied.demonstratedOctaves, 2);
     expect(copied.demonstratedTempoAt(2), 84);

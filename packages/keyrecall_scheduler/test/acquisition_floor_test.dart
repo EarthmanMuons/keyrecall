@@ -30,6 +30,7 @@ void main() {
               ),
               t0,
               learnerParams,
+              familyId: material.familyId,
             )
             .lastEvidenceAt =
         t0;

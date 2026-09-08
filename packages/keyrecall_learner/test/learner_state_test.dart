@@ -52,6 +52,7 @@ void main() {
           (cMajor.materialId, HandConfiguration.right, HandMotion.parallel),
           t0,
           params,
+          familyId: cMajor.familyId,
         )..residualMean = -1.0;
         final varianceBefore = residual.residualVariance;
 
@@ -82,6 +83,7 @@ void main() {
         (cMajor.materialId, HandConfiguration.right, HandMotion.parallel),
         t0.plusDays(20),
         params,
+        familyId: cMajor.familyId,
       );
       expect(state.lastPropagatedAt, t0.plusDays(20));
 
@@ -185,6 +187,7 @@ void main() {
       (cMajor.materialId, HandConfiguration.right, HandMotion.parallel),
       t0,
       params,
+      familyId: cMajor.familyId,
     );
 
     final snapshot = state.copy();

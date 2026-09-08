@@ -82,6 +82,7 @@ void main() {
               ),
               t0,
               v1PrototypeLearnerParams,
+              familyId: exercise.material.familyId,
             )
             .lastEvidenceAt =
         t0;

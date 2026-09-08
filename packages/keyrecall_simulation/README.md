@@ -255,7 +255,10 @@ offsets a family in logits. `scale_strong_arpeggio_weak` and its mirror are
 matched in everything else. The player transfers nothing between families, so
 any transfer a run shows is the scheduler's. An `AssessmentReading` carries a
 `families` map holding the same reading restricted to each family that appears,
-because an aggregate that improves cannot say which family moved.
+because an aggregate that improves cannot say which family moved. These found
+that a hand's pace was crossing the family boundary; `transferableTempoFor` is
+now scoped to the target's own family, and a residual records the family it was
+earned in.
 
 ## The forgetful returner
 

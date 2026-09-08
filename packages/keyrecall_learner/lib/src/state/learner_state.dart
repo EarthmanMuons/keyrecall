@@ -121,10 +121,16 @@ class LearnerState {
   MaterialExecutionState materialExecutionFor(
     ExecutionContext context,
     DateTime at,
-    LearnerParams params,
-  ) => materialExecution.putIfAbsent(
+    LearnerParams params, {
+    required String familyId,
+  }) => materialExecution.putIfAbsent(
     context,
-    () => MaterialExecutionState.prior(context, at, params.materialExecution),
+    () => MaterialExecutionState.prior(
+      context,
+      familyId,
+      at,
+      params.materialExecution,
+    ),
   );
 
   /// Whether [competency] has ever received informative evidence.

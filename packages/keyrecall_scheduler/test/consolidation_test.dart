@@ -59,6 +59,7 @@ void main() {
                 ('${tonic}_MAJOR', hands, HandMotion.parallel),
                 t0,
                 v1PrototypeLearnerParams,
+                familyId: TechnicalMaterial.scaleFamilyId,
               )
               .lastEvidenceAt =
           t0;

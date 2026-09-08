@@ -39,6 +39,7 @@ void main() {
           (material.materialId, hands, HandMotion.parallel),
           t0,
           learnerParams,
+          familyId: material.familyId,
         )
         ..readyForHandsTogether(octaves: 1, tempoBpm: 96)
         ..demonstrate(octaves: 1, tempoBpm: 96)
@@ -65,6 +66,7 @@ void main() {
               ),
               t0,
               learnerParams,
+              familyId: material.familyId,
             )
             .lastEvidenceAt =
         t0;
@@ -166,6 +168,7 @@ void main() {
                 ),
                 t0,
                 learnerParams,
+                familyId: material.familyId,
               )
               .lastEvidenceAt =
           t0;
@@ -323,6 +326,7 @@ void main() {
                 ),
                 t0,
                 learnerParams,
+                familyId: material.familyId,
               )
               .lastEvidenceAt =
           t0;

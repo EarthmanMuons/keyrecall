@@ -44,6 +44,15 @@ class MaterialExecutionState {
   /// Which material this residual is for.
   final String materialId;
 
+  /// Which family that material belongs to.
+  ///
+  /// Recorded rather than derived. A pace is evidence about the family it was
+  /// played in, and by the time anything asks, all that is left of the
+  /// exercise is [materialId]. Scale ids carry no family in them, so the only
+  /// alternative would be a naming convention that quietly misfiles the next
+  /// family somebody adds.
+  final String familyId;
+
   /// Which hand configuration this residual is for.
   final HandConfiguration hands;
 
@@ -108,6 +117,7 @@ class MaterialExecutionState {
 
   MaterialExecutionState({
     required this.materialId,
+    required this.familyId,
     required this.hands,
     this.handMotion = HandMotion.parallel,
     required this.residualMean,
@@ -123,10 +133,12 @@ class MaterialExecutionState {
   /// A residual for a never-observed material and context, at its priors.
   factory MaterialExecutionState.prior(
     ExecutionContext context,
+    String familyId,
     DateTime at,
     MaterialExecutionParams params,
   ) => MaterialExecutionState(
     materialId: context.$1,
+    familyId: familyId,
     hands: context.$2,
     handMotion: context.$3,
     residualMean: 0.0,
@@ -162,6 +174,7 @@ class MaterialExecutionState {
   /// An independent copy of this residual.
   MaterialExecutionState copy() => MaterialExecutionState(
     materialId: materialId,
+    familyId: familyId,
     hands: hands,
     handMotion: handMotion,
     residualMean: residualMean,

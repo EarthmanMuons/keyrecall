@@ -35,12 +35,6 @@ void main() {
 
   String otherThan(String family) => family == scales ? arpeggios : scales;
 
-  double shareOf(Trajectory trajectory, String family) =>
-      trajectory.slots
-          .where((slot) => slot.chosen.material.familyId == family)
-          .length /
-      trajectory.slots.length;
-
   Iterable<TrajectorySlot> slotsIn(Trajectory trajectory, String family) =>
       trajectory.slots.where((slot) => slot.chosen.material.familyId == family);
 
@@ -64,68 +58,59 @@ void main() {
     );
   });
 
-  test('the sitting spends itself on the family already going well', () {
+  test('a family is met at its own pace, never at the other one\'s', () {
     for (final entry in runs.entries) {
       final (weak, seed) = entry.key;
-      expect(
-        shareOf(entry.value, otherThan(weak)),
-        greaterThan(shareOf(entry.value, weak)),
-        reason:
-            'allocation went to the strong family for a player weak in $weak '
-            'at seed $seed, so the weaker one is not what gets practised',
-      );
+      final where = 'weak in $weak at seed $seed';
+      final strongest = slotsIn(entry.value, otherThan(weak))
+          .map((slot) => slot.chosen.conditions.tempoBpm)
+          .fold<double>(0, (best, tempo) => tempo > best ? tempo : best);
+
+      // What this family has actually shown, in the order the run showed it.
+      var ownPace = 60.0;
+      for (final slot in entry.value.slots) {
+        if (slot.chosen.material.familyId != weak) continue;
+        if (slot.frontierAtSpan == 0) {
+          expect(
+            slot.chosen.conditions.tempoBpm,
+            // The rung at or just above what this family has played: a pace
+            // is a measured number and the ladder only offers its rungs.
+            lessThanOrEqualTo(tempoAfter(ownPace)),
+            reason:
+                'with nothing demonstrated at this span, $weak is met at what '
+                '$weak itself has played, never at the $strongest the other '
+                'family reached, $where',
+          );
+        }
+        final performed = slot.performedTempoBpm;
+        if (performed > ownPace) ownPace = performed;
+      }
     }
   });
 
-  test('the weak family does not improve while the strong one does', () {
+  test('the weaker family still gains far less than the stronger one', () {
     for (final entry in runs.entries) {
       final (weak, seed) = entry.key;
       final before = entry.value.assessments.first.families;
       final after = entry.value.assessments.last.families;
       final where = 'weak in $weak at seed $seed';
 
-      expect(
-        after[weak]!.managed,
-        lessThanOrEqualTo(before[weak]!.managed),
-        reason: 'eighty slots left held-out $weak no better, $where',
-      );
-      expect(
-        after[otherThan(weak)]!.managed,
-        greaterThan(before[otherThan(weak)]!.managed),
-        reason: 'while the strong family improved, $where',
-      );
-    }
-  });
-
-  test('a family is asked past its own evidence at the other one\'s pace', () {
-    for (final entry in runs.entries) {
-      final (weak, seed) = entry.key;
-      final where = 'weak in $weak at seed $seed';
-      // Slots where this family has demonstrated nothing at all at the span
-      // being asked for, so nothing it has earned can explain the tempo.
-      final unearned = [
-        for (final slot in slotsIn(entry.value, weak))
-          if (slot.frontierAtSpan == 0 && slot.chosen.conditions.tempoBpm > 60)
-            slot,
-      ];
+      final strongGain =
+          after[otherThan(weak)]!.managed - before[otherThan(weak)]!.managed;
+      final weakGain = after[weak]!.managed - before[weak]!.managed;
 
       expect(
-        unearned,
-        isNotEmpty,
+        strongGain,
+        greaterThan(0),
+        reason: 'the strong family improves in every run, $where',
+      );
+      expect(
+        weakGain,
+        lessThan(strongGain),
         reason:
-            '$weak was asked for above the gentle entry tempo while having '
-            'demonstrated nothing at that span, $where',
+            'scoping the pace stopped the weak family being asked past itself '
+            'and did not on its own make it catch up, $where',
       );
-      for (final slot in unearned) {
-        expect(
-          slot.chosen.conditions.tempoBpm,
-          lessThanOrEqualTo(slot.transferableBefore),
-          reason:
-              'and what made that rung reachable is the median this hand '
-              'shows on material it owns, which counts ${otherThan(weak)} as '
-              'evidence about $weak, at slot ${slot.index}, $where',
-        );
-      }
     }
   });
 }

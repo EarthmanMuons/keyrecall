@@ -173,7 +173,7 @@ double handsTogetherEntryTempo(
 /// moves. A slot asks them of ten thousand candidates, and their answers vary
 /// with the hand or the material and span rather than with the candidate.
 class ExecutionMemo {
-  final Map<HandConfiguration, double> transferableTempo = {};
+  final Map<(HandConfiguration, String), double> transferableTempo = {};
   final Map<(String, int), double> handsTogetherEntry = {};
 }
 
@@ -230,21 +230,35 @@ bool handsTogetherPrerequisiteSatisfied(
 /// [span] is unread: pace is a fact about the hand, and nobody has played this
 /// material at any span. It stays in the signature because the caller is
 /// choosing a tempo for a particular span.
+///
+/// **Material this hand owns in the same family.** A hand fluent in one family
+/// has said nothing about the pace material in another should be met at, and
+/// counting it said exactly that: a synthetic player who never once completed
+/// anything in their weaker family was asked for it at sixty, seventy-two,
+/// eighty-four and ninety-six, one rung behind the family they were fluent in,
+/// until the work they could not do left the challenge band and stopped being
+/// offered at all. Generalizing within a family is the part that survives, so
+/// several comfortable members still set the pace for an unseen one.
+///
+/// Every residual the learner holds in that family counts, not only the ones
+/// this slot happens to be choosing between. Which family a residual belongs
+/// to is recorded on it, because a scale's id does not say.
 double transferableTempoFor(
   LearnerState state,
   HandConfiguration hands,
   int span, {
+  required String family,
   ExecutionMemo? memo,
 }) {
-  final cached = memo?.transferableTempo[hands];
+  final cached = memo?.transferableTempo[(hands, family)];
   if (cached != null) return cached;
   final paced = <double>[
     for (final residual in state.materialExecution.values)
-      if (residual.hands == hands)
+      if (residual.hands == hands && residual.familyId == family)
         if (residual.pacedTempoBpm > 0) residual.pacedTempoBpm,
   ]..sort();
   final transferable = paced.isEmpty ? 0.0 : paced[paced.length ~/ 2];
-  memo?.transferableTempo[hands] = transferable;
+  memo?.transferableTempo[(hands, family)] = transferable;
   return transferable;
 }
 
@@ -288,6 +302,7 @@ double unmeasuredEntryTempo(
     state,
     conditions.hands,
     conditions.octaves,
+    family: exercise.material.familyId,
     memo: memo,
   );
   return transferable > 0
@@ -384,6 +399,7 @@ ResolvedIntroduction resolveIntroduction(
     state,
     exercise.conditions.hands,
     exercise.conditions.octaves,
+    family: exercise.material.familyId,
     memo: memo,
   );
   if (pace <= 0) {

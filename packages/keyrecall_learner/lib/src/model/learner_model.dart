@@ -425,7 +425,12 @@ class LearnerModel {
     required double deltaExec,
     required DateTime at,
   }) {
-    final residual = state.materialExecutionFor(context, at, params);
+    final residual = state.materialExecutionFor(
+      context,
+      at,
+      params,
+      familyId: exercise.material.familyId,
+    );
     residual.residualMean +=
         params.materialExecution.learningRate * weight * deltaExec;
     residual.residualVariance = math.max(

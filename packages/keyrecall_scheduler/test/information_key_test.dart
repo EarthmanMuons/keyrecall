@@ -30,6 +30,7 @@ void main() {
             (material.materialId, hands, HandMotion.parallel),
             t0,
             learnerParams,
+            familyId: material.familyId,
           )
           ..demonstrate(octaves: 1, tempoBpm: 80)
           ..residualVariance = 0.3 + material.materialId.length / 100

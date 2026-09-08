@@ -94,6 +94,7 @@ Future<void> main(List<String> arguments) async {
         state,
         exercise.conditions.hands,
         exercise.conditions.octaves,
+        family: exercise.material.familyId,
       );
 
       final outcome = time('play', () => playing.play(exercise, rng));

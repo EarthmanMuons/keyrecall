@@ -814,17 +814,56 @@ contact is correct**: the first arpeggio is met at the gentle sixty, because no
 pace has been established yet. It is the second onward, once the scales are
 moving, that inherit a tempo from them.
 
-The fix is a design decision rather than an obvious correction, so nothing in
-production changed. Restricting the median to the same family, or falling back
-to the entry policy when a family has no evidence of its own, are both
-defensible and they differ in what they claim about a pianist. The behavior is
-pinned in `family_skew_test.dart` so that changing it is deliberate.
+### Scoping the evidence to the family
 
-### The beginner running dry was pinned too narrowly
+The median now runs over the residuals in the target's own family, and falls
+back to the configured entry policy when that family has shown nothing. Within a
+family it generalizes exactly as before, so several comfortable scales still set
+the pace for an unseen scale.
+
+Which family a residual belongs to is recorded on the residual. It cannot be
+recovered any other way: a scale's id does not name its family, and the
+candidates one slot is choosing between are not where the learner's evidence
+lives, so scoping by them silently drops legitimate same-family transfer. Both
+wrong answers were tried and both broke existing tests, which is how the
+recorded field earned its place. `checkpointSchemaVersion` is 2 and carries
+`family_id`; a version 1 checkpoint is refused rather than upgraded, because
+inferring provenance that was never stored is worse than rebuilding from the
+attempts, which is what an unreadable checkpoint already asks for.
+
+| player                     | seed | weak share   | weak held-out | fastest weak ask |
+| -------------------------- | ---- | ------------ | ------------- | ---------------- |
+| scale_strong_arpeggio_weak | 2    | 0.05 -> 0.40 | 0.00 -> 0.06  | 84 -> 69         |
+| scale_strong_arpeggio_weak | 4    | 0.45 -> 0.71 | 0.06 -> 0.11  | 96 -> 76         |
+| arpeggio_strong_scale_weak | 2    | 0.05 -> 0.07 | 0.06 -> 0.06  | 72 -> 60         |
+| arpeggio_strong_scale_weak | 4    | 0.46 -> 0.36 | 0.00 -> 0.00  | 96 -> 84         |
+
+Before and after, in each cell.
+
+**The false transfer is gone.** The weak family is met at what it has itself
+played, and at seed 2 the scale-weak player's scales are now asked at exactly
+the gentle sixty, where they had been climbing to seventy-two behind the
+arpeggios.
+
+**The allocation starvation is only partly downstream of it.** The arpeggio-weak
+player's share of the weak family rose sharply and its held-out share moved for
+the first time. The scale-weak player's did not: one seed barely moved, one went
+down, and neither improved. So keeping the weak family in a learnable region is
+necessary and not on its own sufficient, and whether anything should favour a
+weak family is still open. What is no longer true is that the question is
+confounded by a tempo the family never earned.
+
+### The beginner running dry was partly this
 
 `sitting_ran_dry` was recorded as a true beginner meeting a narrow catalog, out
-of reach in production. The scale-weak player reproduces it on the whole v1
-scale catalog, and across a calendar the second and later sittings admit nothing
-from their opening slot. It is not about the catalog's size or that one
-archetype; it is about being weak at the only family on offer. The arpeggio-weak
-player, who is strong at scales, does not trip it.
+of reach in production. The scale-weak player reproduced it on the whole v1
+scale catalog, and across a calendar the second and later sittings admitted
+nothing from their opening slot.
+
+Scoping the pace to the family removed that reproduction entirely. The
+scale-weak player now trips no structural invariant, in a sitting or across
+months, and the characterized exception names the true beginner alone again. A
+learner asked repeatedly for work above anything they had managed demonstrates
+nothing, and a sitting with nothing demonstrated eventually has nothing left it
+can admit. What survives for the true beginner is a narrower question than it
+looked, and it is now the only one.
