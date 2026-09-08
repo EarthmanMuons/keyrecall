@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -86,6 +87,67 @@ void main() {
         if (performed > ownPace) ownPace = performed;
       }
     }
+  });
+
+  test('the supported foothold survives narrowing, loses, and yields none', () {
+    var admitted = 0;
+    var selectable = 0;
+    final chosen = <TrajectorySlot>[];
+    final otherWeak = <TrajectorySlot>[];
+
+    for (final weak in weakIn.keys) {
+      bool foothold(CandidateTrace trace) =>
+          trace.exercise.material.familyId == weak &&
+          trace.executionAdvance == ExecutionAdvance.handsTogether &&
+          trace.challengeBypass == ChallengeBypass.executionProgression;
+
+      for (final seed in [2, 3, 4]) {
+        final trajectory = runSittings(
+          player: weakIn[weak]!,
+          seed: seed,
+          materials: catalog,
+          sittings: sittingsOnDays([0, 1, 2, 3], slots: 20),
+          observeTraces: (_, traces) =>
+              admitted += traces.where(foothold).length,
+        );
+        for (final slot in trajectory.slots) {
+          // Every slot, because a foothold competes in slots the strong family
+          // goes on to win as well.
+          selectable += [
+            slot.winner,
+            ...slot.alternatives,
+          ].where(foothold).length;
+          if (slot.chosen.material.familyId != weak) continue;
+          (foothold(slot.winner) ? chosen : otherWeak).add(slot);
+        }
+      }
+    }
+
+    expect(
+      selectable / admitted,
+      greaterThan(0.8),
+      reason:
+          'almost nothing removes it between admission and ranking, so what '
+          'happens to it is a ranking outcome rather than a narrowing one',
+    );
+    expect(
+      chosen.length / admitted,
+      lessThan(0.05),
+      reason: 'and ranking passes over it nearly every time',
+    );
+    expect(chosen, isNotEmpty);
+    expect(
+      chosen.where((slot) => slot.managedExecution),
+      isEmpty,
+      reason:
+          'when it does win it demonstrates nothing, so restoring its share '
+          'would restore activity rather than learning',
+    );
+    expect(
+      otherWeak.where((slot) => slot.managedExecution),
+      isNotEmpty,
+      reason: 'while the rest of the weak family sometimes does',
+    );
   });
 
   test('the weaker family still gains far less than the stronger one', () {

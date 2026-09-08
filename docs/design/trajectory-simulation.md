@@ -1003,3 +1003,43 @@ where the weak family had been improving, which is now flat. So this bought
 answerable work at the price of the weak family's only observed gain, and
 whether the cued hands-together candidate deserves to win a slot more often is
 the next allocation question rather than a settled one.
+
+### Whether the foothold deserves a slot
+
+Once only the supported rung survives, does the scheduler give it enough
+opportunity to matter? Six seeds per player, twelve runs, counting supported
+hands-together progression candidates in the weak family at each stage.
+
+| player                     | admitted | selectable | chosen |
+| -------------------------- | -------- | ---------- | ------ |
+| scale_strong_arpeggio_weak | 1796     | 1736       | 20     |
+| arpeggio_strong_scale_weak | 708      | 686        | 13     |
+
+**Narrowing removes almost none of it.** Ninety-seven per cent of what is
+admitted is still there when ranking runs, so what happens to the foothold is a
+ranking outcome and not an echo, pacing, dose or novelty one. That is the
+condition under which a rank preference would be the right instrument.
+
+It is also the condition under which the marginal value question decides
+everything, and it answers no.
+
+| weak-family selections | n   | managed | frontier advanced |
+| ---------------------- | --- | ------- | ----------------- |
+| hands-together step    | 43  | 0.00    | 0.00              |
+| everything else        | 247 | 0.08    | 0.09              |
+
+**Forty-three of them across twelve runs, and not one demonstrated execution or
+moved a frontier.** The rest of the weak family's work manages roughly one
+attempt in twelve. So the foothold survives to ranking, loses there, and
+produces nothing on the occasions it wins. Giving it rank would restore the weak
+family's activity without restoring its learning, which is the case that
+disqualifies the change rather than motivating it.
+
+Hands together is the hardest execution shape a family offers, and a learner
+weak in that family is the least likely to manage it. Offering it more often is
+not what would help them; what would is unclear, and it is not this.
+
+So no ranking preference was added, and the question is not closed so much as
+answered in the negative with the evidence attached. The general form worth
+keeping is that an adjacent execution step earns its slot by what it teaches,
+and this one, for this learner, teaches nothing yet.
