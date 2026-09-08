@@ -230,7 +230,8 @@ scheduler chose to ask, so a policy that asks easier questions improves all
 three without teaching anyone anything. `standardAssessment` builds a fixed set
 asked outside the practice sequence: every material, each hand alone and
 together, unguided, at one octave and one tempo. Passing it to `runTrajectory`
-or `runSittings` records a reading before the run and after each sitting.
+or `runSittings` records a reading at both ends of every sitting, so a break has
+a reading either side of it.
 
 A reading cannot change the run it measures. Its attempts are played with
 `practising: false`, so ability, familiarity, and the last performed tempo are
@@ -243,3 +244,20 @@ Each reading also records what the learner model expected of the same set.
 `beliefGap` is that expectation minus what the player did, which is what
 separates a scheduler reacting to a stale belief from one reacting to a learner
 who really has changed.
+
+## The forgetful returner
+
+Every other archetype keeps whatever practice gained, forever. A run across a
+calendar could therefore only establish how the scheduler reacts to its own
+belief aging, never whether that reaction suits a person who really has decayed.
+`PlayerArchetypes.forgetfulReturner` sets `retentionHalfLifeDays` and
+`familiarityHalfLifeDays`, and `PlayerState.restUntil` ages the player wherever
+the run ages the learner.
+
+Decay is exponential in elapsed calendar time, matching the learner model's own
+semantics, and it composes exactly, so a held-out reading can age the player to
+its own instant without the practice slot at that instant paying twice. It runs
+toward the ability and familiarity the player started with rather than toward
+zero, so a break can undo practice and cannot invent somebody worse than the
+person who first sat down. Natural tempo, compliance, and sprinting do not
+decay, so what a returner lost stays interpretable.

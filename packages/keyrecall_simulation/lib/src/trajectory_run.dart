@@ -96,6 +96,7 @@ Trajectory runSittings({
   void read(DateTime at) {
     if (assessment == null) return;
     learner.propagate(state, at);
+    playing.restUntil(at);
     readings.add(
       assess(
         assessment,
@@ -108,16 +109,23 @@ Trajectory runSittings({
     );
   }
 
-  read(sittings.first.at);
   for (var sitting = 0; sitting < sittings.length; sitting++) {
     final session = SessionState.resuming(history, config: pipeline.config);
     var lastAt = sittings[sitting].at;
+    // Both ends of every sitting. The one on arrival is the person a break
+    // handed back, before this sitting's practice starts moving them again,
+    // which is the only place a returner can be measured.
+    read(lastAt);
     for (var slot = 0; slot < sittings[sitting].slots; slot++) {
       final index = nextIndex++;
       final at = lastAt = sittings[sitting].at.add(
         Duration(seconds: (slot * minutesPerSlot * 60).round()),
       );
       learner.propagate(state, at);
+      // Belief and person age together at the top of a slot. A run whose
+      // player forgets nothing is unmoved by this, which is what keeps every
+      // existing trajectory where it was.
+      playing.restUntil(at);
       final probeBefore = session.tempoProbe;
       final probeFreshBefore = session.tempoProbeIsFresh;
       // Read what is needed immediately: this is the live state, and the slot

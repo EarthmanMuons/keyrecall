@@ -23,7 +23,7 @@ void main() {
     final measured = run(assessment: set);
     final unmeasured = run();
 
-    expect(measured.assessments, hasLength(4));
+    expect(measured.assessments, hasLength(6));
     expect(unmeasured.assessments, isEmpty);
     expect(
       slotsOf(measured).map((s) => s.chosen),
@@ -50,7 +50,7 @@ void main() {
     );
 
     final readings = trajectory.assessments;
-    expect(readings, hasLength(3));
+    expect(readings, hasLength(4));
     expect(readings.first.attempts, set.attempts);
     expect(
       readings.map((r) => r.managed).toSet(),
@@ -79,7 +79,10 @@ void main() {
     expect(readings.map((r) => r.afterSlots), [
       0,
       25,
+      25,
       50,
+      50,
+      75,
       75,
       100,
     ], reason: 'a reading says how much practice preceded it');
@@ -97,6 +100,7 @@ void main() {
 
     final beforeBreak = readings[1];
     final afterBreak = readings[2];
+    expect(beforeBreak.afterSlots, afterBreak.afterSlots);
 
     expect(afterBreak.managed, beforeBreak.managed);
     expect(afterBreak.retrieval, beforeBreak.retrieval);

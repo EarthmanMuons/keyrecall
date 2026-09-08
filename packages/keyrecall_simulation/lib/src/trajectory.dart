@@ -323,7 +323,7 @@ class Trajectory {
   /// The slots that admitted nothing, one per sitting that ran dry.
   final List<TerminalTrajectorySlot> terminals;
 
-  /// Held-out readings, taken before the run and after each sitting.
+  /// Held-out readings, taken at both ends of every sitting.
   ///
   /// Empty unless the run was given a set to ask. Everything else here
   /// describes what the scheduler chose; these describe the person it chose

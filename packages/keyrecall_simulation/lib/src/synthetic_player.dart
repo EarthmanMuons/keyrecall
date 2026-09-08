@@ -87,6 +87,28 @@ class SyntheticPlayer {
   /// anything.
   final double noise;
 
+  /// How long a break takes to cost half of what practice gained in
+  /// execution, in days, or null for somebody who does not lose it.
+  ///
+  /// Elapsed calendar time rather than sittings missed, so it means the same
+  /// thing as the learner model's own decay and a two-day gap and a two-month
+  /// one are the same question asked at two scales.
+  ///
+  /// **What was gained, not what they came with.** Ability slips back toward
+  /// the value this player started at and stops there, so forgetting can undo
+  /// practice and cannot invent a learner worse than the one who first sat
+  /// down. That bound is a modelling choice: it keeps a long gap interpretable
+  /// and keeps decay away from the negative abilities where a decay toward
+  /// zero would quietly improve somebody.
+  final double? retentionHalfLifeDays;
+
+  /// The same, for how well the material is known.
+  ///
+  /// Separate because retrieval and execution are separate channels
+  /// everywhere else, and a returner who still has the hands but has lost the
+  /// notes is the ordinary case rather than an exotic one.
+  final double? familiarityHalfLifeDays;
+
   /// How much practice at the edge of this player's ability improves it.
   ///
   /// Kept small and explicit. A player who never improves cannot show whether
@@ -113,6 +135,8 @@ class SyntheticPlayer {
     this.materialFamiliarity = const {},
     this.noise = 0.10,
     this.learningRate = 0.01,
+    this.retentionHalfLifeDays,
+    this.familiarityHalfLifeDays,
   });
 
   /// This player with one or two knobs turned, for asking what a single trait
@@ -132,6 +156,8 @@ class SyntheticPlayer {
     Map<String, double>? materialFamiliarity,
     double? noise,
     double? learningRate,
+    double? retentionHalfLifeDays,
+    double? familiarityHalfLifeDays,
   }) => SyntheticPlayer(
     id: id ?? this.id,
     placement: placement ?? this.placement,
@@ -147,6 +173,9 @@ class SyntheticPlayer {
     materialFamiliarity: materialFamiliarity ?? this.materialFamiliarity,
     noise: noise ?? this.noise,
     learningRate: learningRate ?? this.learningRate,
+    retentionHalfLifeDays: retentionHalfLifeDays ?? this.retentionHalfLifeDays,
+    familiarityHalfLifeDays:
+        familiarityHalfLifeDays ?? this.familiarityHalfLifeDays,
   );
 
   /// A fresh mutable player of this kind, so one run never improves another.
@@ -163,6 +192,8 @@ class PlayerState {
 
   final Map<HandConfiguration, double> _ability;
   final Map<String, double> _familiarity;
+  final Map<HandConfiguration, double> _startingAbility;
+  DateTime? _restedAt;
 
   PlayerState(this.player)
     : _ability = {
@@ -170,7 +201,55 @@ class PlayerState {
         HandConfiguration.left: player.leftHandAbility,
         HandConfiguration.together: player.handsTogetherAbility,
       },
+      _startingAbility = {
+        HandConfiguration.right: player.rightHandAbility,
+        HandConfiguration.left: player.leftHandAbility,
+        HandConfiguration.together: player.handsTogetherAbility,
+      },
       _familiarity = {...player.materialFamiliarity};
+
+  /// Ages this player to [at], losing whatever the gap since the last call
+  /// costs them.
+  ///
+  /// The first call sets the clock and costs nothing, so a run that never
+  /// calls this has a player who never forgets and a player with no half-life
+  /// is unaffected either way.
+  ///
+  /// Exponential in elapsed time, which is what makes a reading free: decay
+  /// composes exactly, so advancing to an instant twice, or in two steps,
+  /// leaves the same player as advancing to it once. A held-out assessment can
+  /// therefore age the player to its own moment without the practice slot at
+  /// that moment paying for it again.
+  void restUntil(DateTime at) {
+    final since = _restedAt;
+    _restedAt = at;
+    if (since == null) return;
+    final days =
+        at.difference(since).inMicroseconds / Duration.microsecondsPerDay;
+    if (days <= 0) return;
+
+    double slipped(double current, double toward, double? halfLifeDays) =>
+        halfLifeDays == null || halfLifeDays <= 0
+        ? current
+        : toward +
+              (current - toward) *
+                  math.pow(0.5, days / halfLifeDays).toDouble();
+
+    for (final hands in _ability.keys) {
+      _ability[hands] = slipped(
+        _ability[hands]!,
+        _startingAbility[hands]!,
+        player.retentionHalfLifeDays,
+      );
+    }
+    for (final materialId in _familiarity.keys) {
+      _familiarity[materialId] = slipped(
+        _familiarity[materialId]!,
+        player.materialFamiliarity[materialId] ?? player.familiarity,
+        player.familiarityHalfLifeDays,
+      );
+    }
+  }
 
   /// How well this player currently executes with [hands].
   double abilityOf(HandConfiguration hands) => _ability[hands]!;

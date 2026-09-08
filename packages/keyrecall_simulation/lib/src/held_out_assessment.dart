@@ -85,6 +85,10 @@ class AssessmentReading {
   final DateTime at;
 
   /// How many practice attempts the run had played by then.
+  ///
+  /// Two readings can share this and differ: the one closing a sitting and the
+  /// one opening the next are the same amount of practice at two instants, and
+  /// what separates them is the break.
   final int afterSlots;
 
   /// How many attempts this reading took.

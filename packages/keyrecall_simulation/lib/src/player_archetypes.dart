@@ -175,6 +175,30 @@ abstract final class PlayerArchetypes {
     spanPenalty: 0.3,
   );
 
+  /// Practises well and loses it between sittings.
+  ///
+  /// The player a long-gap run needs and did not have. Every other archetype
+  /// keeps whatever they gained forever, so a run across a calendar could only
+  /// ever establish how the scheduler reacts to its own belief aging. This one
+  /// forgets the notes faster than the hands, which is the ordinary shape of
+  /// coming back after a break, and forgets both fast enough that a month off
+  /// is visible in a held-out reading.
+  static SyntheticPlayer get forgetfulReturner => SyntheticPlayer(
+    id: 'forgetful_returner',
+    placement: PlacementTier.someExperience,
+    naturalTempoRightBpm: 108,
+    naturalTempoLeftBpm: 100,
+    tempoCompliance: 0.7,
+    rightHandAbility: 0.4,
+    leftHandAbility: 0.1,
+    handsTogetherAbility: -0.6,
+    familiarity: 0.55,
+    spanPenalty: 0.45,
+    learningRate: 0.05,
+    retentionHalfLifeDays: 45,
+    familiarityHalfLifeDays: 20,
+  );
+
   /// Every archetype, for sweeping.
   static List<SyntheticPlayer> get all => [
     trueBeginner,
@@ -187,5 +211,6 @@ abstract final class PlayerArchetypes {
     reliableSelfPaced,
     unevenHands,
     coordinationLimited,
+    forgetfulReturner,
   ];
 }
