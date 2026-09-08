@@ -1395,3 +1395,42 @@ evidence is a fact about a hand. Whether that is enough, or whether the scope
 should follow the execution shape rather than the hand, is a question this
 experiment poses rather than answers. Going straight to per-material would undo
 the generalization the bootstrap exists for.
+
+### Three exit scopes, compared
+
+Not production changes: three pipeline variants overriding only when the relaxed
+floor ends. Family-wide is what ships. Family and hand keeps it for the opposite
+hand. Context keeps it until this material, hand and motion has a frontier of
+its own. Four seeds per player, counting bootstrap-shape candidates refused at
+the ordinary floor with no execution step of their own.
+
+| exit scope    | refused with nowhere to go | slots to first frontier | held-out weak |
+| ------------- | -------------------------- | ----------------------- | ------------- |
+| family        | 5320 / 2881                | 47, none, none, 3       | unchanged     |
+| family + hand | 2848 / 1250                | 47, none, none, 3       | unchanged     |
+| context       | 944 / 600                  | 47, none, none, 3       | unchanged     |
+
+**Narrowing the scope halves the stranding, and then halves it again.** Family
+and hand is a real improvement and, as suspected, still leaves a learner's other
+material in that hand refused on evidence the model did not gain: the prediction
+for it is 0.477 before and after. Context scope leaves only candidates whose own
+context has a frontier at some other rung, which is a different situation, since
+those have somewhere to go even when this rung does not.
+
+**Everything else is identical.** Same slot of first frontier, same bootstrap
+selections, same held-out reading, in every scope. The exit condition has no
+observable behavioural consequence in these runs, because the work it strands
+loses at ranking whether or not it is admitted.
+
+So the scope cannot be chosen on outcomes here, and should be chosen on
+semantics. The formulation the evidence points at is candidate-relative rather
+than global: **use the relaxed floor while this candidate's execution context
+has no demonstrated basis for ordinary progression.** That makes entry ask what
+progression already asks, which is what stops one success stranding work it says
+nothing about. What it costs is that a learner meeting a second material in a
+practised hand is treated as acquiring rather than progressing, and whether that
+is right is a pedagogical question the harness cannot answer.
+
+Nothing changed. The defect is characterized, the candidate replacement is
+identified, and the reason to prefer it is an argument about meaning rather than
+a measured gain.
