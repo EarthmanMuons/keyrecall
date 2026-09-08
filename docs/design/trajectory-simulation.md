@@ -554,6 +554,26 @@ narrow: **should a span with no support anywhere be free on a material with no
 record?** The device sitting had that support and would not have been reported;
 these runs do not.
 
+### The guidance ladder cannot answer it
+
+The obvious correction is to charge an unsupported span the way novelty is
+charged, taking a rung of guidance back. Built, censused, and reverted: the
+counts came back byte for byte identical, because the lever does not reach.
+
+An unseen material is only provisionally eligible unless its guidance supplies
+the notes, so **a first exposure is already at notes previewed**. The novelty
+allowance of three gives a load of one the right to be unguided and a load of
+two the right to notes previewed, which is what the candidate already had. The
+charge is arithmetically real and behaviourally inert, and it could only bite a
+first exposure carrying two local novelties as well as an unsupported span.
+
+That leaves the question where it belongs. Guidance is the wrong instrument
+because support is already at its floor for a first encounter, so a span with no
+evidence behind it can only be answered by not offering it, which is an
+admission claim rather than a support one. Whether it should be is a product
+decision, and the harness has now said everything it can: the case is real,
+rare, early, and out of reach of the mechanism nearest to hand.
+
 ## What a sweep costs, and what makes it worse
 
 A parameter sweep is a different shape of cost from the trajectory sweep. It
