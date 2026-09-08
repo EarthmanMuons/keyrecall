@@ -13,10 +13,12 @@ import 'synthetic_learner.dart';
 final DateTime defaultSimulationEpoch = DateTime.utc(2026);
 
 /// Simulated time between consecutive attempts.
-const Duration defaultAttemptSpacing = Duration(hours: 12);
+const Duration defaultAttemptSpacing = Duration(minutes: 1);
 
 /// What a chooser knows when it decides what to present next.
 class AttemptContext {
+  final LearnerModel learner;
+
   /// The simulation's random stream, for choosers that want to sample.
   final PythonCompatibleRandom rng;
 
@@ -30,6 +32,7 @@ class AttemptContext {
   final DateTime at;
 
   const AttemptContext({
+    required this.learner,
     required this.rng,
     required this.attemptIndex,
     required this.state,
@@ -55,12 +58,8 @@ typedef OutcomeObserver =
 /// the run continues where it left off, so a caller can inspect or checkpoint
 /// state partway without perturbing the sequence.
 ///
-/// Defaults to [LearnerModel.v1Prototype] rather than the live model, because
-/// this harness exists to hold the port against the frozen Python reference.
-/// Its synthetic learner samples an achieved tempo below the requested one on
-/// nearly every attempt, so under the live model these runs would diverge from
-/// the reference by design and stop testing what they were built to test.
-/// Pass the live model explicitly to simulate current behavior.
+/// Uses the production model and one-minute attempt spacing. Archived reference
+/// experiments must request their model and clock explicitly.
 class PracticeSimulation {
   /// The learner model under test.
   final LearnerModel learner;
@@ -99,7 +98,7 @@ class PracticeSimulation {
   factory PracticeSimulation.of(
     SyntheticProfile profile, {
     required int seed,
-    LearnerModel learner = const LearnerModel.v1Prototype(),
+    LearnerModel learner = const LearnerModel(),
     DateTime? epoch,
     Duration attemptSpacing = defaultAttemptSpacing,
   }) {
@@ -121,7 +120,7 @@ class PracticeSimulation {
     required TrueLearnerProfile truth,
     required LearnerState state,
     required int seed,
-    LearnerModel learner = const LearnerModel.v1Prototype(),
+    LearnerModel learner = const LearnerModel(),
     DateTime? epoch,
     Duration attemptSpacing = defaultAttemptSpacing,
   }) => PracticeSimulation._(
@@ -162,6 +161,7 @@ class PracticeSimulation {
 
       final exercise = pick(
         AttemptContext(
+          learner: learner,
           rng: rng,
           attemptIndex: _attemptIndex,
           state: state,

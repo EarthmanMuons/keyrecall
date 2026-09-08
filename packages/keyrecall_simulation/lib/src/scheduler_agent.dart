@@ -80,6 +80,7 @@ class SchedulerAgent {
   final List<AttemptRecord> records = [];
 
   SessionState _session = SessionState();
+  final List<PriorSelection> _history = [];
 
   SchedulerAgent({
     required this.pipeline,
@@ -98,15 +99,21 @@ class SchedulerAgent {
 
   /// Starts a fresh practice sitting.
   ///
-  /// Session state resets while the learner, the hidden truth, and simulated
+  /// Session allocation history resumes while the learner, the hidden truth, and simulated
   /// time carry on. A long behavioral horizon is several bounded sessions, not
   /// one run past the safety cap.
-  void startNewSession() => _session = SessionState();
+  void startNewSession() =>
+      _session = SessionState.resuming(_history, config: pipeline.config);
 
   /// Chooses what to present next. Plug this into a simulation as its chooser.
   ///
   /// Throws [NoAdmittedCandidate] when the decision admits nothing.
   Exercise choose(AttemptContext context) {
+    if (!identical(context.learner, pipeline.learner)) {
+      throw ArgumentError(
+        'scheduler and simulation must share one learner model',
+      );
+    }
     final selection = pipeline.decide(
       state: context.state,
       session: _session,
@@ -153,12 +160,19 @@ class SchedulerAgent {
   void observe(Exercise exercise, Outcome outcome, DateTime at) {
     records.last.outcome = outcome;
     pipeline.recordOutcome(_session, exercise, outcome, at: at);
+    _history.add(
+      PriorSelection(
+        exercise,
+        productive: pipeline.learner.executionWasManaged(outcome),
+        at: at,
+      ),
+    );
   }
 }
 
 /// Runs several scheduler-driven sessions back to back over one simulation.
 ///
-/// Session state resets at each boundary while the learner, the hidden truth,
+/// Session allocation history resumes at each boundary while the learner, the hidden truth,
 /// and simulated time carry over unbroken. Returns every attempt trace in
 /// order.
 List<AttemptTrace> runSessions(
@@ -167,6 +181,11 @@ List<AttemptTrace> runSessions(
   required int sessionCount,
   required int attemptsPerSession,
 }) {
+  if (!identical(simulation.learner, agent.pipeline.learner)) {
+    throw ArgumentError(
+      'scheduler and simulation must share one learner model',
+    );
+  }
   final traces = <AttemptTrace>[];
   for (var session = 0; session < sessionCount; session++) {
     if (session > 0) agent.startNewSession();

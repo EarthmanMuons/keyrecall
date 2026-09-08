@@ -86,10 +86,11 @@ Trajectory runSittings({
   final recorded = <TrajectorySlot>[];
   final terminals = <TerminalTrajectorySlot>[];
   final history = <PriorSelection>[];
-  var index = 0;
+  var nextIndex = 0;
   for (var sitting = 0; sitting < sittings.length; sitting++) {
     final session = SessionState.resuming(history, config: pipeline.config);
-    for (var slot = 0; slot < sittings[sitting].slots; slot++, index++) {
+    for (var slot = 0; slot < sittings[sitting].slots; slot++) {
+      final index = nextIndex++;
       final at = sittings[sitting].at.add(
         Duration(seconds: (slot * minutesPerSlot * 60).round()),
       );

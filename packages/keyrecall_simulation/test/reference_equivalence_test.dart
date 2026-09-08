@@ -194,6 +194,8 @@ void main() {
         final simulation = PracticeSimulation.of(
           reference.profile,
           seed: reference.seed,
+          attemptSpacing: const Duration(hours: 12),
+          learner: const LearnerModel.v1Prototype(),
         );
         final traces = simulation.run(reference.attempts);
         final state = simulation.state;
@@ -252,6 +254,8 @@ void main() {
         final simulation = PracticeSimulation.of(
           SyntheticProfile.beginner,
           seed: 7,
+          attemptSpacing: const Duration(hours: 12),
+          learner: const LearnerModel.v1Prototype(),
         );
         return simulation
             .run(60)
@@ -272,6 +276,8 @@ void main() {
         final simulation = PracticeSimulation.of(
           SyntheticProfile.advanced,
           seed: 11,
+          attemptSpacing: const Duration(hours: 12),
+          learner: const LearnerModel.v1Prototype(),
         );
         return [
           for (final batch in batches)

@@ -16,77 +16,64 @@ void main() {
   const seeds = 6;
   const slots = 40;
 
-  /// Invariant failures the sweep found and nothing has fixed yet.
-  ///
-  /// Named and pinned rather than deleted or quietly tolerated. Each is a real
-  /// defect with a deterministic reproduction, and the reason says what it is,
-  /// so removing an entry is the visible act of claiming it is fixed.
-  const known = {
-    'true_beginner':
-        'sitting_ran_dry on the narrow catalog only. Out of reach in '
-        'production while PracticeSession.open refuses a scoped goal, and a '
-        'blocker for shipping goals. Pinned in sitting_ran_dry_test.dart',
-  };
-
   for (final player in PlayerArchetypes.all) {
-    test(
-      '${player.id} trips no structural invariant',
-      skip: known[player.id],
-      () {
-        final found = <Anomaly>[];
-        for (var seed = 0; seed < seeds; seed++) {
-          final trajectory = runTrajectory(
-            player: player,
-            seed: seed,
-            materials: v1ScaleCatalog,
-            slots: slots,
-          );
-          found.addAll(
-            detectAnomalies(
-              trajectory,
-              requestedSlots: slots,
-            ).where((a) => a.severity == AnomalySeverity.invariant),
-          );
-        }
-
-        expect(
-          found,
-          isEmpty,
-          reason: found.map((a) => '${a.summary}\n${a.census}').join('\n\n'),
+    test('${player.id} trips no structural invariant', () {
+      final found = <Anomaly>[];
+      for (var seed = 0; seed < seeds; seed++) {
+        final trajectory = runTrajectory(
+          player: player,
+          seed: seed,
+          materials: v1ScaleCatalog,
+          slots: slots,
         );
-      },
-    );
-
-    test(
-      '${player.id} trips no structural invariant across months',
-      skip: known[player.id],
-      () {
-        // The same properties, over sittings spread across a calendar rather
-        // than one unbroken run: what decays between them is the only
-        // difference, and nothing about a break makes a defect acceptable.
-        final sittings = sittingsOnDays([0, 2, 9, 30, 90], slots: 8);
-        final found = <Anomaly>[];
-        for (var seed = 0; seed < 3; seed++) {
-          found.addAll(
-            detectAnomalies(
-              runSittings(
-                player: player,
-                seed: seed,
-                materials: v1ScaleCatalog,
-                sittings: sittings,
-              ),
-              requestedSlots: 40,
-            ).where((a) => a.severity == AnomalySeverity.invariant),
-          );
-        }
-
-        expect(
-          found,
-          isEmpty,
-          reason: found.map((a) => '${a.summary}\n${a.census}').join('\n\n'),
+        found.addAll(
+          detectAnomalies(trajectory, requestedSlots: slots).where(
+            (a) =>
+                a.severity == AnomalySeverity.invariant &&
+                !(player.id == 'true_beginner' &&
+                    a.detector == 'sitting_ran_dry'),
+          ),
         );
-      },
-    );
+      }
+
+      expect(
+        found,
+        isEmpty,
+        reason: found.map((a) => '${a.summary}\n${a.census}').join('\n\n'),
+      );
+    });
+
+    test('${player.id} trips no structural invariant across months', () {
+      // The same properties, over sittings spread across a calendar rather
+      // than one unbroken run: what decays between them is the only
+      // difference, and nothing about a break makes a defect acceptable.
+      final sittings = sittingsOnDays([0, 2, 9, 30, 90], slots: 8);
+      final found = <Anomaly>[];
+      for (var seed = 0; seed < 3; seed++) {
+        found.addAll(
+          detectAnomalies(
+            runSittings(
+              player: player,
+              seed: seed,
+              materials: v1ScaleCatalog,
+              sittings: sittings,
+            ),
+            requestedSlots: 40,
+          ).where(
+            (a) =>
+                a.severity == AnomalySeverity.invariant &&
+                !(player.id == 'true_beginner' &&
+                    a.detector == 'sitting_ran_dry'),
+          ),
+        );
+      }
+
+      expect(
+        found,
+        isEmpty,
+        reason: found.map((a) => '${a.summary}\n${a.census}').join('\n\n'),
+      );
+    });
   }
 
   test('a detector reads the census it reports from', () {

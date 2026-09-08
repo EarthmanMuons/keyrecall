@@ -30,6 +30,7 @@ void main() {
       final simulation = PracticeSimulation.of(
         SyntheticProfile.advanced,
         seed: 0,
+        attemptSpacing: const Duration(hours: 12),
       );
       final traces = simulation.run(150);
 
@@ -99,6 +100,7 @@ void main() {
       final simulation = PracticeSimulation.of(
         SyntheticProfile.techniqueStrongMemoryWeak,
         seed: 2,
+        attemptSpacing: const Duration(hours: 12),
       );
 
       for (final trace in simulation.run(150)) {
@@ -126,6 +128,7 @@ void main() {
     final simulation = PracticeSimulation.of(
       SyntheticProfile.advanced,
       seed: 1,
+      attemptSpacing: const Duration(hours: 12),
     );
     final exercise = exerciseFor(cMajor);
     final traces = simulation.run(80, chooser: fixedExercise(exercise));
@@ -148,6 +151,7 @@ void main() {
     final simulation = PracticeSimulation.of(
       SyntheticProfile.advanced,
       seed: 2,
+      attemptSpacing: const Duration(hours: 12),
     );
     final state = simulation.state;
     final leftProbe = exerciseFor(cMajor, hands: HandConfiguration.left);
@@ -229,11 +233,15 @@ void main() {
             )]!
             .residualMean;
 
-    final control = PracticeSimulation.of(SyntheticProfile.advanced, seed: 0)
-      ..run(120, chooser: alternating);
+    final control = PracticeSimulation.of(
+      SyntheticProfile.advanced,
+      seed: 0,
+      attemptSpacing: const Duration(hours: 12),
+    )..run(120, chooser: alternating);
     final treatment = PracticeSimulation.of(
       SyntheticProfile.materialSpecificDifficulty,
       seed: 0,
+      attemptSpacing: const Duration(hours: 12),
     )..run(120, chooser: alternating);
 
     expect(
@@ -269,7 +277,11 @@ void main() {
     );
 
     List<double> startedPitch(SyntheticProfile profile) {
-      final simulation = PracticeSimulation.of(profile, seed: 5);
+      final simulation = PracticeSimulation.of(
+        profile,
+        seed: 5,
+        attemptSpacing: const Duration(hours: 12),
+      );
       return simulation
           .run(30, chooser: fixedExercise(exerciseFor(cMajor)))
           .where((trace) => trace.outcome.started)

@@ -206,9 +206,19 @@ section 12 summarizes what the synthetic analysis established, and
 [`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)
 defines the replay guarantees this harness is meant to grow into.
 
-## Calibration replay
+## Production and archived experiments
+
+`PracticeSimulation` defaults to the production learner and one minute between
+attempts. Reference tests explicitly pass `LearnerModel.v1Prototype()` and a
+12-hour spacing. A `SchedulerAgent` must share the simulation's learner
+instance; `runSessions` rejects a mismatch before running. New sittings resume
+allocation history through `SessionState.resuming`.
 
 Calibration replay accepts `ReplayPresentation` values carrying the exercise and
 observed familiarity. `ReplayPresentation.observed` preserves exported
 provenance; unknown stays unknown, and replay position never supplies a
 classification.
+
+Trajectory decision indices include blocked decisions. The beginner invariant
+suite permits only its characterized narrow-catalog `sitting_ran_dry` anomaly;
+all other structural invariants still run.

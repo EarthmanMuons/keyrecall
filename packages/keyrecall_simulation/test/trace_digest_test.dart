@@ -1,3 +1,4 @@
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -80,6 +81,8 @@ void main() {
         final simulation = PracticeSimulation.of(
           pinned.profile,
           seed: pinned.seed,
+          attemptSpacing: const Duration(hours: 12),
+          learner: const LearnerModel.v1Prototype(),
         );
         final traces = simulation.run(pinned.attempts);
 
@@ -106,6 +109,8 @@ void main() {
       final simulation = PracticeSimulation.of(
         SyntheticProfile.advanced,
         seed: 1,
+        attemptSpacing: const Duration(hours: 12),
+        learner: const LearnerModel.v1Prototype(),
       );
       final digest = discreteTraceDigest(simulation.run(1));
       expect(digest, isNotEmpty);
@@ -123,6 +128,8 @@ void main() {
       final traces = PracticeSimulation.of(
         SyntheticProfile.advanced,
         seed: 1,
+        attemptSpacing: const Duration(hours: 12),
+        learner: const LearnerModel.v1Prototype(),
       ).run(5);
       expect(
         discreteTraceDigest(traces),
@@ -136,7 +143,12 @@ void main() {
       SyntheticProfile profile,
       int seed,
       int attempts,
-    ) => PracticeSimulation.of(profile, seed: seed).run(attempts);
+    ) => PracticeSimulation.of(
+      profile,
+      seed: seed,
+      attemptSpacing: const Duration(hours: 12),
+      learner: const LearnerModel.v1Prototype(),
+    ).run(attempts);
 
     test('a different seed changes both', () {
       final first = runOf(SyntheticProfile.advanced, 4, 40);
