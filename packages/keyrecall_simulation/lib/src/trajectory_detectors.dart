@@ -783,6 +783,15 @@ RankTerm? decidingTerm(RankKey winner, RankKey other) {
 /// An observation rather than an invariant. That a near-tie decided a slot is
 /// a fact; that it decided it wrongly is a judgment, and the threshold for
 /// near is exactly the kind of number this file refuses to assert on.
+///
+/// **Proportional, and the summary carries the absolute margin beside it.**
+/// Near is only meaningful against a scale, and the terms have very different
+/// ones; but a policy that ties near-equal candidates has to be stated in
+/// absolute terms, and the two readings separate the findings into two
+/// populations rather than one. Retention decisions here are proportionally
+/// and absolutely small; information decisions are proportionally small on a
+/// term whose range is wide, which is a different phenomenon wearing the same
+/// label.
 Iterable<Anomaly> _hairlineRankDecision(Trajectory trajectory) sync* {
   const tolerance = 0.25;
   for (final slot in trajectory.slots) {
@@ -810,7 +819,8 @@ Iterable<Anomaly> _hairlineRankDecision(Trajectory trajectory) sync* {
         subject: term.id,
         summary:
             'won on ${term.id} by '
-            '${((ours - theirs).abs() / scale * 100).toStringAsFixed(1)}% '
+            '${((ours - theirs).abs() / scale * 100).toStringAsFixed(1)}%, '
+            '${(ours - theirs).abs().toStringAsExponential(2)} absolute, '
             'over a ${key.realization.id} candidate, while asking for '
             '${slot.realization.id}',
         census: censusOf(slot),

@@ -3,6 +3,7 @@ import 'dart:isolate';
 
 import 'package:args/args.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -41,6 +42,13 @@ Future<void> main(List<String> arguments) async {
           'simulated calendar time. One sitting when omitted.',
     )
     ..addOption(
+      'retention-tolerance',
+      defaultsTo: '0',
+      help:
+          'How close two candidates have to be on retention before it stops '
+          'deciding between them.',
+    )
+    ..addOption(
       'census',
       defaultsTo: '3',
       help: 'How many worked examples to print per detector.',
@@ -62,6 +70,9 @@ Future<void> main(List<String> arguments) async {
         ], slots: slots);
   final requested = slots * sittings.length;
   final censusLimit = int.parse(options.option('census')!);
+  final tolerances = RankTolerances(
+    retention: double.parse(options.option('retention-tolerance')!),
+  );
 
   final incidence = <String, Map<String, int>>{};
   final severities = <String, AnomalySeverity>{};
@@ -84,7 +95,8 @@ Future<void> main(List<String> arguments) async {
 
   final running = [
     for (final bucket in buckets)
-      if (bucket.isNotEmpty) Isolate.run(() => _findingsFor(bucket, sittings)),
+      if (bucket.isNotEmpty)
+        Isolate.run(() => _findingsFor(bucket, sittings, tolerances)),
   ];
   final findings = [for (final batch in await Future.wait(running)) ...batch];
   stdout.writeln(
@@ -117,7 +129,8 @@ Future<void> main(List<String> arguments) async {
     ..writeln()
     ..writeln(
       '== anomaly incidence: $seeds seeds x $requested slots per archetype '
-      'across ${sittings.length} sitting(s)',
+      'across ${sittings.length} sitting(s), retention tolerance '
+      '${tolerances.retention}',
     )
     ..writeln(
       '   counts are anomalies raised, so one run may contribute more '
@@ -199,8 +212,16 @@ class _Finding {
 }
 
 /// Every anomaly one bucket of trajectories produces, in its own isolate.
-List<_Finding> _findingsFor(List<_Job> jobs, List<Sitting> sittings) {
+List<_Finding> _findingsFor(
+  List<_Job> jobs,
+  List<Sitting> sittings,
+  RankTolerances tolerances,
+) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
+  final pipeline = SchedulerPipeline(
+    learner: const LearnerModel(),
+    config: v1SchedulerConfig.withRankTolerances(tolerances),
+  );
   final requested = sittings.fold(0, (total, s) => total + s.slots);
   return [
     for (final job in jobs)
@@ -211,6 +232,7 @@ List<_Finding> _findingsFor(List<_Job> jobs, List<Sitting> sittings) {
           materials: allScales,
           sittings: sittings,
           generated: generated,
+          pipeline: pipeline,
         ),
         requestedSlots: requested,
       ))

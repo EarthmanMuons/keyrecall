@@ -1468,11 +1468,17 @@ class SchedulerPipeline {
   /// Production callers want [selectChoice], which applies the repetition
   /// guard first. Ties resolve to the earliest candidate in [traces], so
   /// selection stays deterministic for replay.
+  ///
+  /// Compared through [SchedulerConfig.rankTolerances] rather than
+  /// [RankKey.compareTo], so a term whose two values are too close to mean
+  /// anything passes the question to the next one. With the default
+  /// tolerances, which are all zero, the two are the same ordering.
   CandidateTrace? selectBest(List<CandidateTrace> traces) {
+    final order = config.rankTolerances;
     CandidateTrace? best;
     for (final trace in traces) {
       if (!trace.isRanked) continue;
-      if (best == null || trace.rankKey!.compareTo(best.rankKey!) > 0) {
+      if (best == null || order.compare(trace.rankKey!, best.rankKey!) > 0) {
         best = trace;
       }
     }

@@ -459,11 +459,42 @@ was wrong is a judgment, and the threshold for near is exactly the kind of
 number this file refuses to assert on.
 
 It fires eleven to twenty-five times per archetype over a hundred and twenty
-slots, on every archetype but the true beginner. So the device sitting was not
-unlucky, and a fix is a change to how the key compares rather than a rule about
-slow exercises. The design worth trying first is a per-term equivalence
-threshold, explicit in configuration, since one absolute tolerance cannot serve
-terms as differently scaled as retention and information.
+slots, on every archetype but the true beginner, so the device sitting was not
+unlucky.
+
+### Two populations, not one
+
+The findings split, and the split is the useful part. Over the same runs, by the
+term that decided:
+
+| term          | findings | absolute p10 | absolute p50 | relative p50 |
+| ------------- | -------- | ------------ | ------------ | ------------ |
+| `information` | 126      | 1.2e-6       | 1.5e-1       | 7.0%         |
+| `retention`   | 31       | 1.6e-4       | 1.9e-4       | 7.3%         |
+
+Both look identical proportionally and are nothing alike. Information runs from
+about 0.4 to 3.5, so a median margin of 0.15 is a real difference on that term
+rather than a tie; retention for known material sits near 1e-4, so a margin of
+1.9e-4 is the whole quantity. **A proportional detector finds both, and only one
+of them is a near-tie.**
+
+The device case is smaller than either: 2.1e-5 in retention, below the tenth
+percentile of anything the simulation produced. A retention tolerance of 1e-4
+therefore covers it with headroom while leaving the simulated population
+untouched, and the census either side confirms exactly that: `advanced` loses
+one finding of twenty-five, `reliable_self_paced` gains one progression stall,
+and nothing else moves.
+
+That is a safety result rather than a benefit one. **The tolerance is defensible
+as a statement of policy, that a retention difference below 1e-4 is not
+decision-relevant, and simulation cannot show it helping because simulation
+never produced a near-tie that small.** It stays at zero in the V1 policy until
+that statement is made deliberately rather than inferred from one sitting.
+
+Tolerating the information findings would be a different act entirely: a
+fifteen-hundredth of that term's range is a preference the key is expressing,
+not a rounding error, and a tolerance wide enough to tie them would rewrite what
+the term means.
 
 ## What a sweep costs, and what makes it worse
 

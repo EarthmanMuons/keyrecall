@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
+import '../candidate_trace.dart';
 import '../introduction_breadth.dart';
 
 /// Thresholds for the `REQUIRES` prerequisite gate.
@@ -471,6 +472,10 @@ class SchedulerConfig {
   /// not respond to what it produces.
   final DoseConfig? dose;
 
+  /// How near two candidates have to be on a rank term before it stops
+  /// deciding between them.
+  final RankTolerances rankTolerances;
+
   /// The introduction cap, or null where breadth is uncapped.
   final IntroductionConfig? introductions;
 
@@ -487,6 +492,7 @@ class SchedulerConfig {
     required this.probe,
     required this.pacing,
     this.dose,
+    this.rankTolerances = RankTolerances.exact,
     this.introductions,
     this.novelty,
   });
@@ -514,6 +520,7 @@ class SchedulerConfig {
     probe: probe,
     pacing: pacing,
     dose: dose,
+    rankTolerances: rankTolerances,
     introductions: introductions,
     novelty: novelty,
   );
@@ -529,9 +536,26 @@ class SchedulerConfig {
     probe: probe,
     pacing: pacing,
     dose: dose,
+    rankTolerances: rankTolerances,
     introductions: introductions,
     novelty: novelty,
   );
+
+  /// The same policy with [rankTolerances] deciding what ties.
+  SchedulerConfig withRankTolerances(RankTolerances rankTolerances) =>
+      SchedulerConfig(
+        modelVersion: modelVersion,
+        eligibility: eligibility,
+        safety: safety,
+        challenge: challenge,
+        diversity: diversity,
+        probe: probe,
+        pacing: pacing,
+        dose: dose,
+        rankTolerances: rankTolerances,
+        introductions: introductions,
+        novelty: novelty,
+      );
 
   /// The same policy with [introductions] in force, or uncapped when null.
   SchedulerConfig withIntroductions(IntroductionConfig? introductions) =>
@@ -544,6 +568,7 @@ class SchedulerConfig {
         probe: probe,
         pacing: pacing,
         dose: dose,
+        rankTolerances: rankTolerances,
         introductions: introductions,
         novelty: novelty,
       );
@@ -558,6 +583,7 @@ class SchedulerConfig {
     probe: probe,
     pacing: pacing,
     dose: dose,
+    rankTolerances: rankTolerances,
     introductions: introductions,
     novelty: novelty,
   );

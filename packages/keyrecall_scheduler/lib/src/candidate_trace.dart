@@ -529,3 +529,86 @@ class CandidateTrace {
 }
 
 int _order(bool flag) => flag ? 1 : 0;
+
+/// How close two values of a rank term have to be before the term stops
+/// deciding.
+///
+/// The key is a dictionary ordering, so the first term to differ **at all**
+/// settles a slot however little it differs by and however much better the
+/// alternative is on everything after it. A device sitting produced the shape:
+/// an exercise at sixty beats, on material whose frontier was a hundred and
+/// thirty-two, beat a waiting tempo probe because its retention read 0.000122
+/// against 0.000101. Four terms later the realization rank would have said the
+/// learner had outgrown it, and it never got to speak.
+///
+/// **Absolute rather than proportional.** The policy this states is that a
+/// retention difference smaller than some amount is not decision-relevant, and
+/// a proportional threshold is unstable exactly where these ties happen, near
+/// zero.
+///
+/// Per term, because the terms are scaled differently: retention lives near
+/// 1e-4 for well-known material and information near 2, so one tolerance
+/// cannot serve both. **Zero by default**, so the mechanism exists without
+/// silently reordering anything nobody has justified a number for.
+@immutable
+class RankTolerances {
+  final double retention;
+  final double information;
+  final double diversity;
+  final double goals;
+  final double realizationFit;
+
+  const RankTolerances({
+    this.retention = 0,
+    this.information = 0,
+    this.diversity = 0,
+    this.goals = 0,
+    this.realizationFit = 0,
+  }) : assert(retention >= 0, 'a tolerance is a distance'),
+       assert(information >= 0, 'a tolerance is a distance'),
+       assert(diversity >= 0, 'a tolerance is a distance'),
+       assert(goals >= 0, 'a tolerance is a distance'),
+       assert(realizationFit >= 0, 'a tolerance is a distance');
+
+  /// Nothing ties: the exact dictionary ordering.
+  static const RankTolerances exact = RankTolerances();
+
+  /// Whether [a] and [b] are near enough on a term with tolerance [within] to
+  /// be treated as the same.
+  static bool _ties(double a, double b, double within) =>
+      (a - b).abs() <= within;
+
+  /// [a] against [b], with near-enough terms passed over.
+  ///
+  /// Positive when [a] outranks [b]. Every discrete term is compared exactly:
+  /// an eligibility tier or a coordination transition is a different kind of
+  /// claim, and a candidate losing on one has not lost by a margin at all.
+  int compare(RankKey a, RankKey b) {
+    final byTier = a.tier.index.compareTo(b.tier.index);
+    if (byTier != 0) return byTier;
+    final byTransition = (a.coordinationTransition ? 1 : 0).compareTo(
+      b.coordinationTransition ? 1 : 0,
+    );
+    if (byTransition != 0) return byTransition;
+    final byContrary = (a.contraryCoordination ? 1 : 0).compareTo(
+      b.contraryCoordination ? 1 : 0,
+    );
+    if (byContrary != 0) return byContrary;
+    if (!_ties(a.retention, b.retention, retention)) {
+      return a.retention.compareTo(b.retention);
+    }
+    if (!_ties(a.information, b.information, information)) {
+      return a.information.compareTo(b.information);
+    }
+    if (!_ties(a.diversity, b.diversity, diversity)) {
+      return a.diversity.compareTo(b.diversity);
+    }
+    if (!_ties(a.goals, b.goals, goals)) return a.goals.compareTo(b.goals);
+    final byRealization = a.realization.index.compareTo(b.realization.index);
+    if (byRealization != 0) return byRealization;
+    if (!_ties(a.realizationFit, b.realizationFit, realizationFit)) {
+      return a.realizationFit.compareTo(b.realizationFit);
+    }
+    return 0;
+  }
+}
