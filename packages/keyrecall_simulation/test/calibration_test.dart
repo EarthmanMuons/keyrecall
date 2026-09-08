@@ -310,4 +310,51 @@ void main() {
 
     expect(profileOf(observationsOf(export)).familiarMotor, isNull);
   });
+
+  group('a reliable, self-paced player', () {
+    final truth = PlayerArchetypes.reliableSelfPaced;
+
+    test('completes nearly everything and plays its own pace', () {
+      final profile = sittingOf(truth);
+
+      expect(profile.completionRate, greaterThan(0.9));
+      expect(profile.motor[HandConfiguration.right], greaterThan(0.85));
+      expect(profile.tempoSlope[HandConfiguration.right], lessThan(0.6));
+    });
+
+    test('the weaker archetypes stay unreliable beside it', () {
+      // The point is expressiveness, not making everybody clean: a family that
+      // can describe this learner and no longer describe a struggling one has
+      // traded one blind spot for another.
+      for (final other in [
+        PlayerArchetypes.trueBeginner,
+        PlayerArchetypes.developing,
+      ]) {
+        expect(
+          sittingOf(other).completionRate,
+          lessThan(sittingOf(truth).completionRate - 0.2),
+          reason: other.id,
+        );
+      }
+    });
+
+    test('a fit recovers that it does not follow the count-in', () {
+      final compliance = rangeOf(
+        fitOf(truth),
+        (player) => player.tempoCompliance,
+      );
+
+      expect(compliance.median, lessThan(0.7));
+    });
+
+    test('a fit puts its ability above a struggling learner\'s', () {
+      final reliable = rangeOf(fitOf(truth), (p) => p.rightHandAbility);
+      final struggling = rangeOf(
+        fitOf(PlayerArchetypes.developing),
+        (p) => p.rightHandAbility,
+      );
+
+      expect(reliable.median, greaterThan(struggling.median));
+    });
+  });
 }

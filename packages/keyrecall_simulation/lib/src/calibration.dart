@@ -377,12 +377,17 @@ abstract final class PlayerArchetypeSeed {
 ///
 /// One table, so what a fit sampled and what a report calls narrow are the
 /// same numbers rather than two sets that drift apart.
+///
+/// The ability ranges reach further up than a logit of two and a half, which
+/// tops out at a motor score of about 0.92 before span and strain take their
+/// share. A device sitting with a median of one needs more headroom than that,
+/// and a prior that cannot reach the data reports a bias as a measurement.
 const Map<PlayerParameter, (double, double)> playerPriors = {
   PlayerParameter.naturalTempoRight: (40, 200),
   PlayerParameter.naturalTempoLeft: (40, 200),
-  PlayerParameter.rightHandAbility: (-2.5, 2.5),
-  PlayerParameter.leftHandAbility: (-2.5, 2.5),
-  PlayerParameter.handsTogetherAbility: (-3, 2),
+  PlayerParameter.rightHandAbility: (-2.5, 4),
+  PlayerParameter.leftHandAbility: (-2.5, 4),
+  PlayerParameter.handsTogetherAbility: (-3, 3.5),
   PlayerParameter.familiarity: (0.05, 0.99),
   PlayerParameter.tempoCompliance: (0, 1),
   PlayerParameter.sprintProbability: (0, 0.5),

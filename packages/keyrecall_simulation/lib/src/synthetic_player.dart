@@ -281,7 +281,14 @@ class PlayerState {
     // measurement about uneven hands was really a measurement about hands that
     // do not know the material.
     final pitchIntegrity = noisy(available * (0.85 + 0.15 * motorQuality));
-    final completed = motorQuality > 0.25 && rng.nextDouble() < 0.9;
+    // Falling apart is a consequence of how the attempt is going rather than
+    // a tax on every attempt. The unconditional nine-in-ten draw this replaced
+    // put a ceiling of ninety per cent on any player's completion, which a
+    // device sitting of thirty-five clean attempts is already enough to
+    // refute; squaring what is left makes an attempt fail only when quality is
+    // genuinely low, and rarely for somebody executing well.
+    final completed =
+        rng.nextDouble() < 1 - math.pow(1 - motorQuality, 2).toDouble();
 
     // Hands together only. Coordination degrades with strain rather than with
     // the hands' own ability, because the failure it names is the two hands

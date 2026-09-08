@@ -125,6 +125,28 @@ abstract final class PlayerArchetypes {
     spanPenalty: 0.3,
   );
 
+  /// Technically reliable, and plays at their own pace whatever is asked.
+  ///
+  /// Built from the first device sitting rather than from a tier of ability:
+  /// thirty-five attempts, every one completed, execution at the top of the
+  /// measurement's range, and a played tempo that follows the requested one
+  /// with a slope near a third. The archetypes that came before could not
+  /// express somebody both this reliable and this self-paced, because
+  /// completion carried an unconditional failure rate.
+  static SyntheticPlayer get reliableSelfPaced => SyntheticPlayer(
+    id: 'reliable_self_paced',
+    placement: PlacementTier.beginner,
+    naturalTempoRightBpm: 132,
+    naturalTempoLeftBpm: 126,
+    tempoCompliance: 0.35,
+    rightHandAbility: 3.0,
+    leftHandAbility: 2.8,
+    handsTogetherAbility: 2.2,
+    familiarity: 0.9,
+    spanPenalty: 0.2,
+    noise: 0.06,
+  );
+
   /// A strong right hand and a left that has not kept up.
   static SyntheticPlayer get unevenHands => SyntheticPlayer(
     id: 'uneven_hands',
@@ -162,6 +184,7 @@ abstract final class PlayerArchetypes {
     fastButPlacedLow,
     tempoNoncompliant,
     compliantThenSprints,
+    reliableSelfPaced,
     unevenHands,
     coordinationLimited,
   ];
