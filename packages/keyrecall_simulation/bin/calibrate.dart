@@ -29,8 +29,12 @@ Future<void> main(List<String> arguments) async {
   final export = decodeSittingExport(
     File(options.rest.first).readAsStringSync(),
   );
-  final observed = profileOf(observationsOf(export));
-  final presented = [for (final attempt in export.attempts) attempt.exercise];
+  final observations = observationsOf(export);
+  final observed = profileOf(observations);
+  final presented = [
+    for (final observation in observations)
+      ReplayPresentation.observed(observation),
+  ];
 
   stdout
     ..writeln('== the sitting')

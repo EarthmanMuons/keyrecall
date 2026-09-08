@@ -28,6 +28,20 @@ class AttemptObservation {
   const AttemptObservation(this.exercise, this.outcome, {this.seenBefore});
 }
 
+/// A replay question with familiarity established before the observed attempt.
+class ReplayPresentation {
+  final Exercise exercise;
+  final bool? seenBefore;
+
+  const ReplayPresentation(this.exercise, {this.seenBefore});
+
+  factory ReplayPresentation.observed(AttemptObservation observation) =>
+      ReplayPresentation(
+        observation.exercise,
+        seenBefore: observation.seenBefore,
+      );
+}
+
 /// What a sitting looked like, as distributions rather than a sequence.
 ///
 /// A fit compares these rather than reproducing attempts one by one. One human
@@ -193,20 +207,17 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
 /// the scheduler instead would fit the policy and the player at once.
 List<AttemptObservation> replay(
   SyntheticPlayer player,
-  List<Exercise> presented, {
+  List<ReplayPresentation> presented, {
   int seed = 0,
 }) {
   final rng = PythonCompatibleRandom(seed);
   final playing = player.begin();
-  final seen = <String>{};
   return [
-    for (final exercise in presented)
+    for (final presentation in presented)
       AttemptObservation(
-        exercise,
-        playing.play(exercise, rng),
-        // The run is the player's whole history, so first appearance here is
-        // genuinely the first time they met it.
-        seenBefore: !seen.add(exercise.material.materialId),
+        presentation.exercise,
+        playing.play(presentation.exercise, rng),
+        seenBefore: presentation.seenBefore,
       ),
   ];
 }
@@ -308,7 +319,7 @@ class PlayerFit {
 /// precision the data does not carry.
 List<PlayerFit> fitPlayers({
   required SittingProfile target,
-  required List<Exercise> presented,
+  required List<ReplayPresentation> presented,
   required Set<PlayerParameter> vary,
   SyntheticPlayer? from,
   int samples = 400,

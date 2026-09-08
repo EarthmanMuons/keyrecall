@@ -205,3 +205,10 @@ records the diagnostic arpeggio-policy baseline and its counterfactuals.
 section 12 summarizes what the synthetic analysis established, and
 [`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)
 defines the replay guarantees this harness is meant to grow into.
+
+## Calibration replay
+
+Calibration replay accepts `ReplayPresentation` values carrying the exercise and
+observed familiarity. `ReplayPresentation.observed` preserves exported
+provenance; unknown stays unknown, and replay position never supplies a
+classification.

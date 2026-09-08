@@ -20,7 +20,7 @@ void main() {
       materials: v1ScaleCatalog,
       slots: 60,
     ).slots)
-      slot.chosen,
+      ReplayPresentation(slot.chosen, seenBefore: true),
   ];
 
   SittingProfile sittingOf(SyntheticPlayer player) =>
@@ -37,6 +37,22 @@ void main() {
     keep: 20,
     seed: 3,
   );
+
+  test('replay carries observed familiarity without reconstructing it', () {
+    final exercise = presented.first.exercise;
+    final trials = [
+      ReplayPresentation(exercise, seenBefore: true),
+      ReplayPresentation(exercise, seenBefore: false),
+      ReplayPresentation(exercise),
+    ];
+    final observed = replay(PlayerArchetypes.advanced, trials);
+    expect(observed.map((a) => a.seenBefore), [true, false, null]);
+    expect(observed.map(ReplayPresentation.observed).map((a) => a.seenBefore), [
+      true,
+      false,
+      null,
+    ]);
+  });
 
   test('a profile reads what a sitting did, not what it was asked', () {
     final profile = sittingOf(PlayerArchetypes.tempoNoncompliant);
@@ -131,7 +147,8 @@ void main() {
   test('a distance skips what one sitting cannot answer', () {
     final singleHanded = [
       for (final exercise in presented)
-        if (exercise.conditions.hands != HandConfiguration.together) exercise,
+        if (exercise.exercise.conditions.hands != HandConfiguration.together)
+          exercise,
     ];
     final profile = profileOf(
       replay(PlayerArchetypes.developing, singleHanded, seed: 2),
@@ -144,7 +161,8 @@ void main() {
   group('what the report is willing to claim', () {
     final singleHanded = [
       for (final exercise in presented)
-        if (exercise.conditions.hands != HandConfiguration.together) exercise,
+        if (exercise.exercise.conditions.hands != HandConfiguration.together)
+          exercise,
     ];
 
     test('a sitting with no coordination work says so', () {
@@ -224,10 +242,12 @@ void main() {
     test('a hand asked one tempo cannot answer about compliance', () {
       final single = [
         for (var i = 0; i < 12; i++)
-          Exercise.linear(
-            material: TechnicalMaterial('C', ScaleForm.major),
-            hands: HandConfiguration.right,
-            tempoBpm: 60,
+          ReplayPresentation(
+            Exercise.linear(
+              material: TechnicalMaterial('C', ScaleForm.major),
+              hands: HandConfiguration.right,
+              tempoBpm: 60,
+            ),
           ),
       ];
       final observed = profileOf(
