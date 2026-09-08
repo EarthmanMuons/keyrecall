@@ -218,6 +218,81 @@ void main() {
     );
   });
 
+  test('the work that teaches sits between the two admission floors', () {
+    final band = v1SchedulerConfig.challenge;
+    final refused = <double>[];
+    var admitted = 0;
+    var eligible = 0;
+
+    for (final weak in weakIn.keys) {
+      bool bootstrap(Exercise exercise) =>
+          exercise.material.familyId == weak &&
+          exercise.conditions.hands != HandConfiguration.together &&
+          exercise.conditions.octaves == 1 &&
+          exercise.guidance == GuidanceContext.continuouslyCued;
+
+      for (final seed in [2, 4]) {
+        var needed = false;
+        runSittings(
+          player: weakIn[weak]!,
+          seed: seed,
+          materials: catalog,
+          sittings: sittingsOnDays([0, 1, 2, 3], slots: 20),
+          observeState: (_, state) =>
+              needed = !state.materialExecution.values.any(
+                (residual) =>
+                    residual.familyId == weak &&
+                    residual.demonstratedTempoByOctaves.isNotEmpty,
+              ),
+          observeTraces: (_, traces) {
+            if (!needed) return;
+            for (final trace in traces) {
+              if (!bootstrap(trace.exercise)) continue;
+              if (trace.eligibility.tier != EligibilityTier.fullyEligible) {
+                continue;
+              }
+              eligible++;
+              if (trace.isRanked) {
+                admitted++;
+              } else if (trace.admissionRefusal ==
+                  AdmissionRefusal.challengeBand) {
+                refused.add(trace.prediction.overallP);
+              }
+            }
+          },
+        );
+      }
+    }
+
+    expect(
+      admitted / eligible,
+      lessThan(0.1),
+      reason:
+          'while the family has no frontier, the one shape that could give it '
+          'one is admitted for under a tenth of the times it is eligible',
+    );
+    expect(
+      refused.length,
+      greaterThan(admitted),
+      reason: 'and the challenge band is what turns most of them away',
+    );
+    final mean = refused.reduce((a, b) => a + b) / refused.length;
+    expect(
+      mean,
+      greaterThan(band.pIntroductionMin),
+      reason:
+          'at a prediction a first exposure of the same material would be '
+          'admitted at, since the introduction floor is ${band.pIntroductionMin}',
+    );
+    expect(
+      mean,
+      lessThan(band.pMin),
+      reason:
+          'and below the ordinary floor of ${band.pMin} that every later '
+          'exposure is held to, which is the gap the work falls into',
+    );
+  });
+
   test('the weaker family still gains far less than the stronger one', () {
     for (final entry in runs.entries) {
       final (weak, seed) = entry.key;

@@ -1097,3 +1097,53 @@ neutral: a learner with no execution frontier in a family gets very little of
 the one shape that could give them one, because everything else about them is
 strong enough to win the slot. That is an acquisition question about supply
 rather than a ranking preference, and nothing has been changed on it.
+
+### Why the productive shape is scarce
+
+Tracing the bootstrap shape while the predicate holds, meaning no execution
+frontier exists anywhere in the target family. Six seeds per player.
+
+| player                     | slots | bootstrap needed | eligible | admitted | chosen |
+| -------------------------- | ----- | ---------------- | -------- | -------- | ------ |
+| scale_strong_arpeggio_weak | 480   | 144              | 5418     | 340      | 8      |
+| arpeggio_strong_scale_weak | 480   | 197              | 9456     | 322      | 7      |
+
+**It is not generation, eligibility, narrowing, or ranking.** The shape is
+generated constantly and is fully eligible almost every time it is evaluated. It
+is admitted for six per cent of that, and three per cent for the scale-weak
+player. Admission is the whole bottleneck.
+
+**And admission turns it away for being too hard.** The dominant refusal is the
+challenge band, 3134 and 6610 against 750 and 990 for introduction tempo, at a
+mean predicted success of **0.465**.
+
+The band is `pMin: 0.60, pMax: 0.90`, and the introduction floor is
+`pIntroductionMin: 0.15`.
+
+So the same exercise is admitted at a first exposure and refused at every one
+after it, and the gap it falls into is exactly where a learner without a
+frontier lives:
+
+```text
+0.15  introduction floor      first exposure admitted here
+0.465 what the shape predicts  every later exposure refused here
+0.60  ordinary floor
+```
+
+A learner meets an unfamiliar family, is offered its gentlest work once through
+the introduction floor, does not manage it, and thereafter cannot be offered it
+again until they can already do it. Nothing in that loop is family-specific, and
+nothing in it is a ranking or allocation preference. **It is one number applied
+to a learner whose evidence does not yet exist.**
+
+That names which of the three candidate interventions is the live one. Not
+relaxing the introduction cap, which is not what refuses this, and not a ranking
+weight, which the shape rarely reaches. It is whether the ordinary floor should
+apply unchanged while a family has no frontier at all, or whether the forgiving
+floor an introduction gets should last until the learner has something to
+progress from.
+
+Nothing was changed. The predicate is observable in learner state, the shape has
+demonstrated utility, and the intervention is a single threshold, which is
+exactly the point at which it is worth deciding deliberately rather than
+quickly.
