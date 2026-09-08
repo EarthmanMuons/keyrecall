@@ -27,4 +27,5 @@ export 'src/codecs/scheduler_codec.dart';
 export 'src/profile.dart';
 export 'src/replay.dart';
 export 'src/schema.dart';
+export 'src/sitting_export.dart';
 export 'src/upgrade.dart';

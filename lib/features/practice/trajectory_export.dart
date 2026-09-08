@@ -311,12 +311,73 @@ Future<String> exportTrajectory(WidgetRef ref) async {
     File('${directory.path}/$stamp-${profile.displayName}-coordination.txt')
         .writeAsStringSync(coordinationTableOf(profile, samples));
   }
+  // Machine-readable, beside the readable one rather than instead of it: the
+  // calibration harness reads this, a person reads the other, and neither has
+  // to be a compromise for the other's sake.
+  final sitting = sittingExportOf(profile, journal);
+  if (sitting.attempts.isNotEmpty) {
+    File('${directory.path}/$stamp-${profile.displayName}-attempts.json')
+        .writeAsStringSync(encodeSittingExport(sitting));
+  }
+
   final selections = await store.loadSelectionDiagnostics(profile.id);
   if (selections.isNotEmpty) {
     File('${directory.path}/$stamp-${profile.displayName}-selections.txt')
         .writeAsStringSync(selectionTableOf(profile, journal, selections));
   }
   return file.path;
+}
+
+/// The last sitting of [journal], as the facts a fit is entitled to read.
+///
+/// The exercise as presented and the outcome as measured, both in the
+/// journal's own encodings rather than a calibration-specific interpretation
+/// of them, plus what was known about the material beforehand.
+///
+/// Familiarity comes from the immutable history rather than from learner state
+/// at export time, which later attempts have moved. A material with an earlier
+/// record is [MaterialFamiliarity.familiar]; one without is
+/// [MaterialFamiliarity.unknown] rather than unfamiliar, because the journal
+/// begins when the profile does and says nothing about a lifetime of playing
+/// before that. Nothing here emits [MaterialFamiliarity.unfamiliar]: no part
+/// of the app records that a person had never met a scale.
+///
+/// Attempts that measured nothing are left out. A fit reads what was played,
+/// and an attempt with no measurement was not.
+SittingExport sittingExportOf(Profile profile, AttemptJournal journal) {
+  final records = journal.records;
+  final sessionId = records.isEmpty ? '' : records.last.identity.sessionId;
+  final seen = <String>{};
+  final attempts = <ExportedAttempt>[];
+
+  for (final record in records) {
+    final familiar = !seen.add(record.exercise.material.materialId);
+    if (record.identity.sessionId != sessionId) continue;
+    if (record.closure.measurement case Measured(:final outcome)) {
+      attempts.add(
+        ExportedAttempt(
+          index: attempts.length,
+          exercise: record.exercise,
+          outcome: outcome,
+          familiarity: familiar
+              ? MaterialFamiliarity.familiar
+              : MaterialFamiliarity.unknown,
+        ),
+      );
+    }
+  }
+
+  return SittingExport(
+    profileId: profile.id,
+    sittingId: sessionId,
+    startedAt: attempts.isEmpty
+        ? profile.createdAt
+        : records
+              .firstWhere((record) => record.identity.sessionId == sessionId)
+              .identity
+              .occurredAt,
+    attempts: attempts,
+  );
 }
 
 /// Recorded competition only; older attempts cannot reconstruct these sets.

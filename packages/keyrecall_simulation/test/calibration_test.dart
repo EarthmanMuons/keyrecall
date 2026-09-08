@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -260,5 +261,53 @@ void main() {
         contains('not observed'),
       );
     });
+  });
+
+  test('an exported sitting profiles the same as the run it came from', () {
+    // One implementation of the profile semantics: a device sitting and a
+    // synthetic one go through the same code, so a difference between them is
+    // a difference in the playing.
+    final played = replay(PlayerArchetypes.developing, presented, seed: 11);
+    final export = SittingExport(
+      profileId: 'profile-1',
+      sittingId: 'session-1',
+      startedAt: DateTime.utc(2026),
+      attempts: [
+        for (final (index, attempt) in played.indexed)
+          ExportedAttempt(
+            index: index,
+            exercise: attempt.exercise,
+            outcome: attempt.outcome,
+            familiarity: attempt.seenBefore!
+                ? MaterialFamiliarity.familiar
+                : MaterialFamiliarity.unfamiliar,
+          ),
+      ],
+    );
+    final imported = observationsOf(
+      decodeSittingExport(encodeSittingExport(export)),
+    );
+
+    expect(profileDistance(profileOf(imported), profileOf(played)), 0);
+  });
+
+  test('an export that knows nothing about familiarity says so', () {
+    final played = replay(PlayerArchetypes.developing, presented, seed: 11);
+    final export = SittingExport(
+      profileId: 'profile-1',
+      sittingId: 'session-1',
+      startedAt: DateTime.utc(2026),
+      attempts: [
+        for (final (index, attempt) in played.indexed)
+          ExportedAttempt(
+            index: index,
+            exercise: attempt.exercise,
+            outcome: attempt.outcome,
+            familiarity: MaterialFamiliarity.unknown,
+          ),
+      ],
+    );
+
+    expect(profileOf(observationsOf(export)).familiarMotor, isNull);
   });
 }

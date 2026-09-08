@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'python_compatible_random.dart';
@@ -97,6 +98,28 @@ class SittingProfile {
     return single.reduce(math.max) - together;
   }
 }
+
+/// The attempts of an exported sitting, as a fit reads them.
+///
+/// Everything the estimator is entitled to and nothing else: the exercise, the
+/// outcome, and what was known beforehand. The profile identifier and the
+/// timestamps stay in the file.
+///
+/// One implementation of the profile semantics, so a device sitting and a
+/// synthetic one are summarized by the same code and a difference between them
+/// is a difference in the playing.
+List<AttemptObservation> observationsOf(SittingExport export) => [
+  for (final attempt in export.attempts)
+    AttemptObservation(
+      attempt.exercise,
+      attempt.outcome,
+      seenBefore: switch (attempt.familiarity) {
+        MaterialFamiliarity.familiar => true,
+        MaterialFamiliarity.unfamiliar => false,
+        MaterialFamiliarity.unknown => null,
+      },
+    ),
+];
 
 /// The profile [attempts] make, in the order they happened.
 SittingProfile profileOf(List<AttemptObservation> attempts) {

@@ -7,6 +7,33 @@
   sitting, so a long-run simulation can ask what a learner who plays like this
   person would experience over months.
 
+## Getting a sitting off a device
+
+`exportTrajectory` writes `<stamp>-<profile>-attempts.json` beside the readable
+report: schema version, profile, sitting and start time, then one entry per
+attempt holding the exercise as presented, the outcome as measured, and the
+familiarity known beforehand. The exercise and outcome use the journal's own
+encodings rather than a calibration-specific interpretation of them, so the file
+carries the journal's facts rather than a view of them, and a version it cannot
+read is refused rather than guessed at.
+
+The envelope's profile and timestamps are operational metadata for finding and
+ordering exports. Nothing that fits a learner reads them: a fit sees the
+exercise, the outcome and the familiarity, which is what makes it a statement
+about playing rather than about who was playing.
+
+**The derived profile is not exported.** A device sitting and a synthetic one
+both go through `profileOf`, so there is one implementation of the profile
+semantics and a difference between the two is a difference in the playing.
+
+Familiarity comes from the immutable history rather than from learner state at
+export time, which later attempts have moved. A material with an earlier record
+exports as familiar; one without exports as **unknown** rather than unfamiliar,
+because the journal begins when the profile does and says nothing about a
+lifetime of playing before it. Nothing in the app emits unfamiliar today, so a
+first device fit will drop the familiarity contrast, which is the correct answer
+rather than a gap.
+
 ## What is fitted, and what is not
 
 The player, never the scheduler. A fit reads what was asked and what happened,
