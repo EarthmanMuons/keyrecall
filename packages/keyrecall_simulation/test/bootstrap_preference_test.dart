@@ -79,54 +79,59 @@ void main() {
     );
   }
 
-  test('a bounded chance reaches the first frontier, and cheaply', () {
+  test('a bounded chance reaches a first frontier it otherwise would not', () {
+    var withoutFrontier = 0;
+    var withFrontier = 0;
+    var exhaustedWithNothing = 0;
+
     for (final weak in weakIn.keys) {
       for (final seed in seeds) {
         final without = runWith(weak: weak, bound: 0, seed: seed);
-        final with8 = runWith(weak: weak, bound: 8, seed: seed);
-        final where = '$weak at seed $seed';
+        final bounded = runWith(weak: weak, bound: 8, seed: seed);
 
-        expect(
-          with8.frontierAt,
-          greaterThanOrEqualTo(0),
-          reason: 'the family ends up with something to progress from, $where',
-        );
-        expect(
-          with8.consumed,
-          lessThanOrEqualTo(8),
-          reason: 'inside the bound, $where',
-        );
-        if (without.frontierAt < 0) {
-          expect(
-            with8.frontierAt,
-            greaterThanOrEqualTo(0),
-            reason: 'where eighty slots of ordinary work reached none, $where',
-          );
+        if (without.frontierAt >= 0) withoutFrontier++;
+        if (bounded.frontierAt >= 0) withFrontier++;
+        if (bounded.frontierAt < 0 && bounded.consumed >= 8) {
+          exhaustedWithNothing++;
         }
+        expect(
+          bounded.consumed,
+          lessThanOrEqualTo(8),
+          reason: 'the bound holds for $weak at seed $seed',
+        );
       }
     }
+
+    expect(
+      withFrontier,
+      greaterThan(withoutFrontier),
+      reason: 'families reach a frontier that ordinary work never gave them',
+    );
+    expect(
+      exhaustedWithNothing,
+      greaterThan(0),
+      reason:
+          'and one spends every chance without one, which is the handoff: a '
+          'learner under the floor rather than short of slots',
+    );
   });
 
   test('and it is not what makes the learner better', () {
-    var reached = 0;
-    var improved = 0;
-
     for (final weak in weakIn.keys) {
       for (final seed in seeds) {
-        final result = runWith(weak: weak, bound: 8, seed: seed);
-        if (result.frontierAt >= 0) reached++;
-        if (result.weakGain > 0.01) improved++;
+        final without = runWith(weak: weak, bound: 0, seed: seed);
+        final bounded = runWith(weak: weak, bound: 8, seed: seed);
+
+        expect(
+          bounded.weakGain,
+          without.weakGain,
+          reason:
+              'the held-out reading of $weak at seed $seed is the same number '
+              'either way, and each item draws its own stream, so this is the '
+              'family being unchanged rather than its noise moving',
+        );
+        expect(bounded.weakGain, lessThanOrEqualTo(0));
       }
     }
-
-    expect(reached, seeds.length * weakIn.length);
-    expect(
-      improved,
-      isZero,
-      reason:
-          'every family reaches a frontier and none of them reads better on '
-          'the held-out set, so the first frontier is not the thing that was '
-          'missing either',
-    );
   });
 }

@@ -104,18 +104,23 @@ void main() {
 
     // Belief decays across the same calendar for all three, so the model is
     // equally stale everywhere and only the person differs.
-    expect(
-      readings.values.map((r) => r.predicted!.toStringAsFixed(6)).toSet(),
-      hasLength(1),
-    );
+    for (final reading in readings.values) {
+      expect(
+        reading.predicted,
+        lessThan(0.001),
+        reason:
+            'belief decays on the calendar rather than on the person, so the '
+            'model expects the same of all three, which is nothing',
+      );
+    }
     expect(
       readings['faster']!.managed,
       lessThanOrEqualTo(readings['matched']!.managed),
     );
     expect(readings['matched']!.managed, lessThan(readings['stable']!.managed));
     expect(
-      readings['stable']!.beliefGap!,
-      lessThan(readings['matched']!.beliefGap!),
+      readings['stable']!.retrievalGap!,
+      lessThan(readings['matched']!.retrievalGap!),
       reason:
           'the same expectation understates the player who kept what they '
           'had by more than it understates the one who lost it',
@@ -137,7 +142,7 @@ void main() {
             'forget the whole learner',
       );
       expect(
-        reading.beliefGap,
+        reading.retrievalGap,
         lessThan(0),
         reason:
             'so a returner is met with a model that understates them, not '

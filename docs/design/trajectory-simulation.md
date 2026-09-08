@@ -1266,3 +1266,64 @@ The thing worth taking from the negative result is the terminal classification
 it makes available. A family that spends its bounded chances and still has no
 frontier is under the floor rather than short of slots, and that is now a
 measurable condition rather than a suspicion.
+
+### The instrument was pairing readings it should not have
+
+A review found the held-out set drawing every item from one stream. The player
+consumes a different number of draws depending on whether retrieval succeeds and
+whether the attempt starts, so an earlier item moved the luck of every item
+after it. Changing only a scale's familiarity from zero to one moved the
+untouched arpeggio's retrieval from 0.333 to 0.556 and its managed execution
+from 0.000 to 0.111.
+
+Two fixes, because isolation alone was not enough. Each exercise and repetition
+now draws from its own stream derived from the set's seed, so one item cannot
+move another. And an attempt now takes a **fixed budget of draws before anything
+branches on them**, so the same exercise meets the same numbers in either state:
+without that, a learner who now recalls a scale skips the start draw and shifts
+its own motor noise, which defeats the pairing a counterfactual needs.
+
+The regression is the reviewer's case stated at full strength: changing only the
+scale leaves every arpeggio outcome identical field by field, not merely close.
+
+What that invalidates is narrow. Anything read from scheduler state, traces,
+admissions, selections, frontiers or attempt outcomes stands, which is every
+structural finding here: cross-family tempo transfer, the guidance a
+hands-together step was carrying, the pre-frontier admission gap, the ownership
+split, and the hands-together foothold demonstrating nothing. What needed
+rerunning was every conclusion resting on a few percentage points of per-family
+held-out movement.
+
+Rerun, the bounded bootstrap chance reads differently and better:
+
+| bound | slots to first frontier                 | bootstrap slots spent | weak held-out          |
+| ----- | --------------------------------------- | --------------------- | ---------------------- |
+| 0     | 47, none, none, 3 / none, none, none, 6 | none                  | 0.056, 0.000 unchanged |
+| 8     | none, 5, 8, 3 / none, 5, 8, 3           | 8, 4, 7, 2            | 0.056, 0.000 unchanged |
+
+**The earlier claim that every seed reached a frontier was an artifact.** One
+seed spends all eight chances and still has none, which is the terminal
+classification firing for real rather than as a hypothetical: that learner is
+under the floor, not short of slots.
+
+**And the weak family's reading is now identical to three decimals with the
+preference and without it**, where the contaminated instrument had shown it
+drifting by a few points in both directions. So the negative conclusion is
+stronger than it was, not weaker. Nothing about giving a frontier-less family
+more of the work it learns from makes these learners better at it.
+
+Also corrected while in there: coordination was averaging only the
+hands-together attempts that began, so a battery where every one failed to start
+reported no coordination question asked at all. `coordinationOverall` counts a
+non-start as zero and is the honest top line, `coordination` stays as the
+conditional diagnostic, and the attempted and started counts are reported beside
+them. Predicted retrieval now averages over the same population observed
+retrieval does, excluding cued items from both sides. `beliefGap` is gone: it
+subtracted demonstrated execution from a stricter conjunction, so it was never a
+calibration gap. `retrievalGap` compares one event with itself, and
+`overallPredictionMinusManaged` keeps the old quantity under a name that does
+not claim to be calibrated.
+
+The `sitting_ran_dry` exceptions are removed rather than re-explained. Both
+players run clean across every configuration those exceptions covered, so the
+sweep now fails if the condition returns.

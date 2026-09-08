@@ -320,17 +320,32 @@ class PlayerState {
   }) {
     final conditions = exercise.conditions;
     final materialId = exercise.material.materialId;
-    // Drawn only where the player has a sprint at all, so adding the knob
-    // leaves every existing archetype's draw sequence where it was.
-    final sprinting =
-        player.sprintProbability > 0 &&
-        rng.nextDouble() < player.sprintProbability;
+    // Every draw an attempt could need, taken before anything branches on
+    // them. The budget is fixed so that the same exercise consumes the same
+    // stream whatever the player's state does: a learner who now retrieves a
+    // scale skips no draw, so the attempt after it, and every comparison
+    // against another state, still meets the same numbers. Paired experiments
+    // need that; without it a change in one place moves the noise everywhere
+    // after it.
+    final sprintDraw = rng.nextDouble();
+    final motorZ = rng.nextGaussian(0, 1);
+    final retrievalDraw = rng.nextDouble();
+    final startDraw = rng.nextDouble();
+    final completionDraw = rng.nextDouble();
+    final retrievalZ = rng.nextGaussian(0, 1);
+    final pitchZ = rng.nextGaussian(0, 1);
+    final continuityZ = rng.nextGaussian(0, 1);
+    final stabilityZ = rng.nextGaussian(0, 1);
+    final topologyZ = rng.nextGaussian(0, 1);
+    final coordinationZ = rng.nextGaussian(0, 1);
+
+    final sprinting = sprintDraw < player.sprintProbability;
     final performed = performedTempoFor(exercise, sprinting: sprinting);
     if (practising) _lastPerformedTempoBpm = performed;
     final natural = naturalTempoFor(conditions.hands);
 
-    double noisy(double center) =>
-        rng.nextGaussian(center, player.noise).clamp(0.0, 1.0);
+    double noisy(double center, double z) =>
+        (center + z * player.noise).clamp(0.0, 1.0);
 
     // Playing above your comfortable pace is what costs; playing below it is
     // free, because nobody struggles to play a scale slowly. Span costs
@@ -340,27 +355,27 @@ class PlayerState {
         abilityOf(conditions.hands, exercise.material.familyId) -
         3.0 * strain -
         player.spanPenalty * (conditions.octaves - 1);
-    final motorQuality = _sigmoid(effort + rng.nextGaussian(0, player.noise));
+    final motorQuality = _sigmoid(effort + motorZ * player.noise);
 
     // Whether the notes come. Cueing supplies them, so it separates knowing a
     // scale from being able to produce it, which is the distinction the whole
     // guidance ladder rests on.
     final known = familiarityOf(materialId);
-    final retrievalSucceeded = rng.nextDouble() < known;
+    final retrievalSucceeded = retrievalDraw < known;
     final retrieval = exercise.guidance.isRetrievalObserved
         ? (retrievalSucceeded
               ? FactualRetrieval.succeeded
               : FactualRetrieval.failed)
         : FactualRetrieval.notTested;
     final supplied = 1.0 - exercise.guidance.retrievalDemand;
-    final started = retrievalSucceeded || rng.nextDouble() < supplied;
+    final started = retrievalSucceeded || startDraw < supplied;
 
     if (!started) {
       return Outcome(
         started: false,
         retrieval: retrieval,
         completed: false,
-        materialRetrieval: noisy(known),
+        materialRetrieval: noisy(known, retrievalZ),
         pitchIntegrity: 0,
         continuity: 0,
         temporalStability: 0,
@@ -381,7 +396,10 @@ class PlayerState {
     // for - somebody who knows a scale and plays it unevenly - and every
     // measurement about uneven hands was really a measurement about hands that
     // do not know the material.
-    final pitchIntegrity = noisy(available * (0.85 + 0.15 * motorQuality));
+    final pitchIntegrity = noisy(
+      available * (0.85 + 0.15 * motorQuality),
+      pitchZ,
+    );
     // Falling apart is a consequence of how the attempt is going rather than
     // a tax on every attempt. The unconditional nine-in-ten draw this replaced
     // put a ceiling of ninety per cent on any player's completion, which a
@@ -389,7 +407,7 @@ class PlayerState {
     // refute; squaring what is left makes an attempt fail only when quality is
     // genuinely low, and rarely for somebody executing well.
     final completed =
-        rng.nextDouble() < 1 - math.pow(1 - motorQuality, 2).toDouble();
+        completionDraw < 1 - math.pow(1 - motorQuality, 2).toDouble();
 
     // Hands together only. Coordination degrades with strain rather than with
     // the hands' own ability, because the failure it names is the two hands
@@ -400,6 +418,7 @@ class PlayerState {
               abilityOf(conditions.hands, exercise.material.familyId) -
                   2.0 * strain,
             ),
+            coordinationZ,
           )
         : null;
 
@@ -409,12 +428,12 @@ class PlayerState {
       started: true,
       retrieval: retrieval,
       completed: completed,
-      materialRetrieval: noisy(available),
+      materialRetrieval: noisy(available, retrievalZ),
       pitchIntegrity: pitchIntegrity,
-      continuity: noisy(motorQuality),
-      temporalStability: noisy(motorQuality),
+      continuity: noisy(motorQuality, continuityZ),
+      temporalStability: noisy(motorQuality, stabilityZ),
       achievedTempoRatio: performed / conditions.tempoBpm,
-      topologyAccuracy: noisy(available),
+      topologyAccuracy: noisy(available, topologyZ),
       coordination: coordination,
     );
   }

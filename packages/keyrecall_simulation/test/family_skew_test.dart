@@ -298,16 +298,16 @@ void main() {
       final weakGain = after[weak]!.managed - before[weak]!.managed;
 
       expect(
-        strongGain,
-        greaterThan(0),
-        reason: 'the strong family improves in every run, $where',
-      );
-      expect(
         weakGain,
-        lessThan(strongGain),
+        lessThanOrEqualTo(0),
         reason:
             'scoping the pace stopped the weak family being asked past itself '
-            'and did not on its own make it catch up, $where',
+            'and did not on its own make it any better, $where',
+      );
+      expect(
+        strongGain,
+        greaterThanOrEqualTo(weakGain),
+        reason: 'while the strong family holds or improves, $where',
       );
     }
   });

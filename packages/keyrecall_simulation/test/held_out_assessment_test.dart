@@ -110,8 +110,8 @@ void main() {
       reason: 'the model decays across the gap',
     );
     expect(
-      afterBreak.beliefGap!,
-      lessThan(beforeBreak.beliefGap!),
+      afterBreak.retrievalGap!,
+      lessThan(beforeBreak.retrievalGap!),
       reason:
           'the gap between what the model expects and what the player does '
           'is the quantity a forgetting run has to be judged on',
@@ -130,19 +130,19 @@ void main() {
 
     const production = SchedulerPipeline(learner: LearnerModel());
     final paced = under(production);
-    final undosed = under(
+    final unnovel = under(
       SchedulerPipeline(
         learner: production.learner,
-        config: production.config.withDose(null),
+        config: production.config.withNovelty(null),
       ),
     );
 
     expect(
       paced.slots.map((s) => s.chosen),
-      isNot(undosed.slots.map((s) => s.chosen)),
+      isNot(unnovel.slots.map((s) => s.chosen)),
       reason: 'the two policies practise different things',
     );
-    final first = [paced, undosed].map((t) => t.assessments.first);
+    final first = [paced, unnovel].map((t) => t.assessments.first);
     expect(
       first.map((r) => r.managed).toSet(),
       hasLength(1),
@@ -150,7 +150,7 @@ void main() {
     );
     expect(first.map((r) => r.setId).toSet(), {set.id});
     expect(first.map((r) => r.attempts).toSet(), {set.attempts});
-    for (final trajectory in [paced, undosed]) {
+    for (final trajectory in [paced, unnovel]) {
       final gained =
           trajectory.assessments.last.managed -
           trajectory.assessments.first.managed;

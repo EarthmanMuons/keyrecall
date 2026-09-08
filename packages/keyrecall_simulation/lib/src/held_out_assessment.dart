@@ -32,9 +32,15 @@ class AssessmentSet {
 
   /// The draw sequence every reading uses.
   ///
-  /// Fixed rather than carried forward, so each reading meets the same luck
-  /// and a change between two of them is a change in the player. Common random
+  /// Fixed rather than carried forward, so each reading meets the same luck and
+  /// a change between two of them is a change in the player. Common random
   /// numbers across readings, in the usual sense.
+  ///
+  /// Each exercise and repetition draws from its own stream derived from this,
+  /// rather than all of them sharing one. A shared stream made every item
+  /// depend on how many draws the items before it happened to take, so
+  /// improving a scale moved the arpeggio's luck and a per-family reading could
+  /// not be read as being about that family.
   final int seed;
 
   const AssessmentSet({
@@ -46,6 +52,13 @@ class AssessmentSet {
 
   /// How many attempts one reading takes.
   int get attempts => exercises.length * repetitions;
+
+  /// The stream one exercise and repetition draws from.
+  ///
+  /// Derived rather than shared, so a question is answered with the same luck
+  /// however the questions around it went.
+  int streamSeedFor(int exerciseIndex, int repetition) =>
+      seed + 1000003 * (exerciseIndex + 1) + repetition;
 }
 
 /// The standard held-out set: every material, each hand alone and together.
@@ -109,9 +122,25 @@ class AssessmentReading {
   /// Mean temporal stability.
   final double temporalStability;
 
-  /// Mean coordination over the hands-together attempts, or null when the set
-  /// asked for none.
+  /// Mean coordination over the hands-together attempts that began, or null
+  /// when the set asked for no hands-together work.
+  ///
+  /// Conditional on starting, which is a diagnostic rather than an outcome: an
+  /// attempt that never began has no coordination to report, and dropping it
+  /// silently made a battery where every attempt failed to start read as if it
+  /// had asked no coordination question at all. [coordinationOverall] is the
+  /// honest top line and this says what happened once playing started.
   final double? coordination;
+
+  /// The same over every hands-together attempt, with one that never began
+  /// counting zero.
+  final double? coordinationOverall;
+
+  /// How many hands-together attempts the reading asked for.
+  final int handsTogetherAttempts;
+
+  /// How many of them began.
+  final int handsTogetherStarted;
 
   /// Share of attempts production would count as demonstrated execution.
   final double managed;
@@ -146,6 +175,9 @@ class AssessmentReading {
     required this.temporalStability,
     required this.managed,
     this.coordination,
+    this.coordinationOverall,
+    this.handsTogetherAttempts = 0,
+    this.handsTogetherStarted = 0,
     this.predicted,
     this.predictedRetrieval,
     this.families = const {},
@@ -158,14 +190,26 @@ class AssessmentReading {
   /// whether the weaker one moved or the stronger one carried it.
   final Map<String, AssessmentReading> families;
 
-  /// How far the model's expectation sits above what the player did.
-  double? get beliefGap => predicted == null ? null : predicted! - managed;
+  /// The model's overall expectation minus demonstrated execution.
+  ///
+  /// **Not a calibration gap.** Overall success is a stricter conjunction than
+  /// demonstrated execution, so the two differ by construction and a nonzero
+  /// value says nothing on its own. [retrievalGap] compares one event with
+  /// itself and is what a calibration question should read.
+  double? get overallPredictionMinusManaged =>
+      predicted == null ? null : predicted! - managed;
+
+  /// What the model expected of retrieval, minus what retrieval did.
+  ///
+  /// One event measured twice, so this one is a calibration gap.
+  double? get retrievalGap =>
+      predictedRetrieval == null ? null : predictedRetrieval! - retrieval;
 
   @override
   String toString() =>
       '$setId after $afterSlots: retrieval=${retrieval.toStringAsFixed(3)} '
       'managed=${managed.toStringAsFixed(3)} '
-      'predicted=${predicted?.toStringAsFixed(3) ?? 'n/a'}';
+      'predicted_retrieval=${predictedRetrieval?.toStringAsFixed(3) ?? 'n/a'}';
 }
 
 /// Asks [set] of [playing] without teaching them anything.
@@ -184,10 +228,10 @@ AssessmentReading assess(
   LearnerState? state,
   LearnerModel learner = const LearnerModel(),
 }) {
-  final rng = PythonCompatibleRandom(set.seed);
   final outcomes = <(Exercise, Outcome)>[];
   for (var repetition = 0; repetition < set.repetitions; repetition++) {
-    for (final exercise in set.exercises) {
+    for (final (index, exercise) in set.exercises.indexed) {
+      final rng = PythonCompatibleRandom(set.streamSeedFor(index, repetition));
       outcomes.add((exercise, playing.play(exercise, rng, practising: false)));
     }
   }
@@ -236,12 +280,26 @@ AssessmentReading _readingOf(
   final predictions = state == null
       ? null
       : _expectationOf(asked, state, learner, at);
+  // Retrieval is predicted over the same population it is observed on: a cued
+  // exercise never tests retrieval, so counting it on one side of a
+  // calibration comparison and not the other is comparing two things.
+  final retrievalAsked = [
+    for (final exercise in asked)
+      if (exercise.guidance.isRetrievalObserved) exercise,
+  ];
+  final retrievalPredictions = state == null || retrievalAsked.isEmpty
+      ? null
+      : _expectationOf(retrievalAsked, state, learner, at);
   final tested = [
     for (final (exercise, outcome) in outcomes)
       if (exercise.guidance.isRetrievalObserved) outcome,
   ];
+  final handsTogether = [
+    for (final (exercise, outcome) in outcomes)
+      if (exercise.conditions.hands == HandConfiguration.together) outcome,
+  ];
   final coordinated = [
-    for (final (_, outcome) in outcomes) ?outcome.coordination,
+    for (final outcome in handsTogether) ?outcome.coordination,
   ];
 
   return AssessmentReading(
@@ -262,9 +320,15 @@ AssessmentReading _readingOf(
     coordination: coordinated.isEmpty
         ? null
         : coordinated.reduce((a, b) => a + b) / coordinated.length,
+    coordinationOverall: handsTogether.isEmpty
+        ? null
+        : (coordinated.isEmpty ? 0.0 : coordinated.reduce((a, b) => a + b)) /
+              handsTogether.length,
+    handsTogetherAttempts: handsTogether.length,
+    handsTogetherStarted: handsTogether.where((o) => o.started).length,
     managed: share(learner.executionWasManaged),
     predicted: state == null ? null : predictions!.overall,
-    predictedRetrieval: predictions?.retrieval,
+    predictedRetrieval: retrievalPredictions?.retrieval,
     families: families,
   );
 }
