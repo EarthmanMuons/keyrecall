@@ -864,9 +864,8 @@ class SchedulerPipeline {
   /// the notes in front of the learner.
   ///
   /// The only shape a learner with nothing in a family demonstrates anything
-  /// from. Two octaves managed one attempt in eighty-seven across the mirror
-  /// runs and both hands none in forty-four, so widening this would relax the
-  /// floor for work that has never taught anybody anything.
+  /// from, so widening it would relax the floor for work that teaches them
+  /// nothing. See `docs/design/trajectory-simulation.md`.
   bool isFamilyBootstrapShape(Exercise exercise) =>
       exercise.conditions.hands != HandConfiguration.together &&
       exercise.conditions.octaves == 1 &&
@@ -895,22 +894,19 @@ class SchedulerPipeline {
   /// The predicted success a candidate has to clear to be ordinarily admitted.
   ///
   /// **Not new any more is not the same as has evidence.** A first exposure is
-  /// admitted at the introduction floor and every exposure after it is held to
-  /// the ordinary one, so a learner who meets an unfamiliar family, is offered
-  /// its gentlest work once and does not manage it cannot be offered that work
-  /// again until they can already do it. The mirror runs put that work at a
-  /// predicted 0.465, between the two floors, and it is the only shape those
-  /// learners ever demonstrated anything from.
+  /// admitted at the introduction floor and every one after it at the ordinary
+  /// floor, which left a learner who meets an unfamiliar family, is offered its
+  /// gentlest work once and does not manage it unable to be offered that work
+  /// again until they could already do it.
   ///
   /// So the forgiving floor lasts until the family has something to progress
-  /// from rather than until the material stops being new. It is not an
-  /// introduction that repeats: it is acquisition before there is any execution
-  /// evidence at all, and it ends at the first frontier.
+  /// from rather than until the material stops being new. It is acquisition
+  /// before any execution evidence exists, not an introduction that repeats,
+  /// and it ends at the first frontier.
   ///
-  /// This is ordinary policy and not a fallback. The acquisition floor answers
-  /// a different question, which is what to supply when admission has produced
-  /// nothing at all; a learner strong in one family never reaches that
-  /// question, which is why their weak family used to get neither.
+  /// Ordinary policy rather than a fallback: the acquisition floor answers what
+  /// to supply when admission produced nothing at all, and a learner strong in
+  /// another family never reaches that question.
   (double floor, ChallengeFloorReason reason) challengeFloorFor(
     LearnerState state,
     Exercise exercise, {
@@ -1313,13 +1309,10 @@ class SchedulerPipeline {
   /// rung this material has evidence for.
   ///
   /// A progression bypass may advance the execution dimension it has evidence
-  /// for, and must not carry an independent one along with it. Putting the
-  /// hands together is earned by coordination readiness, which says both hands
-  /// produced the right pitches and says nothing about whether the notes come
-  /// unaided; those are separate axes with separate evidence. A step that moved
-  /// both at once handed an unguided exercise to a returner whose retrieval
-  /// belief had decayed to nothing, and to a learner who had never once
-  /// retrieved the material alone. Neither could begin it.
+  /// for and must not carry an independent one with it. Coordination readiness
+  /// says both hands produced the right pitches and says nothing about whether
+  /// the notes come unaided, so a step that moved both at once offered unguided
+  /// work to learners who could not begin it.
   ///
   /// The rung is the material's, not this execution shape's. Guidance is about
   /// recalling the notes, and requiring hands-together retrieval before

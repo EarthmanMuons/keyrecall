@@ -321,12 +321,9 @@ class PlayerState {
     final conditions = exercise.conditions;
     final materialId = exercise.material.materialId;
     // Every draw an attempt could need, taken before anything branches on
-    // them. The budget is fixed so that the same exercise consumes the same
-    // stream whatever the player's state does: a learner who now retrieves a
-    // scale skips no draw, so the attempt after it, and every comparison
-    // against another state, still meets the same numbers. Paired experiments
-    // need that; without it a change in one place moves the noise everywhere
-    // after it.
+    // them, so the same exercise consumes the same stream whatever the player's
+    // state does. Paired experiments need that: a branch that skips a draw
+    // moves the noise of everything after it.
     final sprintDraw = rng.nextDouble();
     final motorZ = rng.nextGaussian(0, 1);
     final retrievalDraw = rng.nextDouble();

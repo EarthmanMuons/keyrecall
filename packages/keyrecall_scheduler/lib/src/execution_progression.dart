@@ -231,18 +231,12 @@ bool handsTogetherPrerequisiteSatisfied(
 /// material at any span. It stays in the signature because the caller is
 /// choosing a tempo for a particular span.
 ///
-/// **Material this hand owns in the same family.** A hand fluent in one family
-/// has said nothing about the pace material in another should be met at, and
-/// counting it said exactly that: a synthetic player who never once completed
-/// anything in their weaker family was asked for it at sixty, seventy-two,
-/// eighty-four and ninety-six, one rung behind the family they were fluent in,
-/// until the work they could not do left the challenge band and stopped being
-/// offered at all. Generalizing within a family is the part that survives, so
-/// several comfortable members still set the pace for an unseen one.
-///
-/// Every residual the learner holds in that family counts, not only the ones
-/// this slot happens to be choosing between. Which family a residual belongs
-/// to is recorded on it, because a scale's id does not say.
+/// **Same family only.** A hand fluent in one family says nothing about the
+/// pace material in another should be met at; generalizing within one is the
+/// part that holds, so several comfortable members still set the pace for an
+/// unseen one. Every residual the learner holds in that family counts, not only
+/// the ones this slot is choosing between, and the family is read off the
+/// residual because a scale's id does not name it.
 double transferableTempoFor(
   LearnerState state,
   HandConfiguration hands,

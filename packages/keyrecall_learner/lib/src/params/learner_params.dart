@@ -293,6 +293,22 @@ class CompetencyTransferParams {
   final double rhoHand;
 
   /// How much a new material family borrows from its declared source.
+  ///
+  /// **Execution only.** It reaches the competencies
+  /// [Competency.familyTransferSource] pairs, which are the motor ones: a hand
+  /// fluent at scales plausibly brings finger control, keyboard geography and
+  /// tempo tolerance to an arpeggio. It says nothing about whether the learner
+  /// knows that arpeggio's notes, which is retrieval and has no family
+  /// transfer, and nothing about the pace it should be entered at, which reads
+  /// only the target family's own evidence.
+  ///
+  /// **Provisional.** A starting point like the rest of v1, and one with an
+  /// observed effect: in simulation a learner strong in one family had the
+  /// other's gentlest work predicted at 0.465 while unable to manage any of it.
+  /// The borrowed term shrinks as direct evidence arrives, so the influence is
+  /// bounded, and the calibration it wants is the residual on a learner's first
+  /// attempts in an unpractised family. A single scalar may prove too coarse if
+  /// those residuals differ by execution shape.
   final double rhoFamily;
 
   /// Variance scale at which either adjustment is half strength.
