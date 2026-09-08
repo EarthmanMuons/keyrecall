@@ -113,7 +113,8 @@ enum PerformanceFeedback {
 /// of the material has to be retrieved, so coupling it to a guidance rung
 /// would move two variables at once.
 enum TempoSupport {
-  /// The tempo is stated and nothing sounds it.
+  /// Nothing sounds the pulse. An ordinary exercise still states a tempo and
+  /// leaves the learner to hold it; an unmetered acquisition task states none.
   none('NONE'),
 
   /// A count-in establishes the pulse and then stops, leaving the learner to

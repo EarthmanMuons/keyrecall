@@ -28,6 +28,22 @@ answer to "what may this learner be given at all", not a ranking term: the
 scheduler reaches for it only after ordinary admission produces nothing, and a
 slot it cannot fill is a reasoned block rather than an absence.
 
+### Acquisition task
+
+Supported acquisition of part of an ordinary exercise: an `AcquisitionTask`
+names a parent `Exercise` and relaxes the portion played, the timing demand, or
+who advances the sequence. Not an `Exercise`, and not convertible to one, so no
+ordinary admission, ranking, or learner-model path can consume it.
+
+Its attempts produce an `AcquisitionObservation` rather than an `Outcome`: no
+retrieval credit, no tempo reading, and no ordinary evidence of any kind. A
+criterion success, meaning a clean first pass with no stall, makes the unchanged
+parent eligible for a probe, and only that probe establishes ordinary readiness
+or a frontier. A stall is a gap between played moments that the measurement
+policy already reads as a break.
+
+Not to be confused with [Acquisition floor], which offers ordinary exercises.
+
 ### Admission band
 
 The probability window ordinary candidates must land in to be admitted, `pMin`

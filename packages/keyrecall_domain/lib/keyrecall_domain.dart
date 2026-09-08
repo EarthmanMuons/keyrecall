@@ -7,6 +7,7 @@
 /// onto [Competency] values; nothing here reads or stores learner state.
 library;
 
+export 'src/acquisition_task.dart';
 export 'src/admission_band.dart';
 export 'src/arpeggio_catalog.dart';
 export 'src/competency.dart';
