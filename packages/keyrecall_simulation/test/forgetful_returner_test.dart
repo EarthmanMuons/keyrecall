@@ -258,6 +258,55 @@ void main() {
     );
   });
 
+  test('a collapsed belief is free; a forgotten scale is what costs', () {
+    const gaps = [1, 30, 240];
+    const seeds = [8, 9, 10];
+
+    List<ReturnCost> costsOver(SyntheticPlayer player, int gap) => [
+      for (final seed in seeds)
+        returnCostOf(
+          runSittings(
+            player: player,
+            seed: seed,
+            materials: catalog,
+            sittings: sittingsOnDays([0, 1, 2, 3, 3 + gap], slots: 20),
+          ),
+          returned,
+        ),
+    ];
+
+    double meanToManaged(List<ReturnCost> costs) =>
+        costs.map((c) => c.slotsToManaged!).reduce((a, b) => a + b) /
+        costs.length;
+
+    for (final gap in gaps) {
+      final costs = costsOver(stable, gap);
+      expect(
+        costs.map((c) => c.falseStarts),
+        everyElement(0),
+        reason:
+            'the model expects nothing of this player after $gap days and it '
+            'costs them nothing, so a collapsed belief is not by itself what '
+            'a returner pays for',
+      );
+      expect(costs.map((c) => c.supportDescended), everyElement(0));
+      expect(
+        meanToManaged(costs),
+        meanToManaged(costsOver(stable, gaps.first)),
+      );
+    }
+
+    final soonest = costsOver(decaying['matched']!, gaps.first);
+    final latest = costsOver(decaying['matched']!, gaps.last);
+    expect(
+      latest.map((c) => c.falseStarts).reduce((a, b) => a + b),
+      greaterThan(soonest.map((c) => c.falseStarts).reduce((a, b) => a + b)),
+      reason: 'what the person lost is what the sitting spends attempts on',
+    );
+    expect(meanToManaged(latest), greaterThan(meanToManaged(soonest)));
+    expect(latest.every((c) => c.answered), isTrue);
+  });
+
   test('overlapping sittings are refused rather than run backwards', () {
     expect(
       () => runSittings(

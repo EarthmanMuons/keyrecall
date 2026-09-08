@@ -264,3 +264,8 @@ toward the ability and familiarity the player started with rather than toward
 zero, so a break can undo practice and cannot invent somebody worse than the
 person who first sat down. Natural tempo, compliance, and sprinting do not
 decay, so what a returner lost stays interpretable.
+
+`returnCostOf` reads the product consequence out of a sitting: attempts that
+never started before the first that did, guidance rungs descended to get there,
+and attempts before the first demonstrated execution. It is what says whether a
+calibration discrepancy costs a person anything.

@@ -721,3 +721,42 @@ So the next question is retention calibration of the learner model, and the
 place to answer it is device data from repeat users with real gaps, compared
 against what the model predicted before they came back. Tuning the curve to
 these half-lives would replace one assumed shape with another.
+
+### What a return actually costs
+
+A calibration discrepancy is a number about the model. `returnCostOf` asks the
+product question next to it: how many attempts a sitting spends before the
+learner answers anything. Attempts that never started before the first one that
+did, rungs of guidance descended to get there, and attempts before the first
+demonstrated execution. Five seeds, averaged.
+
+| gap | stable          | matched         | faster          |
+| --- | --------------- | --------------- | --------------- |
+| 1   | 0.0 / 0.0 / 1.4 | 0.0 / 0.0 / 1.4 | 0.0 / 0.0 / 0.8 |
+| 7   | 0.0 / 0.0 / 1.4 | 0.0 / 0.0 / 1.6 | 0.4 / 0.4 / 2.8 |
+| 14  | 0.0 / 0.0 / 1.4 | 0.2 / 0.2 / 3.0 | 0.8 / 0.8 / 5.2 |
+| 30  | 0.0 / 0.0 / 1.4 | 0.4 / 0.4 / 4.0 | 0.8 / 0.8 / 5.8 |
+| 60  | 0.0 / 0.0 / 1.4 | 0.8 / 0.8 / 4.4 | 0.8 / 0.8 / 4.0 |
+| 240 | 0.0 / 0.0 / 1.4 | 0.8 / 0.8 / 6.0 | 0.8 / 0.8 / 5.5 |
+
+False starts, then rungs descended, then attempts to the first managed
+execution.
+
+**The stable player pays nothing at any gap.** After two hundred and forty days
+the model expects nothing of them, and they still start the first thing offered
+and demonstrate execution by the second, exactly as they did after one day. So
+the over-decayed belief does not by itself produce a return cost, which is the
+opposite of what the collapsed prediction suggested it would.
+
+What costs is the person having actually forgotten. The matched returner goes
+from answering immediately to spending an attempt on work they cannot begin and
+six attempts of twenty before demonstrating anything; the faster one is there by
+a fortnight. The execution-progression bypass offering unguided work outside the
+band is what spends that attempt, and the recovery ladder is what ends it.
+
+That separates the two open questions rather than merging them. The model's
+retrieval decay is too aggressive, and it is not the mechanism charging a
+returner attempts. Whether execution progression should reach unguided work when
+belief has collapsed is a policy question about the return path, and this says
+it is worth asking for a person who really decayed rather than for one the model
+has merely lost track of.
