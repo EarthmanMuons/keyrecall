@@ -20,23 +20,20 @@ void main() {
 
   /// A learner ordinary admission has nothing left for.
   ///
-  /// The material has been met, so nothing here is an introduction, and the
-  /// family already has a frontier elsewhere, so the pre-frontier bootstrap
-  /// floor does not apply either. Both of the forgiving paths into admission
-  /// are closed, which is the state the fallback exists for.
+  /// The material has been met, so nothing here is an introduction, and this
+  /// exercise's own execution context has already demonstrated a frontier at
+  /// the tempo it is offered at, so the acquisition floor does not apply and
+  /// the rung it would progress to is not this one. Both of the forgiving paths
+  /// into admission are closed, which is the state the fallback exists for.
   LearnerState introducedState() {
     final state = stateAt(PlacementTier.beginner);
     state.materialMemoryFor(material.materialId, learnerParams);
     state
         .materialExecutionFor(
-          (
-            materials[1].materialId,
-            HandConfiguration.right,
-            HandMotion.parallel,
-          ),
+          executionContextOf(entry),
           t0,
           learnerParams,
-          familyId: materials[1].familyId,
+          familyId: material.familyId,
         )
         .demonstrate(octaves: 1, tempoBpm: generatedTempi.first);
     state

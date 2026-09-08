@@ -47,7 +47,7 @@ void main() {
         candidates: [exercise],
         at: t0,
       )
-      .single
+      .singleWhere((trace) => trace.exercise == exercise)
       .isRanked;
 
   test('a later exposure of the bootstrap shape is still admitted', () {
@@ -68,7 +68,7 @@ void main() {
       ),
       reason: 'and it predicts in the gap between the two floors',
     );
-    expect(pipeline.needsFamilyBootstrap(state, exercise), isTrue);
+    expect(pipeline.needsExecutionBootstrap(state, exercise), isTrue);
     expect(admits(state, exercise), isTrue);
     expect(
       pipeline
@@ -78,14 +78,14 @@ void main() {
             candidates: [exercise],
             at: t0,
           )
-          .single
+          .singleWhere((trace) => trace.exercise == exercise)
           .challengeFloorReason,
-      ChallengeFloorReason.familyBootstrap,
+      ChallengeFloorReason.executionBootstrap,
       reason: 'and the trace says which regime admitted it',
     );
   });
 
-  test('and stops being once the family has a frontier', () {
+  test('and stops being once this context has a frontier', () {
     final state = metButUnproven();
     final exercise = cued();
     expect(admits(state, exercise), isTrue);
@@ -98,11 +98,25 @@ void main() {
           familyId: material.familyId,
         )
         .demonstrate(octaves: 1, tempoBpm: 60);
+    expect(
+      pipeline.needsExecutionBootstrap(state, exercise),
+      isTrue,
+      reason: 'the other hand has shown something and this one has not',
+    );
+
+    state
+        .materialExecutionFor(
+          executionContextOf(exercise),
+          t0,
+          learnerParams,
+          familyId: material.familyId,
+        )
+        .demonstrate(octaves: 1, tempoBpm: 60);
 
     expect(
-      pipeline.needsFamilyBootstrap(state, exercise),
+      pipeline.needsExecutionBootstrap(state, exercise),
       isFalse,
-      reason: 'a frontier anywhere in the family ends the bootstrap',
+      reason: 'its own context has, which is what ends the bootstrap',
     );
     expect(
       admits(state, exercise),
@@ -123,7 +137,7 @@ void main() {
       cued(guidance: GuidanceContext.unguided),
     ]) {
       expect(
-        pipeline.isFamilyBootstrapShape(harder),
+        pipeline.isBootstrapShape(harder),
         isFalse,
         reason: '${harder.conditions} ${harder.guidance} is not the shape',
       );
@@ -135,7 +149,7 @@ void main() {
     }
     expect(pipeline.challengeFloorFor(state, cued()), (
       config.challenge.pIntroductionMin,
-      ChallengeFloorReason.familyBootstrap,
+      ChallengeFloorReason.executionBootstrap,
     ));
   });
 

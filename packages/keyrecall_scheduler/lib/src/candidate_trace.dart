@@ -290,10 +290,10 @@ enum RealizationRank {
 /// Which floor a candidate's predicted success had to clear.
 ///
 /// `in_band` alone stopped meaning one thing once three regimes could set the
-/// bound: ordinary practice, a first exposure, and a family with no execution
-/// evidence yet. A census that had to reconstruct which one applied is a census
+/// bound: ordinary practice, a first exposure, and an execution context with
+/// nothing demonstrated yet. A census that had to reconstruct which one applied is a census
 /// reconstructing policy.
-enum ChallengeFloorReason { ordinary, introduction, familyBootstrap }
+enum ChallengeFloorReason { ordinary, introduction, executionBootstrap }
 
 /// A refusal ordinary challenge admission cannot override.
 enum AdmissionRefusal { curriculum, introductionTempo, recovery, challengeBand }

@@ -64,15 +64,9 @@ class DecisionFacts {
   final Map<HandConfiguration, (int, int)> _breadth = {};
   final Map<(String, HandConfiguration), double> _executionMean = {};
   final Map<ScaleForm, double> _minorTopology = {};
-  final Map<String, bool> _familyBootstrap = {};
   bool? _fluentHandsTogether;
 
   DecisionFacts(this.state);
-
-  /// Whether [family] has yet to produce any execution evidence, asked once
-  /// per family rather than once per candidate.
-  bool needsBootstrap(String family, bool Function() compute) =>
-      _familyBootstrap.putIfAbsent(family, compute);
 }
 
 /// The candidates considered and the reasoned outcome of one attempt slot.
@@ -860,36 +854,37 @@ class SchedulerPipeline {
       (floor ?? config.challenge.pMin) <= prediction.overallP &&
       prediction.overallP <= config.challenge.pMax;
 
-  /// The narrowest supported shape a family offers: one hand, one octave, and
-  /// the notes in front of the learner.
+  /// The narrowest supported shape there is: one hand, one octave, and the
+  /// notes in front of the learner.
   ///
   /// The only shape a learner with nothing in a family demonstrates anything
   /// from, so widening it would relax the floor for work that teaches them
   /// nothing. See `docs/design/trajectory-simulation.md`.
-  bool isFamilyBootstrapShape(Exercise exercise) =>
+  bool isBootstrapShape(Exercise exercise) =>
       exercise.conditions.hands != HandConfiguration.together &&
       exercise.conditions.octaves == 1 &&
       exercise.guidance == GuidanceContext.continuouslyCued;
 
-  /// Whether nothing in this family has produced execution evidence yet.
+  /// Whether this candidate's execution context has yet to demonstrate
+  /// anything.
   ///
-  /// True for a family the learner has never demonstrated, and false the moment
-  /// any frontier exists in it. Deliberately not "has never been played": what
-  /// the ordinary floor presumes is evidence, and an attempt that demonstrated
-  /// nothing left none.
-  bool needsFamilyBootstrap(
-    LearnerState state,
-    Exercise exercise, {
-    DecisionFacts? facts,
-  }) {
-    final family = exercise.material.familyId;
-    bool compute() => !state.materialExecution.values.any(
-      (residual) =>
-          residual.familyId == family &&
-          residual.demonstratedTempoByOctaves.isNotEmpty,
-    );
-    return facts == null ? compute() : facts.needsBootstrap(family, compute);
-  }
+  /// The same scope execution progression reads, and deliberately so. A wider
+  /// one says a success somewhere is evidence that somewhere else is ready for
+  /// the ordinary floor, and the model does not agree: a frontier on one
+  /// material left another material in the same hand predicted exactly as
+  /// before, with no step of its own, and refused anyway.
+  ///
+  /// It is not a claim that nothing transfers. Borrowed competence still lifts
+  /// the prediction through the competency model, and if it lifts it past the
+  /// ordinary floor this rule stops mattering. What it withholds is only the
+  /// conclusion that borrowed competence is direct evidence this context is
+  /// ready to be held to that floor.
+  bool needsExecutionBootstrap(LearnerState state, Exercise exercise) =>
+      state
+          .materialExecution[executionContextOf(exercise)]
+          ?.demonstratedTempoByOctaves
+          .isEmpty ??
+      true;
 
   /// The predicted success a candidate has to clear to be ordinarily admitted.
   ///
@@ -909,14 +904,11 @@ class SchedulerPipeline {
   /// another family never reaches that question.
   (double floor, ChallengeFloorReason reason) challengeFloorFor(
     LearnerState state,
-    Exercise exercise, {
-    DecisionFacts? facts,
-  }) =>
-      isFamilyBootstrapShape(exercise) &&
-          needsFamilyBootstrap(state, exercise, facts: facts)
+    Exercise exercise,
+  ) => isBootstrapShape(exercise) && needsExecutionBootstrap(state, exercise)
       ? (
           config.challenge.pIntroductionMin,
-          ChallengeFloorReason.familyBootstrap,
+          ChallengeFloorReason.executionBootstrap,
         )
       : (config.challenge.pMin, ChallengeFloorReason.ordinary);
 
@@ -1299,7 +1291,7 @@ class SchedulerPipeline {
     }
     return isWithinChallengeBand(
           prediction,
-          floor: challengeFloorFor(state, exercise, facts: facts).$1,
+          floor: challengeFloorFor(state, exercise).$1,
         )
         ? const AdmissionDecision.admitted()
         : const AdmissionDecision.refused(AdmissionRefusal.challengeBand);
@@ -1477,7 +1469,6 @@ class SchedulerPipeline {
     final (challengeFloor, challengeFloorReason) = challengeFloorFor(
       state,
       exercise,
-      facts: facts,
     );
     final withinBand = isWithinChallengeBand(prediction, floor: challengeFloor);
     final admission = admissionFor(

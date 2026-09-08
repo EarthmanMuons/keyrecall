@@ -1431,6 +1431,36 @@ nothing about. What it costs is that a learner meeting a second material in a
 practised hand is treated as acquiring rather than progressing, and whether that
 is right is a pedagogical question the harness cannot answer.
 
-Nothing changed. The defect is characterized, the candidate replacement is
-identified, and the reason to prefer it is an argument about meaning rather than
-a measured gain.
+### The exit follows the candidate now
+
+Landed on the semantic argument rather than a measured gain, because the runs
+show no measured gain to have: the work the broad exit stranded loses at ranking
+whether or not it is admitted, which means ranking was masking the defect rather
+than the defect being harmless.
+
+`needsExecutionBootstrap` reads the same scope execution progression reads, so a
+frontier on one material and hand leaves another material in that hand still
+acquiring, and the context that demonstrated something is held to the ordinary
+floor and has a tempo step to take. Hands together parallel does not speak for
+the single hand, since the motion is part of the context.
+
+The rename is part of the change. `needsFamilyBootstrap` described the scope it
+used to have, and a name that says family is an invitation to widen it back.
+
+What it withholds is narrow and worth stating: not that nothing transfers, since
+borrowed competence still lifts the prediction through the competency model and
+a candidate lifted past the ordinary floor never meets this rule. Only that
+borrowed competence is not direct evidence that this execution context is ready
+for that floor.
+
+The acquisition floor's fixtures moved with it. Genuine exhaustion now means the
+candidate's own context has already demonstrated the tempo being offered, so
+neither forgiving path applies and the rung it would progress to is a different
+one.
+
+That closes the scheduler side of this thread. The chain is complete: productive
+acquisition work was under-admitted, admission was fixed, the work was then
+under-selected, forcing selection did not improve anybody, the exit from
+acquisition was too broad, narrowing it to the candidate's own context removes
+the unrelated stranding, and the learners still fail the narrowest supported
+shape there is. What is left is not a scheduler question.
