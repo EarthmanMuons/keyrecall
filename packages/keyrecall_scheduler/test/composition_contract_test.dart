@@ -32,6 +32,20 @@ void main() {
                 .lastEvidenceAt =
             t0;
       }
+      // A frontier elsewhere in the family, so the pre-frontier floor does not
+      // apply and ordinary admission really is exhausted here.
+      state
+          .materialExecutionFor(
+            (
+              materials[2].materialId,
+              HandConfiguration.right,
+              HandMotion.parallel,
+            ),
+            t0,
+            learnerParams,
+            familyId: materials[2].familyId,
+          )
+          .demonstrate(octaves: 1, tempoBpm: 60);
       final emphasis = GoalEmphasis({entries.last.material.materialId: 3});
       final session = SessionState();
       final slot = pipeline.evaluateSlot(

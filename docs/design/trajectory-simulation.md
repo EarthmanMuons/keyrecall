@@ -1187,8 +1187,35 @@ tempo, which is the bootstrap shape exactly. Two mechanisms, one problem: the
 floor supplies this work when admission exhausts, and the relaxed floor stops
 admission exhausting.
 
-Which one should own the case is a design decision rather than a finding. The
-evidence says the case is real, that either mechanism addresses it, and that the
-relaxed floor additionally fixes a defect the acquisition floor has not. It does
-not say which belongs in the architecture, and that is not a question a
-simulation answers.
+### Which mechanism owns it
+
+The relaxed floor does, and the acquisition floor stays for genuine exhaustion.
+They answer different questions. Admission asks whether an exercise is
+appropriate enough to compete for a slot; the fallback asks what to supply when
+admission produced nothing at all. The bootstrap shape is not emergency work, it
+is the ordinary work of a family with no evidence, and routing it through the
+fallback means it appears only when everything else collapses. A learner strong
+in one family never collapses, which is exactly why the acquisition floor could
+protect a true beginner from running dry and do nothing for the same learner's
+weak family.
+
+So the pre-frontier floor is ordinary policy, the fallback is unreached in the
+cases it used to cover, and the tests for each now construct their own
+situation. The acquisition floor's fixtures give the family a frontier
+elsewhere, which closes both forgiving paths and leaves admission genuinely
+empty, which is what that mechanism is for. The run-dry tests assert the
+condition is gone rather than that it reproduces, including for a scoped goal,
+which was the stated blocker for shipping goals.
+
+**A fallback preventing a failure is not the same as the fallback being the
+right mechanism.** It had been masking an admission boundary that was too strict
+for a learner without evidence.
+
+What this does not settle is the weak family, whose outcomes did not move
+because the newly admitted work still loses at ranking. That is the next
+question and it is now well posed: a bounded preference for the narrowest
+supported shape while a family has no frontier, terminating at the first one,
+measured on slots to that frontier, weak-family held-out change, strong-family
+held-out change, and how many supported attempts it costs. A learner who
+consumes many and produces none has stopped being an allocation problem and
+become the beginner's.

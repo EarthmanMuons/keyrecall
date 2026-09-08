@@ -218,9 +218,9 @@ void main() {
     );
   });
 
-  test('the work that teaches sits between the two admission floors', () {
+  test('the work that teaches is admitted while the family has none', () {
     final band = v1SchedulerConfig.challenge;
-    final refused = <double>[];
+    final carried = <double>[];
     var admitted = 0;
     var eligible = 0;
 
@@ -252,11 +252,10 @@ void main() {
                 continue;
               }
               eligible++;
-              if (trace.isRanked) {
-                admitted++;
-              } else if (trace.admissionRefusal ==
-                  AdmissionRefusal.challengeBand) {
-                refused.add(trace.prediction.overallP);
+              if (!trace.isRanked) continue;
+              admitted++;
+              if (trace.prediction.overallP < band.pMin) {
+                carried.add(trace.prediction.overallP);
               }
             }
           },
@@ -266,30 +265,24 @@ void main() {
 
     expect(
       admitted / eligible,
-      lessThan(0.1),
+      greaterThan(0.5),
       reason:
           'while the family has no frontier, the one shape that could give it '
-          'one is admitted for under a tenth of the times it is eligible',
+          'one is admitted most of the times it is eligible',
     );
     expect(
-      refused.length,
-      greaterThan(admitted),
-      reason: 'and the challenge band is what turns most of them away',
+      carried.length / admitted,
+      greaterThan(0.5),
+      reason: 'and most of that is work the ordinary floor would have refused',
     );
-    final mean = refused.reduce((a, b) => a + b) / refused.length;
-    expect(
-      mean,
-      greaterThan(band.pIntroductionMin),
-      reason:
-          'at a prediction a first exposure of the same material would be '
-          'admitted at, since the introduction floor is ${band.pIntroductionMin}',
-    );
+    final mean = carried.reduce((a, b) => a + b) / carried.length;
+    expect(mean, greaterThan(band.pIntroductionMin));
     expect(
       mean,
       lessThan(band.pMin),
       reason:
-          'and below the ordinary floor of ${band.pMin} that every later '
-          'exposure is held to, which is the gap the work falls into',
+          'sitting where it always sat, between the floor a first exposure '
+          'gets and the one every later exposure used to be held to',
     );
   });
 

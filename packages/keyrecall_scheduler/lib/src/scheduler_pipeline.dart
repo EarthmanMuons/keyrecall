@@ -64,9 +64,15 @@ class DecisionFacts {
   final Map<HandConfiguration, (int, int)> _breadth = {};
   final Map<(String, HandConfiguration), double> _executionMean = {};
   final Map<ScaleForm, double> _minorTopology = {};
+  final Map<String, bool> _familyBootstrap = {};
   bool? _fluentHandsTogether;
 
   DecisionFacts(this.state);
+
+  /// Whether [family] has yet to produce any execution evidence, asked once
+  /// per family rather than once per candidate.
+  bool needsBootstrap(String family, bool Function() compute) =>
+      _familyBootstrap.putIfAbsent(family, compute);
 }
 
 /// The candidates considered and the reasoned outcome of one attempt slot.
@@ -850,9 +856,70 @@ class SchedulerPipeline {
 
   /// Stage 3: whether predicted success lands in the "not too easy, not too
   /// hard" band.
-  bool isWithinChallengeBand(Prediction prediction) =>
-      config.challenge.pMin <= prediction.overallP &&
+  bool isWithinChallengeBand(Prediction prediction, {double? floor}) =>
+      (floor ?? config.challenge.pMin) <= prediction.overallP &&
       prediction.overallP <= config.challenge.pMax;
+
+  /// The narrowest supported shape a family offers: one hand, one octave, and
+  /// the notes in front of the learner.
+  ///
+  /// The only shape a learner with nothing in a family demonstrates anything
+  /// from. Two octaves managed one attempt in eighty-seven across the mirror
+  /// runs and both hands none in forty-four, so widening this would relax the
+  /// floor for work that has never taught anybody anything.
+  bool isFamilyBootstrapShape(Exercise exercise) =>
+      exercise.conditions.hands != HandConfiguration.together &&
+      exercise.conditions.octaves == 1 &&
+      exercise.guidance == GuidanceContext.continuouslyCued;
+
+  /// Whether nothing in this family has produced execution evidence yet.
+  ///
+  /// True for a family the learner has never demonstrated, and false the moment
+  /// any frontier exists in it. Deliberately not "has never been played": what
+  /// the ordinary floor presumes is evidence, and an attempt that demonstrated
+  /// nothing left none.
+  bool needsFamilyBootstrap(
+    LearnerState state,
+    Exercise exercise, {
+    DecisionFacts? facts,
+  }) {
+    final family = exercise.material.familyId;
+    bool compute() => !state.materialExecution.values.any(
+      (residual) =>
+          residual.familyId == family &&
+          residual.demonstratedTempoByOctaves.isNotEmpty,
+    );
+    return facts == null ? compute() : facts.needsBootstrap(family, compute);
+  }
+
+  /// The predicted success a candidate has to clear to be ordinarily admitted.
+  ///
+  /// **Not new any more is not the same as has evidence.** A first exposure is
+  /// admitted at the introduction floor and every exposure after it is held to
+  /// the ordinary one, so a learner who meets an unfamiliar family, is offered
+  /// its gentlest work once and does not manage it cannot be offered that work
+  /// again until they can already do it. The mirror runs put that work at a
+  /// predicted 0.465, between the two floors, and it is the only shape those
+  /// learners ever demonstrated anything from.
+  ///
+  /// So the forgiving floor lasts until the family has something to progress
+  /// from rather than until the material stops being new. It is not an
+  /// introduction that repeats: it is acquisition before there is any execution
+  /// evidence at all, and it ends at the first frontier.
+  ///
+  /// This is ordinary policy and not a fallback. The acquisition floor answers
+  /// a different question, which is what to supply when admission has produced
+  /// nothing at all; a learner strong in one family never reaches that
+  /// question, which is why their weak family used to get neither.
+  double challengeFloorFor(
+    LearnerState state,
+    Exercise exercise, {
+    DecisionFacts? facts,
+  }) =>
+      isFamilyBootstrapShape(exercise) &&
+          needsFamilyBootstrap(state, exercise, facts: facts)
+      ? config.challenge.pIntroductionMin
+      : config.challenge.pMin;
 
   /// The one tempo a probe about guidance is asked at.
   ///
@@ -1231,7 +1298,10 @@ class SchedulerPipeline {
         AdmissionRefusal.introductionTempo,
       );
     }
-    return isWithinChallengeBand(prediction)
+    return isWithinChallengeBand(
+          prediction,
+          floor: challengeFloorFor(state, exercise, facts: facts),
+        )
         ? const AdmissionDecision.admitted()
         : const AdmissionDecision.refused(AdmissionRefusal.challengeBand);
   }
@@ -1408,7 +1478,10 @@ class SchedulerPipeline {
       facts: facts,
       practiceEntryPolicy: practiceEntryPolicy,
     );
-    final withinBand = isWithinChallengeBand(prediction);
+    final withinBand = isWithinChallengeBand(
+      prediction,
+      floor: challengeFloorFor(state, exercise, facts: facts),
+    );
     final admission = admissionFor(
       state: state,
       exercise: exercise,

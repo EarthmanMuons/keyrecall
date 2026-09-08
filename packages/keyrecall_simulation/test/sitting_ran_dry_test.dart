@@ -11,8 +11,12 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// one of them declined. The app shows an error state for it.
 ///
 /// The sweep never produced one over the full catalog, and the invariant run
-/// over the seven-material catalog produced them readily. This says which of
-/// those is the accident.
+/// over the seven-material catalog produced them readily. What separated them
+/// was the pre-frontier acquisition floor: after a first exposure the gentlest
+/// work in the only family on offer was held to the ordinary challenge floor
+/// and refused for being too hard, so a narrow catalog eventually had nothing
+/// it could admit. A learner with a second family never noticed, because that
+/// family kept admission alive.
 void main() {
   const slots = 60;
   const seeds = 8;
@@ -41,30 +45,26 @@ void main() {
     return dry;
   }
 
-  test('a narrow catalog runs dry for a learner who fails most things', () {
-    // A narrow catalog reliably exposes the dry-sitting condition.
-    expect(dryRuns(v1ScaleCatalog), greaterThan(0));
+  test('a narrow catalog no longer runs dry', () {
+    expect(
+      dryRuns(v1ScaleCatalog),
+      isZero,
+      reason:
+          'the gentlest work in a family with no frontier is admitted at the '
+          'introduction floor rather than the ordinary one, so a sitting that '
+          'used to run out of things to offer has this to offer',
+    );
   });
 
-  test('the shipped catalog does not', () {
+  test('the shipped catalog does not either', () {
     // Three deterministic samples keep this regression guard inexpensive.
     expect(dryRuns(allScales, seeds: 3, slots: 40), isZero);
   });
 
-  test('the scale acquisition floor keeps a narrow scope actionable', () {
+  test('and the fallback is no longer what keeps it actionable', () {
     final candidates = generateCandidates(InstrumentProfile(), v1ScaleCatalog);
-    var recoveredRuns = 0;
     for (var seed = 0; seed < seeds; seed++) {
-      final withoutFloor = runTrajectory(
-        player: PlayerArchetypes.trueBeginner,
-        seed: seed,
-        materials: v1ScaleCatalog,
-        slots: slots,
-        generated: candidates,
-      );
-      if (withoutFloor.terminal == null) continue;
-
-      final withFloor = runTrajectory(
+      final trajectory = runTrajectory(
         player: PlayerArchetypes.trueBeginner,
         seed: seed,
         materials: v1ScaleCatalog,
@@ -72,25 +72,26 @@ void main() {
         generated: candidates,
         acquisitionFloor: scaleAcquisitionFloor(candidates),
       );
-      expect(withFloor.slots, hasLength(slots));
+
+      expect(trajectory.slots, hasLength(slots));
       expect(
-        withFloor.slots.where(
+        trajectory.slots.where(
           (slot) =>
               slot.winner.challengeBypass == ChallengeBypass.acquisitionFloor,
         ),
-        isNotEmpty,
+        isEmpty,
+        reason:
+            'ordinary admission has work for this learner now, so the '
+            'fallback is not reached at seed $seed. It stays for the cases '
+            'where admission genuinely produces nothing.',
       );
-      recoveredRuns++;
     }
-
-    expect(recoveredRuns, greaterThan(0));
-    expect(dryRuns(v1ScaleCatalog, withAcquisitionFloor: true), isZero);
   });
 
-  test('so a goal that narrows the catalog can reach it', () {
-    // Why PracticeSession.open refuses a scoped goal: PracticeGoal.scopeOf
+  test('so a goal that narrows the catalog can be offered one', () {
+    // Why PracticeSession.open refused a scoped goal: PracticeGoal.scopeOf
     // cuts the catalog to targetMaterialIds, and a goal aimed at a handful of
-    // scales reproduces the condition the narrow catalog reaches.
+    // scales was a narrow catalog by another name.
     final goal = PracticeGoal(
       id: 'FIVE_SCALES',
       targetMaterialIds: {
@@ -101,8 +102,8 @@ void main() {
     expect(goal.scopeOf(allScales), hasLength(5));
     expect(
       dryRuns(goal.scopeOf(allScales)),
-      greaterThan(0),
-      reason: 'a scoped goal is a narrow catalog by another name',
+      isZero,
+      reason: 'which no longer reproduces the condition that refuses it',
     );
   });
 }
