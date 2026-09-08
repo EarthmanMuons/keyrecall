@@ -63,15 +63,19 @@ void main() {
       ..lastRetrievalAttemptAt = t0;
     final entry = handsTogetherEntryTempo(state, material.materialId, 1);
 
+    final supported = Exercise.linear(
+      material: material,
+      hands: HandConfiguration.together,
+      tempoBpm: entry,
+      guidance: GuidanceContext.continuouslyCued,
+    );
     final traces = pipeline.evaluate(
       state: state,
       session: SessionState(),
-      candidates: [together(tempoBpm: entry)],
+      candidates: [supported],
       at: t0,
     );
-    final trace = traces.singleWhere(
-      (t) => t.exercise.conditions.tempoBpm == entry,
-    );
+    final trace = traces.singleWhere((t) => t.exercise == supported);
 
     expect(trace.challengeBypass, ChallengeBypass.executionProgression);
     expect(trace.executionAdvance, ExecutionAdvance.handsTogether);
@@ -79,6 +83,83 @@ void main() {
       trace.isWithinChallengeBand,
       isFalse,
       reason: 'the bypass is what made it reachable, not the band',
+    );
+  });
+
+  test('motor-ready and retrieval-unproven enters with support', () {
+    final state = readyButUnproven();
+    state.materialMemoryFor(material.materialId, learnerParams)
+      ..factualLastRetrievalAt = t0
+      ..lastRetrievalAttemptAt = t0;
+    final entry = handsTogetherEntryTempo(state, material.materialId, 1);
+
+    final admitted = pipeline
+        .evaluate(
+          state: state,
+          session: SessionState(),
+          candidates: [
+            for (final guidance in GuidanceContext.ladder)
+              Exercise.linear(
+                material: material,
+                hands: HandConfiguration.together,
+                tempoBpm: entry,
+                guidance: guidance,
+              ),
+          ],
+          at: t0,
+        )
+        .where(
+          (t) => t.challengeBypass == ChallengeBypass.executionProgression,
+        );
+
+    expect(
+      admitted.map((t) => t.exercise.guidance.independence),
+      everyElement(0),
+      reason:
+          'the hands are ready to coordinate and the notes have never come '
+          'unaided, so the step is offered with the notes in front of them',
+    );
+    expect(admitted, isNotEmpty, reason: 'the foothold is still there');
+    expect(
+      admitted.map((t) => t.executionAdvance),
+      everyElement(ExecutionAdvance.handsTogether),
+    );
+  });
+
+  test('motor-ready and retrieval-proven keeps the independent rung', () {
+    final state = readyButUnproven();
+    state.materialMemoryFor(material.materialId, learnerParams)
+      ..factualLastRetrievalAt = t0
+      ..lastRetrievalAttemptAt = t0
+      ..establishedIndependence = 2
+      ..establishedIndependenceAt = t0;
+    final entry = handsTogetherEntryTempo(state, material.materialId, 1);
+
+    final admitted = pipeline
+        .evaluate(
+          state: state,
+          session: SessionState(),
+          candidates: [
+            for (final guidance in GuidanceContext.ladder)
+              Exercise.linear(
+                material: material,
+                hands: HandConfiguration.together,
+                tempoBpm: entry,
+                guidance: guidance,
+              ),
+          ],
+          at: t0,
+        )
+        .where(
+          (t) => t.challengeBypass == ChallengeBypass.executionProgression,
+        );
+
+    expect(
+      admitted.map((t) => t.exercise.guidance),
+      contains(GuidanceContext.unguided),
+      reason:
+          'somebody who retrieves this material alone is not sent back to full '
+          'cueing because coordination is the new part',
     );
   });
 

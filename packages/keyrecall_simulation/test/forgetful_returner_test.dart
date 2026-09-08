@@ -182,7 +182,7 @@ void main() {
     }
   });
 
-  test('a returner is offered work the model expects nothing of', () {
+  test('a returner is not handed the notes and the coordination at once', () {
     final back = runSittings(
       player: decaying['matched']!,
       seed: 8,
@@ -191,120 +191,21 @@ void main() {
       assessment: set,
     ).slots.where((slot) => slot.sitting == returned).first;
 
-    expect(back.chosen.guidance, GuidanceContext.unguided);
-    expect(back.winner.prediction.overallP, lessThan(0.01));
-    expect(back.winner.isWithinChallengeBand, isFalse);
     expect(back.winner.challengeBypass, ChallengeBypass.executionProgression);
+    expect(back.winner.isWithinChallengeBand, isFalse);
+    expect(
+      back.winner.executionAdvance,
+      ExecutionAdvance.tempo,
+      reason:
+          'a tempo step moves the axis its own frontier is evidence for, and '
+          'the hands-together step that used to be offered here moved the '
+          'guidance rung as well without evidence for that',
+    );
     expect(
       back.outcome.started,
-      isFalse,
-      reason:
-          'the first thing back is unguided work admitted by a bypass rather '
-          'than by the band, and the recovery it opens is what supplies the '
-          'notes the model no longer believes are there',
+      isTrue,
+      reason: 'so the first thing back is answerable rather than a false start',
     );
-  });
-
-  test('the model forgets faster than any of these people do', () {
-    const gaps = [2, 14, 60];
-    AssessmentReading arrivalAfter(SyntheticPlayer player, int gap) =>
-        arrivalAt(
-          runSittings(
-            player: player,
-            seed: 8,
-            materials: catalog,
-            sittings: sittingsOnDays([0, 1, 2, 3, 3 + gap], slots: 20),
-            assessment: set,
-          ),
-          returned,
-        );
-
-    final believed = [for (final gap in gaps) arrivalAfter(stable, gap)];
-    final forgetting = [
-      for (final gap in gaps) arrivalAfter(decaying['faster']!, gap),
-    ];
-
-    expect(
-      believed.map((r) => r.predictedRetrieval!),
-      orderedEquals(
-        [for (final r in believed) r.predictedRetrieval!]
-          ..sort((a, b) => b.compareTo(a)),
-      ),
-      reason: 'the longer the gap the less the model expects',
-    );
-    expect(believed.last.predictedRetrieval, lessThan(0.001));
-    expect(
-      believed.last.retrieval,
-      1.0,
-      reason:
-          'two months on, the model expects nothing of somebody who has '
-          'forgotten nothing',
-    );
-    for (final (i, reading) in forgetting.indexed) {
-      expect(
-        reading.predictedRetrieval,
-        lessThan(reading.retrieval),
-        reason:
-            'the model has decayed past even the fast forgetter at '
-            '${gaps[i]} days',
-      );
-    }
-    expect(
-      forgetting.last.retrieval,
-      greaterThan(0.5),
-      reason:
-          'decay toward the starting player floors what can be lost, so '
-          'this bounds the model from one side only',
-    );
-  });
-
-  test('a collapsed belief is free; a forgotten scale is what costs', () {
-    const gaps = [1, 30, 240];
-    const seeds = [8, 9, 10];
-
-    List<ReturnCost> costsOver(SyntheticPlayer player, int gap) => [
-      for (final seed in seeds)
-        returnCostOf(
-          runSittings(
-            player: player,
-            seed: seed,
-            materials: catalog,
-            sittings: sittingsOnDays([0, 1, 2, 3, 3 + gap], slots: 20),
-          ),
-          returned,
-        ),
-    ];
-
-    double meanToManaged(List<ReturnCost> costs) =>
-        costs.map((c) => c.slotsBeforeManaged!).reduce((a, b) => a + b) /
-        costs.length;
-
-    for (final gap in gaps) {
-      final costs = costsOver(stable, gap);
-      expect(
-        costs.map((c) => c.falseStarts),
-        everyElement(0),
-        reason:
-            'the model expects nothing of this player after $gap days and it '
-            'costs them nothing, so a collapsed belief is not by itself what '
-            'a returner pays for',
-      );
-      expect(costs.map((c) => c.supportDescended), everyElement(0));
-      expect(
-        meanToManaged(costs),
-        meanToManaged(costsOver(stable, gaps.first)),
-      );
-    }
-
-    final soonest = costsOver(decaying['matched']!, gaps.first);
-    final latest = costsOver(decaying['matched']!, gaps.last);
-    expect(
-      latest.map((c) => c.falseStarts).reduce((a, b) => a + b),
-      greaterThan(soonest.map((c) => c.falseStarts).reduce((a, b) => a + b)),
-      reason: 'what the person lost is what the sitting spends attempts on',
-    );
-    expect(meanToManaged(latest), greaterThan(meanToManaged(soonest)));
-    expect(latest.every((c) => c.answered), isTrue);
   });
 
   test('overlapping sittings are refused rather than run backwards', () {

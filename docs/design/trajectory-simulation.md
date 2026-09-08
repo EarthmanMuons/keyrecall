@@ -960,3 +960,46 @@ preference, and the question it raises is not whether ranking should favour
 weakness. It is whether an execution-side foothold should carry an exercise
 whose retrieval is unevidenced, or whether that step owes a guidance level the
 way an introduction does. Nothing changed on the strength of it.
+
+### Separating the two axes
+
+Coordination readiness earns hands together. It says both hands produced the
+right pitches and says nothing about whether the notes come unaided. The step
+was carrying both: an unguided realization went along with the new execution
+shape, and only the shape had evidence behind it. A hands-together progression
+step is now admitted only at a guidance rung the material has established, and
+tempo and span steps are untouched, since they already move along the axis their
+frontier is evidence for.
+
+The rung is the material's rather than this execution shape's. Guidance is about
+recalling the notes, and requiring hands-together retrieval before offering
+hands-together work would be circular.
+
+What it fixed, and what it cost:
+
+| run                             | before        | after         |
+| ------------------------------- | ------------- | ------------- |
+| matched returner, seed 8        | 1 false start | none          |
+| faster returner, seed 8         | 1 false start | 1 false start |
+| weak arpeggios, seed 2 share    | 0.40          | 0.11          |
+| weak arpeggios, seed 4 share    | 0.71          | 0.30          |
+| weak arpeggios, seed 4 held-out | 0.06 -> 0.11  | 0.06 -> 0.06  |
+
+**The matched returner's first attempt back now starts.** It is a tempo step
+rather than the hands-together one that used to be offered unguided at
+eighty-eight with a frontier of zero.
+
+**The faster returner still spends one.** Its established rung is a historical
+record and does not decay, so a learner who once played this material unguided
+still counts as established at that rung however long they have been away. That
+is the policy as specified, and the case for ageing establishment alongside
+retrieval belief is now a separate question with a reproduction attached.
+
+**The weak family lost share.** Hands-together admissions at full independence
+were a large part of its foothold, and refusing them takes those slots away.
+Held-out weak performance was already flat in three of the four runs, so most of
+what was lost was work the learner could not do; the exception is the one run
+where the weak family had been improving, which is now flat. So this bought
+answerable work at the price of the weak family's only observed gain, and
+whether the cued hands-together candidate deserves to win a slot more often is
+the next allocation question rather than a settled one.

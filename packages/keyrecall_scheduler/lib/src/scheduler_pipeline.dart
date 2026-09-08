@@ -1148,11 +1148,12 @@ class SchedulerPipeline {
             final memory?
                 when memory.hasFactualRetrieval &&
                     eligibility == EligibilityTier.fullyEligible &&
-                    executionAdvanceFor(
+                    isSupportedProgression(
                       state,
                       exercise,
+                      memory,
                       memo: facts?.execution,
-                    ).isAdjacentStep =>
+                    ) =>
               const _Admits(ChallengeBypass.executionProgression),
             _ => const _Silent(),
           },
@@ -1233,6 +1234,36 @@ class SchedulerPipeline {
     return isWithinChallengeBand(prediction)
         ? const AdmissionDecision.admitted()
         : const AdmissionDecision.refused(AdmissionRefusal.challengeBand);
+  }
+
+  /// Whether [exercise] is the adjacent execution step, asked at a guidance
+  /// rung this material has evidence for.
+  ///
+  /// A progression bypass may advance the execution dimension it has evidence
+  /// for, and must not carry an independent one along with it. Putting the
+  /// hands together is earned by coordination readiness, which says both hands
+  /// produced the right pitches and says nothing about whether the notes come
+  /// unaided; those are separate axes with separate evidence. A step that moved
+  /// both at once handed an unguided exercise to a returner whose retrieval
+  /// belief had decayed to nothing, and to a learner who had never once
+  /// retrieved the material alone. Neither could begin it.
+  ///
+  /// The rung is the material's, not this execution shape's. Guidance is about
+  /// recalling the notes, and requiring hands-together retrieval before
+  /// offering hands-together work would be circular. Tempo and span steps stay
+  /// where they were: they already move along the axis their frontier is
+  /// evidence for.
+  bool isSupportedProgression(
+    LearnerState state,
+    Exercise exercise,
+    MaterialMemoryState memory, {
+    ExecutionMemo? memo,
+  }) {
+    final advance = executionAdvanceFor(state, exercise, memo: memo);
+    if (!advance.isAdjacentStep) return false;
+    if (advance != ExecutionAdvance.handsTogether) return true;
+    return exercise.guidance.independence <=
+        (memory.establishedIndependence ?? 0);
   }
 
   /// Runs every candidate through every stage and returns the full traces.
