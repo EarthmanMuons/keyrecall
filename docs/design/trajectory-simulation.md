@@ -867,3 +867,52 @@ learner asked repeatedly for work above anything they had managed demonstrates
 nothing, and a sitting with nothing demonstrated eventually has nothing left it
 can admit. What survives for the true beginner is a narrower question than it
 looked, and it is now the only one.
+
+### Where the mirror stops being a mirror
+
+Scoping the pace left one asymmetry standing: the arpeggio-weak player recovers
+and the scale-weak player does not. The two archetypes are mirror images, so a
+stage census of the same seeds says where the pipeline stops treating them as
+one. Counts are traces summed over eighty slots, and the weak family is the one
+the player is bad at.
+
+| case                   | evaluated | eligible | in band | admitted | chosen |
+| ---------------------- | --------- | -------- | ------- | -------- | ------ |
+| weak arpeggios, seed 2 | 47676     | 12740    | 0       | 871      | 32     |
+| weak arpeggios, seed 4 | 51948     | 18366    | 0       | 1749     | 57     |
+| weak scales, seed 2    | 46080     | 22720    | 0       | 400      | 6      |
+| weak scales, seed 4    | 48792     | 25188    | 0       | 1756     | 29     |
+
+**Eligibility is not where they part.** The weak family is fully eligible tens
+of thousands of times in every case, and the scale-weak player is eligible more
+often than its mirror, not less, while ending with a fifth of the slots.
+
+**The weak family is never in the ordinary challenge band.** Zero, in all four,
+against thousands for the strong family. Everything a weak family gets is a
+bypass, so admission is where the two stop matching.
+
+The bypass mix says which one. `new_material` is nearly constant across the four
+cases, between two hundred and five hundred, because introduction is capped and
+the cap does not care how good you are. `execution_progression` is the whole
+variable: 648, 1578, 0, and 1236. The one case with none is the scale-weak
+player at seed 2, which is also the case that never recovers and takes six of
+eighty slots.
+
+So the structure to look at is that **a family with prior evidence has a wide
+door and a family without one has only the capped introduction**. That is
+rich-get-richer at admission rather than in ranking, and it is family-neutral in
+the code: it reads how much has been demonstrated, and a family you cannot play
+demonstrates nothing.
+
+One thing that census does not explain, left as the next thread rather than
+smoothed over: the weak-arpeggio case at seed 2 shows 648 execution-progression
+admissions while no arpeggio context in the final state holds a demonstrated
+frontier at either hand motion. Either progression can admit on evidence that is
+not a frontier, or a frontier existed and did not survive to the end of the run.
+Until that is answered the rule above is a description of three cases out of
+four, not a mechanism.
+
+Nothing about allocation changed on the strength of this. What it establishes is
+that the remaining skew is an admission-stage question about how a family
+without evidence earns its first evidence, not a ranking question about whether
+weakness should be favoured.
