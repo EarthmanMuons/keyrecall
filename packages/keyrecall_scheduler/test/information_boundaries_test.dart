@@ -345,37 +345,40 @@ void main() {
       expect(sawInformationDifference, isTrue);
     });
 
-    test('bypasses are independent of the band decision', () {
-      final fresh = stateAt(PlacementTier.beginner);
-      final seeded = stateAt(PlacementTier.beginner);
-      seedAllMaterials(seeded);
-      final candidates = allCandidates();
+    test(
+      'introduction history changes admission without changing predictions',
+      () {
+        final fresh = stateAt(PlacementTier.beginner);
+        final seeded = stateAt(PlacementTier.beginner);
+        seedAllMaterials(seeded);
+        final candidates = allCandidates();
 
-      final freshTraces = pipeline.evaluate(
-        state: fresh,
-        session: SessionState(),
-        candidates: candidates,
-        at: t0,
-      );
-      final seededTraces = tracesByExercise(
-        pipeline.evaluate(
-          state: seeded,
+        final freshTraces = pipeline.evaluate(
+          state: fresh,
           session: SessionState(),
           candidates: candidates,
           at: t0,
-        ),
-      );
+        );
+        final seededTraces = tracesByExercise(
+          pipeline.evaluate(
+            state: seeded,
+            session: SessionState(),
+            candidates: candidates,
+            at: t0,
+          ),
+        );
 
-      var sawBypassChange = false;
-      for (final trace in freshTraces) {
-        final other = seededTraces[trace.exercise]!;
-        expect(trace.isWithinChallengeBand, other.isWithinChallengeBand);
-        if (trace.challengeBypass != other.challengeBypass) {
-          sawBypassChange = true;
+        var sawBypassChange = false;
+        for (final trace in freshTraces) {
+          final other = seededTraces[trace.exercise]!;
+          expect(trace.prediction, other.prediction);
+          if (trace.challengeBypass != other.challengeBypass) {
+            sawBypassChange = true;
+          }
         }
-      }
-      expect(sawBypassChange, isTrue);
-    });
+        expect(sawBypassChange, isTrue);
+      },
+    );
 
     test('activation movement does not reset factual probe history', () {
       final state = stateAt(PlacementTier.advanced);

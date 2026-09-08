@@ -106,6 +106,7 @@ String selectionDiagnostics({
           'g=${trace.exercise.guidance.independence} '
           'admitted_by=${trace.challengeBypass?.id ?? 'in-band'} '
           'p=${trace.prediction.overallP} in_band=${trace.isWithinChallengeBand} '
+          'floor=${trace.challengeFloor} floor_reason=${trace.challengeFloorReason.name} '
           'novelty_load=${noveltyLoadOf(state, trace.exercise)} '
           '${status(trace)} rank=${_rankValues(trace.rankKey!)}',
   ].join('\n');

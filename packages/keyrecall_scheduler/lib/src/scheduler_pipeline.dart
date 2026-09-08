@@ -1466,11 +1466,6 @@ class SchedulerPipeline {
       facts: facts,
       practiceEntryPolicy: practiceEntryPolicy,
     );
-    final (challengeFloor, challengeFloorReason) = challengeFloorFor(
-      state,
-      exercise,
-    );
-    final withinBand = isWithinChallengeBand(prediction, floor: challengeFloor);
     final admission = admissionFor(
       state: state,
       exercise: exercise,
@@ -1487,6 +1482,13 @@ class SchedulerPipeline {
       practiceEntryPolicy: practiceEntryPolicy,
     );
     final bypass = admission.bypass;
+    final (
+      challengeFloor,
+      challengeFloorReason,
+    ) = bypass == ChallengeBypass.newMaterial
+        ? (config.challenge.pIntroductionMin, ChallengeFloorReason.introduction)
+        : challengeFloorFor(state, exercise);
+    final withinBand = isWithinChallengeBand(prediction, floor: challengeFloor);
     final survived = admission.isAllowed;
 
     final challengeStatus = safety.isAllowed
@@ -1557,9 +1559,7 @@ class SchedulerPipeline {
       challengeSurvived: survived,
       admissionRefusal: admission.refusal,
       challengeFloor: challengeFloor,
-      challengeFloorReason: isIntroduction(state, exercise)
-          ? ChallengeFloorReason.introduction
-          : challengeFloorReason,
+      challengeFloorReason: challengeFloorReason,
       executionAdvance: executionAdvanceFor(
         state,
         exercise,

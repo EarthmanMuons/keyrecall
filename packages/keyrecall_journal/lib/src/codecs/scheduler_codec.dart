@@ -30,7 +30,7 @@ class SchedulerDecision {
   /// Why the safety gate allowed this decision opportunity.
   final String safetyReason;
 
-  /// Whether predicted success fell inside the ordinary band.
+  /// Whether predicted success fell inside the effective band.
   final bool withinChallengeBand;
 
   /// The band in force at the time, so a later configuration change cannot
@@ -39,6 +39,9 @@ class SchedulerDecision {
 
   /// The upper edge of that band.
   final double challengeBandMax;
+
+  /// Null when historical records did not preserve the floor's provenance.
+  final ChallengeFloorReason? challengeFloorReason;
 
   /// Which named exception admitted it, if any.
   final ChallengeBypass? challengeBypass;
@@ -54,6 +57,7 @@ class SchedulerDecision {
     required this.withinChallengeBand,
     required this.challengeBandMin,
     required this.challengeBandMax,
+    this.challengeFloorReason,
     required this.challengeBypass,
     required this.rankKey,
   });
@@ -78,7 +82,8 @@ class SchedulerDecision {
       eligibilityReason: trace.eligibility.code,
       safetyReason: trace.safety.reason,
       withinChallengeBand: trace.isWithinChallengeBand,
-      challengeBandMin: config.challenge.pMin,
+      challengeBandMin: trace.challengeFloor,
+      challengeFloorReason: trace.challengeFloorReason,
       challengeBandMax: config.challenge.pMax,
       challengeBypass: trace.challengeBypass,
       rankKey: rankKey,
@@ -104,6 +109,8 @@ Map<String, Object?> encodeDecision(
   'within_challenge_band': decision.withinChallengeBand,
   'challenge_band_min': decision.challengeBandMin,
   'challenge_band_max': decision.challengeBandMax,
+  if (decision.challengeFloorReason case final reason?)
+    'challenge_floor_reason': reason.name,
   'challenge_bypass': decision.challengeBypass?.id,
   'rank_key': {
     'tier': decision.rankKey.tier.id,
@@ -155,6 +162,18 @@ SchedulerDecision decodeDecision(
       'challenge_band_max',
       location: location,
     ),
+    challengeFloorReason: switch (json['challenge_floor_reason']) {
+      null => null,
+      final value => ChallengeFloorReason.values.firstWhere(
+        (reason) =>
+            reason.name ==
+            asString(value, 'challenge_floor_reason', location: location),
+        orElse: () => throw JournalFormatException(
+          'unknown challenge floor reason: $value',
+          location: location,
+        ),
+      ),
+    },
     challengeBypass: bypassId == null
         ? null
         : _bypassFromId(
