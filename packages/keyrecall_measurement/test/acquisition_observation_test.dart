@@ -38,6 +38,8 @@ void main() {
     return transcript;
   }
 
+  final policyBrokenRatio = MeasurementPolicy.standard.brokenIntervalRatio;
+
   AcquisitionObservation observed(List<int> midiNotes, {List<int>? gaps}) =>
       observeAcquisition(
         task: task,
@@ -129,6 +131,29 @@ void main() {
         [for (final gap in observation.gaps) gap.toPosition],
         [for (var i = 1; i < expected.length; i++) i],
       );
+    });
+
+    test('measures against a baseline the same short attempt supplies', () {
+      // The known limit of an endogenous baseline. Four intervals, one of them
+      // the hesitation, and the quartile the hesitation is compared against is
+      // pulled up by the hesitation itself, so the same wait that reads as a
+      // stall in a full traversal does not read as one here.
+      //
+      // Kept as a demonstrated property rather than fixed. An acquisition
+      // constant chosen to make this case come out is worse than a threshold
+      // shared with ordinary continuity, and device traces are what should
+      // settle it.
+      final short = observeAcquisition(
+        task: task,
+        transcript: played(
+          expected.take(5).toList(),
+          gaps: [900, 900, 900, 4000],
+        ),
+      );
+
+      expect(short.gaps.last.gapMs, 4000);
+      expect(short.gaps.last.ratio, lessThan(policyBrokenRatio));
+      expect(short.stalls, isEmpty);
     });
 
     test('does not call even playing a stall', () {
