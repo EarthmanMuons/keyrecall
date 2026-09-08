@@ -89,9 +89,10 @@ void main() {
   });
 
   test('so a goal that narrows the catalog can be offered one', () {
-    // Why PracticeSession.open refused a scoped goal: PracticeGoal.scopeOf
-    // cuts the catalog to targetMaterialIds, and a goal aimed at a handful of
-    // scales was a narrow catalog by another name.
+    // PracticeGoal.scopeOf cuts the catalog to targetMaterialIds, so a goal
+    // aimed at a handful of scales was a narrow catalog by another name, and
+    // this reproduced the dry sitting that argument against shipping goals
+    // rested on. The seam itself is covered by scoped_goal_test.dart.
     final goal = PracticeGoal(
       id: 'FIVE_SCALES',
       targetMaterialIds: {

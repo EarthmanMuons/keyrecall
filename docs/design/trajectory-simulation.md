@@ -1211,6 +1211,15 @@ which was the stated blocker for shipping goals.
 right mechanism.** It had been masking an admission boundary that was too strict
 for a learner without evidence.
 
+The scoped-goal consequence turned out to be smaller than the note claimed.
+`PracticeSession.open` has no refusal to remove: it accepts a scoped goal and
+schedules inside its envelope, and the comment saying otherwise was describing
+an argument rather than any code. What was missing was coverage, so twelve
+combinations of scope and placement now open a session and present an attempt
+inside scope: several scales, several arpeggios, a mixed scope and a single
+material, each for a beginner, a learner with some experience and an advanced
+one.
+
 What this does not settle is the weak family, whose outcomes did not move
 because the newly admitted work still loses at ranking. That is the next
 question and it is now well posed: a bounded preference for the narrowest
