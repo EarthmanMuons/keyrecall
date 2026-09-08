@@ -70,6 +70,19 @@ void main() {
     );
     expect(pipeline.needsFamilyBootstrap(state, exercise), isTrue);
     expect(admits(state, exercise), isTrue);
+    expect(
+      pipeline
+          .evaluate(
+            state: state,
+            session: SessionState(),
+            candidates: [exercise],
+            at: t0,
+          )
+          .single
+          .challengeFloorReason,
+      ChallengeFloorReason.familyBootstrap,
+      reason: 'and the trace says which regime admitted it',
+    );
   });
 
   test('and stops being once the family has a frontier', () {
@@ -116,14 +129,14 @@ void main() {
       );
       expect(
         pipeline.challengeFloorFor(state, harder),
-        config.challenge.pMin,
+        (config.challenge.pMin, ChallengeFloorReason.ordinary),
         reason: 'so it is held to the ordinary floor while the family is weak',
       );
     }
-    expect(
-      pipeline.challengeFloorFor(state, cued()),
+    expect(pipeline.challengeFloorFor(state, cued()), (
       config.challenge.pIntroductionMin,
-    );
+      ChallengeFloorReason.familyBootstrap,
+    ));
   });
 
   test('this is ordinary admission, not the fallback', () {

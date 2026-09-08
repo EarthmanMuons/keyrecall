@@ -287,6 +287,14 @@ enum RealizationRank {
   final String id;
 }
 
+/// Which floor a candidate's predicted success had to clear.
+///
+/// `in_band` alone stopped meaning one thing once three regimes could set the
+/// bound: ordinary practice, a first exposure, and a family with no execution
+/// evidence yet. A census that had to reconstruct which one applied is a census
+/// reconstructing policy.
+enum ChallengeFloorReason { ordinary, introduction, familyBootstrap }
+
 /// A refusal ordinary challenge admission cannot override.
 enum AdmissionRefusal { curriculum, introductionTempo, recovery, challengeBand }
 
@@ -513,6 +521,12 @@ class CandidateTrace {
 
   final AdmissionRefusal? admissionRefusal;
 
+  /// The floor this candidate's prediction was held to.
+  final double challengeFloor;
+
+  /// Why that floor and not another.
+  final ChallengeFloorReason challengeFloorReason;
+
   /// Which progression step this candidate is, if any.
   ///
   /// The provenance behind a [ChallengeBypass.executionProgression]: the enum
@@ -543,6 +557,8 @@ class CandidateTrace {
     required this.challengeSurvived,
     this.admissionRefusal,
     this.executionAdvance = ExecutionAdvance.none,
+    this.challengeFloor = 0,
+    this.challengeFloorReason = ChallengeFloorReason.ordinary,
     required this.priorityStatus,
     required this.rankKey,
   });

@@ -1327,3 +1327,31 @@ not claim to be calibrated.
 The `sitting_ran_dry` exceptions are removed rather than re-explained. Both
 players run clean across every configuration those exceptions covered, so the
 sweep now fails if the condition returns.
+
+### Arpeggios stop being an experiment
+
+The developer switch is gone and both families are in the production catalog
+always. What it was holding back has been answered: generation is family
+neutral, entry tempo and transferable pace are family scoped with the family
+recorded on the evidence rather than inferred, progression distinguishes span,
+tempo and hands-together, and pre-frontier acquisition works the same way in
+either family. The family-skew work exposed the composition defects a second
+family was liable to expose, and they are fixed.
+
+Keeping the switch now costs more than it buys, because it preserves a
+production mode in which single-family assumptions can quietly return. Mixed
+families are the default tested configuration instead.
+
+One caveat travels with the graduation rather than blocking it. `rhoFamily` in
+the competency transfer parameters is what lets arpeggio competencies borrow
+from scale ones while their own evidence is thin, and it is an unvalidated
+fixture like the rest of the v1 coefficients. The mirror runs show it working: a
+learner strong in one family had the other family's gentlest work predicted at
+0.465 when they could not do it at all. The transfer shrinks as direct evidence
+arrives, so it is bounded, and it is a calibration target for device data rather
+than a reason to keep a whole family behind a flag.
+
+`CandidateTrace` also records the floor a candidate's prediction was held to and
+which regime set it, since `in_band` covers ordinary practice, a first exposure
+and a family with no evidence, and a census should not have to reconstruct
+which.

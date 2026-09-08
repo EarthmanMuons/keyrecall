@@ -911,15 +911,18 @@ class SchedulerPipeline {
   /// a different question, which is what to supply when admission has produced
   /// nothing at all; a learner strong in one family never reaches that
   /// question, which is why their weak family used to get neither.
-  double challengeFloorFor(
+  (double floor, ChallengeFloorReason reason) challengeFloorFor(
     LearnerState state,
     Exercise exercise, {
     DecisionFacts? facts,
   }) =>
       isFamilyBootstrapShape(exercise) &&
           needsFamilyBootstrap(state, exercise, facts: facts)
-      ? config.challenge.pIntroductionMin
-      : config.challenge.pMin;
+      ? (
+          config.challenge.pIntroductionMin,
+          ChallengeFloorReason.familyBootstrap,
+        )
+      : (config.challenge.pMin, ChallengeFloorReason.ordinary);
 
   /// The one tempo a probe about guidance is asked at.
   ///
@@ -1300,7 +1303,7 @@ class SchedulerPipeline {
     }
     return isWithinChallengeBand(
           prediction,
-          floor: challengeFloorFor(state, exercise, facts: facts),
+          floor: challengeFloorFor(state, exercise, facts: facts).$1,
         )
         ? const AdmissionDecision.admitted()
         : const AdmissionDecision.refused(AdmissionRefusal.challengeBand);
@@ -1478,10 +1481,12 @@ class SchedulerPipeline {
       facts: facts,
       practiceEntryPolicy: practiceEntryPolicy,
     );
-    final withinBand = isWithinChallengeBand(
-      prediction,
-      floor: challengeFloorFor(state, exercise, facts: facts),
+    final (challengeFloor, challengeFloorReason) = challengeFloorFor(
+      state,
+      exercise,
+      facts: facts,
     );
+    final withinBand = isWithinChallengeBand(prediction, floor: challengeFloor);
     final admission = admissionFor(
       state: state,
       exercise: exercise,
@@ -1567,6 +1572,10 @@ class SchedulerPipeline {
       challengeBypass: bypass,
       challengeSurvived: survived,
       admissionRefusal: admission.refusal,
+      challengeFloor: challengeFloor,
+      challengeFloorReason: isIntroduction(state, exercise)
+          ? ChallengeFloorReason.introduction
+          : challengeFloorReason,
       executionAdvance: executionAdvanceFor(
         state,
         exercise,
