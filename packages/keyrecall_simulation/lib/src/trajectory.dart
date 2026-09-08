@@ -2,6 +2,8 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'held_out_assessment.dart';
+
 /// Candidate counts at the scheduler stages relevant to selection.
 class CandidateStageCounts {
   final int generated;
@@ -321,12 +323,21 @@ class Trajectory {
   /// The slots that admitted nothing, one per sitting that ran dry.
   final List<TerminalTrajectorySlot> terminals;
 
+  /// Held-out readings, taken before the run and after each sitting.
+  ///
+  /// Empty unless the run was given a set to ask. Everything else here
+  /// describes what the scheduler chose; these describe the person it chose
+  /// for, which is the only quantity two policies can be compared on without
+  /// crediting whichever one asked easier questions.
+  final List<AssessmentReading> assessments;
+
   const Trajectory({
     required this.playerId,
     required this.seed,
     required this.slots,
     this.sittings = const [],
     this.terminals = const [],
+    this.assessments = const [],
   });
 
   /// The first sitting that ran dry, or null.

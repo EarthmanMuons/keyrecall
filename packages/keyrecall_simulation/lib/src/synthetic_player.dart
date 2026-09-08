@@ -214,7 +214,16 @@ class PlayerState {
   }
 
   /// What this player does when asked for [exercise].
-  Outcome play(Exercise exercise, PythonCompatibleRandom rng) {
+  ///
+  /// A held-out assessment sets [practising] false: the attempt is observed
+  /// rather than lived, so it teaches nothing and leaves no trace behind it.
+  /// Anything a run reads afterwards has to describe the practice sequence,
+  /// not the question that was asked outside it.
+  Outcome play(
+    Exercise exercise,
+    PythonCompatibleRandom rng, {
+    bool practising = true,
+  }) {
     final conditions = exercise.conditions;
     final materialId = exercise.material.materialId;
     // Drawn only where the player has a sprint at all, so adding the knob
@@ -222,10 +231,8 @@ class PlayerState {
     final sprinting =
         player.sprintProbability > 0 &&
         rng.nextDouble() < player.sprintProbability;
-    final performed = _lastPerformedTempoBpm = performedTempoFor(
-      exercise,
-      sprinting: sprinting,
-    );
+    final performed = performedTempoFor(exercise, sprinting: sprinting);
+    if (practising) _lastPerformedTempoBpm = performed;
     final natural = naturalTempoFor(conditions.hands);
 
     double noisy(double center) =>
@@ -297,7 +304,7 @@ class PlayerState {
         ? noisy(_sigmoid(abilityOf(conditions.hands) - 2.0 * strain))
         : null;
 
-    _practise(exercise, motorQuality, completed: completed);
+    if (practising) _practise(exercise, motorQuality, completed: completed);
 
     return Outcome(
       started: true,

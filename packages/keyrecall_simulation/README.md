@@ -222,3 +222,24 @@ classification.
 Trajectory decision indices include blocked decisions. The beginner invariant
 suite permits only its characterized narrow-catalog `sitting_ran_dry` anomaly;
 all other structural invariants still run.
+
+## Held-out assessment
+
+Managed yield, allocation share, and frontier movement all describe what the
+scheduler chose to ask, so a policy that asks easier questions improves all
+three without teaching anyone anything. `standardAssessment` builds a fixed set
+asked outside the practice sequence: every material, each hand alone and
+together, unguided, at one octave and one tempo. Passing it to `runTrajectory`
+or `runSittings` records a reading before the run and after each sitting.
+
+A reading cannot change the run it measures. Its attempts are played with
+`practising: false`, so ability, familiarity, and the last performed tempo are
+untouched, and its draws come from the set's own seeded stream rather than the
+run's. That seed is fixed rather than carried forward, so every reading meets
+the same luck and a difference between two of them is a difference in the
+player.
+
+Each reading also records what the learner model expected of the same set.
+`beliefGap` is that expectation minus what the player did, which is what
+separates a scheduler reacting to a stale belief from one reacting to a learner
+who really has changed.

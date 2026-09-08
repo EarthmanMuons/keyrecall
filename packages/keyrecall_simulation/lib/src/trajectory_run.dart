@@ -2,6 +2,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'held_out_assessment.dart';
 import 'python_compatible_random.dart';
 import 'synthetic_player.dart';
 import 'trajectory.dart';
@@ -25,6 +26,7 @@ Trajectory runTrajectory({
   InstrumentProfile? instrument,
   List<Exercise>? generated,
   AcquisitionFloor? acquisitionFloor,
+  AssessmentSet? assessment,
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
@@ -39,6 +41,7 @@ Trajectory runTrajectory({
   instrument: instrument,
   generated: generated,
   acquisitionFloor: acquisitionFloor,
+  assessment: assessment,
   observeTraces: observeTraces,
   observeState: observeState,
   observePacing: observePacing,
@@ -67,6 +70,7 @@ Trajectory runSittings({
   InstrumentProfile? instrument,
   List<Exercise>? generated,
   AcquisitionFloor? acquisitionFloor,
+  AssessmentSet? assessment,
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
@@ -86,12 +90,31 @@ Trajectory runSittings({
   final recorded = <TrajectorySlot>[];
   final terminals = <TerminalTrajectorySlot>[];
   final history = <PriorSelection>[];
+  final readings = <AssessmentReading>[];
   var nextIndex = 0;
+
+  void read(DateTime at) {
+    if (assessment == null) return;
+    learner.propagate(state, at);
+    readings.add(
+      assess(
+        assessment,
+        playing,
+        at: at,
+        afterSlots: recorded.length,
+        state: state,
+        learner: learner,
+      ),
+    );
+  }
+
+  read(sittings.first.at);
   for (var sitting = 0; sitting < sittings.length; sitting++) {
     final session = SessionState.resuming(history, config: pipeline.config);
+    var lastAt = sittings[sitting].at;
     for (var slot = 0; slot < sittings[sitting].slots; slot++) {
       final index = nextIndex++;
-      final at = sittings[sitting].at.add(
+      final at = lastAt = sittings[sitting].at.add(
         Duration(seconds: (slot * minutesPerSlot * 60).round()),
       );
       learner.propagate(state, at);
@@ -237,6 +260,7 @@ Trajectory runSittings({
         ),
       );
     }
+    read(lastAt);
   }
 
   return Trajectory(
@@ -245,6 +269,7 @@ Trajectory runSittings({
     slots: recorded,
     sittings: sittings,
     terminals: terminals,
+    assessments: readings,
   );
 }
 
