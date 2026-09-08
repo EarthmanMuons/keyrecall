@@ -80,7 +80,8 @@ Trajectory runSittings({
   /// The seam a paired experiment about selection needs: the decision is made
   /// by the real pipeline and only its winner is replaced, so a policy can be
   /// tried without a second run loop drifting away from this one. Returning
-  /// null keeps the pipeline's choice.
+  /// null keeps the pipeline's choice. A replacement must be selectable in
+  /// this slot; selection bookkeeping follows the final choice.
   CandidateTrace? Function(SelectionResult selection, LearnerState state)?
   chooseInstead,
   void Function(int slot, List<CandidateTrace> traces)? observeTraces,
@@ -159,13 +160,14 @@ Trajectory runSittings({
       // below moves it.
       observeState?.call(index, state);
 
-      final selection = pipeline.decide(
+      final slotEvaluation = pipeline.evaluateSlot(
         state: state,
         session: session,
         candidates: candidates,
         at: at,
         acquisitionFloor: acquisitionFloor,
       );
+      final selection = slotEvaluation.result;
       observePacing?.call(index, selection.pacing);
       observeDose?.call(index, selection.dose);
       final traces = selection.traces;
@@ -179,6 +181,19 @@ Trajectory runSittings({
       final chosen = selected == null
           ? null
           : chooseInstead?.call(selection, state) ?? selected;
+      if (chosen != null && !available.contains(chosen)) {
+        throw ArgumentError.value(
+          chosen,
+          'chooseInstead',
+          "the replacement must belong to this slot's selectable candidates",
+        );
+      }
+      session.recordSelectionOpportunity(
+        guidanceProbeAvailable: slotEvaluation.guidanceProbeAvailable,
+        guidanceProbeSelected:
+            chosen?.challengeBypass == ChallengeBypass.guidanceProbe,
+      );
+      session.attemptsThisSession++;
       // Every candidate, which a slot does not retain: a sitting evaluates
       // thousands and only the selectable ones are worth carrying to the end.
       // A diagnostic asking what was refused has to see them as they go past.
