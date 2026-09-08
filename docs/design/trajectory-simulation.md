@@ -1355,3 +1355,43 @@ than a reason to keep a whole family behind a flag.
 which regime set it, since `in_band` covers ordinary practice, a first exposure
 and a family with no evidence, and a census should not have to reconstruct
 which.
+
+### What one success withdraws
+
+The relaxed floor ends at the family's first execution frontier. The entry
+condition was family-wide because there was no evidence anywhere, and the exit
+was made to match it. One paired state, differing in exactly one demonstrated
+frontier on one material, one hand and one motion, says what that costs.
+
+| probe                                | predicted | before        | after         |
+| ------------------------------------ | --------- | ------------- | ------------- |
+| the hand and material that earned it | 0.477     | bootstrap, in | ordinary, out |
+| the other hand of the same material  | 0.477     | bootstrap, in | ordinary, out |
+| the same hand of another material    | 0.477     | bootstrap, in | ordinary, out |
+| neither the hand nor the material    | 0.477     | bootstrap, in | ordinary, out |
+
+**The prediction does not move for any of them.** The model expects exactly what
+it expected before, and all four go from offerable to refused, landing back at
+0.477 in the gap between the introduction floor and the ordinary one that the
+relaxed floor exists to cover.
+
+**Only the context that earned the frontier has anywhere to go.** It has a tempo
+step, because a frontier is something to progress from. The other hand of the
+same material, the same hand of another material, and the pair that shares
+neither have no step of their own and no relaxed floor either, so a single
+success on one context removes the acquisition path from three that it says
+nothing about.
+
+That is the second of the two outcomes worth distinguishing, and it makes the
+exit condition too coarse rather than broad but harmless. The narrow supported
+shape is the productive one for these learners, at roughly a quarter managed
+against nothing for anything wider or two-handed, so what is withdrawn is the
+work that was teaching them.
+
+What it does not settle is the replacement. `family and hand` is the obvious
+next scope and would keep the floor for the opposite hand while withdrawing it
+from another material in the same hand, which is defensible because execution
+evidence is a fact about a hand. Whether that is enough, or whether the scope
+should follow the execution shape rather than the hand, is a question this
+experiment poses rather than answers. Going straight to per-material would undo
+the generalization the bootstrap exists for.
