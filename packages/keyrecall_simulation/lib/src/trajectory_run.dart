@@ -76,6 +76,21 @@ Trajectory runSittings({
   void Function(int slot, PacingDecision pacing)? observePacing,
   void Function(int slot, DoseDecision dose)? observeDose,
 }) {
+  for (var i = 1; i < sittings.length; i++) {
+    final ends = sittings[i - 1].at.add(
+      Duration(
+        seconds: ((sittings[i - 1].slots - 1) * minutesPerSlot * 60).round(),
+      ),
+    );
+    if (sittings[i].at.isBefore(ends)) {
+      throw ArgumentError.value(
+        sittings,
+        'sittings',
+        'sitting $i starts before sitting ${i - 1} has finished',
+      );
+    }
+  }
+
   final rng = PythonCompatibleRandom(seed);
   final learner = pipeline.learner;
   final state = learner.placementState(player.placement, at: sittings.first.at);

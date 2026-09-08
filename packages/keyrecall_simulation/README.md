@@ -243,7 +243,10 @@ player.
 Each reading also records what the learner model expected of the same set.
 `beliefGap` is that expectation minus what the player did, which is what
 separates a scheduler reacting to a stale belief from one reacting to a learner
-who really has changed.
+who really has changed. `predictedRetrieval` is the model's retrieval channel
+next to the observed `retrieval`; those two are the same event, while
+`predicted` is a stricter conjunction than `managed` and carries a level offset
+by construction. Calibrating decay needs the pair that measures one thing.
 
 ## The forgetful returner
 

@@ -125,6 +125,15 @@ class AssessmentReading {
   /// one reacting to a learner who really has changed.
   final double? predicted;
 
+  /// What the learner model expected the material retrieval to be, or null
+  /// when no state was supplied.
+  ///
+  /// The same event [retrieval] observes, unlike [predicted], which is a
+  /// stricter conjunction than [managed] and so carries a level offset by
+  /// construction. Calibrating decay against a gap needs the pair that
+  /// measures one thing.
+  final double? predictedRetrieval;
+
   const AssessmentReading({
     required this.setId,
     required this.at,
@@ -138,6 +147,7 @@ class AssessmentReading {
     required this.managed,
     this.coordination,
     this.predicted,
+    this.predictedRetrieval,
   });
 
   /// How far the model's expectation sits above what the player did.
@@ -179,6 +189,9 @@ AssessmentReading assess(
   double mean(double Function(Outcome) of) =>
       outcomes.map((o) => of(o.$2)).reduce((a, b) => a + b) / outcomes.length;
 
+  final predictions = state == null
+      ? null
+      : _expectationOf(set, state, learner, at);
   final tested = [
     for (final (exercise, outcome) in outcomes)
       if (exercise.guidance.isRetrievalObserved) outcome,
@@ -206,11 +219,26 @@ AssessmentReading assess(
         ? null
         : coordinated.reduce((a, b) => a + b) / coordinated.length,
     managed: share(learner.executionWasManaged),
-    predicted: state == null
-        ? null
-        : set.exercises
-                  .map((e) => learner.predict(state, e, at: at).overallP)
-                  .reduce((a, b) => a + b) /
-              set.exercises.length,
+    predicted: state == null ? null : predictions!.overall,
+    predictedRetrieval: predictions?.retrieval,
+  );
+}
+
+({double overall, double retrieval}) _expectationOf(
+  AssessmentSet set,
+  LearnerState state,
+  LearnerModel learner,
+  DateTime at,
+) {
+  var overall = 0.0;
+  var retrieval = 0.0;
+  for (final exercise in set.exercises) {
+    final prediction = learner.predict(state, exercise, at: at);
+    overall += prediction.overallP;
+    retrieval += prediction.independentRetrievalP;
+  }
+  return (
+    overall: overall / set.exercises.length,
+    retrieval: retrieval / set.exercises.length,
   );
 }

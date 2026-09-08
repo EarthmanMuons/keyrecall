@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -150,22 +151,127 @@ void main() {
     );
   });
 
-  test('what the scheduler asks for on return is answerable', () {
+  test('what a returner is asked for on the way back is answerable', () {
     for (final player in [stable, ...decaying.values]) {
-      final trajectory = runOf(player);
-      final firstBack = trajectory.slots
-          .where((slot) => slot.sitting == returned)
-          .take(5)
-          .toList();
+      for (final seed in [8, 9, 10]) {
+        final back = runSittings(
+          player: player,
+          seed: seed,
+          materials: catalog,
+          sittings: schedule,
+          assessment: set,
+        ).slots.where((slot) => slot.sitting == returned).toList();
+        final where = '${player.id} at seed $seed';
 
-      expect(firstBack, hasLength(5));
-      expect(
-        firstBack.where((slot) => slot.outcome.started),
-        isNotEmpty,
-        reason:
-            'a returner met with work they cannot begin is the failure this '
-            'archetype exists to catch, for ${player.id}',
-      );
+        expect(
+          back.take(5).where((slot) => slot.outcome.started),
+          hasLength(greaterThanOrEqualTo(2)),
+          reason: 'more than one of the first five back answers, for $where',
+        );
+        for (final (i, slot) in back.indexed) {
+          if (slot.outcome.started || i + 1 >= back.length) continue;
+          expect(
+            back[i + 1].chosen.guidance.independence,
+            lessThan(slot.chosen.guidance.independence),
+            reason:
+                'an attempt that never started is answered with more support '
+                'at slot ${slot.index}, for $where',
+          );
+        }
+      }
     }
   });
+
+  test('a returner is offered work the model expects nothing of', () {
+    final back = runSittings(
+      player: decaying['matched']!,
+      seed: 8,
+      materials: catalog,
+      sittings: schedule,
+      assessment: set,
+    ).slots.where((slot) => slot.sitting == returned).first;
+
+    expect(back.chosen.guidance, GuidanceContext.unguided);
+    expect(back.winner.prediction.overallP, lessThan(0.01));
+    expect(back.winner.isWithinChallengeBand, isFalse);
+    expect(back.winner.challengeBypass, ChallengeBypass.executionProgression);
+    expect(
+      back.outcome.started,
+      isFalse,
+      reason:
+          'the first thing back is unguided work admitted by a bypass rather '
+          'than by the band, and the recovery it opens is what supplies the '
+          'notes the model no longer believes are there',
+    );
+  });
+
+  test('the model forgets faster than any of these people do', () {
+    const gaps = [2, 14, 60];
+    AssessmentReading arrivalAfter(SyntheticPlayer player, int gap) =>
+        arrivalAt(
+          runSittings(
+            player: player,
+            seed: 8,
+            materials: catalog,
+            sittings: sittingsOnDays([0, 1, 2, 3, 3 + gap], slots: 20),
+            assessment: set,
+          ),
+          returned,
+        );
+
+    final believed = [for (final gap in gaps) arrivalAfter(stable, gap)];
+    final forgetting = [
+      for (final gap in gaps) arrivalAfter(decaying['faster']!, gap),
+    ];
+
+    expect(
+      believed.map((r) => r.predictedRetrieval!),
+      orderedEquals(
+        [for (final r in believed) r.predictedRetrieval!]
+          ..sort((a, b) => b.compareTo(a)),
+      ),
+      reason: 'the longer the gap the less the model expects',
+    );
+    expect(believed.last.predictedRetrieval, lessThan(0.001));
+    expect(
+      believed.last.retrieval,
+      1.0,
+      reason:
+          'two months on, the model expects nothing of somebody who has '
+          'forgotten nothing',
+    );
+    for (final (i, reading) in forgetting.indexed) {
+      expect(
+        reading.predictedRetrieval,
+        lessThan(reading.retrieval),
+        reason:
+            'the model has decayed past even the fast forgetter at '
+            '${gaps[i]} days',
+      );
+    }
+    expect(
+      forgetting.last.retrieval,
+      greaterThan(0.5),
+      reason:
+          'decay toward the starting player floors what can be lost, so '
+          'this bounds the model from one side only',
+    );
+  });
+
+  test('overlapping sittings are refused rather than run backwards', () {
+    expect(
+      () => runSittings(
+        player: stable,
+        seed: 8,
+        materials: catalog,
+        sittings: [
+          Sitting(at: _epoch, slots: 20),
+          Sitting(at: _epoch.add(const Duration(minutes: 5)), slots: 20),
+        ],
+      ),
+      throwsArgumentError,
+    );
+  });
 }
+
+final _epoch = DateTime.utc(2026);

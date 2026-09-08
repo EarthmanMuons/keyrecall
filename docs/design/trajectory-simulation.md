@@ -667,3 +667,57 @@ facts, and the real state-dependent scheduler logic still runs every slot.**
 
 Two modes, and the default is the fast one: twenty-five seeds for iteration, a
 hundred or more to run deliberately either side of a scheduler change.
+
+## What a gap does to belief, and what it does to a person
+
+The forgetful returner exists to separate two things a long-gap run used to
+confound. Before it, the learner state decayed across a calendar and the
+synthetic person did not, so every such run established how the scheduler reacts
+to its own aging belief and nothing about whether that reaction suits somebody
+who really decayed.
+
+Three people over one schedule, four sittings and then a gap, measured on the
+held-out set on arrival, before the return sitting starts moving them again. The
+stable player forgets nothing; the matched returner loses execution on a
+forty-five day half-life and the notes on a twenty day one; the faster returner
+loses them on twelve and six. Retrieval is compared against the model's own
+retrieval channel rather than against overall admission probability, because
+those two are the same event and the overall probability is a stricter
+conjunction carrying a level offset by construction.
+
+| gap | model expects | stable | matched | faster |
+| --- | ------------- | ------ | ------- | ------ |
+| 1   | 0.844         | 1.000  | 1.000   | 1.000  |
+| 2   | 0.712         | 1.000  | 1.000   | 0.958  |
+| 7   | 0.313         | 1.000  | 0.958   | 0.833  |
+| 14  | 0.106         | 1.000  | 0.833   | 0.625  |
+| 30  | 0.011         | 1.000  | 0.792   | 0.625  |
+| 60  | 0.000         | 1.000  | 0.625   | 0.625  |
+| 120 | 0.000         | 1.000  | 0.625   | 0.625  |
+| 240 | 0.000         | 1.000  | 0.625   | 0.625  |
+
+**The model's retrieval decays on a half-life near four days and reaches exactly
+zero by sixty**, which is faster than any of the three, including the one built
+to forget quickly. At a fortnight it expects 0.106 of a player who delivers
+0.625 at worst and 1.000 at best. The failure a returner meets is therefore not
+a scheduler asking for April's work; it is one expecting nothing of somebody who
+can still play.
+
+What that costs, in the return sitting: the first thing offered is unguided work
+the model predicts at 0.00, outside the challenge band and admitted by an
+execution-progression bypass. It does not start. The recovery that opens then
+walks guidance down, and the attempt at continuous cueing succeeds. The ladder
+works, and the returner pays one failed attempt to teach it something the model
+could have been less certain about.
+
+Two limits on how far this bounds the learner model. The synthetic decay runs
+toward the ability and familiarity the player started with, so none of the three
+can express somebody who has genuinely forgotten a scale they once owned; the
+comparison bounds the model from one side only. And this is the model at the
+evidence level eighty practice slots over four materials produce, not at the one
+a learner of several years would carry.
+
+So the next question is retention calibration of the learner model, and the
+place to answer it is device data from repeat users with real gaps, compared
+against what the model predicted before they came back. Tuning the curve to
+these half-lives would replace one assumed shape with another.
