@@ -116,6 +116,23 @@ this repository were wrong because the pipeline was reasoned about instead of
 observed, and each was corrected by building exactly this table by hand. An
 anomaly that cannot show its working is not worth raising.
 
+**A worked example is part of a detector's contract, not an illustration of
+it.** Incidence is the part that always looks respectable: a plausible number
+against a plausible name, with nothing in it that can be wrong out loud. Every
+detector mistake this repository has made was invisible in the table and obvious
+in the first example printed under it, and the count is now four.
+`exclusive_target_emptied` fired on every recovery slot, `progression_stall`
+counted a run of introductions, the first `unsupported_novelty_stack` counted
+the absence of a history at slot zero, and the second counted one newness twice
+in the way the production comment it was checking documents avoiding.
+
+The same reading caught an intervention rather than a detector. Charging an
+unsupported span a rung of guidance produced an identical census, and the
+example said why: the candidate was already at the rung the charge would have
+moved it to. **An intervention that cannot change the example it was built for
+is not a weak fix, it is the wrong instrument**, and the census is what tells
+the two apart.
+
 ## What the first sweep found
 
 Eight archetypes, a hundred seeds each, fifty slots: forty thousand decisions.
