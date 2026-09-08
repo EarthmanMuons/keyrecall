@@ -12,6 +12,7 @@
 /// different speed align identically and measure differently.
 library;
 
+export 'src/acquisition_observation.dart';
 export 'src/measurement_policy.dart';
 export 'src/performance_measurement.dart';
 export 'src/to_outcome.dart';

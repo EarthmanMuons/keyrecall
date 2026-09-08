@@ -9,6 +9,20 @@ import 'measurement_policy.dart';
 /// How far apart the hands were at one moment, and which moment.
 typedef HandAsynchrony = ({int position, int asynchronyMs});
 
+/// The wait between two moments that arrived, and which two.
+///
+/// Named by both ends because a moment nothing arrived for leaves no onset, so
+/// consecutive gaps are not always consecutive positions. A gap that spans a
+/// skipped moment is a gap over a stretch of the exercise rather than over one
+/// transition, and a reading that assumed otherwise would blame the wrong
+/// note.
+typedef MomentGap = ({
+  int fromPosition,
+  int toPosition,
+  int gapMs,
+  double ratio,
+});
+
 /// What was observed about one performance.
 ///
 /// Facts first: how much of the material appeared, how much of it was the
@@ -333,6 +347,38 @@ PerformanceMeasurement measure({
     widestAsynchronyAtPosition: _widestAsynchronyPositionOf(alignment),
     policy: policy,
   );
+}
+
+/// The wait before each moment that arrived, against the slow end of this
+/// performance's own playing.
+///
+/// The series [PerformanceMeasurement.worstIntervalRatio] reports one value
+/// of, kept in full and located. One worst gap says a performance was
+/// interrupted; the series says where, and comparing the series across
+/// attempts is what can say the same transition is in the way every time.
+///
+/// Relative to the upper quartile of the performance's own gaps, so it reads
+/// the same whether the learner is playing fast or slowly, and it says nothing
+/// about a requested tempo. Empty when too few moments arrived to have a
+/// quartile.
+List<MomentGap> momentGapsOf(Alignment alignment) {
+  final onsets = _momentOnsets(alignment);
+  final intervals = [
+    for (var i = 1; i < onsets.length; i++)
+      onsets[i].onsetMs - onsets[i - 1].onsetMs,
+  ];
+  if (intervals.length < _fewestIntervals) return const [];
+  final (_, high) = _quartilesOf(intervals);
+  if (high <= 0) return const [];
+  return [
+    for (var i = 1; i < onsets.length; i++)
+      (
+        fromPosition: onsets[i - 1].position,
+        toPosition: onsets[i].position,
+        gapMs: intervals[i - 1].round(),
+        ratio: intervals[i - 1] / high,
+      ),
+  ];
 }
 
 /// Whether an extra note is the material on either side of it, played again.
