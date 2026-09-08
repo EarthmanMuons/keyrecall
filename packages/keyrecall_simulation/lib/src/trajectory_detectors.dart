@@ -79,6 +79,7 @@ List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
   ..._probeDeferBlocked(trajectory),
   ..._reacquisitionBurden(trajectory),
   ..._hairlineRankDecision(trajectory),
+  ..._unsupportedNoveltyStack(trajectory),
 ];
 
 /// **Invariant.** A surpassed realization was chosen while an advancing one of
@@ -827,5 +828,100 @@ Iterable<Anomaly> _hairlineRankDecision(Trajectory trajectory) sync* {
       );
       break;
     }
+  }
+}
+
+/// An execution dimension a first exposure can arrive with.
+enum NoveltyAxis {
+  hands('hands'),
+  span('span'),
+  motion('motion'),
+  tempo('tempo');
+
+  const NoveltyAxis(this.id);
+
+  final String id;
+}
+
+/// **Observation.** Meeting a material for the first time arrived with
+/// execution the learner has no evidence for anywhere.
+///
+/// `noveltyLoadOf` is material-scoped on purpose: a learner who plays contrary
+/// motion in C major is not meeting it for the first time in G major, but the
+/// state can only answer the local question. The consequence is that on a
+/// material nobody has played, the hand configuration counts as the one new
+/// thing and **the span is not counted at all**, because a configuration with
+/// no record has no span to have covered. Tempo is left out of the count
+/// entirely, priced by the challenge band instead.
+///
+/// So a first exposure can arrive at a span and a tempo the learner has never
+/// reached anywhere, and the load will read one. This asks the wider question
+/// the load cannot: how many of the dimensions arriving at once has the
+/// learner demonstrated somewhere else?
+///
+/// Evidence is read from the run rather than from a rule about beginners. A
+/// learner who has played two octaves in three other scales is supported at
+/// two octaves; one who has never played two octaves anywhere is not, and the
+/// difference is exactly what separates level-setting an established learner
+/// from stacking novelty on a new one.
+///
+/// **Silent until the learner has demonstrated something.** The first attempt
+/// of a run is unsupported on every axis by definition, and so is every
+/// attempt by somebody who has never managed one; reporting those would be
+/// counting the absence of a history rather than the scheduler ignoring one.
+/// The question is only meaningful once there is evidence that could have been
+/// consulted, which is why the first census of this fired thirty-four times on
+/// a true beginner and said nothing at all.
+Iterable<Anomaly> _unsupportedNoveltyStack(Trajectory trajectory) sync* {
+  final seen = <String>{};
+  final handsPlayed = <HandConfiguration>{};
+  final spans = <int>{};
+  final motions = <HandMotion>{};
+  var fastest = 0.0;
+
+  for (final slot in trajectory.slots) {
+    final conditions = slot.chosen.conditions;
+    final materialId = slot.chosen.material.materialId;
+    // Nothing to have consulted yet, so nothing to report.
+    if (seen.add(materialId) && handsPlayed.isNotEmpty) {
+      final unsupported = <NoveltyAxis>[
+        if (!handsPlayed.contains(conditions.hands)) NoveltyAxis.hands,
+        // Asked of the span alone rather than of the hand and span together.
+        // A configuration nobody has used has no span to have covered, so
+        // pairing them would count one newness twice, which is the mistake
+        // `noveltyLoadOf` documents avoiding and the first version of this
+        // made anyway: every left hand on a new material read as two.
+        if (!spans.contains(conditions.octaves)) NoveltyAxis.span,
+        if (conditions.handMotion == HandMotion.contrary &&
+            !motions.contains(HandMotion.contrary))
+          NoveltyAxis.motion,
+        // A tempo nobody has managed anywhere, on any material or hand: the
+        // loosest possible reading of support, so a finding is not an artifact
+        // of asking too narrow a question.
+        if (conditions.tempoBpm > fastest) NoveltyAxis.tempo,
+      ];
+      if (unsupported.length >= 2) {
+        yield Anomaly(
+          detector: 'unsupported_novelty_stack',
+          severity: AnomalySeverity.observation,
+          slot: slot.index,
+          magnitude: unsupported.length.toDouble(),
+          subject: materialId,
+          summary:
+              'met $materialId with ${unsupported.length} dimensions it has '
+              'no evidence for anywhere: '
+              '${unsupported.map((axis) => axis.id).join(', ')}, at '
+              '${conditions.octaves}oct '
+              '${conditions.tempoBpm.toStringAsFixed(0)}bpm',
+          census: censusOf(slot),
+        );
+      }
+    }
+
+    if (!slot.managedExecution) continue;
+    handsPlayed.add(conditions.hands);
+    spans.add(conditions.octaves);
+    motions.add(conditions.handMotion);
+    if (conditions.tempoBpm > fastest) fastest = conditions.tempoBpm;
   }
 }

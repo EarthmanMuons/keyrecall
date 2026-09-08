@@ -496,6 +496,64 @@ fifteen-hundredth of that term's range is a preference the key is expressing,
 not a rounding error, and a tolerance wide enough to tie them would rewrite what
 the term means.
 
+## What a first exposure arrives with
+
+`noveltyLoadOf` counts how many ways of playing arrive at once, and asks all of
+them of the material in hand. That is deliberate and documented: a learner
+playing contrary motion in C major is not meeting contrary motion in G major,
+but the state can only answer the local question.
+
+The consequence is that **on a material nobody has played, the span is not
+counted at all**. A hand configuration with no record has no span to have
+covered, so counting both would say one newness twice, and the load reads one
+whatever span arrives. Tempo is outside the count entirely, priced by the
+challenge band. A device sitting met D harmonic minor at two octaves and a
+hundred and thirty-two beats with a novelty load of one.
+
+`unsupported_novelty_stack` asks the wider question the load cannot: on a first
+exposure, how many dimensions arrive that the learner has demonstrated **nowhere
+in the run**? Evidence rather than a rule about beginners, so an established
+learner's history collapses the count, which is what separates level-setting
+from throttling.
+
+### Getting the question right took three censuses
+
+The first fired thirty-four times on a true beginner, and its worked example was
+slot zero: the first attempt of a run is unsupported on every axis because
+nothing has happened yet. That is counting the absence of a history rather than
+the scheduler ignoring one, so it is silent now until the learner has managed
+something.
+
+The second reported a left hand at one octave as two unsupported dimensions,
+hands and span. Those are not two things, and it is the same double-count the
+production comment says it is avoiding: a hand nobody has used has no span to
+have covered. Each axis is now asked independently, span of the octave count
+alone rather than of the hand and span together.
+
+Both were wrong the way this file has recorded detectors being wrong before, and
+both times the census made it obvious on one read while the incidence table
+looked fine.
+
+### What the third one says
+
+Twenty findings across nine archetypes, three seeds, forty slots each:
+
+```text
+by slot   1: 15, then 2, 3, 4, 5, 6 once each
+by axes   hands and span: 17, span and tempo: 3
+```
+
+Every one is a new material meeting an unpractised span, and fifteen of twenty
+are at slot one. The shape is real: a second attempt that introduces a new
+material, a hand never used and a span never covered, scored as a novelty load
+of one because the span was skipped.
+
+It is also almost entirely a beginning-of-run phenomenon, where the evidence
+base is a single attempt. So the question thread three actually raises is
+narrow: **should a span with no support anywhere be free on a material with no
+record?** The device sitting had that support and would not have been reported;
+these runs do not.
+
 ## What a sweep costs, and what makes it worse
 
 A parameter sweep is a different shape of cost from the trajectory sweep. It

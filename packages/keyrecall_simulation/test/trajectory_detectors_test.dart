@@ -661,6 +661,91 @@ void main() {
       expect(decidingTerm(key(retention: 1), key(retention: 1)), isNull);
     });
   });
+
+  group('what a first exposure arrives with', () {
+    TrajectorySlot met(
+      int index,
+      String tonic, {
+      HandConfiguration hands = HandConfiguration.right,
+      int octaves = 1,
+      double tempoBpm = 60,
+      bool managed = true,
+    }) => _slot(
+      index,
+      winner: _trace(
+        _exercise(
+          tonic: tonic,
+          hands: hands,
+          octaves: octaves,
+          tempoBpm: tempoBpm,
+        ),
+      ),
+      outcome: _outcome(
+        completed: managed,
+        continuity: managed ? 1 : 0,
+        temporalStability: managed ? 1 : 0,
+      ),
+    );
+
+    test('the first attempt of a run is not a novelty stack', () {
+      // Nothing is supported before anything has happened, and saying so would
+      // count the absence of a history rather than an ignored one.
+      expect(_find('unsupported_novelty_stack', [met(0, 'C')]), isEmpty);
+    });
+
+    test('a new hand at a practised span is one thing, not two', () {
+      // A hand nobody has used has no span to have covered.
+      expect(
+        _find('unsupported_novelty_stack', [
+          met(0, 'C'),
+          met(1, 'D', hands: HandConfiguration.left),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('a new hand and an unpractised span together are reported', () {
+      final found = _find('unsupported_novelty_stack', [
+        met(0, 'C'),
+        met(1, 'D', hands: HandConfiguration.left, octaves: 2),
+      ]);
+
+      expect(found.single.severity, AnomalySeverity.observation);
+      expect(found.single.summary, contains('hands, span'));
+      expect(found.single.subject, 'D_MAJOR');
+    });
+
+    test('a span demonstrated in another hand supports the new one', () {
+      expect(
+        _find('unsupported_novelty_stack', [
+          met(0, 'C', octaves: 2),
+          met(1, 'D', hands: HandConfiguration.left, octaves: 2),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('evidence has to be demonstrated, not merely attempted', () {
+      expect(
+        _find('unsupported_novelty_stack', [
+          met(0, 'C', octaves: 2, managed: false),
+          met(1, 'D', hands: HandConfiguration.left, octaves: 2),
+        ]),
+        isEmpty,
+        reason: 'nothing demonstrated is nothing that could have been read',
+      );
+    });
+
+    test('a material already met is not a first exposure', () {
+      expect(
+        _find('unsupported_novelty_stack', [
+          met(0, 'C'),
+          met(1, 'C', hands: HandConfiguration.left, octaves: 2),
+        ]),
+        isEmpty,
+      );
+    });
+  });
 }
 
 List<Anomaly> _find(
@@ -756,11 +841,13 @@ CandidateTrace _trace(
 Exercise _exercise({
   String tonic = 'C',
   HandConfiguration hands = HandConfiguration.right,
+  int octaves = 1,
   double tempoBpm = 60,
   GuidanceContext guidance = GuidanceContext.notesPreviewedOnly,
 }) => Exercise.linear(
   material: TechnicalMaterial(tonic, ScaleForm.major),
   hands: hands,
+  octaves: octaves,
   tempoBpm: tempoBpm,
   guidance: guidance,
 );
