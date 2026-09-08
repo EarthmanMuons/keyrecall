@@ -1043,3 +1043,57 @@ So no ranking preference was added, and the question is not closed so much as
 answered in the negative with the evidence attached. The general form worth
 keeping is that an adjacent execution step earns its slot by what it teaches,
 and this one, for this learner, teaches nothing yet.
+
+### What a weak family actually learns from
+
+Splitting the weak family's non-hands-together work by shape and guidance, six
+seeds per player, twelve runs.
+
+| shape                      | n   | started | managed | frontier advanced |
+| -------------------------- | --- | ------- | ------- | ----------------- |
+| right, 1 octave, cued      | 9   | 1.00    | 0.33    | 0.33              |
+| right, 1 octave, previewed | 31  | 0.81    | 0.13    | 0.13              |
+| right, 1 octave, unguided  | 54  | 0.72    | 0.15    | 0.15              |
+| left, 1 octave, cued       | 6   | 1.00    | 0.17    | 0.17              |
+| left, 1 octave, previewed  | 19  | 0.89    | 0.11    | 0.11              |
+| left, 1 octave, unguided   | 40  | 0.72    | 0.05    | 0.05              |
+| either hand, 2 octaves     | 87  | 0.76    | 0.01    | 0.01              |
+| hands together, any        | 44  | 0.76    | 0.00    | 0.00              |
+
+**One octave and one hand is the whole of it.** Two octaves produces one managed
+attempt in eighty-seven, and hands together none in forty-four at any guidance
+rung. Everything the weak family has to progress from comes from the narrowest
+shape it is offered.
+
+**The most supported rung has the best yield and the smallest supply.** Cued
+single-hand work at one octave is fifteen of two hundred and ninety weak-family
+selections, five per cent, and manages a quarter of them. Unguided work at the
+same shape is six times the supply at half the rate. Cued work tests no
+retrieval, so what it builds is the execution frontier rather than the
+established rung, which is exactly the evidence tempo and span progression need.
+
+### The beginner is not the same defect
+
+If a weak family is starved of the shape it learns from, a true beginner is the
+limiting case and should be starved of it too. It is not.
+
+| player                     | share of slots that are cued, single hand, one octave | managed there |
+| -------------------------- | ----------------------------------------------------- | ------------- |
+| weak family in mirror runs | 0.05                                                  | 0.27          |
+| true beginner              | 0.37                                                  | 0.03          |
+
+The beginner is offered that work constantly and cannot do it: its left hand
+manages nothing in ninety-nine attempts at one octave, cued or previewed. Three
+of six seeds still run dry.
+
+So the two converge on nothing. The weak family is short of the work that
+teaches it; the beginner has that work and is below the floor it asks for.
+Whatever the beginner needs is not more of the same shape, which is what
+`sitting_ran_dry` has been saying and is now separated from the family question
+rather than merged into it.
+
+The bootstrap hypothesis worth testing next is therefore narrow and family
+neutral: a learner with no execution frontier in a family gets very little of
+the one shape that could give them one, because everything else about them is
+strong enough to win the slot. That is an acquisition question about supply
+rather than a ranking preference, and nothing has been changed on it.

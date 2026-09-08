@@ -150,6 +150,74 @@ void main() {
     );
   });
 
+  test('what the weak family learns from is single-handed and narrow', () {
+    final byShape = <String, List<TrajectorySlot>>{};
+    for (final entry in runs.entries) {
+      final (weak, _) = entry.key;
+      for (final slot in slotsIn(entry.value, weak)) {
+        final conditions = slot.chosen.conditions;
+        final shape = conditions.hands == HandConfiguration.together
+            ? 'together'
+            : conditions.octaves > 1
+            ? 'wide'
+            : 'narrow single hand';
+        (byShape[shape] ??= []).add(slot);
+      }
+    }
+
+    int managedIn(String shape) =>
+        (byShape[shape] ?? []).where((slot) => slot.managedExecution).length;
+
+    expect(
+      byShape.keys,
+      containsAll(['together', 'wide', 'narrow single hand']),
+    );
+    expect(
+      managedIn('narrow single hand'),
+      greaterThan(0),
+      reason: 'one octave and one hand is where a weak family gets a foothold',
+    );
+    expect(
+      managedIn('together') + managedIn('wide'),
+      0,
+      reason:
+          'and neither the hardest shape nor the widest span produces any, so '
+          'the evidence progression needs comes from one kind of work',
+    );
+  });
+
+  test('a true beginner is already offered that work, and still fails it', () {
+    final slots = [
+      for (final seed in [0, 1])
+        ...runTrajectory(
+          player: PlayerArchetypes.trueBeginner,
+          seed: seed,
+          materials: v1ScaleCatalog,
+          slots: 40,
+        ).slots,
+    ];
+    final supported = slots.where(
+      (slot) =>
+          slot.chosen.conditions.hands != HandConfiguration.together &&
+          slot.chosen.conditions.octaves == 1 &&
+          slot.chosen.guidance == GuidanceContext.continuouslyCued,
+    );
+
+    expect(
+      supported.length / slots.length,
+      greaterThan(0.2),
+      reason:
+          'the beginner is not starved of the shape the weak family learns '
+          'from, so the two are not the same defect',
+    );
+    expect(
+      supported.where((slot) => slot.managedExecution).length /
+          supported.length,
+      lessThan(0.1),
+      reason: 'they are offered it and cannot yet do it, which is its own seam',
+    );
+  });
+
   test('the weaker family still gains far less than the stronger one', () {
     for (final entry in runs.entries) {
       final (weak, seed) = entry.key;
