@@ -69,8 +69,7 @@ String selectionDiagnostics({
     'pacing=$pacing introductions=$introductions '
         'fresh_probe=$freshProbe probe=${probe.isEmpty ? 'not_admitted' : status(probe.first)} '
         'guidance_service=$guidanceService',
-    if (acquisitionFallback)
-      'acquisition_fallback=true; novelty filter not applied',
+    if (acquisitionFallback) 'acquisition_fallback=true',
     'rank order: tier, coordination_transition, contrary_coordination, '
         'retention, information, diversity, focus, realization, realization_fit; '
         'higher wins; exact ties use candidate order',
@@ -84,7 +83,7 @@ String selectionDiagnostics({
               ? 'not_reached'
               : t.challengeSurvived
               ? 'survived'
-              : 'refused'))}',
+              : 'refused:${t.admissionRefusal?.name ?? 'unspecified'}'))}',
     'winner_vs_best_selectable_scale=${bestScale == null
             ? 'no_selectable_scale'
             : winner == bestScale

@@ -38,6 +38,7 @@ void main() {
     // time has passed since the last confirmed retrieval.
     final simulation = PracticeSimulation.of(
       SyntheticProfile.techniqueStrongMemoryWeak,
+      attemptSpacing: const Duration(hours: 12),
       seed: 0,
     );
     final agent = agentOver([v1ScaleCatalog.first]);
@@ -66,6 +67,7 @@ void main() {
     // need entrenched whichever material could never resolve it.
     final simulation = PracticeSimulation.of(
       SyntheticProfile.advanced,
+      attemptSpacing: const Duration(hours: 12),
       seed: 1,
     );
     final agent = agentOver(v1ScaleCatalog.take(3).toList());
@@ -90,6 +92,7 @@ void main() {
     final materialB = v1ScaleCatalog[1];
     final simulation = PracticeSimulation.of(
       SyntheticProfile.advanced,
+      attemptSpacing: const Duration(hours: 12),
       seed: 2,
     );
 
@@ -175,6 +178,7 @@ void main() {
     final simulation = PracticeSimulation.from(
       truth: truth,
       state: state,
+      attemptSpacing: const Duration(hours: 12),
       seed: 5,
     );
     simulation.run(
@@ -195,6 +199,7 @@ void main() {
   test('a recovery context is temporary', () {
     final simulation = PracticeSimulation.of(
       SyntheticProfile.techniqueStrongMemoryWeak,
+      attemptSpacing: const Duration(hours: 12),
       seed: 6,
     );
     final agent = agentOver([v1ScaleCatalog.first]);
@@ -312,7 +317,15 @@ void main() {
       candidates: generateCandidates(instrument, [material]),
       at: at,
     );
-    final winner = pipeline.selectChoice(traces, session);
+    final winner = pipeline.selectChoice(
+      traces,
+      session,
+      state: learner.placementState(
+        PlacementTier.advanced,
+        at: defaultSimulationEpoch,
+      ),
+      at: defaultSimulationEpoch,
+    );
 
     expect(winner, isNotNull);
     expect(winner!.exercise, recoveryTarget(justAttempted));
@@ -329,6 +342,7 @@ void main() {
     // Only that the scheduler keeps offering one.
     final simulation = PracticeSimulation.of(
       SyntheticProfile.techniqueStrongMemoryWeak,
+      attemptSpacing: const Duration(hours: 12),
       seed: 2,
     );
     final agent = agentOver([v1ScaleCatalog.first]);
@@ -355,6 +369,7 @@ void main() {
   test('a decision that admits nothing is reported, not papered over', () {
     final simulation = PracticeSimulation.of(
       SyntheticProfile.advanced,
+      attemptSpacing: const Duration(hours: 12),
       seed: 0,
     );
     // Production sittings are unbounded, so a slot that admits nothing has to

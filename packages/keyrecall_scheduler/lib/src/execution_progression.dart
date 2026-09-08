@@ -364,6 +364,55 @@ bool isCoordinationTransition(
       memo: memo,
     );
 
+/// The exact introduction and the evidence its tempo comes from.
+class ResolvedIntroduction {
+  final Exercise exercise;
+  final IntroductionTempoSource source;
+
+  const ResolvedIntroduction(this.exercise, this.source);
+}
+
+enum IntroductionTempoSource { familyEntry, transferablePace, cautiousTransfer }
+
+ResolvedIntroduction resolveIntroduction(
+  LearnerState state,
+  Exercise exercise, {
+  required PracticeEntryPolicy entryPolicy,
+  ExecutionMemo? memo,
+}) {
+  final pace = transferableTempoFor(
+    state,
+    exercise.conditions.hands,
+    exercise.conditions.octaves,
+    memo: memo,
+  );
+  if (pace <= 0) {
+    return ResolvedIntroduction(
+      exercise.atTempo(entryPolicy.tempoFor(exercise.material)),
+      IntroductionTempoSource.familyEntry,
+    );
+  }
+  final cautious = !admissionBandOf(
+    exercise.material,
+  ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer);
+  return ResolvedIntroduction(
+    exercise.atTempo(cautious ? tempoBefore(pace) : pace),
+    cautious
+        ? IntroductionTempoSource.cautiousTransfer
+        : IntroductionTempoSource.transferablePace,
+  );
+}
+
+/// The caller permits tempo refinement, while every other field stays fixed.
+class CandidateEnvelope {
+  final Set<Exercise> _shapes;
+
+  CandidateEnvelope(Iterable<Exercise> candidates)
+    : _shapes = {for (final exercise in candidates) exercise.atTempo(60)};
+
+  bool contains(Exercise exercise) => _shapes.contains(exercise.atTempo(60));
+}
+
 /// The exercises one adjacent execution step from where this learner already
 /// is, which the static generator does not contain.
 ///
@@ -378,14 +427,16 @@ bool isCoordinationTransition(
 /// direction and guidance.
 List<Exercise> withExecutionNeighbors(
   LearnerState state,
-  List<Exercise> candidates,
-) {
+  List<Exercise> candidates, {
+  PracticeEntryPolicy entryPolicy = const PracticeEntryPolicy.uniform(60),
+}) {
   double demonstratedAt(Exercise candidate, int span) =>
       state.materialExecution[executionContextOf(candidate)]
           ?.demonstratedTempoAt(span) ??
       0;
 
-  final variants = <Exercise>{};
+  final variants = <Exercise>{...candidates};
+  final memo = ExecutionMemo();
   for (final candidate in candidates) {
     final conditions = candidate.conditions;
     final materialId = candidate.material.materialId;
@@ -399,7 +450,12 @@ List<Exercise> withExecutionNeighbors(
       // own frontier is empty, so without this the introduction has only the
       // tempi the generator lists and picks between them on nothing.
       if (atSpan <= 0 && atNarrower <= 0)
-        transferableTempoFor(state, conditions.hands, span),
+        resolveIntroduction(
+          state,
+          candidate,
+          entryPolicy: entryPolicy,
+          memo: memo,
+        ).exercise.conditions.tempoBpm,
       // Staying where this span has been managed. The rung a learner is on is
       // not always one the generator has, and it has to remain offerable:
       // holding there is ordinary work, and a recovery context targets an
@@ -423,5 +479,5 @@ List<Exercise> withExecutionNeighbors(
       }
     }
   }
-  return [...candidates, ...variants];
+  return variants.toList();
 }

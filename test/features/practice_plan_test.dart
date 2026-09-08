@@ -128,11 +128,14 @@ void main() {
     expect(loop.presented, isNotNull, reason: 'nothing was excluded');
   });
 
-  test('recovery still answers a failure from outside the focus', () async {
+  test('exclusive focus suspends a recovery outside its envelope', () async {
     final container = launch();
     await place(container);
     final first = await container.read(practiceLoopProvider.future);
-    final failed = first.presented!.exercise;
+    expect(
+      first.presented!.exercise.material.materialId,
+      isNot('A_NATURAL_MINOR'),
+    );
 
     await container
         .read(practicePlanProvider.notifier)
@@ -151,10 +154,8 @@ void main() {
     final loop = container.read(practiceLoopProvider).value!;
     expect(
       loop.presented!.exercise.material.materialId,
-      failed.material.materialId,
-      reason:
-          'a recovery context is exclusive and outranks the focus for the '
-          'exercise that was just failed',
+      'A_NATURAL_MINOR',
+      reason: 'the new exclusive focus no longer permits the failed material',
     );
   });
 

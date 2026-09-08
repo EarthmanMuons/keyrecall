@@ -102,7 +102,12 @@ void main() {
       final session = SessionState(
         recentMaterialIds: List.filled(cap, materialA.materialId),
       );
-      final winner = pipeline.selectChoice([traceA, traceB], session);
+      final winner = pipeline.selectChoice(
+        [traceA, traceB],
+        session,
+        state: stateAt(PlacementTier.advanced),
+        at: t0,
+      );
 
       expect(winner, isNotNull);
       expect(winner, same(traceB));
@@ -114,7 +119,15 @@ void main() {
         recentMaterialIds: List.filled(cap, materialA.materialId),
       );
 
-      expect(pipeline.selectChoice([traceA], session), same(traceA));
+      expect(
+        pipeline.selectChoice(
+          [traceA],
+          session,
+          state: stateAt(PlacementTier.advanced),
+          at: t0,
+        ),
+        same(traceA),
+      );
     });
 
     test('counts a run, not a total, over the window', () {
@@ -128,7 +141,12 @@ void main() {
       );
 
       expect(
-        pipeline.selectChoice([traceA, traceB], interrupted),
+        pipeline.selectChoice(
+          [traceA, traceB],
+          interrupted,
+          state: stateAt(PlacementTier.advanced),
+          at: t0,
+        ),
         same(traceA),
       );
     });
@@ -137,7 +155,15 @@ void main() {
   group('selection', () {
     test('returns nothing when nothing was admitted', () {
       expect(pipeline.selectBest(const []), isNull);
-      expect(pipeline.selectChoice(const [], SessionState()), isNull);
+      expect(
+        pipeline.selectChoice(
+          const [],
+          SessionState(),
+          state: stateAt(PlacementTier.advanced),
+          at: t0,
+        ),
+        isNull,
+      );
     });
 
     test('reports exhausted admission instead of silent absence', () {

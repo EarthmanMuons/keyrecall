@@ -45,7 +45,7 @@ Future<void> main(List<String> arguments) async {
       'retention-tolerance',
       defaultsTo: '0',
       help:
-          'How close two candidates have to be on retention before it stops '
+          'Experimental, nontransitive comparison: how close retention may be before it stops '
           'deciding between them.',
     )
     ..addOption(

@@ -250,7 +250,9 @@ void main() {
       expect(result.selectable.length, greaterThan(1));
       expect(result.diagnostics, contains('probe=removed:echo'));
       expect(
-        pipeline.selectChoice(result.traces, session, state: state)!.exercise,
+        pipeline
+            .selectChoice(result.traces, session, state: state, at: t0)!
+            .exercise,
         isNot(probe),
       );
       expect(session.tempoProbe, probe);
@@ -413,7 +415,12 @@ void main() {
       );
       expect(
         pipeline
-            .selectable(traces, session)
+            .selectable(
+              traces,
+              session,
+              state: stateAt(PlacementTier.advanced),
+              at: t0,
+            )
             .map((trace) => trace.exercise)
             .contains(probe),
         isFalse,

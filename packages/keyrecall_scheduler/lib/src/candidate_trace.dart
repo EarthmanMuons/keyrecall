@@ -285,6 +285,20 @@ enum RealizationRank {
   final String id;
 }
 
+/// A refusal ordinary challenge admission cannot override.
+enum AdmissionRefusal { curriculum, introductionTempo, recovery, challengeBand }
+
+class AdmissionDecision {
+  final ChallengeBypass? bypass;
+  final AdmissionRefusal? refusal;
+
+  const AdmissionDecision.admitted([this.bypass]) : refusal = null;
+  const AdmissionDecision.refused(AdmissionRefusal this.refusal)
+    : bypass = null;
+
+  bool get isAllowed => refusal == null;
+}
+
 /// The lexicographic priority key: eligibility tier, then retention,
 /// information, diversity, goals, and finally the realization.
 ///
@@ -495,6 +509,8 @@ class CandidateTrace {
   /// Whether the candidate survived challenge admission at all.
   final bool challengeSurvived;
 
+  final AdmissionRefusal? admissionRefusal;
+
   /// Whether the pipeline really reached priority ranking for this candidate.
   final StageStatus priorityStatus;
 
@@ -513,6 +529,7 @@ class CandidateTrace {
     required this.isWithinChallengeBand,
     required this.challengeBypass,
     required this.challengeSurvived,
+    this.admissionRefusal,
     required this.priorityStatus,
     required this.rankKey,
   });
@@ -550,6 +567,10 @@ int _order(bool flag) => flag ? 1 : 0;
 /// 1e-4 for well-known material and information near 2, so one tolerance
 /// cannot serve both. **Zero by default**, so the mechanism exists without
 /// silently reordering anything nobody has justified a number for.
+///
+/// Only zero tolerances are supported for production. Nonzero pairwise
+/// tolerances are nontransitive and remain experimental until selection and
+/// diagnostics share set-level narrowing semantics.
 @immutable
 class RankTolerances {
   final double retention;

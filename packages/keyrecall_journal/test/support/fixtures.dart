@@ -111,7 +111,12 @@ Outcome outcomeOf({
         candidates: candidates,
         at: at,
       );
-      final chosen = pipeline.selectChoice(traces, session);
+      final chosen = pipeline.selectChoice(
+        traces,
+        session,
+        state: scratch,
+        at: at,
+      );
       session.attemptsThisSession++;
       if (chosen == null) continue;
       decision = SchedulerDecision.fromTrace(chosen, schedulerConfig);

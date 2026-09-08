@@ -140,6 +140,17 @@ final class SelectionBlocked extends SelectionResult {
   });
 }
 
+class _SelectionStages {
+  final Map<String, List<CandidateTrace>> stages;
+  final IntroductionDecision introductions;
+  final PacingDecision pacing;
+  final DoseDecision dose;
+
+  _SelectionStages(this.stages, this.introductions, this.pacing, this.dose);
+
+  List<CandidateTrace> get selectable => stages.values.last;
+}
+
 /// The staged decision pipeline that chooses what to practice next.
 ///
 /// Eligibility and safety, then challenge admission, then priority ranking and
@@ -222,20 +233,8 @@ class SchedulerPipeline {
       practiceEntryPolicy: entryPolicy,
       emphasis: emphasis,
     );
-    var echoed = withoutFreshEcho(
-      traces.where((trace) => trace.isRanked).toList(),
-      session,
-    );
-    var repeated = applyRepetitionGuard(echoed, session);
-    var introductions = capIntroductions(repeated, traces, state);
-    var pacing = pace(introductions.selectable, session);
-    var dosed = doseOf(pacing.selectable, session, at);
-    var available = withNoveltySupported(
-      dosed.selectable,
-      state,
-      config.novelty,
-    );
-    var selected = chooseFrom(available, session);
+    var narrowed = _selectionStages(traces, session, state, at);
+    var selected = chooseFrom(narrowed.selectable, session);
     var blockedReason = BlockedReason.admissionExhausted;
     var acquisitionFallback = false;
 
@@ -263,39 +262,26 @@ class SchedulerPipeline {
           at: at,
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
+          emphasis: emphasis,
         );
-        echoed = withoutFreshEcho(
-          traces.where((trace) => trace.isRanked).toList(),
-          session,
-        );
-        repeated = applyRepetitionGuard(echoed, session);
-        introductions = capIntroductions(repeated, traces, state);
-        pacing = pace(introductions.selectable, session);
-        dosed = doseOf(pacing.selectable, session, at);
-        available = dosed.selectable;
-        selected = chooseFrom(available, session);
+        narrowed = _selectionStages(traces, session, state, at);
+        selected = chooseFrom(narrowed.selectable, session);
         blockedReason = BlockedReason.safeEntryRejected;
       }
     }
 
     final diagnostics = selectionDiagnostics(
       traces: traces,
-      stages: {
-        'echo': echoed,
-        'repetition': repeated,
-        'introductions': introductions.selectable,
-        'pacing': pacing.selectable,
-        'dose': dosed.selectable,
-        'novelty': available,
-      },
+      stages: narrowed.stages,
       winner: selected,
       state: state,
-      pacing: pacing.disposition.name,
+      pacing: narrowed.pacing.disposition.name,
       introductions:
-          '${introductions.disposition.name} unresolved=${introductions.unresolved}',
+          '${narrowed.introductions.disposition.name} unresolved=${narrowed.introductions.unresolved}',
       freshProbe: session.tempoProbeIsFresh,
       tempoProbe: session.tempoProbe,
-      guidanceService: overdueGuidanceProbe(available, session) != null,
+      guidanceService:
+          overdueGuidanceProbe(narrowed.selectable, session) != null,
       acquisitionFallback: acquisitionFallback,
     );
     return (
@@ -303,22 +289,22 @@ class SchedulerPipeline {
           ? SelectionBlocked(
               diagnostics: diagnostics,
               traces: traces,
-              selectable: available,
-              pacing: pacing,
-              dose: dosed,
-              introductions: introductions,
+              selectable: narrowed.selectable,
+              pacing: narrowed.pacing,
+              dose: narrowed.dose,
+              introductions: narrowed.introductions,
               reason: blockedReason,
             )
           : CandidateSelected(
               diagnostics: diagnostics,
               traces: traces,
-              selectable: available,
-              pacing: pacing,
-              dose: dosed,
-              introductions: introductions,
+              selectable: narrowed.selectable,
+              pacing: narrowed.pacing,
+              dose: narrowed.dose,
+              introductions: narrowed.introductions,
               candidate: selected,
             ),
-      guidanceProbeAvailable: available.any(
+      guidanceProbeAvailable: narrowed.selectable.any(
         (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
       ),
       guidanceProbeSelected:
@@ -767,24 +753,12 @@ class SchedulerPipeline {
     final entryPolicy =
         practiceEntryPolicy ??
         PracticeEntryPolicy.uniform(config.eligibility.gentleTempoBpm);
-    final transferable = transferableTempoFor(
+    return resolveIntroduction(
       state,
-      exercise.conditions.hands,
-      exercise.conditions.octaves,
+      exercise,
+      entryPolicy: entryPolicy,
       memo: memo,
-    );
-    // Nobody has seen this learner play, so there is no evidence to be
-    // conservative about. The gentle tempo is the only honest default.
-    if (transferable <= 0) return entryPolicy.tempoFor(exercise.material);
-
-    // One rung, and exactly one. An unfamiliar fingering is a real additional
-    // ask, so the full pace is overconfident; the learner's own pace is direct
-    // behavioral evidence, so the bottom of the ladder discards it.
-    return admissionBandOf(
-          exercise.material,
-        ).isAtLeastAsEarlyAs(AdmissionBand.earlyTransfer)
-        ? transferable
-        : tempoBefore(transferable);
+    ).exercise.conditions.tempoBpm;
   }
 
   /// Whether these are the gentlest conditions the family offers.
@@ -1201,6 +1175,66 @@ class SchedulerPipeline {
     return exercise == target ? _Admits(bypass) : const _Refuses();
   }
 
+  AdmissionDecision admissionFor({
+    required LearnerState state,
+    required Exercise exercise,
+    required Prediction prediction,
+    required DateTime at,
+    required ChallengeBypass? override,
+    required Exercise? recoveryTarget,
+    required Exercise? tempoProbe,
+    required bool tempoProbeIsFresh,
+    required int supportedAttempts,
+    required EligibilityTier eligibility,
+    required EligibilityTier? introducibleTier,
+    DecisionFacts? facts,
+    required PracticeEntryPolicy practiceEntryPolicy,
+  }) {
+    if (!state.hasPlayed(
+          exercise.material.materialId,
+          exercise.conditions.hands,
+        ) &&
+        !isIntroducible(state, exercise, facts: facts)) {
+      return const AdmissionDecision.refused(AdmissionRefusal.curriculum);
+    }
+    final bypass = challengeBypassFor(
+      state: state,
+      exercise: exercise,
+      prediction: prediction,
+      at: at,
+      override: override,
+      recoveryTarget: recoveryTarget,
+      tempoProbe: tempoProbe,
+      tempoProbeIsFresh: tempoProbeIsFresh,
+      supportedAttempts: supportedAttempts,
+      eligibility: eligibility,
+      introducibleTier: introducibleTier,
+      facts: facts,
+      practiceEntryPolicy: practiceEntryPolicy,
+    );
+    if (recoveryTarget != null &&
+        override == null &&
+        bypass != ChallengeBypass.recovery) {
+      return const AdmissionDecision.refused(AdmissionRefusal.recovery);
+    }
+    if (bypass != null) return AdmissionDecision.admitted(bypass);
+    if (isIntroduction(state, exercise) &&
+        exercise.conditions.tempoBpm !=
+            entryTempoFor(
+              state,
+              exercise,
+              practiceEntryPolicy: practiceEntryPolicy,
+              memo: facts?.execution,
+            )) {
+      return const AdmissionDecision.refused(
+        AdmissionRefusal.introductionTempo,
+      );
+    }
+    return isWithinChallengeBand(prediction)
+        ? const AdmissionDecision.admitted()
+        : const AdmissionDecision.refused(AdmissionRefusal.challengeBand);
+  }
+
   /// Runs every candidate through every stage and returns the full traces.
   ///
   /// Diagnostic values are computed for all candidates, but the stage statuses
@@ -1223,15 +1257,22 @@ class SchedulerPipeline {
         practiceEntryPolicy ??
         PracticeEntryPolicy.uniform(config.eligibility.gentleTempoBpm);
     final failed = session.lastFailedExercise;
-    final target = failed == null ? null : recoveryTarget(failed);
-    final probe = target == null ? session.tempoProbe : null;
+    final envelope = CandidateEnvelope(candidates);
+    Exercise? permitted(Exercise? exercise) =>
+        exercise != null && envelope.contains(exercise) ? exercise : null;
+    final target = permitted(failed == null ? null : recoveryTarget(failed));
+    final probe = target == null ? permitted(session.tempoProbe) : null;
     final safety = safetyFor(session);
     // Refined once here, so that every set-level fact below reads the same
     // universe the candidate loop evaluates.
     //
     // Recovery and tempo targets may fall between generated rungs. Include
     // them explicitly so admission can offer the exact exercise.
-    final neighbors = withExecutionNeighbors(state, candidates);
+    final neighbors = withExecutionNeighbors(
+      state,
+      candidates,
+      entryPolicy: entryPolicy,
+    );
     final refined = [
       ...neighbors,
       for (final exclusive in [target, probe])
@@ -1337,7 +1378,7 @@ class SchedulerPipeline {
       practiceEntryPolicy: practiceEntryPolicy,
     );
     final withinBand = isWithinChallengeBand(prediction);
-    final bypass = challengeBypassFor(
+    final admission = admissionFor(
       state: state,
       exercise: exercise,
       prediction: prediction,
@@ -1352,16 +1393,8 @@ class SchedulerPipeline {
       facts: facts,
       practiceEntryPolicy: practiceEntryPolicy,
     );
-    // A recovery context is exclusive: a candidate that happens to fall in the
-    // ordinary band or qualify as new material must not survive alongside the
-    // target. Something went wrong, and the next thing asked for answers it.
-    //
-    // Tempo probes leave in-band work reachable. A fresh probe also leaves
-    // ordinary admission exceptions open; selection holds the probe back.
-    final narrowed = recoveryTarget;
-    final survived = narrowed != null && override == null
-        ? bypass == ChallengeBypass.recovery
-        : withinBand || bypass != null;
+    final bypass = admission.bypass;
+    final survived = admission.isAllowed;
 
     final challengeStatus = safety.isAllowed
         ? StageStatus.reached
@@ -1429,6 +1462,7 @@ class SchedulerPipeline {
       isWithinChallengeBand: withinBand,
       challengeBypass: bypass,
       challengeSurvived: survived,
+      admissionRefusal: admission.refusal,
       priorityStatus: priorityStatus,
       rankKey: rankKey,
     );
@@ -1515,27 +1549,47 @@ class SchedulerPipeline {
     ]);
   }
 
-  /// The candidates genuinely available this slot.
-  ///
-  /// One answer to "what could have been chosen", so the choice and anything
-  /// recording what happened to the choice are looking at the same set. A
-  /// candidate the repetition guard removed was not passed over; it was not
-  /// there.
-  ///
-  /// The introduction cap reads learner state, so a caller that has none
-  /// answers the question the guards alone can answer.
+  _SelectionStages _selectionStages(
+    List<CandidateTrace> traces,
+    SessionState session,
+    LearnerState state,
+    DateTime at,
+  ) {
+    final echoed = withoutFreshEcho(
+      traces.where((t) => t.isRanked).toList(),
+      session,
+    );
+    final repeated = applyRepetitionGuard(echoed, session);
+    final introductions = capIntroductions(repeated, traces, state);
+    final pacing = pace(introductions.selectable, session);
+    final dose = doseOf(pacing.selectable, session, at);
+    final available = withNoveltySupported(
+      dose.selectable,
+      state,
+      config.novelty,
+    );
+    return _SelectionStages(
+      {
+        'echo': echoed,
+        'repetition': repeated,
+        'introductions': introductions.selectable,
+        'pacing': pacing.selectable,
+        'dose': dose.selectable,
+        'novelty': available,
+      },
+      introductions,
+      pacing,
+      dose,
+    );
+  }
+
+  /// Applies the production selection filters to already evaluated candidates.
   List<CandidateTrace> selectable(
     List<CandidateTrace> traces,
     SessionState session, {
-    LearnerState? state,
-  }) => pace(
-    capIntroductions(
-      applyRepetitionGuard(withoutFreshEcho(traces, session), session),
-      traces,
-      state,
-    ).selectable,
-    session,
-  ).selectable;
+    required LearnerState state,
+    required DateTime at,
+  }) => _selectionStages(traces, session, state, at).selectable;
 
   /// The introduction cap applied to an already-guarded set.
   ///
@@ -1676,14 +1730,11 @@ class SchedulerPipeline {
     SessionState session,
   ) => overdueGuidanceProbe(selectable, session) ?? selectBest(selectable);
 
-  /// The canonical V1 choice: repetition guard, then the diagnostic fairness
-  /// guard, then lexicographic ranking.
-  ///
-  /// Every real caller should use this rather than [selectBest] alone, which
-  /// silently omits both guards and can reproduce perseveration.
+  /// Selects from evaluated candidates using all production selection filters.
   CandidateTrace? selectChoice(
     List<CandidateTrace> traces,
     SessionState session, {
-    LearnerState? state,
-  }) => chooseFrom(selectable(traces, session, state: state), session);
+    required LearnerState state,
+    required DateTime at,
+  }) => chooseFrom(selectable(traces, session, state: state, at: at), session);
 }

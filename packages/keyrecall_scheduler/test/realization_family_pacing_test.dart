@@ -116,7 +116,12 @@ void main() {
         _trace(HandConfiguration.right, 0.3, material: 1),
       ];
 
-      final selectable = _pacedPipeline().selectable(traces, _saturated());
+      final selectable = _pacedPipeline().selectable(
+        traces,
+        _saturated(),
+        state: stateAt(PlacementTier.advanced),
+        at: t0,
+      );
 
       expect(selectable, hasLength(1));
       expect(selectable.single.exercise, traces.last.exercise);

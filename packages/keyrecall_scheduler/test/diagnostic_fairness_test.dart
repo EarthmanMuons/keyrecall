@@ -142,8 +142,18 @@ void main() {
       final fresh = SessionState();
 
       final traces = tracesFor(state, fresh);
-      final chosenWhenFresh = pipeline.selectChoice(traces, fresh);
-      final chosenWhenOverdue = pipeline.selectChoice(traces, patient);
+      final chosenWhenFresh = pipeline.selectChoice(
+        traces,
+        fresh,
+        state: stateAt(PlacementTier.advanced),
+        at: t0,
+      );
+      final chosenWhenOverdue = pipeline.selectChoice(
+        traces,
+        patient,
+        state: stateAt(PlacementTier.advanced),
+        at: t0,
+      );
 
       expect(
         chosenWhenFresh?.challengeBypass,
@@ -174,7 +184,12 @@ void main() {
       expect(probes.length, greaterThan(1));
 
       expect(
-        pipeline.selectChoice(traces, overdue),
+        pipeline.selectChoice(
+          traces,
+          overdue,
+          state: stateAt(PlacementTier.advanced),
+          at: t0,
+        ),
         same(pipeline.selectBest(probes)),
         reason:
             'ranking still decides which independence question is the '
@@ -198,7 +213,15 @@ void main() {
         isEmpty,
       );
       expect(pipeline.overdueGuidanceProbe(traces, overdue), isNull);
-      expect(pipeline.selectChoice(traces, overdue), isNotNull);
+      expect(
+        pipeline.selectChoice(
+          traces,
+          overdue,
+          state: stateAt(PlacementTier.advanced),
+          at: t0,
+        ),
+        isNotNull,
+      );
     });
 
     test('is inert when the probe would have won anyway', () {
@@ -211,8 +234,22 @@ void main() {
       final traces = tracesFor(state, fresh, candidates: only);
 
       expect(
-        pipeline.selectChoice(traces, overdue)?.exercise,
-        pipeline.selectChoice(traces, fresh)?.exercise,
+        pipeline
+            .selectChoice(
+              traces,
+              overdue,
+              state: stateAt(PlacementTier.advanced),
+              at: t0,
+            )
+            ?.exercise,
+        pipeline
+            .selectChoice(
+              traces,
+              fresh,
+              state: stateAt(PlacementTier.advanced),
+              at: t0,
+            )
+            ?.exercise,
       );
     });
   });
@@ -241,7 +278,12 @@ void main() {
       reason: 'the probe has to be ranked for the distinction to matter',
     );
 
-    final available = pipeline.selectable(traces, session);
+    final available = pipeline.selectable(
+      traces,
+      session,
+      state: stateAt(PlacementTier.advanced),
+      at: t0,
+    );
     expect(
       available.where(
         (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,

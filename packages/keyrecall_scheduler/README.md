@@ -83,7 +83,7 @@ rejected by later stages remains blocked.
 After the attempt is played, tell the session what happened:
 
 ```dart
-pipeline.recordOutcome(session, candidate.exercise, outcome);
+pipeline.recordOutcome(session, candidate.exercise, outcome, at: now);
 ```
 
 Only a tested failure opens a recovery context. An attempt that never tested
@@ -92,7 +92,7 @@ retrieval is categorically not a failure to recover from, which is why
 
 ## Configuration
 
-`v1SchedulerConfig` is the live registry, at version `v1-3`. It began as a
+`v1SchedulerConfig` is the live registry, at version `v1-4`. It began as a
 mirror of `analysis/scheduler/config.toml` at `v1-prototype-0` and has since
 moved past it, so a test now checks that the inherited values still match the
 archive while the version deliberately does not. The stage structure and
@@ -107,3 +107,19 @@ unpaced.
 is the boundary contract and the experiment record behind each mechanism;
 [`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md)
 puts the scheduler in context with the learner model.
+
+## Composition contracts
+
+Hard curriculum refusals remain refused through ordinary admission, overrides,
+and acquisition fallback. Introduction tempo is resolved once as an exact
+exercise; refinement and admission consume the same resolver. Refinement
+preserves every field except tempo and returns unique exercises. Pending
+recovery and tempo targets obey the same envelope, so a target outside the
+current scope is suspended rather than injected.
+
+`evaluateSlot`, `decide`, `selectable`, and `selectChoice` share the selection
+filters, including acquisition fallback. The latter two require learner state
+and decision time because novelty and dose consume them. Fallback preserves goal
+emphasis. Only zero rank tolerances are supported for production; the nonzero
+experimental comparator is nontransitive and needs set-level selection and
+matching diagnostics before promotion.

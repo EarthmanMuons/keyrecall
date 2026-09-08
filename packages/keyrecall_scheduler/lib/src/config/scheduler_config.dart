@@ -599,7 +599,7 @@ class SchedulerConfig {
 /// frozen for initial production; the numbers are starting points for
 /// calibration against real practice data.
 const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
-  modelVersion: 'v1-3',
+  modelVersion: 'v1-4',
   eligibility: EligibilityConfig(
     multiOctaveExecutionFloor: -0.5,
     gentleTempoBpm: 60,

@@ -533,8 +533,12 @@ void main() {
         overrides: {exercise: ChallengeBypass.override},
       );
 
-      final lowTrace = evaluate(low).single;
-      final highTrace = evaluate(high).single;
+      final lowTrace = evaluate(
+        low,
+      ).singleWhere((trace) => trace.exercise == exercise);
+      final highTrace = evaluate(
+        high,
+      ).singleWhere((trace) => trace.exercise == exercise);
 
       expect(
         (lowTrace.prediction.overallP - highTrace.prediction.overallP).abs(),
