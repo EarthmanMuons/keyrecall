@@ -1147,3 +1147,48 @@ Nothing was changed. The predicate is observable in learner state, the shape has
 demonstrated utility, and the intervention is a single threshold, which is
 exactly the point at which it is worth deciding deliberately rather than
 quickly.
+
+### The relaxed floor works, and collides with the mechanism already there
+
+Built and measured rather than argued about: while a family has no execution
+frontier, the narrowest supported shape it offers is held to `pIntroductionMin`
+instead of `pMin`. Tied to both conditions, so nothing wider, less supported or
+two-handed inherits it, and it ends at the family's first frontier rather than
+when the material stops being new.
+
+It does what it claims at the layer it was aimed at.
+
+| run                    | bootstrap shape eligible | admitted before | admitted after |
+| ---------------------- | ------------------------ | --------------- | -------------- |
+| weak arpeggios, seed 2 | 2910                     | 6%              | 77%            |
+| weak scales, seed 2    | 3840                     | 3%              | 80%            |
+
+**And the true beginner stops running dry.** Zero of six seeds, against three of
+six. That defect has been pinned as known and unfixed since the sweep found it,
+and this is what it was: after a first exposure the gentlest work in the only
+family on offer was refused for being too hard, so a sitting eventually had
+nothing left it could admit.
+
+**Weak-family outcomes did not move at all.** Selection share, frontier arrival
+and held-out managed execution are unchanged to two decimal places. Thousands of
+newly admitted candidates reach ranking and one of them is chosen. So admission
+was a real bottleneck and not the binding one; ranking is, and unlike the
+hands-together foothold this shape is productive when it does win, at better
+than a quarter managed. That is now the strongest case in this document for a
+ranking change, and it is a different question from the one this section set out
+to answer.
+
+**The change was reverted, for a reason worth stating.** It makes four
+acquisition-floor tests and three `sitting_ran_dry` tests fail, and not by
+breaking them: admission stops exhausting in the scenarios those tests
+construct, so the fallback they exercise never fires. The acquisition floor's
+entries are single hand, one octave, continuously cued, at the slowest generated
+tempo, which is the bootstrap shape exactly. Two mechanisms, one problem: the
+floor supplies this work when admission exhausts, and the relaxed floor stops
+admission exhausting.
+
+Which one should own the case is a design decision rather than a finding. The
+evidence says the case is real, that either mechanism addresses it, and that the
+relaxed floor additionally fixes a defect the acquisition floor has not. It does
+not say which belongs in the architecture, and that is not a question a
+simulation answers.
