@@ -72,13 +72,16 @@ String? reasonForNext({
       final hands? => 'Now $hands, with less help.',
       null => 'Time to try this one with less help.',
     },
+    // A probe is held back for a slot before it may be chosen, so the attempt
+    // it verifies is no longer the one just finished. The copy says earlier
+    // rather than just now, and stays true however many attempts intervene.
     ChallengeBypass.tempoProbe => switch (hands) {
-      final hands? => 'Now $hands, at the speed you played it.',
+      final hands? => 'Now $hands, at the speed you reached earlier.',
       null =>
         sameMaterial
-            ? 'That looked easy. Same ${materialNoun(next.material)}, at the '
-                  'speed you played it.'
-            : 'That looked easy, so this one is quicker.',
+            ? 'Same ${materialNoun(next.material)}, at the speed you reached '
+                  'earlier.'
+            : 'A quicker one, at a speed you have already reached.',
     },
     ChallengeBypass.acquisitionFloor => switch (hands) {
       final hands? => 'Starting with $hands and the notes in view.',

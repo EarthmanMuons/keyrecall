@@ -434,6 +434,37 @@ openings for `probe_verification_share` to trip on any single run, which is
 worth remembering: a mechanism that fires rarely needs the census rather than a
 per-run threshold.
 
+## A slot decided by a difference too small to mean anything
+
+The rank key is a dictionary ordering, so the first term that differs at all
+settles a slot however little it differs by and however much better the
+alternative is on everything after it.
+
+A device sitting produced the shape. An exercise at sixty beats, on material
+whose frontier was a hundred and thirty-two, beat a waiting tempo probe because
+its retention read 0.000122 against 0.000101. That is a fifth of nothing,
+decided four terms before the realization rank, which knows what the learner has
+demonstrated, could speak at all.
+
+**Nothing in the harness was looking for it.** `realization_stall` asks whether
+a better realization of the _same material and hand_ was passed over, and the
+two candidates here were different scales. The relationship between the
+exercises was never the problem; the margin was.
+
+`hairline_rank_decision` asks the general question: did a continuous term decide
+this slot by a hair, over a candidate that ranked better on the realization? It
+reports which term did it and by what proportion. An observation rather than an
+invariant, because that a near-tie decided a slot is a fact while deciding it
+was wrong is a judgment, and the threshold for near is exactly the kind of
+number this file refuses to assert on.
+
+It fires eleven to twenty-five times per archetype over a hundred and twenty
+slots, on every archetype but the true beginner. So the device sitting was not
+unlucky, and a fix is a change to how the key compares rather than a rule about
+slow exercises. The design worth trying first is a per-term equivalence
+threshold, explicit in configuration, since one absolute tolerance cannot serve
+terms as differently scaled as retention and information.
+
 ## What a sweep costs, and what makes it worse
 
 A parameter sweep is a different shape of cost from the trajectory sweep. It

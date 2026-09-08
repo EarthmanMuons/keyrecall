@@ -147,7 +147,7 @@ void main() {
           ChallengeBypass.tempoProbe,
           exerciseOf(hands: HandConfiguration.together),
         ),
-        'Now both hands, at the speed you played it.',
+        'Now both hands, at the speed you reached earlier.',
       );
     });
 

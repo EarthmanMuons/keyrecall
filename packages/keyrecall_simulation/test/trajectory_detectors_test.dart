@@ -559,6 +559,108 @@ void main() {
       );
     });
   });
+
+  group('hairline rank decisions', () {
+    RankKey key({
+      double retention = 0,
+      double information = 0,
+      RealizationRank realization = RealizationRank.unmeasured,
+    }) => RankKey(
+      tier: EligibilityTier.fullyEligible,
+      coordinationTransition: false,
+      retention: retention,
+      information: information,
+      diversity: 0,
+      goals: 0,
+      realization: realization,
+      realizationFit: 0,
+    );
+
+    TrajectorySlot slotOf(RankKey winner, RankKey other) => _slot(
+      0,
+      winner: _traceWith(_exercise(), winner),
+      alternatives: [_traceWith(_exercise(tonic: 'D'), other)],
+    );
+
+    test('a near-tie that cost a better realization is reported', () {
+      // The device shape: retention decided it by a fifth of nothing, four
+      // terms before the realization rank could speak.
+      final found = _find('hairline_rank_decision', [
+        slotOf(
+          key(retention: 0.000122, realization: RealizationRank.surpassed),
+          key(retention: 0.000101, realization: RealizationRank.advancing),
+        ),
+      ]);
+
+      expect(found.single.severity, AnomalySeverity.observation);
+      expect(found.single.subject, 'retention');
+      expect(found.single.summary, contains('ADVANCING'));
+    });
+
+    test('a decisive margin on the same terms is not', () {
+      expect(
+        _find('hairline_rank_decision', [
+          slotOf(
+            key(retention: 0.5, realization: RealizationRank.surpassed),
+            key(retention: 0.001, realization: RealizationRank.advancing),
+          ),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('a near-tie that cost nothing is not', () {
+      expect(
+        _find('hairline_rank_decision', [
+          slotOf(
+            key(retention: 0.000122, realization: RealizationRank.advancing),
+            key(retention: 0.000101, realization: RealizationRank.holding),
+          ),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('a term that is a preference rather than a degree is not', () {
+      // The tier is a different kind of claim, and a candidate losing on it
+      // has not lost by a margin at all.
+      expect(
+        _find('hairline_rank_decision', [
+          _slot(
+            0,
+            winner: _traceWith(_exercise(), key()),
+            alternatives: [
+              _traceWith(
+                _exercise(tonic: 'D'),
+                RankKey(
+                  tier: EligibilityTier.provisionallyEligible,
+                  coordinationTransition: false,
+                  retention: 0,
+                  information: 0,
+                  diversity: 0,
+                  goals: 0,
+                  realization: RealizationRank.advancing,
+                  realizationFit: 0,
+                ),
+              ),
+            ],
+          ),
+        ]),
+        isEmpty,
+      );
+    });
+
+    test('the deciding term is the first that differs', () {
+      expect(
+        decidingTerm(
+          key(retention: 1, information: 2),
+          key(retention: 1, information: 3),
+        ),
+        RankTerm.information,
+      );
+      expect(decidingTerm(key(retention: 1), key(retention: 1)), isNull);
+    });
+  });
 }
 
 List<Anomaly> _find(
@@ -690,3 +792,22 @@ HandsTogetherStages _handsTogether({
 );
 
 DateTime _at(int minute) => DateTime.utc(2026).add(Duration(minutes: minute));
+
+CandidateTrace _traceWith(Exercise exercise, RankKey rank) => CandidateTrace(
+  exercise: exercise,
+  eligibility: EligibilityDecision(rank.tier, 'eligible'),
+  safety: const SafetyDecision(true, 'safe'),
+  challengeStatus: StageStatus.reached,
+  prediction: const Prediction(
+    independentRetrievalP: 0.8,
+    materialAvailableP: 0.8,
+    executionP: 0.8,
+    coordinationP: 1.0,
+    topologyP: 0.8,
+  ),
+  isWithinChallengeBand: true,
+  challengeBypass: null,
+  challengeSurvived: true,
+  priorityStatus: StageStatus.reached,
+  rankKey: rank,
+);

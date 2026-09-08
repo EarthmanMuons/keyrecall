@@ -199,3 +199,42 @@ That is the first real finding of the calibration work, and it is about the
 player model: **a learner who plays this cleanly is outside what the synthetic
 player can express**, and closing that gap is a change to the player rather than
 to the estimator.
+
+### What the gap turned out to be
+
+Two things, neither of them ability.
+
+An unconditional nine-in-ten completion draw taxed every attempt, so no player
+could complete more than ninety per cent of a sitting whatever they could do.
+Completion now falls out of the attempt instead: it fails with the square of
+what is left of execution quality, so a bad attempt still falls apart and a
+learner executing well rarely does.
+
+Strain was not the problem. It already reads the played tempo rather than the
+requested one, which is why a sixty-beat request that the person played at a
+hundred and twenty costs them nothing.
+
+The other was the prior rather than the model. Ability was drawn up to a logit
+of two and a half, which tops out near a motor score of 0.92 before span and
+strain take their share, so a sitting whose median is one could not be reached
+and the fit reported the ceiling as a measurement.
+
+After both, the same sitting fits at 0.100 rather than 0.130, with the closest
+members at 0.87 motor and ninety-one per cent completion rather than 0.70 and
+eighty-six, and the ability interval moves from 0.53-2.34 up to 1.43-3.79.
+`reliable_self_paced` is that learner as a named archetype, and playing the same
+sitting it lands at 0.067, closer than anything the search found.
+
+The archetypes it had to leave alone kept their character: the true beginner
+completes seventeen per cent of a sitting at 0.09 motor, developing forty-three
+at 0.32, advanced eighty-eight at 0.83. **Expressiveness, not uniform
+competence**, and a family that could describe this learner while losing the
+struggling ones would have traded one blind spot for another.
+
+**A measurement ceiling is not an ability ceiling.** A device median of 1.00 for
+continuity and temporal stability means at or above the resolution of those
+metrics, not perfect execution: the measurement cannot say how much better than
+its top the playing was. A fit reads it as strong evidence of ability, which is
+right, and as an exact value, which is not, so an ensemble landing slightly
+under the ceiling is agreeing with the data rather than missing it. No
+stochastic surrogate should reproduce a quantized ceiling literally.

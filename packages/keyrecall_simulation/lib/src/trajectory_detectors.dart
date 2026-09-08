@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
@@ -76,6 +78,7 @@ List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
   ..._probeStrandedAtSittingEnd(trajectory),
   ..._probeDeferBlocked(trajectory),
   ..._reacquisitionBurden(trajectory),
+  ..._hairlineRankDecision(trajectory),
 ];
 
 /// **Invariant.** A surpassed realization was chosen while an advancing one of
@@ -704,5 +707,115 @@ Iterable<Anomaly> _reacquisitionBurden(Trajectory trajectory) sync* {
           'demonstrated',
       census: censusOf(slots.first),
     );
+  }
+}
+
+/// The rank terms, in the order the key compares them.
+///
+/// Named so a finding can say which one decided a slot, which the key itself
+/// cannot: it answers which candidate won, not what settled it.
+enum RankTerm {
+  tier('tier'),
+  coordinationTransition('coordination_transition'),
+  contraryCoordination('contrary_coordination'),
+  retention('retention'),
+  information('information'),
+  diversity('diversity'),
+  goals('goals'),
+  realization('realization'),
+  realizationFit('realization_fit');
+
+  const RankTerm(this.id);
+
+  final String id;
+
+  /// Whether a difference in this term is a matter of degree.
+  ///
+  /// The continuous terms are the ones where two candidates can differ by an
+  /// amount nobody would call a preference.
+  bool get isContinuous => switch (this) {
+    RankTerm.retention ||
+    RankTerm.information ||
+    RankTerm.diversity ||
+    RankTerm.goals ||
+    RankTerm.realizationFit => true,
+    _ => false,
+  };
+
+  double Function(RankKey key) get read => switch (this) {
+    RankTerm.tier => (key) => key.tier.index.toDouble(),
+    RankTerm.coordinationTransition =>
+      (key) => key.coordinationTransition ? 1 : 0,
+    RankTerm.contraryCoordination => (key) => key.contraryCoordination ? 1 : 0,
+    RankTerm.retention => (key) => key.retention,
+    RankTerm.information => (key) => key.information,
+    RankTerm.diversity => (key) => key.diversity,
+    RankTerm.goals => (key) => key.goals,
+    RankTerm.realization => (key) => key.realization.index.toDouble(),
+    RankTerm.realizationFit => (key) => key.realizationFit,
+  };
+}
+
+/// The first term on which [winner] and [other] differ, or null when the two
+/// keys are identical.
+RankTerm? decidingTerm(RankKey winner, RankKey other) {
+  for (final term in RankTerm.values) {
+    if (term.read(winner) != term.read(other)) return term;
+  }
+  return null;
+}
+
+/// **Observation.** A slot was decided by a difference too small to mean
+/// anything, over a candidate that was better where it counts.
+///
+/// The lexicographic key is a dictionary ordering, so the first term to differ
+/// at all settles the slot however little it differs by and however much
+/// better the alternative is later. A device sitting produced the shape: an
+/// exercise at sixty beats on material whose frontier was a hundred and
+/// thirty-two beat a waiting tempo probe because its retention read 0.000122
+/// against 0.000101, four terms before the realization rank could speak.
+///
+/// Deliberately not scoped to one material. The published `realization_stall`
+/// invariant asks about a better realization of the same material and hand,
+/// which is why nothing caught this: the two candidates were different scales.
+/// **What is wrong is the margin, not the relationship between the exercises.**
+///
+/// An observation rather than an invariant. That a near-tie decided a slot is
+/// a fact; that it decided it wrongly is a judgment, and the threshold for
+/// near is exactly the kind of number this file refuses to assert on.
+Iterable<Anomaly> _hairlineRankDecision(Trajectory trajectory) sync* {
+  const tolerance = 0.25;
+  for (final slot in trajectory.slots) {
+    final winner = slot.winner.rankKey;
+    if (winner == null) continue;
+    for (final other in slot.alternatives) {
+      final key = other.rankKey;
+      if (key == null) continue;
+      final term = decidingTerm(winner, key);
+      if (term == null || !term.isContinuous) continue;
+
+      final ours = term.read(winner);
+      final theirs = term.read(key);
+      final scale = math.max(ours.abs(), theirs.abs());
+      if (scale <= 0 || (ours - theirs).abs() / scale > tolerance) continue;
+      // Better where the learner would feel it: the realization rank is the
+      // term that knows what they have already demonstrated.
+      if (key.realization.index <= winner.realization.index) continue;
+
+      yield Anomaly(
+        detector: 'hairline_rank_decision',
+        severity: AnomalySeverity.observation,
+        slot: slot.index,
+        magnitude: (ours - theirs).abs() / scale,
+        subject: term.id,
+        summary:
+            'won on ${term.id} by '
+            '${((ours - theirs).abs() / scale * 100).toStringAsFixed(1)}% '
+            'over a ${key.realization.id} candidate, while asking for '
+            '${slot.realization.id}',
+        census: censusOf(slot),
+      );
+      break;
+    }
   }
 }
