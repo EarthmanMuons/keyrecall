@@ -55,6 +55,31 @@ are visibly one failure.
 Determinism is total: archetype plus seed plus length reproduces a trajectory
 exactly, so a pathological seed is a fixture rather than an anecdote.
 
+### Playing, rather than scores
+
+`play` samples an `Outcome` directly, so nothing it produces has a position: no
+attempt it can express hesitates at the fourth degree. That is adequate for the
+ordinary path, where every reading is an aggregate anyway, and inadequate for
+anything localized.
+
+`performAcquisition` answers with a `PerformanceTranscript` instead, and the
+readings come from the alignment and observation path device MIDI takes. It
+produces four phenomena and no others: uneven but complete playing, a hesitation
+localized to a moment, a wrong note with or without a repair, and stopping
+partway. None of them is a switch that selects a diagnosis; each is what the
+corresponding failure looks like from the instrument.
+
+Where the difficulty sits comes from the exercise rather than the player. A
+crossing is a moment, so `opportunityPenalty` lands on that moment and nowhere
+else. The player knows which moment it was and nothing downstream is told, which
+is the property that keeps a policy fed from here honest: it can only respond to
+what the instrument would have shown.
+
+That knob reaches `performAcquisition` only. It is zero on every archetype in
+`all`, so every recorded run is unchanged, and `crossingLimited` is deliberately
+outside `all` because sweeping it through the ordinary path would re-run
+`developing` under a second name.
+
 ## Invariants and observations
 
 Detectors carry a severity, and the distinction is load-bearing.

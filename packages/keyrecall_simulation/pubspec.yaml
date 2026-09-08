@@ -26,5 +26,6 @@ dependencies:
 
 dev_dependencies:
   import_order_lint: ^0.2.2
+  keyrecall_measurement: ^0.1.0
   lints: ^6.0.0
   test: ^1.25.0

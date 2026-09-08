@@ -73,6 +73,18 @@ class SyntheticPlayer {
   /// How much each octave past the first costs, in logits.
   final double spanPenalty;
 
+  /// How much a motor opportunity costs at the moment it happens, in logits.
+  ///
+  /// Where localized difficulty comes from. A crossing, a reversal, or an
+  /// octave join is a moment of an exercise rather than a property of it, so a
+  /// player with this turned up is somebody whose playing breaks in a
+  /// particular place rather than somebody who plays uniformly worse.
+  ///
+  /// Reaches [performAcquisition] only. Nothing positional survives [play],
+  /// which samples an outcome directly, so leaving this at zero is what keeps
+  /// every existing archetype and every recorded run unchanged.
+  final double opportunityPenalty;
+
   /// What each material family adds to execution, in logits.
   ///
   /// Keyed by [TechnicalMaterial.scaleFamilyId] and
@@ -146,6 +158,7 @@ class SyntheticPlayer {
     required this.familiarity,
     this.sprintProbability = 0,
     this.spanPenalty = 0.4,
+    this.opportunityPenalty = 0,
     this.familyAbility = const {},
     this.materialFamiliarity = const {},
     this.noise = 0.10,
@@ -167,6 +180,7 @@ class SyntheticPlayer {
     double? leftHandAbility,
     double? handsTogetherAbility,
     double? spanPenalty,
+    double? opportunityPenalty,
     Map<String, double>? familyAbility,
     double? familiarity,
     Map<String, double>? materialFamiliarity,
@@ -185,6 +199,7 @@ class SyntheticPlayer {
     leftHandAbility: leftHandAbility ?? this.leftHandAbility,
     handsTogetherAbility: handsTogetherAbility ?? this.handsTogetherAbility,
     spanPenalty: spanPenalty ?? this.spanPenalty,
+    opportunityPenalty: opportunityPenalty ?? this.opportunityPenalty,
     familyAbility: familyAbility ?? this.familyAbility,
     familiarity: familiarity ?? this.familiarity,
     materialFamiliarity: materialFamiliarity ?? this.materialFamiliarity,

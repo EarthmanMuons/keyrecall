@@ -40,7 +40,9 @@ retrieval credit, no tempo reading, and no ordinary evidence of any kind. A
 criterion success, meaning a clean first pass with no stall, makes the unchanged
 parent eligible for a probe, and only that probe establishes ordinary readiness
 or a frontier. A stall is a gap between played moments that the measurement
-policy already reads as a break.
+policy already reads as a break, and a `TransitionCensus` accumulates those
+stalls across attempts at one task so a repeatedly troublesome transition can be
+told from generally uneven playing.
 
 Not to be confused with [Acquisition floor], which offers ordinary exercises.
 

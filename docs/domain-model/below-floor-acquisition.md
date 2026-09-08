@@ -1,8 +1,10 @@
 # Below-floor acquisition
 
-- **Status:** Representation and observation implemented. No scheduler selects
-  an acquisition task yet, and no simulated player can attempt one.
+- **Status:** Representation, observation, repeated-transition aggregation, and
+  synthetic performance implemented. No scheduler selects an acquisition task
+  yet.
 - **Written:** September 8, 2026
+- **Revised:** September 8, 2026
 
 The guidance ladder changes how much support accompanies an exercise that is
 still an ordinary realization of its material. Below-floor acquisition can relax
@@ -100,6 +102,29 @@ here and an interruption in ordinary continuity the same event read at two
 altitudes, rather than a new constant chosen to make acquisition look
 reasonable.
 
+Treat that as a contract rather than a convenience. `earnsParentProbe` depends
+on `stalls.isEmpty`, so changing what ordinary continuity calls broken also
+changes who is offered a probe of their parent exercise. That coupling is
+intended, because the two are one phenomenon in two contexts, and it means the
+threshold cannot be retuned for continuity alone.
+
+### The baseline is endogenous, and that is a calibration question
+
+Gaps are compared against the upper quartile of the same short performance they
+came from. A one-octave ascending traversal has seven intervals, and an attempt
+that stops early has fewer, so one or two long waits move the quartile that is
+supposed to say what normal looks like for this attempt. A hesitation can then
+fail to read as a stall precisely because it was long enough to redefine the
+baseline.
+`packages/keyrecall_measurement/test/acquisition_observation_test.dart` keeps
+that property as a demonstrated case rather than a surprise.
+
+Left as it is on purpose. An acquisition-specific constant chosen to make the
+short case come out would be worse than a threshold shared with ordinary
+continuity, and too few intervals already produce no quartile and no gaps at
+all. Device traces are what should settle whether the baseline should come from
+the attempt, from the learner, or from the exercise.
+
 ## Contractual outcome and observation profile
 
 Two outputs, kept apart. The contractual outcome is `AcquisitionCompletion`: not
@@ -126,7 +151,7 @@ worse than no scheduler at all.
 | Were they produced in order?                      | Yes, by construction. Alignment is an ordered edit script.                                                                                         |
 | Are corrections distinguishable from extra notes? | Partly. `immediateRepairs` is the shape a repair leaves; repeats and intrusions are structural classes. What caused any of them is not observable. |
 | Can a localized stall be identified?              | Yes, now. `momentGapsOf` gives every gap located by the transition it spans.                                                                       |
-| Repeated trouble at the same transition?          | Derivable, not yet derived. Nothing persists the gap series across attempts.                                                                       |
+| Repeated trouble at the same transition?          | Yes, now, in memory. `TransitionCensus` aggregates the gap series across attempts at one task. Nothing persists it.                                |
 | Incomplete versus deliberately ended?             | Yes, outside measurement. Termination is its own concern; see [`attempt-termination.md`](attempt-termination.md).                                  |
 | Continuity independent of the beat grid?          | Yes. Dispersion and the interval ratios are read from the learner's own onsets, never from metric offsets.                                         |
 
@@ -134,17 +159,56 @@ The gap that mattered was localization. Before `momentGapsOf` the measurement
 carried one worst gap and where it ended, which can say a performance was
 interrupted but cannot say the same transition is in the way every time.
 
-## What the simulator cannot yet express
+## Repeated transitions
 
-`SyntheticPlayer.play` samples an `Outcome` from latent ability: aggregate
-continuity, stability, pitch integrity, and a completion draw. It produces no
-transcript and nothing positional, so no synthetic attempt can have a stall at
-the fourth degree, and no synthetic run can distinguish uneven timing from a
-localized breakdown from difficulty finding successive notes.
+One attempt says where the playing broke. Only repetition says a transition is
+in the way, and that is what a fragment would eventually have to be chosen from.
+`TransitionCensus` accumulates the gap series across attempts at one task,
+counting how often each transition was played and how often it stalled.
 
-Any acquisition policy that branched on those distinctions today would be
-reading a latent cause the simulator leaked, not an observation. Extending the
-player to emit positional structure comes before a second acquisition task.
+Both counts are kept because the denominators differ. A transition past the
+point a learner keeps stopping is played rarely, so a raw stall count
+understates it and a rate against attempts understates it further.
+
+It counts and does not conclude. `stalledAtLeast` takes the threshold from the
+caller, because nothing yet knows how many stalls make a transition worth
+isolating, and choosing that number before there are device traces to choose it
+from would be inventing a curriculum.
+
+Only stalls are aggregated. Wrong notes and repairs are counted per attempt but
+not located, so a transition that produces errors without hesitation is
+currently invisible to the census. Locating them is cheap and is deliberately
+not done until something needs it.
+
+## What the simulator can now express
+
+`SyntheticPlayer.play` samples an `Outcome` from latent ability, so nothing it
+produces has a position. `performAcquisition` answers with a
+`PerformanceTranscript` instead, read back through the same alignment and
+observation path device MIDI takes.
+
+Localized difficulty comes from the exercise, not from a label. A crossing is a
+moment the domain already names, so `opportunityPenalty` lands on that moment
+and nowhere else, and what survives into an observation is a wait, a wrong note,
+or an attempt that ended.
+
+Over forty seeded attempts at a one-octave ascending C major, right hand, whose
+only crossing is the transition into the fourth degree:
+
+| Player            | Clean | With corrections | Not completed | Probes earned |
+| ----------------- | ----- | ---------------- | ------------- | ------------- |
+| `advanced`        | 32    | 8                | 0             | 32            |
+| `developing`      | 14    | 20               | 6             | 14            |
+| `crossingLimited` | 10    | 20               | 10            | 3             |
+
+The census separates the two kinds of difficulty that the aggregate scores
+cannot. `crossingLimited` stalls at the crossing in 17 of 40 attempts and
+nowhere else more than 3 times. `developing` produces corrections in half its
+attempts and stalls nowhere at all: their playing is uneven, and the unevenness
+has no address.
+
+That is the distinction the whole slice exists to make, and it is now observable
+end to end without a policy having been written.
 
 ## Deliberately not built
 
@@ -160,7 +224,12 @@ player to emit positional structure comes before a second acquisition task.
 - **Scheduler selection.** Repeated supported opportunities with no frontier
   justify offering a scaffold. They do not identify what is too difficult, so
   the first task is the default rather than a diagnosis.
-- **Persistence.** Nothing journals an acquisition attempt yet.
+- **Persistence.** Nothing journals an acquisition attempt yet, so a census
+  lives no longer than the process that built it.
+- **Located repairs.** The census aggregates stalls only.
+- **Hands together.** `performAcquisition` refuses a two-hand parent. Two onset
+  streams and the distance between them are a coordination model, and
+  acquisition has no business having a second one.
 
 The eventual validation target is improved performance on the unchanged parent
 exercise, not a higher completion rate on the scaffold. A scaffold that only

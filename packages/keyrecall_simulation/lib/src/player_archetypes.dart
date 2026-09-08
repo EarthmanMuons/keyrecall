@@ -234,6 +234,18 @@ abstract final class PlayerArchetypes {
         },
       );
 
+  /// Somebody whose playing is fine until the thumb has to go under.
+  ///
+  /// Two hands' worth of ordinary ability with the cost concentrated at the
+  /// crossing, which is the learner an acquisition task exists for: nothing
+  /// about the material is beyond them, and one moment of it is.
+  ///
+  /// Not in [all]. The penalty reaches [performAcquisition] and not [play], so
+  /// sweeping this through the ordinary path would re-run [developing] under a
+  /// second name.
+  static SyntheticPlayer get crossingLimited =>
+      developing.copyWith(id: 'crossing_limited', opportunityPenalty: 3.0);
+
   /// Every archetype, for sweeping.
   static List<SyntheticPlayer> get all => [
     trueBeginner,
