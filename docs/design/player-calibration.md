@@ -1,7 +1,7 @@
 # Calibrating a synthetic player from a sitting
 
 - **Status:** Estimator implemented and validated against synthetic ground
-  truth. **No device sitting has been fitted yet.**
+  truth. One device sitting fitted, September 8, 2026.
 - **Written:** September 7, 2026.
 - **Scope:** Recovering `SyntheticPlayer` parameters from the attempts of one
   sitting, so a long-run simulation can ask what a learner who plays like this
@@ -141,3 +141,61 @@ An ensemble that reproduces a sitting's distributions is a **behavioral
 surrogate**, not a measurement of a person. Two learners who play the same way
 for an hour may differ in every way that matters over a year, and the ranges are
 the honest expression of that.
+
+## The first device sitting
+
+Thirty-five attempts, one sitting, single hands and coordination work, tempos
+from 58 to 132. `bin/calibrate.dart` reads the export and prints the sitting,
+the fit and what the sitting could speak to.
+
+```text
+== the sitting
+   played     right 130, left 121, together 114
+   motor      right 1.00, left 1.00, together 1.00
+   slope      right 0.28, left 0.37, together 0.43
+   ratio      1.05
+   sprints    26%
+   completed  100%
+```
+
+```text
+== the fit
+35 attempts, closest of 40 at 0.130
+  naturalTempoRight     110 to 167          weakly identified
+  naturalTempoLeft      96 to 186           weakly identified
+  rightHandAbility      0.53 to 2.34        weakly identified
+  leftHandAbility       0.35 to 2.46        weakly identified
+  handsTogetherAbility  0.39 to 1.87        weakly identified
+  familiarity           -                   not observed
+  tempoCompliance       0.23 to 0.74        weakly identified
+  sprintProbability     -                   not identified
+```
+
+Familiarity reads as not observed, exactly as the export promised: the sitting
+opens on material with no earlier record, so nothing knows whether the person
+had played it before.
+
+### Two things the sitting says about the model rather than the player
+
+**Measurement saturates, so motor score carries almost no information.**
+Continuity and temporal stability are 1.00 on thirty-one of thirty-five
+attempts, and completion is a hundred per cent. The closest ensemble members
+reproduce the tempos but land at 0.70 to 0.93 motor and eighty-six per cent
+completion, because `SyntheticPlayer` cannot express somebody who never has a
+bad attempt: completion is capped by a nine-in-ten draw and motor quality
+carries noise on every attempt. **The fit is therefore working almost entirely
+from tempo**, and the ability intervals are wide for that reason rather than
+because the sitting was short.
+
+**Compliance is low and the slope says so.** The played tempo follows the
+requested one with a slope of 0.28 to 0.43, and the ratio distribution is
+bimodal rather than centred: about one in four attempts is played well above
+what was asked, and the rest near it. The person plays at roughly 120 to 135
+whatever the count-in says, which is what the compliance interval of 0.23 to
+0.74 is reporting. Sprint probability is unidentified because a sprint and low
+compliance produce the same observable here.
+
+That is the first real finding of the calibration work, and it is about the
+player model: **a learner who plays this cleanly is outside what the synthetic
+player can express**, and closing that gap is a change to the player rather than
+to the estimator.

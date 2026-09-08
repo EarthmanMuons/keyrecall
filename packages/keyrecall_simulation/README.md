@@ -157,6 +157,16 @@ sweeps the yield floor against the maximum gap as a product instead. It reports
 how often the mechanism spoke, how often it changed the slot, what happened to
 low-yield families, and how many runs matched the no-dose trajectory exactly.
 
+To fit synthetic players to a sitting exported from a device:
+
+```console
+dart run keyrecall_simulation:calibrate <stamp>-<profile>-attempts.json
+```
+
+Prints the sitting, the ensemble, what the sitting could and could not speak to,
+and what a few ensemble members do when asked the same questions. It runs
+nothing forward.
+
 ## Comparing against the reference
 
 Three gates, each answering a different question.
