@@ -148,7 +148,15 @@ class AssessmentReading {
     this.coordination,
     this.predicted,
     this.predictedRetrieval,
+    this.families = const {},
   });
+
+  /// The same reading, restricted to each material family that appears.
+  ///
+  /// One learner practising two families from one adaptive system needs the
+  /// families read apart. An aggregate that improves says nothing about
+  /// whether the weaker one moved or the stronger one carried it.
+  final Map<String, AssessmentReading> families;
 
   /// How far the model's expectation sits above what the player did.
   double? get beliefGap => predicted == null ? null : predicted! - managed;
@@ -184,14 +192,50 @@ AssessmentReading assess(
     }
   }
 
+  final families = {for (final (e, _) in outcomes) e.material.familyId};
+  return _readingOf(
+    set,
+    outcomes,
+    at: at,
+    afterSlots: afterSlots,
+    state: state,
+    learner: learner,
+    families: {
+      if (families.length > 1)
+        for (final family in families)
+          family: _readingOf(
+            set,
+            [
+              for (final o in outcomes)
+                if (o.$1.material.familyId == family) o,
+            ],
+            at: at,
+            afterSlots: afterSlots,
+            state: state,
+            learner: learner,
+          ),
+    },
+  );
+}
+
+AssessmentReading _readingOf(
+  AssessmentSet set,
+  List<(Exercise, Outcome)> outcomes, {
+  required DateTime at,
+  required int afterSlots,
+  required LearnerState? state,
+  required LearnerModel learner,
+  Map<String, AssessmentReading> families = const {},
+}) {
   double share(bool Function(Outcome) holds) =>
       outcomes.where((o) => holds(o.$2)).length / outcomes.length;
   double mean(double Function(Outcome) of) =>
       outcomes.map((o) => of(o.$2)).reduce((a, b) => a + b) / outcomes.length;
 
+  final asked = {for (final (exercise, _) in outcomes) exercise}.toList();
   final predictions = state == null
       ? null
-      : _expectationOf(set, state, learner, at);
+      : _expectationOf(asked, state, learner, at);
   final tested = [
     for (final (exercise, outcome) in outcomes)
       if (exercise.guidance.isRetrievalObserved) outcome,
@@ -221,24 +265,25 @@ AssessmentReading assess(
     managed: share(learner.executionWasManaged),
     predicted: state == null ? null : predictions!.overall,
     predictedRetrieval: predictions?.retrieval,
+    families: families,
   );
 }
 
 ({double overall, double retrieval}) _expectationOf(
-  AssessmentSet set,
+  List<Exercise> exercises,
   LearnerState state,
   LearnerModel learner,
   DateTime at,
 ) {
   var overall = 0.0;
   var retrieval = 0.0;
-  for (final exercise in set.exercises) {
+  for (final exercise in exercises) {
     final prediction = learner.predict(state, exercise, at: at);
     overall += prediction.overallP;
     retrieval += prediction.independentRetrievalP;
   }
   return (
-    overall: overall / set.exercises.length,
-    retrieval: retrieval / set.exercises.length,
+    overall: overall / exercises.length,
+    retrieval: retrieval / exercises.length,
   );
 }

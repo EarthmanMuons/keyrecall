@@ -739,8 +739,10 @@ demonstrated execution. Five seeds, averaged.
 | 60  | 0.0 / 0.0 / 1.4 | 0.8 / 0.8 / 4.4 | 0.8 / 0.8 / 4.0 |
 | 240 | 0.0 / 0.0 / 1.4 | 0.8 / 0.8 / 6.0 | 0.8 / 0.8 / 5.5 |
 
-False starts, then rungs descended, then attempts to the first managed
-execution.
+False starts, then rungs descended, then attempts played before the first
+managed execution. The last is a count of what came before rather than the
+number of the attempt that did it, so 1.4 means the second attempt, on average,
+is the one that demonstrates execution.
 
 **The stable player pays nothing at any gap.** After two hundred and forty days
 the model expects nothing of them, and they still start the first thing offered
@@ -760,3 +762,69 @@ returner attempts. Whether execution progression should reach unguided work when
 belief has collapsed is a policy question about the return path, and this says
 it is worth asking for a person who really decayed rather than for one the model
 has merely lost track of.
+
+## Two families, one adaptive system
+
+Scales and arpeggios are allocated from one scheduler, and until now no player
+could tell them apart: execution ability was per hand, so a run could not say
+whether strength in one family was being read as strength in the other. Ability
+is now learned per hand and family, and two archetypes are mirror images,
+`scale_strong_arpeggio_weak` and `arpeggio_strong_scale_weak`, matched in
+everything else. **The player transfers nothing between families**, so any
+transfer a run shows belongs to the scheduler.
+
+Three scales and three arpeggios, four sittings of twenty slots, held-out
+readings split by family.
+
+| player                     | seed | share weak | held-out weak | held-out strong |
+| -------------------------- | ---- | ---------- | ------------- | --------------- |
+| scale_strong_arpeggio_weak | 2    | 0.05       | 0.06 -> 0.00  | 0.61 -> 0.83    |
+| scale_strong_arpeggio_weak | 4    | 0.45       | 0.06 -> 0.06  | 0.61 -> 0.78    |
+| arpeggio_strong_scale_weak | 2    | 0.07       | 0.06 -> 0.06  | 0.78 -> 0.89    |
+| arpeggio_strong_scale_weak | 4    | 0.46       | 0.06 -> 0.00  | 0.78 -> 0.94    |
+
+**Allocation goes to the family already going well, and the weak family never
+improves.** In both directions and every seed the strong family takes the larger
+share and gains, and the weak family's held-out share ends no higher than it
+started. Eighty slots of practice leave the learner exactly as bad at the thing
+they were bad at.
+
+The mechanism is a tempo that crosses the family boundary.
+`transferableTempoFor` takes the median paced tempo over every material
+execution context for a hand, and its own comment calls that "the pace this hand
+shows on material it owns", which was written when a hand owned only scales.
+With two families the median counts arpeggios as evidence about scales.
+
+One run of the arpeggio-weak player, every arpeggio slot, with the arpeggio
+frontier at zero throughout:
+
+```text
+slot  1  asked 60   transferable  0   frontier 0
+slot  2  asked 72   transferable 72   frontier 0
+slot  6  asked 84   transferable 84   frontier 0
+slot 25  asked 92   transferable 92   frontier 0
+slot 40  asked 96   transferable 96   frontier 0
+```
+
+The player never completes an arpeggio at any tempo. The pace they are asked for
+climbs anyway, one rung behind their scales. So the weak family is reintroduced
+faster and faster, fails every time, accumulates no evidence, falls out of the
+challenge band, and the allocation drifts to the family that is working. **First
+contact is correct**: the first arpeggio is met at the gentle sixty, because no
+pace has been established yet. It is the second onward, once the scales are
+moving, that inherit a tempo from them.
+
+The fix is a design decision rather than an obvious correction, so nothing in
+production changed. Restricting the median to the same family, or falling back
+to the entry policy when a family has no evidence of its own, are both
+defensible and they differ in what they claim about a pianist. The behavior is
+pinned in `family_skew_test.dart` so that changing it is deliberate.
+
+### The beginner running dry was pinned too narrowly
+
+`sitting_ran_dry` was recorded as a true beginner meeting a narrow catalog, out
+of reach in production. The scale-weak player reproduces it on the whole v1
+scale catalog, and across a calendar the second and later sittings admit nothing
+from their opening slot. It is not about the catalog's size or that one
+archetype; it is about being weak at the only family on offer. The arpeggio-weak
+player, who is strong at scales, does not trip it.

@@ -276,7 +276,7 @@ void main() {
     ];
 
     double meanToManaged(List<ReturnCost> costs) =>
-        costs.map((c) => c.slotsToManaged!).reduce((a, b) => a + b) /
+        costs.map((c) => c.slotsBeforeManaged!).reduce((a, b) => a + b) /
         costs.length;
 
     for (final gap in gaps) {

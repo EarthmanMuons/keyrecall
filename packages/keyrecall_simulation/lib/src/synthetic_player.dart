@@ -73,6 +73,20 @@ class SyntheticPlayer {
   /// How much each octave past the first costs, in logits.
   final double spanPenalty;
 
+  /// What each material family adds to execution, in logits.
+  ///
+  /// Keyed by [TechnicalMaterial.scaleFamilyId] and
+  /// [TechnicalMaterial.arpeggioFamilyId]. A player is rarely equally at home
+  /// in both, and the scheduler now allocates across them from one adaptive
+  /// system, so a run where the two are indistinguishable cannot say whether
+  /// strength in one is being read as strength in the other.
+  ///
+  /// **The player transfers nothing between families.** Ability is learned per
+  /// hand and family, so arpeggio practice never improves a scale here. Any
+  /// transfer a run shows is the scheduler's, which is the only way to ask
+  /// about it.
+  final Map<String, double> familyAbility;
+
   /// How well they know the scales, in `[0, 1]`, as a retrievability.
   final double familiarity;
 
@@ -132,6 +146,7 @@ class SyntheticPlayer {
     required this.familiarity,
     this.sprintProbability = 0,
     this.spanPenalty = 0.4,
+    this.familyAbility = const {},
     this.materialFamiliarity = const {},
     this.noise = 0.10,
     this.learningRate = 0.01,
@@ -152,6 +167,7 @@ class SyntheticPlayer {
     double? leftHandAbility,
     double? handsTogetherAbility,
     double? spanPenalty,
+    Map<String, double>? familyAbility,
     double? familiarity,
     Map<String, double>? materialFamiliarity,
     double? noise,
@@ -169,6 +185,7 @@ class SyntheticPlayer {
     leftHandAbility: leftHandAbility ?? this.leftHandAbility,
     handsTogetherAbility: handsTogetherAbility ?? this.handsTogetherAbility,
     spanPenalty: spanPenalty ?? this.spanPenalty,
+    familyAbility: familyAbility ?? this.familyAbility,
     familiarity: familiarity ?? this.familiarity,
     materialFamiliarity: materialFamiliarity ?? this.materialFamiliarity,
     noise: noise ?? this.noise,
@@ -190,23 +207,20 @@ class PlayerState {
   /// The kind of player this is.
   final SyntheticPlayer player;
 
-  final Map<HandConfiguration, double> _ability;
+  final Map<(HandConfiguration, String), double> _ability = {};
   final Map<String, double> _familiarity;
-  final Map<HandConfiguration, double> _startingAbility;
   DateTime? _restedAt;
 
-  PlayerState(this.player)
-    : _ability = {
-        HandConfiguration.right: player.rightHandAbility,
-        HandConfiguration.left: player.leftHandAbility,
-        HandConfiguration.together: player.handsTogetherAbility,
-      },
-      _startingAbility = {
-        HandConfiguration.right: player.rightHandAbility,
-        HandConfiguration.left: player.leftHandAbility,
-        HandConfiguration.together: player.handsTogetherAbility,
-      },
-      _familiarity = {...player.materialFamiliarity};
+  PlayerState(this.player) : _familiarity = {...player.materialFamiliarity};
+
+  /// What this player came in able to do with [hands] on [family].
+  double startingAbilityOf(HandConfiguration hands, String family) =>
+      switch (hands) {
+        HandConfiguration.right => player.rightHandAbility,
+        HandConfiguration.left => player.leftHandAbility,
+        HandConfiguration.together => player.handsTogetherAbility,
+      } +
+      (player.familyAbility[family] ?? 0);
 
   /// Ages this player to [at], losing whatever the gap since the last call
   /// costs them.
@@ -235,10 +249,10 @@ class PlayerState {
               (current - toward) *
                   math.pow(0.5, days / halfLifeDays).toDouble();
 
-    for (final hands in _ability.keys) {
-      _ability[hands] = slipped(
-        _ability[hands]!,
-        _startingAbility[hands]!,
+    for (final key in _ability.keys) {
+      _ability[key] = slipped(
+        _ability[key]!,
+        startingAbilityOf(key.$1, key.$2),
         player.retentionHalfLifeDays,
       );
     }
@@ -251,8 +265,9 @@ class PlayerState {
     }
   }
 
-  /// How well this player currently executes with [hands].
-  double abilityOf(HandConfiguration hands) => _ability[hands]!;
+  /// How well this player currently executes [family] with [hands].
+  double abilityOf(HandConfiguration hands, String family) =>
+      _ability[(hands, family)] ??= startingAbilityOf(hands, family);
 
   /// How well this player currently knows [materialId].
   double familiarityOf(String materialId) =>
@@ -322,7 +337,7 @@ class PlayerState {
     // whatever the player says it costs.
     final strain = math.max(0.0, math.log(performed / natural));
     final effort =
-        abilityOf(conditions.hands) -
+        abilityOf(conditions.hands, exercise.material.familyId) -
         3.0 * strain -
         player.spanPenalty * (conditions.octaves - 1);
     final motorQuality = _sigmoid(effort + rng.nextGaussian(0, player.noise));
@@ -380,7 +395,12 @@ class PlayerState {
     // the hands' own ability, because the failure it names is the two hands
     // disagreeing about where the beat is.
     final coordination = conditions.hands == HandConfiguration.together
-        ? noisy(_sigmoid(abilityOf(conditions.hands) - 2.0 * strain))
+        ? noisy(
+            _sigmoid(
+              abilityOf(conditions.hands, exercise.material.familyId) -
+                  2.0 * strain,
+            ),
+          )
         : null;
 
     if (practising) _practise(exercise, motorQuality, completed: completed);
@@ -428,8 +448,8 @@ class PlayerState {
   }) {
     final atTheEdge = 4 * motorQuality * (1 - motorQuality);
     final gain = player.learningRate * atTheEdge * (completed ? 1.0 : 0.5);
-    final hands = exercise.conditions.hands;
-    _ability[hands] = _ability[hands]! + gain;
+    final key = (exercise.conditions.hands, exercise.material.familyId);
+    _ability[key] = abilityOf(key.$1, key.$2) + gain;
     final materialId = exercise.material.materialId;
     _familiarity[materialId] = math.min(0.99, familiarityOf(materialId) + gain);
   }

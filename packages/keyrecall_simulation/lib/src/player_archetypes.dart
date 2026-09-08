@@ -1,3 +1,4 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'synthetic_player.dart';
@@ -199,6 +200,40 @@ abstract final class PlayerArchetypes {
     familiarityHalfLifeDays: 20,
   );
 
+  /// At home in scales, and not yet in arpeggios.
+  ///
+  /// The two families are allocated from one adaptive system, so a run where
+  /// they are indistinguishable cannot say whether strength in one is being
+  /// read as strength in the other. The player transfers nothing between them,
+  /// which is what leaves any transfer a run shows attributable to the
+  /// scheduler.
+  static SyntheticPlayer get scaleStrongArpeggioWeak => SyntheticPlayer(
+    id: 'scale_strong_arpeggio_weak',
+    placement: PlacementTier.someExperience,
+    naturalTempoRightBpm: 120,
+    naturalTempoLeftBpm: 112,
+    tempoCompliance: 0.7,
+    rightHandAbility: 0.9,
+    leftHandAbility: 0.7,
+    handsTogetherAbility: 0.1,
+    familiarity: 0.7,
+    spanPenalty: 0.35,
+    familyAbility: const {
+      TechnicalMaterial.scaleFamilyId: 0.8,
+      TechnicalMaterial.arpeggioFamilyId: -1.2,
+    },
+  );
+
+  /// The reverse control: the same player with the families swapped.
+  static SyntheticPlayer get arpeggioStrongScaleWeak =>
+      scaleStrongArpeggioWeak.copyWith(
+        id: 'arpeggio_strong_scale_weak',
+        familyAbility: const {
+          TechnicalMaterial.scaleFamilyId: -1.2,
+          TechnicalMaterial.arpeggioFamilyId: 0.8,
+        },
+      );
+
   /// Every archetype, for sweeping.
   static List<SyntheticPlayer> get all => [
     trueBeginner,
@@ -212,5 +247,7 @@ abstract final class PlayerArchetypes {
     unevenHands,
     coordinationLimited,
     forgetfulReturner,
+    scaleStrongArpeggioWeak,
+    arpeggioStrongScaleWeak,
   ];
 }

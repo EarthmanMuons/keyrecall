@@ -20,9 +20,12 @@ class ReturnCost {
   /// distinguishes.
   final int supportDescended;
 
-  /// Attempts before the first demonstrated execution, or null when the
-  /// sitting produced none.
-  final int? slotsToManaged;
+  /// Attempts played before the first demonstrated execution, or null when
+  /// the sitting produced none.
+  ///
+  /// Zero when the first attempt was managed, so it counts what came before
+  /// rather than numbering the attempt that did it.
+  final int? slotsBeforeManaged;
 
   /// Whether anything in the sitting started at all.
   final bool answered;
@@ -32,13 +35,13 @@ class ReturnCost {
     required this.falseStarts,
     required this.supportDescended,
     required this.answered,
-    this.slotsToManaged,
+    this.slotsBeforeManaged,
   });
 
   @override
   String toString() =>
       'sitting $sitting: false starts $falseStarts, support descended '
-      '$supportDescended, managed at ${slotsToManaged ?? 'never'}';
+      '$supportDescended, managed after ${slotsBeforeManaged ?? 'never'}';
 }
 
 /// What sitting [index] of [trajectory] spent getting started.
@@ -62,6 +65,6 @@ ReturnCost returnCostOf(Trajectory trajectory, int index) {
         : slots.first.chosen.guidance.independence -
               slots[started].chosen.guidance.independence,
     answered: started >= 0,
-    slotsToManaged: managed < 0 ? null : managed,
+    slotsBeforeManaged: managed < 0 ? null : managed,
   );
 }

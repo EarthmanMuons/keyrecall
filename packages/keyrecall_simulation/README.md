@@ -248,6 +248,15 @@ next to the observed `retrieval`; those two are the same event, while
 `predicted` is a stricter conjunction than `managed` and carries a level offset
 by construction. Calibrating decay needs the pair that measures one thing.
 
+## Family-skewed players
+
+Execution ability is learned per hand and material family, and `familyAbility`
+offsets a family in logits. `scale_strong_arpeggio_weak` and its mirror are
+matched in everything else. The player transfers nothing between families, so
+any transfer a run shows is the scheduler's. An `AssessmentReading` carries a
+`families` map holding the same reading restricted to each family that appears,
+because an aggregate that improves cannot say which family moved.
+
 ## The forgetful returner
 
 Every other archetype keeps whatever practice gained, forever. A run across a
@@ -267,5 +276,5 @@ decay, so what a returner lost stays interpretable.
 
 `returnCostOf` reads the product consequence out of a sitting: attempts that
 never started before the first that did, guidance rungs descended to get there,
-and attempts before the first demonstrated execution. It is what says whether a
-calibration discrepancy costs a person anything.
+and attempts played before the first demonstrated execution. It is what says
+whether a calibration discrepancy costs a person anything.
