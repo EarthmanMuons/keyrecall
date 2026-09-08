@@ -139,4 +139,126 @@ void main() {
     expect(profile.handsTogetherPenalty, isNull);
     expect(profileDistance(profile, profile), 0);
   });
+
+  group('what the report is willing to claim', () {
+    final singleHanded = [
+      for (final exercise in presented)
+        if (exercise.conditions.hands != HandConfiguration.together) exercise,
+    ];
+
+    test('a sitting with no coordination work says so', () {
+      final observed = profileOf(
+        replay(PlayerArchetypes.unevenHands, singleHanded, seed: 11),
+      );
+      final answers = identifiabilityOf(
+        ensemble: fitPlayers(
+          target: observed,
+          presented: singleHanded,
+          vary: firstSitting,
+          samples: 200,
+          seed: 3,
+        ),
+        observed: observed,
+        vary: firstSitting,
+      );
+
+      expect(
+        answers[PlayerParameter.handsTogetherAbility],
+        Identifiability.unobserved,
+      );
+    });
+
+    test('one sitting never claims a learning rate', () {
+      const vary = {...firstSitting, PlayerParameter.learningRate};
+      final observed = profileOf(
+        replay(PlayerArchetypes.developing, presented, seed: 11),
+      );
+      final answers = identifiabilityOf(
+        ensemble: fitPlayers(
+          target: observed,
+          presented: presented,
+          vary: vary,
+          samples: 200,
+          seed: 3,
+        ),
+        observed: observed,
+        vary: vary,
+      );
+
+      expect(
+        answers[PlayerParameter.learningRate],
+        Identifiability.needsMoreSittings,
+      );
+    });
+
+    test('familiarity needs provenance, not position in the sitting', () {
+      final withoutProvenance = [
+        for (final attempt in replay(
+          PlayerArchetypes.developing,
+          presented,
+          seed: 11,
+        ))
+          AttemptObservation(attempt.exercise, attempt.outcome),
+      ];
+      final observed = profileOf(withoutProvenance);
+
+      expect(observed.familiarMotor, isNull);
+      expect(observed.unfamiliarMotor, isNull);
+      expect(
+        identifiabilityOf(
+          ensemble: fitPlayers(
+            target: observed,
+            presented: presented,
+            vary: firstSitting,
+            samples: 200,
+            seed: 3,
+          ),
+          observed: observed,
+          vary: firstSitting,
+        )[PlayerParameter.familiarity],
+        Identifiability.unobserved,
+      );
+    });
+
+    test('a hand asked one tempo cannot answer about compliance', () {
+      final single = [
+        for (var i = 0; i < 12; i++)
+          Exercise.linear(
+            material: TechnicalMaterial('C', ScaleForm.major),
+            hands: HandConfiguration.right,
+            tempoBpm: 60,
+          ),
+      ];
+      final observed = profileOf(
+        replay(PlayerArchetypes.developing, single, seed: 4),
+      );
+
+      expect(observed.tempoSlope, isEmpty);
+    });
+
+    test('a report prints no interval for what it could not see', () {
+      final observed = profileOf(
+        replay(PlayerArchetypes.unevenHands, singleHanded, seed: 11),
+      );
+      final report = calibrationReport(
+        ensemble: fitPlayers(
+          target: observed,
+          presented: singleHanded,
+          vary: firstSitting,
+          samples: 200,
+          seed: 3,
+        ),
+        observed: observed,
+        vary: firstSitting,
+      );
+
+      expect(report, contains('handsTogetherAbility'));
+      expect(
+        report
+            .split('\n')
+            .firstWhere((line) => line.contains('handsTogetherAbility')),
+        contains('not observed'),
+      );
+    });
+  });
 }

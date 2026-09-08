@@ -34,6 +34,13 @@ Terms only one profile can answer are skipped rather than defaulted, so a
 sitting with no hands-together work is not fitted on a coordination penalty it
 never observed.
 
+Whether the learner had met a material before is **provenance carried on the
+attempt**, not position in the export. Somebody who played C major for years
+before the app existed is not evidence about meeting new material, and inferring
+novelty from first appearance in a sitting would say they were. An attempt that
+does not know says so, and the whole familiarity contrast drops out rather than
+being answered from the wrong fact.
+
 The answer is an **ensemble**, closest first, with a range per parameter. A wide
 range is a real answer: it says the sitting did not identify that parameter.
 
@@ -49,6 +56,12 @@ hand ordering     recovered: the weaker hand comes out weaker
 absolute ability  not recovered, and biased low
 ```
 
+The compliance observable is **per hand**, since natural tempo is per hand and
+the scheduler need not ask each of them for the same spread of tempos. Pooling
+them lets a difference between the hands arrive as a statement about compliance.
+A hand whose requested tempo barely varied is absent from the profile rather
+than reading as zero, because a sitting that never asked cannot answer.
+
 **Compliance has to be fitted with the tempos, not after them.** The played
 tempo is a geometric blend of the requested one and the natural one, so holding
 one at a guess makes the fit report a statement about the guess: with compliance
@@ -61,6 +74,26 @@ Absolute execution ability stays unidentified because it trades against natural
 tempo: playing above your comfortable pace costs motor quality, so a stronger
 player asked to sprint and a weaker one playing comfortably produce the same
 score. Ordering survives that, levels do not.
+
+## Sampled is not identified
+
+A fit samples every parameter it is asked to vary, whether or not the sitting
+contains anything that speaks to it, so an interval alone means nothing. Each
+one is reported against what the sitting could see:
+
+```text
+identified            the observable is there, and the ensemble narrowed
+weakly identified     narrowed, but not by much
+not identified        as wide as it was drawn: sampled, nothing learned
+not observed          the sitting never contained the observable
+needs several sittings  nothing about one sitting could speak to it
+```
+
+The last two print no interval at all. A range nothing constrained is the prior
+wearing an answer's clothes, and printing it would be the report arguing against
+itself. A sitting with no hands-together work reports coordination ability as
+**not observed**; the same fit on a sitting that has some reports it as
+unconstrained or identified on its merits.
 
 ## Staging
 

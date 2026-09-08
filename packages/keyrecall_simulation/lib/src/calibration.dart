@@ -14,7 +14,17 @@ class AttemptObservation {
   final Exercise exercise;
   final Outcome outcome;
 
-  const AttemptObservation(this.exercise, this.outcome);
+  /// Whether the learner had met this material before the attempt, or null
+  /// when nothing knows.
+  ///
+  /// Provenance rather than reconstruction. A person who already played C
+  /// major before the app existed is not evidence about meeting new material,
+  /// and inferring novelty from position in an exported sitting would say they
+  /// were. A profile drops the familiarity contrast entirely rather than
+  /// answering it from the wrong fact.
+  final bool? seenBefore;
+
+  const AttemptObservation(this.exercise, this.outcome, {this.seenBefore});
 }
 
 /// What a sitting looked like, as distributions rather than a sequence.
@@ -34,15 +44,21 @@ class SittingProfile {
   /// Median played tempo over requested tempo.
   final double tempoRatio;
 
-  /// How much the played tempo follows the requested one, as the slope of log
-  /// played against log requested.
+  /// How much the played tempo follows the requested one, by hand, as the
+  /// slope of log played against log requested.
   ///
   /// The model blends the two in log tempo, so this reads compliance almost
   /// directly: one is somebody who plays what the count-in says, zero somebody
   /// who plays their own pace whatever it says. Without it the played tempo
   /// alone cannot separate a fast player who complies from a slow one who does
   /// not, and a fit will report a natural tempo it cannot see.
-  final double tempoSlope;
+  ///
+  /// Per hand because natural tempo is per hand and the scheduler need not ask
+  /// each of them for the same spread of tempos; pooling lets a difference
+  /// between the hands arrive as a statement about compliance. A hand whose
+  /// requested tempo barely varied is absent rather than zero, since a sitting
+  /// that never asked cannot answer.
+  final Map<HandConfiguration, double> tempoSlope;
 
   /// Share of attempts played well above what was asked for.
   final double sprintShare;
@@ -85,28 +101,31 @@ class SittingProfile {
 /// The profile [attempts] make, in the order they happened.
 SittingProfile profileOf(List<AttemptObservation> attempts) {
   final byHands = <HandConfiguration, List<AttemptObservation>>{};
-  final seen = <String>{};
   final unfamiliar = <double>[];
   final familiar = <double>[];
+  // Answered only when every attempt says what it knew. One attempt of unknown
+  // provenance makes the contrast a mixture of two different questions.
+  final novelty = attempts.every((attempt) => attempt.seenBefore != null);
   var sprints = 0;
   var completed = 0;
   final ratios = <double>[];
 
   for (final attempt in attempts) {
     (byHands[attempt.exercise.conditions.hands] ??= []).add(attempt);
-    final materialId = attempt.exercise.material.materialId;
-    (seen.add(materialId) ? unfamiliar : familiar).add(
-      attempt.outcome.motorScore,
-    );
+    if (novelty) {
+      (attempt.seenBefore! ? familiar : unfamiliar).add(
+        attempt.outcome.motorScore,
+      );
+    }
     ratios.add(attempt.outcome.achievedTempoRatio);
     if (attempt.outcome.achievedTempoRatio >= 1.2) sprints++;
     if (attempt.outcome.completed) completed++;
   }
 
-  return SittingProfile(
-    attempts: attempts.length,
-    tempoSlope: _slope([
-      for (final attempt in attempts)
+  final slopes = <HandConfiguration, double>{};
+  for (final entry in byHands.entries) {
+    final slope = _slope([
+      for (final attempt in entry.value)
         if (attempt.outcome.achievedTempoRatio > 0)
           (
             math.log(attempt.exercise.conditions.tempoBpm),
@@ -115,7 +134,13 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
                   attempt.outcome.achievedTempoRatio,
             ),
           ),
-    ]),
+    ]);
+    if (slope != null) slopes[entry.key] = slope;
+  }
+
+  return SittingProfile(
+    attempts: attempts.length,
+    tempoSlope: slopes,
     achievedTempo: {
       for (final entry in byHands.entries)
         entry.key: _median([
@@ -150,9 +175,16 @@ List<AttemptObservation> replay(
 }) {
   final rng = PythonCompatibleRandom(seed);
   final playing = player.begin();
+  final seen = <String>{};
   return [
     for (final exercise in presented)
-      AttemptObservation(exercise, playing.play(exercise, rng)),
+      AttemptObservation(
+        exercise,
+        playing.play(exercise, rng),
+        // The run is the player's whole history, so first appearance here is
+        // genuinely the first time they met it.
+        seenBefore: !seen.add(exercise.material.materialId),
+      ),
   ];
 }
 
@@ -179,7 +211,9 @@ double profileDistance(SittingProfile a, SittingProfile b) {
     compare(a.motor[hands], b.motor[hands]);
   }
   compare(a.tempoRatio, b.tempoRatio, relative: true);
-  compare(a.tempoSlope, b.tempoSlope);
+  for (final hands in HandConfiguration.values) {
+    compare(a.tempoSlope[hands], b.tempoSlope[hands]);
+  }
   compare(a.sprintShare, b.sprintShare);
   compare(a.completionRate, b.completionRate);
   compare(a.unfamiliarMotor, b.unfamiliarMotor);
@@ -316,35 +350,70 @@ abstract final class PlayerArchetypeSeed {
   );
 }
 
+/// The range each parameter is drawn from, and read back against.
+///
+/// One table, so what a fit sampled and what a report calls narrow are the
+/// same numbers rather than two sets that drift apart.
+const Map<PlayerParameter, (double, double)> playerPriors = {
+  PlayerParameter.naturalTempoRight: (40, 200),
+  PlayerParameter.naturalTempoLeft: (40, 200),
+  PlayerParameter.rightHandAbility: (-2.5, 2.5),
+  PlayerParameter.leftHandAbility: (-2.5, 2.5),
+  PlayerParameter.handsTogetherAbility: (-3, 2),
+  PlayerParameter.familiarity: (0.05, 0.99),
+  PlayerParameter.tempoCompliance: (0, 1),
+  PlayerParameter.sprintProbability: (0, 0.5),
+  PlayerParameter.learningRate: (0, 0.05),
+};
+
+/// What [parameter] is worth in [player].
+double readParameter(SyntheticPlayer player, PlayerParameter parameter) =>
+    switch (parameter) {
+      PlayerParameter.naturalTempoRight => player.naturalTempoRightBpm,
+      PlayerParameter.naturalTempoLeft => player.naturalTempoLeftBpm,
+      PlayerParameter.rightHandAbility => player.rightHandAbility,
+      PlayerParameter.leftHandAbility => player.leftHandAbility,
+      PlayerParameter.handsTogetherAbility => player.handsTogetherAbility,
+      PlayerParameter.familiarity => player.familiarity,
+      PlayerParameter.tempoCompliance => player.tempoCompliance,
+      PlayerParameter.sprintProbability => player.sprintProbability,
+      PlayerParameter.learningRate => player.learningRate,
+    };
+
 SyntheticPlayer _sample(
   SyntheticPlayer start,
   Set<PlayerParameter> vary,
   PythonCompatibleRandom rng,
   int index,
 ) {
-  double? pick(PlayerParameter parameter, double low, double high) =>
-      vary.contains(parameter) ? low + rng.nextDouble() * (high - low) : null;
+  double? pick(PlayerParameter parameter) {
+    if (!vary.contains(parameter)) return null;
+    final (low, high) = playerPriors[parameter]!;
+    return low + rng.nextDouble() * (high - low);
+  }
 
   return start.copyWith(
     id: 'fitted_$index',
-    naturalTempoRightBpm: pick(PlayerParameter.naturalTempoRight, 40, 200),
-    naturalTempoLeftBpm: pick(PlayerParameter.naturalTempoLeft, 40, 200),
-    rightHandAbility: pick(PlayerParameter.rightHandAbility, -2.5, 2.5),
-    leftHandAbility: pick(PlayerParameter.leftHandAbility, -2.5, 2.5),
-    handsTogetherAbility: pick(PlayerParameter.handsTogetherAbility, -3, 2),
-    familiarity: pick(PlayerParameter.familiarity, 0.05, 0.99),
-    tempoCompliance: pick(PlayerParameter.tempoCompliance, 0, 1),
-    sprintProbability: pick(PlayerParameter.sprintProbability, 0, 0.5),
-    learningRate: pick(PlayerParameter.learningRate, 0, 0.05),
+    naturalTempoRightBpm: pick(PlayerParameter.naturalTempoRight),
+    naturalTempoLeftBpm: pick(PlayerParameter.naturalTempoLeft),
+    rightHandAbility: pick(PlayerParameter.rightHandAbility),
+    leftHandAbility: pick(PlayerParameter.leftHandAbility),
+    handsTogetherAbility: pick(PlayerParameter.handsTogetherAbility),
+    familiarity: pick(PlayerParameter.familiarity),
+    tempoCompliance: pick(PlayerParameter.tempoCompliance),
+    sprintProbability: pick(PlayerParameter.sprintProbability),
+    learningRate: pick(PlayerParameter.learningRate),
   );
 }
 
-/// The least-squares slope of the second value on the first.
+/// The least-squares slope of the second value on the first, or null when the
+/// first barely varied.
 ///
-/// Zero when the requested tempo never varied, which is not a compliant player
-/// but a sitting that could not tell.
-double _slope(List<(double, double)> points) {
-  if (points.length < 2) return 0;
+/// Null rather than zero, because a sitting that asked one tempo cannot say
+/// whether the player would have followed a different one, and a zero there
+/// would read as somebody ignoring the count-in.
+double? _slope(List<(double, double)> points) {
+  if (points.length < 4) return null;
   final meanX =
       points.map((point) => point.$1).reduce((a, b) => a + b) / points.length;
   final meanY =
@@ -355,7 +424,9 @@ double _slope(List<(double, double)> points) {
     covariance += (x - meanX) * (y - meanY);
     variance += (x - meanX) * (x - meanX);
   }
-  return variance <= 1e-12 ? 0 : covariance / variance;
+  // In log tempo, so this is a spread of requested tempos rather than a
+  // handful of attempts a rounding apart.
+  return variance < 0.02 ? null : covariance / variance;
 }
 
 double _median(List<double> values) {
@@ -365,4 +436,128 @@ double _median(List<double> values) {
   return sorted.length.isOdd
       ? sorted[middle]
       : (sorted[middle - 1] + sorted[middle]) / 2;
+}
+
+/// How much a sitting had to say about a parameter.
+enum Identifiability {
+  /// The sitting contains the observable that constrains it, and the ensemble
+  /// narrowed to a fraction of what it was drawn from.
+  identified('identified'),
+
+  /// Narrowed, but not by much.
+  weak('weakly identified'),
+
+  /// The ensemble is as wide as the prior: the fit sampled it and learned
+  /// nothing.
+  unconstrained('not identified'),
+
+  /// The sitting never contained the observable at all, so the range is the
+  /// prior with a different name.
+  unobserved('not observed'),
+
+  /// Nothing about one sitting could speak to it.
+  needsMoreSittings('needs several sittings');
+
+  const Identifiability(this.id);
+
+  final String id;
+}
+
+/// What the sitting said about each parameter the fit varied.
+///
+/// The distinction that matters when a report is read: **a sampled range is
+/// not evidence.** A parameter whose observable the sitting never contained
+/// comes back as wide as it went in, and saying so is the difference between
+/// an interval and a guess wearing one.
+Map<PlayerParameter, Identifiability> identifiabilityOf({
+  required List<PlayerFit> ensemble,
+  required SittingProfile observed,
+  required Set<PlayerParameter> vary,
+}) {
+  final answers = <PlayerParameter, Identifiability>{};
+  for (final parameter in PlayerParameter.values) {
+    if (!vary.contains(parameter)) continue;
+    if (!_observes(observed, parameter)) {
+      answers[parameter] = parameter == PlayerParameter.learningRate
+          ? Identifiability.needsMoreSittings
+          : Identifiability.unobserved;
+      continue;
+    }
+    final (low, high) = playerPriors[parameter]!;
+    final range = rangeOf(
+      ensemble,
+      (player) => readParameter(player, parameter),
+    );
+    final share = (range.high - range.low) / (high - low);
+    answers[parameter] = switch (share) {
+      < 0.25 => Identifiability.identified,
+      < 0.6 => Identifiability.weak,
+      _ => Identifiability.unconstrained,
+    };
+  }
+  return answers;
+}
+
+/// Whether [observed] contains anything that speaks to [parameter].
+bool _observes(SittingProfile observed, PlayerParameter parameter) =>
+    switch (parameter) {
+      PlayerParameter.naturalTempoRight => observed.achievedTempo.containsKey(
+        HandConfiguration.right,
+      ),
+      PlayerParameter.naturalTempoLeft => observed.achievedTempo.containsKey(
+        HandConfiguration.left,
+      ),
+      PlayerParameter.rightHandAbility => observed.motor.containsKey(
+        HandConfiguration.right,
+      ),
+      PlayerParameter.leftHandAbility => observed.motor.containsKey(
+        HandConfiguration.left,
+      ),
+      PlayerParameter.handsTogetherAbility => observed.motor.containsKey(
+        HandConfiguration.together,
+      ),
+      PlayerParameter.familiarity =>
+        observed.unfamiliarMotor != null && observed.familiarMotor != null,
+      PlayerParameter.tempoCompliance => observed.tempoSlope.isNotEmpty,
+      PlayerParameter.sprintProbability => observed.attempts > 0,
+      PlayerParameter.learningRate => false,
+    };
+
+/// The fit as a report, one line per parameter.
+String calibrationReport({
+  required List<PlayerFit> ensemble,
+  required SittingProfile observed,
+  required Set<PlayerParameter> vary,
+}) {
+  final answers = identifiabilityOf(
+    ensemble: ensemble,
+    observed: observed,
+    vary: vary,
+  );
+  return [
+    '${observed.attempts} attempts, '
+        'closest of ${ensemble.length} at '
+        '${ensemble.first.distance.toStringAsFixed(3)}',
+    for (final parameter in PlayerParameter.values)
+      if (answers[parameter] case final answer?)
+        _line(parameter, answer, ensemble),
+  ].join('\n');
+}
+
+String _line(
+  PlayerParameter parameter,
+  Identifiability answer,
+  List<PlayerFit> ensemble,
+) {
+  final range = rangeOf(ensemble, (player) => readParameter(player, parameter));
+  final interval = switch (answer) {
+    // A range nothing constrained is the prior, and printing it would be the
+    // report arguing against itself.
+    Identifiability.unobserved ||
+    Identifiability.needsMoreSittings ||
+    Identifiability.unconstrained => '-',
+    _ => '${range.low.toStringAsFixed(2)} to ${range.high.toStringAsFixed(2)}',
+  };
+  return '  ${parameter.name.padRight(22)}${interval.padRight(20)}'
+      '${answer.id}';
 }
