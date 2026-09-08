@@ -1463,6 +1463,11 @@ class SchedulerPipeline {
       challengeBypass: bypass,
       challengeSurvived: survived,
       admissionRefusal: admission.refusal,
+      executionAdvance: executionAdvanceFor(
+        state,
+        exercise,
+        memo: facts.execution,
+      ),
       priorityStatus: priorityStatus,
       rankKey: rankKey,
     );

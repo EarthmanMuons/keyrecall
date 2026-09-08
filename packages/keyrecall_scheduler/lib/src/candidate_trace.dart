@@ -2,6 +2,8 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
+import 'execution_progression.dart';
+
 /// How far an exercise has cleared the `REQUIRES` prerequisite gate.
 ///
 /// A soft pedagogical gate: a provisional candidate stays reachable, but can
@@ -511,6 +513,16 @@ class CandidateTrace {
 
   final AdmissionRefusal? admissionRefusal;
 
+  /// Which progression step this candidate is, if any.
+  ///
+  /// The provenance behind a [ChallengeBypass.executionProgression]: the enum
+  /// says the bypass fired, this says on what. They do not all read the same
+  /// evidence. A tempo or span step reads the demonstrated frontier; a
+  /// hands-together step reads coordination readiness, which is deliberately a
+  /// lower bar, so a candidate can be an adjacent step with no frontier
+  /// anywhere in its material.
+  final ExecutionAdvance executionAdvance;
+
   /// Whether the pipeline really reached priority ranking for this candidate.
   final StageStatus priorityStatus;
 
@@ -530,6 +542,7 @@ class CandidateTrace {
     required this.challengeBypass,
     required this.challengeSurvived,
     this.admissionRefusal,
+    this.executionAdvance = ExecutionAdvance.none,
     required this.priorityStatus,
     required this.rankKey,
   });

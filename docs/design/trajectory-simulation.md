@@ -916,3 +916,47 @@ Nothing about allocation changed on the strength of this. What it establishes is
 that the remaining skew is an admission-stage question about how a family
 without evidence earns its first evidence, not a ranking question about whether
 weakness should be favoured.
+
+### What execution progression actually reads
+
+The bypass enum said progression fired and not on what, so `CandidateTrace` now
+carries the `ExecutionAdvance` behind it. Censusing the four mirror runs by rule
+answers the case the frontier census could not.
+
+| case               | weak family progression admissions |
+| ------------------ | ---------------------------------- |
+| weak arpeggios, s2 | hands together 648                 |
+| weak arpeggios, s4 | span 180, tempo 798, together 600  |
+| weak scales, s2    | none                               |
+| weak scales, s4    | span 618, tempo 618                |
+
+**The 648 are hands-together admissions, every one.** They read
+`coordinationReadyTempoAt`, which is a different record from the demonstrated
+frontier and deliberately a lower bar: a hand that produced the right pitches is
+ready to put the hands together, and waiting for it to clear the frontier's
+motor bar is waiting for the wrong thing. So the earlier census was reading the
+wrong variable, and there is no anomaly to explain. A family can have an
+adjacent step with no frontier anywhere in it.
+
+That gives progression two footholds rather than one. Tempo and span steps need
+a demonstrated frontier; a hands-together step needs only both single hands
+ready. The scale-weak player at seed two has neither, which is why it has no
+progression admissions at all and takes six slots of eighty.
+
+**The returner's failed attempt back is the same rule.** Slot eighty of that run
+is `execution_progression`, hands together, unguided, at eighty-eight, with a
+frontier of zero, and it does not start. What follows is recovery walking the
+guidance down until it does. So the two open puzzles were one seam, and the
+single bypass label had been hiding it.
+
+The seam stated plainly: **a hands-together step is admitted on execution-side
+readiness and says nothing about retrieval.** Both failures are that silence. A
+returner whose retrieval belief has decayed to nothing, and a weak family that
+has never retrieved its material unaided, are both handed work whose motor
+precondition is satisfied and whose notes are not there.
+
+So the remaining skew is bootstrap asymmetry rather than an allocation
+preference, and the question it raises is not whether ranking should favour
+weakness. It is whether an execution-side foothold should carry an exercise
+whose retrieval is unevidenced, or whether that step owes a guidance level the
+way an introduction does. Nothing changed on the strength of it.
