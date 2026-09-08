@@ -123,7 +123,7 @@ class AssessmentReading {
   final double temporalStability;
 
   /// Mean coordination over the hands-together attempts that began, or null
-  /// when the set asked for no hands-together work.
+  /// when no hands-together attempt began.
   ///
   /// Conditional on starting, which is a diagnostic rather than an outcome: an
   /// attempt that never began has no coordination to report, and dropping it
@@ -276,7 +276,7 @@ AssessmentReading _readingOf(
   double mean(double Function(Outcome) of) =>
       outcomes.map((o) => of(o.$2)).reduce((a, b) => a + b) / outcomes.length;
 
-  final asked = {for (final (exercise, _) in outcomes) exercise}.toList();
+  final asked = [for (final (exercise, _) in outcomes) exercise];
   final predictions = state == null
       ? null
       : _expectationOf(asked, state, learner, at);

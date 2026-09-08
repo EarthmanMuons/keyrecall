@@ -1249,23 +1249,20 @@ It is cheap: most seeds spend one slot, and the two that spend the bound reach a
 frontier shortly after on ordinary work. Nothing runs away, because the first
 frontier ends it.
 
-**And the learner is no better for it.** Held-out weak-family execution moves
-from 0.06 to 0.04 and 0.06 to 0.01 with the bound, against 0.06 to 0.07 and 0.06
-to 0.03 without, which is to say it does not move at all at the resolution a
-twenty-four attempt reading has. The strong family gives up a little, 0.79 to
-0.78 and 0.90 to 0.88. There is no case here for shipping it.
+**No improvement was detected in managed success.** Held-out weak-family
+execution moves from 0.06 to 0.04 and 0.06 to 0.01 with the bound, against 0.06
+to 0.07 and 0.06 to 0.03 without, which is to say it does not move at all at the
+resolution a twenty-four attempt reading has. The strong family gives up a
+little, 0.79 to 0.78 and 0.90 to 0.88. There is no case here for shipping it.
 
-So the bootstrap-allocation hypothesis is answered, and answered no, twice over.
-The weak family was short of the productive work at admission, that was fixed,
-and outcomes did not move. It was then short of it at selection, that was tried,
-and outcomes did not move. **What is left is not an allocation problem.** These
-learners fail the gentlest work their family offers, which is where the true
-beginner already was, and the two open questions have converged after all.
+These runs do not support shipping this bounded allocation preference. Neither
+admitting more acquisition work nor spending up to eight preferential slots on
+it improved the measured managed-success rate. That threshold measure does not
+rule out smaller gains, other allocation policies, or longer practice budgets.
 
-The thing worth taking from the negative result is the terminal classification
-it makes available. A family that spends its bounded chances and still has no
-frontier is under the floor rather than short of slots, and that is now a
-measurable condition rather than a suspicion.
+A run that spends its bounded chances and still has no frontier has exhausted
+that experiment's budget. This records an observed outcome, not a diagnosis that
+the learner cannot benefit from further practice.
 
 ### The instrument was pairing readings it should not have
 
@@ -1302,15 +1299,18 @@ Rerun, the bounded bootstrap chance reads differently and better:
 | 8     | none, 5, 8, 3 / none, 5, 8, 3           | 8, 4, 7, 2            | 0.056, 0.000 unchanged |
 
 **The earlier claim that every seed reached a frontier was an artifact.** One
-seed spends all eight chances and still has none, which is the terminal
-classification firing for real rather than as a hypothetical: that learner is
-under the floor, not short of slots.
+seed spends all eight chances and still has none. Eight opportunities were
+insufficient in that run; this does not establish that more would be
+ineffective.
 
 **And the weak family's reading is now identical to three decimals with the
 preference and without it**, where the contaminated instrument had shown it
-drifting by a few points in both directions. So the negative conclusion is
-stronger than it was, not weaker. Nothing about giving a frontier-less family
-more of the work it learns from makes these learners better at it.
+drifting by a few points in both directions. The negative conclusion is limited
+to managed success at this battery's resolution. Continuous measurements can
+move without crossing its threshold: at seed 3 the scale-weak player's mean
+temporal stability was 0.3140 without the preference and 0.3197 with it. That
+small difference does not establish a worthwhile policy gain, but unchanged
+managed success is not an unchanged learner.
 
 Also corrected while in there: coordination was averaging only the
 hands-together attempts that began, so a battery where every one failed to start

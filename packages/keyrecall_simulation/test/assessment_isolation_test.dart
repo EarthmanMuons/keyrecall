@@ -77,7 +77,7 @@ void main() {
     Outcome attemptOf(double familiarity) => PlayerArchetypes.developing
         .copyWith(
           materialFamiliarity: {exercise.material.materialId: familiarity},
-          noise: 0,
+          noise: 0.1,
         )
         .begin()
         .play(exercise, PythonCompatibleRandom(7), practising: false);
@@ -87,15 +87,22 @@ void main() {
 
     expect(guessing.started, isTrue);
     expect(knowing.started, isTrue);
-    expect(
-      guessing.materialRetrieval,
-      isNot(knowing.materialRetrieval),
-      reason: 'the two states really do differ on what the notes were worth',
-    );
+    expect(guessing.temporalStability, knowing.temporalStability);
+    final missedRng = PythonCompatibleRandom(7);
+    final recalledRng = PythonCompatibleRandom(7);
+    PlayerState knowingPlayer(double familiarity) => PlayerArchetypes.developing
+        .copyWith(
+          materialFamiliarity: {exercise.material.materialId: familiarity},
+        )
+        .begin();
+    knowingPlayer(0).play(exercise, missedRng, practising: false);
+    knowingPlayer(1).play(exercise, recalledRng, practising: false);
+    expect(missedRng.nextDouble(), recalledRng.nextDouble());
+    expect(missedRng.nextGaussian(0, 1), recalledRng.nextGaussian(0, 1));
     expect(
       guessing.continuity,
       knowing.continuity,
-      reason: 'the motor draw is the same one, taken before retrieval branches',
+      reason: 'execution noise is paired despite different retrieval branches',
     );
   });
 }

@@ -10,7 +10,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// spent on the single-hand, one-octave, continuously cued work that is the
 /// only shape those families ever demonstrate anything from. The bound is what
 /// stops it running forever, and exhausting the bound without a frontier is
-/// the signal that the learner is under the floor rather than short of slots.
+/// a record that no frontier was reached within that budget.
 void main() {
   final catalog = <TechnicalMaterial>[
     ...v1ScaleCatalog.take(3),
@@ -110,13 +110,11 @@ void main() {
     expect(
       exhaustedWithNothing,
       greaterThan(0),
-      reason:
-          'and one spends every chance without one, which is the handoff: a '
-          'learner under the floor rather than short of slots',
+      reason: 'some runs exhaust this budget without demonstrating a frontier',
     );
   });
 
-  test('and it is not what makes the learner better', () {
+  test('the bounded preference does not improve measured managed success', () {
     for (final weak in weakIn.keys) {
       for (final seed in seeds) {
         final without = runWith(weak: weak, bound: 0, seed: seed);
@@ -127,8 +125,7 @@ void main() {
           without.weakGain,
           reason:
               'the held-out reading of $weak at seed $seed is the same number '
-              'either way, and each item draws its own stream, so this is the '
-              'family being unchanged rather than its noise moving',
+              'either way; continuous outcomes may still change below that threshold',
         );
         expect(bounded.weakGain, lessThanOrEqualTo(0));
       }

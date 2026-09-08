@@ -11,6 +11,59 @@ void main() {
 
   List<TrajectorySlot> slotsOf(Trajectory trajectory) => trajectory.slots;
 
+  test(
+    'predictions preserve the assessment weights and retrieval population',
+    () {
+      const learner = LearnerModel();
+      final at = DateTime.utc(2026);
+      final state = learner.placementState(
+        PlacementTier.someExperience,
+        at: at,
+      );
+      final a = Exercise.linear(
+        material: catalog.first,
+        hands: HandConfiguration.right,
+        tempoBpm: 60,
+      );
+      final b = Exercise.linear(
+        material: catalog[1],
+        hands: HandConfiguration.right,
+        tempoBpm: 240,
+      );
+      state
+              .materialMemoryFor(b.material.materialId, learner.params)
+              .memoryAnchorAt =
+          at;
+      expect(
+        learner.predict(state, a, at: at).independentRetrievalP,
+        isNot(learner.predict(state, b, at: at).independentRetrievalP),
+      );
+      final cued = b.withGuidance(GuidanceContext.continuouslyCued);
+      final exercises = [a, a, b, cued];
+      final reading = assess(
+        AssessmentSet(id: 'weighted', exercises: exercises, repetitions: 2),
+        PlayerArchetypes.developing.begin(),
+        at: at,
+        state: state,
+      );
+      final expected =
+          exercises
+              .map((e) => learner.predict(state, e, at: at).overallP)
+              .reduce((a, b) => a + b) /
+          exercises.length;
+      final retrieval =
+          [a, a, b]
+              .map(
+                (e) => learner.predict(state, e, at: at).independentRetrievalP,
+              )
+              .reduce((a, b) => a + b) /
+          3;
+      expect(reading.attempts, 8);
+      expect(reading.predicted, closeTo(expected, 1e-12));
+      expect(reading.predictedRetrieval, closeTo(retrieval, 1e-12));
+    },
+  );
+
   test('taking a reading cannot change the run it measures', () {
     Trajectory run({AssessmentSet? assessment}) => runSittings(
       player: PlayerArchetypes.developing,
