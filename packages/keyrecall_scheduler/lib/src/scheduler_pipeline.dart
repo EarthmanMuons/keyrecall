@@ -983,13 +983,16 @@ class SchedulerPipeline {
           .isEmpty ??
       true;
 
-  /// Whether an attempted family entry still has no execution frontier.
+  /// Whether an attempted scale entry still has no execution frontier.
+  ///
+  /// V1 acquisition needs the full scale traversal to assess continuity.
   bool needsAcquisition(
     LearnerState state,
     Exercise exercise, {
     required AcquisitionFloor floor,
     required Set<Exercise> attemptedParents,
   }) =>
+      exercise.material.familyId == TechnicalMaterial.scaleFamilyId &&
       floor.entries.any((entry) => entry.exercise == exercise) &&
       attemptedParents.contains(exercise) &&
       needsExecutionBootstrap(state, exercise);

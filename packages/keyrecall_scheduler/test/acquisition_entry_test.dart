@@ -167,6 +167,31 @@ void main() {
       }
     });
 
+    test('short arpeggios stay outside the automatic acquisition loop', () {
+      final parent = Exercise.linear(
+        material: ArpeggioMaterial('C', ArpeggioQuality.major),
+        hands: HandConfiguration.right,
+        direction: ExerciseDirection.up,
+        tempoBpm: 60,
+        guidance: GuidanceContext.continuouslyCued,
+      );
+      final declared = AcquisitionFloor([
+        AcquisitionFloorEntry(
+          requirementId: parent.material.materialId,
+          exercise: parent,
+        ),
+      ]);
+      expect(
+        pipeline.needsAcquisition(
+          metButUnproven(),
+          parent,
+          floor: declared,
+          attemptedParents: {parent},
+        ),
+        isFalse,
+      );
+    });
+
     test('a blocked safety gate cannot offer acquisition', () {
       final bounded = SchedulerPipeline(learner: learner, config: boundedTo(1));
       final result = bounded.decide(

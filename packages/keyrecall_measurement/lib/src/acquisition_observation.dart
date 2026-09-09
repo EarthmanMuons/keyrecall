@@ -5,6 +5,9 @@ import 'package:meta/meta.dart';
 import 'measurement_policy.dart';
 import 'performance_measurement.dart';
 
+/// Whether this attempt supplies enough evidence to judge continuity.
+enum AcquisitionContinuity { unestablished, unbroken, interrupted }
+
 /// What was observed about one acquisition attempt.
 ///
 /// The counterpart of [PerformanceMeasurement], and deliberately not that
@@ -84,6 +87,16 @@ class AcquisitionObservation {
       if (gap.ratio >= policy.brokenIntervalRatio) gap,
   ];
 
+  /// Continuity needs a baseline that excludes the single longest interval.
+  ///
+  /// With fewer than five intervals, the interpolated upper quartile includes
+  /// the maximum. Absence of a detected stall then cannot establish continuity.
+  AcquisitionContinuity get continuity => stalls.isNotEmpty
+      ? AcquisitionContinuity.interrupted
+      : gaps.length >= 5
+      ? AcquisitionContinuity.unbroken
+      : AcquisitionContinuity.unestablished;
+
   /// Whether this attempt makes the unchanged parent eligible for a probe.
   ///
   /// Criterion success, not completion: the sequence came out right the first
@@ -94,7 +107,8 @@ class AcquisitionObservation {
   /// Eligibility only. Whether to conduct the probe, and how many criterion
   /// successes it takes, are the scheduler's to decide.
   bool get earnsParentProbe =>
-      completion == AcquisitionCompletion.completedCleanly && stalls.isEmpty;
+      completion == AcquisitionCompletion.completedCleanly &&
+      continuity == AcquisitionContinuity.unbroken;
 
   @override
   String toString() =>

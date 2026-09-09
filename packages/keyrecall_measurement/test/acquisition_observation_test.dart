@@ -162,6 +162,39 @@ void main() {
   });
 
   group('probe eligibility', () {
+    test('short clean traversals cannot certify continuity', () {
+      final arpeggio = ArpeggioMaterial('C', ArpeggioQuality.major);
+      final shortTask = AcquisitionTask.unmeteredTraversal(
+        Exercise.linear(
+          material: arpeggio,
+          hands: HandConfiguration.right,
+          direction: ExerciseDirection.up,
+          tempoBpm: 60,
+          guidance: GuidanceContext.continuouslyCued,
+        ),
+      );
+      for (final lastOnset in [2700, 61800]) {
+        var transcript = PerformanceTranscript.empty;
+        final onsets = [0, 900, 1800, lastOnset];
+        for (final moment in realizeAcquisition(shortTask).moments) {
+          transcript = transcript.appending(
+            pitch: spellObservedPitch(
+              moment.noteFor(Hand.right)!.midiNote,
+              material: arpeggio,
+            ),
+            timestampMs: onsets[moment.position],
+          );
+        }
+        final observation = observeAcquisition(
+          task: shortTask,
+          transcript: transcript,
+        );
+        expect(observation.completion, AcquisitionCompletion.completedCleanly);
+        expect(observation.continuity, AcquisitionContinuity.unestablished);
+        expect(observation.earnsParentProbe, isFalse);
+      }
+    });
+
     test('needs a clean pass the learner did not stop inside', () {
       expect(observed(expected).earnsParentProbe, isTrue);
       expect(
