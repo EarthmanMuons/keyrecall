@@ -123,6 +123,25 @@ void main() {
       expect(progress.recordFor(parent)!.criterionSuccesses, 2);
     });
 
+    test('event order reopens an obligation at an equal timestamp', () {
+      final progress = const AcquisitionProgress.empty()
+          .recording(parent: parent, completed: true, earnedProbe: true, at: t0)
+          .recording(parent: parent, completed: true, earnedProbe: true, at: t0)
+          .serving(parent: parent, at: t0)
+          .recording(
+            parent: parent,
+            completed: true,
+            earnedProbe: true,
+            at: t0,
+          );
+      expect(progress.recordFor(parent)!.criterionSuccessesServed, 2);
+      expect(progress.probeOwed(parent), isTrue);
+      expect(
+        progress.serving(parent: parent, at: t0).probeOwed(parent),
+        isFalse,
+      );
+    });
+
     test('refuses service for a parent with no acquisition history', () {
       expect(
         () => const AcquisitionProgress.empty().serving(parent: parent, at: t0),

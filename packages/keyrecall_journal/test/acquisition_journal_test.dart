@@ -47,6 +47,29 @@ void main() {
     gaps: gaps,
   );
 
+  test('replay uses append order when service and success share a time', () {
+    final log = emptyLog()..append(recordAt(0));
+    log.append(
+      AcquisitionProbeServedRecord(
+        journalSequence: 1,
+        identity: AttemptIdentity(
+          profileId: 'abc12345',
+          attemptId: 'probe',
+          sessionId: 'sitting-1',
+          indexInSession: 1,
+          occurredAt: t0,
+        ),
+        parent: parent,
+      ),
+    );
+    log.append(recordAt(2));
+    final restored = AcquisitionJournal.fromJsonLines(
+      log.toJsonLines(),
+    ).replay();
+    expect(restored.probeOwed(parent), isTrue);
+    expect(restored.recordFor(parent)!.criterionSuccessesServed, 1);
+  });
+
   group('a round trip', () {
     test('preserves the facts and the verdict that was recorded', () {
       final log = emptyLog()

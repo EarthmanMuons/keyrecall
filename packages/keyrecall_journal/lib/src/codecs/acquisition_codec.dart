@@ -15,6 +15,7 @@ Map<String, Object?> encodeAcquisitionRecord(
   'completions': record.completions,
   'criterion_successes': record.criterionSuccesses,
   'probes_served': record.probesServed,
+  'criterion_successes_served': record.criterionSuccessesServed,
   'last_attempt_at': encodeTime(record.lastAttemptAt),
   'last_criterion_success_at': encodeOptionalTime(
     record.lastCriterionSuccessAt,
@@ -97,11 +98,36 @@ AcquisitionProgress decodeAcquisitionProgress(
         location: location,
       );
     }
+    if (!record.containsKey('criterion_successes_served')) {
+      throw JournalFormatException(
+        'acquisition progress has no service watermark; replay its acquisition log',
+        location: location,
+      );
+    }
+    final successesServed = requireInt(
+      record,
+      'criterion_successes_served',
+      location: location,
+    );
+    final attempts = requireInt(record, 'attempts', location: location);
+    if (attempts < completions ||
+        completions < 0 ||
+        criterionSuccesses < 0 ||
+        successesServed < 0 ||
+        successesServed > criterionSuccesses ||
+        probesServed < 0 ||
+        (successesServed > 0 && probesServed == 0)) {
+      throw JournalFormatException(
+        'acquisition counts are inconsistent',
+        location: location,
+      );
+    }
     byParent[parent] = AcquisitionRecord(
-      attempts: requireInt(record, 'attempts', location: location),
+      attempts: attempts,
       completions: completions,
       criterionSuccesses: criterionSuccesses,
       probesServed: probesServed,
+      criterionSuccessesServed: successesServed,
       lastAttemptAt: requireTime(record, 'last_attempt_at', location: location),
       lastCriterionSuccessAt: lastCriterionSuccessAt,
       lastProbeServedAt: lastProbeServedAt,

@@ -47,6 +47,23 @@ void main() {
       expect(decoded.recordFor(other)!.lastCriterionSuccessAt, isNull);
     });
 
+    test('preserves an obligation reopened at the service timestamp', () {
+      final progress = const AcquisitionProgress.empty()
+          .recording(parent: parent, completed: true, earnedProbe: true, at: t0)
+          .serving(parent: parent, at: t0)
+          .recording(
+            parent: parent,
+            completed: true,
+            earnedProbe: true,
+            at: t0,
+          );
+      final restored = decodeAcquisitionProgress(
+        encodeAcquisitionProgress(progress),
+      );
+      expect(restored.byParent, progress.byParent);
+      expect(restored.probeOwed(parent), isTrue);
+    });
+
     test('encodes the same progress identically twice', () {
       // Ordered by content rather than by insertion, so the same history
       // recorded in a different sequence hashes the same.
@@ -80,6 +97,17 @@ void main() {
   });
 
   group('a record that cannot be true', () {
+    test('requires replay for a snapshot without event order', () {
+      final encoded = encodeAcquisitionProgress(progressWith());
+      for (final record in encoded) {
+        record.remove('criterion_successes_served');
+      }
+      expect(
+        () => decodeAcquisitionProgress(encoded),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
     test('is refused rather than read', () {
       final encoded = encodeAcquisitionProgress(progressWith());
       final tampered = [

@@ -26,6 +26,9 @@ class AcquisitionRecord {
   /// How many probes of the parent this history has already been served.
   final int probesServed;
 
+  /// Criterion successes covered by the most recent presentation.
+  final int criterionSuccessesServed;
+
   /// When the last attempt was recorded.
   final DateTime lastAttemptAt;
 
@@ -41,6 +44,7 @@ class AcquisitionRecord {
     required this.criterionSuccesses,
     required this.lastAttemptAt,
     this.probesServed = 0,
+    this.criterionSuccessesServed = 0,
     this.lastCriterionSuccessAt,
     this.lastProbeServedAt,
   });
@@ -55,23 +59,10 @@ class AcquisitionRecord {
   /// once it is true, which is why [probeOwed] exists.
   bool get earnsParentProbe => criterionSuccesses > 0;
 
-  /// Whether the parent is owed a probe that has not been asked yet.
+  /// Whether a success arrived after the last presentation in event order.
   ///
-  /// Compared by time rather than counted, because the obligation is to ask the
-  /// question rather than to ask it once per success. Three criterion successes
-  /// before anything was presented are discharged by one presentation, and a
-  /// success after the last one opens the obligation again.
-  ///
-  /// The whole reason service is recorded. Reading `earnsParentProbe` as the
-  /// scheduler's condition would latch: a first criterion success would suppress
-  /// acquisition forever, even after the probe it earned was asked and
-  /// established nothing.
-  bool get probeOwed {
-    final earned = lastCriterionSuccessAt;
-    if (earned == null) return false;
-    final served = lastProbeServedAt;
-    return served == null || earned.isAfter(served);
-  }
+  /// One presentation covers every success preceding it, even at equal times.
+  bool get probeOwed => criterionSuccesses > criterionSuccessesServed;
 
   @override
   bool operator ==(Object other) =>
@@ -80,6 +71,7 @@ class AcquisitionRecord {
       other.completions == completions &&
       other.criterionSuccesses == criterionSuccesses &&
       other.probesServed == probesServed &&
+      other.criterionSuccessesServed == criterionSuccessesServed &&
       other.lastAttemptAt == lastAttemptAt &&
       other.lastCriterionSuccessAt == lastCriterionSuccessAt &&
       other.lastProbeServedAt == lastProbeServedAt;
@@ -90,6 +82,7 @@ class AcquisitionRecord {
     completions,
     criterionSuccesses,
     probesServed,
+    criterionSuccessesServed,
     lastAttemptAt,
     lastCriterionSuccessAt,
     lastProbeServedAt,
@@ -174,6 +167,7 @@ class AcquisitionProgress {
         criterionSuccesses:
             (previous?.criterionSuccesses ?? 0) + (earnedProbe ? 1 : 0),
         probesServed: previous?.probesServed ?? 0,
+        criterionSuccessesServed: previous?.criterionSuccessesServed ?? 0,
         lastAttemptAt: at,
         lastCriterionSuccessAt: earnedProbe
             ? at
@@ -215,6 +209,7 @@ class AcquisitionProgress {
         completions: previous.completions,
         criterionSuccesses: previous.criterionSuccesses,
         probesServed: previous.probesServed + 1,
+        criterionSuccessesServed: previous.criterionSuccesses,
         lastAttemptAt: previous.lastAttemptAt,
         lastCriterionSuccessAt: previous.lastCriterionSuccessAt,
         lastProbeServedAt: at,
