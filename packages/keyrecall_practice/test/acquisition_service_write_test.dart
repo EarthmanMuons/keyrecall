@@ -29,6 +29,104 @@ void main() {
         gaps: const [],
       );
 
+  /// A performance of [task], with one note per [gapMs].
+  PerformanceTranscript playedThrough(
+    AcquisitionTask task, {
+    int notes = 1 << 30,
+    int gapMs = 900,
+    int? longGapBefore,
+  }) {
+    final moments = realizeAcquisition(task).moments;
+    final hand = task.parent.conditions.hands == HandConfiguration.left
+        ? Hand.left
+        : Hand.right;
+    var transcript = PerformanceTranscript.empty;
+    var at = 0;
+    for (var index = 0; index < moments.length && index < notes; index++) {
+      if (index > 0) at += index == longGapBefore ? 6000 : gapMs;
+      transcript = transcript.appending(
+        pitch: moments[index].noteFor(hand)!.pitch,
+        timestampMs: at,
+      );
+    }
+    return transcript;
+  }
+
+  test('a clean acquisition attempt earns the parent a probe', () async {
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final at = t0.plusDays(0.5);
+    final session = await openSession(store);
+    final parent =
+        (await session.decideOutcome(at: at) as PresentedAttempt).exercise;
+    await session.abandonPending();
+    final task = AcquisitionTask.unmeteredTraversal(parent);
+
+    final record = await session.closeAcquisition(
+      task,
+      playedThrough(task),
+      at: at,
+    );
+
+    expect(record.completion, AcquisitionCompletion.completedCleanly);
+    expect(record.earnedProbe, isTrue);
+    expect(session.acquisitionProgress.probeOwed(parent), isTrue);
+    expect(
+      (await store.loadAcquisitionJournal(alice.id)).replay().probeOwed(parent),
+      isTrue,
+    );
+  });
+
+  test(
+    'an attempt the learner stopped partway is kept, not discarded',
+    () async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final at = t0.plusDays(0.5);
+      final session = await openSession(store);
+      final parent =
+          (await session.decideOutcome(at: at) as PresentedAttempt).exercise;
+      await session.abandonPending();
+      final task = AcquisitionTask.unmeteredTraversal(parent);
+
+      final record = await session.closeAcquisition(
+        task,
+        playedThrough(task, notes: 4),
+        at: at,
+      );
+
+      // Where it ran out and what it cost to get there are the observations the
+      // task was offered for. Throwing them away because the traversal is
+      // incomplete would discard the reading of the learner it was offered for.
+      expect(record.completion, AcquisitionCompletion.notCompleted);
+      expect(record.started, isTrue);
+      expect(record.firstAbsentPosition, 4);
+      expect(record.earnedProbe, isFalse);
+      expect(session.acquisitionProgress.recordFor(parent)!.attempts, 1);
+      expect(session.acquisitionProgress.probeOwed(parent), isFalse);
+    },
+  );
+
+  test('a long wait does not stop the attempt earning nothing else', () async {
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final at = t0.plusDays(0.5);
+    final session = await openSession(store);
+    final parent =
+        (await session.decideOutcome(at: at) as PresentedAttempt).exercise;
+    await session.abandonPending();
+    final task = AcquisitionTask.unmeteredTraversal(parent);
+
+    final record = await session.closeAcquisition(
+      task,
+      playedThrough(task, longGapBefore: 4),
+      at: at,
+    );
+
+    // Every note arrived and none of them was wrong, so the sequence came out.
+    // The wait is why it earns no probe, and it is kept where it happened.
+    expect(record.completion, AcquisitionCompletion.completedCleanly);
+    expect(record.earnedProbe, isFalse);
+    expect(record.gaps.where((gap) => gap.gapMs == 6000).single.toPosition, 4);
+  });
+
   test('presenting the parent discharges the obligation durably', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final at = t0.plusDays(0.5);

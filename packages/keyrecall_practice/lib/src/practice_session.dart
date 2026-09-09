@@ -590,6 +590,48 @@ class PracticeSession {
         PracticeInvalidScope() => null,
       };
 
+  /// Records what an acquisition attempt produced.
+  ///
+  /// Not a transaction, because there is nothing to make consistent. There is
+  /// no pending decision to clear, no learner state to advance, and no outcome
+  /// to derive: the whole of what an acquisition attempt does is add an event
+  /// to its own log, and that log answers to nothing but itself.
+  ///
+  /// Records an attempt the learner stopped partway as readily as one that
+  /// finished. Where it ran out, what it cost to get as far as it did, and how
+  /// long the waits were are exactly the observations acquisition exists to
+  /// keep, and discarding them because the traversal is incomplete would throw
+  /// away the reading of the learner this task was offered for.
+  ///
+  /// The caller supplies [at] because presentation time belongs to the loop
+  /// that presented it, not to a clock this reads.
+  Future<AcquisitionAttemptRecord> closeAcquisition(
+    AcquisitionTask task,
+    PerformanceTranscript transcript, {
+    required DateTime at,
+    MeasurementPolicy policy = MeasurementPolicy.standard,
+  }) async {
+    final record = acquisitionRecordOf(
+      observation: observeAcquisition(
+        task: task,
+        transcript: transcript,
+        policy: policy,
+      ),
+      identity: AttemptIdentity(
+        profileId: profile.id,
+        attemptId: _nextId(),
+        sessionId: sessionId,
+        indexInSession: _indexInSession,
+        occurredAt: at,
+      ),
+      journalSequence: _acquisition.nextSequence,
+    );
+    await store.appendAcquisitionEntry(record);
+    _acquisition.append(record);
+    _epoch++;
+    return record;
+  }
+
   /// Ends the outstanding attempt with an outcome established elsewhere.
   ///
   /// The seam between this transaction and the observation model. A caller
