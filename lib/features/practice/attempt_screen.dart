@@ -7,6 +7,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
@@ -191,6 +192,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           key: ValueKey(attemptId),
           exercise: value.exercise!,
           metBefore: value.hasMet(value.exercise!.material),
+          admittedBy: value.presented?.decision.decision.challengeBypass,
           onFinish: (termination) => notifier.finish(termination: termination),
           onDecline: notifier.decline,
           onUnderWay: () => setState(() => _playing = attemptId),
@@ -546,6 +548,7 @@ class AttemptView extends ConsumerStatefulWidget {
     this.onBackToReady,
     this.presentation,
     this.acquisition,
+    this.admittedBy,
     this.metBefore = true,
     super.key,
   });
@@ -556,6 +559,14 @@ class AttemptView extends ConsumerStatefulWidget {
   /// the span and the cues are the parent's; what the task changes is that no
   /// tempo is asked for.
   final Exercise exercise;
+
+  /// Which admission exception put this exercise on screen, if one did.
+  ///
+  /// Read for one thing: an acquisition probe is the moment the tempo becomes
+  /// part of the task again, and this screen is where that is said. Taken from
+  /// the decision rather than handed forward from the supported work, so it
+  /// stays true however long after that work the probe arrives.
+  final ChallengeBypass? admittedBy;
 
   /// The supported task being presented, or null for ordinary work.
   ///
@@ -965,7 +976,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           : CrossFadeState.showSecond,
       firstChild: Padding(
         padding: EdgeInsets.fromLTRB(layout.gutter, 16, layout.gutter, 0),
-        child: _TaskStatement(exercise, showsTempo: !_isSelfPaced),
+        child: _TaskStatement(
+          exercise,
+          showsTempo: !_isSelfPaced,
+          note: widget.admittedBy == ChallengeBypass.acquisitionProbe
+              ? restoredTempoLine(exercise)
+              : null,
+        ),
       ),
       secondChild: const SizedBox(width: double.infinity),
     );
@@ -1448,7 +1465,7 @@ class _Question extends StatelessWidget {
 /// Tapping it explains it. The terms are the app's whole vocabulary, and the
 /// place somebody wonders what one means is the line it is written on.
 class _TaskStatement extends StatelessWidget {
-  const _TaskStatement(this.exercise, {this.showsTempo = true});
+  const _TaskStatement(this.exercise, {this.showsTempo = true, this.note});
 
   final Exercise exercise;
 
@@ -1457,6 +1474,9 @@ class _TaskStatement extends StatelessWidget {
   /// A stated tempo reads as a target. Leaving one on screen for a task that
   /// removed the obligation would ask for the thing that was just taken away.
   final bool showsTempo;
+
+  /// The one piece of sequencing context worth saying, or null for none.
+  final String? note;
 
   @override
   Widget build(BuildContext context) {
@@ -1503,6 +1523,14 @@ class _TaskStatement extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
+          if (note case final note?) ...[
+            const SizedBox(height: 12),
+            Text(
+              note,
+              style: theme.textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+            ),
+          ],
         ],
       ),
     );

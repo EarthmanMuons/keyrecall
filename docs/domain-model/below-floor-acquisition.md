@@ -493,6 +493,21 @@ window applies and the attempt is never asked whether it is over. While it runs
 the screen says so, because a wait of any length is the reading and a screen
 that looked finished would be wrong exactly when it mattered.
 
+### The probe explains itself
+
+An acquisition attempt leaves no ordinary record, so no review screen runs after
+it and there is nothing to carry a line forward on. The parent probe states the
+restoration on its own screen instead: its task statement shows the tempo, as
+ordinary work always does, and a line under it says the tempo is back.
+
+Read off the probe rather than handed forward. The fact belongs to the exercise
+being presented, so it is still right when the probe arrives long after the work
+that earned it, across a restart, a deferred service, or a spell out of scope. A
+note carried out of the acquisition screen would be a guess about what the
+scheduler chooses next, and would need transient state to carry it.
+
+The wording is the review's, from one function, so the two cannot drift.
+
 There is no pause once observation starts. Discarding a partial transcript would
 throw away the localized evidence the task exists to keep, and resuming one
 would put interface time into the gap series, where it would read as a
@@ -513,10 +528,6 @@ nothing was observed.
   learner-driven unmetered traversal rather than straight to the ordinary floor.
 - **Failure-specific selection.** The scheduler can offer acquisition, but its
   unmetered task is a default rather than a diagnosis of a particular obstacle.
-- **Explaining the probe that follows.** An acquisition attempt produces no
-  ordinary record, so no review screen runs after it. The parent probe arrives
-  with the copy that explains the restored tempo unshown until that probe itself
-  closes.
 - **Census replay.** The acquisition journal preserves gaps; no adapter yet
   reconstructs `TransitionCensus` from those records.
 - **Located repairs.** The census aggregates stalls only.

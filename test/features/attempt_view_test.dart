@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/demo_input/demo_input.dart';
@@ -584,6 +585,58 @@ void main() {
           'those notes belong to the attempt that recorded them, and this '
           'screen can be asked about its own before it has played any',
     );
+  });
+
+  group('the probe an acquisition attempt earned', () {
+    final probe = Exercise.linear(
+      material: TechnicalMaterial('C', ScaleForm.major),
+      hands: HandConfiguration.right,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+      tempoBpm: 60,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+
+    Future<void> pumpProbe(
+      WidgetTester tester, {
+      ChallengeBypass? admittedBy,
+    }) async {
+      tester.view.physicalSize = const Size(1400, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syntheticInstrument],
+          child: MaterialApp(
+            home: Scaffold(
+              body: AttemptView(
+                key: ValueKey(admittedBy),
+                exercise: probe,
+                admittedBy: admittedBy,
+                onFinish: (_) async {},
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    testWidgets('says the tempo is back, on its own screen', (tester) async {
+      await pumpProbe(tester, admittedBy: ChallengeBypass.acquisitionProbe);
+
+      // Read off the probe rather than handed forward, so it is still right
+      // when the probe arrives long after the work that earned it.
+      expect(find.textContaining('60 bpm'), findsOneWidget);
+      expect(find.text('Back at 60 BPM this time.'), findsOneWidget);
+    });
+
+    testWidgets('says nothing extra for ordinary work', (tester) async {
+      await pumpProbe(tester);
+
+      expect(find.textContaining('60 bpm'), findsOneWidget);
+      expect(find.text('Back at 60 BPM this time.'), findsNothing);
+    });
   });
 
   group('a supported acquisition attempt', () {

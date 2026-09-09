@@ -100,12 +100,22 @@ String? reasonForNext({
       final hands? =>
         'Now $hands, at ${_tempoText(next.conditions.tempoBpm)} '
             'BPM.',
-      null => 'Back at ${_tempoText(next.conditions.tempoBpm)} BPM this time.',
+      null => restoredTempoLine(next),
     },
     ChallengeBypass.override ||
     null => differenceTo(next, previous) ?? (sameMaterial ? 'Again.' : null),
   };
 }
+
+/// What an acquisition probe is asking for now, read off the probe itself.
+///
+/// Derived rather than handed forward. The fact belongs to the exercise being
+/// presented, so it stays true however long after the supported work the probe
+/// arrives: across a restart, a deferred service, or a spell where the parent
+/// was out of scope. A note carried out of the acquisition screen would instead
+/// be a guess about what the scheduler would choose next.
+String restoredTempoLine(Exercise probe) =>
+    'Back at ${_tempoText(probe.conditions.tempoBpm)} BPM this time.';
 
 /// What is different about [next], when a learner would notice.
 ///
