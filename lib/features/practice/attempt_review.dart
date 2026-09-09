@@ -188,6 +188,7 @@ class AttemptReview extends StatelessWidget {
     required this.onNext,
     required this.history,
     required this.instrument,
+    this.continues = false,
     this.reading,
     this.onDetailsViewed,
     super.key,
@@ -209,6 +210,14 @@ class AttemptReview extends StatelessWidget {
 
   /// Dismisses this and puts the next exercise on screen.
   final VoidCallback onNext;
+
+  /// Whether anything follows this review.
+  ///
+  /// Separate from [next] because supported work is decided too, and a review
+  /// that says Done while an acquisition task is waiting behind it names the
+  /// wrong thing. The verb describes what tapping does; the preview describes
+  /// what it can describe.
+  final bool continues;
 
   /// Whether an instrument is attached, which is what an attempt nothing was
   /// played in is explained by.
@@ -322,6 +331,14 @@ class AttemptReview extends StatelessWidget {
                           style: theme.textTheme.titleLarge,
                           textAlign: TextAlign.center,
                         ),
+                        const SizedBox(height: 4),
+                        Text(
+                          taskConditionsLine(upcoming.exercise),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                         if (reason != null) ...[
                           const SizedBox(height: 4),
                           Text(
@@ -341,7 +358,11 @@ class AttemptReview extends StatelessWidget {
                           style: FilledButton.styleFrom(
                             textStyle: theme.textTheme.headlineSmall,
                           ),
-                          child: Text(upcoming == null ? 'Done' : 'Continue'),
+                          child: Text(
+                            upcoming == null && !continues
+                                ? 'Done'
+                                : 'Continue',
+                          ),
                         ),
                       ),
                     ],

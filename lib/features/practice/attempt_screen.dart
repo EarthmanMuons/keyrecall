@@ -153,6 +153,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           instrument: ref.watch(instrumentReadinessProvider),
           reading: loop.value?.lastReading,
           next: loop.value?.presented,
+          continues: loop.value?.acquisition != null,
           onDetailsViewed: () {
             final attemptId = committed.identity.attemptId;
             if (!_detailsRecorded.add(attemptId)) return;
@@ -176,6 +177,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
       return AcquisitionReview(
         record: closed,
         next: loop.value?.presented,
+        continues: loop.value?.acquisition != null,
         onNext: () =>
             setState(() => _acquisitionReviewed = closed.identity.attemptId),
       );

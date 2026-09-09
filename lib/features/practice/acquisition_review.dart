@@ -24,6 +24,7 @@ class AcquisitionReview extends StatelessWidget {
     required this.record,
     required this.onNext,
     this.next,
+    this.continues = false,
     super.key,
   });
 
@@ -34,6 +35,9 @@ class AcquisitionReview extends StatelessWidget {
   final PresentedAttempt? next;
 
   final VoidCallback onNext;
+
+  /// Whether anything follows this transition.
+  final bool continues;
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +74,7 @@ class AcquisitionReview extends StatelessWidget {
               Text(
                 record.completion.isComplete
                     ? 'You played it all the way through, at your own pace.'
-                    : 'You stopped partway through.',
+                    : 'Not all of it came out that time.',
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -89,6 +93,14 @@ class AcquisitionReview extends StatelessWidget {
                 Text(
                   materialName(upcoming.exercise.material),
                   style: theme.textTheme.titleLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  taskConditionsLine(upcoming.exercise),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 if (restored != null) ...[
@@ -110,7 +122,9 @@ class AcquisitionReview extends StatelessWidget {
                   style: FilledButton.styleFrom(
                     textStyle: theme.textTheme.headlineSmall,
                   ),
-                  child: Text(upcoming == null ? 'Done' : 'Continue'),
+                  child: Text(
+                    upcoming == null && !continues ? 'Done' : 'Continue',
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
