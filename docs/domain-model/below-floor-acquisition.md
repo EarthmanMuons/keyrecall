@@ -445,7 +445,13 @@ progress is whatever the durable log produces and cannot drift from it.
 Service is written where the parent is presented, from the presenting attempt's
 own identity. A failed write leaves the obligation owed, which costs a redundant
 probe later; failing the attempt instead would cost the learner their practice,
-which is worse.
+which is worse. The asymmetry with an ordinary attempt append is deliberate: a
+lost attempt loses evidence, and a lost service costs one repeated question.
+
+Non-blocking is not invisible. A service write that does not land is recorded in
+the diagnostics channel under a key derived from the attempt, saying which
+parent it was about and that the obligation was left owed. Nothing retries,
+because the next ordinary presentation of that parent tries again on its own.
 
 ## Deliberately not built
 

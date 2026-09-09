@@ -1,3 +1,4 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
@@ -33,6 +34,9 @@ class FlakyPracticeStore implements PracticeStore {
 
   /// When true, the next [appendAttempt] throws instead of writing.
   bool failNextAppend = false;
+
+  /// When true, every [appendAcquisitionEntry] throws instead of writing.
+  bool failAcquisitionAppends = false;
 
   /// How many appends actually reached the inner store.
   int appendsPerformed = 0;
@@ -104,8 +108,10 @@ class FlakyPracticeStore implements PracticeStore {
   }) => inner.loadAcquisitionJournal(profileId, createdAt: createdAt);
 
   @override
-  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) =>
-      inner.appendAcquisitionEntry(entry);
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) async {
+    if (failAcquisitionAppends) throw const _StorageFailure();
+    await inner.appendAcquisitionEntry(entry);
+  }
 
   @override
   Future<void> erase(String profileId) => inner.erase(profileId);
@@ -238,6 +244,78 @@ void main() {
       },
     );
   }
+
+  group('an acquisition service write that fails', () {
+    /// Acquisition history that earned a probe of [parent].
+    AcquisitionAttemptRecord earnedFor(Exercise parent) =>
+        AcquisitionAttemptRecord(
+          journalSequence: 0,
+          identity: AttemptIdentity(
+            profileId: alice.id,
+            attemptId: 'acquisition-1',
+            sessionId: 'sitting-0',
+            indexInSession: 0,
+            occurredAt: t0,
+          ),
+          task: AcquisitionTask.unmeteredTraversal(parent),
+          started: true,
+          completion: AcquisitionCompletion.completedCleanly,
+          repairs: 0,
+          repeats: 0,
+          intrusions: 0,
+          earnedProbe: true,
+          gaps: const [],
+        );
+
+    test('costs a redundant probe rather than the practice slot', () async {
+      final inner = InMemoryPracticeStore(createdAt: t0);
+      final store = FlakyPracticeStore(inner);
+      final at = t0.plusDays(0.5);
+
+      final first = await openSession(store);
+      final parent = (await first.decide(at: at))!.exercise;
+      await first.abandonPending();
+      await inner.appendAcquisitionEntry(earnedFor(parent));
+
+      store.failAcquisitionAppends = true;
+      final session = await openSession(store, sessionId: 'session-2');
+      final presented = await session.decide(at: at);
+
+      // The attempt is presented and outstanding: losing the discharge must
+      // not cost the learner the work in front of them.
+      expect(presented?.exercise, parent);
+      expect(session.hasOutstandingAttempt, isTrue);
+
+      // The obligation is where it started, so a later presentation asks the
+      // same question again rather than the probe being lost.
+      final log = await inner.loadAcquisitionJournal(alice.id);
+      expect(log.replay().probeOwed(parent), isTrue);
+      expect(log.records.whereType<AcquisitionProbeServedRecord>(), isEmpty);
+    });
+
+    test('says so rather than failing silently', () async {
+      final inner = InMemoryPracticeStore(createdAt: t0);
+      final store = FlakyPracticeStore(inner);
+      final at = t0.plusDays(0.5);
+
+      final first = await openSession(store);
+      final parent = (await first.decide(at: at))!.exercise;
+      await first.abandonPending();
+      await inner.appendAcquisitionEntry(earnedFor(parent));
+
+      store.failAcquisitionAppends = true;
+      final session = await openSession(store, sessionId: 'session-2');
+      final presented = await session.decide(at: at);
+
+      // Non-blocking is not the same as invisible. One lost write is a
+      // redundant probe; a systematic one is storage quietly failing.
+      final diagnostics = await store.loadSelectionDiagnostics(alice.id);
+      final key = '${presented!.decision.attemptId}:acquisition-service';
+      expect(diagnostics, contains(key));
+      expect(diagnostics[key], contains('the disk said no'));
+      expect(diagnostics[key], contains('left owed'));
+    });
+  });
 
   group('an append that fails without killing the process', () {
     test('leaves the session exactly where it was', () async {

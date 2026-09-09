@@ -541,8 +541,37 @@ class PracticeSession {
     try {
       await store.appendAcquisitionEntry(service);
       _acquisition.append(service);
+    } catch (error) {
+      await _recordServiceFailure(decision, error);
+    }
+  }
+
+  /// Says that a service write did not land, without failing the attempt.
+  ///
+  /// Non-blocking is not the same as invisible. One lost write costs a
+  /// redundant probe, which is why it does not stop practice; a systematic one
+  /// is storage quietly failing, which is worth being able to find. The next
+  /// ordinary presentation of the same parent tries again on its own, so
+  /// nothing retries here.
+  ///
+  /// Recorded under a key derived from the attempt rather than the attempt's
+  /// own, because the selection diagnostics for it are already written and
+  /// keyed by that id.
+  Future<void> _recordServiceFailure(
+    PendingDecision decision,
+    Object error,
+  ) async {
+    try {
+      await store.appendSelectionDiagnostics(
+        decision.profileId,
+        '${decision.attemptId}:acquisition-service',
+        'acquisition probe service was not recorded\n'
+            'parent=${decision.exercise}\n'
+            'error=$error\n'
+            'the obligation is left owed; a later presentation discharges it',
+      );
     } catch (_) {
-      // Owed is where it started, and a later presentation discharges it.
+      // Storage is failing broadly, and the attempt's own append will say so.
     }
   }
 
