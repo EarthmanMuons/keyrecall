@@ -37,7 +37,12 @@ const int checkpointSchemaVersion = 2;
 /// Independent of [attemptSchemaVersion], because the two logs answer to
 /// different readers: replaying attempts produces learner state, and replaying
 /// acquisition produces acquisition progress and nothing else.
-const int acquisitionSchemaVersion = 1;
+///
+/// Version 2 records how an attempt ended. Version 1 did not, and nothing
+/// infers it: an attempt the learner stopped and one an input disconnection
+/// cut off looked identical in that format, and choosing between them
+/// afterwards would put a cause on a record that never carried one.
+const int acquisitionSchemaVersion = 2;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

@@ -24,6 +24,23 @@ typedef RecordedGap = ({
   double ratio,
 });
 
+/// The acquisition-log versions this build can read.
+///
+/// Older records are read as they were written, with what they did not carry
+/// left absent. Nothing is upgraded in place: the log is the history, and a
+/// field added afterwards has no value a past record implies.
+const Set<int> readableAcquisitionVersions = {1, acquisitionSchemaVersion};
+
+/// Throws [JournalFormatException] for a version this build cannot read.
+void requireReadableAcquisitionVersion(int version, {String? location}) {
+  if (readableAcquisitionVersions.contains(version)) return;
+  throw JournalFormatException(
+    'acquisition schema version $version is not readable by this build, '
+    'which writes version $acquisitionSchemaVersion',
+    location: location,
+  );
+}
+
 /// Identifies an acquisition log and the profile whose work it holds.
 @immutable
 class AcquisitionJournalHeader {
@@ -54,13 +71,7 @@ class AcquisitionJournalHeader {
   /// a shape this build has never seen would be worse than refusing it.
   factory AcquisitionJournalHeader.fromJson(Map<String, Object?> json) {
     final version = requireInt(json, 'schema_version', location: 'header');
-    if (version != acquisitionSchemaVersion) {
-      throw JournalFormatException(
-        'acquisition schema version $version is not readable by this build, '
-        'which writes version $acquisitionSchemaVersion',
-        location: 'header',
-      );
-    }
+    requireReadableAcquisitionVersion(version, location: 'header');
     return AcquisitionJournalHeader(
       profileId: requireString(json, 'profile_id', location: 'header'),
       createdAt: requireTime(json, 'created_at', location: 'header'),
@@ -124,13 +135,18 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// Whether anything was played at all.
   final bool started;
 
-  /// How the attempt ended.
+  /// How the attempt ended, or null for a record written before the format
+  /// carried it.
   ///
   /// Beside the observation rather than part of it. An attempt the learner
   /// stopped at six notes and one an input disconnection cut off at six notes
   /// are the same performance and different evidence about the learner, and
   /// only this says which happened.
-  final AttemptTermination termination;
+  ///
+  /// Null is that uncertainty preserved rather than resolved. A version 1
+  /// record did not distinguish the two, so a reader that wants the
+  /// distinction has to treat those attempts as not saying.
+  final AttemptTermination? termination;
 
   /// Whether the sequence came out, and at what cost.
   final AcquisitionCompletion completion;
@@ -167,7 +183,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     required this.intrusions,
     required this.earnedProbe,
     required List<RecordedGap> gaps,
-    this.termination = AttemptTermination.learnerStopped,
+    this.termination,
     this.firstAbsentPosition,
     this.schemaVersion = acquisitionSchemaVersion,
   }) : gaps = List.unmodifiable(gaps) {
@@ -203,7 +219,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     'timing': task.timing.id,
     'advancement': task.advancement.id,
     'started': started,
-    'termination': termination.id,
+    'termination': termination?.id,
     'completion': completion.id,
     'repairs': repairs,
     'repeats': repeats,
@@ -227,13 +243,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   factory AcquisitionAttemptRecord.fromJson(Map<String, Object?> json) {
     final location = 'acquisition record';
     final version = requireInt(json, 'schema_version', location: location);
-    if (version != acquisitionSchemaVersion) {
-      throw JournalFormatException(
-        'acquisition schema version $version is not readable by this build, '
-        'which writes version $acquisitionSchemaVersion',
-        location: location,
-      );
-    }
+    requireReadableAcquisitionVersion(version, location: location);
     final portion = requireString(json, 'portion', location: location);
     if (portion != 'FULL_TRAVERSAL') {
       throw JournalFormatException(
@@ -276,9 +286,12 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         ),
       ),
       started: requireBool(json, 'started', location: location),
-      termination: AttemptTermination.fromId(
-        requireString(json, 'termination', location: location),
-      ),
+      // Absent in version 1, and absent here too rather than guessed.
+      termination: json['termination'] == null
+          ? null
+          : AttemptTermination.fromId(
+              requireString(json, 'termination', location: location),
+            ),
       completion: completion,
       repairs: requireInt(json, 'repairs', location: location),
       repeats: requireInt(json, 'repeats', location: location),
@@ -373,13 +386,7 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
   factory AcquisitionProbeServedRecord.fromJson(Map<String, Object?> json) {
     const location = 'acquisition probe service';
     final version = requireInt(json, 'schema_version', location: location);
-    if (version != acquisitionSchemaVersion) {
-      throw JournalFormatException(
-        'acquisition schema version $version is not readable by this build, '
-        'which writes version $acquisitionSchemaVersion',
-        location: location,
-      );
-    }
+    requireReadableAcquisitionVersion(version, location: location);
     return AcquisitionProbeServedRecord(
       schemaVersion: version,
       journalSequence: requireInt(json, 'journal_sequence', location: location),

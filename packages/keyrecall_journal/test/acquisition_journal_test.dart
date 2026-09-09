@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:test/test.dart';
 
@@ -114,6 +116,42 @@ void main() {
       ).attempts.single;
 
       expect(record.gaps.single.ratio, closeTo(2.3, 1e-9));
+    });
+  });
+
+  group('a log written before termination was recorded', () {
+    test('reads back without a cause being invented for it', () {
+      final current = (emptyLog()..append(recordAt(0))).toJsonLines();
+      final legacy = current
+          .split('\n')
+          .map((line) {
+            final json = jsonDecode(line) as Map<String, Object?>;
+            json['schema_version'] = 1;
+            json.remove('termination');
+            return jsonEncode(json);
+          })
+          .join('\n');
+
+      final read = AcquisitionJournal.fromJsonLines(legacy);
+      final record = read.attempts.single;
+
+      // The older format did not distinguish the learner stopping from an
+      // input disconnection, and this preserves that rather than choosing.
+      expect(record.termination, isNull);
+      expect(record.completion, AcquisitionCompletion.completedCleanly);
+      expect(read.replay().probeOwed(parent), isTrue);
+    });
+
+    test('is still refused at a version this build cannot read', () {
+      final ahead = (emptyLog()..append(recordAt(0))).toJsonLines().replaceAll(
+        '"schema_version":$acquisitionSchemaVersion',
+        '"schema_version":99',
+      );
+
+      expect(
+        () => AcquisitionJournal.fromJsonLines(ahead),
+        throwsA(isA<JournalFormatException>()),
+      );
     });
   });
 
