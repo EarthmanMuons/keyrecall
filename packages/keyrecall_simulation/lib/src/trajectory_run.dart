@@ -174,7 +174,7 @@ Trajectory runSittings({
       final available = selection.selectable;
       final selected = switch (selection) {
         CandidateSelected(:final candidate) => candidate,
-        SelectionBlocked() => null,
+        SelectionBlocked() || AcquisitionOffered() => null,
       };
       // A slot the pipeline could not fill stays unfilled: the seam replaces a
       // choice, it does not rescue a blocked decision.

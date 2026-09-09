@@ -44,6 +44,10 @@ policy already reads as a break, and a `TransitionCensus` accumulates those
 stalls across attempts at one task so a repeatedly troublesome transition can be
 told from generally uneven playing.
 
+Acquisition is offered when a bootstrap-shaped candidate's execution context has
+evidence and no demonstrated frontier, which is the gentlest ordinary question
+having been asked and having demonstrated nothing.
+
 Not to be confused with [Acquisition floor], which offers ordinary exercises.
 
 ### Admission band

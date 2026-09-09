@@ -145,7 +145,7 @@ Future<void> main(List<String> arguments) async {
     final traces = selection.traces;
     final chosen = switch (selection) {
       CandidateSelected(:final candidate) => candidate,
-      SelectionBlocked() => null,
+      SelectionBlocked() || AcquisitionOffered() => null,
     };
 
     if (chosen == null) {

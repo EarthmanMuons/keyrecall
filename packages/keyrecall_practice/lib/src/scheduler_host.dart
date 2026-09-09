@@ -223,6 +223,16 @@ class InProcessScheduler implements SchedulerHost {
         result: slot.result,
         diagnostics: slot.result.diagnostics,
       ),
+      // Unreachable until this host passes acquisition progress. A slot that
+      // offers acquisition has produced no ordinary candidate, and the ordinary
+      // path reads that the way it reads any other unfilled slot.
+      AcquisitionOffered() => SchedulerVerdict.blocked(
+        BlockedReason.admissionExhausted,
+        epoch: epoch,
+        effect: effect,
+        result: slot.result,
+        diagnostics: slot.result.diagnostics,
+      ),
     };
   }
 }

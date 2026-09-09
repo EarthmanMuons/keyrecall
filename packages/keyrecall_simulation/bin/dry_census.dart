@@ -148,7 +148,7 @@ _Census? _dryCensus({
     final available = selection.selectable;
     final chosen = switch (selection) {
       CandidateSelected(:final candidate) => candidate,
-      SelectionBlocked() => null,
+      SelectionBlocked() || AcquisitionOffered() => null,
     };
 
     if (chosen == null) {

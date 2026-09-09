@@ -164,7 +164,7 @@ _dryStateFor({
     final traces = selection.traces;
     final chosen = switch (selection) {
       CandidateSelected(:final candidate) => candidate,
-      SelectionBlocked() => null,
+      SelectionBlocked() || AcquisitionOffered() => null,
     };
 
     if (chosen == null) {

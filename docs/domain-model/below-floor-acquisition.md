@@ -1,10 +1,10 @@
 # Below-floor acquisition
 
-- **Status:** Representation, observation, repeated-transition aggregation, and
-  synthetic performance implemented. No scheduler selects an acquisition task
-  yet.
+- **Status:** Representation, observation, repeated-transition aggregation,
+  synthetic performance, the entry rule, and durable progress implemented.
+  Nothing presents an acquisition attempt or writes its progress to disk yet.
 - **Written:** September 8, 2026
-- **Revised:** September 8, 2026
+- **Revised:** September 9, 2026
 
 The guidance ladder changes how much support accompanies an exercise that is
 still an ordinary realization of its material. Below-floor acquisition can relax
@@ -159,6 +159,66 @@ The gap that mattered was localization. Before `momentGapsOf` the measurement
 carried one worst gap and where it ended, which can say a performance was
 interrupted but cannot say the same transition is in the way every time.
 
+## When acquisition begins
+
+Four facts the model already keeps, and no counter of its own:
+
+1. the candidate is a bootstrap shape, so it is already the floor;
+2. its execution context needs an execution bootstrap, so no frontier exists in
+   the scope progression reads;
+3. evidence has arrived in that context, so this is not a first exposure nobody
+   has tried;
+4. therefore the gentlest ordinary question has been asked and demonstrated
+   nothing.
+
+The gap between the second and the third is the whole of "repeatedly, with
+nothing to show for it". Counting failures separately would be a second
+difficulty model beside the one that already answers this, and the scope is the
+one the forgiving floor already settled: a frontier in one hand leaves the other
+hand acquiring.
+
+It is binary. One informative floor attempt that demonstrated nothing is already
+an attempt at the gentlest work the family has, and the forgiving floor has been
+offering that work repeatedly by the time this holds. If simulation shows it
+fires too eagerly, the missing fact is an exposure count beside `lastEvidenceAt`
+in `MaterialExecutionState`, which is evidence history about the context. A
+scheduler-local counter would be transient policy state, and residual variance
+would buy the same signal for the price of another calibration constant.
+
+Both entry points converge. A slot whose winner is a stuck floor candidate and a
+slot whose ordinary path produced nothing at all are the same situation stated
+twice, so they reach one rule and one constructor rather than the blocked case
+acquiring an escape hatch with evidence rules of its own.
+
+The task is constructed where the stuck condition is found. Candidate generation
+may not read learner state, so an acquisition task cannot be generated there;
+this is the same exception the next tempo rung already takes.
+
+Offering is opt-in. A decision that passes no acquisition progress behaves
+exactly as it did before any of this existed, which is what keeps the recorded
+trajectory corpus unchanged.
+
+## What is durable
+
+`AcquisitionProgress` is keyed by the parent exercise, because what a criterion
+success earns is a probe of that exact question, and two parents in one context
+can be stuck for different reasons.
+
+It is not `LearnerState`. Nothing in it is evidence in the learner model's
+vocabulary, and keeping it out of that container is what stops an acquisition
+attempt reaching a residual, a frontier, or a memory clock by sharing one.
+
+It is not `SessionState` either, and that is a semantic requirement rather than
+a convenience. Every field of a sitting is deliberately a condition of the
+sitting it arose in. A criterion success followed by a break is still a
+criterion success, so putting acquisition progress there would make the result
+depend on where the learner happened to stop.
+
+It records counts and reads them binary. One criterion success earns the probe
+today; the attempt, completion, and criterion counts are all kept so that a rule
+wanting two of them is a change of policy rather than a change of what was
+recorded. That is the same discipline the entry rule follows.
+
 ## Repeated transitions
 
 One attempt says where the playing broke. Only repetition says a transition is
@@ -224,8 +284,15 @@ end to end without a policy having been written.
 - **Scheduler selection.** Repeated supported opportunities with no frontier
   justify offering a scaffold. They do not identify what is too difficult, so
   the first task is the default rather than a diagnosis.
-- **Persistence.** Nothing journals an acquisition attempt yet, so a census
-  lives no longer than the process that built it.
+- **Presentation and persistence.** Nothing presents an acquisition task, and
+  nothing writes progress to disk. The codec exists and round trips, but no
+  journal record type carries an acquisition attempt and no checkpoint holds
+  progress. A checkpoint would be the wrong home on its own: checkpoints are
+  disposable acceleration, rebuildable from attempts, so acquisition history has
+  to be replayable from the journal rather than only cached.
+- **The probe itself.** Progress can say a parent has earned one. Nothing
+  schedules it.
+- **A census that outlives its process.** Nothing journals the gap series.
 - **Located repairs.** The census aggregates stalls only.
 - **Hands together.** `performAcquisition` refuses a two-hand parent. Two onset
   streams and the distance between them are a coordination model, and

@@ -122,7 +122,7 @@ class SchedulerAgent {
     );
     final winner = switch (selection) {
       CandidateSelected(:final candidate) => candidate,
-      SelectionBlocked() => null,
+      SelectionBlocked() || AcquisitionOffered() => null,
     };
 
     final contenders =

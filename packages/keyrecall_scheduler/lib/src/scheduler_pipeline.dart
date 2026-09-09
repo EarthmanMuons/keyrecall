@@ -2,6 +2,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'acquisition_floor.dart';
+import 'acquisition_progress.dart';
 import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 import 'execution_progression.dart';
@@ -125,6 +126,36 @@ enum BlockedReason {
   safeEntryRejected,
 }
 
+/// The scheduler offered supported acquisition instead of ordinary work.
+///
+/// Reached only when the caller supplies acquisition progress, so a decision
+/// that does not opt in behaves exactly as it did before this existed.
+///
+/// One outcome for both entry points. A slot whose ordinary path is blocked
+/// and a slot whose winner is a floor candidate that has taught the model
+/// nothing are the same situation stated twice, and giving the blocked case
+/// its own path would let it acquire different evidence rules.
+final class AcquisitionOffered extends SelectionResult {
+  /// The task to present.
+  final AcquisitionTask task;
+
+  /// The candidate whose stuck floor opened this, when there was one.
+  ///
+  /// Null where the ordinary path produced nothing at all to point at.
+  final CandidateTrace? stuck;
+
+  const AcquisitionOffered({
+    super.diagnostics,
+    required super.traces,
+    required super.selectable,
+    required super.pacing,
+    super.dose,
+    required super.introductions,
+    required this.task,
+    required this.stuck,
+  });
+}
+
 /// Useful work was requested, but the scheduler could not produce it.
 final class SelectionBlocked extends SelectionResult {
   final BlockedReason reason;
@@ -179,6 +210,7 @@ class SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionProgress? acquisition,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -189,6 +221,7 @@ class SchedulerPipeline {
       at: at,
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
+      acquisition: acquisition,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
     );
@@ -218,6 +251,7 @@ class SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionProgress? acquisition,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -270,6 +304,15 @@ class SchedulerPipeline {
       }
     }
 
+    final offer = acquisition == null
+        ? null
+        : acquisitionFor(
+            state: state,
+            progress: acquisition,
+            selected: selected,
+            traces: traces,
+          );
+
     final diagnostics = selectionDiagnostics(
       traces: traces,
       stages: narrowed.stages,
@@ -283,9 +326,21 @@ class SchedulerPipeline {
       guidanceService:
           overdueGuidanceProbe(narrowed.selectable, session) != null,
       acquisitionFallback: acquisitionFallback,
+      acquisitionOffered: offer != null,
     );
     return (
-      result: selected == null
+      result: offer != null
+          ? AcquisitionOffered(
+              diagnostics: diagnostics,
+              traces: traces,
+              selectable: narrowed.selectable,
+              pacing: narrowed.pacing,
+              dose: narrowed.dose,
+              introductions: narrowed.introductions,
+              task: offer.task,
+              stuck: offer.stuck,
+            )
+          : selected == null
           ? SelectionBlocked(
               diagnostics: diagnostics,
               traces: traces,
@@ -885,6 +940,70 @@ class SchedulerPipeline {
           ?.demonstratedTempoByOctaves
           .isEmpty ??
       true;
+
+  /// Whether this candidate's context has been asked the gentlest ordinary
+  /// question and learned nothing actionable from it.
+  ///
+  /// Four facts the model already keeps, and no counter of its own. The
+  /// candidate is a bootstrap shape, so it is already the floor; its context
+  /// needs an execution bootstrap, so no frontier exists in the scope
+  /// progression reads; and evidence has arrived there, so this is not a first
+  /// exposure that has simply never been tried.
+  ///
+  /// The gap between evidence having arrived and no tempo being demonstrated is
+  /// what "repeatedly, with nothing to show for it" means here. Counting
+  /// failures separately would be a second difficulty model beside the one that
+  /// already answers this.
+  ///
+  /// Binary on purpose. One informative floor attempt that demonstrated nothing
+  /// is already an attempt at the gentlest work the family has. If simulation
+  /// shows that fires too eagerly, the missing fact is an exposure count beside
+  /// `lastEvidenceAt`, which is evidence history about the context, rather than
+  /// transient policy state here.
+  bool needsAcquisition(LearnerState state, Exercise exercise) =>
+      isBootstrapShape(exercise) &&
+      needsExecutionBootstrap(state, exercise) &&
+      state.materialExecution[executionContextOf(exercise)]?.lastEvidenceAt !=
+          null;
+
+  /// The acquisition task a stuck floor calls for, and the candidate that
+  /// showed it, or null when ordinary work is still the answer.
+  ///
+  /// The construction point. Candidate generation may not read learner state,
+  /// so an acquisition task cannot be generated there; it is built where the
+  /// stuck condition is discovered, which is the same exception the next tempo
+  /// rung already takes.
+  ///
+  /// A parent that has already earned a probe is not offered acquisition
+  /// again. What it is owed is the probe.
+  ({AcquisitionTask task, CandidateTrace? stuck})? acquisitionFor({
+    required LearnerState state,
+    required AcquisitionProgress progress,
+    required CandidateTrace? selected,
+    required List<CandidateTrace> traces,
+  }) {
+    bool stuck(Exercise exercise) =>
+        needsAcquisition(state, exercise) &&
+        !progress.earnsParentProbe(exercise);
+
+    if (selected != null) {
+      return stuck(selected.exercise)
+          ? (
+              task: AcquisitionTask.unmeteredTraversal(selected.exercise),
+              stuck: selected,
+            )
+          : null;
+    }
+    for (final trace in traces) {
+      if (stuck(trace.exercise)) {
+        return (
+          task: AcquisitionTask.unmeteredTraversal(trace.exercise),
+          stuck: trace,
+        );
+      }
+    }
+    return null;
+  }
 
   /// The predicted success a candidate has to clear to be ordinarily admitted.
   ///

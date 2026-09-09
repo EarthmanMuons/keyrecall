@@ -238,11 +238,11 @@ class _Worker {
           epoch: request.epoch,
           chosen: switch (slot.result) {
             CandidateSelected(:final candidate) => candidate,
-            SelectionBlocked() => null,
+            SelectionBlocked() || AcquisitionOffered() => null,
           },
           blockedReason: switch (slot.result) {
             SelectionBlocked(:final reason) => reason,
-            CandidateSelected() => null,
+            CandidateSelected() || AcquisitionOffered() => null,
           },
           guidanceProbeAvailable: slot.guidanceProbeAvailable,
           guidanceProbeSelected: slot.guidanceProbeSelected,
