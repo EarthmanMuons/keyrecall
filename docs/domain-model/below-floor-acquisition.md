@@ -427,6 +427,26 @@ its hand and family boundaries. The learning curve and hardest-opportunity
 summary are provisional simulation assumptions, not measured pedagogical
 effects.
 
+## Reaching the live path
+
+A verdict answers with a candidate, a block, or a task. An acquisition task is
+not a candidate and never becomes one, so it travels beside the chosen one
+rather than through it, and neither host can hand it back as ordinary work. The
+worker carries it across the port as well.
+
+A host holds no history of its own, so the rebuilt progress and the exact
+attempted parents arrive from the caller. A caller that supplies neither reaches
+the verdict it reached before any of this existed.
+
+The sitting owns both. Acquisition history is its own file beside the attempt
+journal, loaded when the sitting opens and replayed rather than held, so
+progress is whatever the durable log produces and cannot drift from it.
+
+Service is written where the parent is presented, from the presenting attempt's
+own identity. A failed write leaves the obligation owed, which costs a redundant
+probe later; failing the attempt instead would cost the learner their practice,
+which is worse.
+
 ## Deliberately not built
 
 - **Fragments.** A fixed three-note or five-note entry pattern can end before
@@ -441,12 +461,11 @@ effects.
 - **Failure-specific selection.** The scheduler can offer acquisition, but its
   unmetered task is a default rather than a diagnosis of a particular obstacle.
 - **Presentation.** Nothing shows an acquisition task or collects a transcript
-  for one. The path from an observation to a record exists and is tested; what
-  is missing is the screen and the loop that calls it.
-- **Calling the service write.** `acquisitionServiceOf` produces the record an
-  ordinary presentation owes, and nothing calls it, because nothing presents an
-  attempt through a live loop yet. It cannot fire in production until an
-  acquisition attempt has been recorded, since progress is empty until then.
+  for one, so nothing appends an acquisition attempt. The observation-to-record
+  path exists and is tested; what is missing is the screen and the loop that
+  calls it. A live loop that meets an offered task idles and says so rather than
+  substituting ordinary work, because the scheduler has already said what this
+  learner should be doing.
 - **Census replay.** The acquisition journal preserves gaps; no adapter yet
   reconstructs `TransitionCensus` from those records.
 - **Located repairs.** The census aggregates stalls only.

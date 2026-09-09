@@ -314,6 +314,11 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
         );
       case PracticeCaughtUp():
         return accumulator.finish(ArpeggioPolicyTerminal.caughtUp);
+      case PracticeAcquisition():
+        // This experiment drives the ordinary path only; nothing here can play
+        // a supported task, and treating one as ordinary work would put an
+        // attempt in the census that never happened.
+        return accumulator.finish(ArpeggioPolicyTerminal.blocked);
       case PracticeBlocked():
         accumulator.record(slot, pipeline.lastSelection!, pipeline.lastState!);
         return accumulator.finish(ArpeggioPolicyTerminal.blocked);

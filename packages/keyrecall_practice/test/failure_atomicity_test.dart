@@ -98,6 +98,16 @@ class FlakyPracticeStore implements PracticeStore {
       inner.savePracticePlan(profileId, plan);
 
   @override
+  Future<AcquisitionJournal> loadAcquisitionJournal(
+    String profileId, {
+    DateTime? createdAt,
+  }) => inner.loadAcquisitionJournal(profileId, createdAt: createdAt);
+
+  @override
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) =>
+      inner.appendAcquisitionEntry(entry);
+
+  @override
   Future<void> erase(String profileId) => inner.erase(profileId);
 }
 
@@ -174,6 +184,16 @@ class MisfilingPracticeStore implements PracticeStore {
   @override
   Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
       inner.savePracticePlan(profileId, plan);
+
+  @override
+  Future<AcquisitionJournal> loadAcquisitionJournal(
+    String profileId, {
+    DateTime? createdAt,
+  }) => inner.loadAcquisitionJournal(profileId, createdAt: createdAt);
+
+  @override
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) =>
+      inner.appendAcquisitionEntry(entry);
 
   @override
   Future<void> erase(String profileId) => inner.erase(profileId);

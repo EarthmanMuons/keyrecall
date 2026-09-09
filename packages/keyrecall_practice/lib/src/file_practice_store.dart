@@ -109,6 +109,61 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
+  Future<AcquisitionJournal> loadAcquisitionJournal(
+    String profileId, {
+    DateTime? createdAt,
+  }) => _queue.run(profileId, () => _loadAcquisition(profileId, createdAt));
+
+  Future<AcquisitionJournal> _loadAcquisition(
+    String profileId,
+    DateTime? createdAt,
+  ) async {
+    await _recoverErase(profileId);
+    final file = _acquisitionFile(profileId);
+    if (!file.existsSync()) {
+      return AcquisitionJournal(
+        AcquisitionJournalHeader(
+          profileId: profileId,
+          createdAt: createdAt ?? DateTime.now().toUtc(),
+        ),
+      );
+    }
+    return AcquisitionJournal.fromJsonLines(
+      await _readCommittedLines(file, profileId),
+    );
+  }
+
+  @override
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) => _queue.run(
+    entry.identity.profileId,
+    () => _appendAcquisitionEntry(entry),
+  );
+
+  Future<void> _appendAcquisitionEntry(AcquisitionEntry entry) async {
+    final profileId = entry.identity.profileId;
+    await _recoverErase(profileId);
+    final file = _acquisitionFile(profileId);
+    await file.parent.create(recursive: true);
+    await _repairTornTail(file);
+
+    if (!file.existsSync()) {
+      final header = AcquisitionJournalHeader(
+        profileId: profileId,
+        createdAt: entry.identity.occurredAt,
+      );
+      await _appendLine(file, canonicalJson(header.toJson()));
+    }
+
+    // Read-modify-validate against what is on disk, the way an attempt is
+    // appended: the log enforces contiguous sequence, forward time, and
+    // conflicting-id detection, and those checks mean nothing against a copy.
+    final log = await _loadAcquisition(profileId, null);
+    if (!log.append(entry)) return;
+
+    await _appendLine(file, canonicalJson(entry.toJson()));
+  }
+
+  @override
   Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId) =>
       _queue.run(profileId, () => _loadFeedbackExposures(profileId));
 
@@ -452,6 +507,7 @@ class FilePracticeStore implements PracticeStore {
   Future<void> _finishErase(String profileId) async {
     for (final file in [
       _journalFile(profileId),
+      _acquisitionFile(profileId),
       _pendingFile(profileId),
       _checkpointFile(profileId),
       _feedbackFile(profileId),
@@ -484,6 +540,9 @@ class FilePracticeStore implements PracticeStore {
 
   File _journalFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/journal.jsonl');
+
+  File _acquisitionFile(String profileId) =>
+      File('${_profileDirectory(profileId).path}/acquisition.jsonl');
 
   File _pendingFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/pending.json');

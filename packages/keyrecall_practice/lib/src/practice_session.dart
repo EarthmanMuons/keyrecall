@@ -5,6 +5,7 @@ import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
+import 'acquisition_closure.dart';
 import 'pending_decision.dart';
 import 'performance_closure.dart';
 import 'practice_store.dart';
@@ -46,6 +47,26 @@ class PresentedAttempt extends PracticeDecision {
 
   @override
   String toString() => 'PresentedAttempt(${decision.attemptId}, $exercise)';
+}
+
+/// Supported acquisition was offered instead of ordinary work.
+///
+/// Not an attempt yet. Nothing is durable here and no transaction is open,
+/// because an acquisition attempt is recorded in its own log and nothing
+/// presents one. A caller that does not understand this shows nothing and asks
+/// again, which leaves the obligation and the learner exactly where they were.
+@immutable
+class PracticeAcquisition extends PracticeDecision {
+  /// The supported task to present.
+  final AcquisitionTask task;
+
+  /// Curriculum coverage at the instant it was offered.
+  final ScopeCoverage coverage;
+
+  const PracticeAcquisition(this.task, {required this.coverage});
+
+  @override
+  String toString() => 'PracticeAcquisition($task)';
 }
 
 /// Useful work was requested, but no exercise could be presented.
@@ -163,6 +184,7 @@ class PracticeSession {
   final IdGenerator _nextId;
   final SessionState _session;
   final AttemptJournal _journal;
+  final AcquisitionJournal _acquisition;
 
   LearnerState _state;
 
@@ -201,11 +223,13 @@ class PracticeSession {
     required LearnerState state,
     required SessionState session,
     required AttemptJournal journal,
+    required AcquisitionJournal acquisition,
     required PendingDecision? pending,
   }) : _nextId = nextId,
        _state = state,
        _session = session,
        _journal = journal,
+       _acquisition = acquisition,
        _pending = pending,
        _materials = List.unmodifiable(materials),
        _instrument = instrument,
@@ -273,6 +297,10 @@ class PracticeSession {
       );
     }
 
+    final acquisition = await store.loadAcquisitionJournal(
+      profile.id,
+      createdAt: profile.createdAt,
+    );
     final pending = await _recoverPending(store, profile, journal);
 
     return PracticeSession._(
@@ -293,6 +321,7 @@ class PracticeSession {
       state: replay.state,
       session: _rebuildSessionState(journal, learner, resolvedPipeline.config),
       journal: journal,
+      acquisition: acquisition,
       pending: pending,
     );
   }
@@ -309,6 +338,15 @@ class PracticeSession {
 
   /// Every attempt recorded for this profile so far.
   AttemptJournal get journal => _journal;
+
+  /// Every acquisition event recorded for this profile so far.
+  AcquisitionJournal get acquisitionJournal => _acquisition;
+
+  /// What acquisition history says about this profile now.
+  ///
+  /// Replayed rather than held, so it is whatever the durable log produces and
+  /// cannot drift from it.
+  AcquisitionProgress get acquisitionProgress => _acquisition.replay();
 
   /// The scheduler's view of this sitting.
   SessionState get session => _session;
@@ -417,12 +455,19 @@ class PracticeSession {
       ],
       at: at,
       acquisitionFloor: acquisitionFloor,
+      acquisition: acquisitionProgress,
+      attemptedAcquisitionParents: attemptedAcquisitionParents(
+        _journal.records,
+      ),
     );
     // Nothing is applied and nothing is written: while this was computed, the
     // inputs it answers about stopped being the current ones.
     if (verdict.epoch != _epoch) return PracticeSuperseded(verdict.epoch);
 
     verdict.effect.applyTo(_session);
+    if (verdict.acquisitionTask case final task?) {
+      return PracticeAcquisition(task, coverage: evaluated.coverage);
+    }
     if (verdict.chosen == null) {
       return PracticeBlocked(
         verdict.blockedReason!,
@@ -463,9 +508,42 @@ class PracticeSession {
     // Durable before the exercise is shown. Everything after this point is
     // recoverable; before it, nothing was presented.
     await store.savePendingDecision(decision);
+    await _serveAcquisitionProbe(decision);
     final presented = PresentedAttempt(decision, coverage: evaluated.coverage);
     _outstanding = presented;
     return presented;
+  }
+
+  /// Records that presenting [decision] asked what acquisition earned.
+  ///
+  /// Keyed on the exercise being presented rather than on why it was chosen. A
+  /// parent reaches the learner because the service phase served an owed probe
+  /// or because ordinary ranking picked it, and either way the question has
+  /// been asked; discharging only the first would ask it again next slot.
+  ///
+  /// A failed write leaves the obligation owed, which costs a redundant probe
+  /// later. Failing the attempt instead would cost the learner their practice,
+  /// which is the worse of the two.
+  Future<void> _serveAcquisitionProbe(PendingDecision decision) async {
+    final service = acquisitionServiceOf(
+      presented: decision.exercise,
+      progress: acquisitionProgress,
+      identity: AttemptIdentity(
+        profileId: decision.profileId,
+        attemptId: decision.attemptId,
+        sessionId: decision.sessionId,
+        indexInSession: decision.indexInSession,
+        occurredAt: decision.decidedAt,
+      ),
+      journalSequence: _acquisition.nextSequence,
+    );
+    if (service == null) return;
+    try {
+      await store.appendAcquisitionEntry(service);
+      _acquisition.append(service);
+    } catch (_) {
+      // Owed is where it started, and a later presentation discharges it.
+    }
   }
 
   /// The presented attempt, or null for a blocked scheduling request.
@@ -476,6 +554,7 @@ class PracticeSession {
   Future<PresentedAttempt?> decide({required DateTime at}) async =>
       switch (await decideOutcome(at: at)) {
         final PresentedAttempt presented => presented,
+        PracticeAcquisition() ||
         PracticeBlocked() ||
         PracticeCaughtUp() ||
         PracticeSuperseded() ||

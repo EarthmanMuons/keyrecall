@@ -336,6 +336,9 @@ enum PracticeIdleReason {
 
   /// The goal or focus could not be resolved against this catalog.
   invalidScope,
+
+  /// Supported acquisition was offered and nothing here can present it yet.
+  acquisitionOffered,
 }
 
 /// Everything the panel needs to show about the loop's current position.
@@ -786,6 +789,20 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastCommitted: from.lastCommitted,
         lastReading: from.lastReading,
         note: 'practice caught up',
+      ),
+      // Nothing shows an acquisition task yet. The loop idles rather than
+      // presenting something else, because the scheduler has said what this
+      // learner should be doing and quietly substituting ordinary work would
+      // be answering a different question.
+      PracticeAcquisition(:final coverage) => PracticeLoopState(
+        profile: from.profile,
+        plan: from.plan,
+        session: from.session,
+        coverage: coverage,
+        idle: PracticeIdleReason.acquisitionOffered,
+        lastCommitted: from.lastCommitted,
+        lastReading: from.lastReading,
+        note: 'supported acquisition offered; no screen presents it yet',
       ),
       PracticeInvalidScope(:final failures) => PracticeLoopState(
         profile: from.profile,

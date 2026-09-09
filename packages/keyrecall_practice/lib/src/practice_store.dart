@@ -71,6 +71,23 @@ abstract interface class PracticeStore {
   /// commit cannot record the same evidence twice.
   Future<void> appendAttempt(AttemptRecord record);
 
+  /// Every acquisition event recorded for [profileId], oldest first.
+  ///
+  /// Its own log, because replaying attempts produces learner state and an
+  /// acquisition attempt is deliberately not evidence for it. Returns an empty
+  /// log for a profile with no acquisition history, which is every profile
+  /// until one is offered.
+  Future<AcquisitionJournal> loadAcquisitionJournal(
+    String profileId, {
+    DateTime? createdAt,
+  });
+
+  /// Durably appends [entry] to the end of that profile's acquisition history.
+  ///
+  /// Must be idempotent on the attempt id, so a retry after an interrupted
+  /// commit cannot discharge an obligation twice or record one attempt as two.
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry);
+
   /// Every post-attempt feedback exposure for [profileId], oldest first.
   Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId);
 
@@ -150,6 +167,8 @@ class InMemoryPracticeStore implements PracticeStore {
   }
 
   final Map<String, AttemptJournal> _journals = {};
+
+  final Map<String, AcquisitionJournal> _acquisitionLogs = {};
   final Map<String, PendingDecision> _pending = {};
   final Map<String, LearnerStateCheckpoint> _checkpoints = {};
   final Map<String, PracticePlan> _plans = {};
@@ -172,6 +191,17 @@ class InMemoryPracticeStore implements PracticeStore {
   @override
   Future<void> appendAttempt(AttemptRecord record) async {
     _journalFor(record.profileId, null).append(record);
+  }
+
+  @override
+  Future<AcquisitionJournal> loadAcquisitionJournal(
+    String profileId, {
+    DateTime? createdAt,
+  }) async => _acquisitionFor(profileId, createdAt);
+
+  @override
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) async {
+    _acquisitionFor(entry.identity.profileId, null).append(entry);
   }
 
   @override
@@ -248,6 +278,17 @@ class InMemoryPracticeStore implements PracticeStore {
     _plans.remove(profileId);
     _coordination.remove(profileId);
   }
+
+  AcquisitionJournal _acquisitionFor(String profileId, DateTime? createdAt) =>
+      _acquisitionLogs.putIfAbsent(
+        profileId,
+        () => AcquisitionJournal(
+          AcquisitionJournalHeader(
+            profileId: profileId,
+            createdAt: createdAt ?? this.createdAt,
+          ),
+        ),
+      );
 
   AttemptJournal _journalFor(String profileId, DateTime? createdAt) =>
       _journals.putIfAbsent(
