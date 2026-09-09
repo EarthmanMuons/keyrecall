@@ -985,8 +985,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
 
     if (_phase == _Phase.playing && _hasCoveredTraversal(transcript)) {
       // After the frame, so finishing does not run inside a build.
+      //
+      // The app ended it, and the record says so. Reporting the learner as
+      // having stopped would put a cause on the closure that nobody supplied,
+      // and the acquisition log reads that field.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(_finish(AttemptTermination.learnerStopped));
+        if (mounted) unawaited(_finish(AttemptTermination.traversalCompleted));
       });
     }
 

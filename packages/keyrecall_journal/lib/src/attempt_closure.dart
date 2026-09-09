@@ -13,6 +13,14 @@ enum AttemptTermination {
   /// until measurement does, and tapping Done is the weaker claim.
   learnerStopped('LEARNER_STOPPED'),
 
+  /// The app ended it because the traversal had been covered.
+  ///
+  /// Why observation stopped, which is a different axis from whether the
+  /// material was produced. A learner tapping Done and the app noticing that
+  /// every expected position had been accounted for are different causes, and
+  /// a field that meant both could not be read as evidence about either.
+  traversalCompleted('TRAVERSAL_COMPLETED'),
+
   /// Nothing arrived for long enough that the attempt was closed.
   inactivityTimeout('INACTIVITY_TIMEOUT'),
 

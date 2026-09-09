@@ -142,6 +142,48 @@ void main() {
       expect(read.replay().probeOwed(parent), isTrue);
     });
 
+    test('reads back saying nothing where two causes were written alike', () {
+      // Version 2 wrote the learner stopping and the app ending a covered
+      // traversal identically, so neither can be recovered from it.
+      final current = (emptyLog()..append(recordAt(0))).toJsonLines();
+      final version2 = current
+          .split('\n')
+          .map((line) {
+            final json = jsonDecode(line) as Map<String, Object?>;
+            json['schema_version'] = 2;
+            if (json.containsKey('termination')) {
+              json['termination'] = 'LEARNER_STOPPED';
+            }
+            return jsonEncode(json);
+          })
+          .join('\n');
+
+      expect(
+        AcquisitionJournal.fromJsonLines(version2).attempts.single.termination,
+        isNull,
+      );
+    });
+
+    test('keeps a version 2 cause that was never ambiguous', () {
+      final current = (emptyLog()..append(recordAt(0))).toJsonLines();
+      final version2 = current
+          .split('\n')
+          .map((line) {
+            final json = jsonDecode(line) as Map<String, Object?>;
+            json['schema_version'] = 2;
+            if (json.containsKey('termination')) {
+              json['termination'] = 'INPUT_INTERRUPTED';
+            }
+            return jsonEncode(json);
+          })
+          .join('\n');
+
+      expect(
+        AcquisitionJournal.fromJsonLines(version2).attempts.single.termination,
+        AttemptTermination.inputInterrupted,
+      );
+    });
+
     test('is still refused at a version this build cannot read', () {
       final ahead = (emptyLog()..append(recordAt(0))).toJsonLines().replaceAll(
         '"schema_version":$acquisitionSchemaVersion',

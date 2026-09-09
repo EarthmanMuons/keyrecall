@@ -42,7 +42,12 @@ const int checkpointSchemaVersion = 2;
 /// infers it: an attempt the learner stopped and one an input disconnection
 /// cut off looked identical in that format, and choosing between them
 /// afterwards would put a cause on a record that never carried one.
-const int acquisitionSchemaVersion = 2;
+///
+/// Version 3 separates the app ending an attempt because the traversal was
+/// covered from the learner ending it. Version 2 wrote both as the learner
+/// stopping, so those records read back with no termination at all, for the
+/// same reason version 1's do.
+const int acquisitionSchemaVersion = 3;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

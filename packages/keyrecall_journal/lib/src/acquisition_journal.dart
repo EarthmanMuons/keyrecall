@@ -29,7 +29,7 @@ typedef RecordedGap = ({
 /// Older records are read as they were written, with what they did not carry
 /// left absent. Nothing is upgraded in place: the log is the history, and a
 /// field added afterwards has no value a past record implies.
-const Set<int> readableAcquisitionVersions = {1, acquisitionSchemaVersion};
+const Set<int> readableAcquisitionVersions = {1, 2, acquisitionSchemaVersion};
 
 /// Throws [JournalFormatException] for a version this build cannot read.
 void requireReadableAcquisitionVersion(int version, {String? location}) {
@@ -144,8 +144,9 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// only this says which happened.
   ///
   /// Null is that uncertainty preserved rather than resolved. A version 1
-  /// record did not distinguish the two, so a reader that wants the
-  /// distinction has to treat those attempts as not saying.
+  /// record carried nothing, and a version 2 record wrote the learner stopping
+  /// and the app ending a covered traversal identically, so a reader that
+  /// wants either distinction has to treat those attempts as not saying.
   final AttemptTermination? termination;
 
   /// Whether the sequence came out, and at what cost.
@@ -286,12 +287,10 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         ),
       ),
       started: requireBool(json, 'started', location: location),
-      // Absent in version 1, and absent here too rather than guessed.
-      termination: json['termination'] == null
-          ? null
-          : AttemptTermination.fromId(
-              requireString(json, 'termination', location: location),
-            ),
+      // Absent in version 1, and meaning two things at once in version 2,
+      // which wrote the learner stopping and the app ending a covered
+      // traversal identically. Both read back as not saying.
+      termination: _terminationOf(json, version, location),
       completion: completion,
       repairs: requireInt(json, 'repairs', location: location),
       repeats: requireInt(json, 'repeats', location: location),
@@ -319,6 +318,22 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
       'expected a list at "gaps", got ${value.runtimeType}',
       location: location,
     );
+  }
+
+  /// How the attempt ended, where the format could say.
+  static AttemptTermination? _terminationOf(
+    Map<String, Object?> json,
+    int version,
+    String location,
+  ) {
+    final written = json['termination'];
+    if (written == null) return null;
+    final termination = AttemptTermination.fromId(
+      requireString(json, 'termination', location: location),
+    );
+    return version < 3 && termination == AttemptTermination.learnerStopped
+        ? null
+        : termination;
   }
 
   static RecordedGap _decodeGap(Map<String, Object?> json, String location) => (
