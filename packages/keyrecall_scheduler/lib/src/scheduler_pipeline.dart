@@ -210,6 +210,7 @@ class SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise> attemptedAcquisitionParents = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
@@ -222,6 +223,7 @@ class SchedulerPipeline {
       at: at,
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedAcquisitionParents: attemptedAcquisitionParents,
       practiceEntryPolicy: practiceEntryPolicy,
@@ -253,6 +255,7 @@ class SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise> attemptedAcquisitionParents = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
@@ -336,18 +339,23 @@ class SchedulerPipeline {
       }
     }
 
+    // The family's declared floor, which is a different question from the safe
+    // entry ordinary admission reaches for. A general sitting never runs out of
+    // ordinary work and so is given no safe entry, and its learners are exactly
+    // the ones acquisition is for.
+    final familyFloor = acquisitionFamilyFloor ?? acquisitionFloor;
     final offer =
         acquisition == null ||
-            acquisitionFloor == null ||
+            familyFloor == null ||
             servedProbe != null ||
-            acquisitionFloor.entries.any(
+            familyFloor.entries.any(
               (entry) => !candidates.contains(entry.exercise),
             )
         ? null
         : acquisitionFor(
             state: state,
             progress: acquisition,
-            floor: acquisitionFloor,
+            floor: familyFloor,
             attemptedParents: attemptedAcquisitionParents,
             selected: selected,
             traces: traces,

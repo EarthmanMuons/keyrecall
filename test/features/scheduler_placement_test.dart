@@ -115,6 +115,7 @@ class _ParityScheduler extends IsolateScheduler {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise> attemptedAcquisitionParents = const {},
   }) async {
@@ -125,6 +126,7 @@ class _ParityScheduler extends IsolateScheduler {
       dueRequirementIds: dueRequirementIds,
       at: at,
       acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedAcquisitionParents: attemptedAcquisitionParents,
     );
@@ -135,6 +137,7 @@ class _ParityScheduler extends IsolateScheduler {
       dueRequirementIds: dueRequirementIds,
       at: at,
       acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedAcquisitionParents: attemptedAcquisitionParents,
     );

@@ -102,6 +102,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   /// one on screen.
   String? _playing;
 
+  /// Attempts whose screen has been built, so presentation is acknowledged
+  /// once each rather than on every frame.
+  final Set<String> _presented = {};
+
   @override
   Widget build(BuildContext context) {
     final loop = ref.watch(practiceLoopProvider);
@@ -162,14 +166,25 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 
     final attemptId =
         loop.value?.presented?.decision.attemptId ??
-        loop.value?.pending?.attemptId;
+        loop.value?.pending?.attemptId ??
+        loop.value?.acquisition?.attemptId;
     if (_playing != attemptId) _playing = null;
+
+    // Past the review, so what is being built is the attempt itself. Deciding
+    // happened while the review was still on screen; this frame is where the
+    // exercise actually reaches the learner, and it is what a probe earned by
+    // supported work is discharged against.
+    if (attemptId != null && _presented.add(attemptId)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(notifier.acknowledgePresentation());
+      });
+    }
 
     return Scaffold(
       appBar: _PracticeAppBar(
         running: _playing == null
             ? null
-            : loop.value?.exercise ?? loop.value?.acquisition?.parent,
+            : loop.value?.exercise ?? loop.value?.acquisition?.task.parent,
         // A stated tempo reads as a target, and this task removed the
         // obligation rather than lowering it.
         showsTempo: loop.value?.acquisition == null,
@@ -178,11 +193,15 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         // Supported acquisition, which is the same screen with one demand
         // removed rather than a mode of its own.
         AsyncData(:final value) when value.acquisition != null => AttemptView(
-          key: ValueKey(value.acquisition),
-          exercise: value.acquisition!.parent,
-          acquisition: value.acquisition,
-          metBefore: value.hasMet(value.acquisition!.parent.material),
-          onFinish: (_) => notifier.finishAcquisition(),
+          // Keyed on the presentation, not the task. Two offers of the same
+          // task are two attempts at it, and a shared key would hand the
+          // second one the first one's finished state.
+          key: ValueKey(value.acquisition!.attemptId),
+          exercise: value.acquisition!.task.parent,
+          acquisition: value.acquisition!.task,
+          metBefore: value.hasMet(value.acquisition!.task.parent.material),
+          onFinish: (termination) =>
+              notifier.finishAcquisition(termination: termination),
           onUnderWay: () => setState(() => _playing = attemptId),
           onBackToReady: () => setState(() => _playing = null),
         ),

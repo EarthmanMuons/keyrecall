@@ -4,6 +4,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
+import 'attempt_closure.dart';
 import 'attempt_record.dart';
 import 'canonical_json.dart';
 import 'codecs/domain_codec.dart';
@@ -123,6 +124,14 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// Whether anything was played at all.
   final bool started;
 
+  /// How the attempt ended.
+  ///
+  /// Beside the observation rather than part of it. An attempt the learner
+  /// stopped at six notes and one an input disconnection cut off at six notes
+  /// are the same performance and different evidence about the learner, and
+  /// only this says which happened.
+  final AttemptTermination termination;
+
   /// Whether the sequence came out, and at what cost.
   final AcquisitionCompletion completion;
 
@@ -158,6 +167,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     required this.intrusions,
     required this.earnedProbe,
     required List<RecordedGap> gaps,
+    this.termination = AttemptTermination.learnerStopped,
     this.firstAbsentPosition,
     this.schemaVersion = acquisitionSchemaVersion,
   }) : gaps = List.unmodifiable(gaps) {
@@ -193,6 +203,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     'timing': task.timing.id,
     'advancement': task.advancement.id,
     'started': started,
+    'termination': termination.id,
     'completion': completion.id,
     'repairs': repairs,
     'repeats': repeats,
@@ -265,6 +276,9 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         ),
       ),
       started: requireBool(json, 'started', location: location),
+      termination: AttemptTermination.fromId(
+        requireString(json, 'termination', location: location),
+      ),
       completion: completion,
       repairs: requireInt(json, 'repairs', location: location),
       repeats: requireInt(json, 'repeats', location: location),

@@ -140,6 +140,7 @@ class _InterceptingScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise> attemptedAcquisitionParents = const {},
   }) async {
@@ -150,6 +151,7 @@ class _InterceptingScheduler implements SchedulerHost {
       dueRequirementIds: dueRequirementIds,
       at: at,
       acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedAcquisitionParents: attemptedAcquisitionParents,
     );

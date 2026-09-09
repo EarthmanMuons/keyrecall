@@ -172,6 +172,7 @@ abstract interface class SchedulerHost {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise> attemptedAcquisitionParents = const {},
   });
@@ -220,6 +221,7 @@ class InProcessScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise> attemptedAcquisitionParents = const {},
   }) async {
@@ -229,6 +231,7 @@ class InProcessScheduler implements SchedulerHost {
       candidates: candidatesDueIn(_scope!, dueRequirementIds),
       at: at,
       acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedAcquisitionParents: attemptedAcquisitionParents,
       practiceEntryPolicy: _entry,

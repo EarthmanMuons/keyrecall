@@ -38,6 +38,11 @@ class FlakyPracticeStore implements PracticeStore {
   /// When true, every [appendAcquisitionEntry] throws instead of writing.
   bool failAcquisitionAppends = false;
 
+  /// When true, the next [appendAcquisitionEntry] writes and then throws.
+  ///
+  /// The failure a caller cannot tell from one that wrote nothing.
+  bool failNextAcquisitionAppendAfterWriting = false;
+
   /// How many appends actually reached the inner store.
   int appendsPerformed = 0;
 
@@ -111,6 +116,10 @@ class FlakyPracticeStore implements PracticeStore {
   Future<void> appendAcquisitionEntry(AcquisitionEntry entry) async {
     if (failAcquisitionAppends) throw const _StorageFailure();
     await inner.appendAcquisitionEntry(entry);
+    if (failNextAcquisitionAppendAfterWriting) {
+      failNextAcquisitionAppendAfterWriting = false;
+      throw const _StorageFailure();
+    }
   }
 
   @override
@@ -280,6 +289,7 @@ void main() {
       store.failAcquisitionAppends = true;
       final session = await openSession(store, sessionId: 'session-2');
       final presented = await session.decide(at: at);
+      await session.acknowledgePresentation();
 
       // The attempt is presented and outstanding: losing the discharge must
       // not cost the learner the work in front of them.
@@ -291,6 +301,35 @@ void main() {
       final log = await inner.loadAcquisitionJournal(alice.id);
       expect(log.replay().probeOwed(parent), isTrue);
       expect(log.records.whereType<AcquisitionProbeServedRecord>(), isEmpty);
+    });
+
+    test('that landed before it threw is not written twice', () async {
+      final inner = InMemoryPracticeStore(createdAt: t0);
+      final store = FlakyPracticeStore(inner);
+      final at = t0.plusDays(0.5);
+      final session = await openSession(
+        store,
+        pipeline: const AlwaysOffersAcquisition(),
+      );
+      final offered =
+          (await session.decideOutcome(at: at) as PresentedAcquisition)
+              .attemptId;
+
+      // No transcript at all, which is still an attempt: nothing was played
+      // and the record says so. What is under test is the write.
+      store.failNextAcquisitionAppendAfterWriting = true;
+      final record = await session.closeAcquisition(
+        PerformanceTranscript.empty,
+        at: at,
+      );
+
+      // The record is on disk, so a retry must recognize it rather than
+      // offering a second event under a fresh id at a sequence the file
+      // already has.
+      final log = await inner.loadAcquisitionJournal(alice.id);
+      expect(log.attempts, hasLength(1));
+      expect(record.identity.attemptId, offered);
+      expect(log.attempts.single.identity.attemptId, offered);
     });
 
     test('says so rather than failing silently', () async {
@@ -306,6 +345,7 @@ void main() {
       store.failAcquisitionAppends = true;
       final session = await openSession(store, sessionId: 'session-2');
       final presented = await session.decide(at: at);
+      await session.acknowledgePresentation();
 
       // Non-blocking is not the same as invisible. One lost write is a
       // redundant probe; a systematic one is storage quietly failing.

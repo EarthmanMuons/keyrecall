@@ -241,11 +241,14 @@ history, so acquisition history has to be in history.
 
 ### The record keeps facts, and the verdict it was written with
 
-A record holds what happened: the completion class, the extra notes split into
-repairs, repeats and intrusions, where an unfinished traversal ran out, and the
-located gap series with each gap's measured ratio. A later rule about what earns
-a probe can therefore be asked of an old attempt, because the attempt did not
-have to anticipate it.
+A record holds what happened: the completion class, how the attempt ended, the
+extra notes split into repairs, repeats and intrusions, where an unfinished
+traversal ran out, and the located gap series with each gap's measured ratio.
+Termination sits beside the observation rather than inside it, because an
+attempt the learner stopped at six notes and one an input disconnection cut off
+at six notes are the same performance and different evidence about the learner.
+A later rule about what earns a probe can therefore be asked of an old attempt,
+because the attempt did not have to anticipate it.
 
 It also holds `earned_probe`, the verdict as the rule in force read it, for the
 same reason a scheduler decision records the admission band it competed in.
@@ -442,6 +445,24 @@ The sitting owns both. Acquisition history is its own file beside the attempt
 journal, loaded when the sitting opens and replayed rather than held, so
 progress is whatever the durable log produces and cannot drift from it.
 
+An append that threw may still have landed, so nothing concludes from an
+exception that nothing was written. The store is asked and the log replaced by
+what it holds, and the record for one attempt is built once and kept, so a retry
+offers the same event under the same id rather than a fresh one at a sequence
+the file already has.
+
+The family's declared floor and the safe entry ordinary admission reaches for
+are two questions of one value. Admission asks its question only in a scoped
+sitting, which can run out of work; acquisition asks which realizations are the
+family's floor at all, which is as true of general practice. Supplying it only
+for a narrow scope left general practice unable to reach supported work.
+
+Deciding is not presenting. The next exercise is prepared while the last one's
+review is still on screen and can be discarded before anyone sees it, so an
+obligation is discharged when the attempt actually reaches the learner rather
+than when it is chosen. That acknowledgement is idempotent per attempt and
+applies to a decision resumed from an earlier run.
+
 Service is written where the parent is presented, from the presenting attempt's
 own identity. A failed write leaves the obligation owed, which costs a redundant
 probe later; failing the attempt instead would cost the learner their practice,
@@ -514,6 +535,30 @@ would put interface time into the gap series, where it would read as a
 hesitation at whichever transition the learner happened to stop on. Stop closes
 the attempt and records it; leaving before Ready records nothing, because
 nothing was observed.
+
+## What the offer does not yet reach
+
+Supplying the family floor to general practice is necessary for acquisition to
+be reachable and is not sufficient. Driving a beginner sitting over thirty slots
+against one scale offered none, for two reasons that are policy rather than
+plumbing.
+
+The scheduler never presents the continuously cued floor once introduction is
+past: every winner in that run was the notes-previewed rung. No informative
+attempt at the exact floor exercise therefore exists, and the entry rule's
+exposure requirement cannot be met.
+
+And the offer is made only when the stuck floor is the candidate the slot would
+otherwise present. Where ordinary ranking prefers a more independent rung of the
+same material, the stuck floor never wins, so nothing is offered even when the
+rule would hold.
+
+The two interact: the rule asks about the floor, and ranking prefers to leave
+the floor behind. Widening either to make the path reachable is a pedagogical
+choice and has not been made. The candidates are triggering from any stuck floor
+in scope rather than only the winner, counting a harder rung of the same context
+as exposure, or accepting that the gentlest ordinary question stops being the
+cued rung once introduction is past.
 
 ## Deliberately not built
 

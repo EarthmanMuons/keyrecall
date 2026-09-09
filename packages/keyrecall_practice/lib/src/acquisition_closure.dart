@@ -10,6 +10,11 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 /// compute, and no learner state to update, which is the whole difference
 /// between closing an acquisition attempt and closing an ordinary one.
 ///
+/// [termination] travels beside the observation rather than inside it. An
+/// attempt the learner stopped at six notes and one an input disconnection cut
+/// off at six notes are the same performance and different evidence about the
+/// learner.
+///
 /// The probe verdict is read here, once, and stored. Replay uses what was
 /// stored rather than asking again, so a threshold that moves later changes
 /// what the next attempt earns and never what a past one did.
@@ -17,9 +22,11 @@ AcquisitionAttemptRecord acquisitionRecordOf({
   required AcquisitionObservation observation,
   required AttemptIdentity identity,
   required int journalSequence,
+  AttemptTermination termination = AttemptTermination.learnerStopped,
 }) => AcquisitionAttemptRecord(
   journalSequence: journalSequence,
   identity: identity,
+  termination: termination,
   task: observation.task,
   started: observation.started,
   completion: observation.completion,

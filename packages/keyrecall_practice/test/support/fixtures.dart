@@ -134,3 +134,60 @@ Future<List<AttemptRecord>> practise(
   }
   return committed;
 }
+
+/// A pipeline that offers supported work for the floor of the first material.
+///
+/// When the scheduler offers acquisition is the scheduler's own question, and
+/// its tests ask it. These are about what a sitting does with an offer once it
+/// has one, so the offer is supplied rather than provoked.
+class AlwaysOffersAcquisition extends SchedulerPipeline {
+  const AlwaysOffersAcquisition() : super(learner: learner);
+
+  @override
+  ({
+    SelectionResult result,
+    bool guidanceProbeAvailable,
+    bool guidanceProbeSelected,
+  })
+  evaluateSlot({
+    required LearnerState state,
+    required SessionState session,
+    required List<Exercise> candidates,
+    required DateTime at,
+    Map<Exercise, ChallengeBypass> overrides = const {},
+    AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
+    AcquisitionProgress? acquisition,
+    Set<Exercise> attemptedAcquisitionParents = const {},
+    PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
+  }) {
+    final slot = super.evaluateSlot(
+      state: state,
+      session: session,
+      candidates: candidates,
+      at: at,
+      overrides: overrides,
+      acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
+      acquisition: acquisition,
+      attemptedAcquisitionParents: attemptedAcquisitionParents,
+      practiceEntryPolicy: practiceEntryPolicy,
+      emphasis: emphasis,
+    );
+    final floor = (acquisitionFamilyFloor ?? acquisitionFloor)?.entries.first;
+    if (floor == null) return slot;
+    return (
+      result: AcquisitionOffered(
+        traces: slot.result.traces,
+        selectable: slot.result.selectable,
+        pacing: slot.result.pacing,
+        introductions: slot.result.introductions,
+        task: AcquisitionTask.unmeteredTraversal(floor.exercise),
+        stuck: null,
+      ),
+      guidanceProbeAvailable: slot.guidanceProbeAvailable,
+      guidanceProbeSelected: slot.guidanceProbeSelected,
+    );
+  }
+}

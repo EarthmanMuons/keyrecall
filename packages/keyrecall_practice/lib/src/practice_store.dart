@@ -272,6 +272,7 @@ class InMemoryPracticeStore implements PracticeStore {
   Future<void> erase(String profileId) async {
     _selections.remove(profileId);
     _journals.remove(profileId);
+    _acquisitionLogs.remove(profileId);
     _pending.remove(profileId);
     _checkpoints.remove(profileId);
     _feedback.remove(profileId);

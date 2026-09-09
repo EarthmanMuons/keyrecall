@@ -66,6 +66,7 @@ class IsolateScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise> attemptedAcquisitionParents = const {},
   }) async {
@@ -81,6 +82,7 @@ class IsolateScheduler implements SchedulerHost {
         dueRequirementIds: dueRequirementIds,
         at: at,
         acquisitionFloor: acquisitionFloor,
+        acquisitionFamilyFloor: acquisitionFamilyFloor,
         acquisition: acquisition,
         attemptedAcquisitionParents: attemptedAcquisitionParents,
       ),
@@ -95,6 +97,7 @@ class _DecisionRequest {
   final List<String> dueRequirementIds;
   final DateTime at;
   final AcquisitionFloor? acquisitionFloor;
+  final AcquisitionFloor? acquisitionFamilyFloor;
   final AcquisitionProgress? acquisition;
   final Set<Exercise> attemptedAcquisitionParents;
 
@@ -105,6 +108,7 @@ class _DecisionRequest {
     required this.dueRequirementIds,
     required this.at,
     required this.acquisitionFloor,
+    required this.acquisitionFamilyFloor,
     required this.acquisition,
     required this.attemptedAcquisitionParents,
   });
@@ -247,6 +251,7 @@ class _Worker {
         candidates: candidatesDueIn(scope, request.dueRequirementIds),
         at: request.at,
         acquisitionFloor: request.acquisitionFloor,
+        acquisitionFamilyFloor: request.acquisitionFamilyFloor,
         acquisition: request.acquisition,
         attemptedAcquisitionParents: request.attemptedAcquisitionParents,
         practiceEntryPolicy: entry,

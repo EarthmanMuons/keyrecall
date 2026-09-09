@@ -314,7 +314,7 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
         );
       case PracticeCaughtUp():
         return accumulator.finish(ArpeggioPolicyTerminal.caughtUp);
-      case PracticeAcquisition():
+      case PresentedAcquisition():
         // This experiment drives the ordinary path only; nothing here can play
         // a supported task, and treating one as ordinary work would put an
         // attempt in the census that never happened.
@@ -434,6 +434,7 @@ class _RecordingPipeline extends SchedulerPipeline {
     required DateTime at,
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise> attemptedAcquisitionParents = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
@@ -447,6 +448,7 @@ class _RecordingPipeline extends SchedulerPipeline {
       at: at,
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedAcquisitionParents: attemptedAcquisitionParents,
       practiceEntryPolicy: practiceEntryPolicy,

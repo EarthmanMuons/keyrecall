@@ -366,8 +366,9 @@ class PracticeLoopState {
   ///
   /// Not a [PresentedAttempt]: nothing about an acquisition attempt is durable
   /// before it is played, because there is no decision to recover and no
-  /// learner state it could leave half-applied.
-  final AcquisitionTask? acquisition;
+  /// learner state it could leave half-applied. It still carries an identity,
+  /// so two offers of the same task are two attempts at it.
+  final PresentedAcquisition? acquisition;
 
   /// The last attempt committed in this sitting.
   final AttemptRecord? lastCommitted;
@@ -531,6 +532,17 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     }
   }
 
+  /// Says the outstanding attempt has actually reached the learner.
+  ///
+  /// Deciding is not presenting: the next exercise is prepared while the last
+  /// one's review is still on screen, and a prepared decision can be discarded
+  /// before anybody sees it.
+  Future<void> acknowledgePresentation() async {
+    final session = state.value?.session;
+    if (session == null) return;
+    await session.acknowledgePresentation();
+  }
+
   /// Records what a supported attempt produced and moves on.
   ///
   /// Separate from [finish] because almost nothing it does applies. There is
@@ -540,19 +552,25 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   ///
   /// An attempt the learner stopped partway is recorded like any other. Where
   /// it ran out and what the waits were are what the task was offered for.
-  Future<void> finishAcquisition() async {
+  Future<void> finishAcquisition({
+    AttemptTermination termination = AttemptTermination.learnerStopped,
+  }) async {
     final current = state.value;
-    final task = current?.acquisition;
-    if (_writing || current == null || task == null) return;
-    final transcript = ref.read(attemptTranscriptProvider).transcript;
+    if (_writing || current == null || current.acquisition == null) return;
+    final capture = ref.read(attemptTranscriptProvider);
 
     _writing = true;
     try {
       state = await AsyncValue.guard(() async {
         await current.session.closeAcquisition(
-          task,
-          transcript,
+          capture.transcript,
           at: DateTime.now().toUtc(),
+          // An interrupted capture is still an observation of what was played,
+          // and what it is not is the learner stopping. Recording it as an
+          // ordinary attempt would put an incomplete traversal down to them.
+          termination: capture.isInterrupted
+              ? AttemptTermination.inputInterrupted
+              : termination,
         );
         return _decide(
           PracticeLoopState(
@@ -833,12 +851,12 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastReading: from.lastReading,
         note: 'practice caught up',
       ),
-      PracticeAcquisition(:final task, :final coverage) => PracticeLoopState(
+      final PresentedAcquisition offered => PracticeLoopState(
         profile: from.profile,
         plan: from.plan,
         session: from.session,
-        acquisition: task,
-        coverage: coverage,
+        acquisition: offered,
+        coverage: offered.coverage,
         lastCommitted: from.lastCommitted,
         lastReading: from.lastReading,
         note: from.note,

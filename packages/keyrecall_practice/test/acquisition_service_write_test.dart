@@ -29,6 +29,15 @@ void main() {
         gaps: const [],
       );
 
+  /// The task a sitting that always offers one presents.
+  Future<AcquisitionTask> offeredTask(
+    PracticeSession session, {
+    required DateTime at,
+  }) async {
+    final offered = await session.decideOutcome(at: at);
+    return (offered as PresentedAcquisition).task;
+  }
+
   /// A performance of [task], with one note per [gapMs].
   PerformanceTranscript playedThrough(
     AcquisitionTask task, {
@@ -55,23 +64,21 @@ void main() {
   test('a clean acquisition attempt earns the parent a probe', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final at = t0.plusDays(0.5);
-    final session = await openSession(store);
-    final parent =
-        (await session.decideOutcome(at: at) as PresentedAttempt).exercise;
-    await session.abandonPending();
-    final task = AcquisitionTask.unmeteredTraversal(parent);
-
-    final record = await session.closeAcquisition(
-      task,
-      playedThrough(task),
-      at: at,
+    final session = await openSession(
+      store,
+      pipeline: const AlwaysOffersAcquisition(),
     );
+    final task = await offeredTask(session, at: at);
+
+    final record = await session.closeAcquisition(playedThrough(task), at: at);
 
     expect(record.completion, AcquisitionCompletion.completedCleanly);
     expect(record.earnedProbe, isTrue);
-    expect(session.acquisitionProgress.probeOwed(parent), isTrue);
+    expect(session.acquisitionProgress.probeOwed(task.parent), isTrue);
     expect(
-      (await store.loadAcquisitionJournal(alice.id)).replay().probeOwed(parent),
+      (await store.loadAcquisitionJournal(
+        alice.id,
+      )).replay().probeOwed(task.parent),
       isTrue,
     );
   });
@@ -81,14 +88,13 @@ void main() {
     () async {
       final store = InMemoryPracticeStore(createdAt: t0);
       final at = t0.plusDays(0.5);
-      final session = await openSession(store);
-      final parent =
-          (await session.decideOutcome(at: at) as PresentedAttempt).exercise;
-      await session.abandonPending();
-      final task = AcquisitionTask.unmeteredTraversal(parent);
+      final session = await openSession(
+        store,
+        pipeline: const AlwaysOffersAcquisition(),
+      );
+      final task = await offeredTask(session, at: at);
 
       final record = await session.closeAcquisition(
-        task,
         playedThrough(task, notes: 4),
         at: at,
       );
@@ -100,22 +106,21 @@ void main() {
       expect(record.started, isTrue);
       expect(record.firstAbsentPosition, 4);
       expect(record.earnedProbe, isFalse);
-      expect(session.acquisitionProgress.recordFor(parent)!.attempts, 1);
-      expect(session.acquisitionProgress.probeOwed(parent), isFalse);
+      expect(session.acquisitionProgress.recordFor(task.parent)!.attempts, 1);
+      expect(session.acquisitionProgress.probeOwed(task.parent), isFalse);
     },
   );
 
   test('a long wait does not stop the attempt earning nothing else', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final at = t0.plusDays(0.5);
-    final session = await openSession(store);
-    final parent =
-        (await session.decideOutcome(at: at) as PresentedAttempt).exercise;
-    await session.abandonPending();
-    final task = AcquisitionTask.unmeteredTraversal(parent);
+    final session = await openSession(
+      store,
+      pipeline: const AlwaysOffersAcquisition(),
+    );
+    final task = await offeredTask(session, at: at);
 
     final record = await session.closeAcquisition(
-      task,
       playedThrough(task, longGapBefore: 4),
       at: at,
     );
@@ -151,6 +156,11 @@ void main() {
     final again = await reopened.decideOutcome(at: at) as PresentedAttempt;
     expect(again.exercise, parent);
 
+    // Deciding is not presenting. Nothing is discharged until the exercise
+    // actually reaches the learner.
+    expect(reopened.acquisitionProgress.probeOwed(parent), isTrue);
+    await reopened.acknowledgePresentation();
+
     final log = await store.loadAcquisitionJournal(alice.id);
     expect(log.replay().probeOwed(parent), isFalse);
     expect(log.replay().recordFor(parent)!.probesServed, 1);
@@ -168,6 +178,7 @@ void main() {
     await store.appendAcquisitionEntry(earnedFor(parent));
     final second = await openSession(store, sessionId: 'session-2');
     await second.decideOutcome(at: at);
+    await second.acknowledgePresentation();
     await second.abandonPending();
 
     // A third sitting rebuilds progress from the log and finds nothing owed,
@@ -175,6 +186,47 @@ void main() {
     final later = await openSession(store, sessionId: 'session-3');
     expect(later.acquisitionProgress.probeOwed(parent), isFalse);
     expect(later.acquisitionProgress.earnsParentProbe(parent), isTrue);
+  });
+
+  test('two offers of one task are two attempts at it', () async {
+    // A screen keyed on the task alone would hand the second offer the first
+    // one's finished state, and the learner would meet a screen with no way
+    // to start.
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final session = await openSession(
+      store,
+      pipeline: const AlwaysOffersAcquisition(),
+    );
+    final first =
+        await session.decideOutcome(at: t0.plusDays(0.5))
+            as PresentedAcquisition;
+    await session.closeAcquisition(
+      playedThrough(first.task, notes: 3),
+      at: t0.plusDays(0.5),
+    );
+    final second =
+        await session.decideOutcome(at: t0.plusDays(1)) as PresentedAcquisition;
+
+    expect(second.task, first.task);
+    expect(second.attemptId, isNot(first.attemptId));
+  });
+
+  test('acknowledging twice discharges once', () async {
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final at = t0.plusDays(0.5);
+    final first = await openSession(store);
+    final parent =
+        (await first.decideOutcome(at: at) as PresentedAttempt).exercise;
+    await first.abandonPending();
+    await store.appendAcquisitionEntry(earnedFor(parent));
+
+    final session = await openSession(store, sessionId: 'session-2');
+    await session.decideOutcome(at: at);
+    await session.acknowledgePresentation();
+    await session.acknowledgePresentation();
+
+    final log = await store.loadAcquisitionJournal(alice.id);
+    expect(log.records.whereType<AcquisitionProbeServedRecord>(), hasLength(1));
   });
 
   test('writes nothing for a profile with no acquisition history', () async {

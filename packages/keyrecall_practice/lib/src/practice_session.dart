@@ -56,17 +56,28 @@ class PresentedAttempt extends PracticeDecision {
 /// presents one. A caller that does not understand this shows nothing and asks
 /// again, which leaves the obligation and the learner exactly where they were.
 @immutable
-class PracticeAcquisition extends PracticeDecision {
+class PresentedAcquisition extends PracticeDecision {
+  /// Which presentation this is.
+  ///
+  /// Its own identity, and not the ordinary attempt's. Two offers of the same
+  /// task are two attempts at it, and a screen keyed on the task alone would
+  /// keep the finished state of the one before.
+  final String attemptId;
+
   /// The supported task to present.
   final AcquisitionTask task;
 
   /// Curriculum coverage at the instant it was offered.
   final ScopeCoverage coverage;
 
-  const PracticeAcquisition(this.task, {required this.coverage});
+  const PresentedAcquisition({
+    required this.attemptId,
+    required this.task,
+    required this.coverage,
+  });
 
   @override
-  String toString() => 'PracticeAcquisition($task)';
+  String toString() => 'PresentedAcquisition($attemptId, $task)';
 }
 
 /// Useful work was requested, but no exercise could be presented.
@@ -184,7 +195,16 @@ class PracticeSession {
   final IdGenerator _nextId;
   final SessionState _session;
   final AttemptJournal _journal;
-  final AcquisitionJournal _acquisition;
+  AcquisitionJournal _acquisition;
+
+  /// The supported task on screen, if one is.
+  PresentedAcquisition? _outstandingAcquisition;
+
+  /// The record built for it, held so a retry writes the same event.
+  AcquisitionAttemptRecord? _acquisitionInFlight;
+
+  /// Attempts whose presentation has already been acknowledged.
+  final Set<String> _acknowledged = {};
 
   LearnerState _state;
 
@@ -432,9 +452,17 @@ class PracticeSession {
     final due = scope.isNarrow
         ? evaluated.dueRequirements.toList()
         : evaluated.requirements;
-    final acquisitionFloor = scope.isNarrow
-        ? _scopeResolver.acquisitionFloorFor(due.map((state) => state.resolved))
-        : null;
+    // Two questions of the same value, and only one of them is narrow. Ordinary
+    // admission reaches for a safe entry when a scoped slot has nothing left to
+    // offer, which a general sitting never runs out of work to need. Acquisition
+    // asks something else of it: which realizations are the family's floor at
+    // all, and that is as true of general practice as of a scoped goal. Passing
+    // it only for a narrow scope left a beginner practising normally unable to
+    // reach supported work at the exact exercise they keep not managing.
+    final familyFloor = _scopeResolver.acquisitionFloorFor(
+      due.map((state) => state.resolved),
+    );
+    final acquisitionFloor = scope.isNarrow ? familyFloor : null;
 
     if (!_bound) {
       await scheduler.bind(
@@ -455,6 +483,7 @@ class PracticeSession {
       ],
       at: at,
       acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: familyFloor,
       acquisition: acquisitionProgress,
       attemptedAcquisitionParents: attemptedAcquisitionParents(
         _journal.records,
@@ -466,7 +495,14 @@ class PracticeSession {
 
     verdict.effect.applyTo(_session);
     if (verdict.acquisitionTask case final task?) {
-      return PracticeAcquisition(task, coverage: evaluated.coverage);
+      final offered = PresentedAcquisition(
+        attemptId: _nextId(),
+        task: task,
+        coverage: evaluated.coverage,
+      );
+      _outstandingAcquisition = offered;
+      _acquisitionInFlight = null;
+      return offered;
     }
     if (verdict.chosen == null) {
       return PracticeBlocked(
@@ -508,10 +544,26 @@ class PracticeSession {
     // Durable before the exercise is shown. Everything after this point is
     // recoverable; before it, nothing was presented.
     await store.savePendingDecision(decision);
-    await _serveAcquisitionProbe(decision);
     final presented = PresentedAttempt(decision, coverage: evaluated.coverage);
     _outstanding = presented;
     return presented;
+  }
+
+  /// Records that the outstanding attempt has actually reached the learner.
+  ///
+  /// Deciding is not presenting. The next exercise is prepared while the last
+  /// one's review is still on screen, and a prepared decision can be discarded
+  /// by a profile or scope change before anybody sees it. Discharging an
+  /// obligation there would say a question had been asked that never was.
+  ///
+  /// Idempotent per attempt, and applies to a decision resumed from an earlier
+  /// run as readily as to one this sitting made: a pending attempt that comes
+  /// back on screen is being presented now.
+  Future<void> acknowledgePresentation() async {
+    final decision = _outstanding?.decision ?? _pending;
+    if (decision == null) return;
+    if (!_acknowledged.add(decision.attemptId)) return;
+    await _serveAcquisitionProbe(decision);
   }
 
   /// Records that presenting [decision] asked what acquisition earned.
@@ -539,11 +591,39 @@ class PracticeSession {
     );
     if (service == null) return;
     try {
-      await store.appendAcquisitionEntry(service);
-      _acquisition.append(service);
+      await _appendAcquisition(service);
     } catch (error) {
       await _recordServiceFailure(decision, error);
     }
+  }
+
+  /// Appends [entry] and leaves memory agreeing with what is durable.
+  ///
+  /// An append that threw may still have landed, so nothing here concludes
+  /// from an exception that nothing was written. The store is asked, and the
+  /// log is replaced by what it holds: a sequence computed from a stale copy
+  /// would collide with a record the file already has, and every later write
+  /// would fail behind it.
+  Future<void> _appendAcquisition(AcquisitionEntry entry) async {
+    try {
+      await store.appendAcquisitionEntry(entry);
+    } catch (error) {
+      if (!await _reloadedAcquisitionHolds(entry)) rethrow;
+      return;
+    }
+    await _reloadedAcquisitionHolds(entry);
+  }
+
+  /// Reloads the durable log and says whether it holds [entry].
+  Future<bool> _reloadedAcquisitionHolds(AcquisitionEntry entry) async {
+    try {
+      _acquisition = await store.loadAcquisitionJournal(profile.id);
+    } catch (_) {
+      return false;
+    }
+    return _acquisition.records.any(
+      (held) => held.identity.attemptId == entry.identity.attemptId,
+    );
   }
 
   /// Says that a service write did not land, without failing the attempt.
@@ -583,7 +663,7 @@ class PracticeSession {
   Future<PresentedAttempt?> decide({required DateTime at}) async =>
       switch (await decideOutcome(at: at)) {
         final PresentedAttempt presented => presented,
-        PracticeAcquisition() ||
+        PresentedAcquisition() ||
         PracticeBlocked() ||
         PracticeCaughtUp() ||
         PracticeSuperseded() ||
@@ -606,28 +686,37 @@ class PracticeSession {
   /// The caller supplies [at] because presentation time belongs to the loop
   /// that presented it, not to a clock this reads.
   Future<AcquisitionAttemptRecord> closeAcquisition(
-    AcquisitionTask task,
     PerformanceTranscript transcript, {
     required DateTime at,
+    AttemptTermination termination = AttemptTermination.learnerStopped,
     MeasurementPolicy policy = MeasurementPolicy.standard,
   }) async {
-    final record = acquisitionRecordOf(
+    final outstanding = _outstandingAcquisition;
+    if (outstanding == null) {
+      throw PracticeStateError('no supported task is outstanding');
+    }
+    // Built once and held. A retry after an uncertain write must offer the
+    // same event under the same id, or the store's idempotency has nothing to
+    // recognize and the same attempt lands twice.
+    final record = _acquisitionInFlight ??= acquisitionRecordOf(
       observation: observeAcquisition(
-        task: task,
+        task: outstanding.task,
         transcript: transcript,
         policy: policy,
       ),
       identity: AttemptIdentity(
         profileId: profile.id,
-        attemptId: _nextId(),
+        attemptId: outstanding.attemptId,
         sessionId: sessionId,
         indexInSession: _indexInSession,
         occurredAt: at,
       ),
       journalSequence: _acquisition.nextSequence,
+      termination: termination,
     );
-    await store.appendAcquisitionEntry(record);
-    _acquisition.append(record);
+    await _appendAcquisition(record);
+    _outstandingAcquisition = null;
+    _acquisitionInFlight = null;
     _epoch++;
     return record;
   }
