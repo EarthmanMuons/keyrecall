@@ -313,9 +313,12 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
 /// decide, and it decides it through the attempt journal like any other
 /// attempt.
 ///
-/// [servedByAttemptId] points at the ordinary attempt that asked it. A pointer
-/// and not an ordering invariant: the two logs still derive nothing from each
-/// other, and this one simply says which attempt discharged the obligation.
+/// The identity is the ordinary attempt that asked the question, because
+/// service is that presentation rather than a separate event beside it. That
+/// makes it a reference into the attempt journal and not an ordering
+/// invariant: the two logs still derive nothing from each other. It also means
+/// one ordinary attempt can discharge an obligation at most once, since the log
+/// is idempotent by attempt id.
 @immutable
 final class AcquisitionProbeServedRecord extends AcquisitionEntry {
   /// The wire format this record was written in.
@@ -330,24 +333,12 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
   @override
   final Exercise parent;
 
-  /// The ordinary attempt that asked the question.
-  final String servedByAttemptId;
-
   AcquisitionProbeServedRecord({
     required this.journalSequence,
     required this.identity,
     required this.parent,
-    required this.servedByAttemptId,
     this.schemaVersion = acquisitionSchemaVersion,
-  }) {
-    if (servedByAttemptId.isEmpty) {
-      throw ArgumentError.value(
-        servedByAttemptId,
-        'servedByAttemptId',
-        'a served probe names the attempt that asked it',
-      );
-    }
-  }
+  });
 
   @override
   Map<String, Object?> toJson() => {
@@ -360,7 +351,6 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
     'index_in_session': identity.indexInSession,
     'occurred_at': encodeTime(identity.occurredAt),
     'parent': encodeExercise(parent),
-    'served_by_attempt_id': servedByAttemptId,
   };
 
   /// Reads a record back.
@@ -392,11 +382,6 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
       ),
       parent: decodeExercise(
         requireMap(json, 'parent', location: location),
-        location: location,
-      ),
-      servedByAttemptId: requireString(
-        json,
-        'served_by_attempt_id',
         location: location,
       ),
     );

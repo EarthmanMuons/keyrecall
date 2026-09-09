@@ -293,19 +293,29 @@ decide, through the attempt journal like any other attempt. A probe that fails
 leaves the parent stuck rather than owed again, and the next criterion success
 is what reopens the obligation.
 
-Service is recorded even when nothing was owed, because a parent presented by
-ordinary ranking has been asked the same question and leaving the obligation
-open would ask it twice.
+Service is written on presentation rather than on scheduler intent. A parent can
+reach the learner because the service phase served an owed probe or because
+ordinary ranking happened to pick it, and either way the question has been
+asked. Discharging only the first would leave the obligation open after the
+learner had already answered it, and the next slot would ask it again.
+
+Nothing is written when no probe is owed. A parent whose acquisition history has
+earned nothing, or whose obligation a previous presentation already discharged,
+is ordinary work like any other, and a record of service that discharged nothing
+would say something did not happen.
 
 ### Service is not an acquisition-attempt fact
 
 It is an ordinary presentation caused by acquisition history, so it is a second
 kind of entry in the acquisition log rather than a counter derived from
 attempts. It lives in that log because it is a transition of the acquisition
-state machine, and nothing else could say the obligation was discharged. The
-record names the ordinary attempt that asked the question, which is a pointer
-rather than an ordering invariant: the two logs still derive nothing from each
-other.
+state machine, and nothing else could say the obligation was discharged.
+
+The record's identity is the ordinary attempt that asked the question, because
+service is that presentation rather than an event beside it. That makes it a
+reference into the attempt journal and not an ordering invariant, and it means
+one ordinary attempt discharges at most one obligation, which the log enforces
+by being idempotent on that id.
 
 ## Serving an owed probe
 
@@ -419,11 +429,10 @@ end to end without a policy having been written.
 - **Presentation.** Nothing shows an acquisition task or collects a transcript
   for one. The path from an observation to a record exists and is tested; what
   is missing is the screen and the loop that calls it.
-- **Recording service.** The scheduler serves an owed probe; nothing appends the
-  record that discharges it, because nothing presents an attempt yet. The
-  practice layer owes that write when the parent is actually presented, and owes
-  it for any presentation of a parent with acquisition history, not only for one
-  the service phase chose.
+- **Calling the service write.** `acquisitionServiceOf` produces the record an
+  ordinary presentation owes, and nothing calls it, because nothing presents an
+  attempt through a live loop yet. It cannot fire in production until an
+  acquisition attempt has been recorded, since progress is empty until then.
 - **A census that outlives its process.** Nothing journals the gap series.
 - **Located repairs.** The census aggregates stalls only.
 - **Hands together.** `performAcquisition` refuses a two-hand parent. Two onset

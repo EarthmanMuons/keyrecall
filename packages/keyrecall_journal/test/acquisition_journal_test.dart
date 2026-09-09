@@ -174,7 +174,6 @@ void main() {
         occurredAt: t0.add(after),
       ),
       parent: parent,
-      servedByAttemptId: 'ordinary-$sequence',
     );
 
     test('discharges what a criterion success earned', () {
@@ -226,8 +225,8 @@ void main() {
       expect(read.attempts, hasLength(1));
       expect(read.replay().byParent, log.replay().byParent);
       expect(
-        (read.records.last as AcquisitionProbeServedRecord).servedByAttemptId,
-        'ordinary-1',
+        (read.records.last as AcquisitionProbeServedRecord).identity.attemptId,
+        'probe-1',
       );
     });
 

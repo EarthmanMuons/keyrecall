@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -50,6 +51,98 @@ void main() {
     indexInSession: index,
     occurredAt: t0.add(Duration(minutes: index)),
   );
+
+  group('serving a probe by presenting the parent', () {
+    final other = Exercise.linear(
+      material: TechnicalMaterial('G', ScaleForm.major),
+      hands: HandConfiguration.right,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+      tempoBpm: 60,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+
+    AcquisitionProgress owing() => const AcquisitionProgress.empty().recording(
+      parent: parent,
+      completed: true,
+      earnedProbe: true,
+      at: t0,
+    );
+
+    AcquisitionProbeServedRecord? serviceFor(
+      Exercise presented,
+      AcquisitionProgress progress,
+    ) => acquisitionServiceOf(
+      presented: presented,
+      progress: progress,
+      identity: identityAt(0),
+      journalSequence: 0,
+    );
+
+    test('writes one record naming the attempt that asked the question', () {
+      final record = serviceFor(parent, owing())!;
+
+      expect(record.parent, parent);
+      expect(record.identity.attemptId, 'acq-0');
+    });
+
+    test('writes nothing when there is no acquisition history', () {
+      expect(serviceFor(parent, const AcquisitionProgress.empty()), isNull);
+    });
+
+    test('writes nothing when history has earned no probe', () {
+      final practised = const AcquisitionProgress.empty().recording(
+        parent: parent,
+        completed: true,
+        earnedProbe: false,
+        at: t0,
+      );
+
+      expect(serviceFor(parent, practised), isNull);
+    });
+
+    test('writes nothing when the obligation is already discharged', () {
+      final served = owing().serving(
+        parent: parent,
+        at: t0.add(const Duration(minutes: 1)),
+      );
+
+      expect(serviceFor(parent, served), isNull);
+    });
+
+    test('writes nothing for a different parent', () {
+      expect(serviceFor(other, owing()), isNull);
+    });
+
+    test('discharges the obligation whatever selected the parent', () {
+      // The point of hanging this off presentation. Ordinary ranking asking the
+      // question counts exactly as the service phase asking it, so the next
+      // slot does not ask it again.
+      final log =
+          AcquisitionJournal(
+            AcquisitionJournalHeader(profileId: 'abc12345', createdAt: t0),
+          )..append(
+            acquisitionRecordOf(
+              observation: observedWith(),
+              identity: identityAt(0),
+              journalSequence: 0,
+            ),
+          );
+      expect(log.replay().probeOwed(parent), isTrue);
+
+      log.append(
+        acquisitionServiceOf(
+          presented: parent,
+          progress: log.replay(),
+          identity: identityAt(1),
+          journalSequence: 1,
+        )!,
+      );
+
+      expect(log.replay().probeOwed(parent), isFalse);
+      expect(log.replay().recordFor(parent)!.probesServed, 1);
+    });
+  });
 
   group('closing an acquisition attempt', () {
     test('carries the facts across without deriving an outcome', () {
