@@ -38,6 +38,15 @@ class AcquisitionRecord {
   /// When a probe of the parent was last presented, or null if none has been.
   final DateTime? lastProbeServedAt;
 
+  /// When supported work on this parent last failed to earn a probe, or null.
+  ///
+  /// A supported attempt that produced nothing has taught the scheduler
+  /// something, and offering the same scaffold again on no new evidence is
+  /// repeating a question that has already been answered. This is what says
+  /// when that answer arrived, so a rule can wait for ordinary evidence to
+  /// make the parent relevant again.
+  final DateTime? lastUnsuccessfulAt;
+
   const AcquisitionRecord({
     required this.attempts,
     required this.completions,
@@ -47,6 +56,7 @@ class AcquisitionRecord {
     this.criterionSuccessesServed = 0,
     this.lastCriterionSuccessAt,
     this.lastProbeServedAt,
+    this.lastUnsuccessfulAt,
   });
 
   /// Whether a criterion success here has earned a probe of the parent.
@@ -74,7 +84,8 @@ class AcquisitionRecord {
       other.criterionSuccessesServed == criterionSuccessesServed &&
       other.lastAttemptAt == lastAttemptAt &&
       other.lastCriterionSuccessAt == lastCriterionSuccessAt &&
-      other.lastProbeServedAt == lastProbeServedAt;
+      other.lastProbeServedAt == lastProbeServedAt &&
+      other.lastUnsuccessfulAt == lastUnsuccessfulAt;
 
   @override
   int get hashCode => Object.hash(
@@ -86,6 +97,7 @@ class AcquisitionRecord {
     lastAttemptAt,
     lastCriterionSuccessAt,
     lastProbeServedAt,
+    lastUnsuccessfulAt,
   );
 
   @override
@@ -125,6 +137,10 @@ class AcquisitionProgress {
 
   /// What acquisition on [parent] has produced, or null if none is recorded.
   AcquisitionRecord? recordFor(Exercise parent) => _byParent[parent];
+
+  /// When supported work on [parent] last failed to earn a probe, or null.
+  DateTime? lastUnsuccessfulAt(Exercise parent) =>
+      _byParent[parent]?.lastUnsuccessfulAt;
 
   /// Whether acquisition work on [parent] has ever earned a probe.
   bool earnsParentProbe(Exercise parent) =>
@@ -173,6 +189,7 @@ class AcquisitionProgress {
             ? at
             : previous?.lastCriterionSuccessAt,
         lastProbeServedAt: previous?.lastProbeServedAt,
+        lastUnsuccessfulAt: earnedProbe ? previous?.lastUnsuccessfulAt : at,
       ),
     });
   }
@@ -213,6 +230,7 @@ class AcquisitionProgress {
         lastAttemptAt: previous.lastAttemptAt,
         lastCriterionSuccessAt: previous.lastCriterionSuccessAt,
         lastProbeServedAt: at,
+        lastUnsuccessfulAt: previous.lastUnsuccessfulAt,
       ),
     });
   }

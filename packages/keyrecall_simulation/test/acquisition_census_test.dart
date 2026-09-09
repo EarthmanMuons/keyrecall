@@ -56,12 +56,32 @@ void main() {
       );
     });
 
-    test('one parent never takes two opportunities running', () async {
+    test('never takes two opportunities running', () async {
+      // Supported work is an intervention inside ordinary practice, not an
+      // alternative to it, so the thing after one is ordinary work.
       final beginner = await census(PlayerArchetypes.trueBeginner);
 
+      expect(beginner.longestAcquisitionRun, lessThanOrEqualTo(1));
       expect(beginner.sameParentGaps, everyElement(greaterThan(1)));
       print('sameParentGaps=${beginner.sameParentGaps}');
     });
+
+    test(
+      'a failed parent waits for new evidence rather than its turn',
+      () async {
+        // Rotation among simultaneously stuck floors used to fill a sitting
+        // while never repeating a parent twice running. What ends a set-aside is
+        // ordinary evidence, so recurrences are spaced by that rather than by
+        // how much other work happened.
+        final beginner = await census(PlayerArchetypes.trueBeginner);
+
+        expect(beginner.sameParentGaps.any((gap) => gap > 5), isTrue);
+        print(
+          'run=${beginner.longestAcquisitionRun} '
+          'share=${beginner.acquisitionShare.toStringAsFixed(3)}',
+        );
+      },
+    );
 
     test('an advanced learner is left alone', () async {
       // Supported work is for a learner who cannot manage the floor. Somebody

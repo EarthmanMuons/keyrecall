@@ -21,6 +21,7 @@ Map<String, Object?> encodeAcquisitionRecord(
     record.lastCriterionSuccessAt,
   ),
   'last_probe_served_at': encodeOptionalTime(record.lastProbeServedAt),
+  'last_unsuccessful_at': encodeOptionalTime(record.lastUnsuccessfulAt),
 };
 
 /// Writes acquisition progress, ordered so the same progress encodes
@@ -98,6 +99,13 @@ AcquisitionProgress decodeAcquisitionProgress(
         location: location,
       );
     }
+    if (!record.containsKey('last_unsuccessful_at')) {
+      throw JournalFormatException(
+        'acquisition progress does not say when supported work last failed; '
+        'replay its acquisition log',
+        location: location,
+      );
+    }
     if (!record.containsKey('criterion_successes_served')) {
       throw JournalFormatException(
         'acquisition progress has no service watermark; replay its acquisition log',
@@ -131,6 +139,11 @@ AcquisitionProgress decodeAcquisitionProgress(
       lastAttemptAt: requireTime(record, 'last_attempt_at', location: location),
       lastCriterionSuccessAt: lastCriterionSuccessAt,
       lastProbeServedAt: lastProbeServedAt,
+      lastUnsuccessfulAt: readOptionalTime(
+        record,
+        'last_unsuccessful_at',
+        location: location,
+      ),
     );
   }
   return AcquisitionProgress(byParent);

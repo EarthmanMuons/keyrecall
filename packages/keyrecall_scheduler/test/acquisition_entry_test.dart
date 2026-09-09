@@ -424,6 +424,86 @@ void main() {
     });
   });
 
+  group('after supported work that produced nothing', () {
+    /// Acquisition history whose last attempt earned no probe.
+    AcquisitionProgress failedAt(DateTime at) =>
+        const AcquisitionProgress.empty().recording(
+          parent: floor,
+          completed: false,
+          earnedProbe: false,
+          at: at,
+        );
+
+    test('the same parent waits for ordinary evidence', () {
+      // The question was asked and answered. Offering the same scaffold again
+      // on nothing new repeats it, which is how rotation among several stuck
+      // floors filled a sitting.
+      final state = metButUnproven();
+
+      expect(
+        pipeline.acquisitionSetAside(state, failedAt(t0), floor),
+        isTrue,
+        reason: 'the failure is at the same instant as the evidence',
+      );
+    });
+
+    test('ordinary evidence since the failure lifts it', () {
+      final state = metButUnproven();
+      final earlier = t0.subtract(const Duration(hours: 1));
+
+      expect(
+        pipeline.acquisitionSetAside(state, failedAt(earlier), floor),
+        isFalse,
+      );
+    });
+
+    test('a success is not a set-aside', () {
+      final progress = const AcquisitionProgress.empty().recording(
+        parent: floor,
+        completed: true,
+        earnedProbe: true,
+        at: t0,
+      );
+
+      expect(
+        pipeline.acquisitionSetAside(metButUnproven(), progress, floor),
+        isFalse,
+      );
+    });
+
+    test('nothing is offered on the opportunity straight after one', () {
+      final state = metButUnproven();
+      final traces = pipeline.evaluate(
+        state: state,
+        session: SessionState(),
+        candidates: [floor],
+        at: t0,
+      );
+
+      expect(
+        pipeline.acquisitionFor(
+          state: state,
+          progress: const AcquisitionProgress.empty(),
+          floor: entries,
+          attemptedParents: attemptedParents,
+          traces: traces,
+          afterAcquisition: true,
+        ),
+        isNull,
+      );
+      expect(
+        pipeline.acquisitionFor(
+          state: state,
+          progress: const AcquisitionProgress.empty(),
+          floor: entries,
+          attemptedParents: attemptedParents,
+          traces: traces,
+        ),
+        isNotNull,
+      );
+    });
+  });
+
   group('what an offer does not do', () {
     test('leaves learner state exactly as it found it', () {
       final state = metButUnproven();

@@ -63,13 +63,14 @@ class SessionState {
 
   /// The acquisition parent the slot just before this one offered, or null.
   ///
-  /// Supported work consumes an opportunity like anything else. A floor that
-  /// qualifies goes on qualifying until it is managed, so without this the same
-  /// parent takes every slot from the moment it first stalls, and a sitting
-  /// stops interleaving at exactly the point the learner is finding hardest.
+  /// Supported work is an intervention inside ordinary practice rather than an
+  /// alternative to it, so the thing a learner meets after one is ordinary
+  /// work. Any other selection clears this, which makes it one opportunity
+  /// rather than a wait.
   ///
-  /// One opportunity, not a cooldown. Any other selection clears it, including
-  /// another stuck floor, so the step aside is a step and not a wait.
+  /// Skipping only the parent just offered was not enough. Six declared floors
+  /// stuck at once rotated among themselves and filled most of a sitting while
+  /// never repeating a parent twice running.
   Exercise? lastAcquisitionParent;
 
   /// What the realization families of recent selections yielded, oldest first.

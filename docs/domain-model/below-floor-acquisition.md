@@ -646,14 +646,21 @@ A floor that qualifies goes on qualifying until it is managed, so an offer that
 is always made takes every slot from the moment a learner first stalls, and the
 sitting stops interleaving at exactly the point they are finding hardest.
 
-The rule is one opportunity, not a cooldown: the parent the previous opportunity
-offered is skipped. Any other selection clears it, including another stuck
-floor, so a sitting with two of them may alternate rather than wait, and a
-parent that is still stuck comes back rather than being finished with.
+Two structural rules, neither with a number in it.
 
-This is not a pacing policy with numbers in it. What it forbids is the same
-parent twice running, which is enough to keep interleaving without deciding how
-often supported work should happen.
+Nothing is offered on the opportunity straight after supported work. It is an
+intervention inside ordinary practice rather than an alternative to it, so the
+next thing a learner meets is ordinary work.
+
+And a parent whose supported attempt produced nothing waits for ordinary
+evidence in its own execution context. That attempt answered the question it
+asked, and offering the same scaffold again on nothing new repeats it.
+
+Skipping only the parent just offered was tried first and was not enough.
+Simulation found six declared floors stuck at once rotating among themselves,
+filling nearly three quarters of a beginner's sitting in runs of thirteen while
+never repeating a parent twice running. The two rules above brought that to a
+third in runs of one, without anybody choosing a share.
 
 A parent that earned a probe needs none of this. What it is owed is the ordinary
 question, and the service phase takes precedence over both.

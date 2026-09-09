@@ -393,7 +393,7 @@ class SchedulerPipeline {
             floor: familyFloor,
             attemptedParents: attemptedExercises ?? const {},
             traces: traces,
-            justOffered: session.lastAcquisitionParent,
+            afterAcquisition: session.lastAcquisitionParent != null,
           );
 
     final diagnostics = selectionDiagnostics(
@@ -1095,6 +1095,29 @@ class SchedulerPipeline {
     return (demonstrated ?? 0) < parent.conditions.tempoBpm;
   }
 
+  /// Whether supported work on [parent] is set aside for now.
+  ///
+  /// A supported attempt that produced nothing answered the question it asked.
+  /// Offering the same scaffold again on no new evidence repeats a question
+  /// that has been answered, and with several floors stuck at once that is how
+  /// supported work fills a sitting by rotation while never repeating a parent
+  /// twice running.
+  ///
+  /// Ordinary evidence in the parent's own execution context lifts it. That is
+  /// the reset the rule waits for: something new about the learner, rather than
+  /// enough other work having happened in between.
+  bool acquisitionSetAside(
+    LearnerState state,
+    AcquisitionProgress progress,
+    Exercise parent,
+  ) {
+    final failed = progress.lastUnsuccessfulAt(parent);
+    if (failed == null) return false;
+    final evidence =
+        state.materialExecution[executionContextOf(parent)]?.lastEvidenceAt;
+    return evidence == null || !evidence.isAfter(failed);
+  }
+
   /// The acquisition task a stuck floor calls for, and the candidate that
   /// showed it, or null when ordinary work is still the answer.
   ///
@@ -1118,24 +1141,25 @@ class SchedulerPipeline {
   /// subset decides, so acquisition does not wander to a different material
   /// than the one the sitting would have worked on.
   ///
-  /// [justOffered] is the parent the previous opportunity offered, and it is
-  /// skipped. A floor that qualifies goes on qualifying until it is managed, so
-  /// without this the same parent takes every slot from the moment it first
-  /// stalls. Another stuck floor may be offered in the meantime: what must not
-  /// happen is the same one twice running.
+  /// [afterAcquisition] says the previous opportunity was supported work, and
+  /// nothing is offered then. Supported work is an intervention inside ordinary
+  /// practice, not an alternative to it, so the next thing a learner meets is
+  /// ordinary work. Skipping only the same parent left six stuck floors free to
+  /// rotate, which filled most of a sitting while satisfying the letter of it.
   ({AcquisitionTask task, CandidateTrace? stuck})? acquisitionFor({
     required LearnerState state,
     required AcquisitionProgress progress,
     required AcquisitionFloor floor,
     required Set<Exercise> attemptedParents,
     required List<CandidateTrace> traces,
-    Exercise? justOffered,
+    bool afterAcquisition = false,
   }) {
+    if (afterAcquisition) return null;
     bool stuck(CandidateTrace trace) =>
         trace.safety.isAllowed &&
         (trace.admissionRefusal == null ||
             trace.admissionRefusal == AdmissionRefusal.challengeBand) &&
-        trace.exercise != justOffered &&
+        !acquisitionSetAside(state, progress, trace.exercise) &&
         needsAcquisition(
           state,
           trace.exercise,
