@@ -51,10 +51,14 @@ class PresentedAttempt extends PracticeDecision {
 
 /// Supported acquisition was offered instead of ordinary work.
 ///
-/// Not an attempt yet. Nothing is durable here and no transaction is open,
-/// because an acquisition attempt is recorded in its own log and nothing
-/// presents one. A caller that does not understand this shows nothing and asks
-/// again, which leaves the obligation and the learner exactly where they were.
+/// Outstanding once returned, the way an ordinary presentation is: deciding
+/// again while it stands is refused, because it carries the identity the
+/// attempt will be recorded under and the record a retry would write. Close it
+/// with `closeAcquisition` or abandon it.
+///
+/// Nothing about it is durable before it is played. There is no decision to
+/// recover and no learner state it could leave half-applied, which is why it
+/// is not a [PresentedAttempt] and why abandoning it writes nothing.
 @immutable
 class PresentedAcquisition extends PracticeDecision {
   /// Which presentation this is.
@@ -198,6 +202,10 @@ class PracticeSession {
   AcquisitionJournal _acquisition;
 
   /// The supported task on screen, if one is.
+  ///
+  /// Outstanding in the same sense an ordinary presentation is: it has an
+  /// identity, it holds the record a retry would write again, and deciding
+  /// again while it stands would replace both without closing either.
   PresentedAcquisition? _outstandingAcquisition;
 
   /// The record built for it, held so a retry writes the same event.
@@ -391,8 +399,12 @@ class PracticeSession {
   /// happened. Resolve it before deciding again.
   PendingDecision? get pending => _pending;
 
-  /// Whether an exercise is currently outstanding.
-  bool get hasOutstandingAttempt => _outstanding != null;
+  /// Whether anything is currently outstanding, ordinary or supported.
+  bool get hasOutstandingAttempt =>
+      _outstanding != null || _outstandingAcquisition != null;
+
+  /// The supported task on screen, if one is.
+  PresentedAcquisition? get outstandingAcquisition => _outstandingAcquisition;
 
   /// Applies a new goal or focus to the next undecided slot.
   ///
@@ -426,6 +438,11 @@ class PracticeSession {
       throw PracticeStateError(
         'an unresolved decision from an earlier run is pending; resolve it '
         'first',
+      );
+    }
+    if (_outstandingAcquisition != null) {
+      throw PracticeStateError(
+        'a supported task is already outstanding; record or abandon it first',
       );
     }
 
@@ -501,7 +518,6 @@ class PracticeSession {
         coverage: evaluated.coverage,
       );
       _outstandingAcquisition = offered;
-      _acquisitionInFlight = null;
       return offered;
     }
     if (verdict.chosen == null) {
@@ -559,10 +575,15 @@ class PracticeSession {
   /// Idempotent per attempt, and applies to a decision resumed from an earlier
   /// run as readily as to one this sitting made: a pending attempt that comes
   /// back on screen is being presented now.
-  Future<void> acknowledgePresentation() async {
+  ///
+  /// Named rather than assumed. A caller reporting this from a frame callback
+  /// says which attempt was drawn, so a decision that has since been replaced
+  /// cannot be acknowledged in place of the one that actually reached the
+  /// learner.
+  Future<void> acknowledgePresentation(String attemptId) async {
     final decision = _outstanding?.decision ?? _pending;
-    if (decision == null) return;
-    if (!_acknowledged.add(decision.attemptId)) return;
+    if (decision == null || decision.attemptId != attemptId) return;
+    if (!_acknowledged.add(attemptId)) return;
     await _serveAcquisitionProbe(decision);
   }
 
@@ -599,31 +620,32 @@ class PracticeSession {
 
   /// Appends [entry] and leaves memory agreeing with what is durable.
   ///
-  /// An append that threw may still have landed, so nothing here concludes
-  /// from an exception that nothing was written. The store is asked, and the
-  /// log is replaced by what it holds: a sequence computed from a stale copy
-  /// would collide with a record the file already has, and every later write
-  /// would fail behind it.
+  /// An acknowledged append is authoritative: what was written is known, so it
+  /// goes into the log here rather than being read back for. A reload that
+  /// failed afterwards would otherwise leave memory a record behind the file,
+  /// and every later write would collide with a sequence the file already has.
+  ///
+  /// An append that threw may still have landed, so nothing concludes from an
+  /// exception that nothing was written. The durable log is read and has to
+  /// hold this exact event: an id that comes back carrying different content is
+  /// a collision rather than the write succeeding, and calling that success
+  /// would drop what was actually recorded.
   Future<void> _appendAcquisition(AcquisitionEntry entry) async {
     try {
       await store.appendAcquisitionEntry(entry);
     } catch (error) {
-      if (!await _reloadedAcquisitionHolds(entry)) rethrow;
+      final durable = await store.loadAcquisitionJournal(profile.id);
+      final held = durable.records.where(
+        (record) => record.identity.attemptId == entry.identity.attemptId,
+      );
+      if (held.isEmpty ||
+          contentHash(held.single.toJson()) != contentHash(entry.toJson())) {
+        rethrow;
+      }
+      _acquisition = durable;
       return;
     }
-    await _reloadedAcquisitionHolds(entry);
-  }
-
-  /// Reloads the durable log and says whether it holds [entry].
-  Future<bool> _reloadedAcquisitionHolds(AcquisitionEntry entry) async {
-    try {
-      _acquisition = await store.loadAcquisitionJournal(profile.id);
-    } catch (_) {
-      return false;
-    }
-    return _acquisition.records.any(
-      (held) => held.identity.attemptId == entry.identity.attemptId,
-    );
+    _acquisition.append(entry);
   }
 
   /// Says that a service write did not land, without failing the attempt.
@@ -660,15 +682,19 @@ class PracticeSession {
   /// Compatibility for callers that have not yet adopted [decideOutcome]. New
   /// product code must match the reasoned result instead of treating blocked
   /// practice as ordinary absence.
-  Future<PresentedAttempt?> decide({required DateTime at}) async =>
-      switch (await decideOutcome(at: at)) {
-        final PresentedAttempt presented => presented,
-        PresentedAcquisition() ||
-        PracticeBlocked() ||
-        PracticeCaughtUp() ||
-        PracticeSuperseded() ||
-        PracticeInvalidScope() => null,
-      };
+  Future<PresentedAttempt?> decide({required DateTime at}) async {
+    final decision = await decideOutcome(at: at);
+    if (decision case final PresentedAttempt presented) return presented;
+    // A caller on this path has said it only presents ordinary attempts, so an
+    // offered task is declined here rather than left standing. Leaving it
+    // outstanding would refuse the caller's next decision over something it
+    // never showed anybody.
+    if (decision is PresentedAcquisition) {
+      _outstandingAcquisition = null;
+      _acquisitionInFlight = null;
+    }
+    return null;
+  }
 
   /// Records what an acquisition attempt produced.
   ///
@@ -959,6 +985,8 @@ class PracticeSession {
     await store.clearPendingDecision(profile.id);
     _pending = null;
     _outstanding = null;
+    _outstandingAcquisition = null;
+    _acquisitionInFlight = null;
     _epoch++;
   }
 

@@ -176,7 +176,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     // supported work is discharged against.
     if (attemptId != null && _presented.add(attemptId)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(notifier.acknowledgePresentation());
+        if (mounted) unawaited(notifier.acknowledgePresentation(attemptId));
       });
     }
 

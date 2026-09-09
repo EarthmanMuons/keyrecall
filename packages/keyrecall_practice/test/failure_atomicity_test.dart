@@ -289,11 +289,11 @@ void main() {
       store.failAcquisitionAppends = true;
       final session = await openSession(store, sessionId: 'session-2');
       final presented = await session.decide(at: at);
-      await session.acknowledgePresentation();
+      await session.acknowledgePresentation(presented!.decision.attemptId);
 
       // The attempt is presented and outstanding: losing the discharge must
       // not cost the learner the work in front of them.
-      expect(presented?.exercise, parent);
+      expect(presented.exercise, parent);
       expect(session.hasOutstandingAttempt, isTrue);
 
       // The obligation is where it started, so a later presentation asks the
@@ -332,6 +332,45 @@ void main() {
       expect(log.attempts.single.identity.attemptId, offered);
     });
 
+    test(
+      'that reloads to a different record fails rather than passing',
+      () async {
+        // An id that comes back carrying different content is a collision, not
+        // the write having succeeded. Calling it success would drop what was
+        // actually recorded and leave memory describing an event nobody wrote.
+        final inner = InMemoryPracticeStore(createdAt: t0);
+        final store = FlakyPracticeStore(inner);
+        final at = t0.plusDays(0.5);
+        final session = await openSession(
+          store,
+          pipeline: const AlwaysOffersAcquisition(),
+        );
+        final offered =
+            await session.decideOutcome(at: at) as PresentedAcquisition;
+
+        // Something else already holds that id, with different content.
+        await inner.appendAcquisitionEntry(
+          AcquisitionProbeServedRecord(
+            journalSequence: 0,
+            identity: AttemptIdentity(
+              profileId: alice.id,
+              attemptId: offered.attemptId,
+              sessionId: 'sitting-0',
+              indexInSession: 0,
+              occurredAt: at,
+            ),
+            parent: offered.task.parent,
+          ),
+        );
+        store.failAcquisitionAppends = true;
+
+        await expectLater(
+          session.closeAcquisition(PerformanceTranscript.empty, at: at),
+          throwsA(isA<Exception>()),
+        );
+      },
+    );
+
     test('says so rather than failing silently', () async {
       final inner = InMemoryPracticeStore(createdAt: t0);
       final store = FlakyPracticeStore(inner);
@@ -345,12 +384,12 @@ void main() {
       store.failAcquisitionAppends = true;
       final session = await openSession(store, sessionId: 'session-2');
       final presented = await session.decide(at: at);
-      await session.acknowledgePresentation();
+      await session.acknowledgePresentation(presented!.decision.attemptId);
 
       // Non-blocking is not the same as invisible. One lost write is a
       // redundant probe; a systematic one is storage quietly failing.
       final diagnostics = await store.loadSelectionDiagnostics(alice.id);
-      final key = '${presented!.decision.attemptId}:acquisition-service';
+      final key = '${presented.decision.attemptId}:acquisition-service';
       expect(diagnostics, contains(key));
       expect(diagnostics[key], contains('the disk said no'));
       expect(diagnostics[key], contains('left owed'));

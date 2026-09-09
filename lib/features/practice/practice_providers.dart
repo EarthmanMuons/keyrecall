@@ -537,10 +537,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// Deciding is not presenting: the next exercise is prepared while the last
   /// one's review is still on screen, and a prepared decision can be discarded
   /// before anybody sees it.
-  Future<void> acknowledgePresentation() async {
+  Future<void> acknowledgePresentation(String attemptId) async {
     final session = state.value?.session;
     if (session == null) return;
-    await session.acknowledgePresentation();
+    await session.acknowledgePresentation(attemptId);
   }
 
   /// Records what a supported attempt produced and moves on.

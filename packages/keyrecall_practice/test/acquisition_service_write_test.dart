@@ -159,7 +159,7 @@ void main() {
     // Deciding is not presenting. Nothing is discharged until the exercise
     // actually reaches the learner.
     expect(reopened.acquisitionProgress.probeOwed(parent), isTrue);
-    await reopened.acknowledgePresentation();
+    await reopened.acknowledgePresentation(again.decision.attemptId);
 
     final log = await store.loadAcquisitionJournal(alice.id);
     expect(log.replay().probeOwed(parent), isFalse);
@@ -177,8 +177,8 @@ void main() {
     await first.abandonPending();
     await store.appendAcquisitionEntry(earnedFor(parent));
     final second = await openSession(store, sessionId: 'session-2');
-    await second.decideOutcome(at: at);
-    await second.acknowledgePresentation();
+    final shown = await second.decideOutcome(at: at) as PresentedAttempt;
+    await second.acknowledgePresentation(shown.decision.attemptId);
     await second.abandonPending();
 
     // A third sitting rebuilds progress from the log and finds nothing owed,
@@ -221,9 +221,9 @@ void main() {
     await store.appendAcquisitionEntry(earnedFor(parent));
 
     final session = await openSession(store, sessionId: 'session-2');
-    await session.decideOutcome(at: at);
-    await session.acknowledgePresentation();
-    await session.acknowledgePresentation();
+    final shown = await session.decideOutcome(at: at) as PresentedAttempt;
+    await session.acknowledgePresentation(shown.decision.attemptId);
+    await session.acknowledgePresentation(shown.decision.attemptId);
 
     final log = await store.loadAcquisitionJournal(alice.id);
     expect(log.records.whereType<AcquisitionProbeServedRecord>(), hasLength(1));
