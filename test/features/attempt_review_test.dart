@@ -56,24 +56,6 @@ void main() {
     ),
   );
 
-  PresentedAttempt presented(Exercise exercise) => PresentedAttempt(
-    PendingDecision(
-      attemptId: 'next-attempt',
-      profileId: 'profile',
-      sessionId: 'session',
-      indexInSession: 1,
-      journalSequence: 1,
-      decidedAt: DateTime.utc(2026),
-      provenance: const ModelProvenance(
-        learnerModelVersion: 'learner',
-        schedulerModelVersion: 'scheduler',
-      ),
-      exercise: exercise,
-      decision: decisionOf(ChallengeBypass.newMaterial),
-      stateBeforeHash: 'state',
-    ),
-  );
-
   group('what is different about the next exercise', () {
     test('says nothing when nothing about the playing changed', () {
       expect(differenceTo(exerciseOf(material: gMajor), previous), isNull);
@@ -207,7 +189,7 @@ void main() {
           body: AttemptReview(
             record: silent,
             history: [silent],
-            next: presented(exerciseOf(material: gMajor)),
+            next: NextPracticePreview(material: gMajor),
             instrument: instrument,
             onNext: () {},
           ),
@@ -315,7 +297,7 @@ void main() {
             record: record,
             history: [record],
             reading: reading,
-            next: presented(exerciseOf(material: gMajor)),
+            next: NextPracticePreview(material: gMajor),
             instrument: InstrumentReadiness.connected,
             onNext: () {},
             onDetailsViewed: () => detailsViewed++,

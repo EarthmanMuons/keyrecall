@@ -159,19 +159,3 @@ int _whiteKeysThrough(int firstWhite, int lastWhite) {
   }
   return count;
 }
-
-/// The conditions of [exercise] on one line, the way the task statement says
-/// them.
-///
-/// What a preview needs to be a preview. A material name alone says which
-/// scale and nothing about what is being asked of it, and the hand and the
-/// direction are the parts a learner puts their hands somewhere for.
-String taskConditionsLine(Exercise exercise) {
-  final conditions = exercise.conditions;
-  return [
-    handsName(conditions.hands),
-    traversalName(conditions),
-    octavesName(conditions.octaves),
-    '${conditions.tempoBpm.round()} BPM',
-  ].join(' · ');
-}

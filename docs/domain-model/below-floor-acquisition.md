@@ -543,6 +543,23 @@ window applies and the attempt is never asked whether it is over. While it runs
 the screen says so, because a wait of any length is the reading and a screen
 that looked finished would be wrong exactly when it mattered.
 
+### The transition describes whatever comes next
+
+A transition screen can only describe what it is given, and what comes next is
+not always an exercise: supported work is decided too. A review that could
+describe only an ordinary presentation had nothing to render when acquisition
+was next, so the transition into supported work came out blank.
+
+Both reviews now take one presentation-neutral description: the material, and
+one line of explanation where anything honest can be said. Acquisition next says
+pace is the learner's; a served probe says the tempo is back; ordinary work says
+whatever the difference is.
+
+No conditions. The Ready screen immediately after states the hand, the
+direction, the span and the tempo, and a transition that repeated them was busy
+without saying anything the next screen was not about to say. Orientation, not
+instruction.
+
 ### The probe explains itself
 
 An acquisition attempt leaves no ordinary record, so no review screen runs after

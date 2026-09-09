@@ -110,6 +110,36 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   /// once each rather than on every frame.
   final Set<String> _presented = {};
 
+  /// What the loop has decided next, as a transition can describe it.
+  ///
+  /// The scheduler decides ordinary work and supported work alike, so this
+  /// answers for both. Orientation only: the material and, where there is one,
+  /// the reason the next thing is different. The Ready screen states the task.
+  NextPracticePreview? _upNext(PracticeLoopState state, AttemptRecord? after) {
+    if (state.presented case final presented?) {
+      return NextPracticePreview(
+        material: presented.exercise.material,
+        explanation: after == null
+            ? (presented.decision.decision.challengeBypass ==
+                      ChallengeBypass.acquisitionProbe
+                  ? restoredTempoLine(presented.exercise)
+                  : null)
+            : reasonForNext(
+                decision: presented.decision.decision,
+                next: presented.exercise,
+                previous: after.exercise,
+              ),
+      );
+    }
+    if (state.acquisition case final offered?) {
+      return NextPracticePreview(
+        material: offered.task.parent.material,
+        explanation: 'Practice this at your own pace.',
+      );
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final loop = ref.watch(practiceLoopProvider);
@@ -152,7 +182,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           history: history,
           instrument: ref.watch(instrumentReadinessProvider),
           reading: loop.value?.lastReading,
-          next: loop.value?.presented,
+          next: _upNext(loop.value!, committed),
           continues: loop.value?.acquisition != null,
           onDetailsViewed: () {
             final attemptId = committed.identity.attemptId;
@@ -176,7 +206,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     if (closed != null && closed.identity.attemptId != _acquisitionReviewed) {
       return AcquisitionReview(
         record: closed,
-        next: loop.value?.presented,
+        next: _upNext(loop.value!, null),
         continues: loop.value?.acquisition != null,
         onNext: () =>
             setState(() => _acquisitionReviewed = closed.identity.attemptId),

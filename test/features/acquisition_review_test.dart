@@ -1,12 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
-import 'package:keyrecall_learner/keyrecall_learner.dart';
-import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/acquisition_review.dart';
+import 'package:keyrecall/features/practice/attempt_review.dart';
 
 void main() {
   final parent = Exercise.linear(
@@ -42,45 +41,12 @@ void main() {
       );
 
   /// A decided next attempt, admitted through [bypass].
-  PresentedAttempt upcoming(Exercise exercise, ChallengeBypass? bypass) =>
-      PresentedAttempt(
-        PendingDecision(
-          attemptId: 'next-0',
-          profileId: 'abc12345',
-          sessionId: 'sitting-1',
-          indexInSession: 1,
-          journalSequence: 0,
-          decidedAt: t0,
-          provenance: const ModelProvenance(
-            learnerModelVersion: 'learner',
-            schedulerModelVersion: 'scheduler',
-          ),
-          exercise: exercise,
-          decision: SchedulerDecision(
-            prediction: const Prediction(
-              independentRetrievalP: 0.5,
-              materialAvailableP: 0.5,
-              executionP: 0.5,
-              coordinationP: 0.5,
-              topologyP: 0.5,
-            ),
-            eligibilityTier: EligibilityTier.fullyEligible,
-            eligibilityReason: null,
-            safetyReason: 'ok',
-            withinChallengeBand: true,
-            challengeBandMin: 0.15,
-            challengeBandMax: 0.85,
-            challengeBypass: bypass,
-            rankKey: const RankKey(
-              tier: EligibilityTier.fullyEligible,
-              retention: 0,
-              information: 0,
-              diversity: 0,
-              goals: 0,
-            ),
-          ),
-          stateBeforeHash: 'hash',
-        ),
+  NextPracticePreview upcoming(Exercise exercise, ChallengeBypass? bypass) =>
+      NextPracticePreview(
+        material: exercise.material,
+        explanation: bypass == ChallengeBypass.acquisitionProbe
+            ? restoredTempoLine(exercise)
+            : null,
       );
 
   Future<void> pump(WidgetTester tester, Widget child) async {
@@ -90,9 +56,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(home: child));
   }
 
-  testWidgets('previews the whole next task, not just its name', (
-    tester,
-  ) async {
+  testWidgets('names what comes next and why, and stops there', (tester) async {
     final next = Exercise.linear(
       material: TechnicalMaterial('C', ScaleForm.major),
       hands: HandConfiguration.left,
@@ -111,9 +75,11 @@ void main() {
       ),
     );
 
-    // A material name alone says which scale and nothing about what is being
-    // asked of it.
-    expect(find.text('Left hand · Up and down · 1 octave · 60 BPM'), findsOne);
+    // Orientation, not instruction. The Ready screen states the hand, the
+    // direction, the span and the tempo; repeating them here was busy and said
+    // nothing the next screen was not about to say.
+    expect(find.text('C major'), findsNWidgets(2));
+    expect(find.textContaining('1 octave'), findsNothing);
     expect(find.text('Continue'), findsOne);
     expect(find.textContaining('Back at'), findsNothing);
   });

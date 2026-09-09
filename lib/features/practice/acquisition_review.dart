@@ -1,6 +1,4 @@
 import 'package:keyrecall_journal/keyrecall_journal.dart';
-import 'package:keyrecall_practice/keyrecall_practice.dart';
-import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
@@ -32,7 +30,7 @@ class AcquisitionReview extends StatelessWidget {
   final AcquisitionAttemptRecord record;
 
   /// What has been decided to come next, if anything.
-  final PresentedAttempt? next;
+  final NextPracticePreview? next;
 
   final VoidCallback onNext;
 
@@ -44,14 +42,6 @@ class AcquisitionReview extends StatelessWidget {
     final theme = Theme.of(context);
     final layout = Layout.of(context);
     final upcoming = next;
-    // Read off the decision that was actually made, so it is right however the
-    // scheduler got here rather than assuming what acquisition earned.
-    final restored =
-        upcoming != null &&
-            upcoming.decision.decision.challengeBypass ==
-                ChallengeBypass.acquisitionProbe
-        ? restoredTempoLine(upcoming.exercise)
-        : null;
 
     return Scaffold(
       body: SafeArea(
@@ -91,22 +81,14 @@ class AcquisitionReview extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  materialName(upcoming.exercise.material),
+                  materialName(upcoming.material),
                   style: theme.textTheme.titleLarge,
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  taskConditionsLine(upcoming.exercise),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                if (restored != null) ...[
+                if (upcoming.explanation case final explanation?) ...[
                   const SizedBox(height: 4),
                   Text(
-                    restored,
+                    explanation,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

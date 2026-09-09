@@ -175,6 +175,30 @@ String? differenceTo(Exercise next, Exercise previous) {
   return null;
 }
 
+/// What comes next, as a transition screen can say it.
+///
+/// Presentation-neutral because what comes next is not always an exercise.
+/// Supported work is decided too, and a review that could only describe a
+/// [PresentedAttempt] had nothing to show when acquisition was next, which is
+/// how a transition into supported work came out blank.
+///
+/// The material and one line of explanation, and no conditions. The Ready
+/// screen immediately after states the hand, the direction, the span and the
+/// tempo; a transition that repeated them was busy and said nothing the next
+/// screen was not about to say. What it is for is orientation, which means
+/// naming the material and, where there is one, the reason the next thing is
+/// different.
+@immutable
+class NextPracticePreview {
+  /// What comes next.
+  final TechnicalMaterial material;
+
+  /// Why it is different, where anything honest can be said.
+  final String? explanation;
+
+  const NextPracticePreview({required this.material, this.explanation});
+}
+
 /// What just happened, and what is next.
 ///
 /// Shown between attempts, over a decision that has already been made: the
@@ -203,7 +227,7 @@ class AttemptReview extends StatelessWidget {
   final VoidCallback? onDetailsViewed;
 
   /// What has been decided to come next, if anything.
-  final PresentedAttempt? next;
+  final NextPracticePreview? next;
 
   /// Attempts available when deriving longitudinal progress evidence.
   final Iterable<AttemptRecord> history;
@@ -238,13 +262,7 @@ class AttemptReview extends StatelessWidget {
         : attemptDetailTraceFor(reading!);
     final progressEvents = progressEventsFor(record, history: history);
     final progress = progressStatementFor(record, progressEvents);
-    final reason = upcoming == null
-        ? null
-        : reasonForNext(
-            decision: upcoming.decision.decision,
-            next: upcoming.exercise,
-            previous: record.exercise,
-          );
+    final reason = upcoming?.explanation;
 
     final silence = nothingWasPlayed(record.closure)
         ? _Silence.of(instrument)
@@ -327,16 +345,8 @@ class AttemptReview extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          materialName(upcoming.exercise.material),
+                          materialName(upcoming.material),
                           style: theme.textTheme.titleLarge,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          taskConditionsLine(upcoming.exercise),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
                           textAlign: TextAlign.center,
                         ),
                         if (reason != null) ...[
