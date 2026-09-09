@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
@@ -51,6 +52,49 @@ void main() {
     indexInSession: index,
     occurredAt: t0.add(Duration(minutes: index)),
   );
+
+  test('ordinary exposure survives replay without borrowing another task', () {
+    final other = parent.atTempo(120);
+    final log = AttemptJournal(
+      JournalHeader(profileId: 'abc12345', createdAt: t0),
+    );
+    final measurement = measure(
+      realization: realize(parent),
+      transcript: played(expected.take(3).toList(), [900, 900]),
+    );
+    final outcome = outcomeFor(measurement: measurement, exercise: parent);
+    final closures = [
+      AttemptClosure.measured(
+        termination: AttemptTermination.learnerStopped,
+        outcome: outcome,
+        weights: evidenceWeightsFor(parent, outcome),
+        memoryUpdate: const MemoryUpdateDiagnostics(),
+      ),
+      AttemptClosure.unmeasured(
+        termination: AttemptTermination.inputInterrupted,
+      ),
+    ];
+    for (final (index, closure) in closures.indexed) {
+      log.append(
+        AttemptRecord(
+          journalSequence: index,
+          identity: identityAt(index),
+          provenance: ModelProvenance.of(
+            learnerParams: v1LearnerParams,
+            schedulerModelVersion: v1SchedulerConfig.modelVersion,
+          ),
+          exercise: index == 0 ? parent : other,
+          closure: closure,
+        ),
+      );
+    }
+    final restored = AttemptJournal.fromJsonLines(log.toJsonLines());
+    expect(attemptedAcquisitionParents(restored.records), {parent});
+    expect(
+      attemptedAcquisitionParents(restored.records),
+      isNot(contains(other)),
+    );
+  });
 
   group('serving a probe by presenting the parent', () {
     final other = Exercise.linear(

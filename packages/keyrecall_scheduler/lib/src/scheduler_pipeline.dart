@@ -211,6 +211,7 @@ class SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     AcquisitionProgress? acquisition,
+    Set<Exercise> attemptedAcquisitionParents = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -222,6 +223,7 @@ class SchedulerPipeline {
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
       acquisition: acquisition,
+      attemptedAcquisitionParents: attemptedAcquisitionParents,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
     );
@@ -252,6 +254,7 @@ class SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     AcquisitionProgress? acquisition,
+    Set<Exercise> attemptedAcquisitionParents = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -333,11 +336,19 @@ class SchedulerPipeline {
       }
     }
 
-    final offer = acquisition == null || servedProbe != null
+    final offer =
+        acquisition == null ||
+            acquisitionFloor == null ||
+            servedProbe != null ||
+            acquisitionFloor.entries.any(
+              (entry) => !candidates.contains(entry.exercise),
+            )
         ? null
         : acquisitionFor(
             state: state,
             progress: acquisition,
+            floor: acquisitionFloor,
+            attemptedParents: attemptedAcquisitionParents,
             selected: selected,
             traces: traces,
           );
@@ -972,30 +983,16 @@ class SchedulerPipeline {
           .isEmpty ??
       true;
 
-  /// Whether this candidate's context has been asked the gentlest ordinary
-  /// question and learned nothing actionable from it.
-  ///
-  /// Four facts the model already keeps, and no counter of its own. The
-  /// candidate is a bootstrap shape, so it is already the floor; its context
-  /// needs an execution bootstrap, so no frontier exists in the scope
-  /// progression reads; and evidence has arrived there, so this is not a first
-  /// exposure that has simply never been tried.
-  ///
-  /// The gap between evidence having arrived and no tempo being demonstrated is
-  /// what "repeatedly, with nothing to show for it" means here. Counting
-  /// failures separately would be a second difficulty model beside the one that
-  /// already answers this.
-  ///
-  /// Binary on purpose. One informative floor attempt that demonstrated nothing
-  /// is already an attempt at the gentlest work the family has. If simulation
-  /// shows that fires too eagerly, the missing fact is an exposure count beside
-  /// `lastEvidenceAt`, which is evidence history about the context, rather than
-  /// transient policy state here.
-  bool needsAcquisition(LearnerState state, Exercise exercise) =>
-      isBootstrapShape(exercise) &&
-      needsExecutionBootstrap(state, exercise) &&
-      state.materialExecution[executionContextOf(exercise)]?.lastEvidenceAt !=
-          null;
+  /// Whether an attempted family entry still has no execution frontier.
+  bool needsAcquisition(
+    LearnerState state,
+    Exercise exercise, {
+    required AcquisitionFloor floor,
+    required Set<Exercise> attemptedParents,
+  }) =>
+      floor.entries.any((entry) => entry.exercise == exercise) &&
+      attemptedParents.contains(exercise) &&
+      needsExecutionBootstrap(state, exercise);
 
   /// Whether an owed probe of [parent] is still worth asking for.
   ///
@@ -1040,14 +1037,25 @@ class SchedulerPipeline {
   ({AcquisitionTask task, CandidateTrace? stuck})? acquisitionFor({
     required LearnerState state,
     required AcquisitionProgress progress,
+    required AcquisitionFloor floor,
+    required Set<Exercise> attemptedParents,
     required CandidateTrace? selected,
     required List<CandidateTrace> traces,
   }) {
-    bool stuck(Exercise exercise) =>
-        needsAcquisition(state, exercise) && !progress.probeOwed(exercise);
+    bool stuck(CandidateTrace trace) =>
+        trace.safety.isAllowed &&
+        (trace.admissionRefusal == null ||
+            trace.admissionRefusal == AdmissionRefusal.challengeBand) &&
+        needsAcquisition(
+          state,
+          trace.exercise,
+          floor: floor,
+          attemptedParents: attemptedParents,
+        ) &&
+        !progress.probeOwed(trace.exercise);
 
     if (selected != null) {
-      return stuck(selected.exercise)
+      return stuck(selected)
           ? (
               task: AcquisitionTask.unmeteredTraversal(selected.exercise),
               stuck: selected,
@@ -1055,7 +1063,7 @@ class SchedulerPipeline {
           : null;
     }
     for (final trace in traces) {
-      if (stuck(trace.exercise)) {
+      if (stuck(trace)) {
         return (
           task: AcquisitionTask.unmeteredTraversal(trace.exercise),
           stuck: trace,

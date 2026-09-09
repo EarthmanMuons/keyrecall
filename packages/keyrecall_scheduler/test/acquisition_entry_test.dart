@@ -18,11 +18,29 @@ void main() {
     material: material,
     hands: hands,
     octaves: octaves,
+    direction: ExerciseDirection.up,
     tempoBpm: tempoBpm,
     guidance: guidance,
   );
 
   final floor = cued();
+  AcquisitionFloor entriesFor(Exercise parent) =>
+      scaleAcquisitionFloor([parent]);
+  final entries = scaleAcquisitionFloor([
+    floor,
+    cued(hands: HandConfiguration.left),
+  ]);
+  final attemptedParents = {floor, cued(hands: HandConfiguration.left)};
+
+  bool needsAcquisition(LearnerState state, Exercise exercise) =>
+      pipeline.needsAcquisition(
+        state,
+        exercise,
+        floor: entries,
+        attemptedParents: state.materialExecution.isEmpty
+            ? {}
+            : attemptedParents,
+      );
 
   /// A learner who has never been asked for this material at all.
   LearnerState untouched() => stateAt(PlacementTier.beginner);
@@ -62,7 +80,7 @@ void main() {
 
   group('the entry rule', () {
     test('holds when the floor has taught the model nothing', () {
-      expect(pipeline.needsAcquisition(metButUnproven(), floor), isTrue);
+      expect(needsAcquisition(metButUnproven(), floor), isTrue);
     });
 
     test('does not hold for a first exposure nobody has tried', () {
@@ -70,11 +88,11 @@ void main() {
       // nothing from. This is the case the forgiving floor exists for, and
       // acquisition would be answering a question the ordinary path has not
       // yet asked.
-      expect(pipeline.needsAcquisition(untouched(), floor), isFalse);
+      expect(needsAcquisition(untouched(), floor), isFalse);
     });
 
     test('stops the moment a frontier exists', () {
-      expect(pipeline.needsAcquisition(proven(), floor), isFalse);
+      expect(needsAcquisition(proven(), floor), isFalse);
     });
 
     test('reads the same scope execution progression reads', () {
@@ -92,9 +110,9 @@ void main() {
               .lastEvidenceAt =
           t0;
 
-      expect(pipeline.needsAcquisition(state, floor), isFalse);
+      expect(needsAcquisition(state, floor), isFalse);
       expect(
-        pipeline.needsAcquisition(state, cued(hands: HandConfiguration.left)),
+        needsAcquisition(state, cued(hands: HandConfiguration.left)),
         isTrue,
       );
     });
@@ -105,14 +123,63 @@ void main() {
       // task. The ordinary path still has somewhere to go.
       final state = metButUnproven();
 
-      expect(pipeline.needsAcquisition(state, cued(octaves: 2)), isFalse);
+      expect(needsAcquisition(state, cued(octaves: 2)), isFalse);
+      expect(
+        needsAcquisition(state, cued(guidance: GuidanceContext.unguided)),
+        isFalse,
+      );
+    });
+  });
+
+  group('entry boundaries', () {
+    test('context evidence does not establish an exact floor exposure', () {
       expect(
         pipeline.needsAcquisition(
-          state,
-          cued(guidance: GuidanceContext.unguided),
+          metButUnproven(),
+          floor,
+          floor: entries,
+          attemptedParents: {
+            cued(octaves: 2),
+            cued(guidance: GuidanceContext.notesPreviewedOnly),
+          },
         ),
         isFalse,
       );
+    });
+
+    test('only the declared direction and tempo can enter acquisition', () {
+      final upDown = Exercise.linear(
+        material: material,
+        hands: HandConfiguration.right,
+        tempoBpm: 60,
+        guidance: GuidanceContext.continuouslyCued,
+      );
+      for (final other in [upDown, floor.atTempo(120)]) {
+        expect(
+          pipeline.needsAcquisition(
+            metButUnproven(),
+            other,
+            floor: entries,
+            attemptedParents: {other},
+          ),
+          isFalse,
+        );
+      }
+    });
+
+    test('a blocked safety gate cannot offer acquisition', () {
+      final bounded = SchedulerPipeline(learner: learner, config: boundedTo(1));
+      final result = bounded.decide(
+        state: metButUnproven(),
+        session: SessionState(attemptsThisSession: 1),
+        candidates: [floor],
+        at: t0,
+        acquisition: const AcquisitionProgress.empty(),
+        acquisitionFloor: entriesFor(floor),
+        attemptedAcquisitionParents: {floor},
+      );
+      expect(result, isA<SelectionBlocked>());
+      expect(result.traces.single.safety.isAllowed, isFalse);
     });
   });
 
@@ -127,6 +194,8 @@ void main() {
       candidates: candidates ?? [floor],
       at: t0,
       acquisition: acquisition,
+      acquisitionFloor: entriesFor(floor),
+      attemptedAcquisitionParents: attemptedParents,
     );
 
     test('is absent unless the caller asks for it', () {
@@ -203,12 +272,16 @@ void main() {
       final blocked = pipeline.acquisitionFor(
         state: state,
         progress: const AcquisitionProgress.empty(),
+        floor: entries,
+        attemptedParents: attemptedParents,
         selected: null,
         traces: traces,
       );
       final stuck = pipeline.acquisitionFor(
         state: state,
         progress: const AcquisitionProgress.empty(),
+        floor: entries,
+        attemptedParents: attemptedParents,
         selected: traces.single,
         traces: traces,
       );
@@ -238,6 +311,8 @@ void main() {
       candidates: candidates ?? [floor],
       at: t0,
       acquisition: progress,
+      acquisitionFloor: entriesFor(floor),
+      attemptedAcquisitionParents: attemptedParents,
     );
 
     test('presents the unchanged parent through its own bypass', () {

@@ -208,6 +208,7 @@ class CountingPipeline extends SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     AcquisitionProgress? acquisition,
+    Set<Exercise> attemptedAcquisitionParents = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -220,6 +221,7 @@ class CountingPipeline extends SchedulerPipeline {
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
       acquisition: acquisition,
+      attemptedAcquisitionParents: attemptedAcquisitionParents,
       practiceEntryPolicy: practiceEntryPolicy,
     );
   }

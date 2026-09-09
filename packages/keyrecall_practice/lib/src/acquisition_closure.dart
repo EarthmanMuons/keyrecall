@@ -68,3 +68,15 @@ AcquisitionProbeServedRecord? acquisitionServiceOf({
         parent: presented,
       )
     : null;
+
+/// Exact ordinary tasks that produced informative execution evidence.
+///
+/// Rebuilt from ordinary history; acquisition history cannot establish exposure.
+Set<Exercise> attemptedAcquisitionParents(Iterable<AttemptRecord> records) => {
+  for (final record in records)
+    if (record.closure.measurement case Measured(
+      :final outcome,
+      :final weights,
+    ))
+      if (outcome.started && weights.materialExecution > 0) record.exercise,
+};

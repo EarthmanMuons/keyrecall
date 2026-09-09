@@ -24,6 +24,7 @@ class ObservedPipeline extends SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     AcquisitionFloor? acquisitionFloor,
     AcquisitionProgress? acquisition,
+    Set<Exercise> attemptedAcquisitionParents = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -36,6 +37,7 @@ class ObservedPipeline extends SchedulerPipeline {
       overrides: overrides,
       acquisitionFloor: acquisitionFloor,
       acquisition: acquisition,
+      attemptedAcquisitionParents: attemptedAcquisitionParents,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
     );
