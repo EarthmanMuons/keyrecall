@@ -15,6 +15,7 @@ import '../../wordmark.dart';
 import '../audio/pulse_clicker.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
+import 'acquisition_review.dart';
 import 'attempt_feedback.dart';
 import 'attempt_review.dart';
 import 'attempt_transcript.dart';
@@ -102,6 +103,9 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   /// one on screen.
   String? _playing;
 
+  /// The supported attempt whose transition has been dismissed.
+  String? _acquisitionReviewed;
+
   /// Attempts whose screen has been built, so presentation is acknowledged
   /// once each rather than on every frame.
   final Set<String> _presented = {};
@@ -161,6 +165,19 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           onNext: () =>
               setState(() => _reviewed = committed.identity.attemptId),
         ),
+      );
+    }
+
+    // A supported attempt closes the way an ordinary one does. It produces no
+    // outcome, so the screen carries none, but going straight to another Ready
+    // reads as the app skipping a step and leaves the restored tempo unsaid.
+    final closed = loop.value?.lastAcquisition;
+    if (closed != null && closed.identity.attemptId != _acquisitionReviewed) {
+      return AcquisitionReview(
+        record: closed,
+        next: loop.value?.presented,
+        onNext: () =>
+            setState(() => _acquisitionReviewed = closed.identity.attemptId),
       );
     }
 
@@ -1647,11 +1664,13 @@ class _Status extends StatelessWidget {
       // Nothing here says slowly, or easier, or to take your time. Each of
       // those is an interpretation of why the ordinary attempt did not go
       // well, and nothing has made one. What changed is that pace is the
-      // learner's, and while they are playing the screen has to go on saying
-      // it is running: a wait of any length is the observation, so a screen
-      // that looked finished would be wrong exactly when it mattered.
+      // learner's, and the running line says so rather than only saying the
+      // screen is live: with no pulse and no tempo anywhere, "Playing" alone
+      // leaves a long wait looking like something has gone wrong.
       return Text(
-        phase == _Phase.ready ? 'Practice this at your own pace.' : 'Playing',
+        phase == _Phase.ready
+            ? 'Practice this at your own pace.'
+            : 'Playing at your own pace',
         style: Theme.of(context).textTheme.bodyMedium,
         textAlign: TextAlign.center,
       );

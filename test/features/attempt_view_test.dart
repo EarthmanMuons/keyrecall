@@ -697,7 +697,7 @@ void main() {
       // failed to start.
       expect(find.text('Counting in'), findsNothing);
       expect(find.text('Ready'), findsNothing);
-      expect(find.text('Playing'), findsOneWidget);
+      expect(find.text('Playing at your own pace'), findsOneWidget);
       expect(find.text('Done'), findsOneWidget);
     });
 
@@ -711,7 +711,7 @@ void main() {
       await tester.pump(const Duration(minutes: 10));
 
       expect(finished, isEmpty);
-      expect(find.text('Playing'), findsOneWidget);
+      expect(find.text('Playing at your own pace'), findsOneWidget);
       expect(find.text('Done'), findsOneWidget);
     });
 

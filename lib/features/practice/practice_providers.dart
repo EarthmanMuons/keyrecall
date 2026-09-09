@@ -373,6 +373,13 @@ class PracticeLoopState {
   /// The last attempt committed in this sitting.
   final AttemptRecord? lastCommitted;
 
+  /// The last supported attempt recorded in this sitting.
+  ///
+  /// Held for the same reason [lastCommitted] is: something has to be closed
+  /// before the next thing begins. It carries no outcome, so what a screen can
+  /// say about it is narrower.
+  final AcquisitionAttemptRecord? lastAcquisition;
+
   /// What [lastCommitted] was read from, when it was read from a performance.
   ///
   /// Absent for a decline, for a hand-entered report, and after a reopen, all
@@ -393,6 +400,7 @@ class PracticeLoopState {
     this.pending,
     this.acquisition,
     this.lastCommitted,
+    this.lastAcquisition,
     this.lastReading,
     this.note,
   });
@@ -562,7 +570,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     _writing = true;
     try {
       state = await AsyncValue.guard(() async {
-        await current.session.closeAcquisition(
+        final record = await current.session.closeAcquisition(
           capture.transcript,
           at: DateTime.now().toUtc(),
           // An interrupted capture is still an observation of what was played,
@@ -578,6 +586,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             plan: current.plan,
             session: current.session,
             coverage: current.coverage,
+            lastAcquisition: record,
           ),
         );
       });
@@ -825,6 +834,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         presented: presented,
         coverage: presented.coverage ?? from.coverage,
         lastCommitted: from.lastCommitted,
+        lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
         note: from.note,
       ),
@@ -838,6 +848,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         coverage: coverage,
         idle: PracticeIdleReason.blocked,
         lastCommitted: from.lastCommitted,
+        lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
         note: 'practice blocked: ${reason.name}',
       ),
@@ -848,6 +859,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         coverage: coverage,
         idle: PracticeIdleReason.caughtUp,
         lastCommitted: from.lastCommitted,
+        lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
         note: 'practice caught up',
       ),
@@ -858,6 +870,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         acquisition: offered,
         coverage: offered.coverage,
         lastCommitted: from.lastCommitted,
+        lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
         note: from.note,
       ),
@@ -868,6 +881,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         coverage: from.coverage,
         idle: PracticeIdleReason.invalidScope,
         lastCommitted: from.lastCommitted,
+        lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
         note:
             'invalid practice scope: '
