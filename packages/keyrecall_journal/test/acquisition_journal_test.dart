@@ -61,7 +61,7 @@ void main() {
         );
 
       final read = AcquisitionJournal.fromJsonLines(log.toJsonLines());
-      final record = read.records.single;
+      final record = read.attempts.single;
 
       expect(read.header.profileId, 'abc12345');
       expect(record.task, task);
@@ -88,7 +88,7 @@ void main() {
         );
       final record = AcquisitionJournal.fromJsonLines(
         log.toJsonLines(),
-      ).records.single;
+      ).attempts.single;
 
       expect(record.gaps.single.ratio, closeTo(2.3, 1e-9));
     });
@@ -160,6 +160,85 @@ void main() {
     });
   });
 
+  group('a served probe', () {
+    AcquisitionProbeServedRecord serviceAt(
+      int sequence, {
+      Duration after = Duration.zero,
+    }) => AcquisitionProbeServedRecord(
+      journalSequence: sequence,
+      identity: AttemptIdentity(
+        profileId: 'abc12345',
+        attemptId: 'probe-$sequence',
+        sessionId: 'sitting-1',
+        indexInSession: sequence,
+        occurredAt: t0.add(after),
+      ),
+      parent: parent,
+      servedByAttemptId: 'ordinary-$sequence',
+    );
+
+    test('discharges what a criterion success earned', () {
+      final log = emptyLog()..append(recordAt(0));
+      expect(log.replay().probeOwed(parent), isTrue);
+
+      log.append(serviceAt(1, after: const Duration(minutes: 2)));
+      final progress = log.replay();
+
+      // Asked, and therefore no longer owed. The success that earned it is
+      // still in the history.
+      expect(progress.probeOwed(parent), isFalse);
+      expect(progress.earnsParentProbe(parent), isTrue);
+      expect(progress.recordFor(parent)!.probesServed, 1);
+    });
+
+    test('lets a parent that is still stuck earn another', () {
+      // The cycle the whole design is for: stuck, acquire, earn, ask, still
+      // stuck, acquire again. A first success must not latch acquisition off
+      // forever.
+      final log = emptyLog()
+        ..append(recordAt(0))
+        ..append(serviceAt(1, after: const Duration(minutes: 2)))
+        ..append(recordAt(2, after: const Duration(minutes: 5)));
+
+      expect(log.replay().probeOwed(parent), isTrue);
+      expect(log.replay().recordFor(parent)!.criterionSuccesses, 2);
+    });
+
+    test('discharges every success asked before it, not one each', () {
+      // The obligation is to ask the question, so asking it once answers
+      // everything earned up to then.
+      final log = emptyLog()
+        ..append(recordAt(0))
+        ..append(recordAt(1, after: const Duration(minutes: 1)))
+        ..append(serviceAt(2, after: const Duration(minutes: 2)));
+
+      expect(log.replay().recordFor(parent)!.criterionSuccesses, 2);
+      expect(log.replay().probeOwed(parent), isFalse);
+    });
+
+    test('survives a round trip with the attempts beside it', () {
+      final log = emptyLog()
+        ..append(recordAt(0))
+        ..append(serviceAt(1, after: const Duration(minutes: 2)));
+
+      final read = AcquisitionJournal.fromJsonLines(log.toJsonLines());
+      expect(read.records, hasLength(2));
+      expect(read.attempts, hasLength(1));
+      expect(read.replay().byParent, log.replay().byParent);
+      expect(
+        (read.records.last as AcquisitionProbeServedRecord).servedByAttemptId,
+        'ordinary-1',
+      );
+    });
+
+    test('is refused for a parent with no acquisition history', () {
+      // Service of an obligation that never existed.
+      final log = emptyLog()..append(serviceAt(0));
+
+      expect(log.replay, throwsArgumentError);
+    });
+  });
+
   group('replay', () {
     test('produces progress and nothing else', () {
       final log = emptyLog()
@@ -219,7 +298,7 @@ void main() {
 
       // A gap that any stall threshold would read as a break, on an attempt
       // recorded as a criterion success.
-      expect(log.records.single.gaps.single.ratio, greaterThan(3.0));
+      expect(log.attempts.single.gaps.single.ratio, greaterThan(3.0));
       expect(log.replay().earnsParentProbe(parent), isTrue);
     });
   });

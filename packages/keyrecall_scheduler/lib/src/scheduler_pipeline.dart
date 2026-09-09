@@ -974,8 +974,10 @@ class SchedulerPipeline {
   /// stuck condition is discovered, which is the same exception the next tempo
   /// rung already takes.
   ///
-  /// A parent that has already earned a probe is not offered acquisition
-  /// again. What it is owed is the probe.
+  /// A parent that is owed a probe is not offered acquisition again. What it
+  /// is owed is the ordinary question. Once that has been asked, a parent whose
+  /// context is still stuck may acquire again, which is why this reads what is
+  /// owed rather than what was once earned.
   ({AcquisitionTask task, CandidateTrace? stuck})? acquisitionFor({
     required LearnerState state,
     required AcquisitionProgress progress,
@@ -983,8 +985,7 @@ class SchedulerPipeline {
     required List<CandidateTrace> traces,
   }) {
     bool stuck(Exercise exercise) =>
-        needsAcquisition(state, exercise) &&
-        !progress.earnsParentProbe(exercise);
+        needsAcquisition(state, exercise) && !progress.probeOwed(exercise);
 
     if (selected != null) {
       return stuck(selected.exercise)

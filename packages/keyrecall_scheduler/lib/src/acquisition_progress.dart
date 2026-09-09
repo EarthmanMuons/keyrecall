@@ -23,26 +23,55 @@ class AcquisitionRecord {
   /// How many of them were a clean pass with no stall.
   final int criterionSuccesses;
 
+  /// How many probes of the parent this history has already been served.
+  final int probesServed;
+
   /// When the last attempt was recorded.
   final DateTime lastAttemptAt;
 
   /// When the last criterion success happened, or null if none has.
   final DateTime? lastCriterionSuccessAt;
 
+  /// When a probe of the parent was last presented, or null if none has been.
+  final DateTime? lastProbeServedAt;
+
   const AcquisitionRecord({
     required this.attempts,
     required this.completions,
     required this.criterionSuccesses,
     required this.lastAttemptAt,
+    this.probesServed = 0,
     this.lastCriterionSuccessAt,
+    this.lastProbeServedAt,
   });
 
-  /// Whether anything here has earned a probe of the unchanged parent.
+  /// Whether a criterion success here has earned a probe of the parent.
   ///
   /// Deliberately binary. Whether one criterion success should be enough is a
   /// policy question the simulation has not been asked yet, and answering it
   /// early would put a threshold where the evidence is not.
+  ///
+  /// A fact about the past, and not the scheduler's condition. It stays true
+  /// once it is true, which is why [probeOwed] exists.
   bool get earnsParentProbe => criterionSuccesses > 0;
+
+  /// Whether the parent is owed a probe that has not been asked yet.
+  ///
+  /// Compared by time rather than counted, because the obligation is to ask the
+  /// question rather than to ask it once per success. Three criterion successes
+  /// before anything was presented are discharged by one presentation, and a
+  /// success after the last one opens the obligation again.
+  ///
+  /// The whole reason service is recorded. Reading `earnsParentProbe` as the
+  /// scheduler's condition would latch: a first criterion success would suppress
+  /// acquisition forever, even after the probe it earned was asked and
+  /// established nothing.
+  bool get probeOwed {
+    final earned = lastCriterionSuccessAt;
+    if (earned == null) return false;
+    final served = lastProbeServedAt;
+    return served == null || earned.isAfter(served);
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -50,22 +79,26 @@ class AcquisitionRecord {
       other.attempts == attempts &&
       other.completions == completions &&
       other.criterionSuccesses == criterionSuccesses &&
+      other.probesServed == probesServed &&
       other.lastAttemptAt == lastAttemptAt &&
-      other.lastCriterionSuccessAt == lastCriterionSuccessAt;
+      other.lastCriterionSuccessAt == lastCriterionSuccessAt &&
+      other.lastProbeServedAt == lastProbeServedAt;
 
   @override
   int get hashCode => Object.hash(
     attempts,
     completions,
     criterionSuccesses,
+    probesServed,
     lastAttemptAt,
     lastCriterionSuccessAt,
+    lastProbeServedAt,
   );
 
   @override
   String toString() =>
       'AcquisitionRecord($attempts attempts, $completions complete, '
-      '$criterionSuccesses criterion)';
+      '$criterionSuccesses criterion, $probesServed served)';
 }
 
 /// Acquisition history, keyed by the parent exercise it was work toward.
@@ -100,9 +133,16 @@ class AcquisitionProgress {
   /// What acquisition on [parent] has produced, or null if none is recorded.
   AcquisitionRecord? recordFor(Exercise parent) => _byParent[parent];
 
-  /// Whether [parent] has been earned a probe by acquisition work.
+  /// Whether acquisition work on [parent] has ever earned a probe.
   bool earnsParentProbe(Exercise parent) =>
       _byParent[parent]?.earnsParentProbe ?? false;
+
+  /// Whether [parent] is owed a probe that has not been asked yet.
+  ///
+  /// What the scheduler reads. Acquisition is not offered while a probe is
+  /// owed, because what the learner is owed is the ordinary question; once it
+  /// has been asked, a parent that is still stuck may acquire again.
+  bool probeOwed(Exercise parent) => _byParent[parent]?.probeOwed ?? false;
 
   /// This progress with one attempt at [parent] added.
   ///
@@ -133,10 +173,51 @@ class AcquisitionProgress {
         completions: (previous?.completions ?? 0) + (completed ? 1 : 0),
         criterionSuccesses:
             (previous?.criterionSuccesses ?? 0) + (earnedProbe ? 1 : 0),
+        probesServed: previous?.probesServed ?? 0,
         lastAttemptAt: at,
         lastCriterionSuccessAt: earnedProbe
             ? at
             : previous?.lastCriterionSuccessAt,
+        lastProbeServedAt: previous?.lastProbeServedAt,
+      ),
+    });
+  }
+
+  /// This progress with a probe of [parent] recorded as asked.
+  ///
+  /// Service is presentation, not success. What acquisition earned is the
+  /// ordinary question; what the answer to it means is the ordinary path's to
+  /// decide, and a probe that fails leaves the parent stuck rather than owed
+  /// again.
+  ///
+  /// Recorded even when nothing was owed. A parent presented by ordinary
+  /// ranking has been asked the same question, and pretending otherwise would
+  /// leave an obligation open that the learner has already answered.
+  ///
+  /// Throws [ArgumentError] for a parent with no acquisition history, which
+  /// would be service of an obligation that never existed.
+  AcquisitionProgress serving({
+    required Exercise parent,
+    required DateTime at,
+  }) {
+    final previous = _byParent[parent];
+    if (previous == null) {
+      throw ArgumentError.value(
+        parent,
+        'parent',
+        'no acquisition history to serve a probe for',
+      );
+    }
+    return AcquisitionProgress({
+      ..._byParent,
+      parent: AcquisitionRecord(
+        attempts: previous.attempts,
+        completions: previous.completions,
+        criterionSuccesses: previous.criterionSuccesses,
+        probesServed: previous.probesServed + 1,
+        lastAttemptAt: previous.lastAttemptAt,
+        lastCriterionSuccessAt: previous.lastCriterionSuccessAt,
+        lastProbeServedAt: at,
       ),
     });
   }

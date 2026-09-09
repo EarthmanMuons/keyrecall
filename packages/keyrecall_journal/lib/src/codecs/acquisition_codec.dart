@@ -14,10 +14,12 @@ Map<String, Object?> encodeAcquisitionRecord(
   'attempts': record.attempts,
   'completions': record.completions,
   'criterion_successes': record.criterionSuccesses,
+  'probes_served': record.probesServed,
   'last_attempt_at': encodeTime(record.lastAttemptAt),
   'last_criterion_success_at': encodeOptionalTime(
     record.lastCriterionSuccessAt,
   ),
+  'last_probe_served_at': encodeOptionalTime(record.lastProbeServedAt),
 };
 
 /// Writes acquisition progress, ordered so the same progress encodes
@@ -79,12 +81,30 @@ AcquisitionProgress decodeAcquisitionProgress(
         location: location,
       );
     }
+    final probesServed = requireInt(
+      record,
+      'probes_served',
+      location: location,
+    );
+    final lastProbeServedAt = readOptionalTime(
+      record,
+      'last_probe_served_at',
+      location: location,
+    );
+    if ((probesServed > 0) != (lastProbeServedAt != null)) {
+      throw JournalFormatException(
+        'acquisition record disagrees about whether a probe was served',
+        location: location,
+      );
+    }
     byParent[parent] = AcquisitionRecord(
       attempts: requireInt(record, 'attempts', location: location),
       completions: completions,
       criterionSuccesses: criterionSuccesses,
+      probesServed: probesServed,
       lastAttemptAt: requireTime(record, 'last_attempt_at', location: location),
       lastCriterionSuccessAt: lastCriterionSuccessAt,
+      lastProbeServedAt: lastProbeServedAt,
     );
   }
   return AcquisitionProgress(byParent);

@@ -248,6 +248,7 @@ class AttemptJournal {
           journal.append(AttemptRecord.fromJson(decoded));
         case JournalRecordType.acquisitionHeader:
         case JournalRecordType.acquisitionAttempt:
+        case JournalRecordType.acquisitionProbeServed:
           throw JournalFormatException(
             'an acquisition record appeared in an attempt journal; acquisition '
             'is not evidence for learner state and has a log of its own',

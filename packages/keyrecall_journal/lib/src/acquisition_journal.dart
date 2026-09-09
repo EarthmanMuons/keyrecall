@@ -70,6 +70,27 @@ class AcquisitionJournalHeader {
   String toString() => 'AcquisitionJournalHeader($profileId)';
 }
 
+/// One event in a profile's acquisition history.
+///
+/// Two kinds, because two different things happen: work at an acquisition task,
+/// and the ordinary question that work earned finally being asked. Replaying
+/// both is what makes an earned probe something that can be discharged rather
+/// than a fact that stays true forever.
+@immutable
+sealed class AcquisitionEntry {
+  /// Position in this log, counting from zero in append order.
+  int get journalSequence;
+
+  /// Which event, and when.
+  AttemptIdentity get identity;
+
+  /// The ordinary exercise this event is about.
+  Exercise get parent;
+
+  /// Writes the entry.
+  Map<String, Object?> toJson();
+}
+
 /// One attempt at an acquisition task, as it happened.
 ///
 /// What happened, not what a policy made of it. The completion class, the
@@ -86,14 +107,14 @@ class AcquisitionJournalHeader {
 /// folded into learner state, which is why this log exists apart from the one
 /// that can.
 @immutable
-class AcquisitionAttemptRecord {
+final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// The wire format this record was written in.
   final int schemaVersion;
 
-  /// Position in this log, counting from zero in append order.
+  @override
   final int journalSequence;
 
-  /// Which attempt, and when.
+  @override
   final AttemptIdentity identity;
 
   /// The task that was presented.
@@ -153,9 +174,11 @@ class AcquisitionAttemptRecord {
   String get profileId => identity.profileId;
 
   /// The exercise a criterion success here would earn a probe of.
+  @override
   Exercise get parent => task.parent;
 
   /// Writes the record.
+  @override
   Map<String, Object?> toJson() => {
     'record_type': JournalRecordType.acquisitionAttempt.id,
     'schema_version': schemaVersion,
@@ -283,6 +306,106 @@ class AcquisitionAttemptRecord {
       'AcquisitionAttemptRecord(${identity.attemptId}, ${completion.id})';
 }
 
+/// One probe of a parent exercise, presented and thereby served.
+///
+/// Service is presentation, not success. What acquisition earned is that the
+/// ordinary question be asked; what the answer means is the ordinary path's to
+/// decide, and it decides it through the attempt journal like any other
+/// attempt.
+///
+/// [servedByAttemptId] points at the ordinary attempt that asked it. A pointer
+/// and not an ordering invariant: the two logs still derive nothing from each
+/// other, and this one simply says which attempt discharged the obligation.
+@immutable
+final class AcquisitionProbeServedRecord extends AcquisitionEntry {
+  /// The wire format this record was written in.
+  final int schemaVersion;
+
+  @override
+  final int journalSequence;
+
+  @override
+  final AttemptIdentity identity;
+
+  @override
+  final Exercise parent;
+
+  /// The ordinary attempt that asked the question.
+  final String servedByAttemptId;
+
+  AcquisitionProbeServedRecord({
+    required this.journalSequence,
+    required this.identity,
+    required this.parent,
+    required this.servedByAttemptId,
+    this.schemaVersion = acquisitionSchemaVersion,
+  }) {
+    if (servedByAttemptId.isEmpty) {
+      throw ArgumentError.value(
+        servedByAttemptId,
+        'servedByAttemptId',
+        'a served probe names the attempt that asked it',
+      );
+    }
+  }
+
+  @override
+  Map<String, Object?> toJson() => {
+    'record_type': JournalRecordType.acquisitionProbeServed.id,
+    'schema_version': schemaVersion,
+    'journal_sequence': journalSequence,
+    'profile_id': identity.profileId,
+    'attempt_id': identity.attemptId,
+    'session_id': identity.sessionId,
+    'index_in_session': identity.indexInSession,
+    'occurred_at': encodeTime(identity.occurredAt),
+    'parent': encodeExercise(parent),
+    'served_by_attempt_id': servedByAttemptId,
+  };
+
+  /// Reads a record back.
+  ///
+  /// Throws [JournalFormatException] for anything it cannot read.
+  factory AcquisitionProbeServedRecord.fromJson(Map<String, Object?> json) {
+    const location = 'acquisition probe service';
+    final version = requireInt(json, 'schema_version', location: location);
+    if (version != acquisitionSchemaVersion) {
+      throw JournalFormatException(
+        'acquisition schema version $version is not readable by this build, '
+        'which writes version $acquisitionSchemaVersion',
+        location: location,
+      );
+    }
+    return AcquisitionProbeServedRecord(
+      schemaVersion: version,
+      journalSequence: requireInt(json, 'journal_sequence', location: location),
+      identity: AttemptIdentity(
+        profileId: requireString(json, 'profile_id', location: location),
+        attemptId: requireString(json, 'attempt_id', location: location),
+        sessionId: requireString(json, 'session_id', location: location),
+        indexInSession: requireInt(
+          json,
+          'index_in_session',
+          location: location,
+        ),
+        occurredAt: requireTime(json, 'occurred_at', location: location),
+      ),
+      parent: decodeExercise(
+        requireMap(json, 'parent', location: location),
+        location: location,
+      ),
+      servedByAttemptId: requireString(
+        json,
+        'served_by_attempt_id',
+        location: location,
+      ),
+    );
+  }
+
+  @override
+  String toString() => 'AcquisitionProbeServedRecord(${identity.attemptId})';
+}
+
 /// An append-only history of one profile's acquisition work.
 ///
 /// Deliberately separate from [AttemptJournal]. That log is the source of
@@ -296,15 +419,21 @@ class AcquisitionJournal {
   /// Which profile this history belongs to.
   final AcquisitionJournalHeader header;
 
-  final List<AcquisitionAttemptRecord> _records = [];
+  final List<AcquisitionEntry> _records = [];
   final Map<String, String> _hashByAttemptId = {};
 
   AcquisitionJournal(this.header);
 
-  /// Every acquisition attempt, oldest first.
-  List<AcquisitionAttemptRecord> get records => List.unmodifiable(_records);
+  /// Every acquisition event, oldest first.
+  List<AcquisitionEntry> get records => List.unmodifiable(_records);
 
-  /// How many attempts this log holds.
+  /// Every attempt at an acquisition task, oldest first.
+  List<AcquisitionAttemptRecord> get attempts => [
+    for (final entry in _records)
+      if (entry is AcquisitionAttemptRecord) entry,
+  ];
+
+  /// How many events this log holds.
   int get length => _records.length;
 
   /// The sequence the next appended record must carry.
@@ -319,8 +448,8 @@ class AcquisitionJournal {
   /// Throws [JournalFormatException] when the record belongs to another
   /// profile, when its sequence is not the next one, or when its timestamp
   /// precedes the previous attempt.
-  bool append(AcquisitionAttemptRecord record) {
-    final location = 'acquisition attempt ${record.identity.attemptId}';
+  bool append(AcquisitionEntry record) {
+    final location = 'acquisition entry ${record.identity.attemptId}';
 
     if (record.identity.profileId != header.profileId) {
       throw JournalFormatException(
@@ -375,12 +504,18 @@ class AcquisitionJournal {
   AcquisitionProgress replay() {
     var progress = const AcquisitionProgress.empty();
     for (final record in _records) {
-      progress = progress.recording(
-        parent: record.parent,
-        completed: record.completion.isComplete,
-        earnedProbe: record.earnedProbe,
-        at: record.identity.occurredAt,
-      );
+      progress = switch (record) {
+        AcquisitionAttemptRecord() => progress.recording(
+          parent: record.parent,
+          completed: record.completion.isComplete,
+          earnedProbe: record.earnedProbe,
+          at: record.identity.occurredAt,
+        ),
+        AcquisitionProbeServedRecord() => progress.serving(
+          parent: record.parent,
+          at: record.identity.occurredAt,
+        ),
+      };
     }
     return progress;
   }
@@ -446,6 +581,14 @@ class AcquisitionJournal {
             );
           }
           journal.append(AcquisitionAttemptRecord.fromJson(decoded));
+        case JournalRecordType.acquisitionProbeServed:
+          if (journal == null) {
+            throw JournalFormatException(
+              'a probe service appeared before the log header',
+              location: 'line ${i + 1}',
+            );
+          }
+          journal.append(AcquisitionProbeServedRecord.fromJson(decoded));
         case JournalRecordType.header:
         case JournalRecordType.attempt:
           throw JournalFormatException(
@@ -463,5 +606,5 @@ class AcquisitionJournal {
 
   @override
   String toString() =>
-      'AcquisitionJournal(${header.profileId}, ${_records.length} attempts)';
+      'AcquisitionJournal(${header.profileId}, ${_records.length} events)';
 }

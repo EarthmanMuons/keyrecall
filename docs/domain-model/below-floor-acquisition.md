@@ -2,8 +2,9 @@
 
 - **Status:** Representation, observation, repeated-transition aggregation,
   synthetic performance, the entry rule, durable progress, and an append-only
-  acquisition log implemented. Nothing presents an acquisition attempt, and
-  nothing schedules the parent probe.
+  acquisition log implemented, including what discharges an earned probe.
+  Nothing presents an acquisition attempt, and nothing makes the scheduler serve
+  an owed probe.
 - **Written:** September 8, 2026
 - **Revised:** September 9, 2026
 
@@ -258,6 +259,54 @@ Where the performance first departed is not recorded. The completion class and
 the three counts say that it did and at what cost; the exact location of the
 first wrong note is the one observation-level fact this log currently drops.
 
+## Earning a probe, and discharging it
+
+A criterion success is a fact about the past and stays true. The scheduler's
+condition is not that fact but the obligation it opened, which service
+discharges:
+
+```text
+probe owed = a criterion success happened
+             and no probe has been asked since
+```
+
+Compared by time rather than counted. The obligation is that the question be
+asked, not that it be asked once per success, so three successes before anything
+was presented are discharged by one presentation and a success after the last
+presentation opens it again.
+
+Reading `earnsParentProbe` as the scheduler's condition would latch. A first
+criterion success would suppress acquisition forever, including after the probe
+it earned was asked and established nothing, which is exactly the learner
+acquisition exists for.
+
+So the cycle is open rather than one-way:
+
+```text
+ordinary floor -> stuck -> acquisition -> criterion success
+  -> ordinary parent asked -> still stuck -> acquisition again
+```
+
+Service is presentation, not success. What acquisition earned is that the
+ordinary question be asked; what the answer means is the ordinary path's to
+decide, through the attempt journal like any other attempt. A probe that fails
+leaves the parent stuck rather than owed again, and the next criterion success
+is what reopens the obligation.
+
+Service is recorded even when nothing was owed, because a parent presented by
+ordinary ranking has been asked the same question and leaving the obligation
+open would ask it twice.
+
+### Service is not an acquisition-attempt fact
+
+It is an ordinary presentation caused by acquisition history, so it is a second
+kind of entry in the acquisition log rather than a counter derived from
+attempts. It lives in that log because it is a transition of the acquisition
+state machine, and nothing else could say the obligation was discharged. The
+record names the ordinary attempt that asked the question, which is a pointer
+rather than an ordering invariant: the two logs still derive nothing from each
+other.
+
 ## Repeated transitions
 
 One attempt says where the playing broke. Only repetition says a transition is
@@ -326,14 +375,15 @@ end to end without a policy having been written.
 - **Presentation.** Nothing shows an acquisition task or collects a transcript
   for one. The path from an observation to a record exists and is tested; what
   is missing is the screen and the loop that calls it.
-- **The probe itself.** Progress can say a parent has earned one. Nothing
-  schedules it, and one question is open before anything does: whether an earned
-  probe is owed service or merely re-entered into ordinary ranking. If ranking
-  can defer it indefinitely then `earnsParentProbe` promises more than it
-  delivers, so the probe should be owed the way other services are owed. What
-  must not change is the order: acquisition decides which ordinary question is
-  asked next, the ordinary attempt answers it, and only that answer moves a
-  frontier.
+- **Serving the probe.** Progress can say a parent is owed one, and the log can
+  say it was asked. What is missing is the scheduler treating an owed probe as
+  owed: re-entering the parent into ordinary ranking would let retention,
+  diversity, focus or pacing defer indefinitely a question the learner has
+  earned, which would make the persisted obligation misleading. An owed probe
+  should outrank ordinary ranking, subject only to constraints that make the
+  exercise impossible now. What must not change is the order: acquisition
+  decides which ordinary question is asked next, the ordinary attempt answers
+  it, and only that answer moves a frontier.
 - **A census that outlives its process.** Nothing journals the gap series.
 - **Located repairs.** The census aggregates stalls only.
 - **Hands together.** `performAcquisition` refuses a two-hand parent. Two onset

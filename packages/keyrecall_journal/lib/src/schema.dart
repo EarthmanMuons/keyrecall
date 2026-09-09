@@ -56,7 +56,15 @@ enum JournalRecordType {
   /// produces learner state, and an acquisition attempt is deliberately not
   /// evidence for that state, so putting the two in one log would make the
   /// source of truth for learner state contain records it must ignore.
-  acquisitionAttempt('acquisition_attempt');
+  acquisitionAttempt('acquisition_attempt'),
+
+  /// One probe of a parent exercise, presented and thereby served.
+  ///
+  /// Not an acquisition attempt, and not derived from one: it is an ordinary
+  /// presentation caused by acquisition history. It lives in the acquisition
+  /// log because it is a transition of the acquisition state machine, and
+  /// nothing else would be able to say the obligation was discharged.
+  acquisitionProbeServed('acquisition_probe_served');
 
   const JournalRecordType(this.id);
 

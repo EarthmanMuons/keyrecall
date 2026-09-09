@@ -90,6 +90,46 @@ void main() {
       expect(progress.recordFor(other), isNull);
     });
 
+    test('separates having earned a probe from being owed one', () {
+      var progress = const AcquisitionProgress.empty().recording(
+        parent: parent,
+        completed: true,
+        earnedProbe: true,
+        at: t0,
+      );
+      expect(progress.probeOwed(parent), isTrue);
+
+      progress = progress.serving(parent: parent, at: later);
+
+      // The success stays in the history; the obligation does not. Reading the
+      // first as the scheduler condition would latch acquisition off forever.
+      expect(progress.earnsParentProbe(parent), isTrue);
+      expect(progress.probeOwed(parent), isFalse);
+    });
+
+    test('opens the obligation again for a parent that is still stuck', () {
+      final progress = const AcquisitionProgress.empty()
+          .recording(parent: parent, completed: true, earnedProbe: true, at: t0)
+          .serving(parent: parent, at: t0.add(const Duration(minutes: 1)))
+          .recording(
+            parent: parent,
+            completed: true,
+            earnedProbe: true,
+            at: later,
+          );
+
+      expect(progress.probeOwed(parent), isTrue);
+      expect(progress.recordFor(parent)!.probesServed, 1);
+      expect(progress.recordFor(parent)!.criterionSuccesses, 2);
+    });
+
+    test('refuses service for a parent with no acquisition history', () {
+      expect(
+        () => const AcquisitionProgress.empty().serving(parent: parent, at: t0),
+        throwsArgumentError,
+      );
+    });
+
     test('refuses a criterion success that did not complete', () {
       expect(
         () => const AcquisitionProgress.empty().recording(

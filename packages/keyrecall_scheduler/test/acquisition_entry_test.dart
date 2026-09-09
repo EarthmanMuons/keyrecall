@@ -157,7 +157,7 @@ void main() {
       expect(result, isA<CandidateSelected>());
     });
 
-    test('stops once the parent has earned its probe', () {
+    test('stops while the parent is owed a probe', () {
       final progress = const AcquisitionProgress.empty().recording(
         parent: floor,
         completed: true,
@@ -165,12 +165,27 @@ void main() {
         at: t0,
       );
 
-      // What it is owed now is the probe, not more supported work.
+      // What it is owed now is the ordinary question, not more supported work.
       expect(
         decideWith(metButUnproven(), acquisition: progress),
         isNot(isA<AcquisitionOffered>()),
       );
+      expect(progress.probeOwed(floor), isTrue);
+    });
+
+    test('resumes for a parent still stuck after its probe was asked', () {
+      // The cycle, not a latch. The probe was asked and the context still has
+      // no frontier, so the gentlest ordinary question is still going
+      // unanswered and supported work is again the thing to offer.
+      final progress = const AcquisitionProgress.empty()
+          .recording(parent: floor, completed: true, earnedProbe: true, at: t0)
+          .serving(parent: floor, at: t0.add(const Duration(minutes: 5)));
+
       expect(progress.earnsParentProbe(floor), isTrue);
+      expect(
+        decideWith(metButUnproven(), acquisition: progress),
+        isA<AcquisitionOffered>(),
+      );
     });
 
     test('answers a blocked slot the same way it answers a stuck one', () {

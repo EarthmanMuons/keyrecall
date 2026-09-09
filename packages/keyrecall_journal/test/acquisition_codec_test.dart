@@ -25,7 +25,8 @@ void main() {
   AcquisitionProgress progressWith() => const AcquisitionProgress.empty()
       .recording(parent: parent, completed: true, earnedProbe: false, at: t0)
       .recording(parent: parent, completed: true, earnedProbe: true, at: later)
-      .recording(parent: other, completed: false, earnedProbe: false, at: t0);
+      .recording(parent: other, completed: false, earnedProbe: false, at: t0)
+      .serving(parent: parent, at: later.add(const Duration(minutes: 1)));
 
   group('a round trip', () {
     test('preserves every count and both clocks', () {
@@ -40,6 +41,9 @@ void main() {
       expect(record.criterionSuccesses, 1);
       expect(record.lastAttemptAt, later);
       expect(record.lastCriterionSuccessAt, later);
+      expect(record.probesServed, 1);
+      expect(record.lastProbeServedAt, later.add(const Duration(minutes: 1)));
+      expect(decoded.probeOwed(parent), isFalse);
       expect(decoded.recordFor(other)!.lastCriterionSuccessAt, isNull);
     });
 
