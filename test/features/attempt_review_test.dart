@@ -151,6 +151,24 @@ void main() {
       );
     });
 
+    test('says what an acquisition probe is asking for now', () {
+      // What changed, not why it was chosen. The learner has been playing this
+      // at their own pace, and the tempo is what comes back; naming a scaffold
+      // or an earlier sitting would ask them to remember a presentation
+      // instead of telling them what to do.
+      expect(
+        reasonFor(ChallengeBypass.acquisitionProbe, exerciseOf(tempoBpm: 60)),
+        'Back at 60 BPM this time.',
+      );
+      expect(
+        reasonFor(
+          ChallengeBypass.acquisitionProbe,
+          exerciseOf(hands: HandConfiguration.left, tempoBpm: 60),
+        ),
+        'Now the left hand, at 60 BPM.',
+      );
+    });
+
     test('says the same scale is new when the hand it is new in is not', () {
       expect(
         reasonFor(ChallengeBypass.newMaterial, exerciseOf(material: gMajor)),

@@ -87,12 +87,20 @@ String? reasonForNext({
       final hands? => 'Starting with $hands and the notes in view.',
       null => 'Starting with the notes in view.',
     },
-    // The ordinary question the supported work was preparing for, unchanged.
-    // It says the exercise is the same one rather than promising anything
-    // about how it will go.
+    // The ordinary question the supported work was preparing for. It says what
+    // is being asked now rather than naming a scaffold or an earlier sitting:
+    // the learner has been playing this at their own pace, and the tempo is
+    // what comes back.
+    //
+    // Timing is the only axis V1 relaxes, so the parent's own tempo is the
+    // whole of the difference. An acquisition task that changed portion or
+    // advancement would need this derived from the task the way [differenceTo]
+    // derives from a pair of exercises.
     ChallengeBypass.acquisitionProbe => switch (hands) {
-      final hands? => 'Now $hands, the way it was first asked.',
-      null => 'The whole thing again, the way it was first asked.',
+      final hands? =>
+        'Now $hands, at ${_tempoText(next.conditions.tempoBpm)} '
+            'BPM.',
+      null => 'Back at ${_tempoText(next.conditions.tempoBpm)} BPM this time.',
     },
     ChallengeBypass.override ||
     null => differenceTo(next, previous) ?? (sameMaterial ? 'Again.' : null),
