@@ -79,11 +79,20 @@ class SchedulerVerdict {
   /// only the session that asked can answer.
   final int epoch;
 
-  /// The candidate to present, or null where the slot is blocked.
+  /// The candidate to present, or null where the slot chose no ordinary work.
   final CandidateTrace? chosen;
 
-  /// Why nothing was chosen, present exactly when [chosen] is null.
+  /// Why no ordinary work was chosen, present exactly when the slot was
+  /// blocked.
   final BlockedReason? blockedReason;
+
+  /// The supported task to present instead of ordinary work, or null.
+  ///
+  /// A slot answers with exactly one of these three. An acquisition task is
+  /// not a candidate and never becomes one, so it travels beside [chosen]
+  /// rather than through it, and a host that does not understand it cannot
+  /// mistake it for ordinary work.
+  final AcquisitionTask? acquisitionTask;
 
   /// What to apply to the sitting if this verdict is still current.
   final SittingDecisionEffect effect;
@@ -100,7 +109,8 @@ class SchedulerVerdict {
     required this.epoch,
     required this.effect,
     this.result,
-  }) : blockedReason = null;
+  }) : blockedReason = null,
+       acquisitionTask = null;
 
   const SchedulerVerdict.blocked(
     BlockedReason this.blockedReason, {
@@ -108,7 +118,17 @@ class SchedulerVerdict {
     required this.epoch,
     required this.effect,
     this.result,
-  }) : chosen = null;
+  }) : chosen = null,
+       acquisitionTask = null;
+
+  const SchedulerVerdict.acquisition(
+    AcquisitionTask this.acquisitionTask, {
+    this.diagnostics = '',
+    required this.epoch,
+    required this.effect,
+    this.result,
+  }) : chosen = null,
+       blockedReason = null;
 }
 
 /// Where a scheduling decision is computed.
@@ -141,6 +161,10 @@ abstract interface class SchedulerHost {
   ///
   /// [dueRequirementIds] names the requirements whose candidates the slot may
   /// choose between, against the bound scope.
+  ///
+  /// [acquisition] and [attemptedAcquisitionParents] are rebuilt from persisted
+  /// history by the caller, because a host holds no history of its own. Omit
+  /// them and the slot decides exactly as it did before acquisition existed.
   Future<SchedulerVerdict> decide({
     required int epoch,
     required LearnerState state,
@@ -148,6 +172,8 @@ abstract interface class SchedulerHost {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionProgress? acquisition,
+    Set<Exercise> attemptedAcquisitionParents = const {},
   });
 
   /// Releases whatever computes decisions. A host is disposable: a session
@@ -194,6 +220,8 @@ class InProcessScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionProgress? acquisition,
+    Set<Exercise> attemptedAcquisitionParents = const {},
   }) async {
     final slot = pipeline.evaluateSlot(
       state: state,
@@ -201,6 +229,8 @@ class InProcessScheduler implements SchedulerHost {
       candidates: candidatesDueIn(_scope!, dueRequirementIds),
       at: at,
       acquisitionFloor: acquisitionFloor,
+      acquisition: acquisition,
+      attemptedAcquisitionParents: attemptedAcquisitionParents,
       practiceEntryPolicy: _entry,
       emphasis: _emphasis,
     );
@@ -223,11 +253,8 @@ class InProcessScheduler implements SchedulerHost {
         result: slot.result,
         diagnostics: slot.result.diagnostics,
       ),
-      // Unreachable until this host passes acquisition progress. A slot that
-      // offers acquisition has produced no ordinary candidate, and the ordinary
-      // path reads that the way it reads any other unfilled slot.
-      AcquisitionOffered() => SchedulerVerdict.blocked(
-        BlockedReason.admissionExhausted,
+      AcquisitionOffered(:final task) => SchedulerVerdict.acquisition(
+        task,
         epoch: epoch,
         effect: effect,
         result: slot.result,

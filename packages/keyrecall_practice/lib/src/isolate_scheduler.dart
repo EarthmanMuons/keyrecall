@@ -66,6 +66,8 @@ class IsolateScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
+    AcquisitionProgress? acquisition,
+    Set<Exercise> attemptedAcquisitionParents = const {},
   }) async {
     final worker = _worker;
     if (worker == null) {
@@ -79,6 +81,8 @@ class IsolateScheduler implements SchedulerHost {
         dueRequirementIds: dueRequirementIds,
         at: at,
         acquisitionFloor: acquisitionFloor,
+        acquisition: acquisition,
+        attemptedAcquisitionParents: attemptedAcquisitionParents,
       ),
     );
   }
@@ -91,6 +95,8 @@ class _DecisionRequest {
   final List<String> dueRequirementIds;
   final DateTime at;
   final AcquisitionFloor? acquisitionFloor;
+  final AcquisitionProgress? acquisition;
+  final Set<Exercise> attemptedAcquisitionParents;
 
   const _DecisionRequest({
     required this.epoch,
@@ -99,6 +105,8 @@ class _DecisionRequest {
     required this.dueRequirementIds,
     required this.at,
     required this.acquisitionFloor,
+    required this.acquisition,
+    required this.attemptedAcquisitionParents,
   });
 }
 
@@ -107,6 +115,7 @@ class _DecisionResponse {
   final int epoch;
   final CandidateTrace? chosen;
   final BlockedReason? blockedReason;
+  final AcquisitionTask? acquisitionTask;
   final bool guidanceProbeAvailable;
   final bool guidanceProbeSelected;
 
@@ -115,6 +124,7 @@ class _DecisionResponse {
     required this.epoch,
     required this.chosen,
     required this.blockedReason,
+    required this.acquisitionTask,
     required this.guidanceProbeAvailable,
     required this.guidanceProbeSelected,
   });
@@ -124,6 +134,14 @@ class _DecisionResponse {
       guidanceProbeAvailable: guidanceProbeAvailable,
       guidanceProbeSelected: guidanceProbeSelected,
     );
+    if (acquisitionTask case final task?) {
+      return SchedulerVerdict.acquisition(
+        task,
+        epoch: epoch,
+        effect: effect,
+        diagnostics: diagnostics,
+      );
+    }
     return chosen == null
         ? SchedulerVerdict.blocked(
             blockedReason!,
@@ -229,6 +247,8 @@ class _Worker {
         candidates: candidatesDueIn(scope, request.dueRequirementIds),
         at: request.at,
         acquisitionFloor: request.acquisitionFloor,
+        acquisition: request.acquisition,
+        attemptedAcquisitionParents: request.attemptedAcquisitionParents,
         practiceEntryPolicy: entry,
         emphasis: emphasis,
       );
@@ -243,6 +263,10 @@ class _Worker {
           blockedReason: switch (slot.result) {
             SelectionBlocked(:final reason) => reason,
             CandidateSelected() || AcquisitionOffered() => null,
+          },
+          acquisitionTask: switch (slot.result) {
+            AcquisitionOffered(:final task) => task,
+            CandidateSelected() || SelectionBlocked() => null,
           },
           guidanceProbeAvailable: slot.guidanceProbeAvailable,
           guidanceProbeSelected: slot.guidanceProbeSelected,
