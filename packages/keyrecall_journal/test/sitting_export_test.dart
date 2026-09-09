@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
@@ -61,9 +63,10 @@ void main() {
   });
 
   test('a version it cannot read is refused, not guessed at', () {
-    final ahead = encodeSittingExport(
-      export,
-    ).replaceFirst('"schema_version": 1', '"schema_version": 2');
+    final ahead = encodeSittingExport(export).replaceFirst(
+      '"schema_version": $sittingExportSchemaVersion',
+      '"schema_version": 99',
+    );
 
     expect(
       () => decodeSittingExport(ahead),
@@ -80,5 +83,76 @@ void main() {
       () => decodeSittingExport(wrong),
       throwsA(isA<JournalFormatException>()),
     );
+  });
+
+  group('supported work in an export', () {
+    final parent = Exercise.linear(
+      material: TechnicalMaterial('C', ScaleForm.major),
+      hands: HandConfiguration.right,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+      tempoBpm: 60,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+    final record = AcquisitionAttemptRecord(
+      journalSequence: 0,
+      identity: AttemptIdentity(
+        profileId: 'abc12345',
+        attemptId: 'acq-0',
+        sessionId: 'sitting-1',
+        indexInSession: 0,
+        occurredAt: DateTime.utc(2026, 9, 9),
+      ),
+      task: AcquisitionTask.unmeteredTraversal(parent),
+      started: true,
+      completion: AcquisitionCompletion.completedWithCorrections,
+      repairs: 2,
+      repeats: 0,
+      intrusions: 2,
+      earnedProbe: false,
+      termination: AttemptTermination.learnerStopped,
+      gaps: const [(fromPosition: 2, toPosition: 3, gapMs: 3200, ratio: 3.4)],
+    );
+
+    test('travels beside the ordinary attempts, not among them', () {
+      final read = decodeSittingExport(
+        encodeSittingExport(
+          SittingExport(
+            profileId: 'abc12345',
+            sittingId: 'sitting-1',
+            startedAt: DateTime.utc(2026, 9, 9),
+            attempts: const [],
+            acquisition: [record],
+          ),
+        ),
+      );
+
+      // A fit reads the ordinary attempts. Supported work is here so a device
+      // sitting can be asked what an attempt actually recorded, and it must
+      // never become part of what a learner is fitted from.
+      expect(read.attempts, isEmpty);
+      expect(read.acquisition, hasLength(1));
+      final held = read.acquisition.single;
+      expect(held.earnedProbe, isFalse);
+      expect(held.completion, AcquisitionCompletion.completedWithCorrections);
+      expect(held.repairs, 2);
+      expect(held.gaps.single.gapMs, 3200);
+    });
+
+    test('an export written before it existed still reads', () {
+      final current = encodeSittingExport(
+        SittingExport(
+          profileId: 'abc12345',
+          sittingId: 'sitting-1',
+          startedAt: DateTime.utc(2026, 9, 9),
+          attempts: const [],
+        ),
+      );
+      final legacy = (jsonDecode(current) as Map<String, Object?>)
+        ..['schema_version'] = 1
+        ..remove('acquisition');
+
+      expect(decodeSittingExport(jsonEncode(legacy)).acquisition, isEmpty);
+    });
   });
 }

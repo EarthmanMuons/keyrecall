@@ -314,8 +314,18 @@ Future<String> exportTrajectory(WidgetRef ref) async {
   // Machine-readable, beside the readable one rather than instead of it: the
   // calibration harness reads this, a person reads the other, and neither has
   // to be a compromise for the other's sake.
-  final sitting = sittingExportOf(profile, journal);
-  if (sitting.attempts.isNotEmpty) {
+  // Supported attempts come with it, beside the ordinary ones. What a device
+  // sitting most often has to answer about supported work is what a particular
+  // attempt actually recorded, and an export without them cannot say.
+  final sitting = sittingExportOf(
+    profile,
+    journal,
+    acquisition: await store.loadAcquisitionJournal(
+      profile.id,
+      createdAt: profile.createdAt,
+    ),
+  );
+  if (sitting.attempts.isNotEmpty || sitting.acquisition.isNotEmpty) {
     File('${directory.path}/$stamp-${profile.displayName}-attempts.json')
         .writeAsStringSync(encodeSittingExport(sitting));
   }
@@ -344,7 +354,11 @@ Future<String> exportTrajectory(WidgetRef ref) async {
 ///
 /// Attempts that measured nothing are left out. A fit reads what was played,
 /// and an attempt with no measurement was not.
-SittingExport sittingExportOf(Profile profile, AttemptJournal journal) {
+SittingExport sittingExportOf(
+  Profile profile,
+  AttemptJournal journal, {
+  AcquisitionJournal? acquisition,
+}) {
   final records = journal.records;
   final sessionId = records.isEmpty ? '' : records.last.identity.sessionId;
   final seen = <String>{};
@@ -377,6 +391,10 @@ SittingExport sittingExportOf(Profile profile, AttemptJournal journal) {
               .identity
               .occurredAt,
     attempts: attempts,
+    acquisition: [
+      for (final record in acquisition?.attempts ?? const [])
+        if (record.identity.sessionId == sessionId) record,
+    ],
   );
 }
 

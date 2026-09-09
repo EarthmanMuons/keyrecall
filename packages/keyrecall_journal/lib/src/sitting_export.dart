@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
+import 'acquisition_journal.dart';
 import 'canonical_json.dart';
 import 'codecs/domain_codec.dart';
 import 'codecs/learner_codec.dart';
@@ -13,7 +14,7 @@ import 'schema.dart';
 /// Separate from the journal's own schema version, because this is a file
 /// somebody carries off a device to analyse rather than state the app reads
 /// back. Anything that cannot read this version refuses rather than guessing.
-const int sittingExportSchemaVersion = 1;
+const int sittingExportSchemaVersion = 2;
 
 /// What was known, before the attempt, about the learner having met the
 /// material.
@@ -75,11 +76,23 @@ class SittingExport {
   final DateTime startedAt;
   final List<ExportedAttempt> attempts;
 
+  /// Supported attempts from the same sitting, beside the ordinary ones and
+  /// never among them.
+  ///
+  /// A fit reads [attempts]. These are not ordinary evidence and must not
+  /// become part of one, which is why they are a separate list rather than
+  /// rows with a flag on them. They are here because the question a device
+  /// sitting most often has to answer about supported work is what a
+  /// particular attempt actually recorded, and an export that omitted them
+  /// could not answer it.
+  final List<AcquisitionAttemptRecord> acquisition;
+
   const SittingExport({
     required this.profileId,
     required this.sittingId,
     required this.startedAt,
     required this.attempts,
+    this.acquisition = const [],
     this.schemaVersion = sittingExportSchemaVersion,
   });
 }
@@ -100,6 +113,7 @@ String encodeSittingExport(SittingExport export) =>
             'familiarity': attempt.familiarity.id,
           },
       ],
+      'acquisition': [for (final record in export.acquisition) record.toJson()],
     });
 
 /// Reads a sitting back, rejecting a version it does not know.
@@ -113,7 +127,7 @@ SittingExport decodeSittingExport(String source) {
     throw const JournalFormatException('an export is a JSON object');
   }
   final version = requireInt(json, 'schema_version', location: 'export');
-  if (version != sittingExportSchemaVersion) {
+  if (version != sittingExportSchemaVersion && version != 1) {
     throw JournalFormatException(
       'cannot read export schema $version, this reads '
       '$sittingExportSchemaVersion',
@@ -136,6 +150,13 @@ SittingExport decodeSittingExport(String source) {
     attempts: [
       for (final (position, attempt) in attempts.indexed)
         _attemptOf(attempt, position),
+    ],
+    // Absent in version 1, which had no supported work to carry.
+    acquisition: [
+      for (final record in (json['acquisition'] as List? ?? const []))
+        AcquisitionAttemptRecord.fromJson(
+          asMap(record, 'acquisition attempt', location: 'export'),
+        ),
     ],
   );
 }
