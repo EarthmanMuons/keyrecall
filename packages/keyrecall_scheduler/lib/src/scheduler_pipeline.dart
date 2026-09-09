@@ -310,6 +310,17 @@ class SchedulerPipeline {
     final familyFloor = acquisitionFamilyFloor ?? acquisitionFloor;
 
     var selected = servedProbe ?? chooseFrom(narrowed.selectable, session);
+    if (servedProbe == null && familyFloor != null) {
+      selected =
+          owedFloorCheck(
+            state: state,
+            floor: familyFloor,
+            attemptedParents: attemptedAcquisitionParents,
+            selected: selected,
+            traces: traces,
+          ) ??
+          selected;
+    }
     var blockedReason = BlockedReason.admissionExhausted;
     var acquisitionFallback = false;
 
@@ -1092,6 +1103,67 @@ class SchedulerPipeline {
       task: AcquisitionTask.unmeteredTraversal(chosen.exercise),
       stuck: chosen,
     );
+  }
+
+  /// Whether the exact declared floor is worth asking for once.
+  ///
+  /// A different question from whether to acquire, and deliberately answerable
+  /// from weaker evidence. Ordinary work in this context has taught the model
+  /// something and demonstrated no frontier, which is a reason to find out
+  /// whether the gentlest ordinary realization can be managed. It is not a
+  /// claim that the floor itself was tried: that stays exact, and it is what
+  /// acquisition goes on asking for.
+  ///
+  /// Context-level rather than exercise-level on purpose. The whole point of
+  /// the check is to move from evidence about the context to an observation of
+  /// one realization, so requiring the realization first would ask for what it
+  /// exists to obtain.
+  bool needsFloorCheck(
+    LearnerState state,
+    Exercise floorExercise, {
+    required Set<Exercise> attemptedParents,
+  }) =>
+      !attemptedParents.contains(floorExercise) &&
+      state
+              .materialExecution[executionContextOf(floorExercise)]
+              ?.lastEvidenceAt !=
+          null &&
+      needsExecutionBootstrap(state, floorExercise);
+
+  /// The declared floor this slot should ask for instead, or null.
+  ///
+  /// Narrow by construction. It redirects within the material and hand the slot
+  /// had already chosen, only where ordinary work there has produced evidence
+  /// and no frontier, and only to a floor ordinary admission would allow now.
+  /// A learner whose first attempt establishes a frontier never meets it, which
+  /// is why a first meeting with a material is still whatever placement and
+  /// ranking make of it.
+  CandidateTrace? owedFloorCheck({
+    required LearnerState state,
+    required AcquisitionFloor floor,
+    required Set<Exercise> attemptedParents,
+    required CandidateTrace? selected,
+    required List<CandidateTrace> traces,
+  }) {
+    if (selected == null) return null;
+    final wanted = selected.exercise;
+    if (floor.entries.any((entry) => entry.exercise == wanted)) return null;
+    for (final entry in floor.entries) {
+      final exercise = entry.exercise;
+      if (exercise.material != wanted.material ||
+          exercise.conditions.hands != wanted.conditions.hands ||
+          !needsFloorCheck(
+            state,
+            exercise,
+            attemptedParents: attemptedParents,
+          )) {
+        continue;
+      }
+      for (final trace in traces) {
+        if (trace.exercise == exercise && trace.isRanked) return trace;
+      }
+    }
+    return null;
   }
 
   /// The predicted success a candidate has to clear to be ordinarily admitted.

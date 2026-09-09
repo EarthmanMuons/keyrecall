@@ -539,8 +539,8 @@ nothing was observed.
 ## Reaching the offer at all
 
 The rule is about the family's declared floor, and ordinary ranking prefers a
-more independent rung of the same material as soon as one is admissible. Half of
-what that costs is answered, and half is not.
+more independent rung of the same material as soon as one is admissible. Two
+things follow, and neither is answered by weakening what the rule means.
 
 The offer is asked of every declared floor in scope rather than of the slot's
 winner. Requiring the floor to win the slot as well made a question about the
@@ -549,23 +549,50 @@ with a catalog in front of them is never. Where several floors are stuck at
 once, the ordinary ranking among that subset decides, so acquisition does not
 wander to a different material than the sitting would have worked on.
 
-What remains is that the exposure the rule reads may never happen. Ranking
-prefers the previewed rung from a material's first slot onward, so the exact
-declared floor can go unpresented for its whole life, and a question about
-whether it was attempted then has one permanent answer.
+And the exposure the rule reads has to be able to happen. Ranking prefers the
+previewed rung from a material's first slot onward, so without something asking
+for it the exact declared floor can go unpresented for a material's whole life,
+and a question about whether it was attempted has one permanent answer.
 
-Guaranteeing one exposure of the declared floor before ordinary progression
-leaves it behind is the obvious fix and is not free: it makes the first
-presentation of every material its declared floor, for every learner, which
-contradicts placement behaviour that deliberately does not hold back somebody
-who arrived able to play. That is a pedagogical choice about what a first
-meeting with a material should be, and it has not been made.
+### Asking the floor is not acquiring
+
+Two questions, answerable from different evidence:
+
+| Question                        | What it needs                                                                                        |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Should the floor be asked once? | Ordinary work in this execution context has taught the model something and demonstrated no frontier. |
+| Should acquisition be offered?  | The exact declared floor was informatively attempted and demonstrated no frontier.                   |
+
+The first is context-level on purpose. The whole point of the check is to move
+from evidence about a context to an observation of one realization, so requiring
+that realization first would ask for the thing it exists to obtain. A harder
+rung is still not evidence that the floor was tried; it is a reason to try it.
+
+The redirection is narrow. It stays within the material and hand the slot had
+already chosen, fires only where that context has evidence and no frontier, and
+goes only to a floor ordinary admission would allow now. A learner whose first
+attempt establishes a frontier never meets it, which is why a first meeting with
+a material is still whatever placement and ranking make of it.
+
+The progression a beginner who manages nothing actually walks:
+
+```text
+previewed rung   -> evidence, no frontier
+declared floor   -> evidence, no frontier
+acquisition      -> the same floor, unmetered
+```
+
+This is also where the entry predicate this design started with belongs. Context
+evidence with no frontier was too weak to justify acquisition, and it is the
+right strength to justify asking the floor.
 
 The rejected alternatives stay rejected. Counting a harder rung as floor
 exposure would blur the exact-exercise evidence the exposure reconstruction
-exists to keep, and redefining the floor once introduction is past would make a
-domain declaration depend on scheduler history and could make the scaffold
-harder precisely because the learner is struggling.
+exists to keep. Redefining the floor once introduction is past would make a
+domain declaration depend on scheduler history. And guaranteeing the exposure
+unconditionally would make a first meeting with any material its declared floor
+for every learner, overriding placement behaviour that does not hold back
+somebody who arrived able to play.
 
 ## Deliberately not built
 
