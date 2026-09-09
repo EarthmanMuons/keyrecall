@@ -144,6 +144,14 @@ enum ChallengeBypass {
   /// A family-declared entry realization used after ordinary admission ends.
   acquisitionFloor('acquisition_floor'),
 
+  /// The unchanged parent of acquisition work that earned it a probe.
+  ///
+  /// The band is exactly what it must not be held to. A parent whose context is
+  /// stuck predicts badly, which is why acquisition was offered in the first
+  /// place, so admitting the probe on prediction would refuse the question the
+  /// learner earned.
+  acquisitionProbe('acquisition_probe'),
+
   /// An explicit caller instruction, for diagnostics or a learner request.
   override('override');
 

@@ -258,17 +258,46 @@ class SchedulerPipeline {
     final entryPolicy =
         practiceEntryPolicy ??
         PracticeEntryPolicy.uniform(config.eligibility.gentleTempoBpm);
+
+    // Service, not ranking. An owed probe is admitted through a bypass of its
+    // own because the band is what it must not be held to: a parent whose
+    // context is stuck predicts badly, which is why acquisition was offered
+    // for it. A parent that is out of scope is simply not here, and its
+    // obligation stays open and untouched.
+    final owedProbes = acquisition == null
+        ? const <Exercise>{}
+        : {
+            for (final parent in candidates)
+              if (probeWorthServing(state, acquisition, parent)) parent,
+          };
     var traces = evaluate(
       state: state,
       session: session,
       candidates: candidates,
       at: at,
-      overrides: overrides,
+      overrides: {
+        ...overrides,
+        for (final parent in owedProbes)
+          parent: ChallengeBypass.acquisitionProbe,
+      },
       practiceEntryPolicy: entryPolicy,
       emphasis: emphasis,
     );
     var narrowed = _selectionStages(traces, session, state, at);
-    var selected = chooseFrom(narrowed.selectable, session);
+
+    // Read from what admission allowed rather than from what the later filters
+    // left. Pacing, dose, introductions and novelty are preferences about which
+    // useful work is best, and an owed probe is past that question: the learner
+    // has already earned it. Only eligibility and validity may stand in the way,
+    // and a probe those refuse stays owed rather than being consumed.
+    final servedProbe = owedProbes.isEmpty
+        ? null
+        : selectBest([
+            for (final trace in traces)
+              if (trace.isRanked && owedProbes.contains(trace.exercise)) trace,
+          ]);
+
+    var selected = servedProbe ?? chooseFrom(narrowed.selectable, session);
     var blockedReason = BlockedReason.admissionExhausted;
     var acquisitionFallback = false;
 
@@ -304,7 +333,7 @@ class SchedulerPipeline {
       }
     }
 
-    final offer = acquisition == null
+    final offer = acquisition == null || servedProbe != null
         ? null
         : acquisitionFor(
             state: state,
@@ -327,6 +356,8 @@ class SchedulerPipeline {
           overdueGuidanceProbe(narrowed.selectable, session) != null,
       acquisitionFallback: acquisitionFallback,
       acquisitionOffered: offer != null,
+      probesOwed: owedProbes.length,
+      probeServed: servedProbe != null,
     );
     return (
       result: offer != null
@@ -965,6 +996,34 @@ class SchedulerPipeline {
       needsExecutionBootstrap(state, exercise) &&
       state.materialExecution[executionContextOf(exercise)]?.lastEvidenceAt !=
           null;
+
+  /// Whether an owed probe of [parent] is still worth asking for.
+  ///
+  /// Owed is a fact about acquisition history and reconstructible from it
+  /// alone. This is not: it combines that history with what ordinary evidence
+  /// has since established, which is why it lives here rather than on the
+  /// progress itself.
+  ///
+  /// An obligation lapses when the question it asks has been answered by other
+  /// means. If the parent's own span has since been demonstrated at or above
+  /// the parent's own tempo, presenting it would offer work the learner has
+  /// already exceeded, which ordinary admission would refuse for being too
+  /// easy. The test is deliberately the parent's own span and tempo: a frontier
+  /// below that tempo does not answer this parent's question.
+  ///
+  /// Lapsing is not discharge. Nothing is written, and the history goes on
+  /// saying that a probe was earned and never served, which is what happened.
+  bool probeWorthServing(
+    LearnerState state,
+    AcquisitionProgress progress,
+    Exercise parent,
+  ) {
+    if (!progress.probeOwed(parent)) return false;
+    final demonstrated = state
+        .materialExecution[executionContextOf(parent)]
+        ?.demonstratedTempoByOctaves[parent.conditions.octaves];
+    return (demonstrated ?? 0) < parent.conditions.tempoBpm;
+  }
 
   /// The acquisition task a stuck floor calls for, and the candidate that
   /// showed it, or null when ordinary work is still the answer.

@@ -218,6 +218,118 @@ void main() {
     });
   });
 
+  group('serving an owed probe', () {
+    /// Acquisition history that has earned a probe of the floor and not been
+    /// asked one.
+    AcquisitionProgress owing() => const AcquisitionProgress.empty().recording(
+      parent: floor,
+      completed: true,
+      earnedProbe: true,
+      at: t0,
+    );
+
+    SelectionResult decideWith(
+      LearnerState state,
+      AcquisitionProgress progress, {
+      List<Exercise>? candidates,
+    }) => pipeline.decide(
+      state: state,
+      session: SessionState(),
+      candidates: candidates ?? [floor],
+      at: t0,
+      acquisition: progress,
+    );
+
+    test('presents the unchanged parent through its own bypass', () {
+      final result = decideWith(metButUnproven(), owing());
+
+      expect(result, isA<CandidateSelected>());
+      final chosen = (result as CandidateSelected).candidate;
+      expect(chosen.exercise, floor);
+      expect(chosen.challengeBypass, ChallengeBypass.acquisitionProbe);
+      expect(result.diagnostics, contains('probe_served=true'));
+    });
+
+    test('is not offered acquisition instead', () {
+      // The obligation outranks the thing that created it.
+      expect(
+        decideWith(metButUnproven(), owing()),
+        isNot(isA<AcquisitionOffered>()),
+      );
+    });
+
+    test('leaves the obligation alone when the parent is out of scope', () {
+      // Dormant: nothing found, nothing consumed, nothing written.
+      final progress = owing();
+      final other = Exercise.linear(
+        material: materials.last,
+        hands: HandConfiguration.right,
+        octaves: 1,
+        tempoBpm: 60,
+        guidance: GuidanceContext.continuouslyCued,
+      );
+
+      final result = decideWith(
+        metButUnproven(),
+        progress,
+        candidates: [other],
+      );
+
+      expect(result, isNot(isA<AcquisitionOffered>()));
+      expect(
+        result is CandidateSelected ? result.candidate.exercise : null,
+        isNot(floor),
+      );
+      expect(progress.probeOwed(floor), isTrue);
+    });
+
+    test('lapses once ordinary evidence has answered the question', () {
+      // A frontier at the parent's own span and tempo answers what the probe
+      // would have asked, so presenting it would offer work already exceeded.
+      final state = metButUnproven();
+      state
+              .materialExecutionFor(
+                executionContextOf(floor),
+                t0,
+                learnerParams,
+                familyId: material.familyId,
+              )
+              .demonstratedTempoByOctaves[1] =
+          floor.conditions.tempoBpm;
+
+      expect(pipeline.probeWorthServing(state, owing(), floor), isFalse);
+      expect(owing().probeOwed(floor), isTrue);
+    });
+
+    test('does not lapse on a frontier below the parent tempo', () {
+      // A slower frontier is not an answer to this parent's question.
+      final state = metButUnproven();
+      state
+              .materialExecutionFor(
+                executionContextOf(floor),
+                t0,
+                learnerParams,
+                familyId: material.familyId,
+              )
+              .demonstratedTempoByOctaves[1] =
+          floor.conditions.tempoBpm - 20;
+
+      expect(pipeline.probeWorthServing(state, owing(), floor), isTrue);
+    });
+
+    test('stops being owed once it has been served', () {
+      final served = owing().serving(
+        parent: floor,
+        at: t0.add(const Duration(minutes: 1)),
+      );
+
+      expect(
+        pipeline.probeWorthServing(metButUnproven(), served, floor),
+        isFalse,
+      );
+    });
+  });
+
   group('what an offer does not do', () {
     test('leaves learner state exactly as it found it', () {
       final state = metButUnproven();

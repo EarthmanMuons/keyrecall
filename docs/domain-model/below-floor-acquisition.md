@@ -307,6 +307,50 @@ record names the ordinary attempt that asked the question, which is a pointer
 rather than an ordering invariant: the two logs still derive nothing from each
 other.
 
+## Serving an owed probe
+
+Service, not ranking. The scheduler looks for owed probes among the candidates
+in scope, admits them through a bypass of their own, and picks one ahead of
+ordinary selection.
+
+The bypass exists because the band is exactly what an owed probe must not be
+held to. A parent whose context is stuck predicts badly, which is why
+acquisition was offered for it, so admitting the probe on prediction would
+refuse the question the learner earned.
+
+It is read from what admission allowed rather than from what the later filters
+left. Pacing, dose, introductions and novelty decide which useful work is best,
+and an owed probe is past that question. Only eligibility and validity may stand
+in the way, and a probe they refuse stays owed rather than being consumed.
+
+### Owed, dormant, and lapsed
+
+| State                                   | What happens                                      |
+| --------------------------------------- | ------------------------------------------------- |
+| Owed, unlapsed, presentable             | Served ahead of ordinary ranking.                 |
+| Owed, unlapsed, out of scope or refused | Dormant. Nothing is consumed and nothing written. |
+| Owed, and answered by ordinary evidence | Ignored for selection. Still nothing written.     |
+
+Dormancy needs no code. A parent that is out of scope is not among the
+candidates, so nothing finds it and its obligation stays open. A focus change
+says what to work on now; it is not a claim about what the learner has earned,
+and an append-only log has no way to take that back anyway.
+
+Lapsing does need a rule. An obligation can be answered without being served: if
+the parent's own span is demonstrated at or above the parent's own tempo before
+the probe is asked, presenting it would offer work the learner has already
+exceeded, which ordinary admission would refuse for being too easy. The test is
+the parent's own span and tempo, because a frontier below that tempo is not an
+answer to this parent's question.
+
+Lapsing is not discharge. Nothing is written, and the history goes on saying a
+probe was earned and never served, which is what happened.
+
+`probeOwed` stays reconstructible from acquisition history alone.
+`probeWorthServing` combines that history with what ordinary evidence has since
+established, so it lives at the scheduler boundary rather than on the progress,
+which is the same historical-versus-present split the entry rule uses.
+
 ## Repeated transitions
 
 One attempt says where the playing broke. Only repetition says a transition is
@@ -375,15 +419,11 @@ end to end without a policy having been written.
 - **Presentation.** Nothing shows an acquisition task or collects a transcript
   for one. The path from an observation to a record exists and is tested; what
   is missing is the screen and the loop that calls it.
-- **Serving the probe.** Progress can say a parent is owed one, and the log can
-  say it was asked. What is missing is the scheduler treating an owed probe as
-  owed: re-entering the parent into ordinary ranking would let retention,
-  diversity, focus or pacing defer indefinitely a question the learner has
-  earned, which would make the persisted obligation misleading. An owed probe
-  should outrank ordinary ranking, subject only to constraints that make the
-  exercise impossible now. What must not change is the order: acquisition
-  decides which ordinary question is asked next, the ordinary attempt answers
-  it, and only that answer moves a frontier.
+- **Recording service.** The scheduler serves an owed probe; nothing appends the
+  record that discharges it, because nothing presents an attempt yet. The
+  practice layer owes that write when the parent is actually presented, and owes
+  it for any presentation of a parent with acquisition history, not only for one
+  the service phase chose.
 - **A census that outlives its process.** Nothing journals the gap series.
 - **Located repairs.** The census aggregates stalls only.
 - **Hands together.** `performAcquisition` refuses a two-hand parent. Two onset

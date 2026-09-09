@@ -87,6 +87,13 @@ String? reasonForNext({
       final hands? => 'Starting with $hands and the notes in view.',
       null => 'Starting with the notes in view.',
     },
+    // The ordinary question the supported work was preparing for, unchanged.
+    // It says the exercise is the same one rather than promising anything
+    // about how it will go.
+    ChallengeBypass.acquisitionProbe => switch (hands) {
+      final hands? => 'Now $hands, the way it was first asked.',
+      null => 'The whole thing again, the way it was first asked.',
+    },
     ChallengeBypass.override ||
     null => differenceTo(next, previous) ?? (sameMaterial ? 'Again.' : null),
   };

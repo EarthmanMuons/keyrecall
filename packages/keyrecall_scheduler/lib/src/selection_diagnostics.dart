@@ -17,6 +17,8 @@ String selectionDiagnostics({
   required bool guidanceService,
   bool acquisitionFallback = false,
   bool acquisitionOffered = false,
+  int probesOwed = 0,
+  bool probeServed = false,
 }) {
   final admitted = traces.where((trace) => trace.isRanked).toList();
   final available = stages.values.last;
@@ -72,6 +74,7 @@ String selectionDiagnostics({
         'guidance_service=$guidanceService',
     if (acquisitionFallback) 'acquisition_fallback=true',
     if (acquisitionOffered) 'acquisition_offered=true',
+    if (probesOwed > 0) 'probes_owed=$probesOwed probe_served=$probeServed',
     'rank order: tier, coordination_transition, contrary_coordination, '
         'retention, information, diversity, focus, realization, realization_fit; '
         'higher wins; exact ties use candidate order',
