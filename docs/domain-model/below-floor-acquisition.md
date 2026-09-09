@@ -104,13 +104,12 @@ here and an interruption in ordinary continuity the same event read at two
 altitudes, rather than a new constant chosen to make acquisition look
 reasonable.
 
-Treat that as a contract rather than a convenience. `earnsParentProbe` depends
-on `stalls.isEmpty`, so changing what ordinary continuity calls broken also
-changes who is offered a probe of their parent exercise. That coupling is
-intended, because the two are one phenomenon in two contexts, and it means the
-threshold cannot be retuned for continuity alone.
+`earnsParentProbe` requires a clean completion and
+`AcquisitionContinuity.unbroken`. Changing the shared break threshold affects
+probe eligibility as well as ordinary continuity. An empty stall list alone does
+not establish continuity.
 
-### The baseline is endogenous, and that is a calibration question
+### Continuity needs an assessable baseline
 
 Gaps are compared against the upper quartile of the same short performance they
 came from. A one-octave ascending traversal has seven intervals, and an attempt
@@ -121,11 +120,18 @@ baseline.
 `packages/keyrecall_measurement/test/acquisition_observation_test.dart` keeps
 that property as a demonstrated case rather than a surprise.
 
-Left as it is on purpose. An acquisition-specific constant chosen to make the
-short case come out would be worse than a threshold shared with ordinary
-continuity, and too few intervals already produce no quartile and no gaps at
-all. Device traces are what should settle whether the baseline should come from
-the attempt, from the learner, or from the exercise.
+With fewer than five intervals, the interpolated upper quartile includes the
+largest gap. For a four-note ascending arpeggio, the maximum ratio cannot exceed
+two, so the standard break threshold of three is unreachable even after a
+minute-long pause. A short traversal with no detected stall therefore has
+`AcquisitionContinuity.unestablished` and cannot earn a probe. Detected stalls
+still count as interruptions; the gap series remains available for diagnosis.
+
+Automatic acquisition is limited to scale entries, whose complete ascending
+traversals supply seven intervals. Arpeggios remain on the ordinary path until
+their shorter traversals have a usable continuity baseline. Multiple long waits
+can still distort a scale's baseline. Device traces should settle whether the
+reference belongs to the attempt, the learner, or the exercise.
 
 ## Contractual outcome and observation profile
 
@@ -138,8 +144,8 @@ ready for a 60 BPM probe even though every note eventually arrived.
 learner did not stop inside. Completion through correction is practice and is
 recorded as practice.
 
-Eligibility only. How many criterion successes it takes, and when to conduct the
-probe, are the scheduler's to decide when acquisition selection exists.
+One criterion success currently earns a probe. The scheduler serves it ahead of
+ordinary ranking when the parent remains in scope and admissible.
 
 ## What the observation stack can already distinguish
 
@@ -153,7 +159,7 @@ worse than no scheduler at all.
 | Were they produced in order?                      | Yes, by construction. Alignment is an ordered edit script.                                                                                         |
 | Are corrections distinguishable from extra notes? | Partly. `immediateRepairs` is the shape a repair leaves; repeats and intrusions are structural classes. What caused any of them is not observable. |
 | Can a localized stall be identified?              | Yes, now. `momentGapsOf` gives every gap located by the transition it spans.                                                                       |
-| Repeated trouble at the same transition?          | Yes, now, in memory. `TransitionCensus` aggregates the gap series across attempts at one task. Nothing persists it.                                |
+| Repeated trouble at the same transition?          | Yes. `TransitionCensus` aggregates gaps in memory; the acquisition journal preserves the gap series, but does not yet rebuild the census.          |
 | Incomplete versus deliberately ended?             | Yes, outside measurement. Termination is its own concern; see [`attempt-termination.md`](attempt-termination.md).                                  |
 | Continuity independent of the beat grid?          | Yes. Dispersion and the interval ratios are read from the learner's own onsets, never from metric offsets.                                         |
 
@@ -163,34 +169,28 @@ interrupted but cannot say the same transition is in the way every time.
 
 ## When acquisition begins
 
-Four facts the model already keeps, and no counter of its own:
+Entry requires an exact scale exercise declared by the family's
+`AcquisitionFloor`, an informative ordinary attempt at that same exercise, and
+no frontier in its execution context. Direction, tempo, span, and guidance all
+belong to the exposure identity. The broader bootstrap admission shape does not
+define the acquisition floor.
 
-1. the candidate is a bootstrap shape, so it is already the floor;
-2. its execution context needs an execution bootstrap, so no frontier exists in
-   the scope progression reads;
-3. evidence has arrived in that context, so this is not a first exposure nobody
-   has tried;
-4. therefore the gentlest ordinary question has been asked and demonstrated
-   nothing.
+`attemptedAcquisitionParents` in the practice package reconstructs exposures
+from ordinary attempt records whose performance started and whose execution
+evidence weight is positive. The caller supplies that set to the scheduler
+alongside acquisition progress. An interrupted input stream or an attempt at a
+harder or less-supported task cannot stand in for a floor exposure. Acquisition
+records never establish ordinary exposure.
 
-The gap between the second and the third is the whole of "repeatedly, with
-nothing to show for it". Counting failures separately would be a second
-difficulty model beside the one that already answers this, and the scope is the
-one the forgiving floor already settled: a frontier in one hand leaves the other
-hand acquiring.
+The current entry policy requires one informative floor attempt. It does not
+claim that attempts were repeated; a repetition threshold would need counts from
+the same exact-task history. The execution frontier still reads the existing
+material, hand, and motion context.
 
-It is binary. One informative floor attempt that demonstrated nothing is already
-an attempt at the gentlest work the family has, and the forgiving floor has been
-offering that work repeatedly by the time this holds. If simulation shows it
-fires too eagerly, the missing fact is an exposure count beside `lastEvidenceAt`
-in `MaterialExecutionState`, which is evidence history about the context. A
-scheduler-local counter would be transient policy state, and residual variance
-would buy the same signal for the price of another calibration constant.
-
-Both entry points converge. A slot whose winner is a stuck floor candidate and a
-slot whose ordinary path produced nothing at all are the same situation stated
-twice, so they reach one rule and one constructor rather than the blocked case
-acquiring an escape hatch with evidence rules of its own.
+Both a selected stuck floor and an otherwise blocked slot use this rule. The
+blocked path preserves the session cap, candidate scope, and admission refusals
+other than the challenge band. A missing or out-of-scope family floor cannot
+open acquisition.
 
 The task is constructed where the stuck condition is found. Candidate generation
 may not read learner state, so an acquisition task cannot be generated there;
@@ -270,10 +270,14 @@ probe owed = a criterion success happened
              and no probe has been asked since
 ```
 
-Compared by time rather than counted. The obligation is that the question be
-asked, not that it be asked once per success, so three successes before anything
-was presented are discharged by one presentation and a success after the last
-presentation opens it again.
+Event order decides the obligation. A presentation records the total criterion
+successes it covers in `criterionSuccessesServed`. Three successes before that
+presentation are discharged together; a later success opens the obligation even
+when both events have the same timestamp. Timestamps remain descriptive.
+
+The append-only log supplies this order during replay. Progress snapshots carry
+the service watermark; older snapshots without it must be rebuilt from the log,
+because timestamps alone cannot recover equal-time event order.
 
 Reading `earnsParentProbe` as the scheduler's condition would latch. A first
 criterion success would suppress acquisition forever, including after the probe
@@ -409,8 +413,19 @@ nowhere else more than 3 times. `developing` produces corrections in half its
 attempts and stalls nowhere at all: their playing is uneven, and the unevenness
 has no address.
 
-That is the distinction the whole slice exists to make, and it is now observable
-end to end without a policy having been written.
+These are localization checks, not evidence that acquisition improves learning.
+Both transcript generation and ordinary `play` use `executionEffortFor`, so the
+same opportunity cost affects the scaffold and its parent. The aggregate parent
+reads the hardest opportunity; the transcript applies the cost at its location.
+
+`performAcquisition` observes without teaching by default. With
+`practising: true`, it updates the shared hand-and-family ability through
+`practiseExecution`, using the weakest quality among attempted moments and
+reduced credit for an incomplete traversal. A held-out ordinary probe can read
+the resulting change without teaching the player. Tests verify this transfer and
+its hand and family boundaries. The learning curve and hardest-opportunity
+summary are provisional simulation assumptions, not measured pedagogical
+effects.
 
 ## Deliberately not built
 
@@ -423,9 +438,8 @@ end to end without a policy having been written.
   changes execution of a known sequence into chained stimulus and response. Its
   evidence would have to be more local still, and its exit is back to a
   learner-driven unmetered traversal rather than straight to the ordinary floor.
-- **Scheduler selection.** Repeated supported opportunities with no frontier
-  justify offering a scaffold. They do not identify what is too difficult, so
-  the first task is the default rather than a diagnosis.
+- **Failure-specific selection.** The scheduler can offer acquisition, but its
+  unmetered task is a default rather than a diagnosis of a particular obstacle.
 - **Presentation.** Nothing shows an acquisition task or collects a transcript
   for one. The path from an observation to a record exists and is tested; what
   is missing is the screen and the loop that calls it.
@@ -433,7 +447,8 @@ end to end without a policy having been written.
   ordinary presentation owes, and nothing calls it, because nothing presents an
   attempt through a live loop yet. It cannot fire in production until an
   acquisition attempt has been recorded, since progress is empty until then.
-- **A census that outlives its process.** Nothing journals the gap series.
+- **Census replay.** The acquisition journal preserves gaps; no adapter yet
+  reconstructs `TransitionCensus` from those records.
 - **Located repairs.** The census aggregates stalls only.
 - **Hands together.** `performAcquisition` refuses a two-hand parent. Two onset
   streams and the distance between them are a coordination model, and

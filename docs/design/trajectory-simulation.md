@@ -75,10 +75,15 @@ else. The player knows which moment it was and nothing downstream is told, which
 is the property that keeps a policy fed from here honest: it can only respond to
 what the instrument would have shown.
 
-That knob reaches `performAcquisition` only. It is zero on every archetype in
-`all`, so every recorded run is unchanged, and `crossingLimited` is deliberately
-outside `all` because sweeping it through the ordinary path would re-run
-`developing` under a second name.
+`executionEffortFor` shares that cost with ordinary `play`, whose aggregate
+reading uses the hardest opportunity in the exercise. The knob is zero on every
+archetype in `all`; `crossingLimited` remains a separate localization fixture.
+
+`performAcquisition` is observation-only unless `practising: true` is supplied.
+Explicit practice uses the same hand-and-family learning state as ordinary work,
+so a held-out parent probe can assess the resulting change. Tests establish
+shared difficulty and transfer within this provisional model; they do not
+establish pedagogical benefit or compare acquisition with ordinary practice.
 
 ## Invariants and observations
 

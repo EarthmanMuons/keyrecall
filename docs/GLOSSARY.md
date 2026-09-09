@@ -37,16 +37,17 @@ ordinary admission, ranking, or learner-model path can consume it.
 
 Its attempts produce an `AcquisitionObservation` rather than an `Outcome`: no
 retrieval credit, no tempo reading, and no ordinary evidence of any kind. A
-criterion success, meaning a clean first pass with no stall, makes the unchanged
-parent eligible for a probe, and only that probe establishes ordinary readiness
-or a frontier. A stall is a gap between played moments that the measurement
-policy already reads as a break, and a `TransitionCensus` accumulates those
-stalls across attempts at one task so a repeatedly troublesome transition can be
-told from generally uneven playing.
+criterion success, meaning a clean first pass with established continuity, makes
+the unchanged parent eligible for a probe, and only that probe establishes
+ordinary readiness or a frontier. A stall is a gap between played moments that
+the measurement policy already reads as a break, and a `TransitionCensus`
+accumulates those stalls across attempts at one task so a repeatedly troublesome
+transition can be told from generally uneven playing.
 
-Acquisition is offered when a bootstrap-shaped candidate's execution context has
-evidence and no demonstrated frontier, which is the gentlest ordinary question
-having been asked and having demonstrated nothing.
+Automatic acquisition requires a family-declared scale floor, an informative
+ordinary attempt at that exact exercise, and no execution frontier in its
+context. Short traversals with insufficient continuity evidence cannot earn
+probes. Probe service covers all earlier criterion successes in event order.
 
 Not to be confused with [Acquisition floor], which offers ordinary exercises.
 
