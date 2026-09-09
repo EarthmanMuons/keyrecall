@@ -48,9 +48,17 @@ class SittingDecisionEffect {
   final bool guidanceProbeAvailable;
   final bool guidanceProbeSelected;
 
+  /// The acquisition parent this slot offered, or null for anything else.
+  ///
+  /// Recorded so the next opportunity can step aside from it. Null on every
+  /// other outcome, which is what makes the step aside one opportunity rather
+  /// than a wait.
+  final Exercise? offeredAcquisitionParent;
+
   const SittingDecisionEffect({
     required this.guidanceProbeAvailable,
     required this.guidanceProbeSelected,
+    this.offeredAcquisitionParent,
   });
 
   void applyTo(SessionState session) {
@@ -58,6 +66,7 @@ class SittingDecisionEffect {
       guidanceProbeAvailable: guidanceProbeAvailable,
       guidanceProbeSelected: guidanceProbeSelected,
     );
+    session.lastAcquisitionParent = offeredAcquisitionParent;
     session.attemptsThisSession++;
   }
 }
@@ -240,6 +249,10 @@ class InProcessScheduler implements SchedulerHost {
     final effect = SittingDecisionEffect(
       guidanceProbeAvailable: slot.guidanceProbeAvailable,
       guidanceProbeSelected: slot.guidanceProbeSelected,
+      offeredAcquisitionParent: switch (slot.result) {
+        AcquisitionOffered(:final task) => task.parent,
+        _ => null,
+      },
     );
     return switch (slot.result) {
       CandidateSelected(:final candidate) => SchedulerVerdict.selected(

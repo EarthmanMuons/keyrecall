@@ -233,6 +233,10 @@ class SchedulerPipeline {
       guidanceProbeAvailable: slot.guidanceProbeAvailable,
       guidanceProbeSelected: slot.guidanceProbeSelected,
     );
+    session.lastAcquisitionParent = switch (slot.result) {
+      AcquisitionOffered(:final task) => task.parent,
+      _ => null,
+    };
     session.attemptsThisSession++;
     return slot.result;
   }
@@ -370,6 +374,7 @@ class SchedulerPipeline {
             floor: familyFloor,
             attemptedParents: attemptedAcquisitionParents,
             traces: traces,
+            justOffered: session.lastAcquisitionParent,
           );
 
     final diagnostics = selectionDiagnostics(
@@ -1066,17 +1071,25 @@ class SchedulerPipeline {
   /// Where several floors are stuck at once, the ordinary ranking among that
   /// subset decides, so acquisition does not wander to a different material
   /// than the one the sitting would have worked on.
+  ///
+  /// [justOffered] is the parent the previous opportunity offered, and it is
+  /// skipped. A floor that qualifies goes on qualifying until it is managed, so
+  /// without this the same parent takes every slot from the moment it first
+  /// stalls. Another stuck floor may be offered in the meantime: what must not
+  /// happen is the same one twice running.
   ({AcquisitionTask task, CandidateTrace? stuck})? acquisitionFor({
     required LearnerState state,
     required AcquisitionProgress progress,
     required AcquisitionFloor floor,
     required Set<Exercise> attemptedParents,
     required List<CandidateTrace> traces,
+    Exercise? justOffered,
   }) {
     bool stuck(CandidateTrace trace) =>
         trace.safety.isAllowed &&
         (trace.admissionRefusal == null ||
             trace.admissionRefusal == AdmissionRefusal.challengeBand) &&
+        trace.exercise != justOffered &&
         needsAcquisition(
           state,
           trace.exercise,

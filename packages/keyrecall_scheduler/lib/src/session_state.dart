@@ -61,6 +61,17 @@ class SessionState {
   /// not in the contest to lose it.
   int unservedGuidanceProbeSelections;
 
+  /// The acquisition parent the slot just before this one offered, or null.
+  ///
+  /// Supported work consumes an opportunity like anything else. A floor that
+  /// qualifies goes on qualifying until it is managed, so without this the same
+  /// parent takes every slot from the moment it first stalls, and a sitting
+  /// stops interleaving at exactly the point the learner is finding hardest.
+  ///
+  /// One opportunity, not a cooldown. Any other selection clears it, including
+  /// another stuck floor, so the step aside is a step and not a wait.
+  Exercise? lastAcquisitionParent;
+
   /// What the realization families of recent selections yielded, oldest first.
   ///
   /// Held beside [recentMaterialIds] rather than derived from it: pacing reads

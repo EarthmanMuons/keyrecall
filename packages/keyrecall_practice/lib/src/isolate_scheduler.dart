@@ -137,6 +137,7 @@ class _DecisionResponse {
     final effect = SittingDecisionEffect(
       guidanceProbeAvailable: guidanceProbeAvailable,
       guidanceProbeSelected: guidanceProbeSelected,
+      offeredAcquisitionParent: acquisitionTask?.parent,
     );
     if (acquisitionTask case final task?) {
       return SchedulerVerdict.acquisition(

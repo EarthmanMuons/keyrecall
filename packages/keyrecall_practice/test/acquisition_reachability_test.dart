@@ -38,11 +38,76 @@ void main() {
       }
       final attempt = decision as PresentedAttempt;
       presented.add(attempt.exercise);
-      await session.acknowledgePresentation();
+      await session.acknowledgePresentation(attempt.decision.attemptId);
       await session.closeWithOutcome(managedNothing(), observedWallTime: at);
     }
 
     fail('a learner who manages nothing was never offered supported work');
+  });
+
+  test('one parent does not take every slot after it stalls', () async {
+    // A floor that qualifies goes on qualifying until it is managed. Without a
+    // step aside the sitting stops interleaving at exactly the point the
+    // learner is finding hardest.
+    final session = await struggling(InMemoryPracticeStore(createdAt: t0));
+    final offered = <String>[];
+
+    for (var slot = 0; slot < 14; slot++) {
+      final at = t0.plusDays(0.5 * (slot + 1));
+      final decision = await session.decideOutcome(at: at);
+      if (decision is PresentedAcquisition) {
+        offered.add(decision.task.parent.toString());
+        await session.closeAcquisition(PerformanceTranscript.empty, at: at);
+        continue;
+      }
+      final attempt = decision as PresentedAttempt;
+      offered.add('ordinary');
+      await session.acknowledgePresentation(attempt.decision.attemptId);
+      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+    }
+
+    expect(
+      offered.where((entry) => entry != 'ordinary'),
+      isNotEmpty,
+      reason: 'supported work was never offered at all',
+    );
+    for (var i = 1; i < offered.length; i++) {
+      if (offered[i] == 'ordinary') continue;
+      expect(
+        offered[i],
+        isNot(offered[i - 1]),
+        reason: 'the same parent was offered on consecutive opportunities',
+      );
+    }
+  });
+
+  test('a stalled parent comes back after one opportunity', () async {
+    final session = await struggling(InMemoryPracticeStore(createdAt: t0));
+    final offered = <String>[];
+
+    for (var slot = 0; slot < 14; slot++) {
+      final at = t0.plusDays(0.5 * (slot + 1));
+      final decision = await session.decideOutcome(at: at);
+      if (decision is PresentedAcquisition) {
+        offered.add(decision.task.parent.toString());
+        await session.closeAcquisition(PerformanceTranscript.empty, at: at);
+        continue;
+      }
+      final attempt = decision as PresentedAttempt;
+      offered.add('ordinary');
+      await session.acknowledgePresentation(attempt.decision.attemptId);
+      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+    }
+
+    // Stepping aside is a step, not a wait: a parent that is still stuck is
+    // offered again rather than being finished with.
+    final repeated = offered
+        .where((entry) => entry != 'ordinary')
+        .fold<Map<String, int>>({}, (counts, entry) {
+          counts.update(entry, (count) => count + 1, ifAbsent: () => 1);
+          return counts;
+        });
+    expect(repeated.values, anyElement(greaterThan(1)));
   });
 
   test('a first meeting is whatever placement and ranking make of it', () async {
@@ -81,7 +146,7 @@ void main() {
         return;
       }
       seen.add(attempt.exercise);
-      await session.acknowledgePresentation();
+      await session.acknowledgePresentation(attempt.decision.attemptId);
       await session.closeWithOutcome(managedNothing(), observedWallTime: at);
     }
 

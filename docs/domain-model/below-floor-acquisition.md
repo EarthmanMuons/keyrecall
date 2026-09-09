@@ -247,8 +247,12 @@ traversal ran out, and the located gap series with each gap's measured ratio.
 Termination sits beside the observation rather than inside it, because an
 attempt the learner stopped at six notes and one an input disconnection cut off
 at six notes are the same performance and different evidence about the learner.
-A later rule about what earns a probe can therefore be asked of an old attempt,
-because the attempt did not have to anticipate it.
+
+Version 1 of the log did not carry it, and nothing infers it. Those records read
+back with no termination at all, which is the uncertainty preserved rather than
+resolved: choosing between the two afterwards would put a cause on a record that
+never had one. A later rule about what earns a probe can therefore be asked of
+an old attempt, because the attempt did not have to anticipate it.
 
 It also holds `earned_probe`, the verdict as the rule in force read it, for the
 same reason a scheduler decision records the admission band it competed in.
@@ -445,11 +449,20 @@ The sitting owns both. Acquisition history is its own file beside the attempt
 journal, loaded when the sitting opens and replayed rather than held, so
 progress is whatever the durable log produces and cannot drift from it.
 
-An append that threw may still have landed, so nothing concludes from an
-exception that nothing was written. The store is asked and the log replaced by
-what it holds, and the record for one attempt is built once and kept, so a retry
-offers the same event under the same id rather than a fresh one at a sequence
-the file already has.
+An acknowledged append is authoritative: what was written is known, so it goes
+into the log directly rather than being read back for, and a reload that failed
+afterwards cannot leave memory a record behind the file. An append that threw
+may still have landed, so nothing concludes from an exception that nothing was
+written; the durable log is read and has to hold that exact event, content and
+all, because an id that comes back carrying something else is a collision rather
+than the write succeeding. The record for one attempt is built once and kept, so
+a retry offers the same event under the same id.
+
+An acquisition presentation is outstanding the way an ordinary one is. It
+carries the identity the attempt will be recorded under and the record a retry
+would write, so deciding again while it stands is refused. The compatibility
+path that only presents ordinary attempts declines it instead, since leaving it
+standing would refuse a caller's next decision over something it never showed.
 
 The family's declared floor and the safe entry ordinary admission reaches for
 are two questions of one value. Admission asks its question only in a scoped
@@ -593,6 +606,24 @@ domain declaration depend on scheduler history. And guaranteeing the exposure
 unconditionally would make a first meeting with any material its declared floor
 for every learner, overriding placement behaviour that does not hold back
 somebody who arrived able to play.
+
+## Supported work takes its turn
+
+A floor that qualifies goes on qualifying until it is managed, so an offer that
+is always made takes every slot from the moment a learner first stalls, and the
+sitting stops interleaving at exactly the point they are finding hardest.
+
+The rule is one opportunity, not a cooldown: the parent the previous opportunity
+offered is skipped. Any other selection clears it, including another stuck
+floor, so a sitting with two of them may alternate rather than wait, and a
+parent that is still stuck comes back rather than being finished with.
+
+This is not a pacing policy with numbers in it. What it forbids is the same
+parent twice running, which is enough to keep interleaving without deciding how
+often supported work should happen.
+
+A parent that earned a probe needs none of this. What it is owed is the ordinary
+question, and the service phase takes precedence over both.
 
 ## Deliberately not built
 
