@@ -80,9 +80,8 @@ class SyntheticPlayer {
   /// player with this turned up is somebody whose playing breaks in a
   /// particular place rather than somebody who plays uniformly worse.
   ///
-  /// Reaches [performAcquisition] only. Nothing positional survives [play],
-  /// which samples an outcome directly, so leaving this at zero is what keeps
-  /// every existing archetype and every recorded run unchanged.
+  /// Localized in acquisition transcripts. Ordinary aggregate performances
+  /// read the same cost at the hardest opportunity the exercise contains.
   final double opportunityPenalty;
 
   /// What each material family adds to execution, in logits.
@@ -284,6 +283,30 @@ class PlayerState {
   double abilityOf(HandConfiguration hands, String family) =>
       _ability[(hands, family)] ??= startingAbilityOf(hands, family);
 
+  /// Execution ability after pace, span, and motor opportunity costs.
+  ///
+  /// A position reads its own opportunity; an aggregate performance reads the
+  /// hardest one. Omitting performed tempo removes pace strain.
+  double executionEffortFor(
+    Exercise exercise, {
+    int? momentIndex,
+    double? performedTempoBpm,
+  }) {
+    final conditions = exercise.conditions;
+    final natural = naturalTempoFor(conditions.hands);
+    final strain = math.max(
+      0.0,
+      math.log((performedTempoBpm ?? natural) / natural),
+    );
+    final meetsOpportunity = exercise.opportunitySites.any(
+      (site) => momentIndex == null || site.momentIndex == momentIndex,
+    );
+    return abilityOf(conditions.hands, exercise.material.familyId) -
+        3.0 * strain -
+        player.spanPenalty * (conditions.octaves - 1) -
+        (meetsOpportunity ? player.opportunityPenalty : 0);
+  }
+
   /// How well this player currently knows [materialId].
   double familiarityOf(String materialId) =>
       _familiarity[materialId] ?? player.familiarity;
@@ -363,10 +386,7 @@ class PlayerState {
     // free, because nobody struggles to play a scale slowly. Span costs
     // whatever the player says it costs.
     final strain = math.max(0.0, math.log(performed / natural));
-    final effort =
-        abilityOf(conditions.hands, exercise.material.familyId) -
-        3.0 * strain -
-        player.spanPenalty * (conditions.octaves - 1);
+    final effort = executionEffortFor(exercise, performedTempoBpm: performed);
     final motorQuality = _sigmoid(effort + motorZ * player.noise);
 
     // Whether the notes come. Cueing supplies them, so it separates knowing a
@@ -434,7 +454,9 @@ class PlayerState {
           )
         : null;
 
-    if (practising) _practise(exercise, motorQuality, completed: completed);
+    if (practising) {
+      practiseExecution(exercise, motorQuality, completed: completed);
+    }
 
     return Outcome(
       started: true,
@@ -472,7 +494,7 @@ class PlayerState {
   /// about how people learn the piano. Motor quality is what the simulation
   /// can see, and it is not the same quantity as pedagogical challenge; the
   /// shape is provisional until something measured argues for another.
-  void _practise(
+  void practiseExecution(
     Exercise exercise,
     double motorQuality, {
     required bool completed,

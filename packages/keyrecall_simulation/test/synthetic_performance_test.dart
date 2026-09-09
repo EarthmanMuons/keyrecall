@@ -116,6 +116,97 @@ void main() {
     });
   });
 
+  group('shared execution difficulty', () {
+    test('the crossing cost also lowers the ordinary parent performance', () {
+      final limited = PlayerArchetypes.crossingLimited
+          .copyWith(noise: 0, familiarity: 1)
+          .begin();
+      final free = PlayerArchetypes.crossingLimited
+          .copyWith(noise: 0, familiarity: 1, opportunityPenalty: 0)
+          .begin();
+      final difficult = limited.play(
+        parent,
+        PythonCompatibleRandom(3),
+        practising: false,
+      );
+      final easy = free.play(
+        parent,
+        PythonCompatibleRandom(3),
+        practising: false,
+      );
+      expect(difficult.motorScore, lessThan(easy.motorScore));
+      expect(
+        limited.executionEffortFor(parent, momentIndex: crossings.first),
+        lessThan(limited.executionEffortFor(parent, momentIndex: 0)),
+      );
+    });
+
+    test('acquisition practice improves a held-out ordinary parent', () {
+      final player = PlayerArchetypes.crossingLimited.copyWith(
+        noise: 0,
+        familiarity: 1,
+        learningRate: 0.05,
+      );
+      final trained = player.begin();
+      final control = player.begin();
+      final otherHandBefore = trained.abilityOf(
+        HandConfiguration.left,
+        material.familyId,
+      );
+      final otherFamilyBefore = trained.abilityOf(
+        HandConfiguration.right,
+        TechnicalMaterial.arpeggioFamilyId,
+      );
+      for (var seed = 0; seed < 100; seed++) {
+        performAcquisition(
+          state: trained,
+          task: task,
+          rng: PythonCompatibleRandom(seed),
+          practising: true,
+        );
+        performAcquisition(
+          state: control,
+          task: task,
+          rng: PythonCompatibleRandom(seed),
+        );
+      }
+      final trainedAbility = trained.abilityOf(
+        HandConfiguration.right,
+        material.familyId,
+      );
+      final after = trained.play(
+        parent,
+        PythonCompatibleRandom(9),
+        practising: false,
+      );
+      final withoutPractice = control.play(
+        parent,
+        PythonCompatibleRandom(9),
+        practising: false,
+      );
+      expect(after.motorScore, greaterThan(withoutPractice.motorScore));
+      expect(
+        trained.abilityOf(HandConfiguration.right, material.familyId),
+        trainedAbility,
+      );
+      expect(
+        control.abilityOf(HandConfiguration.right, material.familyId),
+        player.begin().abilityOf(HandConfiguration.right, material.familyId),
+      );
+      expect(
+        trained.abilityOf(HandConfiguration.left, material.familyId),
+        otherHandBefore,
+      );
+      expect(
+        trained.abilityOf(
+          HandConfiguration.right,
+          TechnicalMaterial.arpeggioFamilyId,
+        ),
+        otherFamilyBefore,
+      );
+    });
+  });
+
   group('a capable player', () {
     test('mostly earns the parent probe', () {
       final earned = [

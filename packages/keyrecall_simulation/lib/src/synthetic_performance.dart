@@ -65,6 +65,9 @@ const double _repairInterval = 0.4;
 /// Nothing was asked about tempo, so the player plays at their own pace and
 /// [SyntheticPlayer.tempoCompliance] never enters.
 ///
+/// With [practising], the attempt updates the same latent ability as ordinary
+/// work. The default observes the player without teaching them.
+///
 /// Throws [ArgumentError] for a two-hand parent. Two onset streams and the
 /// distance between them are a coordination model, and acquisition has no
 /// business having a second one.
@@ -72,6 +75,7 @@ PerformanceTranscript performAcquisition({
   required PlayerState state,
   required AcquisitionTask task,
   required PythonCompatibleRandom rng,
+  bool practising = false,
 }) {
   final conditions = task.parent.conditions;
   if (conditions.hands == HandConfiguration.together) {
@@ -87,17 +91,23 @@ PerformanceTranscript performAcquisition({
 
   final material = task.material;
   final moments = realizeAcquisition(task).moments;
-  final hardMoments = {
-    for (final site in task.parent.opportunitySites)
-      if (site.hand == hand) site.momentIndex,
-  };
-  final ability =
-      state.abilityOf(conditions.hands, material.familyId) -
-      state.player.spanPenalty * (conditions.octaves - 1);
   final ordinaryIntervalMs = 60000 / state.naturalTempoFor(conditions.hands);
 
   var transcript = PerformanceTranscript.empty;
   var at = 0.0;
+  var weakestQuality = 1.0;
+  var allExpectedPlayed = true;
+
+  PerformanceTranscript finish({required bool completed}) {
+    if (practising && transcript.isNotEmpty) {
+      state.practiseExecution(
+        task.parent,
+        weakestQuality,
+        completed: completed,
+      );
+    }
+    return transcript;
+  }
 
   for (final moment in moments) {
     // Every draw a moment could need, taken before anything branches on them,
@@ -108,16 +118,17 @@ PerformanceTranscript performAcquisition({
     final repairDraw = rng.nextDouble();
     final stopDraw = rng.nextDouble();
 
-    final effort =
-        ability -
-        (hardMoments.contains(moment.position)
-            ? state.player.opportunityPenalty
-            : 0.0);
+    final effort = state.executionEffortFor(
+      task.parent,
+      momentIndex: moment.position,
+    );
     final quality = _sigmoid(effort);
     final shortfall = 1 - quality;
 
     if (moment.position > 0) {
-      if (stopDraw < _worstStopRate * shortfall * shortfall) return transcript;
+      if (stopDraw < _worstStopRate * shortfall * shortfall) {
+        return finish(completed: false);
+      }
       at +=
           ordinaryIntervalMs *
           math.exp(
@@ -125,6 +136,7 @@ PerformanceTranscript performAcquisition({
           );
     }
 
+    weakestQuality = math.min(weakestQuality, quality);
     final expected = moment.noteFor(hand)!;
     if (errorDraw < _worstErrorRate * shortfall) {
       final wrong = expected.midiNote + (neighborDraw < 0.5 ? -1 : 1);
@@ -132,7 +144,10 @@ PerformanceTranscript performAcquisition({
         pitch: spellObservedPitch(wrong, material: material),
         timestampMs: at.round(),
       );
-      if (repairDraw >= _repairFloor + (1 - _repairFloor) * quality) continue;
+      if (repairDraw >= _repairFloor + (1 - _repairFloor) * quality) {
+        allExpectedPlayed = false;
+        continue;
+      }
       at += ordinaryIntervalMs * _repairInterval;
     }
 
@@ -142,7 +157,7 @@ PerformanceTranscript performAcquisition({
     );
   }
 
-  return transcript;
+  return finish(completed: allExpectedPlayed);
 }
 
 double _sigmoid(double value) => 1 / (1 + math.exp(-value));
