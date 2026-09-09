@@ -1,0 +1,91 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
+
+import '../canonical_json.dart';
+import '../schema.dart';
+import 'domain_codec.dart';
+
+/// Writes one parent's acquisition history.
+Map<String, Object?> encodeAcquisitionRecord(
+  Exercise parent,
+  AcquisitionRecord record,
+) => {
+  'parent': encodeExercise(parent),
+  'attempts': record.attempts,
+  'completions': record.completions,
+  'criterion_successes': record.criterionSuccesses,
+  'last_attempt_at': encodeTime(record.lastAttemptAt),
+  'last_criterion_success_at': encodeOptionalTime(
+    record.lastCriterionSuccessAt,
+  ),
+};
+
+/// Writes acquisition progress, ordered so the same progress encodes
+/// identically twice.
+///
+/// Ordered by the encoded parent rather than by insertion, because a content
+/// hash over insertion order would change when the same work arrived in a
+/// different sequence.
+List<Map<String, Object?>> encodeAcquisitionProgress(
+  AcquisitionProgress progress,
+) {
+  final records = [
+    for (final entry in progress.byParent.entries)
+      encodeAcquisitionRecord(entry.key, entry.value),
+  ];
+  records.sort(
+    (left, right) => canonicalJson(left).compareTo(canonicalJson(right)),
+  );
+  return records;
+}
+
+/// Reads acquisition progress.
+///
+/// Throws [JournalFormatException] for anything it cannot read, since
+/// acquisition history decides whether a learner is offered supported work or
+/// the ordinary question, and a silently dropped record answers that wrongly.
+AcquisitionProgress decodeAcquisitionProgress(
+  List<Object?> json, {
+  String? location,
+}) {
+  final byParent = <Exercise, AcquisitionRecord>{};
+  for (final entry in json) {
+    final record = asMap(entry, 'acquisition record', location: location);
+    final parent = decodeExercise(
+      requireMap(record, 'parent', location: location),
+      location: location,
+    );
+    final criterionSuccesses = requireInt(
+      record,
+      'criterion_successes',
+      location: location,
+    );
+    final completions = requireInt(record, 'completions', location: location);
+    final lastCriterionSuccessAt = readOptionalTime(
+      record,
+      'last_criterion_success_at',
+      location: location,
+    );
+    if (criterionSuccesses > completions) {
+      throw JournalFormatException(
+        'acquisition record claims more criterion successes than completions',
+        location: location,
+      );
+    }
+    if ((criterionSuccesses > 0) != (lastCriterionSuccessAt != null)) {
+      throw JournalFormatException(
+        'acquisition record disagrees about whether a criterion success '
+        'happened',
+        location: location,
+      );
+    }
+    byParent[parent] = AcquisitionRecord(
+      attempts: requireInt(record, 'attempts', location: location),
+      completions: completions,
+      criterionSuccesses: criterionSuccesses,
+      lastAttemptAt: requireTime(record, 'last_attempt_at', location: location),
+      lastCriterionSuccessAt: lastCriterionSuccessAt,
+    );
+  }
+  return AcquisitionProgress(byParent);
+}

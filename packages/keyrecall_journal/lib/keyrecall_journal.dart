@@ -21,6 +21,7 @@ export 'src/attempt_record.dart';
 // uniform failure type.
 export 'src/canonical_json.dart';
 export 'src/checkpoint.dart';
+export 'src/codecs/acquisition_codec.dart';
 export 'src/codecs/domain_codec.dart';
 export 'src/codecs/learner_codec.dart';
 export 'src/codecs/scheduler_codec.dart';
