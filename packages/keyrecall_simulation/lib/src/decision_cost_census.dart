@@ -288,7 +288,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise> attemptedAcquisitionParents = const {},
+    Set<Exercise>? attemptedExercises,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -303,7 +303,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedAcquisitionParents: attemptedAcquisitionParents,
+      attemptedExercises: attemptedExercises,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
     );
@@ -317,6 +317,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
     required SessionState session,
     required List<Exercise> candidates,
     required DateTime at,
+    Set<Exercise>? attemptedExercises,
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,

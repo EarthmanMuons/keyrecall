@@ -67,7 +67,16 @@ class DecisionFacts {
   final Map<ScaleForm, double> _minorTopology = {};
   bool? _fluentHandsTogether;
 
-  DecisionFacts(this.state);
+  /// The exact ordinary exercises this learner has informatively attempted, or
+  /// null where the caller supplied no history.
+  ///
+  /// Null and empty are different claims. Empty says nothing has been asked
+  /// for, which is a fact a rule may act on; null says the caller does not
+  /// keep this, and a rule that needs it does not apply at all. That is what
+  /// lets every caller that predates it decide exactly as it did.
+  final Set<Exercise>? attemptedExercises;
+
+  DecisionFacts(this.state, {this.attemptedExercises});
 }
 
 /// The candidates considered and the reasoned outcome of one attempt slot.
@@ -212,7 +221,7 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise> attemptedAcquisitionParents = const {},
+    Set<Exercise>? attemptedExercises,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -225,7 +234,7 @@ class SchedulerPipeline {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedAcquisitionParents: attemptedAcquisitionParents,
+      attemptedExercises: attemptedExercises,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
     );
@@ -261,7 +270,7 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise> attemptedAcquisitionParents = const {},
+    Set<Exercise>? attemptedExercises,
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -285,6 +294,7 @@ class SchedulerPipeline {
       session: session,
       candidates: candidates,
       at: at,
+      attemptedExercises: attemptedExercises,
       overrides: {
         ...overrides,
         for (final parent in owedProbes)
@@ -319,7 +329,7 @@ class SchedulerPipeline {
           owedFloorCheck(
             state: state,
             floor: familyFloor,
-            attemptedParents: attemptedAcquisitionParents,
+            attemptedParents: attemptedExercises ?? const {},
             selected: selected,
             traces: traces,
           ) ??
@@ -350,6 +360,7 @@ class SchedulerPipeline {
           session: session,
           candidates: candidates,
           at: at,
+          attemptedExercises: attemptedExercises,
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
           emphasis: emphasis,
@@ -372,7 +383,7 @@ class SchedulerPipeline {
             state: state,
             progress: acquisition,
             floor: familyFloor,
-            attemptedParents: attemptedAcquisitionParents,
+            attemptedParents: attemptedExercises ?? const {},
             traces: traces,
             justOffered: session.lastAcquisitionParent,
           );
@@ -542,6 +553,32 @@ class SchedulerPipeline {
     // One octave before two is the one execution ordering every source agrees
     // on, and the information term otherwise reaches for the span nobody has
     // attempted precisely because nobody has. One octave stays fully eligible.
+    // Reversal is an added demand, and information gain alone will otherwise
+    // make up and down the first thing a hand is ever asked for. One ascending
+    // attempt at this material and hand is all it asks: not a frontier, not a
+    // good one. Once it has happened, ranking may prefer up and down freely,
+    // and whether the learner needs more support than that is recovery's
+    // question and acquisition's.
+    //
+    // Introduction order rather than admission: what it decides is which of
+    // two realizations a learner meets first.
+    if (facts?.attemptedExercises case final attempted?) {
+      if (exercise.conditions.direction == ExerciseDirection.upDown &&
+          !attempted.any(
+            (earlier) =>
+                earlier.material == material &&
+                earlier.conditions.hands == hands &&
+                earlier.conditions.direction == ExerciseDirection.up,
+          )) {
+        return EligibilityDecision(
+          EligibilityTier.provisionallyEligible,
+          'up and down asks for a reversal this hand has not been asked for '
+          'ascending yet',
+          code: EligibilityReason.directionPrerequisite,
+        );
+      }
+    }
+
     if (exercise.conditions.octaves > 1) {
       if (material.progression.requiresPreviousSpanEvidence &&
           !_previousSpanPrerequisiteSatisfied(
@@ -1631,6 +1668,7 @@ class SchedulerPipeline {
     required SessionState session,
     required List<Exercise> candidates,
     required DateTime at,
+    Set<Exercise>? attemptedExercises,
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
@@ -1662,7 +1700,7 @@ class SchedulerPipeline {
     ];
     // One memo for the slot, so the questions eligibility asks of state alone
     // are answered once rather than once per candidate.
-    final facts = DecisionFacts(state);
+    final facts = DecisionFacts(state, attemptedExercises: attemptedExercises);
     final introducible = introducibleTier(
       state,
       refined,

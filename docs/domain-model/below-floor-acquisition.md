@@ -257,11 +257,18 @@ Termination sits beside the observation rather than inside it, because an
 attempt the learner stopped at six notes and one an input disconnection cut off
 at six notes are the same performance and different evidence about the learner.
 
-Version 1 of the log did not carry it, and nothing infers it. Those records read
-back with no termination at all, which is the uncertainty preserved rather than
-resolved: choosing between the two afterwards would put a cause on a record that
-never had one. A later rule about what earns a probe can therefore be asked of
-an old attempt, because the attempt did not have to anticipate it.
+Termination says why observation stopped, which is a different axis from whether
+the material was produced. The app ending an attempt because the traversal was
+covered has its own cause, because a field that meant that and the learner
+tapping Done at once could be read as evidence for neither.
+
+Version 1 of the log did not carry termination at all, and version 2 wrote both
+of those causes identically. Records from either read back with no termination,
+which is the uncertainty preserved rather than resolved: choosing afterwards
+would put a cause on a record that never carried one. A version 2 record whose
+cause was never ambiguous keeps it. A later rule about what earns a probe can
+therefore be asked of an old attempt, because the attempt did not have to
+anticipate it.
 
 It also holds `earned_probe`, the verdict as the rule in force read it, for the
 same reason a scheduler decision records the admission band it competed in.
@@ -633,6 +640,26 @@ often supported work should happen.
 
 A parent that earned a probe needs none of this. What it is owed is the ordinary
 question, and the service phase takes precedence over both.
+
+## Which realization a hand meets first
+
+Reversal is an added demand, and information gain alone made up and down the
+first thing a hand was ever asked for on a device sitting: the left hand met C
+major as an up-and-down traversal without ever having been asked for it
+ascending.
+
+So up and down is not introducible for a material and hand until that same
+material and hand has one informative ascending attempt. Not a frontier, not a
+good attempt: the claim is only about which of two realizations a learner meets
+first. Once it has happened, ranking may prefer up and down freely, and whether
+the learner needs more support is recovery's question and acquisition's.
+
+Introduction order rather than admission, and it costs an experienced learner at
+most one relevant attempt.
+
+It reads the same exact-exercise history acquisition reads, where null means the
+caller keeps no history and the rule does not apply, so every caller that
+predates it decides as it did.
 
 ## Deliberately not built
 

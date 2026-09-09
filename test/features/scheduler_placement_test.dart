@@ -117,7 +117,7 @@ class _ParityScheduler extends IsolateScheduler {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise> attemptedAcquisitionParents = const {},
+    Set<Exercise>? attemptedExercises,
   }) async {
     final verdict = await super.decide(
       epoch: epoch,
@@ -128,7 +128,7 @@ class _ParityScheduler extends IsolateScheduler {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedAcquisitionParents: attemptedAcquisitionParents,
+      attemptedExercises: attemptedExercises,
     );
     final directly = await _direct.decide(
       epoch: epoch,
@@ -139,7 +139,7 @@ class _ParityScheduler extends IsolateScheduler {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedAcquisitionParents: attemptedAcquisitionParents,
+      attemptedExercises: attemptedExercises,
     );
     expect(verdict.chosen?.exercise, directly.chosen?.exercise);
     expect(verdict.blockedReason, directly.blockedReason);

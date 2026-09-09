@@ -89,11 +89,8 @@ void main() {
       );
     }
     final restored = AttemptJournal.fromJsonLines(log.toJsonLines());
-    expect(attemptedAcquisitionParents(restored.records), {parent});
-    expect(
-      attemptedAcquisitionParents(restored.records),
-      isNot(contains(other)),
-    );
+    expect(attemptedExercises(restored.records), {parent});
+    expect(attemptedExercises(restored.records), isNot(contains(other)));
   });
 
   group('serving a probe by presenting the parent', () {

@@ -45,6 +45,45 @@ void main() {
     fail('a learner who manages nothing was never offered supported work');
   });
 
+  test('a hand is asked for ascending before up and down', () async {
+    // Reversal is an added demand, and information gain alone made up and down
+    // the first thing a hand was ever asked for.
+    final session = await struggling(InMemoryPracticeStore(createdAt: t0));
+    final seen = <Exercise>[];
+
+    for (var slot = 0; slot < 8; slot++) {
+      final at = t0.plusDays(0.5 * (slot + 1));
+      final decision = await session.decideOutcome(at: at);
+      if (decision is PresentedAcquisition) {
+        await session.closeAcquisition(PerformanceTranscript.empty, at: at);
+        continue;
+      }
+      final attempt = decision as PresentedAttempt;
+      final exercise = attempt.exercise;
+      if (exercise.conditions.direction == ExerciseDirection.upDown) {
+        expect(
+          seen.where(
+            (earlier) =>
+                earlier.material == exercise.material &&
+                earlier.conditions.hands == exercise.conditions.hands &&
+                earlier.conditions.direction == ExerciseDirection.up,
+          ),
+          isNotEmpty,
+          reason: 'up and down came before this hand was asked for ascending',
+        );
+      }
+      seen.add(exercise);
+      await session.acknowledgePresentation(attempt.decision.attemptId);
+      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+    }
+
+    // Both hands were met, and neither was met with a reversal.
+    expect(
+      seen.map((exercise) => exercise.conditions.hands).toSet(),
+      hasLength(greaterThan(1)),
+    );
+  });
+
   test('one parent does not take every slot after it stalls', () async {
     // A floor that qualifies goes on qualifying until it is managed. Without a
     // step aside the sitting stops interleaving at exactly the point the

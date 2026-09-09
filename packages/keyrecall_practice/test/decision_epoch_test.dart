@@ -142,7 +142,7 @@ class _InterceptingScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise> attemptedAcquisitionParents = const {},
+    Set<Exercise>? attemptedExercises,
   }) async {
     final verdict = await inner.decide(
       epoch: epoch,
@@ -153,7 +153,7 @@ class _InterceptingScheduler implements SchedulerHost {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedAcquisitionParents: attemptedAcquisitionParents,
+      attemptedExercises: attemptedExercises,
     );
     whileDeciding?.call();
     return verdict;

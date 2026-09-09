@@ -58,6 +58,9 @@ enum EligibilityReason {
   /// A multi-octave traversal asks for one octave first.
   octaveSpanPrerequisite('OCTAVE_SPAN_PREREQUISITE'),
 
+  /// Up and down before this material and hand has been asked for ascending.
+  directionPrerequisite('DIRECTION_PREREQUISITE'),
+
   /// This material family requires another material phase first.
   materialProgressionPrerequisite('MATERIAL_PROGRESSION_PREREQUISITE'),
 

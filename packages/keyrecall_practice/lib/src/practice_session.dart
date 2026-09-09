@@ -502,9 +502,7 @@ class PracticeSession {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: familyFloor,
       acquisition: acquisitionProgress,
-      attemptedAcquisitionParents: attemptedAcquisitionParents(
-        _journal.records,
-      ),
+      attemptedExercises: attemptedExercises(_journal.records),
     );
     // Nothing is applied and nothing is written: while this was computed, the
     // inputs it answers about stopped being the current ones.

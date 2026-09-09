@@ -171,7 +171,7 @@ abstract interface class SchedulerHost {
   /// [dueRequirementIds] names the requirements whose candidates the slot may
   /// choose between, against the bound scope.
   ///
-  /// [acquisition] and [attemptedAcquisitionParents] are rebuilt from persisted
+  /// [acquisition] and [attemptedExercises] are rebuilt from persisted
   /// history by the caller, because a host holds no history of its own. Omit
   /// them and the slot decides exactly as it did before acquisition existed.
   Future<SchedulerVerdict> decide({
@@ -183,7 +183,7 @@ abstract interface class SchedulerHost {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise> attemptedAcquisitionParents = const {},
+    Set<Exercise>? attemptedExercises,
   });
 
   /// Releases whatever computes decisions. A host is disposable: a session
@@ -232,7 +232,7 @@ class InProcessScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise> attemptedAcquisitionParents = const {},
+    Set<Exercise>? attemptedExercises,
   }) async {
     final slot = pipeline.evaluateSlot(
       state: state,
@@ -242,7 +242,7 @@ class InProcessScheduler implements SchedulerHost {
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
-      attemptedAcquisitionParents: attemptedAcquisitionParents,
+      attemptedExercises: attemptedExercises,
       practiceEntryPolicy: _entry,
       emphasis: _emphasis,
     );

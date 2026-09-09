@@ -78,8 +78,14 @@ AcquisitionProbeServedRecord? acquisitionServiceOf({
 
 /// Exact ordinary tasks that produced informative execution evidence.
 ///
-/// Rebuilt from ordinary history; acquisition history cannot establish exposure.
-Set<Exercise> attemptedAcquisitionParents(Iterable<AttemptRecord> records) => {
+/// Rebuilt from ordinary history; acquisition history cannot establish that an
+/// ordinary realization was ever asked for.
+///
+/// Exact, and read by two rules that both need it to be. Acquisition asks
+/// whether the declared floor itself was attempted, and introduction order asks
+/// whether a material and hand has been asked for ascending before it is asked
+/// for up and down. A near-enough exercise answers neither.
+Set<Exercise> attemptedExercises(Iterable<AttemptRecord> records) => {
   for (final record in records)
     if (record.closure.measurement case Measured(
       :final outcome,

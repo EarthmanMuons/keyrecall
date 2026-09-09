@@ -68,7 +68,7 @@ class IsolateScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
-    Set<Exercise> attemptedAcquisitionParents = const {},
+    Set<Exercise>? attemptedExercises,
   }) async {
     final worker = _worker;
     if (worker == null) {
@@ -84,7 +84,7 @@ class IsolateScheduler implements SchedulerHost {
         acquisitionFloor: acquisitionFloor,
         acquisitionFamilyFloor: acquisitionFamilyFloor,
         acquisition: acquisition,
-        attemptedAcquisitionParents: attemptedAcquisitionParents,
+        attemptedExercises: attemptedExercises,
       ),
     );
   }
@@ -99,7 +99,7 @@ class _DecisionRequest {
   final AcquisitionFloor? acquisitionFloor;
   final AcquisitionFloor? acquisitionFamilyFloor;
   final AcquisitionProgress? acquisition;
-  final Set<Exercise> attemptedAcquisitionParents;
+  final Set<Exercise>? attemptedExercises;
 
   const _DecisionRequest({
     required this.epoch,
@@ -110,7 +110,7 @@ class _DecisionRequest {
     required this.acquisitionFloor,
     required this.acquisitionFamilyFloor,
     required this.acquisition,
-    required this.attemptedAcquisitionParents,
+    required this.attemptedExercises,
   });
 }
 
@@ -254,7 +254,7 @@ class _Worker {
         acquisitionFloor: request.acquisitionFloor,
         acquisitionFamilyFloor: request.acquisitionFamilyFloor,
         acquisition: request.acquisition,
-        attemptedAcquisitionParents: request.attemptedAcquisitionParents,
+        attemptedExercises: request.attemptedExercises,
         practiceEntryPolicy: entry,
         emphasis: emphasis,
       );
