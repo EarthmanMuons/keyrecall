@@ -453,6 +453,53 @@ the diagnostics channel under a key derived from the attempt, saying which
 parent it was about and that the obligation was left owed. Nothing retries,
 because the next ordinary presentation of that parent tries again on its own.
 
+## Closing an acquisition attempt
+
+Not a transaction, because there is nothing to make consistent. There is no
+pending decision to clear, no learner state to advance, and no outcome to
+derive; the whole of what an acquisition attempt does is add an event to its own
+log.
+
+An attempt the learner stopped partway is recorded as readily as one that
+finished. Where it ran out, what it cost to get that far, and how long the waits
+were are exactly the observations acquisition exists to keep, and discarding
+them for being incomplete would throw away the reading of the learner the task
+was offered for.
+
+Recording one advances the decision epoch, because acquisition progress is a
+scheduler input and a verdict computed before it is no longer about the current
+inputs.
+
+## The screen
+
+The same practice screen with one demand removed, not a mode of its own. The
+material, the hand, the direction and the span are stated as they always are,
+the cues are the parent's, and Ready is still how the learner starts.
+
+No tempo appears anywhere, on the statement or on the bar. A stated tempo reads
+as a target, and this task removed the obligation rather than lowering it.
+
+Ready goes straight to playing. No count-in state is entered, not even an empty
+one: a pulse of zero beats would be a fiction, and anything later that assumed a
+count-in had happened would be reasoning about a pulse this task removed.
+
+The line under the task says only that pace is the learner's. Not slowly, not
+easier, not take your time: each of those is an interpretation of why the
+ordinary attempt did not go well, and nothing has made one.
+
+Nothing ends the attempt but the traversal being covered or the learner saying
+so. The watchdog does not run, so neither the duration limit nor the inactivity
+window applies and the attempt is never asked whether it is over. While it runs
+the screen says so, because a wait of any length is the reading and a screen
+that looked finished would be wrong exactly when it mattered.
+
+There is no pause once observation starts. Discarding a partial transcript would
+throw away the localized evidence the task exists to keep, and resuming one
+would put interface time into the gap series, where it would read as a
+hesitation at whichever transition the learner happened to stop on. Stop closes
+the attempt and records it; leaving before Ready records nothing, because
+nothing was observed.
+
 ## Deliberately not built
 
 - **Fragments.** A fixed three-note or five-note entry pattern can end before
@@ -466,12 +513,10 @@ because the next ordinary presentation of that parent tries again on its own.
   learner-driven unmetered traversal rather than straight to the ordinary floor.
 - **Failure-specific selection.** The scheduler can offer acquisition, but its
   unmetered task is a default rather than a diagnosis of a particular obstacle.
-- **Presentation.** Nothing shows an acquisition task or collects a transcript
-  for one, so nothing appends an acquisition attempt. The observation-to-record
-  path exists and is tested; what is missing is the screen and the loop that
-  calls it. A live loop that meets an offered task idles and says so rather than
-  substituting ordinary work, because the scheduler has already said what this
-  learner should be doing.
+- **Explaining the probe that follows.** An acquisition attempt produces no
+  ordinary record, so no review screen runs after it. The parent probe arrives
+  with the copy that explains the restored tempo unshown until that probe itself
+  closes.
 - **Census replay.** The acquisition journal preserves gaps; no adapter yet
   reconstructs `TransitionCensus` from those records.
 - **Located repairs.** The census aggregates stalls only.

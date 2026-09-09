@@ -585,6 +585,94 @@ void main() {
           'screen can be asked about its own before it has played any',
     );
   });
+
+  group('a supported acquisition attempt', () {
+    final parent = Exercise.linear(
+      material: TechnicalMaterial('C', ScaleForm.major),
+      hands: HandConfiguration.right,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+      tempoBpm: 60,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+    final task = AcquisitionTask.unmeteredTraversal(parent);
+
+    Future<List<AttemptTermination>> pumpAcquisition(
+      WidgetTester tester,
+    ) async {
+      tester.view.physicalSize = const Size(1400, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final finished = <AttemptTermination>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syntheticInstrument],
+          child: MaterialApp(
+            home: Scaffold(
+              body: AttemptView(
+                key: const ValueKey('acquisition'),
+                exercise: parent,
+                acquisition: task,
+                onFinish: (termination) async => finished.add(termination),
+              ),
+            ),
+          ),
+        ),
+      );
+      return finished;
+    }
+
+    testWidgets('states the task without stating a tempo', (tester) async {
+      await pumpAcquisition(tester);
+
+      // A tempo on screen reads as a target, and this task removed the
+      // obligation rather than lowering it.
+      expect(find.text('C major'), findsOneWidget);
+      expect(find.text('RIGHT HAND'), findsOneWidget);
+      expect(find.textContaining('bpm'), findsNothing);
+      expect(find.text('Practice this at your own pace.'), findsOneWidget);
+    });
+
+    testWidgets('goes from Ready straight to playing', (tester) async {
+      await pumpAcquisition(tester);
+      await tester.tap(find.text('Ready'));
+      await tester.pump();
+
+      // No count-in state at all, not even an empty one: a pulse of zero beats
+      // would be a fiction, and the screen must not look like a count-in that
+      // failed to start.
+      expect(find.text('Counting in'), findsNothing);
+      expect(find.text('Ready'), findsNothing);
+      expect(find.text('Playing'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
+    });
+
+    testWidgets('silence never ends it', (tester) async {
+      final finished = await pumpAcquisition(tester);
+      await tester.tap(find.text('Ready'));
+      await tester.pump();
+
+      // Long past every window an ordinary attempt has. A wait is the reading
+      // this task exists to take, so nothing may treat it as a signal to stop.
+      await tester.pump(const Duration(minutes: 10));
+
+      expect(finished, isEmpty);
+      expect(find.text('Playing'), findsOneWidget);
+      expect(find.text('Done'), findsOneWidget);
+    });
+
+    testWidgets('ends when the learner says so', (tester) async {
+      final finished = await pumpAcquisition(tester);
+      await tester.tap(find.text('Ready'));
+      await tester.pump();
+      await tester.pump(const Duration(minutes: 3));
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      expect(finished, [AttemptTermination.learnerStopped]);
+    });
+  });
 }
 
 class _RecordingScreenWakeLock implements ScreenWakeLock {

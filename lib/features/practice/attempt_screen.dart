@@ -166,9 +166,25 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 
     return Scaffold(
       appBar: _PracticeAppBar(
-        running: _playing == null ? null : loop.value?.exercise,
+        running: _playing == null
+            ? null
+            : loop.value?.exercise ?? loop.value?.acquisition?.parent,
+        // A stated tempo reads as a target, and this task removed the
+        // obligation rather than lowering it.
+        showsTempo: loop.value?.acquisition == null,
       ),
       body: switch (loop) {
+        // Supported acquisition, which is the same screen with one demand
+        // removed rather than a mode of its own.
+        AsyncData(:final value) when value.acquisition != null => AttemptView(
+          key: ValueKey(value.acquisition),
+          exercise: value.acquisition!.parent,
+          acquisition: value.acquisition,
+          metBefore: value.hasMet(value.acquisition!.parent.material),
+          onFinish: (_) => notifier.finishAcquisition(),
+          onUnderWay: () => setState(() => _playing = attemptId),
+          onBackToReady: () => setState(() => _playing = null),
+        ),
         AsyncData(:final value) when value.exercise != null => AttemptView(
           // A new decision restarts the view at Ready rather than inheriting
           // the previous attempt's phase.
@@ -199,11 +215,14 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 /// notes are not arriving. Everything that is a setting goes behind the menu,
 /// which is where the settings this app has yet to grow will go too.
 class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
-  const _PracticeAppBar({this.running});
+  const _PracticeAppBar({this.running, this.showsTempo = true});
 
   /// The attempt under way, whose task the bar carries instead of the app's
   /// name and its controls.
   final Exercise? running;
+
+  /// Whether a tempo was asked for at all.
+  final bool showsTempo;
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -248,7 +267,11 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
         ),
         child: task == null
             ? const Wordmark(key: ValueKey('wordmark'))
-            : _RunningTask(task, key: const ValueKey('task')),
+            : _RunningTask(
+                task,
+                showsTempo: showsTempo,
+                key: const ValueKey('task'),
+              ),
       ),
       actions: [
         // Gone at once rather than animated out. They are what the task is
@@ -295,9 +318,12 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
 /// learner glancing up mid-scale is checking what they were asked for, which
 /// is the same question the statement answers with the whole screen.
 class _RunningTask extends StatelessWidget {
-  const _RunningTask(this.exercise, {super.key});
+  const _RunningTask(this.exercise, {this.showsTempo = true, super.key});
 
   final Exercise exercise;
+
+  /// Whether a tempo was asked for at all.
+  final bool showsTempo;
 
   @override
   Widget build(BuildContext context) {
@@ -329,13 +355,15 @@ class _RunningTask extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${conditions.tempoBpm.round()} bpm',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+                  if (showsTempo) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      '${conditions.tempoBpm.round()} bpm',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
               // The hand is the mark at the front of the row, so the line
@@ -517,12 +545,24 @@ class AttemptView extends ConsumerStatefulWidget {
     this.onUnderWay,
     this.onBackToReady,
     this.presentation,
+    this.acquisition,
     this.metBefore = true,
     super.key,
   });
 
   /// What the scheduler decided to present.
+  ///
+  /// For an acquisition task this is its parent, because the notes, the hand,
+  /// the span and the cues are the parent's; what the task changes is that no
+  /// tempo is asked for.
   final Exercise exercise;
+
+  /// The supported task being presented, or null for ordinary work.
+  ///
+  /// Its presence removes one demand and nothing else. There is no pulse to
+  /// count in, no tempo to state, and no window that can end the attempt,
+  /// because a long wait is the observation this task exists to make.
+  final AcquisitionTask? acquisition;
 
   /// Commits what was played and moves on, saying how the attempt ended.
   final Future<void> Function(AttemptTermination) onFinish;
@@ -677,13 +717,38 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         !showsPitchCueDuringAttempt(widget.exercise.guidance);
   }
 
-  /// Hands the screen over to the attempt, and counts in once it has settled.
+  /// Whether this attempt asks for no tempo.
+  bool get _isSelfPaced => widget.acquisition != null;
+
+  /// Hands the screen over to the attempt, and starts it.
   void _start() {
     // Only where the rung has no further use for it. At the cued rung the
     // keyboard is the cue, and it stays where it is.
     if (_instrumentLeavesAtReady) _handover.forward();
     widget.onUnderWay?.call();
-    _beginCountIn();
+    if (_isSelfPaced) {
+      _beginListening();
+    } else {
+      _beginCountIn();
+    }
+  }
+
+  /// Starts a self-paced attempt, with nothing between Ready and playing.
+  ///
+  /// No count-in state is entered, not even an empty one. A pulse of zero
+  /// beats would be a fiction, and anything later that assumed a count-in had
+  /// happened would be reasoning about a pulse this task deliberately removed.
+  ///
+  /// No watchdog either. Its windows end an attempt nobody is answering, and
+  /// here silence is the reading rather than a signal: the attempt ends when
+  /// the traversal is covered or when the learner says so.
+  void _beginListening() {
+    setState(() {
+      _phase = _Phase.playing;
+      ref
+          .read(attemptTranscriptProvider.notifier)
+          .start(widget.exercise.material);
+    });
   }
 
   void _beginCountIn() {
@@ -900,7 +965,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           : CrossFadeState.showSecond,
       firstChild: Padding(
         padding: EdgeInsets.fromLTRB(layout.gutter, 16, layout.gutter, 0),
-        child: _TaskStatement(exercise),
+        child: _TaskStatement(exercise, showsTempo: !_isSelfPaced),
       ),
       secondChild: const SizedBox(width: double.infinity),
     );
@@ -951,7 +1016,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Status(phase: _phase, guidance: guidance),
+            _Status(phase: _phase, guidance: guidance, selfPaced: _isSelfPaced),
             const SizedBox(height: 12),
             _control(),
           ],
@@ -1383,9 +1448,15 @@ class _Question extends StatelessWidget {
 /// Tapping it explains it. The terms are the app's whole vocabulary, and the
 /// place somebody wonders what one means is the line it is written on.
 class _TaskStatement extends StatelessWidget {
-  const _TaskStatement(this.exercise);
+  const _TaskStatement(this.exercise, {this.showsTempo = true});
 
   final Exercise exercise;
+
+  /// Whether a tempo was asked for at all.
+  ///
+  /// A stated tempo reads as a target. Leaving one on screen for a task that
+  /// removed the obligation would ask for the thing that was just taken away.
+  final bool showsTempo;
 
   @override
   Widget build(BuildContext context) {
@@ -1422,9 +1493,11 @@ class _TaskStatement extends StatelessWidget {
           // tempo had a line to itself for its own rank in the task, and what
           // that cost was a line of music.
           Text(
-            '${traversalName(conditions)} · '
-            '${octavesName(conditions.octaves)} · '
-            '${conditions.tempoBpm.round()} bpm',
+            [
+              traversalName(conditions),
+              octavesName(conditions.octaves),
+              if (showsTempo) '${conditions.tempoBpm.round()} bpm',
+            ].join(' · '),
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -1509,13 +1582,33 @@ class _Instrument extends ConsumerWidget {
 /// describes: what the notes do when the attempt starts is about the button
 /// underneath it.
 class _Status extends StatelessWidget {
-  const _Status({required this.phase, required this.guidance});
+  const _Status({
+    required this.phase,
+    required this.guidance,
+    this.selfPaced = false,
+  });
 
   final _Phase phase;
   final GuidanceContext guidance;
 
+  /// Whether no tempo was asked for.
+  final bool selfPaced;
+
   @override
   Widget build(BuildContext context) {
+    if (selfPaced && (phase == _Phase.ready || phase == _Phase.playing)) {
+      // Nothing here says slowly, or easier, or to take your time. Each of
+      // those is an interpretation of why the ordinary attempt did not go
+      // well, and nothing has made one. What changed is that pace is the
+      // learner's, and while they are playing the screen has to go on saying
+      // it is running: a wait of any length is the observation, so a screen
+      // that looked finished would be wrong exactly when it mattered.
+      return Text(
+        phase == _Phase.ready ? 'Practice this at your own pace.' : 'Playing',
+        style: Theme.of(context).textTheme.bodyMedium,
+        textAlign: TextAlign.center,
+      );
+    }
     if (phase == _Phase.paused) {
       return Text(
         'Paused',

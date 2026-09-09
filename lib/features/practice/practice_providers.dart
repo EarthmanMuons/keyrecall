@@ -336,9 +336,6 @@ enum PracticeIdleReason {
 
   /// The goal or focus could not be resolved against this catalog.
   invalidScope,
-
-  /// Supported acquisition was offered and nothing here can present it yet.
-  acquisitionOffered,
 }
 
 /// Everything the panel needs to show about the loop's current position.
@@ -365,6 +362,13 @@ class PracticeLoopState {
   /// A decision from an earlier run that was never answered.
   final PendingDecision? pending;
 
+  /// The supported task on screen, if one is.
+  ///
+  /// Not a [PresentedAttempt]: nothing about an acquisition attempt is durable
+  /// before it is played, because there is no decision to recover and no
+  /// learner state it could leave half-applied.
+  final AcquisitionTask? acquisition;
+
   /// The last attempt committed in this sitting.
   final AttemptRecord? lastCommitted;
 
@@ -386,13 +390,15 @@ class PracticeLoopState {
     this.idle,
     this.presented,
     this.pending,
+    this.acquisition,
     this.lastCommitted,
     this.lastReading,
     this.note,
   });
 
-  /// Whether an answer is being waited on, from either source.
-  bool get isAwaitingAnswer => presented != null || pending != null;
+  /// Whether an answer is being waited on, from any source.
+  bool get isAwaitingAnswer =>
+      presented != null || pending != null || acquisition != null;
 
   /// The exercise awaiting an answer, whichever way it got here.
   Exercise? get exercise => presented?.exercise ?? pending?.exercise;
@@ -517,6 +523,43 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             plan: current.plan,
             session: current.session,
             lastCommitted: record,
+          ),
+        );
+      });
+    } finally {
+      _writing = false;
+    }
+  }
+
+  /// Records what a supported attempt produced and moves on.
+  ///
+  /// Separate from [finish] because almost nothing it does applies. There is
+  /// no outcome to derive, no learner state to advance, no pending decision to
+  /// clear, and no review to show: an acquisition attempt is an event in its
+  /// own log, and what happens next is whatever the scheduler makes of it.
+  ///
+  /// An attempt the learner stopped partway is recorded like any other. Where
+  /// it ran out and what the waits were are what the task was offered for.
+  Future<void> finishAcquisition() async {
+    final current = state.value;
+    final task = current?.acquisition;
+    if (_writing || current == null || task == null) return;
+    final transcript = ref.read(attemptTranscriptProvider).transcript;
+
+    _writing = true;
+    try {
+      state = await AsyncValue.guard(() async {
+        await current.session.closeAcquisition(
+          task,
+          transcript,
+          at: DateTime.now().toUtc(),
+        );
+        return _decide(
+          PracticeLoopState(
+            profile: current.profile,
+            plan: current.plan,
+            session: current.session,
+            coverage: current.coverage,
           ),
         );
       });
@@ -790,19 +833,15 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastReading: from.lastReading,
         note: 'practice caught up',
       ),
-      // Nothing shows an acquisition task yet. The loop idles rather than
-      // presenting something else, because the scheduler has said what this
-      // learner should be doing and quietly substituting ordinary work would
-      // be answering a different question.
-      PracticeAcquisition(:final coverage) => PracticeLoopState(
+      PracticeAcquisition(:final task, :final coverage) => PracticeLoopState(
         profile: from.profile,
         plan: from.plan,
         session: from.session,
+        acquisition: task,
         coverage: coverage,
-        idle: PracticeIdleReason.acquisitionOffered,
         lastCommitted: from.lastCommitted,
         lastReading: from.lastReading,
-        note: 'supported acquisition offered; no screen presents it yet',
+        note: from.note,
       ),
       PracticeInvalidScope(:final failures) => PracticeLoopState(
         profile: from.profile,
