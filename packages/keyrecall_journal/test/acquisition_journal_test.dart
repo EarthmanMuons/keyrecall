@@ -1,0 +1,226 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:test/test.dart';
+
+import 'package:keyrecall_journal/keyrecall_journal.dart';
+
+void main() {
+  final material = TechnicalMaterial('C', ScaleForm.major);
+  final parent = Exercise.linear(
+    material: material,
+    hands: HandConfiguration.right,
+    octaves: 1,
+    direction: ExerciseDirection.up,
+    tempoBpm: 60,
+    guidance: GuidanceContext.continuouslyCued,
+  );
+  final task = AcquisitionTask.unmeteredTraversal(parent);
+  final t0 = DateTime.utc(2026, 9, 9, 10);
+
+  AcquisitionJournal emptyLog() => AcquisitionJournal(
+    AcquisitionJournalHeader(profileId: 'abc12345', createdAt: t0),
+  );
+
+  AcquisitionAttemptRecord recordAt(
+    int sequence, {
+    AcquisitionCompletion completion = AcquisitionCompletion.completedCleanly,
+    bool earnedProbe = true,
+    Duration after = Duration.zero,
+    String? attemptId,
+    List<RecordedGap> gaps = const [],
+  }) => AcquisitionAttemptRecord(
+    journalSequence: sequence,
+    identity: AttemptIdentity(
+      profileId: 'abc12345',
+      attemptId: attemptId ?? 'acq-$sequence',
+      sessionId: 'sitting-1',
+      indexInSession: sequence,
+      occurredAt: t0.add(after),
+    ),
+    task: task,
+    started: true,
+    completion: completion,
+    repairs: 1,
+    repeats: 0,
+    intrusions: 1,
+    firstAbsentPosition: completion.isComplete ? null : 4,
+    earnedProbe: earnedProbe,
+    gaps: gaps,
+  );
+
+  group('a round trip', () {
+    test('preserves the facts and the verdict that was recorded', () {
+      final log = emptyLog()
+        ..append(
+          recordAt(
+            0,
+            gaps: const [
+              (fromPosition: 2, toPosition: 3, gapMs: 4000, ratio: 4.4),
+              (fromPosition: 3, toPosition: 4, gapMs: 900, ratio: 1.0),
+            ],
+          ),
+        );
+
+      final read = AcquisitionJournal.fromJsonLines(log.toJsonLines());
+      final record = read.records.single;
+
+      expect(read.header.profileId, 'abc12345');
+      expect(record.task, task);
+      expect(record.completion, AcquisitionCompletion.completedCleanly);
+      expect(record.repairs, 1);
+      expect(record.intrusions, 1);
+      expect(record.earnedProbe, isTrue);
+      expect(record.gaps.first.gapMs, 4000);
+      expect(record.gaps.first.ratio, closeTo(4.4, 1e-9));
+    });
+
+    test('keeps the gaps a later threshold would be asked of', () {
+      // The ratio is measured, and what counts as a stall is a threshold over
+      // it. Storing the ratio is what lets a threshold that moves be asked of
+      // an attempt that happened before it did.
+      final log = emptyLog()
+        ..append(
+          recordAt(
+            0,
+            gaps: const [
+              (fromPosition: 1, toPosition: 2, gapMs: 2100, ratio: 2.3),
+            ],
+          ),
+        );
+      final record = AcquisitionJournal.fromJsonLines(
+        log.toJsonLines(),
+      ).records.single;
+
+      expect(record.gaps.single.ratio, closeTo(2.3, 1e-9));
+    });
+  });
+
+  group('appending', () {
+    test('is idempotent for the same attempt', () {
+      final log = emptyLog();
+
+      expect(log.append(recordAt(0)), isTrue);
+      expect(log.append(recordAt(0)), isFalse);
+      expect(log.length, 1);
+    });
+
+    test('refuses an id that returns with different content', () {
+      final log = emptyLog()..append(recordAt(0));
+
+      expect(
+        () => log.append(
+          recordAt(
+            0,
+            completion: AcquisitionCompletion.completedWithCorrections,
+            earnedProbe: false,
+          ),
+        ),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('refuses a gap in the sequence', () {
+      final log = emptyLog()..append(recordAt(0));
+
+      expect(
+        () => log.append(recordAt(2)),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('refuses a timeline that runs backward', () {
+      final log = emptyLog()
+        ..append(recordAt(0, after: const Duration(hours: 1)));
+
+      expect(
+        () => log.append(recordAt(1)),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('refuses another profile history', () {
+      final log = AcquisitionJournal(
+        AcquisitionJournalHeader(profileId: 'zzz99999', createdAt: t0),
+      );
+
+      expect(
+        () => log.append(recordAt(0)),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+  });
+
+  group('the two logs', () {
+    test('refuse each other records', () {
+      final acquisition = emptyLog()..append(recordAt(0));
+
+      expect(
+        () => AttemptJournal.fromJsonLines(acquisition.toJsonLines()),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+  });
+
+  group('replay', () {
+    test('produces progress and nothing else', () {
+      final log = emptyLog()
+        ..append(
+          recordAt(
+            0,
+            completion: AcquisitionCompletion.completedWithCorrections,
+            earnedProbe: false,
+          ),
+        )
+        ..append(recordAt(1, after: const Duration(minutes: 5)))
+        ..append(
+          recordAt(
+            2,
+            completion: AcquisitionCompletion.notCompleted,
+            earnedProbe: false,
+            after: const Duration(minutes: 9),
+          ),
+        );
+
+      final progress = log.replay();
+      final record = progress.recordFor(parent)!;
+
+      expect(record.attempts, 3);
+      expect(record.completions, 2);
+      expect(record.criterionSuccesses, 1);
+      expect(record.lastCriterionSuccessAt, t0.add(const Duration(minutes: 5)));
+      expect(progress.earnsParentProbe(parent), isTrue);
+    });
+
+    test('is the same progress after a restart', () {
+      // The property the whole log exists for. Progress is whatever replaying
+      // history produces, so it cannot disappear across a restart or a sitting
+      // boundary.
+      final log = emptyLog()
+        ..append(recordAt(0))
+        ..append(recordAt(1, after: const Duration(days: 4)));
+
+      expect(
+        AcquisitionJournal.fromJsonLines(log.toJsonLines()).replay().byParent,
+        log.replay().byParent,
+      );
+    });
+
+    test('keeps a past verdict when the rule moves', () {
+      // The verdict is stored beside the facts, so replaying an old attempt
+      // reproduces what happened rather than what today's rule would say.
+      final log = emptyLog()
+        ..append(
+          recordAt(
+            0,
+            gaps: const [
+              (fromPosition: 1, toPosition: 2, gapMs: 9000, ratio: 9.0),
+            ],
+          ),
+        );
+
+      // A gap that any stall threshold would read as a break, on an attempt
+      // recorded as a criterion success.
+      expect(log.records.single.gaps.single.ratio, greaterThan(3.0));
+      expect(log.replay().earnsParentProbe(parent), isTrue);
+    });
+  });
+}

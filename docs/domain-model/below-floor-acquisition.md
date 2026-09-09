@@ -1,8 +1,9 @@
 # Below-floor acquisition
 
 - **Status:** Representation, observation, repeated-transition aggregation,
-  synthetic performance, the entry rule, and durable progress implemented.
-  Nothing presents an acquisition attempt or writes its progress to disk yet.
+  synthetic performance, the entry rule, durable progress, and an append-only
+  acquisition log implemented. Nothing presents an acquisition attempt, and
+  nothing schedules the parent probe.
 - **Written:** September 8, 2026
 - **Revised:** September 9, 2026
 
@@ -219,6 +220,44 @@ today; the attempt, completion, and criterion counts are all kept so that a rule
 wanting two of them is a change of policy rather than a change of what was
 recorded. That is the same discipline the entry rule follows.
 
+## Two logs, because they answer to different readers
+
+Replaying the attempt journal produces learner state. An acquisition attempt is
+deliberately not evidence for that state, so putting one in that log would make
+the source of truth for learner state contain records it must ignore.
+`AcquisitionJournal` is therefore its own append-only log, and replaying it
+produces `AcquisitionProgress` and nothing else. Each reader refuses the other's
+records rather than skipping them.
+
+The two share no ordering invariant, because neither derives from the other.
+Each carries its own timestamps, its own contiguous sequence, and its own
+idempotency by attempt id.
+
+Progress is whatever replaying the log produces. That is what makes it survive a
+restart and a sitting boundary, and it is why a checkpoint would have been the
+wrong home on its own: checkpoints are disposable acceleration, rebuildable from
+history, so acquisition history has to be in history.
+
+### The record keeps facts, and the verdict it was written with
+
+A record holds what happened: the completion class, the extra notes split into
+repairs, repeats and intrusions, where an unfinished traversal ran out, and the
+located gap series with each gap's measured ratio. A later rule about what earns
+a probe can therefore be asked of an old attempt, because the attempt did not
+have to anticipate it.
+
+It also holds `earned_probe`, the verdict as the rule in force read it, for the
+same reason a scheduler decision records the admission band it competed in.
+Replay uses the stored verdict, so a threshold that moves changes what the next
+attempt earns and never what a past one did.
+
+It holds no outcome, no measurement, and no scores. There is nothing in a record
+that could be folded into learner state.
+
+Where the performance first departed is not recorded. The completion class and
+the three counts say that it did and at what cost; the exact location of the
+first wrong note is the one observation-level fact this log currently drops.
+
 ## Repeated transitions
 
 One attempt says where the playing broke. Only repetition says a transition is
@@ -284,14 +323,17 @@ end to end without a policy having been written.
 - **Scheduler selection.** Repeated supported opportunities with no frontier
   justify offering a scaffold. They do not identify what is too difficult, so
   the first task is the default rather than a diagnosis.
-- **Presentation and persistence.** Nothing presents an acquisition task, and
-  nothing writes progress to disk. The codec exists and round trips, but no
-  journal record type carries an acquisition attempt and no checkpoint holds
-  progress. A checkpoint would be the wrong home on its own: checkpoints are
-  disposable acceleration, rebuildable from attempts, so acquisition history has
-  to be replayable from the journal rather than only cached.
+- **Presentation.** Nothing shows an acquisition task or collects a transcript
+  for one. The path from an observation to a record exists and is tested; what
+  is missing is the screen and the loop that calls it.
 - **The probe itself.** Progress can say a parent has earned one. Nothing
-  schedules it.
+  schedules it, and one question is open before anything does: whether an earned
+  probe is owed service or merely re-entered into ordinary ranking. If ranking
+  can defer it indefinitely then `earnsParentProbe` promises more than it
+  delivers, so the probe should be owed the way other services are owed. What
+  must not change is the order: acquisition decides which ordinary question is
+  asked next, the ordinary attempt answers it, and only that answer moves a
+  frontier.
 - **A census that outlives its process.** Nothing journals the gap series.
 - **Located repairs.** The census aggregates stalls only.
 - **Hands together.** `performAcquisition` refuses a two-hand parent. Two onset

@@ -13,6 +13,7 @@
 /// adapter wraps it, which is what stops the engine from deciding the schema.
 library;
 
+export 'src/acquisition_journal.dart';
 export 'src/attempt_closure.dart';
 export 'src/attempt_journal.dart';
 export 'src/attempt_record.dart';

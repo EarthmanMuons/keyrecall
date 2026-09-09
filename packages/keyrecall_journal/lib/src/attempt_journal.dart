@@ -246,6 +246,13 @@ class AttemptJournal {
             );
           }
           journal.append(AttemptRecord.fromJson(decoded));
+        case JournalRecordType.acquisitionHeader:
+        case JournalRecordType.acquisitionAttempt:
+          throw JournalFormatException(
+            'an acquisition record appeared in an attempt journal; acquisition '
+            'is not evidence for learner state and has a log of its own',
+            location: 'line ${i + 1}',
+          );
       }
     }
 

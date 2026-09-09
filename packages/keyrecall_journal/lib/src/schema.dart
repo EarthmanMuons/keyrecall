@@ -32,13 +32,31 @@ const int attemptSchemaVersion = 4;
 /// checkpoint already asks for.
 const int checkpointSchemaVersion = 2;
 
+/// Version of the acquisition-log wire format.
+///
+/// Independent of [attemptSchemaVersion], because the two logs answer to
+/// different readers: replaying attempts produces learner state, and replaying
+/// acquisition produces acquisition progress and nothing else.
+const int acquisitionSchemaVersion = 1;
+
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {
   /// Identifies the journal and the learner it belongs to. First line.
   header('journal_header'),
 
   /// One practice attempt.
-  attempt('attempt');
+  attempt('attempt'),
+
+  /// Identifies an acquisition log and the learner it belongs to. First line.
+  acquisitionHeader('acquisition_header'),
+
+  /// One attempt at an acquisition task.
+  ///
+  /// Kept out of the attempt log rather than mixed into it. Replaying attempts
+  /// produces learner state, and an acquisition attempt is deliberately not
+  /// evidence for that state, so putting the two in one log would make the
+  /// source of truth for learner state contain records it must ignore.
+  acquisitionAttempt('acquisition_attempt');
 
   const JournalRecordType(this.id);
 

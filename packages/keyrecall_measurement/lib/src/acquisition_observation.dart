@@ -5,30 +5,6 @@ import 'package:meta/meta.dart';
 import 'measurement_policy.dart';
 import 'performance_measurement.dart';
 
-/// What an acquisition attempt delivered against what it asked for.
-///
-/// Three values, not a score. Reaching the end after corrections is real work
-/// and is recorded as such; it is simply not the same thing as reaching the
-/// end without them.
-enum AcquisitionCompletion {
-  /// Something the task asked for never arrived.
-  notCompleted('NOT_COMPLETED'),
-
-  /// Everything arrived, with extra notes along the way.
-  completedWithCorrections('COMPLETED_WITH_CORRECTIONS'),
-
-  /// Everything arrived, right the first time.
-  completedCleanly('COMPLETED_CLEANLY');
-
-  const AcquisitionCompletion(this.id);
-
-  /// Stable identifier used in persisted state and traces.
-  final String id;
-
-  /// Whether the task was played through.
-  bool get isComplete => this != AcquisitionCompletion.notCompleted;
-}
-
 /// What was observed about one acquisition attempt.
 ///
 /// The counterpart of [PerformanceMeasurement], and deliberately not that
