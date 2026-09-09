@@ -536,29 +536,36 @@ hesitation at whichever transition the learner happened to stop on. Stop closes
 the attempt and records it; leaving before Ready records nothing, because
 nothing was observed.
 
-## What the offer does not yet reach
+## Reaching the offer at all
 
-Supplying the family floor to general practice is necessary for acquisition to
-be reachable and is not sufficient. Driving a beginner sitting over thirty slots
-against one scale offered none, for two reasons that are policy rather than
-plumbing.
+The rule is about the family's declared floor, and ordinary ranking prefers a
+more independent rung of the same material as soon as one is admissible. Half of
+what that costs is answered, and half is not.
 
-The scheduler never presents the continuously cued floor once introduction is
-past: every winner in that run was the notes-previewed rung. No informative
-attempt at the exact floor exercise therefore exists, and the entry rule's
-exposure requirement cannot be met.
+The offer is asked of every declared floor in scope rather than of the slot's
+winner. Requiring the floor to win the slot as well made a question about the
+floor answerable only when nothing else was worth doing, which for a learner
+with a catalog in front of them is never. Where several floors are stuck at
+once, the ordinary ranking among that subset decides, so acquisition does not
+wander to a different material than the sitting would have worked on.
 
-And the offer is made only when the stuck floor is the candidate the slot would
-otherwise present. Where ordinary ranking prefers a more independent rung of the
-same material, the stuck floor never wins, so nothing is offered even when the
-rule would hold.
+What remains is that the exposure the rule reads may never happen. Ranking
+prefers the previewed rung from a material's first slot onward, so the exact
+declared floor can go unpresented for its whole life, and a question about
+whether it was attempted then has one permanent answer.
 
-The two interact: the rule asks about the floor, and ranking prefers to leave
-the floor behind. Widening either to make the path reachable is a pedagogical
-choice and has not been made. The candidates are triggering from any stuck floor
-in scope rather than only the winner, counting a harder rung of the same context
-as exposure, or accepting that the gentlest ordinary question stops being the
-cued rung once introduction is past.
+Guaranteeing one exposure of the declared floor before ordinary progression
+leaves it behind is the obvious fix and is not free: it makes the first
+presentation of every material its declared floor, for every learner, which
+contradicts placement behaviour that deliberately does not hold back somebody
+who arrived able to play. That is a pedagogical choice about what a first
+meeting with a material should be, and it has not been made.
+
+The rejected alternatives stay rejected. Counting a harder rung as floor
+exposure would blur the exact-exercise evidence the exposure reconstruction
+exists to keep, and redefining the floor once introduction is past would make a
+domain declaration depend on scheduler history and could make the scaffold
+harder precisely because the learner is struggling.
 
 ## Deliberately not built
 

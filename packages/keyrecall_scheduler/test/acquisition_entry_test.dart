@@ -282,37 +282,31 @@ void main() {
       );
     });
 
-    test('answers a blocked slot the same way it answers a stuck one', () {
-      // A slot that produced no winner at all still reaches the same rule over
-      // the same traces, so the blocked case does not acquire an escape hatch
-      // with evidence rules of its own.
+    test('does not need the floor to have won the slot', () {
+      // The rule is about the family's gentlest ordinary realization. Ordinary
+      // ranking may prefer a more independent rung of the same material
+      // forever, and a question about the floor answerable only when nothing
+      // else was worth doing is a question that never gets asked.
       final state = metButUnproven();
       final traces = pipeline.evaluate(
         state: state,
         session: SessionState(),
-        candidates: [floor],
+        candidates: [
+          floor,
+          cued(guidance: GuidanceContext.notesPreviewedOnly),
+        ],
         at: t0,
       );
 
-      final blocked = pipeline.acquisitionFor(
+      final offered = pipeline.acquisitionFor(
         state: state,
         progress: const AcquisitionProgress.empty(),
         floor: entries,
         attemptedParents: attemptedParents,
-        selected: null,
-        traces: traces,
-      );
-      final stuck = pipeline.acquisitionFor(
-        state: state,
-        progress: const AcquisitionProgress.empty(),
-        floor: entries,
-        attemptedParents: attemptedParents,
-        selected: traces.single,
         traces: traces,
       );
 
-      expect(blocked?.task, stuck?.task);
-      expect(blocked?.task.parent, floor);
+      expect(offered?.task.parent, floor);
     });
   });
 

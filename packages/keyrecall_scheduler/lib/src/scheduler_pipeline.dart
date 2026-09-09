@@ -303,6 +303,12 @@ class SchedulerPipeline {
               if (trace.isRanked && owedProbes.contains(trace.exercise)) trace,
           ]);
 
+    // The family's declared floor, which is a different question from the safe
+    // entry ordinary admission reaches for. A general sitting never runs out of
+    // ordinary work and so is given no safe entry, and its learners are exactly
+    // the ones acquisition is for.
+    final familyFloor = acquisitionFamilyFloor ?? acquisitionFloor;
+
     var selected = servedProbe ?? chooseFrom(narrowed.selectable, session);
     var blockedReason = BlockedReason.admissionExhausted;
     var acquisitionFallback = false;
@@ -339,11 +345,6 @@ class SchedulerPipeline {
       }
     }
 
-    // The family's declared floor, which is a different question from the safe
-    // entry ordinary admission reaches for. A general sitting never runs out of
-    // ordinary work and so is given no safe entry, and its learners are exactly
-    // the ones acquisition is for.
-    final familyFloor = acquisitionFamilyFloor ?? acquisitionFloor;
     final offer =
         acquisition == null ||
             familyFloor == null ||
@@ -357,7 +358,6 @@ class SchedulerPipeline {
             progress: acquisition,
             floor: familyFloor,
             attemptedParents: attemptedAcquisitionParents,
-            selected: selected,
             traces: traces,
           );
 
@@ -1045,12 +1045,21 @@ class SchedulerPipeline {
   /// is owed is the ordinary question. Once that has been asked, a parent whose
   /// context is still stuck may acquire again, which is why this reads what is
   /// owed rather than what was once earned.
+  ///
+  /// Asked of every declared floor in scope rather than of the slot's winner.
+  /// The rule is about the family's gentlest ordinary realization, and ordinary
+  /// ranking is free to prefer a more independent rung of the same material
+  /// forever; requiring the floor to win the slot as well made a question about
+  /// the floor answerable only when nothing else was worth doing.
+  ///
+  /// Where several floors are stuck at once, the ordinary ranking among that
+  /// subset decides, so acquisition does not wander to a different material
+  /// than the one the sitting would have worked on.
   ({AcquisitionTask task, CandidateTrace? stuck})? acquisitionFor({
     required LearnerState state,
     required AcquisitionProgress progress,
     required AcquisitionFloor floor,
     required Set<Exercise> attemptedParents,
-    required CandidateTrace? selected,
     required List<CandidateTrace> traces,
   }) {
     bool stuck(CandidateTrace trace) =>
@@ -1065,23 +1074,24 @@ class SchedulerPipeline {
         ) &&
         !progress.probeOwed(trace.exercise);
 
-    if (selected != null) {
-      return stuck(selected)
-          ? (
-              task: AcquisitionTask.unmeteredTraversal(selected.exercise),
-              stuck: selected,
-            )
-          : null;
-    }
-    for (final trace in traces) {
-      if (stuck(trace)) {
-        return (
-          task: AcquisitionTask.unmeteredTraversal(trace.exercise),
-          stuck: trace,
-        );
-      }
-    }
-    return null;
+    final candidates = [
+      for (final trace in traces)
+        if (stuck(trace)) trace,
+    ];
+    if (candidates.isEmpty) return null;
+    final ranked = [
+      for (final trace in candidates)
+        if (trace.isRanked) trace,
+    ];
+    // Candidate order where none of them is ranked, which is deterministic and
+    // is what a refused floor leaves to choose between.
+    final chosen = ranked.isEmpty
+        ? candidates.first
+        : selectBest(ranked) ?? candidates.first;
+    return (
+      task: AcquisitionTask.unmeteredTraversal(chosen.exercise),
+      stuck: chosen,
+    );
   }
 
   /// The predicted success a candidate has to clear to be ordinarily admitted.
