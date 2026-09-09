@@ -103,6 +103,9 @@ class SchedulerVerdict {
   /// mistake it for ordinary work.
   final AcquisitionTask? acquisitionTask;
 
+  /// The ordinary work an offered task was chosen instead of, if any.
+  final Exercise? displacedByAcquisition;
+
   /// What to apply to the sitting if this verdict is still current.
   final SittingDecisionEffect effect;
 
@@ -119,7 +122,8 @@ class SchedulerVerdict {
     required this.effect,
     this.result,
   }) : blockedReason = null,
-       acquisitionTask = null;
+       acquisitionTask = null,
+       displacedByAcquisition = null;
 
   const SchedulerVerdict.blocked(
     BlockedReason this.blockedReason, {
@@ -128,7 +132,8 @@ class SchedulerVerdict {
     required this.effect,
     this.result,
   }) : chosen = null,
-       acquisitionTask = null;
+       acquisitionTask = null,
+       displacedByAcquisition = null;
 
   const SchedulerVerdict.acquisition(
     AcquisitionTask this.acquisitionTask, {
@@ -136,6 +141,7 @@ class SchedulerVerdict {
     required this.epoch,
     required this.effect,
     this.result,
+    this.displacedByAcquisition,
   }) : chosen = null,
        blockedReason = null;
 }
@@ -269,13 +275,15 @@ class InProcessScheduler implements SchedulerHost {
         result: slot.result,
         diagnostics: slot.result.diagnostics,
       ),
-      AcquisitionOffered(:final task) => SchedulerVerdict.acquisition(
-        task,
-        epoch: epoch,
-        effect: effect,
-        result: slot.result,
-        diagnostics: slot.result.diagnostics,
-      ),
+      AcquisitionOffered(:final task, :final displaced) =>
+        SchedulerVerdict.acquisition(
+          task,
+          epoch: epoch,
+          effect: effect,
+          result: slot.result,
+          diagnostics: slot.result.diagnostics,
+          displacedByAcquisition: displaced,
+        ),
     };
   }
 }

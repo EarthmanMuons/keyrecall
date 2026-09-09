@@ -12,6 +12,7 @@
 /// attempt against the reference implementation under `analysis/`.
 library;
 
+export 'src/acquisition_census.dart';
 export 'src/arpeggio_policy_experiment.dart';
 export 'src/attempt_trace.dart';
 export 'src/calibration.dart';

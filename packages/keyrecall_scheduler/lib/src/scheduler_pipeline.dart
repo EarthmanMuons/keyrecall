@@ -153,6 +153,13 @@ final class AcquisitionOffered extends SelectionResult {
   /// Null where the ordinary path produced nothing at all to point at.
   final CandidateTrace? stuck;
 
+  /// The ordinary work this was chosen instead of, when there was any.
+  ///
+  /// What supported work costs, stated as what it displaced. A slot spent on a
+  /// scaffold is a slot not spent on whatever would otherwise have ranked
+  /// highest, and that is the only honest way to say the price.
+  final Exercise? displaced;
+
   const AcquisitionOffered({
     super.diagnostics,
     required super.traces,
@@ -162,6 +169,7 @@ final class AcquisitionOffered extends SelectionResult {
     required super.introductions,
     required this.task,
     required this.stuck,
+    this.displaced,
   });
 }
 
@@ -416,6 +424,7 @@ class SchedulerPipeline {
               introductions: narrowed.introductions,
               task: offer.task,
               stuck: offer.stuck,
+              displaced: selected?.exercise,
             )
           : selected == null
           ? SelectionBlocked(

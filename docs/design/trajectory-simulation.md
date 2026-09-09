@@ -85,6 +85,41 @@ so a held-out parent probe can assess the resulting change. Tests establish
 shared difficulty and transfer within this provisional model; they do not
 establish pedagogical benefit or compare acquisition with ordinary practice.
 
+## What supported work does to a sitting
+
+`censusOfSitting` drives the production decision loop with a synthetic player
+answering both paths from one latent ability: ordinary attempts through an
+outcome, supported ones through a transcript read back by the observation path
+device MIDI takes. It counts and concludes nothing.
+
+The first pass, over three scales and forty slots, is descriptive and one number
+in it is a finding rather than a datum.
+
+| Player                        | Supported share | Longest run | Probes served |
+| ----------------------------- | --------------- | ----------- | ------------- |
+| `trueBeginner`                | 0.73            | 13          | 7             |
+| `arpeggioStrongScaleWeak`     | 0.33            | 1           | 1             |
+| every other shipped archetype | 0.00            | 0           | 0             |
+
+Advanced, intermediate and developing learners never reach supported work, which
+is what it is for. A true beginner spends nearly three quarters of the sitting
+in it, in runs of thirteen.
+
+The repetition guard is not violated: consecutive offers are different parents,
+and the gap between two offers of the same parent is never one. Six declared
+floors are stuck at once, so supported work rotates among them and satisfies a
+rule that only forbids the same parent twice running. The rule does what it says
+and does not bound supported work in aggregate.
+
+Latency reads sensibly. One to three slots from a context's first ordinary
+attempt to its floor being asked for, one slot from a floor attempt to
+acquisition on it, and one slot from earning a probe to that probe being served.
+Seven of twenty-nine supported attempts came out cleanly, three through
+corrections, and nineteen not at all.
+
+What it displaced is recorded per material and hand, which is the cost stated as
+what was chosen instead.
+
 ## Invariants and observations
 
 Detectors carry a severity, and the distinction is load-bearing.

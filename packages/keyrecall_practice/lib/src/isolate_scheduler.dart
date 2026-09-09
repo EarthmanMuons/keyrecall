@@ -120,6 +120,7 @@ class _DecisionResponse {
   final CandidateTrace? chosen;
   final BlockedReason? blockedReason;
   final AcquisitionTask? acquisitionTask;
+  final Exercise? displacedByAcquisition;
   final bool guidanceProbeAvailable;
   final bool guidanceProbeSelected;
 
@@ -129,6 +130,7 @@ class _DecisionResponse {
     required this.chosen,
     required this.blockedReason,
     required this.acquisitionTask,
+    required this.displacedByAcquisition,
     required this.guidanceProbeAvailable,
     required this.guidanceProbeSelected,
   });
@@ -145,6 +147,7 @@ class _DecisionResponse {
         epoch: epoch,
         effect: effect,
         diagnostics: diagnostics,
+        displacedByAcquisition: displacedByAcquisition,
       );
     }
     return chosen == null
@@ -272,6 +275,10 @@ class _Worker {
           },
           acquisitionTask: switch (slot.result) {
             AcquisitionOffered(:final task) => task,
+            CandidateSelected() || SelectionBlocked() => null,
+          },
+          displacedByAcquisition: switch (slot.result) {
+            AcquisitionOffered(:final displaced) => displaced,
             CandidateSelected() || SelectionBlocked() => null,
           },
           guidanceProbeAvailable: slot.guidanceProbeAvailable,

@@ -74,10 +74,14 @@ class PresentedAcquisition extends PracticeDecision {
   /// Curriculum coverage at the instant it was offered.
   final ScopeCoverage coverage;
 
+  /// The ordinary work this was chosen instead of, if any.
+  final Exercise? displaced;
+
   const PresentedAcquisition({
     required this.attemptId,
     required this.task,
     required this.coverage,
+    this.displaced,
   });
 
   @override
@@ -514,6 +518,7 @@ class PracticeSession {
         attemptId: _nextId(),
         task: task,
         coverage: evaluated.coverage,
+        displaced: verdict.displacedByAcquisition,
       );
       _outstandingAcquisition = offered;
       return offered;
