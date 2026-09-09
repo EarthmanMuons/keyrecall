@@ -136,7 +136,14 @@ AcquisitionObservation observeAcquisition({
   return AcquisitionObservation(
     task: task,
     started: measurement.started,
-    completion: !reading.isComplete
+    // Produced, not merely covered. Alignment explains a wrong note as a
+    // substitution, which accounts for the position it fell on, so a traversal
+    // of eight arbitrary notes satisfies every position without any of the
+    // material having been played. That reading is right for a measurement,
+    // where the pitch channels say what actually arrived, and wrong here,
+    // where completion is the headline fact and the contract is that the
+    // learner produced the required pitches in order.
+    completion: reading.substituted > 0 || reading.deleted > 0
         ? AcquisitionCompletion.notCompleted
         : reading.isFirstPassClean
         ? AcquisitionCompletion.completedCleanly

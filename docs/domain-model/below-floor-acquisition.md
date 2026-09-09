@@ -241,6 +241,15 @@ history, so acquisition history has to be in history.
 
 ### The record keeps facts, and the verdict it was written with
 
+Completion means the material was produced, not that every position was
+accounted for. Alignment explains a wrong note as a substitution, which covers
+the position it falls on, so a traversal of arbitrary notes satisfies every
+position while none of the material was played. That reading is right for a
+measurement, where the pitch channels say what arrived, and wrong here, where
+completion is the headline fact and the contract is that the learner produced
+the required pitches in order. A device sitting found it: eight wrong notes came
+back as completed with corrections, with no corrections in it.
+
 A record holds what happened: the completion class, how the attempt ended, the
 extra notes split into repairs, repeats and intrusions, where an unfinished
 traversal ran out, and the located gap series with each gap's measured ratio.

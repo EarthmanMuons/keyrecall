@@ -66,6 +66,29 @@ void main() {
       expect(repaired.intrusions, 1);
     });
 
+    test('a traversal of wrong notes is not a traversal', () {
+      // Alignment explains each wrong note as a substitution, so every
+      // position is accounted for and nothing is missing. None of the material
+      // was played, which is what completion is about.
+      final wrong = observed([for (final note in expected) note + 1]);
+
+      expect(wrong.completion, AcquisitionCompletion.notCompleted);
+      expect(wrong.repairs, 0);
+      expect(wrong.intrusions, 0);
+      expect(wrong.firstAbsentPosition, isNull);
+      expect(wrong.earnsParentProbe, isFalse);
+    });
+
+    test('one wrong note the learner moved on from is not completion', () {
+      final strayed = observed([
+        ...expected.take(3),
+        expected[3] + 1,
+        ...expected.skip(4),
+      ]);
+
+      expect(strayed.completion, AcquisitionCompletion.notCompleted);
+    });
+
     test('says where an unfinished traversal ran out', () {
       final stopped = observed(expected.take(4).toList());
 

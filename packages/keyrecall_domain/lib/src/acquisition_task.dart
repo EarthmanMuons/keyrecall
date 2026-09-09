@@ -99,11 +99,20 @@ enum TaskAdvancement {
 /// Three values, not a score. Reaching the end after corrections is real work
 /// and is recorded as such; it is simply not the same thing as reaching the
 /// end without them.
+///
+/// Completion means the material was produced, not that every position was
+/// accounted for. Alignment explains a wrong note as a substitution, which
+/// covers the position it fell on, so a traversal of arbitrary notes satisfies
+/// every position without any of the material having been played.
 enum AcquisitionCompletion {
-  /// Something the task asked for never arrived.
+  /// Something the task asked for was never played.
+  ///
+  /// Either it never arrived, or something else was played in its place and
+  /// the learner moved on. A position covered by a wrong note is not the
+  /// material having been produced.
   notCompleted('NOT_COMPLETED'),
 
-  /// Everything arrived, with extra notes along the way.
+  /// Every note the task asked for was played, with extra notes along the way.
   completedWithCorrections('COMPLETED_WITH_CORRECTIONS'),
 
   /// Everything arrived, right the first time.
