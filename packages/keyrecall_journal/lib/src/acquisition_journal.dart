@@ -66,9 +66,8 @@ class AcquisitionJournalHeader {
 
   /// Reads a header back.
   ///
-  /// Throws [JournalFormatException] for a version this build does not write.
-  /// There is one version, so there is nothing to upgrade from and guessing at
-  /// a shape this build has never seen would be worse than refusing it.
+  /// Throws [JournalFormatException] for a version outside
+  /// [readableAcquisitionVersions].
   factory AcquisitionJournalHeader.fromJson(Map<String, Object?> json) {
     final version = requireInt(json, 'schema_version', location: 'header');
     requireReadableAcquisitionVersion(version, location: 'header');
