@@ -533,15 +533,17 @@ Ready goes straight to playing. No count-in state is entered, not even an empty
 one: a pulse of zero beats would be a fiction, and anything later that assumed a
 count-in had happened would be reasoning about a pulse this task removed.
 
-The line under the task says only that pace is the learner's. Not slowly, not
-easier, not take your time: each of those is an interpretation of why the
-ordinary attempt did not go well, and nothing has made one.
+The line under the task says that pace is the learner's and asks them to tap
+Done when finished. Not slowly, not easier, not take your time: each of those is
+an interpretation of why the ordinary attempt did not go well, and nothing has
+made one.
 
-Nothing ends the attempt but the traversal being covered or the learner saying
-so. The watchdog does not run, so neither the duration limit nor the inactivity
-window applies and the attempt is never asked whether it is over. While it runs
-the screen says so, because a wait of any length is the reading and a screen
-that looked finished would be wrong exactly when it mattered.
+The learner ends the attempt with Done, leaving time to repair even the final
+note. Input interruption still closes capture. The watchdog does not run, so
+neither the duration limit nor the inactivity window applies and the attempt is
+never asked whether it is over. While it runs the screen says so, because a wait
+of any length is the reading and a screen that looked finished would be wrong
+exactly when it mattered.
 
 ### The transition describes whatever comes next
 

@@ -1,8 +1,12 @@
+import 'dart:async';
+
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -651,8 +655,9 @@ void main() {
     final task = AcquisitionTask.unmeteredTraversal(parent);
 
     Future<List<AttemptTermination>> pumpAcquisition(
-      WidgetTester tester,
-    ) async {
+      WidgetTester tester, {
+      Stream<InputTemporalEvent>? events,
+    }) async {
       tester.view.physicalSize = const Size(1400, 2000);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
@@ -660,7 +665,11 @@ void main() {
       final finished = <AttemptTermination>[];
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [syntheticInstrument],
+          overrides: [
+            syntheticInstrument,
+            if (events != null)
+              inputTemporalEventsProvider.overrideWith((ref) => events),
+          ],
           child: MaterialApp(
             home: Scaffold(
               body: AttemptView(
@@ -684,7 +693,10 @@ void main() {
       expect(find.text('C major'), findsOneWidget);
       expect(find.text('RIGHT HAND'), findsOneWidget);
       expect(find.textContaining('bpm'), findsNothing);
-      expect(find.text('Practice this at your own pace.'), findsOneWidget);
+      expect(
+        find.text('Practice this at your own pace. Tap Done when finished.'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('goes from Ready straight to playing', (tester) async {
@@ -714,6 +726,66 @@ void main() {
       expect(find.text('Playing at your own pace'), findsOneWidget);
       expect(find.text('Done'), findsOneWidget);
     });
+
+    for (final repairLastNote in [false, true]) {
+      testWidgets(
+        repairLastNote
+            ? 'keeps recording a final-note repair until Done'
+            : 'a clean traversal still waits for Done',
+        (tester) async {
+          final events = StreamController<InputTemporalEvent>();
+          addTearDown(events.close);
+          final finished = await pumpAcquisition(tester, events: events.stream);
+          final container = ProviderScope.containerOf(
+            tester.element(find.byType(AttemptView)),
+          );
+          final notes = [
+            for (final moment in realizeAcquisition(task).moments)
+              moment.notes.single.midiNote,
+          ];
+          await tester.tap(find.text('Ready'));
+          await tester.pump();
+
+          Future<void> play(int note, int index) async {
+            events.add(
+              InputTemporalNoteOnEvent(
+                timestampMs: 1000 + index * 600,
+                noteNumber: note,
+                velocity: 100,
+              ),
+            );
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 600));
+          }
+
+          for (final (index, note) in notes.indexed) {
+            await play(
+              repairLastNote && index == notes.length - 1 ? note + 1 : note,
+              index,
+            );
+          }
+          expect(finished, isEmpty);
+          if (repairLastNote) await play(notes.last, notes.length);
+          await tester.tap(find.text('Done'));
+          await tester.pumpAndSettle();
+
+          expect(finished, [AttemptTermination.learnerStopped]);
+          final capture = container.read(attemptTranscriptProvider);
+          expect(capture.length, notes.length + (repairLastNote ? 1 : 0));
+          final observation = observeAcquisition(
+            task: task,
+            transcript: capture.transcript,
+          );
+          expect(
+            observation.completion,
+            repairLastNote
+                ? AcquisitionCompletion.completedWithCorrections
+                : AcquisitionCompletion.completedCleanly,
+          );
+          expect(observation.earnsParentProbe, !repairLastNote);
+        },
+      );
+    }
 
     testWidgets('ends when the learner says so', (tester) async {
       final finished = await pumpAcquisition(tester);

@@ -819,8 +819,8 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// happened would be reasoning about a pulse this task deliberately removed.
   ///
   /// No watchdog either. Its windows end an attempt nobody is answering, and
-  /// here silence is the reading rather than a signal: the attempt ends when
-  /// the traversal is covered or when the learner says so.
+  /// here silence is the reading rather than a signal: the learner ends the
+  /// attempt with Done, leaving time for a final-note correction.
   void _beginListening() {
     setState(() {
       _phase = _Phase.playing;
@@ -1013,12 +1013,10 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       });
     }
 
-    if (_phase == _Phase.playing && _hasCoveredTraversal(transcript)) {
-      // After the frame, so finishing does not run inside a build.
-      //
-      // The app ended it, and the record says so. Reporting the learner as
-      // having stopped would put a cause on the closure that nobody supplied,
-      // and the acquisition log reads that field.
+    if (widget.acquisition == null &&
+        _phase == _Phase.playing &&
+        _hasCoveredTraversal(transcript)) {
+      // Finish after the frame, outside build.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_finish(AttemptTermination.traversalCompleted));
       });
@@ -1705,7 +1703,7 @@ class _Status extends StatelessWidget {
       // leaves a long wait looking like something has gone wrong.
       return Text(
         phase == _Phase.ready
-            ? 'Practice this at your own pace.'
+            ? 'Practice this at your own pace. Tap Done when finished.'
             : 'Playing at your own pace',
         style: Theme.of(context).textTheme.bodyMedium,
         textAlign: TextAlign.center,
