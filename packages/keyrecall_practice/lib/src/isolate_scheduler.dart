@@ -121,8 +121,7 @@ class _DecisionResponse {
   final BlockedReason? blockedReason;
   final AcquisitionTask? acquisitionTask;
   final Exercise? displacedByAcquisition;
-  final bool guidanceProbeAvailable;
-  final bool guidanceProbeSelected;
+  final SelectionEffect effect;
 
   const _DecisionResponse({
     required this.diagnostics,
@@ -131,16 +130,10 @@ class _DecisionResponse {
     required this.blockedReason,
     required this.acquisitionTask,
     required this.displacedByAcquisition,
-    required this.guidanceProbeAvailable,
-    required this.guidanceProbeSelected,
+    required this.effect,
   });
 
   SchedulerVerdict get verdict {
-    final effect = SittingDecisionEffect(
-      guidanceProbeAvailable: guidanceProbeAvailable,
-      guidanceProbeSelected: guidanceProbeSelected,
-      offeredAcquisitionParent: acquisitionTask?.parent,
-    );
     if (acquisitionTask case final task?) {
       return SchedulerVerdict.acquisition(
         task,
@@ -281,8 +274,7 @@ class _Worker {
             AcquisitionOffered(:final displaced) => displaced,
             CandidateSelected() || SelectionBlocked() => null,
           },
-          guidanceProbeAvailable: slot.guidanceProbeAvailable,
-          guidanceProbeSelected: slot.guidanceProbeSelected,
+          effect: SelectionEffect.of(slot.result),
         ),
       );
     }

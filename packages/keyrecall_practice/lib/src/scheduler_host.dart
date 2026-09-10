@@ -37,39 +37,8 @@ GoalEmphasis goalEmphasisOf(ResolvedPracticeScope scope) {
   return weights.isEmpty ? GoalEmphasis.none : GoalEmphasis(weights);
 }
 
-/// What deciding a slot owes the sitting.
-///
-/// The scheduler records two things against a sitting as part of deciding, and
-/// a host that decides elsewhere has to bring them back, because the sitting it
-/// decided against was a copy. Applying this to the sitting a session owns
-/// leaves it exactly as an in-process decision would have.
-@immutable
-class SittingDecisionEffect {
-  final bool guidanceProbeAvailable;
-  final bool guidanceProbeSelected;
-
-  /// The acquisition parent this slot offered, or null for anything else.
-  ///
-  /// Recorded so the next opportunity can step aside from it. Null on every
-  /// other outcome, which is what makes the step aside one opportunity rather
-  /// than a wait.
-  final Exercise? offeredAcquisitionParent;
-
-  const SittingDecisionEffect({
-    required this.guidanceProbeAvailable,
-    required this.guidanceProbeSelected,
-    this.offeredAcquisitionParent,
-  });
-
-  void applyTo(SessionState session) {
-    session.recordSelectionOpportunity(
-      guidanceProbeAvailable: guidanceProbeAvailable,
-      guidanceProbeSelected: guidanceProbeSelected,
-    );
-    session.lastAcquisitionParent = offeredAcquisitionParent;
-    session.attemptsThisSession++;
-  }
-}
+/// The scheduler's final-result effect carried by a practice host.
+typedef SittingDecisionEffect = SelectionEffect;
 
 /// One slot's decision, reduced to what a session acts on.
 ///
@@ -252,14 +221,7 @@ class InProcessScheduler implements SchedulerHost {
       practiceEntryPolicy: _entry,
       emphasis: _emphasis,
     );
-    final effect = SittingDecisionEffect(
-      guidanceProbeAvailable: slot.guidanceProbeAvailable,
-      guidanceProbeSelected: slot.guidanceProbeSelected,
-      offeredAcquisitionParent: switch (slot.result) {
-        AcquisitionOffered(:final task) => task.parent,
-        _ => null,
-      },
-    );
+    final effect = SelectionEffect.of(slot.result);
     return switch (slot.result) {
       CandidateSelected(:final candidate) => SchedulerVerdict.selected(
         candidate,

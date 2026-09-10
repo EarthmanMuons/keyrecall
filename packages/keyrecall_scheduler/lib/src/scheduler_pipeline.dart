@@ -108,6 +108,54 @@ sealed class SelectionResult {
   });
 }
 
+/// What deciding a slot owes the sitting.
+///
+/// The scheduler records two things against a sitting as part of deciding, and
+/// a host that decides elsewhere has to bring them back, because the sitting it
+/// decided against was a copy. Applying this to the sitting a session owns
+/// leaves it exactly as an in-process decision would have.
+class SelectionEffect {
+  final bool guidanceProbeAvailable;
+  final bool guidanceProbeSelected;
+
+  /// The acquisition parent this slot offered, or null for anything else.
+  ///
+  /// Recorded so the next opportunity can step aside from it. Null on every
+  /// other outcome, which is what makes the step aside one opportunity rather
+  /// than a wait.
+  final Exercise? offeredAcquisitionParent;
+
+  const SelectionEffect({
+    required this.guidanceProbeAvailable,
+    required this.guidanceProbeSelected,
+    this.offeredAcquisitionParent,
+  });
+
+  factory SelectionEffect.of(SelectionResult result) => SelectionEffect(
+    guidanceProbeAvailable: result.selectable.any(
+      (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
+    ),
+    guidanceProbeSelected: switch (result) {
+      CandidateSelected(:final candidate) =>
+        candidate.challengeBypass == ChallengeBypass.guidanceProbe,
+      _ => false,
+    },
+    offeredAcquisitionParent: switch (result) {
+      AcquisitionOffered(:final task) => task.parent,
+      _ => null,
+    },
+  );
+
+  void applyTo(SessionState session) {
+    session.recordSelectionOpportunity(
+      guidanceProbeAvailable: guidanceProbeAvailable,
+      guidanceProbeSelected: guidanceProbeSelected,
+    );
+    session.lastAcquisitionParent = offeredAcquisitionParent;
+    session.attemptsThisSession++;
+  }
+}
+
 /// The scheduler selected one candidate to present.
 final class CandidateSelected extends SelectionResult {
   final CandidateTrace candidate;
@@ -246,15 +294,7 @@ class SchedulerPipeline {
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
     );
-    session.recordSelectionOpportunity(
-      guidanceProbeAvailable: slot.guidanceProbeAvailable,
-      guidanceProbeSelected: slot.guidanceProbeSelected,
-    );
-    session.lastAcquisitionParent = switch (slot.result) {
-      AcquisitionOffered(:final task) => task.parent,
-      _ => null,
-    };
-    session.attemptsThisSession++;
+    SelectionEffect.of(slot.result).applyTo(session);
     return slot.result;
   }
 
@@ -413,43 +453,42 @@ class SchedulerPipeline {
       probesOwed: owedProbes.length,
       probeServed: servedProbe != null,
     );
+    final result = offer != null
+        ? AcquisitionOffered(
+            diagnostics: diagnostics,
+            traces: traces,
+            selectable: narrowed.selectable,
+            pacing: narrowed.pacing,
+            dose: narrowed.dose,
+            introductions: narrowed.introductions,
+            task: offer.task,
+            stuck: offer.stuck,
+            displaced: selected?.exercise,
+          )
+        : selected == null
+        ? SelectionBlocked(
+            diagnostics: diagnostics,
+            traces: traces,
+            selectable: narrowed.selectable,
+            pacing: narrowed.pacing,
+            dose: narrowed.dose,
+            introductions: narrowed.introductions,
+            reason: blockedReason,
+          )
+        : CandidateSelected(
+            diagnostics: diagnostics,
+            traces: traces,
+            selectable: narrowed.selectable,
+            pacing: narrowed.pacing,
+            dose: narrowed.dose,
+            introductions: narrowed.introductions,
+            candidate: selected,
+          );
+    final effect = SelectionEffect.of(result);
     return (
-      result: offer != null
-          ? AcquisitionOffered(
-              diagnostics: diagnostics,
-              traces: traces,
-              selectable: narrowed.selectable,
-              pacing: narrowed.pacing,
-              dose: narrowed.dose,
-              introductions: narrowed.introductions,
-              task: offer.task,
-              stuck: offer.stuck,
-              displaced: selected?.exercise,
-            )
-          : selected == null
-          ? SelectionBlocked(
-              diagnostics: diagnostics,
-              traces: traces,
-              selectable: narrowed.selectable,
-              pacing: narrowed.pacing,
-              dose: narrowed.dose,
-              introductions: narrowed.introductions,
-              reason: blockedReason,
-            )
-          : CandidateSelected(
-              diagnostics: diagnostics,
-              traces: traces,
-              selectable: narrowed.selectable,
-              pacing: narrowed.pacing,
-              dose: narrowed.dose,
-              introductions: narrowed.introductions,
-              candidate: selected,
-            ),
-      guidanceProbeAvailable: narrowed.selectable.any(
-        (trace) => trace.challengeBypass == ChallengeBypass.guidanceProbe,
-      ),
-      guidanceProbeSelected:
-          selected?.challengeBypass == ChallengeBypass.guidanceProbe,
+      result: result,
+      guidanceProbeAvailable: effect.guidanceProbeAvailable,
+      guidanceProbeSelected: effect.guidanceProbeSelected,
     );
   }
 
