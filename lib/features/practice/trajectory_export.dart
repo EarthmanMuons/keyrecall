@@ -360,7 +360,26 @@ SittingExport sittingExportOf(
   AcquisitionJournal? acquisition,
 }) {
   final records = journal.records;
-  final sessionId = records.isEmpty ? '' : records.last.identity.sessionId;
+  final supported =
+      acquisition?.attempts.toList() ?? const <AcquisitionAttemptRecord>[];
+  final identities = [
+    for (final record in records) record.identity,
+    for (final record in supported) record.identity,
+  ];
+  AttemptIdentity? latest;
+  for (final identity in identities) {
+    if (latest == null || identity.occurredAt.isAfter(latest.occurredAt)) {
+      latest = identity;
+    }
+  }
+  final sessionId = latest?.sessionId ?? '';
+  var startedAt = latest?.occurredAt ?? profile.createdAt;
+  for (final identity in identities) {
+    if (identity.sessionId == sessionId &&
+        identity.occurredAt.isBefore(startedAt)) {
+      startedAt = identity.occurredAt;
+    }
+  }
   final seen = <String>{};
   final attempts = <ExportedAttempt>[];
 
@@ -384,15 +403,10 @@ SittingExport sittingExportOf(
   return SittingExport(
     profileId: profile.id,
     sittingId: sessionId,
-    startedAt: attempts.isEmpty
-        ? profile.createdAt
-        : records
-              .firstWhere((record) => record.identity.sessionId == sessionId)
-              .identity
-              .occurredAt,
+    startedAt: startedAt,
     attempts: attempts,
     acquisition: [
-      for (final record in acquisition?.attempts ?? const [])
+      for (final record in supported)
         if (record.identity.sessionId == sessionId) record,
     ],
   );

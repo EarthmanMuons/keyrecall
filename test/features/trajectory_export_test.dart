@@ -38,6 +38,143 @@ void main() {
     placement: PlacementTier.beginner,
   );
 
+  group('the latest sitting across both journals', () {
+    final parent = Exercise.linear(
+      material: TechnicalMaterial('C', ScaleForm.major),
+      hands: HandConfiguration.right,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+      tempoBpm: 60,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+    late AttemptJournal ordinary;
+    late AcquisitionJournal acquisition;
+
+    setUp(() {
+      ordinary = AttemptJournal(
+        JournalHeader(profileId: learner.id, createdAt: learner.createdAt),
+      );
+      acquisition = AcquisitionJournal(
+        AcquisitionJournalHeader(
+          profileId: learner.id,
+          createdAt: learner.createdAt,
+        ),
+      );
+    });
+
+    AttemptIdentity identity(String sitting, int minute, String id) =>
+        AttemptIdentity(
+          profileId: learner.id,
+          attemptId: id,
+          sessionId: sitting,
+          indexInSession: 0,
+          occurredAt: learner.createdAt.add(Duration(minutes: minute)),
+        );
+
+    void supported(String sitting, int minute) {
+      acquisition.append(
+        AcquisitionAttemptRecord(
+          journalSequence: acquisition.length,
+          identity: identity(sitting, minute, 'supported-$minute'),
+          task: AcquisitionTask.unmeteredTraversal(parent),
+          started: false,
+          termination: AttemptTermination.learnerStopped,
+          completion: AcquisitionCompletion.notCompleted,
+          repairs: 0,
+          repeats: 0,
+          intrusions: 0,
+          earnedProbe: false,
+          gaps: const [],
+        ),
+      );
+    }
+
+    void measured(String sitting, int minute) {
+      final outcome = readPerformance(
+        exercise: parent,
+        transcript: PerformanceTranscript.empty,
+      ).outcome;
+      ordinary.append(
+        AttemptRecord(
+          journalSequence: ordinary.length,
+          identity: identity(sitting, minute, 'ordinary-$minute'),
+          provenance: const ModelProvenance(
+            learnerModelVersion: 'learner',
+            schedulerModelVersion: 'scheduler',
+          ),
+          exercise: parent,
+          closure: AttemptClosure.measured(
+            termination: AttemptTermination.learnerStopped,
+            outcome: outcome,
+            weights: evidenceWeightsFor(parent, outcome),
+            memoryUpdate: const MemoryUpdateDiagnostics(),
+          ),
+        ),
+      );
+    }
+
+    SittingExport export() =>
+        sittingExportOf(learner, ordinary, acquisition: acquisition);
+
+    test('a newer supported-only sitting replaces the ordinary one', () {
+      measured('old', 1);
+      supported('new', 2);
+      final result = export();
+      expect(result.sittingId, 'new');
+      expect(
+        result.startedAt,
+        learner.createdAt.add(const Duration(minutes: 2)),
+      );
+      expect(result.attempts, isEmpty);
+      expect(result.acquisition.single.identity.sessionId, 'new');
+    });
+
+    test('supported work can be exported without ordinary history', () {
+      supported('only', 2);
+      final result = export();
+      expect(result.sittingId, 'only');
+      expect(
+        result.startedAt,
+        learner.createdAt.add(const Duration(minutes: 2)),
+      );
+      expect(result.acquisition, hasLength(1));
+    });
+
+    test('a mixed sitting starts with its earlier supported work', () {
+      supported('mixed', 1);
+      measured('mixed', 2);
+      final result = export();
+      expect(result.sittingId, 'mixed');
+      expect(
+        result.startedAt,
+        learner.createdAt.add(const Duration(minutes: 1)),
+      );
+      expect(result.attempts, hasLength(1));
+      expect(result.acquisition, hasLength(1));
+    });
+
+    test('a newer ordinary sitting excludes older supported work', () {
+      supported('old', 1);
+      measured('new', 2);
+      final result = export();
+      expect(result.sittingId, 'new');
+      expect(
+        result.startedAt,
+        learner.createdAt.add(const Duration(minutes: 2)),
+      );
+      expect(result.attempts, hasLength(1));
+      expect(result.acquisition, isEmpty);
+    });
+
+    test('empty history keeps the empty export', () {
+      final result = export();
+      expect(result.sittingId, isEmpty);
+      expect(result.startedAt, learner.createdAt);
+      expect(result.attempts, isEmpty);
+      expect(result.acquisition, isEmpty);
+    });
+  });
+
   group('why a tempo was the tempo asked for', () {
     const model = LearnerModel();
     final material = TechnicalMaterial('C', ScaleForm.major);
