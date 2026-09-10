@@ -24,7 +24,10 @@ policy dead ends that no amount of reading the code will surface.
   how it was weighted, and the state it produced.
 - **The scheduler in the loop.** Plug a `SchedulerAgent` in as the simulation's
   chooser and the real pipeline decides what to present. No second update loop
-  is involved.
+  is involved. It decides over the isolated policy, without acquisition inputs
+  or attempted exercises, which is what keeps a mechanism separable. What a
+  device would actually present is settled by the production parity suite in
+  `keyrecall_practice`, not here.
 - **Reproducible draws.** `PythonCompatibleRandom` reproduces CPython's
   `random.Random` stream exactly, so a run is deterministic in its seed and a
   pathological one is a fixture rather than an anecdote.

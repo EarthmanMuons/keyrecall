@@ -107,6 +107,13 @@ class SchedulerAgent {
 
   /// Chooses what to present next. Plug this into a simulation as its chooser.
   ///
+  /// Decides over the isolated policy, not the production configuration: no
+  /// acquisition inputs, and no attempted exercises, which leaves the
+  /// ascending-before-up-and-down rule disabled on purpose. A trajectory here
+  /// is evidence about a mechanism, and never about what a device would
+  /// present. Production decision semantics are covered by the parity suite in
+  /// `keyrecall_practice` instead.
+  ///
   /// Throws [NoAdmittedCandidate] when the decision admits nothing.
   Exercise choose(AttemptContext context) {
     if (!identical(context.learner, pipeline.learner)) {
