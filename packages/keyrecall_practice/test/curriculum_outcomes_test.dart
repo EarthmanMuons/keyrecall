@@ -210,6 +210,7 @@ class CountingPipeline extends SchedulerPipeline {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -224,6 +225,7 @@ class CountingPipeline extends SchedulerPipeline {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedExercises: attemptedExercises,
+      executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
     );
   }

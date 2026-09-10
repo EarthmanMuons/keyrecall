@@ -29,7 +29,11 @@ void main() {
     Duration after = Duration.zero,
     String? attemptId,
     List<RecordedGap> gaps = const [],
+    int? executionEvidenceRevision,
+    DateTime? observedWallTime,
   }) => AcquisitionAttemptRecord(
+    executionEvidenceRevision: executionEvidenceRevision,
+    observedWallTime: observedWallTime,
     journalSequence: sequence,
     identity: AttemptIdentity(
       profileId: 'abc12345',
@@ -71,6 +75,52 @@ void main() {
     expect(restored.probeOwed(parent), isTrue);
     expect(restored.recordFor(parent)!.criterionSuccessesServed, 1);
   });
+
+  test(
+    'causal revision and adjusted wall time survive replay and snapshots',
+    () {
+      final wallTime = t0.subtract(const Duration(hours: 1));
+      final log = emptyLog()
+        ..append(
+          recordAt(
+            0,
+            earnedProbe: false,
+            executionEvidenceRevision: 7,
+            observedWallTime: wallTime,
+          ),
+        );
+      final restored = AcquisitionJournal.fromJsonLines(log.toJsonLines());
+      expect(restored.attempts.single.observedWallTime, wallTime);
+      expect(restored.attempts.single.executionEvidenceRevision, 7);
+      final progress = restored.replay();
+      expect(progress.recordFor(parent)!.evidenceRevisionAtFailure, 7);
+      expect(
+        decodeAcquisitionProgress(
+          encodeAcquisitionProgress(progress),
+        ).recordFor(parent),
+        progress.recordFor(parent),
+      );
+    },
+  );
+
+  for (final version in [1, 2, 3]) {
+    test('version $version preserves unknown causal ordering', () {
+      final json = recordAt(0, earnedProbe: false).toJson()
+        ..['schema_version'] = version
+        ..remove('execution_evidence_revision')
+        ..remove('observed_wall_time');
+      final legacy = AcquisitionAttemptRecord.fromJson(json);
+      final log = emptyLog()..append(legacy);
+      expect(log.replay().recordFor(parent)!.evidenceRevisionAtFailure, isNull);
+      log.append(recordAt(1, earnedProbe: false, executionEvidenceRevision: 2));
+      expect(
+        AcquisitionJournal.fromJsonLines(
+          log.toJsonLines(),
+        ).replay().recordFor(parent)!.evidenceRevisionAtFailure,
+        2,
+      );
+    });
+  }
 
   group('a round trip', () {
     test('preserves the facts and the verdict that was recorded', () {

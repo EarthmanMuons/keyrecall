@@ -437,6 +437,7 @@ class _RecordingPipeline extends SchedulerPipeline {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -451,6 +452,7 @@ class _RecordingPipeline extends SchedulerPipeline {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedExercises: attemptedExercises,
+      executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
     );

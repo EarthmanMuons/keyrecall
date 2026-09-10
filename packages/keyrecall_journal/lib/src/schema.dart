@@ -47,7 +47,10 @@ const int checkpointSchemaVersion = 2;
 /// covered from the learner ending it. Version 2 wrote both as the learner
 /// stopping, so those records read back with no termination at all, for the
 /// same reason version 1's do.
-const int acquisitionSchemaVersion = 3;
+///
+/// Version 4 carries an ordinary execution-evidence revision and preserves the
+/// wall clock when the acquisition log needs a later logical timestamp.
+const int acquisitionSchemaVersion = 4;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

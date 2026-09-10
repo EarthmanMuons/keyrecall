@@ -230,9 +230,18 @@ the source of truth for learner state contain records it must ignore.
 produces `AcquisitionProgress` and nothing else. Each reader refuses the other's
 records rather than skipping them.
 
-The two share no ordering invariant, because neither derives from the other.
-Each carries its own timestamps, its own contiguous sequence, and its own
-idempotency by attempt id.
+Each journal carries its own contiguous sequence and idempotency by attempt id.
+Acquisition also records the ordinary execution-evidence revision for its
+parent's context: the count of committed, informative ordinary attempts in that
+context. A failed acquisition stays set aside until that revision advances.
+Reconstructing the count from ordinary history preserves causality through equal
+timestamps, clock rollback, and reopen without changing learner scores.
+
+Version 4 acquisition entries carry this revision. Earlier failures have no
+causal coordinate and impose no recurrence hold; their timestamps are not used
+to guess one. New failures establish the hold normally. Acquisition event times
+are normalized against the profile and journal tails before retry records are
+frozen, with any differing wall-clock value retained separately.
 
 Progress is whatever replaying the log produces. That is what makes it survive a
 restart and a sitting boundary, and it is why a checkpoint would have been the

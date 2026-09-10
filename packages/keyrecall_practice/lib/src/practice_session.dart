@@ -507,6 +507,7 @@ class PracticeSession {
       acquisitionFamilyFloor: familyFloor,
       acquisition: acquisitionProgress,
       attemptedExercises: attemptedExercises(_journal.records),
+      executionEvidenceRevisions: executionEvidenceRevisions(_journal.records),
     );
     // Nothing is applied and nothing is written: while this was computed, the
     // inputs it answers about stopped being the current ones.
@@ -601,6 +602,7 @@ class PracticeSession {
   /// later. Failing the attempt instead would cost the learner their practice,
   /// which is the worse of the two.
   Future<void> _serveAcquisitionProbe(PendingDecision decision) async {
+    final logicalTime = _acquisitionTime(decision.decidedAt);
     final service = acquisitionServiceOf(
       presented: decision.exercise,
       progress: acquisitionProgress,
@@ -609,9 +611,12 @@ class PracticeSession {
         attemptId: decision.attemptId,
         sessionId: decision.sessionId,
         indexInSession: decision.indexInSession,
-        occurredAt: decision.decidedAt,
+        occurredAt: logicalTime,
       ),
       journalSequence: _acquisition.nextSequence,
+      observedWallTime: logicalTime == decision.decidedAt
+          ? null
+          : decision.decidedAt,
     );
     if (service == null) return;
     try {
@@ -727,6 +732,7 @@ class PracticeSession {
     // Built once and held. A retry after an uncertain write must offer the
     // same event under the same id, or the store's idempotency has nothing to
     // recognize and the same attempt lands twice.
+    final logicalTime = _acquisitionTime(at);
     final record = _acquisitionInFlight ??= acquisitionRecordOf(
       observation: observeAcquisition(
         task: outstanding.task,
@@ -738,16 +744,36 @@ class PracticeSession {
         attemptId: outstanding.attemptId,
         sessionId: sessionId,
         indexInSession: _indexInSession,
-        occurredAt: at,
+        occurredAt: logicalTime,
       ),
       journalSequence: _acquisition.nextSequence,
       termination: termination,
+      observedWallTime: logicalTime == at ? null : at,
+      executionEvidenceRevision:
+          executionEvidenceRevisions(_journal.records)[executionContextOf(
+            outstanding.task.parent,
+          )] ??
+          0,
     );
     await _appendAcquisition(record);
     _outstandingAcquisition = null;
     _acquisitionInFlight = null;
     _epoch++;
     return record;
+  }
+
+  DateTime _acquisitionTime(DateTime wallTime) {
+    var logical = wallTime.toUtc();
+    for (final lowerBound in [
+      profile.createdAt,
+      if (_journal.records.isNotEmpty)
+        _journal.records.last.identity.occurredAt,
+      if (_acquisition.records.isNotEmpty)
+        _acquisition.records.last.identity.occurredAt,
+    ]) {
+      if (logical.isBefore(lowerBound)) logical = lowerBound;
+    }
+    return logical;
   }
 
   /// Ends the outstanding attempt with an outcome established elsewhere.

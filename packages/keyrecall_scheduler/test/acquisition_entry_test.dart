@@ -425,51 +425,85 @@ void main() {
   });
 
   group('after supported work that produced nothing', () {
-    /// Acquisition history whose last attempt earned no probe.
     AcquisitionProgress failedAt(DateTime at) =>
         const AcquisitionProgress.empty().recording(
           parent: floor,
           completed: false,
           earnedProbe: false,
           at: at,
+          executionEvidenceRevision: 2,
         );
 
-    test('the same parent waits for ordinary evidence', () {
-      // The question was asked and answered. Offering the same scaffold again
-      // on nothing new repeats it, which is how rotation among several stuck
-      // floors filled a sitting.
-      final state = metButUnproven();
-
-      expect(
-        pipeline.acquisitionSetAside(state, failedAt(t0), floor),
-        isTrue,
-        reason: 'the failure is at the same instant as the evidence',
+    for (final at in [
+      t0,
+      t0.add(const Duration(days: 1)),
+      t0.subtract(const Duration(days: 1)),
+    ]) {
+      test(
+        'causal evidence releases the hold regardless of failure time $at',
+        () {
+          final progress = failedAt(at);
+          expect(
+            pipeline.acquisitionSetAside(
+              {executionContextOf(floor): 2},
+              progress,
+              floor,
+            ),
+            isTrue,
+          );
+          expect(
+            pipeline.acquisitionSetAside(
+              {executionContextOf(floor): 3},
+              progress,
+              floor,
+            ),
+            isFalse,
+          );
+          expect(
+            pipeline.acquisitionSetAside(
+              {executionContextOf(cued(hands: HandConfiguration.left)): 3},
+              progress,
+              floor,
+            ),
+            isTrue,
+          );
+        },
       );
-    });
+    }
 
-    test('ordinary evidence since the failure lifts it', () {
-      final state = metButUnproven();
-      final earlier = t0.subtract(const Duration(hours: 1));
-
-      expect(
-        pipeline.acquisitionSetAside(state, failedAt(earlier), floor),
-        isFalse,
-      );
-    });
-
-    test('a success is not a set-aside', () {
-      final progress = const AcquisitionProgress.empty().recording(
+    test('a legacy failure has no causal hold to reconstruct', () {
+      final legacy = const AcquisitionProgress.empty().recording(
         parent: floor,
-        completed: true,
-        earnedProbe: true,
+        completed: false,
+        earnedProbe: false,
         at: t0,
       );
-
-      expect(
-        pipeline.acquisitionSetAside(metButUnproven(), progress, floor),
-        isFalse,
-      );
+      expect(pipeline.acquisitionSetAside({}, legacy, floor), isFalse);
     });
+
+    test(
+      'a success imposes no new hold and service preserves the revision',
+      () {
+        final success = failedAt(t0)
+            .recording(
+              parent: floor,
+              completed: true,
+              earnedProbe: true,
+              at: t0,
+              executionEvidenceRevision: 3,
+            )
+            .serving(parent: floor, at: t0);
+        expect(success.recordFor(floor)!.evidenceRevisionAtFailure, 2);
+        expect(
+          pipeline.acquisitionSetAside(
+            {executionContextOf(floor): 3},
+            success,
+            floor,
+          ),
+          isFalse,
+        );
+      },
+    );
 
     test('nothing is offered on the opportunity straight after one', () {
       final state = metButUnproven();

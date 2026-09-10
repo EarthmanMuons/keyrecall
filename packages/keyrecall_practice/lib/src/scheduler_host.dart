@@ -159,6 +159,7 @@ abstract interface class SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
   });
 
   /// Releases whatever computes decisions. A host is disposable: a session
@@ -208,6 +209,7 @@ class InProcessScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
   }) async {
     final slot = pipeline.evaluateSlot(
       state: state,
@@ -218,6 +220,7 @@ class InProcessScheduler implements SchedulerHost {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedExercises: attemptedExercises,
+      executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: _entry,
       emphasis: _emphasis,
     );

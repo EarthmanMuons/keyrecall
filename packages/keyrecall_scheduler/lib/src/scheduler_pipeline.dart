@@ -278,6 +278,7 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -291,6 +292,7 @@ class SchedulerPipeline {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedExercises: attemptedExercises,
+      executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
     );
@@ -319,6 +321,7 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
   }) {
@@ -343,6 +346,7 @@ class SchedulerPipeline {
       candidates: candidates,
       at: at,
       attemptedExercises: attemptedExercises,
+      executionEvidenceRevisions: executionEvidenceRevisions,
       overrides: {
         ...overrides,
         for (final parent in owedProbes)
@@ -409,6 +413,7 @@ class SchedulerPipeline {
           candidates: candidates,
           at: at,
           attemptedExercises: attemptedExercises,
+          executionEvidenceRevisions: executionEvidenceRevisions,
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
           emphasis: emphasis,
@@ -434,6 +439,7 @@ class SchedulerPipeline {
             attemptedParents: attemptedExercises ?? const {},
             traces: traces,
             afterAcquisition: session.lastAcquisitionParent != null,
+            executionEvidenceRevisions: executionEvidenceRevisions,
           );
 
     final diagnostics = selectionDiagnostics(
@@ -1146,15 +1152,15 @@ class SchedulerPipeline {
   /// the reset the rule waits for: something new about the learner, rather than
   /// enough other work having happened in between.
   bool acquisitionSetAside(
-    LearnerState state,
+    Map<ExecutionContext, int> executionEvidenceRevisions,
     AcquisitionProgress progress,
     Exercise parent,
   ) {
-    final failed = progress.lastUnsuccessfulAt(parent);
+    final failed = progress.recordFor(parent)?.evidenceRevisionAtFailure;
     if (failed == null) return false;
     final evidence =
-        state.materialExecution[executionContextOf(parent)]?.lastEvidenceAt;
-    return evidence == null || !evidence.isAfter(failed);
+        executionEvidenceRevisions[executionContextOf(parent)] ?? 0;
+    return evidence <= failed;
   }
 
   /// The acquisition task a stuck floor calls for, and the candidate that
@@ -1192,13 +1198,18 @@ class SchedulerPipeline {
     required Set<Exercise> attemptedParents,
     required List<CandidateTrace> traces,
     bool afterAcquisition = false,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
   }) {
     if (afterAcquisition) return null;
     bool stuck(CandidateTrace trace) =>
         trace.safety.isAllowed &&
         (trace.admissionRefusal == null ||
             trace.admissionRefusal == AdmissionRefusal.challengeBand) &&
-        !acquisitionSetAside(state, progress, trace.exercise) &&
+        !acquisitionSetAside(
+          executionEvidenceRevisions,
+          progress,
+          trace.exercise,
+        ) &&
         needsAcquisition(
           state,
           trace.exercise,
@@ -1741,6 +1752,7 @@ class SchedulerPipeline {
     required List<Exercise> candidates,
     required DateTime at,
     Set<Exercise>? attemptedExercises,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,

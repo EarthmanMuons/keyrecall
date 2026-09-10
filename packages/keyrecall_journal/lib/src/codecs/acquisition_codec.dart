@@ -22,6 +22,7 @@ Map<String, Object?> encodeAcquisitionRecord(
   ),
   'last_probe_served_at': encodeOptionalTime(record.lastProbeServedAt),
   'last_unsuccessful_at': encodeOptionalTime(record.lastUnsuccessfulAt),
+  'evidence_revision_at_failure': record.evidenceRevisionAtFailure,
 };
 
 /// Writes acquisition progress, ordered so the same progress encodes
@@ -99,6 +100,25 @@ AcquisitionProgress decodeAcquisitionProgress(
         location: location,
       );
     }
+    if (!record.containsKey('evidence_revision_at_failure')) {
+      throw JournalFormatException(
+        'acquisition progress has no causal revision; replay its acquisition log',
+        location: location,
+      );
+    }
+    final revision = record['evidence_revision_at_failure'] == null
+        ? null
+        : requireInt(
+            record,
+            'evidence_revision_at_failure',
+            location: location,
+          );
+    if (revision != null && revision < 0) {
+      throw JournalFormatException(
+        'negative evidence revision',
+        location: location,
+      );
+    }
     if (!record.containsKey('last_unsuccessful_at')) {
       throw JournalFormatException(
         'acquisition progress does not say when supported work last failed; '
@@ -131,6 +151,7 @@ AcquisitionProgress decodeAcquisitionProgress(
       );
     }
     byParent[parent] = AcquisitionRecord(
+      evidenceRevisionAtFailure: revision,
       attempts: attempts,
       completions: completions,
       criterionSuccesses: criterionSuccesses,

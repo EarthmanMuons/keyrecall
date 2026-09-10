@@ -40,12 +40,12 @@ class AcquisitionRecord {
 
   /// When supported work on this parent last failed to earn a probe, or null.
   ///
-  /// A supported attempt that produced nothing has taught the scheduler
-  /// something, and offering the same scaffold again on no new evidence is
-  /// repeating a question that has already been answered. This is what says
-  /// when that answer arrived, so a rule can wait for ordinary evidence to
-  /// make the parent relevant again.
+  /// Chronology only; recurrence uses [evidenceRevisionAtFailure].
   final DateTime? lastUnsuccessfulAt;
+
+  /// Ordinary evidence revision for this context when acquisition last failed.
+  /// Null when no failure supplied a causal coordinate.
+  final int? evidenceRevisionAtFailure;
 
   const AcquisitionRecord({
     required this.attempts,
@@ -57,6 +57,7 @@ class AcquisitionRecord {
     this.lastCriterionSuccessAt,
     this.lastProbeServedAt,
     this.lastUnsuccessfulAt,
+    this.evidenceRevisionAtFailure,
   });
 
   /// Whether a criterion success here has earned a probe of the parent.
@@ -85,7 +86,8 @@ class AcquisitionRecord {
       other.lastAttemptAt == lastAttemptAt &&
       other.lastCriterionSuccessAt == lastCriterionSuccessAt &&
       other.lastProbeServedAt == lastProbeServedAt &&
-      other.lastUnsuccessfulAt == lastUnsuccessfulAt;
+      other.lastUnsuccessfulAt == lastUnsuccessfulAt &&
+      other.evidenceRevisionAtFailure == evidenceRevisionAtFailure;
 
   @override
   int get hashCode => Object.hash(
@@ -98,6 +100,7 @@ class AcquisitionRecord {
     lastCriterionSuccessAt,
     lastProbeServedAt,
     lastUnsuccessfulAt,
+    evidenceRevisionAtFailure,
   );
 
   @override
@@ -166,7 +169,14 @@ class AcquisitionProgress {
     required bool completed,
     required bool earnedProbe,
     required DateTime at,
+    int? executionEvidenceRevision,
   }) {
+    if (executionEvidenceRevision != null && executionEvidenceRevision < 0) {
+      throw ArgumentError.value(
+        executionEvidenceRevision,
+        'executionEvidenceRevision',
+      );
+    }
     if (earnedProbe && !completed) {
       throw ArgumentError.value(
         earnedProbe,
@@ -190,6 +200,9 @@ class AcquisitionProgress {
             : previous?.lastCriterionSuccessAt,
         lastProbeServedAt: previous?.lastProbeServedAt,
         lastUnsuccessfulAt: earnedProbe ? previous?.lastUnsuccessfulAt : at,
+        evidenceRevisionAtFailure: earnedProbe
+            ? previous?.evidenceRevisionAtFailure
+            : executionEvidenceRevision,
       ),
     });
   }
@@ -231,6 +244,7 @@ class AcquisitionProgress {
         lastCriterionSuccessAt: previous.lastCriterionSuccessAt,
         lastProbeServedAt: at,
         lastUnsuccessfulAt: previous.lastUnsuccessfulAt,
+        evidenceRevisionAtFailure: previous.evidenceRevisionAtFailure,
       ),
     });
   }

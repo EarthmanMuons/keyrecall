@@ -29,7 +29,12 @@ typedef RecordedGap = ({
 /// Older records are read as they were written, with what they did not carry
 /// left absent. Nothing is upgraded in place: the log is the history, and a
 /// field added afterwards has no value a past record implies.
-const Set<int> readableAcquisitionVersions = {1, 2, acquisitionSchemaVersion};
+const Set<int> readableAcquisitionVersions = {
+  1,
+  2,
+  3,
+  acquisitionSchemaVersion,
+};
 
 /// Throws [JournalFormatException] for a version this build cannot read.
 void requireReadableAcquisitionVersion(int version, {String? location}) {
@@ -128,6 +133,13 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   @override
   final AttemptIdentity identity;
 
+  /// The supplied wall clock when it differed from the logical event time.
+  final DateTime? observedWallTime;
+
+  /// Informative ordinary attempts committed in this context at close.
+  /// Null for history that did not record causal ordering.
+  final int? executionEvidenceRevision;
+
   /// The task that was presented.
   final AcquisitionTask task;
 
@@ -175,6 +187,8 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   AcquisitionAttemptRecord({
     required this.journalSequence,
     required this.identity,
+    this.observedWallTime,
+    this.executionEvidenceRevision,
     required this.task,
     required this.started,
     required this.completion,
@@ -187,6 +201,12 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     this.firstAbsentPosition,
     this.schemaVersion = acquisitionSchemaVersion,
   }) : gaps = List.unmodifiable(gaps) {
+    if (executionEvidenceRevision != null && executionEvidenceRevision! < 0) {
+      throw ArgumentError.value(
+        executionEvidenceRevision,
+        'executionEvidenceRevision',
+      );
+    }
     if (earnedProbe && !completion.isComplete) {
       throw ArgumentError.value(
         earnedProbe,
@@ -214,6 +234,8 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     'session_id': identity.sessionId,
     'index_in_session': identity.indexInSession,
     'occurred_at': encodeTime(identity.occurredAt),
+    'observed_wall_time': encodeOptionalTime(observedWallTime),
+    'execution_evidence_revision': executionEvidenceRevision,
     'parent': encodeExercise(task.parent),
     'portion': task.portion is FullTraversal ? 'FULL_TRAVERSAL' : null,
     'timing': task.timing.id,
@@ -260,6 +282,14 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
       ),
     );
     return AcquisitionAttemptRecord(
+      observedWallTime: readOptionalTime(
+        json,
+        'observed_wall_time',
+        location: location,
+      ),
+      executionEvidenceRevision: json['execution_evidence_revision'] == null
+          ? null
+          : requireInt(json, 'execution_evidence_revision', location: location),
       schemaVersion: version,
       journalSequence: requireInt(json, 'journal_sequence', location: location),
       identity: AttemptIdentity(
@@ -371,12 +401,16 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
   @override
   final AttemptIdentity identity;
 
+  /// The supplied wall clock when it differed from the logical event time.
+  final DateTime? observedWallTime;
+
   @override
   final Exercise parent;
 
   AcquisitionProbeServedRecord({
     required this.journalSequence,
     required this.identity,
+    this.observedWallTime,
     required this.parent,
     this.schemaVersion = acquisitionSchemaVersion,
   });
@@ -391,6 +425,7 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
     'session_id': identity.sessionId,
     'index_in_session': identity.indexInSession,
     'occurred_at': encodeTime(identity.occurredAt),
+    'observed_wall_time': encodeOptionalTime(observedWallTime),
     'parent': encodeExercise(parent),
   };
 
@@ -402,6 +437,11 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
     final version = requireInt(json, 'schema_version', location: location);
     requireReadableAcquisitionVersion(version, location: location);
     return AcquisitionProbeServedRecord(
+      observedWallTime: readOptionalTime(
+        json,
+        'observed_wall_time',
+        location: location,
+      ),
       schemaVersion: version,
       journalSequence: requireInt(json, 'journal_sequence', location: location),
       identity: AttemptIdentity(
@@ -529,6 +569,7 @@ class AcquisitionJournal {
           parent: record.parent,
           completed: record.completion.isComplete,
           earnedProbe: record.earnedProbe,
+          executionEvidenceRevision: record.executionEvidenceRevision,
           at: record.identity.occurredAt,
         ),
         AcquisitionProbeServedRecord() => progress.serving(

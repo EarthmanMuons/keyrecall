@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
@@ -23,9 +24,13 @@ AcquisitionAttemptRecord acquisitionRecordOf({
   required AttemptIdentity identity,
   required int journalSequence,
   AttemptTermination termination = AttemptTermination.learnerStopped,
+  int? executionEvidenceRevision,
+  DateTime? observedWallTime,
 }) => AcquisitionAttemptRecord(
   journalSequence: journalSequence,
   identity: identity,
+  executionEvidenceRevision: executionEvidenceRevision,
+  observedWallTime: observedWallTime,
   termination: termination,
   task: observation.task,
   started: observation.started,
@@ -68,11 +73,13 @@ AcquisitionProbeServedRecord? acquisitionServiceOf({
   required AcquisitionProgress progress,
   required AttemptIdentity identity,
   required int journalSequence,
+  DateTime? observedWallTime,
 }) => progress.probeOwed(presented)
     ? AcquisitionProbeServedRecord(
         journalSequence: journalSequence,
         identity: identity,
         parent: presented,
+        observedWallTime: observedWallTime,
       )
     : null;
 
@@ -93,3 +100,25 @@ Set<Exercise> attemptedExercises(Iterable<AttemptRecord> records) => {
     ))
       if (outcome.started && weights.materialExecution > 0) record.exercise,
 };
+
+/// Causal revisions reconstructed only from informative ordinary execution.
+Map<ExecutionContext, int> executionEvidenceRevisions(
+  Iterable<AttemptRecord> records,
+) {
+  final revisions = <ExecutionContext, int>{};
+  for (final record in records) {
+    if (record.closure.measurement case Measured(
+      :final outcome,
+      :final weights,
+    )) {
+      if (outcome.started && weights.materialExecution > 0) {
+        revisions.update(
+          executionContextOf(record.exercise),
+          (revision) => revision + 1,
+          ifAbsent: () => 1,
+        );
+      }
+    }
+  }
+  return revisions;
+}
