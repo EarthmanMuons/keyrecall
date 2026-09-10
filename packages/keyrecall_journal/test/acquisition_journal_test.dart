@@ -103,6 +103,41 @@ void main() {
     },
   );
 
+  test('a repeated portion survives the round trip', () {
+    final repeated = AcquisitionScaffold.unmeteredRepetitions(
+      2,
+    ).taskFor(parent);
+    final record = AcquisitionAttemptRecord(
+      journalSequence: 0,
+      identity: recordAt(0).identity,
+      task: repeated,
+      started: true,
+      completion: AcquisitionCompletion.completedCleanly,
+      repairs: 0,
+      repeats: 0,
+      intrusions: 0,
+      earnedProbe: true,
+      gaps: const [],
+    );
+
+    final restored = AcquisitionAttemptRecord.fromJson(record.toJson());
+    expect(restored.task.portion, const TraversalRepetitions(2));
+    expect(restored.task, repeated);
+  });
+
+  test('a record written before portions were named is one traversal', () {
+    // Version 4 could write only one, and reading more into it would invent a
+    // task the learner was never given.
+    final json = recordAt(0, earnedProbe: false).toJson()
+      ..['schema_version'] = 4
+      ..remove('traversals');
+
+    expect(
+      AcquisitionAttemptRecord.fromJson(json).task.portion,
+      const FullTraversal(),
+    );
+  });
+
   for (final version in [1, 2, 3]) {
     test('version $version preserves unknown causal ordering', () {
       final json = recordAt(0, earnedProbe: false).toJson()

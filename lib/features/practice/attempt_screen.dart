@@ -1103,7 +1103,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Status(phase: _phase, guidance: guidance, selfPaced: _isSelfPaced),
+            _Status(
+              phase: _phase,
+              guidance: guidance,
+              selfPaced: _isSelfPaced,
+              traversals: widget.acquisition?.portion.traversals ?? 1,
+            ),
             const SizedBox(height: 12),
             _control(),
           ],
@@ -1684,6 +1689,7 @@ class _Status extends StatelessWidget {
     required this.phase,
     required this.guidance,
     this.selfPaced = false,
+    this.traversals = 1,
   });
 
   final _Phase phase;
@@ -1692,18 +1698,19 @@ class _Status extends StatelessWidget {
   /// Whether no tempo was asked for.
   final bool selfPaced;
 
+  /// How many times through the material the task asks for.
+  final int traversals;
+
   @override
   Widget build(BuildContext context) {
     if (selfPaced && (phase == _Phase.ready || phase == _Phase.playing)) {
-      // Nothing here says slowly, or easier, or to take your time. Each of
-      // those is an interpretation of why the ordinary attempt did not go
-      // well, and nothing has made one. What changed is that pace is the
-      // learner's, and the running line says so rather than only saying the
-      // screen is live: with no pulse and no tempo anywhere, "Playing" alone
-      // leaves a long wait looking like something has gone wrong.
+      // The running line says the pace is the learner's rather than only
+      // saying the screen is live: with no pulse and no tempo anywhere,
+      // "Playing" alone leaves a long wait looking like something has gone
+      // wrong.
       return Text(
         phase == _Phase.ready
-            ? 'Practice this at your own pace. Tap Done when finished.'
+            ? selfPacedInstruction(traversals)
             : 'Playing at your own pace',
         style: Theme.of(context).textTheme.bodyMedium,
         textAlign: TextAlign.center,

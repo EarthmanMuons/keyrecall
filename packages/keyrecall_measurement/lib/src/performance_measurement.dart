@@ -361,22 +361,36 @@ PerformanceMeasurement measure({
 /// the same whether the learner is playing fast or slowly, and it says nothing
 /// about a requested tempo. Empty when too few moments arrived to have a
 /// quartile.
-List<MomentGap> momentGapsOf(Alignment alignment) {
+///
+/// [restartPositions] names positions the task lets the learner begin again
+/// at. The wait before one of those is the reset the task asked for, so it is
+/// neither reported nor allowed into the baseline the others are read against:
+/// a pause taken by permission would otherwise make every real hesitation look
+/// brief.
+List<MomentGap> momentGapsOf(
+  Alignment alignment, {
+  Set<int> restartPositions = const {},
+}) {
   final onsets = _momentOnsets(alignment);
-  final intervals = [
+  final spans = [
     for (var i = 1; i < onsets.length; i++)
-      onsets[i].onsetMs - onsets[i - 1].onsetMs,
+      if (!restartPositions.contains(onsets[i].position))
+        (
+          from: onsets[i - 1].position,
+          to: onsets[i].position,
+          intervalMs: onsets[i].onsetMs - onsets[i - 1].onsetMs,
+        ),
   ];
-  if (intervals.length < _fewestIntervals) return const [];
-  final (_, high) = _quartilesOf(intervals);
+  if (spans.length < _fewestIntervals) return const [];
+  final (_, high) = _quartilesOf([for (final span in spans) span.intervalMs]);
   if (high <= 0) return const [];
   return [
-    for (var i = 1; i < onsets.length; i++)
+    for (final span in spans)
       (
-        fromPosition: onsets[i - 1].position,
-        toPosition: onsets[i].position,
-        gapMs: intervals[i - 1].round(),
-        ratio: intervals[i - 1] / high,
+        fromPosition: span.from,
+        toPosition: span.to,
+        gapMs: span.intervalMs.round(),
+        ratio: span.intervalMs / high,
       ),
   ];
 }

@@ -50,7 +50,11 @@ const int checkpointSchemaVersion = 2;
 ///
 /// Version 4 carries an ordinary execution-evidence revision and preserves the
 /// wall clock when the acquisition log needs a later logical timestamp.
-const int acquisitionSchemaVersion = 4;
+///
+/// Version 5 names the portion a task asked for and how many traversals of it.
+/// Version 4 could write only one, so its records read back as a single full
+/// traversal, which is what they were.
+const int acquisitionSchemaVersion = 5;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

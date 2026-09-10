@@ -308,9 +308,10 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
     final at = at0.add(Duration(minutes: slot + 1));
     final decision = await session.decideOutcome(at: at);
     switch (decision) {
-      case PresentedAttempt(:final exercise):
+      case PresentedAttempt(:final exercise, :final decision):
         final selection = pipeline.lastSelection!;
         accumulator.record(slot, selection, pipeline.lastState!);
+        await session.acknowledgePresentation(decision.attemptId);
         await session.closeWithOutcome(
           playing.play(exercise, random),
           observedWallTime: at,

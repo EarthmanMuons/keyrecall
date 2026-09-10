@@ -8,6 +8,33 @@ import 'performance_measurement.dart';
 /// Whether this attempt supplies enough evidence to judge continuity.
 enum AcquisitionContinuity { unestablished, unbroken, interrupted }
 
+/// The fewest intervals a judgment of continuity can rest on.
+///
+/// With fewer, the interpolated upper quartile includes the maximum, so the
+/// longest interval is measured against itself and no absence of a stall means
+/// anything. It is a property of the estimator rather than a preference, which
+/// is why a task short of it supplies more intervals rather than being read
+/// against a lower bar.
+const int fewestIntervalsForContinuity = 5;
+
+/// The fewest complete traversals of [realization] continuity can be read from.
+///
+/// Each traversal supplies one fewer interval than it has moments, and the
+/// reset between two traversals supplies none. What a family declares below
+/// its floor is therefore this many, not a number chosen for its own sake: it
+/// is the least data the criterion already in force will accept.
+int traversalsForContinuity(ExerciseRealization realization) {
+  final intervals = realization.moments.length - 1;
+  if (intervals < 1) {
+    throw ArgumentError.value(
+      realization,
+      'realization',
+      'a traversal of one moment has no intervals to repeat toward',
+    );
+  }
+  return (fewestIntervalsForContinuity + intervals - 1) ~/ intervals;
+}
+
 /// What was observed about one acquisition attempt.
 ///
 /// The counterpart of [PerformanceMeasurement], and deliberately not that
@@ -89,11 +116,14 @@ class AcquisitionObservation {
 
   /// Continuity needs a baseline that excludes the single longest interval.
   ///
-  /// With fewer than five intervals, the interpolated upper quartile includes
-  /// the maximum. Absence of a detected stall then cannot establish continuity.
+  /// Absence of a detected stall establishes nothing below
+  /// [fewestIntervalsForContinuity], because the quartile the stalls were read
+  /// against included the longest interval itself. A task whose single
+  /// traversal cannot reach that count asks for more traversals; the bar does
+  /// not move for it.
   AcquisitionContinuity get continuity => stalls.isNotEmpty
       ? AcquisitionContinuity.interrupted
-      : gaps.length >= 5
+      : gaps.length >= fewestIntervalsForContinuity
       ? AcquisitionContinuity.unbroken
       : AcquisitionContinuity.unestablished;
 
@@ -153,7 +183,12 @@ AcquisitionObservation observeAcquisition({
     intrusions: measurement.intrusions,
     firstDeparture: reading.firstDeparture,
     firstAbsentPosition: reading.firstAbsentPosition,
-    gaps: momentGapsOf(measurement.alignment),
+    // The reset the task asked for is not a wait inside a traversal, and the
+    // positions the task begins each one at are what says so.
+    gaps: momentGapsOf(
+      measurement.alignment,
+      restartPositions: acquisitionTraversalStarts(task).skip(1).toSet(),
+    ),
     policy: policy,
   );
 }

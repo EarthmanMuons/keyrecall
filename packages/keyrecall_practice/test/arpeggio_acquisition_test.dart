@@ -106,7 +106,11 @@ void main() {
     expect(task.material, arpeggio);
     expect(task.timing, TimingDemand.unmetered);
     expect(task.advancement, TaskAdvancement.learnerDriven);
-    expect(task.portion, const FullTraversal());
+    // Two traversals of the one-octave triad, which is what the continuity
+    // criterion needs and not a dose anyone chose: three intervals a traversal
+    // and five wanted.
+    expect(task.portion, const TraversalRepetitions(2));
+    expect(notesOf(task), hasLength(8));
     // The family's own floor: right hand, one octave, ascending, cued.
     expect(task.parent.conditions.hands, HandConfiguration.right);
     expect(task.parent.conditions.octaves, 1);
@@ -145,27 +149,66 @@ void main() {
     expect(records[2].firstAbsentPosition, isNotNull);
   });
 
-  test('a one-octave arpeggio cannot earn a probe by playing it', () async {
-    // The arpeggio's own structure, and the reason its scaffold is not the
-    // scale's with the name changed. Continuity needs a baseline that excludes
-    // the longest interval, which takes five, and one octave of a triad has
-    // three. A clean traversal is practice and is recorded as practice; it
-    // never reaches the criterion that asks the parent's question.
+  test('two clean traversals earn a probe of the unchanged parent', () async {
+    // What the repetitions are for. One traversal of a triad supplies three
+    // intervals, and the criterion wants five, so a single clean ascent could
+    // never say the motion was fluent however well it went.
+    final session = await struggling(InMemoryPracticeStore(createdAt: t0));
+
+    final offered = await sitting(
+      session,
+      slots: 20,
+      play: (task) => playing(task, notesOf(task)),
+    );
+    final earned = session.acquisitionJournal.attempts.first;
+
+    expect(earned.completion, AcquisitionCompletion.completedCleanly);
+    expect(earned.earnedProbe, isTrue);
+    // Six intervals rather than seven: the reset between the two traversals is
+    // the one the task asked for and is not read as playing.
+    expect(earned.gaps, hasLength(6));
+    expect(
+      earned.gaps.map((gap) => gap.fromPosition),
+      isNot(contains(3)),
+      reason: 'the reset between traversals was read as a wait inside one',
+    );
+
+    // The probe is the parent as it stands, tempo and all, and it comes after
+    // the supported work rather than instead of it.
+    final task = offered.whereType<AcquisitionTask>().first;
+    expect(
+      offered.skip(offered.indexOf(task) + 1).whereType<Exercise>(),
+      contains(task.parent),
+    );
+  });
+
+  test('the reset between traversals is allowed to be long', () async {
+    // Taking a moment to put the hand back is what the task asked for. Reading
+    // it as a stall would make the scaffold that supplies the evidence the
+    // reason the evidence fails.
     final session = await struggling(InMemoryPracticeStore(createdAt: t0));
 
     await sitting(
       session,
       slots: 20,
-      play: (task) => playing(task, notesOf(task)),
+      play: (task) {
+        final notes = notesOf(task);
+        var transcript = PerformanceTranscript.empty;
+        var at = 0;
+        for (final (index, midiNote) in notes.indexed) {
+          if (index > 0) at += index == notes.length ~/ 2 ? 6000 : 900;
+          transcript = transcript.appending(
+            pitch: spellObservedPitch(midiNote, material: task.material),
+            timestampMs: at,
+          );
+        }
+        return transcript;
+      },
     );
-    final records = session.acquisitionJournal.attempts;
+    final record = session.acquisitionJournal.attempts.first;
 
-    expect(records, isNotEmpty);
-    for (final record in records) {
-      expect(record.completion, AcquisitionCompletion.completedCleanly);
-      expect(record.earnedProbe, isFalse);
-      expect(notesOf(record.task), hasLength(lessThan(6)));
-    }
+    expect(record.completion, AcquisitionCompletion.completedCleanly);
+    expect(record.earnedProbe, isTrue);
   });
 
   test('supported work is a step aside, not the sitting', () async {

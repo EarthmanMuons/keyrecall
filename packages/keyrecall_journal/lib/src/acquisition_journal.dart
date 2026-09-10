@@ -33,6 +33,7 @@ const Set<int> readableAcquisitionVersions = {
   1,
   2,
   3,
+  4,
   acquisitionSchemaVersion,
 };
 
@@ -237,7 +238,11 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     'observed_wall_time': encodeOptionalTime(observedWallTime),
     'execution_evidence_revision': executionEvidenceRevision,
     'parent': encodeExercise(task.parent),
-    'portion': task.portion is FullTraversal ? 'FULL_TRAVERSAL' : null,
+    'portion': switch (task.portion) {
+      FullTraversal() => 'FULL_TRAVERSAL',
+      TraversalRepetitions() => 'TRAVERSAL_REPETITIONS',
+    },
+    'traversals': task.portion.traversals,
     'timing': task.timing.id,
     'advancement': task.advancement.id,
     'started': started,
@@ -267,12 +272,21 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     final version = requireInt(json, 'schema_version', location: location);
     requireReadableAcquisitionVersion(version, location: location);
     final portion = requireString(json, 'portion', location: location);
-    if (portion != 'FULL_TRAVERSAL') {
-      throw JournalFormatException(
-        'unknown acquisition portion $portion',
+    // A version 4 record carried no count, and the one portion it could write
+    // was a single traversal.
+    final traversals = json['traversals'] == null
+        ? 1
+        : requireInt(json, 'traversals', location: location);
+    final taskPortion = switch (portion) {
+      'FULL_TRAVERSAL' when traversals == 1 => const FullTraversal(),
+      'TRAVERSAL_REPETITIONS' when traversals > 1 => TraversalRepetitions(
+        traversals,
+      ),
+      _ => throw JournalFormatException(
+        'unknown acquisition portion $portion over $traversals traversals',
         location: location,
-      );
-    }
+      ),
+    };
     final completionId = requireString(json, 'completion', location: location);
     final completion = AcquisitionCompletion.values.firstWhere(
       (value) => value.id == completionId,
@@ -311,6 +325,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         timing: TimingDemand.fromId(
           requireString(json, 'timing', location: location),
         ),
+        portion: taskPortion,
         advancement: TaskAdvancement.fromId(
           requireString(json, 'advancement', location: location),
         ),

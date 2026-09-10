@@ -28,11 +28,15 @@ provisional. The family supplies a continuously cued right-hand realization as
 its acquisition floor, unlike the scale family's two single-hand entries. The
 scheduler evaluates and ranks either floor through the same generic path.
 
-Below that floor the family declares an unmetered traversal, for root position
-only: an inversion begins the same chord tones from a different finger and is
-its own motor problem rather than a harder version of this one. One octave of a
-triad supplies three intervals, and continuity needs five, so a clean supported
-arpeggio traversal is recorded as practice and earns no parent probe.
+Below that floor the family declares unmetered repetitions of the floor
+traversal, for root position only: an inversion begins the same chord tones from
+a different finger and is its own motor problem rather than a harder version of
+this one. One octave of a triad supplies three intervals and continuity needs
+five, so the task asks for two traversals, from the beginning each time. The
+count is derived from the criterion rather than chosen, the reset between
+traversals contributes no interval, and running on into a second octave was
+rejected: it would supply the intervals and add the thumb crossing that makes a
+wider span its own motor task.
 
 ## Learner state
 

@@ -213,6 +213,76 @@ void main() {
       expect(short.earnsParentProbe, isFalse);
     });
 
+    test('repeating a short traversal supplies what it lacked', () {
+      // The count is arithmetic, not a dose: each traversal of a four-moment
+      // pattern gives three intervals, the reset between two gives none, and
+      // the criterion wants five.
+      final short = Exercise.linear(
+        material: ArpeggioMaterial('C', ArpeggioQuality.major),
+        hands: HandConfiguration.right,
+        octaves: 1,
+        direction: ExerciseDirection.up,
+        tempoBpm: 60,
+        guidance: GuidanceContext.continuouslyCued,
+      );
+      final once = AcquisitionTask.unmeteredTraversal(short);
+      expect(traversalsForContinuity(realizeAcquisition(once)), 2);
+
+      final twice = AcquisitionScaffold.unmeteredRepetitions(
+        traversalsForContinuity(realize(short)),
+      ).taskFor(short);
+      final notes = [
+        for (final moment in realizeAcquisition(twice).moments)
+          moment.noteFor(Hand.right)!.midiNote,
+      ];
+      final result = observeAcquisition(
+        task: twice,
+        // A long wait where the hand goes back, which the task asked for.
+        transcript: _played(notes, [600, 600, 600, 5000, 600, 600, 600], short),
+      );
+
+      expect(result.completion, AcquisitionCompletion.completedCleanly);
+      expect(result.gaps, hasLength(6));
+      expect(result.stalls, isEmpty);
+      expect(result.continuity, AcquisitionContinuity.unbroken);
+      expect(result.earnsParentProbe, isTrue);
+    });
+
+    test('a stall inside a traversal is still a stall', () {
+      // The reset is excused because the task drew that boundary. Nothing else
+      // is, and the excused interval does not join the baseline the rest are
+      // read against.
+      final short = Exercise.linear(
+        material: ArpeggioMaterial('C', ArpeggioQuality.major),
+        hands: HandConfiguration.right,
+        octaves: 1,
+        direction: ExerciseDirection.up,
+        tempoBpm: 60,
+        guidance: GuidanceContext.continuouslyCued,
+      );
+      final twice = AcquisitionScaffold.unmeteredRepetitions(2).taskFor(short);
+      final notes = [
+        for (final moment in realizeAcquisition(twice).moments)
+          moment.noteFor(Hand.right)!.midiNote,
+      ];
+      final result = observeAcquisition(
+        task: twice,
+        transcript: _played(notes, [
+          600,
+          5000,
+          600,
+          5000,
+          600,
+          600,
+          600,
+        ], short),
+      );
+
+      expect(result.stalls, isNotEmpty);
+      expect(result.continuity, AcquisitionContinuity.interrupted);
+      expect(result.earnsParentProbe, isFalse);
+    });
+
     test('nothing played says nothing at all', () {
       final silent = observeAcquisition(
         task: task,
@@ -225,4 +295,21 @@ void main() {
       expect(silent.gaps, isEmpty);
     });
   });
+}
+
+PerformanceTranscript _played(
+  List<int> midiNotes,
+  List<int> gaps,
+  Exercise exercise,
+) {
+  var transcript = PerformanceTranscript.empty;
+  var at = 0;
+  for (final (index, midiNote) in midiNotes.indexed) {
+    at += index == 0 ? 0 : gaps[index - 1];
+    transcript = transcript.appending(
+      pitch: spellObservedPitch(midiNote, material: exercise.material),
+      timestampMs: at,
+    );
+  }
+  return transcript;
 }

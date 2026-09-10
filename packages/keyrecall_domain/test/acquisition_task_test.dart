@@ -35,6 +35,50 @@ void main() {
     });
   });
 
+  group('repeated traversals', () {
+    final repeated = AcquisitionScaffold.unmeteredRepetitions(
+      3,
+    ).taskFor(parent);
+    final traversal = realize(parent);
+
+    test('ask for the parent again from the beginning', () {
+      final realization = realizeAcquisition(repeated);
+
+      expect(repeated.portion.traversals, 3);
+      expect(realization.moments, hasLength(traversal.moments.length * 3));
+      expect(realization.pitches, traversal.pitches);
+      for (final (index, moment) in realization.moments.indexed) {
+        expect(moment.position, index);
+        expect(
+          moment.notes,
+          traversal.moments[index % traversal.moments.length].notes,
+        );
+      }
+    });
+
+    test('say where each of them begins', () {
+      expect(acquisitionTraversalStarts(repeated), [
+        0,
+        traversal.moments.length,
+        traversal.moments.length * 2,
+      ]);
+      expect(
+        acquisitionTraversalStarts(AcquisitionTask.unmeteredTraversal(parent)),
+        [0],
+      );
+    });
+
+    test('are one traversal at one repetition', () {
+      // A scaffold works out how many it needs, and one is the ordinary shape
+      // rather than a repetition of one.
+      expect(
+        AcquisitionScaffold.unmeteredRepetitions(1).portion,
+        const FullTraversal(),
+      );
+      expect(() => TraversalRepetitions(1), throwsA(isA<AssertionError>()));
+    });
+  });
+
   group('timing demand', () {
     test('is what tempo evidence depends on', () {
       expect(TimingDemand.metered.requestsTempo, isTrue);

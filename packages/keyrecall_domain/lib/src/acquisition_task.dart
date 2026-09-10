@@ -9,17 +9,23 @@ import 'technical_material.dart';
 ///
 /// Sealed rather than an enum because the value a fragment needs carries data:
 /// where the window starts, where it ends, and which transition it exists to
-/// rehearse. Only [FullTraversal] is constructible; a window is added when
-/// observations say which transition is worth isolating.
+/// rehearse. A window is added when observations say which transition is worth
+/// isolating.
 @immutable
 sealed class TaskPortion {
   const TaskPortion();
+
+  /// How many complete traversals of the parent are asked for.
+  int get traversals;
 }
 
 /// The whole of the parent exercise, in its own order.
 @immutable
 final class FullTraversal extends TaskPortion {
   const FullTraversal();
+
+  @override
+  int get traversals => 1;
 
   @override
   bool operator ==(Object other) => other is FullTraversal;
@@ -29,6 +35,43 @@ final class FullTraversal extends TaskPortion {
 
   @override
   String toString() => 'FullTraversal()';
+}
+
+/// The whole of the parent exercise, played through more than once.
+///
+/// Repetitions rather than a longer traversal. Extending a short pattern into
+/// another octave would add the crossing that makes a wider span its own motor
+/// task, so the material stays exactly what the parent asks for and the
+/// learner plays it again from the beginning.
+///
+/// First-class rather than a longer list of notes, because the boundary
+/// between one traversal and the next is not part of either. The learner
+/// resets their hand there, which is not a note of the material, not a
+/// transition of it, and not an interval anything should read as hesitation.
+/// [TraversalRepetitions] exists so an observation can say that without
+/// inferring it from arithmetic.
+///
+/// What it is for is evidence. Continuity is read from the spread of the
+/// intervals inside a traversal, and a pattern too short to supply enough of
+/// them supplies more by being played again.
+@immutable
+final class TraversalRepetitions extends TaskPortion {
+  @override
+  final int traversals;
+
+  /// Throws [ArgumentError] for fewer than two, which is [FullTraversal].
+  const TraversalRepetitions(this.traversals)
+    : assert(traversals > 1, 'one traversal is a FullTraversal');
+
+  @override
+  bool operator ==(Object other) =>
+      other is TraversalRepetitions && other.traversals == traversals;
+
+  @override
+  int get hashCode => traversals;
+
+  @override
+  String toString() => 'TraversalRepetitions($traversals)';
 }
 
 /// Whether the task asks the learner to keep to a pulse.
@@ -226,10 +269,40 @@ class AcquisitionTask {
 /// The parent's realization, narrowed to the portion. Nothing about the
 /// timing demand reaches it: a realization says which notes in what order, and
 /// a moment's metric offset is where it would fall if a pulse were asked for.
-ExerciseRealization realizeAcquisition(AcquisitionTask task) =>
-    switch (task.portion) {
-      FullTraversal() => realize(task.parent),
-    };
+ExerciseRealization realizeAcquisition(AcquisitionTask task) {
+  final traversal = realize(task.parent);
+  if (task.portion.traversals == 1) return traversal;
+  final beats =
+      traversal.moments.last.metricOffset -
+      traversal.moments.first.metricOffset;
+  return ExerciseRealization([
+    for (var repetition = 0; repetition < task.portion.traversals; repetition++)
+      for (final moment in traversal.moments)
+        RealizationMoment(
+          position: repetition * traversal.moments.length + moment.position,
+          // Where the moment would fall if a pulse were asked for, which for a
+          // repeated traversal continues past the end of the first one. A
+          // repeated task states no tempo, so nothing reads this.
+          metricOffset: moment.metricOffset + repetition * (beats + 1),
+          notes: moment.notes,
+        ),
+  ]);
+}
+
+/// The position each traversal of [task] begins at, the first included.
+///
+/// What tells a reading of the performance where the learner was allowed to
+/// stop and start again. A gap that spans one of these boundaries is the reset
+/// between two traversals, not a wait inside one, and reading it as either
+/// evidence or a stall would put both on the boundary the task drew itself.
+List<int> acquisitionTraversalStarts(AcquisitionTask task) {
+  if (task.portion.traversals == 1) return const [0];
+  final length = realize(task.parent).moments.length;
+  return [
+    for (var repetition = 0; repetition < task.portion.traversals; repetition++)
+      repetition * length,
+  ];
+}
 
 /// The supported task a family offers below one of its declared floors.
 ///
@@ -263,6 +336,21 @@ class AcquisitionScaffold {
     : this(
         timing: TimingDemand.unmetered,
         advancement: TaskAdvancement.learnerDriven,
+      );
+
+  /// The whole traversal [traversals] times over, at the learner's own pace.
+  ///
+  /// For a pattern whose single traversal is too short to say anything about
+  /// continuity. How many is not a dose: it is the fewest that supply what the
+  /// criterion already asks for, and the family works it out from its own
+  /// material rather than choosing a number it likes.
+  AcquisitionScaffold.unmeteredRepetitions(int traversals)
+    : this(
+        timing: TimingDemand.unmetered,
+        advancement: TaskAdvancement.learnerDriven,
+        portion: traversals > 1
+            ? TraversalRepetitions(traversals)
+            : const FullTraversal(),
       );
 
   /// This scaffold applied to [parent].

@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
@@ -434,11 +435,14 @@ AcquisitionFloor _arpeggioAcquisitionFloorFor(
 
 /// The supported task offered below an arpeggio floor, or null for none.
 ///
-/// An unmetered traversal, as the scale family offers, but reached from the
-/// arpeggio's own structure rather than by reuse: the leaps and the thumb
-/// crossing under them are what a floor attempt runs out of time for, and a
-/// traversal the learner paces themselves is the version of that hand shape
-/// with the clock taken off it.
+/// The tempo comes off, as it does for a scale, and then the family asks its
+/// own question: one octave of a triad is four notes and three intervals,
+/// which is fewer than continuity can be read from, so a single traversal of
+/// it can never say whether the motion was fluent. The task is that same
+/// traversal played through as many times as the reading needs, from the
+/// beginning each time. Running on into a second octave would supply the
+/// intervals too, and would add the thumb crossing that makes a wider span its
+/// own motor task rather than a supported version of this one.
 ///
 /// Root position only. An inversion starts the same chord tones from a
 /// different finger and is its own motor problem, so the root-position
@@ -446,7 +450,9 @@ AcquisitionFloor _arpeggioAcquisitionFloorFor(
 /// would claim a relationship the family has not established.
 AcquisitionScaffold? _arpeggioScaffoldFor(Exercise exercise) =>
     (exercise.material as ArpeggioMaterial).inversion == ArpeggioInversion.root
-    ? const AcquisitionScaffold.unmeteredTraversal()
+    ? AcquisitionScaffold.unmeteredRepetitions(
+        traversalsForContinuity(realize(exercise)),
+      )
     : null;
 
 bool _isFloorHand(HandConfiguration hands, ArpeggioPracticePolicy policy) =>

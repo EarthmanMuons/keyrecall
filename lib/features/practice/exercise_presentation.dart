@@ -24,6 +24,26 @@ String materialNoun(TechnicalMaterial material) => switch (material) {
   ArpeggioMaterial() => 'arpeggio',
 };
 
+/// What a self-paced attempt asks for, before anything has been played.
+///
+/// Nothing here says slowly, or easier, or to take your time. Each of those is
+/// an interpretation of why the ordinary attempt did not go well, and nothing
+/// has made one. What changed is that the pace is the learner's.
+///
+/// A task asking for more than one traversal has to say so, and has to say they
+/// start again rather than run on: playing the pattern twice and playing twice
+/// as much of it are different things to be asked for.
+String selfPacedInstruction(int traversals) => traversals == 1
+    ? 'Practice this at your own pace. Tap Done when finished.'
+    : 'Play this ${_timesName(traversals)} at your own pace, starting again '
+          'each time. Tap Done when finished.';
+
+String _timesName(int times) => switch (times) {
+  2 => 'twice',
+  3 => 'three times',
+  _ => '$times times',
+};
+
 /// What a supported attempt did, in the terms the record itself carries.
 ///
 /// States what happened and stops there. Whether it was good is a question

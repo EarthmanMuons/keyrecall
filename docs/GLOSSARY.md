@@ -32,8 +32,10 @@ slot it cannot fill is a reasoned block rather than an absence.
 
 Supported acquisition of part of an ordinary exercise: an `AcquisitionTask`
 names a parent `Exercise` and relaxes the portion played, the timing demand, or
-who advances the sequence. Not an `Exercise`, and not convertible to one, so no
-ordinary admission, ranking, or learner-model path can consume it.
+who advances the sequence. A portion may also ask for the whole parent more than
+once, which supplies evidence a short pattern cannot supply in one pass without
+changing what the material is. Not an `Exercise`, and not convertible to one, so
+no ordinary admission, ranking, or learner-model path can consume it.
 
 Its attempts produce an `AcquisitionObservation` rather than an `Outcome`: no
 retrieval credit, no tempo reading, and no ordinary evidence of any kind. A
@@ -49,7 +51,9 @@ informative ordinary attempt at that exact exercise, and no execution frontier
 in its context. The scaffold is the family's own statement of what a supported
 version of its work is, so a floor whose family declares none stays on the
 ordinary path. Short traversals with insufficient continuity evidence cannot
-earn probes, which a one-octave arpeggio traversal never has. Probe service
+earn probes, so a scaffold whose single traversal cannot supply five intervals
+asks for that traversal again from the beginning, as many times as the criterion
+needs; the reset between two traversals is not read as playing. Probe service
 covers all earlier criterion successes in event order.
 
 Not to be confused with [Acquisition floor], which offers ordinary exercises.

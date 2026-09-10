@@ -996,6 +996,12 @@ class PracticeSession {
       outcome,
       at: record.identity.occurredAt,
     );
+    // A committed attempt reached the learner, whatever the caller said about
+    // presenting it. Serving here too is idempotent, and it stops an
+    // obligation outliving the question it asks: an owed probe is offered
+    // again every slot, so a caller that never acknowledges is served the same
+    // probe until the sitting ends.
+    await acknowledgePresentation(decision.attemptId);
     _outstanding = null;
     _pending = null;
 
