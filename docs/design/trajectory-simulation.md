@@ -120,6 +120,34 @@ corrections, and nineteen not at all.
 What it displaced is recorded per material and hand, which is the cost stated as
 what was chosen instead.
 
+### What the second pass measured
+
+The first result is kept because the rule that produced it is the argument for
+the rules that replaced it. Skipping only the parent just offered was not
+violated in that run and was not enough, and nothing but a census would have
+shown the difference.
+
+Two structural rules answered it: nothing is offered on the opportunity straight
+after supported work, and a parent whose supported attempt produced nothing
+waits for ordinary evidence in its context rather than for its turn.
+
+| Player                        | Share before | Share after | Run before | Run after |
+| ----------------------------- | ------------ | ----------- | ---------- | --------- |
+| `trueBeginner`                | 0.73         | 0.33        | 13         | 1         |
+| `arpeggioStrongScaleWeak`     | 0.33         | 0.08        | 1          | 1         |
+| every other shipped archetype | 0.00         | 0.00        | 0          | 0         |
+
+Same-parent gaps run to twelve, nineteen and twenty slots where before they were
+mostly two, which is the set-aside rather than the alternation. Twenty-nine
+supported attempts became thirteen, and their outcomes went from seven clean of
+twenty-nine to five of thirteen, which is what removing futile repeats should
+look like.
+
+No aggregate cap followed. A third of a beginner's sitting may still be too
+much, and a share chosen from these numbers would be a synthetic constant
+standing in for a pedagogical judgement. What the pair of passes establishes is
+how much of the first figure was missing recurrence semantics rather than dose.
+
 ## Invariants and observations
 
 Detectors carry a severity, and the distinction is load-bearing.
