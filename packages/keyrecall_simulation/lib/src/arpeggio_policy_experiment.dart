@@ -8,6 +8,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'player_archetypes.dart';
 import 'python_compatible_random.dart';
+import 'synthetic_performance.dart';
 import 'synthetic_player.dart';
 
 enum ArpeggioPolicyScope {
@@ -155,6 +156,7 @@ class ArpeggioPolicyRun {
   final int floorInvocations;
   final int floorSelections;
   final int longestFloorRun;
+  final int supportedSlots;
   final int? firstArpeggioSlot;
   final int? firstRightHandArpeggioSlot;
   final int? firstLeftHandArpeggioSlot;
@@ -189,6 +191,7 @@ class ArpeggioPolicyRun {
     required this.floorInvocations,
     required this.floorSelections,
     required this.longestFloorRun,
+    required this.supportedSlots,
     required this.firstArpeggioSlot,
     required this.firstRightHandArpeggioSlot,
     required this.firstLeftHandArpeggioSlot,
@@ -314,11 +317,16 @@ Future<ArpeggioPolicyRun> runArpeggioPolicyTrajectory({
         );
       case PracticeCaughtUp():
         return accumulator.finish(ArpeggioPolicyTerminal.caughtUp);
-      case PresentedAcquisition():
-        // This experiment drives the ordinary path only; nothing here can play
-        // a supported task, and treating one as ordinary work would put an
-        // attempt in the census that never happened.
-        return accumulator.finish(ArpeggioPolicyTerminal.blocked);
+      case PresentedAcquisition(:final task):
+        // Supported work is part of the arpeggio path, so a trajectory that
+        // stopped at the first offer would report a family that never got
+        // past its own floor. It is not an ordinary attempt and enters no
+        // selection census: the slot is counted as what it was.
+        accumulator.recordSupported();
+        await session.closeAcquisition(
+          performAcquisition(state: playing, task: task, rng: random),
+          at: at,
+        );
       case PracticeBlocked():
         accumulator.record(slot, pipeline.lastSelection!, pipeline.lastState!);
         return accumulator.finish(ArpeggioPolicyTerminal.blocked);
@@ -482,6 +490,7 @@ class _PolicyAccumulator {
   int floorInvocations = 0;
   int floorSelections = 0;
   int longestFloorRun = 0;
+  int supportedSlots = 0;
   int _currentFloorRun = 0;
   int arpeggioCandidatesEvaluated = 0;
   int admittedArpeggioCandidatesInBand = 0;
@@ -501,6 +510,15 @@ class _PolicyAccumulator {
     required this.playerId,
     required this.seed,
   });
+
+  /// A slot that offered supported work rather than an ordinary attempt.
+  ///
+  /// Counted and nothing else. A supported task is not a selection, so it has
+  /// no family, no hand and no span to attribute, and a floor run it sits
+  /// inside is a run the learner has not left.
+  void recordSupported() {
+    supportedSlots++;
+  }
 
   void record(int slot, SelectionResult selection, LearnerState state) {
     schedulerDecisions++;
@@ -627,6 +645,7 @@ class _PolicyAccumulator {
         floorInvocations: floorInvocations,
         floorSelections: floorSelections,
         longestFloorRun: longestFloorRun,
+        supportedSlots: supportedSlots,
         firstArpeggioSlot: firstArpeggioSlot,
         firstRightHandArpeggioSlot: firstRightHandArpeggioSlot,
         firstLeftHandArpeggioSlot: firstLeftHandArpeggioSlot,

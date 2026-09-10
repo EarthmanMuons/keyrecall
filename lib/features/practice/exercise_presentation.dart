@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 /// How an exercise reads and looks to a learner.
 ///
@@ -22,6 +23,27 @@ String materialNoun(TechnicalMaterial material) => switch (material) {
   ScaleMaterial() => 'scale',
   ArpeggioMaterial() => 'arpeggio',
 };
+
+/// What a supported attempt did, in the terms the record itself carries.
+///
+/// States what happened and stops there. Whether it was good is a question
+/// supported work does not answer, and a line that implied an answer would be
+/// making the claim the whole design exists to withhold.
+///
+/// Each case is a distinct thing to have done, because the app knows which one
+/// it was. "Not all of it came out" covered running out, playing something else
+/// and never starting at once, and left the learner to work out which of them
+/// the app meant.
+String acquisitionOutcomeLine(AcquisitionAttemptRecord record) {
+  final noun = materialNoun(record.parent.material);
+  if (!record.started) return 'Nothing came through that time.';
+  if (record.completion.isComplete) {
+    return 'You played the whole $noun, at your own pace.';
+  }
+  return record.firstAbsentPosition != null
+      ? 'You stopped before the end of the $noun.'
+      : 'Some of the notes were not the ones in the $noun.';
+}
 
 /// The note the material is named after, spelled the way it is written.
 String tonicName(TechnicalMaterial material) => prettyTonic(material.tonic);

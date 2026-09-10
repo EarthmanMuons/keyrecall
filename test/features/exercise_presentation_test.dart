@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'package:keyrecall/features/practice/exercise_presentation.dart';
 import 'package:keyrecall/features/practice/presentation_policy.dart';
@@ -241,6 +242,71 @@ void main() {
         'C major first-inversion arpeggio',
       );
     });
+    test('says what a supported attempt actually did', () {
+      AcquisitionAttemptRecord closed(
+        TechnicalMaterial material, {
+        bool started = true,
+        AcquisitionCompletion completion = AcquisitionCompletion.notCompleted,
+        int? firstAbsentPosition,
+      }) => AcquisitionAttemptRecord(
+        journalSequence: 0,
+        identity: AttemptIdentity(
+          profileId: 'abc12345',
+          attemptId: 'acq-0',
+          sessionId: 'sitting-1',
+          indexInSession: 0,
+          occurredAt: DateTime.utc(2026, 9, 9),
+        ),
+        task: AcquisitionTask.unmeteredTraversal(
+          Exercise.linear(
+            material: material,
+            hands: HandConfiguration.right,
+            octaves: 1,
+            direction: ExerciseDirection.up,
+            tempoBpm: 60,
+            guidance: GuidanceContext.continuouslyCued,
+          ),
+        ),
+        started: started,
+        completion: completion,
+        repairs: 0,
+        repeats: 0,
+        intrusions: 0,
+        firstAbsentPosition: firstAbsentPosition,
+        earnedProbe: false,
+        gaps: const [],
+      );
+
+      final scale = TechnicalMaterial('C', ScaleForm.major);
+      final arpeggio = ArpeggioMaterial('C', ArpeggioQuality.major);
+
+      expect(
+        acquisitionOutcomeLine(
+          closed(scale, completion: AcquisitionCompletion.completedCleanly),
+        ),
+        'You played the whole scale, at your own pace.',
+      );
+      expect(
+        acquisitionOutcomeLine(closed(scale, firstAbsentPosition: 5)),
+        'You stopped before the end of the scale.',
+      );
+      // Every position was played and some of them were something else, which
+      // is a different thing to have done than running out.
+      expect(
+        acquisitionOutcomeLine(closed(scale)),
+        'Some of the notes were not the ones in the scale.',
+      );
+      expect(
+        acquisitionOutcomeLine(closed(scale, started: false)),
+        'Nothing came through that time.',
+      );
+      // The family's own word, so an arpeggio is never called a scale.
+      expect(
+        acquisitionOutcomeLine(closed(arpeggio, firstAbsentPosition: 3)),
+        'You stopped before the end of the arpeggio.',
+      );
+    });
+
     test('each family uses its own word', () {
       expect(materialNoun(TechnicalMaterial('C', ScaleForm.major)), 'scale');
       expect(

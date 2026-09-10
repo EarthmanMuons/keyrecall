@@ -428,8 +428,26 @@ AcquisitionFloor _arpeggioAcquisitionFloorFor(
         AcquisitionFloorEntry(
           requirementId: request.requirementId,
           exercise: exercise,
+          scaffold: _arpeggioScaffoldFor(exercise),
         ),
 ]);
+
+/// The supported task offered below an arpeggio floor, or null for none.
+///
+/// An unmetered traversal, as the scale family offers, but reached from the
+/// arpeggio's own structure rather than by reuse: the leaps and the thumb
+/// crossing under them are what a floor attempt runs out of time for, and a
+/// traversal the learner paces themselves is the version of that hand shape
+/// with the clock taken off it.
+///
+/// Root position only. An inversion starts the same chord tones from a
+/// different finger and is its own motor problem, so the root-position
+/// traversal is not a simpler version of it; supporting one with the other
+/// would claim a relationship the family has not established.
+AcquisitionScaffold? _arpeggioScaffoldFor(Exercise exercise) =>
+    (exercise.material as ArpeggioMaterial).inversion == ArpeggioInversion.root
+    ? const AcquisitionScaffold.unmeteredTraversal()
+    : null;
 
 bool _isFloorHand(HandConfiguration hands, ArpeggioPracticePolicy policy) =>
     switch (policy.acquisitionFloorShape) {

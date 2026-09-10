@@ -167,29 +167,52 @@ void main() {
       }
     });
 
-    test('short arpeggios stay outside the automatic acquisition loop', () {
-      final parent = Exercise.linear(
-        material: ArpeggioMaterial('C', ArpeggioQuality.major),
-        hands: HandConfiguration.right,
-        direction: ExerciseDirection.up,
-        tempoBpm: 60,
-        guidance: GuidanceContext.continuouslyCued,
-      );
+    test('a floor whose family declares no scaffold stays ordinary', () {
+      // The entry rule asks the family what a supported version of its work
+      // would be, and a family that has not said cannot have one invented for
+      // it. Nothing else about this floor differs from one that acquires.
       final declared = AcquisitionFloor([
         AcquisitionFloorEntry(
-          requirementId: parent.material.materialId,
-          exercise: parent,
+          requirementId: material.materialId,
+          exercise: floor,
         ),
       ]);
       expect(
         pipeline.needsAcquisition(
           metButUnproven(),
-          parent,
+          floor,
           floor: declared,
-          attemptedParents: {parent},
+          attemptedParents: attemptedParents,
         ),
         isFalse,
       );
+    });
+
+    test('the offered task is the one the floor declared', () {
+      // Not a shape the scheduler chose. Two families may relax different
+      // things, and the task that gets built is whichever the floor named.
+      final state = metButUnproven();
+      final declared = AcquisitionFloor([
+        AcquisitionFloorEntry(
+          requirementId: material.materialId,
+          exercise: floor,
+          scaffold: const AcquisitionScaffold.unmeteredTraversal(),
+        ),
+      ]);
+      final offered = pipeline.acquisitionFor(
+        state: state,
+        progress: const AcquisitionProgress.empty(),
+        floor: declared,
+        attemptedParents: attemptedParents,
+        traces: pipeline.evaluate(
+          state: state,
+          session: SessionState(),
+          candidates: [floor],
+          at: t0,
+        ),
+      );
+
+      expect(offered?.task, AcquisitionTask.unmeteredTraversal(floor));
     });
 
     test('a blocked safety gate cannot offer acquisition', () {

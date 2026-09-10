@@ -230,3 +230,60 @@ ExerciseRealization realizeAcquisition(AcquisitionTask task) =>
     switch (task.portion) {
       FullTraversal() => realize(task.parent),
     };
+
+/// The supported task a family offers below one of its declared floors.
+///
+/// Declared by the family rather than assumed by whoever offers it. What a
+/// supported version of the work is follows from the family's motor structure,
+/// and reusing one family's scaffold for another would relax an axis that
+/// family never said was the one in the way.
+///
+/// The rule that reads this stays family-neutral: a floor with a scaffold can
+/// be acquired, a floor without one cannot, and the condition on the learner is
+/// the same everywhere.
+@immutable
+class AcquisitionScaffold {
+  /// Whether a pulse is asked for.
+  final TimingDemand timing;
+
+  /// Who decides when the next moment happens.
+  final TaskAdvancement advancement;
+
+  /// How much of the parent is played.
+  final TaskPortion portion;
+
+  const AcquisitionScaffold({
+    required this.timing,
+    required this.advancement,
+    this.portion = const FullTraversal(),
+  });
+
+  /// The whole traversal, at whatever pace the learner takes.
+  const AcquisitionScaffold.unmeteredTraversal()
+    : this(
+        timing: TimingDemand.unmetered,
+        advancement: TaskAdvancement.learnerDriven,
+      );
+
+  /// This scaffold applied to [parent].
+  AcquisitionTask taskFor(Exercise parent) => AcquisitionTask(
+    parent: parent,
+    timing: timing,
+    advancement: advancement,
+    portion: portion,
+  );
+
+  @override
+  bool operator ==(Object other) =>
+      other is AcquisitionScaffold &&
+      other.timing == timing &&
+      other.advancement == advancement &&
+      other.portion == portion;
+
+  @override
+  int get hashCode => Object.hash(timing, advancement, portion);
+
+  @override
+  String toString() =>
+      'AcquisitionScaffold($portion, ${timing.id}, ${advancement.id})';
+}

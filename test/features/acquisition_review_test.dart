@@ -108,8 +108,11 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('all the way through'), findsNothing);
-    expect(find.text('Not all of it came out that time.'), findsOne);
+    expect(find.textContaining('the whole scale'), findsNothing);
+    expect(
+      find.text('Some of the notes were not the ones in the scale.'),
+      findsOne,
+    );
     expect(find.text('Done'), findsOne);
   });
 }

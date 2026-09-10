@@ -28,6 +28,12 @@ provisional. The family supplies a continuously cued right-hand realization as
 its acquisition floor, unlike the scale family's two single-hand entries. The
 scheduler evaluates and ranks either floor through the same generic path.
 
+Below that floor the family declares an unmetered traversal, for root position
+only: an inversion begins the same chord tones from a different finger and is
+its own motor problem rather than a harder version of this one. One octave of a
+triad supplies three intervals, and continuity needs five, so a clean supported
+arpeggio traversal is recorded as practice and earns no parent probe.
+
 ## Learner state
 
 Arpeggio topology, right- and left-hand arpeggio execution, the arpeggio

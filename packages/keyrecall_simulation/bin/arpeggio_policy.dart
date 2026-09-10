@@ -212,6 +212,7 @@ const _header =
     'arm\tscope\tplayer\truns\tselections\tarpeggio_share\tmaterial_peak\t'
     'materials_selected\tgeometry_peak\trh_only_share\tlh_only_share\t'
     'ht_share\tfloor_invoke_rate\tfloor_select_rate\tmax_floor_run\t'
+    'supported_rate\t'
     'first_arpeggio\tfirst_rh\tfirst_lh\tfirst_ht\tfirst_2oct\tfirst_4oct\t'
     'prediction_p10\tprediction_p50\tprediction_p90\tadmitted_in_band\t'
     'blocked_rate\tcaught_up_rate\tlimit_rate\tinvalid_rate\tstop_material\t'
@@ -302,6 +303,7 @@ String _row(List<ArpeggioPolicyRun> runs) {
     rate(_sum(runs.map((run) => run.floorInvocations)), schedulerDecisions),
     rate(_sum(runs.map((run) => run.floorSelections)), selections),
     '${runs.map((run) => run.longestFloorRun).fold(0, (a, b) => a > b ? a : b)}',
+    rate(_sum(runs.map((run) => run.supportedSlots)), schedulerDecisions),
     firstSlot((run) => run.firstArpeggioSlot),
     firstSlot((run) => run.firstRightHandArpeggioSlot),
     firstSlot((run) => run.firstLeftHandArpeggioSlot),

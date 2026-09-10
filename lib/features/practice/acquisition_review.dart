@@ -57,14 +57,8 @@ class AcquisitionReview extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              // States what happened and stops there. Whether it was good is a
-              // question supported work does not answer, and a screen that
-              // implied an answer would be making the claim the whole design
-              // exists to withhold.
               Text(
-                record.completion.isComplete
-                    ? 'You played it all the way through, at your own pace.'
-                    : 'Not all of it came out that time.',
+                acquisitionOutcomeLine(record),
                 style: theme.textTheme.bodyLarge?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

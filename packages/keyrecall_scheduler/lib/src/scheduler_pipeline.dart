@@ -1098,17 +1098,20 @@ class SchedulerPipeline {
           .isEmpty ??
       true;
 
-  /// Whether an attempted scale entry still has no execution frontier.
+  /// Whether an attempted declared floor still has no execution frontier.
   ///
-  /// V1 acquisition needs the full scale traversal to assess continuity.
+  /// Family-neutral, and reads the family's own declaration for the part it
+  /// cannot know: whether there is a supported version of this work at all, and
+  /// what relaxing it would mean. What is asked of the learner is the same
+  /// everywhere, because the question is the same everywhere. The floor was
+  /// tried and nothing was demonstrated.
   bool needsAcquisition(
     LearnerState state,
     Exercise exercise, {
     required AcquisitionFloor floor,
     required Set<Exercise> attemptedParents,
   }) =>
-      exercise.material.familyId == TechnicalMaterial.scaleFamilyId &&
-      floor.entries.any((entry) => entry.exercise == exercise) &&
+      floor.scaffoldFor(exercise) != null &&
       attemptedParents.contains(exercise) &&
       needsExecutionBootstrap(state, exercise);
 
@@ -1232,10 +1235,9 @@ class SchedulerPipeline {
     final chosen = ranked.isEmpty
         ? candidates.first
         : selectBest(ranked) ?? candidates.first;
-    return (
-      task: AcquisitionTask.unmeteredTraversal(chosen.exercise),
-      stuck: chosen,
-    );
+    final scaffold = floor.scaffoldFor(chosen.exercise);
+    if (scaffold == null) return null;
+    return (task: scaffold.taskFor(chosen.exercise), stuck: chosen);
   }
 
   /// Whether the exact declared floor is worth asking for once.

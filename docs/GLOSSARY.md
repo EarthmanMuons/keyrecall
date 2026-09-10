@@ -44,10 +44,13 @@ the measurement policy already reads as a break, and a `TransitionCensus`
 accumulates those stalls across attempts at one task so a repeatedly troublesome
 transition can be told from generally uneven playing.
 
-Automatic acquisition requires a family-declared scale floor, an informative
-ordinary attempt at that exact exercise, and no execution frontier in its
-context. Short traversals with insufficient continuity evidence cannot earn
-probes. Probe service covers all earlier criterion successes in event order.
+Automatic acquisition requires a family-declared floor that names a scaffold, an
+informative ordinary attempt at that exact exercise, and no execution frontier
+in its context. The scaffold is the family's own statement of what a supported
+version of its work is, so a floor whose family declares none stays on the
+ordinary path. Short traversals with insufficient continuity evidence cannot
+earn probes, which a one-octave arpeggio traversal never has. Probe service
+covers all earlier criterion successes in event order.
 
 Not to be confused with [Acquisition floor], which offers ordinary exercises.
 

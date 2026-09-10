@@ -84,5 +84,10 @@ AcquisitionFloor scaleAcquisitionFloorFor(
         AcquisitionFloorEntry(
           requirementId: request.requirementId,
           exercise: exercise,
+          // Time is what a scale floor most often lacks: the notes are one
+          // step apart and the order is the thing being learned, so a
+          // traversal the learner paces themselves asks the whole question
+          // without any of the tempo.
+          scaffold: const AcquisitionScaffold.unmeteredTraversal(),
         ),
 ]);
