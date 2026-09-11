@@ -374,6 +374,99 @@ void main() {
     });
   });
 
+  group('an unmeasured attempt', () {
+    /// A session ending in an attempt that measured nothing.
+    ///
+    /// Built the way production builds one: the decision was made from state
+    /// propagated to the attempt's time, and nothing was applied afterwards,
+    /// so the canonical state it leaves behind is the one it started from.
+    ({AttemptJournal journal, LearnerState initial, LearnerState reached})
+    sessionEndingUnmeasured({String? afterHash, String? beforeHash}) {
+      final recorded = recordSession(attempts: 3);
+      final reached = replayJournal(
+        recorded.journal,
+        model: model,
+        initial: recorded.initial,
+      ).state;
+
+      final at = recorded.journal.records.last.identity.occurredAt.plusDays(1);
+      final scratch = reached.copy();
+      model.propagate(scratch, at);
+
+      recorded.journal.append(
+        AttemptRecord(
+          journalSequence: recorded.journal.nextSequence,
+          identity: AttemptIdentity(
+            profileId: testProfile.id,
+            attemptId: 'session-1-attempt-unmeasured',
+            sessionId: 'session-1',
+            indexInSession: 3,
+            occurredAt: at,
+          ),
+          provenance: provenance,
+          exercise: recorded.journal.records.first.exercise,
+          closure: AttemptClosure.unmeasured(
+            termination: AttemptTermination.learnerStopped,
+            reason: MeasurementUnavailableReason.notAvailable,
+          ),
+          stateBeforeHash: beforeHash ?? learnerStateHash(scratch),
+          stateAfterHash: afterHash ?? learnerStateHash(reached),
+        ),
+      );
+
+      return (
+        journal: recorded.journal,
+        initial: recorded.initial,
+        reached: reached,
+      );
+    }
+
+    test('moves no state and replays faithfully', () {
+      final recorded = sessionEndingUnmeasured();
+      final live = replayJournal(
+        recorded.journal,
+        model: model,
+        initial: recorded.initial,
+      );
+
+      expect(live.attemptsApplied, 3);
+      expect(live.attemptsUnmeasured, 1);
+      expect(live.divergences, isEmpty, reason: live.divergences.join('\n'));
+      expect(live.stateHash, learnerStateHash(recorded.reached));
+    });
+
+    test('is still checked against the state it says it left behind', () {
+      // Moving nothing is not the same as claiming nothing. A record with an
+      // after hash the history never produced is wrong whether or not it
+      // carried evidence.
+      final recorded = sessionEndingUnmeasured(afterHash: 'not-the-real-hash');
+      final live = replayJournal(
+        recorded.journal,
+        model: model,
+        initial: recorded.initial,
+      );
+
+      expect(
+        live.divergences.map((divergence) => divergence.field),
+        contains('state_after_hash'),
+      );
+    });
+
+    test('is still checked against the state it was decided from', () {
+      final recorded = sessionEndingUnmeasured(beforeHash: 'not-the-real-hash');
+      final live = replayJournal(
+        recorded.journal,
+        model: model,
+        initial: recorded.initial,
+      );
+
+      expect(
+        live.divergences.map((divergence) => divergence.field),
+        contains('state_before_hash'),
+      );
+    });
+  });
+
   group('replay fails loudly', () {
     test('when the recorded model version is not the one replaying', () {
       final recorded = recordSession(attempts: 3);

@@ -17,6 +17,48 @@ LearnerState placement() =>
 /// complete lifecycle event and no evidence at all, and the difference has to
 /// survive storage, reopening, and replay.
 void main() {
+  test('a clock corrected backward does not stop practice', () async {
+    // The model timeline cannot follow a clock that runs backward, so the
+    // reading is raised to where history already stands before it reaches
+    // scheduling. The alternative is a session that throws when a device
+    // corrects its clock mid-sitting.
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final session = await openSession(store);
+    await practise(session, attempts: 2, startDay: 2);
+    final settled = session.journal.records.last.identity.occurredAt;
+
+    final presented =
+        await session.decideOutcome(at: t0.plusDays(1)) as PresentedAttempt;
+    final record = await session.closeWithOutcome(
+      outcomeFor(presented.exercise),
+    );
+
+    expect(record.identity.occurredAt, settled);
+    expect(record.observedWallTime, t0.plusDays(1));
+  });
+
+  test(
+    'a backward clock is corrected even after an unmeasured attempt',
+    () async {
+      // An unmeasured attempt moved no learner state, but it is still recorded
+      // history, so it is still the lower bound the next attempt must clear.
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store);
+      await session.decide(at: t0.plusDays(2));
+      final unmeasured = await session.closeUnmeasured(
+        termination: AttemptTermination.inactivityTimeout,
+      );
+
+      final presented =
+          await session.decideOutcome(at: t0.plusDays(1)) as PresentedAttempt;
+      final record = await session.closeWithOutcome(
+        outcomeFor(presented.exercise),
+      );
+
+      expect(record.identity.occurredAt, unmeasured.identity.occurredAt);
+    },
+  );
+
   test('closing without a measurement moves no learner state', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final session = await openSession(store);

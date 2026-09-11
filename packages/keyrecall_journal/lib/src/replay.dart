@@ -211,8 +211,16 @@ ReplayResult replayJournal(
     // An attempt that measured nothing moves no learner state. Not even time:
     // propagation is driven by the next record that needs it, so a closure
     // carrying no evidence leaves competencies exactly as they were.
+    //
+    // Moving nothing is not the same as claiming nothing. The record still
+    // says which state its decision was made from and which state it left
+    // behind, and a record whose hashes are wrong is wrong whether or not it
+    // carried evidence.
     if (record.closure.measurement case MeasurementUnavailable()) {
       unmeasured++;
+      if (options.mode == ReplayMode.exact) {
+        _verifyUnmeasured(record, state, model, divergences, options);
+      }
       continue;
     }
     final measured = record.closure.measurement as Measured;
@@ -293,6 +301,56 @@ ReplayResult replayJournal(
     attemptsApplied: applied,
     attemptsUnmeasured: unmeasured,
   );
+}
+
+/// Checks what an unmeasured record claims, leaving canonical state alone.
+///
+/// The decision was made from state propagated to the attempt's time, exactly
+/// as production makes one, so the before hash and the prediction are checked
+/// against a scratch copy propagated the same way. Nothing was applied
+/// afterwards, so the after hash is checked against the canonical state as it
+/// stands.
+void _verifyUnmeasured(
+  AttemptRecord record,
+  LearnerState state,
+  LearnerModel model,
+  List<ReplayDivergence> divergences,
+  ReplayOptions options,
+) {
+  final at = record.identity.occurredAt;
+  final id = record.identity.attemptId;
+
+  if (record.stateBeforeHash != null || record.decision != null) {
+    final scratch = state.copy();
+    model.propagate(scratch, at);
+    if (record.stateBeforeHash case final before?) {
+      _compareHash(
+        id,
+        'state_before_hash',
+        before,
+        learnerStateHash(scratch),
+        divergences,
+        options,
+      );
+    }
+    _comparePrediction(
+      record,
+      model.predict(scratch, record.exercise, at: at),
+      divergences,
+      options,
+    );
+  }
+
+  if (record.stateAfterHash case final after?) {
+    _compareHash(
+      id,
+      'state_after_hash',
+      after,
+      learnerStateHash(state),
+      divergences,
+      options,
+    );
+  }
 }
 
 LearnerState _seedState(

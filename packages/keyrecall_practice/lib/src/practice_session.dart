@@ -235,6 +235,11 @@ class PracticeSession {
 
   PendingDecision? _pending;
   PresentedAttempt? _outstanding;
+
+  /// What the clock read for the outstanding decision, when it disagreed with
+  /// the model time the observation boundary put it at.
+  DateTime? _observedWallTime;
+
   late ScopeResolution _scopeResolution;
 
   PracticeSession._({
@@ -463,6 +468,12 @@ class PracticeSession {
     final validScope = resolution as ValidPracticeScope;
     final scope = validScope.scope;
 
+    // The caller passes a clock reading, which the observation boundary turns
+    // into a model time before anything is evaluated or persisted.
+    final observed = at.toUtc();
+    at = _observationTime(observed);
+    _observedWallTime = at == observed ? null : observed;
+
     final scratch = _state.copy();
     learner.propagate(scratch, at);
 
@@ -608,7 +619,7 @@ class PracticeSession {
   /// later. Failing the attempt instead would cost the learner their practice,
   /// which is the worse of the two.
   Future<void> _serveAcquisitionProbe(PendingDecision decision) async {
-    final logicalTime = _acquisitionTime(decision.decidedAt);
+    final logicalTime = _observationTime(decision.decidedAt);
     final service = acquisitionServiceOf(
       presented: decision.exercise,
       progress: acquisitionProgress,
@@ -620,8 +631,10 @@ class PracticeSession {
         occurredAt: logicalTime,
       ),
       journalSequence: _acquisition.nextSequence,
+      // The decision time is already past the observation boundary, so the
+      // raw reading is the one this sitting saw when it decided.
       observedWallTime: logicalTime == decision.decidedAt
-          ? null
+          ? _observedWallTime
           : decision.decidedAt,
     );
     if (service == null) return;
@@ -738,7 +751,7 @@ class PracticeSession {
     // Built once and held. A retry after an uncertain write must offer the
     // same event under the same id, or the store's idempotency has nothing to
     // recognize and the same attempt lands twice.
-    final logicalTime = _acquisitionTime(at);
+    final logicalTime = _observationTime(at);
     final record = _acquisitionInFlight ??= acquisitionRecordOf(
       observation: observeAcquisition(
         task: outstanding.task,
@@ -768,7 +781,19 @@ class PracticeSession {
     return record;
   }
 
-  DateTime _acquisitionTime(DateTime wallTime) {
+  /// The model time an observation read at [wallTime] belongs to.
+  ///
+  /// The observation boundary. A device clock really can be corrected backward
+  /// mid-session, and the model timeline cannot follow it: every memory
+  /// transition is driven by elapsed time, and propagating backward is
+  /// illegal. A reading behind where history already stands is raised to it
+  /// here, before anything is persisted, and the raw reading is kept for
+  /// diagnostics.
+  ///
+  /// The journal tail bounds this whether or not that last attempt was
+  /// measured. An unmeasured attempt moved no state, but it is still recorded
+  /// history, and the log refuses a record that precedes it.
+  DateTime _observationTime(DateTime wallTime) {
     var logical = wallTime.toUtc();
     for (final lowerBound in [
       profile.createdAt,
@@ -951,6 +976,7 @@ class PracticeSession {
     final outstanding = _outstanding ?? _pendingAsOutstanding();
     final decision = outstanding.decision;
     final at = decision.decidedAt;
+    observedWallTime ??= _observedWallTime;
 
     final next = _state.copy();
     final AttemptClosure closure;
