@@ -142,10 +142,20 @@ or persisted. The journal tail bounds it whether or not that last attempt was
 measured, since an unmeasured attempt moved no state but is still recorded
 history.
 
-Stored timestamps carry an explicit offset and are read strictly. A timestamp
-without one means whatever the machine reading it decides, and the platform
-parser turns `2026-02-31` into March 3, which is an impossible date repaired
-into a plausible one that nothing downstream will ever question.
+Stored timestamps have one grammar, which `encodeTime` writes and `parseTime`
+accepts:
+
+```text
+YYYY-MM-DDThh:mm:ss[.f{1,6}](Z|(+|-)hh:mm)
+```
+
+Four-digit years, mandatory seconds, at most six fractional digits, and an
+offset within 14 hours. Every bound is there because the platform parser does
+something quietly wrong past it: `2026-02-31` becomes March 3, `+00:99` becomes
+the previous day, a seventh fractional digit is truncated into a different
+instant, and a timestamp with no offset at all means whatever the machine
+reading it decides. A year outside the range is refused when it is written
+rather than persisted in an expanded form this cannot read back.
 
 ## Records are contiguous, and ids do not collide
 

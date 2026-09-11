@@ -53,6 +53,52 @@ void main() {
       expect(parseTime('2026-01-01 00:00:00'), isNull);
     });
 
+    test('reject an offset that is not one', () {
+      // The platform parser does the arithmetic regardless: +00:99 lands on
+      // the previous day at 22:21, and +99:00 lands four days earlier.
+      expect(parseTime('2026-01-01T00:00:00.000+00:99'), isNull);
+      expect(parseTime('2026-01-01T00:00:00.000+99:00'), isNull);
+      expect(parseTime('2026-01-01T00:00:00.000-15:00'), isNull);
+      expect(
+        parseTime('2026-01-01T00:00:00.000+14:00'),
+        DateTime.utc(2025, 12, 31, 10),
+        reason: 'and every offset anybody actually keeps time in is inside it',
+      );
+    });
+
+    test('reject precision the stored form cannot hold', () {
+      // A seventh digit is truncated by the platform, which records a
+      // different instant as though it were the one written.
+      expect(parseTime('2026-01-01T00:00:00.1234567Z'), isNull);
+      expect(
+        parseTime('2026-01-01T00:00:00.123456Z'),
+        DateTime.utc(2026, 1, 1, 0, 0, 0, 123, 456),
+      );
+    });
+
+    test('what the encoder writes is what the parser accepts', () {
+      for (final at in [
+        DateTime.utc(2026),
+        DateTime.utc(2026, 3, 14, 15, 9, 26, 535),
+        DateTime.utc(2026, 3, 14, 15, 9, 26, 535, 897),
+        DateTime.utc(1, 1, 1),
+        DateTime.utc(9999, 12, 31, 23, 59, 59, 999, 999),
+      ]) {
+        expect(parseTime(encodeTime(at)), at, reason: '$at');
+      }
+    });
+
+    test('a year the stored form cannot express is refused, not written', () {
+      // The platform writes an expanded year, which nothing here reads back.
+      // Failing where it is produced beats persisting it and discovering that
+      // later.
+      expect(
+        () => encodeTime(DateTime.utc(10000)),
+        throwsA(isA<JournalFormatException>()),
+      );
+      expect(parseTime('+010000-01-01T00:00:00.000Z'), isNull);
+    });
+
     test('accept what the encoder writes, and read it as UTC', () {
       final at = DateTime.utc(2026, 3, 14, 15, 9, 26, 535);
       expect(parseTime(encodeTime(at)), at);

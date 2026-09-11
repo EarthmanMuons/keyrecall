@@ -132,16 +132,40 @@ DateTime requireTime(
   );
 }
 
+/// The one timestamp grammar this package writes and reads.
+///
+/// ```text
+/// YYYY-MM-DDThh:mm:ss[.f{1,6}](Z|(+|-)hh:mm)
+/// ```
+///
+/// Four-digit years from 0001 to 9999, mandatory seconds, one to six
+/// fractional digits or none, and either `Z` or an offset within 14 hours of
+/// it. [encodeTime] writes exactly this subset and always in UTC, and
+/// [parseTime] accepts exactly this subset, so what this package persists is
+/// what it can read back.
+///
+/// The bounds are deliberate rather than incidental. Six fractional digits is
+/// what a [DateTime] holds, so a seventh would be truncated and a truncated
+/// timestamp is a different instant recorded as if it were the same one. The
+/// offset range is the real one: every zone in use falls inside 14 hours, and
+/// accepting more means accepting arithmetic nobody wrote on purpose.
+const String timestampGrammar = 'YYYY-MM-DDThh:mm:ss[.f{1,6}](Z|(+|-)hh:mm)';
+
+/// The largest zone offset, in minutes, that a stored timestamp may carry.
+const int maxTimestampOffsetMinutes = 14 * 60;
+
 final RegExp _iso8601 = RegExp(
-  r'^(\d{4})-(\d{2})-(\d{2})[Tt]'
-  r'(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?'
-  r'([Zz]|[+-]\d{2}:?\d{2})$',
+  r'^(\d{4})-(\d{2})-(\d{2})T'
+  r'(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?'
+  r'(?:Z|([+-])(\d{2}):(\d{2}))$',
 );
 
 /// Parses [value] as a UTC timestamp, or returns null when it is not one.
 ///
-/// Rejects a missing offset and any calendar component that does not survive
-/// the round trip, rather than normalizing either into something readable.
+/// Accepts exactly [timestampGrammar]. Nothing here normalizes: an offset or a
+/// calendar component outside its range is refused rather than carried into
+/// the arithmetic, because the platform parser turns both into a real instant
+/// that no longer corresponds to what was written.
 DateTime? parseTime(String value) {
   final match = _iso8601.firstMatch(value);
   if (match == null) return null;
@@ -152,6 +176,13 @@ DateTime? parseTime(String value) {
   final hour = int.parse(match[4]!);
   final minute = int.parse(match[5]!);
   final second = int.parse(match[6]!);
+
+  if (match[8] != null) {
+    final offset = int.parse(match[9]!) * 60 + int.parse(match[10]!);
+    if (int.parse(match[10]!) > 59 || offset > maxTimestampOffsetMinutes) {
+      return null;
+    }
+  }
 
   final calendar = DateTime.utc(year, month, day, hour, minute, second);
   if (calendar.year != year ||
@@ -174,7 +205,22 @@ DateTime? readOptionalTime(
 }) => json[key] == null ? null : requireTime(json, key, location: location);
 
 /// Writes [at] as ISO-8601 in UTC.
-String encodeTime(DateTime at) => at.toUtc().toIso8601String();
+///
+/// Throws [JournalFormatException] for a year outside the four-digit range,
+/// which the platform writes in an expanded form that [timestampGrammar] does
+/// not cover. Refusing to write one is what keeps the two sides symmetric:
+/// persisting a timestamp this package could not read back is worse than
+/// failing at the moment it is produced.
+String encodeTime(DateTime at) {
+  final utc = at.toUtc();
+  if (utc.year < 1 || utc.year > 9999) {
+    throw JournalFormatException(
+      'cannot write the year ${utc.year}; stored timestamps are '
+      '$timestampGrammar',
+    );
+  }
+  return utc.toIso8601String();
+}
 
 /// Writes an optional timestamp, preserving absence as null.
 String? encodeOptionalTime(DateTime? at) => at == null ? null : encodeTime(at);
