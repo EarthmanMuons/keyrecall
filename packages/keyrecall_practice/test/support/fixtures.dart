@@ -213,3 +213,33 @@ LearnerStateCheckpoint checkpointOf(
   learnerModelVersion: learnerModelVersion ?? learner.params.modelVersion,
   genesisStateHash: genesisHashOf(profile ?? alice),
 );
+
+/// [exercise] played exactly as it was asked for.
+///
+/// A moment's notes arrive [spreadMs] apart and the moments [gapMs] apart, so
+/// a two-hand exercise is played together and on the beat.
+PerformanceTranscript playedFor(
+  Exercise exercise, {
+  int gapMs = 500,
+  int spreadMs = 10,
+}) {
+  final realization = realize(exercise);
+  final perMoment = realization.moments.first.notes.length;
+  var transcript = PerformanceTranscript.empty;
+  var index = 0;
+  for (final moment in realization.moments) {
+    for (final note in moment.notes) {
+      transcript = transcript.appending(
+        pitch: spellObservedPitch(note.midiNote, material: exercise.material),
+        timestampMs:
+            (index ~/ perMoment) * gapMs + (index % perMoment) * spreadMs,
+      );
+      index++;
+    }
+  }
+  return transcript;
+}
+
+/// The measurement a record carries, for tests that know it has one.
+Measured measuredOf(AttemptRecord record) =>
+    record.closure.measurement as Measured;

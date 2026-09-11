@@ -34,6 +34,14 @@ class _PreparedCommit {
   /// What was observed, for the scheduler's own bookkeeping.
   final Outcome? outcome;
 
+  /// The reading the outcome was derived from, when it came from a
+  /// performance.
+  ///
+  /// Frozen with the rest. A retry that read the transcript again could hand
+  /// back a reading describing a different performance than the record it
+  /// accompanies, which is one result contradicting itself.
+  final PerformanceReading? reading;
+
   /// Whether [record] is known to be in authoritative history.
   bool isDurable = false;
 
@@ -44,6 +52,7 @@ class _PreparedCommit {
     required this.record,
     required this.next,
     required this.outcome,
+    this.reading,
   });
 }
 
@@ -1003,21 +1012,32 @@ class PracticeSession {
     MeasurementPolicy policy = MeasurementPolicy.standard,
     DateTime? observedWallTime,
   }) async {
-    final outstanding = _outstanding ?? _pendingAsOutstanding();
-    final reading = readPerformance(
-      exercise: outstanding.decision.exercise,
-      transcript: transcript,
-      policy: policy,
-    );
+    if (_commit case final held? when held.reading == null) {
+      throw PracticeStateError(
+        'this attempt was closed without a performance, and that transaction '
+        'is still open; finish it the way it was started',
+      );
+    }
 
-    return ClosedAttempt(
-      record: await _close(
+    // Resuming asks nothing of this transcript: the reading was frozen with
+    // the record, so the pair handed back always describes one performance.
+    final commit = await _commitTransaction(() {
+      final outstanding = _outstanding ?? _pendingAsOutstanding();
+      final reading = readPerformance(
+        exercise: outstanding.decision.exercise,
+        transcript: transcript,
+        policy: policy,
+      );
+      return _prepare(
         termination: termination,
         outcome: reading.outcome,
+        unavailable: null,
         observedWallTime: observedWallTime,
-      ),
-      reading: reading,
-    );
+        reading: reading,
+      );
+    });
+
+    return ClosedAttempt(record: commit.record, reading: commit.reading!);
   }
 
   /// Ends the outstanding attempt with the learner reporting that they could
@@ -1044,18 +1064,23 @@ class PracticeSession {
     required PerformanceTranscript transcript,
     DateTime? observedWallTime,
   }) {
-    final outstanding = _outstanding ?? _pendingAsOutstanding();
-    final guidance = outstanding.decision.exercise.guidance;
-    if (!guidance.isRetrievalObserved) {
-      throw PracticeStateError(
-        'nothing to fail to retrieve: this rung supplies the material',
-      );
-    }
-    if (transcript.isNotEmpty) {
-      throw PracticeStateError(
-        '${transcript.length} notes were played, so what happened is a '
-        'question for measurement rather than for the learner',
-      );
+    // Only when this is a new transaction. Resuming one asks nothing of the
+    // caller's arguments, so validating them again could refuse to finish a
+    // close whose record may already be history.
+    if (_commit == null) {
+      final outstanding = _outstanding ?? _pendingAsOutstanding();
+      final guidance = outstanding.decision.exercise.guidance;
+      if (!guidance.isRetrievalObserved) {
+        throw PracticeStateError(
+          'nothing to fail to retrieve: this rung supplies the material',
+        );
+      }
+      if (transcript.isNotEmpty) {
+        throw PracticeStateError(
+          '${transcript.length} notes were played, so what happened is a '
+          'question for measurement rather than for the learner',
+        );
+      }
     }
 
     return _close(
@@ -1109,17 +1134,29 @@ class PracticeSession {
     Outcome? outcome,
     MeasurementUnavailableReason? unavailable,
     DateTime? observedWallTime,
-  }) async {
-    // Prepared once. A retry finishes this transaction rather than computing a
-    // second one: the caller reads its clock again on every call, so rebuilding
-    // would offer the same attempt id carrying different content, which an
-    // authoritative log is right to refuse.
-    final commit = _commit ??= _prepare(
+  }) async => (await _commitTransaction(
+    () => _prepare(
       termination: termination,
       outcome: outcome,
       unavailable: unavailable,
       observedWallTime: observedWallTime,
-    );
+    ),
+  )).record;
+
+  /// Carries a close through to the end, preparing one only if none is open.
+  ///
+  /// [prepare] runs exactly once per transaction, when it begins. A retry
+  /// resumes what is already held, so nothing a caller passes a second time is
+  /// consulted: the complete result was decided when the close started, and
+  /// may already be written.
+  Future<_PreparedCommit> _commitTransaction(
+    _PreparedCommit Function() prepare,
+  ) async {
+    // Prepared once. A retry finishes this transaction rather than computing a
+    // second one: the caller reads its clock again on every call, so rebuilding
+    // would offer the same attempt id carrying different content, which an
+    // authoritative log is right to refuse.
+    final commit = _commit ??= prepare();
 
     // The durable append is the boundary. Canonical learner state does not
     // advance until the attempt is in authoritative history, and advances
@@ -1158,7 +1195,7 @@ class PracticeSession {
 
     await store.clearPendingDecision(profile.id);
     _commit = null;
-    return commit.record;
+    return commit;
   }
 
   /// Computes the attempt this close will commit, and freezes it.
@@ -1170,6 +1207,7 @@ class PracticeSession {
     required Outcome? outcome,
     required MeasurementUnavailableReason? unavailable,
     required DateTime? observedWallTime,
+    PerformanceReading? reading,
   }) {
     final decision = (_outstanding ?? _pendingAsOutstanding()).decision;
     final at = decision.decidedAt;
@@ -1210,6 +1248,7 @@ class PracticeSession {
       ),
       next: next,
       outcome: outcome,
+      reading: reading,
     );
   }
 
@@ -1247,6 +1286,7 @@ class PracticeSession {
   /// an abandoned slot leaves no trace to clean up. Presenting the decision
   /// again is the better answer wherever the exercise can still be played,
   /// which is why the app does that instead.
+
   Future<void> abandonPending() async {
     if (_commit?.isDurable ?? false) {
       throw PracticeStateError(

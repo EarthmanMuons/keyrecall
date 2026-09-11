@@ -695,6 +695,103 @@ void main() {
       );
     });
 
+    test('cleanup retries finish through the performance API too', () async {
+      // The wrapper resolves the outstanding decision before committing, and
+      // a finished commit has already cleared it. Looking that up before
+      // resuming refused to finish a close whose evidence was durable.
+      final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+      final session = await openSession(store);
+      final presented = await session.decide(at: t0.plusDays(0.5));
+      final played = playedFor(presented!.exercise);
+
+      store.clearFailure = const _StorageFailure();
+      await expectLater(
+        session.closeFromPerformance(played),
+        throwsA(isA<_StorageFailure>()),
+      );
+
+      store.clearFailure = null;
+      final closed = await session.closeFromPerformance(played);
+
+      expect(closed.record.identity.attemptId, presented.decision.attemptId);
+      expect(session.journal.length, 1);
+      expect(session.hasOutstandingAttempt, isFalse);
+      expect(await store.loadPendingDecision(alice.id), isNull);
+    });
+
+    test('cleanup retries finish through the declined API too', () async {
+      final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+      final session = await openSession(store);
+      PresentedAttempt? presented;
+      for (var day = 0.5; presented == null && day < 12; day += 0.5) {
+        final decided = await session.decide(at: t0.plusDays(day));
+        if (decided!.exercise.guidance.isRetrievalObserved) {
+          presented = decided;
+        } else {
+          await session.closeWithOutcome(outcomeFor(decided.exercise));
+        }
+      }
+      final committed = session.journal.length;
+
+      store.clearFailure = const _StorageFailure();
+      await expectLater(
+        session.closeDeclined(transcript: PerformanceTranscript.empty),
+        throwsA(isA<_StorageFailure>()),
+      );
+
+      store.clearFailure = null;
+      final record = await session.closeDeclined(
+        transcript: PerformanceTranscript.empty,
+      );
+
+      expect(record.identity.attemptId, presented!.decision.attemptId);
+      expect(session.journal.length, committed + 1);
+      expect(session.hasOutstandingAttempt, isFalse);
+    });
+
+    test('a retried performance close cannot contradict itself', () async {
+      // The record is frozen and the reading was not, so a retry with a
+      // different transcript handed back a reading describing a performance
+      // the record does not.
+      final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+      final session = await openSession(store);
+      await session.decide(at: t0.plusDays(0.5));
+
+      store.failNextAppend = true;
+      await expectLater(
+        session.closeFromPerformance(PerformanceTranscript.empty),
+        throwsA(isA<_StorageFailure>()),
+      );
+
+      // Nothing was written, so this retry does prepare afresh.
+      final first = await session.closeFromPerformance(
+        PerformanceTranscript.empty,
+      );
+      expect(first.reading.outcome.started, isFalse);
+      expect(measuredOf(first.record).outcome.started, isFalse);
+
+      // And one whose transaction is already open keeps its own reading.
+      final next = await session.decide(at: t0.plusDays(1));
+      final played = playedFor(next!.exercise);
+      store.clearFailure = const _StorageFailure();
+      await expectLater(
+        session.closeFromPerformance(played),
+        throwsA(isA<_StorageFailure>()),
+      );
+
+      store.clearFailure = null;
+      final resumed = await session.closeFromPerformance(
+        PerformanceTranscript.empty,
+      );
+
+      expect(
+        resumed.reading.outcome.started,
+        measuredOf(resumed.record).outcome.started,
+        reason: 'the reading and the record describe one performance',
+      );
+      expect(resumed.reading.outcome.started, isTrue);
+    });
+
     test('and overlapping closes finish the one transaction', () async {
       // A session is still single-writer, and calling this twice at once is
       // still a caller error. What it can no longer be is a divergence: the

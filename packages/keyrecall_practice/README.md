@@ -62,8 +62,9 @@ when the settling read fails too, and reloads before building another event.
 Cleanup is part of the transaction, not an afterthought. If clearing the pending
 slot fails, the evidence is still durable and the close still reports a failure,
 so the transaction stays open: closing again finishes the cleanup and returns
-the same record, and deciding again is refused until it does. A committed
-attempt cannot be abandoned.
+the same result, and deciding again is refused until it does.
+
+A committed attempt cannot be abandoned.
 
 A pending decision is deliberately **not** part of the journal. An attempt with
 no outcome produced no evidence and moved no state, and putting it in the replay
