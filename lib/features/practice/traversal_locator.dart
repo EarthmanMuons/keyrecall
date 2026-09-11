@@ -31,10 +31,12 @@ import 'staff_score.dart';
 const int _lookahead = 2;
 
 /// The notes of the moments each hand has reached, of those still held.
+/// [traversalLength] projects repeated playing onto a single displayed traversal.
 Set<String> locatedElementIds(
   ExerciseRealization realization, {
   required PerformanceTranscript transcript,
   required Set<int> pressedNotes,
+  int? traversalLength,
 }) => {
   for (final MapEntry(key: hand, value: position) in reachedMoments(
     realization,
@@ -43,7 +45,10 @@ Set<String> locatedElementIds(
     if (pressedNotes.contains(
       realization.moments[position].noteFor(hand)!.midiNote,
     ))
-      staffElementId(hand, position),
+      staffElementId(
+        hand,
+        traversalLength == null ? position : position % traversalLength,
+      ),
 };
 
 /// The last moment of [realization] each hand's arrivals reached.

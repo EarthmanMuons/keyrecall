@@ -236,6 +236,7 @@ crisp.CrispNotationTheme staffTheme(BuildContext context) {
 class StaffCue extends ConsumerStatefulWidget {
   const StaffCue({
     required this.exercise,
+    this.acquisition,
     this.showsFingering = false,
     this.locates = false,
     super.key,
@@ -243,6 +244,9 @@ class StaffCue extends ConsumerStatefulWidget {
 
   /// The exercise whose realization is drawn.
   final Exercise exercise;
+
+  /// The supported task, when the displayed traversal is played repeatedly.
+  final AcquisitionTask? acquisition;
 
   /// Whether the fingering is written over the notes.
   ///
@@ -284,9 +288,14 @@ class _StaffCueState extends ConsumerState<StaffCue> {
   }
 
   void _relocate() => _located.value = locatedElementIds(
-    realize(widget.exercise),
+    widget.acquisition == null
+        ? realize(widget.exercise)
+        : realizeAcquisition(widget.acquisition!),
     transcript: ref.read(attemptTranscriptProvider).transcript,
     pressedNotes: ref.read(inputActivityProvider).pressedNoteNumbers,
+    traversalLength: widget.acquisition == null
+        ? null
+        : realize(widget.exercise).moments.length,
   );
 
   @override

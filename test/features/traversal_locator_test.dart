@@ -30,6 +30,68 @@ void main() {
     return transcript;
   }
 
+  test('a repeated task locates each traversal on the same score', () {
+    final parent = Exercise.linear(
+      material: ArpeggioMaterial('C', ArpeggioQuality.major),
+      hands: HandConfiguration.right,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+    );
+    final task = AcquisitionScaffold.unmeteredRepetitions(2).taskFor(parent);
+    final realization = realizeAcquisition(task);
+    final traversalLength = realize(parent).moments.length;
+    var transcript = PerformanceTranscript.empty;
+    for (final moment in realization.moments) {
+      final note = moment.notes.single.midiNote;
+      transcript = transcript.appending(
+        pitch: spellObservedPitch(note, material: parent.material),
+        timestampMs: moment.position * 600,
+      );
+      expect(
+        locatedElementIds(
+          realization,
+          transcript: transcript,
+          pressedNotes: {note},
+          traversalLength: traversalLength,
+        ),
+        {staffElementId(Hand.right, moment.position % traversalLength)},
+      );
+      expect(
+        locatedElementIds(
+          realization,
+          transcript: transcript,
+          pressedNotes: {},
+          traversalLength: traversalLength,
+        ),
+        isEmpty,
+      );
+    }
+  });
+
+  test('an extra note does not advance the displayed repetition', () {
+    final parent = Exercise.linear(
+      material: ArpeggioMaterial('C', ArpeggioQuality.major),
+      hands: HandConfiguration.right,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+    );
+    final task = AcquisitionScaffold.unmeteredRepetitions(2).taskFor(parent);
+    final realization = realizeAcquisition(task);
+    final notes = [
+      for (final moment in realization.moments) moment.notes.single.midiNote,
+    ];
+    final transcript = playing([...notes.take(4), notes[4] + 1, notes[4]]);
+    expect(
+      locatedElementIds(
+        realization,
+        transcript: transcript,
+        pressedNotes: {notes[4]},
+        traversalLength: 4,
+      ),
+      {staffElementId(Hand.right, 0)},
+    );
+  });
+
   List<int> keysOf(ExerciseRealization realization) => [
     for (final moment in realization.moments)
       for (final note in moment.notes) note.midiNote,

@@ -16,6 +16,8 @@ import 'package:keyrecall/features/piano/piano.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/screen_wake_lock.dart';
+import 'package:keyrecall/features/practice/staff_cue.dart';
+import 'package:keyrecall/features/practice/staff_score.dart';
 
 import '../support/synthetic_instrument.dart';
 
@@ -642,6 +644,55 @@ void main() {
       expect(find.text('Back at 60 BPM this time.'), findsNothing);
     });
   });
+
+  testWidgets(
+    'a repeated arpeggio follows the second traversal on the same staff',
+    (tester) async {
+      tester.view.physicalSize = const Size(1400, 2000);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final parent = Exercise.linear(
+        material: ArpeggioMaterial('C', ArpeggioQuality.major),
+        hands: HandConfiguration.right,
+        octaves: 1,
+        direction: ExerciseDirection.up,
+        guidance: GuidanceContext.continuouslyCued,
+      );
+      final task = AcquisitionScaffold.unmeteredRepetitions(2).taskFor(parent);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syntheticInstrument],
+          child: MaterialApp(
+            home: Scaffold(
+              body: AttemptView(
+                exercise: parent,
+                acquisition: task,
+                onFinish: (_) async {},
+              ),
+            ),
+          ),
+        ),
+      );
+      expect(find.textContaining('Play this twice'), findsOneWidget);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AttemptView)),
+      );
+      await tester.tap(find.text('Ready'));
+      await tester.pump();
+      for (final moment in realizeAcquisition(task).moments) {
+        container.read(demoInputProvider.notifier).playChord({
+          moment.notes.single.midiNote,
+        });
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 600));
+        final staff = tester.widget<FittedStaff>(find.byType(FittedStaff));
+        expect(staff.highlightedIds!.value, {
+          staffElementId(Hand.right, moment.position % 4),
+        });
+      }
+      expect(find.text('Done'), findsOneWidget);
+    },
+  );
 
   group('a supported acquisition attempt', () {
     final parent = Exercise.linear(

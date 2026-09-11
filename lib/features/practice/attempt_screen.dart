@@ -1066,6 +1066,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           if (showsCue && cueOnStaff(presentation.cueModality))
             StaffCue(
               exercise: exercise,
+              acquisition: widget.acquisition,
               showsFingering: presentation.motorCue == MotorCue.fingering,
               locates: echoes && _phase == _Phase.playing,
             ),
