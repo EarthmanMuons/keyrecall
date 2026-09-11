@@ -15,16 +15,10 @@ void main() {
   /// A checkpoint written out, ready to be tampered with before reading.
   Map<String, Object?> checkpointJson() {
     final recorded = recordSession(attempts: 3);
-    final replayed = replayJournal(
+    final captured = checkpointAfter(
       recorded.journal,
-      model: model,
+      recorded.journal.length - 1,
       initial: recorded.initial,
-    );
-    final last = recorded.journal.records.last;
-    final captured = LearnerStateCheckpoint.after(
-      last,
-      state: replayed.state,
-      learnerModelVersion: params.modelVersion,
     );
     return jsonDecode(jsonEncode(captured.toJson())) as Map<String, Object?>;
   }

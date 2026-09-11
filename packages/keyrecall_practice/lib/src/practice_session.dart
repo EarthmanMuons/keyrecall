@@ -240,6 +240,13 @@ class PracticeSession {
   /// the model time the observation boundary put it at.
   DateTime? _observedWallTime;
 
+  /// Hash of the placement state this profile's history propagates from.
+  ///
+  /// Held because a checkpoint's digest covers it: the prior is what every
+  /// posterior in the journal is a function of, so a checkpoint taken under
+  /// one placement must not seed a replay under another.
+  final String _genesisStateHash;
+
   late ScopeResolution _scopeResolution;
 
   PracticeSession._({
@@ -262,7 +269,9 @@ class PracticeSession {
     required AttemptJournal journal,
     required AcquisitionJournal acquisition,
     required PendingDecision? pending,
+    required String genesisStateHash,
   }) : _nextId = nextId,
+       _genesisStateHash = genesisStateHash,
        _state = state,
        _session = session,
        _journal = journal,
@@ -326,7 +335,13 @@ class PracticeSession {
       journal,
       model: learner,
       initial: initial,
-      from: await _usableCheckpoint(store, profile.id, learner, journal),
+      from: await _usableCheckpoint(
+        store,
+        profile.id,
+        learner,
+        journal,
+        learnerStateHash(initial),
+      ),
     );
     if (!replay.isFaithful) {
       throw JournalFormatException(
@@ -362,6 +377,7 @@ class PracticeSession {
       appBuildVersion: appBuildVersion,
       nextId: generator,
       state: replay.state,
+      genesisStateHash: learnerStateHash(initial),
       session: _rebuildSessionState(journal, learner, resolvedPipeline.config),
       journal: journal,
       acquisition: acquisition,
@@ -1064,9 +1080,11 @@ class PracticeSession {
   Future<LearnerStateCheckpoint?> saveCheckpoint() async {
     if (_journal.isEmpty) return null;
     final checkpoint = LearnerStateCheckpoint.after(
-      _journal.records.last,
+      _journal,
+      throughSequence: _journal.length - 1,
       state: _state,
       learnerModelVersion: learner.params.modelVersion,
+      genesisStateHash: _genesisStateHash,
     );
     await store.saveCheckpoint(checkpoint);
     return checkpoint;
@@ -1100,20 +1118,22 @@ class PracticeSession {
     String profileId,
     LearnerModel learner,
     AttemptJournal journal,
+    String genesisStateHash,
   ) async {
     try {
       final checkpoint = await store.loadCheckpoint(profileId);
       if (checkpoint == null) return null;
       // Every part of what a checkpoint claims is checked against the journal
       // before it stands in for history: position, identity, time, its own
-      // hash, and agreement with the state the covered attempt produced. A
-      // checkpoint covering history the journal does not hold is one of those
-      // rejections, which is what an erase leaves behind if a sitting saves one
-      // after it.
+      // hash, the digest of the records it skips, and agreement with the state
+      // the covered attempt produced. A checkpoint covering history the journal
+      // does not hold is one of those rejections, which is what an erase leaves
+      // behind if a sitting saves one after it.
       final rejection = validateCheckpointAgainstJournal(
         checkpoint,
         journal: journal,
         learnerModelVersion: learner.params.modelVersion,
+        genesisStateHash: genesisStateHash,
       );
       return rejection == null ? checkpoint : null;
     } on JournalFormatException {

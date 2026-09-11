@@ -30,7 +30,14 @@ const int attemptSchemaVersion = 4;
 /// name its family, and manufacturing provenance that was never stored is
 /// worse than rebuilding from the attempts, which is what an unreadable
 /// checkpoint already asks for.
-const int checkpointSchemaVersion = 2;
+///
+/// Version 3 records a digest of the history the checkpoint stands in for.
+/// Nothing computes one for an older checkpoint: the digest exists to say that
+/// the skipped records are the ones that produced this state, and deriving it
+/// from whatever journal is on disk now would assert exactly what it is meant
+/// to check. An unreadable checkpoint is a cache miss, which is the whole cost
+/// of not having one.
+const int checkpointSchemaVersion = 3;
 
 /// Version of the acquisition-log wire format.
 ///

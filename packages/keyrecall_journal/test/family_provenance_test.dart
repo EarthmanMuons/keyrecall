@@ -64,6 +64,7 @@ void main() {
       learnerModelVersion: params.modelVersion,
       throughJournalSequence: 0,
       throughAttemptId: 'attempt-0',
+      coversHistoryHash: 'not-replayed-here',
       coversThrough: at,
     );
 
@@ -92,6 +93,7 @@ void main() {
                   learnerModelVersion: params.modelVersion,
                   throughJournalSequence: 0,
                   throughAttemptId: 'attempt-0',
+                  coversHistoryHash: 'not-replayed-here',
                   coversThrough: at,
                 ).toJson(),
               ),

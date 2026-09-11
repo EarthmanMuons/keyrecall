@@ -193,3 +193,23 @@ class AlwaysOffersAcquisition extends SchedulerPipeline {
     );
   }
 }
+
+/// The state a profile's history propagates from, which a checkpoint's digest
+/// covers along with the records it skips.
+String genesisHashOf(Profile profile) => learnerStateHash(
+  learner.placementState(profile.placement, at: profile.createdAt),
+);
+
+/// A checkpoint over [session]'s history, as that sitting would save one.
+LearnerStateCheckpoint checkpointOf(
+  PracticeSession session, {
+  Profile? profile,
+  LearnerState? state,
+  String? learnerModelVersion,
+}) => LearnerStateCheckpoint.after(
+  session.journal,
+  throughSequence: session.journal.length - 1,
+  state: state ?? session.state,
+  learnerModelVersion: learnerModelVersion ?? learner.params.modelVersion,
+  genesisStateHash: genesisHashOf(profile ?? alice),
+);

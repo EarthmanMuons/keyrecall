@@ -270,15 +270,11 @@ void main() {
       () async {
         final store = InMemoryPracticeStore(createdAt: t0);
         final first = await openSession(store);
-        final committed = await practise(first, attempts: 4);
+        await practise(first, attempts: 4);
         final reached = learnerStateHash(first.state);
 
         await store.saveCheckpoint(
-          LearnerStateCheckpoint.after(
-            committed.last,
-            state: first.state,
-            learnerModelVersion: 'v1-prototype-99',
-          ),
+          checkpointOf(first, learnerModelVersion: 'v1-prototype-99'),
         );
 
         final reopened = await openSession(store, sessionId: 'session-2');

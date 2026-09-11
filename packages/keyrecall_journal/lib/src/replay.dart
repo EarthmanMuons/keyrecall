@@ -364,6 +364,7 @@ LearnerState _seedState(
     from,
     journal: journal,
     learnerModelVersion: learnerModelVersion,
+    genesisStateHash: learnerStateHash(initial),
   );
   if (rejection != null) {
     throw JournalFormatException(rejection.reason, location: 'checkpoint');

@@ -54,7 +54,7 @@ void main() {
       fixture('attempt-journal-v4.jsonl').readAsStringSync().trimRight(),
     );
     final checkpoint = LearnerStateCheckpoint.fromJson(
-      jsonDecode(fixture('checkpoint-v2.json').readAsStringSync())
+      jsonDecode(fixture('checkpoint-v3.json').readAsStringSync())
           as Map<String, Object?>,
       params: params,
     );
@@ -65,8 +65,27 @@ void main() {
         checkpoint,
         journal: journal,
         learnerModelVersion: params.modelVersion,
+        genesisStateHash: learnerStateHash(
+          model.placementState(testProfile.placement, at: t0),
+        ),
       ),
       isNull,
+    );
+  });
+
+  test('a checkpoint from a format this build cannot read is a cache miss', () {
+    // The version 2 file is kept exactly as it was written. It carries no
+    // digest of the history it stands in for, and nothing computes one for it:
+    // deriving the digest from whatever journal is on disk would assert the
+    // thing it exists to check. Failing to read it costs a full replay, which
+    // is the whole price of not having a checkpoint.
+    expect(
+      () => LearnerStateCheckpoint.fromJson(
+        jsonDecode(fixture('checkpoint-v2.json').readAsStringSync())
+            as Map<String, Object?>,
+        params: params,
+      ),
+      throwsA(isA<JournalFormatException>()),
     );
   });
 }

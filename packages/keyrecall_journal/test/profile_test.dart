@@ -243,6 +243,7 @@ void main() {
         learnerModelVersion: params.modelVersion,
         throughJournalSequence: 3,
         throughAttemptId: 'attempt-3',
+        coversHistoryHash: 'another-profile-history',
         coversThrough: t0.plusDays(2),
       );
 

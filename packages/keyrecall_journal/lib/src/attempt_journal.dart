@@ -75,6 +75,7 @@ class AttemptJournal {
   final JournalHeader header;
 
   final List<AttemptRecord> _records = [];
+  final List<String> _contentHashes = [];
   final Map<String, String> _hashByAttemptId = {};
   final Map<String, int> _lastIndexBySession = {};
 
@@ -165,6 +166,7 @@ class AttemptJournal {
     }
 
     _records.add(record);
+    _contentHashes.add(hash);
     _hashByAttemptId[record.identity.attemptId] = hash;
     _lastIndexBySession[sessionId] = index;
     return true;
@@ -182,6 +184,36 @@ class AttemptJournal {
   /// The attempts belonging to [sessionId], in order.
   Iterable<AttemptRecord> session(String sessionId) =>
       _records.where((record) => record.identity.sessionId == sessionId);
+
+  /// A digest of this history from its genesis through [throughSequence].
+  ///
+  /// Each link covers the one before it, so the digest through any position
+  /// depends on every record up to it and on the state replay began from. That
+  /// is what lets a checkpoint prove the history it skips: the covered
+  /// attempt's own hash says nothing about the attempts before it, and an
+  /// altered earlier outcome would otherwise be skipped over and reported as
+  /// faithfully replayed.
+  ///
+  /// [genesisStateHash] is the hash of the state replay starts from. Without
+  /// it the digest would be silent about the prior every posterior in the
+  /// history is a function of, and a checkpoint taken under one placement
+  /// would seed a replay under another.
+  ///
+  /// Throws [RangeError] when [throughSequence] is outside this journal.
+  String historyHashThrough(
+    int throughSequence, {
+    required String genesisStateHash,
+  }) {
+    RangeError.checkValidIndex(throughSequence, _records, 'throughSequence');
+    var digest = contentHash({
+      'header': header.toJson(),
+      'genesis_state_hash': genesisStateHash,
+    });
+    for (var i = 0; i <= throughSequence; i++) {
+      digest = contentHash({'previous': digest, 'attempt': _contentHashes[i]});
+    }
+    return digest;
+  }
 
   /// Encodes the journal as JSON lines, header first.
   ///

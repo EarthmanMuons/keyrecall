@@ -205,3 +205,46 @@ Measured measuredOf(AttemptRecord record) =>
 Map<String, Object?> measurementJsonOf(Map<String, Object?> record) =>
     (record['closure']! as Map<String, Object?>)['measurement']!
         as Map<String, Object?>;
+
+/// The state a replay of [journal] reached through [throughSequence].
+LearnerState stateThrough(
+  AttemptJournal journal,
+  int throughSequence, {
+  required LearnerState initial,
+}) => replayJournal(
+  AttemptJournal(journal.header)
+    ..appendAll(journal.records.take(throughSequence + 1)),
+  model: model,
+  initial: initial,
+).state;
+
+/// A checkpoint covering [journal] through [throughSequence], correct in every
+/// respect.
+///
+/// The starting point for a test about one thing being wrong: everything a
+/// checkpoint claims is checked, so a fixture that is wrong in two ways proves
+/// only that one of them was caught.
+LearnerStateCheckpoint checkpointAfter(
+  AttemptJournal journal,
+  int throughSequence, {
+  required LearnerState initial,
+  LearnerState? state,
+  String? learnerModelVersion,
+}) => LearnerStateCheckpoint.after(
+  journal,
+  throughSequence: throughSequence,
+  state: state ?? stateThrough(journal, throughSequence, initial: initial),
+  learnerModelVersion: learnerModelVersion ?? params.modelVersion,
+  genesisStateHash: learnerStateHash(initial),
+);
+
+/// The digest of [journal] through [throughSequence], as a checkpoint records
+/// it.
+String historyHashOf(
+  AttemptJournal journal,
+  int throughSequence, {
+  required LearnerState initial,
+}) => journal.historyHashThrough(
+  throughSequence,
+  genesisStateHash: learnerStateHash(initial),
+);

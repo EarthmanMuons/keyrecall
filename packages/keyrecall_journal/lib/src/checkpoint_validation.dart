@@ -36,10 +36,17 @@ class CheckpointRejection {
 /// A covered attempt that recorded no state hash is rejected too. Nothing is
 /// wrong with such a journal, but there is nothing to check the checkpoint
 /// against, and an unverifiable shortcut is not one worth taking.
+///
+/// [genesisStateHash] is the hash of the state replay begins from. It and the
+/// skipped records are both covered by the checkpoint's history digest, which
+/// is what makes skipping them safe: the covered attempt's own state hash says
+/// only that the state at that position was reached, and nothing at all about
+/// whether the attempts before it still say what they said.
 CheckpointRejection? validateCheckpointAgainstJournal(
   LearnerStateCheckpoint checkpoint, {
   required AttemptJournal journal,
   required String learnerModelVersion,
+  required String genesisStateHash,
 }) {
   if (checkpoint.profileId != journal.header.profileId) {
     return CheckpointRejection(
@@ -88,6 +95,18 @@ CheckpointRejection? validateCheckpointAgainstJournal(
     return CheckpointRejection(
       'checkpoint content does not match its hash; it claims '
       '${checkpoint.contentHash} but hashes to $internal',
+    );
+  }
+
+  final history = journal.historyHashThrough(
+    sequence,
+    genesisStateHash: genesisStateHash,
+  );
+  if (history != checkpoint.coversHistoryHash) {
+    return CheckpointRejection(
+      'checkpoint stands in for history ${checkpoint.coversHistoryHash}, but '
+      'this journal through sequence $sequence, replayed from '
+      '$genesisStateHash, is $history',
     );
   }
 

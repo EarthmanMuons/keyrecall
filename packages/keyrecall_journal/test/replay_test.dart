@@ -84,13 +84,11 @@ void main() {
             'this test is checking that zero equals zero',
       );
 
-      final captured = LearnerStateCheckpoint.capture(
-        profileId: testProfile.id,
+      final captured = checkpointAfter(
+        recorded.journal,
+        recorded.journal.length - 1,
+        initial: recorded.initial,
         state: replayed.state,
-        learnerModelVersion: params.modelVersion,
-        throughJournalSequence: recorded.journal.records.last.journalSequence,
-        throughAttemptId: recorded.journal.records.last.identity.attemptId,
-        coversThrough: recorded.journal.records.last.identity.occurredAt,
       );
       final reread = LearnerStateCheckpoint.fromJson(
         jsonDecode(jsonEncode(captured.toJson())) as Map<String, Object?>,
@@ -128,16 +126,10 @@ void main() {
       );
 
       // A checkpoint after attempt 3, then replay only what follows it.
-      final partial = replayJournal(
-        AttemptJournal(recorded.journal.header)
-          ..appendAll(recorded.journal.records.take(4)),
-        model: model,
+      final checkpoint = checkpointAfter(
+        recorded.journal,
+        3,
         initial: recorded.initial,
-      );
-      final checkpoint = LearnerStateCheckpoint.after(
-        recorded.journal.records[3],
-        state: partial.state,
-        learnerModelVersion: params.modelVersion,
       );
 
       final resumed = replayJournal(
@@ -190,14 +182,7 @@ void main() {
       expect(at.identity.indexInSession, 2);
       expect(at.journalSequence, 7);
 
-      final upTo = AttemptJournal(journal.header)
-        ..appendAll(journal.records.take(8));
-      final partial = replayJournal(upTo, model: model, initial: first.initial);
-      final checkpoint = LearnerStateCheckpoint.after(
-        at,
-        state: partial.state,
-        learnerModelVersion: params.modelVersion,
-      );
+      final checkpoint = checkpointAfter(journal, 7, initial: first.initial);
 
       final resumed = replayJournal(
         journal,
@@ -216,19 +201,21 @@ void main() {
     });
 
     test('a checkpoint whose position names another attempt is refused', () {
+      // Right in every other respect, so nothing else can be what refuses it.
       final recorded = recordSession(attempts: 5);
-      final replayed = replayJournal(
-        recorded.journal,
-        model: model,
-        initial: recorded.initial,
-      );
+      final covered = recorded.journal.records[2];
       final wrong = LearnerStateCheckpoint.capture(
         profileId: testProfile.id,
-        state: replayed.state,
+        state: stateThrough(recorded.journal, 2, initial: recorded.initial),
         learnerModelVersion: params.modelVersion,
         throughJournalSequence: 2,
         throughAttemptId: 'some-other-attempt',
-        coversThrough: t0,
+        coversHistoryHash: historyHashOf(
+          recorded.journal,
+          2,
+          initial: recorded.initial,
+        ),
+        coversThrough: covered.identity.occurredAt,
       );
 
       expect(
@@ -255,6 +242,11 @@ void main() {
         learnerModelVersion: params.modelVersion,
         throughJournalSequence: last.journalSequence,
         throughAttemptId: last.identity.attemptId,
+        coversHistoryHash: historyHashOf(
+          recorded.journal,
+          recorded.journal.length - 1,
+          initial: recorded.initial,
+        ),
         coversThrough: last.identity.occurredAt,
       );
 
@@ -269,6 +261,73 @@ void main() {
       );
     });
 
+    test('a checkpoint is refused when history it skips has changed', () {
+      // The gap a per-record hash cannot close. The covered attempt and the
+      // checkpoint agree with each other perfectly; an outcome further back
+      // has changed. Without a digest over the skipped records, replay starts
+      // after the damage and reports that it reproduced the journal.
+      final recorded = recordSession(attempts: 5);
+      final checkpoint = checkpointAfter(
+        recorded.journal,
+        recorded.journal.length - 1,
+        initial: recorded.initial,
+      );
+
+      final tampered = AttemptJournal(recorded.journal.header);
+      for (final record in recorded.journal.records) {
+        tampered.append(
+          record.journalSequence == 1
+              ? record.withStateHashes(
+                  before: record.stateBeforeHash!,
+                  after: 'a-state-this-history-never-reached',
+                )
+              : record,
+        );
+      }
+
+      expect(
+        replayJournal(
+          tampered,
+          model: model,
+          initial: recorded.initial,
+        ).isFaithful,
+        isFalse,
+        reason: 'a full replay sees it',
+      );
+      expect(
+        () => replayJournal(
+          tampered,
+          model: model,
+          initial: recorded.initial,
+          from: checkpoint,
+        ),
+        throwsA(isA<JournalFormatException>()),
+        reason: 'and a checkpoint may not skip over it',
+      );
+    });
+
+    test('a checkpoint is refused when replay starts from another prior', () {
+      // Every posterior in the history is a function of the placement it
+      // propagated from, and the covered attempt's hashes say nothing about
+      // which one that was.
+      final recorded = recordSession(attempts: 4);
+      final checkpoint = checkpointAfter(
+        recorded.journal,
+        recorded.journal.length - 1,
+        initial: recorded.initial,
+      );
+
+      expect(
+        () => replayJournal(
+          recorded.journal,
+          model: model,
+          initial: model.placementState(PlacementTier.beginner, at: t0),
+          from: checkpoint,
+        ),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
     test('a checkpoint covering a sequence past the end is refused', () {
       final recorded = recordSession(attempts: 3);
       final beyond = LearnerStateCheckpoint.capture(
@@ -277,6 +336,7 @@ void main() {
         learnerModelVersion: params.modelVersion,
         throughJournalSequence: recorded.journal.length,
         throughAttemptId: 'never-recorded',
+        coversHistoryHash: 'covers-nothing-this-journal-holds',
         coversThrough: t0,
       );
 
@@ -295,19 +355,17 @@ void main() {
         'refused', () {
       final recorded = recordSession(attempts: 4);
       final covered = recorded.journal.records[1];
-      final upTo = AttemptJournal(recorded.journal.header)
-        ..appendAll(recorded.journal.records.take(2));
-      final partial = replayJournal(
-        upTo,
-        model: model,
-        initial: recorded.initial,
-      );
       final skewed = LearnerStateCheckpoint.capture(
         profileId: testProfile.id,
-        state: partial.state,
+        state: stateThrough(recorded.journal, 1, initial: recorded.initial),
         learnerModelVersion: params.modelVersion,
         throughJournalSequence: covered.journalSequence,
         throughAttemptId: covered.identity.attemptId,
+        coversHistoryHash: historyHashOf(
+          recorded.journal,
+          1,
+          initial: recorded.initial,
+        ),
         coversThrough: covered.identity.occurredAt.plusDays(1),
       );
 
@@ -331,13 +389,11 @@ void main() {
         model: model,
         initial: recorded.initial,
       ).state;
-      final checkpoint = LearnerStateCheckpoint.capture(
-        profileId: testProfile.id,
+      final checkpoint = checkpointAfter(
+        recorded.journal,
+        2,
+        initial: recorded.initial,
         state: state,
-        learnerModelVersion: params.modelVersion,
-        throughJournalSequence: 2,
-        throughAttemptId: recorded.journal.records[2].identity.attemptId,
-        coversThrough: t0,
       );
 
       final exercise = recorded.journal.records.first.exercise;
@@ -365,14 +421,10 @@ void main() {
       // the stored object would leave the checkpoint claiming a hash its own
       // content no longer produces.
       final recorded = recordSession(attempts: 3);
-      final checkpoint = LearnerStateCheckpoint.after(
-        recorded.journal.records.last,
-        state: replayJournal(
-          recorded.journal,
-          model: model,
-          initial: recorded.initial,
-        ).state,
-        learnerModelVersion: params.modelVersion,
+      final checkpoint = checkpointAfter(
+        recorded.journal,
+        recorded.journal.length - 1,
+        initial: recorded.initial,
       );
 
       final borrowed = checkpoint.state;
@@ -515,20 +567,11 @@ void main() {
       // Only the model version is wrong, so nothing else can mask it.
       final recorded = recordSession(attempts: 3);
       final covered = recorded.journal.records[1];
-      final upTo = AttemptJournal(recorded.journal.header)
-        ..appendAll(recorded.journal.records.take(2));
-      final partial = replayJournal(
-        upTo,
-        model: model,
+      final checkpoint = checkpointAfter(
+        recorded.journal,
+        1,
         initial: recorded.initial,
-      );
-      final checkpoint = LearnerStateCheckpoint.capture(
-        profileId: testProfile.id,
-        state: partial.state,
         learnerModelVersion: 'v1-prototype-99',
-        throughJournalSequence: covered.journalSequence,
-        throughAttemptId: covered.identity.attemptId,
-        coversThrough: covered.identity.occurredAt,
       );
 
       expect(checkpoint.contentHash, covered.stateAfterHash);

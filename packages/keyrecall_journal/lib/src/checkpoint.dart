@@ -1,7 +1,7 @@
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
-import 'attempt_record.dart';
+import 'attempt_journal.dart';
 import 'canonical_json.dart' as canonical;
 import 'canonical_json.dart';
 import 'codecs/learner_codec.dart';
@@ -46,6 +46,15 @@ class LearnerStateCheckpoint {
   /// trusted.
   final String throughAttemptId;
 
+  /// Digest of the history this stands in for, from genesis through
+  /// [throughJournalSequence].
+  ///
+  /// The covered attempt's own hash says nothing about the attempts before it.
+  /// Without this, an altered earlier outcome would be skipped over rather than
+  /// replayed, and the result would report faithful replay of history that no
+  /// longer exists.
+  final String coversHistoryHash;
+
   /// When the covered attempt happened, in UTC.
   final DateTime coversThrough;
 
@@ -68,6 +77,7 @@ class LearnerStateCheckpoint {
     required this.learnerModelVersion,
     required this.throughJournalSequence,
     required this.throughAttemptId,
+    required this.coversHistoryHash,
     required this.coversThrough,
     required LearnerState state,
     required this.contentHash,
@@ -88,6 +98,7 @@ class LearnerStateCheckpoint {
     required String learnerModelVersion,
     required int throughJournalSequence,
     required String throughAttemptId,
+    required String coversHistoryHash,
     required DateTime coversThrough,
   }) {
     requireProfileId(profileId);
@@ -98,28 +109,41 @@ class LearnerStateCheckpoint {
       learnerModelVersion: learnerModelVersion,
       throughJournalSequence: throughJournalSequence,
       throughAttemptId: throughAttemptId,
+      coversHistoryHash: coversHistoryHash,
       coversThrough: coversThrough.toUtc(),
       state: captured,
       contentHash: canonical.contentHash(encodeLearnerState(captured)),
     );
   }
 
-  /// Captures the state a replay reached, positioned at [record].
+  /// Captures the state a replay of [journal] reached at [throughSequence].
   ///
-  /// The ordinary way to make one: the position and the state come from the
-  /// same place, so they cannot disagree.
+  /// The ordinary way to make one: the position, the covered history, and the
+  /// state all come from the same place, so they cannot disagree.
+  ///
+  /// [genesisStateHash] is the hash of the state that replay started from,
+  /// which the digest covers along with the records.
   factory LearnerStateCheckpoint.after(
-    AttemptRecord record, {
+    AttemptJournal journal, {
+    required int throughSequence,
     required LearnerState state,
     required String learnerModelVersion,
-  }) => LearnerStateCheckpoint.capture(
-    state: state,
-    profileId: record.identity.profileId,
-    learnerModelVersion: learnerModelVersion,
-    throughJournalSequence: record.journalSequence,
-    throughAttemptId: record.identity.attemptId,
-    coversThrough: record.identity.occurredAt,
-  );
+    required String genesisStateHash,
+  }) {
+    final record = journal.records[throughSequence];
+    return LearnerStateCheckpoint.capture(
+      state: state,
+      profileId: record.identity.profileId,
+      learnerModelVersion: learnerModelVersion,
+      throughJournalSequence: record.journalSequence,
+      throughAttemptId: record.identity.attemptId,
+      coversHistoryHash: journal.historyHashThrough(
+        throughSequence,
+        genesisStateHash: genesisStateHash,
+      ),
+      coversThrough: record.identity.occurredAt,
+    );
+  }
 
   /// Whether this checkpoint can seed a replay under [learnerModelVersion].
   ///
@@ -136,6 +160,7 @@ class LearnerStateCheckpoint {
     'learner_model_version': learnerModelVersion,
     'through_journal_sequence': throughJournalSequence,
     'through_attempt_id': throughAttemptId,
+    'covers_history_hash': coversHistoryHash,
     'covers_through': encodeTime(coversThrough),
     'content_hash': contentHash,
     'state': encodeLearnerState(_state),
@@ -188,6 +213,11 @@ class LearnerStateCheckpoint {
         throughAttemptId: requireString(
           json,
           'through_attempt_id',
+          location: location,
+        ),
+        coversHistoryHash: requireString(
+          json,
+          'covers_history_hash',
           location: location,
         ),
         coversThrough: requireTime(json, 'covers_through', location: location),

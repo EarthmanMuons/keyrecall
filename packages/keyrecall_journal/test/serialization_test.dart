@@ -341,15 +341,10 @@ void main() {
   group('checkpoints', () {
     test('round-trip and verify against their own hash', () {
       final recorded = recordSession(attempts: 5);
-      final replayed = replayJournal(
+      final checkpoint = checkpointAfter(
         recorded.journal,
-        model: model,
+        recorded.journal.length - 1,
         initial: recorded.initial,
-      );
-      final checkpoint = LearnerStateCheckpoint.after(
-        recorded.journal.records.last,
-        state: replayed.state,
-        learnerModelVersion: params.modelVersion,
       );
 
       final reread = LearnerStateCheckpoint.fromJson(
@@ -365,13 +360,11 @@ void main() {
 
     test('reject content that does not match the claimed hash', () {
       final recorded = recordSession(attempts: 3);
-      final checkpoint = LearnerStateCheckpoint.capture(
-        profileId: testProfile.id,
+      final checkpoint = checkpointAfter(
+        recorded.journal,
+        0,
+        initial: recorded.initial,
         state: recorded.initial,
-        learnerModelVersion: params.modelVersion,
-        throughJournalSequence: 0,
-        throughAttemptId: 'attempt-0',
-        coversThrough: t0,
       );
       final json = checkpoint.toJson();
       final competencies =
@@ -400,13 +393,11 @@ void main() {
       state.materialMemory[materialId]!.logCurrentHalfLife =
           state.materialMemory[materialId]!.logConsolidatedHalfLife + 1.0;
 
-      final checkpoint = LearnerStateCheckpoint.capture(
-        profileId: testProfile.id,
+      final checkpoint = checkpointAfter(
+        recorded.journal,
+        2,
+        initial: recorded.initial,
         state: state,
-        learnerModelVersion: params.modelVersion,
-        throughJournalSequence: 2,
-        throughAttemptId: 'attempt-2',
-        coversThrough: t0,
       );
 
       expect(

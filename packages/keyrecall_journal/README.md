@@ -64,14 +64,31 @@ no question anyone asked. Replay from the beginning instead.
 `validateCheckpointAgainstJournal` is the whole of what accepting one requires,
 in one place, because the parts are only meaningful together:
 
-| Checked                                       | What accepting it without the check costs              |
-| --------------------------------------------- | ------------------------------------------------------ |
-| Profile                                       | One person's state seeded from another's history       |
-| Model version, in every mode                  | A hybrid estimate                                      |
-| Sequence is inside the journal                | A stand-in for attempts that are gone                  |
-| The covered attempt's id and time             | A position nobody verified                             |
-| Its own content hash                          | A snapshot that has drifted from what it claims        |
-| Agreement with the covered `state_after_hash` | State the history never produced, reported as faithful |
+| Checked                                       | What accepting it without the check costs                      |
+| --------------------------------------------- | -------------------------------------------------------------- |
+| Profile                                       | One person's state seeded from another's history               |
+| Model version, in every mode                  | A hybrid estimate                                              |
+| Sequence is inside the journal                | A stand-in for attempts that are gone                          |
+| The covered attempt's id and time             | A position nobody verified                                     |
+| Its own content hash                          | A snapshot that has drifted from what it claims                |
+| The digest of the history it skips            | An altered earlier attempt, replayed over rather than replayed |
+| Agreement with the covered `state_after_hash` | State the history never produced, reported as faithful         |
+
+The digest is the one that makes skipping safe. A per-record hash says the state
+at that position was reached; it says nothing about whether the records before
+it still say what they said. So a checkpoint carries a chained digest of the
+history it stands in for:
+
+```text
+h(genesis)  = H(header, hash of the state replay starts from)
+h(n)        = H(h(n-1), content hash of attempt n)
+```
+
+Validation recomputes it through `throughJournalSequence` and compares. That
+binds the checkpoint to the exact records it skips and to the prior they were
+replayed from, without replaying the learner model over any of them. Changing an
+earlier outcome, or opening the same journal under a different placement, makes
+the digest disagree and costs a full replay.
 
 **Rejecting a checkpoint is not rejecting a journal.** An unusable checkpoint
 costs a full replay and nothing else, which is what the production open path
@@ -186,9 +203,17 @@ evaluation.
 
 ### What `isFaithful` proves, and what it does not
 
-It proves that the recorded observations rebuild the recorded learner state
-under this model: every prediction, weight, and state hash the journal carries
-was recomputed and agreed with.
+Replaying from the beginning, it proves that the recorded observations rebuild
+the recorded learner state under this model: every prediction, weight, and state
+hash the journal carries was recomputed and agreed with.
+
+Replaying from a checkpoint, it proves that of the attempts after the
+checkpoint, and proves of the ones before it that they are byte for byte the
+records the checkpoint was taken from, propagated from the same prior. Their
+predictions and weights are not recomputed, because they are not replayed. That
+is the trade a checkpoint is: the digest establishes the history is unchanged,
+not that it was ever verified. Discard every checkpoint to get the stronger
+claim back, which costs only time.
 
 It does **not** prove that the scheduler would select the same exercise again.
 Exact learner replay is not exact scheduler replay. Regenerating the historical
