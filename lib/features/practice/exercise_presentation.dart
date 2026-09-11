@@ -30,13 +30,13 @@ String materialNoun(TechnicalMaterial material) => switch (material) {
 /// an interpretation of why the ordinary attempt did not go well, and nothing
 /// has made one. What changed is that the pace is the learner's.
 ///
-/// A task asking for more than one traversal has to say so, and has to say they
-/// start again rather than run on: playing the pattern twice and playing twice
-/// as much of it are different things to be asked for.
+/// A task asking for more than one traversal says how many, and leaves the rest
+/// to the notes: what is on screen is one traversal, so playing it again is
+/// playing what is there again rather than going on past it.
 String selfPacedInstruction(int traversals) => traversals == 1
     ? 'Practice this at your own pace. Tap Done when finished.'
-    : 'Play this ${_timesName(traversals)} at your own pace, starting again '
-          'each time. Tap Done when finished.';
+    : 'Play this ${_timesName(traversals)} at your own pace. '
+          'Tap Done when finished.';
 
 String _timesName(int times) => switch (times) {
   2 => 'twice',

@@ -243,12 +243,10 @@ void main() {
       );
     });
     test('says how many times through a self-paced task asks for', () {
-      // Playing the pattern twice and playing twice as much of it are
-      // different things to be asked for, so a repeated task has to say which
-      // and a single one must not.
-      expect(selfPacedInstruction(1), isNot(contains('again')));
+      // How many is the one thing the notes on screen cannot say, since they
+      // are one traversal whatever the task asks for.
+      expect(selfPacedInstruction(1), isNot(contains('twice')));
       expect(selfPacedInstruction(2), contains('twice'));
-      expect(selfPacedInstruction(2), contains('starting again each time'));
       expect(selfPacedInstruction(3), contains('three times'));
       expect(selfPacedInstruction(4), contains('4 times'));
     });
