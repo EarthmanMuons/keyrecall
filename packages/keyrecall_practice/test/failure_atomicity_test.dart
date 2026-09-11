@@ -755,27 +755,30 @@ void main() {
       // the record does not.
       final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
       final session = await openSession(store);
-      await session.decide(at: t0.plusDays(0.5));
+      final presented = await session.decide(at: t0.plusDays(0.5));
 
+      // Nothing was written, and the prepared transaction still survives, so
+      // this retry finishes that same frozen result rather than reading the
+      // transcript it was handed.
       store.failNextAppend = true;
       await expectLater(
         session.closeFromPerformance(PerformanceTranscript.empty),
         throwsA(isA<_StorageFailure>()),
       );
 
-      // Nothing was written, so this retry does prepare afresh.
       final first = await session.closeFromPerformance(
-        PerformanceTranscript.empty,
+        playedFor(presented!.exercise),
       );
+
       expect(first.reading.outcome.started, isFalse);
       expect(measuredOf(first.record).outcome.started, isFalse);
 
-      // And one whose transaction is already open keeps its own reading.
+      // And the same holds once the attempt is already history and only the
+      // cleanup is outstanding.
       final next = await session.decide(at: t0.plusDays(1));
-      final played = playedFor(next!.exercise);
       store.clearFailure = const _StorageFailure();
       await expectLater(
-        session.closeFromPerformance(played),
+        session.closeFromPerformance(playedFor(next!.exercise)),
         throwsA(isA<_StorageFailure>()),
       );
 
@@ -790,6 +793,65 @@ void main() {
         reason: 'the reading and the record describe one performance',
       );
       expect(resumed.reading.outcome.started, isTrue);
+    });
+
+    test('abandoning is refused while durability is unknown', () async {
+      // The append wrote and then threw, and the read that would settle it
+      // failed too. Abandoning on the strength of not knowing leaves one
+      // attempt in the file and none in the sitting.
+      final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+      final session = await openSession(store);
+      final presented = await session.decide(at: t0.plusDays(0.5));
+      final outcome = outcomeFor(presented!.exercise);
+
+      store.failNextAppendAfterWriting = true;
+      store.journalLoadFailure = const _StorageFailure();
+      await expectLater(
+        session.closeWithOutcome(outcome),
+        throwsA(isA<_StorageFailure>()),
+      );
+
+      await expectLater(
+        session.abandonPending(),
+        throwsA(isA<_StorageFailure>()),
+        reason: 'settling it is what abandonment depends on',
+      );
+
+      // Storage returns, and abandoning now learns the attempt is history.
+      store.journalLoadFailure = null;
+      await expectLater(
+        session.abandonPending(),
+        throwsA(isA<PracticeStateError>()),
+      );
+
+      final record = await session.closeWithOutcome(outcome);
+      expect(session.journal.length, 1);
+      expect((await store.loadJournal(alice.id)).length, 1);
+      expect(record.stateAfterHash, learnerStateHash(session.state));
+    });
+
+    test('abandoning is allowed once absence is established', () async {
+      final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+      final session = await openSession(store);
+      final presented = await session.decide(at: t0.plusDays(0.5));
+
+      store.failNextAppend = true;
+      await expectLater(
+        session.closeWithOutcome(outcomeFor(presented!.exercise)),
+        throwsA(isA<_StorageFailure>()),
+      );
+
+      await session.abandonPending();
+
+      expect(session.hasOutstandingAttempt, isFalse);
+      expect(session.journal.length, 0);
+      expect((await store.loadJournal(alice.id)).length, 0);
+      expect(await store.loadPendingDecision(alice.id), isNull);
+
+      // And the sitting carries on, aiming at the sequence storage expects.
+      final next = await session.decide(at: t0.plusDays(1));
+      await session.closeWithOutcome(outcomeFor(next!.exercise));
+      expect((await store.loadJournal(alice.id)).length, 1);
     });
 
     test('and overlapping closes finish the one transaction', () async {

@@ -64,7 +64,18 @@ slot fails, the evidence is still durable and the close still reports a failure,
 so the transaction stays open: closing again finishes the cleanup and returns
 the same result, and deciding again is refused until it does.
 
-A committed attempt cannot be abandoned.
+Abandoning is gated on knowing. An append that threw may still have landed, so
+"not written" and "nobody can say" are tracked apart: a prepared close may only
+be abandoned once storage has established that its attempt is absent from
+history, and where that is unknown abandoning reads history to settle it and
+fails if it cannot. Treating uncertainty as absence is what leaves one attempt
+in the file and none in the sitting, with every later commit aimed at a sequence
+storage has already filled.
+
+Stated exactly: **once a close is prepared, its complete observable result is
+immutable, canonical learner state advances at most once for it, and it cannot
+be abandoned unless storage has established that it is absent from authoritative
+history.**
 
 A pending decision is deliberately **not** part of the journal. An attempt with
 no outcome produced no evidence and moved no state, and putting it in the replay

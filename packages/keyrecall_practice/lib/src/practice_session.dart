@@ -13,6 +13,26 @@ import 'requirement_state.dart';
 import 'scheduler_host.dart';
 import 'scope_resolution.dart';
 
+/// What is known about a prepared attempt reaching authoritative history.
+///
+/// Three states, not two. "Not written" and "nobody can say" are different
+/// facts about the same failed append, and treating the second as the first is
+/// how an attempt that did land gets abandoned.
+enum _Durability {
+  /// Storage established that no such attempt is recorded.
+  ///
+  /// The transaction may be written again, or abandoned.
+  notWritten,
+
+  /// An append did not answer, and neither did the read that would settle it.
+  ///
+  /// Nothing may conclude either way while this holds.
+  unknown,
+
+  /// This exact attempt is in authoritative history.
+  durable,
+}
+
 /// One attempt's commit, frozen at the moment it was computed.
 ///
 /// Once a close begins, nothing that would change what is written may still
@@ -42,8 +62,8 @@ class _PreparedCommit {
   /// accompanies, which is one result contradicting itself.
   final PerformanceReading? reading;
 
-  /// Whether [record] is known to be in authoritative history.
-  bool isDurable = false;
+  /// What is known about [record] reaching authoritative history.
+  _Durability durability = _Durability.notWritten;
 
   /// Whether canonical state has advanced for it, which happens exactly once.
   bool isApplied = false;
@@ -1163,10 +1183,7 @@ class PracticeSession {
     // exactly once for it. Scheduler bookkeeping, the pending slot, and probe
     // service legitimately move on either side of this line; learner state
     // does not.
-    if (!commit.isDurable) {
-      await _appendAttempt(commit.record);
-      commit.isDurable = true;
-    }
+    if (commit.durability != _Durability.durable) await _appendAttempt(commit);
 
     if (!commit.isApplied) {
       _state = commit.next;
@@ -1260,22 +1277,39 @@ class PracticeSession {
   /// attempt with that id is there and the same record may be written again,
   /// or that id is there carrying different content, which is a collision and
   /// not something to resolve by picking one.
-  Future<void> _appendAttempt(AttemptRecord record) async {
+  Future<void> _appendAttempt(_PreparedCommit commit) async {
+    final record = commit.record;
+    // Uncertain from the moment the write is in flight, and only settled by an
+    // answer. A throw is not an answer.
+    commit.durability = _Durability.unknown;
     try {
       await store.appendAttempt(record);
-    } catch (error) {
-      final durable = await store.loadJournal(profile.id);
+      commit.durability = _Durability.durable;
+      return;
+    } catch (error, stack) {
+      final AttemptJournal durable;
+      try {
+        durable = await store.loadJournal(profile.id);
+      } catch (_) {
+        Error.throwWithStackTrace(error, stack);
+      }
+
       final held = durable.records.where(
         (held) => held.identity.attemptId == record.identity.attemptId,
       );
-      if (held.isEmpty) rethrow;
+      if (held.isEmpty) {
+        commit.durability = _Durability.notWritten;
+        Error.throwWithStackTrace(error, stack);
+      }
       if (contentHash(held.single.toJson()) != contentHash(record.toJson())) {
+        commit.durability = _Durability.durable;
         throw JournalFormatException(
           'attempt ${record.identity.attemptId} is recorded with different '
           'content than this transaction holds',
           location: 'attempt ${record.identity.attemptId}',
         );
       }
+      commit.durability = _Durability.durable;
     }
   }
 
@@ -1286,13 +1320,31 @@ class PracticeSession {
   /// an abandoned slot leaves no trace to clean up. Presenting the decision
   /// again is the better answer wherever the exercise can still be played,
   /// which is why the app does that instead.
-
+  ///
+  /// A close that has begun may only be abandoned once storage has established
+  /// that its attempt is absent from history. An append that threw may still
+  /// have landed, so where that is unknown this reads history to settle it and
+  /// fails if it cannot.
+  ///
+  /// Throws [PracticeStateError] when the attempt is already history.
   Future<void> abandonPending() async {
-    if (_commit?.isDurable ?? false) {
-      throw PracticeStateError(
-        'this attempt is already history and cannot be abandoned; close it '
-        'again to finish the transaction',
-      );
+    if (_commit case final commit?) {
+      // An append that threw may still have landed. Abandoning on the strength
+      // of not knowing is what leaves one attempt in the file and none in the
+      // sitting, and every later commit then aims at a sequence storage has
+      // already filled.
+      if (commit.durability == _Durability.unknown) {
+        final durable = await store.loadJournal(profile.id);
+        commit.durability = durable.contains(commit.record.identity.attemptId)
+            ? _Durability.durable
+            : _Durability.notWritten;
+      }
+      if (commit.durability == _Durability.durable) {
+        throw PracticeStateError(
+          'this attempt is already history and cannot be abandoned; close it '
+          'again to finish the transaction',
+        );
+      }
     }
     await store.clearPendingDecision(profile.id);
     _commit = null;
