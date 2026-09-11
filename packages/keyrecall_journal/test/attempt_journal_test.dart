@@ -279,14 +279,23 @@ void main() {
       );
     });
 
-    test('reject an unknown record type', () {
+    test('reject an unknown record type, as the one failure type', () {
+      // A reader of an untrusted journal catches one thing, so an
+      // unrecognized record arrives as the same failure a malformed one does
+      // rather than as whatever the enum lookup happened to throw.
       final recorded = recordSession(attempts: 2);
       final lines = recorded.journal.toJsonLines().split('\n')
         ..add('{"record_type":"telemetry_blob"}');
 
       expect(
         () => AttemptJournal.fromJsonLines(lines.join('\n')),
-        throwsA(isA<ArgumentError>()),
+        throwsA(
+          isA<JournalFormatException>().having(
+            (error) => error.location,
+            'location',
+            'line 4',
+          ),
+        ),
       );
     });
   });

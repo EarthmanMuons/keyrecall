@@ -137,7 +137,9 @@ class LearnerStateCheckpoint {
   /// Reads a checkpoint back and verifies it against its own hash.
   ///
   /// Throws [JournalFormatException] when the content does not hash to what the
-  /// checkpoint claims, which is corruption rather than a stale cache.
+  /// checkpoint claims, which is corruption rather than a stale cache, and for
+  /// anything else the stored state cannot be read as. A caller treating an
+  /// unreadable checkpoint as a cache miss catches one thing.
   factory LearnerStateCheckpoint.fromJson(
     Map<String, Object?> json, {
     required LearnerParams params,
@@ -162,27 +164,35 @@ class LearnerStateCheckpoint {
       );
     }
 
-    return LearnerStateCheckpoint._(
-      schemaVersion: version,
-      profileId: requireString(json, 'profile_id', location: location),
-      learnerModelVersion: requireString(
-        json,
-        'learner_model_version',
-        location: location,
+    return located(
+      () => LearnerStateCheckpoint._(
+        schemaVersion: version,
+        profileId: requireString(json, 'profile_id', location: location),
+        learnerModelVersion: requireString(
+          json,
+          'learner_model_version',
+          location: location,
+        ),
+        throughJournalSequence: requireInt(
+          json,
+          'through_journal_sequence',
+          location: location,
+        ),
+        throughAttemptId: requireString(
+          json,
+          'through_attempt_id',
+          location: location,
+        ),
+        coversThrough: requireTime(json, 'covers_through', location: location),
+        state: decodeLearnerState(
+          stateJson,
+          params: params,
+          location: location,
+        ),
+        contentHash: actual,
       ),
-      throughJournalSequence: requireInt(
-        json,
-        'through_journal_sequence',
-        location: location,
-      ),
-      throughAttemptId: requireString(
-        json,
-        'through_attempt_id',
-        location: location,
-      ),
-      coversThrough: requireTime(json, 'covers_through', location: location),
-      state: decodeLearnerState(stateJson, params: params, location: location),
-      contentHash: actual,
+      'checkpoint',
+      location: location,
     );
   }
 

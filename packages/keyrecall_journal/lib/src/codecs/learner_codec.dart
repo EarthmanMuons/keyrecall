@@ -247,28 +247,49 @@ LearnerState decodeLearnerState(
         location: location,
       );
     }
+    final updatedAt = requireTime(entry, 'updated_at', location: location);
+    final lastEvidenceAt = readOptionalTime(
+      entry,
+      'last_evidence_at',
+      location: location,
+    );
+    if (lastEvidenceAt != null && lastEvidenceAt.isAfter(updatedAt)) {
+      throw JournalFormatException(
+        '${competency.id} was last updated at ${encodeTime(updatedAt)} but '
+        'claims evidence at ${encodeTime(lastEvidenceAt)}; evidence is what '
+        'updates it, so it cannot arrive afterwards',
+        location: location,
+      );
+    }
     competencies[competency] = CompetencyState(
       competency: competency,
       mean: requireDouble(entry, 'mean', location: location),
       variance: variance,
-      updatedAt: requireTime(entry, 'updated_at', location: location),
-      lastEvidenceAt: readOptionalTime(
-        entry,
-        'last_evidence_at',
-        location: location,
-      ),
+      updatedAt: updatedAt,
+      lastEvidenceAt: lastEvidenceAt,
     );
   }
 
   final memoryJson = requireMap(json, 'material_memory', location: location);
-  final materialMemory = {
-    for (final entry in memoryJson.entries)
-      entry.key: decodeMaterialMemory(
-        asMap(entry.value, 'memory for ${entry.key}', location: location),
-        params: params,
+  final materialMemory = <String, MaterialMemoryState>{};
+  for (final entry in memoryJson.entries) {
+    final memory = decodeMaterialMemory(
+      asMap(entry.value, 'memory for ${entry.key}', location: location),
+      params: params,
+      location: location,
+    );
+    // The key and the material it holds are two statements of the same fact,
+    // and a decoder that trusts one of them turns a disagreement into a silent
+    // reassignment of one material's memory to another.
+    if (memory.materialId != entry.key) {
+      throw JournalFormatException(
+        'memory filed under "${entry.key}" holds material '
+        '"${memory.materialId}"',
         location: location,
-      ),
-  };
+      );
+    }
+    materialMemory[entry.key] = memory;
+  }
 
   final executionJson = requireMap(
     json,
@@ -340,6 +361,30 @@ LearnerState decodeLearnerState(
           ),
       },
     );
+    // The key is the context the value describes, so a key that disagrees is
+    // two claims about which context this is. Rebuilding the key from the
+    // value instead lets two entries collapse onto one context, and whichever
+    // decoded second becomes the whole history of it.
+    final expectedKey =
+        '${residual.materialId}/${residual.hands.id}/'
+        '${residual.handMotion.id}';
+    if (expectedKey != entry.key) {
+      throw JournalFormatException(
+        'execution residual filed under "${entry.key}" describes '
+        '"$expectedKey"',
+        location: location,
+      );
+    }
+    if (residual.lastEvidenceAt case final evidence?) {
+      if (evidence.isAfter(residual.updatedAt)) {
+        throw JournalFormatException(
+          'execution residual for "${entry.key}" was last updated at '
+          '${encodeTime(residual.updatedAt)} but claims evidence at '
+          '${encodeTime(evidence)}',
+          location: location,
+        );
+      }
+    }
     materialExecution[residual.context] = residual;
   }
 

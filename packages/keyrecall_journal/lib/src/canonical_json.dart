@@ -110,6 +110,12 @@ bool requireBool(Map<String, Object?> json, String key, {String? location}) {
 ///
 /// Timestamps are written as ISO-8601 in UTC, keeping the precision the
 /// platform recorded, so interval arithmetic replays exactly.
+///
+/// Strict on both counts the platform parser is not. An offset is required,
+/// because a timestamp without one means whatever the machine reading it
+/// decides. And the calendar components must be the ones written: the platform
+/// parser accepts `2026-02-31` and hands back March 3, which repairs an
+/// impossible date into a plausible one that nothing else will ever notice.
 DateTime requireTime(
   Map<String, Object?> json,
   String key, {
@@ -117,13 +123,47 @@ DateTime requireTime(
 }) {
   final value = json[key];
   if (value is String) {
-    final parsed = DateTime.tryParse(value);
-    if (parsed != null) return parsed.toUtc();
+    final parsed = parseTime(value);
+    if (parsed != null) return parsed;
   }
   throw JournalFormatException(
-    'expected an ISO-8601 timestamp at "$key", got $value',
+    'expected an ISO-8601 timestamp with an offset at "$key", got $value',
     location: location,
   );
+}
+
+final RegExp _iso8601 = RegExp(
+  r'^(\d{4})-(\d{2})-(\d{2})[Tt]'
+  r'(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?'
+  r'([Zz]|[+-]\d{2}:?\d{2})$',
+);
+
+/// Parses [value] as a UTC timestamp, or returns null when it is not one.
+///
+/// Rejects a missing offset and any calendar component that does not survive
+/// the round trip, rather than normalizing either into something readable.
+DateTime? parseTime(String value) {
+  final match = _iso8601.firstMatch(value);
+  if (match == null) return null;
+
+  final year = int.parse(match[1]!);
+  final month = int.parse(match[2]!);
+  final day = int.parse(match[3]!);
+  final hour = int.parse(match[4]!);
+  final minute = int.parse(match[5]!);
+  final second = int.parse(match[6]!);
+
+  final calendar = DateTime.utc(year, month, day, hour, minute, second);
+  if (calendar.year != year ||
+      calendar.month != month ||
+      calendar.day != day ||
+      calendar.hour != hour ||
+      calendar.minute != minute ||
+      calendar.second != second) {
+    return null;
+  }
+
+  return DateTime.tryParse(value)?.toUtc();
 }
 
 /// Reads an optional timestamp, distinguishing absent from malformed.
@@ -138,6 +178,33 @@ String encodeTime(DateTime at) => at.toUtc().toIso8601String();
 
 /// Writes an optional timestamp, preserving absence as null.
 String? encodeOptionalTime(DateTime? at) => at == null ? null : encodeTime(at);
+
+/// Runs [decode], reporting an expected failure as a located error.
+///
+/// The storage boundary promises exactly one failure type, and the pieces
+/// behind it do not: an unrecognized enum id throws [ArgumentError], a
+/// numeric key throws [FormatException], and a cast throws [TypeError]. Those
+/// all mean the same thing here, which is that persisted data cannot be read,
+/// so they are said the same way.
+///
+/// A [JournalFormatException] raised inside passes through untouched, keeping
+/// whatever field location the decoder that raised it knew.
+T located<T>(T Function() decode, String what, {String? location}) {
+  try {
+    return decode();
+  } on JournalFormatException {
+    rethrow;
+  } on ArgumentError catch (error) {
+    throw JournalFormatException(
+      '$what: ${error.message ?? error}',
+      location: location,
+    );
+  } on FormatException catch (error) {
+    throw JournalFormatException('$what: ${error.message}', location: location);
+  } on TypeError catch (error) {
+    throw JournalFormatException('$what: $error', location: location);
+  }
+}
 
 /// Reads [value] as a map, or fails with a located error.
 ///

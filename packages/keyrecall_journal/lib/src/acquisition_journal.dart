@@ -628,14 +628,14 @@ class AcquisitionJournal {
           location: 'line ${i + 1}',
         );
       }
-      if (decoded is! Map<String, Object?>) {
-        throw JournalFormatException(
-          'expected an object',
-          location: 'line ${i + 1}',
-        );
-      }
-      final type = JournalRecordType.fromId(
-        requireString(decoded, 'record_type', location: 'line ${i + 1}'),
+      final location = 'line ${i + 1}';
+      final json = asMap(decoded, 'acquisition line', location: location);
+      final type = located(
+        () => JournalRecordType.fromId(
+          requireString(json, 'record_type', location: location),
+        ),
+        'record type',
+        location: location,
       );
 
       switch (type) {
@@ -647,7 +647,11 @@ class AcquisitionJournal {
             );
           }
           journal = AcquisitionJournal(
-            AcquisitionJournalHeader.fromJson(decoded),
+            located(
+              () => AcquisitionJournalHeader.fromJson(json),
+              'acquisition log header',
+              location: location,
+            ),
           );
         case JournalRecordType.acquisitionAttempt:
           if (journal == null) {
@@ -656,7 +660,13 @@ class AcquisitionJournal {
               location: 'line ${i + 1}',
             );
           }
-          journal.append(AcquisitionAttemptRecord.fromJson(decoded));
+          journal.append(
+            located(
+              () => AcquisitionAttemptRecord.fromJson(json),
+              'acquisition attempt',
+              location: location,
+            ),
+          );
         case JournalRecordType.acquisitionProbeServed:
           if (journal == null) {
             throw JournalFormatException(
@@ -664,7 +674,13 @@ class AcquisitionJournal {
               location: 'line ${i + 1}',
             );
           }
-          journal.append(AcquisitionProbeServedRecord.fromJson(decoded));
+          journal.append(
+            located(
+              () => AcquisitionProbeServedRecord.fromJson(json),
+              'probe service',
+              location: location,
+            ),
+          );
         case JournalRecordType.header:
         case JournalRecordType.attempt:
           throw JournalFormatException(

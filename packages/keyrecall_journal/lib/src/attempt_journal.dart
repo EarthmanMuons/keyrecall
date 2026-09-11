@@ -219,14 +219,14 @@ class AttemptJournal {
           location: 'line ${i + 1}',
         );
       }
-      if (decoded is! Map<String, Object?>) {
-        throw JournalFormatException(
-          'expected an object',
-          location: 'line ${i + 1}',
-        );
-      }
-      final type = JournalRecordType.fromId(
-        requireString(decoded, 'record_type', location: 'line ${i + 1}'),
+      final location = 'line ${i + 1}';
+      final json = asMap(decoded, 'journal line', location: location);
+      final type = located(
+        () => JournalRecordType.fromId(
+          requireString(json, 'record_type', location: location),
+        ),
+        'record type',
+        location: location,
       );
 
       switch (type) {
@@ -237,7 +237,13 @@ class AttemptJournal {
               location: 'line ${i + 1}',
             );
           }
-          journal = AttemptJournal(JournalHeader.fromJson(decoded));
+          journal = AttemptJournal(
+            located(
+              () => JournalHeader.fromJson(json),
+              'journal header',
+              location: location,
+            ),
+          );
         case JournalRecordType.attempt:
           if (journal == null) {
             throw JournalFormatException(
@@ -245,7 +251,13 @@ class AttemptJournal {
               location: 'line ${i + 1}',
             );
           }
-          journal.append(AttemptRecord.fromJson(decoded));
+          journal.append(
+            located(
+              () => AttemptRecord.fromJson(json),
+              'attempt record',
+              location: location,
+            ),
+          );
         case JournalRecordType.acquisitionHeader:
         case JournalRecordType.acquisitionAttempt:
         case JournalRecordType.acquisitionProbeServed:
