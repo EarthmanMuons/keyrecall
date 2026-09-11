@@ -41,6 +41,15 @@ class PendingDecision {
   /// outcome happened to arrive.
   final DateTime decidedAt;
 
+  /// What the clock read when the decision was made, when the observation
+  /// boundary put it at a different model time.
+  ///
+  /// Durable with the rest of the slot. A decision survives a restart, so the
+  /// reading behind it has to as well, or whether the raw observation is kept
+  /// would depend on whether the app happened to be interrupted between
+  /// deciding and closing.
+  final DateTime? observedWallTime;
+
   /// Which model definitions made the decision.
   final ModelProvenance provenance;
 
@@ -60,6 +69,7 @@ class PendingDecision {
     required this.indexInSession,
     required this.journalSequence,
     required DateTime decidedAt,
+    this.observedWallTime,
     required this.provenance,
     required this.exercise,
     required this.decision,
@@ -76,6 +86,7 @@ class PendingDecision {
     'index_in_session': indexInSession,
     'journal_sequence': journalSequence,
     'decided_at': encodeTime(decidedAt),
+    'observed_wall_time': encodeOptionalTime(observedWallTime),
     'provenance': {
       'learner_model_version': provenance.learnerModelVersion,
       'scheduler_model_version': provenance.schedulerModelVersion,
@@ -103,6 +114,13 @@ class PendingDecision {
       indexInSession: requireInt(json, 'index_in_session', location: location),
       journalSequence: requireInt(json, 'journal_sequence', location: location),
       decidedAt: requireTime(json, 'decided_at', location: location),
+      // Absent means no correction was recorded, which is what every slot
+      // written before the boundary kept one says about it.
+      observedWallTime: readOptionalTime(
+        json,
+        'observed_wall_time',
+        location: location,
+      ),
       provenance: ModelProvenance(
         learnerModelVersion: requireString(
           provenanceJson,
@@ -151,7 +169,7 @@ class PendingDecision {
       indexInSession: indexInSession,
       occurredAt: decidedAt,
     ),
-    observedWallTime: observedWallTime,
+    observedWallTime: observedWallTime ?? this.observedWallTime,
     provenance: provenance,
     exercise: exercise,
     decision: decision,

@@ -344,6 +344,21 @@ void main() {
       );
     });
 
+    test('is refused by the session even when a store hands it over', () async {
+      // The store above refuses first, so opening a session over real files
+      // proves only the store's check. This bypasses it: the session's own
+      // assertion is the second layer, and a layer nothing reaches is a layer
+      // nothing tests.
+      final backing = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(backing);
+      await practise(session, attempts: 2);
+
+      await expectLater(
+        openSession(_HandsOverAnotherHistory(backing, alice.id), profile: bob),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
     test('is refused for an acquisition log too', () async {
       final store = FilePracticeStore(root);
       final session = await openSession(store);
@@ -571,4 +586,26 @@ void main() {
     expect(checkpointFile().existsSync(), isFalse);
     expect(eraseMarker().existsSync(), isFalse);
   });
+}
+
+/// A store that answers every profile with one profile's history.
+///
+/// Stands in for a storage layer whose own ownership check is absent or wrong,
+/// so the session's defensive one is what has to refuse it. Opening must stop
+/// at the journal, which is why nothing else here is implemented.
+class _HandsOverAnotherHistory implements PracticeStore {
+  final PracticeStore _backing;
+  final String _owner;
+
+  _HandsOverAnotherHistory(this._backing, this._owner);
+
+  @override
+  Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) =>
+      _backing.loadJournal(_owner, createdAt: createdAt);
+
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError(
+    'opening should have refused the journal before reaching '
+    '${invocation.memberName}',
+  );
 }

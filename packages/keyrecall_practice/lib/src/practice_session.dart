@@ -236,10 +236,6 @@ class PracticeSession {
   PendingDecision? _pending;
   PresentedAttempt? _outstanding;
 
-  /// What the clock read for the outstanding decision, when it disagreed with
-  /// the model time the observation boundary put it at.
-  DateTime? _observedWallTime;
-
   /// Hash of the placement state this profile's history propagates from.
   ///
   /// Held because a checkpoint's digest covers it: the prior is what every
@@ -488,7 +484,7 @@ class PracticeSession {
     // into a model time before anything is evaluated or persisted.
     final observed = at.toUtc();
     at = _observationTime(observed);
-    _observedWallTime = at == observed ? null : observed;
+    final observedWallTime = at == observed ? null : observed;
 
     final scratch = _state.copy();
     learner.propagate(scratch, at);
@@ -573,6 +569,7 @@ class PracticeSession {
       indexInSession: _indexInSession,
       journalSequence: _journal.nextSequence,
       decidedAt: at,
+      observedWallTime: observedWallTime,
       provenance: ModelProvenance.of(
         learnerParams: learner.params,
         schedulerModelVersion: pipeline.config.modelVersion,
@@ -648,9 +645,9 @@ class PracticeSession {
       ),
       journalSequence: _acquisition.nextSequence,
       // The decision time is already past the observation boundary, so the
-      // raw reading is the one this sitting saw when it decided.
+      // raw reading is the one recorded when it was decided.
       observedWallTime: logicalTime == decision.decidedAt
-          ? _observedWallTime
+          ? decision.observedWallTime
           : decision.decidedAt,
     );
     if (service == null) return;
@@ -992,7 +989,6 @@ class PracticeSession {
     final outstanding = _outstanding ?? _pendingAsOutstanding();
     final decision = outstanding.decision;
     final at = decision.decidedAt;
-    observedWallTime ??= _observedWallTime;
 
     final next = _state.copy();
     final AttemptClosure closure;

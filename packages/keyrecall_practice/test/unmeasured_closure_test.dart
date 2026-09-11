@@ -37,6 +37,25 @@ void main() {
     expect(record.observedWallTime, t0.plusDays(1));
   });
 
+  test('the reading behind a corrected clock survives a restart', () async {
+    // A decision is durable, so what the clock actually read when it was made
+    // has to be durable with it. Otherwise whether the raw observation is kept
+    // depends on whether the app was interrupted between deciding and closing.
+    final store = InMemoryPracticeStore(createdAt: t0);
+    final session = await openSession(store);
+    await practise(session, attempts: 2, startDay: 2);
+    await session.decideOutcome(at: t0.plusDays(1));
+
+    final reopened = await openSession(store, sessionId: 'session-2');
+    expect(reopened.pending, isNotNull);
+    final record = await reopened.closeUnmeasured(
+      termination: AttemptTermination.inactivityTimeout,
+    );
+
+    expect(record.observedWallTime, t0.plusDays(1));
+    expect(record.identity.occurredAt, isNot(t0.plusDays(1)));
+  });
+
   test(
     'a backward clock is corrected even after an unmeasured attempt',
     () async {
