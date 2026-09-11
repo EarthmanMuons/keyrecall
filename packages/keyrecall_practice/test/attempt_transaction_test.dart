@@ -169,6 +169,132 @@ void main() {
     });
   });
 
+  group('a recovered decision', () {
+    /// The slot a sitting left behind, ready to be tampered with.
+    Future<({InMemoryPracticeStore store, PendingDecision pending})>
+    interrupted() async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store);
+      await practise(session, attempts: 2, startDay: 0.5);
+      await session.decideOutcome(at: t0.plusDays(3));
+      return (
+        store: store,
+        pending: (await store.loadPendingDecision(alice.id))!,
+      );
+    }
+
+    /// [pending] with [changes] applied to its written form.
+    PendingDecision altered(
+      PendingDecision pending,
+      Map<String, Object?> changes,
+    ) => PendingDecision.fromJson({...pending.toJson(), ...changes});
+
+    test(
+      'is refused when it claims a state this history never reached',
+      () async {
+        // A pending slot is disposable, but completing one appends it. Nothing
+        // else stands between an altered slot and a journal that no longer
+        // replays.
+        final run = await interrupted();
+        await run.store.savePendingDecision(
+          altered(run.pending, {'state_before_hash': 'not-the-real-hash'}),
+        );
+
+        await expectLater(
+          openSession(run.store, sessionId: 'session-2'),
+          throwsA(isA<JournalFormatException>()),
+        );
+      },
+    );
+
+    test(
+      'is refused when its prediction is not what this history predicts',
+      () async {
+        final run = await interrupted();
+        final json = run.pending.toJson();
+        final decision = json['decision']! as Map<String, Object?>;
+        final prediction = Map<String, Object?>.of(
+          decision['prediction']! as Map<String, Object?>,
+        )..['execution_p'] = 0.123456;
+
+        await run.store.savePendingDecision(
+          altered(run.pending, {
+            'decision': {...decision, 'prediction': prediction},
+          }),
+        );
+
+        await expectLater(
+          openSession(run.store, sessionId: 'session-2'),
+          throwsA(isA<JournalFormatException>()),
+        );
+      },
+    );
+
+    test('is refused when it predates the last recorded attempt', () async {
+      final run = await interrupted();
+      await run.store.savePendingDecision(
+        altered(run.pending, {
+          'decided_at': encodeTime(t0.plusDays(0.25)),
+          'state_before_hash': run.pending.stateBeforeHash,
+        }),
+      );
+
+      await expectLater(
+        openSession(run.store, sessionId: 'session-2'),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('is refused when its index does not advance in its session', () async {
+      final run = await interrupted();
+      await run.store.savePendingDecision(
+        altered(run.pending, {'index_in_session': 0}),
+      );
+
+      await expectLater(
+        openSession(run.store, sessionId: 'session-2'),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('from another model version is abandoned, not completed', () async {
+      // Not damage. The decision was made under one model's reading of this
+      // history, and completing it would apply today's model's update to
+      // yesterday's decision. One unfinished exercise is the whole cost.
+      final run = await interrupted();
+      final provenance =
+          run.pending.toJson()['provenance']! as Map<String, Object?>;
+      await run.store.savePendingDecision(
+        altered(run.pending, {
+          'provenance': {
+            ...provenance,
+            'learner_model_version': 'v1-prototype-99',
+          },
+        }),
+      );
+
+      final reopened = await openSession(run.store, sessionId: 'session-2');
+
+      expect(reopened.pending, isNull);
+      expect(await run.store.loadPendingDecision(alice.id), isNull);
+      expect(reopened.journal.length, 2);
+    });
+
+    test('that is intact is recovered and can still be completed', () async {
+      final run = await interrupted();
+      final reopened = await openSession(run.store, sessionId: 'session-2');
+
+      expect(reopened.pending, isNotNull);
+      final record = await reopened.closeWithOutcome(
+        outcomeFor(reopened.pending!.exercise),
+      );
+
+      expect(record.identity.attemptId, run.pending.attemptId);
+      final again = await openSession(run.store, sessionId: 'session-3');
+      expect(again.journal.length, 3);
+    });
+  });
+
   group('a crash during commit', () {
     test(
       'after the append, the stale decision is recognized and cleared',

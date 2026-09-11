@@ -13,6 +13,13 @@ import 'requirement_state.dart';
 import 'scheduler_host.dart';
 import 'scope_resolution.dart';
 
+/// How far a recomputed prediction may drift before a recovered decision is
+/// refused.
+///
+/// Not zero, because the model is floating-point and a rebuild may sum in a
+/// different order; the same tolerance replay compares under.
+const double _predictionTolerance = 1e-9;
+
 /// Generates the ids a transaction needs.
 ///
 /// Injectable so a test can make a run reproducible. Production passes
@@ -355,7 +362,13 @@ class PracticeSession {
       profile.id,
       'acquisition log',
     );
-    final pending = await _recoverPending(store, profile, journal);
+    final pending = await _recoverPending(
+      store,
+      profile,
+      journal,
+      learner,
+      replay.state,
+    );
 
     return PracticeSession._(
       learner: learner,
@@ -1154,14 +1167,20 @@ class PracticeSession {
 
   /// Decides what an unresolved decision means, given what the journal holds.
   ///
-  /// Validates before accepting it. A pending slot is the one input here that
-  /// is neither replayed nor hash-checked, and committing it writes an attempt
-  /// keyed on the *slot's* profile id, so a misplaced or corrupted file could
-  /// otherwise append one person's practice into another person's history.
+  /// Validates before accepting it, because completing one appends it. A
+  /// pending slot is disposable recovery state, and disposable state must not
+  /// be able to manufacture authoritative history: a misplaced file would
+  /// append one person's practice into another person's history, and an
+  /// altered one would append an attempt that no longer replays.
+  ///
+  /// A slot from another learner-model version is abandoned rather than
+  /// refused. Everything else that disagrees with the journal throws.
   static Future<PendingDecision?> _recoverPending(
     PracticeStore store,
     Profile profile,
     AttemptJournal journal,
+    LearnerModel learner,
+    LearnerState state,
   ) async {
     final pending = await store.loadPendingDecision(profile.id);
     if (pending == null) return null;
@@ -1200,7 +1219,102 @@ class PracticeSession {
       );
     }
 
+    if (pending.provenance.learnerModelVersion != learner.params.modelVersion) {
+      // Not damage, and not something to reinterpret. The decision was made
+      // under one model's reading of this history, and completing it now would
+      // apply today's model's update to yesterday's decision. Abandoning costs
+      // one exercise nobody finished; deciding again is the honest answer.
+      await store.clearPendingDecision(profile.id);
+      return null;
+    }
+
+    _requireRecoverableClaims(pending, journal, learner, state);
     return pending;
+  }
+
+  /// Refuses a pending decision whose recomputable claims do not hold.
+  ///
+  /// A pending slot is disposable, and the attempt it names is not history
+  /// yet. Completing one appends it, so every claim it makes that can be
+  /// checked against authoritative history is checked here rather than after
+  /// it has become part of that history. Nothing else stands between a damaged
+  /// slot and a journal that no longer replays.
+  ///
+  /// Throws [JournalFormatException] for a claim the journal contradicts.
+  static void _requireRecoverableClaims(
+    PendingDecision pending,
+    AttemptJournal journal,
+    LearnerModel learner,
+    LearnerState state,
+  ) {
+    final location = 'pending decision ${pending.attemptId}';
+    void refuse(String message) =>
+        throw JournalFormatException(message, location: location);
+
+    if (journal.records.isNotEmpty) {
+      final tail = journal.records.last.identity.occurredAt;
+      if (pending.decidedAt.isBefore(tail)) {
+        refuse(
+          'pending decision was made at ${encodeTime(pending.decidedAt)}, '
+          'before the last recorded attempt at ${encodeTime(tail)}; the model '
+          'timeline cannot run backward',
+        );
+      }
+    }
+
+    final inSession = journal.session(pending.sessionId);
+    if (inSession.isNotEmpty) {
+      final last = inSession.last.identity.indexInSession;
+      if (pending.indexInSession <= last) {
+        refuse(
+          'pending decision is at index ${pending.indexInSession} in session '
+          '${pending.sessionId}, which does not advance past $last',
+        );
+      }
+    }
+
+    // The decision was made from state propagated to its own time, exactly as
+    // deciding makes one, so that is what its claims are checked against.
+    final scratch = state.copy();
+    learner.propagate(scratch, pending.decidedAt);
+
+    final before = learnerStateHash(scratch);
+    if (pending.stateBeforeHash != before) {
+      refuse(
+        'pending decision was made from state ${pending.stateBeforeHash}, but '
+        'this history propagated to ${encodeTime(pending.decidedAt)} is '
+        '$before',
+      );
+    }
+
+    final replayed = learner.predict(
+      scratch,
+      pending.exercise,
+      at: pending.decidedAt,
+    );
+    final recorded = pending.decision.prediction;
+    for (final (channel, expected, actual) in [
+      (
+        'independent_retrieval_p',
+        recorded.independentRetrievalP,
+        replayed.independentRetrievalP,
+      ),
+      (
+        'material_available_p',
+        recorded.materialAvailableP,
+        replayed.materialAvailableP,
+      ),
+      ('execution_p', recorded.executionP, replayed.executionP),
+      ('coordination_p', recorded.coordinationP, replayed.coordinationP),
+      ('topology_p', recorded.topologyP, replayed.topologyP),
+    ]) {
+      if ((expected - actual).abs() > _predictionTolerance) {
+        refuse(
+          'pending decision predicted $channel $expected, but this history '
+          'predicts $actual',
+        );
+      }
+    }
   }
 
   /// Rebuilds what the scheduler needs to know about the sitting in progress.
