@@ -13,6 +13,40 @@ import 'requirement_state.dart';
 import 'scheduler_host.dart';
 import 'scope_resolution.dart';
 
+/// One attempt's commit, frozen at the moment it was computed.
+///
+/// Once a close begins, nothing that would change what is written may still
+/// matter. The caller reads its clock again on every call and may hand over a
+/// fresh transcript, so a retry that recomputed would offer the same attempt
+/// id carrying different content, which an authoritative log refuses.
+///
+/// The two flags are the phases a commit passes through. They are separate
+/// because the boundary between them is the durable append: before it nothing
+/// has happened, after it the attempt is history whether or not this session
+/// finished tidying up.
+class _PreparedCommit {
+  /// The attempt exactly as it will be, and was, written.
+  final AttemptRecord record;
+
+  /// The learner state this attempt produces, computed on a copy.
+  final LearnerState next;
+
+  /// What was observed, for the scheduler's own bookkeeping.
+  final Outcome? outcome;
+
+  /// Whether [record] is known to be in authoritative history.
+  bool isDurable = false;
+
+  /// Whether canonical state has advanced for it, which happens exactly once.
+  bool isApplied = false;
+
+  _PreparedCommit({
+    required this.record,
+    required this.next,
+    required this.outcome,
+  });
+}
+
 /// How far a recomputed prediction may drift before a recovered decision is
 /// refused.
 ///
@@ -243,6 +277,9 @@ class PracticeSession {
   PendingDecision? _pending;
   PresentedAttempt? _outstanding;
 
+  /// The commit in progress, frozen at the moment it was computed.
+  _PreparedCommit? _commit;
+
   /// Hash of the placement state this profile's history propagates from.
   ///
   /// Held because a checkpoint's digest covers it: the prior is what every
@@ -440,8 +477,13 @@ class PracticeSession {
   PendingDecision? get pending => _pending;
 
   /// Whether anything is currently outstanding, ordinary or supported.
+  ///
+  /// A commit whose evidence is durable but whose transaction did not finish
+  /// counts: closing again is what completes it.
   bool get hasOutstandingAttempt =>
-      _outstanding != null || _outstandingAcquisition != null;
+      _outstanding != null ||
+      _outstandingAcquisition != null ||
+      _commit != null;
 
   /// The supported task on screen, if one is.
   PresentedAcquisition? get outstandingAcquisition => _outstandingAcquisition;
@@ -483,6 +525,12 @@ class PracticeSession {
     if (_outstandingAcquisition != null) {
       throw PracticeStateError(
         'a supported task is already outstanding; record or abandon it first',
+      );
+    }
+    if (_commit != null) {
+      throw PracticeStateError(
+        'an attempt is committed but its transaction did not finish; close it '
+        'again first',
       );
     }
 
@@ -999,8 +1047,65 @@ class PracticeSession {
     MeasurementUnavailableReason? unavailable,
     DateTime? observedWallTime,
   }) async {
-    final outstanding = _outstanding ?? _pendingAsOutstanding();
-    final decision = outstanding.decision;
+    // Prepared once. A retry finishes this transaction rather than computing a
+    // second one: the caller reads its clock again on every call, so rebuilding
+    // would offer the same attempt id carrying different content, which an
+    // authoritative log is right to refuse.
+    final commit = _commit ??= _prepare(
+      termination: termination,
+      outcome: outcome,
+      unavailable: unavailable,
+      observedWallTime: observedWallTime,
+    );
+
+    // Nothing above this line touched anything the session keeps. Everything
+    // below it only runs once the attempt is history.
+    if (!commit.isDurable) {
+      await _appendAttempt(commit.record);
+      commit.isDurable = true;
+    }
+
+    if (!commit.isApplied) {
+      _state = commit.next;
+      _epoch++;
+      _journal.append(commit.record);
+      // The exercise was presented either way, so the sitting knows it was. A
+      // retrieval failure is a claim about the performance, and an unmeasured
+      // attempt supports no such claim.
+      pipeline.recordOutcome(
+        _session,
+        commit.record.exercise,
+        commit.outcome,
+        at: commit.record.identity.occurredAt,
+      );
+      commit.isApplied = true;
+    }
+
+    // A committed attempt reached the learner, whatever the caller said about
+    // presenting it. Serving here too is idempotent, and it stops an
+    // obligation outliving the question it asks: an owed probe is offered
+    // again every slot, so a caller that never acknowledges is served the same
+    // probe until the sitting ends.
+    await acknowledgePresentation(commit.record.identity.attemptId);
+    _outstanding = null;
+    _pending = null;
+
+    await store.clearPendingDecision(profile.id);
+    _commit = null;
+    return commit.record;
+  }
+
+  /// Computes the attempt this close will commit, and freezes it.
+  ///
+  /// Everything that decides what gets written happens here, on a copy, before
+  /// anything durable is touched.
+  _PreparedCommit _prepare({
+    required AttemptTermination termination,
+    required Outcome? outcome,
+    required MeasurementUnavailableReason? unavailable,
+    required DateTime? observedWallTime,
+  }) {
+    final decision = (_outstanding ?? _pendingAsOutstanding()).decision;
     final at = decision.decidedAt;
 
     final next = _state.copy();
@@ -1031,39 +1136,42 @@ class PracticeSession {
       );
     }
 
-    final record = decision.complete(
-      closure: closure,
-      stateAfterHash: learnerStateHash(next),
-      observedWallTime: observedWallTime,
+    return _PreparedCommit(
+      record: decision.complete(
+        closure: closure,
+        stateAfterHash: learnerStateHash(next),
+        observedWallTime: observedWallTime,
+      ),
+      next: next,
+      outcome: outcome,
     );
+  }
 
-    // Nothing above this line touched anything the session keeps. Everything
-    // below it only runs once the attempt is history.
-    await store.appendAttempt(record);
-
-    _state = next;
-    _epoch++;
-    _journal.append(record);
-    // The exercise was presented either way, so the sitting knows it was. A
-    // retrieval failure is a claim about the performance, and an unmeasured
-    // attempt supports no such claim.
-    pipeline.recordOutcome(
-      _session,
-      decision.exercise,
-      outcome,
-      at: record.identity.occurredAt,
-    );
-    // A committed attempt reached the learner, whatever the caller said about
-    // presenting it. Serving here too is idempotent, and it stops an
-    // obligation outliving the question it asks: an owed probe is offered
-    // again every slot, so a caller that never acknowledges is served the same
-    // probe until the sitting ends.
-    await acknowledgePresentation(decision.attemptId);
-    _outstanding = null;
-    _pending = null;
-
-    await store.clearPendingDecision(profile.id);
-    return record;
+  /// Appends [record], and settles what happened when the answer is uncertain.
+  ///
+  /// An append that threw may still have landed, so nothing concludes from an
+  /// exception that nothing was written. There are three answers and no
+  /// others: this exact attempt is in history and the append committed, no
+  /// attempt with that id is there and the same record may be written again,
+  /// or that id is there carrying different content, which is a collision and
+  /// not something to resolve by picking one.
+  Future<void> _appendAttempt(AttemptRecord record) async {
+    try {
+      await store.appendAttempt(record);
+    } catch (error) {
+      final durable = await store.loadJournal(profile.id);
+      final held = durable.records.where(
+        (held) => held.identity.attemptId == record.identity.attemptId,
+      );
+      if (held.isEmpty) rethrow;
+      if (contentHash(held.single.toJson()) != contentHash(record.toJson())) {
+        throw JournalFormatException(
+          'attempt ${record.identity.attemptId} is recorded with different '
+          'content than this transaction holds',
+          location: 'attempt ${record.identity.attemptId}',
+        );
+      }
+    }
   }
 
   /// Discards an unresolved decision without recording anything.
@@ -1074,7 +1182,14 @@ class PracticeSession {
   /// again is the better answer wherever the exercise can still be played,
   /// which is why the app does that instead.
   Future<void> abandonPending() async {
+    if (_commit?.isDurable ?? false) {
+      throw PracticeStateError(
+        'this attempt is already history and cannot be abandoned; close it '
+        'again to finish the transaction',
+      );
+    }
     await store.clearPendingDecision(profile.id);
+    _commit = null;
     _pending = null;
     _outstanding = null;
     _outstandingAcquisition = null;

@@ -182,11 +182,20 @@ class InMemoryPracticeStore implements PracticeStore {
   InMemoryPracticeStore({DateTime? createdAt})
     : createdAt = (createdAt ?? DateTime.now()).toUtc();
 
+  /// A snapshot of the durable history, not the object this store keeps.
+  ///
+  /// A caller that held the store's own journal would see every later append
+  /// appear in what it is holding, which is not how a file behaves and hides
+  /// exactly the divergence between live and durable history that a failure
+  /// test is looking for.
   @override
   Future<AttemptJournal> loadJournal(
     String profileId, {
     DateTime? createdAt,
-  }) async => _journalFor(profileId, createdAt);
+  }) async {
+    final held = _journalFor(profileId, createdAt);
+    return AttemptJournal(held.header)..appendAll(held.records);
+  }
 
   @override
   Future<void> appendAttempt(AttemptRecord record) async {
@@ -197,7 +206,14 @@ class InMemoryPracticeStore implements PracticeStore {
   Future<AcquisitionJournal> loadAcquisitionJournal(
     String profileId, {
     DateTime? createdAt,
-  }) async => _acquisitionFor(profileId, createdAt);
+  }) async {
+    final held = _acquisitionFor(profileId, createdAt);
+    final copy = AcquisitionJournal(held.header);
+    for (final record in held.records) {
+      copy.append(record);
+    }
+    return copy;
+  }
 
   @override
   Future<void> appendAcquisitionEntry(AcquisitionEntry entry) async {

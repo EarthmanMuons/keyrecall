@@ -35,6 +35,18 @@ class FlakyPracticeStore implements PracticeStore {
   /// When true, the next [appendAttempt] throws instead of writing.
   bool failNextAppend = false;
 
+  /// When true, the next [appendAttempt] writes and then throws.
+  ///
+  /// The failure a caller cannot tell from one that wrote nothing.
+  bool failNextAppendAfterWriting = false;
+
+  /// When set, every [clearPendingDecision] throws instead of deleting.
+  Object? clearFailure;
+
+  /// When set, every [loadJournal] throws, so reconciliation cannot resolve
+  /// an uncertain append either.
+  Object? journalLoadFailure;
+
   /// When true, every [appendAcquisitionEntry] throws instead of writing.
   bool failAcquisitionAppends = false;
 
@@ -55,7 +67,11 @@ class FlakyPracticeStore implements PracticeStore {
       throw const _StorageFailure();
     }
     appendsPerformed++;
-    return inner.appendAttempt(record);
+    await inner.appendAttempt(record);
+    if (failNextAppendAfterWriting) {
+      failNextAppendAfterWriting = false;
+      throw const _StorageFailure();
+    }
   }
 
   @override
@@ -67,8 +83,10 @@ class FlakyPracticeStore implements PracticeStore {
       inner.appendFeedbackExposure(exposure);
 
   @override
-  Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) =>
-      inner.loadJournal(profileId, createdAt: createdAt);
+  Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) {
+    if (journalLoadFailure case final failure?) throw failure;
+    return inner.loadJournal(profileId, createdAt: createdAt);
+  }
 
   @override
   Future<PendingDecision?> loadPendingDecision(String profileId) =>
@@ -79,8 +97,10 @@ class FlakyPracticeStore implements PracticeStore {
       inner.savePendingDecision(decision);
 
   @override
-  Future<void> clearPendingDecision(String profileId) =>
-      inner.clearPendingDecision(profileId);
+  Future<void> clearPendingDecision(String profileId) {
+    if (clearFailure case final failure?) throw failure;
+    return inner.clearPendingDecision(profileId);
+  }
 
   @override
   Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) =>
@@ -495,39 +515,150 @@ void main() {
       expect(session.journal.length, 1);
     });
 
-    test('but retrying is not the same as overlapping', () async {
-      // The tests above make committing safe to run *again*. They say nothing
-      // about running two at once, and the attempt id is easy to misread as
-      // permission to do so. It is not: a session is single-writer, and an
-      // overlapping second commit folds the same outcome in from state of a
-      // different age, producing a different record under the same id. The
-      // journal refuses that as a collision rather than absorbing it as a
-      // retry, so the caller is handed a failure it cannot act on.
+    test('an append that landed but was not acknowledged is settled', () async {
+      // The failure a caller cannot tell from one that wrote nothing. Reading
+      // durable history back says which it was, and finding this exact attempt
+      // there means the append committed, so the close finishes rather than
+      // reporting a failure for something already history.
+      final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+      final session = await openSession(store);
+      final presented = await session.decide(at: t0.plusDays(0.5));
+
+      store.failNextAppendAfterWriting = true;
+      final record = await session.closeWithOutcome(
+        outcomeFor(presented!.exercise),
+      );
+
+      expect(session.journal.length, 1);
+      expect((await store.loadJournal(alice.id)).length, 1);
+      expect(learnerStateHash(session.state), record.stateAfterHash);
+      expect(session.hasOutstandingAttempt, isFalse);
+      expect(await store.loadPendingDecision(alice.id), isNull);
+    });
+
+    test(
+      'an uncertain append that cannot be settled stays retryable',
+      () async {
+        // Neither the append nor the reconciliation read answered. Nothing may
+        // conclude the attempt committed, and the transaction has to survive to
+        // be finished once storage returns.
+        final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+        final session = await openSession(store);
+        final presented = await session.decide(at: t0.plusDays(0.5));
+        final outcome = outcomeFor(presented!.exercise);
+
+        store.failNextAppend = true;
+        store.journalLoadFailure = const _StorageFailure();
+        await expectLater(
+          session.closeWithOutcome(outcome),
+          throwsA(isA<_StorageFailure>()),
+        );
+        expect(session.journal.length, 0);
+        expect(session.hasOutstandingAttempt, isTrue);
+
+        // The app reads its clock again on the retry, which is why rebuilding
+        // the record would offer different content under the same id.
+        store.journalLoadFailure = null;
+        final record = await session.closeWithOutcome(
+          outcome,
+          observedWallTime: t0.plusDays(0.9),
+        );
+
+        expect(
+          record.observedWallTime,
+          isNull,
+          reason: 'the frozen transaction is what was retried',
+        );
+        expect(session.journal.length, 1);
+        expect((await store.loadJournal(alice.id)).length, 1);
+        expect(record.stateAfterHash, learnerStateHash(session.state));
+      },
+    );
+
+    test('a failed cleanup does not lose the committed attempt', () async {
+      // The evidence is durable. Reporting that as a failed close, and then
+      // refusing the retry because nothing is outstanding, would leave the
+      // caller unable to finish an operation that already succeeded.
+      final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+      final session = await openSession(store);
+      final presented = await session.decide(at: t0.plusDays(0.5));
+      final outcome = outcomeFor(presented!.exercise);
+
+      store.clearFailure = const _StorageFailure();
+      await expectLater(
+        session.closeWithOutcome(outcome),
+        throwsA(isA<_StorageFailure>()),
+      );
+
+      expect(session.journal.length, 1, reason: 'the attempt is history');
+      expect(
+        session.hasOutstandingAttempt,
+        isTrue,
+        reason: 'and the transaction is not finished',
+      );
+      await expectLater(
+        session.decideOutcome(at: t0.plusDays(1)),
+        throwsA(isA<PracticeStateError>()),
+      );
+
+      store.clearFailure = null;
+      final record = await session.closeWithOutcome(outcome);
+
+      expect(record.identity.attemptId, presented.decision.attemptId);
+      expect(session.journal.length, 1, reason: 'applied exactly once');
+      expect(session.hasOutstandingAttempt, isFalse);
+      expect(await store.loadPendingDecision(alice.id), isNull);
+      expect(await session.decideOutcome(at: t0.plusDays(1)), isNotNull);
+    });
+
+    test('a committed attempt cannot be abandoned', () async {
+      final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
+      final session = await openSession(store);
+      final presented = await session.decide(at: t0.plusDays(0.5));
+
+      store.clearFailure = const _StorageFailure();
+      await expectLater(
+        session.closeWithOutcome(outcomeFor(presented!.exercise)),
+        throwsA(isA<_StorageFailure>()),
+      );
+
+      await expectLater(
+        session.abandonPending(),
+        throwsA(isA<PracticeStateError>()),
+      );
+    });
+
+    test('and overlapping closes finish the one transaction', () async {
+      // A session is still single-writer, and calling this twice at once is
+      // still a caller error. What it can no longer be is a divergence: the
+      // attempt is computed and frozen when the first close begins, so the
+      // second finishes that transaction rather than folding the same outcome
+      // in again from a later reading and offering different content under the
+      // same id.
       final store = InMemoryPracticeStore(createdAt: t0);
       final session = await openSession(store);
       final presented = await session.decide(at: t0.plusDays(0.5));
       final outcome = outcomeFor(presented!.exercise);
 
-      final failures = <Object>[];
-      await Future.wait([
+      final records = await Future.wait([
         for (final observed in [t0.plusDays(0.5), t0.plusDays(0.6)])
-          session
-              .closeWithOutcome(outcome, observedWallTime: observed)
-              .catchError((Object error) {
-                failures.add(error);
-                throw error;
-              }),
-      ], eagerError: false).catchError((Object _) => <AttemptRecord>[]);
+          session.closeWithOutcome(outcome, observedWallTime: observed),
+      ]);
 
       expect(
-        failures,
-        isNotEmpty,
-        reason: 'overlapping commits must fail loudly, not quietly diverge',
+        records.map((record) => contentHash(record.toJson())).toSet(),
+        hasLength(1),
+        reason: 'both calls describe the same attempt',
       );
       expect(
         session.journal.length,
         1,
         reason: 'history holds the attempt once however the two interleaved',
+      );
+      expect(
+        records.first.observedWallTime,
+        t0.plusDays(0.5),
+        reason: 'the reading the transaction was prepared with is the one kept',
       );
     });
   });
