@@ -28,6 +28,41 @@ void main() {
       expect(session.session.attemptsThisSession, 0);
     });
 
+    test(
+      'is discarded when the scope moved while the host was binding',
+      () async {
+        // Binding is asynchronous too, and it is the earlier window. A scope
+        // change during it leaves the host holding the old scope while the
+        // request that follows carries the new epoch, so the check meant to
+        // catch a stale verdict passes one.
+        final store = InMemoryPracticeStore(createdAt: t0);
+        late PracticeSession session;
+        final host = _InterceptingScheduler(
+          InProcessScheduler(SchedulerPipeline(learner: learner)),
+          whileBinding: () => session.updateScope(
+            goal: PracticeGoal(
+              id: 'ONE_MATERIAL',
+              targetMaterialIds: {fixtureMaterials.first.materialId},
+            ),
+          ),
+        );
+        session = await openSession(store, scheduler: host);
+
+        final decision = await session.decideOutcome(at: t0.plusDays(0.5));
+
+        expect(decision, isA<PracticeSuperseded>());
+        expect(session.hasOutstandingAttempt, isFalse);
+        expect(await store.loadPendingDecision(alice.id), isNull);
+
+        // And the next decision binds again, rather than reusing a host that
+        // holds the scope the change replaced.
+        final next = await session.decideOutcome(at: t0.plusDays(0.6));
+        expect(next, isA<PracticeDecision>());
+        expect(host.boundTo, hasLength(2));
+        expect(host.boundTo.last, isNot(host.boundTo.first));
+      },
+    );
+
     test('is applied exactly once while the inputs still hold', () async {
       final store = InMemoryPracticeStore(createdAt: t0);
       final session = await openSession(store);
@@ -117,8 +152,12 @@ void main() {
 class _InterceptingScheduler implements SchedulerHost {
   final SchedulerHost inner;
   final void Function()? whileDeciding;
+  final void Function()? whileBinding;
 
-  _InterceptingScheduler(this.inner, {this.whileDeciding});
+  /// Which scopes this host was bound to, in order.
+  final List<ResolvedPracticeScope> boundTo = [];
+
+  _InterceptingScheduler(this.inner, {this.whileDeciding, this.whileBinding});
 
   @override
   Future<void> bind({
@@ -126,8 +165,16 @@ class _InterceptingScheduler implements SchedulerHost {
     required PracticeEntryPolicy entry,
     required LearnerModel learner,
     required SchedulerConfig config,
-  }) =>
-      inner.bind(scope: scope, entry: entry, learner: learner, config: config);
+  }) async {
+    boundTo.add(scope);
+    await inner.bind(
+      scope: scope,
+      entry: entry,
+      learner: learner,
+      config: config,
+    );
+    whileBinding?.call();
+  }
 
   @override
   Future<void> dispose() => inner.dispose();

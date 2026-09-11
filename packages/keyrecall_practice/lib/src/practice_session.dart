@@ -575,6 +575,12 @@ class PracticeSession {
     );
     final acquisitionFloor = scope.isNarrow ? familyFloor : null;
 
+    // Captured before binding, not after. Binding is asynchronous, and a scope
+    // change during it leaves the host holding the old scope while the request
+    // that follows carries the new epoch, so an old-scope verdict passes the
+    // check that exists to catch exactly that. Marking the binding current
+    // afterwards would also undo the invalidation the scope change performed.
+    final epoch = _epoch;
     if (!_bound) {
       await scheduler.bind(
         scope: scope,
@@ -582,9 +588,9 @@ class PracticeSession {
         learner: learner,
         config: pipeline.config,
       );
+      if (epoch != _epoch) return PracticeSuperseded(epoch);
       _bound = true;
     }
-    final epoch = _epoch;
     final verdict = await scheduler.decide(
       epoch: epoch,
       state: scratch,
