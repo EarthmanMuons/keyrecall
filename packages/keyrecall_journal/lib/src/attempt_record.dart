@@ -258,7 +258,10 @@ class AttemptRecord {
   /// Throws [JournalFormatException] for an unreadable or unknown-version
   /// record. A journal reader must not guess: this is the historical source of
   /// truth, and a misread record rewrites the past.
-  factory AttemptRecord.fromJson(Map<String, Object?> json) {
+  factory AttemptRecord.fromJson(Map<String, Object?> json) =>
+      located(() => _fromJson(json), 'attempt record');
+
+  static AttemptRecord _fromJson(Map<String, Object?> json) {
     // Older records are brought forward before anything reads them, so every
     // reader sees one shape and the upgrade lives in one place.
     json = upgradeAttemptJson(json);

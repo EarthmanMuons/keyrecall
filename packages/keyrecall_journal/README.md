@@ -278,9 +278,17 @@ evidence in twice.
 Persisted data is untrusted input, and the boundary makes one promise about it:
 either it produces one unambiguous domain object, or it throws a located
 `JournalFormatException`. An unrecognized enum id, a numeric key that is not a
-number, and a failed cast all mean the same thing here, so they are all said
-that way rather than escaping as `ArgumentError`, `FormatException`, or
-`TypeError`.
+number, a failed cast, and a domain rule the data breaks all mean the same thing
+here, so they are all said that way rather than escaping as `ArgumentError`,
+`FormatException`, or `TypeError`.
+
+The promise belongs to every public reader of persisted data, not to the journal
+loader alone: records, headers, profiles, checkpoints, sitting exports, and the
+storage layer's own single-slot files. Domain constructors go on throwing
+`ArgumentError` on their own terms, because that is useful inside the model; the
+boundary translates it on the way out. Storage wraps a whole decode rather than
+each nested field, so adding domain validation later cannot quietly reopen the
+leak.
 
 A serialized map key is checked against the identity inside its value. The two
 are statements of the same fact, and trusting one of them lets a disagreement

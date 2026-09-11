@@ -121,7 +121,13 @@ String encodeSittingExport(SittingExport export) =>
 /// Throws [JournalFormatException] for a version it cannot read or a field it
 /// cannot make sense of, rather than returning a half-built sitting that an
 /// estimator would quietly fit.
-SittingExport decodeSittingExport(String source) {
+SittingExport decodeSittingExport(String source) => located(
+  () => _decodeSittingExport(source),
+  'sitting export',
+  location: 'export',
+);
+
+SittingExport _decodeSittingExport(String source) {
   final json = jsonDecode(source);
   if (json is! Map<String, Object?>) {
     throw const JournalFormatException('an export is a JSON object');

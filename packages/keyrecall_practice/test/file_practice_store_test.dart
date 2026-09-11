@@ -280,6 +280,25 @@ void main() {
     });
   });
 
+  test('an unreadable pending decision fails as a format error', () async {
+    // It decodes as JSON and then fails the domain's own validation. A caller
+    // reading an untrusted file catches one thing, and which enum the exercise
+    // named is not a distinction it should have to make.
+    final store = FilePracticeStore(root);
+    final session = await openSession(store);
+    await session.decideOutcome(at: t0.plusDays(0.5));
+
+    final json =
+        jsonDecode(pendingFile().readAsStringSync()) as Map<String, Object?>;
+    (json['exercise']! as Map<String, Object?>)['hands'] = 'three';
+    pendingFile().writeAsStringSync(jsonEncode(json));
+
+    await expectLater(
+      FilePracticeStore(root).loadPendingDecision(alice.id),
+      throwsA(isA<JournalFormatException>()),
+    );
+  });
+
   group('another profile\'s history', () {
     final bob = Profile(
       id: '3f2a6c18-0000-4000-8000-00000000b0b0',

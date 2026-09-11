@@ -74,7 +74,13 @@ class AcquisitionJournalHeader {
   ///
   /// Throws [JournalFormatException] for a version outside
   /// [readableAcquisitionVersions].
-  factory AcquisitionJournalHeader.fromJson(Map<String, Object?> json) {
+  factory AcquisitionJournalHeader.fromJson(Map<String, Object?> json) =>
+      located(
+        () => AcquisitionJournalHeader._fromJson(json),
+        'acquisition log header',
+      );
+
+  static AcquisitionJournalHeader _fromJson(Map<String, Object?> json) {
     final version = requireInt(json, 'schema_version', location: 'header');
     requireReadableAcquisitionVersion(version, location: 'header');
     return AcquisitionJournalHeader(
@@ -300,7 +306,13 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// Reads a record back.
   ///
   /// Throws [JournalFormatException] for anything it cannot read.
-  factory AcquisitionAttemptRecord.fromJson(Map<String, Object?> json) {
+  factory AcquisitionAttemptRecord.fromJson(Map<String, Object?> json) =>
+      located(
+        () => AcquisitionAttemptRecord._fromJson(json),
+        'acquisition attempt',
+      );
+
+  static AcquisitionAttemptRecord _fromJson(Map<String, Object?> json) {
     final location = 'acquisition record';
     final version = requireInt(json, 'schema_version', location: location);
     requireReadableAcquisitionVersion(version, location: location);
@@ -480,7 +492,13 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
   /// Reads a record back.
   ///
   /// Throws [JournalFormatException] for anything it cannot read.
-  factory AcquisitionProbeServedRecord.fromJson(Map<String, Object?> json) {
+  factory AcquisitionProbeServedRecord.fromJson(Map<String, Object?> json) =>
+      located(
+        () => AcquisitionProbeServedRecord._fromJson(json),
+        'probe service',
+      );
+
+  static AcquisitionProbeServedRecord _fromJson(Map<String, Object?> json) {
     const location = 'acquisition probe service';
     final version = requireInt(json, 'schema_version', location: location);
     requireReadableAcquisitionVersion(version, location: location);

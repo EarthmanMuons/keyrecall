@@ -245,11 +245,17 @@ void main() {
     });
 
     test('on an out-of-range observation', () {
+      // The domain refuses this on its own terms, and reading a record is
+      // where that refusal reaches a caller. It arrives as the one failure
+      // type this boundary promises rather than as the domain's own.
       final json = validRecord();
       (measurementJsonOf(json)['outcome']!
               as Map<String, Object?>)['continuity'] =
           1.5;
-      expect(() => AttemptRecord.fromJson(json), throwsArgumentError);
+      expect(
+        () => AttemptRecord.fromJson(json),
+        throwsA(isA<JournalFormatException>()),
+      );
     });
   });
 

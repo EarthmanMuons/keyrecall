@@ -164,6 +164,41 @@ void main() {
       );
     });
 
+    test('covers a domain rule a record breaks', () {
+      // The record decodes as JSON and then fails the domain's own validation.
+      // That is still persisted data a reader cannot use, so it is reported
+      // the same way rather than as whatever the constructor threw.
+      final recorded = recordSession(attempts: 2);
+      final json =
+          jsonDecode(canonicalJson(recorded.journal.records.first.toJson()))
+              as Map<String, Object?>;
+      json['session_id'] = '';
+
+      expect(
+        () => AttemptRecord.fromJson(json),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('covers a profile whose presentation hint is not a string', () {
+      final json =
+          jsonDecode(canonicalJson(testProfile.toJson()))
+              as Map<String, Object?>;
+      json['presentation_hint'] = 42;
+
+      expect(
+        () => Profile.fromJson(json),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('covers a sitting export that is not JSON at all', () {
+      expect(
+        () => decodeSittingExport('{not json'),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
     test('covers an unreadable numeric key inside a checkpoint', () {
       final json = checkpointJson();
       expect(

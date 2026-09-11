@@ -187,13 +187,16 @@ String? encodeOptionalTime(DateTime? at) => at == null ? null : encodeTime(at);
 /// all mean the same thing here, which is that persisted data cannot be read,
 /// so they are said the same way.
 ///
-/// A [JournalFormatException] raised inside passes through untouched, keeping
-/// whatever field location the decoder that raised it knew.
+/// A [JournalFormatException] raised inside keeps whatever field location the
+/// decoder that raised it knew, and is given this one when it knew none. A
+/// nested boundary is the common case: the innermost reader names the field,
+/// and the outermost names the line it was on.
 T located<T>(T Function() decode, String what, {String? location}) {
   try {
     return decode();
-  } on JournalFormatException {
-    rethrow;
+  } on JournalFormatException catch (error) {
+    if (error.location != null || location == null) rethrow;
+    throw JournalFormatException(error.message, location: location);
   } on ArgumentError catch (error) {
     throw JournalFormatException(
       '$what: ${error.message ?? error}',

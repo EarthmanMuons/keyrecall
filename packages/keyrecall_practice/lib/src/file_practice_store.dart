@@ -183,8 +183,12 @@ class FilePracticeStore implements PracticeStore {
     try {
       final exposures = [
         for (final line in const LineSplitter().convert(contents))
-          FeedbackExposure.fromJson(
-            asMap(jsonDecode(line), 'feedback exposure', location: file.path),
+          located(
+            () => FeedbackExposure.fromJson(
+              asMap(jsonDecode(line), 'feedback exposure', location: file.path),
+            ),
+            'feedback exposure',
+            location: file.path,
           ),
       ];
       if (exposures.any((exposure) => exposure.profileId != profileId)) {
@@ -236,12 +240,18 @@ class FilePracticeStore implements PracticeStore {
     await _recoverErase(profileId);
     final file = _pendingFile(profileId);
     if (!file.existsSync()) return null;
-    return PendingDecision.fromJson(
-      asMap(
-        await _decode(file, 'pending decision'),
-        'pending decision',
-        location: file.path,
-      ),
+    // Wrapped whole rather than field by field: the decode reaches domain
+    // validation that throws on its own terms, and a reader of an untrusted
+    // file should not have to learn which terms those are.
+    final json = asMap(
+      await _decode(file, 'pending decision'),
+      'pending decision',
+      location: file.path,
+    );
+    return located(
+      () => PendingDecision.fromJson(json),
+      'pending decision',
+      location: file.path,
     );
   }
 
@@ -332,8 +342,16 @@ class FilePracticeStore implements PracticeStore {
     try {
       return [
         for (final line in const LineSplitter().convert(contents))
-          CoordinationSample.fromJson(
-            asMap(jsonDecode(line), 'coordination sample', location: file.path),
+          located(
+            () => CoordinationSample.fromJson(
+              asMap(
+                jsonDecode(line),
+                'coordination sample',
+                location: file.path,
+              ),
+            ),
+            'coordination sample',
+            location: file.path,
           ),
       ];
     } on FormatException catch (error) {
@@ -366,12 +384,15 @@ class FilePracticeStore implements PracticeStore {
     await _recoverErase(profileId);
     final file = _planFile(profileId);
     if (!file.existsSync()) return null;
-    return PracticePlan.fromJson(
-      asMap(
-        await _decode(file, 'practice plan'),
-        'practice plan',
-        location: file.path,
-      ),
+    final json = asMap(
+      await _decode(file, 'practice plan'),
+      'practice plan',
+      location: file.path,
+    );
+    return located(
+      () => PracticePlan.fromJson(json),
+      'practice plan',
+      location: file.path,
     );
   }
 
@@ -392,13 +413,15 @@ class FilePracticeStore implements PracticeStore {
     await _recoverErase(profileId);
     final file = _checkpointFile(profileId);
     if (!file.existsSync()) return null;
-    return LearnerStateCheckpoint.fromJson(
-      asMap(
-        await _decode(file, 'learner checkpoint'),
-        'learner checkpoint',
-        location: file.path,
-      ),
-      params: params,
+    final json = asMap(
+      await _decode(file, 'learner checkpoint'),
+      'learner checkpoint',
+      location: file.path,
+    );
+    return located(
+      () => LearnerStateCheckpoint.fromJson(json, params: params),
+      'learner checkpoint',
+      location: file.path,
     );
   }
 

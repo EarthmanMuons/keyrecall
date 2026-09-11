@@ -116,18 +116,28 @@ class Profile {
 
   /// Reads a profile back.
   ///
+  /// Throws [JournalFormatException] for anything it cannot read.
+  ///
   /// A missing placement is refused rather than defaulted. It is the prior the
   /// profile's whole history was computed against, so guessing it would
   /// reinterpret that history under a starting state it never ran from, which
   /// is the one thing a reader of authoritative data must not do quietly.
-  factory Profile.fromJson(Map<String, Object?> json) => Profile(
-    id: requireString(json, 'id', location: 'profile'),
-    displayName: requireString(json, 'display_name', location: 'profile'),
-    createdAt: requireTime(json, 'created_at', location: 'profile'),
-    placement: PlacementTier.fromId(
-      requireString(json, 'placement', location: 'profile'),
+  factory Profile.fromJson(Map<String, Object?> json) => located(
+    () => Profile(
+      id: requireString(json, 'id', location: 'profile'),
+      displayName: requireString(json, 'display_name', location: 'profile'),
+      createdAt: requireTime(json, 'created_at', location: 'profile'),
+      placement: PlacementTier.fromId(
+        requireString(json, 'placement', location: 'profile'),
+      ),
+      presentationHint: asOptionalString(
+        json['presentation_hint'],
+        'presentation_hint',
+        location: 'profile',
+      ),
     ),
-    presentationHint: json['presentation_hint'] as String?,
+    'profile',
+    location: 'profile',
   );
 
   @override
