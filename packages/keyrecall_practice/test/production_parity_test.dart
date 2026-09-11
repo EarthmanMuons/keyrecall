@@ -11,8 +11,13 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'support/fixtures.dart';
 
 void main() {
+  _testProductionParity(fixtureMaterials);
+  _testProductionParity([proofArpeggios.first]);
+}
+
+void _testProductionParity(List<TechnicalMaterial> catalog) {
   test(
-    'production decisions and effects survive replay and host transport',
+    '${catalog.first.familyId} production decisions and effects survive replay and host transport',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'production-parity-',
@@ -24,18 +29,21 @@ void main() {
         InMemoryPracticeStore(createdAt: t0),
         pipeline,
         InProcessScheduler(pipeline),
+        materials: catalog,
       );
       final replayed = _ParityPath(
         'replayed',
         FilePracticeStore(Directory('${directory.path}/replayed')),
         pipeline,
         InProcessScheduler(pipeline),
+        materials: catalog,
       );
       final worker = _ParityPath(
         'worker',
         FilePracticeStore(Directory('${directory.path}/worker')),
         pipeline,
         IsolateScheduler(),
+        materials: catalog,
       );
       final paths = [direct, replayed, worker];
       for (final path in paths) {
@@ -59,6 +67,7 @@ void main() {
       }
 
       final kinds = <String>{};
+      final earnedParents = <Exercise>{};
       var acquisitions = 0;
       var probes = 0;
       var reopenedFailures = 0;
@@ -88,6 +97,9 @@ void main() {
         switch (direct.decision) {
           case PresentedAcquisition(:final task):
             kinds.add('acquisition');
+            if (catalog.first is ArpeggioMaterial) {
+              expect(task.portion, const TraversalRepetitions(2));
+            }
             acquisitions++;
             final succeeds = acquisitions.isEven;
             final transcript = succeeds
@@ -107,7 +119,15 @@ void main() {
             // Recurrence has to survive reconstruction from the journals alone.
             final reopened = await replayed.reopen();
             expect(persistentFacts(reopened), persistentFacts(direct.session));
+            expect(reopened.acquisitionJournal.attempts.last.task, task);
             if (succeeds) {
+              earnedParents.add(task.parent);
+              if (catalog.first is ArpeggioMaterial) {
+                expect(
+                  reopened.acquisitionJournal.attempts.last.gaps,
+                  hasLength(6),
+                );
+              }
               reopenedSuccesses++;
               expect(
                 reopened.acquisitionProgress.probeOwed(task.parent),
@@ -128,6 +148,7 @@ void main() {
             kinds.add('ordinary');
             if (chosen.decision.challengeBypass ==
                 ChallengeBypass.acquisitionProbe) {
+              expect(earnedParents.remove(chosen.exercise), isTrue);
               probes++;
             }
             for (final path in paths) {
@@ -189,14 +210,20 @@ void main() {
 class _ParityPath {
   final String name;
   final PracticeStore store;
+  final List<TechnicalMaterial> materials;
   final SchedulerPipeline pipeline;
   final _RecordingHost host;
   final IdGenerator ids = countingIds();
   late PracticeSession session;
   late PracticeDecision decision;
 
-  _ParityPath(this.name, this.store, this.pipeline, SchedulerHost host)
-    : host = _RecordingHost(host);
+  _ParityPath(
+    this.name,
+    this.store,
+    this.pipeline,
+    SchedulerHost host, {
+    required this.materials,
+  }) : host = _RecordingHost(host);
 
   SessionState get sitting => session.session;
 
@@ -208,6 +235,7 @@ class _ParityPath {
   /// Opens a second view of the same store, leaving [session] untouched.
   Future<PracticeSession> reopen({String sessionId = 'sitting'}) => openSession(
     store,
+    materials: materials,
     pipeline: pipeline,
     scheduler: host,
     ids: ids,
