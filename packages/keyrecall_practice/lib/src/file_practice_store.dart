@@ -75,9 +75,11 @@ class FilePracticeStore implements PracticeStore {
         ),
       );
     }
-    return AttemptJournal.fromJsonLines(
+    final journal = AttemptJournal.fromJsonLines(
       await _readCommittedLines(file, profileId),
     );
+    _requireOwnership(journal.header.profileId, profileId, file);
+    return journal;
   }
 
   @override
@@ -129,9 +131,11 @@ class FilePracticeStore implements PracticeStore {
         ),
       );
     }
-    return AcquisitionJournal.fromJsonLines(
+    final log = AcquisitionJournal.fromJsonLines(
       await _readCommittedLines(file, profileId),
     );
+    _requireOwnership(log.header.profileId, profileId, file);
+    return log;
   }
 
   @override
@@ -416,6 +420,22 @@ class FilePracticeStore implements PracticeStore {
   /// newline. That attempt was never committed, so the torn tail is dropped.
   /// A malformed record anywhere *else* is real corruption of history and is
   /// left to fail loudly when parsed.
+  /// Refuses a file whose header names a profile other than the one asked for.
+  ///
+  /// Ownership is identity, not history: a whole file copied into another
+  /// profile's directory is internally consistent, every record agrees with
+  /// its own header, and replay cannot tell that the person it describes is
+  /// not the person who asked. Only the placement can say so, so the placement
+  /// is checked.
+  void _requireOwnership(String owner, String profileId, File file) {
+    if (owner == profileId) return;
+    throw JournalFormatException(
+      'this history belongs to profile $owner, but it was found under '
+      '$profileId',
+      location: file.path,
+    );
+  }
+
   Future<String> _readCommittedLines(File file, String profileId) async {
     final committed = await readCommittedLines(file);
     if (committed.isEmpty) {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
@@ -276,6 +277,86 @@ void main() {
 
       expect(reopened.journal.length, 4);
       expect(learnerStateHash(reopened.state), reached);
+    });
+  });
+
+  group('another profile\'s history', () {
+    final bob = Profile(
+      id: '3f2a6c18-0000-4000-8000-00000000b0b0',
+      displayName: 'Bob',
+      createdAt: t0,
+      placement: PlacementTier.someExperience,
+    );
+
+    /// Copies every file Alice wrote into Bob's directory, unchanged.
+    ///
+    /// The shape record-to-header validation cannot catch: each record agrees
+    /// with the header above it, the placement is the same, and the creation
+    /// time matches. Nothing inside the file is wrong; it is in the wrong
+    /// place.
+    void placeAliceUnderBob() {
+      final source = Directory('${root.path}/${alice.id}');
+      final target = Directory('${root.path}/${bob.id}')
+        ..createSync(recursive: true);
+      for (final file in source.listSync().whereType<File>()) {
+        file.copySync('${target.path}/${file.uri.pathSegments.last}');
+      }
+    }
+
+    test('is refused by the store rather than loaded', () async {
+      final session = await openSession(FilePracticeStore(root));
+      await practise(session, attempts: 3);
+      placeAliceUnderBob();
+
+      await expectLater(
+        FilePracticeStore(root).loadJournal(bob.id),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('is refused when a session opens it', () async {
+      final session = await openSession(FilePracticeStore(root));
+      await practise(session, attempts: 3);
+      placeAliceUnderBob();
+
+      await expectLater(
+        openSession(FilePracticeStore(root), profile: bob),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('is refused for an acquisition log too', () async {
+      final store = FilePracticeStore(root);
+      final session = await openSession(store);
+      final presented =
+          await session.decideOutcome(at: t0.plusDays(0.5)) as PresentedAttempt;
+      await session.abandonPending();
+      await store.appendAcquisitionEntry(
+        AcquisitionAttemptRecord(
+          journalSequence: 0,
+          identity: AttemptIdentity(
+            profileId: alice.id,
+            attemptId: 'acquisition-1',
+            sessionId: 'sitting-0',
+            indexInSession: 0,
+            occurredAt: t0,
+          ),
+          task: AcquisitionTask.unmeteredTraversal(presented.exercise),
+          started: true,
+          completion: AcquisitionCompletion.completedCleanly,
+          repairs: 0,
+          repeats: 0,
+          intrusions: 0,
+          earnedProbe: true,
+          gaps: const [],
+        ),
+      );
+      placeAliceUnderBob();
+
+      await expectLater(
+        FilePracticeStore(root).loadAcquisitionJournal(bob.id),
+        throwsA(isA<JournalFormatException>()),
+      );
     });
   });
 

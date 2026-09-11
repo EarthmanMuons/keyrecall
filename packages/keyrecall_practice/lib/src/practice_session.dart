@@ -306,6 +306,7 @@ class PracticeSession {
       profile.id,
       createdAt: profile.createdAt,
     );
+    _requireOwnership(journal.header.profileId, profile.id, 'journal');
 
     // Anchored to when the profile was created, not to the journal header or
     // any wall clock a store happened to stamp. Placement is the state before
@@ -332,6 +333,11 @@ class PracticeSession {
     final acquisition = await store.loadAcquisitionJournal(
       profile.id,
       createdAt: profile.createdAt,
+    );
+    _requireOwnership(
+      acquisition.header.profileId,
+      profile.id,
+      'acquisition log',
     );
     final pending = await _recoverPending(store, profile, journal);
 
@@ -1089,6 +1095,19 @@ class PracticeSession {
       // journal still holds the history it was standing in for.
       return null;
     }
+  }
+
+  /// Refuses history belonging to somebody other than the profile opening it.
+  ///
+  /// The store checks this too. It is checked again here because a store is a
+  /// port: a history whose owner nobody verified would be replayed into this
+  /// person's learner state, and no amount of internal consistency in that
+  /// file can establish whose it is.
+  static void _requireOwnership(String owner, String profileId, String what) {
+    if (owner == profileId) return;
+    throw JournalFormatException(
+      'this $what belongs to profile $owner, but $profileId opened it',
+    );
   }
 
   /// Decides what an unresolved decision means, given what the journal holds.
