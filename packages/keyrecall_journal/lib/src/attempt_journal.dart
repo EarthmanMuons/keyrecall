@@ -40,7 +40,13 @@ class JournalHeader {
   };
 
   /// Reads a header back.
-  factory JournalHeader.fromJson(Map<String, Object?> json) {
+  ///
+  /// Throws [JournalFormatException] for anything it cannot read, including a
+  /// profile id the domain refuses.
+  factory JournalHeader.fromJson(Map<String, Object?> json) =>
+      located(() => JournalHeader._fromJson(json), 'journal header');
+
+  static JournalHeader _fromJson(Map<String, Object?> json) {
     json = upgradeJournalHeaderJson(json);
     return JournalHeader(
       profileId: requireString(json, 'profile_id', location: 'header'),

@@ -88,6 +88,15 @@ void main() {
       }
     });
 
+    test('reject a local time that normalizes outside the stored range', () {
+      // Syntactically valid, and readable as a real instant. An offset carries
+      // a timestamp written at either edge of the range out of it, and what
+      // comes back is a year this package could never write.
+      expect(parseTime('0000-01-01T00:00:00.000Z'), isNull);
+      expect(parseTime('0001-01-01T00:00:00.000+14:00'), isNull);
+      expect(parseTime('9999-12-31T23:59:59.999-14:00'), isNull);
+    });
+
     test('a year the stored form cannot express is refused, not written', () {
       // The platform writes an expanded year, which nothing here reads back.
       // Failing where it is produced beats persisting it and discovering that
@@ -222,6 +231,25 @@ void main() {
 
       expect(
         () => AttemptRecord.fromJson(json),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('covers a header whose profile id the domain refuses', () {
+      final json =
+          jsonDecode(
+                canonicalJson(
+                  JournalHeader(
+                    profileId: testProfile.id,
+                    createdAt: t0,
+                  ).toJson(),
+                ),
+              )
+              as Map<String, Object?>;
+      json['profile_id'] = '../invalid';
+
+      expect(
+        () => JournalHeader.fromJson(json),
         throwsA(isA<JournalFormatException>()),
       );
     });

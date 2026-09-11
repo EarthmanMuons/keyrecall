@@ -154,6 +154,12 @@ const String timestampGrammar = 'YYYY-MM-DDThh:mm:ss[.f{1,6}](Z|(+|-)hh:mm)';
 /// The largest zone offset, in minutes, that a stored timestamp may carry.
 const int maxTimestampOffsetMinutes = 14 * 60;
 
+/// The earliest year a stored timestamp may resolve to, in UTC.
+const int minTimestampYear = 1;
+
+/// The latest year a stored timestamp may resolve to, in UTC.
+const int maxTimestampYear = 9999;
+
 final RegExp _iso8601 = RegExp(
   r'^(\d{4})-(\d{2})-(\d{2})T'
   r'(\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?'
@@ -177,6 +183,8 @@ DateTime? parseTime(String value) {
   final minute = int.parse(match[5]!);
   final second = int.parse(match[6]!);
 
+  if (year < minTimestampYear || year > maxTimestampYear) return null;
+
   if (match[8] != null) {
     final offset = int.parse(match[9]!) * 60 + int.parse(match[10]!);
     if (int.parse(match[10]!) > 59 || offset > maxTimestampOffsetMinutes) {
@@ -194,7 +202,16 @@ DateTime? parseTime(String value) {
     return null;
   }
 
-  return DateTime.tryParse(value)?.toUtc();
+  final parsed = DateTime.tryParse(value)?.toUtc();
+  if (parsed == null) return null;
+  // An offset can carry a timestamp written at either edge of the range out of
+  // it: the first instant of year 1 at +14:00 lands in year 0, and the last of
+  // year 9999 at -14:00 lands in year 10000. Both are readable local times
+  // this package could never write back.
+  if (parsed.year < minTimestampYear || parsed.year > maxTimestampYear) {
+    return null;
+  }
+  return parsed;
 }
 
 /// Reads an optional timestamp, distinguishing absent from malformed.
@@ -213,7 +230,7 @@ DateTime? readOptionalTime(
 /// failing at the moment it is produced.
 String encodeTime(DateTime at) {
   final utc = at.toUtc();
-  if (utc.year < 1 || utc.year > 9999) {
+  if (utc.year < minTimestampYear || utc.year > maxTimestampYear) {
     throw JournalFormatException(
       'cannot write the year ${utc.year}; stored timestamps are '
       '$timestampGrammar',

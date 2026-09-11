@@ -218,12 +218,18 @@ the recorded learner state under this model: every prediction, weight, and state
 hash the journal carries was recomputed and agreed with.
 
 Replaying from a checkpoint, it proves that of the attempts after the
-checkpoint, and proves of the ones before it that they are byte for byte the
-records the checkpoint was taken from, propagated from the same prior. Their
-predictions and weights are not recomputed, because they are not replayed. That
-is the trade a checkpoint is: the digest establishes the history is unchanged,
-not that it was ever verified. Discard every checkpoint to get the stronger
-claim back, which costs only time.
+checkpoint, and proves of the ones before it that they carry the same canonical
+record content the checkpoint was taken from, propagated from the same prior.
+Their predictions and weights are not recomputed, because they are not replayed.
+That is the trade a checkpoint is: the digest establishes the history is
+unchanged, not that it was ever verified. Discard every checkpoint to get the
+stronger claim back, which costs only time.
+
+The digest is over canonical content, not over the file. It is built from the
+hashes of decoded records re-encoded canonically, so whitespace, key order, and
+anything a decoder discards are outside what it binds. Two files that differ
+only in those ways hold the same history, which is the thing the digest is meant
+to speak about.
 
 It does **not** prove that the scheduler would select the same exercise again.
 Exact learner replay is not exact scheduler replay. Regenerating the historical
