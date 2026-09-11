@@ -202,6 +202,79 @@ void main() {
     });
   });
 
+  group('repeated traversals', () {
+    final parent = Exercise.linear(
+      material: ArpeggioMaterial('C', ArpeggioQuality.major),
+      hands: HandConfiguration.right,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+      tempoBpm: 60,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+    final task = AcquisitionScaffold.unmeteredRepetitions(2).taskFor(parent);
+    final notes = [
+      for (final moment in realizeAcquisition(task).moments)
+        moment.notes.single.midiNote,
+    ];
+
+    for (var position = 1; position < 4; position++) {
+      test(
+        'recurring hesitation at transition $position cannot earn a probe',
+        () {
+          final result = observeAcquisition(
+            task: task,
+            transcript: _played(notes, [
+              for (var i = 1; i < notes.length; i++)
+                if (i == 4) 5000 else if (i % 4 == position) 10000 else 600,
+            ], parent),
+          );
+          expect(result.completion, AcquisitionCompletion.completedCleanly);
+          expect(result.stalls, isEmpty);
+          expect(result.continuity, AcquisitionContinuity.unestablished);
+          expect(result.earnsParentProbe, isFalse);
+        },
+      );
+    }
+
+    test('each traversal may use its own steady pace', () {
+      final result = observeAcquisition(
+        task: task,
+        transcript: _played(notes, [
+          600,
+          600,
+          600,
+          10000,
+          3000,
+          3000,
+          3000,
+        ], parent),
+      );
+      expect(result.continuity, AcquisitionContinuity.unbroken);
+      expect(result.earnsParentProbe, isTrue);
+    });
+
+    for (final omittedStarts in [1, 2]) {
+      test('a reset crossing $omittedStarts missing notes is not a stall', () {
+        final played = [...notes.take(4), ...notes.skip(4 + omittedStarts)];
+        final result = observeAcquisition(
+          task: task,
+          transcript: _played(played, [
+            for (var i = 1; i < played.length; i++) i == 4 ? 10000 : 600,
+          ], parent),
+        );
+        expect(result.completion, AcquisitionCompletion.notCompleted);
+        expect(result.gaps.length, 6 - omittedStarts);
+        expect(
+          result.gaps.any((gap) => gap.fromPosition < 4 && gap.toPosition >= 4),
+          isFalse,
+        );
+        expect(result.gaps.every((gap) => gap.gapMs == 600), isTrue);
+        expect(result.stalls, isEmpty);
+        expect(result.earnsParentProbe, isFalse);
+      });
+    }
+  });
+
   group('too little to say', () {
     test('a short traversal establishes no continuity', () {
       // Under five intervals the interpolated upper quartile contains the

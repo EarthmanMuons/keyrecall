@@ -374,7 +374,10 @@ List<MomentGap> momentGapsOf(
   final onsets = _momentOnsets(alignment);
   final spans = [
     for (var i = 1; i < onsets.length; i++)
-      if (!restartPositions.contains(onsets[i].position))
+      if (!restartPositions.any(
+        (start) =>
+            onsets[i - 1].position < start && start <= onsets[i].position,
+      ))
         (
           from: onsets[i - 1].position,
           to: onsets[i].position,

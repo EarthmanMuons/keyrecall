@@ -123,9 +123,35 @@ class AcquisitionObservation {
   /// not move for it.
   AcquisitionContinuity get continuity => stalls.isNotEmpty
       ? AcquisitionContinuity.interrupted
-      : gaps.length >= fewestIntervalsForContinuity
+      : gaps.length >= fewestIntervalsForContinuity && !_hasAmbiguousTraversal
       ? AcquisitionContinuity.unbroken
       : AcquisitionContinuity.unestablished;
+
+  /// Pooling repetitions can hide a hesitation that recurs in each traversal.
+  /// Large internal spread with no pooled stall leaves continuity unknown.
+  bool get _hasAmbiguousTraversal {
+    if (task.portion.traversals == 1) return false;
+    final starts = acquisitionTraversalStarts(task);
+    for (var index = 0; index < starts.length; index++) {
+      final intervals = gaps.where(
+        (gap) =>
+            gap.fromPosition >= starts[index] &&
+            (index + 1 == starts.length || gap.toPosition < starts[index + 1]),
+      );
+      int? shortest;
+      var longest = 0;
+      for (final gap in intervals) {
+        if (shortest == null || gap.gapMs < shortest) shortest = gap.gapMs;
+        if (gap.gapMs > longest) longest = gap.gapMs;
+      }
+      if (shortest != null &&
+          longest > 0 &&
+          longest >= shortest * policy.brokenIntervalRatio) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   /// Whether this attempt makes the unchanged parent eligible for a probe.
   ///
