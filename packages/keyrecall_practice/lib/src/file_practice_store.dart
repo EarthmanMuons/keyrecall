@@ -6,6 +6,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'coordination_log.dart';
 import 'feedback_exposure.dart';
+import 'json_lines.dart';
 import 'pending_decision.dart';
 import 'practice_plan.dart';
 import 'practice_store.dart';
@@ -87,7 +88,7 @@ class FilePracticeStore implements PracticeStore {
     await _recoverErase(record.profileId);
     final file = _journalFile(record.profileId);
     await file.parent.create(recursive: true);
-    await _repairTornTail(file);
+    await truncateTornTail(file);
 
     if (!file.existsSync()) {
       // A journal created by its first append is stamped with the attempt it
@@ -144,7 +145,7 @@ class FilePracticeStore implements PracticeStore {
     await _recoverErase(profileId);
     final file = _acquisitionFile(profileId);
     await file.parent.create(recursive: true);
-    await _repairTornTail(file);
+    await truncateTornTail(file);
 
     if (!file.existsSync()) {
       final header = AcquisitionJournalHeader(
@@ -205,7 +206,7 @@ class FilePracticeStore implements PracticeStore {
     await _recoverErase(exposure.profileId);
     final file = _feedbackFile(exposure.profileId);
     await file.parent.create(recursive: true);
-    await _repairTornTail(file);
+    await truncateTornTail(file);
     final journal = await _loadJournal(exposure.profileId, null);
     if (!journal.records.any(
       (record) => record.identity.attemptId == exposure.attemptId,
@@ -309,7 +310,7 @@ class FilePracticeStore implements PracticeStore {
     if (existing.containsKey(attemptId)) return;
     final file = _selectionFile(profileId);
     await file.parent.create(recursive: true);
-    await _repairTornTail(file);
+    await truncateTornTail(file);
     await _appendLine(
       file,
       canonicalJson({'attempt_id': attemptId, 'diagnostics': diagnostics}),
@@ -347,7 +348,7 @@ class FilePracticeStore implements PracticeStore {
     await _recoverErase(sample.profileId);
     final file = _coordinationFile(sample.profileId);
     await file.parent.create(recursive: true);
-    await _repairTornTail(file);
+    await truncateTornTail(file);
     final existing = await _loadCoordinationSamples(sample.profileId);
     if (existing.any((held) => held.attemptId == sample.attemptId)) return;
     await _appendLine(file, canonicalJson(sample.toJson()));
@@ -409,60 +410,31 @@ class FilePracticeStore implements PracticeStore {
     );
   }
 
-  /// Reads the lines that were fully committed.
+  /// Reads the records that were fully committed.
   ///
-  /// A crash mid-append can leave a final line without its terminating
+  /// A crash mid-append can leave a final record without its terminating
   /// newline. That attempt was never committed, so the torn tail is dropped.
-  /// A malformed line anywhere *else* is real corruption of history and is left
-  /// to fail loudly when parsed.
+  /// A malformed record anywhere *else* is real corruption of history and is
+  /// left to fail loudly when parsed.
   Future<String> _readCommittedLines(File file, String profileId) async {
-    final contents = await file.readAsString();
-    if (contents.isEmpty) {
+    final committed = await readCommittedLines(file);
+    if (committed.isEmpty) {
       throw JournalFormatException(
         'journal file for $profileId is empty',
         location: file.path,
       );
     }
-    if (contents.endsWith('\n')) {
-      return contents.substring(0, contents.length - 1);
-    }
-
-    final lastBreak = contents.lastIndexOf('\n');
-    if (lastBreak < 0) {
+    if (!committed.hasCompleteRecord) {
       throw JournalFormatException(
         'journal file for $profileId holds no complete record',
         location: file.path,
       );
     }
-    return contents.substring(0, lastBreak);
+    return committed.text;
   }
 
-  Future<String> _readCompleteContents(File file) async {
-    final contents = await file.readAsString();
-    if (contents.isEmpty) return '';
-    if (contents.endsWith('\n')) {
-      return contents.substring(0, contents.length - 1);
-    }
-    final lastBreak = contents.lastIndexOf('\n');
-    return lastBreak < 0 ? '' : contents.substring(0, lastBreak);
-  }
-
-  /// Truncates an incomplete final line before appending after it.
-  ///
-  /// A crash mid-append leaves a record with no terminating newline. That
-  /// attempt was never committed, so the next append must remove it rather than
-  /// write onto the end of it.
-  Future<void> _repairTornTail(File file) async {
-    if (!file.existsSync()) return;
-    final contents = await file.readAsString();
-    if (contents.isEmpty || contents.endsWith('\n')) return;
-
-    final lastBreak = contents.lastIndexOf('\n');
-    await file.writeAsString(
-      lastBreak < 0 ? '' : contents.substring(0, lastBreak + 1),
-      flush: true,
-    );
-  }
+  Future<String> _readCompleteContents(File file) async =>
+      (await readCommittedLines(file)).text;
 
   Future<void> _appendLine(File file, String line) async {
     final handle = file.openSync(mode: FileMode.append);

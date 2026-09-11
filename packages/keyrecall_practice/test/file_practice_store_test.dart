@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -299,6 +300,56 @@ void main() {
         reopened.journal.length,
         3,
         reason: 'the torn tail is not history',
+      );
+    });
+
+    test('a tail torn inside a character is still recoverable', () async {
+      // The bytes after the last committed newline can end midway through a
+      // multi-byte character. Deciding where history stops has to happen in
+      // the bytes, or a perfectly recoverable file fails to decode.
+      final session = await openSession(FilePracticeStore(root));
+      await practise(session, attempts: 3);
+
+      final committed = journalFile().readAsBytesSync();
+      // 'é' is two bytes; only the first one reached the disk.
+      journalFile().writeAsBytesSync([
+        ...committed,
+        ...utf8.encode('{"record_type":"attempt","note":"'),
+        0xc3,
+      ]);
+
+      final reopened = await openSession(
+        FilePracticeStore(root),
+        sessionId: 'session-2',
+      );
+
+      expect(reopened.journal.length, 3);
+    });
+
+    test('recovery keeps the committed prefix byte for byte', () async {
+      // Repair truncates at the last committed newline rather than rewriting
+      // what came before it. A prefix that is removed and written back is a
+      // prefix a second interruption can destroy.
+      final session = await openSession(FilePracticeStore(root));
+      await practise(session, attempts: 3);
+      final committed = journalFile().readAsBytesSync();
+
+      journalFile().writeAsBytesSync([
+        ...committed,
+        ...utf8.encode('{"partial'),
+      ]);
+      await truncateTornTail(journalFile());
+
+      expect(journalFile().readAsBytesSync(), committed);
+    });
+
+    test('a file with no committed record at all is not history', () async {
+      journalFile().parent.createSync(recursive: true);
+      journalFile().writeAsStringSync('{"record_type":"journal_header"');
+
+      await expectLater(
+        openSession(FilePracticeStore(root), sessionId: 'session-1'),
+        throwsA(isA<JournalFormatException>()),
       );
     });
 

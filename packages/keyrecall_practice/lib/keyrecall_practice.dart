@@ -22,6 +22,7 @@ export 'src/file_practice_store.dart';
 export 'src/file_profile_repository.dart';
 export 'src/coordination_log.dart';
 export 'src/feedback_exposure.dart';
+export 'src/json_lines.dart';
 export 'src/pending_decision.dart';
 export 'src/performance_closure.dart';
 export 'src/practice_plan.dart';
