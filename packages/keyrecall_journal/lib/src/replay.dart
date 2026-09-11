@@ -5,6 +5,7 @@ import 'attempt_closure.dart';
 import 'attempt_journal.dart';
 import 'attempt_record.dart';
 import 'checkpoint.dart';
+import 'checkpoint_validation.dart';
 import 'schema.dart';
 
 /// How faithfully a replay must reproduce what was recorded.
@@ -138,6 +139,20 @@ class ReplayResult {
 /// [ReplayMode.exact]. A missing or mismatched model version fails loudly
 /// rather than being reinterpreted under today's constants.
 ///
+/// A [from] checkpoint is checked against the journal by
+/// [validateCheckpointAgainstJournal] before any history is skipped, in every
+/// mode, and a rejected one throws here rather than seeding the replay. Passing
+/// a checkpoint is an explicit claim about this journal, so a false one is
+/// reported; a caller that merely holds a cached checkpoint should validate it
+/// first and replay from the beginning when it does not hold up.
+///
+/// What [ReplayResult.isFaithful] proves is bounded by what the journal
+/// records. It establishes that the recorded observations rebuild the recorded
+/// learner state under this model. It does not establish that the scheduler
+/// would select the same exercise again: candidate sets and decision traces are
+/// not recorded, so the historical selection process cannot be regenerated from
+/// here.
+///
 /// ## Canonical state advances only on a committed attempt
 ///
 /// Replay propagates from one recorded attempt to the next, so the writer must
@@ -165,11 +180,10 @@ ReplayResult replayJournal(
   void Function(AttemptRecord record, LearnerState before)? observe,
 }) {
   final state = _seedState(
+    journal,
     initial: initial,
     from: from,
-    model: model,
-    mode: options.mode,
-    profileId: journal.header.profileId,
+    learnerModelVersion: model.params.modelVersion,
   );
   final divergences = <ReplayDivergence>[];
   var applied = 0;
@@ -180,14 +194,6 @@ ReplayResult replayJournal(
     // journal spans many sessions, and a checkpoint already contains all of
     // them up to its sequence.
     if (from != null && record.journalSequence <= from.throughJournalSequence) {
-      if (record.journalSequence == from.throughJournalSequence &&
-          record.identity.attemptId != from.throughAttemptId) {
-        throw JournalFormatException(
-          'checkpoint claims to cover attempt ${from.throughAttemptId} at '
-          'sequence ${from.throughJournalSequence}, but this journal has '
-          '${record.identity.attemptId} there',
-        );
-      }
       continue;
     }
 
@@ -289,27 +295,20 @@ ReplayResult replayJournal(
   );
 }
 
-LearnerState _seedState({
+LearnerState _seedState(
+  AttemptJournal journal, {
   required LearnerState initial,
   required LearnerStateCheckpoint? from,
-  required LearnerModel model,
-  required ReplayMode mode,
-  required String profileId,
+  required String learnerModelVersion,
 }) {
   if (from == null) return initial.copy();
-  if (from.profileId != profileId) {
-    throw JournalFormatException(
-      'checkpoint belongs to profile ${from.profileId}, but this journal '
-      'holds $profileId',
-    );
-  }
-  if (mode == ReplayMode.exact &&
-      !from.isUsableUnder(model.params.modelVersion)) {
-    throw JournalFormatException(
-      'checkpoint was taken under learner model '
-      '"${from.learnerModelVersion}" but replay is running '
-      '"${model.params.modelVersion}"; replay from the journal instead',
-    );
+  final rejection = validateCheckpointAgainstJournal(
+    from,
+    journal: journal,
+    learnerModelVersion: learnerModelVersion,
+  );
+  if (rejection != null) {
+    throw JournalFormatException(rejection.reason, location: 'checkpoint');
   }
   return from.state.copy();
 }

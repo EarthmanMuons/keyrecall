@@ -242,6 +242,86 @@ void main() {
       );
     });
 
+    test('a checkpoint at the tail holding the wrong state is refused', () {
+      // The dangerous shape: correct position, correct attempt id, correct
+      // time, internally consistent hash, and a state the journal never
+      // produced. Accepting it would replace the whole history with it and
+      // still report a faithful replay.
+      final recorded = recordSession(attempts: 5);
+      final last = recorded.journal.records.last;
+      final wrongState = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
+        state: recorded.initial,
+        learnerModelVersion: params.modelVersion,
+        throughJournalSequence: last.journalSequence,
+        throughAttemptId: last.identity.attemptId,
+        coversThrough: last.identity.occurredAt,
+      );
+
+      expect(
+        () => replayJournal(
+          recorded.journal,
+          model: model,
+          initial: recorded.initial,
+          from: wrongState,
+        ),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('a checkpoint covering a sequence past the end is refused', () {
+      final recorded = recordSession(attempts: 3);
+      final beyond = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
+        state: recorded.initial,
+        learnerModelVersion: params.modelVersion,
+        throughJournalSequence: recorded.journal.length,
+        throughAttemptId: 'never-recorded',
+        coversThrough: t0,
+      );
+
+      expect(
+        () => replayJournal(
+          recorded.journal,
+          model: model,
+          initial: recorded.initial,
+          from: beyond,
+        ),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('a checkpoint covering a time the attempt did not happen at is '
+        'refused', () {
+      final recorded = recordSession(attempts: 4);
+      final covered = recorded.journal.records[1];
+      final upTo = AttemptJournal(recorded.journal.header)
+        ..appendAll(recorded.journal.records.take(2));
+      final partial = replayJournal(
+        upTo,
+        model: model,
+        initial: recorded.initial,
+      );
+      final skewed = LearnerStateCheckpoint.capture(
+        profileId: testProfile.id,
+        state: partial.state,
+        learnerModelVersion: params.modelVersion,
+        throughJournalSequence: covered.journalSequence,
+        throughAttemptId: covered.identity.attemptId,
+        coversThrough: covered.identity.occurredAt.plusDays(1),
+      );
+
+      expect(
+        () => replayJournal(
+          recorded.journal,
+          model: model,
+          initial: recorded.initial,
+          from: skewed,
+        ),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
     test('a checkpoint does not follow the state it was taken from', () {
       // Learner state is mutable, so a checkpoint that aliased it would drift
       // as practice continued and stop matching its own hash.
@@ -312,15 +392,28 @@ void main() {
     });
 
     test('when a checkpoint came from another model version, in any mode', () {
+      // Correct in every other respect: it names the attempt it covers, at the
+      // time that attempt happened, holding the state that attempt produced.
+      // Only the model version is wrong, so nothing else can mask it.
       final recorded = recordSession(attempts: 3);
+      final covered = recorded.journal.records[1];
+      final upTo = AttemptJournal(recorded.journal.header)
+        ..appendAll(recorded.journal.records.take(2));
+      final partial = replayJournal(
+        upTo,
+        model: model,
+        initial: recorded.initial,
+      );
       final checkpoint = LearnerStateCheckpoint.capture(
         profileId: testProfile.id,
-        state: recorded.initial,
+        state: partial.state,
         learnerModelVersion: 'v1-prototype-99',
-        throughJournalSequence: 0,
-        throughAttemptId: 'attempt-0',
-        coversThrough: t0,
+        throughJournalSequence: covered.journalSequence,
+        throughAttemptId: covered.identity.attemptId,
+        coversThrough: covered.identity.occurredAt,
       );
+
+      expect(checkpoint.contentHash, covered.stateAfterHash);
 
       expect(checkpoint.isUsableUnder(params.modelVersion), isFalse);
       for (final mode in ReplayMode.values) {

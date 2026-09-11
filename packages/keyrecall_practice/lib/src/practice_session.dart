@@ -1060,6 +1060,9 @@ class PracticeSession {
       );
 
   /// Reads the checkpoint only if it is safe to start from.
+  ///
+  /// Anything wrong with it means a full replay rather than a failure: the
+  /// journal is authoritative, and losing a checkpoint costs only time.
   static Future<LearnerStateCheckpoint?> _usableCheckpoint(
     PracticeStore store,
     String profileId,
@@ -1069,13 +1072,18 @@ class PracticeSession {
     try {
       final checkpoint = await store.loadCheckpoint(profileId);
       if (checkpoint == null) return null;
-      // A checkpoint covering history the journal does not hold is standing in
-      // for attempts that are gone, which is what an erase leaves behind if a
-      // sitting saves one after it.
-      if (checkpoint.throughJournalSequence >= journal.length) return null;
-      return checkpoint.isUsableUnder(learner.params.modelVersion)
-          ? checkpoint
-          : null;
+      // Every part of what a checkpoint claims is checked against the journal
+      // before it stands in for history: position, identity, time, its own
+      // hash, and agreement with the state the covered attempt produced. A
+      // checkpoint covering history the journal does not hold is one of those
+      // rejections, which is what an erase leaves behind if a sitting saves one
+      // after it.
+      final rejection = validateCheckpointAgainstJournal(
+        checkpoint,
+        journal: journal,
+        learnerModelVersion: learner.params.modelVersion,
+      );
+      return rejection == null ? checkpoint : null;
     } on JournalFormatException {
       // A corrupt or stale checkpoint is a cache miss, not a failure: the
       // journal still holds the history it was standing in for.
