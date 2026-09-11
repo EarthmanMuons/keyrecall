@@ -183,8 +183,9 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// in force at the time read it.
   final bool earnedProbe;
 
-  /// Throws [ArgumentError] when a probe was earned by an attempt that did not
-  /// complete, which no observation produces.
+  /// Throws [ArgumentError] for anything no observation produces: a probe
+  /// earned without completing, a negative count or position, or a wait that
+  /// does not run forward from one position to a later one.
   AcquisitionAttemptRecord({
     required this.journalSequence,
     required this.identity,
@@ -214,6 +215,38 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         'earnedProbe',
         'a criterion success is a completion',
       );
+    }
+    for (final (name, count) in [
+      ('repairs', repairs),
+      ('repeats', repeats),
+      ('intrusions', intrusions),
+    ]) {
+      if (count < 0) {
+        throw ArgumentError.value(count, name, 'cannot be negative');
+      }
+    }
+    if (firstAbsentPosition != null && firstAbsentPosition! < 0) {
+      throw ArgumentError.value(
+        firstAbsentPosition,
+        'firstAbsentPosition',
+        'cannot be negative',
+      );
+    }
+    for (final gap in this.gaps) {
+      if (gap.fromPosition < 0 || gap.toPosition <= gap.fromPosition) {
+        throw ArgumentError.value(
+          gap,
+          'gaps',
+          'a gap runs forward from one position to a later one',
+        );
+      }
+      if (gap.gapMs < 0 || !gap.ratio.isFinite || gap.ratio < 0) {
+        throw ArgumentError.value(
+          gap,
+          'gaps',
+          'a wait has a nonnegative duration and a finite ratio',
+        );
+      }
     }
   }
 

@@ -418,6 +418,39 @@ void main() {
       );
     });
 
+    test('is refused for counts and positions no performance produces', () {
+      // Basic arithmetic about what was played. A negative count or a wait
+      // that runs backward is not an observation the log should have to carry
+      // downstream and decide what to do with.
+      expect(
+        () => recordAt(
+          0,
+          gaps: const [
+            (fromPosition: 4, toPosition: 2, gapMs: 600, ratio: 1.2),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => recordAt(
+          0,
+          gaps: const [
+            (fromPosition: -1, toPosition: 2, gapMs: 600, ratio: 1.2),
+          ],
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => recordAt(
+          0,
+          gaps: const [
+            (fromPosition: 1, toPosition: 2, gapMs: -600, ratio: 1.2),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('is refused for a parent with no acquisition history', () {
       // Service of an obligation that never existed.
       final log = emptyLog()..append(serviceAt(0));

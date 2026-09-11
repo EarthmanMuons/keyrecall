@@ -49,22 +49,29 @@ class LearnerStateCheckpoint {
   /// When the covered attempt happened, in UTC.
   final DateTime coversThrough;
 
+  final LearnerState _state;
+
   /// The saved state.
-  final LearnerState state;
+  ///
+  /// A fresh copy each time. Learner state is mutable, and a caller holding
+  /// the stored object could advance it and leave the checkpoint claiming a
+  /// hash its own content no longer produces, which is exactly the failure the
+  /// capture-time copy exists to prevent.
+  LearnerState get state => _state.copy();
 
   /// Hash of the canonical encoding of [state].
   final String contentHash;
 
-  const LearnerStateCheckpoint._({
+  LearnerStateCheckpoint._({
     required this.schemaVersion,
     required this.profileId,
     required this.learnerModelVersion,
     required this.throughJournalSequence,
     required this.throughAttemptId,
     required this.coversThrough,
-    required this.state,
+    required LearnerState state,
     required this.contentHash,
-  });
+  }) : _state = state;
 
   /// Captures [state] as it stands.
   ///
@@ -131,7 +138,7 @@ class LearnerStateCheckpoint {
     'through_attempt_id': throughAttemptId,
     'covers_through': encodeTime(coversThrough),
     'content_hash': contentHash,
-    'state': encodeLearnerState(state),
+    'state': encodeLearnerState(_state),
   };
 
   /// Reads a checkpoint back and verifies it against its own hash.

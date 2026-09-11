@@ -135,10 +135,20 @@ Erasing writes a marker before removing any practice file. If deletion is
 interrupted, the next access finishes it before exposing storage, so a journal,
 pending decision, and checkpoint from opposite sides of an erase cannot mix.
 
-A crash mid-append can leave a final line without its newline. That attempt was
-never committed, so the torn tail is dropped on read and truncated before the
-next append. A malformed line _anywhere else_ is real corruption of history and
-fails loudly, because quietly skipping it would lose evidence.
+A crash mid-append can leave a final record without its newline. That attempt
+was never committed, so the torn tail is dropped on read and truncated before
+the next append. A malformed record _anywhere else_ is real corruption of
+history and fails loudly, because quietly skipping it would lose evidence.
+
+Where history stops is decided in the bytes. The file is truncated at the offset
+of its last committed newline and its valid prefix is never rewritten, so a
+second interruption during recovery cannot destroy what the first one left
+intact, and a tail torn midway through a multi-byte character does not stop the
+file from being read at all.
+
+Loading also checks who a history belongs to. A file copied into another
+profile's directory agrees with itself at every record, so the header's profile
+is compared to the profile that asked, here and again when a session opens.
 
 A database can replace this without the transaction noticing, as long as it
 keeps those guarantees.

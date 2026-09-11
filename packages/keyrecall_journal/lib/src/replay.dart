@@ -368,7 +368,7 @@ LearnerState _seedState(
   if (rejection != null) {
     throw JournalFormatException(rejection.reason, location: 'checkpoint');
   }
-  return from.state.copy();
+  return from.state;
 }
 
 void _comparePrediction(

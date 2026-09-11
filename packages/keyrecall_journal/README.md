@@ -51,14 +51,40 @@ Its position is a journal sequence, not a position within a sitting. A history
 spans many sessions, and a within-session index cannot say what a checkpoint
 already includes: resuming from one would silently reapply every attempt from
 every other session. It also names the attempt at that sequence, so a resume is
-checked rather than trusted, and it captures a deep copy, since learner state is
-mutable and an aliased checkpoint would drift away from the hash it claims.
+checked rather than trusted, and it captures a deep copy and hands out copies,
+since learner state is mutable and an aliased checkpoint would drift away from
+the hash it claims.
 
 A checkpoint from another model version is unusable as a shortcut in _every_
 mode, counterfactual included. It already contains one model's reading of
 everything before it, so seeding a different model from it would produce a
 hybrid: earlier history estimated one way, later history another. That answers
 no question anyone asked. Replay from the beginning instead.
+
+`validateCheckpointAgainstJournal` is the whole of what accepting one requires,
+in one place, because the parts are only meaningful together:
+
+| Checked                                       | What accepting it without the check costs              |
+| --------------------------------------------- | ------------------------------------------------------ |
+| Profile                                       | One person's state seeded from another's history       |
+| Model version, in every mode                  | A hybrid estimate                                      |
+| Sequence is inside the journal                | A stand-in for attempts that are gone                  |
+| The covered attempt's id and time             | A position nobody verified                             |
+| Its own content hash                          | A snapshot that has drifted from what it claims        |
+| Agreement with the covered `state_after_hash` | State the history never produced, reported as faithful |
+
+**Rejecting a checkpoint is not rejecting a journal.** An unusable checkpoint
+costs a full replay and nothing else, which is what the production open path
+does with one. `replayJournal` throws instead, because passing a checkpoint
+there is an explicit claim about that journal and a false claim should be heard.
+A malformed record, an ownership violation, or an unrecoverable file is the
+other thing entirely: that fails the load.
+
+**A history's owner is checked before its content is read.** A whole file copied
+into another profile's directory is internally consistent at every record, and
+its creation time and placement can match, so no amount of replay establishes
+whose it is. The header's profile is compared to the profile that asked, at the
+store and again when a session opens.
 
 **Model and scheduler versions are recorded on every attempt**, not once per
 journal, because a journal outlives any single model version and a record must
@@ -92,6 +118,17 @@ A device clock really can be corrected backward mid-session. That is resolved at
 the observation boundary, before the attempt is recorded, and the raw reading
 may be kept in `observedWallTime` for diagnostics. Nothing computes decay from
 it.
+
+The boundary applies to ordinary practice and to acquisition alike: a reading
+behind where history already stands is raised to it before anything is evaluated
+or persisted. The journal tail bounds it whether or not that last attempt was
+measured, since an unmeasured attempt moved no state but is still recorded
+history.
+
+Stored timestamps carry an explicit offset and are read strictly. A timestamp
+without one means whatever the machine reading it decides, and the platform
+parser turns `2026-02-31` into March 3, which is an impossible date repaired
+into a plausible one that nothing downstream will ever question.
 
 ## Records are contiguous, and ids do not collide
 
@@ -147,6 +184,27 @@ for an action never taken, so a scheduler replay showing a different choice says
 nothing about what that choice would have achieved. Do not treat it as policy
 evaluation.
 
+### What `isFaithful` proves, and what it does not
+
+It proves that the recorded observations rebuild the recorded learner state
+under this model: every prediction, weight, and state hash the journal carries
+was recomputed and agreed with.
+
+It does **not** prove that the scheduler would select the same exercise again.
+Exact learner replay is not exact scheduler replay. Regenerating the historical
+selection needs the candidate set the slot considered and a decision trace hash
+over it, and the journal records neither, so the selection process cannot be
+reconstructed from here. That part of the production contract in
+[`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)
+is unfinished, and nothing should read `isFaithful` as a stronger invariant than
+the journal can support.
+
+An attempt that measured nothing is checked too. It moves no state, not even
+time, but it still says which state its decision was made from and which state
+it left behind, and those are verified: the before hash and prediction against a
+scratch copy propagated to its time, the after hash against the canonical state
+it did not touch.
+
 ## Usage
 
 ```dart
@@ -189,6 +247,20 @@ if (!result.isFaithful) {
 Appending the same attempt twice is a no-op: the attempt id is the idempotency
 key, so a retried commit after an interrupted write cannot fold the same
 evidence in twice.
+
+## Reading what this did not write
+
+Persisted data is untrusted input, and the boundary makes one promise about it:
+either it produces one unambiguous domain object, or it throws a located
+`JournalFormatException`. An unrecognized enum id, a numeric key that is not a
+number, and a failed cast all mean the same thing here, so they are all said
+that way rather than escaping as `ArgumentError`, `FormatException`, or
+`TypeError`.
+
+A serialized map key is checked against the identity inside its value. The two
+are statements of the same fact, and trusting one of them lets a disagreement
+reassign one material's memory to another, or collapse two execution contexts
+into whichever decoded last.
 
 ## Storage
 

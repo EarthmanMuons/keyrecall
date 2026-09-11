@@ -557,6 +557,13 @@ recorded state and session context
 
 Candidate-set and selected-trace hashes must match the journal.
 
+**Unimplemented.** The journal records neither the candidate set a slot
+considered nor a decision-trace hash over it, so the historical selection cannot
+be regenerated from what is stored. `replayJournal` checks the recorded
+prediction for the recorded exercise, which is exact learner replay and not
+this. `ReplayResult.isFaithful` establishes the narrower claim, and reaching
+this one means recording those hashes and enough scheduling context first.
+
 **Counterfactual estimator replay**
 
 ```text

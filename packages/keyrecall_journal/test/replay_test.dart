@@ -360,6 +360,31 @@ void main() {
       expect(learnerStateHash(state), isNot(checkpoint.contentHash));
     });
 
+    test('a checkpoint does not hand out the state it holds', () {
+      // Reading it is not permission to advance it. A caller that propagated
+      // the stored object would leave the checkpoint claiming a hash its own
+      // content no longer produces.
+      final recorded = recordSession(attempts: 3);
+      final checkpoint = LearnerStateCheckpoint.after(
+        recorded.journal.records.last,
+        state: replayJournal(
+          recorded.journal,
+          model: model,
+          initial: recorded.initial,
+        ).state,
+        learnerModelVersion: params.modelVersion,
+      );
+
+      final borrowed = checkpoint.state;
+      model.propagate(
+        borrowed,
+        recorded.journal.records.last.identity.occurredAt.plusDays(30),
+      );
+
+      expect(learnerStateHash(borrowed), isNot(checkpoint.contentHash));
+      expect(learnerStateHash(checkpoint.state), checkpoint.contentHash);
+    });
+
     test('discarding every checkpoint costs only time', () {
       final recorded = recordSession(attempts: 6);
       final fromScratch = replayJournal(
