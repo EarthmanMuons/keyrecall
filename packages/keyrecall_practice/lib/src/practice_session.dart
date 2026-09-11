@@ -256,6 +256,13 @@ class PracticeSession {
   /// The record built for it, held so a retry writes the same event.
   AcquisitionAttemptRecord? _acquisitionInFlight;
 
+  /// Whether an acquisition write left what is durable unknown.
+  ///
+  /// Set when neither an append nor the read that would settle it answered.
+  /// While it holds, the in-memory log may be behind the file, and nothing may
+  /// build another event from it.
+  bool _acquisitionDurabilityUnknown = false;
+
   /// Attempts whose presentation has already been acknowledged.
   final Set<String> _acknowledged = {};
 
@@ -699,6 +706,15 @@ class PracticeSession {
   /// later. Failing the attempt instead would cost the learner their practice,
   /// which is the worse of the two.
   Future<void> _serveAcquisitionProbe(PendingDecision decision) async {
+    try {
+      await _reconcileAcquisition();
+    } catch (error) {
+      // Storage is still not answering. The obligation stays owed, which is
+      // what an unserved probe already means, and the next presentation tries
+      // again.
+      await _recordServiceFailure(decision, error);
+      return;
+    }
     final logicalTime = _observationTime(decision.decidedAt);
     final service = acquisitionServiceOf(
       presented: decision.exercise,
@@ -740,19 +756,47 @@ class PracticeSession {
   Future<void> _appendAcquisition(AcquisitionEntry entry) async {
     try {
       await store.appendAcquisitionEntry(entry);
-    } catch (error) {
-      final durable = await store.loadAcquisitionJournal(profile.id);
+    } catch (error, stack) {
+      final AcquisitionJournal durable;
+      try {
+        durable = await store.loadAcquisitionJournal(profile.id);
+      } catch (_) {
+        // Neither the write nor the read answered, so what is durable is
+        // unknown. Saying so is the point: the next event must not be built
+        // against a log that may already be a record behind the file.
+        _acquisitionDurabilityUnknown = true;
+        Error.throwWithStackTrace(error, stack);
+      }
+
+      // A successful read is a trustworthy baseline whatever it proves about
+      // this entry, so it is adopted before anything is concluded. Keeping the
+      // old log because the read did not contain what was hoped for is what
+      // leaves memory permanently behind the file.
+      _acquisition = durable;
+      _acquisitionDurabilityUnknown = false;
+
       final held = durable.records.where(
         (record) => record.identity.attemptId == entry.identity.attemptId,
       );
       if (held.isEmpty ||
           contentHash(held.single.toJson()) != contentHash(entry.toJson())) {
-        rethrow;
+        Error.throwWithStackTrace(error, stack);
       }
-      _acquisition = durable;
       return;
     }
     _acquisition.append(entry);
+  }
+
+  /// Reloads acquisition history when what is durable is not known.
+  ///
+  /// Called before another acquisition event is built, because the sequence it
+  /// will carry comes from this log. Proposing one against a log that is a
+  /// record behind the file produces an event the store refuses forever, under
+  /// a new id each time.
+  Future<void> _reconcileAcquisition() async {
+    if (!_acquisitionDurabilityUnknown) return;
+    _acquisition = await store.loadAcquisitionJournal(profile.id);
+    _acquisitionDurabilityUnknown = false;
   }
 
   /// Says that a service write did not land, without failing the attempt.
@@ -831,6 +875,7 @@ class PracticeSession {
     // Built once and held. A retry after an uncertain write must offer the
     // same event under the same id, or the store's idempotency has nothing to
     // recognize and the same attempt lands twice.
+    if (_acquisitionInFlight == null) await _reconcileAcquisition();
     final logicalTime = _observationTime(at);
     final record = _acquisitionInFlight ??= acquisitionRecordOf(
       observation: observeAcquisition(

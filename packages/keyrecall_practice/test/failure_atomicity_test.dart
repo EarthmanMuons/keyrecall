@@ -126,14 +126,25 @@ class FlakyPracticeStore implements PracticeStore {
   Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
       inner.savePracticePlan(profileId, plan);
 
+  /// When set, every [loadAcquisitionJournal] throws, so an uncertain
+  /// acquisition write cannot be settled either.
+  Object? acquisitionLoadFailure;
+
   @override
   Future<AcquisitionJournal> loadAcquisitionJournal(
     String profileId, {
     DateTime? createdAt,
-  }) => inner.loadAcquisitionJournal(profileId, createdAt: createdAt);
+  }) {
+    if (acquisitionLoadFailure case final failure?) throw failure;
+    return inner.loadAcquisitionJournal(profileId, createdAt: createdAt);
+  }
+
+  /// How many acquisition appends were attempted, landing or not.
+  int acquisitionAppendsAttempted = 0;
 
   @override
   Future<void> appendAcquisitionEntry(AcquisitionEntry entry) async {
+    acquisitionAppendsAttempted++;
     if (failAcquisitionAppends) throw const _StorageFailure();
     await inner.appendAcquisitionEntry(entry);
     if (failNextAcquisitionAppendAfterWriting) {
@@ -350,6 +361,62 @@ void main() {
       expect(log.attempts, hasLength(1));
       expect(record.identity.attemptId, offered);
       expect(log.attempts.single.identity.attemptId, offered);
+    });
+
+    test('that cannot be settled is reconciled before the next event', () async {
+      // The service write landed, its answer was lost, and the read that would
+      // have settled it failed too. The live log is now a record behind the
+      // file, and building the next event from it proposes a sequence the file
+      // already holds, under a new id every time.
+      final inner = InMemoryPracticeStore(createdAt: t0);
+      final store = FlakyPracticeStore(inner);
+      final at = t0.plusDays(0.5);
+
+      final first = await openSession(store);
+      final parent = (await first.decide(at: at))!.exercise;
+      await first.abandonPending();
+      await inner.appendAcquisitionEntry(earnedFor(parent));
+
+      final session = await openSession(store, sessionId: 'session-2');
+      store.failNextAcquisitionAppendAfterWriting = true;
+      store.acquisitionLoadFailure = const _StorageFailure();
+      final presented = (await session.decide(at: at))!;
+      expect(presented.exercise, parent);
+      await session.acknowledgePresentation(presented.decision.attemptId);
+      await session.abandonPending();
+
+      // Disk recorded the service; the live log did not see it.
+      expect(
+        (await inner.loadAcquisitionJournal(
+          alice.id,
+        )).records.whereType<AcquisitionProbeServedRecord>(),
+        hasLength(1),
+      );
+      expect(session.acquisitionProgress.probeOwed(parent), isTrue);
+
+      // Storage returns. The next presentation reloads before building
+      // anything, so it learns the obligation was already discharged instead
+      // of proposing an event at an occupied sequence forever.
+      store.acquisitionLoadFailure = null;
+      final proposed = store.acquisitionAppendsAttempted;
+      final again = (await session.decide(at: at))!;
+      await session.acknowledgePresentation(again.decision.attemptId);
+
+      expect(session.acquisitionProgress.probeOwed(parent), isFalse);
+      expect(
+        store.acquisitionAppendsAttempted,
+        proposed,
+        reason:
+            'reconciling first means nothing is proposed at a sequence the '
+            'file already holds',
+      );
+      expect(
+        (await inner.loadAcquisitionJournal(
+          alice.id,
+        )).records.whereType<AcquisitionProbeServedRecord>(),
+        hasLength(1),
+        reason: 'and the service was never written a second time',
+      );
     });
 
     test(
