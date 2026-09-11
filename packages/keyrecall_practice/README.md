@@ -9,13 +9,18 @@ it writes through. Pure Dart apart from `dart:io` in the file store.
 ```text
 decide()   propagate a scratch copy, evaluate candidates, select,
            persist the decision, then present
-commit()   compute the whole transition on a copy,
+commit()   compute the whole transition on a copy and freeze it,
            append the attempt durably,
            then replace canonical state and clear the decision
 ```
 
-Nothing the session keeps moves until the attempt is history. The ordering
-exists to prevent three specific failures.
+The invariant is narrow and exact: **canonical learner state does not advance
+until the attempt is durably present in authoritative history, and advances at
+most once for it.** Other things legitimately move earlier. Scheduler
+bookkeeping, the durable pending slot, and probe service all happen before the
+attempt is history, and are meant to.
+
+The ordering exists to prevent three specific failures.
 
 **A crash after presenting** leaves a decision with no outcome. On the next
 `open` it surfaces as `pending`, and the caller resolves it explicitly rather
@@ -34,21 +39,49 @@ the journal, and the journal holds each attempt exactly once.
 
 **A storage failure that does not kill the process** is the third case, and it
 needs more than crash safety. A close computes the whole transition on a copy
-and replaces canonical state only once the append has succeeded, so a throwing
-append leaves the session exactly where it started with the decision still
-pending. Retrying is then genuinely safe. Applying the update first would leave
-state ahead of the journal, and the retry would fold the same outcome in again
-from an already-advanced state.
+and replaces canonical state only once the append has succeeded, so an append
+that wrote nothing leaves the session exactly where it started with the decision
+still pending. Applying the update first would leave state ahead of the journal,
+and the retry would fold the same outcome in again from an already-advanced
+state.
+
+Retrying is safe because the attempt is frozen when the close begins, not
+recomputed. The app reads its clock again on every call and may hand over a
+fresh transcript, so a rebuilt record would offer the same attempt id carrying
+different content, which an authoritative log refuses. A retry finishes the
+transaction that was started.
+
+An append whose answer was lost is settled by reading durable history back.
+There are three answers and no others: this exact attempt is there and the
+append committed, nothing with that id is there and the same record may be
+written again, or that id holds different content, which is a collision rather
+than something to resolve by picking one. The same reconciliation covers the
+acquisition log, which additionally remembers that its durability is unknown
+when the settling read fails too, and reloads before building another event.
+
+Cleanup is part of the transaction, not an afterthought. If clearing the pending
+slot fails, the evidence is still durable and the close still reports a failure,
+so the transaction stays open: closing again finishes the cleanup and returns
+the same record, and deciding again is refused until it does. A committed
+attempt cannot be abandoned.
 
 A pending decision is deliberately **not** part of the journal. An attempt with
 no outcome produced no evidence and moved no state, and putting it in the replay
 stream would invite exactly the manufactured outcome this prevents.
 
-It is also the one input here that is neither replayed nor hash-checked, and
-committing it writes an attempt keyed on the slot's own profile id. So it is
-validated on recovery: a slot belonging to another profile, targeting a journal
-position that is not the next one, or predating the profile is refused rather
-than accepted.
+It is disposable recovery state, and disposable state must not be able to
+manufacture authoritative history, because completing one appends it. So every
+claim it makes that can be checked is checked on recovery: the profile it
+belongs to, the journal position it targets, its time against the profile and
+against the journal tail, its index within its session, the state hash it says
+it was decided from, and the prediction it recorded, both recomputed from
+history propagated to its own instant. Anything the journal contradicts is
+refused.
+
+A slot from another learner-model version is abandoned instead. It is not
+damaged; it was decided under one model's reading of this history, and
+completing it would apply today's model's update to yesterday's decision. One
+unfinished exercise is the whole cost of deciding again.
 
 ## Usage
 

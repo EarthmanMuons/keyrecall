@@ -440,8 +440,13 @@ class PracticeSession {
 
   /// The learner state this sitting reasons from.
   ///
-  /// Advances only when an attempt is committed durably. Anything that looks
-  /// ahead works on a copy, or replay could not reproduce the timeline.
+  /// Advances only when an attempt is durably present in authoritative
+  /// history, and exactly once for that attempt. Anything that looks ahead
+  /// works on a copy, or replay could not reproduce the timeline.
+  ///
+  /// Mutable, because the learner model is. Treat it as read-only: advancing
+  /// it here puts this sitting's state somewhere replaying the journal cannot
+  /// reach.
   ///
   /// Read it again after each close rather than holding the object across
   /// one: a commit replaces it wholesale, so a cached reference would quietly
@@ -943,16 +948,23 @@ class PracticeSession {
   /// measurement instead. Learner-facing attempts do not come this way; they
   /// are measured.
   ///
-  /// The whole transition is computed on a copy, and canonical state is only
-  /// replaced once the attempt is durably appended. That matters for a storage
-  /// failure that does *not* kill the process: if the append throws, the
-  /// session is left exactly where it started, the decision is still pending,
-  /// and calling this again is safe. Applying the update first would leave
-  /// state ahead of the journal, and a retry would then fold the same outcome
-  /// in twice from an already-advanced state.
+  /// The whole transition is computed on a copy, and canonical learner state
+  /// is only replaced once the attempt is durably appended. That matters for a
+  /// storage failure that does *not* kill the process: if the append throws
+  /// having written nothing, the session is left exactly where it started, the
+  /// decision is still pending, and calling this again is safe. Applying the
+  /// update first would leave state ahead of the journal, and a retry would
+  /// then fold the same outcome in twice from an already-advanced state.
+  ///
+  /// The attempt is computed once and held. Calling this again finishes that
+  /// transaction rather than building a second one, so an outcome or wall-clock
+  /// reading supplied to a retry is ignored: the record was already decided,
+  /// and possibly already written.
   ///
   /// The decision is cleared last. A crash between the append and the clear
-  /// leaves a stale slot that the next [open] recognizes as already committed.
+  /// leaves a stale slot that the next [open] recognizes as already committed,
+  /// and a *failed* clear leaves this transaction open, so closing again
+  /// finishes it and returns the same record.
   ///
   /// Single-writer: retrying a close that has already failed is safe, and
   /// entering this method twice concurrently is not, for the reason given on
@@ -1109,8 +1121,11 @@ class PracticeSession {
       observedWallTime: observedWallTime,
     );
 
-    // Nothing above this line touched anything the session keeps. Everything
-    // below it only runs once the attempt is history.
+    // The durable append is the boundary. Canonical learner state does not
+    // advance until the attempt is in authoritative history, and advances
+    // exactly once for it. Scheduler bookkeeping, the pending slot, and probe
+    // service legitimately move on either side of this line; learner state
+    // does not.
     if (!commit.isDurable) {
       await _appendAttempt(commit.record);
       commit.isDurable = true;
