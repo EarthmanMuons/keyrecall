@@ -15,12 +15,12 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// in predicted difficulty, so any systematic difference has to come from the
 /// conditions each is offered under rather than from the exercise.
 ///
-/// The suspicion is an abstraction gap. `ExecutionContext` became
-/// motion-specific, so parallel is a context with no evidence once contrary has
-/// spent the coordination transition. The transition enters at
-/// [handsTogetherEntryTempo], a rung below the slower hand; ordinary execution
-/// progression may enter the new context as though hands-together execution
-/// were already established.
+/// The suspicion is an abstraction gap: `ExecutionContext` is motion-specific,
+/// so parallel is a context with no evidence once contrary has spent the
+/// coordination transition. The transition enters at
+/// [handsTogetherEntryTempo], a rung below the slower hand, while ordinary
+/// execution progression may enter the new context as though hands-together
+/// execution were already established.
 ///
 /// So this pairs, per material, the introductory attempt with the first attempt
 /// of the other motion, and prints each against the tempos available to derive

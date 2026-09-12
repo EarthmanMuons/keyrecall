@@ -9,13 +9,11 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 /// Where predicted success sits, at the slot that admitted nothing.
 ///
-/// The census established what the terminal state is not: not exhaustion, not
-/// a support floor, not a missing recovery state. Recovery was inactive, four
-/// of five materials were established, seventy two candidates were fully
-/// eligible, the repetition guard excluded nothing, and every candidate died
-/// at challenge admission.
+/// The census says what the terminal state is not: recovery is inactive, most
+/// materials are established, candidates are fully eligible, the repetition
+/// guard excludes nothing, and every candidate dies at challenge admission.
 ///
-/// So the question is only where those candidates sat relative to the band.
+/// So the question is only where those candidates sit relative to the band.
 /// Above it and the learner has outgrown what they are permitted to do; below
 /// it and they are stuck; both at once with nothing between, and the
 /// prerequisites and the band have left no bridge from work that is now too

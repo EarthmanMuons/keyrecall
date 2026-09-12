@@ -14,7 +14,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// Aggregates separate the archetypes cleanly, which says a gate is possible
 /// but not when it would fire. This walks each trajectory in order and asks,
 /// before every hands-together admission by execution progression, what the
-/// learner-level evidence looked like at that moment.
+/// learner-level evidence looks like at that moment.
 ///
 /// Two candidate reasons to withhold, deliberately kept apart because they mean
 /// different things:

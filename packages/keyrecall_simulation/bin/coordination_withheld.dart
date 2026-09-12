@@ -9,10 +9,9 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 /// Whether coordination work is what costs a weak learner late in a long run.
 ///
-/// The characterization found a beginner whose execution quality falls in the
-/// last part of a run across months, shortly after hands-together work first
-/// appears. That is a hypothesis rather than a finding: the two could be
-/// coincident.
+/// A beginner's execution quality falls in the last part of a run across
+/// months, shortly after hands-together work first appears. Whether one causes
+/// the other is what this asks: the two could be coincident.
 ///
 /// So the same player and seed are run twice against the same schedule, with
 /// the second arm's candidate set holding no hands-together work at all, and

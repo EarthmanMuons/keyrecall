@@ -43,13 +43,11 @@ const double _repairInterval = 0.4;
 
 /// What [state] plays when handed [task].
 ///
-/// The counterpart of `SyntheticPlayer.play` for the acquisition path, and
-/// deliberately a different kind of answer. That one samples an outcome and
-/// reports the scores directly, so nothing it produces has a position: no
-/// synthetic attempt can hesitate at the fourth degree. This produces a
-/// transcript, and every reading of it comes from the alignment and
-/// observation path device MIDI takes. A policy fed from here can only see
-/// what the instrument would have shown.
+/// The counterpart of `SyntheticPlayer.play` for the acquisition path, and a
+/// different kind of answer. That one samples an outcome and reports scores
+/// directly, so nothing it produces has a position. This produces a transcript
+/// read through the same alignment and observation path device MIDI takes, so a
+/// policy fed from here sees only what the instrument would have shown.
 ///
 /// Positional structure comes from the exercise's own motor opportunity sites.
 /// A crossing is a moment, so the player's [SyntheticPlayer.opportunityPenalty]
@@ -57,10 +55,10 @@ const double _repairInterval = 0.4;
 /// or the stall that follows is an observation rather than a label. Nothing
 /// downstream is told which moment was hard.
 ///
-/// Four phenomena, and no others: uneven but complete playing, a hesitation
+/// Four phenomena and no others: uneven but complete playing, a hesitation
 /// localized to a moment, a wrong note with or without a repair, and stopping
-/// partway. Each is what the corresponding real failure looks like from the
-/// instrument, not a switch that selects it.
+/// partway. Each is what that failure looks like from the instrument rather
+/// than a switch that selects it.
 ///
 /// Nothing was asked about tempo, so the player plays at their own pace and
 /// [SyntheticPlayer.tempoCompliance] never enters.

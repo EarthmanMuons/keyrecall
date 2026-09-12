@@ -10,13 +10,11 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// mechanisms can admit outside the ordinary band, so reaching it means every
 /// one of them declined. The app shows an error state for it.
 ///
-/// The sweep never produced one over the full catalog, and the invariant run
-/// over the seven-material catalog produced them readily. What separated them
-/// was the pre-frontier acquisition floor: after a first exposure the gentlest
-/// work in the only family on offer was held to the ordinary challenge floor
-/// and refused for being too hard, so a narrow catalog eventually had nothing
-/// it could admit. A learner with a second family never noticed, because that
-/// family kept admission alive.
+/// A narrow catalog reaches it and a full one does not, and what separates them
+/// is the pre-frontier acquisition floor: without it, the gentlest work in the
+/// only family on offer is held to the ordinary challenge floor after a first
+/// exposure and refused for being too hard. A learner with a second family
+/// never notices, because that family keeps admission alive.
 void main() {
   const slots = 60;
   const seeds = 8;

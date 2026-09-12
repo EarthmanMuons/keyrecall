@@ -8,16 +8,15 @@ import 'python_compatible_random.dart';
 /// A player, described by what they do rather than by the numbers an outcome
 /// happens to need.
 ///
-/// The distinction from [SyntheticProfile] is the point. That one samples an
-/// outcome from a hidden ability, and its achieved tempo is a quality score in
-/// `[0, 1]`, so no learner it can express ever plays faster than they were
-/// asked to. Every tempo defect the device sittings found lived in exactly
-/// that gap: a person plays at the speed that is comfortable for them, and
-/// what the app asked for is a suggestion they may or may not take.
+/// The distinction from [SyntheticProfile] matters: that one samples an outcome
+/// from a hidden ability and reports achieved tempo as a quality score in
+/// `[0, 1]`, so no learner it expresses ever plays faster than asked. A person
+/// plays at the speed comfortable for them, and what the app asked for is a
+/// suggestion.
 ///
-/// So this receives the exercise and answers what happened. Requested tempo
-/// and performed tempo are separate quantities throughout, and
-/// [tempoCompliance] is what relates them.
+/// So this receives the exercise and answers what happened. Requested and
+/// performed tempo are separate quantities throughout, related by
+/// [tempoCompliance].
 ///
 /// The knobs are meant to be legible rather than orthogonal. An archetype is a
 /// named configuration of this one model, not its own implementation, so a
@@ -120,10 +119,9 @@ class SyntheticPlayer {
   /// one are the same question asked at two scales.
   ///
   /// **What was gained, not what they came with.** Ability slips back toward
-  /// the value this player started at and stops there, so forgetting can undo
-  /// practice and cannot invent a learner worse than the one who first sat
-  /// down. That bound is a modelling choice: it keeps a long gap interpretable
-  /// and keeps decay away from the negative abilities where a decay toward
+  /// the value this player started at and stops there, so forgetting undoes
+  /// practice and cannot invent a learner worse than the one who first sat down.
+  /// The bound also keeps decay away from negative abilities, where decay toward
   /// zero would quietly improve somebody.
   final double? retentionHalfLifeDays;
 
@@ -474,11 +472,10 @@ class PlayerState {
 
   /// What an attempt of this quality teaches the person.
   ///
-  /// **Practice below the quality the model credits still improves them.** The
-  /// two are different claims: a frontier is what KeyRecall has been shown, and
-  /// improvement is what happened to the player. Gating this on demonstrated
-  /// execution made low starting ability into an inability to learn, and the
-  /// beginner archetype produced two improving attempts in three hundred.
+  /// **Practice below the quality the model credits still improves them.** A
+  /// frontier is what KeyRecall has been shown, and improvement is what happened
+  /// to the player. Gating this on demonstrated execution would make low
+  /// starting ability into an inability to learn.
   ///
   /// Graded, and largest where the task sits at the edge of what they can do.
   /// An attempt that falls apart teaches little, one they find trivial teaches
@@ -491,9 +488,8 @@ class PlayerState {
   /// scheduler keeps asking for something harder.
   ///
   /// The curve is **a shape assumption of this player model**, not a claim
-  /// about how people learn the piano. Motor quality is what the simulation
-  /// can see, and it is not the same quantity as pedagogical challenge; the
-  /// shape is provisional until something measured argues for another.
+  /// about how people learn the piano: motor quality is what the simulation can
+  /// see, and it is not the same quantity as pedagogical challenge.
   void practiseExecution(
     Exercise exercise,
     double motorQuality, {

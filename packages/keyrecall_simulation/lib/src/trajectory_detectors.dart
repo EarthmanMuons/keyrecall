@@ -88,14 +88,11 @@ List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
 /// Structural rather than tuned: both candidates reached ranking, both are on
 /// the work the learner is already doing, and one of them asks for something
 /// they have demonstrably outgrown. No threshold makes that the right choice.
-/// This is the shape of the eleven-slot collapse a device sitting produced.
 ///
 /// Only against candidates that tie on every term the key compares first, for
 /// the reason [_unmeasuredEntryIgnored] does: a better realization can lose
 /// legitimately because information or diversity differs, and calling that a
-/// defect would be the detector encoding what the scheduler happens to do.
-/// This one has never misfired, which says the ambiguity has not been reached
-/// rather than that it is not there.
+/// defect would encode what the scheduler happens to do.
 Iterable<Anomaly> _realizationStall(Trajectory trajectory) sync* {
   for (final slot in trajectory.slots) {
     if (slot.realization != RealizationRank.surpassed) continue;
@@ -208,26 +205,17 @@ Iterable<Anomaly> _sittingRanDry(Trajectory trajectory, int requested) sync* {
 /// shown, by the band cap alone.
 ///
 /// Two policy inputs contradicting each other, which is what makes this
-/// structural rather than a threshold. `transferableTempoFor` exists to answer
-/// what tempo an unseen scale should be met at, and is deliberately the median
-/// of what this hand actually does. The cap in `entryTempoFor` then discards
-/// that answer for anything past the early-transfer band and substitutes the
-/// gentlest tempo on the ladder.
+/// structural rather than a threshold. `transferableTempoFor` answers what
+/// tempo an unseen scale should be met at, from the median of what this hand
+/// actually does, and a cap that substitutes the gentlest tempo on the ladder
+/// past the early-transfer band discards that answer.
 ///
-/// The cap was right before pace was measured: a new geography at an unknown
-/// speed was two unknowns at once, and the gentle tempo was the only honest
-/// default. It is not a claim anybody would defend now that the evidence
-/// exists, and it made an intermediate player meet F natural minor at sixty
-/// while meeting A natural minor at ninety-six in the same sitting.
+/// The early-transfer band may use the full transferable tempo. Later bands may
+/// enter one rung below the material's established pace.
 ///
-/// The early-transfer band may use the full transferable tempo. Later bands
-/// may enter one rung below the material's established pace.
-///
-/// Deliberately *not* "a later introduction was slower than an earlier one".
-/// That is legitimate: geography transfers imperfectly, the bands exist to say
-/// so, and meeting D flat melodic minor gently after A major at a hundred and
-/// eight is the bands working. See [_entryTempoRegression], which measures
-/// that as an observation.
+/// *Not* "a later introduction was slower than an earlier one", which is
+/// legitimate: geography transfers imperfectly and the bands exist to say so.
+/// See [_entryTempoRegression], which measures that as an observation.
 Iterable<Anomaly> _entryTempoIgnoresPace(Trajectory trajectory) sync* {
   for (final slot in trajectory.slots) {
     if (slot.winner.challengeBypass != ChallengeBypass.newMaterial) continue;
@@ -670,9 +658,8 @@ Iterable<Anomaly> _probeDeferBlocked(Trajectory trajectory) sync* {
 ///
 /// Reacquisition in the strict sense of [SlotWork.reacquiring], asked below a
 /// frontier the hand has demonstrated. Work on a material with no frontier at
-/// all is acquisition however familiar it looks, and counting it here made
-/// every learner too weak to demonstrate anything read as one who keeps losing
-/// ground.
+/// all is acquisition however familiar it looks, and counting it here would
+/// read every learner too weak to demonstrate anything as one losing ground.
 ///
 /// Only after a real break, and only for a sitting long enough for the share
 /// to mean anything.
@@ -770,29 +757,26 @@ RankTerm? decidingTerm(RankKey winner, RankKey other) {
 /// anything, over a candidate that was better where it counts.
 ///
 /// The lexicographic key is a dictionary ordering, so the first term to differ
-/// at all settles the slot however little it differs by and however much
-/// better the alternative is later. A device sitting produced the shape: an
-/// exercise at sixty beats on material whose frontier was a hundred and
-/// thirty-two beat a waiting tempo probe because its retention read 0.000122
-/// against 0.000101, four terms before the realization rank could speak.
+/// at all settles the slot however little it differs by and however much better
+/// the alternative is later: an exercise at sixty beats on material whose
+/// frontier is a hundred and thirty-two beats a waiting tempo probe on a
+/// retention difference of 2e-5, four terms before the realization rank can
+/// speak.
 ///
-/// Deliberately not scoped to one material. The published `realization_stall`
-/// invariant asks about a better realization of the same material and hand,
-/// which is why nothing caught this: the two candidates were different scales.
-/// **What is wrong is the margin, not the relationship between the exercises.**
+/// Not scoped to one material, unlike the `realization_stall` invariant beside
+/// it. **What is wrong is the margin, not the relationship between the
+/// exercises.**
 ///
-/// An observation rather than an invariant. That a near-tie decided a slot is
-/// a fact; that it decided it wrongly is a judgment, and the threshold for
-/// near is exactly the kind of number this file refuses to assert on.
+/// An observation rather than an invariant: that a near-tie decided a slot is a
+/// fact, and that it decided it wrongly is a judgment resting on a threshold
+/// this file refuses to assert on.
 ///
-/// **Proportional, and the summary carries the absolute margin beside it.**
-/// Near is only meaningful against a scale, and the terms have very different
-/// ones; but a policy that ties near-equal candidates has to be stated in
-/// absolute terms, and the two readings separate the findings into two
-/// populations rather than one. Retention decisions here are proportionally
-/// and absolutely small; information decisions are proportionally small on a
-/// term whose range is wide, which is a different phenomenon wearing the same
-/// label.
+/// **Proportional, with the absolute margin in the summary beside it.** Near is
+/// only meaningful against a scale and the terms have very different ones,
+/// while a policy that ties near-equal candidates has to be stated absolutely.
+/// The two readings separate proportionally and absolutely small retention
+/// decisions from information decisions that are proportionally small on a wide
+/// term.
 Iterable<Anomaly> _hairlineRankDecision(Trajectory trajectory) sync* {
   const tolerance = 0.25;
   for (final slot in trajectory.slots) {
@@ -866,12 +850,9 @@ enum NoveltyAxis {
 /// from stacking novelty on a new one.
 ///
 /// **Silent until the learner has demonstrated something.** The first attempt
-/// of a run is unsupported on every axis by definition, and so is every
-/// attempt by somebody who has never managed one; reporting those would be
-/// counting the absence of a history rather than the scheduler ignoring one.
-/// The question is only meaningful once there is evidence that could have been
-/// consulted, which is why the first census of this fired thirty-four times on
-/// a true beginner and said nothing at all.
+/// of a run is unsupported on every axis by definition, as is every attempt by
+/// somebody who has never managed one, so reporting those would count the
+/// absence of a history rather than the scheduler ignoring one.
 Iterable<Anomaly> _unsupportedNoveltyStack(Trajectory trajectory) sync* {
   final seen = <String>{};
   final handsPlayed = <HandConfiguration>{};

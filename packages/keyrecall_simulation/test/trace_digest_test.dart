@@ -31,14 +31,10 @@ class PinnedDigests {
 /// simulation happens to record. Changing the hashed field set means bumping
 /// the schema and regenerating these values in the same step.
 ///
-/// The discrete column was matched by the Python prototype at
-/// `v1-prototype-0`, which was the evidence that the Dart model reproduced it.
-/// Both columns are regression pins against this implementation now that the
-/// prototype is retired: a mismatch means this implementation changed. See
-/// `analysis/README.md`. A full mismatch means the behavior changed somewhere;
-/// the pinned reference scalars
-/// and the tolerance comparison in `reference_equivalence_test.dart` are the
-/// diagnosable failures that say where.
+/// Both columns are regression pins against this implementation, so a mismatch
+/// means it changed. The pinned reference scalars and the tolerance comparison
+/// in `reference_equivalence_test.dart` are the diagnosable failures that say
+/// where. See `analysis/README.md`.
 const List<PinnedDigests> pinnedRuns = [
   PinnedDigests(
     profile: SyntheticProfile.advanced,
