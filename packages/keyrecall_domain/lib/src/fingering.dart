@@ -6,9 +6,9 @@ import 'technical_material.dart';
 
 /// The authoritative fingering for one material and hand.
 ///
-/// A flat one-octave string cannot say this on its own: the finger that starts
-/// a traversal, the one that takes an internal octave boundary, and the one
-/// that ends it are independent boundary conditions.
+/// The finger that starts a traversal, the one that takes an internal octave
+/// boundary, and the one that ends it are independent, so a flat one-octave
+/// string cannot express them.
 @immutable
 class CanonicalFingering {
   /// The material this record realizes.
@@ -159,7 +159,7 @@ class _FingeringShape {
 }
 
 // The conventional families, named for what they are rather than for one key.
-// Right hand, thumb on the tonic, fourth finger on the seventh degree; the
+// Right hand, thumb on the tonic, fourth finger on the seventh degree: the
 // internal tonic continues on the thumb and only the last one takes five.
 const _rhThumbTonic = _FingeringShape._(
   entry: [1],
@@ -241,10 +241,9 @@ const _lh21321432 = _FingeringShape._(
 
 /// The canonical fingering for every scale V1 supports, by material id.
 ///
-/// One fingering per scale and hand, deliberately: documented alternatives
-/// exist and are research provenance rather than runtime behavior. Spellings
-/// follow the catalog's, so D flat major and C sharp minor are separate
-/// entries rather than one enharmonic pair.
+/// One fingering per scale and hand: documented alternatives are research
+/// provenance rather than runtime behavior. Spellings follow the catalog's, so
+/// D flat major and C sharp minor are separate entries.
 const Map<String, Map<Hand, _FingeringShape>> _scaleFingeringShapes = {
   // Major.
   'C_MAJOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
@@ -505,14 +504,11 @@ CanonicalFingering? canonicalFingering(TechnicalMaterial material, Hand hand) =>
 /// material has no canonical fingering or [hand] does not play it.
 ///
 /// Read off the same degree path the notes are, so the fingers follow wherever
-/// the hand goes rather than re-deriving the traversal here. A descent reverses
-/// the ascending stream, which holds for every scale in the catalog and is a
-/// property of this dataset rather than a rule about fingering in general.
+/// the hand goes. A descent reverses the ascending stream, which is a property
+/// of this dataset rather than a rule about fingering in general.
 ///
-/// A hand whose line runs below its tonic is indexed from the far end: the
-/// thumb it starts on is the finger that would have ended an ascent. That is
-/// the same reversal, taken per degree instead of per sequence, and it is what
-/// makes the return leg of a contrary traversal fall out unaided.
+/// A hand whose line runs below its tonic is indexed from the far end, the same
+/// reversal taken per degree instead of per sequence.
 List<int>? fingeringForConditions({
   required TechnicalMaterial material,
   required ExecutionConditions conditions,

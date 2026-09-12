@@ -6,9 +6,8 @@ import 'spelled_pitch.dart';
 /// One note somebody played.
 ///
 /// An observation and nothing else: which key, when it arrived, and how it is
-/// written. It carries no expected position, no beat, and no verdict, because
-/// all three of those are claims about how the performance relates to the
-/// exercise, and relating them is a separate layer's job.
+/// written. No expected position, no beat, and no verdict, since all three
+/// relate the performance to the exercise.
 @immutable
 class PlayedNote {
   /// Where it fell in the order things were played, from zero.
@@ -19,7 +18,7 @@ class PlayedNote {
 
   /// When the note arrived, on the input stream's clock.
   ///
-  /// Kept, not interpreted. Nothing here turns it into a beat, an onset error,
+  /// Kept, not interpreted: nothing here turns it into a beat, an onset error,
   /// or a tempo.
   final int timestampMs;
 
@@ -61,21 +60,14 @@ const _playedNoteEquality = ListEquality<PlayedNote>();
 
 /// What was played, in the order it was played.
 ///
-/// Deliberately stupid, and that is the point. It is append-only: every note
-/// that arrives goes on the end, including repeats, stumbles, and notes
-/// nobody asked for. Nothing is dropped for not fitting, nothing is moved to
-/// where it was expected, and nothing is marked.
+/// Append-only: every note that arrives goes on the end, including repeats,
+/// stumbles, and notes nobody asked for. Nothing is dropped, moved to where it
+/// was expected, or marked.
 ///
-/// Those omissions are what make it safe to show during an unguided attempt.
-/// Placing an observation into an expected position, advancing progress past
-/// it, or leaving it out because it does not fit are all judgments about
-/// whether the note was right, and a learner reads them as such. A transcript
-/// makes no such claim, so a learner who cannot yet tell whether they played
-/// the right note learns nothing from it that they did not already know.
-///
-/// It is also the raw material every later reading needs: an alignment against
-/// what the exercise asked for consumes this, and a first-pass error is
-/// distinguishable from a repaired one only because the repair is still here.
+/// Those omissions make it safe to show during an unguided attempt, since
+/// placing an observation into an expected position would tell the learner
+/// their note was right. They also keep a repaired error distinguishable from a
+/// first-pass one for every later reading.
 @immutable
 class PerformanceTranscript {
   /// The notes, in arrival order.

@@ -15,9 +15,8 @@ enum PitchCue {
 
   /// A bounded window ahead of where the learner is.
   ///
-  /// Needs performance alignment to render during an attempt, since "where
-  /// the learner is" is a fact about the performance. Defining the value does
-  /// not mean anything can currently draw it.
+  /// Needs performance alignment to render, since "where the learner is" is a
+  /// fact about the performance. Nothing draws this yet.
   limitedLookahead('LIMITED_LOOKAHEAD'),
 
   /// The whole sequence.
@@ -25,7 +24,7 @@ enum PitchCue {
 
   const PitchCue(this.id);
 
-  /// Identifier this value will be persisted under.
+  /// Stable identifier used in traces.
   final String id;
 
   /// Whether any of the material is supplied before it is played.
@@ -34,11 +33,10 @@ enum PitchCue {
 
 /// How a supplied pitch cue is presented.
 ///
-/// Deliberately not ordinal: a keyboard diagram and staff notation are two
-/// representations of the same material, and notation adds a decoding step
-/// that for a weak reader is load rather than help. Only meaningful when
-/// something is being supplied, which is why [PresentationConditions] refuses
-/// a modality without a cue.
+/// Not ordinal: a keyboard diagram and staff notation are two representations
+/// of the same material, and notation adds a decoding step that for a weak
+/// reader is load rather than help. [PresentationConditions] refuses a modality
+/// without a cue.
 enum CueModality {
   /// Marked keys on a keyboard diagram.
   keyboard('KEYBOARD'),
@@ -46,13 +44,13 @@ enum CueModality {
   /// Staff notation, which supplies the material through a reading step.
   staff('STAFF'),
 
-  /// Both at once, which gives two routes to the same answer and makes what
-  /// an attempt observed harder to attribute.
+  /// Both at once, which gives two routes to the same answer and makes what an
+  /// attempt observed harder to attribute.
   keyboardAndStaff('KEYBOARD_AND_STAFF');
 
   const CueModality(this.id);
 
-  /// Identifier this value will be persisted under.
+  /// Stable identifier used in traces.
   final String id;
 
   /// Whether reading the cue is itself a task the attempt then observes.
@@ -73,18 +71,15 @@ enum MotorCue {
 
   const MotorCue(this.id);
 
-  /// Identifier this value will be persisted under.
+  /// Stable identifier used in traces.
   final String id;
 }
 
 /// What the learner is shown of their own playing while they play.
 ///
-/// Non-prospective: it arrives with or after the note, never before, so none
-/// of it supplies material in advance. It still changes what an attempt
-/// observes, and it changes it during the attempt: an evaluated attempt can be
-/// repaired note by note as it goes, which is practice rather than recall, and
-/// even a neutral echo gives sensory confirmation that playing blind does
-/// not.
+/// Non-prospective: it arrives with or after the note, so none of it supplies
+/// material in advance. It still changes what the attempt observes, since an
+/// evaluated attempt can be repaired note by note as it goes.
 enum PerformanceFeedback {
   /// The learner sees nothing of what they played.
   none('NONE'),
@@ -99,7 +94,7 @@ enum PerformanceFeedback {
 
   const PerformanceFeedback(this.id);
 
-  /// Identifier this value will be persisted under.
+  /// Stable identifier used in traces.
   final String id;
 
   /// Whether the learner is told, during the attempt, that something was
@@ -109,9 +104,8 @@ enum PerformanceFeedback {
 
 /// How much of the requested pulse the app supplies.
 ///
-/// Its own axis: it changes execution and timing support rather than how much
-/// of the material has to be retrieved, so coupling it to a guidance rung
-/// would move two variables at once.
+/// Its own axis: it changes timing support rather than how much of the material
+/// has to be retrieved.
 enum TempoSupport {
   /// Nothing sounds the pulse. An ordinary exercise still states a tempo and
   /// leaves the learner to hold it; an unmetered acquisition task states none.
@@ -127,29 +121,22 @@ enum TempoSupport {
 
   const TempoSupport(this.id);
 
-  /// Identifier this value will be persisted under.
+  /// Stable identifier used in traces.
   final String id;
 }
 
-/// What information an attempt was given, on four independent channels.
+/// What information an attempt was given, on five independent channels.
 ///
 /// Facts about the attempt, not a second scheduler. The scheduler names a
-/// coarse guidance rung; practice policy turns that into these channels, and
-/// the learner model can eventually distinguish conditions the rung alone
-/// cannot: playing from a full score with fingering is not playing from a
-/// score, which is not playing from memory while watching notes appear, which
-/// is not playing blind.
+/// coarse guidance rung and practice policy turns that into these channels,
+/// which distinguish conditions the rung alone cannot.
 ///
-/// Which surfaces are on screen is not recorded here. A staff that shows
-/// nothing but its clef supplies nothing, and a keyboard that lights up as the
-/// learner plays supplies nothing either, so withdrawal takes information away
-/// rather than taking the UI away. What arrives on those surfaces is the part
-/// that changes the evidence.
+/// Which surfaces are on screen is not recorded here. A staff showing nothing
+/// but its clef supplies nothing, so withdrawal takes information away rather
+/// than taking the UI away.
 ///
-/// Nothing persists this yet. Every V1 attempt is a full keyboard cue or none,
-/// no fingering, a neutral echo, and a count-in, so omitting it loses no
-/// information; the wire format gains the field in the same change that makes
-/// a second value reachable.
+/// Not persisted: every V1 attempt is a full keyboard cue or none, no
+/// fingering, a neutral echo, and a count-in.
 @immutable
 class PresentationConditions {
   /// How much of the material is supplied before it is played.
@@ -191,11 +178,9 @@ class PresentationConditions {
 
   /// Whether this presentation can carry an attempt under [guidance].
   ///
-  /// The rung says whether material is supplied at all, and whether it stays
-  /// up once the attempt starts; this says how much of it and in what form.
-  /// The two have to agree about the first question. A pairing rule rather
-  /// than an invariant of either value alone, so it is checked where the pair
-  /// is formed.
+  /// The rung says whether material is supplied at all, and this says how much
+  /// and in what form, so the two have to agree about the first question. A
+  /// pairing rule rather than an invariant of either value alone.
   bool suitsGuidance(GuidanceContext guidance) =>
       pitchCue.suppliesMaterial == guidance.isMaterialSupplied;
 

@@ -1,18 +1,6 @@
 import 'spelled_pitch.dart';
 import 'technical_material.dart';
 
-/// How pitches are written down, for material and for playing.
-///
-/// Two entry points that must not be confused. [spellExpectedPitch] is
-/// structural: the sixth degree is written on the sixth letter because that is
-/// what a scale degree *is*, whatever it sounds like. [spellObservedPitch] is
-/// interpretive: a note nobody asked for has no degree, so it is spelled in
-/// the key the learner was already told they are playing in.
-///
-/// [spellObservedPitch] cannot see the realization, and its signature is what
-/// guarantees that: knowing which expected note an observation lines up with
-/// is a judgment about the performance, and spelling must not smuggle one in.
-
 /// How the tonic of [material] is written.
 SpelledPitch tonicSpellingOf(TechnicalMaterial material) {
   final tonic = material.tonic;
@@ -42,6 +30,9 @@ int pitchClassOf(String tonic) {
 /// How [midiNote] is written when it is [degree] steps above the tonic of
 /// [material].
 ///
+/// Structural: the sixth degree is written on the sixth letter whatever it
+/// sounds like.
+///
 /// Throws [StateError] when the degree cannot be written on its letter within
 /// double accidentals.
 SpelledPitch spellExpectedPitch({
@@ -69,11 +60,10 @@ SpelledPitch spellExpectedPitch({
 
 /// How [midiNote] is written when someone played it during [material].
 ///
-/// A note belonging to the scale is written the way that scale writes it. Any
-/// other note is written with the accidental the key leans on, so an F sharp
-/// minor attempt spells a stray black key as a sharp and an E flat one spells
-/// it as a flat. Nothing here says whether the note was correct, or where in
-/// the exercise it fell.
+/// A note belonging to the scale is written the way that scale writes it, and
+/// any other takes the accidental the key leans on. The realization is out of
+/// reach here, because where a note fell in the exercise is a judgment about
+/// the performance.
 SpelledPitch spellObservedPitch(
   int midiNote, {
   required TechnicalMaterial material,

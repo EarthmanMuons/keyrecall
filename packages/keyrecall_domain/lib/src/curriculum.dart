@@ -141,10 +141,8 @@ class ResolvedRequirement {
 /// The distinct candidates [requirements] resolve to, in requirement order.
 ///
 /// Requirements over one material resolve to equal candidate sets, because
-/// generation reads the material and the instrument and nothing else. The
-/// material is therefore the identity that dedupes them, and rediscovering
-/// that by hashing every exercise is a large share of a decision once the
-/// catalog is wide.
+/// generation reads the material and the instrument and nothing else, so the
+/// material is the identity that dedupes them.
 List<Exercise> distinctCandidatesOf(
   Iterable<ResolvedRequirement> requirements,
 ) {

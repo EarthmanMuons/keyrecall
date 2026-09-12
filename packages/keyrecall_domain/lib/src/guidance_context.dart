@@ -4,15 +4,13 @@ import 'package:meta/meta.dart';
 ///
 /// Guidance sits on a three-rung support ladder, from [unguided] through
 /// [notesPreviewedOnly] to [continuouslyCued]. It changes how much independent
-/// production an attempt demands, and whether independent retrieval is tested
-/// at all; it never changes how hard the physical task is.
+/// production an attempt demands, never how hard the physical task is.
 ///
-/// Exactly those three values exist. The constructor is private because a
-/// fourth combination, notes previewed *and* cues left visible, would describe
-/// the same pedagogical condition as [continuouslyCued] while comparing and
-/// hashing differently, and guidance is part of exercise identity, cache
-/// keys, recovery matching, and persisted records. Widen this deliberately if
-/// guidance ever gains a second dimension.
+/// Exactly those three values exist. The constructor is private because notes
+/// previewed *and* cues left visible would describe the same condition as
+/// [continuouslyCued] while comparing and hashing differently, and guidance is
+/// part of exercise identity, cache keys, recovery matching, and persisted
+/// records.
 @immutable
 class GuidanceContext {
   /// Whether the notes were shown before the attempt and then hidden.
@@ -77,18 +75,16 @@ class GuidanceContext {
   /// Whether the material is supplied at any point, before the attempt or
   /// throughout it.
   ///
-  /// True at both supported rungs and false only when unguided. What the
-  /// presentation layer keys on to decide whether there is anything to show at
-  /// all, as distinct from [isRetrievalObserved], which asks whether what was
+  /// What the presentation layer keys on to decide whether there is anything to
+  /// show, as distinct from [isRetrievalObserved], which asks whether what was
   /// shown left a retrieval test intact.
   bool get isMaterialSupplied => notesPreviewed || concurrentPitchCues;
 
   /// Whether this attempt can serve as an independent-retrieval observation
   /// at all.
   ///
-  /// Concurrent pitch cues supply the material continuously, so independent
-  /// retrieval is never actually tested, however low [retrievalDemand] says
-  /// the bar was.
+  /// Concurrent pitch cues supply the material continuously, so retrieval is
+  /// never tested however low [retrievalDemand] says the bar was.
   bool get isRetrievalObserved => !concurrentPitchCues;
 
   /// How independent this guidance level is, from `0` (continuously cued) to

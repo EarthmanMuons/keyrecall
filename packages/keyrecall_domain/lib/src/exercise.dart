@@ -10,8 +10,7 @@ import 'technical_material.dart';
 
 /// How an exercise orders and transforms its material.
 ///
-/// V1 ships [linear] only. The seam exists so patterns such as thirds or
-/// contrary motion can be added without reinterpreting stored exercises.
+/// V1 ships [linear] only.
 enum ExercisePattern {
   /// Straight ascending or ascending-descending traversal.
   linear('LINEAR');
@@ -132,10 +131,8 @@ class Exercise {
 
   /// This exercise at [tempoBpm], with everything else held fixed.
   ///
-  /// For asking what a task would have been at a different speed, and for the
-  /// one place a candidate is built this way: the next tempo rung is a
-  /// learner-dependent value, so the static generator has no candidate at it
-  /// and the scheduler makes one from the shape beside it.
+  /// The next tempo rung is learner-dependent, so no static candidate sits at
+  /// it and the scheduler builds one from the shape beside it.
   Exercise atTempo(double tempoBpm) => Exercise.recorded(
     material: material,
     conditions: ExecutionConditions(
@@ -169,10 +166,8 @@ class Exercise {
   /// learner, and not affected by guidance: a cued harmonic-minor exercise
   /// still contains harmonic-minor topology.
   ///
-  /// Derived once per exercise rather than on each read. A scheduling slot asks
-  /// this of ten thousand candidates and several stages ask it of each, so
-  /// rebuilding the set every time was a measurable share of a decision for a
-  /// value that cannot change.
+  /// Derived once, since a scheduling slot asks this of every candidate at
+  /// several stages and the answer cannot change.
   late final Set<Competency> structuralQ = Set.unmodifiable({
     material.topologyCompetency,
     ...material.executionCompetenciesFor(conditions.hands),
@@ -185,9 +180,8 @@ class Exercise {
       other.guidance == guidance &&
       hasSameRealizationAs(other);
 
-  /// Computed once: a scheduling slot hashes ten thousand candidates through
-  /// set membership and several keyed caches, and two of the six components
-  /// are themselves set hashes.
+  /// Computed once: scheduling hashes every candidate repeatedly, and two of
+  /// the six components are themselves set hashes.
   @override
   late final int hashCode = Object.hash(
     material,

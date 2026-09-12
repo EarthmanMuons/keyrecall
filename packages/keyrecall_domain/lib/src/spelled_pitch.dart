@@ -32,11 +32,9 @@ enum NoteLetter {
 
 /// A written pitch: a letter, an accidental, and an octave.
 ///
-/// The canonical form for anything that has to be *notated*, because a MIDI
-/// number cannot be notated. 70 is B♭ in one key and A♯ in another, and G♯
-/// harmonic minor needs F𝄪 for its seventh degree, which no MIDI number
-/// distinguishes from G. [midiNote] is derived from the spelling rather than
-/// stored beside it, so the two can never disagree.
+/// The canonical form for anything that has to be notated: 70 is B♭ in one key
+/// and A♯ in another, and G♯ harmonic minor needs F𝄪 where a MIDI number says
+/// G. [midiNote] is derived from the spelling, so the two cannot disagree.
 ///
 /// [octave] is scientific pitch notation, where middle C is C4. It follows the
 /// letter, not the sound: C♭4 is written in the fourth octave and sounds a
@@ -53,7 +51,7 @@ class SpelledPitch {
   final int octave;
 
   /// Throws [ArgumentError] for an accidental beyond a double flat or double
-  /// sharp, which no scale in the catalog needs and no staff draws.
+  /// sharp.
   SpelledPitch({
     required this.letter,
     required this.octave,
@@ -70,8 +68,8 @@ class SpelledPitch {
 
   /// The same spelling [octaves] higher, or lower for a negative count.
   ///
-  /// Spelling is untouched, because moving by whole octaves cannot change a
-  /// letter or an accidental. An F sharp stays an F sharp.
+  /// Spelling is untouched, since whole octaves change neither letter nor
+  /// accidental.
   SpelledPitch shiftedByOctaves(int octaves) => octaves == 0
       ? this
       : SpelledPitch(
@@ -111,9 +109,8 @@ class SpelledPitch {
   /// The spelling of [midiNote] as [letter], or null when that letter cannot
   /// write that pitch without more than a double accidental.
   ///
-  /// The letter is the caller's to choose, because it is what the musical
-  /// context decides: the fifth degree of a scale is spelled on the fifth
-  /// letter whatever it sounds like.
+  /// The letter is the caller's to choose, because musical context decides it:
+  /// the fifth degree is spelled on the fifth letter whatever it sounds like.
   static SpelledPitch? forMidiNote(int midiNote, {required NoteLetter letter}) {
     // Semitones from the letter's natural spelling to the target pitch,
     // normalized so a letter near an octave boundary alters by a little rather

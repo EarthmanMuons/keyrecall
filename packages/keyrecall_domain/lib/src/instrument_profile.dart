@@ -18,8 +18,8 @@ class InstrumentProfile {
 
   /// Whether a traversal of [octaves] octaves fits on this instrument.
   ///
-  /// A deliberately simple proxy for real register and capability checking,
-  /// which needs domain data that does not exist yet.
+  /// A proxy for real register checking, which needs domain data this does not
+  /// carry.
   bool supportsOctaveSpan(int octaves) => octaves * 12 <= keyCount;
 
   @override

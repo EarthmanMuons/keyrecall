@@ -7,8 +7,7 @@ import 'technical_material.dart';
 /// rather than one enharmonic pair, because their fingerings are different
 /// records with different provenance.
 ///
-/// This is what the system supports, not what a learner is offered. What to
-/// practice next is the scheduler's question.
+/// What the system supports, not what a learner is offered.
 final List<ScaleMaterial> allScales = List.unmodifiable([
   for (final tonic in [
     'C',
@@ -50,9 +49,7 @@ final List<ScaleMaterial> allScales = List.unmodifiable([
 /// The reference corpus the simulation runs against.
 ///
 /// Seven materials covering all four forms. The pinned trace digests hash runs
-/// over exactly this list, so changing it invalidates them: it is a fixture,
-/// not a product decision. Candidate generation and scheduling decide what a
-/// learner is offered from the selected catalog.
+/// over exactly this list, so changing it invalidates them.
 final List<ScaleMaterial> v1ScaleCatalog = List.unmodifiable([
   ScaleMaterial('C', ScaleForm.major),
   ScaleMaterial('G', ScaleForm.major),
@@ -65,13 +62,10 @@ final List<ScaleMaterial> v1ScaleCatalog = List.unmodifiable([
 
 /// The forms a learner builds their sense of "a scale" out of.
 ///
-/// Major and natural minor are the ordinary vocabulary: one shape and its
-/// relative, with no altered degree to remember. The other minor forms each
-/// change what "minor" means -- a raised seventh, or a raised sixth and
-/// seventh -- so meeting them is learning a new concept rather than a new key.
+/// Major and natural minor are the ordinary vocabulary, with no altered degree
+/// to remember. Each other minor form changes what "minor" means, so meeting
+/// one is learning a new concept rather than a new key.
 ///
-/// Used to keep the vocabulary from growing faster than the base under it.
-/// Nothing about difficulty: a Db major scale is harder to play than an A
-/// harmonic minor, and both facts are true at once, which is why this is a
-/// separate question from the admission bands.
+/// Keeps the vocabulary from growing faster than the base under it. Nothing
+/// about difficulty, which the admission bands answer separately.
 const Set<ScaleForm> coreForms = {ScaleForm.major, ScaleForm.naturalMinor};

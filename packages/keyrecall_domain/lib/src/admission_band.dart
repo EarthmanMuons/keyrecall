@@ -3,15 +3,12 @@ import 'technical_material.dart';
 
 /// How early a material is conventionally introduced.
 ///
-/// A prior taken from graded syllabi and method books, not a difficulty
-/// measurement: those sources agree roughly on what to introduce first and
-/// disagree about the details, so this says "a sensible place to start" and
-/// nothing about latent difficulty. See
+/// A prior taken from graded syllabi and method books, saying "a sensible place
+/// to start" rather than anything about latent difficulty. See
 /// `docs/domain-model/material-admission.md`.
 ///
-/// Material only. Hands, octaves, direction and tempo are execution
-/// conditions, and graded syllabi bundle them with key choice in a way this
-/// deliberately does not.
+/// Material only. Hands, octaves, direction, and tempo are execution
+/// conditions, which this keeps separate from key choice.
 enum AdmissionBand {
   /// The earliest material in every source consulted.
   foundation('FOUNDATION'),
@@ -54,10 +51,9 @@ const Map<String, AdmissionBand> _majorBands = {
 
 /// Tonics by band, for every minor form.
 ///
-/// The form does not move the band. Which minor form to introduce first is a
-/// question about topology rather than about keyboard geography, and the
-/// curricula give no support for a universal natural, then harmonic, then
-/// melodic ladder.
+/// The form does not move the band: which minor form comes first is a question
+/// about topology rather than keyboard geography, and the sources support no
+/// universal ordering of the forms.
 const Map<String, AdmissionBand> _minorBands = {
   'A': AdmissionBand.foundation,
   'D': AdmissionBand.foundation,
@@ -75,10 +71,9 @@ const Map<String, AdmissionBand> _minorBands = {
 
 /// Which band [material] belongs to.
 ///
-/// Each family answers for its own material. Anything neither of them covers
-/// is treated as the latest band, which is the conservative reading of "we
-/// have no evidence about this": a material nobody has placed must not arrive
-/// at a beginner's frontier because it happened to fall through a lookup.
+/// Each family answers for its own material. Anything uncovered falls to the
+/// latest band, so a material nobody has placed cannot arrive at a beginner's
+/// frontier by falling through a lookup.
 AdmissionBand admissionBandOf(TechnicalMaterial material) => switch (material) {
   ScaleMaterial(:final form, :final tonic) =>
     (form == ScaleForm.major ? _majorBands : _minorBands)[tonic] ??
@@ -89,10 +84,9 @@ AdmissionBand admissionBandOf(TechnicalMaterial material) => switch (material) {
 /// Which band an arpeggio belongs to, from the geography of its chord.
 ///
 /// Derived rather than listed, because what changes between one root-position
-/// arpeggio and the next is where the hand sits on the keyboard. A triad of
-/// white keys is played with the thumb on its root; a black root is what forces
-/// the second finger to start and the thumb to find a white key inside the
-/// shape, which is the new motor pattern rather than a new key signature.
+/// arpeggio and the next is where the hand sits. A black root forces the second
+/// finger to start and the thumb to find a white key inside the shape, which is
+/// the new motor pattern.
 ///
 /// ```text
 /// foundation             every tone is a white key
@@ -101,9 +95,8 @@ AdmissionBand admissionBandOf(TechnicalMaterial material) => switch (material) {
 /// advanced keyboard      every tone is a black key
 /// ```
 ///
-/// A prior about where to start, like the scale bands beside it, and not a
-/// difficulty measurement. It is provisional until the arpeggio pedagogy pass
-/// in `docs/domain-model/arpeggio-domain-research.md` settles the memberships.
+/// A prior about where to start, like the scale bands beside it. See
+/// `docs/domain-model/arpeggio-domain-research.md`.
 AdmissionBand _arpeggioBandOf(ArpeggioMaterial material) {
   final topology = material.topology;
   final origin =

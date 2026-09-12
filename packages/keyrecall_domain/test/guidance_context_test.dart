@@ -33,10 +33,8 @@ void main() {
 
     test('has no fourth value for previewed-and-cued', () {
       // Cues left visible supply the material whether or not the notes were
-      // also shown first, so that combination is the same condition as
-      // continuous cueing. Only the three rungs are constructible, which is
-      // what keeps a duplicate from comparing and hashing differently inside
-      // exercise identity, cache keys, and persisted records.
+      // also shown first, so that combination is continuous cueing under
+      // another name.
       expect(GuidanceContext.ladder, hasLength(3));
       expect(
         GuidanceContext.ladder.map((guidance) => guidance.independence).toSet(),

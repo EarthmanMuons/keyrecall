@@ -166,7 +166,7 @@ class PianoGeometry {
   /// keyboard span represented by this geometry instance.
   ///
   /// - White keys occupy exactly one [whiteKeyWidth] at their corresponding index.
-  /// - Black keys use a reduced width and pitch-class–specific center bias.
+  /// - Black keys use a reduced width and pitch-class-specific center bias.
   ///
   /// Callers must ensure that [whiteKeyWidth] and [totalWidth] are derived from the
   /// same keyboard span.

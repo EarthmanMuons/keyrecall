@@ -12,11 +12,9 @@ const _handSetEquality = SetEquality<Hand>();
 
 /// One note the exercise asks for, and which hands play it.
 ///
-/// Usually one hand. Both, where two lines meet on one key: contrary motion
-/// conventionally starts and returns in unison, and a piano sends one note-on
-/// however many thumbs are on the key. Modeling that as two notes would ask
-/// for an observation the instrument cannot produce, so the attempt could never
-/// read as complete.
+/// Usually one hand. Both, where two lines meet on one key: a piano sends one
+/// note-on however many thumbs are on it, so two notes there would ask for an
+/// observation the instrument cannot produce.
 @immutable
 class RealizedNote {
   /// Which hands play it.
@@ -76,11 +74,9 @@ const _momentListEquality = ListEquality<RealizationMoment>();
 
 /// Everything that happens at one point in an exercise.
 ///
-/// A moment rather than a note, because hands play together and later patterns
-/// put several pitches in one place. [position] counts moments; [metricOffset]
-/// says where the moment falls in beats. V1 puts one moment on each beat, so
-/// the two agree, and they are kept apart because that will stop being true as
-/// soon as an exercise has subdivisions or a held note.
+/// A moment rather than a note, because hands play together. [position] counts
+/// moments and [metricOffset] says where the moment falls in beats. V1 puts one
+/// moment on each beat, so the two agree.
 @immutable
 class RealizationMoment {
   /// Index of this moment in the exercise, from zero.
@@ -104,9 +100,8 @@ class RealizationMoment {
 
   /// Throws [ArgumentError] when a hand is asked to play twice at once.
   ///
-  /// V1 has no chords, and a moment that already held two notes for one hand
-  /// would make [noteFor] answer arbitrarily. Relax this deliberately when a
-  /// pattern needs it rather than discovering it was always allowed.
+  /// V1 has no chords, and a second note for one hand would make [noteFor]
+  /// answer arbitrarily.
   RealizationMoment({
     required this.position,
     required this.metricOffset,
@@ -148,14 +143,11 @@ class RealizationMoment {
 
 /// What an exercise asks for, as an ordered sequence of musical events.
 ///
-/// The single answer to "which notes, in what order, in which hand". Staff
-/// rendering, a progress indicator, fingering annotation, and the alignment of
-/// an observed performance all need that answer, and deriving it twice is how
-/// two definitions of the same exercise start to disagree.
+/// The single answer to "which notes, in what order, in which hand", shared by
+/// staff rendering, progress, fingering annotation, and alignment.
 ///
-/// Deliberately not measurement. There is no wall-clock timing here, no
-/// tolerance, no notion of a note being played early, late, wrongly, or not at
-/// all. A realization says what the task is; relating a performance to it is
+/// Not measurement: no wall-clock timing, no tolerance, no notion of a note
+/// being early, late, or wrong. Relating a performance to the task is
 /// `keyrecall_alignment`'s job.
 ///
 /// Derived on demand from an [Exercise] and not part of its identity, so
@@ -169,7 +161,7 @@ class ExerciseRealization {
   /// Throws [ArgumentError] when there is nothing to play.
   ///
   /// An exercise that asks for no notes is not a task, and [lowestPitch] and
-  /// [highestPitch] would fail on it anyway.
+  /// [highestPitch] have no answer on one.
   ExerciseRealization(List<RealizationMoment> moments)
     : moments = List.unmodifiable(moments) {
     if (this.moments.isEmpty) {
@@ -179,9 +171,8 @@ class ExerciseRealization {
 
   /// The whole exercise [octaves] higher, or lower for a negative count.
   ///
-  /// Every note moves together, so the shape, the intervals, and the distance
-  /// between the hands are all preserved. Which C a scale starts on is a
-  /// property of the realization, not of the scale.
+  /// Every note moves together, preserving the shape, the intervals, and the
+  /// distance between the hands.
   ExerciseRealization shiftedByOctaves(int octaves) => octaves == 0
       ? this
       : ExerciseRealization([
@@ -201,8 +192,7 @@ class ExerciseRealization {
 
   /// Every pitch the exercise asks for, without order or repetition.
   ///
-  /// What a diagram that marks keys needs, as distinct from what a staff
-  /// needs, which is [moments].
+  /// What a diagram that marks keys needs; a staff needs [moments] instead.
   Set<int> get pitches => {
     for (final moment in moments)
       for (final note in moment.notes) note.midiNote,
@@ -228,30 +218,22 @@ class ExerciseRealization {
 
 /// The register boundary the two hands are placed against.
 ///
-/// A V1 convention, not a fact about the material. Nothing yet lets a learner
-/// ask for a different register.
+/// A V1 convention, not a fact about the material.
 const int _middleC = 60;
 
 /// Where [hand]'s tonic sits for a traversal of [octaves] octaves.
 ///
-/// Middle C is the boundary both hands are placed against, from opposite
-/// sides: the right hand begins near it, and the left hand *finishes* near it.
+/// Middle C is the boundary both hands are placed against from opposite sides:
+/// the right hand begins near it, and the left hand *finishes* near it. The
+/// left hand is anchored by its end because a fixed floor climbs, putting the
+/// upper octaves of a long traversal into the other hand's register.
 ///
-/// The left hand is anchored by where it ends rather than where it begins
-/// because a fixed floor climbs. Anchored at the bottom, two octaves put the
-/// entire second octave above middle C, in the other hand's register and four
-/// ledger lines above the bass staff, which is neither how the scale is
-/// practiced nor how it is written.
+/// Near, not at or beyond: rounding to the closer octave keeps every key within
+/// half an octave of the hand's home rather than dropping a tonic a whole
+/// octave to avoid clearing the boundary by a step.
 ///
-/// Near, not at or beyond. Insisting the boundary is never crossed drops a
-/// tonic a whole octave to avoid clearing it by a step: two octaves of D in
-/// the left hand would run from D1 rather than D2, to end two semitones lower.
-/// Rounding to the closer octave keeps every key within half an octave of the
-/// hand's home instead.
-///
-/// One consequence for hands-together work: at one octave the two hands come
-/// out the conventional octave apart, and at two they come out two octaves
-/// apart rather than the octave a pianist would expect.
+/// Hands together therefore sit one octave apart at one octave and two apart at
+/// two, rather than the octave a pianist would expect.
 int _tonicFor(Hand hand, int pitchClass, int octaves) => switch (hand) {
   Hand.right => _nearestTonic(_middleC, pitchClass),
   Hand.left => _nearestTonic(_middleC - 12 * octaves, pitchClass),
@@ -261,13 +243,9 @@ int _tonicFor(Hand hand, int pitchClass, int octaves) => switch (hand) {
 ///
 /// Parallel motion anchors each hand against its own register. Contrary motion
 /// starts them on one shared tonic, so the hands begin in unison and move
-/// apart, both thumbs on the same key.
-///
-/// **That placement is this realization's choice, not what contrary motion
-/// means.** [HandMotion.contrary] says only that the two trajectories run in
-/// opposite directions; hands that begin octaves apart and converge are
-/// contrary too. A later pattern that wants a different geometry chooses it
-/// here rather than by redefining the axis.
+/// apart, both thumbs on the same key. That placement is chosen here;
+/// [HandMotion.contrary] says only that the trajectories run in opposite
+/// directions.
 Map<Hand, int> _tonicsFor(
   ExecutionConditions conditions,
   List<Hand> hands,
@@ -285,8 +263,7 @@ Map<Hand, int> _tonicsFor(
 /// Which key [degree] lands on, counting from [tonic].
 ///
 /// Floor division rather than truncation, so a degree below the tonic falls
-/// into the octave below it. For a degree at or above the tonic this is the
-/// ordinary reading, which is what keeps parallel motion unchanged.
+/// into the octave below it.
 int _midiNoteAt({
   required int tonic,
   required int degree,
@@ -322,10 +299,8 @@ ExerciseRealization realize(Exercise exercise) {
         12,
   );
 
-  // Every hand plays at every moment in V1, so the paths are read in lockstep.
-  // Independent here means the degrees may differ, not the event structure; a
-  // pattern where one hand rests or subdivides would need moments built from
-  // the union of the paths rather than from a shared index.
+  // Every hand plays at every moment in V1, so the paths are read in lockstep:
+  // the degrees may differ, the event structure may not.
   final positions = paths.values.first.length;
   assert(
     paths.values.every((path) => path.length == positions),
@@ -336,8 +311,7 @@ ExerciseRealization realize(Exercise exercise) {
     for (var position = 0; position < positions; position++)
       RealizationMoment(
         position: position,
-        // One note to a beat, which is all a scale asks for and all the
-        // conditions can currently express.
+        // One note to a beat, which is all the conditions can express.
         metricOffset: position.toDouble(),
         notes: _notesAt(
           position: position,
@@ -353,10 +327,9 @@ ExerciseRealization realize(Exercise exercise) {
 
 /// What sounds at one moment, with hands that meet on a key sharing its note.
 ///
-/// Keyed by the key rather than by the spelling, because it is the key the
+/// Keyed by sounding key rather than by spelling, because the key is what the
 /// instrument reports: two hands on one note-on have to be one expected note or
-/// the attempt can never be complete. Insertion order is [hands] order, so
-/// hands that do not meet produce exactly what they did before.
+/// the attempt can never be complete.
 List<RealizedNote> _notesAt({
   required int position,
   required List<Hand> hands,

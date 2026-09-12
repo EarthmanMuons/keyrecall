@@ -65,9 +65,8 @@ enum ExerciseDirection {
 
 /// How the two hands move relative to each other.
 ///
-/// Orthogonal to [ExerciseDirection], the traversal of one line in time:
-/// both hands traverse the same `upDown` exercise whether they move together or
-/// apart.
+/// Orthogonal to [ExerciseDirection]: both hands traverse the same `upDown`
+/// exercise whether they move together or apart.
 enum HandMotion {
   /// Both hands play the same scale degree at each position, an octave or more
   /// apart. The only motion a single hand can be said to have.
@@ -110,8 +109,7 @@ class ExecutionConditions {
   ///
   /// Meaningful only when [hands] is [HandConfiguration.together]. A single
   /// hand carries [HandMotion.parallel] as the canonical value, which keeps
-  /// this off the nullable path that identity, hashing and the frontier key
-  /// would otherwise have to carry.
+  /// identity, hashing, and the frontier key off a nullable path.
   final HandMotion handMotion;
 
   /// The requested tempo in beats per minute.
@@ -121,12 +119,9 @@ class ExecutionConditions {
   /// [HandMotion.contrary] with anything but two hands.
   ///
   /// The motor-difficulty score takes the log of the tempo ratio, so a
-  /// nonpositive or non-finite tempo would silently produce a meaningless
-  /// difficulty rather than failing where the bad value entered.
-  /// One octave, because that is the least-assumptive scale there is: it is
-  /// foundation behavior on every axis, and two octaves carries a
-  /// prerequisite of its own. A default that asks a harder question than the
-  /// caller meant is invisible policy.
+  /// nonpositive or non-finite tempo would produce a meaningless difficulty
+  /// rather than failing where the bad value entered. The span defaults to one
+  /// octave, since two carries a prerequisite of its own.
   ExecutionConditions({
     required this.hands,
     this.octaves = 1,

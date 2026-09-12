@@ -2,8 +2,8 @@ import 'technical_material.dart';
 
 /// Every root-position arpeggio with canonical fingering in both hands.
 ///
-/// The tonic spellings match the scale catalog. Inversions remain outside the
-/// supported corpus until they have their own provenance-backed records.
+/// The tonic spellings match the scale catalog. Inversions have no
+/// provenance-backed fingering records, so they are outside this corpus.
 final List<ArpeggioMaterial> allRootPositionArpeggios = List.unmodifiable([
   for (final tonic in [
     'C',
@@ -37,7 +37,7 @@ final List<ArpeggioMaterial> allRootPositionArpeggios = List.unmodifiable([
     ArpeggioMaterial(tonic, ArpeggioQuality.minor),
 ]);
 
-/// The deliberately small catalog used to prove heterogeneous families.
+/// The small catalog used to prove heterogeneous families.
 final List<ArpeggioMaterial> proofArpeggios = List.unmodifiable([
   for (final root in ['C', 'G', 'D'])
     ArpeggioMaterial(root, ArpeggioQuality.major),

@@ -14,10 +14,9 @@ import 'technical_material.dart';
 /// allScales -> goal scope -> material admission -> ranking
 /// ```
 ///
-/// Keeping those apart matters most for a goal that names a syllabus. Choosing
-/// one should say "these are the destination materials", not make every one of
-/// them admissible at once, and it should not stop the scheduler using easier
-/// related material that prepares for them.
+/// A goal that names a syllabus says "these are the destination materials",
+/// without making every one of them admissible at once or stopping the
+/// scheduler using easier material that prepares for them.
 ///
 /// A goal may name materials directly for a custom scope or carry a versioned
 /// [Curriculum]. Scope resolution validates either form before scheduling.

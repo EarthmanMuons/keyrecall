@@ -6,8 +6,7 @@ import 'material_topology.dart';
 
 /// A scale form supported by V1.
 ///
-/// The catalog is deliberately open-ended: forms are an initial catalog rather
-/// than a closed set, and each new form needs its own topology competency.
+/// Each form carries its own topology competency.
 enum ScaleForm {
   major('MAJOR', Competency.majorScaleTopology),
   naturalMinor('NATURAL_MINOR', Competency.naturalMinorTopology),
@@ -84,12 +83,10 @@ final MaterialProgression _scaleProgression = MaterialProgression(
 /// and guidance, so realizations share one exact-material memory state while
 /// their hand-specific performances carry separate execution state.
 ///
-/// The tonic participates directly in [materialId], which persisted records
-/// key on, so it must already be canonical: `F#` and `f#` and `F♯` would
-/// otherwise be three different materials. Construction rejects anything else
-/// rather than normalizing it, because silently repairing input here would
-/// hide the upstream bug that produced it. Normalizing user or file input is
-/// a parsing concern, and belongs at that boundary.
+/// The tonic participates directly in [materialId], which persisted records key
+/// on, so it must already be canonical: `F#`, `f#`, and `F♯` would otherwise be
+/// three different materials. Construction rejects anything else rather than
+/// normalizing it, which is a parsing concern belonging at the input boundary.
 @immutable
 sealed class TechnicalMaterial {
   /// The family resolver responsible for this material.
@@ -341,16 +338,11 @@ final class ScaleMaterial extends TechnicalMaterial {
 /// Positive counts sharps, negative counts flats, as engraving conventionally
 /// numbers them.
 ///
-/// Every minor form takes the natural minor's signature, which is the relative
-/// major's. That is the convention rather than a simplification: the raised
-/// seventh of harmonic minor and the raised sixth and seventh of melodic minor
-/// are written as accidentals where they occur, precisely because they are
-/// alterations of the key rather than part of it. A staff drawn this way says
-/// what a printed scale book says.
+/// Every minor form takes the natural minor's signature, the relative major's,
+/// because the raised degrees of harmonic and melodic minor are written as
+/// accidentals where they occur.
 ///
-/// Throws [ArgumentError] for a tonic no standard signature covers. The
-/// catalog's twelve are all covered; the guard is for a thirteenth arriving
-/// without anyone deciding how to write it.
+/// Throws [ArgumentError] for a tonic no standard signature covers.
 int keySignatureFifths(TechnicalMaterial material) {
   final form = material.scaleForm;
   final signatures = form == null || form == ScaleForm.major

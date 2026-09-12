@@ -1,17 +1,13 @@
 /// The tempi a mechanical metronome offers, and the steps between them.
 ///
 /// Maelzel's progression: two apart to 60, three to 72, four to 120, six to
-/// 144, eight to 208. Its origin is the escapement of a clockwork device
-/// rather than anything about learning, so nothing here treats these numbers
-/// as pedagogically privileged. What they are is a quantization grid a
-/// musician already reads, with steps that grow as the tempo does, which is
-/// the right shape for the thing they are being used for: a fixed number of
-/// beats per minute does not mean a fixed amount at both ends of the range.
+/// 144, eight to 208. Nothing treats these numbers as pedagogically
+/// privileged. They are a quantization grid a musician already reads, with
+/// steps that grow as the tempo does.
 ///
-/// KeyRecall uses it as an **adjacency relation** rather than a candidate set.
-/// Generating all thirty-nine would multiply the candidate space by ten to
-/// express a question that is always local — is the next rung up useful work
-/// yet — and answering that needs two neighbors, not a catalog.
+/// Used as an adjacency relation rather than a candidate set: the question is
+/// always whether the next rung up is useful work yet, which needs two
+/// neighbors and not a catalog.
 const List<double> metronomeLadder = [
   40, 42, 44, 46, 48, 50, 52, 54, 56, 58, //
   60, 63, 66, 69, //
@@ -37,9 +33,8 @@ int tempoRungOf(double bpm) {
 
 /// The tempo [steps] rungs from [bpm], stopping at the ends of the ladder.
 ///
-/// Clamped rather than absent at the ends, because there is always a tempo to
-/// ask for: the slowest is still a tempo, and a learner at the top of the
-/// ladder is asked for it again rather than for nothing.
+/// Clamped rather than absent at the ends, so a learner at either end is asked
+/// for that rung again rather than for nothing.
 double tempoStepped(double bpm, int steps) =>
     metronomeLadder[(tempoRungOf(bpm) + steps).clamp(
       0,

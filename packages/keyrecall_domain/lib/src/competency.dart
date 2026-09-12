@@ -48,7 +48,7 @@ enum Competency {
 
   /// The opposite hand's execution competency, or null when there is none.
   ///
-  /// Used for the prediction-only hand-transfer adjustment; it never licenses
+  /// Used for the prediction-only hand-transfer adjustment. It never licenses
   /// writing one hand's evidence into the other's stored state.
   Competency? get pairedHand => switch (this) {
     Competency.rhScaleExecution => Competency.lhScaleExecution,
@@ -93,9 +93,8 @@ const Set<Competency> motorCompetencies = {
 
 /// Competencies scored by the coordination channel.
 ///
-/// How together the hands were is measured directly, so it learns from that
-/// rather than from how the playing sat in time. Continuity and steadiness say
-/// nothing about whether two hands arrived together.
+/// How together the hands were is measured directly, so this channel learns
+/// from that rather than from continuity or steadiness.
 const Set<Competency> coordinationCompetencies = {
   Competency.handsTogetherCoordination,
 };

@@ -7,10 +7,8 @@ import 'technical_material.dart';
 
 /// Which part of the parent exercise is played.
 ///
-/// Sealed rather than an enum because the value a fragment needs carries data:
-/// where the window starts, where it ends, and which transition it exists to
-/// rehearse. A window is added when observations say which transition is worth
-/// isolating.
+/// Sealed rather than an enum because a portion can carry data, such as the
+/// bounds of a window over the parent.
 @immutable
 sealed class TaskPortion {
   const TaskPortion();
@@ -39,21 +37,14 @@ final class FullTraversal extends TaskPortion {
 
 /// The whole of the parent exercise, played through more than once.
 ///
-/// Repetitions rather than a longer traversal. Extending a short pattern into
-/// another octave would add the crossing that makes a wider span its own motor
-/// task, so the material stays exactly what the parent asks for and the
-/// learner plays it again from the beginning.
+/// Repetitions rather than a longer traversal, so the material stays exactly
+/// what the parent asks for instead of gaining the crossing a wider span would
+/// add. A pattern too short to say anything about continuity supplies more
+/// intervals by being played again.
 ///
-/// First-class rather than a longer list of notes, because the boundary
-/// between one traversal and the next is not part of either. The learner
-/// resets their hand there, which is not a note of the material, not a
-/// transition of it, and not an interval anything should read as hesitation.
-/// [TraversalRepetitions] exists so an observation can say that without
-/// inferring it from arithmetic.
-///
-/// What it is for is evidence. Continuity is read from the spread of the
-/// intervals inside a traversal, and a pattern too short to supply enough of
-/// them supplies more by being played again.
+/// First-class rather than a longer list of notes, because the boundary between
+/// one traversal and the next belongs to neither: the learner resets their hand
+/// there, and nothing should read that as hesitation.
 @immutable
 final class TraversalRepetitions extends TaskPortion {
   @override
@@ -76,13 +67,9 @@ final class TraversalRepetitions extends TaskPortion {
 
 /// Whether the task asks the learner to keep to a pulse.
 ///
-/// Its own axis, and not a guidance rung. Removing the tempo obligation
-/// changes what the task is; a guidance rung changes only how much of the
-/// material is supplied for a task that is otherwise unchanged.
-///
-/// A continuity-only demand sits between these two: keep going, at whatever
-/// speed. It is not offered until there is a reason to prefer it to either
-/// end.
+/// Its own axis, and not a guidance rung. Removing the tempo obligation changes
+/// what the task is, where a guidance rung changes only how much of the material
+/// is supplied for an otherwise unchanged task.
 enum TimingDemand {
   /// A tempo is asked for and the learner is expected to hold it.
   metered('METERED'),
@@ -108,17 +95,12 @@ enum TimingDemand {
 
   /// Whether an attempt under this demand can say anything about tempo.
   ///
-  /// Nothing was asked for under [unmetered], so how fast the learner happened
-  /// to play is a fact about the attempt and not a reading of a request.
+  /// Nothing is asked for under [unmetered], so how fast the learner happened
+  /// to play answers no request.
   bool get supportsTempoEvidence => requestsTempo;
 }
 
 /// Who decides when the next moment happens.
-///
-/// Assisted advancement, where the app sequences the material and the learner
-/// answers each prompt, is a different task again: it takes over remembering
-/// what comes next. It is not offered until an unmetered traversal has shown
-/// that learner-driven sequencing is the thing in the way.
 enum TaskAdvancement {
   /// The learner produces the next note when they are ready.
   learnerDriven('LEARNER_DRIVEN');
@@ -139,20 +121,15 @@ enum TaskAdvancement {
 
 /// What an acquisition attempt delivered against what it asked for.
 ///
-/// Three values, not a score. Reaching the end after corrections is real work
-/// and is recorded as such; it is simply not the same thing as reaching the
-/// end without them.
-///
-/// Completion means the material was produced, not that every position was
-/// accounted for. Alignment explains a wrong note as a substitution, which
-/// covers the position it fell on, so a traversal of arbitrary notes satisfies
-/// every position without any of the material having been played.
+/// Three values, not a score. Completion means the material was produced, not
+/// that every position was accounted for: alignment covers a position with a
+/// substitution, so arbitrary notes satisfy every position without any of the
+/// material having been played.
 enum AcquisitionCompletion {
   /// Something the task asked for was never played.
   ///
   /// Either it never arrived, or something else was played in its place and
-  /// the learner moved on. A position covered by a wrong note is not the
-  /// material having been produced.
+  /// the learner moved on.
   notCompleted('NOT_COMPLETED'),
 
   /// Every note the task asked for was played, with extra notes along the way.
@@ -172,21 +149,16 @@ enum AcquisitionCompletion {
 
 /// Supported acquisition of part of an ordinary exercise.
 ///
-/// Not an [Exercise], and deliberately not one. An exercise under any guidance
-/// rung is still an ordinary realization of its material, so what it observes
-/// is ordinary evidence. An acquisition task relaxes the task itself, so what
-/// it observes is evidence about the relaxed task and nothing else. Keeping it
-/// off the [Exercise] type is what stops it reaching candidate ranking, the
-/// frontier, and the learner model by any route that already exists.
+/// Not an [Exercise]. An exercise under any guidance rung is still an ordinary
+/// realization of its material, where an acquisition task relaxes the task
+/// itself and observes only the relaxed task. Keeping it off the [Exercise]
+/// type is what stops it reaching candidate ranking, the frontier, and the
+/// learner model.
 ///
-/// Three choices, held apart from the [parent]'s guidance because they are not
-/// support for the same task: [portion] says how much is played, [timing] says
-/// whether a pulse is asked for, and [advancement] says who sequences it.
-/// Calling all of them "more guidance" would hide a change to what the learner
-/// demonstrated.
-///
-/// Success here earns a probe of the unchanged [parent]. Only that probe
-/// establishes ordinary readiness or a frontier.
+/// [portion] says how much is played, [timing] whether a pulse is asked for,
+/// and [advancement] who sequences it. Success here earns a probe of the
+/// unchanged [parent], and only that probe establishes ordinary readiness or a
+/// frontier.
 @immutable
 class AcquisitionTask {
   /// The ordinary exercise this rehearses part of.
@@ -204,8 +176,8 @@ class AcquisitionTask {
   /// Throws [ArgumentError] when nothing about the parent is relaxed.
   ///
   /// A task that asks for the whole parent, at its tempo, sequenced by the
-  /// learner *is* the parent. Admitting it here would fence off evidence the
-  /// attempt actually earned.
+  /// learner *is* the parent, and admitting it here would fence off evidence
+  /// the attempt earned.
   AcquisitionTask({
     required this.parent,
     required this.timing,
@@ -225,10 +197,8 @@ class AcquisitionTask {
 
   /// The whole parent traversal, at whatever pace the learner takes.
   ///
-  /// The one acquisition task V1 offers. It keeps the material, the hand, the
-  /// span, the direction, and the cues exactly as the parent has them, and
-  /// asks a narrower question: can you produce this sequence when time is not
-  /// the limiting resource?
+  /// The one acquisition task V1 offers. Material, hand, span, direction, and
+  /// cues are the parent's; only the tempo obligation is dropped.
   AcquisitionTask.unmeteredTraversal(Exercise parent)
     : this(
         parent: parent,
@@ -242,8 +212,8 @@ class AcquisitionTask {
   /// Whether [presentation] can carry this task.
   ///
   /// An unmetered task states no tempo, so nothing may sound one. A pairing
-  /// rule rather than an invariant of either value alone, checked where the
-  /// pair is formed, as [PresentationConditions.suitsGuidance] is.
+  /// rule rather than an invariant of either value alone, like
+  /// [PresentationConditions.suitsGuidance].
   bool suitsPresentation(PresentationConditions presentation) =>
       timing.requestsTempo || presentation.tempoSupport == TempoSupport.none;
 
@@ -266,9 +236,9 @@ class AcquisitionTask {
 
 /// The notes [task] asks for, in order.
 ///
-/// The parent's realization, narrowed to the portion. Nothing about the
-/// timing demand reaches it: a realization says which notes in what order, and
-/// a moment's metric offset is where it would fall if a pulse were asked for.
+/// The parent's realization, narrowed to the portion. Nothing about the timing
+/// demand reaches it: a moment's metric offset is only where it would fall if a
+/// pulse were asked for.
 ExerciseRealization realizeAcquisition(AcquisitionTask task) {
   final traversal = realize(task.parent);
   if (task.portion.traversals == 1) return traversal;
@@ -280,8 +250,7 @@ ExerciseRealization realizeAcquisition(AcquisitionTask task) {
       for (final moment in traversal.moments)
         RealizationMoment(
           position: repetition * traversal.moments.length + moment.position,
-          // Where the moment would fall if a pulse were asked for, which for a
-          // repeated traversal continues past the end of the first one. A
+          // Repetitions continue past the end of the first traversal. A
           // repeated task states no tempo, so nothing reads this.
           metricOffset: moment.metricOffset + repetition * (beats + 1),
           notes: moment.notes,
@@ -291,10 +260,8 @@ ExerciseRealization realizeAcquisition(AcquisitionTask task) {
 
 /// The position each traversal of [task] begins at, the first included.
 ///
-/// What tells a reading of the performance where the learner was allowed to
-/// stop and start again. A gap that spans one of these boundaries is the reset
-/// between two traversals, not a wait inside one, and reading it as either
-/// evidence or a stall would put both on the boundary the task drew itself.
+/// Where the learner is allowed to stop and start again. A gap spanning one of
+/// these boundaries is the reset between traversals, not a wait inside one.
 List<int> acquisitionTraversalStarts(AcquisitionTask task) {
   if (task.portion.traversals == 1) return const [0];
   final length = realize(task.parent).moments.length;
@@ -306,14 +273,10 @@ List<int> acquisitionTraversalStarts(AcquisitionTask task) {
 
 /// The supported task a family offers below one of its declared floors.
 ///
-/// Declared by the family rather than assumed by whoever offers it. What a
-/// supported version of the work is follows from the family's motor structure,
-/// and reusing one family's scaffold for another would relax an axis that
-/// family never said was the one in the way.
-///
-/// The rule that reads this stays family-neutral: a floor with a scaffold can
-/// be acquired, a floor without one cannot, and the condition on the learner is
-/// the same everywhere.
+/// Declared by the family rather than assumed by whoever offers it, since what
+/// a supported version of the work is follows from the family's motor
+/// structure. The rule that reads this stays family-neutral: a floor with a
+/// scaffold can be acquired, a floor without one cannot.
 @immutable
 class AcquisitionScaffold {
   /// Whether a pulse is asked for.
@@ -341,9 +304,8 @@ class AcquisitionScaffold {
   /// The whole traversal [traversals] times over, at the learner's own pace.
   ///
   /// For a pattern whose single traversal is too short to say anything about
-  /// continuity. How many is not a dose: it is the fewest that supply what the
-  /// criterion already asks for, and the family works it out from its own
-  /// material rather than choosing a number it likes.
+  /// continuity. The family works out the fewest repetitions that supply what
+  /// the criterion asks for.
   AcquisitionScaffold.unmeteredRepetitions(int traversals)
     : this(
         timing: TimingDemand.unmetered,

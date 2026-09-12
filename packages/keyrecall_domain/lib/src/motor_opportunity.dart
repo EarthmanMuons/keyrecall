@@ -31,8 +31,8 @@ class MotorOpportunitySite {
 
 /// An observable motor site an exercise's event structure creates.
 ///
-/// Opportunities are what makes localized diagnosis possible: an attempt can
-/// fail at a thumb crossing without the aggregate score saying where.
+/// What makes localized diagnosis possible: an attempt can fail at a thumb
+/// crossing without the aggregate score saying where.
 enum MotorOpportunity {
   /// A thumb-under or finger-over crossing site.
   scalarCrossing('SCALAR_CROSSING', Competency.scalarCrossing),
