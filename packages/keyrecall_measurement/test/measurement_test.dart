@@ -573,5 +573,44 @@ void main() {
         );
       },
     );
+
+    test('an unmeasured timing reaches the learner as no motor evidence', () {
+      final outcome = outcomeFor(
+        measurement: measured(expected.take(3).toList()),
+        exercise: exercise,
+      );
+      final weights = evidenceWeightsFor(exercise, outcome);
+
+      expect(outcome.continuity, isNull);
+      expect(outcome.temporalStability, isNull);
+      expect(outcome.motorScore, isNull);
+      expect(weights.materialExecution, 0.0);
+      expect(weights[Competency.rhScaleExecution], 0.0);
+      expect(
+        weights[Competency.majorScaleTopology],
+        greaterThan(0.0),
+        reason: 'the pitches were read, whatever the waits could not say',
+      );
+    });
+
+    test('a measured poor timing reaches it as evidence that it was poor', () {
+      final outcome = outcomeFor(
+        measurement: measured(
+          expected,
+          gaps: const [400, 4000, 400, 4000, 400, 4000, 400],
+        ),
+        exercise: exercise,
+      );
+      final weights = evidenceWeightsFor(exercise, outcome);
+
+      expect(outcome.temporalStability, 0.0);
+      expect(
+        outcome.motorScore,
+        0.5,
+        reason: 'nothing stopped, so continuity is unharmed and carries half',
+      );
+      expect(weights.materialExecution, greaterThan(0.0));
+      expect(weights[Competency.rhScaleExecution], greaterThan(0.0));
+    });
   });
 }
