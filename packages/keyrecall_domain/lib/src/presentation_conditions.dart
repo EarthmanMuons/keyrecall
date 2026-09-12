@@ -24,7 +24,8 @@ enum PitchCue {
 
   const PitchCue(this.id);
 
-  /// Stable identifier used in traces.
+  /// Stable identifier, and the spelling the wire format takes when
+  /// [PresentationConditions] gains one.
   final String id;
 
   /// Whether any of the material is supplied before it is played.
@@ -50,7 +51,8 @@ enum CueModality {
 
   const CueModality(this.id);
 
-  /// Stable identifier used in traces.
+  /// Stable identifier, and the spelling the wire format takes when
+  /// [PresentationConditions] gains one.
   final String id;
 
   /// Whether reading the cue is itself a task the attempt then observes.
@@ -71,7 +73,8 @@ enum MotorCue {
 
   const MotorCue(this.id);
 
-  /// Stable identifier used in traces.
+  /// Stable identifier, and the spelling the wire format takes when
+  /// [PresentationConditions] gains one.
   final String id;
 }
 
@@ -94,7 +97,8 @@ enum PerformanceFeedback {
 
   const PerformanceFeedback(this.id);
 
-  /// Stable identifier used in traces.
+  /// Stable identifier, and the spelling the wire format takes when
+  /// [PresentationConditions] gains one.
   final String id;
 
   /// Whether the learner is told, during the attempt, that something was
@@ -105,7 +109,8 @@ enum PerformanceFeedback {
 /// How much of the requested pulse the app supplies.
 ///
 /// Its own axis: it changes timing support rather than how much of the material
-/// has to be retrieved.
+/// has to be retrieved, so a guidance change must not carry a timing change
+/// with it.
 enum TempoSupport {
   /// Nothing sounds the pulse. An ordinary exercise still states a tempo and
   /// leaves the learner to hold it; an unmetered acquisition task states none.
@@ -121,7 +126,8 @@ enum TempoSupport {
 
   const TempoSupport(this.id);
 
-  /// Stable identifier used in traces.
+  /// Stable identifier, and the spelling the wire format takes when
+  /// [PresentationConditions] gains one.
   final String id;
 }
 
