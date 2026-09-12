@@ -20,11 +20,9 @@ class JournalHeader {
 
   /// When this journal was created, in UTC.
   ///
-  /// Storage provenance, not learner timeline. Nothing derives a model
-  /// timestamp from it: placement is anchored at the profile's creation
-  /// instant, and every elapsed interval comes from the attempts themselves.
-  /// Recording when the history began is still worth doing, but a reader must
-  /// not mistake it for a point the model reasons from.
+  /// Storage provenance, not learner timeline. Placement is anchored at the
+  /// profile's creation instant and every elapsed interval comes from the
+  /// attempts, so nothing derives a model timestamp from this.
   final DateTime createdAt;
 
   JournalHeader({required String profileId, required DateTime createdAt})
@@ -72,10 +70,9 @@ class JournalHeader {
 /// they never interleave: mixing two people's evidence into one state is the
 /// failure this scoping exists to prevent.
 ///
-/// Deliberately storage-free. It holds records in memory and encodes to
-/// JSON lines; a database or file adapter wraps it. Keeping the contract here,
-/// above any storage engine, is what stops the engine from deciding the
-/// schema.
+/// Storage-free: it holds records in memory and encodes to JSON lines, and a
+/// database or file adapter wraps it. Keeping the contract above any storage
+/// engine is what stops the engine from deciding the schema.
 class AttemptJournal {
   /// Which profile this history belongs to.
   final JournalHeader header;
@@ -105,12 +102,10 @@ class AttemptJournal {
   /// Appends [record], or does nothing if that exact attempt is already
   /// recorded.
   ///
-  /// Returns whether it was newly appended. A retried commit after an
-  /// interrupted write is a no-op, so the same evidence cannot be folded in
-  /// twice. But idempotency is not first-write-wins: an attempt id that comes
-  /// back carrying *different* content is a collision, not a retry, and it
-  /// throws. In an authoritative log, silently keeping one of two conflicting
-  /// records is worse than refusing both.
+  /// Returns whether it was newly appended, so a retried commit after an
+  /// interrupted write cannot fold the same evidence in twice. Idempotency is
+  /// not first-write-wins: an attempt id that returns with *different* content
+  /// is a collision rather than a retry, and it throws.
   ///
   /// Throws [JournalFormatException] when the record belongs to another
   /// profile, when its journal sequence is not the next one, when its
@@ -195,10 +190,8 @@ class AttemptJournal {
   ///
   /// Each link covers the one before it, so the digest through any position
   /// depends on every record up to it and on the state replay began from. That
-  /// is what lets a checkpoint prove the history it skips: the covered
-  /// attempt's own hash says nothing about the attempts before it, and an
-  /// altered earlier outcome would otherwise be skipped over and reported as
-  /// faithfully replayed.
+  /// is what lets a checkpoint prove the history it skips, since the covered
+  /// attempt's own hash says nothing about the attempts before it.
   ///
   /// [genesisStateHash] is the hash of the state replay starts from. Without
   /// it the digest would be silent about the prior every posterior in the

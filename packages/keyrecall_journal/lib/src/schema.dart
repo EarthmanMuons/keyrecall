@@ -6,18 +6,12 @@
 ///
 /// Bumping it requires a pure, versioned upgrade function and upgrade tests
 /// covering existing persisted state, historical golden journals, and
-/// genuinely new material separately.
+/// genuinely new material separately. Ordinary churn rewrites fixtures
+/// instead: a bump is for a change worth being able to prove records survived.
 ///
-/// A retained version does not mean that version was ever released. Version 1
-/// existed only during development, and is kept because upgrading it exercises
-/// a real structural change: an outcome and its derived evidence became the
-/// measured branch of a lifecycle sum, and the upgrade proves that historical
-/// records keep their interpretation and replay to the same learner state.
-/// Provenance and a regression fixture, not a claim about what shipped.
-///
-/// It is also not a precedent that every pre-release rearrangement bumps this.
-/// Ordinary churn before release should rewrite fixtures instead; a bump is for
-/// a change worth being able to prove survived.
+/// Version 1 is retained because upgrading it exercises a real structural
+/// change, where an outcome and its derived evidence became the measured
+/// branch of a lifecycle sum.
 const int attemptSchemaVersion = 4;
 
 /// Version of the checkpoint wire format.
@@ -32,11 +26,9 @@ const int attemptSchemaVersion = 4;
 /// checkpoint already asks for.
 ///
 /// Version 3 records a digest of the history the checkpoint stands in for.
-/// Nothing computes one for an older checkpoint: the digest exists to say that
-/// the skipped records are the ones that produced this state, and deriving it
-/// from whatever journal is on disk now would assert exactly what it is meant
-/// to check. An unreadable checkpoint is a cache miss, which is the whole cost
-/// of not having one.
+/// Nothing computes one for an older checkpoint, since deriving it from
+/// whatever journal is on disk now would assert exactly what it is meant to
+/// check. An unreadable checkpoint is a cache miss.
 const int checkpointSchemaVersion = 3;
 
 /// Version of the acquisition-log wire format.

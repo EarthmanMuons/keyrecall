@@ -31,13 +31,11 @@ class Profile {
   /// Part of the profile rather than of a session, because it is the initial
   /// condition replay propagates from: every posterior in the journal is a
   /// function of it, so a profile whose placement is not recorded cannot
-  /// reproduce its own state. It was a caller-side default until it was
-  /// stored here, and a default is not a record.
+  /// reproduce its own state.
   ///
-  /// Immutable for the same reason. Changing it is not updating a skill level;
-  /// it is reinterpreting the whole trajectory under a different prior. The
-  /// route to a different placement is erasing the history it would have
-  /// reinterpreted.
+  /// Immutable for the same reason. Changing it reinterprets the whole
+  /// trajectory under a different prior, so the route to a different placement
+  /// is erasing the history it would have reinterpreted.
   ///
   /// Required rather than defaulted, everywhere it is constructed or read. A
   /// default here would put the prior back where it started: chosen by

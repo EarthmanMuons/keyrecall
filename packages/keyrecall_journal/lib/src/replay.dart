@@ -14,20 +14,18 @@ enum ReplayMode {
   ///
   /// The model version must match what each attempt recorded, and every
   /// recomputed prediction, weight, and state hash must agree with the journal
-  /// within [ReplayOptions.tolerance]. Any disagreement is reported: this mode
-  /// exists to prove the past is still reachable.
+  /// within [ReplayOptions.tolerance]. Any disagreement is reported.
   exact,
 
   /// Re-run the same observed attempts under a different estimator.
   ///
-  /// Used to compare model versions or parameter sets. Recorded predictions
-  /// and weights are recomputed and deliberately not compared, because they are
-  /// expected to differ.
+  /// Recorded predictions and weights are recomputed and not compared, since
+  /// they are expected to differ.
   ///
-  /// The counterfactual boundary matters: an alternative estimator may be
-  /// applied only to the exercise that was actually presented. The journal
-  /// holds no outcome for an action that was never taken, so this says nothing
-  /// about what a different scheduler would have achieved.
+  /// An alternative estimator may be applied only to the exercise that was
+  /// actually presented. The journal holds no outcome for an action never
+  /// taken, so this says nothing about what a different scheduler would have
+  /// achieved.
   counterfactual,
 }
 
@@ -73,8 +71,8 @@ class ReplayOptions {
 
   /// Whether the first divergence should throw rather than be collected.
   ///
-  /// Collecting is the better default for diagnosis: one root cause usually
-  /// shows up as many divergences, and the shape of them is the evidence.
+  /// Collecting is the better default: one root cause usually shows up as many
+  /// divergences, and their shape is the evidence.
   final bool stopOnDivergence;
 
   const ReplayOptions({
@@ -98,8 +96,8 @@ class ReplayResult {
 
   /// How many attempts carried no measurement and so moved nothing.
   ///
-  /// Counted rather than skipped silently: an attempt that measured nothing
-  /// still happened, and a replay that saw one should be able to say so.
+  /// Counted rather than skipped silently, since an attempt that measured
+  /// nothing still happened.
   final int attemptsUnmeasured;
 
   const ReplayResult({
@@ -124,15 +122,14 @@ class ReplayResult {
 
 /// Rebuilds learner state by replaying [journal] onto [initial].
 ///
-/// This is what makes the journal authoritative: state is not something the app
-/// keeps and hopes is right, it is a function of recorded history. A checkpoint
-/// is only a place to start from, and passing one is an optimization rather
-/// than a source of truth.
+/// This is what makes the journal authoritative: state is a function of
+/// recorded history rather than something the app keeps and hopes is right. A
+/// checkpoint is an optimization, not a source of truth.
 ///
 /// In [ReplayMode.exact] the replay recomputes each attempt's prediction and
 /// evidence weights from the state it rebuilt, then compares them to what was
-/// recorded. Recomputing and comparing is the point: simply reapplying the
-/// stored numbers would reproduce any past mistake perfectly and prove nothing.
+/// recorded. Reapplying the stored numbers instead would reproduce any past
+/// mistake perfectly and prove nothing.
 ///
 /// Throws [JournalFormatException] when an attempt was recorded under a
 /// different learner model version than [model] carries and the mode is
@@ -142,9 +139,9 @@ class ReplayResult {
 /// A [from] checkpoint is checked against the journal by
 /// [validateCheckpointAgainstJournal] before any history is skipped, in every
 /// mode, and a rejected one throws here rather than seeding the replay. Passing
-/// a checkpoint is an explicit claim about this journal, so a false one is
-/// reported; a caller that merely holds a cached checkpoint should validate it
-/// first and replay from the beginning when it does not hold up.
+/// a checkpoint is an explicit claim about this journal, so a caller merely
+/// holding a cached one should validate it first and replay from the beginning
+/// when it does not hold up.
 ///
 /// What [ReplayResult.isFaithful] proves is bounded by what the journal
 /// records. It establishes that the recorded observations rebuild the recorded
@@ -156,16 +153,15 @@ class ReplayResult {
 /// ## Canonical state advances only on a committed attempt
 ///
 /// Replay propagates from one recorded attempt to the next, so the writer must
-/// do the same. Time propagation is mathematically path-independent, but it is
-/// not path-independent in floating point: advancing through three intervals
-/// and advancing through their sum land on different bits, and a state hash is
-/// exact.
+/// do the same. Time propagation is path-independent mathematically but not in
+/// floating point: advancing through three intervals and through their sum land
+/// on different bits, and a state hash is exact.
 ///
 /// So a decision that admits nothing, a candidate preview, or any other
 /// look-ahead must run against a copy. Propagating canonical state at a moment
-/// the journal does not record makes that state unreachable by replay, which
-/// costs the journal its authority. The rule is narrow and mechanical: exactly
-/// one canonical propagation per recorded attempt, at that attempt's time.
+/// the journal does not record makes that state unreachable by replay. The rule
+/// is exactly one canonical propagation per recorded attempt, at that attempt's
+/// time.
 ///
 /// [observe] is called for each attempt that moves state, with the state as it
 /// stood when that attempt was decided. It is a diagnostic seam: nothing it
@@ -208,14 +204,9 @@ ReplayResult replayJournal(
       );
     }
 
-    // An attempt that measured nothing moves no learner state. Not even time:
-    // propagation is driven by the next record that needs it, so a closure
-    // carrying no evidence leaves competencies exactly as they were.
-    //
-    // Moving nothing is not the same as claiming nothing. The record still
-    // says which state its decision was made from and which state it left
-    // behind, and a record whose hashes are wrong is wrong whether or not it
-    // carried evidence.
+    // An attempt that measured nothing moves no learner state, not even time.
+    // It still claims which state its decision was made from and which it left
+    // behind, so its hashes are verified either way.
     if (record.closure.measurement case MeasurementUnavailable()) {
       unmeasured++;
       if (options.mode == ReplayMode.exact) {

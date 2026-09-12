@@ -117,14 +117,13 @@ sealed class AcquisitionEntry {
 /// One attempt at an acquisition task, as it happened.
 ///
 /// What happened, not what a policy made of it. The completion class, the
-/// extra notes split three ways, where an unfinished traversal ran out, and
-/// the located gap series are all observation-level facts, so a later rule
-/// about what earns a probe can be asked of an old attempt.
+/// extra notes split three ways, where an unfinished traversal ran out, and the
+/// located gap series are observation-level facts, so a later rule about what
+/// earns a probe can be asked of an old attempt.
 ///
-/// [earnedProbe] is the verdict as it stood, recorded beside those facts for
-/// the same reason a decision records the admission band in force: replay must
-/// reproduce the history that actually happened, and a threshold that moves
-/// afterwards must not make a past attempt read differently than it did.
+/// [earnedProbe] is the verdict as it stood, recorded beside those facts so a
+/// threshold that moves afterwards cannot make a past attempt read differently
+/// than it did.
 ///
 /// It carries no outcome, no measurement, and no scores. Nothing here can be
 /// folded into learner state, which is why this log exists apart from the one
@@ -439,17 +438,14 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
 
 /// One probe of a parent exercise, presented and thereby served.
 ///
-/// Service is presentation, not success. What acquisition earned is that the
-/// ordinary question be asked; what the answer means is the ordinary path's to
-/// decide, and it decides it through the attempt journal like any other
-/// attempt.
+/// Service is presentation, not success. Acquisition earns only that the
+/// ordinary question be asked, and the attempt journal decides what the answer
+/// means.
 ///
-/// The identity is the ordinary attempt that asked the question, because
-/// service is that presentation rather than a separate event beside it. That
-/// makes it a reference into the attempt journal and not an ordering
-/// invariant: the two logs still derive nothing from each other. It also means
-/// one ordinary attempt can discharge an obligation at most once, since the log
-/// is idempotent by attempt id.
+/// The identity is the ordinary attempt that asked the question, which makes
+/// this a reference into that journal rather than an ordering invariant between
+/// the two. It also means one ordinary attempt can discharge an obligation at
+/// most once, since the log is idempotent by attempt id.
 @immutable
 final class AcquisitionProbeServedRecord extends AcquisitionEntry {
   /// The wire format this record was written in.

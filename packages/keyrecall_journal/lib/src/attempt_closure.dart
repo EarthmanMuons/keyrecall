@@ -101,13 +101,12 @@ enum MeasurementUnavailableReason {
 /// What was established about a performance, if anything.
 ///
 /// A sum rather than a nullable outcome. "Nothing measured this attempt, and
-/// here is why" is known information; a missing field is what an incomplete
-/// write looks like, and replay has to tell those apart without guessing.
+/// here is why" is known information, while a missing field is what an
+/// incomplete write looks like, and replay has to tell those apart.
 ///
-/// Making it a sum also keeps [MeasurementUnavailable] from reaching code that
-/// was built on an outcome always existing: the evidence a measurement produces
-/// lives inside [Measured], so there is nothing to null-check and nothing to
-/// defensively skip.
+/// The sum also keeps [MeasurementUnavailable] out of code built on an outcome
+/// always existing: the evidence lives inside [Measured], so there is nothing
+/// to null-check.
 @immutable
 sealed class MeasurementResult {
   const MeasurementResult();
