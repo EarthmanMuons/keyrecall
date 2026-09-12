@@ -100,6 +100,12 @@ class LearnerModel {
   /// for callers that have no reason to separate them. [applyOutcome] stays
   /// strict rather than propagating on its own, because propagation is model
   /// behavior in its own right and where it happens is what replay reproduces.
+  ///
+  /// Atomic with respect to every rejection, including the ones propagation
+  /// itself would raise. Both halves run against a copy and are committed back
+  /// only once the whole transition succeeds: propagating first and validating
+  /// afterwards would leave a refused attempt's timestamps and variances
+  /// behind, which is the failure the preflight exists to prevent.
   MemoryUpdateDiagnostics propagateAndApplyOutcome({
     required LearnerState state,
     required Exercise exercise,
@@ -108,15 +114,18 @@ class LearnerModel {
     required Prediction prediction,
     required DateTime at,
   }) {
-    propagate(state, at);
-    return applyOutcome(
-      state: state,
+    final next = state.copy();
+    propagate(next, at);
+    final diagnostics = applyOutcome(
+      state: next,
       exercise: exercise,
       outcome: outcome,
       weights: weights,
       prediction: prediction,
       at: at,
     );
+    state.adoptFrom(next);
+    return diagnostics;
   }
 
   /// Whether an outcome demonstrated the execution it was asked for.
@@ -320,16 +329,20 @@ class LearnerModel {
   /// Four kinds of admissibility, asked in one place so that no partial write
   /// can precede one:
   ///
-  /// - **Temporal.** [state] must stand exactly at [at]. Propagation is the
-  ///   first half of the transition contract and belongs to the caller, which
-  ///   is what replay reproduces; a state left behind its own evidence also
-  ///   serializes to something no decoder will read back.
+  /// - **Temporal.** Every propagating layer of [state] must stand exactly at
+  ///   [at]. Propagation is the first half of the transition contract and
+  ///   belongs to the caller, which is what replay reproduces; a layer left
+  ///   behind its own evidence also serializes to something no decoder will
+  ///   read back.
   /// - **Consistency.** Whether retrieval was tested is a fact about the
   ///   presentation rather than a free field: a continuously cued attempt
   ///   supplies the material and tests nothing, and any other rung tests. An
   ///   attempt that never began cannot have completed or retrieved.
   /// - **Observability.** Evidence may not claim what the attempt could not
-  ///   see, so an untested retrieval carries exactly zero memory weight.
+  ///   see: an untested retrieval carries exactly zero memory weight, and an
+  ///   attempt that never began carries no execution evidence of any kind.
+  ///   Reduced weights are the point of the mechanism and stay welcome; what
+  ///   is refused is weight from an event that did not happen.
   /// - **Numeric.** A derived tempo about to enter state must be finite.
   ///   Bounds on the supplied weights, prediction, and outcome are their own
   ///   constructors' invariants.
@@ -342,15 +355,7 @@ class LearnerModel {
     required EvidenceWeights weights,
     required DateTime at,
   }) {
-    final propagated = state.lastPropagatedAt;
-    if (at != propagated) {
-      throw ArgumentError.value(
-        at,
-        'at',
-        'this learner state stands at ${propagated.toIso8601String()}; '
-            'propagate it to the attempt first',
-      );
-    }
+    state.requireAlignedAt(at);
     final materialId = exercise.material.materialId;
     final observed = state.materialMemory[materialId]?.lastObservedAt;
     if (observed != null) {
@@ -383,6 +388,29 @@ class LearnerModel {
         'weights.materialMemory',
         'an untested retrieval is no memory evidence at all',
       );
+    }
+
+    if (!outcome.started) {
+      // Failing to begin is a real observation, and the memory weight above
+      // is where it lands. Nothing was executed, so nothing downstream of
+      // execution may move: not a competency mean, not the residual, and not
+      // the record of whether this hand has played this material at all.
+      if (weights.materialExecution > 0.0) {
+        throw ArgumentError.value(
+          weights.materialExecution,
+          'weights.materialExecution',
+          'an attempt that never began executed nothing',
+        );
+      }
+      for (final competency in Competency.values) {
+        if (weights[competency] > 0.0) {
+          throw ArgumentError.value(
+            weights[competency],
+            'weights[${competency.id}]',
+            'an attempt that never began demonstrated no competency',
+          );
+        }
+      }
     }
 
     if (outcome.measuredTempoRatio case final ratio?) {

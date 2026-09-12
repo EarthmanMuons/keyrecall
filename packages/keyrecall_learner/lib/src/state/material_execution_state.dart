@@ -171,6 +171,23 @@ class MaterialExecutionState {
     updatedAt = now;
   }
 
+  /// Takes on [other]'s values without changing this object's identity.
+  ///
+  /// See [CompetencyState.adoptFrom].
+  void adoptFrom(MaterialExecutionState other) {
+    residualMean = other.residualMean;
+    residualVariance = other.residualVariance;
+    updatedAt = other.updatedAt;
+    lastEvidenceAt = other.lastEvidenceAt;
+    pacedTempoBpm = other.pacedTempoBpm;
+    demonstratedTempoByOctaves
+      ..clear()
+      ..addAll(other.demonstratedTempoByOctaves);
+    coordinationReadyTempoByOctaves
+      ..clear()
+      ..addAll(other.coordinationReadyTempoByOctaves);
+  }
+
   /// An independent copy of this residual.
   MaterialExecutionState copy() => MaterialExecutionState(
     materialId: materialId,

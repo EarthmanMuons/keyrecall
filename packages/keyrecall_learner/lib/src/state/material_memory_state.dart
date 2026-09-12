@@ -185,6 +185,23 @@ class MaterialMemoryState {
   double retrievabilityOrPrior(DateTime now) =>
       isAnchored ? retrievabilityAt(now) : coldStartEstimate;
 
+  /// Takes on [other]'s values without changing this object's identity.
+  ///
+  /// See [CompetencyState.adoptFrom].
+  void adoptFrom(MaterialMemoryState other) {
+    logCurrentHalfLife = other.logCurrentHalfLife;
+    currentHalfLifeUncertainty = other.currentHalfLifeUncertainty;
+    logConsolidatedHalfLife = other.logConsolidatedHalfLife;
+    consolidatedLogHalfLifeVariance = other.consolidatedLogHalfLifeVariance;
+    logitColdStart = other.logitColdStart;
+    coldStartUncertainty = other.coldStartUncertainty;
+    memoryAnchorAt = other.memoryAnchorAt;
+    factualLastRetrievalAt = other.factualLastRetrievalAt;
+    lastRetrievalAttemptAt = other.lastRetrievalAttemptAt;
+    establishedIndependence = other.establishedIndependence;
+    establishedIndependenceAt = other.establishedIndependenceAt;
+  }
+
   /// An independent copy of this memory state.
   MaterialMemoryState copy() => MaterialMemoryState(
     materialId: materialId,

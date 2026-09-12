@@ -20,10 +20,19 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   and `includesCoordinationInChallenge` are read from the model version, so the
   version identifies one transition function and cannot name two.
 - `applyOutcome` validates the whole transition before it writes anything, and
-  requires the state to stand exactly at the attempt's time.
-  `propagateAndApplyOutcome` is the composite for callers with no reason to
-  separate the two halves. The `applyRetainedDurabilityInference` flag is gone:
+  requires every propagating layer of the state to stand exactly at the
+  attempt's time. `LearnerState.requireAlignedAt` is that check;
+  `lastPropagatedAt` is a summary rather than proof, since a maximum cannot see
+  a layer left behind. The `applyRetainedDurabilityInference` flag is gone:
   disabling the posterior is a parameter with a version behind it.
+- `propagateAndApplyOutcome` is the composite for callers with no reason to
+  separate the two halves, and is atomic with respect to every rejection
+  including propagation's own. `LearnerState.adoptFrom` is how it commits, so a
+  caller holding one competency or one material's memory keeps holding the same
+  object.
+- An attempt that never began carries no execution evidence: positive competency
+  or material-execution weights are refused, while reduced weights from an
+  attempt that did begin stay welcome.
 - `Outcome`, `Prediction`, and `EvidenceWeights` reject values outside their
   documented ranges at construction.
 - An attempt that established no pace records no performed tempo, rather than

@@ -164,10 +164,52 @@ class LearnerState {
             entry.value.lastEvidenceAt != null,
       );
 
+  /// Requires every propagating layer to stand exactly at [now].
+  ///
+  /// [lastPropagatedAt] cannot answer this. A maximum says nothing is ahead of
+  /// [now]; it says nothing about a layer left behind, and a layer behind its
+  /// own evidence produces a state that decodes as impossible. Propagation
+  /// advances all of them together, so anything else is a caller that moved
+  /// one by hand.
+  ///
+  /// Memory is deliberately absent: retrievability is computed on demand from
+  /// the activation anchor rather than propagated, so a memory state has no
+  /// timestamp to be aligned. What it does constrain is its own observation
+  /// history, which the update path checks where it reads it.
+  ///
+  /// Throws [ArgumentError] naming the first layer that disagrees.
+  void requireAlignedAt(DateTime now) {
+    for (final state in competencies.values) {
+      _requireLayerAt(
+        now,
+        state.updatedAt,
+        '${state.competency.id} competency',
+      );
+    }
+    for (final state in materialExecution.values) {
+      _requireLayerAt(
+        now,
+        state.updatedAt,
+        '${state.materialId}/${state.hands.id} residual',
+      );
+    }
+  }
+
+  static void _requireLayerAt(DateTime now, DateTime reached, String subject) {
+    if (reached == now) return;
+    throw ArgumentError.value(
+      now,
+      'at',
+      '$subject stands at ${reached.toIso8601String()}; propagate the whole '
+          'state to the attempt first',
+    );
+  }
+
   /// The instant every propagating layer has been advanced to.
   ///
   /// Layers are created at different times, so this is the latest of them:
-  /// the point this state as a whole is current as of.
+  /// the point this state as a whole is current as of. A summary, not a
+  /// guarantee: [requireAlignedAt] is what establishes alignment.
   DateTime get lastPropagatedAt {
     var latest = competencies.values.first.updatedAt;
     for (final state in competencies.values) {
@@ -195,6 +237,42 @@ class LearnerState {
     }
     for (final state in materialExecution.values) {
       state.propagateTo(now, params.materialExecution);
+    }
+  }
+
+  /// Takes on [other]'s values in place, layer by layer.
+  ///
+  /// How a transition computed on a copy is committed back. Every layer that
+  /// already exists keeps its identity, so a caller holding one competency or
+  /// one material's memory goes on holding the same object. A layer the
+  /// transition created arrives as a copy, and one it never had is dropped.
+  void adoptFrom(LearnerState other) {
+    for (final entry in other.competencies.entries) {
+      competencies[entry.key]!.adoptFrom(entry.value);
+    }
+
+    materialMemory.removeWhere(
+      (key, _) => !other.materialMemory.containsKey(key),
+    );
+    for (final entry in other.materialMemory.entries) {
+      final held = materialMemory[entry.key];
+      if (held == null) {
+        materialMemory[entry.key] = entry.value.copy();
+      } else {
+        held.adoptFrom(entry.value);
+      }
+    }
+
+    materialExecution.removeWhere(
+      (key, _) => !other.materialExecution.containsKey(key),
+    );
+    for (final entry in other.materialExecution.entries) {
+      final held = materialExecution[entry.key];
+      if (held == null) {
+        materialExecution[entry.key] = entry.value.copy();
+      } else {
+        held.adoptFrom(entry.value);
+      }
     }
   }
 

@@ -49,6 +49,18 @@ class CompetencyState {
     updatedAt = now;
   }
 
+  /// Takes on [other]'s values without changing this object's identity.
+  ///
+  /// For a transition computed on a copy and committed back afterwards: a
+  /// caller holding this belief goes on holding the same one, now updated,
+  /// rather than being left aliasing a state the model has replaced.
+  void adoptFrom(CompetencyState other) {
+    mean = other.mean;
+    variance = other.variance;
+    updatedAt = other.updatedAt;
+    lastEvidenceAt = other.lastEvidenceAt;
+  }
+
   /// An independent copy of this belief.
   CompetencyState copy() => CompetencyState(
     competency: competency,
