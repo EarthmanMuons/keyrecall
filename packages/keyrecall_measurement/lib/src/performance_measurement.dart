@@ -386,15 +386,29 @@ List<MomentGap> momentGapsOf(
 /// Structural rather than attributed: a repetition of the note the performance
 /// is on, before it moves past that note. Which side of the matching note the
 /// extra one lands on is an artifact of the traceback, so both count.
+///
+/// An extra note is read against the correspondences its whole run of extras
+/// sits between, so a note struck three times reads as the same repetition
+/// three times over. Each note in the run is read on its own, which leaves a
+/// foreign note foreign however many repetitions surround it.
 bool _isRepeat(
   SpelledPitch observed,
   List<PositionedNoteEdit> edits,
   int index,
   ExerciseRealization realization,
 ) {
-  for (final neighbor in [index - 1, index + 1]) {
-    if (neighbor < 0 || neighbor >= edits.length) continue;
-    final (:realizationPosition, :edit) = edits[neighbor];
+  var start = index;
+  while (start > 0 && edits[start - 1].edit is Insertion) {
+    start--;
+  }
+  var end = index;
+  while (end < edits.length - 1 && edits[end + 1].edit is Insertion) {
+    end++;
+  }
+
+  for (final anchor in [start - 1, end + 1]) {
+    if (anchor < 0 || anchor >= edits.length) continue;
+    final (:realizationPosition, :edit) = edits[anchor];
     final hands = switch (edit) {
       Match(:final hands) => hands,
       Substitution(:final hands) => hands,

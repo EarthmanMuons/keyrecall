@@ -48,6 +48,11 @@ classification is structural, not attributed: what caused it, a double trigger,
 a bounced finger, a deliberate reiteration, is not observable here. It still
 costs timing if it delayed the note that followed.
 
+Each extra note is read against the correspondences its whole run of extras sits
+between, so a note struck four times is four repeats rather than one repeat and
+three intrusions, and a foreign note stays foreign however many repetitions
+surround it.
+
 ## Timing
 
 Two scores that must not collapse into one:

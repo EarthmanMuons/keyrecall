@@ -239,7 +239,7 @@ const Map<String, String> singleHandPins = {
   'rh-up stopped-halfway':
       'M0<0 M1<1 M2<2 M3<3 D4:G D5:A D6:B D7:C | 4/0/0/4 | complete=false clean=false repairs=0 final=false first=at4 | started=true completed=false retrieved=false | 4/8 sounded=4 degrees=4 repeats=0 intrusions=0 | 0.500000 0.500000 0.500000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=12',
   'rh-up restarted':
-      'I<0:C I<1:D I<2:E M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 | 8/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 8/8 sounded=8 degrees=8 repeats=0 intrusions=3 | 1.000000 0.727273 0.727273 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
+      'I<0:C I<1:D I<2:E M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 | 8/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 8/8 sounded=8 degrees=8 repeats=1 intrusions=2 | 1.000000 0.727273 0.800000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
   'rh-up all-wrong':
       'S0<0:C>C#:PITCH M1<1 I<2:D# M2<3 M3<4 S4<5:G>F#:PITCH S5<6:A>G:PITCH S6<7:B>G#:PITCH D7:C | 3/4/1/1 | complete=false clean=false repairs=1 final=false first=at0 | started=true completed=false retrieved=false | 3/8 sounded=3 degrees=3 repeats=0 intrusions=1 | 0.375000 0.333333 0.333333 0.540541 1.000000 1.500000 | 0.0 2.0 500 | cost=14',
   'rh-up-down clean':
@@ -253,7 +253,7 @@ const Map<String, String> singleHandPins = {
   'rh-up-down skipped-note':
       'M0<0 M1<1 M2<2 M3<3 D4:G M5<4 M6<5 M7<6 M8<7 M9<8 M10<9 M11<10 M12<11 M13<12 M14<13 | 14/0/0/1 | complete=false clean=false repairs=0 final=true first=at4 | started=true completed=false retrieved=false | 14/15 sounded=14 degrees=14 repeats=0 intrusions=0 | 0.933333 0.933333 0.933333 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=3',
   'rh-up-down restarted':
-      'I<0:C I<1:D I<2:E M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 M8<11 M9<12 M10<13 M11<14 M12<15 M13<16 M14<17 | 15/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 15/15 sounded=15 degrees=15 repeats=0 intrusions=3 | 1.000000 0.833333 0.833333 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
+      'I<0:C I<1:D I<2:E M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 M8<11 M9<12 M10<13 M11<14 M12<15 M13<16 M14<17 | 15/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 15/15 sounded=15 degrees=15 repeats=1 intrusions=2 | 1.000000 0.833333 0.882353 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
   'lh-harmonic-minor clean':
       'M0<0 M1<1 M2<2 M3<3 M4<4 M5<5 M6<6 M7<7 | 8/0/0/0 | complete=true clean=true repairs=0 final=true first=- | started=true completed=true retrieved=true | 8/8 sounded=8 degrees=8 repeats=0 intrusions=0 | 1.000000 1.000000 1.000000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=0',
   'lh-harmonic-minor wrong-note':
@@ -265,7 +265,7 @@ const Map<String, String> singleHandPins = {
   'lh-harmonic-minor skipped-note':
       'M0<0 M1<1 M2<2 M3<3 D4:E M5<4 M6<5 M7<6 | 7/0/0/1 | complete=false clean=false repairs=0 final=true first=at4 | started=true completed=false retrieved=false | 7/8 sounded=7 degrees=7 repeats=0 intrusions=0 | 0.875000 0.875000 0.875000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=3',
   'lh-harmonic-minor restarted':
-      'I<0:A I<1:B I<2:C M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 | 8/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 8/8 sounded=8 degrees=8 repeats=0 intrusions=3 | 1.000000 0.727273 0.727273 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
+      'I<0:A I<1:B I<2:C M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 | 8/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 8/8 sounded=8 degrees=8 repeats=1 intrusions=2 | 1.000000 0.727273 0.800000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
   'rh-two-octaves clean':
       'M0<0 M1<1 M2<2 M3<3 M4<4 M5<5 M6<6 M7<7 M8<8 M9<9 M10<10 M11<11 M12<12 M13<13 M14<14 | 15/0/0/0 | complete=true clean=true repairs=0 final=true first=- | started=true completed=true retrieved=true | 15/15 sounded=15 degrees=15 repeats=0 intrusions=0 | 1.000000 1.000000 1.000000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=0',
   'rh-two-octaves wrong-note':
@@ -277,5 +277,5 @@ const Map<String, String> singleHandPins = {
   'rh-two-octaves skipped-note':
       'M0<0 M1<1 M2<2 M3<3 D4:F M5<4 M6<5 M7<6 M8<7 M9<8 M10<9 M11<10 M12<11 M13<12 M14<13 | 14/0/0/1 | complete=false clean=false repairs=0 final=true first=at4 | started=true completed=false retrieved=false | 14/15 sounded=14 degrees=14 repeats=0 intrusions=0 | 0.933333 0.933333 0.933333 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=3',
   'rh-two-octaves restarted':
-      'I<0:Bb I<1:C I<2:D M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 M8<11 M9<12 M10<13 M11<14 M12<15 M13<16 M14<17 | 15/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 15/15 sounded=15 degrees=15 repeats=0 intrusions=3 | 1.000000 0.833333 0.833333 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
+      'I<0:Bb I<1:C I<2:D M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 M8<11 M9<12 M10<13 M11<14 M12<15 M13<16 M14<17 | 15/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 15/15 sounded=15 degrees=15 repeats=1 intrusions=2 | 1.000000 0.833333 0.882353 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
 };

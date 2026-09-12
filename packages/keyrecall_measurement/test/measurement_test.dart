@@ -185,6 +185,74 @@ void main() {
       expect(measurement.intrusions, 1);
       expect(measurement.retrievedIndependently, isFalse);
     });
+
+    for (final times in [2, 3, 5]) {
+      test('$times times over is still one note played again', () {
+        final measurement = measured([
+          ...expected.take(2),
+          for (var i = 0; i < times; i++) expected[1],
+          ...expected.skip(2),
+        ]);
+
+        expect(measurement.repeats, times);
+        expect(measurement.intrusions, 0);
+        expect(measurement.retrievedIndependently, isTrue);
+      });
+    }
+
+    test('before the note it repeats counts the same as after it', () {
+      final measurement = measured([
+        expected[0],
+        expected[1],
+        expected[1],
+        ...expected.skip(1),
+      ]);
+
+      expect(measurement.repeats, 2);
+      expect(measurement.intrusions, 0);
+    });
+
+    test('a foreign note among repetitions stays an intrusion', () {
+      final measurement = measured([
+        ...expected.take(2),
+        61,
+        expected[1],
+        ...expected.skip(2),
+      ]);
+
+      expect(measurement.repeats, 1);
+      expect(measurement.intrusions, 1);
+      expect(
+        measurement.retrievedIndependently,
+        isFalse,
+        reason:
+            'the foreign note is retrieval evidence however it was '
+            'surrounded',
+      );
+    });
+  });
+
+  group('a performance an octave from where it was drawn', () {
+    test('reads the same as one in the written register', () {
+      final measurement = measured([for (final note in expected) note + 12]);
+
+      expect(measurement.soundedCorrectly, expected.length);
+      expect(measurement.retrievedIndependently, isTrue);
+    });
+
+    test('is not talked out of its register by repeated notes', () {
+      // Enough repetitions of the first note to drag the middle of what was
+      // played back to where the exercise was drawn.
+      final measurement = measured([
+        for (var i = 0; i < 7; i++) expected.first + 12,
+        for (final note in expected) note + 12,
+      ]);
+
+      expect(measurement.soundedCorrectly, expected.length);
+      expect(measurement.repeats, 7);
+      expect(measurement.intrusions, 0);
+      expect(measurement.retrievedIndependently, isTrue);
+    });
   });
 
   group('a correction', () {
