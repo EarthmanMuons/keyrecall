@@ -358,8 +358,8 @@ class SchedulerPipeline {
     // Read from what admission allowed rather than from what the later filters
     // left. Pacing, dose, introductions and novelty are preferences about which
     // useful work is best, and an owed probe is past that question: the learner
-    // has already earned it. Only eligibility and validity may stand in the way,
-    // and a probe those refuse stays owed rather than being consumed.
+    // has already earned it. Only eligibility and validity may stand in the
+    // way, and a probe those refuse stays owed rather than being consumed.
     final servedProbe = owedProbes.isEmpty
         ? null
         : selectBest([
@@ -1074,9 +1074,10 @@ class SchedulerPipeline {
   /// anything.
   ///
   /// The same scope execution progression reads. A wider one would say a
-  /// success somewhere is evidence that somewhere else is ready for the ordinary
-  /// floor, which the model does not agree with: a frontier on one material
-  /// leaves another material in the same hand predicted exactly as before.
+  /// success somewhere is evidence that somewhere else is ready for the
+  /// ordinary floor, which the model does not agree with: a frontier on one
+  /// material leaves another material in the same hand predicted exactly as
+  /// before.
   ///
   /// Not a claim that nothing transfers. Borrowed competence still lifts the
   /// prediction through the competency model, and this rule stops mattering
@@ -1171,8 +1172,8 @@ class SchedulerPipeline {
   /// Asked of every declared floor in scope rather than of the slot's winner.
   /// The rule is about the family's gentlest ordinary realization, and ordinary
   /// ranking is free to prefer a more independent rung of the same material
-  /// forever, so requiring the floor to win the slot would make a question about
-  /// the floor answerable only when nothing else was worth doing.
+  /// forever, so requiring the floor to win the slot would make a question
+  /// about the floor answerable only when nothing else was worth doing.
   ///
   /// Where several floors are stuck at once, the ordinary ranking among that
   /// subset decides, so acquisition does not wander to a different material
@@ -1705,8 +1706,8 @@ class SchedulerPipeline {
   /// A progression bypass may advance the execution dimension it has evidence
   /// for and must not carry an independent one with it. Coordination readiness
   /// says both hands produced the right pitches and nothing about whether the
-  /// notes come unaided, so a step moving both at once would offer unguided work
-  /// to learners who cannot begin it.
+  /// notes come unaided, so a step moving both at once would offer unguided
+  /// work to learners who cannot begin it.
   ///
   /// The rung is the material's, not this execution shape's. Guidance is about
   /// recalling the notes, and requiring hands-together retrieval before

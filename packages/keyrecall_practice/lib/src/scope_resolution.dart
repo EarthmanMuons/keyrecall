@@ -145,7 +145,8 @@ final class InvalidPracticeScope extends ScopeResolution {
     : failures = List.unmodifiable(failures);
 }
 
-/// Resolves curriculum identities and realizations without reading learner state.
+/// Resolves curriculum identities and realizations without reading learner
+/// state.
 class PracticeScopeResolver {
   final Map<String, Set<String>> supportedVersionsByCurriculumId;
   final Map<String, PracticeMaterialFamily> _families;

@@ -1039,8 +1039,8 @@ void main() {
     test(
       'a stale slot behind the journal is still cleared, not refused',
       () async {
-        // The legitimate case the sequence check must not catch: the attempt was
-        // committed and the slot simply outlived it.
+        // The legitimate case the sequence check must not catch: the attempt
+        // was committed and the slot simply outlived it.
         final store = InMemoryPracticeStore(createdAt: t0);
         final session = await openSession(store);
         final presented = await session.decide(at: t0.plusDays(0.5));

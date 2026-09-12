@@ -53,9 +53,9 @@ void main() {
   test(
     'the same history under a different placement is a different state',
     () async {
-      // The reason the tier is stored rather than defaulted. Same identity, same
-      // materials, same seeded ids, so the sittings are as alike as two sittings
-      // can be; only the prior differs.
+      // The reason the tier is stored rather than defaulted. Same identity,
+      // same materials, same seeded ids, so the sittings are as alike as two
+      // sittings can be; only the prior differs.
       final asBeginner = await hashAfterPractising(
         InMemoryPracticeStore(createdAt: t0),
         alicePlacedAt(PlacementTier.beginner),

@@ -10,8 +10,9 @@ const int _lookahead = 2;
 /// An orientation aid, built to stay with a learner rather than to be right
 /// about their performance: it asks only which written note somebody is on, and
 /// gives up the distinctions it does not need for that. A hand travels on its
-/// own, so one hand's mistake leaves the other's highlight alone, and an arrival
-/// the expected note did not match is looked for in the two notes after it.
+/// own, so one hand's mistake leaves the other's highlight alone, and an
+/// arrival the expected note did not match is looked for in the two notes after
+/// it.
 ///
 /// The register is not tolerated. A hand that enters the exercise in another
 /// octave stays dark for the rest of the traversal rather than lighting up

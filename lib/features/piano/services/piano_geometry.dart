@@ -33,9 +33,8 @@ class PianoGeometry {
 
   /// Visual layout ratios shared by all piano renderers.
   ///
-  /// These values define the relative size and placement of black keys with
-  /// respect to white keys and must remain consistent across rendering and
-  /// interaction logic.
+  /// The relative size and placement of black keys against white ones. Rendering
+  /// and hit testing must read the same values.
   static const double blackKeyWidthRatio = 0.62;
   static const double blackKeyHeightRatio = 0.62;
 
@@ -116,7 +115,8 @@ class PianoGeometry {
     return _whitePitchClassesInOctave[(_startPos + whiteIndex) % 7];
   }
 
-  /// Returns whether a black key exists immediately after a given white pitch class.
+  /// Returns whether a black key exists immediately after a given white pitch
+  /// class.
   ///
   /// Black keys occur after C, D, F, G, and A.
   static bool hasBlackAfterWhitePc(int whitePc) {
@@ -160,16 +160,13 @@ class PianoGeometry {
     }
   }
 
-  /// Returns the horizontal bounds of the rendered key for [midi].
+  /// Returns the horizontal bounds of the rendered key for [midi], in the
+  /// coordinate space of this geometry's full keyboard span.
   ///
-  /// The returned rectangle is expressed in the coordinate space of the full
-  /// keyboard span represented by this geometry instance.
+  /// A white key occupies exactly one [whiteKeyWidth] at its index. A black key
+  /// takes a reduced width and a pitch-class-specific center bias.
   ///
-  /// - White keys occupy exactly one [whiteKeyWidth] at their corresponding index.
-  /// - Black keys use a reduced width and pitch-class-specific center bias.
-  ///
-  /// Callers must ensure that [whiteKeyWidth] and [totalWidth] are derived from the
-  /// same keyboard span.
+  /// [whiteKeyWidth] and [totalWidth] must come from the same keyboard span.
   PianoKeyRect keyRectForMidi({
     required int midi,
     required double whiteKeyWidth,

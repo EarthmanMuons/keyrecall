@@ -176,8 +176,8 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   ///
   /// The repository does not switch when a profile is created, because a
   /// profile can be made for reasons that have nothing to do with who is at the
-  /// instrument. Made from this screen it does switch: somebody adding a profile
-  /// is about to use it.
+  /// instrument. Made from this screen it does switch: somebody adding a
+  /// profile is about to use it.
   ///
   /// [placement] is fixed for the life of the profile, because it is the prior
   /// the whole history is computed from: changing it would reinterpret every

@@ -1133,8 +1133,8 @@ class _AttemptViewState extends ConsumerState<AttemptView>
               bottom: staffCarriesTranscript,
               child: layout.hasRoomBeside
                   ? Row(
-                      // Stretched, so each pane is handed the full height to lay
-                      // itself out in.
+                      // Stretched, so each pane is handed the full height to
+                      // lay itself out in.
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Expanded(
@@ -1166,8 +1166,8 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           // The instrument sits at the bottom edge, full width, the way a
           // keyboard does: it is where playing shows up, so it stays put while
           // everything above it changes. It runs past the safe area rather than
-          // stopping short of it: it is a diagram, nothing on it is touched, and
-          // the strip below it is height the music does not have.
+          // stopping short of it: it is a diagram, nothing on it is touched,
+          // and the strip below it is height the music does not have.
           //
           // Where the rung has no further use for it, it leaves downward with
           // the rest of the movement rather than vanishing under the count.
@@ -1310,9 +1310,9 @@ class _AttemptViewState extends ConsumerState<AttemptView>
 
 /// The space the written music takes, whether or not there is any.
 ///
-/// Centered while it fits and scrollable once it does not: an exercise runs from
-/// nothing on screen to four systems of it, and a staff pinned to the top of a
-/// tall phone reads as an afterthought at one octave.
+/// Centered while it fits and scrollable once it does not: an exercise runs
+/// from nothing on screen to four systems of it, and a staff pinned to the top
+/// of a tall phone reads as an afterthought at one octave.
 class _Notation extends StatefulWidget {
   const _Notation({
     required this.gutter,

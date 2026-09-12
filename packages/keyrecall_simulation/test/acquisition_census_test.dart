@@ -70,9 +70,9 @@ void main() {
       'a failed parent waits for new evidence rather than its turn',
       () async {
         // Rotation among simultaneously stuck floors used to fill a sitting
-        // while never repeating a parent twice running. What ends a set-aside is
-        // ordinary evidence, so recurrences are spaced by that rather than by
-        // how much other work happened.
+        // while never repeating a parent twice running. What ends a set-aside
+        // is ordinary evidence, so recurrences are spaced by that rather than
+        // by how much other work happened.
         final beginner = await census(PlayerArchetypes.trueBeginner);
 
         expect(beginner.sameParentGaps.any((gap) => gap > 5), isTrue);

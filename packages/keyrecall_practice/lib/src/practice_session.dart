@@ -605,11 +605,11 @@ class PracticeSession {
         : evaluated.requirements;
     // Two questions of the same value, and only one of them is narrow. Ordinary
     // admission reaches for a safe entry when a scoped slot has nothing left to
-    // offer, which a general sitting never runs out of work to need. Acquisition
-    // asks something else of it: which realizations are the family's floor at
-    // all, and that is as true of general practice as of a scoped goal. Passing
-    // it only for a narrow scope left a beginner practising normally unable to
-    // reach supported work at the exact exercise they keep not managing.
+    // offer, which a general sitting never runs out of work to need.
+    // Acquisition asks which realizations are the family's floor at all, and
+    // that is as true of general practice as of a scoped goal: passing it only
+    // for a narrow scope would leave a beginner practising normally unable to
+    // reach supported work at the exercise they keep not managing.
     final familyFloor = _scopeResolver.acquisitionFloorFor(
       due.map((state) => state.resolved),
     );

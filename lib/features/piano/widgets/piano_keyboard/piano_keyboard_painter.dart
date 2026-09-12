@@ -428,7 +428,8 @@ class PianoKeyboardPainter extends CustomPainter {
 
     // Markers grow with both key width and height (so an enlarged keyboard gets
     // proportionally larger dots), but stay bounded by key width and a hard
-    // ceiling so they never overflow horizontally or balloon on a tall keyboard.
+    // ceiling so they never overflow horizontally or balloon on a tall
+    // keyboard.
     final whiteMaxRadius = math.max(math.min(whiteKeyWidth * 0.30, 11.0), 4.0);
     final whiteRadius = math
         .max(whiteKeyWidth * 0.20, whiteKeyHeight * 0.026)
@@ -489,8 +490,8 @@ class PianoKeyboardPainter extends CustomPainter {
       // White keys: the saturated accent marker reads well even on the pressed
       // fill (which is light in both themes), so it needs no special case.
       // Black keys: the lightened accent reads on the resting black key, but on
-      // a pressed (accent-filled) black key it would blend, so switch to a black
-      // marker for a clean cutout.
+      // a pressed (accent-filled) black key it would blend, so switch to a
+      // black marker for a clean cutout.
       if (isBlack) {
         fill.color = _isHighlighted(midi) ? blackKeyColor : blackMarkerColor;
       } else {

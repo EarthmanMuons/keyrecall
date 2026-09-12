@@ -157,7 +157,8 @@ class AttemptRecord {
   /// Which attempt, and when.
   final AttemptIdentity identity;
 
-  /// What the device clock read, when it disagreed with [AttemptIdentity.occurredAt].
+  /// What the device clock read, when it disagreed with
+  /// [AttemptIdentity.occurredAt].
   ///
   /// Diagnostic only, and never used for decay. A device clock can be corrected
   /// backward mid-session, but the model timeline cannot go back: elapsed time

@@ -120,9 +120,9 @@ class SyntheticPlayer {
   ///
   /// **What was gained, not what they came with.** Ability slips back toward
   /// the value this player started at and stops there, so forgetting undoes
-  /// practice and cannot invent a learner worse than the one who first sat down.
-  /// The bound also keeps decay away from negative abilities, where decay toward
-  /// zero would quietly improve somebody.
+  /// practice and cannot invent a learner worse than the one who first sat
+  /// down. The bound also keeps decay away from negative abilities, where decay
+  /// toward zero would quietly improve somebody.
   final double? retentionHalfLifeDays;
 
   /// The same, for how well the material is known.
@@ -473,9 +473,9 @@ class PlayerState {
   /// What an attempt of this quality teaches the person.
   ///
   /// **Practice below the quality the model credits still improves them.** A
-  /// frontier is what KeyRecall has been shown, and improvement is what happened
-  /// to the player. Gating this on demonstrated execution would make low
-  /// starting ability into an inability to learn.
+  /// frontier is what KeyRecall has been shown, and improvement is what
+  /// happened to the player. Gating this on demonstrated execution would make
+  /// low starting ability into an inability to learn.
   ///
   /// Graded, and largest where the task sits at the edge of what they can do.
   /// An attempt that falls apart teaches little, one they find trivial teaches

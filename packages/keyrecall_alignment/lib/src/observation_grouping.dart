@@ -154,8 +154,9 @@ class ObservationGrouping {
 
 /// What timing suggests about how [transcript] was grouped into moments.
 ///
-/// Proposals, priced. A gap inside [ObservationGroupingPolicy.confidentlySameMs]
-/// makes one moment the cheaper reading and two the dearer one, a gap beyond
+/// Proposals, priced. A gap inside
+/// [ObservationGroupingPolicy.confidentlySameMs] makes one moment the cheaper
+/// reading and two the dearer one, a gap beyond
 /// [ObservationGroupingPolicy.confidentlySeparateMs] reverses that, and in
 /// between the preference slides. Neither reading is ever priced out of the
 /// search, because recorded playing puts notes 23 ms apart in different moments

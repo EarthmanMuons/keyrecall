@@ -68,8 +68,8 @@ final class TraversalRepetitions extends TaskPortion {
 /// Whether the task asks the learner to keep to a pulse.
 ///
 /// Its own axis, and not a guidance rung. Removing the tempo obligation changes
-/// what the task is, where a guidance rung changes only how much of the material
-/// is supplied for an otherwise unchanged task.
+/// what the task is, where a guidance rung changes only how much of the
+/// material is supplied for an otherwise unchanged task.
 enum TimingDemand {
   /// A tempo is asked for and the learner is expected to hold it.
   metered('METERED'),

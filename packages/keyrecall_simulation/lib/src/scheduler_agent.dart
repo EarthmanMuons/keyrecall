@@ -99,9 +99,9 @@ class SchedulerAgent {
 
   /// Starts a fresh practice sitting.
   ///
-  /// Session allocation history resumes while the learner, the hidden truth, and simulated
-  /// time carry on. A long behavioral horizon is several bounded sessions, not
-  /// one run past the safety cap.
+  /// Session allocation history resumes while the learner, the hidden truth,
+  /// and simulated time carry on. A long behavioral horizon is several bounded
+  /// sessions, not one run past the safety cap.
   void startNewSession() =>
       _session = SessionState.resuming(_history, config: pipeline.config);
 
@@ -179,9 +179,9 @@ class SchedulerAgent {
 
 /// Runs several scheduler-driven sessions back to back over one simulation.
 ///
-/// Session allocation history resumes at each boundary while the learner, the hidden truth,
-/// and simulated time carry over unbroken. Returns every attempt trace in
-/// order.
+/// Session allocation history resumes at each boundary while the learner, the
+/// hidden truth, and simulated time carry over unbroken. Returns every attempt
+/// trace in order.
 List<AttemptTrace> runSessions(
   PracticeSimulation simulation,
   SchedulerAgent agent, {

@@ -299,10 +299,10 @@ enum RealizationRank {
 
 /// Which floor a candidate's predicted success had to clear.
 ///
-/// `in_band` alone stopped meaning one thing once three regimes could set the
-/// bound: ordinary practice, a first exposure, and an execution context with
-/// nothing demonstrated yet. A census that had to reconstruct which one applied is a census
-/// reconstructing policy.
+/// Three regimes set the bound: ordinary practice, a first exposure, and an
+/// execution context with nothing demonstrated yet. `in_band` alone does not
+/// say which, and a census that reconstructed it would be reconstructing
+/// policy.
 enum ChallengeFloorReason { ordinary, introduction, executionBootstrap }
 
 /// A refusal ordinary challenge admission cannot override.
