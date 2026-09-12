@@ -58,10 +58,13 @@ class FlakyPracticeStore implements PracticeStore {
   /// How many appends actually reached the inner store.
   int appendsPerformed = 0;
 
+  AttemptRecord? lastAttempt;
+
   FlakyPracticeStore(this.inner);
 
   @override
   Future<void> appendAttempt(AttemptRecord record) async {
+    lastAttempt = record;
     if (failNextAppend) {
       failNextAppend = false;
       throw const _StorageFailure();
@@ -641,6 +644,66 @@ void main() {
         expect(record.stateAfterHash, learnerStateHash(session.state));
       },
     );
+
+    for (final reconcileByAbandoning in [false, true]) {
+      test(
+        'a collision found by ${reconcileByAbandoning ? 'abandonment' : 'close'} '
+        'cannot become a successful retry',
+        () async {
+          final store = FlakyPracticeStore(
+            InMemoryPracticeStore(createdAt: t0),
+          );
+          final session = await openSession(store);
+          final presented = await session.decide(at: t0.plusDays(0.5));
+          final outcome = outcomeFor(presented!.exercise);
+          final before = learnerStateHash(session.state);
+          final pending = (await store.loadPendingDecision(alice.id))!.toJson();
+
+          store.failNextAppend = true;
+          if (reconcileByAbandoning) {
+            store.journalLoadFailure = const _StorageFailure();
+          }
+          await expectLater(
+            session.closeWithOutcome(outcome),
+            throwsA(isA<_StorageFailure>()),
+          );
+          final conflicting = AttemptRecord.fromJson({
+            ...store.lastAttempt!.toJson(),
+            'observed_wall_time': '2026-01-02T00:00:01Z',
+          });
+          await store.inner.appendAttempt(conflicting);
+          store.journalLoadFailure = null;
+
+          await expectLater(
+            reconcileByAbandoning
+                ? session.abandonPending()
+                : session.closeWithOutcome(outcome),
+            throwsA(isA<JournalFormatException>()),
+          );
+          for (var retry = 0; retry < 2; retry++) {
+            await expectLater(
+              session.closeWithOutcome(outcome),
+              throwsA(isA<JournalFormatException>()),
+            );
+            await expectLater(
+              session.abandonPending(),
+              throwsA(isA<JournalFormatException>()),
+            );
+            expect(learnerStateHash(session.state), before);
+            expect(session.journal.length, 0);
+            expect(session.hasOutstandingAttempt, isTrue);
+            expect(
+              (await store.loadPendingDecision(alice.id))!.toJson(),
+              pending,
+            );
+            expect(
+              (await store.loadJournal(alice.id)).records.single.toJson(),
+              conflicting.toJson(),
+            );
+          }
+        },
+      );
+    }
 
     test('a failed cleanup does not lose the committed attempt', () async {
       // The evidence is durable. Reporting that as a failed close, and then

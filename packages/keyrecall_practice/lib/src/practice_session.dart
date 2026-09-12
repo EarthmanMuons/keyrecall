@@ -1294,23 +1294,31 @@ class PracticeSession {
         Error.throwWithStackTrace(error, stack);
       }
 
-      final held = durable.records.where(
-        (held) => held.identity.attemptId == record.identity.attemptId,
-      );
-      if (held.isEmpty) {
-        commit.durability = _Durability.notWritten;
+      _reconcileAttempt(commit, durable);
+      if (commit.durability == _Durability.notWritten) {
         Error.throwWithStackTrace(error, stack);
       }
-      if (contentHash(held.single.toJson()) != contentHash(record.toJson())) {
-        commit.durability = _Durability.durable;
-        throw JournalFormatException(
-          'attempt ${record.identity.attemptId} is recorded with different '
-          'content than this transaction holds',
-          location: 'attempt ${record.identity.attemptId}',
-        );
-      }
-      commit.durability = _Durability.durable;
     }
+  }
+
+  void _reconcileAttempt(_PreparedCommit commit, AttemptJournal journal) {
+    final record = commit.record;
+    commit.durability = _Durability.unknown;
+    final held = journal.records.where(
+      (held) => held.identity.attemptId == record.identity.attemptId,
+    );
+    if (held.isEmpty) {
+      commit.durability = _Durability.notWritten;
+      return;
+    }
+    if (contentHash(held.single.toJson()) != contentHash(record.toJson())) {
+      throw JournalFormatException(
+        'attempt ${record.identity.attemptId} is recorded with different '
+        'content than this transaction holds',
+        location: 'attempt ${record.identity.attemptId}',
+      );
+    }
+    commit.durability = _Durability.durable;
   }
 
   /// Discards an unresolved decision without recording anything.
@@ -1335,9 +1343,7 @@ class PracticeSession {
       // already filled.
       if (commit.durability == _Durability.unknown) {
         final durable = await store.loadJournal(profile.id);
-        commit.durability = durable.contains(commit.record.identity.attemptId)
-            ? _Durability.durable
-            : _Durability.notWritten;
+        _reconcileAttempt(commit, durable);
       }
       if (commit.durability == _Durability.durable) {
         throw PracticeStateError(
