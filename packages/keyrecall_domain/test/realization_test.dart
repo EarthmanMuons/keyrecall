@@ -388,6 +388,13 @@ void main() {
       );
     });
 
+    test('a moment nothing sounds at is not a moment', () {
+      expect(
+        () => RealizationMoment(position: 0, metricOffset: 0, notes: []),
+        throwsArgumentError,
+      );
+    });
+
     test('an exercise that asks for nothing is not a realization', () {
       expect(() => ExerciseRealization([]), throwsArgumentError);
     });

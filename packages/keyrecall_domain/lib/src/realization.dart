@@ -98,15 +98,20 @@ class RealizationMoment {
           notes: [for (final note in notes) note.shiftedByOctaves(octaves)],
         );
 
-  /// Throws [ArgumentError] when a hand is asked to play twice at once.
+  /// Throws [ArgumentError] when nothing sounds, or when a hand is asked to
+  /// play twice at once.
   ///
-  /// V1 has no chords, and a second note for one hand would make [noteFor]
-  /// answer arbitrarily.
+  /// A moment is something that happens; silence is the absence of one. V1 has
+  /// no chords, and a second note for one hand would make [noteFor] answer
+  /// arbitrarily.
   RealizationMoment({
     required this.position,
     required this.metricOffset,
     required List<RealizedNote> notes,
   }) : notes = List.unmodifiable(notes) {
+    if (this.notes.isEmpty) {
+      throw ArgumentError.value(notes, 'notes', 'must not be empty');
+    }
     final playing = <Hand>{};
     for (final note in notes) {
       for (final hand in note.hands) {
