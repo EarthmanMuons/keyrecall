@@ -10,6 +10,13 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- The historical fixtures were re-stamped from learner model `v1-8` to `v1-9`.
+  That version could not be preserved: it named a transition whose summation
+  order followed the order an exercise's opportunities happened to iterate in,
+  which serialization changes. Only the version string moved.
+
 ### Added
 
 - `replayJournal` takes an optional `observe` callback, called with the state

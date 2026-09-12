@@ -18,6 +18,14 @@ import 'support/fixtures.dart';
 /// Replacing one is a decision, not maintenance. A record that can no longer
 /// be read needs a versioned upgrade, and the file stays as it is so the
 /// upgrade has something real to be proved against.
+///
+/// These were re-stamped once, from `v1-8` to `v1-9`. That version could not
+/// be preserved: it named a transition whose summation order followed the
+/// order an exercise's opportunities happened to iterate in, so a record of it
+/// read back off disk did not reliably replay to the state it produced. Only
+/// the version string moved; every prediction, weight, and hash in the file is
+/// what `v1-8` wrote, which is what says the arithmetic these particular
+/// attempts ran was already canonical.
 void main() {
   /// What the state hash was when these files were written.
   const recordedStateHash =

@@ -6,12 +6,20 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// competencies are in play. Equal loading avoids inventing precise relative
 /// weights before real data exists.
 ///
+/// Emitted in [Competency.values] order, whatever order [q] iterates in. The
+/// channel predictions sum these in the order they arrive, floating-point
+/// addition is not associative, and a state hash is exact: a set built in a
+/// different order would otherwise replay to a different state.
+///
 /// Competencies outside [q] are absent from the result rather than mapped to
 /// zero; read with a `?? 0.0` fallback.
 Map<Competency, double> normalizedLoadings(Set<Competency> q) {
   if (q.isEmpty) return const {};
   final weight = 1.0 / q.length;
-  return {for (final competency in q) competency: weight};
+  return {
+    for (final competency in Competency.values)
+      if (q.contains(competency)) competency: weight,
+  };
 }
 
 /// `q_{e,k}` restricted to and renormalized within the motor channel.
