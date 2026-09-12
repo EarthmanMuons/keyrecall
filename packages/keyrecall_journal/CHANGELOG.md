@@ -12,10 +12,13 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
-- The historical fixtures were re-stamped from learner model `v1-8` to `v1-9`.
-  That version could not be preserved: it named a transition whose summation
-  order followed the order an exercise's opportunities happened to iterate in,
-  which serialization changes. Only the version string moved.
+- The historical fixtures are now named by learner model version. The `v1-8`
+  pair is kept byte for byte, and what this build does with it is tested:
+  readable, refused by exact replay, re-estimated only on request, and a cache
+  miss as a checkpoint. That version could not be made replayable, because it
+  named a transition whose summation order followed the order an exercise's
+  opportunities happened to iterate in. The `v1-9` pair is the same history
+  re-recorded, and it still replays exactly.
 
 ### Added
 
