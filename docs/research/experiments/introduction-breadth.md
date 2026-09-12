@@ -1,31 +1,16 @@
 # Introduction breadth
 
-- **Status:** Characterization and counterfactual controls. `IntroductionConfig`
-  exists in the scheduler and is null in `v1SchedulerConfig`; no policy
-  promoted.
-- **Written:** September 4, 2026
-- **Scope:** How much unresolved new material a trajectory may hold open at
-  once. The materials measured here are scales and root-position arpeggios, but
-  the mechanism reads a family key it cannot interpret.
+> **Status:** characterization and counterfactual controls. `IntroductionConfig`
+> exists in the scheduler and is null in the shipped configuration. **No policy
+> promoted.**
 
 Material admission asks whether one unseen material is appropriate now.
-Introduction breadth asks whether another one should be opened while earlier
+Introduction breadth asks whether another should be opened while earlier
 introductions are still unresolved. The distinction only becomes visible in a
 catalog wide enough that some defensible first exposure is always available.
 
-The full-catalog census raised it. Every individual decision was sound: the
-material was admissible, the rung was the entry rung, the prediction cleared the
-introduction floor. The trajectory was not.
-
-```text
-existing material is not yet ready for deeper work
-        |
-another unseen material is introducible
-        |
-new-material admission takes the slot
-        |
-breadth grows, and more unseen material remains
-```
+The full-catalog census raised it: every individual decision was sound, and the
+trajectory was not.
 
 ## What the census measures
 

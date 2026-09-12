@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 
 /// The policy is a calibrated constant, so its invariants are assertions; see
-/// `docs/domain-model/validation-boundaries.md`.
+/// `docs/system/validation-boundaries.md`.
 void main() {
   test('every scale reads between its ends', () {
     for (final build in [

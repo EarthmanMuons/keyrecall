@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 
 /// The policies are calibrated constants, so their invariants are assertions;
-/// see `docs/domain-model/validation-boundaries.md`.
+/// see `docs/system/validation-boundaries.md`.
 void main() {
   group('alignment costs', () {
     test('may not undercut a match', () {

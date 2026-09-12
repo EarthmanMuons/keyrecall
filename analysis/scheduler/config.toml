@@ -1,10 +1,10 @@
 model_version = "v1-prototype-0"
 
 # Every value below is a deliberately simple Pass-1 placeholder
-# (docs/learner-model/04-v1-scheduler.md §9), not a tuned policy decision.
-# Pass 2 (behavioral scenarios, 04-v1-scheduler.md §10) is what should
-# actually revise these, same discipline as learner-model/params.toml
-# (docs/learner-model/03-v1-math.md §25).
+# (docs/system/scheduler.md), not a tuned policy decision.
+# Pass 2 (behavioral scenarios, docs/research/experiments/scheduler.md) is
+# what should actually revise these, same discipline as learner-model/params.toml
+# (docs/system/learner-model.md §6.1).
 
 [eligibility]
 # REQUIRES: RH/LH -> HT is the only relationship implemented this pass

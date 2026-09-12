@@ -1,11 +1,11 @@
-# Calibrating a synthetic player from a sitting
+# Calibrating a player from a sitting
 
-- **Status:** Estimator implemented and validated against synthetic ground
-  truth. One device sitting fitted, September 8, 2026.
-- **Written:** September 7, 2026.
-- **Scope:** Recovering `SyntheticPlayer` parameters from the attempts of one
-  sitting, so a long-run simulation can ask what a learner who plays like this
-  person would experience over months.
+> **Status:** estimator implemented and validated against synthetic ground
+> truth. One device sitting fitted.
+
+Recovering `SyntheticPlayer` parameters from the attempts of one sitting, so a
+long-run simulation can ask what a learner who plays like this person would
+experience over months.
 
 ## Getting a sitting off a device
 

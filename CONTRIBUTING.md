@@ -90,7 +90,7 @@ packages/
   keyrecall_practice     the attempt transaction over storage
   keyrecall_simulation   synthetic players, invariants, and the sweep
 analysis/                instrument calibration data the tests read
-docs/                    design, domain model, and learner-model record
+docs/                    how it works, why, and the research behind it
 ```
 
 As a conceptual data flow, an attempt moves through them in roughly that order:
@@ -119,7 +119,7 @@ under a newer generator would silently rewrite historical evidence.
 
 **Erasing is the one destructive operation.** It is deliberately not part of the
 practice loop. If you are touching storage, read
-[`docs/domain-model/validation-boundaries.md`](docs/domain-model/validation-boundaries.md)
+[`docs/system/validation-boundaries.md`](docs/system/validation-boundaries.md)
 for where invalid values are rejected and why the parameter registries are
 allowed to use assertions.
 
@@ -127,26 +127,36 @@ Simulation is the fastest way to find out whether a scheduler change is sane.
 `packages/keyrecall_simulation/bin/sweep.dart` runs every synthetic player over
 many seeds and reports what went wrong; the invariant tests run a handful of
 seeds on every commit. One is skipped on purpose; see
-[`docs/design/future-planning.md`](docs/design/future-planning.md) section 4.9
-before you try to make it pass.
+[`docs/roadmap.md`](docs/roadmap.md), "A sitting with nothing to offer", before
+you try to make it pass.
 
 ## Which document is authoritative
 
-`docs/` keeps its history, so more than one document may describe the same
-mechanism. In order:
+`docs/` is organized by what kind of truth a document holds, so the folder tells
+you whether it can go stale:
 
-1. The code, for what happens now.
-2. [`docs/learner-model/v1-current-system.md`](docs/learner-model/v1-current-system.md),
-   for the model and scheduler as a whole.
-3. `docs/domain-model/`, for the contracts each part is written against:
-   alignment, attempt termination, material admission, validation boundaries.
-4. `docs/design/future-planning.md`, for what is deliberately deferred, and why.
-   Each deferred item names the code that has to change when it is taken.
-5. Everything else, for provenance: why the current design exists, and which
-   alternatives were tried and rejected.
+```text
+docs/system/      how KeyRecall works today; stale when the code changes
+docs/decisions/   why it works that way, and what we ruled out
+docs/research/    the evidence, and what we measured; a record, not a spec
+docs/roadmap.md   what is deliberately deferred, and what is closed
+```
+
+In order of authority:
+
+1. **The code**, for what happens now.
+2. [`docs/system/`](docs/system/), which is written so it could be reconstructed
+   from the code and its tests. When it disagrees with the code, the code is
+   right and the document is a bug.
+3. [`docs/decisions/`](docs/decisions/), for why a mechanism is shaped the way
+   it is before you change it.
+4. [`docs/roadmap.md`](docs/roadmap.md), for what is deferred. Each item names
+   the code that has to change when it is taken.
+5. [`docs/research/`](docs/research/), for provenance: the outside evidence, and
+   which alternatives were tried and rejected.
 
 The [documentation map](docs/README.md) is the index. When implementation
-changes a mechanism these documents describe, the document moves in the same
+changes a mechanism `docs/system/` describes, the document moves in the same
 commit.
 
 ## Pull requests

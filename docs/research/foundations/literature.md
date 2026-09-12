@@ -1,17 +1,26 @@
-# Learner Model Research
+# Learner-model literature
 
-> **Reader note:** This document is the research and design-evidence record, not
-> the shortest description of the adopted system. Start with
-> [`v1-current-system.md`](v1-current-system.md) for current V1 behavior, then
-> return here for sources and the boundary between research support and
-> KeyRecall-specific synthesis.
+> **Status:** research record, and the evidentiary basis for the learner model.
+>
+> **Research cutoff:** August 2026.
+>
+> This is not the shortest description of what KeyRecall does; that is
+> [`../../system/learner-model.md`](../../system/learner-model.md). Read this
+> for the sources, and for the boundary between what the research supports and
+> what is our own synthesis.
 
-**Status:** Research foundation for learner-state and adaptive scheduling
-design\
-**Scope:** Transferable competencies, item memory, evidence modeling, level
-setting, task difficulty, and practice scheduling
+Sources are cited by key into [`../../REFERENCES.md`](../../REFERENCES.md),
+which carries the full citation and a line on what each one contributed. The
+prose here still says what a source established, because a citation key alone is
+not a readable argument.
 
-## 1. Purpose
+Several superseded state proposals have been removed from this document: the
+provisional generalized domain model, the successive "refined definition"
+sections, the recommended modeling sequence, and the immediate design questions.
+All of those were answered, and the answers are in
+[`../../system/`](../../system/). What remains is evidence.
+
+## Purpose
 
 KeyRecall needs a learner model that can estimate transferable competencies,
 memory for exact practiced items, uncertainty, performance as difficulty
@@ -26,7 +35,7 @@ This document deliberately distinguishes research-supported findings from
 KeyRecall-specific synthesis decisions that still require simulation and
 empirical validation.
 
-## 2. Architectural distinctions
+## Architectural distinctions
 
 The preceding motor analysis established:
 
@@ -72,7 +81,7 @@ local hesitation             observation
 
 This separation is foundational.
 
-## 3. Knowledge tracing
+## Knowledge tracing
 
 Knowledge-tracing models infer unobserved learner knowledge from sequences of
 observable performances. Classical Bayesian Knowledge Tracing (BKT) established
@@ -89,7 +98,7 @@ exercise can also require several competencies simultaneously.
 observation and latent state, but do not assume binary mastery is the final
 mathematical model.
 
-## 4. Performance Factors Analysis and logistic learner models
+## Performance Factors Analysis and logistic learner models
 
 Pavlik, Cen, and Koedinger's Performance Factors Analysis (PFA) was developed as
 an alternative to conventional knowledge tracing and explicitly addresses
@@ -115,12 +124,9 @@ P(\text{performance} \mid \text{competencies}, \text{task features}, \text{histo
 
 without turning every task feature into a separate latent skill.
 
-**Primary source:** Pavlik, P. I., Cen, H., & Koedinger, K. R. (2009).
-_Performance Factors Analysis: A New Alternative to Knowledge Tracing_.
-Proceedings of AIED 2009, 531-538.\
-https://doi.org/10.3233/978-1-60750-028-5-531
+**Source:** [Pavlik2009]
 
-## 5. DAS3H: the closest conceptual match
+## DAS3H: the closest conceptual match
 
 Choffin, Popineau, Bourda, and Vie developed DAS3H specifically for adaptive
 distributed practice where items involve **multiple underlying skills** and
@@ -146,12 +152,9 @@ This supports three KeyRecall decisions:
 DAS3H was developed for educational response data, not continuous piano motor
 performance. KeyRecall would adapt the approach rather than apply it unchanged.
 
-**Primary source:** Choffin, B., Popineau, F., Bourda, Y., & Vie, J.-J. (2019).
-_DAS3H: Modeling Student Learning and Forgetting for Optimally Scheduling
-Distributed Practice of Skills_.\
-https://arxiv.org/abs/1905.06873
+**Source:** [Choffin2019]
 
-## 6. Exact-item memory: Half-Life Regression
+## Exact-item memory: Half-Life Regression
 
 Settles and Meeder introduced Half-Life Regression (HLR), modeling recall
 probability as:
@@ -178,14 +181,12 @@ A piano scale is not a vocabulary item and successful execution is not binary
 recall. HLR should therefore inform item-memory dynamics rather than serve as
 the complete performance model.
 
-**Primary source:** Settles, B., & Meeder, B. (2016). _A Trainable Spaced
-Repetition Model for Language Learning_. ACL 2016, 1848-1858.\
-https://doi.org/10.18653/v1/P16-1174
+**Source:** [Settles2016]
 
 **Public implementation:**\
 https://github.com/duolingo/halflife-regression
 
-## 7. ACT-R-derived practice optimization
+## ACT-R-derived practice optimization
 
 Pavlik and Anderson developed a quantitative memory model and used it to compute
 practice schedules. Their optimization balances long-term spacing benefit
@@ -217,12 +218,9 @@ choose useful next exercise
      ...
 ```
 
-**Primary source:** Pavlik, P. I., Jr., & Anderson, J. R. (2008). _Using a Model
-to Compute the Optimal Schedule of Practice_. Journal of Experimental
-Psychology: Applied, 14(2), 101-117.\
-https://doi.org/10.1037/1076-898X.14.2.101
+**Source:** [PavlikAnderson2008]
 
-## 8. Adaptive Response-Time-Based Sequencing (ARTS)
+## Adaptive Response-Time-Based Sequencing (ARTS)
 
 ARTS dynamically sequences learning using accuracy, response time, and trials
 since last presentation. As measured learning strength increases, spacing
@@ -245,12 +243,9 @@ continuity
 **KeyRecall implication:** adaptive spacing need not depend on explicit
 easy/hard ratings. Objective performance can drive sequencing.
 
-**Source:** Mettler, E., Massey, C. M., & Kellman, P. J. (2013). _Adaptive
-Response-Time-Based Category Sequencing in Perceptual Learning_. Vision
-Research.\
-https://pmc.ncbi.nlm.nih.gov/articles/PMC6124487/
+**Source:** [Mettler2013]
 
-## 9. Spacing and distributed practice
+## Spacing and distributed practice
 
 Cepeda et al.'s quantitative review examined 839 assessments from 317
 experiments. Importantly, the spacing interval producing maximal retention
@@ -265,12 +260,9 @@ KeyRecall therefore should not treat a fixed progression such as:
 as the fundamental memory model. A dynamic model may produce similar intervals,
 but they should emerge from estimated state and scheduling goals.
 
-**Primary source:** Cepeda, N. J., Pashler, H., Vul, E., Wixted, J. T., &
-Rohrer, D. (2006). _Distributed Practice in Verbal Recall Tasks: A Review and
-Quantitative Synthesis_. Psychological Bulletin, 132(3), 354-380.\
-https://doi.org/10.1037/0033-2909.132.3.354
+**Source:** [Cepeda2006]
 
-## 10. Motor learning: Challenge Point Framework
+## Motor learning: Challenge Point Framework
 
 Guadagnoli and Lee's Challenge Point Framework explicitly considers the
 interaction between performer skill and task difficulty. The same nominal task
@@ -301,12 +293,9 @@ percentage.
 The framework supports adapting difficulty to ability, but does not establish
 one universal target success percentage that KeyRecall should hard-code.
 
-**Primary source:** Guadagnoli, M. A., & Lee, T. D. (2004). _Challenge Point: A
-Framework for Conceptualizing the Effects of Various Practice Conditions in
-Motor Learning_. Journal of Motor Behavior, 36(2), 212-224.\
-https://doi.org/10.3200/JMBR.36.2.212-224
+**Source:** [GuadagnoliLee2004]
 
-## 11. Contextual interference and interleaving
+## Contextual interference and interleaving
 
 Contextual-interference research provides a basis for varying tasks rather than
 indefinitely blocking repetitions of one task.
@@ -348,7 +337,7 @@ Interference on Transfer in Motor Learning - A Systematic Review and
 Meta-Analysis_. Frontiers in Psychology, 15, 1377122.\
 https://doi.org/10.3389/fpsyg.2024.1377122
 
-## 12. IRT, MIRT, and adaptive testing
+## IRT, MIRT, and adaptive testing
 
 Item Response Theory relates item performance to latent ability and item
 characteristics. Multidimensional IRT generalizes ability to a vector.
@@ -389,7 +378,7 @@ _Multidimensional Computerized Adaptive Testing for Classifying Examinees With
 Within-Dimensionality_. Applied Psychological Measurement, 40(6).\
 https://doi.org/10.1177/0146621616648931
 
-## 13. Contextual bandits: later, not foundational
+## Contextual bandits: later, not foundational
 
 Contextual-bandit methods can eventually choose among candidate exercises from
 learner context and observed reward, balancing exploitation and exploration.
@@ -403,7 +392,7 @@ A future policy-learning layer could optimize scheduler weights from
 privacy-preserving aggregate data while retaining an interpretable model-based
 core.
 
-## 14. Proposed KeyRecall synthesis
+## Proposed KeyRecall synthesis
 
 The following is a **KeyRecall design synthesis**, not a single published model:
 
@@ -451,7 +440,7 @@ performance strength ARTS Initial level setting IRT/MIRT, CAT
 Information-seeking practice CAT/MIRT Interleaving Contextual-interference
 research Future policy optimization Contextual bandits
 
-## 15. Transferable competency vs. exact item state
+## Transferable competency vs. exact item state
 
 For:
 
@@ -482,7 +471,7 @@ general harmonic-minor competence remains high.
 This gives a principled mechanism for both **transfer** and **spaced
 retrieval**.
 
-## 16. Scale topology as hierarchical shared knowledge
+## Scale topology as hierarchical shared knowledge
 
 A provisional hierarchy remains plausible:
 
@@ -512,253 +501,7 @@ pitch_context:
 Preserving tonic context in observations lets later data determine whether
 persistent key-specific effects justify explicit latent parameters.
 
-## 17. Provisional generalized domain and state model
-
-The current learner-model discussion has been intentionally scale-focused
-because scales are the first fully researched KeyRecall domain. The architecture
-should not, however, make `Scale` the universal technical-material abstraction.
-
-### 17.1 Technical material
-
-Use a general `TechnicalMaterial` concept with domain-specific material
-families:
-
-```text
-TechnicalMaterial
-|
-+-- Scale
-|   +-- Major
-|   +-- NaturalMinor
-|   +-- HarmonicMinor
-|   +-- MelodicMinor
-|   `-- future modes...
-|
-`-- Arpeggio
-    +-- MajorTriad
-    +-- MinorTriad
-    +-- DominantSeventh
-    +-- DiminishedSeventh
-    `-- future forms...
-```
-
-An arpeggio should **not** be represented as a scale with a different exercise
-pattern. Scales and arpeggios have different pitch topologies, canonical
-fingerings, motor organizations, and pedagogical identities even though they
-share learner-model and scheduling infrastructure.
-
-V1 may implement only `TechnicalMaterial.type = SCALE`; the abstraction should
-nevertheless avoid requiring a domain-model migration when arpeggios are added.
-
-### 17.2 Exercise patterns are orthogonal to material identity
-
-An `ExercisePattern` describes how technical material is transformed or ordered
-during practice. It does not normally create a new underlying musical material.
-
-For example:
-
-```text
-Material: C major scale
-Pattern:  LINEAR
-```
-
-and:
-
-```text
-Material: C major scale
-Pattern:  THIRDS
-```
-
-share the same underlying material.
-
-Likewise:
-
-```text
-Material: C major arpeggio
-Pattern:  LINEAR
-```
-
-is an arpeggio exercise, not a scale-pattern variant.
-
-This gives the domain four distinct concepts:
-
-```text
-TechnicalMaterial
-    what pitch structure is being practiced?
-
-MotorRealization
-    how is that material physically executed?
-
-ExercisePattern
-    what transformation/order is requested?
-
-TaskConditions
-    under what difficulty and performance context?
-```
-
-A future exercise might therefore be represented conceptually as:
-
-```yaml
-material:
-  type: SCALE
-  tonic: D
-  form: MAJOR
-
-pattern:
-  type: LINEAR
-
-motor:
-  family: DIATONIC_3_4_CYCLE
-
-conditions:
-  hands: RIGHT
-  octaves: 2
-  direction: UP_DOWN
-  tempo_bpm: 96
-```
-
-while a later arpeggio exercise could use the same outer structure with an
-arpeggio-specific topology and motor family.
-
-### 17.3 Generalized topology and motor competencies
-
-The learner vocabulary should likewise avoid making scale-specific components
-the root of all future technical learning.
-
-A provisional generalized topology is:
-
-```text
-PITCH_TOPOLOGY
-|
-+-- SCALE_TOPOLOGY
-|   +-- MAJOR_SCALE_TOPOLOGY
-|   `-- MINOR_SCALE_TOPOLOGY
-|       +-- NATURAL_MINOR_TOPOLOGY
-|       +-- HARMONIC_MINOR_TOPOLOGY
-|       `-- MELODIC_MINOR_TOPOLOGY
-|
-`-- ARPEGGIO_TOPOLOGY
-    +-- MAJOR_TRIAD_TOPOLOGY
-    +-- MINOR_TRIAD_TOPOLOGY
-    +-- DOMINANT_SEVENTH_TOPOLOGY
-    `-- DIMINISHED_SEVENTH_TOPOLOGY
-```
-
-Similarly:
-
-```text
-TECHNICAL_MOTOR
-|
-+-- DIATONIC_SCALE_MOTOR
-`-- ARPEGGIO_MOTOR
-```
-
-The exact arpeggio motor taxonomy is future research and should not be inferred
-from the scale taxonomy.
-
-### 17.4 Three layers of persistent learner state
-
-The earlier flat choice between one item per scale and one item per
-scale-and-hand is provisionally rejected.
-
-A more expressive model distinguishes:
-
-```text
-1. LATENT COMPETENCY STATE
-   Transferable capability shared across materials and tasks.
-
-2. MATERIAL MEMORY STATE
-   Time-sensitive familiarity/retrievability for a particular musical
-   material.
-
-3. MATERIAL EXECUTION STATE
-   Material-specific history or state under important execution contexts.
-```
-
-For the current scale domain:
-
-```text
-Latent competencies:
-    HARMONIC_MINOR_TOPOLOGY
-    DIATONIC_SCALE_MOTOR
-    RH_SCALE_EXECUTION
-    SCALAR_CROSSING
-    ...
-
-Material memory:
-    F# harmonic minor scale
-
-Material execution state:
-    F# harmonic minor / RH
-    F# harmonic minor / LH
-    F# harmonic minor / HT
-```
-
-This separates remembering the musical object from evidence about executing it
-in a particular context.
-
-Practicing D major RH should therefore be capable of refreshing evidence about
-D-major-scale material while also providing RH-specific motor evidence. A later
-D major LH task should not be treated as completely unrelated, nor should RH
-practice be assumed to fully refresh LH execution.
-
-### 17.5 Patterns should compose with existing knowledge
-
-The same principle applies to future scale patterns.
-
-A pianist encountering C major in thirds for the first time should not start
-from zero if C major itself is well established. Conversely, extensive linear C
-major practice should not imply mastery of the thirds pattern.
-
-Conceptually:
-
-```text
-C-major material experience
-          |
-          +------------------+
-                             |
-                             v
-                    C major in thirds
-                             ^
-                             |
-          +------------------+
-          |
-scale-in-thirds experience
-across other keys
-```
-
-If a pattern demonstrates stable transferable demands, it may eventually justify
-its own latent competency. The pattern should still remain orthogonal to the
-underlying material identity.
-
-### 17.6 V1 implementation boundary
-
-This generalized architecture does **not** expand V1 scope.
-
-The initial implementation can remain:
-
-```text
-TechnicalMaterial
-    SCALE only
-
-ExercisePattern
-    LINEAR only
-
-Scale forms
-    MAJOR
-    NATURAL_MINOR
-    HARMONIC_MINOR
-    MELODIC_MINOR
-
-Execution contexts
-    RH
-    LH
-    HT when supported
-```
-
-The purpose of the generalized vocabulary is to prevent today's scale research
-from becoming tomorrow's architectural constraint.
-
-## 18. Open procedural-memory questions
+## Open procedural-memory questions
 
 The generalized state model above is a **provisional KeyRecall design
 hypothesis**, not yet a conclusion from the reviewed memory literature.
@@ -810,12 +553,12 @@ MaterialExecutionState
 and, if so, whether the latter two require distinct mathematical update and
 decay models.
 
-## 19. Procedural motor retention and material-specific execution state
+## Procedural motor retention and material-specific execution state
 
 A focused procedural-memory research pass strengthens the provisional
 three-layer architecture rather than collapsing it.
 
-### 19.1 Procedural skill is time-sensitive
+### Procedural skill is time-sensitive
 
 Tatel and Ackerman's 2025 meta-analysis of procedural skill retention and decay
 synthesized 1,344 effect sizes from 457 reports. Performance loss increased with
@@ -831,12 +574,9 @@ be used directly as KeyRecall parameters. Their value here is structural:
 material-specific procedural readiness is not merely an immutable accumulation
 of historical evidence.
 
-**Source:** Tatel, C. E., & Ackerman, P. L. (2025). Meta-analysis of procedural
-skill retention and decay. _Psychological Bulletin_.
+**Source:** [Tatel2025]
 
-https://pubmed.ncbi.nlm.nih.gov/40455501/
-
-### 19.2 Motor representations can contain shared and effector-specific components
+### Motor representations can contain shared and effector-specific components
 
 Motor-sequence research provides evidence for both effector-independent and
 effector-specific representations. Studies of intermanual transfer and motor
@@ -896,7 +636,7 @@ It should not mark the LH realization as though it had itself been practiced.
 - van Mier, H. I., & Petersen, S. E. (2006). Intermanual transfer effects in
   sequential tactuomotor learning. https://pubmed.ncbi.nlm.nih.gov/16198379/
 
-### 19.3 Procedural retention is not equivalent to item recall
+### Procedural retention is not equivalent to item recall
 
 Motor-memory research also cautions against treating procedural execution as a
 flashcard-like recall process.
@@ -919,7 +659,7 @@ procedural readiness without prejudging the exact cognitive mechanism.
 - Recent work distinguishing savings from long-term motor memory:
   https://pmc.ncbi.nlm.nih.gov/articles/PMC10138789/
 
-### 19.4 Motor spacing evidence requires a narrower claim
+### Motor spacing evidence requires a narrower claim
 
 Distributed practice has substantial support in motor learning, including
 evidence for improved long-term retention in some complex motor-training
@@ -959,7 +699,7 @@ The appropriate research position is:
 - Systematic review of distributed practice in surgical motor-skill training:
   https://pubmed.ncbi.nlm.nih.gov/28843958/
 
-### 19.5 Accuracy and speed should remain distinguishable
+### Accuracy and speed should remain distinguishable
 
 The procedural-retention literature provides empirical support for preserving
 multiple dimensions of performance rather than collapsing MIDI observations into
@@ -977,7 +717,7 @@ tempo capacity
 A later performance model may combine these dimensions for prediction or
 scheduling, but the underlying evidence should remain available separately.
 
-### 19.6 Prior expertise can support acquisition of related motor material
+### Prior expertise can support acquisition of related motor material
 
 Research comparing musicians and nonmusicians on sequential motor tasks has
 found benefits of prior musical experience for acquisition and/or consolidation
@@ -992,66 +732,7 @@ provide informative priors for new but structurally related material.
 - https://pubmed.ncbi.nlm.nih.gov/27333186/
 - https://pubmed.ncbi.nlm.nih.gov/27472398/
 
-### 19.7 Refined three-layer state model
-
-The research now supports retaining all three conceptual layers while avoiding
-the assumption that they share identical temporal dynamics:
-
-```text
-LATENT COMPETENCY STATE
------------------------
-Transferable capabilities.
-
-Examples:
-    HARMONIC_MINOR_TOPOLOGY
-    DIATONIC_SCALE_MOTOR
-    RH_SCALE_EXECUTION
-    SCALAR_CROSSING
-
-Updated from many materials.
-Transferable across related tasks.
-Refreshed by relevant practice across the repertoire.
-
-
-MATERIAL MEMORY STATE
----------------------
-Knowledge/familiarity with the musical material itself.
-
-Example:
-    F# harmonic minor scale
-
-Hand-independent at the architectural level.
-Updated whenever the material is meaningfully retrieved/practiced.
-Time-sensitive.
-Exact mathematical memory model remains TBD.
-
-
-MATERIAL EXECUTION STATE
-------------------------
-Material-specific procedural readiness under an execution context.
-
-Examples:
-    F# harmonic minor / RH
-    F# harmonic minor / LH
-    F# harmonic minor / HT
-
-Time-sensitive.
-Supports partial intermanual transfer.
-Should preserve accuracy and speed/fluency information separately.
-Should be capable of representing savings/reacquisition.
-Should not simply reuse the MaterialMemory decay equation.
-```
-
-The distinction between `MaterialMemory` and `MaterialExecutionState` remains a
-modeling abstraction rather than a claim that these software states correspond
-directly to separable biological memory systems.
-
-The next design problem is therefore no longer whether material-specific
-execution state exists. It is how to parameterize that state and connect
-accuracy, fluency/speed, temporal consistency, and transferable competencies in
-an interpretable performance model.
-
-## 20. Guidance, retrieval demand, and evidence interpretation
+## Guidance, retrieval demand, and evidence interpretation
 
 KeyRecall's learner model must distinguish successful **supported execution**
 from successful **independent retrieval**.
@@ -1064,7 +745,7 @@ independently retrievable.
 This makes instructional support part of the evidence context rather than merely
 a user-interface preference.
 
-### 20.1 Retrieval practice and independent production
+### Retrieval practice and independent production
 
 Retrieval-practice research distinguishes attempting to retrieve information
 from simply restudying or re-exposing it. KeyRecall should preserve this
@@ -1095,7 +776,7 @@ _Retrieval-Based Learning: A Perspective for Enhancing Meaningful Learning_.
 
 https://pmc.ncbi.nlm.nih.gov/articles/PMC3983480/
 
-### 20.2 Instruction, concurrent cueing, and feedback are distinct
+### Instruction, concurrent cueing, and feedback are distinct
 
 KeyRecall should distinguish three forms of support.
 
@@ -1146,7 +827,7 @@ depend on task and feedback characteristics.
 - Review of augmented feedback in motor learning:
   https://pmc.ncbi.nlm.nih.gov/articles/PMC8681883/
 
-### 20.3 Preserve raw guidance configuration
+### Preserve raw guidance configuration
 
 The data model should preserve the actual support supplied during an exercise
 rather than storing only a coarse ordinal guidance level.
@@ -1179,7 +860,7 @@ Any numerical mapping from guidance configuration to retrieval demand would be a
 **KeyRecall model parameter**, not a coefficient established by the current
 literature.
 
-### 20.4 Prior exposure matters even without concurrent cues
+### Prior exposure matters even without concurrent cues
 
 An apparently unguided attempt may still differ substantially depending on what
 the learner saw immediately beforehand.
@@ -1208,7 +889,7 @@ retrieval_context:
 The eventual memory model can determine how strongly such an attempt updates
 independent retrievability.
 
-### 20.5 Guidance-sensitive evidence updates
+### Guidance-sensitive evidence updates
 
 Material-memory evidence should depend on observed performance and retrieval
 support:
@@ -1242,7 +923,7 @@ Attempt B provides strong evidence for both material retrieval and execution.
 Guidance may also affect motor performance itself, so it belongs in the
 performance model as well as the material-memory evidence model.
 
-### 20.6 Retrieval failure and execution failure should be distinguishable
+### Retrieval failure and execution failure should be distinguishable
 
 An unguided learner who cannot begin an E-flat harmonic-minor exercise provides
 strong evidence about `MaterialMemoryState` but little direct evidence about
@@ -1274,7 +955,7 @@ crossing-local slowdowns, or tempo collapse. Such a performance can provide
 positive material-memory evidence while providing weak or negative execution
 evidence.
 
-### 20.7 Guidance fading should be adaptive
+### Guidance fading should be adaptive
 
 KeyRecall should eventually manipulate support independently from motor
 difficulty. The scheduler's action is broader than selecting a material:
@@ -1313,11 +994,9 @@ short-duration VR training context is substantially narrower than KeyRecall's
 longitudinal use case, so it is best treated as encouraging domain-specific
 evidence rather than a basis for a scheduling rule.
 
-**Source:** _Adaptive Visual Hand Guidance for Piano Training_ (2026).
+**Source:** [AdaptiveVisualGuidance2026]
 
-https://arxiv.org/abs/2603.06253
-
-### 20.8 GuidanceContext belongs in the exercise model
+### GuidanceContext belongs in the exercise model
 
 The conceptual exercise structure therefore becomes:
 
@@ -1355,35 +1034,14 @@ Attempt
 The evidence model can then interpret the same observable performance
 differently according to the support that produced it.
 
-### 20.9 Refined definition of MaterialMemoryState
-
-The informal question "Can the learner play this material?" is too broad because
-it conflates retrieval and execution.
-
-A better provisional definition is:
-
-> **`MaterialMemoryState` estimates how available the underlying technical
-> material is for independent production under a specified retrieval context.**
-
-`MaterialExecutionState`, in contrast, estimates:
-
-> **Given that the intended material is available, how capable is the learner of
-> physically executing it under the requested performance conditions?**
-
-A single MIDI attempt cannot perfectly isolate these hidden states. Guidance
-context, prior exposure, error location, timing, continuity, and other
-observations allow the evidence model to infer them probabilistically.
-
-This distinction should be retained in the V1 learner-model design.
-
-## 21. Hierarchical item effects and material-specific execution residuals
+## Hierarchical item effects and material-specific execution residuals
 
 A targeted review of mixed-effects psychometrics, item-response modeling, and
 educational learner models supports a more parsimonious interpretation of
 `MaterialExecutionState` than maintaining several independent material-specific
 mastery dimensions.
 
-### 21.1 Crossed learner and item effects are established statistical practice
+### Crossed learner and item effects are established statistical practice
 
 Repeated-performance data naturally contain multiple sources of variation:
 learners differ from one another, materials/tasks differ in general difficulty,
@@ -1423,7 +1081,7 @@ learner model.
   with crossed random effects for subjects and items.
   https://www.mpi.nl/publications/item60973/mixed-effects-modeling-crossed-random-effects-subjects-and-items
 
-### 21.2 Partial pooling is essential
+### Partial pooling is essential
 
 The useful property of a hierarchical learner-by-material effect is **partial
 pooling**.
@@ -1462,7 +1120,7 @@ hierarchical/shrinkage treatment of item effects.
 
 https://link.springer.com/article/10.1007/s11336-008-9092-x
 
-### 21.3 Educational learner models also benefit from item-specific effects
+### Educational learner models also benefit from item-specific effects
 
 Educational-data-mining work provides more direct precedent for combining shared
 skill information with item-specific effects.
@@ -1493,7 +1151,7 @@ A factorization-machine architecture is more general than KeyRecall requires for
 V1. It is better treated as a possible later population-trained model if
 sufficient telemetry becomes available.
 
-### 21.4 MaterialExecutionState should be dynamic, not a static random intercept
+### MaterialExecutionState should be dynamic, not a static random intercept
 
 A conventional learner-by-item random effect is typically treated as persistent
 within the fitted model. KeyRecall's procedural-retention research indicates
@@ -1525,28 +1183,7 @@ https://arxiv.org/abs/1304.4441
 The exact KeyRecall transition/decay process remains a design and empirical
 question.
 
-### 21.5 Refined definition of MaterialExecutionState
-
-The strongest current V1 definition is:
-
-> **`MaterialExecutionState` is a dynamic, partially pooled learner x
-> technical-material x execution-context residual representing persistent
-> material-specific procedural readiness not already explained by transferable
-> competencies, material retrievability, or current task difficulty.**
-
-Each qualifier is intentional:
-
-- **dynamic:** practice and nonuse can change the state;
-- **partially pooled:** sparse evidence remains close to the shared prediction;
-- **learner x material x execution context:** the state captures idiosyncratic
-  execution rather than general material difficulty;
-- **residual:** it avoids duplicating the transferable competency graph;
-- **procedural readiness:** it concerns execution rather than independent
-  retrieval of the material; and
-- **conditional on task difficulty:** tempo, octave count, direction, guidance,
-  and similar task features should not fragment the state into separate items.
-
-### 21.6 Execution context belongs in the residual key, but task difficulty does not
+### Execution context belongs in the residual key, but task difficulty does not
 
 The current scale domain provides evidence for meaningful hand-specific
 execution and only partial intermanual transfer. It is therefore reasonable for
@@ -1575,7 +1212,7 @@ keyboard geometry
 Those are task predictors. The residual asks whether a learner/material/context
 combination is persistently unusual **after accounting for those predictors**.
 
-### 21.7 Preserve rich outcomes without prematurely multiplying latent state
+### Preserve rich outcomes without prematurely multiplying latent state
 
 Detailed MIDI-derived outcomes should remain available:
 
@@ -1602,7 +1239,7 @@ established path for expanding the state.
 
 https://pmc.ncbi.nlm.nih.gov/articles/PMC5978597/
 
-### 21.8 MaterialMemoryState remains distinct
+### MaterialMemoryState remains distinct
 
 The residual model does not replace `MaterialMemoryState`.
 
@@ -1635,7 +1272,7 @@ LearnerState
     learner x material x execution-context residual
 ```
 
-### 21.9 Cold start and extensibility
+### Cold start and extensibility
 
 For a new material/context combination, the residual should begin near the
 shared expectation with high uncertainty:
@@ -1662,36 +1299,7 @@ arpeggio performance
 Future exercise patterns can likewise add pattern-related predictors or
 competencies without redefining `MaterialExecutionState`.
 
-### 21.10 V1 design conclusion
-
-The earlier candidate:
-
-```text
-MaterialExecutionState
-+-- integrity mastery
-+-- fluency/capacity mastery
-`-- stability mastery
-```
-
-should **not** be the default V1 design.
-
-Instead, adopt conceptually:
-
-```text
-MaterialExecutionState
-    dynamic partially pooled
-    learner x material x execution-context residual
-```
-
-while preserving integrity, timing, tempo, continuity, crossing-local behavior,
-and related measurements as rich observations and predicted outcomes.
-
-This conclusion has established statistical precedent, but the exact dynamic
-update rule, shrinkage strength, transfer structure among RH/LH/HT, and decay
-function remain KeyRecall modeling questions to be specified and eventually
-estimated from data.
-
-## 22. Scheduler objective
+## Scheduler objective
 
 A useful conceptual utility is:
 
@@ -1724,7 +1332,7 @@ The scheduler should not require a declared session duration. It should
 continually select a useful next exercise, observe performance, update state,
 and repeat until the user stops.
 
-## 23. Initial level setting
+## Initial level setting
 
 A research-consistent hybrid approach is:
 
@@ -1740,7 +1348,7 @@ A research-consistent hybrid approach is:
 This borrows CAT's information-seeking principle without turning KeyRecall into
 a standardized test.
 
-## 24. Irregular practice
+## Irregular practice
 
 No special "missed practice" state is required. Elapsed time simply advances.
 
@@ -1758,7 +1366,7 @@ A player returning after two days and one returning after two months can be
 handled by the same model with different elapsed-time inputs. Early exercises
 after a long absence may also have high diagnostic value.
 
-## 25. Telemetry and scientific improvement
+## Telemetry and scientific improvement
 
 The V1 learner model should work **without population telemetry**.
 
@@ -1780,7 +1388,7 @@ How much interleaving is useful at different ability levels?
 Population data should calibrate and refine the model rather than be a
 prerequisite for building it.
 
-## 26. Research-supported vs. KeyRecall-specific decisions
+## Research-supported vs. KeyRecall-specific decisions
 
 ### Strongly research-supported principles
 
@@ -1819,126 +1427,7 @@ prerequisite for building it.
 The second list is a set of design hypotheses subject to simulation and later
 empirical revision.
 
-## 27. Recommended modeling sequence
-
-### Stage 1: Formalize state and evidence
-
-Define latent competencies, exact item state, task features, technical-event
-opportunities, and MIDI observations without yet choosing complicated update
-equations.
-
-### Stage 2: Build an interpretable predictive baseline
-
-Prototype a logistic/DAS3H-inspired performance model. First answer:
-
-```text
-Given current learner state and this exercise,
-what performance should we expect?
-```
-
-### Stage 3: Add item-memory dynamics
-
-Introduce a simple interpretable time-dependent exact-item memory model inspired
-by HLR/ACT-R work.
-
-### Stage 4: Simulate learners and scheduling
-
-Test synthetic profiles:
-
-```text
-beginner
-intermediate
-advanced
-asymmetric hands
-weak topology / strong technique
-strong topology / weak technique
-long practice gap
-irregular short sessions
-```
-
-### Stage 5: Add diagnostic information value
-
-Use adaptive-testing principles to improve onboarding and uncertainty-driven
-practice.
-
-### Stage 6: Add challenge optimization
-
-Model performance as tempo/octave/hand difficulty changes.
-
-### Stage 7: Add interleaving constraints
-
-Introduce diversity conservatively and test its interaction with difficulty.
-
-### Stage 8: Calibrate from optional telemetry
-
-Only after real data exists consider splitting competencies, estimating
-population priors, learning transfer coefficients, learning scheduler weights,
-or adding contextual-bandit methods.
-
-## 28. Immediate design questions
-
-### Latent competency vocabulary
-
-Current provisional candidates:
-
-```text
-scale topology / scale-form knowledge
-diatonic scale motor
-RH scale execution
-LH scale execution
-crossing facility
-multi-octave continuation
-direction reversal
-hands-together coordination
-rhythmic evenness
-```
-
-These should be challenged against identifiability and available evidence.
-
-### Observation model
-
-Define how MIDI becomes evidence for:
-
-```text
-pitch accuracy
-fingering adherence
-timing/evenness
-hesitation
-continuity
-crossing execution
-turnaround execution
-synchronization
-```
-
-### Material and execution state
-
-The provisional domain decision is that musical material and execution context
-should not be flattened into one item identifier.
-
-The remaining research question is how `MaterialMemory` and
-`MaterialExecutionState` should evolve over time, particularly whether
-material-specific execution has an independent procedural forgetting process or
-is better represented as contextual evidence feeding the performance model.
-
-### Transfer structure
-
-How should evidence transfer between hands, directions, scale forms, tonics,
-octave counts, and hands-separate/hands-together conditions?
-
-### Difficulty model
-
-At minimum:
-
-```text
-tempo
-octaves
-hands
-direction
-```
-
-Phase and keyboard geometry are plausible additional contextual predictors.
-
-## 29. Working research position
+## Working research position
 
 > KeyRecall should use an interpretable, multidimensional learner model that
 > combines shared transferable competencies with time-sensitive exact-item
@@ -1959,29 +1448,3 @@ research constrain motor difficulty and practice ordering.
 These traditions do not prescribe one final KeyRecall equation. They provide a
 defensible foundation from which the learner model and scheduler can be
 designed, simulated, and refined.
-
-## 30. Core reading list
-
-- Pavlik, Cen, & Koedinger (2009), _Performance Factors Analysis: A New
-  Alternative to Knowledge Tracing_.
-  https://doi.org/10.3233/978-1-60750-028-5-531
-- Choffin et al. (2019), _DAS3H_. https://arxiv.org/abs/1905.06873
-- Settles & Meeder (2016), _A Trainable Spaced Repetition Model for Language
-  Learning_. https://doi.org/10.18653/v1/P16-1174
-- Pavlik & Anderson (2008), _Using a Model to Compute the Optimal Schedule of
-  Practice_. https://doi.org/10.1037/1076-898X.14.2.101
-- Cepeda et al. (2006), _Distributed Practice in Verbal Recall Tasks_.
-  https://doi.org/10.1037/0033-2909.132.3.354
-- Mettler, Massey, & Kellman (2013), _Adaptive Response-Time-Based Category
-  Sequencing in Perceptual Learning_.
-  https://pmc.ncbi.nlm.nih.gov/articles/PMC6124487/
-- Guadagnoli & Lee (2004), _Challenge Point_.
-  https://doi.org/10.3200/JMBR.36.2.212-224
-- Carter & Grahn (2016), _Optimizing Music Learning_.
-  https://doi.org/10.3389/fpsyg.2016.01251
-- Czyż, Wójcik, & Solarská (2024), contextual-interference systematic
-  review/meta-analysis. https://doi.org/10.3389/fpsyg.2024.1377122
-- Reckase (2009), _Multidimensional Item Response Theory_.
-  https://doi.org/10.1007/978-0-387-89976-3
-- van Groen, Eggen, & Veldkamp (2016), multidimensional computerized adaptive
-  testing. https://doi.org/10.1177/0146621616648931

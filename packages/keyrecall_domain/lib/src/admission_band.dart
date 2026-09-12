@@ -5,7 +5,7 @@ import 'technical_material.dart';
 ///
 /// A prior taken from graded syllabi and method books, saying "a sensible place
 /// to start" rather than anything about latent difficulty. See
-/// `docs/domain-model/material-admission.md`.
+/// `docs/decisions/curriculum-and-progression.md`.
 ///
 /// Material only. Hands, octaves, direction, and tempo are execution
 /// conditions, which this keeps separate from key choice.
@@ -96,7 +96,7 @@ AdmissionBand admissionBandOf(TechnicalMaterial material) => switch (material) {
 /// ```
 ///
 /// A prior about where to start, like the scale bands beside it. See
-/// `docs/domain-model/arpeggio-domain-research.md`.
+/// `docs/research/foundations/arpeggios.md`.
 AdmissionBand _arpeggioBandOf(ArpeggioMaterial material) {
   final topology = material.topology;
   final origin =

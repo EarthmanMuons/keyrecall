@@ -728,7 +728,37 @@ are heuristic starting points drawn from the literature and from synthetic
 characterization. Recalibrating any of them is expected and does not reopen a
 design question.
 
-### 6.1 What is frozen and what remains provisional
+### 6.1 Every parameter carries a provenance class
+
+A value's class says what kind of claim it is, and **no parameter may silently
+move between them**:
+
+```text
+research-structured   the literature supports the model family or the
+                      qualitative relationship, but not this number
+                      e.g. logistic response modeling, partially pooled item
+                      effects, time-dependent retrievability
+
+literature-inspired   the form is borrowed or adapted from prior research, and
+                      its use here still needs validation
+                      e.g. the half-life forgetting curve, multi-skill logistic
+                      structure
+
+heuristic             chosen for engineering reasons before enough data exists
+                      e.g. initial half-life, evidence coefficients, learning
+                      rates, prior variances, difficulty coefficients, the
+                      guidance mapping, the challenge band, scheduler constants
+
+empirically fitted    estimated from KeyRecall longitudinal data
+                      nothing is in this class yet
+```
+
+The distinction that matters most: a research-structured parameter has evidence
+for its _shape_ and none for its _value_. Citing the literature for such a
+number would overclaim, and several of these carry a citation for exactly the
+former.
+
+### 6.2 What is frozen and what remains provisional
 
 | Frozen for initial production           | Still provisional           |
 | --------------------------------------- | --------------------------- |

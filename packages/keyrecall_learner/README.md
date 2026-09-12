@@ -117,8 +117,8 @@ replayed state hash is exact.
 
 ## Documentation
 
-[`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md)
-is the integrated specification;
-[`docs/learner-model/03-v1-math.md`](../../docs/learner-model/03-v1-math.md) has
-the detailed derivations, and [`docs/GLOSSARY.md`](../../docs/GLOSSARY.md)
-defines every term and symbol.
+[`docs/system/README.md`](../../docs/system/README.md) is the integrated
+specification;
+[`docs/system/learner-model.md`](../../docs/system/learner-model.md) has the
+detailed derivations, and [`docs/GLOSSARY.md`](../../docs/GLOSSARY.md) defines
+every term and symbol.

@@ -236,9 +236,9 @@ Exact learner replay is not exact scheduler replay. Regenerating the historical
 selection needs the candidate set the slot considered and a decision trace hash
 over it, and the journal records neither, so the selection process cannot be
 reconstructed from here. That part of the production contract in
-[`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)
-is unfinished, and nothing should read `isFaithful` as a stronger invariant than
-the journal can support.
+[`docs/system/history.md`](../../docs/system/history.md) is unfinished, and
+nothing should read `isFaithful` as a stronger invariant than the journal can
+support.
 
 An attempt that measured nothing is checked too. It moves no state, not even
 time, but it still says which state its decision was made from and which state
@@ -333,7 +333,6 @@ that the old estimator measured both meanings.
 
 ## Documentation
 
-[`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)
-sections 5 through 8 are the contract this implements: the attempt transaction,
-the journal record, material-memory serialization, and the replay modes and
-acceptance tests.
+[`docs/system/history.md`](../../docs/system/history.md) sections 5 through 8
+are the contract this implements: the attempt transaction, the journal record,
+material-memory serialization, and the replay modes and acceptance tests.

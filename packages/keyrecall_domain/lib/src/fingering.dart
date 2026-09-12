@@ -447,7 +447,7 @@ const Map<String, Map<Hand, _FingeringShape>> _selectedArpeggioFingeringShapes =
 const _scaleFingeringProvenance = FingeringProvenance._(
   source: 'KeyRecall Scale Fingering Taxonomy and Research',
   sourceEdition: '2026-08-18',
-  sourceLocation: 'docs/domain-model/fingering-taxonomy.md §13',
+  sourceLocation: 'docs/research/foundations/fingering.md §13',
   status: CanonicalFingeringStatus.canonicalSelected,
 );
 
@@ -461,7 +461,7 @@ const _establishedArpeggioFingeringProvenance = FingeringProvenance._(
 const _selectedArpeggioFingeringProvenance = FingeringProvenance._(
   source: 'KeyRecall Root-Position Arpeggio Fingering Research',
   sourceEdition: '2026-09-04',
-  sourceLocation: 'docs/domain-model/arpeggio-domain-research.md §6',
+  sourceLocation: 'docs/research/foundations/arpeggios.md §6',
   status: CanonicalFingeringStatus.canonicalSelected,
 );
 

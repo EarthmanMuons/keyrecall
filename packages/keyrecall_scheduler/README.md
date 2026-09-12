@@ -103,10 +103,10 @@ unpaced.
 
 ## Documentation
 
-[`docs/learner-model/04-v1-scheduler.md`](../../docs/learner-model/04-v1-scheduler.md)
+[`docs/research/experiments/scheduler.md`](../../docs/research/experiments/scheduler.md)
 is the boundary contract and the experiment record behind each mechanism;
-[`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md)
-puts the scheduler in context with the learner model.
+[`docs/system/README.md`](../../docs/system/README.md) puts the scheduler in
+context with the learner model.
 
 ## Composition contracts
 

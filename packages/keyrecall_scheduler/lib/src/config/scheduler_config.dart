@@ -269,7 +269,7 @@ class ProbeConfig {
 /// Realization-family allocation limits.
 ///
 /// Provisional. The mechanism and its invariants are what the paired
-/// experiments in `docs/design/realization-family-pacing.md` establish; these
+/// experiments in `docs/decisions/pacing-and-tempo.md` establish; these
 /// numbers were chosen to make a measured allocation failure visible and carry
 /// no device or telemetry evidence. Changing them changes how much pacing
 /// happens, not what pacing means.
@@ -427,7 +427,7 @@ class IntroductionConfig {
 ///
 /// A calibrated constant rather than loaded configuration, so its sections
 /// hold their invariants by assertion; see
-/// `docs/domain-model/validation-boundaries.md`.
+/// `docs/system/validation-boundaries.md`.
 @immutable
 /// How much support a candidate's novel execution conditions ask for.
 ///

@@ -1,7 +1,7 @@
 model_version = "v1-prototype-2"
 
-# Every value below is a heuristic V1 choice (docs/learner-model/03-v1-math.md
-# §25), not a research-established coefficient. Kept out of state.py/model.py
+# Every value below is a heuristic V1 choice (docs/system/learner-model.md
+# §6.1), not a research-established coefficient. Kept out of state.py/model.py
 # so it can be swapped without touching logic.
 
 [competency]

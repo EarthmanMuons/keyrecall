@@ -200,5 +200,5 @@ keeps those guarantees.
 
 ## Documentation
 
-[`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)
-section 5 is the canonical attempt transaction this implements.
+[`docs/system/history.md`](../../docs/system/history.md) section 5 is the
+canonical attempt transaction this implements.

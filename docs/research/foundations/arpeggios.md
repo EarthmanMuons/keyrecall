@@ -1,8 +1,14 @@
 # Arpeggio domain research
 
-- **Status:** Working research specification; not a learner-facing catalog
-- **Date:** September 3, 2026
-- **Scope:** Piano tonic-triad arpeggios and the boundary around later families
+> **Status:** research record. The 24-material root-position corpus it specifies
+> is live as `allRootPositionArpeggios`; the promotion gates below are what a
+> wider arpeggio catalog would have to clear.
+>
+> **Research cutoff:** September 2026.
+>
+> Not to be confused with `proofArpeggios`, the three-material architecture
+> fixture; see
+> [`../../decisions/curriculum-and-progression.md`](../../decisions/curriculum-and-progression.md).
 
 ## 1. Outcome
 
@@ -155,9 +161,8 @@ it.
 The existing prediction-only scale-execution transfer is therefore a model
 hypothesis, not a literature-derived constant. Its sign is defensible; its
 magnitude is not. Promotion requires the characterization and observational
-workflow in
-[`competency-extension-guide.md`](../learner-model/competency-extension-guide.md),
-not another curriculum citation.
+workflow in [`extending-the-model.md`](../extending-the-model.md), not another
+curriculum citation.
 
 ## 4. Canonical material identity
 
@@ -449,7 +454,7 @@ Changing the coefficient to make a device session feel better would turn a
 diagnostic into calibration under gates that remain open.
 
 The first policy-sensitivity census is recorded in
-[`arpeggio-policy-characterization.md`](arpeggio-policy-characterization.md). It
+[`arpeggio-policy-characterization.md`](../experiments/arpeggio-policy.md). It
 keeps every production value unchanged and identifies initial tempo as the
 fixture's highest-sensitivity assumption because changing generated tempo alone
 does not change the scheduler's generic entry-tempo contract.

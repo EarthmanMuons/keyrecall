@@ -240,7 +240,7 @@ class PerformanceMeasurement {
   /// Phase-free by construction: it compares the requested beat to the median
   /// gap between the learner's own notes, so starting late costs nothing and
   /// only the speed shows up. Recorded, not consumed. See
-  /// `docs/design/future-planning.md`.
+  /// `docs/roadmap.md`.
   double achievedTempoRatioFor(ExecutionConditions conditions) {
     final median = medianIntervalMs;
     if (median == null || median <= 0) return 0;

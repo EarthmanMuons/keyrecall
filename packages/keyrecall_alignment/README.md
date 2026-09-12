@@ -60,6 +60,5 @@ so a single played tonic would otherwise explain as the final one. Evidence
 derived from an aligner that could return either of two equal-cost readings
 would not be reproducible either, and replay is a production gate here.
 
-See
-[`docs/domain-model/alignment-contract.md`](../../docs/domain-model/alignment-contract.md)
-for what is settled, what is open, and why.
+See [`docs/system/observation.md`](../../docs/system/observation.md) for what is
+settled, what is open, and why.

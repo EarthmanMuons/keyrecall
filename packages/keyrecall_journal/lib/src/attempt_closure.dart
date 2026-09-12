@@ -5,7 +5,7 @@ import 'package:meta/meta.dart';
 ///
 /// Lifecycle data, not evidence. Which of these happened says nothing about how
 /// the performance went, and reading a failure out of one would be inventing
-/// evidence nobody observed. See `docs/domain-model/attempt-termination.md`.
+/// evidence nobody observed. See `docs/system/practice.md`.
 enum AttemptTermination {
   /// The learner ended it.
   ///

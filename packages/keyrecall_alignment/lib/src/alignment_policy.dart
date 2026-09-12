@@ -42,7 +42,7 @@ class AlignmentPolicy {
   ///
   /// A boundary may tip a reading that correspondence is indifferent to, but
   /// never outbid a correspondence decision, so both readings of every boundary
-  /// stay affordable. See `docs/domain-model/alignment-contract.md`.
+  /// stay affordable. See `docs/system/observation.md`.
   final int maxGroupingPreference;
 
   const AlignmentPolicy({

@@ -1,7 +1,7 @@
 # Onset grouping calibration
 
 - **Status:** Evidence for a decision recorded in
-  [`docs/domain-model/alignment-contract.md`](../../docs/domain-model/alignment-contract.md)
+  [`docs/system/observation.md`](../../docs/system/observation.md)
 - **Recorded:** August 25, 2026, one player, one Bluetooth MIDI instrument
 
 ## The question

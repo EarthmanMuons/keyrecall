@@ -7,7 +7,7 @@ import 'package:meta/meta.dart';
 /// are facts about the arrival stream and the requested tempo, and none of
 /// them reads a note. What they support is an offer rather than a seizure, so
 /// a window passing changes what the screen says and never what the instrument
-/// accepts. See `docs/domain-model/attempt-termination.md`.
+/// accepts. See `docs/system/practice.md`.
 ///
 /// The windows scale with the tempo the exercise asked for, because a bar is
 /// what a learner feels rather than a number of seconds, with floors so that a

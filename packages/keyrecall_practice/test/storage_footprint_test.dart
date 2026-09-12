@@ -14,7 +14,7 @@ import 'support/fixtures.dart';
 /// The journal is retained in full and forever, so the size of an attempt
 /// decides whether that is a promise the app can keep. At these sizes nothing
 /// needs compaction, downsampling, or a second summarized store. See
-/// `docs/design/data-products.md`.
+/// `docs/system/history.md`.
 ///
 /// The bound is loose: a tripwire for a record that quietly grew by an order of
 /// magnitude rather than a budget to optimize against.

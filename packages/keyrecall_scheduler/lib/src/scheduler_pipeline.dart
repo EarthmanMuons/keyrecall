@@ -776,7 +776,7 @@ class SchedulerPipeline {
   ///
   /// A curriculum phase transition rather than a threshold, so it asks for
   /// three observable markers of the phase, none of which harmonic minor needs
-  /// mechanically. `docs/domain-model/material-admission.md` carries the
+  /// mechanically. `docs/decisions/curriculum-and-progression.md` carries the
   /// curriculum rationale for each.
   ///
   /// - both hands observed separately;
@@ -1064,7 +1064,7 @@ class SchedulerPipeline {
   ///
   /// The only shape a learner with nothing in a family demonstrates anything
   /// from, so widening it would relax the floor for work that teaches them
-  /// nothing. See `docs/design/trajectory-simulation.md`.
+  /// nothing. See `docs/research/experiments/trajectories.md`.
   bool isBootstrapShape(Exercise exercise) =>
       exercise.conditions.hands != HandConfiguration.together &&
       exercise.conditions.octaves == 1 &&

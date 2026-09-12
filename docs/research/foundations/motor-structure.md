@@ -1,13 +1,15 @@
-# Scale Motor Taxonomy
+# Scale motor structure
 
-**Status:** Mechanically verified V1 analysis\
-**Date:** August 18, 2026\
-**Scope:** Derived motor structure for canonical V1 piano scale fingerings\
-**Input:** `fingering-taxonomy.md`\
-**Machine-readable mapping:**
-`../../analysis/scale-motor/motor-realizations.yaml`
-
----
+> **Status:** research record. Mechanically verified against the canonical
+> fingering corpus.
+>
+> **Research cutoff:** August 2026.
+>
+> **Analysis vocabulary, not implemented state.** Nothing in the packages
+> implements a motor family, and whether one earns a competency is still open;
+> see [`../experiments/arpeggio-policy.md`](../experiments/arpeggio-policy.md)
+> for the residual census that exists to answer it. The machine-readable mapping
+> is `analysis/scale-motor/motor-realizations.yaml`.
 
 ## 1. Purpose
 

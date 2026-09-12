@@ -1,26 +1,18 @@
-# Future Planning
+# Roadmap
 
-- **Status:** Deliberately deferred design space
-- **Last aligned:** September 3, 2026
-- **Scope:** Post-V1 architectural seams, empirical hypotheses, domain growth,
-  and product ideas worth preserving
+Ideas KeyRecall has intentionally deferred, and ideas it has closed.
 
-## 1. Purpose and reopening discipline
+**Not a roadmap commitment, release sequence, or alternative specification.**
+What the system does is [`system/`](system/); why it does it is
+[`decisions/`](decisions/). This is what it deliberately does not do.
 
-This document records ideas KeyRecall has intentionally deferred. It is not a
-roadmap commitment, release sequence, or alternative production specification.
-The canonical initial-production system remains
-[`../learner-model/v1-current-system.md`](../learner-model/v1-current-system.md).
-
-V1 is deliberately simpler than the full design space. That simplicity should
-not erase promising architectural seams, but neither should an old idea regain
-authority merely because it appears in a planning document.
-
-Every item here belongs to one of three categories:
+The simplicity of the current design should not erase promising architectural
+seams, and an old idea should not regain authority merely because it appears in
+a planning document. So every item here is one of three things:
 
 ```text
 reserved extension
-    the current architecture has an intentional place for it
+    the architecture has an intentional place for it
     evidence must still justify activating that seam
 
 deferred hypothesis
@@ -30,20 +22,18 @@ domain or product expansion
     valuable scope beyond the initial scale-focused implementation
 ```
 
-Structural changes remain subject to the reopening gates in
-[`../learner-model/05-production-implementation-plan.md`](../learner-model/05-production-implementation-plan.md).
-New competencies and prediction channels must additionally follow
-[`../learner-model/competency-extension-guide.md`](../learner-model/competency-extension-guide.md).
-
-The general admission rule is:
+The general admission rule:
 
 > Preserve the architectural seam now. Add latent state or policy only when
-> replayable real observations show that the simpler V1 representation has a
-> repeatable, identifiable failure.
+> replayable real observations show that the simpler current representation has
+> a repeatable, identifiable failure.
 
-## 2. Reserved architectural extensions
+A new competency or prediction channel must additionally follow
+[`research/extending-the-model.md`](research/extending-the-model.md).
 
-### 2.1 Transient session state
+## Reserved architectural extensions
+
+### Transient session state
 
 V1 does not model warm-up or fatigue. Its current `SessionState` contains only
 the attempt count, recent-material history, and exact recovery context. This is
@@ -342,7 +332,7 @@ This is a post-V1 structural extension. It adds a fourth learner-state layer and
 changes prediction/evidence attribution, so it must clear a higher bar than a
 routine competency addition.
 
-### 2.2 New prediction and outcome channels
+### New prediction and outcome channels
 
 V1 separates retrieval, supported availability, conditional execution, bilateral
 coordination, and topology. Rich observations such as expressive timing or
@@ -363,7 +353,7 @@ with its own:
 This is a structural change, not a competency-enum addition. The distinction and
 admission workflow are defined in the competency extension guide.
 
-### 2.3 Execution evidence at the achieved motor difficulty
+### Execution evidence at the achieved motor difficulty
 
 This extension is implemented. A learner who plays a requested 120 BPM exercise
 perfectly evenly at 60 BPM still scores the performance that occurred for
@@ -406,7 +396,7 @@ says nothing was measured, so filing it as a pace would put the learner at the
 bottom of the ladder. `LearnerModel.v1Prototype` retains the earlier attribution
 semantics for historical replay; production models use demonstrated difficulty.
 
-### 2.4 Population and hierarchical calibration
+### Population and hierarchical calibration
 
 The app should continue learning each individual locally. Optional, minimized,
 longitudinal telemetry may later improve the shared model through:
@@ -431,9 +421,9 @@ the project learns how pianists learn
 
 Population fitting must not become a prerequisite for local operation.
 
-## 3. Learner-model extensions
+## Learner-model extensions
 
-### 3.1 Performance envelopes
+### Performance envelopes
 
 V1 maintains interpretable latent state and rich outcomes but does not model a
 complete performance envelope. Future learner-facing or predictive summaries may
@@ -456,7 +446,7 @@ identifiable variation. Derived envelopes must remain conditional on task
 definition, including relevant material, hands, octave span, direction, and
 guidance.
 
-### 3.2 Competency growth
+### Competency growth
 
 The V1 state/update machinery is designed to admit future competencies without
 rewriting memory or scheduler stages. Residual covariance may reveal missing
@@ -466,7 +456,7 @@ All proposals follow the competency extension guide: identifiability,
 nonredundancy, transfer, observational replay, held-out calibration, unchanged-
 policy scheduler characterization, and deterministic state migration.
 
-### 3.3 Richer performance-control dimensions
+### Richer performance-control dimensions
 
 Possible future dimensions include:
 
@@ -484,12 +474,12 @@ or prediction channels only when data establish persistent, useful, and
 identifiable learner differences after conditioning on current motor state,
 material residuals, difficulty, and session effects.
 
-## 4. Scheduler and product extensions
+## Scheduler and product extensions
 
-### 4.1 Explicit user goals and focus
+### Explicit user goals and focus
 
 The proposed contract now lives in
-[`curriculum-and-focus.md`](curriculum-and-focus.md). It separates the installed
+[`curriculum-and-focus.md`](system/curriculum.md). It separates the installed
 domain catalog, provenance-backed curricula, durable learner goals, and
 temporary focus. Scope controls candidate admission while `Goal(e)` expresses
 soft emphasis among admitted candidates.
@@ -509,7 +499,7 @@ hard "only these" focus instead narrows the candidate scope. Neither mechanism
 may redefine learner competence, evidence, prerequisites, or challenge
 prediction, and changing either must preserve all learned state.
 
-### 4.2 Acquisition, development, and maintenance as practice regimes
+### Acquisition, development, and maintenance as practice regimes
 
 V1 does not store acquisition/development/maintenance as discrete learner
 states. The continuous probabilistic model already represents capability and
@@ -532,7 +522,7 @@ maintenance-like
 These should remain derived policy regimes, not authoritative latent labels.
 Their value must be tested against the existing prediction and evidence model.
 
-### 4.3 Immediate repetition as an episode, not as several attempts
+### Immediate repetition as an episode, not as several attempts
 
 Repeating an exercise until it is right is pedagogically reasonable during
 acquisition, and implementing it as "keep committing attempts until three
@@ -557,7 +547,7 @@ attempt at a time, and a deliberate "repeat this exercise" affordance is the
 cheaper way to learn whether learners want immediate repetition at all, before
 repetition is encoded into scheduler policy.
 
-### 4.4 Free practice, separate from scheduled practice
+### Free practice, separate from scheduled practice
 
 Playing before an attempt begins is warm-up: the keyboard shows it and nothing
 records it. The transcript starts at Ready, which is what keeps exploratory
@@ -576,7 +566,7 @@ Measurement in free practice could eventually give descriptive feedback, and
 even then it should not update the learner model unless that evidence path is
 deliberately defined.
 
-### 4.5 Adaptive contextual-interference intensity
+### Adaptive contextual-interference intensity
 
 V1 implements a diversity term and repetition guard. A richer hypothesis is that
 useful interleaving depends on current stability:
@@ -596,7 +586,7 @@ Contextual-interference effects are task- and learner-dependent. Any adaptive
 policy must be characterized under unchanged learner semantics and clear
 forward-learning outcomes, not justified by diversity for its own sake.
 
-### 4.6 Fatigue-aware workload and rest policy
+### Fatigue-aware workload and rest policy
 
 A credible transient session estimate could inform challenge and safety. The
 scheduler might avoid sustained highest-demand work, diversify overloaded
@@ -616,7 +606,7 @@ Safety policy must not wait for a latent fatigue inference to become reliable.
 Conservative workload constraints can remain direct, and neither path should
 claim to diagnose injury or medical risk from MIDI behavior.
 
-### 4.7 Preserve the sessionless UX
+### Preserve the sessionless UX
 
 Future scheduler intelligence remains constrained by a core product principle:
 
@@ -626,10 +616,10 @@ There is no “behind” state. Lookahead is soft and revisable. New goals,
 maintenance regimes, fatigue adaptation, or population-trained policies must not
 turn practice into a rigid calendar or punish irregular use.
 
-### 4.8 Material admission by prerequisite, not by tier
+### Material admission by prerequisite, not by tier
 
 The first material-admission policy is implemented, and
-[`material-admission.md`](../domain-model/material-admission.md) records it.
+[`material-admission.md`](decisions/curriculum-and-progression.md) records it.
 What remains reserved is the axis it approximates: the gate reads a
 curriculum-derived band prior because nothing measures whether a hand pattern is
 already established.
@@ -671,7 +661,7 @@ learn, whether the scheduler returns to new material soon enough after first
 exposure, and whether the natural minors do transfer as cheaply as their shared
 fingering suggests.
 
-### 4.8 The cold-start regime: placement priors against the challenge band
+### The cold-start regime: placement priors against the challenge band
 
 Measured, not conjectured. A census of all 6,912 generated candidates at slot
 zero, with every material already seen so the unseen-material rule is not what
@@ -758,7 +748,7 @@ equality semantics of two numbers set independently. It now asks for evidence
 about the work in front of the learner - both hands having managed that scale at
 that span - which is also what supplies the entry tempo.
 
-## 4.9 A sitting with nothing to offer
+### A sitting with nothing to offer
 
 `_NothingToPlay` remains an error state in the app. Scheduler absence is no
 longer ambiguous: `SchedulerPipeline.decide` returns `CandidateSelected` or
@@ -794,7 +784,7 @@ keeps coverage orthogonal to due and actionable work. `PracticeSession` can
 therefore return selected, blocked, caught-up, or invalid-scope outcomes with
 the correct layer ownership and opportunity accounting.
 
-## 4.10 Spend the slot after coordination is earned
+### Spend the slot after coordination is earned
 
 **The prerequisite is settled.** It read the execution frontier, which moves
 only on an attempt completed at or above `demonstratedMotorScore`; a weak hand
@@ -835,83 +825,9 @@ Measured by `keyrecall_simulation/bin/hands_together.dart` and
 **Admission remains a separate question.** The delay above concerned a candidate
 that was already admitted. Whether one should be admitted at all, relative to
 factual retrieval and the band floor, is proposed in
-[`coordination-transition-policy.md`](coordination-transition-policy.md).
+[`coordination-transition-policy.md`](decisions/curriculum-and-progression.md).
 
-## 4.11 Scheduler evaluation cost
-
-Profiling the simulation sweep measured the app as a side effect. One decision
-is about forty milliseconds on a development machine, and ninety-six per cent of
-it is `SchedulerPipeline.evaluate` over roughly eight thousand candidates, of
-which prediction and information are more than half:
-
-```text
-per candidate
-  predict              1.062 us
-  information          1.069 us
-  eligibilityFor       0.212 us
-  structuralQ          0.194 us
-  realizationRankFor   0.168 us
-```
-
-A phone is slower than the machine that produced those numbers, and the learner
-waits for this between exercises.
-
-The obvious saving is that `information` is computed for every candidate and
-consumed only by the ones that reach ranking, which is a small fraction. It was
-deliberately not taken: a lazy term would capture a `LearnerState` that mutates
-after the slot, and `CandidateTrace` deliberately populates stage values for
-candidates an earlier stage excluded, so that "why not that one?" is answerable
-from the trace alone.
-
-So the question is architectural rather than a matter of shaving a hot loop:
-
-> Can expensive state-dependent work be skipped for candidates that cannot reach
-> ranking, without weakening the explainability of rejected ones?
-
-A two-phase trace would answer it - admission-stage facts always present,
-ranking-stage facts explicitly absent with a reason - and that is a change to
-the trace contract, not an optimization. Worth doing on its own, away from
-correctness work.
-
-`keyrecall_simulation/bin/profile_evaluate.dart` reproduces the numbers above.
-Not a timing assertion, which would be flaky; a command to run when evaluation
-feels slow, against the figures recorded here.
-
-**Run it before the candidate space grows again.** Contrary motion alone took
-the set from 6,912 to 9,216. Another dimension of material, hand, motion,
-direction, octave, tempo or guidance multiplies rather than adds, and the
-learner waits for a decision between exercises.
-
-### What the caching pass took, and what it did not
-
-Contrary motion took the candidate set from 6,912 to 9,216, and a decision then
-varied by learner rather than sitting near one number: 47ms for `developing`
-against 90ms for `uneven_hands`, on the same candidates. The difference was
-`eligibilityFor` asking questions of learner state alone once per candidate,
-where the repertoire question walks the whole catalog. Answering those once per
-decision brought `uneven_hands` to about 47ms and left `developing` unchanged,
-which is the shape a fix for a state-dependent pathology should have.
-
-Two caches paid and two did not, and the reason is the same in both directions:
-
-> Redundancy is not sufficient reason for a cache. The key has to be cheaper
-> than the work it avoids.
-
-`information` is computed for four and a half times more candidates than it has
-distinct answers, and caching it alone saved almost nothing, because deriving
-the key rebuilt the competency set. Deriving that set once per exercise instead
-made both the key and the term cheaper, and then the cache paid.
-
-The realization terms look like better candidates still: they ignore guidance,
-so a third of the candidate set shares an answer, and `evaluate` already holds
-the guidance-normalized realization to key them by. Caching them measured
-**slower**, 47.0-47.5ms against 46.4-46.6ms, because hashing an `Exercise` costs
-more than the two terms it avoids. Not taken.
-
-The remaining structural question is the two-phase trace above, which is worth
-more than any further memoization.
-
-## 4.12 The remedial tempo range, and the coefficient that makes it inert
+### The remedial tempo range, and the coefficient that makes it inert
 
 Three separate facts, kept apart because only the third is a decision.
 
@@ -968,7 +884,7 @@ Until the slope is measured, generating sub-sixty candidates would ship a
 difficulty axis the model has almost no reason to prefer. The candidate space
 and the coefficient have to move together.
 
-## 4.13 Transcript capture cost
+### Transcript capture cost
 
 `PerformanceTranscript.appending` copies the whole note list per note, so
 recording n notes copies O(n^2) elements, and each one publishes new Riverpod
@@ -982,7 +898,7 @@ The measurement that would change this is a profile of a real attempt, not the
 shape of the loop. Worth taking if a longer form than a scale is ever recorded
 as one transcript, or if the staff drops frames while somebody plays.
 
-## 4.14 A commit conceived before an erase
+### A commit conceived before an erase
 
 Store operations for one profile run one at a time, so no two interleave. That
 is ordering, not agreement about which history an operation was conceived
@@ -1010,7 +926,7 @@ size of the hole.
 Reproduced by driving `PracticeLoopNotifier.finish` and
 `ProfileRosterNotifier.eraseHistory` concurrently over one store.
 
-## 4.15 A rebuilt window reinterprets history under the current model
+### A rebuilt window reinterprets history under the current model
 
 Reopening a sitting rebuilds the realization-family pacing window from the tail
 of the journal, and each record's `productive` flag is recomputed by asking the
@@ -1031,7 +947,7 @@ whether a derived session window should be reconstructed under the version that
 observed each attempt or under the version reading it now. Worth settling when a
 learner version actually changes that criterion, not before.
 
-## 5. Domain expansion
+## Domain expansion
 
 The long-term technical-practice domain may include:
 
@@ -1056,9 +972,9 @@ Rhythmic and articulation variants and broken-chord patterns are not current
 expansion targets. Arpeggios are the next architectural proof because they are
 unlike scales in ways contrary motion is not. The cross-family contract and its
 acceptance criteria are specified in
-[`curriculum-and-focus.md`](curriculum-and-focus.md).
+[`curriculum-and-focus.md`](system/curriculum.md).
 
-### 5.1 Alternative fingerings
+### Alternative fingerings
 
 V1 teaches one canonical fingering. Future legitimate alternatives should be
 provenance-backed `FingeringPattern` records, not untracked overrides.
@@ -1075,9 +991,9 @@ The design must decide whether memory remains attached to musical material while
 execution residuals or observations distinguish the chosen realization. It must
 never infer the finger actually used from standard MIDI alone.
 
-## 6. Learner-facing product ideas
+## Learner-facing product ideas
 
-### 6.1 Fluency Profile
+### Fluency Profile
 
 Internal model state should not be shown raw. A future Fluency Profile may
 translate it into useful descriptions of:
@@ -1093,7 +1009,7 @@ translate it into useful descriptions of:
 These are derived presentations, not one-to-one latent variables. Labels must
 communicate uncertainty and avoid implying precision the model does not have.
 
-### 6.2 A hand shown rather than named
+### A hand shown rather than named
 
 The task statement says which hand plays in words, and words are easy to read
 past when the previous exercise used the other one. A small pair of hand figures
@@ -1103,7 +1019,7 @@ person moving between the screen and the keyboard has attention for.
 Not urgent, and deliberately not a replacement for the text: it is a second
 channel for the same fact, which is the point.
 
-### 6.3 “Why this exercise?” explanations
+### “Why this exercise?” explanations
 
 Candidate and update traces can support concise explanations such as:
 
@@ -1118,7 +1034,7 @@ Explanations must be generated from facts the scheduler actually consumed. They
 must not retrofit a plausible story after selection or expose raw latent values
 as objective truths.
 
-## 7. Empirical and population learning
+## Empirical and population learning
 
 Future empirical work should prioritize questions that can change a named state,
 prediction, evidence path, or decision:
@@ -1143,7 +1059,140 @@ replay. Policy learning should begin only after the action space, outcomes, and
 counterfactual limitations are understood well enough to avoid optimizing noisy
 short-term completion.
 
-## 8. Explicitly closed ideas
+## Empirical Phase 1 questions
+
+The first empirical work should test qualitative assumptions and data quality,
+not optimize product satisfaction or fit every provisional coefficient.
+
+### Retrieval calibration
+
+Compare predicted retrieval probabilities with factual retrieval frequency.
+Report calibration by:
+
+```text
+probability band
+elapsed interval band
+guidance level
+material maturity
+scheduler intent
+learner and session
+```
+
+Completion must not substitute for factual retrieval. Unobserved retrieval must
+not enter the success or failure denominator.
+
+### Longitudinal posterior behavior
+
+Examine whether consolidation posterior uncertainty contracts when informative
+elapsed evidence arrives, remains broad under massed practice, and can reverse
+after contradiction.
+
+True half-life is not directly observable in real users. Posterior validation
+must therefore use later held-out retrieval outcomes, posterior predictive
+checks, and longitudinal coverage proxies rather than pretending the latent
+truth is known.
+
+### Recovery and probes
+
+Measure:
+
+- completion and episode length after recovery;
+- time to the next factual observation;
+- guidance-probe observability and success;
+- realized state change after probes;
+- marginal information yield by probe ordinal;
+- whether the production recovery and probe assumptions remain qualitatively
+  plausible.
+
+The synthetic hybrid-recovery signal may be tracked as a future hypothesis, but
+must not be activated opportunistically in production telemetry.
+
+### Scheduler distributions
+
+Measure real-session:
+
+- material-selection concentration;
+- revisit-gap distribution and tail;
+- no-admission frequency;
+- ordinary, recovery, guidance-probe, and bootstrap proportions;
+- challenge-band placement and guidance fading.
+
+These are guardrails and descriptive outcomes. They are not targets to optimize
+in isolation.
+
+## Statistical discipline
+
+Early attempts from one learner are highly correlated. They are not independent
+calibration samples.
+
+Initial analysis must:
+
+- report learner count, material count, factual observation count, and interval
+  coverage separately;
+- split evaluation by learner and by time, not randomly by attempt;
+- preserve repeated-measures structure;
+- distinguish exploratory from confirmatory analyses;
+- avoid fitting a flexible model to a tiny beta cohort;
+- retain original versioned traces when testing alternative parameters;
+- evaluate calibration across varied latent timescales rather than one showcase
+  fixture or learner.
+
+Population fitting should begin only after the data span enough learners,
+materials, guidance conditions, and elapsed intervals to identify the parameter
+being changed.
+
+## Gates for reopening the frozen systems
+
+Everything above in this document is deferred by choice. **Inclusion here does
+not lower the following gates.**
+
+### Learner model
+
+Reopen learner-state structure or transition semantics only when real,
+replayable observations show a qualitative representational failure that cannot
+be resolved by calibration.
+
+Examples include:
+
+- systematic prediction error after adequate elapsed material-local evidence;
+- posterior uncertainty that cannot represent observed reversibility;
+- a repeated conflict between retrieval evidence and causal learning
+  attribution;
+- state trajectories that violate the current consolidation envelope's intended
+  meaning.
+
+Numeric miscalibration alone should first trigger parameter estimation, not a
+new state dimension.
+
+Proposals to add a competency or prediction channel must also follow
+[`research/extending-the-model.md`](research/extending-the-model.md):
+demonstrate identifiability, held-out transfer, isolation from existing state,
+and replayed value before reopening the ontology.
+
+### Scheduler policy
+
+Reopen scheduler structure only when real data identify a repeatable decision
+failure with an observable pre-selection discriminator and a measurable cost.
+
+The evidence must show that an alternative improves its intended local outcome
+without unacceptable calibration, recovery, concentration, revisit-gap, or
+no-admission regressions.
+
+User preference or satisfaction may motivate product changes, but it does not by
+itself validate a learner-model or scheduler-mechanism claim.
+
+### Provisional coefficient calibration
+
+Coefficient changes require:
+
+- a named estimand and the events that identify it;
+- a versioned baseline;
+- held-out longitudinal evaluation;
+- uncertainty or sensitivity reporting;
+- replay against existing guardrails;
+- an assumption-registry entry or update.
+
+## Explicitly closed ideas
 
 Closing a mechanism does not necessarily close the underlying problem it
 attempted to solve.
@@ -1170,12 +1219,12 @@ them on a roadmap, implement them behind an unvalidated flag, or treat them as
 aspirational V2 features.
 
 The learner/scheduler experiment record in
-[`../learner-model/04-v1-scheduler.md`](../learner-model/04-v1-scheduler.md) and
+[`../learner-model/04-v1-scheduler.md`](research/experiments/scheduler.md) and
 the frozen-system gates in
-[`../learner-model/05-production-implementation-plan.md`](../learner-model/05-production-implementation-plan.md)
-are authoritative for why and how a closed mechanism could be reconsidered.
+[`../learner-model/05-production-implementation-plan.md`](system/history.md) are
+authoritative for why and how a closed mechanism could be reconsidered.
 
-## 9. Planning summary
+## Planning summary
 
 Among the currently preserved hypotheses, the transient session execution factor
 is a particularly high-value early empirical question because it could prevent

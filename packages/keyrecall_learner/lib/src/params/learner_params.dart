@@ -391,7 +391,7 @@ class PlacementParams {
 ///
 /// A calibrated constant rather than loaded configuration, so its sections
 /// hold their invariants by assertion; see
-/// `docs/domain-model/validation-boundaries.md`.
+/// `docs/system/validation-boundaries.md`.
 @immutable
 class LearnerParams {
   /// Identifier of this parameter set, recorded with every attempt.

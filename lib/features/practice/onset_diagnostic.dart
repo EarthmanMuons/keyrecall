@@ -79,7 +79,7 @@ class OnsetRecorderNotifier extends Notifier<OnsetTake> {
 /// real instrument and read the gaps. Nothing here groups anything or decides
 /// a threshold; it reports what the instrument sent.
 ///
-/// See `docs/domain-model/alignment-contract.md`.
+/// See `docs/system/observation.md`.
 class OnsetDiagnosticScreen extends ConsumerStatefulWidget {
   const OnsetDiagnosticScreen({super.key});
 

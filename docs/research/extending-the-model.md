@@ -1,21 +1,16 @@
-# Extending the Competency Model
+# Extending the model
 
-- **Status:** Future ontology and calibration guide
-- **Scope:** Criteria and workflow for proposing, testing, and promoting new
-  competencies or prediction channels after V1
+> **Status:** a method, not an authorization. Nothing here permits adding any
+> specific competency.
 
-## 1. Purpose
+How a proposed capability earns persistent learner state, and how to tell that
+it has not.
 
-This document preserves the extension path built into KeyRecall's V1 learner
-model. It is not part of the current production ontology and does not authorize
-adding any specific competency. The canonical initial-production behavior
-remains [`v1-current-system.md`](v1-current-system.md).
-
-The main future challenge is unlikely to be plumbing a new competency into the
-model. The generic state and `Q`/`q`/`w` machinery already support that. The
-hard question is whether a proposed capability is empirically distinct,
-transferable, and identifiable enough to deserve persistent state rather than
-remaining domain structure, an observed outcome, or a material residual.
+The generic state and `Q`/`q`/`w` machinery already support plumbing a new
+competency in, so that is not the hard part. The hard question is whether a
+proposed capability is **empirically distinct, transferable, and identifiable**
+enough to deserve persistent state, rather than remaining domain structure, an
+observed outcome, or a material residual.
 
 ## 2. The existing extension seam
 
@@ -79,9 +74,8 @@ influences challenge admission.
 
 That is not “one more competency.” It changes the state/prediction contract and
 is a structural post-V1 decision. It must clear the learner-model reopening gate
-in
-[`05-production-implementation-plan.md`](05-production-implementation-plan.md)
-before implementation.
+in [`05-production-implementation-plan.md`](../system/history.md) before
+implementation.
 
 The rule is:
 

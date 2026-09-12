@@ -9,7 +9,7 @@
 /// way.
 ///
 /// Pitch and grouping only, with no evidence and no knowledge of scheduling or
-/// presentation. See `docs/domain-model/alignment-contract.md`.
+/// presentation. See `docs/system/observation.md`.
 library;
 
 export 'src/align.dart';

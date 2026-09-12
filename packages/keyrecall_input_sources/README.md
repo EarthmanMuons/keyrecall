@@ -35,5 +35,5 @@ timestamped against.
 A shared timeline is not a shared performance. Each source opens with an
 `InputTemporalResetEvent`, and that reset is a hard boundary: what came before
 it cannot be measured against what comes after, however comparable the
-timestamps look. See `docs/domain-model/attempt-termination.md` for what the
-practice loop does with one.
+timestamps look. See `docs/system/practice.md` for what the practice loop does
+with one.

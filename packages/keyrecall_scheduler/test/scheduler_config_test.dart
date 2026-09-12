@@ -65,7 +65,7 @@ void main() {
         isTrue,
         reason:
             'relief toward a generally less prepared strand regressed every '
-            'cohort measured; see docs/design/realization-family-pacing.md',
+            'cohort measured; see docs/decisions/pacing-and-tempo.md',
       );
     });
 

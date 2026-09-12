@@ -43,7 +43,7 @@ import 'practice_plan.dart';
 /// journal's contiguous sequence refuses a stale append, except from a session
 /// that read the journal empty: sequence zero is valid against the journal an
 /// erase leaves, so that attempt survives the erase. See
-/// `docs/design/future-planning.md` section 4.14.
+/// `docs/roadmap.md` section 4.14.
 abstract interface class PracticeStore {
   /// Decision-time diagnostics keyed by attempt id, separate from evidence.
   Future<Map<String, String>> loadSelectionDiagnostics(String profileId);

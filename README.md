@@ -106,10 +106,10 @@ long-term maintainability.
 
 ## Documentation
 
-The [documentation map](docs/README.md) covers the product, the domain model,
-and the research record. For the learner model and scheduler as they currently
-stand, start with
-[The KeyRecall V1 Adaptive System](docs/learner-model/v1-current-system.md).
+[How KeyRecall works](docs/system/README.md) is the architectural tour and the
+place to start. The [documentation map](docs/README.md) explains how the rest is
+organized: what the system does today, why it is shaped that way, and the
+research it is built on.
 
 To build or work on KeyRecall, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

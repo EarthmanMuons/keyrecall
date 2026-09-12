@@ -80,6 +80,6 @@ what an exercise is, and never what an attempt at one was worth.
 
 ## Documentation
 
-The domain reasoning lives in [`docs/domain-model/`](../../docs/domain-model/),
-and the integrated V1 specification is
-[`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md).
+The domain reasoning lives in
+[`docs/system/domain.md`](../../docs/system/domain.md), and the integrated V1
+specification is [`docs/system/README.md`](../../docs/system/README.md).

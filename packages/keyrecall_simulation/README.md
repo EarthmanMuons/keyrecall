@@ -199,15 +199,15 @@ targets rather than the web.
 
 ## Documentation
 
-[`docs/design/realization-family-pacing.md`](../../docs/design/realization-family-pacing.md)
+[`docs/decisions/pacing-and-tempo.md`](../../docs/decisions/pacing-and-tempo.md)
 records the one policy experiment carried to a contract, including what it
 established and what it ruled out.
-[`docs/domain-model/arpeggio-policy-characterization.md`](../../docs/domain-model/arpeggio-policy-characterization.md)
+[`docs/research/experiments/arpeggio-policy.md`](../../docs/research/experiments/arpeggio-policy.md)
 records the diagnostic arpeggio-policy baseline and its counterfactuals.
-[`docs/learner-model/v1-current-system.md`](../../docs/learner-model/v1-current-system.md)
-section 12 summarizes what the synthetic analysis established, and
-[`docs/learner-model/05-production-implementation-plan.md`](../../docs/learner-model/05-production-implementation-plan.md)
-defines the replay guarantees this harness is meant to grow into.
+[`docs/system/README.md`](../../docs/system/README.md) section 12 summarizes
+what the synthetic analysis established, and
+[`docs/system/history.md`](../../docs/system/history.md) defines the replay
+guarantees this harness is meant to grow into.
 
 ## Production and archived experiments
 
