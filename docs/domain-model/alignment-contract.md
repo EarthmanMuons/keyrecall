@@ -144,8 +144,10 @@ about recalling the scale, so collapsing it into a generic wrong note throws
 away a distinction the learner model would want.
 
 **Sameness is exact, but the anchor is not part of the task.** Register is
-relative: a performance is explained against the realization and against the
-realization shifted by whole octaves, whichever costs less. The realization
+relative: a performance is explained against every whole-octave shift of the
+realization that could reach the register it was played in, and the cheapest
+explanation wins. Equal costs are settled by how many expected notes were
+matched, then by how little the shift moved the realization. The realization
 anchors the scale somewhere so a staff can draw it, and that anchor is a drawing
 decision - the same fingering, the same intervals, the same shape, wherever on
 the keyboard it starts. Two device sittings scored a scale played correctly an

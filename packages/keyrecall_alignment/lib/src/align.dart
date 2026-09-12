@@ -69,55 +69,68 @@ class Alignment {
 /// [ObservationBoundary.sameMomentSurcharge] for each boundary inside it, and
 /// splitting anywhere is always affordable.
 ///
-/// Register is relative, so the performance is explained against the
-/// realization and against the realization shifted by whole octaves, whichever
-/// costs less. The shift moves the whole realization, which leaves a single
-/// note in the wrong octave a substitution and keeps the distance between the
-/// hands part of the task.
+/// Register is relative, so the performance is explained against every whole
+/// octave shift of the realization that could reach the register it was played
+/// in, and the cheapest explanation wins. The shift moves the whole
+/// realization, which leaves a single note in the wrong octave a substitution
+/// and keeps the distance between the hands part of the task.
+///
+/// Shifts are compared by cost, then by how many expected notes they matched,
+/// then by how little they moved the realization, so one performance always
+/// aligns the same way. Ordering the candidates that way and keeping the first
+/// strict improvement is what applies the rule.
 Alignment align({
   required ExerciseRealization realization,
   required PerformanceTranscript transcript,
   AlignmentPolicy policy = AlignmentPolicy.standard,
   ObservationGroupingPolicy groupingPolicy = ObservationGroupingPolicy.standard,
 }) {
-  final asWritten = _alignExactly(
-    realization: realization,
-    transcript: transcript,
-    policy: policy,
-    groupingPolicy: groupingPolicy,
-  );
-  final shift = _registerShiftFor(realization, transcript);
-  if (shift == 0) return asWritten;
-
-  final transposed = _alignExactly(
-    realization: realization.shiftedByOctaves(shift),
-    transcript: transcript,
-    policy: policy,
-    groupingPolicy: groupingPolicy,
-  );
-  return transposed.cost < asWritten.cost ? transposed : asWritten;
+  Alignment? best;
+  var bestMatches = 0;
+  for (final shift in _registerShiftsFor(realization, transcript)) {
+    final candidate = _alignExactly(
+      realization: realization.shiftedByOctaves(shift),
+      transcript: transcript,
+      policy: policy,
+      groupingPolicy: groupingPolicy,
+    );
+    final matches = candidate.noteEdits
+        .where((positioned) => positioned.edit is Match)
+        .length;
+    if (best == null ||
+        candidate.cost < best.cost ||
+        (candidate.cost == best.cost && matches > bestMatches)) {
+      best = candidate;
+      bestMatches = matches;
+    }
+  }
+  return best!;
 }
 
-/// The whole-octave shift that best explains where the performance sat, or
-/// zero when the realization's own register explains it.
+/// The whole-octave shifts of the realization worth explaining a performance
+/// against, in preference order.
 ///
-/// The median of what was played against the median of what was asked for,
-/// rounded to octaves. The median rather than the first note, which is the one
-/// a learner is most likely to have fumbled.
-int _registerShiftFor(
+/// Every shift that brings some expected pitch within the register that was
+/// played, since only those can account for what arrived, and zero, which
+/// explains the performance as written. Ordered by how far they move the
+/// realization, nearer first and downward before upward at the same distance,
+/// so the search prefers the least reinterpretation of what the exercise asked
+/// for.
+Iterable<int> _registerShiftsFor(
   ExerciseRealization realization,
   PerformanceTranscript transcript,
 ) {
-  if (transcript.notes.isEmpty) return 0;
-  final expected = [
-    for (final moment in realization.moments)
-      for (final note in moment.notes) note.midiNote,
-  ]..sort();
-  final played = [for (final note in transcript.notes) note.pitch.midiNote]
-    ..sort();
-  final difference =
-      played[played.length ~/ 2] - expected[expected.length ~/ 2];
-  return (difference / 12).round();
+  if (transcript.notes.isEmpty) return const [0];
+  final played = [for (final note in transcript.notes) note.pitch.midiNote];
+  final lowest = played.reduce(math.min);
+  final highest = played.reduce(math.max);
+  final from = ((lowest - realization.highestPitch) / 12).ceil();
+  final to = ((highest - realization.lowestPitch) / 12).floor();
+  return <int>{0, for (var shift = from; shift <= to; shift++) shift}.toList()
+    ..sort((a, b) {
+      final distance = a.abs().compareTo(b.abs());
+      return distance != 0 ? distance : a.compareTo(b);
+    });
 }
 
 Alignment _alignExactly({
@@ -269,8 +282,17 @@ List<MomentOperation> _traceBack(
       j--;
       continue;
     }
+    var taken = false;
     for (var run = 2; run <= longestRun; run++) {
-      if (takeRun(run)) break;
+      if (takeRun(run)) {
+        taken = true;
+        break;
+      }
+    }
+    // The recurrence always supplies one; stopping beats looping forever if
+    // the table and the traversal ever disagree.
+    if (!taken) {
+      throw StateError('no transition explains cost[$i][$j] = ${cost[i][j]}');
     }
   }
 

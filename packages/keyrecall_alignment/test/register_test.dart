@@ -55,6 +55,63 @@ void main() {
       });
     }
 
+    group('extra notes do not decide the register', () {
+      /// The scale an octave up, with [extras] repetitions of its first note
+      /// added [where].
+      List<int> shiftedWith(int extras, String where) {
+        final played = [for (final n in expected) n + 12];
+        final extra = [for (var i = 0; i < extras; i++) played.first];
+        return switch (where) {
+          'before' => [...extra, ...played],
+          'after' => [...played, ...extra],
+          _ => [
+            ...played.take(played.length ~/ 2),
+            ...extra,
+            ...played.skip(played.length ~/ 2),
+          ],
+        };
+      }
+
+      for (final where in ['before', 'within', 'after']) {
+        test('seven of them $where the scale', () {
+          final alignment = alignmentOf(shiftedWith(7, where));
+          final reading = AlignmentReading(alignment);
+
+          expect(reading.matched, expected.length);
+          expect(reading.substituted, 0);
+          expect(reading.inserted, 7);
+        });
+      }
+    });
+
+    test('a scale missing notes still finds its register', () {
+      final played = [
+        for (final (index, note) in expected.indexed)
+          if (index != 2 && index != 5) note - 24,
+      ];
+      final reading = AlignmentReading(alignmentOf(played));
+
+      expect(reading.matched, expected.length - 2);
+      expect(reading.deleted, 2);
+    });
+
+    test('two registers that explain a performance equally keep the written '
+        'one', () {
+      // One note the scale does not contain in either octave: no shift buys a
+      // match, so nothing beats leaving the exercise where it was drawn.
+      final alignment = alignmentOf([expected.first + 13]);
+      final substitutions = [
+        for (final positioned in alignment.noteEdits)
+          if (positioned.edit case Substitution(:final expected)) expected,
+      ];
+
+      expect(substitutions.single.midiNote, expected.first);
+      expect(
+        AlignmentReading(alignment).firstDeparture,
+        const AtExpectedPosition(0),
+      );
+    });
+
     test('one note in the wrong octave is still a register substitution', () {
       // No shift of everything explains this one, which is what separates a
       // learner starting somewhere else from a learner slipping.
