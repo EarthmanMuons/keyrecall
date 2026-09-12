@@ -11,11 +11,12 @@ flowchart TD
     M --> U[Outcome]
 ```
 
-**Used by:** `keyrecall_practice`, `keyrecall_simulation`. **Does not:** decide
-correspondence, or decide what to do about what it measured. An absent channel
-stays absent rather than becoming a zero.
+**Used by:** `keyrecall_practice`, `keyrecall_simulation`.
 
-**System documentation:**
+**Does not:** decide correspondence, or decide what to do about what it
+measured. An absent channel stays absent rather than becoming a zero.
+
+**Related documentation:**
 [`docs/system/observation.md`](../../docs/system/observation.md)
 
 Alignment decides which played note corresponds to which expected one. Once that

@@ -12,10 +12,11 @@ flowchart TD
 ```
 
 **Used by:** `keyrecall_journal`, `keyrecall_practice`, `keyrecall_simulation`.
+
 **Does not:** hold beliefs of its own, or branch on material family. Every
 candidate comes back with a `CandidateTrace` saying what happened to it.
 
-**System documentation:**
+**Related documentation:**
 [`docs/system/scheduler.md`](../../docs/system/scheduler.md)
 
 ## The stages

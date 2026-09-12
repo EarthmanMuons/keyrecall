@@ -9,10 +9,11 @@ flowchart LR
     V["InputTemporalEvent<br/>noteOn | noteOff | pedal | reset"] --> C[Consumers]
 ```
 
-**Used by:** `keyrecall_input_sources`, `keyrecall_midi`, the app. **Does not:**
-know about transports, or about what any note was expected to be.
+**Used by:** `keyrecall_input_sources`, `keyrecall_midi`, the app.
 
-**System documentation:**
+**Does not:** know about transports, or about what any note was expected to be.
+
+**Related documentation:**
 [`docs/system/practice.md`](../../docs/system/practice.md)
 
 Every input source reduces to `InputTemporalEvent`, whatever it is underneath: a

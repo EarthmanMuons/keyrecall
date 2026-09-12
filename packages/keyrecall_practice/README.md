@@ -15,11 +15,12 @@ sequenceDiagram
     Note over PracticeSession: only now does canonical<br/>state advance
 ```
 
-**Used by:** the Flutter app, `keyrecall_simulation`. **Does not:** advance
-canonical learner state before the attempt is durably in history, or advance it
-twice for one attempt.
+**Used by:** the Flutter app, `keyrecall_simulation`.
 
-**System documentation:**
+**Does not:** advance canonical learner state before the attempt is durably in
+history, or advance it twice for one attempt.
+
+**Related documentation:**
 [`docs/system/practice.md`](../../docs/system/practice.md)
 
 ## The transaction

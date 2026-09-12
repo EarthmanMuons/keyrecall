@@ -12,11 +12,13 @@ flowchart LR
     E -->|structuralQ| Q[Competency opportunities]
 ```
 
-**Used by:** every other package. **Does not:** hold beliefs about any learner,
-read state, or make pedagogical judgments. Those are `keyrecall_learner` and
-`keyrecall_scheduler`.
+**Used by:** every other package.
 
-**System documentation:** [`docs/system/domain.md`](../../docs/system/domain.md)
+**Does not:** hold beliefs about any learner, read state, or make pedagogical
+judgments. Those are `keyrecall_learner` and `keyrecall_scheduler`.
+
+**Related documentation:**
+[`docs/system/domain.md`](../../docs/system/domain.md)
 
 ## What is here
 

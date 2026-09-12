@@ -10,10 +10,12 @@ flowchart TD
     N --> P["midiTemporalEventsProvider<br/><i>integrate against this</i>"]
 ```
 
-**Used by:** the app. **Does not:** export the raw note stream. Reading that as
-a performance would mistake a held chord for a scale.
+**Used by:** the app.
 
-**System documentation:**
+**Does not:** export the raw note stream. Reading that as a performance would
+mistake a held chord for a scale.
+
+**Related documentation:**
 [`docs/system/practice.md`](../../docs/system/practice.md)
 
 ## Three layers

@@ -11,10 +11,12 @@ flowchart LR
 ```
 
 **Used by:** `keyrecall_scheduler`, `keyrecall_journal`, `keyrecall_practice`,
-`keyrecall_simulation`. **Does not:** choose anything, read a clock, or do I/O.
-It is deterministic, so a recorded attempt replays to the same result.
+`keyrecall_simulation`.
 
-**System documentation:**
+**Does not:** choose anything, read a clock, or do I/O. It is deterministic, so
+a recorded attempt replays to the same result.
+
+**Related documentation:**
 [`docs/system/learner-model.md`](../../docs/system/learner-model.md)
 
 ## The three layers of belief

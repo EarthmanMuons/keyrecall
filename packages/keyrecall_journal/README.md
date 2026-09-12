@@ -10,11 +10,12 @@ flowchart LR
     C -.->|validated, else discarded| S
 ```
 
-**Used by:** `keyrecall_practice`, `keyrecall_simulation`. **Does not:** store
-learner state, rewrite a record, or own a storage engine. State is whatever
-replaying the journal produces.
+**Used by:** `keyrecall_practice`, `keyrecall_simulation`.
 
-**System documentation:**
+**Does not:** store learner state, rewrite a record, or own a storage engine.
+State is whatever replaying the journal produces.
+
+**Related documentation:**
 [`docs/system/history.md`](../../docs/system/history.md)
 
 ## The profile owns the history

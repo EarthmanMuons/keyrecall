@@ -10,11 +10,13 @@ flowchart LR
     A --> S["Alignment<br/>matched, substituted,<br/>missing, extra"]
 ```
 
-**Used by:** `keyrecall_measurement`, `keyrecall_practice`. **Does not:** score
-the performance, read timing as evidence, or update the learner model. It is the
-only place a correctness judgment is made, and it makes only that one.
+**Used by:** `keyrecall_measurement`, `keyrecall_practice`.
 
-**System documentation:**
+**Does not:** score the performance, read timing as evidence, or update the
+learner model. It is the only place a correctness judgment is made, and it makes
+only that one.
+
+**Related documentation:**
 [`docs/system/observation.md`](../../docs/system/observation.md)
 
 The script is moment-first, and a moment that asks for one note produces one

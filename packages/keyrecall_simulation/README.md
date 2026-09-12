@@ -10,11 +10,12 @@ flowchart LR
     T --> D["Detectors<br/>invariants and observations"]
 ```
 
-**Used by:** nothing; it is the top of the graph. **Does not:** establish that
-any parameter is calibrated for real pianists. It is a mechanism test whose
-value is that it knows the hidden truth.
+**Used by:** nothing; it is the top of the graph.
 
-**System documentation:**
+**Does not:** establish that any parameter is calibrated for real pianists. It
+is a mechanism test whose value is that it knows the hidden truth.
+
+**Related documentation:**
 [`docs/research/experiments/trajectories.md`](../../docs/research/experiments/trajectories.md)
 
 ## What is here

@@ -9,10 +9,11 @@ flowchart TD
     C --> F[anything added later]
 ```
 
-**Used by:** `keyrecall_midi`, the app's synthetic instrument. **Does not:**
-decide which source is active. That is an application decision.
+**Used by:** `keyrecall_midi`, the app's synthetic instrument.
 
-**System documentation:**
+**Does not:** decide which source is active. That is an application decision.
+
+**Related documentation:**
 [`docs/system/practice.md`](../../docs/system/practice.md)
 
 ## Why it is its own package
