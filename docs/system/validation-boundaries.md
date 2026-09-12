@@ -1,8 +1,5 @@
 # Validation boundaries
 
-- **Status:** Implemented.
-- **Written:** September 1, 2026
-
 Constructor arguments fall into two classes, and each is rejected differently.
 The class is decided by where the value comes from, not by how numerical the
 type is.

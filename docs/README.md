@@ -1,187 +1,75 @@
-# KeyRecall Documentation Map
+# KeyRecall Documentation
 
-- **Status:** Current navigation and authority map
-- **Last aligned:** September 3, 2026
+Three kinds of document, kept apart on purpose.
+
+| Folder       | Answers                                         | Goes stale when       |
+| ------------ | ----------------------------------------------- | --------------------- |
+| `system/`    | How KeyRecall works today                       | the code changes      |
+| `decisions/` | Why it works that way, and what we ruled out    | we change our minds   |
+| `research/`  | What evidence we built on, and what we measured | never, it is a record |
 
 ## Start here
 
-Readers should not need to reconstruct the current system from the research
-chronology.
+1. [`system/README.md`](system/README.md) is the architectural tour. It is the
+   one document to read first.
+2. [`GLOSSARY.md`](GLOSSARY.md) when a term is unfamiliar. Every entry opens in
+   plain English.
+3. [`system/`](system/) for the part you are working on.
 
-1. Read
-   [`learner-model/v1-current-system.md`](learner-model/v1-current-system.md)
-   for the complete, present-tense V1 learner model and scheduler.
-2. Use [`GLOSSARY.md`](GLOSSARY.md) when a term or symbol is unfamiliar.
-3. Follow links from the current-system guide only when you need detailed
-   provenance, experiment reports, or implementation contracts.
+Those three are meant to be enough. A newcomer should be able to understand the
+whole architecture without opening `decisions/` or `research/`, which deepen
+that understanding rather than being prerequisites for it.
 
-The older documents are intentionally retained. They explain why the current
-design exists and preserve negative results that should not be rediscovered, but
-they are not the shortest path to understanding V1.
+## The rest
 
-## Document structure
+- [`decisions/`](decisions/) records why the system is shaped the way it is,
+  grouped by subject rather than one file per choice. Each entry is Decision,
+  Why, Evidence, Consequences. Read one when you are about to change the thing
+  it describes.
+- [`research/foundations/`](research/foundations/) is the outside evidence:
+  learning science, motor learning, and piano pedagogy. What does the literature
+  suggest?
+- [`research/experiments/`](research/experiments/) is what we measured about
+  KeyRecall itself, including the negative results. What did we learn?
+- [`REFERENCES.md`](REFERENCES.md) is the research bibliography, one entry per
+  source with a line on what we took from it.
+- [`roadmap.md`](roadmap.md) is what is deliberately deferred, and what is
+  closed.
 
-```text
-docs/
-├── README.md
-├── GLOSSARY.md
-│
-├── design/
-│   ├── product-vision.md
-│   ├── practice-presentation.md     attempt presentation, review, summary, and
-│   │                                progress evidence
-│   ├── curriculum-and-focus.md      proposed catalog, curriculum, goal, focus,
-│   │                                and cross-family boundary
-│   ├── arpeggio-family-proof.md     minimal heterogeneous-family architecture
-│   │                                proof and deliberate domain limits
-│   ├── data-products.md             journal, checkpoint, fluency history, and
-│   │                                feedback exposure and telemetry
-│   ├── future-planning.md           deferred seams, hypotheses, and closed ideas
-│   ├── trajectory-simulation.md     synthetic players, invariants against
-│   │                                observations, and the candidate census
-│   ├── family-dose-control.md       how often a family is offered, given what
-│   │                                its recent attempts produced
-│   ├── player-calibration.md        recovering a synthetic player from the
-│   │                                attempts of one sitting
-│   ├── introduction-breadth.md      how much unresolved new material may be
-│   │                                open at once, and what capping it does
-│   ├── scheduler-decision-cost.md   what one decision costs, and how it grows
-│   │                                with the catalog
-│   └── coordination-transition-policy.md
-│                                    proposed: when hands-together becomes
-│                                    admissible, and the evidence for it
-│
-├── domain-model/
-│   ├── alignment-contract.md        grouping proposes, alignment decides
-│                                    (evidence: analysis/onset-grouping/)
-│   ├── attempt-termination.md       closures exist; non-learner paths do not
-│   ├── below-floor-acquisition.md   supported acquisition of part of an
-│                                    ordinary task, and its evidence boundary
-│   ├── progression-graph.md         what precedes what, and where each
-│                                    edge is enforced
-│   ├── material-admission.md        what may be introduced now, and why
-│   ├── arpeggio-domain-research.md  arpeggio vocabulary, evidence, and
-│   │                                promotion gates
-│   ├── arpeggio-policy-characterization.md
-│   │                                fixture policy census and sensitivities
-│   ├── validation-boundaries.md     which constructors throw, and which
-│                                    assert
-│   ├── fingering-taxonomy.md
-│   ├── motor-taxonomy.md
-│   └── v1-domain-model.md
-│
-└── learner-model/
-    ├── v1-current-system.md          integrated current view; start here
-    ├── competency-extension-guide.md future ontology admission and tuning
-    ├── 01-research.md                literature and evidentiary basis
-    ├── 02-v1-design.md               architectural reasoning
-    ├── 03-v1-math.md                 detailed math and learner experiments
-    ├── 04-v1-scheduler.md            boundary contract and scheduler experiments
-    └── 05-production-implementation-plan.md
-                                      journal, replay, telemetry, and rollout
-```
+## The editorial test
 
-Executable analysis lives outside `docs/`:
+> If changing the implementation could make a statement false, it belongs in
+> `system/`. If it explains why the implementation became that way, it belongs
+> in `decisions/` or `research/`.
+
+`system/` is written so it could be reconstructed from the code and its tests.
+That is what keeps it honest: when the two disagree, the code is right and the
+document is a bug.
+
+Documents carry no `Written` or `Last revised` field. Git has those, and a
+hand-typed date drifts. Three things do get stated:
+
+- `Status:` only when it is not `current`. A `proposed` document describes
+  something not built; a `superseded` one is kept for a finding that outlived
+  it.
+- `Research cutoff:` in `research/foundations/`, where the boundary of a
+  literature review is real information.
+- A commit, script, or experiment name in `research/experiments/`, because that
+  is provenance rather than bookkeeping.
+
+## Where else the answers live
 
 ```text
-analysis/learner-model/    params.toml, the prototype's recorded values
-analysis/scheduler/        config.toml, the prototype's recorded values
-analysis/onset-grouping/   live: instrument takes behind the grouping decision
-analysis/scale-motor/      live: the motor realization corpus
-analysis/timing-calibration/ live: instrument takes behind the timing constants
+packages/                  operational semantics; the code is the authority
+LearnerParams              the live learner constants
+SchedulerConfig            the live scheduler constants
+analysis/onset-grouping/   recorded playing behind the grouping constants
+analysis/timing-calibration/  recorded playing behind the timing constants
+analysis/scale-motor/      the motor realization corpus
+CONTRIBUTING.md            how to build, test, and what will surprise you
 ```
 
-The Python prototype the model was designed in has been retired; see
-`analysis/README.md` for why and for what its removal did and did not change.
-
-**Dart is the only implementation.** The suite is the verification baseline, and
-the pinned digests and reference runs under
-`packages/keyrecall_simulation/test/` are regression pins against this
-implementation rather than evidence about another one.
-
-## Authority
-
-| Need                                                                | Authority                                               |
-| ------------------------------------------------------------------- | ------------------------------------------------------- |
-| Integrated initial-production behavior                              | `learner-model/v1-current-system.md`                    |
-| Future competency admission, validation, and calibration workflow   | `learner-model/competency-extension-guide.md`           |
-| Whether model residuals argue for another arpeggio competency       | `learner-model/arpeggio-residual-census.md`             |
-| Canonical terminology and symbols                                   | `GLOSSARY.md`                                           |
-| Product thesis, UX, privacy principles                              | `design/product-vision.md`                              |
-| Attempt presentation and post-attempt review                        | `design/practice-presentation.md`                       |
-| Proposed curriculum, goals, focus, and cross-family contract        | `design/curriculum-and-focus.md`                        |
-| What each store is for, and where aggregation is allowed            | `design/data-products.md`                               |
-| Deferred architectural, product, and domain hypotheses              | `design/future-planning.md`                             |
-| Synthetic players, trajectory detectors, and the sweep              | `design/trajectory-simulation.md`                       |
-| Yield-based family dose control, and the evidence for it            | `design/family-dose-control.md`                         |
-| Fitting a synthetic player to a sitting, and what it identifies     | `design/player-calibration.md`                          |
-| Introduction breadth census and the concurrency counterfactuals     | `design/introduction-breadth.md`                        |
-| Decision-grain cost census and the catalog scaling term             | `design/scheduler-decision-cost.md`                     |
-| Proposed hands-together admission policy, and its evidence chain    | `design/coordination-transition-policy.md`              |
-| Canonical scale fingering                                           | `domain-model/fingering-taxonomy.md`                    |
-| Arpeggio identity, progression evidence, and promotion gates        | `domain-model/arpeggio-domain-research.md`              |
-| Arpeggio fixture policy sensitivities and trajectory census         | `domain-model/arpeggio-policy-characterization.md`      |
-| Derived motor family, phase, crossing, and continuation structure   | `domain-model/motor-taxonomy.md`                        |
-| Which prerequisite edges exist, and which are prediction instead    | `domain-model/progression-graph.md`                     |
-| Below-floor acquisition tasks and what their attempts may claim     | `domain-model/below-floor-acquisition.md`               |
-| Domain entities not superseded below                                | `domain-model/v1-domain-model.md`                       |
-| Research claims, citations, and limitations                         | `learner-model/01-research.md`                          |
-| Learner-state architecture and competency ontology                  | `learner-model/v1-current-system.md`                    |
-| Detailed equations, derivations, and learner experiment record      | `learner-model/03-v1-math.md`                           |
-| Scheduler stage information boundaries and experiment record        | `learner-model/04-v1-scheduler.md`                      |
-| Attempt journal, replay, telemetry, and implementation gates        | `learner-model/05-production-implementation-plan.md`    |
-| Operational semantics                                               | the Dart packages under `packages/`                     |
-| Current provisional numeric values                                  | `LearnerParams` and `SchedulerConfig` in those packages |
-| Why the Python prototype was retired, and what still reads its data | `analysis/README.md`                                    |
-
-The current-system guide integrates these authorities; it does not erase their
-more detailed contracts. If it conflicts with executable semantics or a
-specialized authority, treat that as a documentation bug and resolve it
-explicitly.
-
-## Current view versus history
-
-The documents have different jobs:
-
-```text
-v1-current-system.md     what V1 does and why, without chronology
-competency-extension-guide.md
-                         how a future competency earns promotion
-future-planning.md       what is deliberately deferred or closed by default
-01-05                    how the design was justified, tested, and prepared
-git history              exact sequence of individual revisions
-```
-
-Historical sections may contain formulas clearly marked illustrative,
-superseded, provisional, or open at the time they were written. A later
-production decision wins over an earlier proposal. In particular:
-
-1. The flat `Exercise`, `FingeringGroup`, `Component` ontology, and qualitative
-   Q-matrix in `v1-domain-model.md` are superseded by the compositional
-   exercise, competency ontology, and `Q`/`q`/`w` mapping.
-2. Crossed-effects and single-logit equations in the research and early math
-   sections are motivating precedents, not the production predictor. V1 uses
-   separate retrieval availability, execution, and topology channels.
-3. Early scheduler utility sketches are superseded by the staged pipeline and
-   the production lexicographic key: eligibility tier, retention, information,
-   diversity, goals.
-4. Multiplicative memory updates are superseded by surprise-driven log-space
-   current-durability and logit-space cold-start updates.
-5. Binary or attenuated treatment of fully cued retrieval is superseded by the
-   three-valued factual outcome; untested retrieval has exactly zero memory
-   evidence.
-
-These records remain in place because knowing what failed is valuable. They are
-not prerequisites for implementing the current system.
-
-## Production status
-
-The synthetic mechanism-discovery phase is complete. The architecture,
-transition ordering, and scheduler policy are frozen for initial production
-pending empirical evidence. Numeric calibration remains provisional and
-versioned.
-
-The next milestone is the telemetry contract and deterministic offline replay
-described in `learner-model/05-production-implementation-plan.md`, followed by
-developer and small-pilot validation. Optional research telemetry must refine
-the local-first system, never be required for it to function.
+Numeric calibration is versioned and provisional throughout. The architecture is
+settled for initial production; the constants in it are starting points,
+calibrated against recorded playing where that was possible and not yet against
+a real learner population.
