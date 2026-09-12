@@ -2,19 +2,23 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
 import 'acquisition_observation.dart';
+import 'timing_evidence.dart';
 
 /// One step of a task, named by the positions it runs between.
 typedef Transition = ({int fromPosition, int toPosition});
 
-/// How often each transition of one task was played, and how often it stalled.
+/// How often each transition of one task happened, how often its wait could be
+/// judged, and how often it stalled.
 ///
 /// A single attempt says where the playing broke, and only repetition says a
 /// transition is in the way. This counts, and does not decide what counts as
 /// repeatedly troublesome.
 ///
-/// Both counts are kept because they have different denominators: a transition
-/// past the point a learner keeps stopping is played rarely, so a raw stall
-/// count understates it.
+/// Three counts rather than one, because a transition happening, its wait being
+/// judgeable, and its wait being a stall are three separate facts. Each has its
+/// own denominator: a transition past the point a learner keeps stopping is
+/// reached rarely, so a raw stall count understates it, and an attempt too short
+/// to establish a baseline reaches transitions whose waits nothing judged.
 ///
 /// Scoped to one [task], since positions mean nothing across tasks.
 @immutable
@@ -25,23 +29,38 @@ class TransitionCensus {
   /// How many attempts were recorded, including those that produced no gaps.
   final int attempts;
 
-  /// How many times each transition was played.
-  final Map<Transition, int> played;
+  /// How many times each transition was played at all.
+  final Map<Transition, int> observed;
 
-  /// How many of those times it stalled.
+  /// How many of those times its wait was read against a baseline.
+  ///
+  /// The denominator [stallRateOf] uses. A transition observed in an attempt
+  /// that established no baseline is counted above and not here, so repeating
+  /// such attempts cannot dilute a rate toward zero.
+  final Map<Transition, int> assessable;
+
+  /// How many of the assessable times it stalled.
   final Map<Transition, int> stalled;
 
   TransitionCensus._({
     required this.task,
     required this.attempts,
-    required Map<Transition, int> played,
+    required Map<Transition, int> observed,
+    required Map<Transition, int> assessable,
     required Map<Transition, int> stalled,
-  }) : played = Map.unmodifiable(played),
+  }) : observed = Map.unmodifiable(observed),
+       assessable = Map.unmodifiable(assessable),
        stalled = Map.unmodifiable(stalled);
 
   /// Nothing recorded yet.
   TransitionCensus.of(AcquisitionTask task)
-    : this._(task: task, attempts: 0, played: const {}, stalled: const {});
+    : this._(
+        task: task,
+        attempts: 0,
+        observed: const {},
+        assessable: const {},
+        stalled: const {},
+      );
 
   /// This census with [observation] added.
   ///
@@ -55,38 +74,45 @@ class TransitionCensus {
       );
     }
 
-    final playedNow = {...played};
+    final observedNow = {...observed};
+    final assessableNow = {...assessable};
     final stalledNow = {...stalled};
-    for (final gap in observation.gaps) {
-      final transition = (
-        fromPosition: gap.fromPosition,
-        toPosition: gap.toPosition,
+    void count(Map<Transition, int> counts, MomentGap gap) {
+      counts.update(
+        (fromPosition: gap.fromPosition, toPosition: gap.toPosition),
+        (count) => count + 1,
+        ifAbsent: () => 1,
       );
-      playedNow.update(transition, (count) => count + 1, ifAbsent: () => 1);
+    }
+
+    for (final gap in observation.gaps) {
+      count(observedNow, gap);
+    }
+    for (final gap in observation.timing.assessableGaps) {
+      count(assessableNow, gap);
     }
     for (final gap in observation.stalls) {
-      final transition = (
-        fromPosition: gap.fromPosition,
-        toPosition: gap.toPosition,
-      );
-      stalledNow.update(transition, (count) => count + 1, ifAbsent: () => 1);
+      count(stalledNow, gap);
     }
 
     return TransitionCensus._(
       task: task,
       attempts: attempts + 1,
-      played: playedNow,
+      observed: observedNow,
+      assessable: assessableNow,
       stalled: stalledNow,
     );
   }
 
-  /// How often [transition] stalled when it was played, or null when it never
-  /// was.
+  /// How often [transition] stalled when its wait could be judged, or null when
+  /// it never could.
   ///
-  /// Null rather than zero, because a transition the learner never reached and
-  /// one they reached and played through are not the same observation.
+  /// Null rather than zero, because a transition nothing assessed and one played
+  /// through cleanly are not the same observation. Null is also what a
+  /// transition the learner never reached reports, and [observed] is what
+  /// separates the two.
   double? stallRateOf(Transition transition) {
-    final times = played[transition];
+    final times = assessable[transition];
     if (times == null || times == 0) return null;
     return (stalled[transition] ?? 0) / times;
   }

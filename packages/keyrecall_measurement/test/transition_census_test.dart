@@ -56,7 +56,8 @@ void main() {
       census = census.recording(traversalStalling(4));
 
       expect(census.attempts, 1);
-      expect(census.played[(fromPosition: 3, toPosition: 4)], 1);
+      expect(census.observed[(fromPosition: 3, toPosition: 4)], 1);
+      expect(census.assessable[(fromPosition: 3, toPosition: 4)], 1);
       expect(census.stalled[(fromPosition: 3, toPosition: 4)], 1);
       expect(census.stalled[(fromPosition: 4, toPosition: 5)], isNull);
     });
@@ -81,12 +82,47 @@ void main() {
       var census = TransitionCensus.of(task);
       census = census.recording(stoppedAfter(4));
 
-      // Three intervals arrived, so three transitions were played. Everything
-      // past where the attempt stopped has no reading at all, which is not the
-      // same as having been played through.
-      expect(census.played[(fromPosition: 2, toPosition: 3)], 1);
-      expect(census.played[(fromPosition: 4, toPosition: 5)], isNull);
+      // Three waits arrived, so three transitions happened. Everything past
+      // where the attempt stopped has no reading at all, which is not the same
+      // as having been played through.
+      expect(census.observed[(fromPosition: 2, toPosition: 3)], 1);
+      expect(census.observed[(fromPosition: 4, toPosition: 5)], isNull);
       expect(census.stallRateOf((fromPosition: 4, toPosition: 5)), isNull);
+    });
+
+    test('counts a transition it cannot assess as having happened', () {
+      var census = TransitionCensus.of(task);
+      census = census.recording(
+        observeAcquisition(
+          task: task,
+          transcript: played(expected.take(2).toList(), const [900]),
+        ),
+      );
+
+      final transition = (fromPosition: 0, toPosition: 1);
+      expect(census.observed[transition], 1);
+      expect(
+        census.assessable[transition],
+        isNull,
+        reason: 'one wait establishes no baseline to read itself against',
+      );
+      expect(census.stallRateOf(transition), isNull);
+    });
+
+    test('an unassessable attempt cannot dilute a rate', () {
+      var census = TransitionCensus.of(task);
+      census = census.recording(traversalStalling(4));
+      for (var attempt = 0; attempt < 5; attempt++) {
+        census = census.recording(stoppedAfter(4));
+      }
+
+      final transition = (fromPosition: 3, toPosition: 4);
+      expect(census.observed[transition], 1);
+      expect(
+        census.stallRateOf(transition),
+        1.0,
+        reason: 'the five short attempts reached it and judged nothing',
+      );
     });
 
     test('keeps the denominators apart', () {
