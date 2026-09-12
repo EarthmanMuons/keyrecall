@@ -782,7 +782,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           direction: conditions.direction.id,
           octaves: conditions.octaves,
           tempoBpm: conditions.tempoBpm,
-          achievedTempoRatio: outcome.achievedTempoRatio,
+          achievedTempoRatio: outcome.measuredTempoRatio,
           guidanceIndependence: record.exercise.guidance.independence,
           coordinationScore: measurement.coordination ?? 1,
           synchronizedAsynchronyMs: measurement.policy.synchronizedAsynchronyMs,

@@ -86,9 +86,10 @@ class Outcome {
 
   /// Achieved tempo as a fraction of the requested tempo.
   ///
-  /// Zero is the absence of a performance rather than a slow one. Read it
-  /// through [measuredTempoRatio] rather than multiplying a requested tempo by
-  /// it.
+  /// Zero is the absence of a pace rather than a slow one, and the one channel
+  /// here that says so with a sentinel instead of a null. Anything asking what
+  /// pace was observed, including any statistic over several attempts, reads
+  /// [measuredTempoRatio] rather than this.
   final double achievedTempoRatio;
 
   /// How correct the pitch/form structure was, independent of motor quality.

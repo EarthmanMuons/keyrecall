@@ -103,6 +103,12 @@ togetherness has not been read as ragged. Continuity and temporal stability are
 absent the same way, and for the same reason, when the playing supplied too few
 waits to judge one against the others.
 
+Achieved tempo is the exception, and deliberately: its raw field reports an
+unobserved pace as zero, because a ratio has no null to report.
+`measuredTempoRatio` is that sentinel's one interpretation, and every reader
+asking what pace was observed goes through it, so a performance too short to
+time enters no tempo statistic rather than entering it as a stop.
+
 An absent channel is absent all the way through. `Outcome` carries the null, the
 evidence weights leave the channel out, the update path leaves its state
 untouched, and the record omits it rather than writing a zero, so a channel

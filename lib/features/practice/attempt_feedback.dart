@@ -14,16 +14,19 @@ class AttemptSummary {
   final double? flow;
   final double? pulse;
   final double? coordination;
-  final double achievedTempoBpm;
+
+  /// The pace the attempt played at, or null when it established none.
+  final double? achievedTempoBpm;
+
   final double targetTempoBpm;
 
   const AttemptSummary({
     required this.notes,
-    required this.achievedTempoBpm,
     required this.targetTempoBpm,
     this.flow,
     this.pulse,
     this.coordination,
+    this.achievedTempoBpm,
   });
 }
 
@@ -34,8 +37,10 @@ AttemptSummary? summarizeAttempt(AttemptRecord record) =>
         flow: outcome.continuity,
         pulse: outcome.temporalStability,
         coordination: outcome.coordination,
-        achievedTempoBpm:
-            record.exercise.conditions.tempoBpm * outcome.achievedTempoRatio,
+        achievedTempoBpm: switch (outcome.measuredTempoRatio) {
+          final ratio? => record.exercise.conditions.tempoBpm * ratio,
+          null => null,
+        },
         targetTempoBpm: record.exercise.conditions.tempoBpm,
       ),
       _ => null,
@@ -102,9 +107,14 @@ String? progressStatementFor(
   final firstIndependent = kinds.contains(
     ProgressEventKind.firstIndependentCompletion,
   );
+  // The pace is named only when one was measured, which every completed
+  // traversal supplies and nothing shorter does.
+  final at = switch (_achievedTempo(current)) {
+    final bpm? => ' at $bpm BPM',
+    null => '',
+  };
   if (firstClean && firstIndependent) {
-    return 'First clean ${_handsPhrase(current)} run from memory at '
-        '${_achievedTempo(current)} BPM.';
+    return 'First clean ${_handsPhrase(current)} run from memory$at.';
   }
   if (kinds.contains(ProgressEventKind.repeatedReliability) &&
       firstIndependent) {
@@ -113,10 +123,9 @@ String? progressStatementFor(
   }
   return switch (events.single.type) {
     ProgressEventKind.firstCleanCompletion =>
-      'First clean ${_handsPhrase(current)} run at '
-          '${_achievedTempo(current)} BPM.',
+      'First clean ${_handsPhrase(current)} run$at.',
     ProgressEventKind.firstIndependentCompletion =>
-      'First time through from memory at ${_achievedTempo(current)} BPM.',
+      'First time through from memory$at.',
     ProgressEventKind.repeatedReliability =>
       'Clean on your last three attempts here.',
   };
@@ -150,11 +159,12 @@ String _handsPhrase(AttemptRecord record) =>
       HandConfiguration.together => 'hands-together',
     };
 
-String _achievedTempo(AttemptRecord record) {
+String? _achievedTempo(AttemptRecord record) {
   final outcome = (record.closure.measurement as Measured).outcome;
-  return _formatTempo(
-    record.exercise.conditions.tempoBpm * outcome.achievedTempoRatio,
-  );
+  return switch (outcome.measuredTempoRatio) {
+    final ratio? => _formatTempo(record.exercise.conditions.tempoBpm * ratio),
+    null => null,
+  };
 }
 
 String _formatTempo(double bpm) => bpm.round().toString();

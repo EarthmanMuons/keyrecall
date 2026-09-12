@@ -17,7 +17,7 @@ Future<void> showAttemptDetails(
   BuildContext context, {
   required Exercise exercise,
   required AttemptDetailTrace trace,
-  required double achievedTempoBpm,
+  required double? achievedTempoBpm,
 }) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
@@ -49,7 +49,9 @@ class AttemptDetailsSheet extends StatelessWidget {
 
   final Exercise exercise;
   final AttemptDetailTrace trace;
-  final double achievedTempoBpm;
+
+  /// The pace the attempt played at, or null when it established none.
+  final double? achievedTempoBpm;
 
   @override
   Widget build(BuildContext context) {
@@ -110,7 +112,12 @@ class AttemptDetailsSheet extends StatelessWidget {
                   TextSpan(
                     style: theme.textTheme.bodyMedium,
                     children: [
-                      TextSpan(text: '${achievedTempoBpm.round()} BPM overall'),
+                      TextSpan(
+                        text: switch (achievedTempoBpm) {
+                          final bpm? => '${bpm.round()} BPM overall',
+                          null => 'no pace measured',
+                        },
+                      ),
                       TextSpan(
                         text:
                             ' · target '

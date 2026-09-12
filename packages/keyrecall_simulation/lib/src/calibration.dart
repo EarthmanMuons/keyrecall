@@ -51,13 +51,18 @@ class SittingProfile {
   final int attempts;
 
   /// Median tempo actually played, by hand configuration.
+  ///
+  /// Over the attempts that established a pace. A hand whose attempts never did
+  /// is absent rather than zero, since an attempt too short to time did not play
+  /// slowly.
   final Map<HandConfiguration, double> achievedTempo;
 
   /// Median motor score, by hand configuration.
   final Map<HandConfiguration, double> motor;
 
-  /// Median played tempo over requested tempo.
-  final double tempoRatio;
+  /// Median played tempo over requested tempo, over the attempts that
+  /// established a pace, or null when none did.
+  final double? tempoRatio;
 
   /// How much the played tempo follows the requested one, by hand, as the
   /// slope of log played against log requested.
@@ -75,7 +80,8 @@ class SittingProfile {
   /// that never asked cannot answer.
   final Map<HandConfiguration, double> tempoSlope;
 
-  /// Share of attempts played well above what was asked for.
+  /// Share of the attempts that established a pace played well above what was
+  /// asked for.
   final double sprintShare;
 
   /// Share of attempts that were completed.
@@ -145,6 +151,7 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
   final novelty = attempts.every((attempt) => attempt.seenBefore != null);
   var sprints = 0;
   var completed = 0;
+  var paced = 0;
   final ratios = <double>[];
 
   for (final attempt in attempts) {
@@ -154,8 +161,13 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
         (attempt.seenBefore! ? familiar : unfamiliar).add(score);
       }
     }
-    ratios.add(attempt.outcome.achievedTempoRatio);
-    if (attempt.outcome.achievedTempoRatio >= 1.2) sprints++;
+    // A pace nothing measured is not a slow one, so it enters no tempo
+    // statistic rather than entering them as zero.
+    if (attempt.outcome.measuredTempoRatio case final ratio?) {
+      paced++;
+      ratios.add(ratio);
+      if (ratio >= 1.2) sprints++;
+    }
     if (attempt.outcome.completed) completed++;
   }
 
@@ -163,13 +175,10 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
   for (final entry in byHands.entries) {
     final slope = _slope([
       for (final attempt in entry.value)
-        if (attempt.outcome.achievedTempoRatio > 0)
+        if (attempt.outcome.measuredTempoRatio case final ratio?)
           (
             math.log(attempt.exercise.conditions.tempoBpm),
-            math.log(
-              attempt.exercise.conditions.tempoBpm *
-                  attempt.outcome.achievedTempoRatio,
-            ),
+            math.log(attempt.exercise.conditions.tempoBpm * ratio),
           ),
     ]);
     if (slope != null) slopes[entry.key] = slope;
@@ -180,11 +189,13 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
     tempoSlope: slopes,
     achievedTempo: {
       for (final entry in byHands.entries)
-        entry.key: _median([
-          for (final attempt in entry.value)
-            attempt.exercise.conditions.tempoBpm *
-                attempt.outcome.achievedTempoRatio,
-        ]),
+        if ([
+              for (final attempt in entry.value)
+                if (attempt.outcome.measuredTempoRatio case final ratio?)
+                  attempt.exercise.conditions.tempoBpm * ratio,
+            ]
+            case final played when played.isNotEmpty)
+          entry.key: _median(played),
     },
     motor: {
       for (final entry in byHands.entries)
@@ -192,8 +203,8 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
           for (final attempt in entry.value) ?attempt.outcome.motorScore,
         ]),
     },
-    tempoRatio: _median(ratios),
-    sprintShare: attempts.isEmpty ? 0 : sprints / attempts.length,
+    tempoRatio: ratios.isEmpty ? null : _median(ratios),
+    sprintShare: paced == 0 ? 0 : sprints / paced,
     completionRate: attempts.isEmpty ? 0 : completed / attempts.length,
     unfamiliarMotor: unfamiliar.isEmpty ? null : _median(unfamiliar),
     familiarMotor: familiar.isEmpty ? null : _median(familiar),

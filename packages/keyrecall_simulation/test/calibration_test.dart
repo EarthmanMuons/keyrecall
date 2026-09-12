@@ -88,7 +88,11 @@ void main() {
     // fixing one of them makes the fit answer about the fixture rather than
     // the player. Pinned because it is the reason compliance is fitted with
     // the initial conditions rather than after them.
-    final truth = PlayerArchetypes.developing;
+    //
+    // The player ignores the count-in entirely, which is what the held guess of
+    // 0.8 gets wrong: a truth whose compliance the guess nearly matches is
+    // recovered either way and says nothing about identifiability.
+    final truth = PlayerArchetypes.tempoNoncompliant;
     final held = rangeOf(
       fitOf(truth, vary: initialConditions),
       (player) => player.naturalTempoRightBpm,

@@ -51,6 +51,8 @@ bool isUnderchallenged({
     (outcome.continuity ?? -1) >= config.underchallengeContinuity &&
     (outcome.temporalStability ?? -1) >=
         config.underchallengeTemporalStability &&
+    // The threshold is above 1 by construction, so the zero an attempt with no
+    // measured pace carries cannot reach it.
     outcome.achievedTempoRatio >= config.underchallengeTempoRatio;
 
 /// The exercise to ask for next when [exercise] was too easy, or null.

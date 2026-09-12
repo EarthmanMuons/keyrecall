@@ -7,7 +7,17 @@ import 'package:meta/meta.dart';
 /// Its own version, independent of the attempt journal, because this is
 /// instrumentation rather than history: it may change shape while the question
 /// it answers is open, and nothing replays it.
-const int coordinationLogSchemaVersion = 1;
+const int coordinationLogSchemaVersion = 2;
+
+/// The coordination-log versions this build can read.
+///
+/// Version 2 omits an achieved tempo ratio the attempt never established.
+/// Version 1 wrote one for every sample, including attempts too short to have
+/// a pace, so its zeros are read as written.
+const Set<int> readableCoordinationLogVersions = {
+  1,
+  coordinationLogSchemaVersion,
+};
 
 /// What one two-hand attempt observed about how far apart the hands arrived.
 ///
@@ -44,8 +54,9 @@ class CoordinationSample {
   /// The tempo the exercise asked for.
   final double tempoBpm;
 
-  /// Achieved tempo as a fraction of the requested tempo.
-  final double achievedTempoRatio;
+  /// Achieved tempo as a fraction of the requested tempo, or null when the
+  /// attempt established no pace.
+  final double? achievedTempoRatio;
 
   /// How independent the guidance rung was.
   final int guidanceIndependence;
@@ -122,7 +133,7 @@ class CoordinationSample {
     'direction': direction,
     'octaves': octaves,
     'tempo_bpm': tempoBpm,
-    'achieved_tempo_ratio': achievedTempoRatio,
+    if (achievedTempoRatio != null) 'achieved_tempo_ratio': achievedTempoRatio,
     'guidance_independence': guidanceIndependence,
     'coordination_score': coordinationScore,
     'synchronized_asynchrony_ms': synchronizedAsynchronyMs,
@@ -140,7 +151,7 @@ class CoordinationSample {
   /// history: the caller is free to drop the log and keep practicing.
   factory CoordinationSample.fromJson(Map<String, Object?> json) {
     final version = requireInt(json, 'schema_version');
-    if (version != coordinationLogSchemaVersion) {
+    if (!readableCoordinationLogVersions.contains(version)) {
       throw JournalFormatException(
         'coordination log schema version $version is not readable by this '
         'build, which writes version $coordinationLogSchemaVersion',
@@ -163,7 +174,9 @@ class CoordinationSample {
       direction: requireString(json, 'direction', location: 'coordination'),
       octaves: requireInt(json, 'octaves'),
       tempoBpm: requireDouble(json, 'tempo_bpm'),
-      achievedTempoRatio: requireDouble(json, 'achieved_tempo_ratio'),
+      achievedTempoRatio: json['achieved_tempo_ratio'] == null
+          ? null
+          : requireDouble(json, 'achieved_tempo_ratio'),
       guidanceIndependence: requireInt(json, 'guidance_independence'),
       coordinationScore: requireDouble(json, 'coordination_score'),
       synchronizedAsynchronyMs: requireDouble(

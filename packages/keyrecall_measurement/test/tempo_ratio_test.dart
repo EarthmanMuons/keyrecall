@@ -7,6 +7,11 @@ import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 ///
 /// The requested beat over the median wait between the learner's own notes, so
 /// it says how fast they played and nothing about when they started.
+///
+/// Unlike the other channels, this one reports absence as zero rather than as
+/// null. The sentinel is the raw field's contract and `Outcome.measuredTempoRatio`
+/// is its one interpretation, so anything asking what pace was observed reads
+/// that instead of comparing the raw ratio against zero.
 void main() {
   final material = TechnicalMaterial('C', ScaleForm.major);
   const requestedBpm = 104.0;
@@ -93,14 +98,32 @@ void main() {
     );
   });
 
-  test('a performance with no waits established no pace', () {
-    final realization = realize(exercise);
+  test('a performance with no waits reports the zero sentinel', () {
     final measurement = measure(
-      realization: realization,
+      realization: realize(exercise),
       transcript: PerformanceTranscript.empty,
     );
 
     expect(measurement.medianIntervalMs, isNull);
-    expect(measurement.achievedTempoRatioFor(exercise.conditions), 0);
+    expect(
+      measurement.achievedTempoRatioFor(exercise.conditions),
+      0,
+      reason:
+          'the raw ratio has no null to report, which is what the '
+          'sentinel is for',
+    );
+  });
+
+  test('and reaches the model as an unobserved pace, not a stopped one', () {
+    final outcome = outcomeFor(
+      measurement: measure(
+        realization: realize(exercise),
+        transcript: PerformanceTranscript.empty,
+      ),
+      exercise: exercise,
+    );
+
+    expect(outcome.achievedTempoRatio, 0);
+    expect(outcome.measuredTempoRatio, isNull);
   });
 }

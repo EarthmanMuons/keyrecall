@@ -115,8 +115,11 @@ String trajectoryRow(
             // A ratio far from what somebody believes they played is a
             // question about the transcript rather than about the playing,
             // and it cannot be asked from a table that leaves it out.
-            'played=${(conditions.tempoBpm * outcome.achievedTempoRatio).round()}bpm'
-            '(x${outcome.achievedTempoRatio.toStringAsFixed(2)})',
+            '${switch (outcome.measuredTempoRatio) {
+              final ratio? => 'played=${(conditions.tempoBpm * ratio).round()}bpm'
+                  '(x${ratio.toStringAsFixed(2)})',
+              null => 'played=unpaced',
+            }}',
       MeasurementUnavailable(:final reason) => 'unmeasured ${reason.id}',
     },
   ].join(' ');
@@ -255,7 +258,10 @@ String coordinationTableOf(
       sample.handMotion.padRight(9),
       '${sample.octaves}oct',
       '${sample.tempoBpm.round()}bpm'.padLeft(7),
-      '${(sample.tempoBpm * sample.achievedTempoRatio).round()}bpm'.padLeft(7),
+      switch (sample.achievedTempoRatio) {
+        final ratio? => '${(sample.tempoBpm * ratio).round()}bpm',
+        null => 'unpaced',
+      }.padLeft(7),
       'g=${sample.guidanceIndependence}',
       '${sample.medianAbsoluteMs.round()}ms'.padLeft(7),
       '${sample.p90AbsoluteMs.round()}ms'.padLeft(6),

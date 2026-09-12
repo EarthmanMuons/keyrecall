@@ -547,11 +547,10 @@ class _AttemptSummaryView extends StatelessWidget {
               const SizedBox(height: 12),
               _QualityRow(label: 'Coordination', value: coordination),
             ],
-            const SizedBox(height: 12),
-            _TempoRow(
-              achieved: summary.achievedTempoBpm,
-              target: summary.targetTempoBpm,
-            ),
+            if (summary.achievedTempoBpm case final achieved?) ...[
+              const SizedBox(height: 12),
+              _TempoRow(achieved: achieved, target: summary.targetTempoBpm),
+            ],
           ],
         ),
       ),
