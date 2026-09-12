@@ -125,7 +125,7 @@ enum TempoSupport {
   final String id;
 }
 
-/// What information an attempt was given, on five independent channels.
+/// What information an attempt was given, on four independent channels.
 ///
 /// Facts about the attempt, not a second scheduler. The scheduler names a
 /// coarse guidance rung and practice policy turns that into these channels,

@@ -43,11 +43,9 @@ final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
 /// exists without reaching for a catalog constant, and so a test can install a
 /// small one.
 ///
-/// Both families, always. Arpeggios were behind a developer switch while it was
-/// unclear whether a second realization family was schedulable at all; they are
-/// generated, admitted, paced and progressed by the same family-neutral rules
-/// as scales, so a scale-only mode now only preserves somewhere for
-/// single-family assumptions to hide.
+/// Both families, always. Arpeggios are generated, admitted, paced, and
+/// progressed by the same family-neutral rules as scales, so a scale-only mode
+/// would only preserve somewhere for single-family assumptions to hide.
 final practiceCatalogProvider = Provider<List<TechnicalMaterial>>(
   (ref) => [...allScales, ...allRootPositionArpeggios],
 );
@@ -176,16 +174,15 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
 
   /// Adds a profile and practices as it.
   ///
-  /// The repository deliberately does not switch when a profile is created,
-  /// because a profile can be made for reasons that have nothing to do with
-  /// who is at the instrument. Made from this screen it does: somebody adding
-  /// a profile is somebody about to use it, and the list they are already
-  /// looking at is how they get back.
-  /// [placement] is fixed here for the life of the profile. Nothing offers to
-  /// change it later, because it is the prior the whole history is computed
-  /// from: a different answer would reinterpret every attempt rather than
-  /// update a skill level, and erasing the history is the honest route to a
-  /// different starting point.
+  /// The repository does not switch when a profile is created, because a
+  /// profile can be made for reasons that have nothing to do with who is at the
+  /// instrument. Made from this screen it does switch: somebody adding a profile
+  /// is about to use it.
+  ///
+  /// [placement] is fixed for the life of the profile, because it is the prior
+  /// the whole history is computed from: changing it would reinterpret every
+  /// attempt rather than update a skill level, and erasing the history is the
+  /// honest route to a different starting point.
   Future<Profile?> add(String displayName, PlacementTier placement) =>
       _mutate((repository, store) async {
         final created = await repository.create(
@@ -605,9 +602,8 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// stopped at six notes and one a timeout closed at six notes are different
   /// observations of the same performance, and neither is a worse one.
   ///
-  /// A timeout that arrives with nothing played closes unmeasured. Silence is
-  /// only a performance if somebody says it was, and nobody did: an
-  /// interruption and an attempt at nothing look identical from here, and
+  /// A timeout that arrives with nothing played closes unmeasured. An
+  /// interruption and an attempt at nothing look identical from here, so
   /// measuring would pick one.
   ///
   /// Single-flight for the same reason [decline] is.

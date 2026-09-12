@@ -10,19 +10,16 @@ import 'profile_color.dart';
 /// Who uses this install: switch between them, add one, rename one, put one
 /// back at placement, or remove one entirely.
 ///
-/// Two jobs at once, and both of them ordinary. One person keeps their own
-/// practice separate from anybody else who sits at the same instrument. The
-/// same screen is also how a change to the scheduler gets tried on a fresh
-/// learner without disturbing a real history: make a throwaway profile, run it
-/// forward, erase it, run it again.
+/// Two jobs. One person keeps their own practice separate from anybody else who
+/// sits at the same instrument, and the same screen tries a scheduler change on
+/// a fresh learner without disturbing a real history.
 ///
-/// Adding a profile switches to it, on the grounds that somebody adding one
-/// is about to use it, and this list is how they switch back.
+/// Adding a profile switches to it, since somebody adding one is about to use
+/// it, and this list is how they switch back.
 ///
-/// Erasing and deleting are kept apart on purpose. Erasing keeps the profile
-/// and drops what it recorded, which is the one a test profile wants over and
-/// over. Deleting takes the person as well, which is the one that should feel
-/// heavier.
+/// Erasing keeps the profile and drops what it recorded, which is what a test
+/// profile wants over and over. Deleting takes the person as well, and should
+/// feel heavier.
 class ProfilesScreen extends ConsumerStatefulWidget {
   const ProfilesScreen({super.key});
 

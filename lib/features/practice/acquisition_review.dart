@@ -13,10 +13,9 @@ import 'exercise_presentation.dart';
 /// screen is for is the part the ordinary review does that has nothing to do
 /// with scoring: closing one piece of work before the next begins.
 ///
-/// Going straight from a finished attempt to another Ready screen was the
-/// alternative, and it read as the app skipping a step. It also left the one
-/// thing worth saying unsaid, because the line that explains a restored tempo
-/// lives on a review, and acquisition had none.
+/// Going straight from a finished attempt to another Ready screen reads as the
+/// app skipping a step, and leaves the line that explains a restored tempo
+/// unsaid, since that line lives on a review.
 class AcquisitionReview extends StatelessWidget {
   const AcquisitionReview({
     required this.record,

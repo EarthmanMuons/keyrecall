@@ -2,36 +2,27 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'staff_score.dart';
 
-/// Where each hand has got to in the exercise, and what of it is under the
-/// hands.
-///
-/// An orientation aid, so it is built to stay with a learner rather than to
-/// be right about their performance. Measurement reads the same arrivals
-/// strictly and keeps every departure; this asks only which written note
-/// somebody is on, and gives up the distinctions it does not need to answer
-/// that.
-///
-/// Which those are: a hand travels on its own, so one hand's mistake leaves
-/// the other's highlight alone, and an arrival the expected note did not
-/// match is looked for in the two notes after it, so a skipped note costs the
-/// locator a note rather than the rest of the run.
-///
-/// The register is not one of them. A hand that enters the exercise in
-/// another octave is not playing the notes on the page, and it stays dark for
-/// the rest of the traversal rather than lighting up later wherever the
-/// registers happen to meet: a cue that was never there reads as a cue this
-/// performance does not get, and one that arrives mid-run reads as something
-/// happening, which is attention a learner is not being asked to spend.
-///
-/// What it draws is exact whatever it tolerates. A notehead lights only while
-/// the key it is written for is down, so nothing on the page ever stands for
-/// a note that was not played.
-
 /// How far past the note it is expecting a hand looks for an arrival.
 const int _lookahead = 2;
 
 /// The notes of the moments each hand has reached, of those still held.
-/// [traversalLength] projects repeated playing onto a single displayed traversal.
+///
+/// An orientation aid, built to stay with a learner rather than to be right
+/// about their performance: it asks only which written note somebody is on, and
+/// gives up the distinctions it does not need for that. A hand travels on its
+/// own, so one hand's mistake leaves the other's highlight alone, and an arrival
+/// the expected note did not match is looked for in the two notes after it.
+///
+/// The register is not tolerated. A hand that enters the exercise in another
+/// octave stays dark for the rest of the traversal rather than lighting up
+/// wherever the registers happen to meet, which would read as something
+/// happening.
+///
+/// What it draws is exact whatever it tolerates: a notehead lights only while
+/// the key it is written for is down.
+///
+/// [traversalLength] projects repeated playing onto a single displayed
+/// traversal.
 Set<String> locatedElementIds(
   ExerciseRealization realization, {
   required PerformanceTranscript transcript,

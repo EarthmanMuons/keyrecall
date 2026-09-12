@@ -707,8 +707,7 @@ class PianoKeyboardPainter extends CustomPainter {
       if (label == null || label.isEmpty) continue;
 
       // Every label is placed on the key it names. Resolving a black key to
-      // its neighboring white one stacks two labels in one place, which is
-      // what fingering on an accidental used to do.
+      // its neighboring white one would stack two labels in one place.
       final keyRect = _geometry.keyRectForMidi(
         midi: d.midiNote,
         whiteKeyWidth: whiteKeyWidth,

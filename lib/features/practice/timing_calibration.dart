@@ -235,21 +235,17 @@ class CalibrationRunNotifier extends Notifier<CalibrationRun> {
 
 /// Records the takes behind the timing constants.
 ///
-/// The constants in [MeasurementPolicy] came from five takes at one tempo and
-/// one traversal length, and two questions have since been asked of them that
-/// those takes cannot answer. Dispersion is a spread over a median, so the
-/// variation it allows shrinks in milliseconds as somebody plays faster, and
-/// nothing recorded so far says whether real playing does the same. And the
-/// quartile estimator spans a wider fraction of a short traversal than a long
-/// one, so exercise length changes what dispersion means before any playing is
-/// considered.
+/// The constants in [MeasurementPolicy] rest on takes at one tempo and one
+/// traversal length, which cannot answer two questions about them. Dispersion
+/// is a spread over a median, so the variation it allows shrinks in
+/// milliseconds as somebody plays faster, and the quartile estimator spans a
+/// wider fraction of a short traversal than a long one.
 ///
 /// This walks a factorial plan so the two can be told apart: tempo at fixed
 /// length, and length at fixed tempo, with repetitions so one ragged take does
-/// not read as a pattern. It decides nothing. It plays each cell through the
+/// not read as a pattern. It decides nothing. Each cell plays through the
 /// ordinary attempt screen, so what is recorded is what the app really
-/// presents, and writes the arrivals beside the statistics for analysis
-/// somewhere else.
+/// presents, and the arrivals are written beside the statistics.
 ///
 /// See `analysis/timing-calibration/`.
 class TimingCalibrationScreen extends ConsumerStatefulWidget {

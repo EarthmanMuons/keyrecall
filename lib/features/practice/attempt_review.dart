@@ -177,17 +177,14 @@ String? differenceTo(Exercise next, Exercise previous) {
 
 /// What comes next, as a transition screen can say it.
 ///
-/// Presentation-neutral because what comes next is not always an exercise.
-/// Supported work is decided too, and a review that could only describe a
-/// [PresentedAttempt] had nothing to show when acquisition was next, which is
-/// how a transition into supported work came out blank.
+/// Presentation-neutral because what comes next is not always an exercise:
+/// supported work is decided too, and a review that could only describe a
+/// [PresentedAttempt] would have nothing to show when acquisition is next.
 ///
 /// The material and one line of explanation, and no conditions. The Ready
-/// screen immediately after states the hand, the direction, the span and the
-/// tempo; a transition that repeated them was busy and said nothing the next
-/// screen was not about to say. What it is for is orientation, which means
-/// naming the material and, where there is one, the reason the next thing is
-/// different.
+/// screen immediately after states the hand, the direction, the span, and the
+/// tempo. This is orientation: the material, and where there is one, the reason
+/// the next thing is different.
 @immutable
 class NextPracticePreview {
   /// What comes next.

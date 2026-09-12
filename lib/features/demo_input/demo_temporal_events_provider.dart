@@ -10,17 +10,13 @@ import 'demo_input_notifier.dart';
 ///
 /// Turns "here is what the instrument is doing now" into ordered events by
 /// diffing against what it was doing before. Only held keys produce note-ons
-/// and note-offs; a note the pedal is holding produced its note-off when the
-/// key came up, so lifting the pedal is reported by the pedal event alone.
-/// That is what a real instrument sends, and matching it is the whole point of
-/// having a synthetic one.
+/// and note-offs: a note the pedal is holding produced its note-off when the
+/// key came up, so lifting the pedal is reported by the pedal event alone,
+/// which is what a real instrument sends.
 ///
-/// Vendored from WhatChord's demo temporal events provider. Its version
-/// diffed a single sounding-note set and repaired the result with a reset,
-/// because a set that cannot distinguish a held note from a sustained one
-/// makes an ordinary release look like a note vanishing. Modeling the two
-/// separately removes the need for the repair: every transition this can
-/// produce is one a keyboard can produce.
+/// Held and sustained notes are modeled separately rather than as one sounding
+/// set, so every transition this produces is one a keyboard can produce and
+/// none of them needs repairing with a reset.
 final demoTemporalEventsProvider =
     Provider.autoDispose<Stream<InputTemporalEvent>>((ref) {
       // A single-subscription controller buffers the opening reset until the

@@ -74,18 +74,13 @@ final demoInputProvider = NotifierProvider<DemoInputNotifier, DemoInputState>(
 /// An instrument nobody has to be holding.
 ///
 /// It plays whatever it is told to play and knows nothing about scales,
-/// exercises, or whether what it played was correct; deciding those is the
-/// practice loop's job, and a synthetic instrument that knew them would be
-/// simulating the answer rather than the playing.
+/// exercises, or whether what it played was correct. An instrument that knew
+/// them would simulate the answer rather than the playing.
 ///
-/// The point is that the rest of the app cannot tell the difference between
-/// this and a real keyboard: both reduce to the same normalized event stream,
-/// through the same transitions. That is what makes the whole practice loop
-/// runnable with nothing plugged in, and it only holds if the transitions are
-/// ones a keyboard could actually produce.
-///
-/// Adapted from WhatChord's demo input source, which drove an authored product
-/// tour. The sequencing and timing carry over; what gets played does not.
+/// The rest of the app cannot tell this from a real keyboard: both reduce to
+/// the same normalized event stream through the same transitions, which is what
+/// makes the practice loop runnable with nothing plugged in. It holds only
+/// while every transition is one a keyboard could produce.
 class DemoInputNotifier extends Notifier<DemoInputState> {
   final CancelableTimerSequence _sequence = CancelableTimerSequence();
 
@@ -101,11 +96,10 @@ class DemoInputNotifier extends Notifier<DemoInputState> {
 
   /// Plays [noteNumbers] one at a time, in the order given.
   ///
-  /// The order is the caller's and is never normalized: what arrives on the
-  /// stream is evidence about a performance, so an instrument that tidied a
-  /// descending scale into an ascending one would be inventing one. A note
-  /// repeated back to back is struck twice, with the key coming up in between,
-  /// the way a real re-attack sounds.
+  /// The order is the caller's and is never normalized, since an instrument
+  /// that tidied a descending scale into an ascending one would be inventing a
+  /// performance. A note repeated back to back is struck twice, with the key
+  /// coming up in between, the way a real re-attack sounds.
   ///
   /// Each note is released as the next one is struck, the way a scale is
   /// played rather than a chord accumulated. The last note stays held until

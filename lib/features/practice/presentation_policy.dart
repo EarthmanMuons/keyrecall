@@ -2,23 +2,21 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 /// What V1 puts in front of a learner for a decided exercise.
 ///
-/// The scheduler names a guidance rung; this turns it into the four
-/// information channels an attempt is actually made under. Keeping the two
-/// apart is what stops presentation choices from multiplying the candidate
-/// space or riding along with a guidance change and making an attempt's
-/// evidence unattributable.
+/// The scheduler names a guidance rung and this turns it into the four
+/// information channels an attempt is made under. Keeping the two apart is what
+/// stops a presentation choice from multiplying the candidate space or riding
+/// along with a guidance change and making an attempt's evidence
+/// unattributable.
 ///
-/// V1 is deliberately uniform: a cue on both the keyboard and the staff or no
-/// cue at all, always a neutral echo, always a count-in and no more. Only the
-/// pitch cue varies with the rung, so a rung change still moves one variable;
-/// fingering varies with the material rather than with the rung, since it is
-/// shown wherever the catalog has one that is not a guess.
+/// V1 is uniform: a cue on both the keyboard and the staff or no cue at all,
+/// always a neutral echo, always a count-in and no more. Only the pitch cue
+/// varies with the rung, so a rung change moves one variable. Fingering varies
+/// with the material, shown wherever the catalog has one that is not a guess.
 ///
 /// A supplied cue is written in both modalities because they answer different
-/// questions: the keyboard says which key, the staff says which note. Only the
-/// staff carries the notation a learner will meet anywhere else, and only the
-/// keyboard can name a finger. The unguided rung shows neither, which is the
-/// whole of what that rung means.
+/// questions: the keyboard says which key and names a finger, the staff says
+/// which note in the notation a learner meets elsewhere. The unguided rung
+/// shows neither.
 PresentationConditions presentationFor(
   GuidanceContext guidance, {
   Exercise? exercise,

@@ -2,25 +2,6 @@ import 'package:crisp_notation/crisp_notation.dart' as crisp;
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
-/// Turns a realization into the score a staff draws.
-///
-/// An adapter and nothing more: every pitch, its spelling, and its order come
-/// from [ExerciseRealization], so the staff and the keyboard diagram are two
-/// views of one answer to what the exercise asks for.
-///
-/// Eighth notes in 4/4, with the final tonic held for a quarter, which is how
-/// scales are written for practice: an even stream of notes, beamed by beat,
-/// arriving somewhere and stopping. The value is presentation and nothing
-/// else. What the exercise asks for is an even run of onsets ending on the
-/// tonic, and nothing measures how long the last one is held.
-///
-/// Whether a key signature is written is the caller's to decide and not this
-/// layer's, because a signature is itself information: four sharps tell a
-/// learner most of E major before they play a note. The cue staff writes one,
-/// since it is showing them the scale on purpose. The staff that grows from
-/// what they played does not, because by then it would be telling them what
-/// they were supposed to have done.
-
 /// Eighth notes in a bar of 4/4, which is the unit the bars are packed in.
 const int _eighthsPerMeasure = 8;
 
@@ -85,8 +66,19 @@ String staffElementId(Hand hand, int position) => '${hand.id}-$position';
 
 /// The staff [hand] reads from.
 ///
-/// Written in [keySignature] when one is given, and with an accidental on
-/// every altered note when it is not.
+/// An adapter and nothing more: every pitch, its spelling, and its order come
+/// from [realization], so the staff and the keyboard diagram are two views of
+/// one answer to what the exercise asks for.
+///
+/// Eighth notes in 4/4, with the final tonic held for a quarter, which is how
+/// scales are written for practice. The value is presentation only: what the
+/// exercise asks for is an even run of onsets ending on the tonic, and nothing
+/// measures how long the last one is held.
+///
+/// Written in [keySignature] when one is given, and with an accidental on every
+/// altered note when it is not. Whether to write one is the caller's decision,
+/// because a signature is itself information: four sharps tell a learner most
+/// of E major before they play a note.
 crisp.Score staffScoreFor(
   ExerciseRealization realization,
   Hand hand, {

@@ -13,11 +13,9 @@ import 'input_temporal_events_provider.dart';
 /// honest: if the events were not sufficient to know what is sounding, this
 /// would visibly drift.
 ///
-/// Held and sustained notes are kept apart for the same reason the source
-/// keeps them apart. A note-off under the pedal ends the hold, not the sound,
-/// and collapsing the two here would report silence while the instrument is
-/// still ringing. The events carry enough to tell them apart, which is the
-/// property this panel exists to demonstrate.
+/// Held and sustained notes are kept apart for the same reason the source keeps
+/// them apart: a note-off under the pedal ends the hold and not the sound, so
+/// collapsing the two would report silence while the instrument is ringing.
 @immutable
 class InputActivity {
   /// Notes whose keys are believed to be held.
@@ -37,9 +35,8 @@ class InputActivity {
 
   /// How many resets have arrived.
   ///
-  /// A reset mid-attempt means the observation is not continuous, which is
-  /// something a scoring layer will eventually have to refuse to measure
-  /// across.
+  /// A reset mid-attempt means the observation is not continuous, which no
+  /// scoring layer may measure across.
   final int resetCount;
 
   const InputActivity({

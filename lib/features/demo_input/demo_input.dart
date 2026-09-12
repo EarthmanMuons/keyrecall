@@ -7,10 +7,9 @@
 /// hardware attached.
 ///
 /// The instrument knows nothing about scales, exercises, or whether what it
-/// played was correct, and holds no authored sequence. Deciding those is the
-/// practice loop's job, and an instrument that knew them would be simulating
-/// the answer rather than the playing. Anything that scripts a tour belongs in
-/// a layer above this one, telling the instrument what to play.
+/// played was correct, and holds no authored sequence. An instrument that knew
+/// them would simulate the answer rather than the playing, so anything that
+/// scripts a tour belongs above this layer.
 library;
 
 export 'cancelable_timer_sequence.dart';

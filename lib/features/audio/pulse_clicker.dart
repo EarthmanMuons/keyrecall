@@ -10,13 +10,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// The click that sounds the pulse.
 ///
 /// Generated rather than played from an asset, so the app carries no audio
-/// files and the click can follow whatever tempo an exercise asks for. It also
-/// keeps the sound on the same engine anything else will eventually use, which
-/// matters if the pulse ever has to share a clock with performance timing.
+/// files and the click follows whatever tempo an exercise asks for. It sounds
+/// on the shared audio engine, which is what a pulse sharing a clock with
+/// performance timing would need.
 ///
-/// Best effort. A device that will not give us an audio engine leaves the
-/// count-in silent, which is exactly where it was before, rather than failing
-/// an attempt.
+/// Best effort: a device that will not give us an audio engine leaves the
+/// count-in silent rather than failing an attempt.
 final pulseClickerProvider = Provider<PulseClicker>((ref) {
   final clicker = PulseClicker();
   ref.onDispose(clicker.stop);

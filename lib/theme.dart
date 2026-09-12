@@ -18,12 +18,10 @@ const seedColor = Color(0xFFFFA500);
 /// changes, and delete this file in favor of a seeded scheme once the Dart
 /// color utilities support the 2025 spec.
 ///
-/// Roles Flutter has no place for are left off. `background`, `onBackground`,
-/// and `surfaceVariant` are deprecated here and repeat `surface`, `onSurface`,
-/// and `surfaceContainerHighest`. The generator's `ControlActivated`,
-/// `ControlNormal`, `ControlHighlight`, and `TextPrimaryInverse` family are
-/// Android framework theme attributes, and the `PaletteKeyColor` values are the
-/// tonal palette keys the spec derives these roles from, not roles.
+/// Roles Flutter has no place for are left off: the deprecated `background`,
+/// `onBackground`, and `surfaceVariant`, the generator's Android framework
+/// attributes, and the `PaletteKeyColor` tonal palette keys, which are what the
+/// spec derives these roles from rather than roles.
 const lightColorScheme = ColorScheme(
   brightness: Brightness.light,
   primary: Color(0xFF855400),

@@ -1744,9 +1744,9 @@ class _Status extends StatelessWidget {
 /// focus that is caught up is a successful outcome and says so; a scope that
 /// cannot be resolved is a configuration error the learner can back out of by
 /// dropping the focus; and everything else is the scheduler declining every
-/// admission path it has, which is worth reporting. That last one read as
-/// running out of material once, while a hundred and fifty candidates were
-/// still admissible and only the attempt cap had been hit.
+/// admission path it has, which is worth reporting and must not be shown as
+/// running out of material: the attempt cap can be reached with candidates
+/// still admissible.
 class _NothingToPlay extends ConsumerWidget {
   const _NothingToPlay({required this.state});
 
