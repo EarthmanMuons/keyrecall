@@ -153,17 +153,17 @@ Inventory taken before any policy was written, because a scheduler that appears
 to diagnose intelligently while reading a signal real MIDI cannot supply is
 worse than no scheduler at all.
 
-| Question                                          | Answer                                                                                                                                             |
-| ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Did every expected pitch eventually arrive?       | Yes. `AlignmentReading.isComplete`, which is stronger than reaching the last note.                                                                 |
-| Were they produced in order?                      | Yes, by construction. Alignment is an ordered edit script.                                                                                         |
-| Are corrections distinguishable from extra notes? | Partly. `immediateRepairs` is the shape a repair leaves; repeats and intrusions are structural classes. What caused any of them is not observable. |
-| Can a localized stall be identified?              | Yes, now. `momentGapsOf` gives every gap located by the transition it spans.                                                                       |
-| Repeated trouble at the same transition?          | Yes. `TransitionCensus` aggregates gaps in memory; the acquisition journal preserves the gap series, but does not yet rebuild the census.          |
-| Incomplete versus deliberately ended?             | Yes, outside measurement. Termination is its own concern; see [`attempt-termination.md`](attempt-termination.md).                                  |
-| Continuity independent of the beat grid?          | Yes. Dispersion and the interval ratios are read from the learner's own onsets, never from metric offsets.                                         |
+| Question                                          | Answer                                                                                                                                                                                                      |
+| ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Did every expected pitch eventually arrive?       | Yes. `AlignmentReading.isComplete`, which is stronger than reaching the last note.                                                                                                                          |
+| Were they produced in order?                      | Yes, by construction. Alignment is an ordered edit script.                                                                                                                                                  |
+| Are corrections distinguishable from extra notes? | Partly. `immediateRepairs` is the shape a repair leaves; repeats and intrusions are structural classes. What caused any of them is not observable.                                                          |
+| Can a localized stall be identified?              | Yes, now. `TimingEvidence` gives every wait located by the transition it spans, and says which of them a baseline could judge.                                                                              |
+| Repeated trouble at the same transition?          | Yes. `TransitionCensus` aggregates waits in memory, counting those it could judge apart from those that merely happened; the acquisition journal preserves the series, but does not yet rebuild the census. |
+| Incomplete versus deliberately ended?             | Yes, outside measurement. Termination is its own concern; see [`attempt-termination.md`](attempt-termination.md).                                                                                           |
+| Continuity independent of the beat grid?          | Yes. Dispersion and the interval ratios are read from the learner's own onsets, never from metric offsets.                                                                                                  |
 
-The gap that mattered was localization. Before `momentGapsOf` the measurement
+The gap that mattered was localization. Before the located waits the measurement
 carried one worst gap and where it ended, which can say a performance was
 interrupted but cannot say the same transition is in the way every time.
 

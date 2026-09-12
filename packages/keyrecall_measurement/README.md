@@ -4,21 +4,33 @@ Turns an aligned performance into what was observed, and into the outcome the
 learner model consumes.
 
 ```text
-Alignment                  correspondence, from pitch alone
+Alignment                  correspondence, settled first
     +
 matched-note onsets        timing, now interpretable
+    ↓
+TimingEvidence             the waits, and which of them could be judged
     ↓
 PerformanceMeasurement     factual observations
     ↓
 Outcome                    model-facing semantics
 ```
 
-Alignment decides which played note corresponds to which expected one, using
-pitch and nothing else. Once that is settled, the timestamps of the matched
-notes are properties of the performance rather than further evidence about
-correspondence, so measurement is free to read them. The same notes played at a
-different speed align identically and measure differently, and there is a test
-that says so.
+Alignment decides which played note corresponds to which expected one. Once that
+is settled, the timestamps of the matched notes are properties of the
+performance rather than further evidence about correspondence, so measurement is
+free to read them. Every channel here is read after correspondence is fixed, and
+changing how the same notes sat in time does not move a pitch-derived channel.
+
+Correspondence itself is mostly a question about pitch, and not entirely.
+Grouping the arrivals into performed moments is part of settling it, and where
+two readings of the same pitches are otherwise equally good, timing contributes
+a bounded preference between them; see
+[`keyrecall_alignment`](../keyrecall_alignment/README.md). Two-hand material is
+where that shows: a lone arrival of a pitch both a moment's right hand and the
+next moment's left hand ask for belongs to whichever it arrived beside, and the
+channels then read the correspondence that was chosen. So the guarantee is about
+timing not reaching a settled correspondence, not about ambiguous correspondence
+being immune to timing.
 
 ## What the channels mean
 
@@ -69,6 +81,14 @@ from real playing rather than round numbers; see
 They are provisional, and they are engineering calibration rather than a
 pedagogical boundary.
 
+Robust against one anomalous wait needs enough waits for one of them to be the
+anomaly. `TimingEvidence` is where that is decided, once, for everything that
+reads timing: below five waits the interpolated quartiles include the extremes
+they exist to ignore, so the performance establishes no baseline and both scores
+are absent. Three notes at 0, 500, and 60000 ms would otherwise read as badly
+broken and totally unsteady at the same time, from a single wait measured
+against itself.
+
 ## Availability
 
 Measurement says what the observation model read, never whether the attempt was
@@ -79,4 +99,11 @@ performances would go missing exactly where the evidence is strongest.
 What can be absent is a channel rather than a measurement. Coordination needs a
 moment where both hands corresponded to something that arrived, and where no
 moment did, it is absent rather than zero: an attempt nobody could read for
-togetherness has not been read as ragged.
+togetherness has not been read as ragged. Continuity and temporal stability are
+absent the same way, and for the same reason, when the playing supplied too few
+waits to judge one against the others.
+
+An absent channel is absent all the way through. `Outcome` carries the null, the
+evidence weights leave the channel out, the update path leaves its state
+untouched, and the record omits it rather than writing a zero, so a channel
+nothing observed cannot accumulate into evidence that the learner was bad at it.

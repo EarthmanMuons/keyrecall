@@ -275,8 +275,8 @@ something that arrived, not to have played the right note. A wrong pitch still
 says when that hand acted.
 
 Asynchrony exists only where both hands corresponded. Everywhere else it is
-absent rather than zero, the way dispersion already is for a performance too
-short to have a spread.
+absent rather than zero, the way the timing scores are for a performance with
+too few waits to judge one against the others.
 
 `HANDS_TOGETHER_COORDINATION` reads a channel of its own: the median absolute
 asynchrony and its upper tail. Attributing it from the generic motor channels

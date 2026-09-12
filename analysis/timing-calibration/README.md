@@ -141,6 +141,11 @@ continuity           1.0 at longest <= 1.15x       covers both comfortable takes
 
 Linear between the two ends, since nothing here justifies a curve.
 
+Both constants are ratios against a baseline the performance supplies itself, so
+neither means anything until there is one. Five waits is where the interpolated
+quartiles first exclude the longest and shortest, so below it both scores are
+absent rather than read against a baseline the judged wait helped set.
+
 The two floors are chosen differently on purpose. The continuity floor covers
 every take that was not deliberately interrupted, including the stumble, whose
 per-hand gaps stayed within 1.14x. The stability floor does not cover the
