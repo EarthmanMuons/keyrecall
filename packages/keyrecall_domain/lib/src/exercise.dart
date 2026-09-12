@@ -10,7 +10,8 @@ import 'technical_material.dart';
 
 /// How an exercise orders and transforms its material.
 ///
-/// V1 ships [linear] only.
+/// V1 ships [linear] only. The separate axis keeps a future pattern from
+/// reinterpreting stored exercises.
 enum ExercisePattern {
   /// Straight ascending or ascending-descending traversal.
   linear('LINEAR');

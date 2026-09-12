@@ -10,9 +10,8 @@ double _retainedProbability(double elapsedDays, double halfLifeDays) => math
     .toDouble()
     .clamp(1e-12, 1 - 1e-12);
 
-/// `log(1 + x)`, accurate for small [x] where `log(1 + x)` would lose most of
-/// its significant digits. The failure likelihood needs it: a well-retained
-/// material makes `1 - probability` very small.
+/// `log(1 + x)`, accurate for small [x]. The failure likelihood needs it, since
+/// a well-retained material makes `1 - probability` very small.
 double _log1p(double x) {
   final sum = 1.0 + x;
   final rounded = sum - 1.0;
@@ -28,11 +27,10 @@ double _log1p(double x) {
 /// `current <= consolidated` holds. Projection error is folded back into the
 /// posterior variance rather than disappearing as extra certainty.
 ///
-/// This revises what the model believes was *already* retained. It never
-/// claims the attempt caused that consolidation, so execution quality is
-/// deliberately absent. Returns `0.0` without touching state when the
-/// observation cannot be informative: zero evidence weight, a disabled
-/// likelihood, or an interval shorter than the configured floor.
+/// This revises what the model believes was *already* retained, never claiming
+/// the attempt caused it, so execution quality is absent. Returns `0.0` without
+/// touching state when the observation cannot be informative: zero evidence
+/// weight, a disabled likelihood, or an interval shorter than the floor.
 ///
 /// Throws [ArgumentError] if the configured grid is too coarse to integrate.
 double updateRetainedConsolidationPosterior({

@@ -22,9 +22,8 @@ double _sigmoid(double logit) => 1.0 / (1.0 + math.exp(-logit));
 /// [independentRetrievalP].
 ///
 /// Support props availability up even when independent recall would fail:
-/// continuous cueing makes availability near-certain, previewed notes
-/// partially compensate for weak memory, and an unguided attempt uses the
-/// independent retrieval probability unchanged.
+/// continuous cueing makes availability near-certain, previewed notes partly
+/// compensate, and an unguided attempt uses [independentRetrievalP] unchanged.
 double _materialAvailableProbability(
   double independentRetrievalP,
   GuidanceContext guidance,
@@ -43,19 +42,15 @@ class LearnerModel {
 
   /// The model reading [params].
   ///
-  /// There is no semantic switch to pass, and that is the point:
-  /// [LearnerParams.modelVersion] is what an attempt records and what replay
-  /// refuses to reinterpret under, so it has to name one transition function
-  /// rather than a family of them. A constructor argument that changed how the
-  /// model learns while leaving the version alone would let a checkpoint
-  /// report a faithful replay of a history it did not produce.
+  /// There is no semantic switch to pass. [LearnerParams.modelVersion] is what
+  /// an attempt records and what replay refuses to reinterpret under, so it has
+  /// to name one transition function rather than a family of them.
   const LearnerModel({this.params = v1LearnerParams});
 
   /// The model as the frozen Python prototype defined it.
   ///
-  /// Kept so the reference-equivalence and digest tests can still ask the
-  /// question they were written to ask. Not for production: it is the older
-  /// model, preserved, not a configuration of the current one.
+  /// For the reference-equivalence and digest tests. The older model preserved,
+  /// not a configuration of the current one.
   const LearnerModel.v1Prototype() : params = v1PrototypeLearnerParams;
 
   /// Whether this is the preserved prototype rather than a live model.
@@ -96,16 +91,14 @@ class LearnerModel {
 
   /// Propagates [state] to [at] and then folds one attempt's evidence in.
   ///
-  /// The two halves of the transition contract in the order it defines them,
-  /// for callers that have no reason to separate them. [applyOutcome] stays
-  /// strict rather than propagating on its own, because propagation is model
-  /// behavior in its own right and where it happens is what replay reproduces.
+  /// The two halves of the transition contract, for callers with no reason to
+  /// separate them. [applyOutcome] stays strict rather than propagating on its
+  /// own, because where propagation happens is what replay reproduces.
   ///
-  /// Atomic with respect to every rejection, including the ones propagation
-  /// itself would raise. Both halves run against a copy and are committed back
-  /// only once the whole transition succeeds: propagating first and validating
-  /// afterwards would leave a refused attempt's timestamps and variances
-  /// behind, which is the failure the preflight exists to prevent.
+  /// Atomic with respect to every rejection, propagation's included: both
+  /// halves run against a copy and are committed back only once the whole
+  /// transition succeeds, so a refused attempt leaves no timestamps or
+  /// variances behind.
   MemoryUpdateDiagnostics propagateAndApplyOutcome({
     required LearnerState state,
     required Exercise exercise,
@@ -136,9 +129,8 @@ class LearnerModel {
   /// The competency mean used for prediction, including the hand-transfer
   /// adjustment.
   ///
-  /// When one hand is under-observed its prediction is nudged toward the
-  /// better-observed hand. The adjustment is largest while the target hand is
-  /// uncertain and shrinks as its own direct evidence accumulates. It never
+  /// An under-observed hand is nudged toward the better-observed one, most
+  /// while it is uncertain and less as its own evidence accumulates. It never
   /// writes the paired competency's stored state, so right-hand practice is
   /// never recorded as a left-hand observation.
   double effectiveCompetencyMean(LearnerState state, Competency competency) {
@@ -167,8 +159,8 @@ class LearnerModel {
   /// `D_motor(e)`: everything that makes the physical task harder. Positive is
   /// harder.
   ///
-  /// Guidance is deliberately absent: it helps make the material available, it
-  /// does not make the physical task easier once the material is available.
+  /// Guidance is absent: it makes the material available rather than the
+  /// physical task easier.
   double motorDifficulty(Exercise exercise) {
     final difficulty = params.difficulty;
     final conditions = exercise.conditions;
@@ -183,16 +175,12 @@ class LearnerModel {
 
   /// The tempo an attempt actually demonstrated, in BPM.
   ///
-  /// Capped at the requested tempo. A scale played slower than asked for
-  /// demonstrates the easier task, and crediting the harder one is how a
-  /// clean-but-slow run inflates execution ability. Playing faster proves the
-  /// tempo that was asked for, but is not credited beyond it: the scheduler
-  /// chose the challenge, and an accidental sprint should not retroactively
-  /// turn one attempt into a harder probe than anyone scheduled.
+  /// Capped at the requested tempo. A scale played slower demonstrates the
+  /// easier task, and playing faster is not credited beyond what the scheduler
+  /// chose.
   ///
-  /// Only execution difficulty moves. What was retrieved is still the exercise
-  /// that was asked for: playing C harmonic minor slowly is still recalling C
-  /// harmonic minor.
+  /// Only execution difficulty moves. Playing C harmonic minor slowly is still
+  /// recalling C harmonic minor.
   double demonstratedTempoBpm(Exercise exercise, Outcome outcome) {
     final requested = exercise.conditions.tempoBpm;
     if (!attributesDemonstratedDifficulty) return requested;
@@ -236,8 +224,8 @@ class LearnerModel {
   /// `P(acceptable motor execution | material available)`.
   ///
   /// Reads only motor competencies and the material execution residual.
-  /// Bilateral coordination is a separate required channel for hands-together
-  /// work and forms the motor-control bottleneck in [Prediction.overallP].
+  /// Bilateral coordination is a separate required channel, joining this one in
+  /// the motor-control bottleneck of [Prediction.overallP].
   double executionProbability(LearnerState state, Exercise exercise) {
     final loadings = motorLoadings(exercise.structuralQ);
     var competencyTerm = 0.0;
@@ -256,9 +244,8 @@ class LearnerModel {
 
   /// `P(the hands stay together)`.
   ///
-  /// Carries no motor-difficulty penalty: coordinating two hands is what this
-  /// channel is about, so charging the same difficulty twice would predict a
-  /// two-hand attempt as harder to coordinate the harder it is to play.
+  /// Carries no motor-difficulty penalty, which would otherwise charge the
+  /// two-hand task twice.
   double coordinationProbability(LearnerState state, Exercise exercise) {
     if (exercise.conditions.hands != HandConfiguration.together) return 1.0;
     final loadings = coordinationLoadings(exercise.structuralQ);
@@ -326,25 +313,21 @@ class LearnerModel {
 
   /// Rejects an attempt this model cannot learn from, writing nothing.
   ///
-  /// Four kinds of admissibility, asked in one place so that no partial write
-  /// can precede one:
+  /// Four kinds of admissibility, asked in one place so no partial write can
+  /// precede one:
   ///
   /// - **Temporal.** Every propagating layer of [state] must stand exactly at
-  ///   [at]. Propagation is the first half of the transition contract and
-  ///   belongs to the caller, which is what replay reproduces; a layer left
-  ///   behind its own evidence also serializes to something no decoder will
-  ///   read back.
-  /// - **Consistency.** Whether retrieval was tested is a fact about the
-  ///   presentation rather than a free field: a continuously cued attempt
-  ///   supplies the material and tests nothing, and any other rung tests. An
-  ///   attempt that never began cannot have completed or retrieved.
-  /// - **Observability.** Evidence may not claim what the attempt could not
-  ///   see: an untested retrieval carries exactly zero memory weight, and an
-  ///   attempt that never began carries no execution evidence of any kind.
-  ///   Reduced weights are the point of the mechanism and stay welcome; what
-  ///   is refused is weight from an event that did not happen.
-  /// - **Numeric.** A derived tempo about to enter state must be finite.
-  ///   Bounds on the supplied weights, prediction, and outcome are their own
+  ///   [at]. Propagation belongs to the caller, and a layer left behind its own
+  ///   evidence serializes to something no decoder will read back.
+  /// - **Consistency.** Whether retrieval was tested follows from the guidance
+  ///   rung rather than being a free field, and an attempt that never began
+  ///   cannot have completed or retrieved.
+  /// - **Observability.** An untested retrieval carries exactly zero memory
+  ///   weight, and an attempt that never began carries no execution evidence.
+  ///   Reduced weights stay welcome; weight from an event that did not happen
+  ///   does not.
+  /// - **Numeric.** A derived tempo about to enter state must be finite. Bounds
+  ///   on the supplied weights, prediction, and outcome are their own
   ///   constructors' invariants.
   ///
   /// Throws [ArgumentError] on the first failure.
@@ -391,10 +374,8 @@ class LearnerModel {
     }
 
     if (!outcome.started) {
-      // Failing to begin is a real observation, and the memory weight above
-      // is where it lands. Nothing was executed, so nothing downstream of
-      // execution may move: not a competency mean, not the residual, and not
-      // the record of whether this hand has played this material at all.
+      // Failing to begin is a real observation, and the memory weight above is
+      // where it lands. Nothing downstream of execution may move.
       if (weights.materialExecution > 0.0) {
         throw ArgumentError.value(
           weights.materialExecution,
@@ -427,25 +408,23 @@ class LearnerModel {
 
   /// Applies one attempt's evidence to [state], in place.
   ///
-  /// Each layer learns only from a residual its own prediction helped
-  /// generate: motor competencies and the execution residual from
+  /// Each layer learns only from a residual its own prediction helped generate:
+  /// motor competencies and the execution residual from
   /// `motorScore - executionP`, topology competencies from
   /// `topologyAccuracy - topologyP`, and memory from
-  /// `retrieval.score - independentRetrievalP`. There is deliberately no
-  /// universal prediction error, and zero-weight layers are left untouched.
+  /// `retrieval.score - independentRetrievalP`. There is no universal
+  /// prediction error, and zero-weight layers are left untouched.
   ///
   /// For a factual retrieval with a pre-existing anchor the ordering is
   /// mandatory: retained-consolidation inference, then current-durability
-  /// evidence correction, then the causal transition. That separates evidence
-  /// about durability that existed before the attempt from learning the
-  /// attempt itself caused.
+  /// evidence correction, then the causal transition. That separates durability
+  /// evidence that existed before the attempt from learning it caused.
   ///
-  /// Throws [ArgumentError] for anything [validateTransition] rejects,
-  /// checked before the first write. The update is atomic with respect to
-  /// validation: a rejected attempt leaves [state] exactly as it found it.
+  /// Throws [ArgumentError] for anything [validateTransition] rejects, checked
+  /// before the first write, so a rejected attempt leaves [state] untouched.
   ///
-  /// Returns the event-local memory attribution; the state changes themselves
-  /// land in [state].
+  /// Returns the event-local memory attribution. The state changes land in
+  /// [state].
   MemoryUpdateDiagnostics applyOutcome({
     required LearnerState state,
     required Exercise exercise,
@@ -468,10 +447,9 @@ class LearnerModel {
     final topologyQ = topologyLoadings(q);
     final coordinationQ = coordinationLoadings(q);
 
-    // Against the difficulty demonstrated, not the one requested. The
-    // prediction is still the decision's, and every other channel measures its
-    // surprise against it: only execution is a claim about a physical task
-    // whose difficulty the performance itself established.
+    // Against the difficulty demonstrated, not the one requested. Only
+    // execution is a claim about a physical task whose difficulty the
+    // performance itself established.
     final deltaExec =
         outcome.motorScore -
         demonstratedExecutionProbability(state, exercise, outcome);
@@ -586,22 +564,16 @@ class LearnerModel {
       null => null,
     };
 
-    // Knowing the notes here is a separate record from the frontier, and a
-    // separate bar: pitch rather than motor quality, because a hand that plays
-    // the right notes unevenly knows the scale and is ready for the other hand
-    // to join it, while a hand that plays the wrong ones smoothly is not.
+    // A separate record from the frontier, and a separate bar: pitch rather
+    // than motor quality, because a hand that plays the right notes unevenly is
+    // ready for the other hand to join it.
     if (performedTempoBpm != null &&
         outcome.completed &&
         outcome.pitchIntegrity >=
             params.materialExecution.handsTogetherPitchIntegrity) {
-      // At the tempo they actually played, not the one they were asked for.
-      // The frontier beside this records the request, because a rung is earned
-      // by being asked for it and it is the place a learner is asked to go on
-      // from. This is where hands-together work will start, so it has to be
-      // where the hand actually is: somebody asked for sixty who plays at a
-      // hundred and twenty would otherwise begin coordination work below
-      // sixty, and somebody asked for a hundred and twenty who plays at eighty
-      // would begin it far too fast.
+      // At the tempo actually played, since this is where hands-together work
+      // starts and so has to be where the hand actually is. The frontier beside
+      // it records the request instead.
       residual.readyForHandsTogether(
         octaves: exercise.conditions.octaves,
         tempoBpm: performedTempoBpm,
@@ -609,19 +581,17 @@ class LearnerModel {
     }
 
     // The execution frontier moves only on an attempt that was managed:
-    // through to the end, and played rather than endured. A span or a tempo
-    // somebody could not get through is not the place to go on from, and a
-    // maximum rather than the latest so that working slowly on something
-    // already taken faster does not walk it back down.
+    // through to the end, and played rather than endured. A maximum rather than
+    // the latest, so working slowly on something already taken faster does not
+    // walk it back down.
     if (!executionWasManaged(outcome)) return;
     residual.demonstrate(
       octaves: exercise.conditions.octaves,
       tempoBpm: exercise.conditions.tempoBpm,
     );
-    // And how fast they were actually going, which the frontier deliberately
-    // does not record: a rung is earned by being asked for it. Somebody asked
-    // for sixty who plays at a hundred and twenty has shown a pace, and an
-    // unseen scale should arrive near that rather than near sixty.
+    // And how fast they were actually going, which the frontier does not
+    // record: an unseen scale should arrive near the demonstrated pace rather
+    // than near the last request.
     if (performedTempoBpm != null) residual.paced(performedTempoBpm);
   }
 
@@ -638,8 +608,8 @@ class LearnerModel {
     final currentHalfLifeBefore = memory.currentHalfLifeDays;
     var inferenceDelta = 0.0;
 
-    // Observation history is factual bookkeeping, not an evidence-weighted
-    // estimate: an untested retrieval updates neither factual timestamp.
+    // Factual bookkeeping rather than an evidence-weighted estimate: an
+    // untested retrieval updates neither timestamp.
     if (outcome.retrieval.isTested) {
       memory.lastRetrievalAttemptAt = at;
     }
@@ -672,11 +642,9 @@ class LearnerModel {
       }
     }
 
-    // A rung the learner just failed at is no longer one they succeed at, so
-    // it stops being established and the ladder waits for the next success to
-    // say where they are. Without this, failing a step up would leave the
-    // older establishment standing and let the same step be offered again
-    // immediately.
+    // A rung just failed stops being established, so the ladder waits for the
+    // next success to say where the learner is rather than offering the same
+    // step again immediately.
     if (outcome.retrieval == FactualRetrieval.failed) {
       memory.establishedIndependence = null;
       memory.establishedIndependenceAt = null;
@@ -713,11 +681,10 @@ class LearnerModel {
 
   /// Surprise-driven correction of current durability, in log space.
   ///
-  /// Prediction error makes surprising outcomes move the estimate more than
-  /// expected ones, while the reversion term creates a stable interior
-  /// equilibrium under repeated expected failure. The result is bounded below
-  /// by the configured floor and above by retained consolidation, which the
-  /// inference step may just have raised.
+  /// Surprising outcomes move the estimate more than expected ones, while the
+  /// reversion term creates a stable interior equilibrium under repeated
+  /// expected failure. Bounded below by the configured floor and above by
+  /// retained consolidation.
   void _correctCurrentDurability({
     required MaterialMemoryState memory,
     required double weight,
@@ -776,12 +743,11 @@ class LearnerModel {
   /// saturating target in proportion to execution quality and retrieval
   /// context, then grows current durability toward the resulting envelope.
   ///
-  /// A first success cannot identify a forgetting rate, because no anchored
-  /// interval preceded it, but it can still causally establish stronger
-  /// post-attempt memory here. Growth starts from whichever is higher, the
-  /// pre-attempt durability or the evidence-corrected one, so estimator
-  /// correction can revise current durability downward without ever making a
-  /// successful practice event net destructive.
+  /// A first success identifies no forgetting rate, having no anchored interval
+  /// before it, but still establishes stronger post-attempt memory. Growth
+  /// starts from whichever is higher of the pre-attempt and evidence-corrected
+  /// durability, so correction can revise downward without making a successful
+  /// practice event net destructive.
   ///
   /// Returns the consolidation growth in days.
   double _formMemory({
@@ -794,15 +760,12 @@ class LearnerModel {
     final memoryParams = params.materialMemory;
     memory.memoryAnchorAt = at;
     memory.factualLastRetrievalAt = at;
-    // The rung this was actually produced under, which is what the next
-    // question is built from. The latest rather than the best ever: after a
-    // recovery success the ladder should resume from where the learner just
-    // succeeded, not from a height they reached before failing.
+    // The rung this was produced under, which the next question is built from.
+    // The latest rather than the best ever, so a recovery success resumes from
+    // where the learner just succeeded.
     //
-    // Its clock moves only when the rung does. Succeeding again at the rung
-    // already established says the learner is still there, not that they have
-    // arrived, and moving the clock for it would push the step toward
-    // independence away every time they practised.
+    // Its clock moves only when the rung does, or practising at an established
+    // rung would push the step toward independence away every time.
     if (memory.establishedIndependence != guidance.independence) {
       memory.establishedIndependence = guidance.independence;
       memory.establishedIndependenceAt = at;
@@ -853,8 +816,7 @@ class LearnerModel {
   /// Moves an existing activation anchor partway toward the present and
   /// restores current durability partway toward consolidation. It writes no
   /// factual retrieval success and grows no consolidation, so supported
-  /// practice can help reacquisition without manufacturing an event the
-  /// learner never demonstrated.
+  /// practice helps reacquisition without manufacturing an event.
   void _restoreFromSupportedPractice({
     required MaterialMemoryState memory,
     required GuidanceContext guidance,

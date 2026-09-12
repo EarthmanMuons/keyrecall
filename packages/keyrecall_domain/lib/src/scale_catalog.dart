@@ -48,8 +48,9 @@ final List<ScaleMaterial> allScales = List.unmodifiable([
 
 /// The reference corpus the simulation runs against.
 ///
-/// Seven materials covering all four forms. The pinned trace digests hash runs
-/// over exactly this list, so changing it invalidates them.
+/// Seven materials covering all four forms. A fixture rather than a product
+/// decision: the pinned trace digests hash runs over exactly this list, so
+/// changing it invalidates them.
 final List<ScaleMaterial> v1ScaleCatalog = List.unmodifiable([
   ScaleMaterial('C', ScaleForm.major),
   ScaleMaterial('G', ScaleForm.major),

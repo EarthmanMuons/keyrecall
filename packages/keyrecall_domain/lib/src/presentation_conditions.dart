@@ -136,7 +136,8 @@ enum TempoSupport {
 /// than taking the UI away.
 ///
 /// Not persisted: every V1 attempt is a full keyboard cue or none, no
-/// fingering, a neutral echo, and a count-in.
+/// fingering, a neutral echo, and a count-in. Add it to the wire format before
+/// any second presentation value becomes reachable.
 @immutable
 class PresentationConditions {
   /// How much of the material is supplied before it is played.

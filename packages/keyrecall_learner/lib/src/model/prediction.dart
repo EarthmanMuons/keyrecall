@@ -5,10 +5,9 @@ import 'package:meta/meta.dart';
 /// What the model expects from one upcoming attempt, on five separate
 /// channels.
 ///
-/// Splitting the prediction is the interpretability boundary the whole model
-/// rests on: a failure to recall is primarily a memory observation, a failure
-/// after starting is primarily an execution observation, and a clean cued
-/// performance is useful execution evidence but no retrieval evidence at all.
+/// Splitting the prediction is what makes an outcome attributable: a failure to
+/// recall is a memory observation, a failure after starting is an execution
+/// observation, and a clean cued performance is execution evidence only.
 @immutable
 class Prediction {
   /// `M(t)`: probability the learner could recall the material with no help.
@@ -29,17 +28,16 @@ class Prediction {
 
   /// Probability the learner knows the underlying pitch/form structure.
   ///
-  /// An inference target with its own outcome channel. It is deliberately not
-  /// multiplied into [overallP]: material availability already answers whether
-  /// the notes can be produced on this attempt.
+  /// An inference target with its own outcome channel, kept out of [overallP]
+  /// because material availability already answers whether the notes can be
+  /// produced.
   final double topologyP;
 
   /// Throws [ArgumentError] for a channel outside `[0, 1]`.
   ///
-  /// Every channel is a probability, and each one is subtracted from an
-  /// observed score to form the residual its layer learns from. A prediction
-  /// read back from a journal is untrusted input, so an impossible channel
-  /// fails here rather than as an implausible update nothing can attribute.
+  /// Each channel is subtracted from an observed score to form the residual its
+  /// layer learns from, and a prediction read back from a journal is untrusted
+  /// input, so an impossible channel fails here.
   Prediction({
     required this.independentRetrievalP,
     required this.materialAvailableP,
@@ -62,10 +60,9 @@ class Prediction {
 
   /// The challenge-admission probability: every required hurdle cleared.
   ///
-  /// Motor execution and coordination are correlated views of the same
-  /// performance, so their weaker probability is the motor-control bottleneck
-  /// rather than multiplying them as though they were independent. Material
-  /// availability remains the separate hurdle.
+  /// Motor execution and coordination are correlated views of one performance,
+  /// so the weaker of the two is the bottleneck rather than their product.
+  /// Material availability remains a separate hurdle.
   double get overallP =>
       materialAvailableP * math.min(executionP, coordinationP);
 

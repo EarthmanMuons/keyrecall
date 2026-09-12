@@ -58,39 +58,34 @@ class MaterialMemoryState {
   /// The independence of the rung at which retrieval last succeeded, or null
   /// if it never has.
   ///
-  /// Factual history, like the retrieval clocks beside it: the rung a learner
-  /// actually produced this material under, not a belief about what they could
-  /// manage. Replay derives it from the journal the same way, since every
-  /// attempt record carries the exercise it was.
+  /// Factual history, like the retrieval clocks beside it: the rung this
+  /// material was produced under, not a belief about what the learner could
+  /// manage.
   ///
-  /// What the guidance ladder is climbed by. Knowing that retrieval succeeded
-  /// is not enough to know what to ask next, because succeeding with the notes
-  /// shown a moment ago and succeeding without them are different achievements
-  /// and the next question differs accordingly.
+  /// What the guidance ladder is climbed by. Succeeding with the notes shown a
+  /// moment ago and succeeding without them are different achievements, so
+  /// retrieval success alone does not say what to ask next.
   int? establishedIndependence;
 
   /// When that rung was established, or null if none has been.
   ///
-  /// A separate clock from [factualLastRetrievalAt], and the separation is the
-  /// point. Retrieval timing asks how long ago this was produced at all;
-  /// establishment timing asks how long this rung has been the one the learner
-  /// succeeds at. Sharing one clock would make every success at the established
-  /// rung push the next step toward independence further away.
+  /// A separate clock from [factualLastRetrievalAt]. Retrieval timing asks how
+  /// long ago this was produced at all, establishment timing how long this rung
+  /// has been the one the learner succeeds at, and sharing one clock would make
+  /// every success at the established rung push the next step toward
+  /// independence further away.
   ///
   /// It moves when the rung changes and not when it is repeated. A failure
-  /// clears the establishment entirely, since the rung is no longer one the
-  /// learner is succeeding at, and the next success re-establishes it wherever
+  /// clears the establishment, and the next success re-establishes it wherever
   /// that happens to be.
   DateTime? establishedIndependenceAt;
 
   /// Whether retrieval has ever succeeded.
   ///
   /// The whole of what a prerequisite may ask of this. Eligibility reads
-  /// factual history and never an estimate, and the difference between "has
-  /// this ever been retrieved" and "how long ago" is where that line would
-  /// start to blur: an age is one comparison away from a durability, which
-  /// belongs to prediction. Named so the boundary is in the vocabulary rather
-  /// than only in a test.
+  /// factual history and never an estimate, and an age is one comparison away
+  /// from a durability, which belongs to prediction. Named so the boundary is
+  /// in the vocabulary rather than only in a test.
   bool get hasFactualRetrieval => factualLastRetrievalAt != null;
 
   /// When retrieval was last factually tested, win or lose.

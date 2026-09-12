@@ -2,10 +2,9 @@ import 'package:meta/meta.dart';
 
 /// Whether independent retrieval was tested, and what happened.
 ///
-/// [notTested] is not a weak failure. It carries exactly zero memory evidence
-/// and moves neither factual clock, which is what stops repeated fully cued
-/// practice from accumulating into false evidence of remembering or
-/// forgetting.
+/// [notTested] is not a weak failure. It carries zero memory evidence and moves
+/// neither factual clock, so repeated fully cued practice accumulates no false
+/// evidence of remembering or forgetting.
 enum FactualRetrieval {
   /// Retrieval was tested without concurrent answer-supplying cues, and the
   /// learner produced the material.
@@ -26,8 +25,8 @@ enum FactualRetrieval {
 
   /// The `true` / `false` / `null` JSON encoding.
   ///
-  /// All three values must survive serialization exactly; collapsing
-  /// [notTested] into [failed] silently manufactures evidence.
+  /// All three values must survive serialization exactly: collapsing
+  /// [notTested] into [failed] manufactures evidence.
   bool? get jsonValue => switch (this) {
     FactualRetrieval.succeeded => true,
     FactualRetrieval.failed => false,
@@ -44,15 +43,13 @@ enum FactualRetrieval {
 
 /// What actually happened on one attempt.
 ///
-/// The observation pipeline preserves rich MIDI-derived detail; V1 reduces it
-/// only where a particular state update needs a bounded target. The five
-/// quality scores are bounded in `[0, 1]`; [achievedTempoRatio] is only
-/// required to be finite and nonnegative, since a learner can overshoot the
-/// requested tempo and V1 records that without consuming it.
+/// The quality scores are bounded in `[0, 1]`. [achievedTempoRatio] need only
+/// be finite and nonnegative, since a learner can overshoot the requested
+/// tempo.
 ///
-/// Construction rejects anything else. These values reach `log` and `exp` in
-/// the update path, so a NaN or an out-of-range score would propagate into
-/// learner state rather than failing where it entered.
+/// Construction rejects anything else, because these values reach `log` and
+/// `exp` in the update path and a NaN would propagate into learner state
+/// rather than failing where it entered.
 @immutable
 class Outcome {
   /// Whether execution began at all. Cueing can make this true even when
@@ -68,9 +65,8 @@ class Outcome {
   /// Continuous, cue-inclusive measure of how much of the material appeared.
   ///
   /// Recorded rather than consumed: the update path learns about memory from
-  /// [retrieval], which is three-valued and knows whether retrieval was tested
-  /// at all. This is the graded view of the same attempt, kept for calibration
-  /// and for a future measure that can use a continuous signal honestly.
+  /// [retrieval], which knows whether retrieval was tested at all. This is the
+  /// graded view of the same attempt, kept for calibration.
   final double materialRetrieval;
 
   /// How correct the sounded pitches were.
@@ -84,9 +80,9 @@ class Outcome {
 
   /// Achieved tempo as a fraction of the requested tempo.
   ///
-  /// Zero is not a slow performance, it is the absence of one: nothing about
-  /// the attempt established a pace. Read it through [measuredTempoRatio],
-  /// which says so, rather than multiplying a requested tempo by it.
+  /// Zero is the absence of a performance rather than a slow one. Read it
+  /// through [measuredTempoRatio] rather than multiplying a requested tempo by
+  /// it.
   final double achievedTempoRatio;
 
   /// How correct the pitch/form structure was, independent of motor quality.
@@ -94,13 +90,12 @@ class Outcome {
 
   /// How together the hands were, or null when nothing measured it.
   ///
-  /// Three-valued in effect: absent for a single-hand attempt and for a
-  /// two-hand attempt where no moment had both hands, a score otherwise. Zero
-  /// would say the hands were as far apart as playing gets, which is a claim
-  /// no unmeasured attempt supports.
+  /// Absent for a single-hand attempt and for a two-hand attempt where no
+  /// moment had both hands, since zero would say the hands were as far apart as
+  /// playing gets.
   ///
-  /// Kept out of [motorScore] and [practiceQuality]. Coordination is what
-  /// `HANDS_TOGETHER_COORDINATION` learns from, and nothing else learns from
+  /// Kept out of [motorScore] and [practiceQuality]:
+  /// `HANDS_TOGETHER_COORDINATION` is the only competency that learns from
   /// it.
   final double? coordination;
 
@@ -140,16 +135,15 @@ class Outcome {
 
   /// [achievedTempoRatio] when the attempt established a pace, else null.
   ///
-  /// The one interpretation of the sentinel. Zero would otherwise read as a
-  /// measured stop, and multiplying a requested tempo by it records a pace of
-  /// nothing at the bottom of the ladder.
+  /// The one interpretation of the sentinel, since zero would otherwise read as
+  /// a measured stop.
   double? get measuredTempoRatio =>
       achievedTempoRatio > 0 ? achievedTempoRatio : null;
 
   /// `y_motor`: the bounded motor score the execution channel learns from.
   ///
-  /// Pitch integrity is excluded on purpose: it blends retrieval and motor
-  /// quality, so it is not purely motor evidence.
+  /// Pitch integrity is excluded, since it blends retrieval and motor
+  /// quality.
   double get motorScore => (continuity + temporalStability) / 2.0;
 
   /// How productive the practice was, in `[0, 1]`.

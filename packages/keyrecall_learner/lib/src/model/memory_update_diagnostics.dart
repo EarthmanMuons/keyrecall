@@ -2,10 +2,9 @@ import 'package:meta/meta.dart';
 
 /// Where an attempt's change to retained consolidation came from.
 ///
-/// Event-local attribution, not persistent learner state. The two sources are
-/// reported separately because they answer different questions: inference
-/// revises what the model believes was *already* retained, while formation
-/// records durability the practice itself just created.
+/// Event-local attribution, not persistent learner state. Inference revises
+/// what the model believes was *already* retained, while formation records
+/// durability the practice itself created.
 @immutable
 class MemoryUpdateDiagnostics {
   /// Change in consolidated half-life from retained-durability inference, in

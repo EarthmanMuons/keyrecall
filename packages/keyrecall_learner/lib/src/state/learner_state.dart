@@ -135,27 +135,25 @@ class LearnerState {
 
   /// Whether [competency] has ever received informative evidence.
   ///
-  /// The domain question every prerequisite really wants, asked once here so
-  /// policy does not have to know how evidence is represented. A mean cannot
-  /// answer it: placement seeds every competency at a value chosen from what
-  /// the learner said about themselves, so a mean above a threshold may mean
-  /// somebody has demonstrated something or may mean they were asked a
-  /// question at onboarding and answered it optimistically. Those are
-  /// different claims, and a gate that cannot tell them apart is admitting on
-  /// a self-report.
+  /// The question every prerequisite wants, asked here so policy need not know
+  /// how evidence is represented. A mean cannot answer it: placement seeds
+  /// every competency from a self-report, so a mean above a threshold may mean
+  /// somebody demonstrated something or that they answered optimistically at
+  /// onboarding, and a gate that cannot tell those apart admits on a
+  /// self-report.
   bool isObserved(Competency competency) =>
       this.competency(competency).lastEvidenceAt != null;
 
   /// Whether this hand has ever played [materialId] informatively.
   ///
-  /// Execution residuals are the one thing learner state keys by hand as well
-  /// as by material, which makes them the only place a hand-scoped question
-  /// about a specific scale can be answered at all. Memory is per material:
-  /// it knows a scale was retrieved and not which hand was playing.
-  /// Motion-agnostic, deliberately. The question is whether this hand
-  /// configuration has met this material at all, which parallel and contrary
-  /// hands-together work both answer; where they differ is what each has
-  /// demonstrated, which the frontiers keep apart.
+  /// Execution residuals are the one layer keyed by hand as well as by
+  /// material, so they are the only place a hand-scoped question about a
+  /// specific scale can be answered. Memory is per material and knows only that
+  /// a scale was retrieved.
+  ///
+  /// Motion-agnostic: parallel and contrary hands-together work both answer
+  /// whether this hand configuration has met this material, and the frontiers
+  /// keep apart what each demonstrated.
   bool hasPlayed(String materialId, HandConfiguration hands) =>
       materialExecution.entries.any(
         (entry) =>
@@ -166,16 +164,14 @@ class LearnerState {
 
   /// Requires every propagating layer to stand exactly at [now].
   ///
-  /// [lastPropagatedAt] cannot answer this. A maximum says nothing is ahead of
-  /// [now]; it says nothing about a layer left behind, and a layer behind its
-  /// own evidence produces a state that decodes as impossible. Propagation
-  /// advances all of them together, so anything else is a caller that moved
-  /// one by hand.
+  /// [lastPropagatedAt] cannot answer this: a maximum says nothing about a
+  /// layer left behind, and a layer behind its own evidence produces a state
+  /// that decodes as impossible. Propagation advances every layer together, so
+  /// anything else is a caller that moved one by hand.
   ///
-  /// Memory is deliberately absent: retrievability is computed on demand from
-  /// the activation anchor rather than propagated, so a memory state has no
-  /// timestamp to be aligned. What it does constrain is its own observation
-  /// history, which the update path checks where it reads it.
+  /// Memory is absent because retrievability is computed on demand from the
+  /// activation anchor rather than propagated, so it has no timestamp to align.
+  /// Its own observation history is checked where the update path reads it.
   ///
   /// Throws [ArgumentError] naming the first layer that disagrees.
   void requireAlignedAt(DateTime now) {
@@ -207,9 +203,9 @@ class LearnerState {
 
   /// The instant every propagating layer has been advanced to.
   ///
-  /// Layers are created at different times, so this is the latest of them:
-  /// the point this state as a whole is current as of. A summary, not a
-  /// guarantee: [requireAlignedAt] is what establishes alignment.
+  /// Layers are created at different times, so this is the latest of them. A
+  /// summary rather than a guarantee: [requireAlignedAt] establishes
+  /// alignment.
   DateTime get lastPropagatedAt {
     var latest = competencies.values.first.updatedAt;
     for (final state in competencies.values) {
@@ -223,9 +219,8 @@ class LearnerState {
 
   /// Advances every layer to [now] without evidence.
   ///
-  /// Memory needs no propagation: retrievability is computed on demand from
-  /// the activation anchor rather than stored as a value that would go stale
-  /// between calls.
+  /// Memory needs no propagation: retrievability is computed on demand from the
+  /// activation anchor rather than stored as a value that would go stale.
   ///
   /// Throws [ArgumentError] if [now] precedes [lastPropagatedAt], checked
   /// before anything is written so a rejected call cannot leave some layers
@@ -242,10 +237,10 @@ class LearnerState {
 
   /// Takes on [other]'s values in place, layer by layer.
   ///
-  /// How a transition computed on a copy is committed back. Every layer that
-  /// already exists keeps its identity, so a caller holding one competency or
-  /// one material's memory goes on holding the same object. A layer the
-  /// transition created arrives as a copy, and one it never had is dropped.
+  /// How a transition computed on a copy is committed back. An existing layer
+  /// keeps its identity, so a caller holding one competency goes on holding the
+  /// same object. A layer the transition created arrives as a copy, and one it
+  /// never had is dropped.
   void adoptFrom(LearnerState other) {
     for (final entry in other.competencies.entries) {
       competencies[entry.key]!.adoptFrom(entry.value);

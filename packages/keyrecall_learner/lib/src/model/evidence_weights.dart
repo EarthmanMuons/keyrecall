@@ -9,12 +9,9 @@ const _weightMapEquality = MapEquality<Competency, double>();
 /// How informative one attempt actually was, per state layer.
 ///
 /// Distinct from the structural `Q`, which only says an exercise *could* teach
-/// us something. A weight can be zero even where `Q` is one: failure to begin
-/// because the notes could not be recalled says very little about motor
-/// execution.
-///
-/// These are three separate quantities, not one confidence score. An attempt
-/// can be strong execution evidence and no retrieval evidence at all.
+/// something: a weight can be zero where `Q` is one. Three separate quantities
+/// rather than one confidence score, so an attempt can be strong execution
+/// evidence and no retrieval evidence at all.
 @immutable
 class EvidenceWeights {
   /// `w[a,k]`: per-competency informativeness, in `[0, 1]`.
@@ -33,9 +30,8 @@ class EvidenceWeights {
   /// informativeness.
   ///
   /// Weights reach the update path as multipliers on means, variances, and
-  /// log-space durabilities. An unchecked NaN there does not fail, it spreads:
-  /// every comparison against it is false, so it passes the guards and lands
-  /// in state as a value nothing can compare back out.
+  /// log-space durabilities, where an unchecked NaN would pass every guard and
+  /// land in state.
   EvidenceWeights({
     required Map<Competency, double> competencies,
     required this.materialExecution,
@@ -82,20 +78,16 @@ class EvidenceWeights {
 
 /// How much [outcome] on [exercise] tells us about each state layer.
 ///
-/// Parameter-free by design: the weights follow from what the attempt could
-/// observe, not from tunable constants.
+/// Parameter-free: the weights follow from what the attempt could observe.
 EvidenceWeights evidenceWeightsFor(Exercise exercise, Outcome outcome) {
   if (!outcome.started) {
-    // Informative about memory, almost nothing about execution, unless
-    // retrieval was not being tested at all, in which case there is no memory
-    // evidence either.
+    // Informative about memory, almost nothing about execution, and nothing at
+    // all when retrieval was not being tested.
     //
-    // The memory weight here is deliberately flat rather than scaled by
-    // retrievalDemand, which is why an unstarted previewed attempt (0.8)
-    // outweighs a completed one (0.6). Under a preview the material was put in
-    // front of the learner and still produced nothing, so the failure to begin
-    // is about as decisive as an unguided one; the demand discount exists to
-    // discount what support made easy, and nothing was made easy here.
+    // The memory weight is flat rather than scaled by retrievalDemand, so an
+    // unstarted previewed attempt (0.8) outweighs a completed one (0.6): the
+    // material was put in front of the learner and still produced nothing, and
+    // the demand discount exists to discount what support made easy.
     return EvidenceWeights(
       competencies: const {},
       materialExecution: 0.0,
@@ -106,13 +98,12 @@ EvidenceWeights evidenceWeightsFor(Exercise exercise, Outcome outcome) {
   final executionWeight = outcome.completed ? 1.0 : 0.4;
   final retrievalDemand = exercise.guidance.retrievalDemand;
 
-  // Topology is a pitch-knowledge question like memory, so a cued attempt is
-  // barely informative about it. Motor competencies are unaffected: cueing
-  // does not move the learner's hands for them.
+  // Topology is a pitch-knowledge question like memory, so a cued attempt says
+  // little about it. Motor competencies are unaffected, since cueing does not
+  // move the learner's hands.
   //
-  // Coordination is omitted unless the attempt measured it. An exercise both
-  // hands play creates the opportunity; whether anything was observed through
-  // it is a fact about the performance.
+  // Coordination is omitted unless the attempt measured it: two hands create
+  // the opportunity, and the performance decides whether it was observed.
   final competencyWeights = {
     for (final competency in Competency.values)
       if (exercise.structuralQ.contains(competency) &&

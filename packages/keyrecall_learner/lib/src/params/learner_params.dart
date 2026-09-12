@@ -227,33 +227,29 @@ class MaterialExecutionParams {
   /// Motor quality at or above which an attempt counts as having demonstrated
   /// the conditions it was played under.
   ///
-  /// What moves the execution frontier, beside having got through the
-  /// exercise at all. Both halves are needed: completing says the span and
-  /// tempo were survivable, and the motor score says it was played rather
-  /// than endured, so a faster attempt that fell apart does not become the
-  /// place the learner is asked to go on from.
+  /// What moves the execution frontier, beside having got through the exercise
+  /// at all. Both halves are needed: completing says the span and tempo were
+  /// survivable, and the motor score says it was played rather than endured.
   ///
-  /// The midpoint, and a first guess. It is deliberately not the
-  /// underchallenge thresholds, which say an attempt was too easy: a frontier
-  /// should move when something was managed, not only when it was trivial.
+  /// Not the underchallenge thresholds, which say an attempt was too easy: a
+  /// frontier should move when something was managed, not only when it was
+  /// trivial.
   final double demonstratedMotorScore;
 
   /// Pitch integrity at or above which a hand has separately demonstrated
   /// enough of a material for the other hand to join it.
   ///
-  /// Deliberately not the execution frontier's threshold. The frontier asks
-  /// whether a tempo and span were played rather than endured, because it is
-  /// the place a learner is asked to go on from; this asks whether putting the
-  /// hands together would be a coordination exercise rather than the
+  /// Not the execution frontier's threshold. The frontier asks whether a tempo
+  /// and span were played rather than endured, while this asks whether putting
+  /// the hands together would be a coordination exercise rather than the
   /// simultaneous remediation of two parts.
   ///
   /// So it reads pitch rather than motor quality: a hand playing the right
   /// notes unevenly is ready to coordinate, and one playing the wrong notes
   /// smoothly is not. It makes no claim about factual retrieval.
   ///
-  /// Provisional. The structural decision is that coordination readiness and
-  /// the execution frontier are different claims; where exactly this sits is a
-  /// calibration nobody has done.
+  /// Where exactly it sits is an uncalibrated first guess; that the two are
+  /// different claims is not.
   final double handsTogetherPitchIntegrity;
 
   const MaterialExecutionParams({
@@ -302,13 +298,10 @@ class CompetencyTransferParams {
   /// transfer, and nothing about the pace it should be entered at, which reads
   /// only the target family's own evidence.
   ///
-  /// **Provisional.** A starting point like the rest of v1, and one with an
-  /// observed effect: in simulation a learner strong in one family had the
-  /// other's gentlest work predicted at 0.465 while unable to manage any of it.
-  /// The borrowed term shrinks as direct evidence arrives, so the influence is
-  /// bounded, and the calibration it wants is the residual on a learner's first
-  /// attempts in an unpractised family. A single scalar may prove too coarse if
-  /// those residuals differ by execution shape.
+  /// **Provisional**, and one with an observed effect: in simulation a learner
+  /// strong in one family had the other's gentlest work predicted at 0.465
+  /// while unable to manage any of it. The borrowed term shrinks as direct
+  /// evidence arrives, so the influence is bounded.
   final double rhoFamily;
 
   /// Variance scale at which either adjustment is half strength.

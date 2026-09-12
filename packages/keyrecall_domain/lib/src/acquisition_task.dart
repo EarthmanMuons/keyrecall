@@ -101,6 +101,9 @@ enum TimingDemand {
 }
 
 /// Who decides when the next moment happens.
+///
+/// Separate from [TimingDemand] and from guidance because it records who
+/// determines sequence progression, which neither of those says.
 enum TaskAdvancement {
   /// The learner produces the next note when they are ready.
   learnerDriven('LEARNER_DRIVEN');
