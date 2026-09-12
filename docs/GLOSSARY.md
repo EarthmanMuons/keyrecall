@@ -1,543 +1,954 @@
-# KeyRecall Glossary
+# Glossary
 
-- **Status:** Canonical V1 terminology
-- **Last aligned:** September 4, 2026
+Every entry opens with a sentence anyone can read, then gets precise enough to
+implement against.
 
-This file is a concise lookup reference for current terms. It does not record
-design history, supersessions, open questions, or mathematical derivations. See
-[`README.md`](README.md) for document authority and history, and
-[`learner-model/v1-current-system.md`](learner-model/v1-current-system.md) for
-the integrated V1 explanation.
+Two kinds of link appear here. **Borrowed vocabulary** links outward, to
+Wikipedia or a source, for anyone who wants the underlying idea rather than
+KeyRecall's use of it. **Our vocabulary** links inward, to the `system/`
+document that governs it. If an entry links outward, the concept is not ours; if
+it links inward, it is.
+
+This is a lookup reference. It records no design history, supersessions, or
+derivations.
 
 ## Terms
 
-### Activation
-
-The operative recency of exact-material memory, represented by
-`MaterialMemoryState.memory_anchor_at`. A factual retrieval success sets the
-anchor to the attempt time. Productive supported practice may move an existing
-anchor partway toward the present without recording a retrieval success.
-
-Activation is distinct from current durability and retained consolidation.
-
 ### Acquisition floor
 
-The safe entry realizations a family offers for its unresolved requirements,
-supplied to the scheduler when nothing else is admissible. It is a family's
-answer to "what may this learner be given at all", not a ranking term: the
-scheduler reaches for it only after ordinary admission produces nothing, and a
-slot it cannot fill is a reasoned block rather than an absence.
+The safe entry realizations a family offers when nothing else is admissible.
+
+It is a family's answer to "what may this learner be given at all", not a
+ranking term: the scheduler reaches for it only after ordinary admission
+produces nothing, and a slot it cannot fill is a reasoned block rather than an
+absence. It offers **ordinary exercises**, unlike
+[below-floor acquisition](#acquisition-task). See
+[`system/curriculum.md`](system/curriculum.md).
+
+### Acquisition observation
+
+What an attempt at an [acquisition task](#acquisition-task) produces instead of
+an [Outcome](#outcome): no retrieval credit, no tempo reading, and no ordinary
+evidence of any kind.
 
 ### Acquisition task
 
-Supported acquisition of part of an ordinary exercise: an `AcquisitionTask`
-names a parent `Exercise` and relaxes the portion played, the timing demand, or
-who advances the sequence. A portion may also ask for the whole parent more than
-once, which supplies evidence a short pattern cannot supply in one pass without
-changing what the material is. Not an `Exercise`, and not convertible to one, so
-no ordinary admission, ranking, or learner-model path can consume it.
+A deliberately relaxed version of part of a normal exercise, used to get a
+learner started on something they cannot yet do at all.
 
-Its attempts produce an `AcquisitionObservation` rather than an `Outcome`: no
-retrieval credit, no tempo reading, and no ordinary evidence of any kind. A
-criterion success, meaning a clean first pass with established continuity, makes
-the unchanged parent eligible for a probe, and only that probe establishes
-ordinary readiness or a frontier. A stall is a gap between played moments that
-the measurement policy already reads as a break, and a `TransitionCensus`
-accumulates those stalls across attempts at one task so a repeatedly troublesome
-transition can be told from generally uneven playing.
+An `AcquisitionTask` names a parent `Exercise` and relaxes the portion played,
+the timing demand, or who advances the sequence. A portion may also ask for the
+whole parent more than once, supplying evidence a short pattern cannot supply in
+one pass without changing what the material is.
 
-Automatic acquisition requires a family-declared floor that names a scaffold, an
-informative ordinary attempt at that exact exercise, and no execution frontier
-in its context. The scaffold is the family's own statement of what a supported
-version of its work is, so a floor whose family declares none stays on the
-ordinary path. Short traversals with insufficient continuity evidence cannot
-earn probes, so a scaffold whose single traversal cannot supply five intervals
-asks for that traversal again from the beginning, as many times as the criterion
-needs; the reset between two traversals is not read as playing. Probe service
-covers all earlier criterion successes in event order.
+It is **not an `Exercise` and is not convertible to one**, so no ordinary
+admission, ranking, or learner-model path can consume it. A criterion success,
+meaning a clean first pass with established continuity, makes the unchanged
+parent eligible for a [probe](#probe), and only that probe establishes ordinary
+readiness. See [`system/practice.md`](system/practice.md).
 
-Not to be confused with [Acquisition floor], which offers ordinary exercises.
+### Activation
+
+When memory for one exact material was last refreshed.
+
+Represented by `MaterialMemoryState.memory_anchor_at`. A factual retrieval
+success sets the anchor to the attempt time; productive supported practice may
+move an existing anchor partway toward the present without recording a retrieval
+success. Distinct from [current durability](#current-durability) and
+[retained consolidation](#retained-consolidation).
 
 ### Admission band
 
-The probability window ordinary candidates must land in to be admitted, `pMin`
-to `pMax`, with a lower `pIntroductionMin` for material never practiced. A
-candidate outside it survives only through a [Challenge bypass].
+The "not too easy, not too hard" window an ordinary candidate has to land in.
+
+`pMin` to `pMax` on the predicted probability of acceptable performance, with a
+lower `pIntroductionMin` for material never practiced. A candidate outside it
+survives only through a [challenge bypass](#challenge-bypass). Grounded in the
+[challenge point framework](REFERENCES.md#motor-learning). See
+[`system/scheduler.md`](system/scheduler.md).
+
+### Alignment
+
+The decision about which played note corresponds to which expected note.
+
+Produced by `align()` in `keyrecall_alignment` as an
+[edit script](https://en.wikipedia.org/wiki/Edit_distance) over expected moments
+and observed arrivals. It is the **only place a correctness judgment is allowed
+to be made**, which is why the neutral echo the practice screen draws never
+touches it. The search is global rather than incremental, so resynchronizing
+after a skip or an extra note falls out of choosing the whole explanation at
+once. See [`system/observation.md`](system/observation.md).
+
+### AlignmentReading
+
+The interpretive questions answered beside an [alignment](#alignment) rather
+than inside it: whether the attempt was complete, whether it was first-pass
+clean, and where it first departed.
+
+It counts repair-shaped patterns rather than naming intentions. An extra note
+followed by the right one is what a correction looks like, and also what a
+hesitation or a bounced finger looks like.
 
 ### Attempt
 
-One presentation and performance of an `Exercise`, including the decision
-context, observations, derived outcome, evidence weights, state transitions, and
-state references needed for deterministic replay.
+One presentation and performance of an `Exercise`.
 
-### Assumption Registry
+The record includes the decision context, observations, derived outcome,
+evidence weights, state transitions, and the state references needed for
+deterministic [replay](#replay).
 
-A record of conceptual claims about the world or design, including their basis,
-confidence, and falsifier. It is distinct from the Parameter Registry, which
-records numeric configuration.
+### Attempt journal
+
+The append-only record of every attempt, and the only authority in the system.
+
+Learner state is not stored; it is whatever replaying the journal produces.
+Nothing rewrites a record, nothing is aggregated or dropped, and a lost line is
+detectable because `journalSequence` is contiguous. See
+[`system/history.md`](system/history.md).
+
+### Attempt slot
+
+One scheduler decision opportunity.
+
+Distinct from a [selection](#selection), which exists only when that decision
+produces an exercise. A slot that admits nothing is still a slot, and session
+caps, replay, diagnostics, and telemetry all have to keep the two apart.
 
 ### Bootstrap probe
 
-A challenge-band exception that offers notes previewed and then hidden for a
-material that has been tested but never successfully retrieved. Its clock uses
-`last_retrieval_attempt_at`. It prevents never-successful material from becoming
-permanently trapped under continuous cueing.
+A [challenge bypass](#challenge-bypass) that offers notes previewed and then
+hidden, for material that has been tested but never successfully retrieved.
 
-### Consolidation exception
-
-A challenge-band exception that offers a scale already met and not yet produced
-from memory, at the previewed rung, when the slot has nothing appropriate left
-to introduce. Not to be confused with retained consolidation, which is a memory
-state.
+Its clock uses `last_retrieval_attempt_at`. It exists so never-successful
+material cannot become permanently trapped under continuous cueing.
 
 ### Candidate
 
-A domain-valid `Exercise` considered by the scheduler. Candidate generation uses
-domain and instrument constraints but no learner state.
+A domain-valid `Exercise` the scheduler is considering.
+
+Candidate generation reads the catalog and the
+[instrument profile](#instrumentprofile) and nothing else. It takes no learner
+or session parameter at all, and that absence is the enforcement of the boundary
+rather than a convention.
+
+### CandidateTrace
+
+The record of what happened to one candidate in one decision: which stage
+touched it, which exception admitted or refused it, and where it ranked.
+
+Every candidate comes back with one. The scheduler is a traceable staged policy
+rather than a scoring function, and this is what makes that inspectable.
+
+### Caught up
+
+The state where nothing in the current scope warrants practice right now.
+
+Deliberately distinguished from **blocked**, where unresolved requirements exist
+but every admission path is closed. Calling blocked "caught up" would turn a
+model failure into false progress. The scheduler cannot report either, because
+it sees exercises rather than curriculum requirements. See
+[`system/curriculum.md`](system/curriculum.md).
 
 ### Challenge bypass
 
-The named reason a candidate outside the [Admission band] was admitted anyway:
-an override, recovery, a tempo or guidance or bootstrap or observation probe,
-consolidation, new material, or execution progression. Every admitted candidate
-carries either a bypass or membership in the band, and the trace records which.
+The named reason a candidate outside the [admission band](#admission-band) was
+admitted anyway.
+
+One of: an explicit override, [recovery](#recovery), a tempo,
+[guidance](#guidance-probe), [bootstrap](#bootstrap-probe) or observation probe,
+[consolidation](#consolidation-exception), new material,
+[execution progression](#execution-progression), or the
+[acquisition floor](#acquisition-floor). Every admitted candidate carries either
+a bypass or membership in the band, and the trace records which.
+
+### Checkpoint
+
+A cached snapshot of learner state at a point in the journal, so a replay need
+not start from the beginning.
+
+**Disposable acceleration and never evidence.** Losing one costs time and
+nothing else. It carries the hash of its own content, the journal position it
+covers, the model version that produced it, and a chained digest of the history
+it skips, and all of those are verified before it is trusted. See
+[`system/history.md`](system/history.md).
 
 ### Cold-start estimate
 
-The estimated probability of independently retrieving exact material before the
-first successful retrieval establishes a memory anchor. It is stored in logit
-form and has uncertainty separate from current-durability uncertainty.
+The model's belief about recalling material it has never seen recalled, before
+there is any anchor to measure forgetting from.
+
+Stored in [logit](https://en.wikipedia.org/wiki/Logit) form, with uncertainty
+separate from current-durability uncertainty. Until a first successful
+retrieval, elapsed-time durability is not identifiable, so this time-independent
+probability stands in for the [half-life](#half-life) curve.
 
 ### Competency
 
-A persistent, transferable latent learner capability estimated from relevant
-practice across materials. `Competency` is the canonical term; older documents
-may use `KnowledgeComponent`, `KC`, or `Component`.
+A general capability that many different exercises draw on, estimated from
+practice across all of them.
 
-V1 estimates fifteen competencies: four scale-topology and two arpeggio-topology
-competencies, right- and left-hand execution for each of the two families,
-scalar crossing, arpeggio transition, multi-octave continuation, direction
-reversal, and hands-together coordination.
+This is the mechanism by which evidence transfers: playing G major is evidence
+about the major-scale pattern in general. Fifteen are estimated, covering scale
+and arpeggio topology, right- and left-hand execution for each family, scalar
+crossing, arpeggio transition, multi-octave continuation, direction reversal,
+and hands-together coordination. Compare
+[material execution state](#materialexecutionstate), which holds what is
+specific to one material. `Competency` is the canonical term; see
+[retired terms](#retired-terms). See
+[`system/learner-model.md`](system/learner-model.md).
 
-### Consolidation
+### Consolidation exception
 
-See **Retained consolidation**.
+A [challenge bypass](#challenge-bypass) offering a scale already met and not yet
+produced from memory, at the previewed rung, when the slot has nothing
+appropriate left to introduce.
+
+Not to be confused with [retained consolidation](#retained-consolidation), which
+is a memory state.
+
+### Continuity
+
+How unbroken a performance was, as an outcome channel.
+
+Reacts to a single interruption, where [temporal stability](#temporal-stability)
+reacts to spread across the whole traversal. Both are absent rather than zero
+when the playing supplied too few waits to judge one against the others.
+
+### Coordination
+
+How together the two hands were.
+
+An outcome channel, absent for a single-hand attempt and for a two-hand attempt
+where no moment had both hands, since zero would say the hands were as far apart
+as playing gets. `HANDS_TOGETHER_COORDINATION` is the only competency that
+learns from it, and it is deliberately kept out of the motor score.
+
+### Coordination readiness
+
+The spans at which one hand has played a material well enough for the other to
+join it, and the tempo it managed there.
+
+Held beside the [execution frontier](#execution-frontier) on
+`MaterialExecutionState`, and recorded on any completed attempt whose pitch
+integrity reaches `handsTogetherPitchIntegrity`. That is a different claim from
+the frontier's and reads a different channel: the frontier asks whether a tempo
+and span were played rather than endured, because it is the place a learner is
+asked to go on from; this asks whether the notes are known, so that putting the
+hands together would be a coordination exercise rather than the simultaneous
+remediation of two parts nobody has learned.
+
+The two came apart on exactly the learner the distinction is for. A weak hand
+rarely clears the frontier's motor bar, so its frontier stayed empty and
+hands-together work was never offered at all.
+
+### Count-in
+
+The beats played before every attempt, at every [guidance rung](#guidance-rung).
+
+Not a reward and not part of the support ladder. The [metronome](#metronome) is
+a separate opt-in choice.
 
 ### Current durability
 
-The half-life currently governing decay from `memory_anchor_at`. It is positive,
-may be corrected by factual elapsed retrieval evidence, and never exceeds
-retained consolidation.
+How quickly memory for one material is currently fading.
+
+The half-life currently governing decay from [activation](#activation). Always
+positive, correctable by factual elapsed retrieval evidence, and never longer
+than [retained consolidation](#retained-consolidation).
+
+### Curriculum
+
+A provenance-backed set of requirements describing a coherent body of
+capability.
+
+Each `CurriculumRequirement` describes an observable capability in the common
+exercise vocabulary rather than naming a scheduler route or an ordered lesson.
+Named curricula carry their source and edition, so a syllabus update creates a
+new definition rather than silently changing what a completed goal meant. See
+[`system/curriculum.md`](system/curriculum.md).
 
 ### Decision epoch
 
-The version of the scheduler inputs a `PracticeSession` owns, advanced whenever
-anything a decision reads changes: a committed attempt, an abandoned decision, a
-scope change. A verdict computed on a worker carries the epoch it answered, and
-one that no longer matches is discarded rather than applied. Optimistic
-concurrency, and deliberately not one of the state hashes: those establish that
-persisted history is what it claims to be.
+A version number on the scheduler's inputs, so an answer computed in the
+background can be discarded if the question changed while it was being answered.
+
+Owned by `PracticeSession` and advanced whenever anything a decision reads
+changes: a committed attempt, an abandoned decision, a scope change.
+[Optimistic concurrency](https://en.wikipedia.org/wiki/Optimistic_concurrency_control),
+and deliberately not one of the state hashes, which establish that persisted
+history is what it claims to be.
 
 ### Derived evidence
 
-The interpretation of raw and summarized observations used to update a
-particular state channel. It includes factual retrieval status and
-channel-specific evidence weights.
+The interpretation of raw and summarized observations used to update one
+particular state channel, including factual retrieval status and
+channel-specific [evidence weights](#evidence-weight).
+
+### Diagnostic fairness guard
+
+A selection rule that eventually takes a ranked independence probe that keeps
+losing free contests.
+
+Exploration legitimately dominates a capable learner's early sittings; what it
+may not do is dominate indefinitely. It counts opportunities rather than offers,
+so a slot narrowed to one candidate was never a contest and nothing lost it. A
+selection rule rather than a rank term, because strictly lexicographic ranking
+cannot express an urgency that grows.
 
 ### Eligibility tier
 
-An ordered scheduler classification derived from pedagogical prerequisites. The
-current tiers are `FULLY_ELIGIBLE` and `PROVISIONALLY_ELIGIBLE`. Tier is the
-first ranking key, not a weighted utility term.
+An ordered classification from pedagogical prerequisites: `FULLY_ELIGIBLE` or
+`PROVISIONALLY_ELIGIBLE`.
+
+The **first ranking key, not a weighted term**. No amount of retention or
+information advantage lets a provisional candidate outrank a fully eligible one.
+
+### Erase
+
+The one destructive operation, deliberately kept out of the practice loop.
 
 ### Evidence weight
 
-An attempt-specific measure of how informative an observation is about one state
-channel. Competencies use `w[a,k]`; material memory and execution use distinct
-`w_M` and `w_r` values. There is no universal attempt confidence scalar.
+How informative one attempt is about one state channel.
 
-### Feedback exposure
+Competencies use `w[a,k]`; material memory and execution use distinct `w_M` and
+`w_r`. There is deliberately no universal attempt-confidence scalar, because an
+attempt can be strong evidence about the fingers and no evidence at all about
+memory.
 
-An append-only observation of what the post-attempt review actually showed. It
-records the feedback level, whether personal progress appeared, and every named
-progress event represented by the displayed statement. It is keyed to an
-authoritative attempt but does not participate in learner-state replay or alter
-evidence weight.
+### Execution advance
 
-### Exercise
+Which execution axis a candidate advances against the
+[frontier](#execution-frontier): none, tempo, span, hands together, or multiple.
 
-A requested task composed from `TechnicalMaterial`, `ExercisePattern`,
-`ExecutionConditions`, `GuidanceContext`, `MotorRealization`, and observable
-`Opportunities`. The older flat exercise shape in `v1-domain-model.md` is
-superseded.
+Only a single adjacent step is admissible. `multiple` exists so that going wider
+and faster at once is structurally excluded rather than merely outranked.
 
-### ExercisePattern
+### Execution frontier
 
-The ordering or transformation applied to technical material. V1 implements
-`LINEAR`.
+The fastest tempo a learner has managed at each octave span, for one material
+and one hand configuration.
+
+A tempo per span rather than a widest span and a fastest tempo, since those are
+two separate maxima and the pair of them need never have been played together.
+It advances only on an attempt that completed with a motor score at or above
+`demonstratedMotorScore`, and it is the baseline
+[execution progression](#execution-progression) steps from. Held on
+`MaterialExecutionState`. Compare [paced tempo](#paced-tempo).
+
+### Execution progression
+
+A [challenge bypass](#challenge-bypass) offering one adjacent execution step on
+material already produced from memory: the next tempo rung, one octave wider, or
+the same work with both hands.
+
+Exactly one axis moves per candidate. Distinct from
+[consolidation](#consolidation-exception), which offers material met and not yet
+produced; together with introduction for material never met, the three partition
+what is known about a material.
 
 ### ExecutionConditions
 
-The requested hand configuration, direction, hand motion, octave count, tempo,
-and related physical conditions of an exercise. These parameterize task
-difficulty rather than material identity.
+The requested hand configuration, direction, hand motion, octave count, and
+tempo.
 
-### HandMotion
+These parameterize task difficulty. They are **not** part of material identity.
 
-How the two hands move relative to each other, `PARALLEL` or `CONTRARY`. Valid
-as `CONTRARY` only when the hand configuration is `TOGETHER`; a single hand
-carries `PARALLEL` as its canonical value. Distinct from [ExerciseDirection]:
-both hands traverse the same `UP_DOWN` exercise whether they move together or
-apart.
+### Exercise
+
+A requested task, composed rather than enumerated.
+
+`TechnicalMaterial` + `ExercisePattern` +
+[`ExecutionConditions`](#executionconditions)
+
+- [`GuidanceContext`](#guidancecontext) + `MotorRealization` + observable
+  [opportunities](#opportunity). An exercise is an observable task; a
+  [competency](#competency) is the latent capability it gives evidence about.
+  See [`system/domain.md`](system/domain.md).
 
 ### ExerciseDirection
 
-Which way a line is traversed in time, `UP` or `UP_DOWN`. It says nothing about
-the relationship between two hands; see [HandMotion].
+Which way one line is traversed in time: `UP` or `UP_DOWN`.
+
+Says nothing about the relationship between two hands; that is
+[HandMotion](#handmotion).
+
+### ExercisePattern
+
+The ordering or transformation applied to technical material. `LINEAR` today.
+
+### ExerciseRealization
+
+The ordered notes an exercise actually asks for, spelled by scale degree.
+
+One answer, so a staff and a keyboard diagram cannot disagree. The counterpart
+to [`PerformanceTranscript`](#performancetranscript).
 
 ### Factual retrieval
 
-A retrieval observation that actually occurred. Its three values are:
+Whether the learner produced the material from memory, on an attempt where that
+was genuinely tested.
+
+Three-valued, and all three must survive serialization exactly:
 
 ```text
-true    factual retrieval was tested and succeeded
-false   factual retrieval was tested and failed
+true    retrieval was tested and succeeded
+false   retrieval was tested and failed
 null    retrieval was not factually tested
 ```
 
-“Factual” means retrieval was tested without concurrent answer-supplying cues.
-Continuous pitch cues produce `null`, not a weak failure. Notes previewed and
-then hidden remain a lower-demand factual test.
+"Factual" means tested without concurrent answer-supplying cues. Continuous cues
+produce `null`, **not** a weak failure: collapsing the two manufactures evidence
+of forgetting out of supported practice. Notes previewed and then hidden remain
+a real, lower-demand factual test. Grounded in
+[retrieval-practice research](REFERENCES.md#learning-and-memory).
 
-### FingeringPattern
+### Family dose control
 
-The concrete canonical fingering for one material and hand: authoritative domain
-data, and the analysis vocabulary of
-[`fingering-taxonomy.md`](domain-model/fingering-taxonomy.md). The implemented
-type is `CanonicalFingering`, reached by `canonicalFingering(material, hand)`,
-and it covers arpeggios as well as scales. The retired `FingeringGroup` term
-should not be used as a synonym.
+How often a realization family is offered, given what its recent attempts
+actually produced.
+
+Distinct from [realization-family pacing](#realization-family-pacing), which
+reads how much of a sitting a family holds rather than what it yielded. In
+longitudinal runs the two never change the same slot. See
+[`decisions/pacing-and-tempo.md`](decisions/pacing-and-tempo.md).
+
+### Feedback exposure
+
+An append-only record of what the post-attempt review actually showed.
+
+Records the feedback level, whether personal progress appeared, and every named
+progress event in the displayed statement. Keyed to an attempt already in the
+journal, but **not learner evidence**: it never changes evidence weight and does
+not participate in replay.
+
+### Fingering
+
+The concrete canonical fingers expected for one material and hand.
+
+The implemented type is `CanonicalFingering`, reached by
+`canonicalFingering(material, hand)`, covering all 48 scales and all 24
+supported arpeggios in both hands. Fingering is domain structure, not
+presentation metadata. The research behind which fingerings are canonical is in
+[`research/foundations/fingering.md`](research/foundations/fingering.md).
 
 ### Fluency Profile
 
-The user-facing interpretation of internal learner state, such as “recall
-strong; right-hand execution developing.” It is derived presentation, not an
-additional latent state.
+The user-facing reading of internal state, such as "recall strong; right-hand
+execution developing".
 
-### GuidanceContext
+Derived presentation, not an additional latent state.
 
-The instructional and cueing conditions surrounding an attempt, including prior
-instruction, notes previewed before performance, continuous cues during
-performance, and feedback policy. Guidance changes retrieval demand and evidence
-interpretation.
+### Focus
+
+A temporary selection constraint or preference: what should KeyRecall draw from
+right now?
+
+Two explicit modes, and not two ends of one slider: `exclusive` stops candidates
+outside it from being generated at all, while `emphasis` leaves them eligible
+and gives matching ones goal relevance. Compare [goal](#goal).
+
+### Goal
+
+A durable destination: what capability am I trying to establish or maintain?
+
+Multiple goals union their target requirements. Goal relevance is the last
+weighted ranking key and must never override eligibility or challenge.
 
 ### Guidance probe
 
-A challenge-band exception that presents an anchored material with one step less
-guidance after the configured interval since its last factual retrieval success.
+A [challenge bypass](#challenge-bypass) presenting anchored material with one
+step less guidance, after a configured interval since its last factual retrieval
+success.
+
 It tests whether support can fade.
+
+### Guidance rung
+
+One of the three levels of pitch support, from most to least independent:
+
+```text
+unguided             no cues at all
+notesPreviewedOnly   shown before the attempt, then hidden
+continuouslyCued     visible throughout; retrieval is never tested
+```
+
+Exactly those three exist, and the constructor is private so no fourth can be
+built. The ladder governs **pitch support only**: the [count-in](#count-in)
+happens at every rung and the [metronome](#metronome) is a separate choice. See
+[`system/domain.md`](system/domain.md).
+
+### GuidanceContext
+
+The instructional and cueing conditions around an attempt.
+
+It changes retrieval demand and how evidence is interpreted. It never changes
+how hard the physical task is, and never changes the [Q-matrix](#q-matrix).
 
 ### Half-life
 
-The elapsed time over which predicted independent retrievability falls by half
-under the V1 forgetting curve:
+How long until the predicted chance of unaided recall falls by half.
 
 ```math
 M(t)=2^{-\Delta t/h}
 ```
 
+Borrowed from [radioactive decay](https://en.wikipedia.org/wiki/Half-life), and
+from
+[Half-Life Regression](REFERENCES.md#adaptive-instruction-and-knowledge-modeling)
+in spaced-repetition research. `M = 0.5` means a 50% chance of independently
+retrieving the _material_; it does not mean a 50% chance of successfully
+performing the requested exercise.
+
+### HandMotion
+
+How two hands move relative to each other: `PARALLEL` or `CONTRARY`.
+
+Valid as `CONTRARY` only when the hand configuration is `TOGETHER`; a single
+hand carries `PARALLEL` as its canonical value. Orthogonal to
+[ExerciseDirection](#exercisedirection): both hands traverse the same `UP_DOWN`
+exercise whether they move together or apart.
+
 ### InstrumentProfile
 
-The connected instrument's relevant physical capabilities. V1 requires enough
-range information to prevent generation of exercises that do not fit the
-instrument. Other hardware metadata remains descriptive unless validated as a
-model input.
+What the connected instrument can physically play.
+
+Enough range information to keep the generator from producing exercises that do
+not fit. Other hardware metadata stays descriptive unless validated as a model
+input.
+
+### Introduction cap
+
+An experimental limit on how much introduced-but-unretrieved material one scope
+may hold open at once.
+
+Carried by `IntroductionConfig` and **null in the shipped configuration**. It
+filters the available set beside [pacing](#realization-family-pacing), never
+empties it, and leaves admission untouched.
 
 ### LearnerState
 
-Persistent state across practice sessions:
+Everything persistent the model believes about one player:
 
 ```text
-LatentCompetencyState
-MaterialMemoryState
-MaterialExecutionState
+LatentCompetencyState     what carries across the repertoire
+MaterialMemoryState       whether one exact material is retrievable
+MaterialExecutionState    what is specific to one material in one hand
 ```
 
-It excludes short-lived scheduling context in `SessionState`.
+Excludes short-lived scheduling context, which is [SessionState](#sessionstate).
+It deliberately knows nothing about profiles.
+
+### Material family
+
+The declared grouping a `TechnicalMaterial` belongs to: `SCALE` or `ARPEGGIO`.
+
+It decides candidate generation, the acquisition floor, the entry tempo, and
+which execution and topology competencies load. **A declared key rather than an
+enum the scheduler branches on**, and a source-level test keeps family policy
+out of the scheduler package.
 
 ### MaterialExecutionState
 
-A dynamic, partially pooled learner-by-material-by-execution-context residual.
-It captures persistent material-specific procedural readiness not already
-explained by transferable competencies or task difficulty.
+What is persistently true about one material in one hand that general skill and
+task difficulty do not already explain.
 
-It also carries the execution frontier for that material and hand configuration.
+A dynamic, [partially pooled](#partial-pooling) learner-by-material-by-context
+residual. It also carries the [execution frontier](#execution-frontier),
+[coordination readiness](#coordination-readiness), and
+[paced tempo](#paced-tempo).
 
-### Execution frontier
+### MaterialMemoryState
 
-The fastest tempo a learner has managed at each octave span, for one material
-and one hand configuration, held on `MaterialExecutionState`. A tempo per span
-rather than a widest span and a fastest tempo, since those are two maxima and
-the pair of them need never have been played together.
+Whether one exact material is independently retrievable.
 
-It advances only on an attempt that completed with a motor score at or above
-`demonstratedMotorScore`, and it is the baseline execution progression steps
-from.
+Holds [activation](#activation), [current durability](#current-durability),
+[retained consolidation](#retained-consolidation),
+[cold-start belief](#cold-start-estimate), uncertainty, and factual retrieval
+history. Keyed by learner and `TechnicalMaterial`, **not** by hand or exercise
+variant, which is why material identity excludes hand.
 
-### Coordination readiness
+### Metronome
 
-The spans at which one hand has played a material well enough for the other to
-join it, and the tempo it managed there, held beside the execution frontier on
-`MaterialExecutionState`.
+An opt-in click during an attempt.
 
-Recorded on any completed attempt whose pitch integrity reaches
-`handsTogetherPitchIntegrity`, which is a different claim from the frontier's
-and reads a different channel. The frontier asks whether a tempo and span were
-played rather than endured, because it is the place a learner is asked to go on
-from; this asks whether the notes are known, so that putting the hands together
-would be a coordination exercise rather than the simultaneous remediation of two
-parts nobody has learned.
+A separate choice the player makes, not a reward unlocked by progress and not
+part of the [guidance](#guidance-rung) ladder.
 
-The two came apart on the learner the distinction is for. A weak hand rarely
-clears the frontier's motor bar, so its frontier stayed empty and hands-together
-work was never offered at all.
+### Metronome ladder
+
+Maelzel's tempo progression, 40 to 208, used as an **adjacency relation rather
+than a candidate set**: it defines what the next and previous tempo are.
+
+Its steps grow with the tempo, which is the right shape for a quantity where a
+fixed count of beats per minute does not mean a fixed amount at both ends.
+
+### MotorFamily
+
+A higher-level equivalence class over mechanically derived motor realizations,
+such as `DIATONIC_3_4_CYCLE`.
+
+**Analysis vocabulary, not learner state.** Nothing in the packages implements
+it, and whether it earns a [competency](#competency) is the open question the
+residual census exists to answer. From
+[`research/foundations/motor-structure.md`](research/foundations/motor-structure.md).
+
+### MotorRealization
+
+The mechanically derived realization of a fingering, including phases,
+crossings, continuations, and reversals.
+
+Analysis vocabulary from the same source. What the packages carry is narrower:
+`MotorOpportunitySite` for where such an event occurs, and
+[`ExerciseRealization`](#exerciserealization) for the notes an exercise resolves
+to.
+
+### Observation
+
+A raw or derived fact about an attempt: MIDI events, pitch integrity,
+continuity, temporal stability, tempo, or local behavior near an expected motor
+event.
+
+Observations stay richer than the persistent latent state, deliberately.
+
+### Observation grouping
+
+Which arrivals plausibly made up one performed moment.
+
+A separate stage before [alignment](#alignment), so the aligner is never asked
+to discover simultaneity and musical correspondence at once. It is the only
+place a timing tolerance lives, and it knows nothing about keys, octaves, hands,
+or scale degrees. **Everything it says is a proposal**, entering alignment as a
+cost rather than a constraint.
+
+### Opportunity
+
+A place in an exercise where a competency could be observed: a scalar crossing,
+an octave continuation, a reversal, a hands-together event.
+
+Structural only. It does not claim the expected fingering was actually used,
+which nothing can observe.
+
+### Outcome
+
+The model-facing reading of one attempt, on separate channels.
+
+Whether execution started, [factual retrieval](#factual-retrieval), completion,
+material retrieval, [pitch integrity](#pitch-integrity),
+[continuity](#continuity), [temporal stability](#temporal-stability), achieved
+tempo, topology accuracy, and [coordination](#coordination). An absent channel
+is absent all the way through, never zero.
 
 ### Paced tempo
 
 The fastest tempo a learner has actually played a material cleanly, whatever
-they were asked for, held beside the execution frontier on
-`MaterialExecutionState`.
+they were asked for.
 
-A separate question from the frontier, and deliberately not folded into it. The
-frontier records what was asked for and managed, which is the only thing a step
-goes on from; this records how fast somebody plays when nobody is holding them
-back. Keeping them apart preserves the rule that evidence at a tempo is earned
-by being asked for that tempo, while letting an unseen scale arrive near the
-speed the learner actually plays. It is what `transferableTempoFor` reads.
-
-### Realization rank
-
-Where a candidate sits against the learner's frontier for its material and hand:
-advancing, holding, unmeasured, or surpassed. The last term of `RankKey`, and
-the only one that reads execution conditions.
-
-The other five terms ask which material to practise; this asks which realization
-of it. It is consulted only when they come out even, which for two candidates on
-the same scale they always do, so it changes how a scale is asked for and never
-which scale wins.
-
-### Realization fit
-
-How near an unmeasured realization is to the one a learner should be entering
-at, as a negative rung distance. The last term of `RankKey`, and zero for every
-realization the frontier can already speak about.
-
-`RealizationRank.unmeasured` says nothing has been demonstrated at this span,
-which is true of every tempo there at once, so a learner reaching a new span had
-sixty and a hundred and twenty tied again and generation order decided between
-them. The target comes from the most local evidence available: the tempo this
-material and hand managed at the adjacent narrower span, then the pace the hand
-shows on material it owns, then the gentle default.
-
-A distance rather than more ordinal categories, because what is being compared
-is a distance and any boundary between "near" and "far" would be arbitrary.
-
-### Execution progression
-
-A challenge-band exception that offers one adjacent execution step on material
-already produced from memory: the next tempo rung, one octave wider, or the same
-work with both hands. Exactly one axis moves per candidate; see
-`ExecutionAdvance`.
-
-Distinct from consolidation, which offers material that has been met and not yet
-produced. The two partition what is known about a material, alongside
-introduction for material never met.
-
-### ExecutionAdvance
-
-Which execution axis a candidate advances against the frontier: none, tempo,
-span, hands together, or multiple. Only a single adjacent step is admissible;
-`multiple` exists so that going wider and faster at once is structurally
-excluded rather than merely outranked.
-
-### MaterialMemoryState
-
-The exact-material state containing activation, current durability, retained
-consolidation, cold-start belief, uncertainty, and factual retrieval history. It
-is keyed by learner and `TechnicalMaterial`, not by hand or exercise variant.
-
-### MotorFamily
-
-A higher-level equivalence class over mechanically derived motor realizations.
-`DIATONIC_3_4_CYCLE` is domain structure, not learner state. Analysis
-vocabulary, from [`motor-taxonomy.md`](domain-model/motor-taxonomy.md) and
-`analysis/scale-motor/motor-realizations.yaml`; nothing in the packages
-implements it, and whether it earns a competency is the open question the
-residual census exists to answer.
-
-### MotorRealization
-
-The mechanically derived realization of a `FingeringPattern`, including phases,
-crossings, continuations, reversals, and other technical events. Analysis
-vocabulary from the same source. What the packages carry is narrower:
-`MotorOpportunitySite` for where such an event occurs, and `ExerciseRealization`
-for the notes an exercise resolves to.
-
-### Material family
-
-The declared grouping a `TechnicalMaterial` belongs to, `SCALE` or `ARPEGGIO`,
-which decides its candidate generation, its acquisition floor, its entry tempo,
-and which execution and topology competencies it loads. Families are declared
-keys rather than an enum the scheduler branches on.
-
-### Observation
-
-A raw or derived fact about an attempt, such as MIDI events, pitch integrity,
-continuity, temporal stability, tempo, or local behavior near an expected motor
-event. Observations remain richer than the persistent latent state.
-
-### Opportunity
-
-A location or condition in an exercise where a competency could be observed,
-such as a scalar crossing, octave continuation, reversal, or hands-together
-coordination event. Opportunity does not claim that the expected fingering was
-actually used.
+Held beside the [execution frontier](#execution-frontier) and deliberately not
+folded into it. The frontier records what was _asked for_ and managed, which is
+the only thing a step goes on from; this records how fast somebody plays when
+nobody is holding them back. Keeping them apart preserves the rule that evidence
+at a tempo is earned by being asked for that tempo, while letting an unseen
+scale arrive near the speed the learner actually plays. Read by
+`transferableTempoFor`.
 
 ### Parameter Registry
 
-The versioned numeric configuration for learner and scheduler behavior. Current
-registries are `analysis/learner-model/params.toml` and
-`analysis/scheduler/config.toml`. Their V1 values are heuristic unless
-explicitly documented otherwise.
+The versioned numeric configuration for learner and scheduler behavior.
+
+`LearnerParams` and `SchedulerConfig` in the Dart packages are the live
+registries and the only statement of the values.
+`analysis/learner-model/params.toml` and `analysis/scheduler/config.toml` are
+frozen prototype provenance, read by tests as a change detector rather than a
+source to conform to.
 
 ### Partial pooling
 
-The behavior by which sparse material-specific evidence remains close to a
-shared learner prediction, while repeated direct evidence permits a larger
-personalized residual. V1 approximates this locally with zero-centered priors,
-conservative updates, and mean reversion.
+Learning something specific about one material while still borrowing from what
+is known in general.
+
+Sparse material-specific evidence stays close to the shared prediction, while
+repeated direct evidence permits a larger personalized residual. Approximated
+locally with zero-centered priors, conservative updates, and mean reversion.
+Standard practice in
+[multilevel models](https://en.wikipedia.org/wiki/Multilevel_model); see
+[REFERENCES](REFERENCES.md#assessment-and-measurement).
+
+### PerformanceMeasurement
+
+The factual reading of an aligned performance, channel by channel.
+
+Says what was observed, never whether it was any good and never what to do about
+it. Produced after [alignment](#alignment) has settled correspondence, so timing
+can be read as a property of the performance rather than as further evidence
+about which note was which.
+
+### PerformanceTranscript
+
+What was played, in arrival order, with no relation to what was expected.
+
+A literal, append-only record carrying a stable sequence, the spelled pitch, and
+an uninterpreted timestamp. Carrying no expected positions is what makes it
+usable before alignment exists, and what makes the neutral echo safe.
+
+### Pitch integrity
+
+How correct the sounded pitches were, as an outcome channel.
+
+Reduced by an octave slip, where topology accuracy, material retrieval, and
+factual retrieval are all unaffected by one. There is deliberately no register
+competency: inventing one because the measurement system can see register would
+be letting the sensors write the ontology.
+
+### PlacementTier
+
+The self-report that seeds a cold-start state: beginner, some experience, or
+advanced.
+
+It changes the initial competency mean but never makes the model confident, so
+direct performance overrides it quickly. Recorded in the journal genesis,
+because every posterior is a function of it.
+
+### Probe
+
+An attempt at the unchanged parent exercise, earned by an
+[acquisition task](#acquisition-task) criterion success.
+
+Only a probe establishes ordinary readiness or a frontier. An earned probe can
+be owed, dormant, or lapsed, and service covers all earlier criterion successes
+in event order.
+
+### Profile
+
+One independent practice history on a shared install: its own journal, its own
+state, its own session.
+
+The id is opaque and stable, never derived from a display name, because names
+change and repeat. Every persisted artifact is scoped by it, and a history's
+owner is checked before its content is read.
 
 ### Q-matrix
 
-The structural mapping from exercises to transferable competencies:
+Which competencies each exercise creates an opportunity to observe.
 
 ```math
 Q_{e,k}\in\{0,1\}
 ```
 
 `Q[e,k] = 1` means exercise `e` creates an opportunity to observe competency
-`k`. It does not state how strong the predictor loading or actual evidence is.
+`k`. It says nothing about how strong the predictor loading or the actual
+evidence is. Standard vocabulary in
+[cognitive diagnosis](REFERENCES.md#adaptive-instruction-and-knowledge-modeling).
 
-### Metronome ladder
+### Realization family
 
-The Maelzel tempo progression, from 40 to 208, used as an adjacency relation
-rather than a candidate set: it defines what the next and previous tempo are.
-Its steps grow with the tempo, which is the right shape for a quantity where a
-fixed count of beats per minute does not mean a fixed amount at both ends.
+A declared grouping a realization consumes, such as right hand, left hand,
+parallel hands together, or contrary hands together.
+
+The pacing and dose mechanisms read these keys without interpreting them.
+
+### Realization fit
+
+How near an unmeasured realization is to the one a learner should be entering
+at, as a negative rung distance.
+
+The last term of `RankKey`, and zero for every realization the frontier can
+already speak about. `unmeasured` is true of every tempo at an unreached span at
+once, so without this the tempi there tie and generation order decides between
+them. A distance rather than more ordinal categories, because what is being
+compared _is_ a distance and any boundary between "near" and "far" would be
+arbitrary.
 
 ### Realization key
 
 What the guidance-independent prediction channels vary with: material, pattern,
-and execution conditions. Execution, coordination, and topology are computed
-once per realization and shared across the guidance rungs above it.
+and execution conditions.
 
-### Introduction cap
+Execution, coordination, and topology are computed once per realization and
+shared across the guidance rungs above it.
 
-An experimental limit on how much introduced-but-unretrieved material one scope
-may hold open at once, carried by `IntroductionConfig` and null in the shipped
-configuration. It filters the available set beside [Realization-family pacing],
-never empties it, and leaves admission untouched. See
-[`design/introduction-breadth.md`](design/introduction-breadth.md).
+### Realization rank
+
+Where a candidate sits against the learner's [frontier](#execution-frontier):
+advancing, holding, unmeasured, or surpassed.
+
+The eighth term of `RankKey`, and the first that reads execution conditions. The
+earlier terms ask which _material_ to practice; this asks which _realization_ of
+it. Consulted only when they come out even, which for two candidates on the same
+scale they always do, so it changes how a scale is asked for and never which
+scale wins.
 
 ### Realization-family pacing
 
-Allocation control over the declared families a realization consumes, such as
-right hand, left hand, hands together, and motion. Pressure is
-`max(0, share - floor) x (1 - managed fraction)` over a rolling window, and a
-family over the set-aside threshold has its candidates removed from the
-available set where a comparably ready alternative exists. It never makes an
-inadmissible exercise admissible and never empties a selectable set. See
-[`design/realization-family-pacing.md`](design/realization-family-pacing.md).
+Allocation control over the declared families a realization consumes.
+
+Pressure is `max(0, share - floor) x (1 - managed fraction)` over a rolling
+window, and a family over the set-aside threshold has its candidates removed
+where a comparably ready alternative exists. It never makes an inadmissible
+exercise admissible and never empties a selectable set. Compare
+[family dose control](#family-dose-control).
 
 ### Recovery
 
-An exclusive challenge-band exception immediately after a factual retrieval
-failure. The recovery target is the same material and motor task with exactly
-one step more guidance.
+An exclusive [challenge bypass](#challenge-bypass) immediately after a factual
+retrieval failure.
+
+The target is the same material and motor task with exactly one step more
+guidance. Exclusive means only that survives the stage.
 
 ### Repetition guard
 
-A selection-time policy that prevents an over-repeated material from winning
-when another admitted material exists. It never removes the only admitted
-option.
+A selection rule preventing an over-repeated material from winning while another
+admitted material exists.
 
-### Rho
+It never removes the only admitted option, and it counts **materials**, not
+kinds of work, so rotating between materials satisfies it while the technical
+strand stays unchanged.
 
-A transfer coefficient, and not a measured correlation: `rhoHand` and
-`rhoFamily` are the fraction of the gap to a paired hand or a source family that
-a competency may borrow when predicting, bounded to `[0, 1]` and shrunk by how
-uncertain the borrower is. Prediction only, never an update: borrowing changes
-what is expected of an exercise and never what an attempt teaches.
+### Replay
+
+Recomputing learner state by reapplying the journal from the beginning.
+
+`exact` asks whether the recorded past is still reachable, comparing every
+recomputed value. `counterfactual` asks what a different estimator would have
+concluded from the same observations, and may be applied **only to the exercise
+actually presented**: the journal holds no outcome for an action never taken, so
+it is not policy evaluation. See [`system/history.md`](system/history.md).
 
 ### Retained consolidation
 
-The slower durability envelope retained from prior learning. It supports savings
-and restoration of current durability but does not directly enter V1 prediction
-or scheduling.
+Durable learning held in reserve below current readiness.
+
+It supports [savings](#savings) and the restoration of
+[current durability](#current-durability), but does not directly enter
+prediction or scheduling. With activation and current durability held fixed,
+consolidation alone cannot change any decision.
 
 ### Retrieval demand
 
-A number in `[0,1]` describing how much independent production a guidance
-configuration requires. In the current prototype, continuous cues use `0.05`,
-notes previewed use `0.6`, and unguided practice uses `1.0`. Continuous cues
-still have zero retrieval opportunity because retrieval is not observed.
+How much independent production a guidance configuration requires, in `[0,1]`.
+
+A heuristic mapping rather than a research-established coefficient. Continuous
+cues still have zero [retrieval opportunity](#retrieval-opportunity), because
+retrieval is not observed at all.
 
 ### Retrieval opportunity
 
-The ability of a candidate to produce genuine retrieval evidence. It is zero
-when retrieval is not observed and otherwise equals retrieval demand. Retention
-and information scores use it so a candidate cannot benefit from evidence it is
-structurally unable to collect.
+Whether a candidate can produce genuine retrieval evidence.
 
-### Savings
+Zero when retrieval is not observed, and otherwise equal to
+[retrieval demand](#retrieval-demand). Retention and information scores multiply
+by it, so a candidate cannot win by exploiting a memory deficit it is
+structurally unable to resolve.
 
-Faster reacquisition after apparent forgetting because retained consolidation
-survives below current readiness. A learner with prior durable practice need not
-behave like a true beginner even when current performance is similar.
+### Rho
+
+How much a competency may borrow from a paired hand or a source family when
+predicting.
+
+`rhoHand` and `rhoFamily` are the fraction of the gap that may be borrowed,
+bounded to `[0, 1]` and shrunk by how uncertain the borrower is. **A transfer
+coefficient, not a measured correlation.** Prediction only, never an update:
+borrowing changes what is expected of an exercise and never what an attempt
+teaches.
 
 ### Safety stage
 
-Conservative workload constraints applied before challenge admission, carried by
-`SafetyConfig`. V1 implements a session-attempt cap, unset in production, and
-makes no medical or injury diagnosis from performance data.
+Conservative workload constraints applied before challenge admission.
 
-### SessionState
+Carried by `SafetyConfig`. A session-attempt cap exists and is unset in
+production: a sitting ends when the player stops. It is a guard against a
+runaway decision loop, and makes no medical or injury judgment from performance
+data.
 
-Transient scheduler context within a practice session: the attempt count, recent
-material history, the last failed exercise, an open tempo probe, unserved
-guidance-probe opportunities, and the rolling window of realization families
-that [Realization-family pacing] reads. It is separate from persistent
-`LearnerState`, and a sitting rebuilds it from the journal rather than storing
-it.
+### Savings
+
+Reacquiring something faster than learning it the first time, because
+[retained consolidation](#retained-consolidation) survived below current
+readiness.
+
+A learner with prior durable practice need not behave like a true beginner even
+when current performance looks similar.
 
 ### Scheduler host
 
-Where a decision is computed, and nothing else. A session binds the resolved
-scope, the learner, and the policy constants, then asks for one slot's decision;
-the host answers with the winning candidate or a reason there was none, plus the
-effect to apply to the sitting. Production computes on a worker isolate so the
-isolate that draws stays free; tests decide in process. See
-[`design/scheduler-decision-cost.md`](design/scheduler-decision-cost.md).
+Where a decision is computed, and nothing else.
+
+A session binds the resolved scope, the learner, and the policy constants, then
+asks for one slot's decision; the host answers with the winning candidate or a
+reason there was none, plus the effect to apply to the sitting. Production
+computes on a worker isolate so the isolate that draws stays free.
+
+### Selection
+
+The exercise a decision actually produced.
+
+Distinct from an [attempt slot](#attempt-slot): a slot that admits nothing has
+no selection and no presented attempt.
+
+### SessionState
+
+Transient scheduler context within one sitting.
+
+The attempt count, recent material history, the last failed exercise, an open
+tempo probe, unserved guidance-probe opportunities, and the rolling window
+[pacing](#realization-family-pacing) reads. Separate from
+[LearnerState](#learnerstate), and a sitting rebuilds it from the journal rather
+than storing it.
+
+### Sitting
+
+One continuous period of practice.
+
+Distinct from a history, which spans many. `journalSequence` counts across all
+of them; `indexInSession` is position within one.
 
 ### Structural opportunity
 
-See **Q-matrix**.
+See [Q-matrix](#q-matrix).
 
 ### TechnicalMaterial
 
-The underlying musical object being practiced. For V1 scales, identity is
-primarily tonic plus scale form. Hand, tempo, octave count, direction, hand
-motion, pattern, and guidance are not part of material identity.
+The underlying musical object being practiced.
+
+For a scale, identity is tonic plus scale form. **Hand, tempo, octave count,
+direction, hand motion, pattern, and guidance are not part of material
+identity**, which is what gives one scale one memory state across all its
+realizations.
+
+### Temporal stability
+
+How evenly spaced the notes were, as an outcome channel.
+
+Reacts to spread across the traversal, where [continuity](#continuity) reacts to
+a single interruption. Both use
+[robust statistics](https://en.wikipedia.org/wiki/Robust_statistics) so they
+stay independent, and both are absent below five measurable waits, because
+interpolated quartiles would otherwise include the extremes they exist to
+ignore.
+
+### TimingEvidence
+
+The waits between played notes, and which of them could be judged.
+
+The one place the evidence threshold for timing is decided, for everything that
+reads timing.
+
+### Topology accuracy
+
+How correct the underlying pitch and form structure was, independent of motor
+quality.
+
+Unaffected by an octave slip, because scale-degree structure is a different
+question from which register it sounded in.
+
+### Transition census
+
+Stalls accumulated across attempts at one [acquisition task](#acquisition-task),
+so a repeatedly troublesome transition can be told apart from generally uneven
+playing.
+
+A stall is a gap the measurement policy already reads as a break.
 
 ## Mathematical symbols
 
@@ -573,3 +984,4 @@ motion, pattern, and guidance are not part of material identity.
 | flat `Exercise` record                             | compositional `Exercise`                                                       |
 | discrete acquisition/development/maintenance state | derived Fluency Profile language                                               |
 | `PRIMARY`/`SECONDARY` Q entries                    | `Q`, predictor loading `q`, and attempt evidence `w`                           |
+| `ReportedResult`                                   | a termination reason beside the outcome                                        |
