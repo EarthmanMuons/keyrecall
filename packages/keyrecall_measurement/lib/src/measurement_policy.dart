@@ -2,41 +2,31 @@ import 'package:meta/meta.dart';
 
 /// The judgments measurement makes on top of what alignment observed.
 ///
-/// Every number here is a decision about what an observation means, not a
-/// tuning knob. The timing constants come from real playing on real hardware;
-/// see `analysis/timing-calibration/`. They are provisional, and they are
-/// engineering calibration rather than a pedagogical boundary: they say what
-/// this input stack sees when someone plays comfortably.
+/// Every number here is a decision about what an observation means. The timing
+/// constants are engineering calibration rather than a pedagogical boundary:
+/// they say what this input stack sees when someone plays comfortably. See
+/// `analysis/timing-calibration/`.
 @immutable
 class MeasurementPolicy {
   /// Whether replaying the note just played breaks a clean retrieval.
   ///
   /// A non-progressing repetition of the previous matched note is the one kind
-  /// of extra note that does not mean the learner produced the wrong material:
-  /// they produced the right one, twice. What caused it, a double trigger, a
-  /// bounced finger, a deliberate reiteration, a hesitation, is not observable
-  /// here, so the classification stays structural and the judgment stays here.
-  ///
-  /// It still costs timing. Exempting a repeat from retrieval does not pretend
-  /// it never happened.
+  /// of extra note that does not mean the wrong material was produced. What
+  /// caused it is not observable here, so the classification stays structural.
+  /// It still costs timing.
   final bool repeatedMatchedPitchBreaksRetrieval;
 
   /// Dispersion at or below which timing reads as perfectly steady.
   ///
-  /// The interquartile range of the inter-onset intervals over their median.
-  /// Robust on purpose: one long pause must not read as unsteady playing, and
-  /// a mean-based spread would say it was. Comfortable playing measures 0.07,
-  /// and a later run of even playing across four tempi and two spans stayed
-  /// between 0.04 and 0.08, so the margin here is real rather than nominal.
+  /// The interquartile range of the inter-onset intervals over their median,
+  /// robust so one long pause does not read as unsteady playing. Comfortable
+  /// playing measures between 0.04 and 0.08.
   final double steadyDispersion;
 
   /// Dispersion at or above which timing reads as entirely unsteady.
   ///
-  /// Just under the rolled take, which is the mildest of the takes that are
-  /// dispersed rather than interrupted and which measures 0.678 across its
-  /// moments. The constant moved when quartiles became interpolated, because
-  /// the reference point is the take rather than the number a particular
-  /// estimator gave it.
+  /// Just under the rolled take, the mildest of the takes that are dispersed
+  /// rather than interrupted, which measures 0.678 across its moments.
   final double unsteadyDispersion;
 
   /// Longest interval, as a multiple of the slow end of ordinary playing, at
@@ -56,23 +46,22 @@ class MeasurementPolicy {
   /// Hand asynchrony at or below which a moment reads as together, in
   /// milliseconds.
   ///
-  /// Provisional tolerance: comfortable device takes included isolated
-  /// 36 and 38 ms arrivals, with typical separation under 20 ms.
+  /// Comfortable device takes included isolated 36 and 38 ms arrivals, with
+  /// typical separation under 20 ms.
   final double synchronizedAsynchronyMs;
 
   /// Hand asynchrony at or above which a moment reads as not together at all.
   ///
   /// Beyond the widest pair in the recorded takes, which reached 134 ms while
   /// stumbling. One player on one instrument, so this is where the evidence
-  /// runs out rather than where coordination stops being acceptable.
+  /// runs out.
   final double uncoordinatedAsynchronyMs;
 
   /// How much of the coordination score the upper tail carries.
   ///
   /// Two readings of the same series: the median says how the hands usually
-  /// sat, the tail says how far apart they got. Kept apart so a performance
-  /// that is mostly together with one bad moment scores differently from one
-  /// that is evenly loose.
+  /// sat and the tail how far apart they got, so a performance with one bad
+  /// moment scores differently from one that is evenly loose.
   final double coordinationTailWeight;
 
   const MeasurementPolicy({

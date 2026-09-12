@@ -5,11 +5,8 @@ import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 
 /// What the continuity reading does across constructed playing.
 ///
-/// Invariants rather than a parameter sweep. The point is to expose cliffs and
-/// absurdities in the rule as it stands, not to choose a better threshold from
-/// synthetic gaps: what a real hesitation distribution looks like is a device
-/// question, and picking a constant from constructed transcripts would settle
-/// it with the wrong evidence.
+/// Invariants rather than a parameter sweep: these expose cliffs in the rule as
+/// it stands, and do not choose a threshold from synthetic gaps.
 void main() {
   final material = TechnicalMaterial('C', ScaleForm.major);
   final parent = Exercise.linear(

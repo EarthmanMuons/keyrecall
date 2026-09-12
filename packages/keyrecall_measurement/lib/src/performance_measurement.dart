@@ -12,10 +12,8 @@ typedef HandAsynchrony = ({int position, int asynchronyMs});
 /// The wait between two moments that arrived, and which two.
 ///
 /// Named by both ends because a moment nothing arrived for leaves no onset, so
-/// consecutive gaps are not always consecutive positions. A gap that spans a
-/// skipped moment is a gap over a stretch of the exercise rather than over one
-/// transition, and a reading that assumed otherwise would blame the wrong
-/// note.
+/// consecutive gaps are not always consecutive positions. A gap spanning a
+/// skipped moment covers a stretch of the exercise rather than one transition.
 typedef MomentGap = ({
   int fromPosition,
   int toPosition,
@@ -25,15 +23,13 @@ typedef MomentGap = ({
 
 /// What was observed about one performance.
 ///
-/// Facts first: how much of the material appeared, how much of it was the
-/// right pitch, how much of it was the right scale degree, and how the playing
-/// sat in time. What any of that means for a competency is [toOutcome]'s job,
-/// and what it means for the learner is the model's.
+/// Facts only: how much of the material appeared, how much of it was the right
+/// pitch, how much of it was the right scale degree, and how the playing sat in
+/// time. What any of that means for a competency is `outcomeFor`'s job.
 ///
-/// Alignment settles which played note corresponds to which expected one using
-/// pitch alone. Timing is read afterwards, off notes whose correspondence is
-/// already settled, so a performance played at a different speed aligns
-/// identically and measures differently.
+/// Alignment settles correspondence using pitch alone, and timing is read
+/// afterwards off notes whose correspondence is already settled, so the same
+/// notes at a different speed align identically and measure differently.
 @immutable
 class PerformanceMeasurement {
   /// The correspondence this reads.
@@ -51,14 +47,11 @@ class PerformanceMeasurement {
   /// How far apart the hands were at each moment both of them corresponded to
   /// something that arrived, as right minus left, and where.
   ///
-  /// The series coordination is read from. Moments where a hand played nothing
-  /// are absent rather than zero, and so is a moment the two hands meet on one
-  /// key, which the instrument reports as one onset. The length is therefore
-  /// what was measurable rather than what was asked for.
-  ///
-  /// Positions travel with the values because where the hands were apart is a
-  /// different question from how far apart they got, and a summary that keeps
-  /// only the widest cannot answer it.
+  /// The series coordination is read from. A moment where a hand played nothing
+  /// is absent rather than zero, as is one the hands meet on, so the length is
+  /// what was measurable rather than what was asked for. Positions travel with
+  /// the values because where the hands were apart is a separate question from
+  /// how far apart they got.
   final List<HandAsynchrony> handAsynchronies;
 
   /// Expected notes that arrived at all, whatever octave they sounded in.
@@ -91,8 +84,7 @@ class PerformanceMeasurement {
   /// position, or null when too few arrived.
   ///
   /// The moment [worstIntervalRatio] is about. A break is a gap rather than a
-  /// note, and the moment that ended it is the one a learner can be pointed
-  /// at: it is where playing resumed.
+  /// note, so the moment that ended it is where playing resumed.
   final int? longestGapBeforePosition;
 
   /// Where the hands were furthest apart, as a realization position, or null
@@ -128,22 +120,18 @@ class PerformanceMeasurement {
   /// Whether every expected note eventually arrived.
   ///
   /// Stronger than reaching the final note, which an attempt can do while
-  /// having skipped something in the middle. Alignment is what makes the
-  /// stronger reading available.
+  /// having skipped something in the middle.
   bool get completed => reading.isComplete;
 
   /// Whether the learner produced the intended scale independently and on the
   /// first traversal.
   ///
-  /// Register-insensitive: landing an octave away is a wrong sounded pitch and
-  /// a right scale degree, and factual scale memory is about the degrees.
-  /// Repeats are exempt unless the policy says otherwise, since replaying the
-  /// note just played is producing the right material twice rather than
-  /// producing the wrong material.
+  /// Register-insensitive, because factual scale memory is about the degrees.
+  /// Repeats are exempt unless the policy says otherwise.
   ///
-  /// Categorical on purpose. The continuous channels carry how well it went;
-  /// putting a threshold here would make two nearly identical performances
-  /// move the memory clock in opposite directions.
+  /// Categorical: the continuous channels carry how well it went, and a
+  /// threshold here would make two near-identical performances move the memory
+  /// clock in opposite directions.
   bool get retrievedIndependently =>
       degreesCorrect == expectedNotes &&
       intrusions == 0 &&
@@ -195,8 +183,8 @@ class PerformanceMeasurement {
 
   /// The moments the hands were further apart than the policy calls together.
   ///
-  /// What a claim about where coordination went is allowed to rest on. A
-  /// series can have a widest moment without having a loose one.
+  /// What a claim about where coordination went rests on. A series can have a
+  /// widest moment without having a loose one.
   List<HandAsynchrony> get looseMoments => [
     for (final moment in handAsynchronies)
       if (moment.asynchronyMs.abs() > policy.synchronizedAsynchronyMs) moment,
@@ -205,8 +193,8 @@ class PerformanceMeasurement {
   /// Moments both hands corresponded at, which is what coordination was read
   /// from.
   ///
-  /// Provenance rather than a score: a coordination reading off one moment and
-  /// off thirty are not the same evidence.
+  /// Provenance rather than a score: coordination read off one moment and off
+  /// thirty are not the same evidence.
   int get correspondedTwoHandMoments => handAsynchroniesMs.length;
 
   /// How far apart the hands usually were, in milliseconds, or null when no
@@ -229,9 +217,9 @@ class PerformanceMeasurement {
   /// Which hand usually led, as a signed median in milliseconds, or null when
   /// no moment had both.
   ///
-  /// Descriptive, and deliberately not evidence. Across the recorded takes the
-  /// left hand led 8 of 12 in one and 2 of 12 in another, so which hand starts
-  /// a moment is a fact about a performance rather than a fault in it.
+  /// Descriptive, not evidence. Across the recorded takes the left hand led 8
+  /// of 12 moments in one and 2 of 12 in another, so which hand starts a moment
+  /// is a fact about a performance rather than a fault in it.
   double? get signedMedianHandAsynchronyMs => handAsynchroniesMs.isEmpty
       ? null
       : _median([for (final gap in handAsynchroniesMs) gap.toDouble()]);
@@ -239,9 +227,8 @@ class PerformanceMeasurement {
   /// How together the hands were, in `[0, 1]`, or null when nothing measured
   /// it.
   ///
-  /// Null and zero are different claims. Zero says the hands were as far apart
-  /// as playing gets; null says no moment had both hands, which is every
-  /// single-hand performance.
+  /// Null and zero are different claims: zero says the hands were as far apart
+  /// as playing gets, null that no moment had both.
   double? get coordination {
     final median = medianAbsoluteHandAsynchronyMs;
     final tail = p90AbsoluteHandAsynchronyMs;
@@ -253,9 +240,8 @@ class PerformanceMeasurement {
   ///
   /// Phase-free by construction: it compares the requested beat to the median
   /// gap between the learner's own notes, so starting late costs nothing and
-  /// only the speed shows up. Recorded, not consumed; when it is, it should
-  /// set the difficulty the execution evidence is attributed at rather than
-  /// damp the motor score. See `docs/design/future-planning.md`.
+  /// only the speed shows up. Recorded, not consumed. See
+  /// `docs/design/future-planning.md`.
   double achievedTempoRatioFor(ExecutionConditions conditions) {
     final median = medianIntervalMs;
     if (median == null || median <= 0) return 0;
@@ -352,21 +338,18 @@ PerformanceMeasurement measure({
 /// The wait before each moment that arrived, against the slow end of this
 /// performance's own playing.
 ///
-/// The series [PerformanceMeasurement.worstIntervalRatio] reports one value
-/// of, kept in full and located. One worst gap says a performance was
-/// interrupted; the series says where, and comparing the series across
-/// attempts is what can say the same transition is in the way every time.
+/// The series [PerformanceMeasurement.worstIntervalRatio] reports one value of,
+/// kept in full and located, so comparing across attempts can say the same
+/// transition is in the way every time.
 ///
 /// Relative to the upper quartile of the performance's own gaps, so it reads
-/// the same whether the learner is playing fast or slowly, and it says nothing
-/// about a requested tempo. Empty when too few moments arrived to have a
-/// quartile.
+/// the same whether the learner plays fast or slowly and says nothing about a
+/// requested tempo. Empty when too few moments arrived to have a quartile.
 ///
-/// [restartPositions] names positions the task lets the learner begin again
-/// at. The wait before one of those is the reset the task asked for, so it is
-/// neither reported nor allowed into the baseline the others are read against:
-/// a pause taken by permission would otherwise make every real hesitation look
-/// brief.
+/// [restartPositions] names positions the task lets the learner begin again at.
+/// The wait before one of those is the reset the task asked for, so it is
+/// neither reported nor allowed into the baseline the others are read
+/// against.
 List<MomentGap> momentGapsOf(
   Alignment alignment, {
   Set<int> restartPositions = const {},
@@ -401,9 +384,8 @@ List<MomentGap> momentGapsOf(
 /// Whether an extra note is the material on either side of it, played again.
 ///
 /// Structural rather than attributed: a repetition of the note the performance
-/// is currently on, before it moves past that note. Which side of the matching
-/// note the extra one lands on is an artifact of the traceback, not something
-/// the learner did, so both count.
+/// is on, before it moves past that note. Which side of the matching note the
+/// extra one lands on is an artifact of the traceback, so both count.
 bool _isRepeat(
   SpelledPitch observed,
   List<PositionedNoteEdit> edits,
@@ -437,11 +419,9 @@ int expectedNotesIn(ExerciseRealization realization) =>
 /// One onset per moment, so the gap between the hands of one moment is not an
 /// interval and cannot read as an unsteady tempo.
 ///
-/// Both kinds of correspondence count. A substituted note is still the event
-/// the learner produced for a note the exercise asked for, and leaving it out
-/// would let a wrong pitch manufacture a gap: an octave slip played exactly on
-/// the beat would read as a pause. Pitch correctness must not reach the timing
-/// scores by any route.
+/// Both kinds of correspondence count, so pitch correctness cannot reach the
+/// timing scores: leaving substitutions out would let an octave slip played
+/// exactly on the beat read as a pause.
 ///
 /// A moment nothing arrived for has no onset, and a moment whose observations
 /// were all extra corresponds to no expected note, so neither appears.
@@ -458,8 +438,7 @@ List<({int position, double onsetMs})> _momentOnsets(Alignment alignment) => [
 
 /// Which interval was the longest, or null when there are too few to compare.
 ///
-/// Gated the same way [_worstRatioOf] is, because it is that ratio's location
-/// and the two must not disagree about whether there was a worst gap at all.
+/// Gated the same way [_worstRatioOf] is, since it is that ratio's location.
 int? _longestGapIndexOf(List<double> intervals) {
   if (intervals.length < _fewestIntervals) return null;
   var longest = 0;
@@ -511,11 +490,9 @@ double? _worstRatioOf(List<double> intervals) {
 /// The lower and upper quartiles, interpolated between the values either side.
 ///
 /// Interpolated rather than picking `ordered[n ~/ 4]`, which is not the same
-/// statistic at every length: on the fourteen intervals of a one-octave
-/// traversal that index lands on the 23rd percentile, and on the seven of an
-/// ascending one it lands on the 17th, so exercise length changed what
-/// dispersion meant before any playing was considered. Calibration takes
-/// measured that inflation at 1.3x on seven intervals and 1.1x on fourteen.
+/// statistic at every length: that index lands on the 23rd percentile over
+/// fourteen intervals and the 17th over seven, so exercise length would change
+/// what dispersion means.
 (double, double) _quartilesOf(List<double> values) {
   final ordered = [...values]..sort();
   return (_quantileOf(ordered, 0.25), _quantileOf(ordered, 0.75));

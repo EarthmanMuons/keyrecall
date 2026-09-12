@@ -8,19 +8,15 @@ typedef Transition = ({int fromPosition, int toPosition});
 
 /// How often each transition of one task was played, and how often it stalled.
 ///
-/// A single attempt can say where the playing broke. Only repetition can say a
-/// particular transition is in the way, and that is the question a fragment
-/// would eventually have to be chosen from. This accumulates the evidence for
-/// it and stops there: it counts, and it does not decide what counts as
+/// A single attempt says where the playing broke, and only repetition says a
+/// transition is in the way. This counts, and does not decide what counts as
 /// repeatedly troublesome.
 ///
-/// Both counts are kept because they have different denominators. A transition
+/// Both counts are kept because they have different denominators: a transition
 /// past the point a learner keeps stopping is played rarely, so a raw stall
-/// count understates it and a rate computed against attempts understates it
-/// further.
+/// count understates it.
 ///
-/// Scoped to one [task]. Positions mean nothing across tasks, so recording an
-/// observation of a different one is an error rather than a merge.
+/// Scoped to one [task], since positions mean nothing across tasks.
 @immutable
 class TransitionCensus {
   /// The task every recorded attempt was an attempt at.
@@ -97,9 +93,8 @@ class TransitionCensus {
 
   /// The transitions that stalled at least [times], worst first.
   ///
-  /// The threshold is the caller's. Nothing here knows how many stalls make a
-  /// transition worth isolating, and choosing a number before there are device
-  /// traces to choose it from would be inventing a curriculum.
+  /// The threshold is the caller's, since nothing here knows how many stalls
+  /// make a transition worth isolating.
   List<Transition> stalledAtLeast(int times) {
     final repeated = [
       for (final MapEntry(key: transition, value: count) in stalled.entries)

@@ -131,13 +131,10 @@ Map<String, (Exercise, PerformanceTranscript)> singleHandCases() {
 
 /// What single-hand alignment and measurement produce, pinned.
 ///
-/// Every case renders the whole observable surface of one performance: the
-/// edit script, the readings taken off it, and every number measurement
-/// derives. A change to any of them shows up here as a changed line.
-///
-/// Hands-together material extends the script rather than replacing it, so
-/// these lines must survive that work unchanged. A single-hand line that moves
-/// means the representation is wrong, not that the line was.
+/// Every case renders the whole observable surface of one performance: the edit
+/// script, the readings taken off it, and every number measurement derives.
+/// Hands-together material extends that script rather than replacing it, so a
+/// single-hand line that moves means the representation is wrong.
 void main() {
   for (final entry in singleHandCases().entries) {
     test(entry.key, () {

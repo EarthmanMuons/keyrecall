@@ -10,10 +10,8 @@ import 'performance_measurement.dart';
 /// below it is what the observation is taken to mean.
 ///
 /// Retrieval is forced to [FactualRetrieval.notTested] when the exercise
-/// supplied the material throughout, whatever the playing looked like.
-/// Succeeding while reading the answer is not evidence of remembering, and
-/// recording it as such would manufacture exactly the false evidence the
-/// three-valued encoding exists to prevent.
+/// supplied the material throughout, whatever the playing looked like, since
+/// succeeding while reading the answer is not evidence of remembering.
 Outcome outcomeFor({
   required PerformanceMeasurement measurement,
   required Exercise exercise,

@@ -9,9 +9,8 @@ import 'support/recorded_takes.dart';
 /// Real two-hand playing, from what the exercise asked for to what the learner
 /// model is told.
 ///
-/// The stages are pinned where they live. What this covers is that they
-/// compose on recorded performances rather than on transcripts written to
-/// compose.
+/// The stages are pinned where they live. This covers that they compose on
+/// recorded performances rather than on transcripts written to compose.
 void main() {
   final at = DateTime.utc(2026);
   const model = LearnerModel();

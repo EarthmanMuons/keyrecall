@@ -11,18 +11,16 @@ enum AcquisitionContinuity { unestablished, unbroken, interrupted }
 /// The fewest intervals a judgment of continuity can rest on.
 ///
 /// With fewer, the interpolated upper quartile includes the maximum, so the
-/// longest interval is measured against itself and no absence of a stall means
-/// anything. It is a property of the estimator rather than a preference, which
-/// is why a task short of it supplies more intervals rather than being read
+/// longest interval is measured against itself and the absence of a stall means
+/// nothing. A task short of it supplies more intervals rather than being read
 /// against a lower bar.
 const int fewestIntervalsForContinuity = 5;
 
 /// The fewest complete traversals of [realization] continuity can be read from.
 ///
 /// Each traversal supplies one fewer interval than it has moments, and the
-/// reset between two traversals supplies none. What a family declares below
-/// its floor is therefore this many, not a number chosen for its own sake: it
-/// is the least data the criterion already in force will accept.
+/// reset between two supplies none, so this is the least data
+/// [fewestIntervalsForContinuity] will accept.
 int traversalsForContinuity(ExerciseRealization realization) {
   final intervals = realization.moments.length - 1;
   if (intervals < 1) {
@@ -37,18 +35,16 @@ int traversalsForContinuity(ExerciseRealization realization) {
 
 /// What was observed about one acquisition attempt.
 ///
-/// The counterpart of [PerformanceMeasurement], and deliberately not that
-/// type. The facts an acquisition attempt supports are narrower, and the ones
-/// it does not support are the point:
+/// The counterpart of [PerformanceMeasurement], and not that type, because the
+/// facts an acquisition attempt supports are narrower:
 ///
 /// - No retrieval verdict. The task carries its parent's cues, and V1 only
 ///   offers acquisition below a continuously cued floor, so the material was
 ///   supplied throughout.
 /// - No tempo reading. An unmetered task asks for no tempo, so there is
 ///   nothing for a performed speed to be a fraction of.
-/// - No outcome. There is no route from here into the learner model's
-///   vocabulary: this keeps the facts it is entitled to and does not carry the
-///   measurement that `outcomeFor` would accept.
+/// - No outcome. Nothing here carries the measurement `outcomeFor` accepts, so
+///   there is no route into the learner model's vocabulary.
 ///
 /// What it does support is local: whether the sequence came out, what it cost
 /// to get there, and where the playing stopped.
@@ -65,8 +61,8 @@ class AcquisitionObservation {
 
   /// Extra notes immediately followed by the expected one.
   ///
-  /// The shape a repair leaves behind. Whether it was hearing a mistake and
-  /// fixing it or a bounced finger is not observable here.
+  /// The shape a repair leaves behind. Whether it was a correction or a bounced
+  /// finger is not observable here.
   final int repairs;
 
   /// Extra notes that were the note the performance was already on.
@@ -105,10 +101,9 @@ class AcquisitionObservation {
 
   /// The gaps long enough that the policy already calls the playing broken.
   ///
-  /// Localized rather than scored, and the threshold is the one continuity
-  /// already uses, so a stall here and an interruption there are the same
-  /// event read at two altitudes. An unmetered attempt has no beat to be late
-  /// against, so this is a claim about the learner's own pacing only.
+  /// Localized rather than scored, against the threshold continuity already
+  /// uses. An unmetered attempt has no beat to be late against, so this is a
+  /// claim about the learner's own pacing only.
   List<MomentGap> get stalls => [
     for (final gap in gaps)
       if (gap.ratio >= policy.brokenIntervalRatio) gap,
@@ -119,8 +114,8 @@ class AcquisitionObservation {
   /// Absence of a detected stall establishes nothing below
   /// [fewestIntervalsForContinuity], because the quartile the stalls were read
   /// against included the longest interval itself. A task whose single
-  /// traversal cannot reach that count asks for more traversals; the bar does
-  /// not move for it.
+  /// traversal cannot reach that count asks for more traversals rather than
+  /// moving the bar.
   AcquisitionContinuity get continuity => stalls.isNotEmpty
       ? AcquisitionContinuity.interrupted
       : gaps.length >= fewestIntervalsForContinuity && !_hasAmbiguousTraversal
@@ -156,9 +151,8 @@ class AcquisitionObservation {
   /// Whether this attempt makes the unchanged parent eligible for a probe.
   ///
   /// Criterion success, not completion: the sequence came out right the first
-  /// time and the learner did not stop inside it. Completion through
-  /// correction is practice and is recorded as practice; it is not a reason to
-  /// ask the parent's question yet.
+  /// time and the learner did not stop inside it. Completion through correction
+  /// is recorded as practice.
   ///
   /// Eligibility only. Whether to conduct the probe, and how many criterion
   /// successes it takes, are the scheduler's to decide.
@@ -192,13 +186,9 @@ AcquisitionObservation observeAcquisition({
   return AcquisitionObservation(
     task: task,
     started: measurement.started,
-    // Produced, not merely covered. Alignment explains a wrong note as a
-    // substitution, which accounts for the position it fell on, so a traversal
-    // of eight arbitrary notes satisfies every position without any of the
-    // material having been played. That reading is right for a measurement,
-    // where the pitch channels say what actually arrived, and wrong here,
-    // where completion is the headline fact and the contract is that the
-    // learner produced the required pitches in order.
+    // Produced, not merely covered. Alignment accounts for a position with a
+    // substitution, so arbitrary notes would otherwise satisfy every position
+    // without any of the material having been played.
     completion: reading.substituted > 0 || reading.deleted > 0
         ? AcquisitionCompletion.notCompleted
         : reading.isFirstPassClean

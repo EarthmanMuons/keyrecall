@@ -158,14 +158,9 @@ void main() {
 
     test('measures against a baseline the same short attempt supplies', () {
       // The known limit of an endogenous baseline. Four intervals, one of them
-      // the hesitation, and the quartile the hesitation is compared against is
-      // pulled up by the hesitation itself, so the same wait that reads as a
-      // stall in a full traversal does not read as one here.
-      //
-      // Kept as a demonstrated property rather than fixed. An acquisition
-      // constant chosen to make this case come out is worse than a threshold
-      // shared with ordinary continuity, and device traces are what should
-      // settle it.
+      // the hesitation, and the quartile it is compared against is pulled up by
+      // the hesitation itself, so the wait that reads as a stall in a full
+      // traversal does not read as one here.
       final short = observeAcquisition(
         task: task,
         transcript: played(
