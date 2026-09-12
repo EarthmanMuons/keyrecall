@@ -62,7 +62,7 @@ List<List<TrajectorySlot>> clustersIn(
 
 /// Which kind of cluster [cluster] is, read from what changed inside it.
 ClusterKind describeCluster(List<TrajectorySlot> cluster) {
-  final motor = [for (final slot in cluster) slot.outcome.motorScore];
+  final motor = [for (final slot in cluster) ?slot.outcome.motorScore];
   final independence = [
     for (final slot in cluster) slot.chosen.guidance.independence,
   ];

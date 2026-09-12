@@ -132,6 +132,6 @@ String _terminal(int seed, Trajectory trajectory, {int show = 8}) {
           'g=${slot.chosen.guidance.independence} '
           '${(slot.winner.challengeBypass?.id ?? 'in-band').padRight(22)}'
           'started=${slot.outcome.started} '
-          'motor=${slot.outcome.motorScore.toStringAsFixed(2)}',
+          'motor=${slot.outcome.motorScore?.toStringAsFixed(2) ?? 'untimed'}',
   ].join('\n');
 }

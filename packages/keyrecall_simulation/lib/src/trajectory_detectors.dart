@@ -23,7 +23,7 @@ String censusOf(TrajectorySlot slot, {int alternatives = 8}) {
     'played ${slot.performedTempoBpm.toStringAsFixed(0)}bpm '
         '(x${slot.outcome.achievedTempoRatio.toStringAsFixed(2)}) '
         'completed=${slot.outcome.completed} '
-        'motor=${slot.outcome.motorScore.toStringAsFixed(2)} '
+        'motor=${slot.outcome.motorScore?.toStringAsFixed(2) ?? 'untimed'} '
         'pitch=${slot.outcome.pitchIntegrity.toStringAsFixed(2)}',
     'frontier for ${slot.chosen.material.materialId}/${conditions.hands.id}: '
         '${slot.frontierBefore} paced=${slot.pacedBefore.toStringAsFixed(0)}',

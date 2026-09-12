@@ -134,7 +134,7 @@ void main() {
         PythonCompatibleRandom(3),
         practising: false,
       );
-      expect(difficult.motorScore, lessThan(easy.motorScore));
+      expect(difficult.motorScore, lessThan(easy.motorScore!));
       expect(
         limited.executionEffortFor(parent, momentIndex: crossings.first),
         lessThan(limited.executionEffortFor(parent, momentIndex: 0)),
@@ -184,7 +184,7 @@ void main() {
         PythonCompatibleRandom(9),
         practising: false,
       );
-      expect(after.motorScore, greaterThan(withoutPractice.motorScore));
+      expect(after.motorScore, greaterThan(withoutPractice.motorScore!));
       expect(
         trained.abilityOf(HandConfiguration.right, material.familyId),
         trainedAbility,

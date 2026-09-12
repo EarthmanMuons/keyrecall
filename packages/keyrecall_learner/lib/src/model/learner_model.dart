@@ -122,9 +122,13 @@ class LearnerModel {
   }
 
   /// Whether an outcome demonstrated the execution it was asked for.
+  ///
+  /// False for an attempt that measured no timing: nothing established how the
+  /// playing went, and the frontier records demonstrated difficulty.
   bool executionWasManaged(Outcome outcome) =>
       outcome.completed &&
-      outcome.motorScore >= params.materialExecution.demonstratedMotorScore;
+      (outcome.motorScore ?? -1) >=
+          params.materialExecution.demonstratedMotorScore;
 
   /// The competency mean used for prediction, including the hand-transfer
   /// adjustment.
@@ -373,6 +377,27 @@ class LearnerModel {
       );
     }
 
+    if (outcome.motorScore == null) {
+      if (weights.materialExecution > 0.0) {
+        throw ArgumentError.value(
+          weights.materialExecution,
+          'weights.materialExecution',
+          'an attempt that measured no timing is no execution evidence at all',
+        );
+      }
+      for (final competency in Competency.values) {
+        if (!competency.isTopology &&
+            !coordinationCompetencies.contains(competency) &&
+            weights[competency] > 0.0) {
+          throw ArgumentError.value(
+            weights[competency],
+            'weights[${competency.id}]',
+            'the motor channel has no evidence without measured timing',
+          );
+        }
+      }
+    }
+
     if (!outcome.started) {
       // Failing to begin is a real observation, and the memory weight above is
       // where it lands. Nothing downstream of execution may move.
@@ -410,7 +435,8 @@ class LearnerModel {
   ///
   /// Each layer learns only from a residual its own prediction helped generate:
   /// motor competencies and the execution residual from
-  /// `motorScore - executionP`, topology competencies from
+  /// `motorScore - executionP`, which an attempt that measured no timing does
+  /// not have, topology competencies from
   /// `topologyAccuracy - topologyP`, and memory from
   /// `retrieval.score - independentRetrievalP`. There is no universal
   /// prediction error, and zero-weight layers are left untouched.
@@ -450,9 +476,14 @@ class LearnerModel {
     // Against the difficulty demonstrated, not the one requested. Only
     // execution is a claim about a physical task whose difficulty the
     // performance itself established.
-    final deltaExec =
-        outcome.motorScore -
-        demonstratedExecutionProbability(state, exercise, outcome);
+    //
+    // Absent when the attempt measured no timing, which leaves the motor
+    // competencies and the execution residual untouched rather than teaching
+    // them a score nothing observed.
+    final deltaExec = outcome.motorScore == null
+        ? null
+        : outcome.motorScore! -
+              demonstratedExecutionProbability(state, exercise, outcome);
     final deltaTopology = outcome.topologyAccuracy - prediction.topologyP;
     // Absent when nothing measured how together the hands were, which leaves
     // the coordination channel untouched rather than teaching it zero.
@@ -472,7 +503,7 @@ class LearnerModel {
       at: at,
     );
 
-    if (weights.materialExecution > 0.0) {
+    if (weights.materialExecution > 0.0 && deltaExec != null) {
       _updateExecutionResidual(
         state: state,
         context: executionContextOf(exercise),
@@ -500,7 +531,7 @@ class LearnerModel {
     required Map<Competency, double> motorQ,
     required Map<Competency, double> topologyQ,
     required Map<Competency, double> coordinationQ,
-    required double deltaExec,
+    required double? deltaExec,
     required double deltaTopology,
     required double? deltaCoordination,
     required DateTime at,

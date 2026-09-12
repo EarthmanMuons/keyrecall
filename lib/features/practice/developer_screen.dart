@@ -111,7 +111,7 @@ class _CommittedPanel extends StatelessWidget {
       ...switch (record.closure.measurement) {
         Measured(:final outcome) => [
           _Field('retrieval', outcome.retrieval.name),
-          _Field('motor', outcome.motorScore.toStringAsFixed(3)),
+          _Field('motor', outcome.motorScore?.toStringAsFixed(3) ?? 'untimed'),
         ],
         MeasurementUnavailable(:final reason) => [
           _Field('measurement', 'unavailable: ${reason.id}'),

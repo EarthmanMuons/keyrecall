@@ -96,7 +96,7 @@ void main() {
       double mean(HandConfiguration hands) {
         var total = 0.0;
         for (var i = 0; i < 40; i++) {
-          total += playing.play(at(96, hands: hands), rng).motorScore;
+          total += playing.play(at(96, hands: hands), rng).motorScore!;
         }
         return total / 40;
       }

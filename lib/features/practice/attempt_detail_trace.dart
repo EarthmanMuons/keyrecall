@@ -85,7 +85,9 @@ AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
   ];
   FlowGap? flowGap;
   final gapPosition = measurement.longestGapBeforePosition;
-  if (gapPosition != null && reading.outcome.continuity < 1) {
+  // An unmeasured continuity makes no claim about the longest gap, so nothing
+  // is highlighted.
+  if (gapPosition != null && (reading.outcome.continuity ?? 1) < 1) {
     for (var index = 1; index < timedMoments.length; index++) {
       if (timedMoments[index].realizationPosition == gapPosition) {
         flowGap = FlowGap(

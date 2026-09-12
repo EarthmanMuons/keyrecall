@@ -448,7 +448,7 @@ List<MilestoneShock> milestoneShocks(Trajectory trajectory, {int window = 15}) {
 
 double _medianMotor(List<TrajectorySlot> slots, int from, int count) {
   final scores = [
-    for (final slot in slots.skip(from).take(count)) slot.outcome.motorScore,
+    for (final slot in slots.skip(from).take(count)) ?slot.outcome.motorScore,
   ]..sort();
   if (scores.isEmpty) return 0;
   final middle = scores.length ~/ 2;

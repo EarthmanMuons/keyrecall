@@ -120,7 +120,7 @@ Future<void> main(List<String> arguments) async {
       final outcome = playing.play(floor, rng);
       started.add(outcome.started ? 1 : 0);
       completed.add(outcome.completed ? 1 : 0);
-      motor.add(outcome.motorScore);
+      if (outcome.motorScore case final score?) motor.add(score);
     }
   }
 

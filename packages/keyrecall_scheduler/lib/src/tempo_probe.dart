@@ -46,8 +46,11 @@ bool isUnderchallenged({
     outcome.completed &&
     outcome.retrieval == FactualRetrieval.succeeded &&
     outcome.pitchIntegrity >= config.underchallengePitchIntegrity &&
-    outcome.continuity >= config.underchallengeContinuity &&
-    outcome.temporalStability >= config.underchallengeTemporalStability &&
+    // An attempt whose timing went unmeasured shows no ease, whatever the
+    // thresholds would have said.
+    (outcome.continuity ?? -1) >= config.underchallengeContinuity &&
+    (outcome.temporalStability ?? -1) >=
+        config.underchallengeTemporalStability &&
     outcome.achievedTempoRatio >= config.underchallengeTempoRatio;
 
 /// The exercise to ask for next when [exercise] was too easy, or null.

@@ -150,9 +150,9 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
   for (final attempt in attempts) {
     (byHands[attempt.exercise.conditions.hands] ??= []).add(attempt);
     if (novelty) {
-      (attempt.seenBefore! ? familiar : unfamiliar).add(
-        attempt.outcome.motorScore,
-      );
+      if (attempt.outcome.motorScore case final score?) {
+        (attempt.seenBefore! ? familiar : unfamiliar).add(score);
+      }
     }
     ratios.add(attempt.outcome.achievedTempoRatio);
     if (attempt.outcome.achievedTempoRatio >= 1.2) sprints++;
@@ -189,7 +189,7 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
     motor: {
       for (final entry in byHands.entries)
         entry.key: _median([
-          for (final attempt in entry.value) attempt.outcome.motorScore,
+          for (final attempt in entry.value) ?attempt.outcome.motorScore,
         ]),
     },
     tempoRatio: _median(ratios),

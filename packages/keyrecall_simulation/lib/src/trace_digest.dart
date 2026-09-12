@@ -110,6 +110,9 @@ String _encodeDiscreteNumber(double value) => value == value.roundToDouble()
 /// the discrete digest hashes no doubles at all.
 String _encodeNumber(double value) => value.toString();
 
+/// Empty for a channel the attempt did not measure, which no score encodes to.
+String _encodeOptionalNumber(double? value) => value?.toString() ?? '';
+
 List<String> _discreteFields(AttemptTrace trace) {
   final exercise = trace.exercise;
   final conditions = exercise.conditions;
@@ -148,8 +151,8 @@ List<String> _fullFields(AttemptTrace trace, DateTime epoch) => [
   _encodeNumber(trace.prediction.topologyP),
   _encodeNumber(trace.outcome.materialRetrieval),
   _encodeNumber(trace.outcome.pitchIntegrity),
-  _encodeNumber(trace.outcome.continuity),
-  _encodeNumber(trace.outcome.temporalStability),
+  _encodeOptionalNumber(trace.outcome.continuity),
+  _encodeOptionalNumber(trace.outcome.temporalStability),
   _encodeNumber(trace.outcome.achievedTempoRatio),
   _encodeNumber(trace.outcome.topologyAccuracy),
   for (final competency in Competency.values)

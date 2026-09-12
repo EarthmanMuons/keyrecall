@@ -262,7 +262,7 @@ String _progressionLine(TrajectorySlot slot) {
       '${(slot.winner.challengeBypass?.id ?? 'ordinary').padRight(19)} '
       'completed=${slot.outcome.completed} '
       'managed=${slot.managedExecution} '
-      'motor=${slot.outcome.motorScore.toStringAsFixed(2)} '
+      'motor=${slot.outcome.motorScore?.toStringAsFixed(2) ?? 'untimed'} '
       'frontier=${before.toStringAsFixed(0)}->${after.toStringAsFixed(0)}';
 }
 

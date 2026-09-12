@@ -88,7 +88,7 @@ String _render(String archetype, int seed, List<TrajectorySlot> cluster) => [
         'g=${slot.chosen.guidance.independence} '
         '${slot.chosen.conditions.tempoBpm.toStringAsFixed(0).padLeft(3)}bpm '
         '${(slot.winner.challengeBypass?.id ?? 'in-band').padRight(22)}'
-        'motor=${slot.outcome.motorScore.toStringAsFixed(2)} '
+        'motor=${slot.outcome.motorScore?.toStringAsFixed(2) ?? 'untimed'} '
         'pitch=${slot.outcome.pitchIntegrity.toStringAsFixed(2)} '
         'started=${slot.outcome.started} done=${slot.outcome.completed}',
 ].join('\n');

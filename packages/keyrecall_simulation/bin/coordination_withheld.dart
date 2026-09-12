@@ -234,7 +234,7 @@ _Metrics _measure(Trajectory trajectory, {required int from}) {
     );
   }
   final readings = readRun(trajectory).skip(start).toList();
-  final scores = [for (final slot in slots) slot.outcome.motorScore]..sort();
+  final scores = [for (final slot in slots) ?slot.outcome.motorScore]..sort();
   int counting(bool Function(SlotReading reading) matches) =>
       readings.where(matches).length;
 

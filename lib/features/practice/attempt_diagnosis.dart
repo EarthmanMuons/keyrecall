@@ -264,8 +264,9 @@ bool _isRegisterOnly(AlignmentReading script) {
 AttemptFault? _faultIn(Outcome outcome) {
   if (outcome.pitchIntegrity < 1) return AttemptFault.notes;
   if ((outcome.coordination ?? 1) < 1) return AttemptFault.coordination;
-  if (outcome.continuity < 1) return AttemptFault.continuity;
-  if (outcome.temporalStability < 1) return AttemptFault.steadiness;
+  // A channel nothing measured names no fault.
+  if ((outcome.continuity ?? 1) < 1) return AttemptFault.continuity;
+  if ((outcome.temporalStability ?? 1) < 1) return AttemptFault.steadiness;
   return null;
 }
 

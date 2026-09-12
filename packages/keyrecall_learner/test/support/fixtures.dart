@@ -71,6 +71,26 @@ Outcome successOfQuality(double quality) => Outcome(
   topologyAccuracy: 1.0,
 );
 
+/// An attempt whose playing was read but whose timing was not.
+///
+/// What too few intervals to establish a baseline leaves behind: the pitches
+/// were observed and the timing was not judged at all.
+Outcome untimedOutcome({
+  FactualRetrieval retrieval = FactualRetrieval.succeeded,
+  double? coordination,
+}) => Outcome(
+  coordination: coordination,
+  started: true,
+  retrieval: retrieval,
+  completed: true,
+  materialRetrieval: 1.0,
+  pitchIntegrity: 1.0,
+  achievedTempoRatio: 1.0,
+  topologyAccuracy: 1.0,
+  continuity: null,
+  temporalStability: null,
+);
+
 /// An attempt that never began, because the material could not be recalled.
 Outcome failedToStart() => Outcome(
   started: false,

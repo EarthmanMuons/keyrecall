@@ -47,8 +47,9 @@ Map<String, Object?> encodeOutcome(Outcome outcome) => {
   'retrieval_succeeded': outcome.retrieval.jsonValue,
   'material_retrieval': outcome.materialRetrieval,
   'pitch_integrity': outcome.pitchIntegrity,
-  'continuity': outcome.continuity,
-  'temporal_stability': outcome.temporalStability,
+  if (outcome.continuity != null) 'continuity': outcome.continuity,
+  if (outcome.temporalStability != null)
+    'temporal_stability': outcome.temporalStability,
   'achieved_tempo_ratio': outcome.achievedTempoRatio,
   'topology_accuracy': outcome.topologyAccuracy,
   if (outcome.coordination != null) 'coordination': outcome.coordination,
@@ -74,12 +75,14 @@ Outcome decodeOutcome(Map<String, Object?> json, {String? location}) {
       location: location,
     ),
     pitchIntegrity: requireDouble(json, 'pitch_integrity', location: location),
-    continuity: requireDouble(json, 'continuity', location: location),
-    temporalStability: requireDouble(
-      json,
-      'temporal_stability',
-      location: location,
-    ),
+    // Absent means the attempt measured no timing, which is also what a record
+    // written before the timing channels could be absent never says.
+    continuity: json['continuity'] == null
+        ? null
+        : requireDouble(json, 'continuity', location: location),
+    temporalStability: json['temporal_stability'] == null
+        ? null
+        : requireDouble(json, 'temporal_stability', location: location),
     achievedTempoRatio: requireDouble(
       json,
       'achieved_tempo_ratio',

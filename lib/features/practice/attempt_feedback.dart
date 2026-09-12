@@ -9,18 +9,20 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 @immutable
 class AttemptSummary {
   final double notes;
-  final double flow;
-  final double pulse;
+
+  /// Null when the attempt supplied too few intervals to read its timing.
+  final double? flow;
+  final double? pulse;
   final double? coordination;
   final double achievedTempoBpm;
   final double targetTempoBpm;
 
   const AttemptSummary({
     required this.notes,
-    required this.flow,
-    required this.pulse,
     required this.achievedTempoBpm,
     required this.targetTempoBpm,
+    this.flow,
+    this.pulse,
     this.coordination,
   });
 }

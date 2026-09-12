@@ -95,30 +95,49 @@ EvidenceWeights evidenceWeightsFor(Exercise exercise, Outcome outcome) {
     );
   }
 
-  final executionWeight = outcome.completed ? 1.0 : 0.4;
+  final observedWeight = outcome.completed ? 1.0 : 0.4;
   final retrievalDemand = exercise.guidance.retrievalDemand;
 
+  // Timing is the motor channel's only evidence, so an attempt that carried
+  // none informs neither the motor competencies nor the execution residual. It
+  // still informs topology and memory, which read the pitches.
+  final timed = outcome.motorScore != null;
+
   // Topology is a pitch-knowledge question like memory, so a cued attempt says
-  // little about it. Motor competencies are unaffected, since cueing does not
-  // move the learner's hands.
+  // little about it. Motor competencies are unaffected by cueing, since it does
+  // not move the learner's hands.
   //
-  // Coordination is omitted unless the attempt measured it: two hands create
-  // the opportunity, and the performance decides whether it was observed.
+  // Each of the other two channels is omitted unless the attempt measured it:
+  // the exercise creates the opportunity, and the performance decides whether
+  // anything was observed.
   final competencyWeights = {
     for (final competency in Competency.values)
       if (exercise.structuralQ.contains(competency) &&
-          (!coordinationCompetencies.contains(competency) ||
-              outcome.coordination != null))
+          _wasObserved(competency, outcome: outcome, timed: timed))
         competency: competency.isTopology
-            ? executionWeight * retrievalDemand
-            : executionWeight,
+            ? observedWeight * retrievalDemand
+            : observedWeight,
   };
 
   return EvidenceWeights(
     competencies: competencyWeights,
-    materialExecution: executionWeight,
+    materialExecution: timed ? observedWeight : 0.0,
+    // Memory learns from retrieval rather than from timing, so it is unaffected
+    // by an untimed attempt.
     materialMemory: outcome.retrieval.isTested
         ? retrievalDemand * (outcome.completed ? 1.0 : 0.6)
         : 0.0,
   );
+}
+
+/// Whether this attempt observed the channel [competency] learns from.
+bool _wasObserved(
+  Competency competency, {
+  required Outcome outcome,
+  required bool timed,
+}) {
+  if (competency.isTopology) return true;
+  return coordinationCompetencies.contains(competency)
+      ? outcome.coordination != null
+      : timed;
 }

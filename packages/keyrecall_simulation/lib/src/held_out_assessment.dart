@@ -119,8 +119,9 @@ class AssessmentReading {
   /// Mean pitch integrity.
   final double pitchIntegrity;
 
-  /// Mean temporal stability.
-  final double temporalStability;
+  /// Mean temporal stability over the attempts that measured it, or null when
+  /// none did.
+  final double? temporalStability;
 
   /// Mean coordination over the hands-together attempts that began, or null
   /// when no hands-together attempt began.
@@ -316,7 +317,9 @@ AssessmentReading _readingOf(
     started: share((o) => o.started),
     completion: share((o) => o.completed),
     pitchIntegrity: mean((o) => o.pitchIntegrity),
-    temporalStability: mean((o) => o.temporalStability),
+    temporalStability: _meanOf([
+      for (final (_, outcome) in outcomes) ?outcome.temporalStability,
+    ]),
     coordination: coordinated.isEmpty
         ? null
         : coordinated.reduce((a, b) => a + b) / coordinated.length,
@@ -351,3 +354,7 @@ AssessmentReading _readingOf(
     retrieval: retrieval / exercises.length,
   );
 }
+
+/// The mean of [values], or null when there are none.
+double? _meanOf(List<double> values) =>
+    values.isEmpty ? null : values.reduce((a, b) => a + b) / values.length;

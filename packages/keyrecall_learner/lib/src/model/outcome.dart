@@ -72,11 +72,17 @@ class Outcome {
   /// How correct the sounded pitches were.
   final double pitchIntegrity;
 
-  /// How unbroken the performance was.
-  final double continuity;
+  /// How unbroken the performance was, or null when nothing measured it.
+  ///
+  /// Absent when the attempt supplied too few intervals to judge one against
+  /// the others, since zero would say the playing stopped.
+  final double? continuity;
 
-  /// How steady the timing was.
-  final double temporalStability;
+  /// How steady the timing was, or null when nothing measured it.
+  ///
+  /// Absent on the same evidence grounds as [continuity], and separately, since
+  /// the two are independent readings of the same intervals.
+  final double? temporalStability;
 
   /// Achieved tempo as a fraction of the requested tempo.
   ///
@@ -114,8 +120,10 @@ class Outcome {
   }) {
     _requireScore(materialRetrieval, 'materialRetrieval');
     _requireScore(pitchIntegrity, 'pitchIntegrity');
-    _requireScore(continuity, 'continuity');
-    _requireScore(temporalStability, 'temporalStability');
+    if (continuity != null) _requireScore(continuity!, 'continuity');
+    if (temporalStability != null) {
+      _requireScore(temporalStability!, 'temporalStability');
+    }
     _requireScore(topologyAccuracy, 'topologyAccuracy');
     if (coordination != null) _requireScore(coordination!, 'coordination');
     if (!achievedTempoRatio.isFinite || achievedTempoRatio < 0) {
@@ -140,19 +148,36 @@ class Outcome {
   double? get measuredTempoRatio =>
       achievedTempoRatio > 0 ? achievedTempoRatio : null;
 
-  /// `y_motor`: the bounded motor score the execution channel learns from.
+  /// `y_motor`: the bounded motor score the execution channel learns from, or
+  /// null when nothing measured the timing.
   ///
-  /// Pitch integrity is excluded, since it blends retrieval and motor
-  /// quality.
-  double get motorScore => (continuity + temporalStability) / 2.0;
+  /// Pitch integrity is excluded, since it blends retrieval and motor quality.
+  ///
+  /// Null and zero are different claims: zero says the playing was as poor as
+  /// playing gets, null that the attempt carried no timing evidence. The
+  /// execution channel learns from this, so a null carries no weight rather
+  /// than a bad score.
+  double? get motorScore {
+    final measured = _measuredTiming;
+    if (measured.isEmpty) return null;
+    return measured.reduce((a, b) => a + b) / measured.length;
+  }
+
+  /// The timing scores this attempt actually established.
+  List<double> get _measuredTiming => [?continuity, ?temporalStability];
 
   /// How productive the practice was, in `[0, 1]`.
   ///
   /// Drives the causal memory transitions. An attempt that never started or
   /// never completed contributes nothing.
+  ///
+  /// Averaged over the channels the attempt established, so an attempt too
+  /// short to time is read on its pitch alone rather than as unproductive
+  /// practice.
   double get practiceQuality {
     if (!started || !completed) return 0.0;
-    final quality = (continuity + temporalStability + pitchIntegrity) / 3.0;
+    final scores = [..._measuredTiming, pitchIntegrity];
+    final quality = scores.reduce((a, b) => a + b) / scores.length;
     return quality.clamp(0.0, 1.0);
   }
 
@@ -188,5 +213,5 @@ class Outcome {
   String toString() =>
       'Outcome(started: $started, retrieval: ${retrieval.name}, '
       'completed: $completed, '
-      'motor: ${motorScore.toStringAsFixed(3)})';
+      'motor: ${motorScore?.toStringAsFixed(3) ?? 'unmeasured'})';
 }

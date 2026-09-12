@@ -535,10 +535,14 @@ class _AttemptSummaryView extends StatelessWidget {
         child: Column(
           children: [
             _QualityRow(label: 'Notes', value: summary.notes),
-            const SizedBox(height: 12),
-            _QualityRow(label: 'Flow', value: summary.flow),
-            const SizedBox(height: 12),
-            _QualityRow(label: 'Pulse', value: summary.pulse),
+            if (summary.flow case final flow?) ...[
+              const SizedBox(height: 12),
+              _QualityRow(label: 'Flow', value: flow),
+            ],
+            if (summary.pulse case final pulse?) ...[
+              const SizedBox(height: 12),
+              _QualityRow(label: 'Pulse', value: pulse),
+            ],
             if (summary.coordination case final coordination?) ...[
               const SizedBox(height: 12),
               _QualityRow(label: 'Coordination', value: coordination),

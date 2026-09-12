@@ -110,7 +110,7 @@ String trajectoryRow(
       Measured(:final outcome) =>
         'done=${outcome.completed} pitch='
             '${outcome.pitchIntegrity.toStringAsFixed(2)} '
-            'motor=${outcome.motorScore.toStringAsFixed(2)} '
+            'motor=${outcome.motorScore?.toStringAsFixed(2) ?? 'untimed'} '
             // What the tempo probe reads and the frontier is attributed at.
             // A ratio far from what somebody believes they played is a
             // question about the transcript rather than about the playing,

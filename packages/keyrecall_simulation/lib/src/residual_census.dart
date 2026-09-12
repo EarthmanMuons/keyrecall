@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'arpeggio_policy_experiment.dart';
 import 'scheduler_benchmark.dart';
@@ -69,12 +70,14 @@ ResidualObservation? _observationOf(
   final prediction = record.decision?.prediction;
   if (prediction == null) return null;
   return switch (record.closure.measurement) {
+    // An attempt that measured no timing generated no execution residual.
+    Measured(outcome: Outcome(motorScore: null)) => null,
     Measured(:final outcome) => ResidualObservation(
       playerId: playerId,
       seed: seed,
       index: index,
       exercise: record.exercise,
-      execution: outcome.motorScore - prediction.executionP,
+      execution: outcome.motorScore! - prediction.executionP,
       topology: outcome.topologyAccuracy - prediction.topologyP,
     ),
     MeasurementUnavailable() => null,
