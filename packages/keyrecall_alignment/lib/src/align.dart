@@ -13,8 +13,7 @@ const _operationEquality = ListEquality<MomentOperation>();
 /// How a performance relates to what the exercise asked for.
 ///
 /// The edit script and nothing else, moment by moment. Whether the attempt was
-/// any good, whether it counts as retrieval, and what it says about a
-/// competency are all readings of this, made elsewhere.
+/// any good is a reading of this, made elsewhere.
 @immutable
 class Alignment {
   /// The relationships, in the order both sequences run.
@@ -58,38 +57,23 @@ class Alignment {
 /// note and every played note appears exactly once, in one note edit, under the
 /// moment it belongs to.
 ///
-/// Global rather than greedy, and that is the point. A single extra note early
-/// in a scale has one cheap explanation, an insertion, and one expensive one,
-/// a substitution at every remaining position; walking the sequences and
-/// deciding locally picks the expensive one and never recovers. Resynchronizing
-/// after a skip, an extra, or a correction falls out of choosing the whole
-/// explanation at once.
+/// The search is global rather than greedy, so resynchronizing after a skip,
+/// an extra, or a correction falls out of choosing the whole explanation at
+/// once.
 ///
 /// The same search chooses how the observations were grouped. A correspondence
 /// consumes one moment and a contiguous run of one to K observations, K being
-/// the largest note count of any moment asked for, so which arrivals belong to
-/// one performed moment is decided against the realization rather than before
-/// it. Timing enters only as [groupObservations] priced it, bounded by
+/// the largest note count of any moment asked for. Timing enters only as
+/// [groupObservations] priced it, bounded by
 /// [AlignmentPolicy.maxGroupingPreference]: a run pays
 /// [ObservationBoundary.sameMomentSurcharge] for each boundary inside it, and
 /// splitting anywhere is always affordable.
 ///
-/// Pitch and grouping only. Nothing here reads a timestamp except through that
-/// surcharge, because relating arrival times to expected times needs a tempo
-/// model that does not exist, and inventing one inside an aligner would hide
-/// it.
-///
-/// Register is relative. The realization anchors the scale somewhere so a
-/// staff can draw it, but which C somebody starts on is a property of that
-/// anchor and not of the task: the same fingering, the same intervals, the
-/// same shape. So the performance is explained against the realization and
-/// against the realization shifted by whole octaves, whichever costs less.
-///
-/// Whole octaves, and the whole realization at once. A single note in the
-/// wrong octave still reads as a register substitution, because no shift of
-/// everything explains it. Hands together move together, so playing the pair
-/// an octave up is right and playing the hands two octaves apart is not: the
-/// distance between them is the task, their position on the keyboard is not.
+/// Register is relative, so the performance is explained against the
+/// realization and against the realization shifted by whole octaves, whichever
+/// costs less. The shift moves the whole realization, which leaves a single
+/// note in the wrong octave a substitution and keeps the distance between the
+/// hands part of the task.
 Alignment align({
   required ExerciseRealization realization,
   required PerformanceTranscript transcript,
@@ -118,14 +102,8 @@ Alignment align({
 /// zero when the realization's own register explains it.
 ///
 /// The median of what was played against the median of what was asked for,
-/// rounded to octaves. The median rather than the first note, because the
-/// first note is exactly the one a learner is most likely to have fumbled and
-/// reading the whole performance off it would move a scale on one bad start.
-///
-/// One candidate rather than a search over the keyboard: alignment is
-/// quadratic and runs on every arriving note, so this pays for at most one
-/// extra pass, and the answer it proposes is the only one the evidence
-/// actually suggests.
+/// rounded to octaves. The median rather than the first note, which is the one
+/// a learner is most likely to have fumbled.
 int _registerShiftFor(
   ExerciseRealization realization,
   PerformanceTranscript transcript,
@@ -224,20 +202,13 @@ Alignment _alignExactly({
 /// Walks the table back to the script that produced the cheapest cost.
 ///
 /// Ties are broken in a fixed order so one performance always aligns the same
-/// way. Replay depends on that: an aligner that could return either of two
-/// equal-cost readings would make the evidence derived from it irreproducible.
+/// way, which is what makes the evidence derived from it reproducible.
 ///
-/// The order puts a missing moment before a correspondence, which places a
-/// performance as early in the traversal as its cost allows. That matters
-/// whenever a pitch appears more than once: a scale played up and back down
-/// begins and ends on the tonic, so a single played tonic explains equally well
-/// as the first note or the last, and reading it as the last would say a
-/// learner who has played one note has reached the end.
-///
-/// A moment takes one observation before an extra note is allowed to stand,
-/// and an extra stands before a moment takes a second observation. Absorbing
-/// another arrival into a moment is the last reading tried, because a longer
-/// run hides an extra where nothing shows it arrived.
+/// A missing moment comes before a correspondence, placing the performance as
+/// early in the traversal as its cost allows, so a pitch that appears more than
+/// once reads as its first occurrence. A moment takes one observation before an
+/// extra note is allowed to stand, and an extra stands before a moment takes a
+/// second, because a longer run hides an extra.
 List<MomentOperation> _traceBack(
   List<List<int>> cost,
   List<RealizationMoment> moments,
@@ -316,15 +287,13 @@ double _medianOf(List<int> values) {
 
 /// The cheapest reading of one moment against one run of observations.
 ///
-/// Every assignment of the moment's notes to the run is enumerated, since a
-/// moment holds at most one note per hand and a run is at most that long. The
-/// hand a played note belongs to falls out of the assignment that wins, which
-/// is the only place hand identity is decided.
+/// Every assignment of the moment's notes to the run is enumerated, which stays
+/// cheap because a moment holds at most one note per hand. The hand a played
+/// note belongs to falls out of the assignment that wins, the only place hand
+/// identity is decided.
 ///
-/// Assignments are enumerated with the moment's notes in order, each trying the
-/// observations in arrival order and then going unplayed, and the first
-/// cheapest is kept. Two equally cheap readings therefore always resolve the
-/// same way.
+/// Assignments are enumerated in a fixed order and the first cheapest is kept,
+/// so two equally cheap readings always resolve the same way.
 class _MomentMatcher {
   final List<RealizationMoment> moments;
   final List<PlayedNote> observed;
@@ -352,12 +321,8 @@ class _MomentMatcher {
     final left = acted[Hand.left];
     final right = acted[Hand.right];
 
-    // An identifiability limit rather than a measurement. Where the hands meet
-    // on one key the instrument reports one onset, so there is no inter-hand
-    // timing to observe and the difference would be zero however the learner
-    // played. Null says unobservable, which is the same thing this reports for
-    // a hand that played nothing, and keeps the moment out of the coordination
-    // summaries instead of contributing a guaranteed zero to them.
+    // Where the hands meet on one key the instrument reports a single onset,
+    // so their asynchrony is unobservable rather than zero.
     final shared = edits.any(
       (edit) => switch (edit) {
         Match(:final hands) || Substitution(:final hands) => hands.length > 1,

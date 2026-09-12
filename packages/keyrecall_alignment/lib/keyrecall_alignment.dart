@@ -1,17 +1,15 @@
 /// Relates an observed performance to the notes an exercise asked for.
 ///
 /// [align] answers one question: which played note corresponds to which
-/// expected one, and what is left over on either side. It is the only place a
-/// correctness judgment is allowed to be made, and everything evaluative that
-/// a learner eventually sees is a rendering of its result.
+/// expected one, and what is left over on either side. Everything evaluative a
+/// learner sees is a rendering of its result.
 ///
-/// [groupObservations] runs before it, pricing what timing suggests about
-/// which observations arrived together. It proposes and alignment disposes:
-/// both readings of every gap stay affordable.
+/// [groupObservations] runs first, pricing what timing suggests about which
+/// observations arrived together. Alignment is free to read those gaps either
+/// way.
 ///
-/// Deliberately narrow: pitch and grouping, no evidence, and no knowledge of
-/// scheduling or presentation. See `docs/domain-model/alignment-contract.md`
-/// for what is settled and what is still open.
+/// Pitch and grouping only, with no evidence and no knowledge of scheduling or
+/// presentation. See `docs/domain-model/alignment-contract.md`.
 library;
 
 export 'src/align.dart';

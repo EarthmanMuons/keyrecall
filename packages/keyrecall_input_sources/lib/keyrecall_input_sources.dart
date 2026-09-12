@@ -1,12 +1,7 @@
-/// The shared runtime every KeyRecall input source builds on.
+/// The shared Riverpod runtime every KeyRecall input source builds on.
 ///
-/// `keyrecall_input` defines the vocabulary and stays pure Dart. This package
-/// is the thin Riverpod layer underneath the sources that produce it, holding
-/// only what all of them need in common.
-///
-/// Which source is active, and how one is chosen, is the application's
-/// decision and lives there. Nothing here knows that MIDI or a synthetic
-/// source exist.
+/// Holds only what all sources need in common. Choosing which source is active
+/// is the application's decision.
 library;
 
 export 'src/input_event_clock_provider.dart';

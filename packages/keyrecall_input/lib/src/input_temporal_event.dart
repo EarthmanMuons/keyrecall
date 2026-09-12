@@ -83,17 +83,9 @@ class InputTemporalSnapshot {
 
 /// One normalized, monotonically timestamped observation of live playing.
 ///
-/// The vocabulary every input source reduces to, whatever it is underneath: a
-/// MIDI instrument, a synthetic source for demos and tests, or anything added
-/// later. Normalizing here is what keeps the rest of the app from reasoning
-/// about transports.
-///
-/// The stream is already cleaned up by the time it reaches this form. A
-/// repeated note-on for a key that is already held is not an event, because
-/// nothing changed; a note-on after the pedal released a note is, because a
-/// reattack is real playing. Timestamps come from a monotonic clock rather than
-/// a wall clock, so a clock correction mid-performance cannot reorder what was
-/// played.
+/// The stream is already cleaned up by the time it reaches this form: a
+/// repeated note-on for a held key is not an event, while a note-on after the
+/// pedal released a note is.
 @immutable
 sealed class InputTemporalEvent {
   /// Milliseconds since the input clock started.
@@ -180,13 +172,9 @@ final class InputTemporalPedalEvent extends InputTemporalEvent {
 /// The stream restarted, and this is what was sounding when it did.
 ///
 /// An administrative boundary rather than something anybody played: a source
-/// swap, a disconnect, an all-notes-off, or a repair of state that drifted.
-///
-/// It carries a snapshot because a consumer that tracked notes across the
-/// boundary would otherwise be left believing keys are held that nobody is
-/// holding. For anything measuring a performance, a reset mid-attempt is also
-/// the signal that the observation is incomplete: what follows cannot be
-/// compared against what came before as though it were continuous.
+/// swap, a disconnect, an all-notes-off, or a repair of drifted state. The
+/// snapshot lets a consumer resynchronize what it believes is held, and a reset
+/// mid-attempt marks that observation as incomplete.
 final class InputTemporalResetEvent extends InputTemporalEvent {
   /// What was sounding at the boundary.
   final InputTemporalSnapshot snapshot;

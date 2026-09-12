@@ -8,8 +8,8 @@ import 'alignment_policy.dart';
 ///
 /// Both edges come from the recorded takes in `analysis/onset-grouping/`:
 /// comfortable pairs arrived within 30 ms of each other, and consecutive
-/// moments no closer than 254 ms. Playing that is faster, uneven, or stumbling
-/// falls between them, which is the region grouping declines to settle.
+/// moments no closer than 254 ms. Gaps between the two are the region grouping
+/// declines to settle.
 @immutable
 class ObservationGroupingPolicy {
   /// At or below this gap, timing leans as hard as it may toward one moment.
@@ -155,15 +155,14 @@ class ObservationGrouping {
 /// What timing suggests about how [transcript] was grouped into moments.
 ///
 /// Proposals, priced. A gap inside [ObservationGroupingPolicy.confidentlySameMs]
-/// makes one moment the cheaper reading and two the dearer one; a gap beyond
-/// [ObservationGroupingPolicy.confidentlySeparateMs] reverses that; in between
-/// the preference slides between the two. Neither reading is ever priced out of
-/// the search, because recorded playing puts notes 23 ms apart in different
-/// moments and notes a second apart in the same one.
+/// makes one moment the cheaper reading and two the dearer one, a gap beyond
+/// [ObservationGroupingPolicy.confidentlySeparateMs] reverses that, and in
+/// between the preference slides. Neither reading is ever priced out of the
+/// search, because recorded playing puts notes 23 ms apart in different moments
+/// and notes a second apart in the same one.
 ///
-/// Knows nothing about keys, hands, scale degrees, or what the exercise asked
-/// for. It sees arrival times and nothing else, which is what stops
-/// correspondence knowledge from reaching backward into observation.
+/// Reads arrival times and nothing else, so no correspondence knowledge reaches
+/// backward into observation.
 ObservationGrouping groupObservations({
   required PerformanceTranscript transcript,
   ObservationGroupingPolicy policy = ObservationGroupingPolicy.standard,

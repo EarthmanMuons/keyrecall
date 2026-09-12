@@ -5,8 +5,6 @@ import 'package:keyrecall_input_sources/keyrecall_input_sources.dart';
 
 void main() {
   test('every source in a scope reads the same clock', () {
-    // Two sources on two clocks could not have their events ordered against
-    // each other, which is the reason this provider exists.
     final container = ProviderContainer();
     addTearDown(container.dispose);
 

@@ -12,10 +12,9 @@ String _handLabel(Set<Hand> hands) => [
 
 /// How an observed note differs from the one that was expected there.
 ///
-/// Descriptive, not a severity ranking. An octave error is plausibly a fact
-/// about where the hand went rather than about remembering the scale, and
-/// keeping the two apart is what lets a later layer treat them differently. It
-/// costs the same either way; see [AlignmentPolicy].
+/// Descriptive, not a severity ranking: both cost the same. An octave error
+/// says more about where the hand went than about remembering the scale, so a
+/// later layer may treat the two differently.
 enum SubstitutionKind {
   /// A different pitch class entirely.
   pitch('PITCH'),
@@ -31,10 +30,10 @@ enum SubstitutionKind {
 
 /// One relationship between a note that was asked for and one that was played.
 ///
-/// The expected side names the [Hand] that was asked to play, because the
-/// realization says so. The observed side names an arrival, because that is all
-/// an observation carries: which hand pressed a key is a conclusion alignment
-/// reaches by correspondence, never a property of the note.
+/// The expected side names the [Hand] the realization asked to play. The
+/// observed side names only an arrival: which hand pressed a key is a
+/// conclusion alignment reaches by correspondence, never a property of the
+/// note.
 @immutable
 sealed class NoteEdit {
   const NoteEdit();
@@ -173,9 +172,7 @@ const _noteEditEquality = ListEquality<NoteEdit>();
 /// One relationship between a moment of the realization and the observations
 /// that account for it.
 ///
-/// The alphabet of an edit script, one level above the notes. A moment that
-/// asks for one note produces one note edit, so single-hand material is this
-/// shape with everything inside it singular.
+/// The alphabet of an edit script, one level above the notes.
 @immutable
 sealed class MomentOperation {
   /// The note edits, ordered by the observation each consumed, with edits that
@@ -197,8 +194,7 @@ sealed class MomentOperation {
 /// A moment of the realization, and what was played for it.
 ///
 /// Carries when the moment happened, taken from the observations the search
-/// assigned to it. Reading that off the transcript again later would be a
-/// second answer to a question correspondence has already settled.
+/// assigned to it rather than read off the transcript again later.
 @immutable
 final class MomentCorrespondence extends MomentOperation {
   @override
@@ -208,15 +204,14 @@ final class MomentCorrespondence extends MomentOperation {
   /// consumed.
   ///
   /// Median rather than earliest, so a spread attack does not drag the moment
-  /// toward whichever finger led. Fractional for an even-sized run, since this
-  /// is a derived quantity rather than an arrival.
+  /// toward whichever finger led. Fractional for an even-sized run.
   final double onsetMs;
 
   /// How far apart the hands were, as right minus left.
   ///
-  /// Present only where both hands corresponded to an observation. A wrong
-  /// pitch still says when that hand acted, so a substitution counts; a hand
-  /// that played nothing leaves this absent rather than zero.
+  /// Present only where both hands corresponded to an observation. A
+  /// substitution counts, since a wrong pitch still says when the hand acted. A
+  /// hand that played nothing leaves this absent rather than zero.
   final int? handAsynchronyMs;
 
   MomentCorrespondence({

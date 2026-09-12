@@ -1,14 +1,12 @@
 /// Milliseconds since input observation started.
 ///
-/// Monotonic by contract. A wall clock can be corrected backward mid
-/// performance, and an input stream that reordered itself when that happened
-/// would be unusable for anything measuring timing.
+/// Monotonic by contract, so a wall-clock correction cannot reorder the stream.
 typedef InputEventClock = int Function();
 
 /// A monotonic clock backed by a [Stopwatch].
 ///
-/// One per input session: every source in that session must share it, or
-/// events from different sources could not be ordered against each other.
+/// Every source in a session must share one, or their events cannot be ordered
+/// against each other.
 class StopwatchInputClock {
   final Stopwatch _stopwatch = Stopwatch()..start();
 
@@ -20,9 +18,6 @@ class StopwatchInputClock {
 }
 
 /// A clock a test drives by hand.
-///
-/// Timing is most of what an input stream means, so tests need to state it
-/// rather than race a real one.
 class ManualInputClock {
   int _milliseconds;
 
@@ -33,8 +28,7 @@ class ManualInputClock {
 
   /// Moves the clock forward.
   ///
-  /// Throws [ArgumentError] for a negative step, which would break the
-  /// monotonic contract this type exists to keep.
+  /// Throws [ArgumentError] for a negative step.
   void advance(int milliseconds) {
     if (milliseconds < 0) {
       throw ArgumentError.value(
