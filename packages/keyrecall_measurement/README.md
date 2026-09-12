@@ -1,19 +1,22 @@
 # keyrecall_measurement
 
-Turns an aligned performance into what was observed, and into the outcome the
-learner model consumes.
+Says what an aligned performance actually was, on separate channels.
 
-```text
-Alignment                  correspondence, settled first
-    +
-matched-note onsets        timing, now interpretable
-    ↓
-TimingEvidence             the waits, and which of them could be judged
-    ↓
-PerformanceMeasurement     factual observations
-    ↓
-Outcome                    model-facing semantics
+```mermaid
+flowchart TD
+    A[Alignment] --> T[TimingEvidence]
+    O[Matched-note onsets] --> T
+    A --> M[PerformanceMeasurement]
+    T --> M
+    M --> U[Outcome]
 ```
+
+**Used by:** `keyrecall_practice`, `keyrecall_simulation`. **Does not:** decide
+correspondence, or decide what to do about what it measured. An absent channel
+stays absent rather than becoming a zero.
+
+**System documentation:**
+[`docs/system/observation.md`](../../docs/system/observation.md)
 
 Alignment decides which played note corresponds to which expected one. Once that
 is settled, the timestamps of the matched notes are properties of the

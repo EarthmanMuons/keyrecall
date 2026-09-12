@@ -1,13 +1,22 @@
 # keyrecall_domain
 
-The practice domain behind
-[KeyRecall](https://github.com/EarthmanMuons/keyrecall): what can be played, how
-it can be played, and which competencies each combination creates an opportunity
-to observe. No Flutter dependencies.
+What can be played, and how it can be played.
 
-This package answers structural questions only. It holds no beliefs about any
-learner, reads no state, and makes no pedagogical judgments; those belong to
-`keyrecall_learner` and `keyrecall_scheduler`.
+```mermaid
+flowchart LR
+    M[TechnicalMaterial] --> E[Exercise]
+    P[ExercisePattern] --> E
+    C[ExecutionConditions] --> E
+    G[GuidanceContext] --> E
+    E -->|realize| R[ExerciseRealization]
+    E -->|structuralQ| Q[Competency opportunities]
+```
+
+**Used by:** every other package. **Does not:** hold beliefs about any learner,
+read state, or make pedagogical judgments. Those are `keyrecall_learner` and
+`keyrecall_scheduler`.
+
+**System documentation:** [`docs/system/domain.md`](../../docs/system/domain.md)
 
 ## What is here
 

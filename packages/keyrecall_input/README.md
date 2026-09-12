@@ -1,8 +1,19 @@
 # keyrecall_input
 
-The normalized live-input vocabulary for
-[KeyRecall](https://github.com/EarthmanMuons/keyrecall). Pure Dart, no Flutter
-dependencies.
+The normalized live-input vocabulary. Pure Dart, no Flutter.
+
+```mermaid
+flowchart LR
+    M[MIDI instrument] --> V
+    S[Synthetic source] --> V
+    V["InputTemporalEvent<br/>noteOn | noteOff | pedal | reset"] --> C[Consumers]
+```
+
+**Used by:** `keyrecall_input_sources`, `keyrecall_midi`, the app. **Does not:**
+know about transports, or about what any note was expected to be.
+
+**System documentation:**
+[`docs/system/practice.md`](../../docs/system/practice.md)
 
 Every input source reduces to `InputTemporalEvent`, whatever it is underneath: a
 MIDI instrument, a synthetic source for demos and tests, or anything added

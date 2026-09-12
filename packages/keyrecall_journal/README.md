@@ -1,9 +1,21 @@
 # keyrecall_journal
 
-The durable boundary under
-[KeyRecall](https://github.com/EarthmanMuons/keyrecall): what history is, and
-how learner state is recovered from it. Pure Dart, no Flutter dependencies, and
-no storage engine.
+The durable record, and how learner state is recovered from it.
+
+```mermaid
+flowchart LR
+    A[AttemptRecord] -->|append| J[("AttemptJournal<br/>append-only")]
+    J -->|replay| S[LearnerState]
+    S -.->|snapshot| C[Checkpoint]
+    C -.->|validated, else discarded| S
+```
+
+**Used by:** `keyrecall_practice`, `keyrecall_simulation`. **Does not:** store
+learner state, rewrite a record, or own a storage engine. State is whatever
+replaying the journal produces.
+
+**System documentation:**
+[`docs/system/history.md`](../../docs/system/history.md)
 
 ## The profile owns the history
 

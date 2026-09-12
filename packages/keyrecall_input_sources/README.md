@@ -1,12 +1,19 @@
 # keyrecall_input_sources
 
-The shared runtime every [KeyRecall](https://github.com/EarthmanMuons/keyrecall)
-input source builds on.
+The shared runtime every input source builds on.
 
-`keyrecall_input` defines the vocabulary and stays pure Dart. This package is
-the thin Riverpod layer underneath the sources that produce it: MIDI in
-`keyrecall_midi`, the synthetic instrument in the app's `features/demo_input`,
-and anything added later.
+```mermaid
+flowchart TD
+    C["inputEventClockProvider<br/><i>one monotonic clock per scope</i>"] --> M[keyrecall_midi]
+    C --> D[features/demo_input]
+    C --> F[anything added later]
+```
+
+**Used by:** `keyrecall_midi`, the app's synthetic instrument. **Does not:**
+decide which source is active. That is an application decision.
+
+**System documentation:**
+[`docs/system/practice.md`](../../docs/system/practice.md)
 
 ## Why it is its own package
 

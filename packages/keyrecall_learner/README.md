@@ -1,13 +1,21 @@
 # keyrecall_learner
 
-The V1 learner model behind
-[KeyRecall](https://github.com/EarthmanMuons/keyrecall): what the system
-believes about a pianist, what it expects from the next attempt, and how it
-revises those beliefs afterward. Pure Dart, no Flutter dependencies.
+What the system believes about a pianist, and how an attempt revises it.
 
-The model is a deterministic library. It reads no clock of its own, performs no
-I/O, and mutates only the state it is handed, so a recorded attempt can be
-replayed and must produce the same result.
+```mermaid
+flowchart LR
+    S["LearnerState<br/>competencies<br/>material memory<br/>material execution"] -->|predict| P["Prediction<br/>5 channels"]
+    E[Exercise] -->|predict| P
+    O[Outcome] -->|applyOutcome| S
+    W[EvidenceWeights] -->|applyOutcome| S
+```
+
+**Used by:** `keyrecall_scheduler`, `keyrecall_journal`, `keyrecall_practice`,
+`keyrecall_simulation`. **Does not:** choose anything, read a clock, or do I/O.
+It is deterministic, so a recorded attempt replays to the same result.
+
+**System documentation:**
+[`docs/system/learner-model.md`](../../docs/system/learner-model.md)
 
 ## The three layers of belief
 

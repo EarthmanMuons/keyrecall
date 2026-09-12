@@ -1,8 +1,20 @@
 # keyrecall_midi
 
-Bluetooth MIDI transport for
-[KeyRecall](https://github.com/EarthmanMuons/keyrecall), vendored from
-WhatChord. See [VENDORED.md](VENDORED.md) before changing anything here.
+Bluetooth MIDI transport, vendored from WhatChord. See
+[VENDORED.md](VENDORED.md) before changing anything here.
+
+```mermaid
+flowchart TD
+    S["MidiBleService<br/><i>plugin boundary, hard timeouts</i>"] --> D["MidiDeviceManager<br/><i>scan, connect, reconcile</i>"]
+    D --> N["MidiConnectionNotifier<br/><i>auto-reconnect, backoff</i>"]
+    N --> P["midiTemporalEventsProvider<br/><i>integrate against this</i>"]
+```
+
+**Used by:** the app. **Does not:** export the raw note stream. Reading that as
+a performance would mistake a held chord for a scale.
+
+**System documentation:**
+[`docs/system/practice.md`](../../docs/system/practice.md)
 
 ## Three layers
 

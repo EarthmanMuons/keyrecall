@@ -1,8 +1,26 @@
 # keyrecall_practice
 
-The attempt transaction behind
-[KeyRecall](https://github.com/EarthmanMuons/keyrecall), and the durable store
-it writes through. Pure Dart apart from `dart:io` in the file store.
+The attempt transaction, and the durable store it writes through.
+
+```mermaid
+sequenceDiagram
+    participant App
+    participant PracticeSession
+    participant Journal
+    App->>PracticeSession: decide()
+    PracticeSession-->>App: exercise to present
+    App->>PracticeSession: commit(transcript)
+    PracticeSession->>Journal: append
+    Journal-->>PracticeSession: durable
+    Note over PracticeSession: only now does canonical<br/>state advance
+```
+
+**Used by:** the Flutter app, `keyrecall_simulation`. **Does not:** advance
+canonical learner state before the attempt is durably in history, or advance it
+twice for one attempt.
+
+**System documentation:**
+[`docs/system/practice.md`](../../docs/system/practice.md)
 
 ## The transaction
 

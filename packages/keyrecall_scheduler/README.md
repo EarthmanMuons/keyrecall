@@ -1,12 +1,22 @@
 # keyrecall_scheduler
 
-The V1 scheduler behind [KeyRecall](https://github.com/EarthmanMuons/keyrecall):
-given what the system currently believes about a pianist, which valid technical
-exercise should they play next. Pure Dart, no Flutter dependencies.
+Given what the system believes, which exercise should this pianist play next.
 
-The scheduler is a staged policy, not a scoring function. Each stage answers one
-question and may read only what its information boundary permits, and every
-candidate comes back with a `CandidateTrace` explaining what happened to it.
+```mermaid
+flowchart TD
+    G["1 Candidate generation<br/><i>catalog + instrument only</i>"] --> E[2 Eligibility and safety]
+    E --> C[3 Challenge admission]
+    C --> R[4 Priority ranking]
+    R --> S["Selection guards"]
+    S --> X([One exercise, or a reasoned block])
+```
+
+**Used by:** `keyrecall_journal`, `keyrecall_practice`, `keyrecall_simulation`.
+**Does not:** hold beliefs of its own, or branch on material family. Every
+candidate comes back with a `CandidateTrace` saying what happened to it.
+
+**System documentation:**
+[`docs/system/scheduler.md`](../../docs/system/scheduler.md)
 
 ## The stages
 
@@ -23,9 +33,10 @@ candidate comes back with a `CandidateTrace` explaining what happened to it.
    new material, or execution progression. Each is recorded as the bypass it
    was. Recovery is reactive and exclusive: after a retrieval failure, only the
    same motor task with one more step of guidance survives.
-4. **Priority ranking** orders survivors lexicographically by eligibility tier,
-   coordination transition, retention, information, diversity, goals,
-   realization rank, and realization fit. There is no hidden weighted sum.
+4. **Priority ranking** orders survivors lexicographically on the nine terms of
+   `RankKey`: eligibility tier, coordination transition, contrary coordination,
+   retention, information, diversity, goals, realization rank, and realization
+   fit. There is no hidden weighted sum.
 
 Selection then narrows what ranking produced, without ever emptying it: a
 repetition guard keeps one material from winning forever, an optional

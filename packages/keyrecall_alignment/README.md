@@ -1,14 +1,21 @@
 # keyrecall_alignment
 
-Relates an observed performance to the notes an exercise asked for.
+Decides which played note corresponds to which expected note.
 
-```text
-ExerciseRealization + PerformanceTranscript
-    -> align()
-    -> Alignment
-         MomentCorrespondence | MomentDeletion | MomentInsertion
-           Match | Substitution | Insertion | Deletion
+```mermaid
+flowchart LR
+    R[ExerciseRealization] --> A["align()"]
+    T[PerformanceTranscript] -->|groupObservations| G[ObservationGrouping]
+    G --> A
+    A --> S["Alignment<br/>matched, substituted,<br/>missing, extra"]
 ```
+
+**Used by:** `keyrecall_measurement`, `keyrecall_practice`. **Does not:** score
+the performance, read timing as evidence, or update the learner model. It is the
+only place a correctness judgment is made, and it makes only that one.
+
+**System documentation:**
+[`docs/system/observation.md`](../../docs/system/observation.md)
 
 The script is moment-first, and a moment that asks for one note produces one
 correspondence holding one note edit. Hand identity rides on the expected note

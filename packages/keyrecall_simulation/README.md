@@ -1,13 +1,21 @@
 # keyrecall_simulation
 
-Synthetic learners and the harness that drives
-[KeyRecall](https://github.com/EarthmanMuons/keyrecall) over simulated practice.
-Pure Dart, no Flutter dependencies.
+Synthetic learners, and the harness that drives the real system over simulated
+practice.
 
-A simulation is a mechanism test, not evidence that the parameters are
-calibrated for real pianists. Its value is that it knows the hidden truth, and
-can therefore expose contradictions, contamination between state layers, and
-policy dead ends that no amount of reading the code will surface.
+```mermaid
+flowchart LR
+    P["SyntheticPlayer<br/><i>hidden truth</i>"] -->|plays| H[PracticeSimulation]
+    H -->|real model + scheduler| T["AttemptTrace<br/>per attempt"]
+    T --> D["Detectors<br/>invariants and observations"]
+```
+
+**Used by:** nothing; it is the top of the graph. **Does not:** establish that
+any parameter is calibrated for real pianists. It is a mechanism test whose
+value is that it knows the hidden truth.
+
+**System documentation:**
+[`docs/research/experiments/trajectories.md`](../../docs/research/experiments/trajectories.md)
 
 ## What is here
 
