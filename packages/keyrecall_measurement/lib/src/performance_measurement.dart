@@ -271,6 +271,7 @@ PerformanceMeasurement measure({
   );
 
   final edits = alignment.noteEdits;
+  final repeated = _repeatsIn(alignment, realization);
   var produced = 0;
   var sounded = 0;
   var degrees = 0;
@@ -288,8 +289,8 @@ PerformanceMeasurement measure({
           produced++;
           degrees++;
         }
-      case Insertion(:final observed):
-        if (_isRepeat(observed, edits, index, realization)) {
+      case Insertion():
+        if (repeated[index]) {
           repeats++;
         } else {
           intrusions++;
@@ -381,47 +382,83 @@ List<MomentGap> momentGapsOf(
   ];
 }
 
-/// Whether an extra note is the material on either side of it, played again.
+/// Which extra notes are the material around them, played again.
 ///
-/// Structural rather than attributed: a repetition of the note the performance
-/// is on, before it moves past that note. Which side of the matching note the
-/// extra one lands on is an artifact of the traceback, so both count.
+/// Indexed the way [Alignment.noteEdits] is; false everywhere an edit is not
+/// an extra note. Structural rather than attributed: a repetition of the note
+/// the performance is on, before it moves past that note. What caused it is not
+/// observable here.
 ///
-/// An extra note is read against the correspondences its whole run of extras
-/// sits between, so a note struck three times reads as the same repetition
-/// three times over. Each note in the run is read on its own, which leaves a
-/// foreign note foreign however many repetitions surround it.
-bool _isRepeat(
-  SpelledPitch observed,
-  List<PositionedNoteEdit> edits,
-  int index,
-  ExerciseRealization realization,
-) {
-  var start = index;
-  while (start > 0 && edits[start - 1].edit is Insertion) {
-    start--;
-  }
-  var end = index;
-  while (end < edits.length - 1 && edits[end + 1].edit is Insertion) {
-    end++;
+/// Each contiguous run of extras is read once, against the moments on either
+/// side of it rather than the note edits next to it. A moment is one event
+/// however many hands realize it, so which of its arrivals the traceback left
+/// adjacent says nothing about what was played again. Which side of the moment
+/// the extras land on is an artifact of the traceback too, so both count.
+///
+/// Every note in a run is read on its own, which leaves a foreign note foreign
+/// however many repetitions surround it.
+List<bool> _repeatsIn(Alignment alignment, ExerciseRealization realization) {
+  final edits = alignment.noteEdits;
+  final owner = [
+    for (final (index, operation) in alignment.operations.indexed)
+      for (var n = 0; n < operation.noteEdits.length; n++) index,
+  ];
+  final repeated = List<bool>.filled(edits.length, false);
+
+  var start = 0;
+  while (start < edits.length) {
+    if (edits[start].edit is! Insertion) {
+      start++;
+      continue;
+    }
+    var end = start;
+    while (end + 1 < edits.length && edits[end + 1].edit is Insertion) {
+      end++;
+    }
+
+    final anchors = <int>{
+      if (start > 0)
+        ..._repeatableClassesOf(
+          alignment.operations[owner[start - 1]],
+          realization,
+        ),
+      if (end + 1 < edits.length)
+        ..._repeatableClassesOf(
+          alignment.operations[owner[end + 1]],
+          realization,
+        ),
+    };
+    for (var index = start; index <= end; index++) {
+      final observed = (edits[index].edit as Insertion).observed;
+      repeated[index] = anchors.contains(observed.pitchClass);
+    }
+
+    start = end + 1;
   }
 
-  for (final anchor in [start - 1, end + 1]) {
-    if (anchor < 0 || anchor >= edits.length) continue;
-    final (:realizationPosition, :edit) = edits[anchor];
-    final hands = switch (edit) {
-      Match(:final hands) => hands,
-      Substitution(:final hands) => hands,
-      _ => null,
+  return repeated;
+}
+
+/// The pitch classes an extra note beside [operation] could be repeating.
+///
+/// What the moment asked for, in every hand something arrived for. A note that
+/// never arrived is not one the performance could be playing again, and a
+/// moment nothing was expected at asks for nothing.
+Set<int> _repeatableClassesOf(
+  MomentOperation operation,
+  ExerciseRealization realization,
+) {
+  if (operation.realizationPosition case final position?) {
+    final moment = realization.moments[position];
+    return {
+      for (final edit in operation.noteEdits)
+        if (edit case Match(:final hands) || Substitution(:final hands))
+          // Any of them finds the same note: a note two hands meet on is one
+          // note.
+          moment.noteFor(hands.first)!.pitch.pitchClass,
     };
-    if (hands == null) continue;
-    // Any of them finds the same note: a note two hands meet on is one note.
-    final expected = realization.moments[realizationPosition!].noteFor(
-      hands.first,
-    )!;
-    if (expected.pitch.pitchClass == observed.pitchClass) return true;
   }
-  return false;
+  return const {};
 }
 
 /// How many notes the realization asks for, over all its moments.

@@ -232,6 +232,89 @@ void main() {
     });
   });
 
+  group('replaying a note in contrary motion', () {
+    final contrary = realize(
+      Exercise.linear(
+        material: material,
+        hands: HandConfiguration.together,
+        octaves: 1,
+        direction: ExerciseDirection.up,
+        handMotion: HandMotion.contrary,
+      ),
+    );
+    final second = contrary.moments[1];
+    final leftNote = second.noteFor(Hand.left)!.midiNote;
+    final rightNote = second.noteFor(Hand.right)!.midiNote;
+
+    /// A correct performance of [contrary] with [extras] after its second
+    /// moment, whose hands arrive in the order [order] names.
+    PerformanceMeasurement withExtras(List<int> extras, List<Hand> order) {
+      var transcript = PerformanceTranscript.empty;
+      var at = 0;
+      void play(int midiNote) {
+        transcript = transcript.appending(
+          pitch: spellObservedPitch(midiNote, material: material),
+          timestampMs: at,
+        );
+        at += 50;
+      }
+
+      for (final moment in contrary.moments) {
+        final sounded = <int>{};
+        for (final hand in order) {
+          final note = moment.noteFor(hand);
+          if (note != null && sounded.add(note.midiNote)) play(note.midiNote);
+        }
+        at += 950;
+        if (moment == second) {
+          extras.forEach(play);
+          at += 950;
+        }
+      }
+      return measure(realization: contrary, transcript: transcript);
+    }
+
+    for (final order in [
+      [Hand.left, Hand.right],
+      [Hand.right, Hand.left],
+    ]) {
+      final arriving = '${order.first.id} first';
+
+      test('the left hand repeating its note, $arriving', () {
+        final measurement = withExtras([leftNote], order);
+
+        expect(measurement.repeats, 1);
+        expect(measurement.intrusions, 0);
+        expect(measurement.retrievedIndependently, isTrue);
+      });
+
+      test('the right hand repeating its note, $arriving', () {
+        final measurement = withExtras([rightNote], order);
+
+        expect(measurement.repeats, 1);
+        expect(measurement.intrusions, 0);
+        expect(measurement.retrievedIndependently, isTrue);
+      });
+
+      test('a foreign note beside a repetition, $arriving', () {
+        final measurement = withExtras([leftNote, 61], order);
+
+        expect(measurement.repeats, 1);
+        expect(measurement.intrusions, 1);
+        expect(measurement.retrievedIndependently, isFalse);
+      });
+    }
+
+    test('either hand of the moment answers for it', () {
+      // The moment is one event however many hands realize it, so which of its
+      // arrivals the traceback left next to the extra note decides nothing.
+      expect(
+        withExtras([leftNote], [Hand.left, Hand.right]).repeats,
+        withExtras([leftNote], [Hand.right, Hand.left]).repeats,
+      );
+    });
+  });
+
   group('a performance an octave from where it was drawn', () {
     test('reads the same as one in the written register', () {
       final measurement = measured([for (final note in expected) note + 12]);
