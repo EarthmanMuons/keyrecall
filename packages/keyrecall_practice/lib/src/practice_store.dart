@@ -176,7 +176,7 @@ class InMemoryPracticeStore implements PracticeStore {
   final Map<String, Map<(String, PostAttemptFeedback), FeedbackExposure>>
   _feedback = {};
 
-  /// When the journal for [profileId] was created, for a first run.
+  /// When every journal this store holds was created, for a first run.
   final DateTime createdAt;
 
   InMemoryPracticeStore({DateTime? createdAt})

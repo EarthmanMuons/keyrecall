@@ -188,9 +188,9 @@ abstract interface class ProfileRepository {
   ///
   /// Deleting the active profile moves the selection to the oldest remaining
   /// one, since the app has to run as somebody. Deleting the last profile is
-  /// the one case that leaves nothing selected: a caller that wants a person
-  /// invented asks for one through
-  /// [ProfileRepositoryDefaults.selectedOrDefault].
+  /// the one case that leaves nothing selected, and
+  /// [ProfileRepositoryDefaults.selectedOrOldest] reports that rather than
+  /// inventing a person.
   ///
   /// Throws [ArgumentError] when no such profile exists.
   Future<Profile> delete(String profileId);

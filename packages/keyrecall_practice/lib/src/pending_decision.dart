@@ -155,7 +155,8 @@ class PendingDecision {
     );
   }
 
-  /// The completed attempt this decision becomes, once [outcome] is known.
+  /// The completed attempt this decision becomes, once [closure] says how it
+  /// ended.
   AttemptRecord complete({
     required AttemptClosure closure,
     required String stateAfterHash,

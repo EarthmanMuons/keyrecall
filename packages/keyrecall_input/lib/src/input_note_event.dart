@@ -6,7 +6,7 @@ enum InputNoteEventType { noteOn, noteOff }
 /// A key press or release, without timing.
 ///
 /// For consumers that care only about what is sounding now. Anything measuring
-/// a performance wants [InputTemporalEvent] instead.
+/// a performance wants the timestamped stream instead.
 @immutable
 class InputNoteEvent {
   /// Whether the key went down or came up.

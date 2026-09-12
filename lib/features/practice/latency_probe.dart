@@ -9,7 +9,7 @@ import 'package:keyrecall_input_sources/keyrecall_input_sources.dart';
 /// Every stage is stamped against the same monotonic clock the input sources
 /// use, so the differences mean something. What it cannot see is the part
 /// before the app: a Bluetooth instrument's own latency is already inside
-/// [arrived].
+/// [arrivedMs].
 @immutable
 class LatencySample {
   /// Which note of the transcript.

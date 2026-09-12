@@ -1258,7 +1258,8 @@ class PracticeSession {
     );
   }
 
-  /// Appends [record], and settles what happened when the answer is uncertain.
+  /// Appends the prepared attempt, settling what happened when the answer is
+  /// uncertain.
   ///
   /// An append that threw may still have landed, so nothing concludes from an
   /// exception that nothing was written. There are three answers and no

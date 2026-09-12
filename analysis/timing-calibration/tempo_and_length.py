@@ -1,9 +1,8 @@
 """Reads a timing-calibration run and separates two hypotheses about dispersion.
 
 The constants in `MeasurementPolicy` were fitted on five takes at one tempo and
-one traversal length. Two questions have since been asked of them that those
-takes cannot answer, and they push the same direction, so a run that varies
-only one of them cannot tell them apart:
+one traversal length. Two questions about them push the same direction, so a
+run that varies only one cannot tell them apart:
 
 - **tempo.** Dispersion is an interquartile range over a median, so the
   variation it allows shrinks in milliseconds as somebody plays faster. Whether
@@ -11,16 +10,15 @@ only one of them cannot tell them apart:
   flat from 60 to 120 while dispersion climbs, there is a constant component
   and the allowance needs an absolute floor.
 
-- **length.** The quartile estimator takes `ordered[n // 4]` and
-  `ordered[3 * n // 4]`, which spans the 17th to 83rd percentile of a
-  seven-interval traversal and roughly the 25th to 75th of a twenty-nine
-  interval one. Exercise length therefore changes what dispersion means before
-  any playing is considered.
+- **length.** A discrete quartile estimator taking `ordered[n // 4]` and
+  `ordered[3 * n // 4]` spans the 17th to 83rd percentile of a seven-interval
+  traversal and roughly the 25th to 75th of a twenty-nine interval one, so
+  exercise length changes what dispersion means before any playing is
+  considered.
 
-So this reports each take under both estimators. If a one-octave penalty
-largely disappears under interpolated quartiles, the estimator is the thing to
-fix, and fitting an absolute floor first would have baked an artifact into the
-policy.
+So this reports each take under both estimators. A one-octave penalty that
+largely disappears under interpolated quartiles is the estimator rather than
+the policy, and fitting an absolute floor first would bake that artifact in.
 
 Usage:
 
@@ -35,12 +33,9 @@ from collections import defaultdict
 
 
 def discrete_quartiles(values):
-    """What the app computed before the factorial run, and no longer does.
+    """The discrete estimator, whose length sensitivity this run exposes.
 
-    Kept so a recorded run can still be read both ways: this is the estimator
-    whose length sensitivity the run was designed to expose, and comparing
-    against it is what showed the inflation was worth fixing rather than
-    compensating for.
+    Kept so a recorded run can still be read both ways.
     """
     ordered = sorted(values)
     return ordered[len(ordered) // 4], ordered[3 * len(ordered) // 4]
