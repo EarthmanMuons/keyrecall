@@ -1,3 +1,4 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_learner/keyrecall_learner.dart';
@@ -57,6 +58,59 @@ void main() {
       expect(withTempoRatio(1.4).achievedTempoRatio, 1.4);
       expect(() => withTempoRatio(-0.1), throwsArgumentError);
       expect(() => withTempoRatio(double.nan), throwsArgumentError);
+    });
+  });
+
+  group('EvidenceWeights', () {
+    EvidenceWeights withMemory(double weight) => EvidenceWeights(
+      competencies: const {},
+      materialExecution: 0.0,
+      materialMemory: weight,
+    );
+
+    test('accepts both ends of the range', () {
+      expect(withMemory(0.0).materialMemory, 0.0);
+      expect(withMemory(1.0).materialMemory, 1.0);
+    });
+
+    test('rejects an informativeness that is not one', () {
+      expect(() => withMemory(-0.1), throwsArgumentError);
+      expect(() => withMemory(1.1), throwsArgumentError);
+      expect(() => withMemory(double.nan), throwsArgumentError);
+    });
+
+    test('rejects a competency weight that is not a number', () {
+      expect(
+        () => EvidenceWeights(
+          competencies: {Competency.scalarCrossing: double.nan},
+          materialExecution: 1.0,
+          materialMemory: 0.0,
+        ),
+        throwsArgumentError,
+        reason:
+            'every comparison against a NaN is false, so it passes the '
+            'update guards and lands in a mean nothing can compare back out',
+      );
+    });
+  });
+
+  group('Prediction', () {
+    Prediction withExecution(double executionP) => Prediction(
+      independentRetrievalP: 0.4,
+      materialAvailableP: 0.6,
+      executionP: executionP,
+      coordinationP: 1.0,
+      topologyP: 0.5,
+    );
+
+    test('accepts both ends of the range', () {
+      expect(withExecution(0.0).executionP, 0.0);
+      expect(withExecution(1.0).executionP, 1.0);
+    });
+
+    test('rejects a channel that is not a probability', () {
+      expect(() => withExecution(1.2), throwsArgumentError);
+      expect(() => withExecution(double.nan), throwsArgumentError);
     });
   });
 

@@ -16,11 +16,8 @@ void main() {
 
   /// An attempt that started and taught the model something without
   /// demonstrating a tempo, which is the state the floor check reads.
-  Outcome managedNothing() => outcomeOf(
-    retrieval: FactualRetrieval.notTested,
-    quality: 0.1,
-    tempoRatio: 0.3,
-  );
+  Outcome managedNothing(Exercise exercise) =>
+      outcomeFor(exercise, succeeded: false, quality: 0.1, tempoRatio: 0.3);
 
   test('ordinary practice reaches supported work', () async {
     final session = await struggling(InMemoryPracticeStore(createdAt: t0));
@@ -39,7 +36,10 @@ void main() {
       final attempt = decision as PresentedAttempt;
       presented.add(attempt.exercise);
       await session.acknowledgePresentation(attempt.decision.attemptId);
-      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+      await session.closeWithOutcome(
+        managedNothing(attempt.exercise),
+        observedWallTime: at,
+      );
     }
 
     fail('a learner who manages nothing was never offered supported work');
@@ -74,7 +74,10 @@ void main() {
       }
       seen.add(exercise);
       await session.acknowledgePresentation(attempt.decision.attemptId);
-      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+      await session.closeWithOutcome(
+        managedNothing(attempt.exercise),
+        observedWallTime: at,
+      );
     }
 
     // Both hands were met, and neither was met with a reversal.
@@ -102,7 +105,10 @@ void main() {
       final attempt = decision as PresentedAttempt;
       offered.add('ordinary');
       await session.acknowledgePresentation(attempt.decision.attemptId);
-      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+      await session.closeWithOutcome(
+        managedNothing(attempt.exercise),
+        observedWallTime: at,
+      );
     }
 
     expect(
@@ -135,7 +141,10 @@ void main() {
       final attempt = decision as PresentedAttempt;
       offered.add('ordinary');
       await session.acknowledgePresentation(attempt.decision.attemptId);
-      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+      await session.closeWithOutcome(
+        managedNothing(attempt.exercise),
+        observedWallTime: at,
+      );
     }
 
     // Stepping aside is a step, not a wait: a parent that is still stuck is
@@ -186,7 +195,10 @@ void main() {
       }
       seen.add(attempt.exercise);
       await session.acknowledgePresentation(attempt.decision.attemptId);
-      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+      await session.closeWithOutcome(
+        managedNothing(attempt.exercise),
+        observedWallTime: at,
+      );
     }
 
     fail('the declared floor was never asked for');

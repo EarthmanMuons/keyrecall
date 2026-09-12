@@ -9,7 +9,7 @@ final DateTime t0 = DateTime.utc(2026);
 const LearnerModel learner = LearnerModel();
 const SchedulerPipeline pipeline = SchedulerPipeline(learner: learner);
 const SchedulerConfig config = v1SchedulerConfig;
-const LearnerParams learnerParams = v1PrototypeLearnerParams;
+const LearnerParams learnerParams = v1LearnerParams;
 final InstrumentProfile instrument = InstrumentProfile();
 
 /// The materials these tests schedule over.

@@ -48,6 +48,10 @@ Outcome outcomeOf({
   bool started = true,
   bool completed = true,
   double quality = 0.9,
+  // Its own axis: how fast it was played is not a quality score. It follows
+  // the quality unless a test says otherwise, which is what these fixtures
+  // meant before there was anything to say.
+  double? tempoRatio,
 }) => Outcome(
   started: started,
   retrieval: retrieval,
@@ -56,7 +60,7 @@ Outcome outcomeOf({
   pitchIntegrity: quality,
   continuity: quality,
   temporalStability: quality,
-  achievedTempoRatio: quality,
+  achievedTempoRatio: tempoRatio ?? quality,
   topologyAccuracy: quality,
 );
 

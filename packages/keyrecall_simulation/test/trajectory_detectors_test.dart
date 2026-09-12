@@ -823,7 +823,7 @@ CandidateTrace _trace(
     ),
     safety: const SafetyDecision(true, 'safe'),
     challengeStatus: StageStatus.reached,
-    prediction: const Prediction(
+    prediction: Prediction(
       independentRetrievalP: 0.8,
       materialAvailableP: 0.8,
       executionP: 0.8,
@@ -885,7 +885,7 @@ CandidateTrace _traceWith(Exercise exercise, RankKey rank) => CandidateTrace(
   eligibility: EligibilityDecision(rank.tier, 'eligible'),
   safety: const SafetyDecision(true, 'safe'),
   challengeStatus: StageStatus.reached,
-  prediction: const Prediction(
+  prediction: Prediction(
     independentRetrievalP: 0.8,
     materialAvailableP: 0.8,
     executionP: 0.8,

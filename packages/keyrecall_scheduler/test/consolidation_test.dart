@@ -46,10 +46,7 @@ void main() {
   /// Records that [tonic] has been met by both hands, and retrieved when
   /// asked.
   void meet(LearnerState state, String tonic, {bool retrieved = false}) {
-    final memory = state.materialMemoryFor(
-      '${tonic}_MAJOR',
-      v1PrototypeLearnerParams,
-    );
+    final memory = state.materialMemoryFor('${tonic}_MAJOR', learnerParams);
     if (retrieved) memory.factualLastRetrievalAt = t0;
     // Both hands, because a hand that has never played the scale is an
     // introduction of its own and would take the slot ahead of this.
@@ -58,7 +55,7 @@ void main() {
               .materialExecutionFor(
                 ('${tonic}_MAJOR', hands, HandMotion.parallel),
                 t0,
-                v1PrototypeLearnerParams,
+                learnerParams,
                 familyId: TechnicalMaterial.scaleFamilyId,
               )
               .lastEvidenceAt =

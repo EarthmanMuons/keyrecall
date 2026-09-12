@@ -41,33 +41,42 @@ class LearnerModel {
   /// The versioned constants this model reasons with.
   final LearnerParams params;
 
-  /// Whether execution evidence is attributed at the difficulty the attempt
-  /// actually demonstrated rather than the one it was asked for.
+  /// The model reading [params].
   ///
-  /// See [demonstratedTempoBpm]. False reproduces the frozen prototype, which
-  /// recorded achieved tempo without consuming it.
-  final bool attributesDemonstratedDifficulty;
-
-  /// Whether bilateral coordination participates in challenge prediction.
-  ///
-  /// False only for [LearnerModel.v1Prototype], whose recorded prediction
-  /// semantics predate the coordination channel's admission consequence.
-  final bool includesCoordinationInChallenge;
-
-  const LearnerModel({
-    this.params = v1LearnerParams,
-    this.attributesDemonstratedDifficulty = true,
-  }) : includesCoordinationInChallenge = true;
+  /// There is no semantic switch to pass, and that is the point:
+  /// [LearnerParams.modelVersion] is what an attempt records and what replay
+  /// refuses to reinterpret under, so it has to name one transition function
+  /// rather than a family of them. A constructor argument that changed how the
+  /// model learns while leaving the version alone would let a checkpoint
+  /// report a faithful replay of a history it did not produce.
+  const LearnerModel({this.params = v1LearnerParams});
 
   /// The model as the frozen Python prototype defined it.
   ///
   /// Kept so the reference-equivalence and digest tests can still ask the
   /// question they were written to ask. Not for production: it is the older
   /// model, preserved, not a configuration of the current one.
-  const LearnerModel.v1Prototype()
-    : params = v1PrototypeLearnerParams,
-      attributesDemonstratedDifficulty = false,
-      includesCoordinationInChallenge = false;
+  const LearnerModel.v1Prototype() : params = v1PrototypeLearnerParams;
+
+  /// Whether this is the preserved prototype rather than a live model.
+  ///
+  /// Read from the recorded version rather than stored beside it, so the two
+  /// cannot disagree.
+  bool get _isPrototype =>
+      params.modelVersion == v1PrototypeLearnerParams.modelVersion;
+
+  /// Whether execution evidence is attributed at the difficulty the attempt
+  /// actually demonstrated rather than the one it was asked for.
+  ///
+  /// See [demonstratedTempoBpm]. False only for [LearnerModel.v1Prototype],
+  /// which recorded achieved tempo without consuming it.
+  bool get attributesDemonstratedDifficulty => !_isPrototype;
+
+  /// Whether bilateral coordination participates in challenge prediction.
+  ///
+  /// False only for [LearnerModel.v1Prototype], whose recorded prediction
+  /// semantics predate the coordination channel's admission consequence.
+  bool get includesCoordinationInChallenge => !_isPrototype;
 
   /// A cold-start state with every competency at the registry prior.
   LearnerState newState({required DateTime at, double? competencyPriorMean}) =>
@@ -84,6 +93,31 @@ class LearnerModel {
   /// Advances [state] to [at] without evidence.
   void propagate(LearnerState state, DateTime at) =>
       state.propagateTo(at, params);
+
+  /// Propagates [state] to [at] and then folds one attempt's evidence in.
+  ///
+  /// The two halves of the transition contract in the order it defines them,
+  /// for callers that have no reason to separate them. [applyOutcome] stays
+  /// strict rather than propagating on its own, because propagation is model
+  /// behavior in its own right and where it happens is what replay reproduces.
+  MemoryUpdateDiagnostics propagateAndApplyOutcome({
+    required LearnerState state,
+    required Exercise exercise,
+    required Outcome outcome,
+    required EvidenceWeights weights,
+    required Prediction prediction,
+    required DateTime at,
+  }) {
+    propagate(state, at);
+    return applyOutcome(
+      state: state,
+      exercise: exercise,
+      outcome: outcome,
+      weights: weights,
+      prediction: prediction,
+      at: at,
+    );
+  }
 
   /// Whether an outcome demonstrated the execution it was asked for.
   bool executionWasManaged(Outcome outcome) =>
@@ -153,10 +187,10 @@ class LearnerModel {
   double demonstratedTempoBpm(Exercise exercise, Outcome outcome) {
     final requested = exercise.conditions.tempoBpm;
     if (!attributesDemonstratedDifficulty) return requested;
-    final ratio = outcome.achievedTempoRatio;
     // An attempt with no measurable pace demonstrates nothing about tempo, so
     // it is attributed at what it was asked for rather than at zero.
-    if (!ratio.isFinite || ratio <= 0) return requested;
+    final ratio = outcome.measuredTempoRatio;
+    if (ratio == null) return requested;
     return math.min(requested, requested * ratio);
   }
 
@@ -281,6 +315,88 @@ class LearnerModel {
     topologyP: topologyP,
   );
 
+  /// Rejects an attempt this model cannot learn from, writing nothing.
+  ///
+  /// Four kinds of admissibility, asked in one place so that no partial write
+  /// can precede one:
+  ///
+  /// - **Temporal.** [state] must stand exactly at [at]. Propagation is the
+  ///   first half of the transition contract and belongs to the caller, which
+  ///   is what replay reproduces; a state left behind its own evidence also
+  ///   serializes to something no decoder will read back.
+  /// - **Consistency.** Whether retrieval was tested is a fact about the
+  ///   presentation rather than a free field: a continuously cued attempt
+  ///   supplies the material and tests nothing, and any other rung tests. An
+  ///   attempt that never began cannot have completed or retrieved.
+  /// - **Observability.** Evidence may not claim what the attempt could not
+  ///   see, so an untested retrieval carries exactly zero memory weight.
+  /// - **Numeric.** A derived tempo about to enter state must be finite.
+  ///   Bounds on the supplied weights, prediction, and outcome are their own
+  ///   constructors' invariants.
+  ///
+  /// Throws [ArgumentError] on the first failure.
+  void validateTransition({
+    required LearnerState state,
+    required Exercise exercise,
+    required Outcome outcome,
+    required EvidenceWeights weights,
+    required DateTime at,
+  }) {
+    final propagated = state.lastPropagatedAt;
+    if (at != propagated) {
+      throw ArgumentError.value(
+        at,
+        'at',
+        'this learner state stands at ${propagated.toIso8601String()}; '
+            'propagate it to the attempt first',
+      );
+    }
+    final materialId = exercise.material.materialId;
+    final observed = state.materialMemory[materialId]?.lastObservedAt;
+    if (observed != null) {
+      requireForwardPropagation(at, observed, '$materialId memory');
+    }
+
+    final tested = exercise.guidance.isRetrievalObserved;
+    if (outcome.retrieval.isTested != tested) {
+      throw ArgumentError.value(
+        outcome.retrieval.name,
+        'outcome.retrieval',
+        tested
+            ? 'this rung tests retrieval, so the attempt observed one'
+            : 'this rung supplies the material, so it tested no retrieval',
+      );
+    }
+    if (!outcome.started &&
+        (outcome.completed ||
+            outcome.retrieval == FactualRetrieval.succeeded)) {
+      throw ArgumentError.value(
+        outcome,
+        'outcome',
+        'an attempt that never began produced nothing to complete or retrieve',
+      );
+    }
+
+    if (!outcome.retrieval.isTested && weights.materialMemory > 0.0) {
+      throw ArgumentError.value(
+        weights.materialMemory,
+        'weights.materialMemory',
+        'an untested retrieval is no memory evidence at all',
+      );
+    }
+
+    if (outcome.measuredTempoRatio case final ratio?) {
+      final performed = exercise.conditions.tempoBpm * ratio;
+      if (!performed.isFinite) {
+        throw ArgumentError.value(
+          ratio,
+          'outcome.achievedTempoRatio',
+          'gives no finite tempo at ${exercise.conditions.tempoBpm} BPM',
+        );
+      }
+    }
+  }
+
   /// Applies one attempt's evidence to [state], in place.
   ///
   /// Each layer learns only from a residual its own prediction helped
@@ -296,14 +412,9 @@ class LearnerModel {
   /// about durability that existed before the attempt from learning the
   /// attempt itself caused.
   ///
-  /// Pass [applyRetainedDurabilityInference] as false to run the estimator
-  /// without the retained-durability posterior, which the calibration
-  /// diagnostics use as a control.
-  ///
-  /// Throws [ArgumentError] if [at] precedes the point [state] has already
-  /// reached, checked before anything is written. Attempt ordering is part of
-  /// the model contract rather than a calling convention: folding evidence
-  /// into a state that has already moved past it corrupts replay silently.
+  /// Throws [ArgumentError] for anything [validateTransition] rejects,
+  /// checked before the first write. The update is atomic with respect to
+  /// validation: a rejected attempt leaves [state] exactly as it found it.
   ///
   /// Returns the event-local memory attribution; the state changes themselves
   /// land in [state].
@@ -314,15 +425,16 @@ class LearnerModel {
     required EvidenceWeights weights,
     required Prediction prediction,
     required DateTime at,
-    bool applyRetainedDurabilityInference = true,
   }) {
-    final materialId = exercise.material.materialId;
-    requireForwardPropagation(at, state.lastPropagatedAt, 'this learner state');
-    final observed = state.materialMemory[materialId]?.lastObservedAt;
-    if (observed != null) {
-      requireForwardPropagation(at, observed, '$materialId memory');
-    }
+    validateTransition(
+      state: state,
+      exercise: exercise,
+      outcome: outcome,
+      weights: weights,
+      at: at,
+    );
 
+    final materialId = exercise.material.materialId;
     final q = exercise.structuralQ;
     final motorQ = motorLoadings(q);
     final topologyQ = topologyLoadings(q);
@@ -373,7 +485,6 @@ class LearnerModel {
       weights: weights,
       prediction: prediction,
       at: at,
-      applyRetainedDurabilityInference: applyRetainedDurabilityInference,
     );
   }
 
@@ -440,11 +551,19 @@ class LearnerModel {
     );
     residual.lastEvidenceAt = at;
 
+    // Absent when the attempt established no pace, which leaves both records
+    // of a performed tempo untouched rather than filing one at zero.
+    final performedTempoBpm = switch (outcome.measuredTempoRatio) {
+      final ratio? => exercise.conditions.tempoBpm * ratio,
+      null => null,
+    };
+
     // Knowing the notes here is a separate record from the frontier, and a
     // separate bar: pitch rather than motor quality, because a hand that plays
     // the right notes unevenly knows the scale and is ready for the other hand
     // to join it, while a hand that plays the wrong ones smoothly is not.
-    if (outcome.completed &&
+    if (performedTempoBpm != null &&
+        outcome.completed &&
         outcome.pitchIntegrity >=
             params.materialExecution.handsTogetherPitchIntegrity) {
       // At the tempo they actually played, not the one they were asked for.
@@ -457,7 +576,7 @@ class LearnerModel {
       // would begin it far too fast.
       residual.readyForHandsTogether(
         octaves: exercise.conditions.octaves,
-        tempoBpm: exercise.conditions.tempoBpm * outcome.achievedTempoRatio,
+        tempoBpm: performedTempoBpm,
       );
     }
 
@@ -475,7 +594,7 @@ class LearnerModel {
     // does not record: a rung is earned by being asked for it. Somebody asked
     // for sixty who plays at a hundred and twenty has shown a pace, and an
     // unseen scale should arrive near that rather than near sixty.
-    residual.paced(exercise.conditions.tempoBpm * outcome.achievedTempoRatio);
+    if (performedTempoBpm != null) residual.paced(performedTempoBpm);
   }
 
   MemoryUpdateDiagnostics _updateMaterialMemory({
@@ -485,7 +604,6 @@ class LearnerModel {
     required EvidenceWeights weights,
     required Prediction prediction,
     required DateTime at,
-    required bool applyRetainedDurabilityInference,
   }) {
     final memoryParams = params.materialMemory;
     final anchorBefore = memory.memoryAnchorAt;
@@ -498,9 +616,7 @@ class LearnerModel {
       memory.lastRetrievalAttemptAt = at;
     }
 
-    if (applyRetainedDurabilityInference &&
-        anchorBefore != null &&
-        outcome.retrieval.isTested) {
+    if (anchorBefore != null && outcome.retrieval.isTested) {
       inferenceDelta = updateRetainedConsolidationPosterior(
         memory: memory,
         retrievalSucceeded: outcome.retrieval == FactualRetrieval.succeeded,

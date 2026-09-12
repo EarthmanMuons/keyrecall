@@ -12,6 +12,23 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Learner model `v1-9`. Every reduction over competencies now runs in
+  `Competency.values` order rather than the order the exercise's own set
+  iterates in, so a serialized exercise sums to the same bits as the presented
+  one. The version moves because the arithmetic can.
+- `LearnerModel` takes no behavioral switch. `attributesDemonstratedDifficulty`
+  and `includesCoordinationInChallenge` are read from the model version, so the
+  version identifies one transition function and cannot name two.
+- `applyOutcome` validates the whole transition before it writes anything, and
+  requires the state to stand exactly at the attempt's time.
+  `propagateAndApplyOutcome` is the composite for callers with no reason to
+  separate the two halves. The `applyRetainedDurabilityInference` flag is gone:
+  disabling the posterior is a parameter with a version behind it.
+- `Outcome`, `Prediction`, and `EvidenceWeights` reject values outside their
+  documented ranges at construction.
+- An attempt that established no pace records no performed tempo, rather than
+  filing one at the bottom of the ladder. `Outcome.measuredTempoRatio` is the
+  one reading of the sentinel.
 - Learner model `v1-8` adds minor-arpeggio topology as a distinct competency.
 
 ### Added

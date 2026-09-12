@@ -7,11 +7,11 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 /// The reference instant these tests count from.
 final DateTime t0 = DateTime.utc(2026);
 
-/// The model under test, at the versioned prototype parameters.
+/// The model under test.
 const LearnerModel model = LearnerModel();
 
-/// Shorthand for those parameters.
-const LearnerParams params = v1PrototypeLearnerParams;
+/// The registry [model] reads, named here so the two cannot drift apart.
+const LearnerParams params = v1LearnerParams;
 
 final TechnicalMaterial cMajor = TechnicalMaterial('C', ScaleForm.major);
 final TechnicalMaterial dHarmonicMinor = TechnicalMaterial(
@@ -111,18 +111,22 @@ void anchorMemory(
 }
 
 /// Runs one complete attempt against [state] and returns the diagnostics.
+///
+/// Propagates first, as the transition contract requires, so the prediction is
+/// the one the state at [at] actually supports.
 MemoryUpdateDiagnostics applyAttempt(
   LearnerState state,
   Exercise exercise,
   Outcome outcome, {
   required DateTime at,
-  bool applyRetainedDurabilityInference = true,
-}) => model.applyOutcome(
-  state: state,
-  exercise: exercise,
-  outcome: outcome,
-  weights: evidenceWeightsFor(exercise, outcome),
-  prediction: model.predict(state, exercise, at: at),
-  at: at,
-  applyRetainedDurabilityInference: applyRetainedDurabilityInference,
-);
+}) {
+  model.propagate(state, at);
+  return model.applyOutcome(
+    state: state,
+    exercise: exercise,
+    outcome: outcome,
+    weights: evidenceWeightsFor(exercise, outcome),
+    prediction: model.predict(state, exercise, at: at),
+    at: at,
+  );
+}

@@ -196,7 +196,7 @@ void main() {
   group('what actually spends the transition', () {
     Outcome outcome({required bool started}) => Outcome(
       started: started,
-      retrieval: FactualRetrieval.succeeded,
+      retrieval: started ? FactualRetrieval.succeeded : FactualRetrieval.failed,
       completed: started,
       materialRetrieval: 1.0,
       pitchIntegrity: started ? 1.0 : 0.0,
@@ -345,7 +345,7 @@ void main() {
   group('what actually spends the transition', () {
     Outcome outcome({required bool started}) => Outcome(
       started: started,
-      retrieval: FactualRetrieval.succeeded,
+      retrieval: started ? FactualRetrieval.succeeded : FactualRetrieval.failed,
       completed: started,
       materialRetrieval: 1.0,
       pitchIntegrity: started ? 1.0 : 0.0,

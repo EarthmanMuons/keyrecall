@@ -72,14 +72,14 @@ void main() {
 
     for (final material in core.take(count)) {
       state
-              .materialMemoryFor(material.materialId, v1PrototypeLearnerParams)
+              .materialMemoryFor(material.materialId, learnerParams)
               .factualLastRetrievalAt =
           t0;
       state
               .materialExecutionFor(
                 (material.materialId, hands, HandMotion.parallel),
                 t0,
-                v1PrototypeLearnerParams,
+                learnerParams,
                 familyId: material.familyId,
               )
               .lastEvidenceAt =
@@ -106,10 +106,7 @@ void main() {
   /// Whether a material may be met unguided the first time is a question about
   /// the rung rather than the material, and has its own group below.
   EligibilityDecision decide(LearnerState state, Exercise exercise) {
-    state.materialMemoryFor(
-      exercise.material.materialId,
-      v1PrototypeLearnerParams,
-    );
+    state.materialMemoryFor(exercise.material.materialId, learnerParams);
     return pipeline.eligibilityFor(state, exercise);
   }
 
@@ -323,13 +320,13 @@ void main() {
       for (final material in allScales) {
         if (!coreForms.contains(material.form)) continue;
         // Seen and played by both hands, and never once produced from memory.
-        shown.materialMemoryFor(material.materialId, v1PrototypeLearnerParams);
+        shown.materialMemoryFor(material.materialId, learnerParams);
         for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
           shown
                   .materialExecutionFor(
                     (material.materialId, hands, HandMotion.parallel),
                     t0,
-                    v1PrototypeLearnerParams,
+                    learnerParams,
                     familyId: material.familyId,
                   )
                   .lastEvidenceAt =
@@ -378,10 +375,7 @@ void main() {
         if (!coreForms.contains(material.form)) continue;
         if (admissionBandOf(material) != AdmissionBand.earlyTransfer) continue;
         narrow
-                .materialMemoryFor(
-                  material.materialId,
-                  v1PrototypeLearnerParams,
-                )
+                .materialMemoryFor(material.materialId, learnerParams)
                 .factualLastRetrievalAt =
             t0;
         for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
@@ -389,7 +383,7 @@ void main() {
                   .materialExecutionFor(
                     (material.materialId, hands, HandMotion.parallel),
                     t0,
-                    v1PrototypeLearnerParams,
+                    learnerParams,
                     familyId: material.familyId,
                   )
                   .lastEvidenceAt =
@@ -554,7 +548,7 @@ void main() {
       state.materialExecutionFor(
           ('C_MAJOR', hands, HandMotion.parallel),
           t0,
-          v1PrototypeLearnerParams,
+          learnerParams,
           familyId: TechnicalMaterial.scaleFamilyId,
         )
         ..demonstrate(octaves: span, tempoBpm: 60)
@@ -573,7 +567,7 @@ void main() {
       // Fluent by every general measure, and still asked to play the scale
       // with each hand before playing it with both.
       final state = learnerAt(1.0);
-      state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+      state.materialMemoryFor('C_MAJOR', learnerParams);
       demonstrated(state, HandConfiguration.right, 1);
 
       final decision = pipeline.eligibilityFor(state, together());
@@ -587,7 +581,7 @@ void main() {
       // somebody to try playing a scale with both hands is having played it
       // with each. Coordination is an early skill, not a reward for fluency.
       final state = learnerAt(-1.0);
-      state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+      state.materialMemoryFor('C_MAJOR', learnerParams);
       demonstrated(state, HandConfiguration.right, 1);
       demonstrated(state, HandConfiguration.left, 1);
 
@@ -599,7 +593,7 @@ void main() {
 
     test('the prerequisite is asked at the span being played', () {
       final state = learnerAt(1.0);
-      state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+      state.materialMemoryFor('C_MAJOR', learnerParams);
       demonstrated(state, HandConfiguration.right, 1);
       demonstrated(state, HandConfiguration.left, 1);
 
@@ -615,7 +609,7 @@ void main() {
       // One octave together is managed; two is an ordinary span step from
       // there, and does not send the learner back to prove each hand again.
       final state = learnerAt(-1.0);
-      state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+      state.materialMemoryFor('C_MAJOR', learnerParams);
       demonstrated(state, HandConfiguration.together, 1);
 
       expect(
@@ -730,7 +724,7 @@ void main() {
           EligibilityReason.unseenMaterialRequiresCue,
         );
 
-        state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+        state.materialMemoryFor('C_MAJOR', learnerParams);
         expect(
           pipeline.eligibilityFor(state, exercise).code,
           isNot(EligibilityReason.unseenMaterialRequiresCue),
@@ -740,7 +734,7 @@ void main() {
 
     test('once history exists, ordinary rules decide the unguided rung', () {
       final beginner = learnerAt(-2.0);
-      beginner.materialMemoryFor('B_MAJOR', v1PrototypeLearnerParams);
+      beginner.materialMemoryFor('B_MAJOR', learnerParams);
 
       final decision = pipeline.eligibilityFor(
         beginner,

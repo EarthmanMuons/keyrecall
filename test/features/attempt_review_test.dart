@@ -33,7 +33,7 @@ void main() {
   final previous = exerciseOf();
 
   SchedulerDecision decisionOf(ChallengeBypass? bypass) => SchedulerDecision(
-    prediction: const Prediction(
+    prediction: Prediction(
       independentRetrievalP: 0.5,
       materialAvailableP: 0.5,
       executionP: 0.5,

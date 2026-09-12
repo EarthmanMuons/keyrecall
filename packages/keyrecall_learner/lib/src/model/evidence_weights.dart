@@ -29,11 +29,32 @@ class EvidenceWeights {
   /// `w_M`: informativeness about material memory, in `[0, 1]`.
   final double materialMemory;
 
+  /// Throws [ArgumentError] for a weight that is not a finite `[0, 1]`
+  /// informativeness.
+  ///
+  /// Weights reach the update path as multipliers on means, variances, and
+  /// log-space durabilities. An unchecked NaN there does not fail, it spreads:
+  /// every comparison against it is false, so it passes the guards and lands
+  /// in state as a value nothing can compare back out.
   EvidenceWeights({
     required Map<Competency, double> competencies,
     required this.materialExecution,
     required this.materialMemory,
-  }) : competencies = Map.unmodifiable(competencies);
+  }) : competencies = Map.unmodifiable({
+         for (final competency in Competency.values)
+           if (competencies[competency] case final weight?)
+             competency: _checked(weight, competency.id),
+       }) {
+    _checked(materialExecution, 'materialExecution');
+    _checked(materialMemory, 'materialMemory');
+  }
+
+  static double _checked(double weight, String name) {
+    if (!weight.isFinite || weight < 0 || weight > 1) {
+      throw ArgumentError.value(weight, name, 'must be in the range 0 to 1');
+    }
+    return weight;
+  }
 
   /// The weight this attempt carries for [competency].
   double operator [](Competency competency) => competencies[competency] ?? 0.0;
@@ -93,9 +114,10 @@ EvidenceWeights evidenceWeightsFor(Exercise exercise, Outcome outcome) {
   // hands play creates the opportunity; whether anything was observed through
   // it is a fact about the performance.
   final competencyWeights = {
-    for (final competency in exercise.structuralQ)
-      if (!coordinationCompetencies.contains(competency) ||
-          outcome.coordination != null)
+    for (final competency in Competency.values)
+      if (exercise.structuralQ.contains(competency) &&
+          (!coordinationCompetencies.contains(competency) ||
+              outcome.coordination != null))
         competency: competency.isTopology
             ? executionWeight * retrievalDemand
             : executionWeight,

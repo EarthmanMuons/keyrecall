@@ -200,7 +200,7 @@ CandidateTrace _trace(Exercise exercise, {ChallengeBypass? bypass}) {
     ),
     safety: const SafetyDecision(true, 'safe'),
     challengeStatus: StageStatus.reached,
-    prediction: const Prediction(
+    prediction: Prediction(
       independentRetrievalP: 0.8,
       materialAvailableP: 0.8,
       executionP: 0.8,

@@ -24,13 +24,13 @@ void main() {
     double tempoBpm = 60,
   }) {
     final state = stateAt(PlacementTier.someExperience);
-    final memory = state.materialMemoryFor('C_MAJOR', v1PrototypeLearnerParams);
+    final memory = state.materialMemoryFor('C_MAJOR', learnerParams);
     if (retrieved) memory.factualLastRetrievalAt = t0;
     for (final configuration in hands) {
       state.materialExecutionFor(
           ('C_MAJOR', configuration, HandMotion.parallel),
           t0,
-          v1PrototypeLearnerParams,
+          learnerParams,
           familyId: TechnicalMaterial.scaleFamilyId,
         )
         ..demonstrate(octaves: 1, tempoBpm: tempoBpm)

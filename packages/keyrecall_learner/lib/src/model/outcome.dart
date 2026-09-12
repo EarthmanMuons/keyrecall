@@ -84,8 +84,9 @@ class Outcome {
 
   /// Achieved tempo as a fraction of the requested tempo.
   ///
-  /// Recorded rather than consumed; see `design/future-planning.md` on
-  /// execution evidence at achieved motor difficulty.
+  /// Zero is not a slow performance, it is the absence of one: nothing about
+  /// the attempt established a pace. Read it through [measuredTempoRatio],
+  /// which says so, rather than multiplying a requested tempo by it.
   final double achievedTempoRatio;
 
   /// How correct the pitch/form structure was, independent of motor quality.
@@ -136,6 +137,14 @@ class Outcome {
       throw ArgumentError.value(value, name, 'must be in the range 0 to 1');
     }
   }
+
+  /// [achievedTempoRatio] when the attempt established a pace, else null.
+  ///
+  /// The one interpretation of the sentinel. Zero would otherwise read as a
+  /// measured stop, and multiplying a requested tempo by it records a pace of
+  /// nothing at the bottom of the ladder.
+  double? get measuredTempoRatio =>
+      achievedTempoRatio > 0 ? achievedTempoRatio : null;
 
   /// `y_motor`: the bounded motor score the execution channel learns from.
   ///

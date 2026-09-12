@@ -401,9 +401,10 @@ factual scale memory, so achieved tempo may not touch retrieval, topology, or
 causal memory formation.
 
 An attempt with no measurable positive pace is attributed at the requested tempo
-rather than at zero BPM. `LearnerModel.v1Prototype` retains the earlier
-attribution semantics for historical replay; production models use demonstrated
-difficulty.
+rather than at zero BPM, and records no performed tempo at all: a ratio of zero
+says nothing was measured, so filing it as a pace would put the learner at the
+bottom of the ladder. `LearnerModel.v1Prototype` retains the earlier attribution
+semantics for historical replay; production models use demonstrated difficulty.
 
 ### 2.4 Population and hierarchical calibration
 

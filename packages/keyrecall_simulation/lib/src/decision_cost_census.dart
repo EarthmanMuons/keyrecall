@@ -101,7 +101,7 @@ Future<List<DecisionCostSample>> runDecisionCostTrajectory({
 }) async {
   final at0 = DateTime.utc(2026);
   final horizon = slots.reduce((a, b) => a > b ? a : b);
-  final learner = LearnerModel(params: v1PrototypeLearnerParams);
+  const learner = LearnerModel();
   final pipeline = _ProfilingPipeline(learner: learner);
   final fixture = arpeggioPolicyFixture(scope);
   final session = await PracticeSession.open(

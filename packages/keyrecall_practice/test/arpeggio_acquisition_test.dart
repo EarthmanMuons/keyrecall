@@ -24,11 +24,8 @@ void main() {
 
   /// An attempt that started and taught the model something without
   /// demonstrating a tempo, which is the state the floor check reads.
-  Outcome managedNothing() => outcomeOf(
-    retrieval: FactualRetrieval.notTested,
-    quality: 0.1,
-    tempoRatio: 0.3,
-  );
+  Outcome managedNothing(Exercise exercise) =>
+      outcomeFor(exercise, succeeded: false, quality: 0.1, tempoRatio: 0.3);
 
   /// The notes [task] asks for, in order.
   List<int> notesOf(AcquisitionTask task) => [
@@ -72,7 +69,10 @@ void main() {
       if (decision is! PresentedAttempt) break;
       offered.add(decision.exercise);
       await session.acknowledgePresentation(decision.decision.attemptId);
-      await session.closeWithOutcome(managedNothing(), observedWallTime: at);
+      await session.closeWithOutcome(
+        managedNothing(decision.exercise),
+        observedWallTime: at,
+      );
     }
     return offered;
   }

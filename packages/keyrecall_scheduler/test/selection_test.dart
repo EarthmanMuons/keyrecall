@@ -16,7 +16,7 @@ CandidateTrace admittedTrace(
   required double retention,
   required double information,
 }) {
-  const prediction = Prediction(
+  final prediction = Prediction(
     independentRetrievalP: 0.7,
     materialAvailableP: 0.7,
     executionP: 0.9,
@@ -237,7 +237,7 @@ void main() {
     });
 
     test('retention is zero for a candidate that cannot test retrieval', () {
-      const urgent = Prediction(
+      final urgent = Prediction(
         independentRetrievalP: 0.05,
         materialAvailableP: 0.95,
         executionP: 0.9,

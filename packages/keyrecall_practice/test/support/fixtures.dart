@@ -8,7 +8,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 final DateTime t0 = DateTime.utc(2026);
 
 const LearnerModel learner = LearnerModel();
-const LearnerParams params = v1PrototypeLearnerParams;
+const LearnerParams params = v1LearnerParams;
 
 final Profile alice = alicePlacedAt(PlacementTier.someExperience);
 
@@ -58,10 +58,21 @@ Outcome outcomeOf({
 ///
 /// A continuously cued exercise never tests retrieval, so claiming a success on
 /// one would be a lie the model is entitled to reject.
-Outcome outcomeFor(Exercise exercise, {bool succeeded = true}) => outcomeOf(
+Outcome outcomeFor(
+  Exercise exercise, {
+  bool succeeded = true,
+  bool started = true,
+  bool completed = true,
+  double quality = 0.9,
+  double tempoRatio = 1.0,
+}) => outcomeOf(
   retrieval: exercise.guidance.isRetrievalObserved
       ? (succeeded ? FactualRetrieval.succeeded : FactualRetrieval.failed)
       : FactualRetrieval.notTested,
+  started: started,
+  completed: completed,
+  quality: quality,
+  tempoRatio: tempoRatio,
 );
 
 /// Opens a sitting against [store], with reproducible ids.

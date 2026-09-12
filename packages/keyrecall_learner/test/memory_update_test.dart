@@ -257,6 +257,7 @@ void main() {
         consolidatedHalfLifeDays: 30.0,
       );
       final at = t0.plusDays(0.01);
+      model.propagate(state, at);
       final outcome = perfectOutcome();
       final weights = evidenceWeightsFor(exercise, outcome);
       final prediction = model.predict(state, exercise, at: at);

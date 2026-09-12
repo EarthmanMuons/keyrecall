@@ -35,7 +35,7 @@ void main() {
       state.materialExecutionFor(
           (materialId, hands, HandMotion.parallel),
           t0,
-          v1PrototypeLearnerParams,
+          learnerParams,
           familyId: TechnicalMaterial.scaleFamilyId,
         )
         ..demonstrate(octaves: octaves, tempoBpm: tempoBpm)
@@ -281,7 +281,7 @@ void main() {
           materialId: '${tonic}_MAJOR',
           tempoBpm: 76,
         );
-        state.materialMemoryFor('${tonic}_MAJOR', v1PrototypeLearnerParams);
+        state.materialMemoryFor('${tonic}_MAJOR', learnerParams);
       }
 
       final offered = pipeline

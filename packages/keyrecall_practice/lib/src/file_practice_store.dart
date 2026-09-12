@@ -49,12 +49,12 @@ class FilePracticeStore implements PracticeStore {
 
   final ProfileWriteQueue _queue = ProfileWriteQueue();
 
-  FilePracticeStore(this.root, {this.params = v1PrototypeLearnerParams});
+  FilePracticeStore(this.root, {this.params = v1LearnerParams});
 
   /// A store rooted at [path].
   factory FilePracticeStore.at(
     String path, {
-    LearnerParams params = v1PrototypeLearnerParams,
+    LearnerParams params = v1LearnerParams,
   }) => FilePracticeStore(Directory(path), params: params);
 
   @override

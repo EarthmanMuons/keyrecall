@@ -34,13 +34,31 @@ class Prediction {
   /// the notes can be produced on this attempt.
   final double topologyP;
 
-  const Prediction({
+  /// Throws [ArgumentError] for a channel outside `[0, 1]`.
+  ///
+  /// Every channel is a probability, and each one is subtracted from an
+  /// observed score to form the residual its layer learns from. A prediction
+  /// read back from a journal is untrusted input, so an impossible channel
+  /// fails here rather than as an implausible update nothing can attribute.
+  Prediction({
     required this.independentRetrievalP,
     required this.materialAvailableP,
     required this.executionP,
     required this.coordinationP,
     required this.topologyP,
-  });
+  }) {
+    _requireProbability(independentRetrievalP, 'independentRetrievalP');
+    _requireProbability(materialAvailableP, 'materialAvailableP');
+    _requireProbability(executionP, 'executionP');
+    _requireProbability(coordinationP, 'coordinationP');
+    _requireProbability(topologyP, 'topologyP');
+  }
+
+  static void _requireProbability(double value, String name) {
+    if (!value.isFinite || value < 0 || value > 1) {
+      throw ArgumentError.value(value, name, 'must be in the range 0 to 1');
+    }
+  }
 
   /// The challenge-admission probability: every required hurdle cleared.
   ///

@@ -75,7 +75,7 @@ void main() {
   model.propagate(state, now);
   final prediction = model.predict(state, exercise, at: now);
 
-  const outcome = Outcome(
+  final outcome = Outcome(
     started: true,
     retrieval: FactualRetrieval.succeeded,
     completed: true,
@@ -100,12 +100,20 @@ void main() {
 
 ## Parameters
 
-`v1PrototypeLearnerParams` mirrors `analysis/learner-model/params.toml` at
-registry version `v1-prototype-2`, and a test reconciles the two. Every value
-there is a heuristic V1 choice, not a research-established coefficient. The
-architecture is frozen for initial production; the numbers are versioned
-starting points. Persist `LearnerParams.modelVersion` with every attempt so
-replay does not reinterpret old evidence under new constants.
+`v1LearnerParams` is what production reads; `v1PrototypeLearnerParams` mirrors
+`analysis/learner-model/params.toml` at registry version `v1-prototype-2`, and a
+test reconciles the two. Every value there is a heuristic V1 choice, not a
+research-established coefficient. The architecture is frozen for initial
+production; the numbers are versioned starting points. Persist
+`LearnerParams.modelVersion` with every attempt so replay does not reinterpret
+old evidence under new constants.
+
+The version names a transition function rather than a parameter set. Model
+semantics are read from it: `LearnerModel(params: ...)` and
+`LearnerModel.v1Prototype()` carrying the same version learn identically, and
+anything that learns differently needs a version of its own. The version moves
+whenever the arithmetic does, floating-point summation order included, because a
+replayed state hash is exact.
 
 ## Documentation
 

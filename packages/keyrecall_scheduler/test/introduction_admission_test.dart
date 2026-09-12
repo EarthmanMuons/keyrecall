@@ -81,7 +81,7 @@ void main() {
                 HandMotion.parallel,
               ),
               t0,
-              v1PrototypeLearnerParams,
+              learnerParams,
               familyId: exercise.material.familyId,
             )
             .lastEvidenceAt =
@@ -267,10 +267,7 @@ void main() {
       final state = learnerAt(1.0);
       played(state, foundation);
       state
-              .materialMemoryFor(
-                foundation.material.materialId,
-                v1PrototypeLearnerParams,
-              )
+              .materialMemoryFor(foundation.material.materialId, learnerParams)
               .factualLastRetrievalAt =
           t0;
 

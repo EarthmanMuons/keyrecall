@@ -355,6 +355,7 @@ void main() {
 
     for (final days in [2.0, 4.0, 8.0]) {
       final at = epoch.plusDays(days);
+      model.propagate(state, at);
       model.applyOutcome(
         state: state,
         exercise: exercise,

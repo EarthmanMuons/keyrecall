@@ -1398,6 +1398,22 @@ changed catalog or candidate generator must not silently change the
 interpretation of a historical decision. The implementation plan owns the exact
 storage schema for this contract.
 
+A model version identifies one transition function, not a family of related
+behavior. Two models that would learn differently from the same prior state,
+exercise, outcome, and time must not share a version, and behavioral semantics
+are read from the version rather than configured beside it. Arithmetic is part
+of that identity: floating-point addition is not associative and a replayed
+state hash is exact, so every reduction over competencies runs in a fixed order
+that no serialization step can disturb, and a change to that order moves the
+version with it.
+
+The transition is validated before it is applied. Temporal alignment, the
+consistency of the outcome with what its presentation could observe, the
+observability of the evidence claimed, and the finiteness of every derived value
+are all established before the first write, so a rejected attempt leaves learner
+state exactly as it found it. Propagation is the caller's half of the contract,
+and an update refuses a state that does not already stand at the attempt's time.
+
 The app must function with no account, network connection, or research
 telemetry. Optional research export is a minimized projection of the richer
 local history; it is not the source of truth.

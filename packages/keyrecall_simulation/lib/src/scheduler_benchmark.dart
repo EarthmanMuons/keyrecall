@@ -154,7 +154,7 @@ Future<BenchmarkSession> openBenchmarkSession({
   void Function(int completed, int total)? onProgress,
 }) async {
   final at0 = DateTime.utc(2026);
-  final learner = LearnerModel(params: v1PrototypeLearnerParams);
+  const learner = LearnerModel();
   final pipeline = _TimedPipeline(learner: learner);
   final fixture = arpeggioPolicyFixture(scope);
   final session = await PracticeSession.open(
@@ -387,9 +387,7 @@ class SchedulerWorker {
             )
             as ValidPracticeScope;
     final candidates = distinctCandidatesOf(resolution.scope.requirements);
-    final pipeline = SchedulerPipeline(
-      learner: const LearnerModel(params: v1PrototypeLearnerParams),
-    );
+    final pipeline = SchedulerPipeline(learner: const LearnerModel());
 
     final requests = ReceivePort();
     replies.send(requests.sendPort);

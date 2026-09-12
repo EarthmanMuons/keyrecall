@@ -134,7 +134,7 @@ void main() {
   test('repeated adverse readings lower the coordination prediction', () {
     final outcome = Outcome(
       started: true,
-      retrieval: FactualRetrieval.notTested,
+      retrieval: FactualRetrieval.failed,
       completed: false,
       materialRetrieval: 1.0,
       pitchIntegrity: 1.0,
