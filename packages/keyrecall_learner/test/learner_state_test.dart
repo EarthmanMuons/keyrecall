@@ -218,4 +218,50 @@ void main() {
       0.0,
     );
   });
+
+  group('adopting a computed transition', () {
+    const context = ('C_MAJOR', HandConfiguration.right, HandMotion.parallel);
+
+    MaterialExecutionState residualOf(LearnerState state) => state
+        .materialExecutionFor(context, t0, params, familyId: cMajor.familyId);
+
+    LearnerState stateWithHistory() {
+      final state = model.newState(at: t0);
+      residualOf(state)
+        ..demonstrate(octaves: 2, tempoBpm: 96)
+        ..readyForHandsTogether(octaves: 2, tempoBpm: 84)
+        ..paced(108);
+      return state;
+    }
+
+    test('keeps the layers a caller is already holding', () {
+      final state = stateWithHistory();
+      final belief = state.competency(Competency.rhScaleExecution);
+      final residual = residualOf(state);
+
+      final next = state.copy();
+      next.competency(Competency.rhScaleExecution).mean = 0.6;
+      residualOf(next).demonstrate(octaves: 3, tempoBpm: 72);
+      state.adoptFrom(next);
+
+      expect(
+        identical(state.competency(Competency.rhScaleExecution), belief),
+        isTrue,
+      );
+      expect(belief.mean, 0.6);
+      expect(identical(residualOf(state), residual), isTrue);
+      expect(residual.demonstratedTempoAt(3), 72);
+    });
+
+    test('adopting from itself changes nothing', () {
+      final state = stateWithHistory();
+      final residual = residualOf(state);
+
+      state.adoptFrom(state);
+
+      expect(residual.demonstratedTempoAt(2), 96);
+      expect(residual.coordinationReadyTempoAt(2), 84);
+      expect(residual.pacedTempoBpm, isPositive);
+    });
+  });
 }

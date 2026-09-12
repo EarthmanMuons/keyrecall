@@ -173,8 +173,11 @@ class MaterialExecutionState {
 
   /// Takes on [other]'s values without changing this object's identity.
   ///
-  /// See [CompetencyState.adoptFrom].
+  /// See [CompetencyState.adoptFrom]. Adopting from itself is a no-op rather
+  /// than a wipe: the frontiers are replaced by clearing them first, which
+  /// would empty the source it was about to read.
   void adoptFrom(MaterialExecutionState other) {
+    if (identical(this, other)) return;
     residualMean = other.residualMean;
     residualVariance = other.residualVariance;
     updatedAt = other.updatedAt;
