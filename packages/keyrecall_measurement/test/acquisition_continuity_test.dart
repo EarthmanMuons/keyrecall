@@ -134,7 +134,7 @@ void main() {
       expect(quick.stalls.single.toPosition, slow.stalls.single.toPosition);
       expect(
         quick.stalls.single.ratio,
-        closeTo(slow.stalls.single.ratio, 1e-9),
+        closeTo(slow.stalls.single.ratio!, 1e-9),
       );
     });
 

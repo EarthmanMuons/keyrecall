@@ -38,8 +38,6 @@ void main() {
     return transcript;
   }
 
-  final policyBrokenRatio = MeasurementPolicy.standard.brokenIntervalRatio;
-
   AcquisitionObservation observed(List<int> midiNotes, {List<int>? gaps}) =>
       observeAcquisition(
         task: task,
@@ -142,7 +140,7 @@ void main() {
       expect(quick.stalls.single.fromPosition, slow.stalls.single.fromPosition);
       expect(
         quick.stalls.single.ratio,
-        closeTo(slow.stalls.single.ratio, 1e-9),
+        closeTo(slow.stalls.single.ratio!, 1e-9),
       );
     });
 
@@ -156,11 +154,10 @@ void main() {
       );
     });
 
-    test('measures against a baseline the same short attempt supplies', () {
-      // The known limit of an endogenous baseline. Four intervals, one of them
-      // the hesitation, and the quartile it is compared against is pulled up by
-      // the hesitation itself, so the wait that reads as a stall in a full
-      // traversal does not read as one here.
+    test('records a wait it has no baseline to judge', () {
+      // The limit of an endogenous baseline. Four waits, one of them the
+      // hesitation, and any quartile they supply is pulled up by the hesitation
+      // itself, so this attempt judges none of them.
       final short = observeAcquisition(
         task: task,
         transcript: played(
@@ -170,8 +167,10 @@ void main() {
       );
 
       expect(short.gaps.last.gapMs, 4000);
-      expect(short.gaps.last.ratio, lessThan(policyBrokenRatio));
+      expect(short.gaps.last.ratio, isNull);
+      expect(short.timing.assessableGaps, isEmpty);
       expect(short.stalls, isEmpty);
+      expect(short.continuity, AcquisitionContinuity.unestablished);
     });
 
     test('does not call even playing a stall', () {

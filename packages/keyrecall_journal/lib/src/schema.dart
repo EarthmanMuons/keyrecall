@@ -53,7 +53,12 @@ const int checkpointSchemaVersion = 3;
 /// Version 5 names the portion a task asked for and how many traversals of it.
 /// Version 4 could write only one, so its records read back as a single full
 /// traversal, which is what they were.
-const int acquisitionSchemaVersion = 5;
+///
+/// Version 6 can write a wait with no ratio, which is a transition that
+/// happened in an attempt too short to judge its waits against each other.
+/// Earlier versions wrote a ratio for every wait they recorded, including waits
+/// no baseline could carry, so those ratios are read as written.
+const int acquisitionSchemaVersion = 6;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

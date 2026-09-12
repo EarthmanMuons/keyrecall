@@ -409,16 +409,26 @@ void main() {
       );
     });
 
-    test(
-      'too few notes to time reports no timing rather than perfect timing',
-      () {
-        final measurement = measured(expected.take(2).toList());
+    test('too few notes to time reports no timing rather than a bad one', () {
+      final measurement = measured(expected.take(2).toList());
 
-        expect(measurement.dispersion, isNull);
-        expect(measurement.continuity, 0.0);
-        expect(measurement.temporalStability, 0.0);
-      },
-    );
+      expect(measurement.dispersion, isNull);
+      expect(measurement.continuity, isNull);
+      expect(measurement.temporalStability, isNull);
+    });
+
+    test('a single interruption is not read as unsteadiness', () {
+      // The shape the whole gate exists for. Two waits, one of them enormous,
+      // and nothing here says which of the two is the ordinary one.
+      final measurement = measured(
+        expected.take(3).toList(),
+        gaps: [500, 60000],
+      );
+
+      expect(measurement.timing.gaps, hasLength(2));
+      expect(measurement.continuity, isNull);
+      expect(measurement.temporalStability, isNull);
+    });
   });
 
   group('where the timing went wrong', () {
@@ -495,7 +505,7 @@ void main() {
             'the same notes in the same order correspond identically however '
             'they sat in time, though each moment records when it happened',
       );
-      expect(ragged.temporalStability, lessThan(steady.temporalStability));
+      expect(ragged.temporalStability, lessThan(steady.temporalStability!));
     });
   });
 

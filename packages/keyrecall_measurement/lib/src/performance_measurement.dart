@@ -1,25 +1,12 @@
-import 'dart:math' as math;
-
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
 import 'measurement_policy.dart';
+import 'timing_evidence.dart';
 
 /// How far apart the hands were at one moment, and which moment.
 typedef HandAsynchrony = ({int position, int asynchronyMs});
-
-/// The wait between two moments that arrived, and which two.
-///
-/// Named by both ends because a moment nothing arrived for leaves no onset, so
-/// consecutive gaps are not always consecutive positions. A gap spanning a
-/// skipped moment covers a stretch of the exercise rather than one transition.
-typedef MomentGap = ({
-  int fromPosition,
-  int toPosition,
-  int gapMs,
-  double ratio,
-});
 
 /// What was observed about one performance.
 ///
@@ -27,9 +14,10 @@ typedef MomentGap = ({
 /// pitch, how much of it was the right scale degree, and how the playing sat in
 /// time. What any of that means for a competency is `outcomeFor`'s job.
 ///
-/// Alignment settles correspondence using pitch alone, and timing is read
-/// afterwards off notes whose correspondence is already settled, so the same
-/// notes at a different speed align identically and measure differently.
+/// Correspondence is settled before any of this is read, and timing is read
+/// afterwards off notes whose correspondence is already fixed, so the same notes
+/// at a different speed measure differently through the same channels. See the
+/// package README on what that does and does not promise about timing.
 @immutable
 class PerformanceMeasurement {
   /// The correspondence this reads.
@@ -69,23 +57,8 @@ class PerformanceMeasurement {
   /// Extra notes that were something else.
   final int intrusions;
 
-  /// Spread of the gaps between the moments that were played, as an
-  /// interquartile range over the median, or null when too few arrived.
-  final double? dispersion;
-
-  /// The largest gap between played moments, as a multiple of the upper
-  /// quartile, or null when too few arrived.
-  final double? worstIntervalRatio;
-
-  /// The median gap between played moments in milliseconds, or null.
-  final int? medianIntervalMs;
-
-  /// Where the longest gap between played moments ended, as a realization
-  /// position, or null when too few arrived.
-  ///
-  /// The moment [worstIntervalRatio] is about. A break is a gap rather than a
-  /// note, so the moment that ended it is where playing resumed.
-  final int? longestGapBeforePosition;
+  /// How the playing sat in time, and how much of that could be judged.
+  final TimingEvidence timing;
 
   /// Where the hands were furthest apart, as a realization position, or null
   /// when no moment had both.
@@ -105,13 +78,27 @@ class PerformanceMeasurement {
     required this.degreesCorrect,
     required this.repeats,
     required this.intrusions,
+    required this.timing,
     required this.policy,
-    this.dispersion,
-    this.worstIntervalRatio,
-    this.medianIntervalMs,
-    this.longestGapBeforePosition,
     this.widestAsynchronyAtPosition,
   }) : handAsynchronies = List.unmodifiable(handAsynchronies);
+
+  /// Spread of the gaps between the moments that were played, as an
+  /// interquartile range over the median, or null when the performance
+  /// established no baseline to read them against.
+  double? get dispersion => timing.dispersion;
+
+  /// The largest gap between played moments, as a multiple of the slow end of
+  /// this performance's own playing, or null without a baseline.
+  double? get worstIntervalRatio => timing.worstRatio;
+
+  /// The median gap between played moments in milliseconds, or null when none
+  /// arrived.
+  int? get medianIntervalMs => timing.medianGapMs?.round();
+
+  /// Where the longest gap between played moments ended, as a realization
+  /// position, or null without a baseline.
+  int? get longestGapBeforePosition => timing.longestGapBeforePosition;
 
   /// Whether anything was played at all.
   bool get started =>
@@ -159,22 +146,34 @@ class PerformanceMeasurement {
     return degrees == 0 ? 0 : degreesCorrect / degrees;
   }
 
-  /// How unbroken the playing was, in `[0, 1]`.
+  /// How unbroken the playing was, in `[0, 1]`, or null when nothing measured
+  /// it.
   ///
   /// Reacts to one interruption rather than to overall spread: a steady
   /// performance with a single long pause scores badly here and may still be
   /// stable.
-  double get continuity => worstIntervalRatio == null
-      ? 0
-      : policy.unbrokennessOf(worstIntervalRatio!);
+  ///
+  /// Null and zero are different claims: zero says the playing stopped, null
+  /// that the performance supplied too few waits to judge one against the
+  /// others. Scoring a two-note performance would measure its single wait
+  /// against itself.
+  double? get continuity => switch (worstIntervalRatio) {
+    final ratio? => policy.unbrokennessOf(ratio),
+    null => null,
+  };
 
-  /// How steady the playing was, in `[0, 1]`.
+  /// How steady the playing was, in `[0, 1]`, or null when nothing measured it.
   ///
   /// Reacts to spread across the traversal rather than to one gap: a
   /// performance that alternates fast and slow scores badly here without ever
   /// stopping.
-  double get temporalStability =>
-      dispersion == null ? 0 : policy.steadinessOf(dispersion!);
+  ///
+  /// Absent on the same grounds as [continuity], and separately, so a future
+  /// spread estimator that needs different evidence can say so here.
+  double? get temporalStability => switch (dispersion) {
+    final spread? => policy.steadinessOf(spread),
+    null => null,
+  };
 
   /// The measured spreads alone, in the order they were played.
   List<int> get handAsynchroniesMs => [
@@ -300,13 +299,6 @@ PerformanceMeasurement measure({
     }
   }
 
-  final onsets = _momentOnsets(alignment);
-  final intervals = [
-    for (var i = 1; i < onsets.length; i++)
-      onsets[i].onsetMs - onsets[i - 1].onsetMs,
-  ];
-  final longestGap = _longestGapIndexOf(intervals);
-
   return PerformanceMeasurement(
     alignment: alignment,
     reading: AlignmentReading(alignment),
@@ -325,61 +317,10 @@ PerformanceMeasurement measure({
     degreesCorrect: degrees,
     repeats: repeats,
     intrusions: intrusions,
-    dispersion: _dispersionOf(intervals),
-    worstIntervalRatio: _worstRatioOf(intervals),
-    medianIntervalMs: intervals.isEmpty ? null : _median(intervals).round(),
-    longestGapBeforePosition: longestGap == null
-        ? null
-        : onsets[longestGap + 1].position,
+    timing: TimingEvidence.of(alignment),
     widestAsynchronyAtPosition: _widestAsynchronyPositionOf(alignment),
     policy: policy,
   );
-}
-
-/// The wait before each moment that arrived, against the slow end of this
-/// performance's own playing.
-///
-/// The series [PerformanceMeasurement.worstIntervalRatio] reports one value of,
-/// kept in full and located, so comparing across attempts can say the same
-/// transition is in the way every time.
-///
-/// Relative to the upper quartile of the performance's own gaps, so it reads
-/// the same whether the learner plays fast or slowly and says nothing about a
-/// requested tempo. Empty when too few moments arrived to have a quartile.
-///
-/// [restartPositions] names positions the task lets the learner begin again at.
-/// The wait before one of those is the reset the task asked for, so it is
-/// neither reported nor allowed into the baseline the others are read
-/// against.
-List<MomentGap> momentGapsOf(
-  Alignment alignment, {
-  Set<int> restartPositions = const {},
-}) {
-  final onsets = _momentOnsets(alignment);
-  final spans = [
-    for (var i = 1; i < onsets.length; i++)
-      if (!restartPositions.any(
-        (start) =>
-            onsets[i - 1].position < start && start <= onsets[i].position,
-      ))
-        (
-          from: onsets[i - 1].position,
-          to: onsets[i].position,
-          intervalMs: onsets[i].onsetMs - onsets[i - 1].onsetMs,
-        ),
-  ];
-  if (spans.length < _fewestIntervals) return const [];
-  final (_, high) = _quartilesOf([for (final span in spans) span.intervalMs]);
-  if (high <= 0) return const [];
-  return [
-    for (final span in spans)
-      (
-        fromPosition: span.from,
-        toPosition: span.to,
-        gapMs: span.intervalMs.round(),
-        ratio: span.intervalMs / high,
-      ),
-  ];
 }
 
 /// Which extra notes are the material around them, played again.
@@ -465,40 +406,6 @@ Set<int> _repeatableClassesOf(
 int expectedNotesIn(ExerciseRealization realization) =>
     realization.moments.fold(0, (total, moment) => total + moment.notes.length);
 
-/// When the moments that were played happened.
-///
-/// One onset per moment, so the gap between the hands of one moment is not an
-/// interval and cannot read as an unsteady tempo.
-///
-/// Both kinds of correspondence count, so pitch correctness cannot reach the
-/// timing scores: leaving substitutions out would let an octave slip played
-/// exactly on the beat read as a pause.
-///
-/// A moment nothing arrived for has no onset, and a moment whose observations
-/// were all extra corresponds to no expected note, so neither appears.
-List<({int position, double onsetMs})> _momentOnsets(Alignment alignment) => [
-  for (final operation in alignment.operations)
-    if (operation case MomentCorrespondence(
-      :final realizationPosition,
-      :final onsetMs,
-      :final noteEdits,
-    ))
-      if (noteEdits.any((edit) => edit is Match || edit is Substitution))
-        (position: realizationPosition, onsetMs: onsetMs),
-];
-
-/// Which interval was the longest, or null when there are too few to compare.
-///
-/// Gated the same way [_worstRatioOf] is, since it is that ratio's location.
-int? _longestGapIndexOf(List<double> intervals) {
-  if (intervals.length < _fewestIntervals) return null;
-  var longest = 0;
-  for (var i = 1; i < intervals.length; i++) {
-    if (intervals[i] > intervals[longest]) longest = i;
-  }
-  return longest;
-}
-
 /// Where the hands got furthest apart, or null when no moment had both.
 int? _widestAsynchronyPositionOf(Alignment alignment) {
   int? widestPosition;
@@ -515,49 +422,6 @@ int? _widestAsynchronyPositionOf(Alignment alignment) {
     }
   }
   return widestPosition;
-}
-
-/// Three matched notes is the fewest that can have a spread at all.
-const int _fewestIntervals = 2;
-
-/// Spread that one outlier cannot manufacture.
-double? _dispersionOf(List<double> intervals) {
-  if (intervals.length < _fewestIntervals) return null;
-  final median = _median(intervals);
-  if (median <= 0) return null;
-  final (low, high) = _quartilesOf(intervals);
-  return (high - low) / median;
-}
-
-/// The longest gap against the slow end of ordinary playing, so a performance
-/// that is merely uneven does not read as one that stopped.
-double? _worstRatioOf(List<double> intervals) {
-  if (intervals.length < _fewestIntervals) return null;
-  final (_, high) = _quartilesOf(intervals);
-  if (high <= 0) return null;
-  return intervals.reduce(math.max) / high;
-}
-
-/// The lower and upper quartiles, interpolated between the values either side.
-///
-/// Interpolated rather than picking `ordered[n ~/ 4]`, which is not the same
-/// statistic at every length: that index lands on the 23rd percentile over
-/// fourteen intervals and the 17th over seven, so exercise length would change
-/// what dispersion means.
-(double, double) _quartilesOf(List<double> values) {
-  final ordered = [...values]..sort();
-  return (_quantileOf(ordered, 0.25), _quantileOf(ordered, 0.75));
-}
-
-/// The value [fraction] of the way through [ordered], linearly interpolated.
-double _quantileOf(List<double> ordered, double fraction) {
-  if (ordered.length == 1) return ordered.first;
-  final position = fraction * (ordered.length - 1);
-  final below = position.floor();
-  final above = position.ceil();
-  if (below == above) return ordered[below];
-  return ordered[below] +
-      (ordered[above] - ordered[below]) * (position - below);
 }
 
 /// The value at [fraction] of the way through [values] by nearest rank.

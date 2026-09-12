@@ -12,13 +12,20 @@ void main() {
   SpelledPitch pitch(int midiNote) =>
       spellObservedPitch(midiNote, material: material);
 
-  /// Four moments of a C major scale, both hands an octave apart.
+  /// An octave of a C major scale, both hands an octave apart.
+  ///
+  /// Long enough to establish a timing baseline, since the claims below are
+  /// about what the timing scores read.
   final realization = ExerciseRealization([
     for (final (position, (left, right)) in const [
       (48, 60),
       (50, 62),
       (52, 64),
       (53, 65),
+      (55, 67),
+      (57, 69),
+      (59, 71),
+      (60, 72),
     ].indexed)
       RealizationMoment(
         position: position,
@@ -75,9 +82,9 @@ void main() {
   test('what is counted, and against what', () {
     final measurement = measuredWithSpread(20);
 
-    expect(measurement.expectedNotes, 8);
-    expect(measurement.expectedMoments, 4);
-    expect(measurement.correspondedTwoHandMoments, 4);
+    expect(measurement.expectedNotes, 16);
+    expect(measurement.expectedMoments, 8);
+    expect(measurement.correspondedTwoHandMoments, 8);
     expect(measurement.materialAppeared, 1.0);
   });
 
@@ -92,14 +99,22 @@ void main() {
         (64, 2020),
         (53, 2500),
         (65, 2520),
+        (55, 3000),
+        (67, 3020),
+        (57, 3500),
+        (69, 3520),
+        (59, 4000),
+        (71, 4020),
+        (60, 4500),
+        (72, 4520),
       ]),
     );
 
-    expect(measurement.correspondedTwoHandMoments, 3);
-    expect(measurement.expectedMoments, 4);
+    expect(measurement.correspondedTwoHandMoments, 7);
+    expect(measurement.expectedMoments, 8);
     expect(
       measurement.materialProduced,
-      7,
+      15,
       reason:
           'the note that never arrived is missing material, and the '
           'moment it belonged to still happened',

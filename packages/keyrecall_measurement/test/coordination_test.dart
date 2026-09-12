@@ -138,7 +138,11 @@ void main() {
       );
 
       expect(measurement.coordination, isNull);
-      expect(measurement.continuity, 0.0);
+      expect(
+        measurement.continuity,
+        isNull,
+        reason: 'a silent attempt has no waits to read either',
+      );
     });
   });
 

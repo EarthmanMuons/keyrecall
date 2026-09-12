@@ -60,7 +60,9 @@ void main() {
     );
     final measurement = measure(
       realization: realize(parent),
-      transcript: played(expected.take(3).toList(), [900, 900]),
+      transcript: played(expected, [
+        for (var i = 1; i < expected.length; i++) 900,
+      ]),
     );
     final outcome = outcomeFor(measurement: measurement, exercise: parent);
     final closures = [

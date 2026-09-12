@@ -4,23 +4,16 @@ import 'package:meta/meta.dart';
 
 import 'measurement_policy.dart';
 import 'performance_measurement.dart';
+import 'timing_evidence.dart';
 
 /// Whether this attempt supplies enough evidence to judge continuity.
 enum AcquisitionContinuity { unestablished, unbroken, interrupted }
-
-/// The fewest intervals a judgment of continuity can rest on.
-///
-/// With fewer, the interpolated upper quartile includes the maximum, so the
-/// longest interval is measured against itself and the absence of a stall means
-/// nothing. A task short of it supplies more intervals rather than being read
-/// against a lower bar.
-const int fewestIntervalsForContinuity = 5;
 
 /// The fewest complete traversals of [realization] continuity can be read from.
 ///
 /// Each traversal supplies one fewer interval than it has moments, and the
 /// reset between two supplies none, so this is the least data
-/// [fewestIntervalsForContinuity] will accept.
+/// [fewestGapsForTimingBaseline] will accept.
 int traversalsForContinuity(ExerciseRealization realization) {
   final intervals = realization.moments.length - 1;
   if (intervals < 1) {
@@ -30,7 +23,7 @@ int traversalsForContinuity(ExerciseRealization realization) {
       'a traversal of one moment has no intervals to repeat toward',
     );
   }
-  return (fewestIntervalsForContinuity + intervals - 1) ~/ intervals;
+  return (fewestGapsForTimingBaseline + intervals - 1) ~/ intervals;
 }
 
 /// What was observed about one acquisition attempt.
@@ -80,8 +73,8 @@ class AcquisitionObservation {
   /// Where an attempt that did not finish ran out.
   final int? firstAbsentPosition;
 
-  /// The wait before each moment that arrived, in the order they were played.
-  final List<MomentGap> gaps;
+  /// How the attempt sat in time, and how much of that could be judged.
+  final TimingEvidence timing;
 
   /// What the policy was.
   final MeasurementPolicy policy;
@@ -95,30 +88,32 @@ class AcquisitionObservation {
     required this.intrusions,
     required this.firstDeparture,
     required this.firstAbsentPosition,
-    required List<MomentGap> gaps,
+    required this.timing,
     required this.policy,
-  }) : gaps = List.unmodifiable(gaps);
+  });
 
-  /// The gaps long enough that the policy already calls the playing broken.
+  /// The wait before each moment that arrived, in the order they were played.
+  List<MomentGap> get gaps => timing.gaps;
+
+  /// The waits long enough that the policy already calls the playing broken.
   ///
   /// Localized rather than scored, against the threshold continuity already
-  /// uses. An unmetered attempt has no beat to be late against, so this is a
-  /// claim about the learner's own pacing only.
+  /// uses. Only the waits the attempt established a baseline for can be called
+  /// long at all. An unmetered attempt has no beat to be late against, so this
+  /// is a claim about the learner's own pacing only.
   List<MomentGap> get stalls => [
-    for (final gap in gaps)
-      if (gap.ratio >= policy.brokenIntervalRatio) gap,
+    for (final gap in timing.assessableGaps)
+      if (gap.ratio! >= policy.brokenIntervalRatio) gap,
   ];
 
-  /// Continuity needs a baseline that excludes the single longest interval.
+  /// Continuity needs a baseline the longest wait did not help set.
   ///
-  /// Absence of a detected stall establishes nothing below
-  /// [fewestIntervalsForContinuity], because the quartile the stalls were read
-  /// against included the longest interval itself. A task whose single
-  /// traversal cannot reach that count asks for more traversals rather than
-  /// moving the bar.
+  /// Absence of a detected stall establishes nothing without one, so a task
+  /// whose single traversal supplies too few waits asks for more traversals
+  /// rather than moving the bar.
   AcquisitionContinuity get continuity => stalls.isNotEmpty
       ? AcquisitionContinuity.interrupted
-      : gaps.length >= fewestIntervalsForContinuity && !_hasAmbiguousTraversal
+      : timing.isAssessable && !_hasAmbiguousTraversal
       ? AcquisitionContinuity.unbroken
       : AcquisitionContinuity.unestablished;
 
@@ -201,7 +196,7 @@ AcquisitionObservation observeAcquisition({
     firstAbsentPosition: reading.firstAbsentPosition,
     // The reset the task asked for is not a wait inside a traversal, and the
     // positions the task begins each one at are what says so.
-    gaps: momentGapsOf(
+    timing: TimingEvidence.of(
       measurement.alignment,
       restartPositions: acquisitionTraversalStarts(task).skip(1).toSet(),
     ),

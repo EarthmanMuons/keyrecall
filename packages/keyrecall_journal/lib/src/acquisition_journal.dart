@@ -17,11 +17,15 @@ import 'schema.dart';
 /// of the same performance's own gaps. What counts as a stall is a threshold
 /// applied to it, so keeping the ratio lets a later threshold be asked of an
 /// old attempt without the old attempt having anticipated it.
+///
+/// It is absent when the attempt supplied too few waits for that quartile to
+/// mean anything. The wait still happened, so the gap is still recorded: no
+/// threshold can be asked of it, and none ever could have been.
 typedef RecordedGap = ({
   int fromPosition,
   int toPosition,
   int gapMs,
-  double ratio,
+  double? ratio,
 });
 
 /// The acquisition-log versions this build can read.
@@ -34,6 +38,7 @@ const Set<int> readableAcquisitionVersions = {
   2,
   3,
   4,
+  5,
   acquisitionSchemaVersion,
 };
 
@@ -245,7 +250,8 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
           'a gap runs forward from one position to a later one',
         );
       }
-      if (gap.gapMs < 0 || !gap.ratio.isFinite || gap.ratio < 0) {
+      final ratio = gap.ratio;
+      if (gap.gapMs < 0 || (ratio != null && (!ratio.isFinite || ratio < 0))) {
         throw ArgumentError.value(
           gap,
           'gaps',
@@ -297,7 +303,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
           'from': gap.fromPosition,
           'to': gap.toPosition,
           'gap_ms': gap.gapMs,
-          'ratio': gap.ratio,
+          if (gap.ratio != null) 'ratio': gap.ratio,
         },
     ],
   };
@@ -428,7 +434,11 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     fromPosition: requireInt(json, 'from', location: location),
     toPosition: requireInt(json, 'to', location: location),
     gapMs: requireInt(json, 'gap_ms', location: location),
-    ratio: requireDouble(json, 'ratio', location: location),
+    // Absent means the attempt established no baseline to read this wait
+    // against, which no record before version 6 could say.
+    ratio: json['ratio'] == null
+        ? null
+        : requireDouble(json, 'ratio', location: location),
   );
 
   @override

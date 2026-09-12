@@ -184,7 +184,7 @@ String renderPin({
     AfterRealization() => 'after',
   };
 
-  String ratio(double value) => value.toStringAsFixed(6);
+  String ratio(double? value) => value?.toStringAsFixed(6) ?? '-';
   String orDash(num? value) => value == null ? '-' : '$value';
 
   return [
@@ -225,7 +225,7 @@ const Map<String, String> singleHandPins = {
   'rh-up clean-with-pause':
       'M0<0 M1<1 M2<2 M3<3 M4<4 M5<5 M6<6 M7<7 | 8/0/0/0 | complete=true clean=true repairs=0 final=true first=- | started=true completed=true retrieved=true | 8/8 sounded=8 degrees=8 repeats=0 intrusions=0 | 1.000000 1.000000 1.000000 0.000000 1.000000 1.500000 | 0.0 5.0 500 | cost=0',
   'rh-up nothing-played':
-      'D0:C D1:D D2:E D3:F D4:G D5:A D6:B D7:C | 0/0/0/8 | complete=false clean=false repairs=0 final=false first=at0 | started=false completed=false retrieved=false | 0/8 sounded=0 degrees=0 repeats=0 intrusions=0 | 0.000000 0.000000 0.000000 0.000000 0.000000 0.000000 | - - - | cost=24',
+      'D0:C D1:D D2:E D3:F D4:G D5:A D6:B D7:C | 0/0/0/8 | complete=false clean=false repairs=0 final=false first=at0 | started=false completed=false retrieved=false | 0/8 sounded=0 degrees=0 repeats=0 intrusions=0 | 0.000000 0.000000 0.000000 - - 0.000000 | - - - | cost=24',
   'rh-up wrong-note':
       'M0<0 M1<1 M2<2 M3<3 S4<4:G>G#:PITCH M5<5 M6<6 M7<7 | 7/1/0/0 | complete=true clean=false repairs=0 final=true first=at4 | started=true completed=true retrieved=false | 7/8 sounded=7 degrees=7 repeats=0 intrusions=0 | 0.875000 0.875000 0.875000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=2',
   'rh-up octave-slip':
@@ -237,7 +237,7 @@ const Map<String, String> singleHandPins = {
   'rh-up skipped-note':
       'M0<0 M1<1 M2<2 M3<3 D4:G M5<4 M6<5 M7<6 | 7/0/0/1 | complete=false clean=false repairs=0 final=true first=at4 | started=true completed=false retrieved=false | 7/8 sounded=7 degrees=7 repeats=0 intrusions=0 | 0.875000 0.875000 0.875000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=3',
   'rh-up stopped-halfway':
-      'M0<0 M1<1 M2<2 M3<3 D4:G D5:A D6:B D7:C | 4/0/0/4 | complete=false clean=false repairs=0 final=false first=at4 | started=true completed=false retrieved=false | 4/8 sounded=4 degrees=4 repeats=0 intrusions=0 | 0.500000 0.500000 0.500000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=12',
+      'M0<0 M1<1 M2<2 M3<3 D4:G D5:A D6:B D7:C | 4/0/0/4 | complete=false clean=false repairs=0 final=false first=at4 | started=true completed=false retrieved=false | 4/8 sounded=4 degrees=4 repeats=0 intrusions=0 | 0.500000 0.500000 0.500000 - - 1.500000 | - - 500 | cost=12',
   'rh-up restarted':
       'I<0:C I<1:D I<2:E M0<3 M1<4 M2<5 M3<6 M4<7 M5<8 M6<9 M7<10 | 8/0/3/0 | complete=true clean=false repairs=1 final=true first=before0 | started=true completed=true retrieved=false | 8/8 sounded=8 degrees=8 repeats=1 intrusions=2 | 1.000000 0.727273 0.800000 1.000000 1.000000 1.500000 | 0.0 1.0 500 | cost=9',
   'rh-up all-wrong':
