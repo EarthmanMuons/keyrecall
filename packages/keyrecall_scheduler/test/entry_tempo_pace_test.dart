@@ -8,18 +8,13 @@ import 'support/fixtures.dart';
 
 /// What tempo an unseen scale is met at, for somebody who already plays.
 ///
-/// Named after the state that produces it rather than after the trajectory it
-/// showed up in. A sweep of eight hundred simulated sittings raised this about
-/// five thousand times across every archetype past a beginner, and every one
-/// of them is this: a hand has shown a pace on material it owns, and an
-/// introduction in a later band is asked for the gentlest tempo on the ladder
-/// anyway.
+/// The state, not one trajectory: a hand has shown a pace on material it owns,
+/// and an introduction in a later band would otherwise be asked for the
+/// gentlest tempo on the ladder anyway.
 ///
-/// The contradiction is between two policy inputs. `transferableTempoFor`
-/// exists to answer this exact question and answers it from evidence; the cap
-/// in `entryTempoFor` then discards that answer. The cap was right before pace
-/// was measured, when a new geography at an unknown speed was two unknowns at
-/// once and the gentle tempo was the only honest default.
+/// `transferableTempoFor` answers this question from evidence, and the cap in
+/// `entryTempoFor` must not discard that answer. The gentle tempo is the honest
+/// default only where no pace has been measured.
 void main() {
   const pipeline = SchedulerPipeline(learner: LearnerModel());
   const gentle = 60.0;
@@ -69,12 +64,11 @@ void main() {
       isFalse,
       reason: 'the material this pins has to be in a capped band',
     );
-    // Not `greaterThan(gentle)`. A fix returning sixty-six would satisfy
-    // that while keeping almost all of the defect, and the point is not
-    // that the cap should be looser but that the evidence should be used.
+    // Not `greaterThan(gentle)`: sixty-six would satisfy that while still
+    // discarding the evidence, and the claim is that the evidence is used
+    // rather than that the cap is looser.
     //
-    // The policy this asserts, which is the thing to disagree with if any
-    // of it is wrong:
+    // The policy this asserts:
     //
     //   unknown pace, unknown geography  -> the gentle tempo
     //   known pace, unknown geography    -> the geography may cost a rung

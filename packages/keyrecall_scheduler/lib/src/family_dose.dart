@@ -18,12 +18,9 @@ const Map<String, Set<String>> familyPrerequisites = {
 
 /// How much a family's dose should contract, in `[0, 1]`.
 ///
-/// **Yield, not share.** Pacing asks whether a family is crowding a sitting,
-/// and cannot see a family that holds a third of it and yields nothing; this
-/// asks only what the last several attempts produced. The characterization
-/// that motivated it found a learner asked for hands-together work fifty-three
-/// times in a row with no managed execution, while the family's share after a
-/// failed run was higher than its share overall.
+/// **Yield, not share.** Pacing asks whether a family is crowding a sitting and
+/// cannot see one that holds a third of it while yielding nothing. This asks
+/// only what the last several attempts produced.
 ///
 /// Evidence is required before contracting: a family with fewer than
 /// [DoseConfig.minAttempts] in the window is left alone, so one or two failed
@@ -31,15 +28,12 @@ const Map<String, Set<String>> familyPrerequisites = {
 ///
 /// Productive prerequisite work relaxes the contraction rather than clearing
 /// it, by [DoseConfig.prerequisiteReliefFactor], which is a multiplier and so
-/// relieves more the lower it is. Somebody whose hands are improving separately is a different learner
-/// from one whose hands are not, and the coordination they cannot do yet is
-/// worth asking for sooner.
+/// relieves more the lower it is. Somebody whose hands are improving separately
+/// is worth asking for coordination sooner.
 ///
 /// Time relaxes it too, through [at]. **What ages is the confidence that the
 /// family is still over its cadence, not the record of what it produced.** The
-/// attempts stay unproductive however long ago they were; what a two-month gap
-/// changes is whether last winter's failures should still be deciding how
-/// often the family is offered today.
+/// attempts stay unproductive however long ago they were.
 double familyDose(
   String family, {
   required List<FamilyObservation> window,
@@ -70,14 +64,12 @@ double familyDose(
 /// How much a contraction from evidence last seen at [seen] still counts at
 /// [at].
 ///
-/// A half-life rather than an expiry, so evidence weakens rather than being
-/// discarded on a boundary nobody can defend, and never reaches zero: a family
-/// that has produced nothing is still a family that has produced nothing. What
-/// takes it out of contention is [doseGap] rounding a weak contraction back to
-/// no gap at all.
+/// A half-life rather than an expiry, so evidence weakens instead of being
+/// discarded on a boundary, and never reaches zero. What takes a family out of
+/// contention is [doseGap] rounding a weak contraction back to no gap at all.
 ///
-/// Time before the evidence is not relief. A window rebuilt at a sitting that
-/// starts before its own history is a corrupt clock, not a fresh start.
+/// Time before the evidence is not relief: a window rebuilt at a sitting that
+/// starts before its own history is a corrupt clock.
 double _confidence(DateTime seen, DateTime at, DoseConfig config) {
   final elapsed = at.difference(seen);
   if (elapsed <= Duration.zero) return 1;
@@ -87,9 +79,9 @@ double _confidence(DateTime seen, DateTime at, DoseConfig config) {
 
 /// The slots a family must leave between attempts at this contraction.
 ///
-/// One is no contraction at all. The scale is deliberately coarse: the claim
-/// evidence supports is that a failing family should be asked for less often,
-/// not that any particular cadence is correct.
+/// One is no contraction at all. The scale is coarse because the evidence
+/// supports only that a failing family should be asked for less often, not that
+/// any particular cadence is correct.
 int doseGap(double contraction, DoseConfig config) =>
     1 + ((config.maximumGap - 1) * contraction).round();
 

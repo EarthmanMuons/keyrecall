@@ -23,11 +23,10 @@ enum EligibilityTier {
 
 /// Which prerequisite rule decided a candidate's eligibility.
 ///
-/// Coded rather than only described, because the question these answer is
-/// where admission is too conservative, and that needs failures grouped rather
-/// than read. In particular, the fingering-family axis is approximated by the
-/// band prior today, so stalls clustering at a band that introduces a new hand
-/// pattern are the evidence that would justify measuring it directly.
+/// Coded rather than only described, so failures can be grouped when asking
+/// where admission is too conservative. The fingering-family axis is
+/// approximated by the band prior, so stalls clustering at a band that
+/// introduces a new hand pattern are the evidence for measuring it directly.
 enum EligibilityReason {
   /// No prerequisite relationship applies to this exercise.
   noPrerequisite('NO_PREREQUISITE'),
@@ -343,9 +342,9 @@ class RankKey implements Comparable<RankKey> {
   /// terms that separate a waiting hands-together candidate from the winner, so
   /// below either of them this term never decides anything.
   ///
-  /// It therefore overrides genuine retention urgency, which it is allowed to
-  /// do because it cannot persist: the first hands-together attempt on the
-  /// material ends it, so the cost is one slot per scale, once.
+  /// It therefore overrides genuine retention urgency, which it may do because
+  /// it cannot persist: the first hands-together attempt on the material ends
+  /// it, so the cost is one slot per scale, once.
   ///
   /// **Must follow the tier**, so it cannot pull a provisionally eligible
   /// candidate past a fully eligible one.
@@ -481,16 +480,15 @@ class RankKey implements Comparable<RankKey> {
 /// Everything the pipeline computed about one candidate.
 ///
 /// Qualification values are always populated, including for candidates an
-/// earlier stage already excluded, because a "why not that one?" question
-/// should be answerable from the trace alone. [challengeStatus] says which of
-/// those reflect a real decision.
+/// earlier stage already excluded, so a "why not that one?" question is
+/// answerable from the trace alone. [challengeStatus] says which of those
+/// reflect a real decision.
 ///
 /// **Ranking is different: its values are absent rather than computed.** A
-/// candidate that never reached ranking has no [rankKey], because it never
-/// competed on one and a key it could not use is a number presented as though
-/// it meant something. Most candidates are in that position, so this is also
-/// what keeps a slot from computing ranking terms for the ninety-five per cent
-/// of candidates that cannot consume them.
+/// candidate that never reached ranking has no [rankKey], because a key it
+/// never competed on is a number presented as though it meant something. Most
+/// candidates are in that position, which is also what keeps a slot from
+/// computing ranking terms nothing can consume.
 @immutable
 class CandidateTrace {
   /// The candidate this trace describes.
@@ -592,11 +590,10 @@ int _order(bool flag) => flag ? 1 : 0;
 ///
 /// The key is a dictionary ordering, so the first term to differ **at all**
 /// settles a slot however little it differs by and however much better the
-/// alternative is on everything after it. A device sitting produced the shape:
-/// an exercise at sixty beats, on material whose frontier was a hundred and
-/// thirty-two, beat a waiting tempo probe because its retention read 0.000122
-/// against 0.000101. Four terms later the realization rank would have said the
-/// learner had outgrown it, and it never got to speak.
+/// alternative is on everything after it. An exercise at sixty beats, on
+/// material whose frontier is a hundred and thirty-two, beats a waiting tempo
+/// probe on a retention difference of 2e-5, and the realization rank four terms
+/// later never gets to say the learner has outgrown it.
 ///
 /// **Absolute rather than proportional.** The policy this states is that a
 /// retention difference smaller than some amount is not decision-relevant, and

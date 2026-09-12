@@ -25,10 +25,9 @@ import 'config/scheduler_config.dart';
 /// configuration nobody has used has no span to have covered and counting both
 /// would say the same newness twice.
 ///
-/// Material-scoped rather than global. A learner who plays contrary motion in
-/// C major is not meeting contrary motion for the first time in G major, but
-/// they are meeting it for the first time in a way this state can answer, and
-/// keeping the question local keeps it answerable from what is recorded.
+/// Material-scoped rather than global, which is the only form the recorded
+/// state can answer: a learner who has played contrary motion in C major meets
+/// it again in G major as far as this is concerned.
 int noveltyLoadOf(LearnerState state, Exercise exercise) {
   final materialId = exercise.material.materialId;
   final conditions = exercise.conditions;
@@ -80,9 +79,9 @@ int allowedIndependence(int load, NoveltyConfig config) {
 /// puts two hands together for the first time.
 ///
 /// Never empties the set, for the reason pacing does not: the alternative to a
-/// demanding candidate is presenting nothing, and a learner who is only
-/// offered first-time conditions is exactly the learner a first sitting has.
-/// Set aside where something else is available, offered where nothing is.
+/// demanding candidate is presenting nothing, and a first sitting offers
+/// first-time conditions only. Set aside where something else is available,
+/// offered where nothing is.
 List<CandidateTrace> withNoveltySupported(
   List<CandidateTrace> selectable,
   LearnerState state,

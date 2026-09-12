@@ -7,10 +7,9 @@ import 'session_state.dart';
 
 /// What the slot may choose between, with a fresh echo held back.
 ///
-/// A probe opened by the attempt that has just been played asks for the same
-/// realization one rung faster. Verifying that pace is worth a slot; verifying
-/// it in the very next slot is the app repeating itself, and one intervening
-/// attempt is the whole of what separates the two.
+/// A probe opened by the attempt just played asks for the same realization one
+/// rung faster. Verifying that pace is worth a slot, but doing it in the very
+/// next slot is the app repeating itself.
 ///
 /// The defer is unconditional. An empty set asks the slot's fallback for other
 /// work; it never makes a fresh probe presentable.
@@ -28,20 +27,17 @@ List<CandidateTrace> withoutFreshEcho(
 
 /// Whether [outcome] shows [exercise] was clearly too easy.
 ///
-/// Not a judgment about the performance, which measurement already made. This
-/// asks a scheduling question the measurement cannot: was the task itself
-/// beneath the learner, so that repeating it at the same difficulty would
-/// spend a slot learning nothing.
+/// A scheduling question rather than a judgment about the performance: was the
+/// task itself beneath the learner, so repeating it at the same difficulty
+/// would spend a slot learning nothing.
 ///
 /// Every condition is required, because speed alone is ambiguous. Somebody
 /// rushing a scale badly and somebody who finds it trivial both play faster
-/// than asked; what separates them is that only one of them stays clean,
-/// unbroken, and even while doing it.
+/// than asked, and only one of them stays clean, unbroken, and even.
 ///
-/// Retrieval had to be tested and to have succeeded. Playing quickly while
-/// reading the notes off the screen says something about the fingers and
-/// nothing about whether the exercise was easy, and it is the exercise that
-/// the next probe would be raising.
+/// Retrieval had to be tested and to have succeeded, since playing quickly
+/// while reading the notes off the screen says nothing about whether the
+/// exercise was easy.
 bool isUnderchallenged({
   required Exercise exercise,
   required Outcome outcome,
@@ -57,8 +53,8 @@ bool isUnderchallenged({
 /// The exercise to ask for next when [exercise] was too easy, or null.
 ///
 /// The same task at the fastest offered tempo the learner has already shown
-/// they can reach, which is the point: ordinary progression would climb one
-/// step at a time toward a speed they were playing at before anyone asked.
+/// they can reach, rather than climbing one rung at a time toward a speed they
+/// were playing at before anyone asked.
 ///
 /// Only the tempo moves. Raising the octave span or the hand configuration at
 /// the same time would ask a different question and make the answer

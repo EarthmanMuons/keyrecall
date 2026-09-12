@@ -46,15 +46,13 @@ class _Silent extends _Verdict {
 ///
 /// [SchedulerPipeline.eligibilityFor] asks several questions of learner state
 /// alone: how broad a hand's ordinary repertoire is, where its execution mean
-/// sits, whether coordination is fluent. Those do not vary across the ten
-/// thousand candidates a slot evaluates, and the repertoire question walks the
-/// whole catalog, so asking them per candidate was most of what a decision
-/// cost for a learner whose material sits behind the altered-form gate.
+/// sits, whether coordination is fluent. None of them varies across the
+/// candidates a slot evaluates, and the repertoire question walks the whole
+/// catalog.
 ///
 /// Scoped to one decision and holding the state it answers about, so nothing
 /// has to invalidate it: it is discarded before that state moves. Passing none
-/// computes everything fresh, which is what a caller asking a single question
-/// wants.
+/// computes everything fresh.
 class DecisionFacts {
   /// The state every answer here is about.
   final LearnerState state;
@@ -604,18 +602,13 @@ class SchedulerPipeline {
       }
     }
 
-    // One octave before two is the one execution ordering every source agrees
-    // on, and the information term otherwise reaches for the span nobody has
-    // attempted precisely because nobody has. One octave stays fully eligible.
-    // Reversal is an added demand, and information gain alone will otherwise
+    // Reversal is an added demand, and information gain alone would otherwise
     // make up and down the first thing a hand is ever asked for. One ascending
     // attempt at this material and hand is all it asks: not a frontier, not a
-    // good one. Once it has happened, ranking may prefer up and down freely,
-    // and whether the learner needs more support than that is recovery's
-    // question and acquisition's.
+    // good one. Once it has happened, ranking may prefer up and down freely.
     //
-    // Introduction order rather than admission: what it decides is which of
-    // two realizations a learner meets first.
+    // Introduction order rather than admission: it decides which of two
+    // realizations a learner meets first.
     if (facts?.attemptedExercises case final attempted?) {
       if (exercise.conditions.direction == ExerciseDirection.upDown &&
           !attempted.any(
@@ -1080,15 +1073,14 @@ class SchedulerPipeline {
   /// Whether this candidate's execution context has yet to demonstrate
   /// anything.
   ///
-  /// The same scope execution progression reads, and deliberately so. A wider
-  /// one says a success somewhere is evidence that somewhere else is ready for
-  /// the ordinary floor, and the model does not agree: a frontier on one
-  /// material left another material in the same hand predicted exactly as
-  /// before, with no step of its own, and refused anyway.
+  /// The same scope execution progression reads. A wider one would say a
+  /// success somewhere is evidence that somewhere else is ready for the ordinary
+  /// floor, which the model does not agree with: a frontier on one material
+  /// leaves another material in the same hand predicted exactly as before.
   ///
-  /// It is not a claim that nothing transfers. Borrowed competence still lifts
-  /// the prediction through the competency model, and if it lifts it past the
-  /// ordinary floor this rule stops mattering. What it withholds is only the
+  /// Not a claim that nothing transfers. Borrowed competence still lifts the
+  /// prediction through the competency model, and this rule stops mattering
+  /// where it lifts it past the ordinary floor. What it withholds is only the
   /// conclusion that borrowed competence is direct evidence this context is
   /// ready to be held to that floor.
   bool needsExecutionBootstrap(LearnerState state, Exercise exercise) =>
@@ -1100,11 +1092,10 @@ class SchedulerPipeline {
 
   /// Whether an attempted declared floor still has no execution frontier.
   ///
-  /// Family-neutral, and reads the family's own declaration for the part it
+  /// Family-neutral, reading the family's own declaration for the part it
   /// cannot know: whether there is a supported version of this work at all, and
   /// what relaxing it would mean. What is asked of the learner is the same
-  /// everywhere, because the question is the same everywhere. The floor was
-  /// tried and nothing was demonstrated.
+  /// everywhere: the floor was tried and nothing was demonstrated.
   bool needsAcquisition(
     LearnerState state,
     Exercise exercise, {
@@ -1123,11 +1114,10 @@ class SchedulerPipeline {
   /// progress itself.
   ///
   /// An obligation lapses when the question it asks has been answered by other
-  /// means. If the parent's own span has since been demonstrated at or above
-  /// the parent's own tempo, presenting it would offer work the learner has
-  /// already exceeded, which ordinary admission would refuse for being too
-  /// easy. The test is deliberately the parent's own span and tempo: a frontier
-  /// below that tempo does not answer this parent's question.
+  /// means: a parent whose own span has since been demonstrated at or above its
+  /// own tempo would offer work the learner has already exceeded. The test is
+  /// the parent's own span and tempo, since a frontier below that tempo does
+  /// not answer this parent's question.
   ///
   /// Lapsing is not discharge. Nothing is written, and the history goes on
   /// saying that a probe was earned and never served, which is what happened.
@@ -1145,15 +1135,14 @@ class SchedulerPipeline {
 
   /// Whether supported work on [parent] is set aside for now.
   ///
-  /// A supported attempt that produced nothing answered the question it asked.
-  /// Offering the same scaffold again on no new evidence repeats a question
-  /// that has been answered, and with several floors stuck at once that is how
-  /// supported work fills a sitting by rotation while never repeating a parent
-  /// twice running.
+  /// A supported attempt that produced nothing answered the question it asked,
+  /// so offering the same scaffold again on no new evidence repeats it. With
+  /// several floors stuck at once, that is how supported work fills a sitting
+  /// by rotation while never repeating a parent twice running.
   ///
-  /// Ordinary evidence in the parent's own execution context lifts it. That is
-  /// the reset the rule waits for: something new about the learner, rather than
-  /// enough other work having happened in between.
+  /// Ordinary evidence in the parent's own execution context lifts it: the
+  /// reset is something new about the learner, not enough other work having
+  /// happened in between.
   bool acquisitionSetAside(
     Map<ExecutionContext, int> executionEvidenceRevisions,
     AcquisitionProgress progress,
@@ -1182,7 +1171,7 @@ class SchedulerPipeline {
   /// Asked of every declared floor in scope rather than of the slot's winner.
   /// The rule is about the family's gentlest ordinary realization, and ordinary
   /// ranking is free to prefer a more independent rung of the same material
-  /// forever; requiring the floor to win the slot as well made a question about
+  /// forever, so requiring the floor to win the slot would make a question about
   /// the floor answerable only when nothing else was worth doing.
   ///
   /// Where several floors are stuck at once, the ordinary ranking among that
@@ -1191,9 +1180,9 @@ class SchedulerPipeline {
   ///
   /// [afterAcquisition] says the previous opportunity was supported work, and
   /// nothing is offered then. Supported work is an intervention inside ordinary
-  /// practice, not an alternative to it, so the next thing a learner meets is
-  /// ordinary work. Skipping only the same parent left six stuck floors free to
-  /// rotate, which filled most of a sitting while satisfying the letter of it.
+  /// practice, so the next thing a learner meets is ordinary work. Skipping
+  /// only the same parent would leave several stuck floors free to rotate
+  /// through most of a sitting.
   ({AcquisitionTask task, CandidateTrace? stuck})? acquisitionFor({
     required LearnerState state,
     required AcquisitionProgress progress,
@@ -1242,17 +1231,15 @@ class SchedulerPipeline {
 
   /// Whether the exact declared floor is worth asking for once.
   ///
-  /// A different question from whether to acquire, and deliberately answerable
-  /// from weaker evidence. Ordinary work in this context has taught the model
-  /// something and demonstrated no frontier, which is a reason to find out
-  /// whether the gentlest ordinary realization can be managed. It is not a
-  /// claim that the floor itself was tried: that stays exact, and it is what
-  /// acquisition goes on asking for.
+  /// A different question from whether to acquire, answerable from weaker
+  /// evidence: ordinary work in this context has taught the model something and
+  /// demonstrated no frontier, which is a reason to find out whether the
+  /// gentlest ordinary realization can be managed. It is not a claim that the
+  /// floor itself was tried, which stays exact and is what acquisition asks
+  /// for.
   ///
-  /// Context-level rather than exercise-level on purpose. The whole point of
-  /// the check is to move from evidence about the context to an observation of
-  /// one realization, so requiring the realization first would ask for what it
-  /// exists to obtain.
+  /// Context-level rather than exercise-level, because the check exists to move
+  /// from evidence about the context to an observation of one realization.
   bool needsFloorCheck(
     LearnerState state,
     Exercise floorExercise, {
@@ -1303,9 +1290,9 @@ class SchedulerPipeline {
 
   /// The predicted success a candidate has to clear to be ordinarily admitted.
   ///
-  /// **Not new any more is not the same as has evidence.** A first exposure is
-  /// admitted at the introduction floor and every one after it at the ordinary
-  /// floor, which left a learner who meets an unfamiliar family, is offered its
+  /// **Not new any more is not the same as has evidence.** Admitting a first
+  /// exposure at the introduction floor and every one after it at the ordinary
+  /// floor would leave a learner who meets an unfamiliar family, is offered its
   /// gentlest work once and does not manage it unable to be offered that work
   /// again until they could already do it.
   ///
@@ -1368,10 +1355,10 @@ class SchedulerPipeline {
   /// no less supportive rung to be probed toward.
   ///
   /// Paced by how long the rung has been established rather than by how long
-  /// ago retrieval last happened. Sharing the retrieval clock would make every
-  /// success at the established rung push the next step away. Producing a scale
-  /// seconds after being shown it still proves little, so the establishment
-  /// clock is short rather than absent.
+  /// ago retrieval last happened, since sharing the retrieval clock would make
+  /// every success at the established rung push the next step away. The
+  /// establishment clock is short rather than absent, because producing a scale
+  /// seconds after being shown it proves little.
   bool isGuidanceProbe(
     LearnerState state,
     Exercise exercise,
@@ -1717,9 +1704,9 @@ class SchedulerPipeline {
   ///
   /// A progression bypass may advance the execution dimension it has evidence
   /// for and must not carry an independent one with it. Coordination readiness
-  /// says both hands produced the right pitches and says nothing about whether
-  /// the notes come unaided, so a step that moved both at once offered unguided
-  /// work to learners who could not begin it.
+  /// says both hands produced the right pitches and nothing about whether the
+  /// notes come unaided, so a step moving both at once would offer unguided work
+  /// to learners who cannot begin it.
   ///
   /// The rung is the material's, not this execution shape's. Guidance is about
   /// recalling the notes, and requiring hands-together retrieval before
@@ -2167,11 +2154,11 @@ class SchedulerPipeline {
   /// ranking a penalty term could only break exact ties, so pressure has to
   /// act on the available set to act at all.
   ///
-  /// What it claims is a trajectory-level proposition: over a trajectory,
-  /// periodically making room for another reasonably ready technical strand
-  /// improves practice allocation. It does not claim that any particular
-  /// substitution teaches more than the candidate it displaced, which is why
-  /// relief asks only that the alternative is not a step backward.
+  /// The claim is trajectory-level: periodically making room for another
+  /// reasonably ready technical strand improves practice allocation. It says
+  /// nothing about any particular substitution teaching more than what it
+  /// displaced, which is why relief asks only that the alternative is not a
+  /// step backward.
   PacingDecision pace(List<CandidateTrace> guarded, SessionState session) {
     final policy = config.pacing;
     if (policy == null) return PacingDecision.inactive(guarded);

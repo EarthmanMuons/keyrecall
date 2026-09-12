@@ -8,15 +8,15 @@ import 'support/fixtures.dart';
 
 /// Offering a scale again rather than reaching for one that is not ready.
 ///
-/// The slot a beginner reaches after meeting the foundation had exactly one
-/// move available, and it was the wrong one. Everything already met was shut
-/// out of admission entirely: out of the ordinary band, no rung established so
-/// the guidance probe could not climb, the bootstrap probe days away, and the
-/// observation probe counting supported attempts that a previewed introduction
-/// resets. Introducing was all that was left, so introducing is what happened,
-/// and once the appropriate material ran out it introduced the inappropriate.
+/// Without one, the slot a beginner reaches after meeting the foundation has a
+/// single move available and it is the wrong one: everything already met is out
+/// of the ordinary band, no rung is established for the guidance probe to climb
+/// from, the bootstrap probe is days away, and the observation probe counts
+/// supported attempts a previewed introduction resets. Introducing is all that
+/// is left, and once appropriate material runs out it introduces the
+/// inappropriate.
 ///
-/// So this is an admission path rather than a ranking preference. There was
+/// So this is an admission path rather than a ranking preference: there is
 /// nothing to prefer.
 void main() {
   const pipeline = SchedulerPipeline(learner: LearnerModel());
