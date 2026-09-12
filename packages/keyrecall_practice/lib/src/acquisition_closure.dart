@@ -60,9 +60,7 @@ AcquisitionAttemptRecord acquisitionRecordOf({
 /// asked. Discharging only the first would leave the obligation open after the
 /// learner had already answered it, and the next slot would ask it again.
 ///
-/// Nothing is written when no probe is owed. A parent with acquisition history
-/// that has earned nothing, or whose obligation a previous presentation already
-/// discharged, is ordinary work like any other, and a record of service that
+/// Nothing is written when no probe is owed, since a record of service that
 /// discharged nothing would say something did not happen.
 ///
 /// The record's identity is the presenting attempt's, because service is that

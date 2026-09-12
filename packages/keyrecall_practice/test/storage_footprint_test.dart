@@ -11,16 +11,13 @@ import 'support/fixtures.dart';
 
 /// What a history actually costs to keep.
 ///
-/// The journal is retained in full and forever, so how big an attempt is
-/// decides whether that is a promise the app can keep. Measured rather than
-/// estimated, because the answer settles an architectural question: at these
-/// sizes nothing needs compaction, downsampling, or a second summarized store,
-/// and the design that would introduce them is not worth its complexity. See
+/// The journal is retained in full and forever, so the size of an attempt
+/// decides whether that is a promise the app can keep. At these sizes nothing
+/// needs compaction, downsampling, or a second summarized store. See
 /// `docs/design/data-products.md`.
 ///
-/// The bound is deliberately loose. This is not a budget to optimize against;
-/// it is a tripwire for a record that quietly grew by an order of magnitude,
-/// which is what would change the answer.
+/// The bound is loose: a tripwire for a record that quietly grew by an order of
+/// magnitude rather than a budget to optimize against.
 void main() {
   /// A record is comfortably under two kilobytes today. Ten times that would
   /// still be affordable; a hundred times would not.

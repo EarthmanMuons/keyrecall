@@ -96,11 +96,10 @@ void main() {
       label: 'advanced',
     );
 
-    // The failure this harness exists to catch. Support removal used to be
-    // paced by the retention clock, which every successful retrieval pushed
-    // forward, so a learner who never missed a note stayed on the preview and
-    // the harder they practised the longer it took. Independence arrived only
-    // once a material had gone untouched long enough to look forgotten.
+    // The failure this harness exists to catch: support removal paced by the
+    // retention clock, which every successful retrieval pushes forward, keeps a
+    // learner who never misses a note on the preview for longer the harder they
+    // practise.
     final firstUnguided = sittings.indexWhere((rungs) => (rungs[2] ?? 0) > 0);
 
     expect(firstUnguided, isNot(-1), reason: 'never asked to play unaided');

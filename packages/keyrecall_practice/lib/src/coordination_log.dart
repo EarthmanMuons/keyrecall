@@ -15,13 +15,11 @@ const int coordinationLogSchemaVersion = 1;
 /// is computed from it, a failed write must not fail the attempt it came from,
 /// and erasing a profile takes it along.
 ///
-/// It exists because the attempt record keeps coordination as one score
-/// blended from a median and a tail, which cannot be read back as the
-/// milliseconds it came from. Whether the synchronized bound is the right
-/// bound for learner-facing feedback is a question about that distribution, so
-/// the whole series survives the attempt rather than a summary of it: which
-/// hand led, whether the spread grew on the way down, and whether it differs
-/// by tempo or family are all questions a median cannot answer.
+/// It exists because the attempt record keeps coordination as one score blended
+/// from a median and a tail, which cannot be read back as the milliseconds it
+/// came from. The whole series survives so questions a median cannot answer
+/// stay askable: which hand led, whether the spread grew on the way down, and
+/// whether it differs by tempo or family.
 ///
 /// The policy bound and the fault travel with the moments so a later reading
 /// can say what the learner was actually told, under the numbers that were in

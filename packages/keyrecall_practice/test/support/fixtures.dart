@@ -100,10 +100,9 @@ Future<PracticeSession> openSession(
 
 /// A pipeline whose sitting ends after [attempts] slots.
 ///
-/// The one deterministic way to reach a slot that admits nothing. Running a
-/// short catalog dry used to do it and no longer does: the scheduler can go on
-/// deepening material it has, which is the point of execution progression and
-/// makes running out a bad thing to depend on.
+/// The one deterministic way to reach a slot that admits nothing. A short
+/// catalog cannot be run dry, because the scheduler goes on deepening material
+/// it already has.
 SchedulerPipeline pipelineCappedAt(int attempts) => SchedulerPipeline(
   learner: learner,
   config: SchedulerConfig(

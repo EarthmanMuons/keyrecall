@@ -24,11 +24,9 @@ class SchedulerWorkerLost implements Exception {
 /// Decides on a worker isolate, so the isolate that draws is free while it
 /// happens.
 ///
-/// A mature full-catalog decision costs a fifth of a second on a mid-range
-/// phone, and computing it elsewhere costs nothing but the state that travels:
-/// the learner state and the sitting cross by copy, the candidate envelope
-/// never moves because the worker holds the scope. The winner and a compact
-/// competition report come back.
+/// The learner state and the sitting cross by copy, the candidate envelope
+/// never moves because the worker holds the scope, and the winner comes back
+/// with a compact competition report.
 ///
 /// Disposable by construction. It owns no durability and no lifecycle policy:
 /// a worker that dies mid-decision fails that request and nothing else, and the

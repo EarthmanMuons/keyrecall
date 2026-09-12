@@ -49,14 +49,11 @@ class ClosedAttempt {
 /// what arrived, and for a scale ending on a note it does not start on, one
 /// played note can be explained as "the last one, everything before it missed".
 ///
-/// A traversal's worth of wrong notes does end the attempt, deliberately. A
-/// substitution costs less than a deletion plus an insertion, so a transcript
-/// that long accounts for every position whatever it contains, and separating
-/// it from a good performance would mean reading correctness, which no rung
-/// permits.
-///
-/// A learner who genuinely leaves notes out finishes with Done, which is always
-/// there.
+/// A traversal's worth of wrong notes ends the attempt. A substitution costs
+/// less than a deletion plus an insertion, so a transcript that long accounts
+/// for every position whatever it contains, and separating it from a good
+/// performance would mean reading correctness. A learner who genuinely leaves
+/// notes out finishes with Done, which is always there.
 bool hasCoveredTraversal({
   required Exercise exercise,
   required PerformanceTranscript transcript,

@@ -239,10 +239,9 @@ class PracticeStateError extends StateError {
 /// **Retrying is not the same as overlapping.** A session is a single-writer
 /// object: [decide], the close methods, and [abandonPending] each read and
 /// mutate the same state and none holds a lock, so a caller must let one
-/// finish before starting the next. The idempotency key is not permission to
-/// enter a close twice concurrently: the second fold produces a different
-/// record under the same attempt id, which the journal rejects as a collision
-/// rather than absorbing as a retry.
+/// finish before starting the next. Entering a close twice concurrently
+/// produces a second record under the same attempt id, which the journal
+/// rejects as a collision rather than absorbing as a retry.
 class PracticeSession {
   /// The learner model in force.
   final LearnerModel learner;
@@ -836,10 +835,9 @@ class PracticeSession {
   /// Says that a service write did not land, without failing the attempt.
   ///
   /// Non-blocking is not the same as invisible. One lost write costs a
-  /// redundant probe, which is why it does not stop practice; a systematic one
-  /// is storage quietly failing, which is worth being able to find. The next
-  /// ordinary presentation of the same parent tries again on its own, so
-  /// nothing retries here.
+  /// redundant probe and a systematic one is storage quietly failing, which is
+  /// worth being able to find. The next ordinary presentation of the same
+  /// parent tries again, so nothing retries here.
   ///
   /// Recorded under a key derived from the attempt rather than the attempt's
   /// own, because the selection diagnostics for it are already written and
@@ -889,10 +887,8 @@ class PracticeSession {
   /// to its own log, and that log answers to nothing but itself.
   ///
   /// Records an attempt the learner stopped partway as readily as one that
-  /// finished. Where it ran out, what it cost to get as far as it did, and how
-  /// long the waits were are exactly the observations acquisition exists to
-  /// keep, and discarding them because the traversal is incomplete would throw
-  /// away the reading of the learner this task was offered for.
+  /// finished. Where it ran out, what it cost to get that far, and how long the
+  /// waits were are the observations acquisition exists to keep.
   ///
   /// The caller supplies [at] because presentation time belongs to the loop
   /// that presented it, not to a clock this reads.
@@ -968,14 +964,11 @@ class PracticeSession {
 
   /// Ends the outstanding attempt with an outcome established elsewhere.
   ///
-  /// The seam between this transaction and the observation model. A caller
-  /// that already knows how an attempt went states it here, which is what lets
-  /// the scheduler, the journal, and this transaction be exercised over
-  /// trajectories that no transcript could produce: an outcome is not
-  /// invertible into a performance that measures back to it, so routing those
-  /// through [closeFromPerformance] would make them assertions about
-  /// measurement instead. Learner-facing attempts do not come this way; they
-  /// are measured.
+  /// The seam between this transaction and the observation model. A caller that
+  /// already knows how an attempt went states it here, which is what exercises
+  /// the scheduler and the journal over trajectories no transcript could
+  /// produce: an outcome is not invertible into a performance that measures
+  /// back to it. Learner-facing attempts are measured instead.
   ///
   /// The whole transition is computed on a copy, and canonical learner state
   /// is only replaced once the attempt is durably appended. That matters for a
@@ -1019,11 +1012,10 @@ class PracticeSession {
   /// is a complete record of an attempt that happened and produced no
   /// evidence.
   ///
-  /// The reading comes back beside the record because the record deliberately
-  /// does not carry it. History stores the outcome, which is what replay needs
-  /// and what a later model must be able to reinterpret; the correspondence
-  /// behind it is transient, and a caller that wants to say where something
-  /// went wrong has to be handed it while it still exists.
+  /// The reading comes back beside the record because the record does not carry
+  /// it. History stores the outcome, which is what replay needs and what a
+  /// later model reinterprets, while the correspondence behind it is transient
+  /// and has to be handed over while it still exists.
   ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
   Future<ClosedAttempt> closeFromPerformance(
@@ -1063,12 +1055,11 @@ class PracticeSession {
   /// Ends the outstanding attempt with the learner reporting that they could
   /// not retrieve the material.
   ///
-  /// A retrieval failure with no execution beside it, which is a state the
-  /// learner model already carries: memory evidence at full weight for the
-  /// rung, no execution evidence at all, and a recovery context that offers
-  /// the same exercise one rung more supportive. Without this the only way to
-  /// say it was to play something wrong, which manufactures execution evidence
-  /// that never happened.
+  /// A retrieval failure with no execution beside it, which the learner model
+  /// already carries: memory evidence at full weight for the rung, no execution
+  /// evidence, and a recovery context one rung more supportive. Without it the
+  /// only way to say so is to play something wrong, which manufactures
+  /// execution evidence that never happened.
   ///
   /// The claim is about retrieval, so it is only available at a rung that
   /// tests retrieval. It is also a claim that nothing was played, so
@@ -1128,9 +1119,7 @@ class PracticeSession {
   /// say the attempt ended rather than to claim anything about the
   /// performance.
   ///
-  /// The transaction discipline is the same as [closeWithOutcome]'s, for the
-  /// same
-  /// reasons.
+  /// The transaction discipline is [closeWithOutcome]'s.
   ///
   /// Throws [PracticeStateError] when no attempt is outstanding.
   Future<AttemptRecord> closeUnmeasured({
@@ -1324,10 +1313,8 @@ class PracticeSession {
   /// Discards an unresolved decision without recording anything.
   ///
   /// Costs nothing and recovers nothing: the decision moved no state and wrote
-  /// no evidence, and the sitting's own state is rebuilt from the journal, so
-  /// an abandoned slot leaves no trace to clean up. Presenting the decision
-  /// again is the better answer wherever the exercise can still be played,
-  /// which is why the app does that instead.
+  /// no evidence, so an abandoned slot leaves no trace. Presenting the decision
+  /// again is the better answer wherever the exercise can still be played.
   ///
   /// A close that has begun may only be abandoned once storage has established
   /// that its attempt is absent from history. An append that threw may still

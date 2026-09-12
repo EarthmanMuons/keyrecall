@@ -117,17 +117,18 @@ class SchedulerVerdict {
 
 /// Where a scheduling decision is computed.
 ///
-/// The seam exists because the decision is the expensive part of a slot and
-/// nothing else about a slot is: on a mid-range phone a mature full-catalog
-/// decision blocks its isolate for a fifth of a second, and computing it
-/// elsewhere costs nothing but the state that has to travel.
+/// The seam exists because the decision is the expensive part of a slot: on a
+/// mid-range phone a mature full-catalog decision blocks its isolate for a
+/// fifth of a second, and computing it elsewhere costs only the state that has
+/// to travel.
 ///
 /// A host never touches the sitting it is given. What deciding owes the
 /// sitting comes back as a [SittingDecisionEffect], which the session applies
 /// once it has established that the answer is still current.
-/// A host holds the resolved scope it decides against for as long as that
-/// scope is the sitting's, so the candidate envelope is established once
-/// rather than travelling with every request. Binding again replaces it.
+///
+/// A host holds the resolved scope it decides against for as long as that scope
+/// is the sitting's, so the candidate envelope is established once rather than
+/// travelling with every request. Binding again replaces it.
 abstract interface class SchedulerHost {
   /// Adopts [scope], discarding whatever was bound before.
   ///
