@@ -58,6 +58,10 @@ class SittingProfile {
   final Map<HandConfiguration, double> achievedTempo;
 
   /// Median motor score, by hand configuration.
+  ///
+  /// Over the attempts that measured timing, which is what a motor score reads.
+  /// A hand whose attempts never did is absent rather than zero, since an
+  /// attempt too short to time was not played badly.
   final Map<HandConfiguration, double> motor;
 
   /// Median played tempo over requested tempo, over the attempts that
@@ -81,8 +85,11 @@ class SittingProfile {
   final Map<HandConfiguration, double> tempoSlope;
 
   /// Share of the attempts that established a pace played well above what was
-  /// asked for.
-  final double sprintShare;
+  /// asked for, or null when none did.
+  ///
+  /// Zero says nobody sprinted, which needs a pace to have been observed at
+  /// all.
+  final double? sprintShare;
 
   /// Share of attempts that were completed.
   final double completionRate;
@@ -199,12 +206,12 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
     },
     motor: {
       for (final entry in byHands.entries)
-        entry.key: _median([
-          for (final attempt in entry.value) ?attempt.outcome.motorScore,
-        ]),
+        if ([for (final attempt in entry.value) ?attempt.outcome.motorScore]
+            case final scores when scores.isNotEmpty)
+          entry.key: _median(scores),
     },
     tempoRatio: ratios.isEmpty ? null : _median(ratios),
-    sprintShare: paced == 0 ? 0 : sprints / paced,
+    sprintShare: paced == 0 ? null : sprints / paced,
     completionRate: attempts.isEmpty ? 0 : completed / attempts.length,
     unfamiliarMotor: unfamiliar.isEmpty ? null : _median(unfamiliar),
     familiarMotor: familiar.isEmpty ? null : _median(familiar),
@@ -569,7 +576,7 @@ bool _observes(SittingProfile observed, PlayerParameter parameter) =>
       PlayerParameter.familiarity =>
         observed.unfamiliarMotor != null && observed.familiarMotor != null,
       PlayerParameter.tempoCompliance => observed.tempoSlope.isNotEmpty,
-      PlayerParameter.sprintProbability => observed.attempts > 0,
+      PlayerParameter.sprintProbability => observed.sprintShare != null,
       PlayerParameter.learningRate => false,
     };
 

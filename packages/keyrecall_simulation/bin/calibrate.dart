@@ -86,7 +86,10 @@ String _describe(SittingProfile profile) {
     '   motor      ${hands(profile.motor)}',
     '   slope      ${hands(profile.tempoSlope)}',
     '   ratio      ${profile.tempoRatio?.toStringAsFixed(2) ?? 'unpaced'}',
-    '   sprints    ${(profile.sprintShare * 100).round()}%',
+    '   sprints    ${switch (profile.sprintShare) {
+      final share? => '${(share * 100).round()}%',
+      null => 'unpaced',
+    }}',
     '   completed  ${(profile.completionRate * 100).round()}%',
     if (profile.handsTogetherPenalty case final penalty?)
       '   ht cost    ${penalty.toStringAsFixed(2)}',

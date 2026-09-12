@@ -86,12 +86,17 @@ ClusterKind describeCluster(List<TrajectorySlot> cluster) {
   if (descents > 0 && climbs > 0) return ClusterKind.oscillatingSupport;
   if (descents > 0) return ClusterKind.findingSupport;
 
-  double mean(Iterable<double> values) =>
-      values.isEmpty ? 0 : values.reduce((a, b) => a + b) / values.length;
-  final movement =
-      mean(motor.skip(motor.length ~/ 2)) - mean(motor.take(motor.length ~/ 2));
-  if (movement > 0.1) return ClusterKind.improving;
-  if (independence.every((rung) => rung == 0) && mean(motor) < 0.4) {
+  // Every claim below rests on measured motor scores. A cluster whose attempts
+  // were all too short to time says nothing about improving or being stuck, and
+  // an empty average standing in at zero would call it stuck at the floor.
+  double? mean(Iterable<double> values) =>
+      values.isEmpty ? null : values.reduce((a, b) => a + b) / values.length;
+  final later = mean(motor.skip(motor.length ~/ 2));
+  final earlier = mean(motor.take(motor.length ~/ 2));
+  if (later != null && earlier != null && later - earlier > 0.1) {
+    return ClusterKind.improving;
+  }
+  if (independence.every((rung) => rung == 0) && (mean(motor) ?? 1) < 0.4) {
     return ClusterKind.stuckAtFloor;
   }
   return ClusterKind.other;

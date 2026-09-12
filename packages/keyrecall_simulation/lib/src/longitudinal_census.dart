@@ -418,7 +418,10 @@ class MilestoneShock {
 /// The shock at each milestone [trajectory] reached, over [window] slots.
 ///
 /// Milestones without a full window either side are skipped: half a window
-/// compared against a full one measures the run's edges.
+/// compared against a full one measures the run's edges. So is a milestone
+/// whose windows measured no timing on either side, since a comparison needs
+/// two motor scores and neither an absent one nor a zero standing in for it is
+/// one.
 List<MilestoneShock> milestoneShocks(Trajectory trajectory, {int window = 15}) {
   final slots = trajectory.slots;
   final shocks = <MilestoneShock>[];
@@ -427,11 +430,16 @@ List<MilestoneShock> milestoneShocks(Trajectory trajectory, {int window = 15}) {
     if (at < window || at + window >= slots.length) continue;
     final before = _medianMotor(slots, at - window, window);
     final after = _medianMotor(slots, at, window);
+    if (before == null || after == null) continue;
     int? recovered;
     for (var start = at + 1; start + window <= slots.length; start++) {
-      if (_medianMotor(slots, start, window) < before) continue;
-      recovered = start - at;
-      break;
+      // A window that measured nothing has not reached the old level; it has
+      // not said anything about it.
+      if (_medianMotor(slots, start, window) case final median?
+          when median >= before) {
+        recovered = start - at;
+        break;
+      }
     }
     shocks.add(
       MilestoneShock(
@@ -446,11 +454,12 @@ List<MilestoneShock> milestoneShocks(Trajectory trajectory, {int window = 15}) {
   return shocks;
 }
 
-double _medianMotor(List<TrajectorySlot> slots, int from, int count) {
+/// The median motor score over a window, or null when none of it was timed.
+double? _medianMotor(List<TrajectorySlot> slots, int from, int count) {
   final scores = [
     for (final slot in slots.skip(from).take(count)) ?slot.outcome.motorScore,
   ]..sort();
-  if (scores.isEmpty) return 0;
+  if (scores.isEmpty) return null;
   final middle = scores.length ~/ 2;
   return scores.length.isOdd
       ? scores[middle]
