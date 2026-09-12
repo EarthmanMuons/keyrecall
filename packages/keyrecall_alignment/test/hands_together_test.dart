@@ -375,4 +375,91 @@ void main() {
       });
     });
   });
+
+  group('where a departure landed', () {
+    RealizationMoment unison(int position, int midiNote) => RealizationMoment(
+      position: position,
+      metricOffset: position.toDouble(),
+      notes: [
+        RealizedNote.shared(
+          hands: {Hand.left, Hand.right},
+          pitch: pitch(midiNote),
+        ),
+      ],
+    );
+
+    final twoNotes = ExerciseRealization([
+      moment(0, 48, 60),
+      moment(1, 50, 62),
+      moment(2, 52, 64),
+    ]);
+
+    DepartureLocation? departureOf(
+      ExerciseRealization realization,
+      List<(int, int)> arrivals,
+    ) => AlignmentReading(
+      align(realization: realization, transcript: played(arrivals)),
+    ).firstDeparture;
+
+    test('an extra note names the moment it held up, not the notes before '
+        'it', () {
+      expect(
+        departureOf(twoNotes, [
+          (48, 0),
+          (60, 10),
+          (55, 400),
+          (50, 500),
+          (62, 510),
+          (52, 1000),
+          (64, 1010),
+        ]),
+        const BeforeExpectedPosition(1),
+        reason: 'two notes per moment had already been played, not one',
+      );
+    });
+
+    test('an extra note before a moment the hands meet on names that '
+        'moment', () {
+      expect(
+        departureOf(
+          ExerciseRealization([
+            moment(0, 48, 60),
+            unison(1, 55),
+            moment(2, 52, 64),
+          ]),
+          [(48, 0), (60, 10), (57, 400), (55, 500), (52, 1000), (64, 1010)],
+        ),
+        const BeforeExpectedPosition(1),
+      );
+    });
+
+    test('an extra note after the last moment is past the exercise', () {
+      expect(
+        departureOf(twoNotes, [
+          (48, 0),
+          (60, 10),
+          (50, 500),
+          (62, 510),
+          (52, 1000),
+          (64, 1010),
+          (55, 1500),
+        ]),
+        const AfterRealization(),
+      );
+    });
+
+    test('a wrong note names its own moment', () {
+      expect(
+        departureOf(twoNotes, [
+          (48, 0),
+          (60, 10),
+          (51, 500),
+          (62, 510),
+          (52, 1000),
+          (64, 1010),
+        ]),
+        const AtExpectedPosition(1),
+      );
+    });
+  });
 }

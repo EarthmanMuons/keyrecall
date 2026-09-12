@@ -98,23 +98,46 @@ class AlignmentReading {
   /// Located rather than numbered, because an extra note falls between two
   /// expected ones rather than at either.
   DepartureLocation? get firstDeparture {
-    final positions = matched + substituted + deleted;
-    var consumed = 0;
-
-    for (final (:realizationPosition, :edit) in alignment.noteEdits) {
-      switch (edit) {
-        case Match():
-          consumed++;
-        case Substitution():
-        case Deletion():
-          return AtExpectedPosition(realizationPosition!);
-        case Insertion():
-          return consumed == positions
-              ? const AfterRealization()
-              : BeforeExpectedPosition(consumed);
+    final operations = alignment.operations;
+    for (final (index, operation) in operations.indexed) {
+      switch (operation) {
+        case MomentDeletion(:final realizationPosition):
+          return AtExpectedPosition(realizationPosition);
+        case MomentInsertion():
+          return _departureBefore(index + 1);
+        case MomentCorrespondence(:final realizationPosition, :final noteEdits):
+          var covered = false;
+          for (final edit in noteEdits) {
+            switch (edit) {
+              case Match():
+                covered = true;
+              case Substitution():
+              case Deletion():
+                return AtExpectedPosition(realizationPosition);
+              case Insertion():
+                return covered
+                    ? _departureBefore(index + 1)
+                    : BeforeExpectedPosition(realizationPosition);
+            }
+          }
       }
     }
     return null;
+  }
+
+  /// Where an extra note sits, given that it arrived once the operations
+  /// before [index] were done with.
+  ///
+  /// The moment the traversal was headed for, which is the next one anything
+  /// was expected at. Past the last of those the performance had run out of
+  /// exercise.
+  DepartureLocation _departureBefore(int index) {
+    for (final operation in alignment.operations.skip(index)) {
+      if (operation.realizationPosition case final position?) {
+        return BeforeExpectedPosition(position);
+      }
+    }
+    return const AfterRealization();
   }
 
   @override
