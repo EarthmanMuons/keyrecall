@@ -163,7 +163,7 @@ To sweep dose control's constants and read what each one does:
 dart run keyrecall_simulation:dose_sweep --seeds 4 --slots 12
 ```
 
-One arm per configuration, sweeping an axis at a time from the centre, with the
+One arm per configuration, sweeping an axis at a time from the center, with the
 baseline carried alongside so parity is read rather than assumed. `--grid`
 sweeps the yield floor against the maximum gap as a product instead. It reports
 how often the mechanism spoke, how often it changed the slot, what happened to

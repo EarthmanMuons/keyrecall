@@ -181,17 +181,17 @@ String _row(DoseConfig? arm, List<_Run> runs) {
 
 String _label(DoseConfig? arm) {
   if (arm == null) return 'baseline (no dose control)';
-  const centre = DoseConfig();
+  const center = DoseConfig();
   final changed = [
-    if (arm.minAttempts != centre.minAttempts) 'evidence ${arm.minAttempts}',
-    if (arm.yieldFloor != centre.yieldFloor) 'floor ${arm.yieldFloor}',
-    if (arm.maximumGap != centre.maximumGap) 'gap ${arm.maximumGap}',
-    if (arm.prerequisiteReliefFactor != centre.prerequisiteReliefFactor)
+    if (arm.minAttempts != center.minAttempts) 'evidence ${arm.minAttempts}',
+    if (arm.yieldFloor != center.yieldFloor) 'floor ${arm.yieldFloor}',
+    if (arm.maximumGap != center.maximumGap) 'gap ${arm.maximumGap}',
+    if (arm.prerequisiteReliefFactor != center.prerequisiteReliefFactor)
       'relief ${arm.prerequisiteReliefFactor}',
-    if (arm.evidenceHalfLifeDays != centre.evidenceHalfLifeDays)
+    if (arm.evidenceHalfLifeDays != center.evidenceHalfLifeDays)
       'half-life ${arm.evidenceHalfLifeDays}d',
   ];
-  return changed.isEmpty ? 'centre' : changed.join(', ');
+  return changed.isEmpty ? 'center' : changed.join(', ');
 }
 
 String _percent(double share) => '${(share * 100).round()}%';

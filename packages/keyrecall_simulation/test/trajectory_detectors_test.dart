@@ -704,7 +704,7 @@ void main() {
       );
     });
 
-    test('a new hand and an unpractised span together are reported', () {
+    test('a new hand and an unpracticed span together are reported', () {
       final found = _find('unsupported_novelty_stack', [
         met(0, 'C'),
         met(1, 'D', hands: HandConfiguration.left, octaves: 2),

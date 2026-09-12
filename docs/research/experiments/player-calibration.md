@@ -189,7 +189,7 @@ because the sitting was short.
 
 **Compliance is low and the slope says so.** The played tempo follows the
 requested one with a slope of 0.28 to 0.43, and the ratio distribution is
-bimodal rather than centred: about one in four attempts is played well above
+bimodal rather than centered: about one in four attempts is played well above
 what was asked, and the rest near it. The person plays at roughly 120 to 135
 whatever the count-in says, which is what the compliance interval of 0.23 to
 0.74 is reporting. Sprint probability is unidentified because a sprint and low

@@ -9,7 +9,7 @@ import 'trajectory.dart';
 /// sporadic are four different questions.
 ///
 /// The days are attendance, not policy. Nothing in the app schedules a
-/// sitting, so these describe learners who show up in recognisable ways.
+/// sitting, so these describe learners who show up in recognizable ways.
 class LongitudinalSchedules {
   /// A week of near-daily practice, where almost nothing decays.
   static const List<int> denseWeek = [0, 1, 2, 4, 6];

@@ -128,7 +128,7 @@ class SchedulerVerdict {
 ///
 /// A host holds the resolved scope it decides against for as long as that scope
 /// is the sitting's, so the candidate envelope is established once rather than
-/// travelling with every request. Binding again replaces it.
+/// traveling with every request. Binding again replaces it.
 abstract interface class SchedulerHost {
   /// Adopts [scope], discarding whatever was bound before.
   ///

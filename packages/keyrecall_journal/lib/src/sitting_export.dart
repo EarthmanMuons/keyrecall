@@ -12,7 +12,7 @@ import 'schema.dart';
 /// The wire format one exported sitting is written in.
 ///
 /// Separate from the journal's own schema version, because this is a file
-/// somebody carries off a device to analyse rather than state the app reads
+/// somebody carries off a device to analyze rather than state the app reads
 /// back. Anything that cannot read this version refuses rather than guessing.
 const int sittingExportSchemaVersion = 2;
 
