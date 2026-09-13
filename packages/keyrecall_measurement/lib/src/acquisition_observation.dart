@@ -13,7 +13,7 @@ enum AcquisitionContinuity { unestablished, unbroken, interrupted }
 ///
 /// Each traversal supplies one fewer interval than it has moments, and the
 /// reset between two supplies none, so this is the least data
-/// [fewestGapsForTimingBaseline] will accept.
+/// [fewestContiguousWaitsForContinuity] will accept.
 int traversalsForContinuity(ExerciseRealization realization) {
   final intervals = realization.moments.length - 1;
   if (intervals < 1) {
@@ -23,7 +23,7 @@ int traversalsForContinuity(ExerciseRealization realization) {
       'a traversal of one moment has no intervals to repeat toward',
     );
   }
-  return (fewestGapsForTimingBaseline + intervals - 1) ~/ intervals;
+  return (fewestContiguousWaitsForContinuity + intervals - 1) ~/ intervals;
 }
 
 /// What was observed about one acquisition attempt.
@@ -106,14 +106,14 @@ class AcquisitionObservation {
       if (gap.ratio! >= policy.brokenIntervalRatio) gap,
   ];
 
-  /// Continuity needs a baseline the longest wait did not help set.
+  /// Continuity needs a pace the longest wait cannot have set by itself.
   ///
   /// Absence of a detected stall establishes nothing without one, so a task
   /// whose single traversal supplies too few waits asks for more traversals
   /// rather than moving the bar.
   AcquisitionContinuity get continuity => stalls.isNotEmpty
       ? AcquisitionContinuity.interrupted
-      : timing.isAssessable && !_hasAmbiguousTraversal
+      : timing.isContinuityAssessable && !_hasAmbiguousTraversal
       ? AcquisitionContinuity.unbroken
       : AcquisitionContinuity.unestablished;
 

@@ -216,7 +216,7 @@ void main() {
 
     for (var position = 1; position < 4; position++) {
       test(
-        'recurring hesitation at transition $position cannot earn a probe',
+        'recurring hesitation at transition $position is seen, not pooled away',
         () {
           final result = observeAcquisition(
             task: task,
@@ -226,8 +226,8 @@ void main() {
             ], parent),
           );
           expect(result.completion, AcquisitionCompletion.completedCleanly);
-          expect(result.stalls, isEmpty);
-          expect(result.continuity, AcquisitionContinuity.unestablished);
+          expect(result.stalls, hasLength(2));
+          expect(result.continuity, AcquisitionContinuity.interrupted);
           expect(result.earnsParentProbe, isFalse);
         },
       );

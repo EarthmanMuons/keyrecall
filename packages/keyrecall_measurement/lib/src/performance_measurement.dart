@@ -83,18 +83,17 @@ class PerformanceMeasurement {
     this.widestAsynchronyAtPosition,
   }) : handAsynchronies = List.unmodifiable(handAsynchronies);
 
-  /// Spread of the gaps between the moments that were played, as an
-  /// interquartile range over the median, or null when the performance
-  /// established no baseline to read them against.
+  /// Spread of the ordinary gaps between the moments that were played, or
+  /// null when the performance supplied too few to read one.
   double? get dispersion => timing.dispersion;
 
-  /// The largest gap between played moments, as a multiple of the slow end of
-  /// this performance's own playing, or null without a baseline.
+  /// The largest gap between played moments, as a multiple of this
+  /// performance's own pace, or null when continuity was not judged.
   double? get worstIntervalRatio => timing.worstRatio;
 
-  /// The median gap between played moments in milliseconds, or null when none
-  /// arrived.
-  int? get medianIntervalMs => timing.medianGapMs?.round();
+  /// The median gap between played moments in milliseconds, or null when too
+  /// few arrived to call one typical.
+  int? get medianIntervalMs => timing.paceMs?.round();
 
   /// Where the longest gap between played moments ended, as a realization
   /// position, or null without a baseline.

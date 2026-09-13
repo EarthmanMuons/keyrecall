@@ -18,29 +18,38 @@ class MeasurementPolicy {
 
   /// Dispersion at or below which timing reads as perfectly steady.
   ///
-  /// The interquartile range of the inter-onset intervals over their median,
-  /// robust so one long pause does not read as unsteady playing. Comfortable
-  /// playing measures between 0.04 and 0.08.
+  /// The mean absolute deviation of the ordinary waits from their median, over
+  /// that median. The comfortable take measures 0.045 and the fast one with
+  /// the pitch stumble 0.072, so both read as steady playing.
   final double steadyDispersion;
 
   /// Dispersion at or above which timing reads as entirely unsteady.
   ///
-  /// Just under the rolled take, the mildest of the takes that are dispersed
-  /// rather than interrupted, which measures 0.678 across its moments.
+  /// At the out-of-phase take, the milder of the two that are dispersed rather
+  /// than interrupted, which measures 0.300. The rolled take sits above it at
+  /// 0.334 and the uneven D major well below at 0.093.
   final double unsteadyDispersion;
+
+  /// Wait, as a multiple of the slow end of ordinary playing, at or above
+  /// which playing counts as interrupted rather than merely slow.
+  ///
+  /// What separates a stop from unsteady playing, and what keeps a stop out of
+  /// the spread. At twice that, playing alternating 400 and 1600 ms keeps
+  /// every wait and reads as unsteady, while one 5000 ms stop among 1000 ms
+  /// playing is set aside and the rest reads as steady.
+  final double interruptionRatio;
 
   /// Longest interval, as a multiple of the slow end of ordinary playing, at
   /// or below which a performance reads as unbroken.
   ///
-  /// Measured against the upper quartile rather than the median, so a
-  /// performance that alternates fast and slow does not read as interrupted
-  /// every time it slows down. Covers both comfortable takes, at 1.05x and
-  /// 1.12x, and both hands of the stumble, at 1.06x and 1.14x.
+  /// Covers the comfortable take at 1.08x, the fast one with the stumble at
+  /// 1.09x, and playing that alternates fast and slow without stopping, which
+  /// reaches 1.23x.
   final double unbrokenIntervalRatio;
 
   /// Longest-interval ratio at or above which a performance reads as entirely
-  /// broken. Between the out-of-phase take at 2.69x and the uneven D major at
-  /// 2.94x.
+  /// broken. Between the rolled take at 2.38x and the uneven D major at
+  /// 3.27x.
   final double brokenIntervalRatio;
 
   /// Hand asynchrony at or below which a moment reads as together, in
@@ -66,9 +75,10 @@ class MeasurementPolicy {
 
   const MeasurementPolicy({
     this.repeatedMatchedPitchBreaksRetrieval = false,
-    this.steadyDispersion = 0.12,
-    this.unsteadyDispersion = 0.67,
-    this.unbrokenIntervalRatio = 1.15,
+    this.steadyDispersion = 0.08,
+    this.unsteadyDispersion = 0.30,
+    this.interruptionRatio = 2.00,
+    this.unbrokenIntervalRatio = 1.30,
     this.brokenIntervalRatio = 3.00,
     this.synchronizedAsynchronyMs = 40,
     this.uncoordinatedAsynchronyMs = 150,
@@ -80,6 +90,10 @@ class MeasurementPolicy {
        assert(
          unbrokenIntervalRatio < brokenIntervalRatio,
          'continuity reads between its ends',
+       ),
+       assert(
+         interruptionRatio > unbrokenIntervalRatio,
+         'a wait has to be worse than unbroken to be a stop',
        ),
        assert(
          synchronizedAsynchronyMs < uncoordinatedAsynchronyMs,

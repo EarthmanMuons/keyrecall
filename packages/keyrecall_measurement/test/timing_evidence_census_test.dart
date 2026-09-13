@@ -8,18 +8,14 @@ import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 /// Data rather than policy. The floors each metric should require are not set
 /// here; this is what they would be set from. What the table shows:
 ///
-/// - tempo has no floor at all. One wait is a median, and a median is a tempo.
-/// - continuity and temporal stability are gated together at five waits by the
-///   baseline they share, and say nothing below it.
-/// - one pause among regular playing reads as broken at every length.
-/// - several pauses stop reading as pauses, and not because the sample is
-///   small. The baseline is the upper quartile of the same waits, so once more
-///   than about a quarter of them are pauses the pauses become the ordinary
-///   playing they are judged against. At fourteen waits, four of them stopped
-///   playing still reads as 0.96 unbroken. More waits do not fix this; they
-///   only raise the number of pauses it takes.
-/// - a single wait much shorter than the rest is invisible to both metrics.
-///   Nothing here reads rushing.
+/// - the three floors are separate: a pace needs three waits, a spread five,
+///   and continuity five in one stretch.
+/// - one pause among regular playing reads as broken at every length, and
+///   costs no steadiness, because a stop is not unsteady playing.
+/// - pauses stay interruptions until they are most of the waits, at which
+///   point they are the pace rather than interruptions of it.
+/// - a single wait much shorter than the rest reads as unsteady without
+///   reading as broken, and its effect fades as the performance lengthens.
 void main() {
   final material = TechnicalMaterial('C', ScaleForm.major);
   SpelledPitch pitch(int midiNote) =>
@@ -60,7 +56,7 @@ void main() {
     final measured = measuredWith(waits);
     print(
       '${label.padRight(26)} waits=${waits.length.toString().padLeft(2)} '
-      'baseline=${(measured.timing.baselineMs?.round() ?? 0).toString().padLeft(5)} '
+      'pace=${(measured.timing.paceMs?.round() ?? 0).toString().padLeft(5)} '
       'worstRatio=${cell(measured.worstIntervalRatio)} '
       'continuity=${cell(measured.continuity)} '
       'stability=${cell(measured.temporalStability)} '
@@ -83,34 +79,45 @@ void main() {
       }
     });
 
-    // Nothing below the baseline floor makes a timing claim at all, so the
-    // interesting question starts at five.
-    test('no baseline is no claim', () {
-      for (var waits = 1; waits < fewestGapsForTimingBaseline; waits++) {
+    // Each metric asks for what it needs and no more, so a performance can
+    // support a pace and nothing else.
+    test('the three floors are separate', () {
+      for (var waits = 1; waits < fewestWaitsForPace; waits++) {
         final measured = measuredWith(regular(waits));
-        expect(measured.timing.baselineMs, isNull);
+        expect(measured.medianIntervalMs, isNull, reason: '$waits waits');
+        expect(measured.dispersion, isNull);
         expect(measured.continuity, isNull);
-        expect(measured.temporalStability, isNull);
-        expect(measured.medianIntervalMs, isNotNull);
       }
-      expect(
-        measuredWith(regular(fewestGapsForTimingBaseline)).continuity,
-        isNotNull,
-      );
+
+      for (
+        var waits = fewestWaitsForPace;
+        waits < fewestWaitsForSpread;
+        waits++
+      ) {
+        final measured = measuredWith(regular(waits));
+        expect(measured.medianIntervalMs, 500, reason: '$waits waits');
+        expect(measured.dispersion, isNull);
+        expect(measured.continuity, isNull);
+      }
+
+      final enough = measuredWith(regular(fewestWaitsForSpread));
+      expect(enough.medianIntervalMs, 500);
+      expect(enough.temporalStability, isNotNull);
+      expect(enough.continuity, isNotNull);
     });
 
-    // Tempo is on a different footing from the other two. It needs no baseline,
-    // so a single wait produces one.
-    test('tempo asks for nothing', () {
-      final measured = measuredWith([500]);
-
-      expect(measured.medianIntervalMs, 500);
-      expect(
-        measured.achievedTempoRatioFor(
-          ExecutionConditions(hands: HandConfiguration.right, tempoBpm: 120),
-        ),
-        1.0,
+    // Continuity asks for its waits in one stretch. Nothing here can produce a
+    // broken one yet, so what is pinned is that the stretch is what it counts.
+    test('continuity counts a stretch, not a total', () {
+      final measured = measuredWith(
+        regular(fewestContiguousWaitsForContinuity),
       );
+
+      expect(
+        measured.timing.longestRunWaits,
+        fewestContiguousWaitsForContinuity,
+      );
+      expect(measured.continuity, isNotNull);
     });
   });
 
@@ -146,24 +153,31 @@ void main() {
       },
     );
 
-    // Where it turns over, as a proportion rather than a count. The upper
-    // quartile sits at 0.75 * (waits - 1), so it lands inside the pauses once
-    // there are more than about a quarter of them, whatever the length.
-    test('the turn is a fraction of the waits, not a number of them', () {
+    // What the reference being set without the judged wait buys. Under an
+    // upper quartile of every wait, three pauses in nine and four in thirteen
+    // read as perfectly unbroken, because the pauses had become the playing.
+    test('a minority of pauses stays a minority', () {
       expect(measuredWith(withPauses(9, 2)).continuity, 0.0);
-      expect(measuredWith(withPauses(9, 3)).continuity, 1.0);
+      expect(measuredWith(withPauses(9, 3)).continuity, lessThan(0.5));
 
       expect(measuredWith(withPauses(13, 3)).continuity, 0.0);
-      expect(measuredWith(withPauses(13, 4)).continuity, 1.0);
+      expect(measuredWith(withPauses(13, 4)).continuity, lessThan(0.5));
     });
 
-    // A quarter of the playing stopped, on the longest material there is, and
-    // it reads as very nearly unbroken.
-    test('length alone does not rescue it', () {
+    // A quarter of the playing stopped, which used to read as 0.96 unbroken.
+    test('a quarter of the waits stopping reads as broken', () {
       final measured = measuredWith(withPauses(14, 4));
 
-      expect(measured.continuity, greaterThan(0.9));
-      expect(measured.temporalStability, 0.0);
+      expect(measured.continuity, 0.0);
+    });
+
+    // Where they stop being interruptions: when they are most of the waits,
+    // they are the playing.
+    test('a majority of long waits is the pace', () {
+      final measured = measuredWith(withPauses(14, 9));
+
+      expect(measured.continuity, 1.0);
+      expect(measured.medianIntervalMs, 2000);
     });
   });
 
@@ -179,10 +193,18 @@ void main() {
     test('one wait shorter than the rest', () {
       for (var waits = 5; waits <= 12; waits++) {
         report('one rushed', [...regular(waits - 1), 125]);
-        final measured = measuredWith([...regular(waits - 1), 125]);
-        expect(measured.continuity, 1.0);
-        expect(measured.temporalStability, 1.0);
+        expect(measuredWith([...regular(waits - 1), 125]).continuity, 1.0);
       }
+
+      // Rushing reads as unsteady rather than as a break, which an
+      // interquartile range never noticed at all. How much depends on how much
+      // of the performance it is: a mean deviation divides by the waits, so
+      // one rushed wait in twelve is a twelfth of the deviation it is in five.
+      expect(
+        measuredWith([...regular(4), 125]).temporalStability,
+        lessThan(0.8),
+      );
+      expect(measuredWith([...regular(11), 125]).temporalStability, 1.0);
     });
   });
 }

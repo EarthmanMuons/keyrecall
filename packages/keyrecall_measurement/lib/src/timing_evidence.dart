@@ -3,15 +3,18 @@ import 'dart:math' as math;
 import 'package:keyrecall_alignment/keyrecall_alignment.dart';
 import 'package:meta/meta.dart';
 
+import 'measurement_policy.dart';
+
 /// The wait between two moments that arrived, and which two.
 ///
 /// Named by both ends because a moment nothing arrived for leaves no onset, so
 /// consecutive gaps are not always consecutive positions. A gap spanning a
 /// skipped moment covers a stretch of the exercise rather than one transition.
 ///
-/// [ratio] is the wait against the slow end of this performance's own playing,
-/// or null when the performance supplied too few waits to have a slow end. An
-/// observed gap with no ratio is a transition that happened and was not judged.
+/// [ratio] is the wait against this performance's own pace, or null when the
+/// performance supplied too little unbroken playing for an interruption to
+/// mean anything. An observed gap with no ratio is a transition that happened
+/// and was not judged.
 typedef MomentGap = ({
   int fromPosition,
   int toPosition,
@@ -19,15 +22,26 @@ typedef MomentGap = ({
   double? ratio,
 });
 
-/// The fewest gaps a baseline can be read from.
+/// The fewest waits a pace can be read from.
 ///
-/// The quartiles are interpolated, and at five gaps the upper one first lands
-/// below the longest gap and the lower one above the shortest. With fewer, the
-/// baseline includes the gap being judged against it, so the longest wait is
-/// measured partly against itself and the absence of a break means nothing.
-/// Material short of it supplies more waits rather than being read against a
-/// lower bar.
-const int fewestGapsForTimingBaseline = 5;
+/// One wait is an interval, not a pace. Two supply no center either one
+/// cannot dominate. Three are the first that let a median set one of them
+/// aside.
+const int fewestWaitsForPace = 3;
+
+/// The fewest waits a spread can be read from.
+///
+/// Below this a single wait carries too much of the deviation for the result
+/// to describe the playing rather than that wait.
+const int fewestWaitsForSpread = 5;
+
+/// The fewest waits in one unbroken stretch a continuity claim needs.
+///
+/// Continuity is a claim about playing that did not stop, so it asks for a
+/// stretch that did not stop rather than for waits gathered from wherever they
+/// survived. Eight waits in one run and in four runs of two are the same
+/// arithmetic and not the same evidence, and only the first can support this.
+const int fewestContiguousWaitsForContinuity = 5;
 
 /// How the playing sat in time, and how much of that could be judged.
 ///
@@ -35,10 +49,22 @@ const int fewestGapsForTimingBaseline = 5;
 /// acquisition, and the transition census cannot answer them differently:
 ///
 /// - which waits happened, which [gaps] always reports;
-/// - whether this performance established a slow end of its own ordinary
-///   playing, which [baselineMs] answers;
-/// - what the waits mean against that baseline, which every ratio here is
-///   absent without.
+/// - how fast the playing went, which [paceMs] answers;
+/// - which waits were interruptions of that pace and how far the rest spread
+///   around it, which [worstRatio] and [dispersion] answer.
+///
+/// Two references, because the questions are different. The pace is the median
+/// wait, which is what the playing usually did. Interruption is judged against
+/// the slow end of ordinary playing, taken as the upper quartile of the waits
+/// with the longest one left out.
+///
+/// Leaving it out is what keeps the longest wait from setting the bar it is
+/// measured against. Without that, a quarter of the waits stopping made the
+/// stops the ordinary playing, and a performance that broke four times in
+/// fourteen read as 0.96 unbroken. Judging against the median instead would
+/// fix that case and break another: playing that alternates 400 and 1600 ms
+/// has a median of 400, so every slow wait would read as an interruption and
+/// the unevenness would vanish from the spread.
 ///
 /// Facts only. What a dispersion or a ratio is worth is a policy's judgment,
 /// and it stays outside this type.
@@ -47,28 +73,43 @@ class TimingEvidence {
   /// Every wait between consecutive moments that arrived, as played.
   final List<MomentGap> gaps;
 
-  /// The slow end of this performance's own playing, in milliseconds, or null
-  /// when too few gaps arrived to establish one.
+  /// How fast the playing went, in milliseconds per wait, or null below
+  /// [fewestWaitsForPace].
   ///
-  /// The upper quartile of the gaps. Relative to the learner's own playing
-  /// rather than to a requested tempo, so it reads the same whether they play
-  /// fast or slowly.
-  final double? baselineMs;
+  /// The median wait. Relative to the learner's own playing rather than to a
+  /// requested tempo, so it reads the same whether they play fast or slowly.
+  final double? paceMs;
 
-  /// How long a wait usually was, in milliseconds, or null when none arrived.
+  /// The slow end of ordinary playing, in milliseconds, or null when
+  /// continuity was not judged.
   ///
-  /// Needs no baseline, since nothing is being judged against the rest.
-  final double? medianGapMs;
+  /// The upper quartile of the waits with the longest one left out, so that no
+  /// wait helps set the bar it is judged against. What a ratio here is a
+  /// multiple of, and what separates a stop from playing that is merely slow.
+  final double? referenceMs;
 
-  /// Spread of the waits, as an interquartile range over the median, or null
-  /// without a baseline.
+  /// Spread of the waits that were not interruptions, or null below
+  /// [fewestWaitsForSpread].
+  ///
+  /// Their mean absolute deviation from their median, over that median. It
+  /// answers to every wait rather than to the quartiles, so a single rushed
+  /// wait among steady ones moves it, which an interquartile range does not.
+  /// Interruptions are left out because a stop is not unsteady playing, and
+  /// continuity is where it is already accounted for.
   final double? dispersion;
 
-  /// The longest wait as a multiple of [baselineMs], or null without one.
+  /// The longest wait as a multiple of [paceMs], or null when no stretch of
+  /// unbroken playing was long enough to judge one.
   final double? worstRatio;
 
-  /// Where the longest wait ended, as a realization position, or null without a
-  /// baseline.
+  /// The waits in the longest stretch with nothing missing from it.
+  ///
+  /// Provenance for [worstRatio]: what continuity was read from, and why it is
+  /// absent when it is.
+  final int longestRunWaits;
+
+  /// Where the longest wait ended, as a realization position, or null when
+  /// continuity was not judged.
   ///
   /// The moment [worstRatio] is about. A wait is a gap rather than a note, so
   /// the moment that ended it is where playing resumed.
@@ -76,10 +117,11 @@ class TimingEvidence {
 
   TimingEvidence._({
     required List<MomentGap> gaps,
-    required this.baselineMs,
-    required this.medianGapMs,
+    required this.paceMs,
+    required this.referenceMs,
     required this.dispersion,
     required this.worstRatio,
+    required this.longestRunWaits,
     required this.longestGapBeforePosition,
   }) : gaps = List.unmodifiable(gaps);
 
@@ -87,11 +129,12 @@ class TimingEvidence {
   ///
   /// [restartPositions] names positions the task lets the learner begin again
   /// at. The wait before one of those is the reset the task asked for, so it is
-  /// neither reported nor allowed into the baseline the others are read
-  /// against.
+  /// neither reported nor allowed into the pace the others are read against,
+  /// and it ends the unbroken stretch continuity is read from.
   factory TimingEvidence.of(
     Alignment alignment, {
     Set<int> restartPositions = const {},
+    MeasurementPolicy policy = MeasurementPolicy.standard,
   }) {
     final onsets = _momentOnsets(alignment);
     final spans = [
@@ -107,8 +150,11 @@ class TimingEvidence {
           ),
     ];
     final waits = [for (final span in spans) span.intervalMs];
-    final median = waits.isEmpty ? null : _median(waits);
-    final baseline = _baselineOf(waits);
+    final pace = _paceOf(waits);
+    final reference = _referenceOf(waits);
+    final longestRun = _longestRunOf(spans);
+    final judged =
+        reference != null && longestRun >= fewestContiguousWaitsForContinuity;
 
     return TimingEvidence._(
       gaps: [
@@ -117,48 +163,101 @@ class TimingEvidence {
             fromPosition: span.from,
             toPosition: span.to,
             gapMs: span.intervalMs.round(),
-            ratio: baseline == null ? null : span.intervalMs / baseline,
+            ratio: judged ? span.intervalMs / reference : null,
           ),
       ],
-      baselineMs: baseline,
-      medianGapMs: median,
-      dispersion: baseline == null || median == null || median <= 0
-          ? null
-          : (baseline - _quantileOf([...waits]..sort(), 0.25)) / median,
-      worstRatio: baseline == null ? null : waits.reduce(math.max) / baseline,
-      longestGapBeforePosition: baseline == null
-          ? null
-          : spans.reduce((a, b) => b.intervalMs > a.intervalMs ? b : a).to,
+      paceMs: pace,
+      referenceMs: judged ? reference : null,
+      dispersion: _dispersionOf(waits, reference, policy),
+      worstRatio: judged ? waits.reduce(math.max) / reference : null,
+      longestRunWaits: longestRun,
+      longestGapBeforePosition: judged
+          ? spans.reduce((a, b) => b.intervalMs > a.intervalMs ? b : a).to
+          : null,
     );
   }
 
-  /// The gaps whose waits were judged against a baseline.
+  /// The gaps whose waits were judged against the pace.
   ///
-  /// What a stall rate can be read from, and fewer than [gaps] whenever the
-  /// performance was too short to establish one.
+  /// What a stall rate can be read from, and empty whenever the performance
+  /// supplied no stretch long enough to judge one.
   List<MomentGap> get assessableGaps => [
     for (final gap in gaps)
       if (gap.ratio != null) gap,
   ];
 
-  /// Whether the waits were judged at all.
-  bool get isAssessable => baselineMs != null;
+  /// Whether the playing supplied a pace.
+  bool get hasPace => paceMs != null;
+
+  /// Whether it supplied enough unbroken playing to say whether it stopped.
+  bool get isContinuityAssessable => worstRatio != null;
 
   @override
   String toString() =>
       'TimingEvidence(${gaps.length} gaps, '
-      '${isAssessable ? 'baseline ${baselineMs!.round()}ms' : 'no baseline'})';
+      '${hasPace ? 'pace ${paceMs!.round()}ms' : 'no pace'}, '
+      'longest run $longestRunWaits)';
 }
 
-/// The slow end of ordinary playing among [waits], or null when too few.
+/// How fast the playing went, or null when too few waits arrived to say.
 ///
 /// Zero when the playing was instantaneous, which nothing can be read against,
-/// so that reads as no baseline either.
-double? _baselineOf(List<double> waits) {
-  if (waits.length < fewestGapsForTimingBaseline) return null;
-  final high = _quantileOf([...waits]..sort(), 0.75);
-  return high <= 0 ? null : high;
+/// so that reads as no pace either.
+double? _paceOf(List<double> waits) {
+  if (waits.length < fewestWaitsForPace) return null;
+  final pace = _median(waits);
+  return pace <= 0 ? null : pace;
 }
+
+/// The slow end of ordinary playing, or null when there is none to read.
+///
+/// The upper quartile of every wait but the longest, so the wait being judged
+/// is never part of what judges it.
+double? _referenceOf(List<double> waits) {
+  if (waits.length < 2) return null;
+  final rest = [...waits]..sort();
+  rest.removeLast();
+  final reference = _quantileOf(rest, 0.75);
+  return reference <= 0 ? null : reference;
+}
+
+/// How far the ordinary waits sat from each other, or null when too few
+/// arrived or there is nothing to call a wait ordinary against.
+///
+/// Interruptions are set aside first: a stop is not unsteady playing, and
+/// leaving it in would let one pause read as a performance that never settled.
+double? _dispersionOf(
+  List<double> waits,
+  double? reference,
+  MeasurementPolicy policy,
+) {
+  if (reference == null || waits.length < fewestWaitsForSpread) return null;
+  final ordinary = [
+    for (final wait in waits)
+      if (wait < policy.interruptionRatio * reference) wait,
+  ];
+  if (ordinary.isEmpty) return null;
+  final middle = _median(ordinary);
+  if (middle <= 0) return null;
+  var deviation = 0.0;
+  for (final wait in ordinary) {
+    deviation += (wait - middle).abs();
+  }
+  return deviation / ordinary.length / middle;
+}
+
+/// The most waits in a row that are one stretch of playing.
+///
+/// Every wait here qualifies, because the two things that remove one do not
+/// break the playing. A moment nothing arrived for widens the wait around it
+/// rather than splitting it, and the reset before a repeat is a boundary the
+/// task asked for rather than evidence that went missing: the learner played
+/// on either side of it and only the turnaround is not theirs to be judged on.
+///
+/// A hole in the timing itself is the break this exists to notice, and the
+/// clock that can produce one does not reach here yet.
+int _longestRunOf(List<({int from, int to, double intervalMs})> spans) =>
+    spans.length;
 
 /// When the moments that were played happened.
 ///
@@ -184,10 +283,10 @@ List<({int position, double onsetMs})> _momentOnsets(Alignment alignment) => [
 
 /// The value [fraction] of the way through [ordered], linearly interpolated.
 ///
-/// Interpolated rather than picking `ordered[n ~/ 4]`, which is not the same
-/// statistic at every length: that index lands on the 23rd percentile over
-/// fourteen waits and the 17th over seven, so exercise length would change what
-/// dispersion means.
+/// Interpolated rather than picking an index, which is not the same statistic
+/// at every length: that index lands on the 23rd percentile over fourteen
+/// waits and the 17th over seven, so exercise length would change what the
+/// reference means.
 double _quantileOf(List<double> ordered, double fraction) {
   if (ordered.length == 1) return ordered.first;
   final position = fraction * (ordered.length - 1);

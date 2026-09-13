@@ -241,9 +241,68 @@ transcript.
 
 **Consequences.** The denominator for any timing claim is usable waits, not
 notes. Six timed notes in one run are five waits, and the same six split by a
-hole are fewer. What each metric requires of that count is a separate question
-per metric, since tempo, stability, and continuity do not need the same
-evidence, and nothing forces one floor on all of them.
+hole are fewer.
+
+## Two references, and a floor for each claim
+
+**Decision.** Timing is read from two references rather than one:
+
+```text
+pace        median wait                      how fast the playing went
+reference   upper quartile of the waits      the slow end of ordinary playing
+            with the longest left out
+```
+
+An interruption is a wait at or above twice the reference. Continuity is the
+longest wait over the reference. Stability is the mean absolute deviation of the
+waits that are not interruptions from their median, over that median.
+
+Each claim asks for what it needs:
+
+```text
+tempo        3 usable waits
+stability    5 usable waits
+continuity   5 usable waits in one stretch
+```
+
+**Why.** The previous model read every timing claim off one upper quartile of
+every wait, which cannot be both the reference and contain what it judges. Once
+about a quarter of the waits were pauses they set the bar they were measured
+against: nine waits with three pauses read as perfectly unbroken, and fourteen
+with four read 0.96, while stability collapsed to zero in both. Length was no
+defense, because the turn is a proportion rather than a count.
+
+Leaving the judged wait out of its own reference fixes that without asking what
+fraction of the waits are allowed to be pauses. Judging against the median
+instead would fix it too, and break playing that alternates 400 and 1600 ms: the
+median is then 400, every slow wait reads as an interruption, and the unevenness
+disappears out of the spread it belongs in. The pace is still the median,
+because how fast the playing went is a question about the middle of it.
+
+Stability changed statistic for a second reason. An interquartile range does not
+answer to an individual wait at all, so a 125 ms wait among 500 ms playing was
+invisible: rushing was not measured. A mean deviation answers to every wait,
+though how loudly still depends on how much of the performance it is.
+
+The floors follow from what each statistic needs. One wait is an interval rather
+than a pace and two supply no center either one cannot dominate, so three is the
+first count a median can set one aside at. Five is where a spread describes the
+playing rather than one wait in it. Continuity asks for its five in one stretch
+because it is a claim about playing that did not stop, and eight waits in one
+run and in four runs of two are the same arithmetic and not the same evidence.
+
+**Evidence.** The five recorded takes in `analysis/onset-grouping/`. Continuity
+reads the comfortable take at 1.08x and the fast one with a pitch stumble at
+1.09x, both unbroken; the rolled take at 2.38x and the out-of-phase one at
+2.17x, both partly; and the uneven D major at 3.27x, broken. Stability reads
+0.045 and 0.072 for the two comfortable takes, 0.093 for the uneven one, and
+0.300 and 0.334 for the two dispersed ones.
+
+**Consequences.** A recurring hesitation that repeats in every traversal is now
+seen as a stall rather than pooled into the reference and hidden, so acquisition
+calls that attempt interrupted instead of unestablished. Constants moved with
+the statistics they read and are stated against the takes above rather than
+carried over.
 
 ## What alignment deliberately does not do
 

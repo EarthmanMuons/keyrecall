@@ -150,21 +150,29 @@ void main() {
       );
     });
 
-    test('costs nothing in timing when it fits inside the beat', () {
-      // The extra note lands between two expected ones that stay on the pulse.
+    // The extra note lands between two expected ones that stay on the pulse,
+    // and the moment it joins takes its onset, so the moment reads 500 ms
+    // late and the next 500 ms early. Continuity is untouched, and the spread
+    // notices, which an interquartile range did not.
+    test('moves the onset of the moment it joins', () {
       final inTime = [1000, 500, 500, 1000, 1000, 1000, 1000, 1000];
       final measurement = measured(
         [...expected]..insert(2, expected[1]),
         gaps: inTime,
       );
 
-      expect(
-        measurement.temporalStability,
-        1.0,
-        reason:
-            'timing is read over the notes the exercise asked for, so an '
-            'extra note that leaves their pulse alone did not disturb it',
-      );
+      expect(measurement.timing.gaps.map((gap) => gap.gapMs), [
+        1500,
+        500,
+        1000,
+        1000,
+        1000,
+        1000,
+        1000,
+      ]);
+      expect(measurement.continuity, greaterThan(0.8));
+      expect(measurement.temporalStability, lessThan(1.0));
+      expect(measurement.temporalStability, greaterThan(0.5));
     });
 
     test('breaks retrieval when the policy says so', () {
