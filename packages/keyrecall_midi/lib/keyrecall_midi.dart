@@ -35,6 +35,7 @@ export 'src/models/midi_device.dart';
 export 'src/models/midi_exception.dart';
 export 'src/models/midi_message.dart';
 export 'src/models/midi_source_message.dart';
+export 'src/models/midi_transport_record.dart';
 export 'src/models/midi_note_state.dart';
 export 'src/models/midi_preferences.dart';
 export 'src/persistence/midi_preferences_keys.dart';

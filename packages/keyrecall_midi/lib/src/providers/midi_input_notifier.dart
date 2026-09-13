@@ -12,6 +12,7 @@ import '../models/midi_constants.dart';
 import '../models/midi_device.dart';
 import '../models/midi_message.dart';
 import '../models/midi_source_message.dart';
+import '../models/midi_transport_record.dart';
 import 'midi_ble_service_provider.dart';
 import 'midi_connection_notifier.dart';
 import 'midi_device_manager.dart';
@@ -62,6 +63,11 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   final StreamController<InputTemporalEvent> _events =
       StreamController<InputTemporalEvent>.broadcast(sync: true);
 
+  /// The passive view of the raw boundary, for characterizing transports.
+  final StreamController<MidiTransportRecord> _transport =
+      StreamController<MidiTransportRecord>.broadcast(sync: true);
+  int _records = 0;
+
   late final InputEventClock _clock;
   StreamSubscription<MidiSourceMessage>? _messages;
 
@@ -97,6 +103,18 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// rather than from whatever happens to arrive next.
   Stream<InputTemporalEvent> get events => _events.stream;
 
+  /// Everything the transport did, ahead of admission and normalization.
+  ///
+  /// Deliveries include the ones the boundary went on to reject, since a
+  /// dataset filtered to what was accepted cannot explain what was not.
+  /// Nothing is recorded while nobody is listening, and listening changes
+  /// nothing: a listener must only take what it is handed, since this is
+  /// delivered synchronously on the message path.
+  ///
+  /// For characterization, not for running on. What the app plays from is
+  /// [events].
+  Stream<MidiTransportRecord> get transportRecords => _transport.stream;
+
   @override
   MidiInputState build() {
     // Read rather than watched: both are container-lifetime constants, and
@@ -105,6 +123,7 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     ref.onDispose(() {
       unawaited(_messages?.cancel());
       unawaited(_events.close());
+      unawaited(_transport.close());
     });
 
     _openSession();
@@ -163,8 +182,19 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// something started watching would be the claim the terminal-fault rule
   /// exists to refuse. A consumer attaching while the observation is closed is
   /// handed the fault instead.
-  InputTemporalEvent openObservation() =>
-      _reducer.opening(timestampMs: _clock());
+  InputTemporalEvent openObservation() {
+    final opening = _reducer.opening(timestampMs: _clock());
+    _record(
+      (sequence, at) => MidiTransportBoundary(
+        sequence: sequence,
+        arrivalTimestampMs: at,
+        kind: MidiTransportBoundaryKind.consumerAttached,
+        adopted: _reducer.adopted,
+        fault: _reducer.fault,
+      ),
+    );
+    return opening;
+  }
 
   /// Replaces the transport subscription, and with it the observation.
   ///
@@ -177,13 +207,33 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     final session = 'midi-${++_sessionsOpened}';
     _liveSession = session;
     _reducer.adopt(_identityOf(_instrument, session));
+    _record(
+      (sequence, at) => MidiTransportBoundary(
+        sequence: sequence,
+        arrivalTimestampMs: at,
+        kind: MidiTransportBoundaryKind.sessionOpened,
+        session: session,
+        adopted: _reducer.adopted,
+      ),
+    );
     _messages = ref
         .read(midiBleServiceProvider)
         .onMidiMessages
         .listen(
           (message) {
+            final envelope = _envelope(session, message);
+            // Ahead of the liveness guard on purpose: a delivery from a
+            // superseded subscription is one of the things worth seeing.
+            _record(
+              (sequence, at) => MidiTransportDelivery(
+                sequence: sequence,
+                arrivalTimestampMs: at,
+                envelope: envelope,
+                live: _isLive(session),
+              ),
+            );
             if (!_isLive(session)) return;
-            _receive(session, message);
+            _receive(envelope);
           },
           // An error is not a quiet gap in the input. Reading through it is
           // how a capture kept collecting notes after its stream had already
@@ -226,9 +276,9 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// before anything is adopted, when every source is admitted by policy.
   bool _isLive(String session) => session == _liveSession;
 
-  void _receive(String session, MidiSourceMessage source) {
+  void _receive(RawInputEnvelope envelope) {
     final turnedAway = _reducer.rejectedForeignCount;
-    _emit(_reducer.receive(_envelope(session, source)));
+    _emit(_reducer.receive(envelope));
     // A message from another instrument, or from a superseded session,
     // produces no event but is still worth publishing: it is the only sign
     // that something else is playing into the same transport.
@@ -299,8 +349,28 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     if (events.isEmpty || _events.isClosed) return;
     for (final event in events) {
       _events.add(event);
+      if (event is InputTemporalFaultEvent) {
+        _record(
+          (sequence, at) => MidiTransportBoundary(
+            sequence: sequence,
+            arrivalTimestampMs: at,
+            kind: MidiTransportBoundaryKind.observationFailed,
+            adopted: _reducer.adopted,
+            fault: event.fault,
+            detail: event.detail,
+          ),
+        );
+      }
     }
     _publish();
+  }
+
+  /// Hands [make] a sequence number and the clock, when anything is watching.
+  void _record(
+    MidiTransportRecord Function(int sequence, int arrivalTimestampMs) make,
+  ) {
+    if (!_transport.hasListener || _transport.isClosed) return;
+    _transport.add(make(_records++, _clock()));
   }
 
   /// Nothing may assign state until build has returned one.
