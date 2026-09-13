@@ -1,7 +1,8 @@
 # Transport clock characterization
 
-- **Status:** Evidence being collected for a decision not yet made. Nothing here
-  has been recorded yet.
+- **Status:** Evidence being collected for a decision not yet made. Two takes
+  recorded, on one platform through one adapter.
+- **Recorded:** September 13, 2026, iOS 26.6.2, a JamCorder adapter over BLE
 - **Feeds:** the transport-timing entry in
   [`docs/roadmap.md`](../../docs/roadmap.md), step 1 of six
 
@@ -113,11 +114,75 @@ whether it should.
 current one. `session` on a delivery is the subscription that delivered it;
 `adopted_session` on a boundary is what input was being admitted from.
 
-## No analysis script yet
+## What the first two takes show
 
-Deliberately. What is worth computing should follow the first traces rather than
-precede them, and a script written now would encode guesses about wrap behavior
-and batching as if they were findings. Takes go in `takes/`.
+`analyze.py takes/*.json`. On **iOS 26.6.2, a JamCorder adapter over BLE**, in a
+`pulse` and a `chords` take:
+
+| Question                    | What the traces say                                   |
+| --------------------------- | ----------------------------------------------------- |
+| Tick unit                   | 1.0000 and 1.0001 ms per count, over 8.7 s and 16.1 s |
+| Modulus                     | 8192, from three wraps measured at 8166, 8185, 8205   |
+| Packet time or message time | message time                                          |
+| Short-term jitter           | -26 to +25 ms, median 0                               |
+| Cumulative drift            | 0 ms over 8.7 s, 1 ms over 16.1 s                     |
+| Stamps absent or repeated   | none absent; one tie, at 1 ms resolution              |
+
+**The transport stamp is message time, not packet time.** Eight arrival instants
+in the chords take carried more than one message, and all eight kept distinct
+transport stamps. Two releases arrive in the same millisecond carrying stamps 14
+ms apart; a four-note chord arrives with three notes in one millisecond and
+stamps of 1873, 1885, 1886, 1886. That is precisely the information arrival time
+destroys.
+
+**It is already the better witness to rhythm.** In the `pulse` take, the same
+playing read through the two clocks:
+
+```text
+onsets by arrival     median 586 ms   MAD 15.5   range 538..632
+onsets by transport   median 582 ms   MAD  8.5   range 556..625
+```
+
+Half the dispersion and a range 25 ms narrower, for one scale played once.
+Whatever produced that extra spread in the arrival series happened after the
+keys went down.
+
+### Why 8192 is worth believing before the other traces arrive
+
+It is not a device quirk. The BLE MIDI specification carries a **13-bit
+millisecond timestamp**, six bits in the header byte and seven in the timestamp
+byte, which is exactly an 8192 ms modulus at 1 ms resolution. The measured
+behavior is the specified behavior.
+
+So this predicts what the remaining traces should show, which makes them a test
+rather than an exploration:
+
+- **Yamaha direct, iOS.** Should be 1 ms modulo 8192 as well. If it is not, the
+  JamCorder is synthesizing timestamps rather than passing them through, and the
+  mapper has to characterize per source rather than per transport.
+- **Android, either instrument.** The wire format is the same specification, so
+  a difference here would be the plugin or the platform not preserving what the
+  wire carried. This is the one that decides whether one BLE clock contract can
+  cover both platforms.
+
+### What is still open
+
+- **Unwrapping across a silence.** The two takes have no gap anywhere near 8192
+  ms, so nothing here tests it. A pause long enough to hide a whole epoch cannot
+  be resolved from stamps alone, and the `pause` take is what says whether
+  arrival elapsed time is a defensible wrap-count disambiguator or whether
+  timing has to go unavailable after a long enough gap.
+- **Whether delivery ever stretches rather than collapses.** The `stall` take is
+  the proof of value: if the transport intervals keep matching the playing while
+  the arrival intervals come apart, that settles which clock rhythm is read
+  from.
+- **Whether the origin needs mapping at all.** Measurement reads intervals, so
+  an unwrapped transport timeline with its own arbitrary origin, held within one
+  observation, may be enough. That would avoid continuously estimating an affine
+  transformation between two clock domains, with arrival time kept as the
+  observation clock and as a check on the transport one.
+
+Takes go in `takes/`, named for the platform, the instrument, and the take.
 
 ## What must not happen to this data
 

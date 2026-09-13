@@ -1,0 +1,47 @@
+{
+  "recorded_at": "2026-09-13T16:13:55.198320Z",
+  "take": "pulse",
+  "note": "",
+  "platform": {
+    "os": "ios",
+    "os_version": "Version 26.6.2 (Build 23G90)",
+    "debug": false
+  },
+  "instrument": {
+    "id": "712629B6-BF47-BDF6-C9F8-10C8931AEF16",
+    "name": "jam-7cb",
+    "transport": "ble"
+  },
+  "records": [
+    {"seq": 28, "kind": "delivery", "arrival_ms": 97506, "transport_ts": 5663, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 60, "velocity": 44, "sustain": null, "live": true},
+    {"seq": 29, "kind": "delivery", "arrival_ms": 98104, "transport_ts": 6255, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 62, "velocity": 48, "sustain": null, "live": true},
+    {"seq": 30, "kind": "delivery", "arrival_ms": 98151, "transport_ts": 6320, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 60, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 31, "kind": "delivery", "arrival_ms": 98691, "transport_ts": 6855, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 64, "velocity": 53, "sustain": null, "live": true},
+    {"seq": 32, "kind": "delivery", "arrival_ms": 98719, "transport_ts": 6894, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 62, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 33, "kind": "delivery", "arrival_ms": 99291, "transport_ts": 7454, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 64, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 34, "kind": "delivery", "arrival_ms": 99292, "transport_ts": 7455, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 65, "velocity": 51, "sustain": null, "live": true},
+    {"seq": 35, "kind": "delivery", "arrival_ms": 99861, "transport_ts": 8031, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 67, "velocity": 48, "sustain": null, "live": true},
+    {"seq": 36, "kind": "delivery", "arrival_ms": 99921, "transport_ts": 8087, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 65, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 37, "kind": "delivery", "arrival_ms": 100461, "transport_ts": 422, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 69, "velocity": 44, "sustain": null, "live": true},
+    {"seq": 38, "kind": "delivery", "arrival_ms": 100462, "transport_ts": 439, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 67, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 39, "kind": "delivery", "arrival_ms": 101043, "transport_ts": 1024, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 71, "velocity": 46, "sustain": null, "live": true},
+    {"seq": 40, "kind": "delivery", "arrival_ms": 101074, "transport_ts": 1033, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 69, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 41, "kind": "delivery", "arrival_ms": 101646, "transport_ts": 1606, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 72, "velocity": 49, "sustain": null, "live": true},
+    {"seq": 42, "kind": "delivery", "arrival_ms": 101647, "transport_ts": 1622, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 71, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 43, "kind": "delivery", "arrival_ms": 102216, "transport_ts": 2185, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 71, "velocity": 41, "sustain": null, "live": true},
+    {"seq": 44, "kind": "delivery", "arrival_ms": 102246, "transport_ts": 2208, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 72, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 45, "kind": "delivery", "arrival_ms": 102829, "transport_ts": 2775, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 69, "velocity": 36, "sustain": null, "live": true},
+    {"seq": 46, "kind": "delivery", "arrival_ms": 102861, "transport_ts": 2833, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 71, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 47, "kind": "delivery", "arrival_ms": 103372, "transport_ts": 3331, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 67, "velocity": 36, "sustain": null, "live": true},
+    {"seq": 48, "kind": "delivery", "arrival_ms": 103444, "transport_ts": 3392, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 69, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 49, "kind": "delivery", "arrival_ms": 103956, "transport_ts": 3912, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 65, "velocity": 43, "sustain": null, "live": true},
+    {"seq": 50, "kind": "delivery", "arrival_ms": 103957, "transport_ts": 3934, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 67, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 51, "kind": "delivery", "arrival_ms": 104494, "transport_ts": 4479, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 64, "velocity": 50, "sustain": null, "live": true},
+    {"seq": 52, "kind": "delivery", "arrival_ms": 104511, "transport_ts": 4485, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 65, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 53, "kind": "delivery", "arrival_ms": 105079, "transport_ts": 5061, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 62, "velocity": 54, "sustain": null, "live": true},
+    {"seq": 54, "kind": "delivery", "arrival_ms": 105126, "transport_ts": 5096, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 64, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 55, "kind": "delivery", "arrival_ms": 105711, "transport_ts": 5686, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOn", "note": 60, "velocity": 39, "sustain": null, "live": true},
+    {"seq": 56, "kind": "delivery", "arrival_ms": 105739, "transport_ts": 5723, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 62, "velocity": 64, "sustain": null, "live": true},
+    {"seq": 57, "kind": "delivery", "arrival_ms": 106237, "transport_ts": 6202, "device": "712629B6-BF47-BDF6-C9F8-10C8931AEF16", "transport": "ble", "session": "midi-4", "channel": 0, "message": "noteOff", "note": 60, "velocity": 64, "sustain": null, "live": true}
+  ]
+}
