@@ -117,32 +117,47 @@ current one. `session` on a delivery is the subscription that delivered it;
 
 ## What the takes show
 
-`analyze.py takes/*.json`. Four takes, all on **iOS 26.6.2**, over BLE, from one
-phone. Two instruments, and they do not behave alike:
+`analyze.py takes/*.json`. Six takes: a JamCorder adapter on iOS and on Android,
+and a Yamaha P-525 connected directly on iOS, all over BLE.
 
-|                                   | JamCorder adapter          | Yamaha P-525 direct                  |
-| --------------------------------- | -------------------------- | ------------------------------------ |
-| Tick                              | 1.00000 ms per count       | 1.00009e-06 ms per count             |
-| Granularity                       | every step a multiple of 1 | every step a multiple of 1000000     |
-| Wrap                              | 8192, seen three times     | none in 23 s, starting near 29 hours |
-| Drift against arrival             | 0 ms and 1 ms              | 0 ms and 0 ms                        |
-| Jitter                            | -26 to +25 ms              | -14 to +16 ms                        |
-| **Simultaneous notes kept apart** | **8 of 8**                 | **3 of 10**                          |
-| **Onset dispersion, MAD**         | **8.5 vs 15.5 arrival**    | **14.0 vs 16.0 arrival**             |
+|                                        | JamCorder, iOS  | JamCorder, Android | P-525 direct, iOS |
+| -------------------------------------- | --------------- | ------------------ | ----------------- |
+| Route                                  | ble (inferred)  | **ble (recorded)** | host (inferred)   |
+| Tick, ms per count                     | 1.00000         | 0.99941            | 1.00009e-06       |
+| Granularity                            | 1               | 1                  | 1000000           |
+| Wrap                                   | 8192, 3 seen    | 8192, 5 seen       | none in 23 s      |
+| Drift against arrival                  | 0 ms, 1 ms      | 0 ms, 0 ms         | 0 ms, 0 ms        |
+| Jitter                                 | -26 to +25 ms   | -30 to +30 ms      | -14 to +16 ms     |
+| **Chord spread, arrival vs transport** | **16 vs 18 ms** | **6 vs 15 ms**     | **11 vs 10 ms**   |
+| **Onset MAD, transport vs arrival**    | **8.5 vs 15.5** | **15.5 vs 21.5**   | **14.0 vs 16.0**  |
 
-The adapter's stamp is a 1 ms counter modulo 8192, which is the BLE MIDI
-specification's 13-bit timestamp: six bits in the header byte and seven in the
-timestamp byte. The piano's is a nanosecond counter with 1 ms resolution,
-already at 29 hours when the take started, and it never wraps.
+**Android preserves the BLE MIDI timebase.** Same 8192 modulus, same 1 ms tick,
+the same zero cumulative drift over a take. Whatever differs between the
+platforms, the clock the wire carries is not it, and one BLE-route contract can
+cover both.
 
-**The prediction was wrong, and the reason matters more than the prediction.**
-These are not two devices disagreeing about a clock. They are two _routes_. The
-plugin delivers by the host's own MIDI stack or by the BLE transport the app
-injects, and reports which on every message. A BLE instrument the operating
-system has paired into CoreMIDI arrives by the host route; one the app's BLE
-transport is talking to arrives by the BLE route. KeyRecall was discarding that
-field and reading the device's own description of itself instead, so the two
-looked identical in the trace.
+**The route field works, and the adapter goes by the BLE route on Android.**
+That half of the causal story is now observed rather than inferred. The other
+half, that the directly-connected piano goes by the host route, still rests on
+the shape of its clock: those takes predate the field.
+
+### What a chord costs each clock
+
+Counting how often several notes land in one arrival millisecond does not
+compare across platforms, because they coalesce differently: iOS put eight
+chords into single milliseconds, Android almost none. The width of a group
+somebody struck together does compare.
+
+```text
+JamCorder, Android   played 15 ms wide, arrival says 6 ms
+JamCorder, iOS       played 18 ms wide, arrival says 16 ms
+P-525 direct, iOS    played 10 ms wide, arrival says 11 ms
+```
+
+On the BLE route, delivery narrows a chord and the transport clock knows how
+wide it really was; Android narrows it by more than half. On the host route the
+two clocks say the same thing, which is the clearest statement yet that a
+host-receive stamp carries nothing about onset that arrival does not.
 
 ### One route carries the instrument's time, the other carries the host's
 
@@ -206,17 +221,18 @@ say what those are rather than leaving them to be guessed at.
 
 ### What is still open
 
-- **Which route each instrument arrives by**, observed rather than inferred, and
-  whether an instrument can change route between sessions.
+- **Which route the directly-connected piano arrives by**, observed rather than
+  inferred, and whether an instrument can change route between sessions. One
+  re-recorded iOS pair settles the first half.
 - **What the host route is worth.** It cannot carry onset timing, and that is
   settled. Whether it still protects against Dart-side scheduling delay is not,
   and `stall` on a host-routed instrument is what answers it. The layer this
   feeds is likely capability-based rather than binary: source-timed, host-timed,
   or unavailable.
-- **What Android routes by.** The wire format is the same specification, so a
-  difference there is the plugin or the platform not preserving what the wire
-  carried. Which route its BLE instruments arrive by is the thing to read off
-  the trace first, since that is what decided the answer here.
+- **Whether Android also exposes a host route.** Its adapter arrives by the BLE
+  route and preserves the wire's clock. Whether a directly-paired instrument
+  there lands on the host route the way the piano does on iOS is untested, and
+  route selection may well differ by platform.
 - **Unwrapping across a silence.** No take has a gap anywhere near 8192 ms, so
   nothing here tests it. A pause long enough to hide a whole epoch cannot be
   resolved from stamps alone, and the `pause` take is what says whether arrival

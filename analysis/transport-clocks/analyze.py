@@ -26,6 +26,8 @@ from pathlib import Path
 
 # What a wrap looks like: the stamp went backward while arrival went forward.
 # The modulus is then whatever makes the two clocks agree again.
+_chordWindowMs = 80
+
 KNOWN_MODULI = [8192, 16384, 32768, 65536, 1 << 24, 1 << 32]
 
 
@@ -207,6 +209,35 @@ def onsets(rows, timeline, scale):
         round((strikes[i][1] - strikes[i - 1][1]) * scale)
         for i in range(1, len(strikes))
     ]
+    # How wide a struck chord looks through each clock. Counting how often
+    # several notes land in one arrival millisecond does not compare across
+    # platforms, because they coalesce differently; the spread of a group
+    # somebody played together does.
+    chords = []
+    group = [strikes[0]]
+    for strike in strikes[1:]:
+        if strike[0] - group[-1][0] <= _chordWindowMs:
+            group.append(strike)
+        else:
+            if len(group) > 1:
+                chords.append(group)
+            group = [strike]
+    if len(group) > 1:
+        chords.append(group)
+    if chords:
+        widths = [
+            (
+                group[-1][0] - group[0][0],
+                round((group[-1][1] - group[0][1]) * scale),
+            )
+            for group in chords
+        ]
+        print(
+            f"    chords: {len(widths)} struck together, spread "
+            f"{statistics.median(w for w, _ in widths):.0f} ms by arrival, "
+            f"{statistics.median(t for _, t in widths):.0f} ms by transport"
+        )
+
     for label, series in (("arrival", by_arrival), ("transport", by_transport)):
         median = statistics.median(series)
         spread = statistics.median([abs(value - median) for value in series])
