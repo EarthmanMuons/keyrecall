@@ -89,7 +89,11 @@ void main() {
       final first = await loopOf(container);
       final firstId = first.presented!.decision.attemptId;
 
-      await container.read(practiceLoopProvider.notifier).finish();
+      await container
+          .read(practiceLoopProvider.notifier)
+          .finish(
+            AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+          );
       final next = container.read(practiceLoopProvider).value!;
 
       expect(next.lastCommitted, isNotNull);
@@ -120,7 +124,14 @@ void main() {
     addTearDown(subscription.close);
 
     final notifier = container.read(practiceLoopProvider.notifier);
-    await Future.wait([notifier.finish(), notifier.finish()]);
+    await Future.wait([
+      notifier.finish(
+        AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+      ),
+      notifier.finish(
+        AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+      ),
+    ]);
     final after = container.read(practiceLoopProvider).value!;
 
     expect(
@@ -147,7 +158,9 @@ void main() {
 
     await container
         .read(practiceLoopProvider.notifier)
-        .finish(termination: AttemptTermination.inactivityTimeout);
+        .finish(
+          AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+        );
     final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
 
     expect(closed.closure.termination, AttemptTermination.inactivityTimeout);
@@ -162,20 +175,19 @@ void main() {
   });
 
   test('an input reset interrupts the attempt without evidence', () async {
-    final container = ProviderContainer(
-      overrides: [
-        profileRepositoryProvider.overrideWith((ref) async => profiles),
-        inProcessScheduling,
-        practiceStoreProvider.overrideWith((ref) async => practice),
-        attemptTranscriptProvider.overrideWith(_InterruptedCapture.new),
-      ],
-    );
-    addTearDown(container.dispose);
+    final container = launch();
     await place(container);
     final before = await loopOf(container);
     final learnerBefore = learnerStateHash(before.session.state);
-    expect(container.read(attemptTranscriptProvider).length, 3);
-    await container.read(practiceLoopProvider.notifier).finish();
+
+    await container
+        .read(practiceLoopProvider.notifier)
+        .finish(
+          AttemptCompletion(
+            termination: AttemptTermination.learnerStopped,
+            capture: _interruptedAfterThreeNotes,
+          ),
+        );
     final after = container.read(practiceLoopProvider).value!;
     final closed = after.lastCommitted!;
 
@@ -205,7 +217,9 @@ void main() {
 
       await container
           .read(practiceLoopProvider.notifier)
-          .finish(termination: AttemptTermination.inputInterrupted);
+          .finish(
+            AttemptCompletion.unplayed(AttemptTermination.inputInterrupted),
+          );
       final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
 
       expect(closed.closure.termination, AttemptTermination.inputInterrupted);
@@ -224,21 +238,23 @@ void main() {
   test(
     'an attempt interrupted before a note is interrupted, not silent',
     () async {
-      final container = ProviderContainer(
-        overrides: [
-          profileRepositoryProvider.overrideWith((ref) async => profiles),
-          inProcessScheduling,
-          practiceStoreProvider.overrideWith((ref) async => practice),
-          attemptTranscriptProvider.overrideWith(_InterruptedBeforeAnyNote.new),
-        ],
-      );
-      addTearDown(container.dispose);
+      final container = launch();
       await place(container);
       await loopOf(container);
 
       await container
           .read(practiceLoopProvider.notifier)
-          .finish(termination: AttemptTermination.inactivityTimeout);
+          .finish(
+            AttemptCompletion(
+              termination: AttemptTermination.inactivityTimeout,
+              capture: AttemptCapture(
+                transcript: PerformanceTranscript.empty,
+                isInterrupted: true,
+                fault: InputIntegrityFault.observationGap,
+                recording: 1,
+              ),
+            ),
+          );
       final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
 
       expect(closed.closure.termination, AttemptTermination.inputInterrupted);
@@ -255,11 +271,50 @@ void main() {
     },
   );
 
+  // The seam the ownership fix left behind: the screen decided one terminal
+  // fact and the commit reconstructed its evidence from a mutable provider, a
+  // moment later. The two reads no longer exist.
+  test('what was played is carried, not looked up again', () async {
+    final container = launch();
+    await place(container);
+    await loopOf(container);
+
+    final notifier = container.read(attemptTranscriptProvider.notifier);
+    notifier.start(TechnicalMaterial('C', ScaleForm.major));
+    final played = container.read(attemptTranscriptProvider);
+    // Whatever happens to the transcript after the attempt ended, and
+    // discarding it is what really happens, cannot change what is committed.
+    notifier.discard();
+    expect(container.read(attemptTranscriptProvider).isEmpty, isTrue);
+
+    await container
+        .read(practiceLoopProvider.notifier)
+        .finish(
+          AttemptCompletion(
+            termination: AttemptTermination.learnerStopped,
+            capture: AttemptCapture(
+              transcript: _interruptedAfterThreeNotes.transcript,
+              recording: played.recording,
+            ),
+          ),
+        );
+    final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
+
+    expect(closed.closure.termination, AttemptTermination.learnerStopped);
+    expect(
+      closed.closure.measurement,
+      isA<Measured>(),
+      reason: 'three notes were played, whatever the provider holds now',
+    );
+  });
+
   test('history survives a relaunch', () async {
     final first = launch();
     await place(first);
     await loopOf(first);
-    await first.read(practiceLoopProvider.notifier).finish();
+    await first
+        .read(practiceLoopProvider.notifier)
+        .finish(AttemptCompletion.unplayed(AttemptTermination.learnerStopped));
     first.dispose();
 
     final second = await loopOf(launch());
@@ -333,7 +388,11 @@ void main() {
         final container = launch();
         await place(container);
         await loopOf(container);
-        await container.read(practiceLoopProvider.notifier).finish();
+        await container
+            .read(practiceLoopProvider.notifier)
+            .finish(
+              AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+            );
         final resumed = container.read(practiceLoopProvider).value!;
 
         expect(resumed.attemptsRecorded, 1);
@@ -351,7 +410,11 @@ void main() {
       final container = launch();
       await place(container);
       await loopOf(container);
-      await container.read(practiceLoopProvider.notifier).finish();
+      await container
+          .read(practiceLoopProvider.notifier)
+          .finish(
+            AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+          );
       final committed = container
           .read(practiceLoopProvider)
           .value!
@@ -377,35 +440,23 @@ void main() {
   });
 }
 
-class _InterruptedCapture extends AttemptTranscriptNotifier {
-  @override
-  AttemptCapture build() {
-    final material = TechnicalMaterial('C', ScaleForm.major);
-    var transcript = PerformanceTranscript.empty;
-    for (final (index, midiNote) in [60, 62, 64].indexed) {
-      transcript = transcript.appending(
-        pitch: spellObservedPitch(midiNote, material: material),
-        timestampMs: 1000 + index * 100,
-      );
-    }
-    return AttemptCapture(
-      transcript: transcript,
-      isInterrupted: true,
-      recording: 1,
+/// Three notes, and then the input boundary stopped vouching for them.
+final AttemptCapture _interruptedAfterThreeNotes = () {
+  final material = TechnicalMaterial('C', ScaleForm.major);
+  var transcript = PerformanceTranscript.empty;
+  for (final (index, midiNote) in [60, 62, 64].indexed) {
+    transcript = transcript.appending(
+      pitch: spellObservedPitch(midiNote, material: material),
+      timestampMs: 1000 + index * 100,
     );
   }
-}
-
-/// A capture the input boundary broke before anything was played.
-class _InterruptedBeforeAnyNote extends AttemptTranscriptNotifier {
-  @override
-  AttemptCapture build() => AttemptCapture(
-    transcript: PerformanceTranscript.empty,
+  return AttemptCapture(
+    transcript: transcript,
     isInterrupted: true,
-    fault: InputIntegrityFault.observationGap,
+    fault: InputIntegrityFault.sourceFailure,
     recording: 1,
   );
-}
+}();
 
 class _RecordingEraseStore extends InMemoryPracticeStore {
   final List<String> erased = [];

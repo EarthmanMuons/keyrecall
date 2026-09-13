@@ -53,7 +53,8 @@ void main() {
               key: ValueKey(guidance.independence),
               exercise: exerciseUnder(guidance),
               presentation: presentation,
-              onFinish: (termination) async => finished.add(termination),
+              onFinish: (completion) async =>
+                  finished.add(completion.termination),
             ),
           ),
         ),
@@ -142,7 +143,8 @@ void main() {
           home: Scaffold(
             body: AttemptView(
               exercise: exerciseUnder(GuidanceContext.unguided),
-              onFinish: (termination) async => finished.add(termination),
+              onFinish: (completion) async =>
+                  finished.add(completion.termination),
             ),
           ),
         ),
@@ -612,7 +614,7 @@ void main() {
               key: key,
               exercise: exerciseUnder(GuidanceContext.unguided),
               onFinish: (_) async {},
-              onDecline: () async {},
+              onDecline: (_) async {},
             ),
           ),
         ),
@@ -773,7 +775,8 @@ void main() {
                 key: const ValueKey('acquisition'),
                 exercise: parent,
                 acquisition: task,
-                onFinish: (termination) async => finished.add(termination),
+                onFinish: (completion) async =>
+                    finished.add(completion.termination),
               ),
             ),
           ),

@@ -45,14 +45,21 @@ An `InputTemporalFaultEvent` says that has happened and why:
 | `timestampRegression` | time ran backward within one observation            |
 | `observationGap`      | observation was suspended, so continuity is unknown |
 
-**An attempt gets one terminal disposition.** Once the boundary has said the
-observation broke, nothing may reinterpret the same attempt as an ordinary one,
-and an attempt reads only the capture its own recording produced. Both halves
-were needed: the screen for the next exercise is built while the last attempt's
-capture is still in the provider, so it read that interruption as its own and
-ended before a note was played, and the commit then re-derived the disposition
-from a capture that had since been discarded and recorded an attempt nobody
-made.
+**An attempt gets one terminal disposition, and carries its own evidence.** Once
+the boundary has said the observation broke, nothing may reinterpret the same
+attempt as an ordinary one. Two rules keep that true, on opposite sides of the
+attempt's life:
+
+- an attempt reads only the capture its own recording produced, so the screen
+  for the next exercise cannot act on the interruption that ended the last one;
+- what closes an attempt carries the capture with it, so the commit reads the
+  evidence as it stood at that instant rather than looking it up again from a
+  provider that has since moved on.
+
+Both were needed, and the bug that produced them needed both to happen: the next
+exercise's screen read the previous interruption as its own and ended before a
+note was played, and the commit then re-derived the disposition from a capture
+that had been discarded in between, recording an attempt nobody made.
 
 **A fault is terminal for the interval it ends.** The reducer stops admitting
 input, and nothing reopens the observation until a caller explicitly begins a
@@ -185,6 +192,8 @@ them:
 - once interrupted, a capture never becomes measurable again, and nothing
   downstream reclassifies the attempt it ended;
 - a capture belongs to the recording that produced it, and to no other attempt;
+- what an attempt is committed from is what it ended with, not what the
+  transcript holds when the commit runs;
 - state reconstructed by replaying the normalized events equals the reducer's
   live snapshot;
 - a release of a key nobody pressed cannot create a sounding note;

@@ -440,20 +440,6 @@ final practiceLoopProvider =
       retry: (_, _) => null,
     );
 
-/// Whether this attempt lost its input, however that reached here.
-///
-/// An attempt gets one terminal disposition. Once the input boundary has said
-/// the observation broke, nothing may reinterpret the same attempt as an
-/// ordinary one: the capture and the termination the screen closed with are
-/// two readings of the same fact, and either of them saying so settles it.
-///
-/// Both have to be consulted because they can disagree. The screen observes
-/// the interruption and the capture is discarded on its way out, which left
-/// the commit reading an empty, uninterrupted capture and recording an
-/// attempt nobody played rather than one whose instrument dropped.
-bool _wasInterrupted(AttemptCapture capture, AttemptTermination termination) =>
-    capture.isInterrupted || termination == AttemptTermination.inputInterrupted;
-
 class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// Whether a write is already running.
   ///
@@ -520,12 +506,13 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// recovery context that offers the same exercise with the material shown.
   ///
   /// Single-flight for the same reason [finish] is.
-  Future<void> decline() async {
+  Future<void> decline(AttemptCompletion completion) async {
     final current = state.value;
     if (_writing || current == null || !current.isAwaitingAnswer) return;
-    // Presented rather than assumed: the session refuses a decline once
-    // anything has been played, and it can only check that if it is shown.
-    final transcript = ref.read(attemptTranscriptProvider).transcript;
+    // Carried rather than looked up: the session refuses a decline once
+    // anything has been played, and what this attempt played is not whatever
+    // the transcript holds by the time this runs.
+    final transcript = completion.transcript;
 
     // No loading state: committing is an append and a scheduler decision, and
     // replacing the screen with a spinner for that is how an app teaches
@@ -571,25 +558,22 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   ///
   /// An attempt the learner stopped partway is recorded like any other. Where
   /// it ran out and what the waits were are what the task was offered for.
-  Future<void> finishAcquisition({
-    AttemptTermination termination = AttemptTermination.learnerStopped,
-  }) async {
+  Future<void> finishAcquisition(AttemptCompletion completion) async {
     final current = state.value;
     if (_writing || current == null || current.acquisition == null) return;
-    final capture = ref.read(attemptTranscriptProvider);
 
     _writing = true;
     try {
       state = await AsyncValue.guard(() async {
         final record = await current.session.closeAcquisition(
-          capture.transcript,
+          completion.transcript,
           at: DateTime.now().toUtc(),
           // An interrupted capture is still an observation of what was played,
           // and what it is not is the learner stopping. Recording it as an
           // ordinary attempt would put an incomplete traversal down to them.
-          termination: _wasInterrupted(capture, termination)
+          termination: completion.isInterrupted
               ? AttemptTermination.inputInterrupted
-              : termination,
+              : completion.termination,
         );
         return _decide(
           PracticeLoopState(
@@ -621,13 +605,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// measuring would pick one.
   ///
   /// Single-flight for the same reason [decline] is.
-  Future<void> finish({
-    AttemptTermination termination = AttemptTermination.learnerStopped,
-  }) async {
+  Future<void> finish(AttemptCompletion completion) async {
     final current = state.value;
     if (_writing || current == null || !current.isAwaitingAnswer) return;
-    final capture = ref.read(attemptTranscriptProvider);
-    final transcript = capture.transcript;
+    final transcript = completion.transcript;
 
     // No loading state: committing is an append and a scheduler decision, and
     // replacing the screen with a spinner for that is how an app teaches
@@ -635,7 +616,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     _writing = true;
     try {
       state = await AsyncValue.guard(() async {
-        if (_wasInterrupted(capture, termination)) {
+        if (completion.isInterrupted) {
           final record = await current.session.closeUnmeasured(
             termination: AttemptTermination.inputInterrupted,
             reason: MeasurementUnavailableReason.inputInterrupted,
@@ -653,10 +634,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
 
         final unplayed =
             transcript.isEmpty &&
-            termination != AttemptTermination.learnerStopped;
+            completion.termination != AttemptTermination.learnerStopped;
         if (unplayed) {
           final record = await current.session.closeUnmeasured(
-            termination: termination,
+            termination: completion.termination,
             reason: MeasurementUnavailableReason.nothingPlayed,
             observedWallTime: DateTime.now().toUtc(),
           );
@@ -672,7 +653,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
 
         final closed = await current.session.closeFromPerformance(
           transcript,
-          termination: termination,
+          termination: completion.termination,
           observedWallTime: DateTime.now().toUtc(),
         );
         await _recordCoordination(closed.record, closed.reading);

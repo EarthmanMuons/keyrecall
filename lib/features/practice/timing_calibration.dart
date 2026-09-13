@@ -261,22 +261,16 @@ class _TimingCalibrationScreenState
   /// Whether a take is on screen, as opposed to the run's own display.
   bool _playing = false;
 
-  /// The recording that was in the transcript before this take started.
-  ///
-  /// The take is played through the ordinary attempt screen, so this screen
-  /// does not mint the recording and cannot hold its name. What it can do is
-  /// refuse to record a capture that is still the one from before: a take
-  /// that ended without ever opening its window would otherwise be written
-  /// down as the previous cell's playing.
-  int _priorRecording = 0;
-
-  Future<void> _finish(int position, CalibrationCell cell) async {
-    final capture = ref.read(attemptTranscriptProvider);
-    if (capture.isInterrupted || capture.recording == _priorRecording) {
+  Future<void> _finish(
+    int position,
+    CalibrationCell cell,
+    AttemptCompletion completion,
+  ) async {
+    if (completion.isInterrupted) {
       setState(() => _playing = false);
       return;
     }
-    final transcript = capture.transcript;
+    final transcript = completion.transcript;
     if (transcript.isNotEmpty) {
       await ref
           .read(calibrationRunProvider.notifier)
@@ -319,7 +313,7 @@ class _TimingCalibrationScreenState
         body: AttemptView(
           key: ValueKey(position),
           exercise: cell.exercise,
-          onFinish: (_) => _finish(position, cell),
+          onFinish: (completion) => _finish(position, cell, completion),
         ),
       );
     }
@@ -342,10 +336,7 @@ class _TimingCalibrationScreenState
           : _UpNext(
               run: run,
               position: position,
-              onPlay: () => setState(() {
-                _priorRecording = ref.read(attemptTranscriptProvider).recording;
-                _playing = true;
-              }),
+              onPlay: () => setState(() => _playing = true),
             ),
     );
   }

@@ -7,6 +7,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/practice_focus.dart';
+import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
 import '../support/scheduler_override.dart';
@@ -125,7 +126,9 @@ void main() {
     await container.read(practiceLoopProvider.future);
     await container
         .read(practiceLoopProvider.notifier)
-        .finish(termination: AttemptTermination.inactivityTimeout);
+        .finish(
+          AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+        );
 
     final loop = container.read(practiceLoopProvider).value!;
     expect(loop.idle, PracticeIdleReason.invalidScope);

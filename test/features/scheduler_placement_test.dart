@@ -1,11 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall/features/input/input.dart';
+import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
 void main() {
@@ -72,7 +74,11 @@ void main() {
       expect(decided.presented, isNotNull);
       expect(decided.session.session.attemptsThisSession, scheduler.decisions);
 
-      await onWorker.read(practiceLoopProvider.notifier).decline();
+      await onWorker
+          .read(practiceLoopProvider.notifier)
+          .decline(
+            AttemptCompletion.unplayed(AttemptTermination.learnerDeclined),
+          );
     }
     expect(scheduler.decisions, greaterThanOrEqualTo(2));
   });

@@ -249,8 +249,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           exercise: value.acquisition!.task.parent,
           acquisition: value.acquisition!.task,
           metBefore: value.hasMet(value.acquisition!.task.parent.material),
-          onFinish: (termination) =>
-              notifier.finishAcquisition(termination: termination),
+          onFinish: notifier.finishAcquisition,
           onUnderWay: () => setState(() => _playing = attemptId),
           onBackToReady: () => setState(() => _playing = null),
         ),
@@ -261,7 +260,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           exercise: value.exercise!,
           metBefore: value.hasMet(value.exercise!.material),
           admittedBy: value.presented?.decision.decision.challengeBypass,
-          onFinish: (termination) => notifier.finish(termination: termination),
+          onFinish: notifier.finish,
           onDecline: notifier.decline,
           onUnderWay: () => setState(() => _playing = attemptId),
           onBackToReady: () => setState(() => _playing = null),
@@ -643,13 +642,20 @@ class AttemptView extends ConsumerStatefulWidget {
   /// because a long wait is the observation this task exists to make.
   final AcquisitionTask? acquisition;
 
-  /// Commits what was played and moves on, saying how the attempt ended.
-  final Future<void> Function(AttemptTermination) onFinish;
+  /// Commits what was played and moves on.
+  ///
+  /// Carries the capture as well as the way the attempt ended, so what closed
+  /// the attempt and the evidence it closed with describe the same instant.
+  final Future<void> Function(AttemptCompletion) onFinish;
 
   /// Records that the material could not be retrieved, and moves on.
   ///
+  /// Carries the capture for the same reason [onFinish] does: the session
+  /// refuses a decline once anything has been played, and what this attempt
+  /// played is not what the provider happens to hold.
+  ///
   /// Absent where there is no loop to record it, which is the debug case list.
-  final Future<void> Function()? onDecline;
+  final Future<void> Function(AttemptCompletion)? onDecline;
 
   /// Says the presentation has started, for a screen that gives it the room
   /// the app bar was taking.
@@ -971,10 +977,14 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _finishing = true;
     _watchdog?.cancel();
     unawaited(_pulse.stop());
+    final completion = AttemptCompletion(
+      termination: AttemptTermination.learnerDeclined,
+      capture: _capture,
+    );
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
     await _handOverTheScreen();
-    await widget.onDecline!();
+    await widget.onDecline!(completion);
   }
 
   /// Sends the instrument off the bottom, if it is still there, and waits for
@@ -993,11 +1003,18 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _finishing = true;
     _watchdog?.cancel();
     unawaited(_pulse.stop());
+    // Read before the screen is handed over, and carried rather than left to
+    // be looked up again: an attempt's disposition and its evidence are one
+    // fact about one instant.
+    final completion = AttemptCompletion(
+      termination: termination,
+      capture: _capture,
+    );
     ref.read(attemptTranscriptProvider.notifier).stop();
     setState(() => _phase = _Phase.finishing);
     await _handOverTheScreen();
     // What was played is the evidence. Nobody is asked how it went.
-    await widget.onFinish(termination);
+    await widget.onFinish(completion);
   }
 
   @override

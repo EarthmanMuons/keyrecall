@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import '../input/input.dart';
 import 'latency_probe.dart';
@@ -66,6 +67,43 @@ class AttemptCapture {
   bool get isEmpty => transcript.isEmpty;
   bool get isNotEmpty => transcript.isNotEmpty;
   List<PlayedNote> get notes => transcript.notes;
+}
+
+/// An attempt, as it ended.
+///
+/// The way it ended and what was played, taken together at the instant
+/// recording stopped. They are one attempt's terminal disposition and its
+/// evidence, and they travel as one because deriving the second from the
+/// provider when the first arrives reads whatever is in it by then: an
+/// interrupted attempt was once recommitted as one nobody played, because the
+/// capture had been discarded between the two reads.
+@immutable
+class AttemptCompletion {
+  /// Which of the ways an attempt can end this was.
+  final AttemptTermination termination;
+
+  /// What was played, as it stood when the attempt ended.
+  final AttemptCapture capture;
+
+  const AttemptCompletion({required this.termination, required this.capture});
+
+  /// Nothing played, however the attempt ended.
+  AttemptCompletion.unplayed(this.termination) : capture = AttemptCapture.none;
+
+  /// What was played.
+  PerformanceTranscript get transcript => capture.transcript;
+
+  /// Whether this attempt lost its input, however that reached here.
+  ///
+  /// Two readings of one fact, and either saying so settles it. The capture
+  /// holds what the input boundary observed; the termination holds what the
+  /// screen closed on. A caller that only had one of them would have to guess.
+  bool get isInterrupted =>
+      capture.isInterrupted ||
+      termination == AttemptTermination.inputInterrupted;
+
+  /// Why the input boundary stopped vouching for it, where it said.
+  InputIntegrityFault? get fault => capture.fault;
 }
 
 class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {

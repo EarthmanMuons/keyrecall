@@ -8,6 +8,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/focus_sheet.dart';
 import 'package:keyrecall/features/practice/practice_focus.dart';
+import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
 import '../support/scheduler_override.dart';
@@ -104,7 +105,9 @@ void main() {
     // context and put the failed exercise back in front of the learner.
     await container
         .read(practiceLoopProvider.notifier)
-        .finish(termination: AttemptTermination.inactivityTimeout);
+        .finish(
+          AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+        );
 
     final loop = container.read(practiceLoopProvider).value!;
     expect(loop.presented, isNotNull);
@@ -122,7 +125,9 @@ void main() {
     await container.read(practiceLoopProvider.future);
     await container
         .read(practiceLoopProvider.notifier)
-        .finish(termination: AttemptTermination.inactivityTimeout);
+        .finish(
+          AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+        );
 
     final loop = container.read(practiceLoopProvider).value!;
     expect(loop.presented, isNotNull, reason: 'nothing was excluded');
@@ -149,7 +154,9 @@ void main() {
           ),
         );
     await container.read(practiceLoopProvider.future);
-    await container.read(practiceLoopProvider.notifier).finish();
+    await container
+        .read(practiceLoopProvider.notifier)
+        .finish(AttemptCompletion.unplayed(AttemptTermination.learnerStopped));
 
     final loop = container.read(practiceLoopProvider).value!;
     expect(
