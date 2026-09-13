@@ -151,15 +151,19 @@ must not be confused. A gap wide enough to make two candidates fit yields
 
 **Decision.** Two different things, and the state machine keeps them apart.
 
-```text
-detecting  <->  unauthorized    either way, as the measured shape refines
-detecting   ->  active          a shape is authorized, and a sample anchors it
-active      ->  failed          continuity is lost
-failed      ->  failed          and stays lost
-anything    ->  detecting       a new observation or session
-```
+> While neither active nor failed, reclassification moves freely between
+> `detecting` and `unauthorized`, or enters `active` when the currently measured
+> shape becomes authorized. Once active, a shape change or a continuity loss
+> fails the observation, and only a new observation or session returns anything
+> to `detecting`.
 
-Only `active` can fail, and only a new observation clears it.
+Stated as the invariant rather than as a list of edges, because the edges are
+policy and the invariant is not. In particular **`unauthorized` reaches `active`
+directly.** Granularity is a running greatest common divisor, so a shape can
+narrow from an unfamiliar 200,000 straight to a characterized 100,000, and
+policy then moves from `unknownDomain` to `performance` with nothing making it
+transiently `detecting` on the way. A state machine that only authorized out of
+`detecting` would leave that clock unavailable forever.
 
 An authorized domain that then loses continuity **fails for the rest of that
 observation**: an ambiguous wrap, an implausible step, an unexplained
