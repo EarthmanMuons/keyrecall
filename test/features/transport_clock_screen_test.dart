@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/transport_clock_trace.dart';
+import 'package:keyrecall/layout.dart';
+import 'package:keyrecall/theme.dart';
 
 import '../support/silent_midi_transport.dart';
 
@@ -15,7 +17,16 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [silentMidiTransport],
-        child: const MaterialApp(home: TransportClockScreen()),
+        // The app's own Material, theme, and layout scope. A screen pumped
+        // under a bare MaterialApp is not the screen the app shows: this one
+        // reached a device drawing gray boxes where its controls were,
+        // because it had been written against the other Material library and
+        // could find neither the theme nor an ancestor to paint on.
+        child: MaterialApp(
+          theme: keyRecallTheme(lightColorScheme),
+          builder: (context, child) => LayoutScope(child: child!),
+          home: const TransportClockScreen(),
+        ),
       ),
     );
     await tester.pump();
@@ -51,6 +62,16 @@ void main() {
           reason: '$control is below the fold on $label',
         );
       }
+
+      // The shape of the failure that put them there twice: something in the
+      // column growing without bound, which is what a control below the fold
+      // is always downstream of.
+      final note = rectOf(tester, find.byType(TextField));
+      expect(
+        note.height,
+        lessThan(120),
+        reason: 'the note field has taken over the screen on $label',
+      );
     });
   }
 
