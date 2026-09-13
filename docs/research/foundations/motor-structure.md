@@ -162,12 +162,22 @@ analysis.
 
 All 96 records were mapped mechanically rather than assigned by hand.
 
-Hand Phase Records
-
----
-
-RH 0 4 RH 1 24 RH 2 3 RH 3 4 RH 4 4 RH 5 1 RH 6 8 LH 0 24 LH 1 4 LH 2 0 LH 3 3
-LH 4 4 LH 5 10 LH 6 3
+| Hand | Phase | Records |
+| ---- | ----- | ------- |
+| RH   | 0     | 4       |
+| RH   | 1     | 24      |
+| RH   | 2     | 3       |
+| RH   | 3     | 4       |
+| RH   | 4     | 4       |
+| RH   | 5     | 1       |
+| RH   | 6     | 8       |
+| LH   | 0     | 24      |
+| LH   | 1     | 4       |
+| LH   | 2     | 0       |
+| LH   | 3     | 3       |
+| LH   | 4     | 4       |
+| LH   | 5     | 10      |
+| LH   | 6     | 3       |
 
 Two useful observations follow:
 
@@ -299,15 +309,13 @@ rather than create a second latent family.
 
 Future alternative fingerings fit naturally into this result.
 
-```text
-Scale + Hand
-     |
-     +-- CanonicalFingering -----+
-     |                           |
-     `-- AlternativeFingering ---+--> MotorRealization
-                                        |
-                                        v
-                               DIATONIC_3_4_CYCLE
+```mermaid
+flowchart LR
+    SH[Scale + Hand] --> CF[CanonicalFingering]
+    SH --> AF[AlternativeFingering]
+    CF --> MR[MotorRealization]
+    AF --> MR
+    MR --> D34[DIATONIC_3_4_CYCLE]
 ```
 
 An alternative fingering may:
@@ -509,33 +517,26 @@ features rather than independent latent competencies. They may be promoted into
 learner-specific parameters later if longitudinal evidence demonstrates stable,
 diagnostically useful geometry- or phase-specific effects.
 
-```text
-Motor domain model
-------------------
+The motor domain model:
 
-CanonicalFingering
-        |
-        v
-MotorRealization
-        +-- MotorFamily
-        +-- phase
-        +-- boundaries
-        `-- geometry
-        |
-        v
-TechnicalEvents
+```mermaid
+flowchart TD
+    CF[CanonicalFingering] --> MR[MotorRealization]
+    MR --> MF[MotorFamily]
+    MR --> PH[phase]
+    MR --> BD[boundaries]
+    MR --> GE[geometry]
+    MR --> TE[TechnicalEvents]
+```
 
+The adaptive learner model:
 
-Adaptive learner model
-----------------------
-
-Task features + TechnicalEvents + MIDI performance
-                        |
-                        v
-                 Evidence model
-                        |
-                        v
-                Latent competencies
+```mermaid
+flowchart TD
+    TF[Task features] --> EM[Evidence model]
+    TE[TechnicalEvents] --> EM
+    MP[MIDI performance] --> EM
+    EM --> LC[Latent competencies]
 ```
 
 The motor taxonomy describes the structure of the task. The learner model

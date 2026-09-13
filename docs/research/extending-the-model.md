@@ -169,20 +169,12 @@ question is:
 
 A natural discovery path is:
 
-```text
-conditioned residual covariance
-        |
-        v
-candidate shared structural feature
-        |
-        v
-candidate competency and Q mapping
-        |
-        v
-offline replay and held-out comparison
-        |
-        v
-promotion only if predictive transfer improves
+```mermaid
+flowchart TD
+    A[conditioned residual covariance] --> B[candidate shared structural feature]
+    B --> C[candidate competency and Q mapping]
+    C --> D[offline replay and held-out comparison]
+    D --> E[promotion only if predictive transfer improves]
 ```
 
 This must be assessed across learners and held-out materials. Better fit on the

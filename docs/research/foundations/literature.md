@@ -184,7 +184,7 @@ the complete performance model.
 **Source:** [Settles2016]
 
 **Public implementation:**\
-https://github.com/duolingo/halflife-regression
+<https://github.com/duolingo/halflife-regression>
 
 ## ACT-R-derived practice optimization
 
@@ -204,18 +204,12 @@ This is important to KeyRecall because:
 
 This supports sessions that require no declared duration:
 
-```text
-start practicing
-      |
-choose useful next exercise
-      |
-observe performance
-      |
-update state
-      |
-choose useful next exercise
-      |
-     ...
+```mermaid
+flowchart TD
+    S[start practicing] --> C[choose useful next exercise]
+    C --> O[observe performance]
+    O --> U[update state]
+    U --> C
 ```
 
 **Source:** [PavlikAnderson2008]
@@ -330,12 +324,12 @@ complexity, acquisition stage, uncertainty, retention need, and practice goal.
 Carter, C. E., & Grahn, J. A. (2016). _Optimizing Music Learning: Exploring How
 Blocked and Interleaved Practice Schedules Affect Advanced Performance_.
 Frontiers in Psychology, 7, 1251.\
-https://doi.org/10.3389/fpsyg.2016.01251
+<https://doi.org/10.3389/fpsyg.2016.01251>
 
 Czyż, S. H., Wójcik, A. M., & Solarská, P. (2024). _The Effect of Contextual
 Interference on Transfer in Motor Learning - A Systematic Review and
 Meta-Analysis_. Frontiers in Psychology, 15, 1377122.\
-https://doi.org/10.3389/fpsyg.2024.1377122
+<https://doi.org/10.3389/fpsyg.2024.1377122>
 
 ## IRT, MIRT, and adaptive testing
 
@@ -371,12 +365,12 @@ exercises that reduce uncertainty across multiple competencies.
 **Sources:**
 
 Reckase, M. D. (2009). _Multidimensional Item Response Theory_. Springer.\
-https://doi.org/10.1007/978-0-387-89976-3
+<https://doi.org/10.1007/978-0-387-89976-3>
 
 van Groen, M. M., Eggen, T. J. H. M., & Veldkamp, B. P. (2016).
 _Multidimensional Computerized Adaptive Testing for Classifying Examinees With
 Within-Dimensionality_. Applied Psychological Measurement, 40(6).\
-https://doi.org/10.1177/0146621616648931
+<https://doi.org/10.1177/0146621616648931>
 
 ## Contextual bandits: later, not foundational
 
@@ -396,49 +390,38 @@ core.
 
 The following is a **KeyRecall design synthesis**, not a single published model:
 
-```text
-                       LEARNER STATE
-                            |
-              +-------------+-------------+
-              |                           |
-     transferable competencies       exact item memory
-              |                           |
-     logistic / DAS3H-like         HLR / ACT-R-like
-              |                           |
-              +-------------+-------------+
-                            |
-                     PERFORMANCE MODEL
-                            |
-           P(performance | task, learner, history)
-                            |
-          +-----------------+-----------------+
-          |                 |                 |
-    learning value     retention need    information value
-          |                 |                 |
-          +-----------------+-----------------+
-                            |
-                    difficulty/challenge
-                            |
-                    diversity/interleave
-                            |
-                         SCHEDULER
-                            |
-                    next useful exercise
+```mermaid
+flowchart TD
+    LS[LEARNER STATE] --> TC[transferable competencies<br/><i>logistic / DAS3H-like</i>]
+    LS --> IM[exact item memory<br/><i>HLR / ACT-R-like</i>]
+    TC --> PM["PERFORMANCE MODEL<br/><i>P(performance | task, learner, history)</i>"]
+    IM --> PM
+    PM --> LV[learning value]
+    PM --> RN[retention need]
+    PM --> IV[information value]
+    LV --> DC[difficulty / challenge]
+    RN --> DC
+    IV --> DC
+    DC --> DI[diversity / interleave]
+    DI --> SCH[SCHEDULER]
+    SCH --> NX[next useful exercise]
 ```
 
 Research precedent by requirement:
 
-KeyRecall requirement Research foundation
-
----
-
-Persistent transferable state Knowledge tracing, PFA, logistic KT Multi-skill
-exercises PFA, DAS3H, multidimensional models Forgetting of shared skills DAS3H
-Exact-item memory HLR, ACT-R-derived memory models Irregular elapsed time HLR,
-DAS3H, ACT-R scheduling Adaptive difficulty Challenge Point Framework Objective
-performance strength ARTS Initial level setting IRT/MIRT, CAT
-Information-seeking practice CAT/MIRT Interleaving Contextual-interference
-research Future policy optimization Contextual bandits
+| KeyRecall requirement          | Research foundation                 |
+| ------------------------------ | ----------------------------------- |
+| Persistent transferable state  | Knowledge tracing, PFA, logistic KT |
+| Multi-skill exercises          | PFA, DAS3H, multidimensional models |
+| Forgetting of shared skills    | DAS3H                               |
+| Exact-item memory              | HLR, ACT-R-derived memory models    |
+| Irregular elapsed time         | HLR, DAS3H, ACT-R scheduling        |
+| Adaptive difficulty            | Challenge Point Framework           |
+| Objective performance strength | ARTS                                |
+| Initial level setting          | IRT/MIRT, CAT                       |
+| Information-seeking practice   | CAT/MIRT                            |
+| Interleaving                   | Contextual-interference research    |
+| Future policy optimization     | Contextual bandits                  |
 
 ## Transferable competency vs. exact item state
 
@@ -475,15 +458,13 @@ retrieval**.
 
 A provisional hierarchy remains plausible:
 
-```text
-SCALE_TOPOLOGY
-|
-+-- MAJOR
-|
-`-- MINOR
-    +-- NATURAL_MINOR
-    +-- HARMONIC_MINOR
-    `-- MELODIC_MINOR
+```mermaid
+flowchart TD
+    T[SCALE_TOPOLOGY] --> MAJ[MAJOR]
+    T --> MIN[MINOR]
+    MIN --> NAT[NATURAL_MINOR]
+    MIN --> HAR[HARMONIC_MINOR]
+    MIN --> MEL[MELODIC_MINOR]
 ```
 
 The hierarchy and numerical transfer strengths are **KeyRecall hypotheses**, not
@@ -508,14 +489,11 @@ hypothesis**, not yet a conclusion from the reviewed memory literature.
 
 The central unresolved question is the status of `MaterialExecutionState`:
 
-```text
-MaterialExecutionState
-    ?
-    +-- independent procedural memory trace with time-dependent forgetting
-    |
-    +-- accumulated contextual evidence feeding the performance model
-    |
-    `-- hybrid persistent execution state with time-dependent decay
+```mermaid
+flowchart TD
+    M[MaterialExecutionState] -.-> A[independent procedural memory trace<br/>with time-dependent forgetting]
+    M -.-> B[accumulated contextual evidence<br/>feeding the performance model]
+    M -.-> C[hybrid persistent execution state<br/>with time-dependent decay]
 ```
 
 The current literature review establishes useful models for item recall and
@@ -587,16 +565,11 @@ trained effector.
 This aligns with, but does not prove a one-to-one neural interpretation of, the
 KeyRecall decomposition:
 
-```text
-Technical material
-        |
-        v
-shared/material-level state
-        |
-        +------------------+
-        |                  |
-        v                  v
-RH-specific state     LH-specific state
+```mermaid
+flowchart TD
+    TM[Technical material] --> SH[shared / material-level state]
+    SH --> RH[RH-specific state]
+    SH --> LH[LH-specific state]
 ```
 
 The software architecture should therefore support **partial transfer** rather
@@ -622,19 +595,19 @@ It should not mark the LH realization as though it had itself been practiced.
 
 - Panzer, S., Krueger, M., Muehlbauer, T., Kovacs, A. J., & Shea, C. H. (2009).
   Inter-manual transfer and practice: Coding of simple motor sequences.
-  https://pubmed.ncbi.nlm.nih.gov/19073469/
+  <https://pubmed.ncbi.nlm.nih.gov/19073469/>
 - Abrahamse, E. L., Ruitenberg, M. F. L., de Kleine, E., & Verwey, W. B. (2013).
   Control of automated behavior: Insights from the discrete sequence production
   task. Background review of sequence representations:
-  https://pmc.ncbi.nlm.nih.gov/articles/PMC3110831/
+  <https://pmc.ncbi.nlm.nih.gov/articles/PMC3110831/>
 - Wiestler, T., Waters-Metenier, S., & Diedrichsen, J. (2014). Effector-
   independent motor sequence representations exist in extrinsic and intrinsic
-  reference frames. https://pubmed.ncbi.nlm.nih.gov/24695723/
+  reference frames. <https://pubmed.ncbi.nlm.nih.gov/24695723/>
 - Vangheluwe, S., Puttemans, V., Wenderoth, N., Van Baelen, M., & Swinnen, S. P.
   (2006). Inter- and intralimb transfer of a bimanual task: Generalizability of
-  limb dissociation. https://pubmed.ncbi.nlm.nih.gov/16307261/
+  limb dissociation. <https://pubmed.ncbi.nlm.nih.gov/16307261/>
 - van Mier, H. I., & Petersen, S. E. (2006). Intermanual transfer effects in
-  sequential tactuomotor learning. https://pubmed.ncbi.nlm.nih.gov/16198379/
+  sequential tactuomotor learning. <https://pubmed.ncbi.nlm.nih.gov/16198379/>
 
 ### Procedural retention is not equivalent to item recall
 
@@ -655,9 +628,9 @@ procedural readiness without prejudging the exact cognitive mechanism.
 **Representative sources:**
 
 - Krakauer, J. W., & Shadmehr, R. (2006). Consolidation of motor memory.
-  https://pmc.ncbi.nlm.nih.gov/articles/PMC2553888/
+  <https://pmc.ncbi.nlm.nih.gov/articles/PMC2553888/>
 - Recent work distinguishing savings from long-term motor memory:
-  https://pmc.ncbi.nlm.nih.gov/articles/PMC10138789/
+  <https://pmc.ncbi.nlm.nih.gov/articles/PMC10138789/>
 
 ### Motor spacing evidence requires a narrower claim
 
@@ -695,9 +668,9 @@ The appropriate research position is:
 **Sources:**
 
 - Wiseheart, M., D'Souza, A. A., & Chae, B. (2017). Lack of spacing effects
-  during piano learning. https://pmc.ncbi.nlm.nih.gov/articles/PMC5553926/
+  during piano learning. <https://pmc.ncbi.nlm.nih.gov/articles/PMC5553926/>
 - Systematic review of distributed practice in surgical motor-skill training:
-  https://pubmed.ncbi.nlm.nih.gov/28843958/
+  <https://pubmed.ncbi.nlm.nih.gov/28843958/>
 
 ### Accuracy and speed should remain distinguishable
 
@@ -729,8 +702,8 @@ provide informative priors for new but structurally related material.
 
 **Representative sources:**
 
-- https://pubmed.ncbi.nlm.nih.gov/27333186/
-- https://pubmed.ncbi.nlm.nih.gov/27472398/
+- <https://pubmed.ncbi.nlm.nih.gov/27333186/>
+- <https://pubmed.ncbi.nlm.nih.gov/27472398/>
 
 ## Guidance, retrieval demand, and evidence interpretation
 
@@ -774,7 +747,7 @@ not be interpreted as equivalent evidence of independent retrievability.
 **Representative source:** Karpicke, J. D., & Grimaldi, P. J. (2012).
 _Retrieval-Based Learning: A Perspective for Enhancing Meaningful Learning_.
 
-https://pmc.ncbi.nlm.nih.gov/articles/PMC3983480/
+<https://pmc.ncbi.nlm.nih.gov/articles/PMC3983480/>
 
 ### Instruction, concurrent cueing, and feedback are distinct
 
@@ -821,11 +794,11 @@ depend on task and feedback characteristics.
 
 - Winstein, C. J., & Schmidt, R. A. (1990). Reduced frequency of knowledge of
   results enhances motor skill learning.
-  https://pubmed.ncbi.nlm.nih.gov/7886280/
+  <https://pubmed.ncbi.nlm.nih.gov/7886280/>
 - Review discussing augmented-feedback frequency and motor learning:
-  https://pmc.ncbi.nlm.nih.gov/articles/PMC3153799/
+  <https://pmc.ncbi.nlm.nih.gov/articles/PMC3153799/>
 - Review of augmented feedback in motor learning:
-  https://pmc.ncbi.nlm.nih.gov/articles/PMC8681883/
+  <https://pmc.ncbi.nlm.nih.gov/articles/PMC8681883/>
 
 ### Preserve raw guidance configuration
 
@@ -931,21 +904,12 @@ current material-specific execution capability.
 
 KeyRecall could then increase support:
 
-```text
-unguided retrieval probe
-        |
-        | retrieval fails
-        v
-show/teach material
-        |
-        v
-guided execution
-        |
-        v
-fade support
-        |
-        v
-independent retrieval
+```mermaid
+flowchart TD
+    P[unguided retrieval probe] -->|retrieval fails| S[show / teach material]
+    S --> G[guided execution]
+    G --> F[fade support]
+    F --> I[independent retrieval]
 ```
 
 These attempts should not be counted as equivalent repetitions.
@@ -1000,35 +964,31 @@ evidence rather than a basis for a scheduling rule.
 
 The conceptual exercise structure therefore becomes:
 
-```text
-Exercise
-|
-+-- TechnicalMaterial
-+-- ExercisePattern
-+-- ExecutionConditions
-|   +-- hands
-|   +-- direction
-|   +-- octaves
-|   `-- tempo
-|
-+-- GuidanceContext
-|   +-- prior_instruction
-|   +-- concurrent_cues
-|   `-- feedback_policy
-|
-+-- MotorRealization
-`-- Opportunities
+```mermaid
+flowchart TD
+    E[Exercise] --> TM[TechnicalMaterial]
+    E --> EP[ExercisePattern]
+    E --> EC[ExecutionConditions]
+    EC --> HA[hands]
+    EC --> DI[direction]
+    EC --> OC[octaves]
+    EC --> TE[tempo]
+    E --> GC[GuidanceContext]
+    GC --> PI[prior_instruction]
+    GC --> CC[concurrent_cues]
+    GC --> FP[feedback_policy]
+    E --> MR[MotorRealization]
+    E --> OP[Opportunities]
 ```
 
 An `Attempt` preserves that exercise context alongside observations:
 
-```text
-Attempt
-|
-+-- Exercise
-+-- MIDIObservations
-+-- EventObservations
-`-- DerivedEvidence
+```mermaid
+flowchart TD
+    A[Attempt] --> E[Exercise]
+    A --> MO[MIDIObservations]
+    A --> EO[EventObservations]
+    A --> DE[DerivedEvidence]
 ```
 
 The evidence model can then interpret the same observable performance
@@ -1063,10 +1023,10 @@ learner x material-specific effect
 A schematic logistic form is:
 
 ```math
-\operatorname{logit} P(Y_{u,m,t}) = \mathbf{x}_{u,m,t}^\top\boldsymbol{\beta} + b_u + c_m + r_{u,m}
+\mathrm{logit}\, P(Y_{u,m,t}) = \mathbf{x}_{u,m,t}^\top\boldsymbol{\beta} + b_u + c_m + r_{u,m}
 ```
 
-where `r_(u,m)` represents a learner-specific deviation for material `m`. This
+where $r_{u,m}$ represents a learner-specific deviation for material `m`. This
 equation is a KeyRecall synthesis, not an equation taken directly from one cited
 learner model.
 
@@ -1074,12 +1034,12 @@ learner model.
 
 - Van den Noortgate, W., De Boeck, P., & Meulders, M. Cross-classified
   multilevel logistic models in psychometric response data.
-  https://ppw.kuleuven.be/okp/\_pdf/Noortgate2003CMLMI.pdf
+  <https://ppw.kuleuven.be/okp/_pdf/Noortgate2003CMLMI.pdf>
 - Rijmen, F., Tuerlinckx, F., De Boeck, P., & Kuppens, P. A nonlinear
   mixed-model framework for item-response models.
 - Baayen, R. H., Davidson, D. J., & Bates, D. M. (2008). Mixed-effects modeling
   with crossed random effects for subjects and items.
-  https://www.mpi.nl/publications/item60973/mixed-effects-modeling-crossed-random-effects-subjects-and-items
+  <https://www.mpi.nl/publications/item60973/mixed-effects-modeling-crossed-random-effects-subjects-and-items>
 
 ### Partial pooling is essential
 
@@ -1093,21 +1053,11 @@ consistent evidence can then justify a larger personalized deviation.
 
 Conceptually:
 
-```text
-little C# harmonic-minor RH evidence
-        |
-        v
-prediction dominated by shared state
-
-repeated material-specific struggle
-        |
-        v
-negative learner x material/context residual
-
-repeated unusual strength
-        |
-        v
-positive learner x material/context residual
+```mermaid
+flowchart TD
+    S1[little C# harmonic-minor RH evidence] --> S2[prediction dominated by shared state]
+    T1[repeated material-specific struggle] --> T2[negative learner x material/context residual]
+    U1[repeated unusual strength] --> U2[positive learner x material/context residual]
 ```
 
 This avoids assigning strong independent mastery estimates to sparsely observed
@@ -1118,7 +1068,7 @@ hierarchical/shrinkage treatment of item effects.
 
 **Representative source:**
 
-https://link.springer.com/article/10.1007/s11336-008-9092-x
+<https://link.springer.com/article/10.1007/s11336-008-9092-x>
 
 ### Educational learner models also benefit from item-specific effects
 
@@ -1141,11 +1091,11 @@ material-specific performance variation.
 **Representative sources:**
 
 - Vie, J.-J., & Kashima, H. Knowledge Tracing Machines.
-  https://ojs.aaai.org/index.php/AAAI/article/view/3853/3731
+  <https://ojs.aaai.org/index.php/AAAI/article/view/3853/3731>
 - Logistic Knowledge Tracing research using student-, KC-, and item-level
   features:
-  https://jedm.educationaldatamining.org/index.php/JEDM/article/download/722/177
-- Knowledge Tracing Machines preprint: https://arxiv.org/abs/1811.03388
+  <https://jedm.educationaldatamining.org/index.php/JEDM/article/download/722/177>
+- Knowledge Tracing Machines preprint: <https://arxiv.org/abs/1811.03388>
 
 A factorization-machine architecture is more general than KeyRecall requires for
 V1. It is better treated as a possible later population-trained model if
@@ -1178,7 +1128,7 @@ different time points.
 
 **Representative source:**
 
-https://arxiv.org/abs/1304.4441
+<https://arxiv.org/abs/1304.4441>
 
 The exact KeyRecall transition/decay process remains a design and empirical
 question.
@@ -1237,7 +1187,7 @@ established path for expanding the state.
 
 **Representative source:**
 
-https://pmc.ncbi.nlm.nih.gov/articles/PMC5978597/
+<https://pmc.ncbi.nlm.nih.gov/articles/PMC5978597/>
 
 ### MaterialMemoryState remains distinct
 
@@ -1258,18 +1208,11 @@ MaterialExecutionState
 
 This preserves the three-layer architecture:
 
-```text
-LearnerState
-|
-+-- LatentCompetencyState
-|   transferable capability
-|
-+-- MaterialMemoryState
-|   exact-material retrievability
-|
-`-- MaterialExecutionState
-    dynamic partially pooled
-    learner x material x execution-context residual
+```mermaid
+flowchart TD
+    LS[LearnerState] --> LC[LatentCompetencyState<br/><i>transferable capability</i>]
+    LS --> MM[MaterialMemoryState<br/><i>exact-material retrievability</i>]
+    LS --> ME[MaterialExecutionState<br/><i>dynamic partially pooled learner x material<br/>x execution-context residual</i>]
 ```
 
 ### Cold start and extensibility

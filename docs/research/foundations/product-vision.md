@@ -88,7 +88,7 @@ separately/together, dynamics, articulation, synchronization, and balance.
 
 Reference:
 
-- https://pianolympics.net/
+- <https://pianolympics.net/>
 
 The implication is important: simple pitch correctness is unlikely to be
 sufficient differentiation. Rich performance analysis is becoming feasible and
@@ -102,8 +102,8 @@ records clean tempo, and tracks progress over time.
 
 References:
 
-- https://scalestudy.app/en/
-- https://apps.apple.com/us/app/scale-study-tempo-practice/id6758663846
+- <https://scalestudy.app/en/>
+- <https://apps.apple.com/us/app/scale-study-tempo-practice/id6758663846>
 
 Its "performance envelope" concept is useful. The proposed system should avoid
 reducing a skill to an arbitrary single mastery percentage when it can instead
@@ -125,9 +125,9 @@ forms.
 
 Useful reading:
 
-- https://pianomarvel.com/en/article/how-to-master-my-scales/1000
-- https://pianomarvel.com/en/article/how-to-gain-speed-with-your-scales
-- https://pianomarvel.com/en/feature/sasr
+- <https://pianomarvel.com/en/article/how-to-master-my-scales/1000>
+- <https://pianomarvel.com/en/article/how-to-gain-speed-with-your-scales>
+- <https://pianomarvel.com/en/feature/sasr>
 
 Piano Marvel also demonstrates that automated selection based on prior
 performance can work as a user experience, even though its SASR system addresses
@@ -141,8 +141,8 @@ inversions, and structured progression.
 
 References:
 
-- https://piano.fitness/
-- https://brylie.online/projects/piano-fitness/
+- <https://piano.fitness/>
+- <https://brylie.online/projects/piano-fitness/>
 
 This should remain on the competitor watch list.
 
@@ -153,7 +153,7 @@ practice, precision, tempo stability, and long-view practice history.
 
 Reference:
 
-- https://thehanonmethod.com/
+- <https://thehanonmethod.com/>
 
 This is evidence that "measured technical practice" is becoming an identifiable
 product category.
@@ -165,8 +165,8 @@ explicitly does not listen or provide feedback.
 
 References:
 
-- https://f-droid.org/en/packages/com.scalepractice/
-- https://play.google.com/store/apps/details?id=com.scalepractice
+- <https://f-droid.org/en/packages/com.scalepractice/>
+- <https://play.google.com/store/apps/details?id=com.scalepractice>
 
 This is useful as a conceptual "before" case: scheduling/order without
 performance telemetry.

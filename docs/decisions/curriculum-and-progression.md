@@ -31,28 +31,38 @@ is what keeps the graph small.
 
 ## The graph
 
-```text
-                 goal scope (what is the destination)
-                          |
-    +---------------------+---------------------+
-    |                                           |
- MATERIAL                                  CONDITIONS
-    |                                           |
- foundation -> early -> intermediate -> adv   1 octave -> 2 octaves
- C G F a d    D A E Bb  Eb B F# Ab      Db    [REQUIRES]
-              e g c     b f f#          c# g#
-                                        eb bb  one hand -> hands together
-    |                                          [REQUIRES]
-    |  [REQUIRES: execution floor per band]
-    |                                          up -> up and down
- major -> natural minor -> harmonic -> melodic   [prediction only]
-          [no gate]       [REQUIRES]  [REQUIRES]
-                                               slower -> faster
- unseen material -> cued first encounter         [prediction only]
-                   [REQUIRES]
-                                               parallel --- contrary
-                                               [no edge; ranked preference
-                                                inside the transition]
+```mermaid
+flowchart TD
+    G["goal scope<br/><i>what is the destination</i>"] --> M[MATERIAL]
+    G --> C[CONDITIONS]
+
+    M --> B1["foundation<br/>C G F a d"]
+    B1 -->|"REQUIRES: execution floor per band"| B2["early<br/>D A E Bb e g c"]
+    B2 -->|"REQUIRES: execution floor per band"| B3["intermediate<br/>Eb B F# Ab b f f#"]
+    B3 -->|"REQUIRES: execution floor per band"| B4["advanced<br/>Db c# g# eb bb"]
+
+    M --> F1[major]
+    F1 -->|no gate| F2[natural minor]
+    F2 -->|REQUIRES| F3[harmonic minor]
+    F3 -->|REQUIRES| F4[melodic minor]
+
+    M --> E1[unseen material]
+    E1 -->|REQUIRES| E2[cued first encounter]
+
+    C --> O1[1 octave]
+    O1 -->|REQUIRES| O2[2 octaves]
+
+    C --> H1[one hand]
+    H1 -->|REQUIRES| H2[hands together]
+
+    C --> D1[up]
+    D1 -->|prediction only| D2[up and down]
+
+    C --> T1[slower]
+    T1 -->|prediction only| T2[faster]
+
+    C --> P1[parallel]
+    P1 -.->|"no edge; ranked preference<br/>inside the transition"| P2[contrary]
 ```
 
 Solid `REQUIRES` edges are enforced at the eligibility stage and make the later
