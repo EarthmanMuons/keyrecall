@@ -19,6 +19,7 @@ Usage: analyze.py takes/*.json
 
 import itertools
 import json
+import math
 import statistics
 import sys
 from pathlib import Path
@@ -80,6 +81,17 @@ def describe(path):
     if not rows:
         return
 
+    kinds = {}
+    for record in trace["records"]:
+        if record["kind"] == "delivery":
+            kinds[record["message"]] = kinds.get(record["message"], 0) + 1
+    unconsumed = kinds.get("other", 0)
+    if unconsumed:
+        print(
+            f"    {unconsumed} of {len(rows)} deliveries are messages "
+            f"KeyRecall does not consume"
+        )
+
     estimates = wrap_estimates(rows)
     if estimates:
         values = [value for _, _, value in estimates]
@@ -90,10 +102,24 @@ def describe(path):
             f"-> modulus {modulus}"
         )
     else:
-        modulus = KNOWN_MODULI[-1]
-        print("    wraps: none in this trace, modulus not determined")
+        # Not a finding of "no modulus", only that this take did not reach it.
+        modulus = None
+        print("    wraps: none in this take, so no modulus is established")
 
-    timeline = unwrap(rows, modulus)
+    # What a count is actually worth. A clock counting something finer than it
+    # resolves leaves every delta a multiple of the same number.
+    steps = [
+        abs(after["transport_ts"] - before["transport_ts"])
+        for before, after in itertools.pairwise(rows)
+    ]
+    positive = [step for step in steps if step > 0]
+    if positive:
+        granularity = math.gcd(*positive) if len(positive) > 1 else positive[0]
+        print(f"    granularity: every step is a multiple of {granularity}")
+
+    timeline = (
+        unwrap(rows, modulus) if modulus else [row["transport_ts"] for row in rows]
+    )
     arrival = [row["arrival_ms"] for row in rows]
 
     # One tick is worth this many arrival milliseconds, over the whole take.
@@ -101,12 +127,13 @@ def describe(path):
     span_arrival = arrival[-1] - arrival[0]
     if span_transport:
         print(
-            f"    tick: {span_arrival / span_transport:.4f} ms per count "
+            f"    tick: {span_arrival / span_transport:.6g} ms per count "
             f"over {span_arrival} ms"
         )
 
+    scale = span_arrival / span_transport if span_transport else 1
     jitter = [
-        (arrival[i] - arrival[i - 1]) - (timeline[i] - timeline[i - 1])
+        round((arrival[i] - arrival[i - 1]) - (timeline[i] - timeline[i - 1]) * scale)
         for i in range(1, len(rows))
     ]
     if jitter:
@@ -115,14 +142,20 @@ def describe(path):
             f"median {statistics.median(jitter):.0f}, "
             f"mean {statistics.mean(jitter):.1f}"
         )
-    print(f"    drift: {span_arrival - span_transport} ms over the take")
+    print(
+        f"    drift: {span_arrival - round(span_transport * scale)} ms "
+        f"over the take, after scaling"
+    )
 
     # Simultaneity: what arrival collapses and the transport keeps apart.
+    # Counted over notes only. A packet's worth of controller traffic sharing
+    # one stamp is not the transport losing anything.
     collapsed = 0
     kept = 0
     groups = {}
     for row, stamp in zip(rows, timeline):
-        groups.setdefault(row["arrival_ms"], []).append(stamp)
+        if row["message"] in ("noteOn", "noteOff"):
+            groups.setdefault(row["arrival_ms"], []).append(stamp)
     for stamps in groups.values():
         if len(stamps) > 1:
             collapsed += 1
@@ -130,17 +163,18 @@ def describe(path):
                 kept += 1
     print(
         f"    simultaneity: {collapsed} arrival instants carried several "
-        f"messages, {kept} of them with distinct transport stamps"
+        f"notes, {kept} of them with distinct transport stamps"
     )
 
     # A silence long enough to hide a whole wrap cannot be unwrapped from the
     # stamps alone. This is the number the mapper's gap rule has to answer to.
     gaps = [arrival[i] - arrival[i - 1] for i in range(1, len(rows))]
-    risky = [gap for gap in gaps if gap >= modulus]
-    print(
-        f"    gaps: longest silence {max(gaps) if gaps else 0} ms, "
-        f"{len(risky)} at or over the modulus"
-    )
+    longest = max(gaps) if gaps else 0
+    if modulus:
+        risky = len([gap for gap in gaps if gap >= modulus])
+        print(f"    gaps: longest silence {longest} ms, {risky} at or over the modulus")
+    else:
+        print(f"    gaps: longest silence {longest} ms, nothing to wrap past")
 
     repeats = sum(
         1
@@ -149,10 +183,10 @@ def describe(path):
     )
     print(f"    repeated stamps: {repeats}")
 
-    onsets(rows, timeline)
+    onsets(rows, timeline, scale)
 
 
-def onsets(rows, timeline):
+def onsets(rows, timeline, scale):
     """What the two clocks say about the playing, which is the whole point.
 
     Rhythm is read from intervals between strikes. If the transport timeline
@@ -169,7 +203,10 @@ def onsets(rows, timeline):
         return
 
     by_arrival = [strikes[i][0] - strikes[i - 1][0] for i in range(1, len(strikes))]
-    by_transport = [strikes[i][1] - strikes[i - 1][1] for i in range(1, len(strikes))]
+    by_transport = [
+        round((strikes[i][1] - strikes[i - 1][1]) * scale)
+        for i in range(1, len(strikes))
+    ]
     for label, series in (("arrival", by_arrival), ("transport", by_transport)):
         median = statistics.median(series)
         spread = statistics.median([abs(value - median) for value in series])

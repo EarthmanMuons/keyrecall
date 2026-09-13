@@ -1,8 +1,9 @@
 # Transport clock characterization
 
-- **Status:** Evidence being collected for a decision not yet made. Two takes
-  recorded, on one platform through one adapter.
-- **Recorded:** September 13, 2026, iOS 26.6.2, a JamCorder adapter over BLE
+- **Status:** Evidence being collected for a decision not yet made. Four takes,
+  on one platform, from two instruments that behave differently.
+- **Recorded:** September 13, 2026, iOS 26.6.2, a JamCorder adapter and a Yamaha
+  P-525, both over BLE
 - **Feeds:** the transport-timing entry in
   [`docs/roadmap.md`](../../docs/roadmap.md), step 1 of six
 
@@ -114,64 +115,92 @@ whether it should.
 current one. `session` on a delivery is the subscription that delivered it;
 `adopted_session` on a boundary is what input was being admitted from.
 
-## What the first two takes show
+## What the takes show
 
-`analyze.py takes/*.json`. On **iOS 26.6.2, a JamCorder adapter over BLE**, in a
-`pulse` and a `chords` take:
+`analyze.py takes/*.json`. Four takes, all on **iOS 26.6.2**, over BLE, from one
+phone. Two instruments, and they do not behave alike:
 
-| Question                    | What the traces say                                   |
-| --------------------------- | ----------------------------------------------------- |
-| Tick unit                   | 1.0000 and 1.0001 ms per count, over 8.7 s and 16.1 s |
-| Modulus                     | 8192, from three wraps measured at 8166, 8185, 8205   |
-| Packet time or message time | message time                                          |
-| Short-term jitter           | -26 to +25 ms, median 0                               |
-| Cumulative drift            | 0 ms over 8.7 s, 1 ms over 16.1 s                     |
-| Stamps absent or repeated   | none absent; one tie, at 1 ms resolution              |
+|                                   | JamCorder adapter          | Yamaha P-525 direct                  |
+| --------------------------------- | -------------------------- | ------------------------------------ |
+| Tick                              | 1.00000 ms per count       | 1.00009e-06 ms per count             |
+| Granularity                       | every step a multiple of 1 | every step a multiple of 1000000     |
+| Wrap                              | 8192, seen three times     | none in 23 s, starting near 29 hours |
+| Drift against arrival             | 0 ms and 1 ms              | 0 ms and 0 ms                        |
+| Jitter                            | -26 to +25 ms              | -14 to +16 ms                        |
+| **Simultaneous notes kept apart** | **8 of 8**                 | **3 of 10**                          |
+| **Onset dispersion, MAD**         | **8.5 vs 15.5 arrival**    | **14.0 vs 16.0 arrival**             |
 
-**The transport stamp is message time, not packet time.** Eight arrival instants
-in the chords take carried more than one message, and all eight kept distinct
-transport stamps. Two releases arrive in the same millisecond carrying stamps 14
-ms apart; a four-note chord arrives with three notes in one millisecond and
-stamps of 1873, 1885, 1886, 1886. That is precisely the information arrival time
-destroys.
+The adapter's stamp is a 1 ms counter modulo 8192, which is the BLE MIDI
+specification's 13-bit timestamp: six bits in the header byte and seven in the
+timestamp byte. The piano's is a nanosecond counter with 1 ms resolution,
+already at 29 hours when the take started, and it never wraps.
 
-**It is already the better witness to rhythm.** In the `pulse` take, the same
-playing read through the two clocks:
+**The prediction was wrong, and the reason matters more than the prediction.**
+These are not two devices disagreeing about a clock. They are two _routes_. The
+plugin delivers by the host's own MIDI stack or by the BLE transport the app
+injects, and reports which on every message. A BLE instrument the operating
+system has paired into CoreMIDI arrives by the host route; one the app's BLE
+transport is talking to arrives by the BLE route. KeyRecall was discarding that
+field and reading the device's own description of itself instead, so the two
+looked identical in the trace.
+
+### One route carries the instrument's time, the other carries the host's
+
+This is the finding with consequences, and it is not about wrapping:
 
 ```text
-onsets by arrival     median 586 ms   MAD 15.5   range 538..632
-onsets by transport   median 582 ms   MAD  8.5   range 556..625
+JamCorder, BLE route     two releases arrive in one millisecond
+                         carrying stamps 14 ms apart
+P-525, host route        a strike and a release arrive in one millisecond
+                         carrying the same stamp, four times out of four
 ```
 
-Half the dispersion and a range 25 ms narrower, for one scale played once.
-Whatever produced that extra spread in the arrival series happened after the
-keys went down.
+A host-receive timestamp is arrival time taken slightly earlier. It cannot
+recover what the instrument spread out and delivery collapsed, because it is
+applied after the collapse. The onset dispersion says the same thing more
+quietly: halved on the BLE route, essentially unchanged on the host route.
 
-### Why 8192 is worth believing before the other traces arrive
+So the useful reading is not "BLE timestamps work." It is:
 
-It is not a device quirk. The BLE MIDI specification carries a **13-bit
-millisecond timestamp**, six bits in the header byte and seven in the timestamp
-byte, which is exactly an 8192 ms modulus at 1 ms resolution. The measured
-behavior is the specified behavior.
+> **The route decides whether the transport timestamp is evidence about playing
+> at all.** The BLE route carries the instrument's own onset timing. The host
+> route carries the host's receive time, which is what KeyRecall already has.
 
-So this predicts what the remaining traces should show, which makes them a test
-rather than an exploration:
+One consequence is worth stating plainly because it is counterintuitive: on this
+phone, practising through the adapter yields better timing evidence than
+connecting the piano directly.
 
-- **Yamaha direct, iOS.** Should be 1 ms modulo 8192 as well. If it is not, the
-  JamCorder is synthesizing timestamps rather than passing them through, and the
-  mapper has to characterize per source rather than per transport.
-- **Android, either instrument.** The wire format is the same specification, so
-  a difference here would be the plugin or the platform not preserving what the
-  wire carried. This is the one that decides whether one BLE clock contract can
-  cover both platforms.
+### What is only inferred
+
+The route is an inference from the shape of the clocks, not yet an observation.
+These four traces were recorded before the harness kept the plugin's route
+field, so nothing in them names it. Every later take carries `route`, and a
+single new pair from the same two instruments will confirm or refute it
+directly. Until then, treat the causal story as strongly supported rather than
+settled.
+
+The same gap applies to what the P-525 is sending: half its deliveries are
+messages KeyRecall does not consume, and the envelope collapsed them all into an
+unidentified `other`. Two of them precede every note-on and none precede a
+note-off. Later takes record the MIDI type and controller number, so they will
+say what those are rather than leaving them to be guessed at.
 
 ### What is still open
 
-- **Unwrapping across a silence.** The two takes have no gap anywhere near 8192
-  ms, so nothing here tests it. A pause long enough to hide a whole epoch cannot
-  be resolved from stamps alone, and the `pause` take is what says whether
-  arrival elapsed time is a defensible wrap-count disambiguator or whether
-  timing has to go unavailable after a long enough gap.
+- **Which route each instrument arrives by**, observed rather than inferred, and
+  whether an instrument can change route between sessions.
+- **Whether the host route is worth anything at all.** If it is only arrival
+  time taken earlier, the honest answer may be that timing evidence is
+  unavailable on that route rather than slightly better.
+- **What Android routes by.** The wire format is the same specification, so a
+  difference there is the plugin or the platform not preserving what the wire
+  carried. Which route its BLE instruments arrive by is the thing to read off
+  the trace first, since that is what decided the answer here.
+- **Unwrapping across a silence.** No take has a gap anywhere near 8192 ms, so
+  nothing here tests it. A pause long enough to hide a whole epoch cannot be
+  resolved from stamps alone, and the `pause` take is what says whether arrival
+  elapsed time is a defensible wrap-count disambiguator or whether timing has to
+  go unavailable after a long enough gap.
 - **Whether delivery ever stretches rather than collapses.** The `stall` take is
   the proof of value: if the transport intervals keep matching the playing while
   the arrival intervals come apart, that settles which clock rhythm is read
