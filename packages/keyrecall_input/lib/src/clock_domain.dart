@@ -219,10 +219,9 @@ enum ClockAuthorization {
 
 /// An authorized clock, and what it takes to read a time off it.
 ///
-/// Shape and rate are two different things. [ClockDomainShape.granularity] is
-/// the quantum: what every observed step is a multiple of, which is the
-/// clock's resolution. [countsPerMillisecond] is the rate: how fast the
-/// counter runs. They coincide on the millisecond counter and differ by a
+/// Resolution and rate are two different things. [quantum] is what every
+/// observed step is a multiple of, which is the clock's resolution.
+/// [countsPerMillisecond] is the rate: how fast the counter runs. They coincide on the millisecond counter and differ by a
 /// factor of ten on the network session, a quantum of 100,000 counts on a
 /// counter running near 1,000,000 counts to the millisecond, so that clock
 /// resolves to a tenth of a millisecond.
@@ -231,31 +230,49 @@ enum ClockAuthorization {
 /// and stops there.
 @immutable
 class PerformanceClockDefinition {
-  /// What has to be measured for this clock to be recognized.
-  final ClockDomainShape shape;
+  /// The clock's resolution, in raw counts.
+  final int quantum;
+
+  /// The counter's width, where the takes established one.
+  final int? modulus;
 
   /// How many raw counts the clock advances per millisecond.
   final int countsPerMillisecond;
 
+  /// Asserts what the integer timeline requires.
+  ///
+  /// One quantum has to be a whole number of microseconds, because every
+  /// interval this clock can report is a multiple of one. A clock that fails
+  /// this cannot be converted without a rounding rule, and choosing one
+  /// without a trace to choose it against would invent policy rather than
+  /// record characterization. The assertion runs at compile time for the
+  /// constant definitions a policy is built from.
   const PerformanceClockDefinition({
-    required this.shape,
+    required this.quantum,
     required this.countsPerMillisecond,
-  });
+    this.modulus,
+  }) : assert(countsPerMillisecond > 0, 'a clock has to advance'),
+       assert(
+         quantum * 1000 % countsPerMillisecond == 0,
+         'a quantum has to be a whole number of microseconds',
+       );
 
-  /// The clock's resolution, in raw counts.
-  int get quantum => shape.granularity;
+  /// What has to be measured for this clock to be recognized.
+  ClockDomainShape get shape =>
+      ClockDomainShape(granularity: quantum, modulus: modulus);
 
-  /// The counter's width, where one has been established.
-  int? get modulus => shape.modulus;
+  /// The clock's resolution, as time.
+  int get quantumUs => quantum * 1000 ~/ countsPerMillisecond;
 
   @override
   bool operator ==(Object other) =>
       other is PerformanceClockDefinition &&
-      other.shape == shape &&
+      other.quantum == quantum &&
+      other.modulus == modulus &&
       other.countsPerMillisecond == countsPerMillisecond;
 
   @override
-  int get hashCode => Object.hash(shape, countsPerMillisecond);
+  int get hashCode => Object.hash(quantum, modulus, countsPerMillisecond);
 
   @override
   String toString() =>
@@ -308,11 +325,12 @@ class ClockDomainPolicy {
   static const ClockDomainPolicy characterized = ClockDomainPolicy(
     performance: [
       PerformanceClockDefinition(
-        shape: ClockDomainShape(granularity: 1, modulus: 8192),
+        quantum: 1,
+        modulus: 8192,
         countsPerMillisecond: 1,
       ),
       PerformanceClockDefinition(
-        shape: ClockDomainShape(granularity: 100000),
+        quantum: 100000,
         countsPerMillisecond: 1000000,
       ),
     ],

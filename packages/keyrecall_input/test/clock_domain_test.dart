@@ -164,10 +164,7 @@ void main() {
       expect(
         const ClockDomainPolicy(
           performance: [
-            PerformanceClockDefinition(
-              shape: ClockDomainShape(granularity: 250),
-              countsPerMillisecond: 250,
-            ),
+            PerformanceClockDefinition(quantum: 250, countsPerMillisecond: 250),
           ],
           nonPerformance: [],
         ).classify(observation),
@@ -193,6 +190,30 @@ void main() {
       );
 
       expect(counter!.quantum, counter.countsPerMillisecond);
+    });
+
+    // The integer timeline can only hold a clock whose quantum is a whole
+    // number of microseconds. Anything else needs a rounding rule, and there
+    // is no trace to choose one against.
+    test('a clock that does not convert exactly cannot be authorized', () {
+      expect(
+        () => PerformanceClockDefinition(quantum: 1, countsPerMillisecond: 3),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => PerformanceClockDefinition(quantum: 1, countsPerMillisecond: 0),
+        throwsA(isA<AssertionError>()),
+      );
+
+      for (final clock in ClockDomainPolicy.characterized.performance) {
+        expect(clock.quantum * 1000 % clock.countsPerMillisecond, 0);
+      }
+      expect(
+        ClockDomainPolicy.characterized.performance.map(
+          (clock) => clock.quantumUs,
+        ),
+        [1000, 100],
+      );
     });
 
     // A shape is granularity and wrap together, so the same counter width
