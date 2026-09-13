@@ -943,6 +943,17 @@ unevenly a person plays.
    `ClockDomainPolicy` says which measured shapes may be believed. Authorizing a
    fourth domain is an edit to the policy, not to the arithmetic.
 
+   **A granularity is not a domain.** The policy authorizes shapes, meaning
+   granularity and wrap together, because a counter stepping in milliseconds
+   that wraps at 8192 and one stepping in milliseconds that has never been seen
+   to wrap are different clocks, and only one of them is characterized. A
+   millisecond counter whose wrap has not come round yet is still being
+   identified rather than trusted or rejected. Where a characterized domain has
+   simply never been observed to wrap, the policy authorizes it without one,
+   which is a stated choice rather than an accident of how the list was written:
+   a null modulus means no wrap has been established, not a counter that does
+   not wrap, and nothing here can tell those apart.
+
 2. **Domain conversion.** A performance clock yields an interval-preserving
    local timeline whose origin stays arbitrary. No affine mapping onto arrival
    time unless measurement is shown to need one: measurement reads intervals,
