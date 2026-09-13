@@ -929,10 +929,15 @@ unevenly a person plays.
 
 ### The five contracts
 
-1. **Domain recognition.** Recognize the 13-bit, 1 ms, modulo-8192 clock as a
-   performance clock. Recognize the 1,000,000-count-granularity clock as known
-   and _not_ a performance clock. Anything else is unavailable. Three
-   categories, decided by what the stream did, not by metadata.
+1. **Domain recognition, then performance authorization.** Two decisions, not
+   one. First read the domain off the stream: what every step is a multiple of,
+   and where the counter wraps if it has been seen to. Then decide separately
+   whether that domain may contribute performance timing. Recognizing units does
+   not confer authority, and the takes are why: the 100,000-count domain carries
+   variation the arrival clock on its path destroys, while the 1,000,000-count
+   domain is thoroughly recognized and has added nothing over arrival time on
+   any take, idle or loaded. A shape nothing has recorded is unavailable rather
+   than assumed to behave like one that has.
 2. **Domain conversion.** A performance clock yields an interval-preserving
    local timeline whose origin stays arbitrary. No affine mapping onto arrival
    time unless measurement is shown to need one: measurement reads intervals,

@@ -1,9 +1,11 @@
 # Transport clock characterization
 
-- **Status:** Evidence being collected for a decision not yet made. Four takes,
-  on one platform, from two instruments that behave differently.
-- **Recorded:** September 13, 2026, iOS 26.6.2, a JamCorder adapter and a Yamaha
-  P-525, both over BLE
+- **Status:** Characterization complete. Eleven validated takes, two platforms,
+  three instruments, three clock domains, and one device that changed domain
+  between sessions. The archive is frozen.
+- **Recorded:** September 13, 2026. iOS 26.6.2 and GrapheneOS 2026081301, a
+  JamCorder adapter, a Yamaha P-525, and an Arturia MiniLab 3 over a network
+  session
 - **Feeds:** the transport-timing entry in
   [`docs/roadmap.md`](../../docs/roadmap.md), which now carries the five
   contracts these traces shaped
@@ -177,10 +179,17 @@ and not of the route. **It is a property of the session, and it has to be read
 off the stream every time.** That is what contract 1 already said; this is the
 trace that makes it unavoidable rather than prudent.
 
-It also has an operational consequence for collecting the rest of these takes:
-you cannot know which clock a recording captured until you look at it. The
-harness should say which domain is live before a take is recorded, or takes will
-keep landing on the wrong clock without anybody noticing.
+It also had an operational consequence, since one take landed on a clock nobody
+expected and it went unnoticed until the file was read. The Transport clocks
+screen now measures the live domain and shows it before a take begins:
+
+```text
+clock 1 count/ms, modulo 8192
+timing use performance · 41 steps seen
+```
+
+It says only what was measured. Naming a shape after where it might have come
+from is how the previous reading of these traces went wrong.
 
 ### A third domain, and the clearest result in the set
 
@@ -305,17 +314,28 @@ Neither is sustain and neither ends notes, so the reducer ignores both, which is
 correct. What changed is that the trace now says so instead of leaving half an
 instrument's traffic unidentified.
 
+### What the detector is checked against
+
+The classifier replays these traces rather than invented numbers, because what
+it has to recognize is what these transports actually did: the adapter's 1 ms
+counter modulo 8192 on both platforms, the same adapter's later 1,000,000-count
+clock, the piano's, and the network session's 100,000. It also refuses to name a
+shape before eight steps, treats an unrecorded shape as unavailable rather than
+assuming it behaves like a recorded one, and starts over at a session boundary.
+
+That last one matters most. A domain belongs to a session, and carrying one
+across a boundary is exactly how a take lands on a clock nobody expected.
+
 ### What is still open
 
 - **Why two BLE instruments carry different clock domains**, given the same
   reported route. The answer is somewhere in how the plugin obtains a timestamp
   per device, and it decides whether detection can rely on granularity alone.
-- **Whether a heavy enough stall separates the clocks.** The one recorded did
-  not, on either instrument, and that is a limit of the take rather than a
-  finding about the transport. The take that would answer it is a deliberately
-  pathological stall against a steady pattern: visible hundreds of milliseconds
-  of delivery distortion, where arrival spacing has to collapse or stretch if
-  the BLE clock is reconstructing anything arrival time is not.
+- **Nothing about the stall.** Three attempts could not separate the clocks
+  under load, and the question is retired rather than open. Its job was to prove
+  delivery can distort timing enough to matter; the network take proved
+  something stronger without any load at all, which is that ordinary delivery
+  can regularize timing enough to fabricate competence.
 - **What the host route does**, if anything here ever uses it. Nothing recorded
   so far has.
 - **Whether the origin needs mapping at all.** Measurement reads intervals, so

@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 
+import 'clock_domain.dart';
 import 'export_directory.dart';
 
 /// The scripted takes, in the order they are meant to be played.
@@ -407,6 +408,10 @@ class _TransportClockScreenState extends ConsumerState<TransportClockScreen> {
             '${trace.deliveries} delivered, ${trace.boundaries} boundaries',
             style: theme.textTheme.bodyMedium,
           ),
+          const SizedBox(height: 4),
+          // Before the take, not after it. One take landed on a clock nobody
+          // expected and it was not discovered until the file was read.
+          const _ClockDomain(),
           if (trace.savedTo != null) ...[
             const SizedBox(height: 4),
             // The whole path, not the file name. Where a tool wrote something
@@ -443,4 +448,36 @@ class _TransportClockScreenState extends ConsumerState<TransportClockScreen> {
       '${record.sequence}  ${record.arrivalTimestampMs}ms  '
           '-- ${kind.name}${fault == null ? '' : ' ${fault.name}'} --',
   };
+}
+
+/// What the live transport's clock looks like right now.
+///
+/// Deliberately only what was measured. Naming a shape after where it might
+/// have come from is how the last reading of these traces went wrong, and the
+/// same adapter has since produced two different shapes in two sessions.
+class _ClockDomain extends ConsumerWidget {
+  const _ClockDomain();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final domain = ref.watch(clockDomainProvider);
+    final theme = Theme.of(context);
+    final use = switch (domain.timingUse) {
+      ClockTimingUse.detecting => 'not yet known',
+      ClockTimingUse.performance => 'performance',
+      ClockTimingUse.nonPerformance => 'not performance',
+      ClockTimingUse.unavailable => 'unavailable, nothing has characterized it',
+    };
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('clock ${domain.label}', style: theme.textTheme.bodyMedium),
+        Text(
+          'timing use $use \u00b7 ${domain.steps} steps seen',
+          style: theme.textTheme.bodySmall,
+        ),
+      ],
+    );
+  }
 }

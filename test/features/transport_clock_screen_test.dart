@@ -75,6 +75,23 @@ void main() {
     });
   }
 
+  // A take that lands on a clock nobody expected is not discovered until the
+  // file is read, and one already has. The domain has to be visible before
+  // recording starts.
+  testWidgets('the clock domain is on screen before a take begins', (
+    tester,
+  ) async {
+    final viewport = await pumpScreen(tester, const Size(750, 1334));
+
+    expect(find.textContaining('clock detecting'), findsOneWidget);
+    expect(find.textContaining('timing use not yet known'), findsOneWidget);
+    expect(
+      rectOf(tester, find.textContaining('clock detecting')).bottom,
+      lessThanOrEqualTo(viewport.bottom),
+      reason: 'below the fold is the same as not shown',
+    );
+  });
+
   testWidgets('the protocol shown is the one for the chosen take', (
     tester,
   ) async {
