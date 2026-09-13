@@ -7,6 +7,17 @@ import 'package:meta/meta.dart';
 /// once, because one delivery is one moment however many notes it normalizes
 /// to. They are one onset here, so the zero between them cannot read as an
 /// instant rhythmic wait.
+///
+/// Sameness is an equal performance time, which reads simultaneity at the
+/// resolution of the clock that was authorized. The coarsest one characterized
+/// so far resolves to a millisecond, so two genuinely separate strikes could
+/// in principle share an onset. That is a property of the clock rather than of
+/// this rule, and it is the reason the rule is stated in terms of what the
+/// clock said rather than of what the player did.
+///
+/// It is not the same collapse alignment makes. Alignment reads one onset per
+/// moment however far apart the hands landed, because that spread is
+/// coordination. This reads two.
 typedef TimedOnset = ({int performanceTimeUs, int firstSequence, int notes});
 
 /// A stretch of playing whose timing can be trusted end to end.
