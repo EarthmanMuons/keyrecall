@@ -209,6 +209,42 @@ a pitch that both a moment's right hand and the next moment's left hand ask for
 belongs to whichever it arrived beside, and the channels then read the
 correspondence that was chosen.
 
+## A wait is trustworthy or it does not exist
+
+**Decision.** Timing metrics read waits from contiguous runs of timed playing,
+derived from the transcript in `timingRunsOf`. A note carrying no performance
+time ends the run it falls in and belongs to none, and no wait is ever
+synthesized across it.
+
+**Why.** A performance can be partly timed: an attempt begins before the
+instrument's clock has been identified, a delivery arrives without a stamp, or
+the mapper stops vouching partway through. Dropping the untimed notes and taking
+differences over what is left would close the hole and report a wait nobody
+played, which is the same fabrication
+[`performance-timing.md`](performance-timing.md) refuses one layer down.
+
+```text
+timed A -- untimed B -- timed C
+
+A -> B  lost
+B -> C  lost
+A -> C  never synthesized
+```
+
+Consecutive notes sharing a performance time are one onset rather than several
+instant waits. One delivery is one moment however many notes it normalizes to,
+so a chord's zeros are simultaneity, not playing of no duration.
+
+An observation boundary needs no representation here. A reset or an integrity
+fault closes the capture, so notes from either side of one are never in the same
+transcript.
+
+**Consequences.** The denominator for any timing claim is usable waits, not
+notes. Six timed notes in one run are five waits, and the same six split by a
+hole are fewer. What each metric requires of that count is a separate question
+per metric, since tempo, stability, and continuity do not need the same
+evidence, and nothing forces one floor on all of them.
+
 ## What alignment deliberately does not do
 
 - **Timing.** Relating arrival times to expected times needs a tempo model that
