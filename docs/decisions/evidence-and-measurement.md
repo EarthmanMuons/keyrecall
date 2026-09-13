@@ -272,12 +272,16 @@ against: nine waits with three pauses read as perfectly unbroken, and fourteen
 with four read 0.96, while stability collapsed to zero in both. Length was no
 defense, because the turn is a proportion rather than a count.
 
-Leaving the judged wait out of its own reference fixes that without asking what
-fraction of the waits are allowed to be pauses. Judging against the median
-instead would fix it too, and break playing that alternates 400 and 1600 ms: the
-median is then 400, every slow wait reads as an interruption, and the unevenness
-disappears out of the spread it belongs in. The pace is still the median,
-because how fast the playing went is a question about the middle of it.
+Removing the longest wait from the reference fixes that without asking what
+fraction of the waits are allowed to be pauses. What it buys is exact and no
+more: the worst wait cannot raise the bar continuity judges it against. The
+reference is one number for the performance, so a second long wait is still part
+of the quartile that sets its own ratio, which is what makes a hesitation
+repeating in every traversal visible rather than absorbed. Judging against the
+median instead would fix it too, and break playing that alternates 400 and 1600
+ms: the median is then 400, every slow wait reads as an interruption, and the
+unevenness disappears out of the spread it belongs in. The pace is still the
+median, because how fast the playing went is a question about the middle of it.
 
 Stability changed statistic for a second reason. An interquartile range does not
 answer to an individual wait at all, so a 125 ms wait among 500 ms playing was

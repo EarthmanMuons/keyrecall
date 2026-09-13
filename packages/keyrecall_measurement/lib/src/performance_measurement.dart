@@ -87,8 +87,9 @@ class PerformanceMeasurement {
   /// null when the performance supplied too few to read one.
   double? get dispersion => timing.dispersion;
 
-  /// The largest gap between played moments, as a multiple of this
-  /// performance's own pace, or null when continuity was not judged.
+  /// The largest gap between played moments, as a multiple of the slow end of
+  /// this performance's ordinary playing, or null when continuity was not
+  /// judged.
   double? get worstIntervalRatio => timing.worstRatio;
 
   /// The median gap between played moments in milliseconds, or null when too

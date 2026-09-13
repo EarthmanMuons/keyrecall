@@ -58,8 +58,12 @@ const int fewestContiguousWaitsForContinuity = 5;
 /// the slow end of ordinary playing, taken as the upper quartile of the waits
 /// with the longest one left out.
 ///
-/// Leaving it out is what keeps the longest wait from setting the bar it is
-/// measured against. Without that, a quarter of the waits stopping made the
+/// The longest wait is removed once, and the reference that remains serves
+/// every gap. What that buys is exact and no more: the worst wait cannot raise
+/// the bar continuity judges it against. A second long wait is still part of
+/// the quartile that sets its own ratio, which the recurring-hesitation case
+/// says is what is wanted, since a hesitation that repeats every traversal is
+/// seen rather than absorbed. Without that, a quarter of the waits stopping made the
 /// stops the ordinary playing, and a performance that broke four times in
 /// fourteen read as 0.96 unbroken. Judging against the median instead would
 /// fix that case and break another: playing that alternates 400 and 1600 ms
@@ -129,8 +133,10 @@ class TimingEvidence {
   ///
   /// [restartPositions] names positions the task lets the learner begin again
   /// at. The wait before one of those is the reset the task asked for, so it is
-  /// neither reported nor allowed into the pace the others are read against,
-  /// and it ends the unbroken stretch continuity is read from.
+  /// neither reported nor allowed into the references the others are read
+  /// against. It does not end the stretch continuity is read from: the learner
+  /// played on both sides of it and only the turnaround is not theirs to be
+  /// judged on.
   factory TimingEvidence.of(
     Alignment alignment, {
     Set<int> restartPositions = const {},
@@ -211,8 +217,9 @@ double? _paceOf(List<double> waits) {
 
 /// The slow end of ordinary playing, or null when there is none to read.
 ///
-/// The upper quartile of every wait but the longest, so the wait being judged
-/// is never part of what judges it.
+/// The upper quartile after removing the longest wait, so the worst wait
+/// cannot raise the bar continuity judges it against. One reference for the
+/// whole performance, not one per gap.
 double? _referenceOf(List<double> waits) {
   if (waits.length < 2) return null;
   final rest = [...waits]..sort();
