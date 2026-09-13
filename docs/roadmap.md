@@ -929,6 +929,10 @@ unevenly a person plays.
 
 ### The five contracts
 
+They are written out, with the reasoning and the evidence behind each, in
+[`decisions/performance-timing.md`](decisions/performance-timing.md). What
+follows is the summary.
+
 1. **Domain recognition, then performance authorization.** Two decisions, not
    one. First read the domain off the stream: what every step is a multiple of,
    and where the counter wraps if it has been seen to. Then decide separately

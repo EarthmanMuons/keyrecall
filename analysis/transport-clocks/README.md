@@ -6,9 +6,10 @@
 - **Recorded:** September 13, 2026. iOS 26.6.2 and GrapheneOS 2026081301, a
   JamCorder adapter, a Yamaha P-525, and an Arturia MiniLab 3 over a network
   session
-- **Feeds:** the transport-timing entry in
-  [`docs/roadmap.md`](../../docs/roadmap.md), which now carries the five
-  contracts these traces shaped
+- **Feeds:**
+  [`docs/decisions/performance-timing.md`](../../docs/decisions/performance-timing.md),
+  and the transport-timing entry in [`docs/roadmap.md`](../../docs/roadmap.md),
+  which now carries the five contracts these traces shaped
 
 ## The question
 
