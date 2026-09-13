@@ -6,8 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:path_provider/path_provider.dart';
 
+import 'export_directory.dart';
 import '../input/input.dart';
 import 'latency_probe.dart';
 
@@ -108,9 +108,7 @@ class _OnsetDiagnosticScreenState extends ConsumerState<OnsetDiagnosticScreen> {
   /// Documents rather than Application Support, which is where practice
   /// history lives: takes are meant to leave the phone, and journals are not.
   Future<void> _save(String contents, {required String kind}) async {
-    final directory = Directory(
-      '${(await getApplicationDocumentsDirectory()).path}/$kind',
-    )..createSync(recursive: true);
+    final directory = await exportDirectory(kind);
     final stamp = DateTime.now().toIso8601String().replaceAll(
       RegExp('[:.]'),
       '-',

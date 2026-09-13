@@ -7,8 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:path_provider/path_provider.dart';
 
+import 'export_directory.dart';
 import 'attempt_screen.dart';
 import 'attempt_transcript.dart';
 
@@ -208,9 +208,7 @@ class CalibrationRunNotifier extends Notifier<CalibrationRun> {
   /// not. One file per run, rewritten as it grows, so an interrupted run
   /// leaves what it had rather than nothing.
   Future<String> save() async {
-    final directory = Directory(
-      '${(await getApplicationDocumentsDirectory()).path}/timing-calibration',
-    )..createSync(recursive: true);
+    final directory = await exportDirectory('timing-calibration');
     final existing = state.savedTo;
     final path =
         existing ??

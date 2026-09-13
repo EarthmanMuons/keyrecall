@@ -3,11 +3,13 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
-import 'package:path_provider/path_provider.dart';
+
+import 'export_directory.dart';
 
 /// The scripted takes, in the order they are meant to be played.
 ///
@@ -248,34 +250,37 @@ class TransportClockTraceNotifier extends Notifier<TransportClockTrace> {
     state = state.copyWith(records: _records);
   }
 
-  /// Writes the take where the Files app and Finder can reach it.
+  /// Writes the take somewhere a person can collect it from.
   ///
-  /// Documents rather than Application Support, for the reason the calibration
-  /// takes are there: characterization is meant to leave the phone, and
-  /// practice history is not.
+  /// Characterization is meant to leave the phone, and practice history is
+  /// not, which is why this does not go where the journal goes. See
+  /// [exportDirectory] for why the two platforms disagree about where that is.
   Future<String> save() async {
-    final directory = Directory(
-      '${(await getApplicationDocumentsDirectory()).path}/transport-clocks',
-    )..createSync(recursive: true);
+    final directory = await exportDirectory('transport-clocks');
     final stamp = DateTime.now().toIso8601String().replaceAll(
       RegExp('[:.]'),
       '-',
     );
     final path = '${directory.path}/$stamp-${state.take.id}.json';
 
-    File(path).writeAsStringSync(
-      const JsonEncoder.withIndent('  ').convert({
-        ...traceHeaderJson(
-          take: state.take,
-          note: state.note,
-          instrument: ref.read(midiDeviceManagerProvider).connectedDevice,
-        ),
-        'records': [for (final record in state.records) recordToJson(record)],
-      }),
-    );
+    File(path).writeAsStringSync(encode());
     state = state.copyWith(savedTo: path);
     return path;
   }
+
+  /// The take as it is written, for a device whose files nobody can reach.
+  ///
+  /// Android keeps app storage out of every file manager, so a trace that can
+  /// only be written to disk is a trace that stays on the phone. This is the
+  /// way out that needs nothing installed.
+  String encode() => const JsonEncoder.withIndent('  ').convert({
+    ...traceHeaderJson(
+      take: state.take,
+      note: state.note,
+      instrument: ref.read(midiDeviceManagerProvider).connectedDevice,
+    ),
+    'records': [for (final record in state.records) recordToJson(record)],
+  });
 }
 
 /// Records what the transports actually do, so the clock mapper can be
@@ -325,6 +330,14 @@ class _TransportClockScreenState extends ConsumerState<TransportClockScreen> {
       appBar: AppBar(
         title: const Text('Transport clocks'),
         actions: [
+          IconButton(
+            tooltip: 'Copy this take as JSON',
+            onPressed: trace.records.isEmpty
+                ? null
+                : () =>
+                      Clipboard.setData(ClipboardData(text: recorder.encode())),
+            icon: const Icon(Icons.copy),
+          ),
           IconButton(
             tooltip: 'Save this take on the phone',
             onPressed: trace.records.isEmpty ? null : _save,
@@ -393,8 +406,11 @@ class _TransportClockScreenState extends ConsumerState<TransportClockScreen> {
           ),
           if (trace.savedTo != null) ...[
             const SizedBox(height: 4),
-            Text(
-              'last saved ${Uri.file(trace.savedTo!).pathSegments.last}',
+            // The whole path, not the file name. Where a tool wrote something
+            // is the first thing anybody needs when it is time to collect it,
+            // and on Android it is not where the phone will show you.
+            SelectableText(
+              'saved to ${trace.savedTo}',
               style: theme.textTheme.bodySmall,
             ),
           ],

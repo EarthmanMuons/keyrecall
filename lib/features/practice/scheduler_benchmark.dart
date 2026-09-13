@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:path_provider/path_provider.dart';
+
+import 'export_directory.dart';
 
 /// What a scheduling decision costs on this device, in a release build.
 ///
@@ -298,9 +299,7 @@ class _SchedulerBenchmarkScreenState extends State<SchedulerBenchmarkScreen> {
   }
 
   Future<String> _write(String report) async {
-    final directory = Directory(
-      '${(await getApplicationDocumentsDirectory()).path}/benchmarks',
-    )..createSync(recursive: true);
+    final directory = await exportDirectory('benchmarks');
     final stamp = DateTime.now().toIso8601String().replaceAll(
       RegExp('[:.]'),
       '-',

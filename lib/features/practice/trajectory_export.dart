@@ -8,8 +8,8 @@ import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
-import 'package:path_provider/path_provider.dart';
 
+import 'export_directory.dart';
 import 'practice_providers.dart';
 
 /// What the model knew about pace when an attempt was decided.
@@ -298,9 +298,7 @@ Future<String> exportTrajectory(WidgetRef ref) async {
     profile.id,
     createdAt: profile.createdAt,
   );
-  final directory = Directory(
-    '${(await getApplicationDocumentsDirectory()).path}/trajectories',
-  )..createSync(recursive: true);
+  final directory = await exportDirectory('trajectories');
   final stamp = DateTime.now().toIso8601String().replaceAll(
     RegExp('[:.]'),
     '-',
