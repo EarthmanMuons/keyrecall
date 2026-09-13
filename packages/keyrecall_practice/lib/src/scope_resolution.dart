@@ -390,16 +390,29 @@ List<Exercise> _generateArpeggioCandidates(
     if (_hasCanonicalFingering(material, hands))
       for (final octaves in material.progression.octaveSpans)
         for (final direction in _arpeggioDirections(policy))
-          for (final guidance in GuidanceContext.ladder)
+          ..._guidanceRungsOf(
+            instrument,
             Exercise.linear(
               material: material,
               hands: hands,
               octaves: octaves,
               direction: direction,
               tempoBpm: policy.initialTempoBpm,
-              guidance: guidance,
             ),
-].where((exercise) => playableOn(instrument, exercise)).toList();
+          ),
+];
+
+/// Every guidance rung of [shape], or none when the instrument cannot play it.
+///
+/// Playability is a property of the shape: guidance reaches no note, so the
+/// instrument is asked once rather than of every rung.
+List<Exercise> _guidanceRungsOf(InstrumentProfile instrument, Exercise shape) =>
+    playableOn(instrument, shape)
+    ? [
+        for (final guidance in GuidanceContext.ladder)
+          shape.withGuidance(guidance),
+      ]
+    : const [];
 
 List<ExerciseDirection> _arpeggioDirections(ArpeggioPracticePolicy policy) =>
     policy.acquisitionFloorShape ==

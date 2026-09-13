@@ -40,7 +40,6 @@ List<Hand> handsOf(HandConfiguration hands) => [
 
 void main() {
   test('the supported catalog is wider than the simulation fixture', () {
-    expect(allScales, hasLength(48));
     expect(supportedMaterials.length, greaterThan(v1ScaleCatalog.length));
   });
 

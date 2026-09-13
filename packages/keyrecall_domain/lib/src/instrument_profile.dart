@@ -22,8 +22,19 @@ class InstrumentProfile {
   ///
   /// Both endpoints are played, so a one-octave traversal wants thirteen keys
   /// rather than twelve.
-  bool supportsPitchRange(int lowestPitch, int highestPitch) =>
-      highestPitch - lowestPitch + 1 <= keyCount;
+  ///
+  /// Throws [ArgumentError] for a range that runs backwards, which would
+  /// measure a negative width and fit anything.
+  bool supportsPitchRange(int lowestPitch, int highestPitch) {
+    if (highestPitch < lowestPitch) {
+      throw ArgumentError.value(
+        highestPitch,
+        'highestPitch',
+        'must not fall below $lowestPitch',
+      );
+    }
+    return highestPitch - lowestPitch + 1 <= keyCount;
+  }
 
   /// Whether [realization] is narrow enough to fit on this instrument.
   ///

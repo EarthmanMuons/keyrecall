@@ -118,6 +118,13 @@ void main() {
       expect(octave.supportsPitchRange(60, 72), isFalse);
     });
 
+    test('refuses a range that runs backwards', () {
+      expect(
+        () => InstrumentProfile().supportsPitchRange(72, 60),
+        throwsArgumentError,
+      );
+    });
+
     test('measures the whole realization, not one hand', () {
       final together = realize(
         Exercise.linear(
