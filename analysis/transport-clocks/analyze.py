@@ -28,6 +28,13 @@ from pathlib import Path
 # The modulus is then whatever makes the two clocks agree again.
 _chordWindowMs = 80
 
+# What a count has been worth so far: milliseconds on the BLE MIDI wire,
+# nanoseconds at millisecond resolution from a host, and hundred-microsecond
+# units over the network. A granularity outside these is a domain nothing has
+# characterized, which the mapper must treat as unavailable rather than guess
+# at.
+KNOWN_GRANULARITIES = (1, 100000, 1000000)
+
 KNOWN_MODULI = [8192, 16384, 32768, 65536, 1 << 24, 1 << 32]
 
 
@@ -132,8 +139,12 @@ def problems(trace, rows):
         positive = [step for step in steps if step > 0]
         if positive:
             granularity = math.gcd(*positive) if len(positive) > 1 else positive[0]
-            if granularity not in (1, 1000000):
-                found.append(f"unfamiliar timestamp granularity {granularity}")
+            if granularity not in KNOWN_GRANULARITIES:
+                found.append(
+                    f"NOTE: granularity {granularity} is not one this has seen"
+                    " before, which is a new clock domain rather than a broken"
+                    " file"
+                )
     return found
 
 

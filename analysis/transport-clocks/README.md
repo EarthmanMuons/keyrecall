@@ -156,6 +156,58 @@ domain has to be detected from the data, not looked up from metadata.**
 Granularity and magnitude are observable at runtime and they separate these two
 cleanly. Nothing the transport reports about itself does.
 
+### The clock domain is not a property of the device
+
+The strongest single finding, and it invalidates the shape of the question
+everything above was asking.
+
+Twenty-six minutes after the JamCorder produced a 1 ms counter modulo 8192, the
+same adapter, the same device id, the same reported route, produced a nanosecond
+counter at millisecond granularity that never wraps. Nothing was reconnected in
+between except that a MIDI network session was set up on the phone and the app
+was relaunched.
+
+```text
+17:30  jam-7cb  route ble  granularity 1        modulus 8192
+17:53  jam-7cb  route ble  granularity 1000000  no wrap
+```
+
+So the clock domain is not a property of the instrument, not of the transport,
+and not of the route. **It is a property of the session, and it has to be read
+off the stream every time.** That is what contract 1 already said; this is the
+trace that makes it unavoidable rather than prudent.
+
+It also has an operational consequence for collecting the rest of these takes:
+you cannot know which clock a recording captured until you look at it. The
+harness should say which domain is live before a take is recorded, or takes will
+keep landing on the wrong clock without anybody noticing.
+
+### A third domain, over the network
+
+A MIDI network session to a Mac produces a third granularity: **100,000**, or
+0.1 ms, finer than anything else seen. `analyze.py` flags it as a domain nothing
+has characterized rather than as a broken file, which is the distinction the
+mapper has to make too.
+
+Its delivery jitter is far wider than BLE, -69 to +106 ms against -26 to +25,
+with cumulative drift still zero.
+
+**What it means is genuinely unresolved**, and the two readings point opposite
+ways. Note-on intervals by arrival are 717 ms exactly, thirteen times out of
+twenty-eight, while by transport they range continuously from 669 to 825 ms.
+
+- If the Mac was playing something quantized, arrival is reporting the true
+  source timing and the network timestamps are the noisy ones.
+- If a person was playing, arrival cannot be that regular, and the exactness is
+  a delivery schedule making the clock look steadier by carrying less.
+
+Only knowing what generated the notes separates these, and nothing in the trace
+does. It is recorded as open rather than resolved.
+
+What it already proves is methodological: **lower dispersion is not better.** A
+clock that reports the same interval thirteen times running may be more accurate
+or may be less informative, and the statistic cannot tell you which.
+
 ### What a chord costs each clock
 
 Counting how often several notes land in one arrival millisecond does not
@@ -188,7 +240,7 @@ That is the wrap rule, and also where it stops. A gap where arrival time could
 be wrong by half a modulus is a gap where timing has to go unavailable rather
 than be guessed.
 
-### The stall did not show what it was meant to, on either clock
+### The stall still has not shown what it was meant to
 
 Under a deliberately loaded app, delivery jitter widened from -26..+25 ms to
 **-40..+40 ms** while cumulative drift stayed at zero. So the transport clock
@@ -205,9 +257,15 @@ transport against 28.0 by arrival**, and of two arrival instants carrying
 several notes, neither kept the stamps apart. Its clock adds nothing under load
 either, which is consistent with everything else it has shown.
 
+A third stall followed the adversarial protocol, one note repeated evenly under
+as much load as could be arranged, and came back the same way: **23.0 ms by
+arrival against 22.0 by transport**. It also landed on the host-style clock
+rather than the BLE one, which nobody knew until the file was read, so it did
+not test the clock it was recorded to test.
+
 **Reported as a negative result rather than smoothed over.** The case for
 transport time still rests on the chord spreads and the idle onset dispersion,
-both of which are real and repeatable. It does not yet rest on the stall.
+both of which are real and repeatable. It does not yet rest on any stall.
 
 ### What the piano was sending
 
