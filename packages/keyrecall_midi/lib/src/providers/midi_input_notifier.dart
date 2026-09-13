@@ -74,23 +74,14 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// The instrument every session since adoption has been listening for.
   MidiDevice? _instrument;
 
-  /// The session whose callbacks still describe this boundary.
-  ///
-  /// Cancelling a subscription is not, on every platform stream, a promise
-  /// that its terminal callbacks will never fire. A superseded subscription
-  /// reporting an error or a close would otherwise end the observation its
-  /// replacement had just opened, and open yet another.
-  String? _liveSession;
-
-  /// Counts the transport sessions opened, which is what names them.
+  /// The observation epoch input is currently admitted into.
   ///
   /// The transport reports a device id, never which link delivered a message,
-  /// so a reconnect that reuses the id is indistinguishable at the wire. The
-  /// token is minted here instead, once per subscription, and closed over by
-  /// that subscription's listener. A message arriving from a superseded
-  /// session carries the superseded token and is turned away by the same
-  /// admission filter that turns away another instrument, rather than being
-  /// admitted as the adopted instrument's playing.
+  /// so a reconnect that reuses the id is indistinguishable at the wire. This
+  /// names the epoch instead, so the adopted identity changes when the same
+  /// instrument is readopted and a trace can say which side of a boundary a
+  /// message fell on.
+  String _session = 'midi-0';
   int _sessionsOpened = 0;
 
   /// Whether [build] has returned, and so whether [state] can be assigned.
@@ -126,7 +117,8 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
       unawaited(_transport.close());
     });
 
-    _openSession();
+    _listen();
+    _beginEpoch();
 
     // A connection that comes, goes, or is retried is a boundary in the
     // observation whether or not any note crossed it.
@@ -134,7 +126,7 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
       midiConnectionStateProvider.select((state) => state.phase),
       (previous, next) {
         if (previous == next) return;
-        _openSession();
+        _beginEpoch();
       },
     );
 
@@ -144,7 +136,7 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
       (previous, next) {
         if (previous?.id == next?.id) return;
         _instrument = next;
-        _openSession();
+        _beginEpoch();
       },
       fireImmediately: true,
     );
@@ -168,11 +160,11 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
 
   /// Opens a fresh observation after a suspension.
   ///
-  /// Coming back to the foreground is an establishment event, so it gets a new
-  /// transport session rather than resuming the one that was suspended.
+  /// Coming back to the foreground is an establishment event, so it opens a
+  /// new observation rather than resuming the one that was suspended.
   void resumeObservation() {
     if (_reducer.isObserving) return;
-    _openSession();
+    _beginEpoch();
   }
 
   /// Where the observation stands, for a consumer attaching now.
@@ -196,16 +188,22 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     return opening;
   }
 
-  /// Replaces the transport subscription, and with it the observation.
+  /// Opens a fresh observation, leaving the transport alone.
   ///
-  /// The only thing that opens an observation. Every caller is an actual
-  /// establishment event: the app starting, a connection transition, adopting
-  /// an instrument, coming back to the foreground, or a failed source being
-  /// resubscribed.
-  void _openSession() {
-    unawaited(_messages?.cancel());
+  /// The only thing that opens one. Every caller is an actual establishment
+  /// event: the app starting, a connection transition, adopting an instrument,
+  /// coming back to the foreground, or a failed source being taken up again.
+  ///
+  /// It does not touch the subscription, and an earlier version did. An
+  /// observation epoch is a fact about what KeyRecall can vouch for; a
+  /// subscription is a fact about the transport, and the plugin's stream is
+  /// the same stream throughout. Replacing it on every connection transition
+  /// dropped the platform's last listener and took its MIDI receivers down
+  /// with it, which on Android stopped delivery outright and then churned
+  /// through several epochs before anything arrived again.
+  void _beginEpoch() {
     final session = 'midi-${++_sessionsOpened}';
-    _liveSession = session;
+    _session = session;
     _reducer.adopt(_identityOf(_instrument, session));
     _record(
       (sequence, at) => MidiTransportBoundary(
@@ -216,33 +214,23 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
         adopted: _reducer.adopted,
       ),
     );
+    _emit(_reducer.begin(timestampMs: _clock()));
+  }
+
+  /// Attaches to the transport, once, for as long as this notifier lives.
+  void _listen() {
     _messages = ref
         .read(midiBleServiceProvider)
         .onMidiMessages
         .listen(
-          (message) {
-            final envelope = _envelope(session, message);
-            // Ahead of the liveness guard on purpose: a delivery from a
-            // superseded subscription is one of the things worth seeing.
-            _record(
-              (sequence, at) => MidiTransportDelivery(
-                sequence: sequence,
-                arrivalTimestampMs: at,
-                envelope: envelope,
-                source: message,
-                live: _isLive(session),
-              ),
-            );
-            if (!_isLive(session)) return;
-            _receive(envelope);
-          },
+          _receive,
           // An error is not a quiet gap in the input. Reading through it is
           // how a capture kept collecting notes after its stream had already
-          // failed. The observation ends, and a new session replaces it, so a
-          // transient transport error does not deafen the app until the next
-          // reconnect.
+          // failed. The observation ends and a new one opens; the
+          // subscription survives on its own, because it does not cancel on
+          // error, so a transient failure costs an epoch rather than the
+          // instrument.
           onError: (Object error, StackTrace _) {
-            if (!_isLive(session)) return;
             if (!kReleaseMode) debugPrint('MIDI message error: $error');
             _emit(
               _reducer.fail(
@@ -251,38 +239,39 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
                 detail: '$error',
               ),
             );
-            _openSession();
+            _beginEpoch();
           },
-          // Nothing is left to resubscribe to, so this one stays closed.
-          onDone: () {
-            if (!_isLive(session)) return;
-            _emit(
-              _reducer.fail(
-                InputIntegrityFault.sourceClosed,
-                timestampMs: _clock(),
-                detail: 'the MIDI source ended',
-              ),
-            );
-          },
+          // Nothing is left to observe, so this one stays closed.
+          onDone: () => _emit(
+            _reducer.fail(
+              InputIntegrityFault.sourceClosed,
+              timestampMs: _clock(),
+              detail: 'the MIDI source ended',
+            ),
+          ),
           cancelOnError: false,
         );
-    _emit(_reducer.begin(timestampMs: _clock()));
   }
 
-  /// Whether [session] is still the subscription the boundary answers to.
-  ///
-  /// Stale data is turned away by the admission filter too, once an
-  /// instrument is adopted. This is the layer below that: it covers the
-  /// terminal callbacks, which carry no identity to admit, and the window
-  /// before anything is adopted, when every source is admitted by policy.
-  bool _isLive(String session) => session == _liveSession;
-
-  void _receive(RawInputEnvelope envelope) {
+  void _receive(MidiSourceMessage source) {
     final turnedAway = _reducer.rejectedForeignCount;
+    final envelope = _envelope(source);
+    // Ahead of anything deciding what it means: a message the boundary goes
+    // on to reject is one the dataset may have to explain a discontinuity
+    // with.
+    _record(
+      (sequence, at) => MidiTransportDelivery(
+        sequence: sequence,
+        arrivalTimestampMs: at,
+        envelope: envelope,
+        source: source,
+        live: true,
+      ),
+    );
     _emit(_reducer.receive(envelope));
-    // A message from another instrument, or from a superseded session,
-    // produces no event but is still worth publishing: it is the only sign
-    // that something else is playing into the same transport.
+    // A message from another instrument produces no event but is still worth
+    // publishing: it is the only sign that something else is playing into the
+    // same transport.
     if (_reducer.rejectedForeignCount != turnedAway) _publish();
   }
 
@@ -292,18 +281,17 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// playing, and nothing KeyRecall measures is per-channel. The channel is
   /// carried on the envelope so a later policy can narrow this without
   /// re-plumbing the boundary.
-  RawInputEnvelope _envelope(String session, MidiSourceMessage source) =>
-      RawInputEnvelope(
-        source: InputSourceIdentity(
-          deviceId: source.deviceId,
-          transport: source.transport.name,
-          sessionId: session,
-        ),
-        channel: source.message.channel,
-        message: _rawMessage(source.message),
-        transportTimestamp: source.transportTimestamp,
-        arrivalTimestampMs: _clock(),
-      );
+  RawInputEnvelope _envelope(MidiSourceMessage source) => RawInputEnvelope(
+    source: InputSourceIdentity(
+      deviceId: source.deviceId,
+      transport: source.transport.name,
+      sessionId: _session,
+    ),
+    channel: source.message.channel,
+    message: _rawMessage(source.message),
+    transportTimestamp: source.transportTimestamp,
+    arrivalTimestampMs: _clock(),
+  );
 
   static RawInputMessage _rawMessage(MidiMessage message) {
     switch (message.type) {

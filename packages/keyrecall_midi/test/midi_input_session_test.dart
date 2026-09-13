@@ -9,54 +9,17 @@ import 'package:keyrecall_midi/keyrecall_midi.dart';
 
 import 'fake_midi_ble_service.dart';
 
-/// A subscription that keeps its callbacks after it has been cancelled.
+/// A source that counts how many times anything subscribed to it.
 ///
-/// A real transport should not do this. The guard being tested exists because
-/// whether a particular platform stream can fire a terminal callback around a
-/// cancel is not something the input boundary should have to depend on.
-class _StaleSubscription implements StreamSubscription<MidiSourceMessage> {
-  _StaleSubscription(this._onData, this._onError, this._onDone);
+/// The plugin's stream reaches the platform's own event channel, whose last
+/// listener leaving takes the MIDI receivers down with it. Counting
+/// subscriptions is how a test says that never happens twice.
+class _CountingSource extends Stream<MidiSourceMessage> {
+  _CountingSource(this._messages);
 
-  final void Function(MidiSourceMessage)? _onData;
-  final Function? _onError;
-  final void Function()? _onDone;
-
-  bool isCancelled = false;
-
-  void deliver(MidiSourceMessage message) => _onData?.call(message);
-
-  void deliverError(Object error) =>
-      (_onError as void Function(Object, StackTrace)?)?.call(
-        error,
-        StackTrace.empty,
-      );
-
-  void deliverDone() => _onDone?.call();
-
-  @override
-  Future<void> cancel() async {
-    isCancelled = true;
-  }
-
-  @override
-  void onData(void Function(MidiSourceMessage)? handleData) {}
-  @override
-  void onError(Function? handleError) {}
-  @override
-  void onDone(void Function()? handleDone) {}
-  @override
-  void pause([Future<void>? resumeSignal]) {}
-  @override
-  void resume() {}
-  @override
-  bool get isPaused => false;
-  @override
-  Future<E> asFuture<E>([E? futureValue]) => Completer<E>().future;
-}
-
-/// A source that hands every subscription it made to the test.
-class _StaleSource extends Stream<MidiSourceMessage> {
-  final List<_StaleSubscription> subscriptions = [];
+  final Stream<MidiSourceMessage> _messages;
+  int subscriptions = 0;
+  int cancellations = 0;
 
   @override
   StreamSubscription<MidiSourceMessage> listen(
@@ -65,14 +28,48 @@ class _StaleSource extends Stream<MidiSourceMessage> {
     void Function()? onDone,
     bool? cancelOnError,
   }) {
-    final subscription = _StaleSubscription(onData, onError, onDone);
-    subscriptions.add(subscription);
-    return subscription;
+    subscriptions += 1;
+    final inner = _messages.listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+    return _CountingSubscription(inner, () => cancellations += 1);
   }
 }
 
-class _StaleSourceService extends FakeMidiBleService {
-  final _StaleSource source = _StaleSource();
+class _CountingSubscription implements StreamSubscription<MidiSourceMessage> {
+  _CountingSubscription(this._inner, this._onCancel);
+
+  final StreamSubscription<MidiSourceMessage> _inner;
+  final void Function() _onCancel;
+
+  @override
+  Future<void> cancel() {
+    _onCancel();
+    return _inner.cancel();
+  }
+
+  @override
+  void onData(void Function(MidiSourceMessage)? handleData) =>
+      _inner.onData(handleData);
+  @override
+  void onError(Function? handleError) => _inner.onError(handleError);
+  @override
+  void onDone(void Function()? handleDone) => _inner.onDone(handleDone);
+  @override
+  void pause([Future<void>? resumeSignal]) => _inner.pause(resumeSignal);
+  @override
+  void resume() => _inner.resume();
+  @override
+  bool get isPaused => _inner.isPaused;
+  @override
+  Future<E> asFuture<E>([E? futureValue]) => _inner.asFuture(futureValue);
+}
+
+class _CountingService extends FakeMidiBleService {
+  late final _CountingSource source = _CountingSource(super.onMidiMessages);
 
   @override
   Stream<MidiSourceMessage> get onMidiMessages => source;
@@ -81,13 +78,13 @@ class _StaleSourceService extends FakeMidiBleService {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late _StaleSourceService ble;
+  late _CountingService ble;
   late ProviderContainer container;
   late int nowMs;
 
   setUp(() async {
     silenceDebugPrint();
-    ble = _StaleSourceService();
+    ble = _CountingService();
     SharedPreferences.setMockInitialValues(const {});
     final preferences = await SharedPreferences.getInstance();
     nowMs = 0;
@@ -111,85 +108,86 @@ void main() {
   MidiInputNotifier input() => container.read(midiInputProvider.notifier);
   MidiInputState state() => container.read(midiInputProvider);
 
-  /// Replaces the transport session, the way returning to the foreground does.
-  Future<_StaleSubscription> supersede() async {
-    final superseded = ble.source.subscriptions.last;
+  // What broke Android. Every connection transition used to replace the
+  // transport subscription, which dropped the platform channel's last
+  // listener and took its MIDI receivers down with it: delivery stopped, and
+  // several epochs went by before anything arrived again.
+  test('every epoch after the first leaves the transport alone', () async {
+    expect(ble.source.subscriptions, 1);
+
+    const device = MidiDevice(
+      id: 'adopted',
+      name: 'JamCorder',
+      transport: MidiTransportType.ble,
+      isConnected: false,
+    );
+    ble.discoverable = const [device];
+    await container.read(midiConnectionStateProvider.notifier).connect(device);
+    await pumpEventQueue();
     input()
       ..suspendObservation()
       ..resumeObservation();
     await pumpEventQueue();
-    expect(superseded.isCancelled, isTrue);
-    return superseded;
-  }
 
-  test('every session replaces the subscription before it', () async {
-    expect(ble.source.subscriptions, hasLength(1));
-
-    await supersede();
-
-    expect(ble.source.subscriptions, hasLength(2));
-    expect(state().isObserving, isTrue);
+    expect(
+      state().adopted?.sessionId,
+      isNot('midi-1'),
+      reason: 'several epochs opened',
+    );
+    expect(ble.source.subscriptions, 1);
+    expect(ble.source.cancellations, 0);
   });
 
-  test(
-    'a superseded subscription cannot end the observation that replaced it',
-    () async {
-      final superseded = await supersede();
-      nowMs = 50;
+  test('input still arrives after the epochs that used to break it', () async {
+    input()
+      ..suspendObservation()
+      ..resumeObservation();
+    await pumpEventQueue();
 
-      superseded.deliverError(StateError('late failure from a dead link'));
-      await pumpEventQueue();
-
-      expect(state().isObserving, isTrue);
-      expect(state().fault, isNull);
-      expect(
-        ble.source.subscriptions,
-        hasLength(2),
-        reason: 'a stale error opened no session of its own',
-      );
-    },
-  );
-
-  test(
-    'a superseded subscription closing cannot end its replacement',
-    () async {
-      final superseded = await supersede();
-      nowMs = 50;
-
-      superseded.deliverDone();
-      await pumpEventQueue();
-
-      expect(state().isObserving, isTrue);
-      expect(state().fault, isNull);
-    },
-  );
-
-  // The admission filter turns stale messages away once an instrument is
-  // adopted. Nothing is adopted here, which is when every source is admitted
-  // by policy, so this is the case only the subscription guard covers.
-  test('a superseded subscription cannot play into its replacement', () async {
-    final superseded = await supersede();
-    nowMs = 50;
-
-    superseded.deliver(
-      const MidiSourceMessage(
-        message: MidiMessage(
-          type: MidiMessageType.noteOn,
-          note: 60,
-          velocity: 90,
-        ),
-        deviceId: 'whatever',
-        transport: MidiTransportType.ble,
-        transportTimestamp: 0,
-      ),
+    ble.emitMessage(
+      const MidiMessage(type: MidiMessageType.noteOn, note: 60, velocity: 90),
     );
     await pumpEventQueue();
 
-    expect(
-      state().adopted,
-      isNull,
-      reason: 'nothing adopted, so nothing to admit against',
+    expect(state().snapshot.pressedNoteNumbers, {60});
+  });
+
+  // The subscription does not cancel on error, so a transient failure costs
+  // an epoch rather than the instrument.
+  test('a source error costs an epoch, not the subscription', () async {
+    ble.emitMessageError(StateError('link hiccup'));
+    await pumpEventQueue();
+
+    expect(ble.source.subscriptions, 1);
+    expect(state().isObserving, isTrue);
+
+    nowMs = 50;
+    ble.emitMessage(
+      const MidiMessage(type: MidiMessageType.noteOn, note: 64, velocity: 90),
     );
-    expect(state().snapshot.isSilent, isTrue);
+    await pumpEventQueue();
+
+    expect(state().snapshot.pressedNoteNumbers, {64});
+  });
+
+  test('a readopted instrument is a new source', () async {
+    const device = MidiDevice(
+      id: 'adopted',
+      name: 'JamCorder',
+      transport: MidiTransportType.ble,
+      isConnected: false,
+    );
+    ble.discoverable = const [device];
+    await container.read(midiConnectionStateProvider.notifier).connect(device);
+    await pumpEventQueue();
+
+    final before = state().adopted;
+    expect(before?.sessionId, isNotNull);
+    input()
+      ..suspendObservation()
+      ..resumeObservation();
+    await pumpEventQueue();
+
+    expect(state().adopted?.sessionId, isNot(before?.sessionId));
   });
 }

@@ -117,13 +117,13 @@ once per transport subscription, and closed over by that subscription's
 listener. A message from a superseded session is turned away by the same filter
 that turns away another instrument.
 
-Below that sits a plainer rule: a subscription's callbacks stop counting the
-moment it is replaced. Cancelling a stream is not, on every platform, a promise
-that its terminal callbacks will never fire, and a superseded subscription
-reporting an error or a close would otherwise end the observation its
-replacement had just opened and open yet another. That guard also covers the
-window before anything is adopted, when every source is admitted by policy and
-identity has nothing to reject with.
+**An observation epoch is not a subscription.** The transport is subscribed
+once, for as long as the boundary lives, and every epoch after the first leaves
+it alone. Replacing it on each connection transition dropped the platform event
+channel's last listener and took its MIDI receivers down with it: on Android
+delivery stopped outright, and several epochs went by before anything arrived
+again. The subscription does not cancel on error either, so a transient
+transport failure costs an epoch rather than the instrument.
 
 ### Channels are owned separately and measured together
 
