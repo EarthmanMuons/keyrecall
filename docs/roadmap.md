@@ -910,11 +910,14 @@ The order the work has to happen in, because each step decides the next:
    and under a deliberate stall; what background, resume, and reconnect do to
    continuity. None of this is settleable by inspection, and the conversion
    layer's design follows what devices actually emit.
-2. **Add a clock mapper, beside the reducer rather than inside it.** The reducer
-   owns ordering and integrity of the observed stream. The mapper answers a
-   different question: whether when a musical event happened is known well
-   enough to be timing evidence. Teaching the reducer transport-specific timing
-   would put two jobs back in one place.
+2. **Add a route-aware timing layer, beside the reducer rather than inside it.**
+   The reducer owns ordering and integrity of the observed stream. This answers
+   a different question: whether when a musical event happened is known well
+   enough to be timing evidence, and on whose authority. Characterization found
+   that two BLE instruments on one phone reach the app by different routes
+   carrying different clocks, so the dispatch is on the delivery route rather
+   than on the transport, and the output is a capability rather than a number:
+   source-timed, host-timed, or unavailable.
 3. **Make timing availability explicit in the normalized product.** Not by
    replacing `arrivalTimestampMs` with a better-looking number: observation
    time, performance time, and performance time unavailable are three different

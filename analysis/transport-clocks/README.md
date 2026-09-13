@@ -155,16 +155,35 @@ P-525, host route        a strike and a release arrive in one millisecond
                          carrying the same stamp, four times out of four
 ```
 
-A host-receive timestamp is arrival time taken slightly earlier. It cannot
-recover what the instrument spread out and delivery collapsed, because it is
-applied after the collapse. The onset dispersion says the same thing more
-quietly: halved on the BLE route, essentially unchanged on the host route.
+A host-receive timestamp is applied after the collapse, so it cannot recover
+what the instrument spread out and delivery ran together. The onset dispersion
+says the same thing more quietly: halved on the BLE route, essentially unchanged
+on the host route.
+
+That makes it weaker than instrument time. It does not make it worthless, and
+the difference is worth keeping straight, because there are three clocks here
+and not two:
+
+```text
+BLE route        the instrument's own message time
+                 survives host delivery and batching
+host route       the host's receive time
+                 cannot recover what was collapsed before the host saw it,
+                 but is taken before anything Dart does
+arrival clock    Dart processing time
+                 everything above, plus Dart-side scheduling
+```
+
+The `stall` take is what separates the second from the third. Nothing here does:
+these takes were played while the app was idle, so host time and arrival time
+had no reason to diverge. If a loaded app pulls them apart, host time is
+carrying something real and discarding it would throw away evidence.
 
 So the useful reading is not "BLE timestamps work." It is:
 
-> **The route decides whether the transport timestamp is evidence about playing
-> at all.** The BLE route carries the instrument's own onset timing. The host
-> route carries the host's receive time, which is what KeyRecall already has.
+> **The route decides what a transport timestamp is evidence about.** The BLE
+> route carries the instrument's own onset timing. The host route carries the
+> host's receive time, which is a weaker claim and not yet a worthless one.
 
 One consequence is worth stating plainly because it is counterintuitive: on this
 phone, practising through the adapter yields better timing evidence than
@@ -189,9 +208,11 @@ say what those are rather than leaving them to be guessed at.
 
 - **Which route each instrument arrives by**, observed rather than inferred, and
   whether an instrument can change route between sessions.
-- **Whether the host route is worth anything at all.** If it is only arrival
-  time taken earlier, the honest answer may be that timing evidence is
-  unavailable on that route rather than slightly better.
+- **What the host route is worth.** It cannot carry onset timing, and that is
+  settled. Whether it still protects against Dart-side scheduling delay is not,
+  and `stall` on a host-routed instrument is what answers it. The layer this
+  feeds is likely capability-based rather than binary: source-timed, host-timed,
+  or unavailable.
 - **What Android routes by.** The wire format is the same specification, so a
   difference there is the plugin or the platform not preserving what the wire
   carried. Which route its BLE instruments arrive by is the thing to read off
