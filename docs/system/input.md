@@ -101,6 +101,14 @@ once per transport subscription, and closed over by that subscription's
 listener. A message from a superseded session is turned away by the same filter
 that turns away another instrument.
 
+Below that sits a plainer rule: a subscription's callbacks stop counting the
+moment it is replaced. Cancelling a stream is not, on every platform, a promise
+that its terminal callbacks will never fire, and a superseded subscription
+reporting an error or a close would otherwise end the observation its
+replacement had just opened and open yet another. That guard also covers the
+window before anything is adopted, when every source is admitted by policy and
+identity has nothing to reject with.
+
 ### Channels are owned separately and measured together
 
 Every channel of the adopted instrument is one keyboard. A stage piano splitting
@@ -175,4 +183,6 @@ them:
 - every event in one observation is in nondecreasing time;
 - a lifecycle suspension ends the current observation;
 - a consumer attaching partway through is handed the whole snapshot, not
-  whatever arrives next, and never reopens a closed observation by asking.
+  whatever arrives next, and never reopens a closed observation by asking;
+- a superseded transport subscription can neither play into the observation that
+  replaced it nor end it.

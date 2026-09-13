@@ -68,6 +68,14 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// The instrument every session since adoption has been listening for.
   MidiDevice? _instrument;
 
+  /// The session whose callbacks still describe this boundary.
+  ///
+  /// Cancelling a subscription is not, on every platform stream, a promise
+  /// that its terminal callbacks will never fire. A superseded subscription
+  /// reporting an error or a close would otherwise end the observation its
+  /// replacement had just opened, and open yet another.
+  String? _liveSession;
+
   /// Counts the transport sessions opened, which is what names them.
   ///
   /// The transport reports a device id, never which link delivered a message,
@@ -167,18 +175,23 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   void _openSession() {
     unawaited(_messages?.cancel());
     final session = 'midi-${++_sessionsOpened}';
+    _liveSession = session;
     _reducer.adopt(_identityOf(_instrument, session));
     _messages = ref
         .read(midiBleServiceProvider)
         .onMidiMessages
         .listen(
-          (message) => _receive(session, message),
+          (message) {
+            if (!_isLive(session)) return;
+            _receive(session, message);
+          },
           // An error is not a quiet gap in the input. Reading through it is
           // how a capture kept collecting notes after its stream had already
           // failed. The observation ends, and a new session replaces it, so a
           // transient transport error does not deafen the app until the next
           // reconnect.
           onError: (Object error, StackTrace _) {
+            if (!_isLive(session)) return;
             if (!kReleaseMode) debugPrint('MIDI message error: $error');
             _emit(
               _reducer.fail(
@@ -190,17 +203,28 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
             _openSession();
           },
           // Nothing is left to resubscribe to, so this one stays closed.
-          onDone: () => _emit(
-            _reducer.fail(
-              InputIntegrityFault.sourceClosed,
-              timestampMs: _clock(),
-              detail: 'the MIDI source ended',
-            ),
-          ),
+          onDone: () {
+            if (!_isLive(session)) return;
+            _emit(
+              _reducer.fail(
+                InputIntegrityFault.sourceClosed,
+                timestampMs: _clock(),
+                detail: 'the MIDI source ended',
+              ),
+            );
+          },
           cancelOnError: false,
         );
     _emit(_reducer.begin(timestampMs: _clock()));
   }
+
+  /// Whether [session] is still the subscription the boundary answers to.
+  ///
+  /// Stale data is turned away by the admission filter too, once an
+  /// instrument is adopted. This is the layer below that: it covers the
+  /// terminal callbacks, which carry no identity to admit, and the window
+  /// before anything is adopted, when every source is admitted by policy.
+  bool _isLive(String session) => session == _liveSession;
 
   void _receive(String session, MidiSourceMessage source) {
     final turnedAway = _reducer.rejectedForeignCount;
