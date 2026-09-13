@@ -255,6 +255,10 @@ class PerformanceClockDefinition {
        assert(
          quantum * 1000 % countsPerMillisecond == 0,
          'a quantum has to be a whole number of microseconds',
+       ),
+       assert(
+         modulus == null || modulus % quantum == 0,
+         'a counter has to wrap on a whole number of quanta',
        );
 
   /// What has to be measured for this clock to be recognized.

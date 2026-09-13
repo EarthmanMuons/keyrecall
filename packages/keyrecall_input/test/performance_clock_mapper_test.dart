@@ -185,22 +185,66 @@ void main() {
     });
   });
 
-  // Placing a wrapping counter on a continuous timeline takes the arrival
-  // bound and the unique-candidate arithmetic, which is not here. Recognizing
-  // the clock is not the same as being able to read it.
-  test('a wrapping domain is recognized and carries no time', () {
-    mapper.feed(wrappingWarmup);
+  group('a counter that wraps', () {
+    // The take that characterized this clock: a millisecond counter whose
+    // width is established by a silence arrival puts at one whole modulus.
+    setUp(() {
+      mapper.feed(wrappingWarmup);
+      mapper.map(session: 'a', arrivalMs: 8095, timestamp: 3);
+    });
 
-    // The wrap that establishes the counter's width: a step backward across a
-    // silence that arrival time puts at one whole modulus.
-    final timings = [mapper.map(session: 'a', arrivalMs: 8095, timestamp: 3)];
+    test('the wrap that identifies it is where the timeline starts', () {
+      expect(mapper.phase, PerformanceClockPhase.active);
+      expect(mapper.clock?.modulus, 8192);
+      expect(
+        mapper.map(session: 'a', arrivalMs: 8195, timestamp: 103),
+        const TimingAvailable(100000),
+      );
+    });
 
-    expect(mapper.phase, PerformanceClockPhase.active);
-    expect(mapper.clock?.modulus, 8192);
-    expect(
-      timings.last,
-      const TimingUnavailable(TimingUnavailableReason.unresolvedWrap),
-    );
+    test('an ordinary wrap is one epoch', () {
+      expect(
+        mapper.map(session: 'a', arrivalMs: 16095, timestamp: 8003),
+        const TimingAvailable(8000000),
+      );
+      expect(
+        mapper.map(session: 'a', arrivalMs: 16395, timestamp: 111),
+        const TimingAvailable(8300000),
+      );
+    });
+
+    // The regression this whole investigation came from.
+    // `ios-jamcorder-pause` steps backward by 2,721 counts across a 13,667 ms
+    // silence, which is two whole epochs and not one: 2 * 8192 - 2721 = 13,663
+    // counts. Counting one wrap per backward step reads it as 5,471.
+    test('a silence hiding two epochs is two epochs', () {
+      expect(
+        mapper.map(
+          session: 'a',
+          arrivalMs: 8095 + 13667,
+          timestamp: 3 - 2721 + 8192,
+        ),
+        const TimingAvailable(13663000),
+      );
+    });
+
+    // Chords arrive under one stamp, and nothing about that is a wrap.
+    test('a step of nothing is no time at all', () {
+      expect(
+        mapper.map(session: 'a', arrivalMs: 8096, timestamp: 3),
+        const TimingAvailable(0),
+      );
+    });
+
+    // Both neighboring epoch counts fit once arrival is useless, and a guess
+    // is not an answer.
+    test('a silence nothing can place is terminal', () {
+      expect(
+        mapper.map(session: 'a', arrivalMs: 8095 + 4096, timestamp: 3),
+        const TimingUnavailable(TimingUnavailableReason.ambiguousWrap),
+      );
+      expect(mapper.phase, PerformanceClockPhase.failed);
+    });
   });
 
   test('a new session starts over with no timeline', () {

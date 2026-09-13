@@ -1,7 +1,6 @@
 # Performance timing
 
-- **Status:** accepted. The state machine and conversion for a domain that does
-  not wrap are built; the wrap arithmetic is not.
+- **Status:** accepted and implemented in `PerformanceClockMapper`.
 
 Whether KeyRecall is entitled to say when somebody played a note, and what it
 does when it is not.
@@ -88,7 +87,7 @@ boundary.
 
 **Decision.** Unavailability carries a typed reason, at least: `detecting`,
 `nonPerformanceDomain`, `unknownDomain`, `ambiguousWrap`, `continuityLost`,
-`missingTransportTimestamp`, `implausibleClockStep`, `unresolvedWrap`.
+`missingTransportTimestamp`, `implausibleClockStep`.
 
 Each one says what happens next, because that is what the reason is for:
 
@@ -101,10 +100,6 @@ unknownDomain                not a clock failure; refinement can lift either
 
 missingTransportTimestamp    this event only; a later complete sample is
                              timed again if continuity still holds
-
-unresolvedWrap               no timing while that clock is in use, and not a
-                             clock failure; the counter is recognized and
-                             cannot be placed on a continuous timeline
 
 ambiguousWrap                terminal for this observation
 implausibleClockStep
@@ -165,21 +160,22 @@ per millisecond, a raw delta `r` counts, an arrival elapsed `a` milliseconds,
 and a tolerated arrival uncertainty `u` milliseconds:
 
 ```text
-candidateUs(k) = (r + k * M) * 1000 / g,  for integer k where the result is >= 0
+candidate(k) = r + k * M,  for integer k where candidate(k) >= 0
 
-accept iff exactly one candidateUs(k) lies within [(a - u) * 1000, (a + u) * 1000]
+accept iff exactly one candidate(k) lies within [(a - u) * g, (a + u) * g]
 ```
 
 No candidate means the clocks disagree beyond what policy tolerates; more than
 one means the wrap count is ambiguous. Neither is guessed.
 
-The division by `g` is the whole point of writing it this way. Counts and
-milliseconds coincide only for the one wrapping domain characterized so far, at
-1 count per millisecond, and a wrapping clock at 100,000 would make the
-comparison nonsense while still appearing to work on every recorded trace.
-Candidates are converted to time rather than `a` and `u` converted to counts, so
-that the uncertainty bound stays a quantity somebody can reason about and the
-mapper's public unit is the one the arithmetic is done in.
+`g` is the rate and not the quantum, which is the whole point of writing it in.
+Counts and milliseconds coincide only for the one wrapping domain characterized
+so far, at 1 count per millisecond, and a wrapping clock at 100,000 would make
+the comparison nonsense while still appearing to work on every recorded trace.
+The comparison is made in counts because both bounds convert to counts by
+multiplication, which is exact, while converting a candidate to microseconds is
+a division that would have to round at the bounds. `u` stays stated in
+milliseconds, which is the unit it is reasoned about in.
 
 **Why.** A silence longer than the modulus hides whole epochs, and no sequence
 of stamps can say how many. Arrival elapsed time can, and this is the one job it
@@ -191,11 +187,14 @@ rounding elapsed-minus-step to whole moduli read 1.00044 with no drift across
 the gap. Across every take the worst gap sat 0.496 of a modulus from an
 ambiguous rounding.
 
-**Consequences.** `u` is a parameter with a stated value, not a constant
-discovered to be comfortable. The measured margin is evidence about these
-traces; the bound is a claim about what the system will tolerate, and the two
-must not be confused. A gap wide enough to make two candidates fit yields
-`ambiguousWrap`, which is terminal.
+**Consequences.** `u` is 1000 ms: wide enough for a late delivery and for the
+drift between two clocks across a long silence, and far enough inside half a
+modulus that two candidates cannot both fit, since candidates on the
+characterized counter stand 8192 ms apart. It is a parameter with a stated
+value, not a constant discovered to be comfortable. The measured margin is
+evidence about these traces; the bound is a claim about what the system will
+tolerate, and the two must not be confused. A gap wide enough to make two
+candidates fit yields `ambiguousWrap`, which is terminal.
 
 ## Losing continuity is terminal; a quiet domain is not a fault
 
@@ -281,7 +280,8 @@ authorization and transitions, and no conversion at all. Then conversion for an
 authorized domain that does not wrap, which is a count delta over the clock's
 rate, measured from the anchor rather than accumulated so that no interval's
 rounding can build up. Then the modulus and the unique-candidate arithmetic,
-which is what `unresolvedWrap` stands in for until it exists.
+which keeps the same anchor-relative conversion and only has to establish the
+unwrapped position it converts from.
 
 **Why.** The refusals are the part worth being certain of, and they can be
 proved before there is anything to convert: that arrival time never produces

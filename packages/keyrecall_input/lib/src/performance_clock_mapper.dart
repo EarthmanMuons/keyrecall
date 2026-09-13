@@ -17,15 +17,30 @@ import 'performance_timing.dart';
 class PerformanceClockMapper {
   final ClockDomainPolicy policy;
 
+  /// How far arrival elapsed time may sit from a candidate and still choose
+  /// it.
+  ///
+  /// A bound on what the system tolerates, not a measurement. It has to be
+  /// wide enough for a late delivery and for the drift between two clocks over
+  /// a long silence, and far enough inside half a modulus that two candidates
+  /// cannot both fit. On the characterized counter, candidates stand 8192 ms
+  /// apart and the worst recorded gap sat 0.496 of a modulus from an ambiguous
+  /// rounding.
+  final int arrivalUncertaintyMs;
+
   final ClockDomainDetector _detector = ClockDomainDetector();
   final PerformanceClockLifecycle _lifecycle = PerformanceClockLifecycle();
 
   String? _session;
   PerformanceClockDefinition? _clock;
-  int? _anchorRaw;
   int? _lastRaw;
+  int? _lastArrivalMs;
+  int _unwrappedCounts = 0;
 
-  PerformanceClockMapper({this.policy = ClockDomainPolicy.characterized});
+  PerformanceClockMapper({
+    this.policy = ClockDomainPolicy.characterized,
+    this.arrivalUncertaintyMs = 1000,
+  });
 
   /// Where the clock stands.
   PerformanceClockPhase get phase => _lifecycle.phase;
@@ -48,9 +63,7 @@ class PerformanceClockMapper {
     if (session != _session) {
       _session = session;
       _lifecycle.restart();
-      _clock = null;
-      _anchorRaw = null;
-      _lastRaw = null;
+      _forget();
     }
 
     final observation = _detector.observe(
@@ -63,9 +76,7 @@ class PerformanceClockMapper {
       shape: observation.shape,
     );
     if (phase != PerformanceClockPhase.active) {
-      _clock = null;
-      _anchorRaw = null;
-      _lastRaw = null;
+      _forget();
       return TimingUnavailable(_lifecycle.unavailableReason!);
     }
 
@@ -78,30 +89,94 @@ class PerformanceClockMapper {
         TimingUnavailableReason.missingTransportTimestamp,
       );
     }
-    if (clock.modulus != null) {
-      return const TimingUnavailable(TimingUnavailableReason.unresolvedWrap);
-    }
-
-    final anchor = _anchorRaw;
-    if (anchor == null) {
-      _anchorRaw = timestamp;
+    final last = _lastRaw;
+    if (last == null) {
       _lastRaw = timestamp;
+      _lastArrivalMs = arrivalMs;
+      _unwrappedCounts = 0;
       return const TimingAvailable(0);
     }
-    // A counter with no characterized wrap has no reading under which this
-    // went forward, so there is nothing to infer and nothing to guess.
-    if (timestamp < _lastRaw!) {
-      _lifecycle.loseContinuity(TimingUnavailableReason.continuityLost);
-      return const TimingUnavailable(TimingUnavailableReason.continuityLost);
-    }
-    _lastRaw = timestamp;
 
-    // From the anchor rather than by accumulating intervals, so no rounding
-    // can build up across an observation. The division is exact: every step is
-    // a multiple of the anchored shape's granularity, which is this clock's
-    // quantum, and a quantum is a whole number of microseconds.
+    final rawStep = timestamp - last;
+    final int counts;
+    final modulus = clock.modulus;
+    if (modulus == null) {
+      // A counter with no characterized wrap has no reading under which this
+      // went forward, so there is nothing to infer and nothing to guess.
+      if (rawStep < 0) return _fail(TimingUnavailableReason.continuityLost);
+      counts = rawStep;
+    } else {
+      final resolved = _epochsResolved(
+        rawStep: rawStep,
+        modulus: modulus,
+        elapsedMs: arrivalMs - _lastArrivalMs!,
+        countsPerMillisecond: clock.countsPerMillisecond,
+      );
+      if (resolved == null) {
+        return _fail(TimingUnavailableReason.ambiguousWrap);
+      }
+      counts = resolved;
+    }
+
+    _lastRaw = timestamp;
+    _lastArrivalMs = arrivalMs;
+    _unwrappedCounts += counts;
+
+    // From the anchor rather than by accumulating converted intervals, so no
+    // rounding can build up across an observation. The division is exact:
+    // every step is a multiple of the anchored shape's granularity, which is
+    // this clock's quantum, and a quantum is a whole number of microseconds.
     return TimingAvailable(
-      (timestamp - anchor) * 1000 ~/ clock.countsPerMillisecond,
+      _unwrappedCounts * 1000 ~/ clock.countsPerMillisecond,
     );
   }
+
+  /// How far the counter really moved, if only one reading fits.
+  ///
+  /// A silence longer than the modulus hides whole epochs, and no sequence of
+  /// stamps can say how many. Arrival elapsed time can, and this is the one
+  /// job it is trusted with: choosing an integer, not supplying a time.
+  ///
+  /// The comparison is made in counts rather than in time because both bounds
+  /// convert to counts by multiplication, which is exact, while converting a
+  /// candidate to microseconds is a division that would have to round at the
+  /// bounds. The tolerated uncertainty is still stated in milliseconds.
+  int? _epochsResolved({
+    required int rawStep,
+    required int modulus,
+    required int elapsedMs,
+    required int countsPerMillisecond,
+  }) {
+    final lowest = (elapsedMs - arrivalUncertaintyMs) * countsPerMillisecond;
+    final highest = (elapsedMs + arrivalUncertaintyMs) * countsPerMillisecond;
+
+    var first = _ceilDiv(lowest - rawStep, modulus);
+    // Time does not run backward, whatever arrival says.
+    final forward = _ceilDiv(-rawStep, modulus);
+    if (forward > first) first = forward;
+    final last = _floorDiv(highest - rawStep, modulus);
+
+    // Anything but exactly one candidate is unanswerable: none means the
+    // clocks disagree beyond what policy tolerates, several mean the epoch
+    // count is a guess.
+    if (first != last) return null;
+    return rawStep + first * modulus;
+  }
+
+  PerformanceTiming _fail(TimingUnavailableReason reason) {
+    _lifecycle.loseContinuity(reason);
+    _forget();
+    return TimingUnavailable(reason);
+  }
+
+  void _forget() {
+    _clock = null;
+    _lastRaw = null;
+    _lastArrivalMs = null;
+    _unwrappedCounts = 0;
+  }
+
+  static int _floorDiv(int a, int b) => a >= 0 ? a ~/ b : -((-a + b - 1) ~/ b);
+
+  static int _ceilDiv(int a, int b) => -_floorDiv(-a, b);
 }
