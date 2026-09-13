@@ -884,6 +884,33 @@ Until the slope is measured, generating sub-sixty candidates would ship a
 difficulty axis the model has almost no reason to prefer. The candidate space
 and the coefficient have to move together.
 
+### Performance timing from the transport clock
+
+Input events are stamped with the shared monotonic arrival clock, read when Dart
+processes the message. That orders the stream correctly and says nothing
+reliable about rhythm: a delayed BLE batch turns separated strikes into
+near-simultaneous arrivals, and a delivery stall reads as hesitation. Timing
+evidence currently inherits whatever the transport was doing.
+
+The transport's own timestamp is preserved on every `RawInputEnvelope` and is
+not yet interpreted. Substituting it would exchange one problem for another,
+because BLE stamps wrap and clock domains differ between transports. What is
+missing is the layer between them:
+
+- unwrapping and converting the transport clock into the shared timeline, with a
+  continuity rule for when the conversion has lost track;
+- a policy for packets that originated before capture opened;
+- characterization of what the transports actually do, on hardware, since
+  nothing here can be settled by inspection;
+- a decision about degraded timing. Given how carefully measurement already
+  distinguishes an absent channel from a zero one, the answer is probably that
+  timing evidence becomes explicitly unavailable while pitch and order evidence
+  stay, rather than that arrival timing is quietly treated as trustworthy.
+
+Until then, [`system/input.md`](system/input.md) says plainly that arrival order
+is not performance timing, so nothing downstream is entitled to assume
+otherwise.
+
 ### Transcript capture cost
 
 `PerformanceTranscript.appending` copies the whole note list per note, so

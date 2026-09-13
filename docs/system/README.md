@@ -31,11 +31,12 @@ says what happened and never what to do about it. The learner model holds
 beliefs and never chooses. That separation is the thing most worth preserving
 when changing any of it.
 
-## The seven pieces
+## The eight pieces
 
 | Document                                               | Covers                                                                        |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------- |
 | [`domain.md`](domain.md)                               | What can be played: material, exercises, guidance, fingering, motor structure |
+| [`input.md`](input.md)                                 | How playing becomes events, and when an observation stops being trustworthy   |
 | [`observation.md`](observation.md)                     | What was played: transcript, alignment, measurement, the outcome channels     |
 | [`learner-model.md`](learner-model.md)                 | What we believe about the player, and how an attempt revises it               |
 | [`scheduler.md`](scheduler.md)                         | How the next exercise is chosen                                               |

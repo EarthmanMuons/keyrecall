@@ -2,7 +2,9 @@
 
 How the notes someone actually played become the evidence the learner model
 consumes. Three packages, in a strict order, each refusing to do the next one's
-job.
+job. What arrives here is already one continuous observation of one instrument,
+or the attempt was marked ineligible before it got this far; see
+[`input.md`](input.md).
 
 ```mermaid
 flowchart TD
