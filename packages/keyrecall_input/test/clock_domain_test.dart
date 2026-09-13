@@ -121,7 +121,7 @@ void main() {
     // take lands on a clock nobody expected.
     test('a new session starts over', () {
       final detector = ClockDomainDetector();
-      expect(useOf(after(20, into: detector)), ClockAuthorization.performance);
+      expect(after(20, into: detector).granularity, 1);
 
       final observation = detector.observe(
         session: 'midi-2',
@@ -150,8 +150,8 @@ void main() {
   });
 
   group('policy is separable from arithmetic', () {
-    test('a new domain is authorized without touching the detector', () {
-      final observation = ClockDomainObservation(
+    test('another domain is authorized without touching the detector', () {
+      const observation = ClockDomainObservation(
         session: 'a',
         steps: 20,
         granularity: 250,
@@ -163,11 +163,50 @@ void main() {
       );
       expect(
         const ClockDomainPolicy(
-          performanceGranularities: {250},
-          nonPerformanceGranularities: {},
+          performance: [ClockDomainShape(granularity: 250)],
+          nonPerformance: [],
         ).classify(observation),
         ClockAuthorization.performance,
       );
+    });
+
+    // A shape is granularity and wrap together, so the same counter width
+    // under two different moduli is two domains.
+    test('a shape is not its granularity', () {
+      const wrapping = ClockDomainShape(granularity: 1, modulus: 8192);
+      const unwrapped = ClockDomainShape(granularity: 1);
+
+      expect(wrapping, isNot(unwrapped));
+      expect(
+        ClockDomainPolicy.characterized.performance.contains(wrapping),
+        isTrue,
+      );
+      expect(
+        ClockDomainPolicy.characterized.performance.contains(unwrapped),
+        isFalse,
+      );
+    });
+  });
+
+  // A delivery carrying no timestamp is not half a sample. Advancing the
+  // remembered arrival without one leaves the two halves describing different
+  // deliveries, and a later backward step is then measured against an elapsed
+  // time that never went with it.
+  group('a delivery without a timestamp', () {
+    test('does not break the pair the next step is measured against', () {
+      final detector = ClockDomainDetector()
+        ..observe(session: 'a', arrivalMs: 0, timestamp: 8000)
+        ..observe(session: 'a', arrivalMs: 5000, timestamp: null);
+      final observation = detector.observe(
+        session: 'a',
+        arrivalMs: 8100,
+        timestamp: 100,
+      );
+
+      // From the last complete sample the wrap spans 8100 ms and -7900
+      // counts, one turn of an 8192 counter. From the mismatched pair it
+      // would span 3100 ms and the same counts, which is not.
+      expect(observation.modulus, 8192);
     });
   });
 }

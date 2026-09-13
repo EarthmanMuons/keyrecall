@@ -33,6 +33,14 @@ class ClockDomainObservation {
   /// Nothing observed yet.
   static const ClockDomainObservation none = ClockDomainObservation();
 
+  /// What has been measured, as the thing a policy decides about.
+  ///
+  /// Null until a granularity is known, because there is no shape to judge
+  /// before then.
+  ClockDomainShape? get shape => granularity == null
+      ? null
+      : ClockDomainShape(granularity: granularity!, modulus: modulus);
+
   @override
   bool operator ==(Object other) =>
       other is ClockDomainObservation &&
@@ -48,6 +56,37 @@ class ClockDomainObservation {
   String toString() =>
       'ClockDomainObservation(session: $session, steps: $steps, '
       'granularity: $granularity, modulus: $modulus)';
+}
+
+/// A measured clock, as much of it as has been established.
+///
+/// The unit a policy decides about. A granularity on its own is not a domain:
+/// a counter stepping in milliseconds that wraps at 8192 and one that steps in
+/// milliseconds and has never been seen to wrap are different clocks, and only
+/// one of them has been characterized.
+///
+/// A null [modulus] means no single wrap has established a width, which is not
+/// the same as a counter that does not wrap. Nothing here can tell those
+/// apart, so a policy that cares has to say which it requires.
+@immutable
+class ClockDomainShape {
+  final int granularity;
+  final int? modulus;
+
+  const ClockDomainShape({required this.granularity, this.modulus});
+
+  @override
+  bool operator ==(Object other) =>
+      other is ClockDomainShape &&
+      other.granularity == granularity &&
+      other.modulus == modulus;
+
+  @override
+  int get hashCode => Object.hash(granularity, modulus);
+
+  @override
+  String toString() =>
+      'ClockDomainShape($granularity${modulus == null ? '' : ', mod $modulus'})';
 }
 
 /// How close a backward step must come to a candidate width to establish it.
@@ -103,9 +142,13 @@ class ClockDomainDetector {
 
     final previous = _lastTimestamp;
     final previousArrival = _lastArrivalMs;
-    _lastArrivalMs = arrivalMs;
+    // A delivery without a stamp is not half a sample. Advancing the arrival
+    // without it would leave the two remembered halves describing different
+    // deliveries, and a later backward step would then be measured against an
+    // elapsed time that never went with it.
     if (timestamp == null) return observation;
     _lastTimestamp = timestamp;
+    _lastArrivalMs = arrivalMs;
     if (timestamp > _highestTimestamp) _highestTimestamp = timestamp;
     if (previous == null || previousArrival == null) return observation;
 
@@ -177,21 +220,26 @@ enum ClockAuthorization {
 /// Which measured shapes KeyRecall believes about playing.
 ///
 /// Policy, not arithmetic. Every entry rests on the recorded takes in
-/// `analysis/transport-clocks/` and on nothing else, so authorizing a fourth
+/// `analysis/transport-clocks/` and on nothing else, so authorizing another
 /// domain is an edit here rather than a change to how a clock is measured.
 ///
-/// Recognizing a shape is not the same as trusting it, which is why these are
-/// two decisions. The 100,000-count domain carries the variation of playing
-/// that its own arrival clock flattened away; the 1,000,000-count domain is
+/// It authorizes shapes rather than granularities, which is the difference
+/// between "a counter stepping in milliseconds" and "the counter these takes
+/// characterized". Recognizing a shape is also not the same as trusting it:
+/// the 100,000-count domain carries the variation of playing that its own
+/// arrival clock flattened away, while the 1,000,000-count domain is
 /// thoroughly recognized and has added nothing over arrival time on any take,
 /// idle or loaded.
 @immutable
 class ClockDomainPolicy {
   /// Shapes that may contribute performance timing.
-  final Set<int> performanceGranularities;
+  ///
+  /// A list rather than a set because a shape compares by value, and Dart
+  /// will not hold such a thing in a constant set.
+  final List<ClockDomainShape> performance;
 
   /// Shapes that are understood and say nothing about playing.
-  final Set<int> nonPerformanceGranularities;
+  final List<ClockDomainShape> nonPerformance;
 
   /// How many steps to see before naming a shape.
   ///
@@ -200,34 +248,50 @@ class ClockDomainPolicy {
   final int minimumSteps;
 
   const ClockDomainPolicy({
-    required this.performanceGranularities,
-    required this.nonPerformanceGranularities,
+    required this.performance,
+    required this.nonPerformance,
     this.minimumSteps = 8,
   });
 
   /// What the recorded takes authorize.
+  ///
+  /// The millisecond counter is authorized only once its wrap has been seen,
+  /// because that wrap is what identifies it: the takes characterized a
+  /// counter modulo 8192, not every clock that happens to step in
+  /// milliseconds. The other two are authorized without one, because neither
+  /// was ever seen to wrap and nothing else distinguishes them.
   static const ClockDomainPolicy characterized = ClockDomainPolicy(
-    // A 1 ms counter modulo 8192, which preserves onsets delivery collapses,
-    // and a 100,000-count clock seen once over a network session.
-    performanceGranularities: {1, 100000},
-    nonPerformanceGranularities: {1000000},
+    performance: [
+      ClockDomainShape(granularity: 1, modulus: 8192),
+      ClockDomainShape(granularity: 100000),
+    ],
+    nonPerformance: [ClockDomainShape(granularity: 1000000)],
   );
 
   /// What [observation] may be used for.
   ///
   /// A shape nothing has recorded is unavailable rather than assumed to behave
-  /// like one that has.
+  /// like one that has. A shape still short of the fact that would identify
+  /// it, such as a millisecond counter whose wrap has not come round yet, is
+  /// still being identified rather than rejected.
   ClockAuthorization classify(ClockDomainObservation observation) {
-    final granularity = observation.granularity;
-    if (granularity == null || observation.steps < minimumSteps) {
+    final shape = observation.shape;
+    if (shape == null || observation.steps < minimumSteps) {
       return ClockAuthorization.detecting;
     }
-    if (performanceGranularities.contains(granularity)) {
-      return ClockAuthorization.performance;
-    }
-    if (nonPerformanceGranularities.contains(granularity)) {
+    if (performance.contains(shape)) return ClockAuthorization.performance;
+    if (nonPerformance.contains(shape)) {
       return ClockAuthorization.nonPerformance;
+    }
+    if (shape.modulus == null && _awaitsAWrap(shape.granularity)) {
+      return ClockAuthorization.detecting;
     }
     return ClockAuthorization.unavailable;
   }
+
+  /// Whether some authorized shape of this granularity is waiting on a wrap.
+  bool _awaitsAWrap(int granularity) => [
+    ...performance,
+    ...nonPerformance,
+  ].any((shape) => shape.granularity == granularity && shape.modulus != null);
 }
