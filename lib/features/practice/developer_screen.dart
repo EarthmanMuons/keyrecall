@@ -128,11 +128,23 @@ class _InstrumentField extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final connection = ref.watch(midiConnectionStateProvider);
-    return _Field(
-      'instrument',
-      connection.isConnected
-          ? (connection.deviceDisplayName ?? 'connected')
-          : 'not connected',
+    final input = ref.watch(midiInputProvider);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _Field(
+          'instrument',
+          connection.isConnected
+              ? (connection.deviceDisplayName ?? 'connected')
+              : 'not connected',
+        ),
+        // The epoch trace. A session per connection is expected; a session
+        // climbing on its own is reconnect churn, and a foreign count moving
+        // is something else playing into the same transport.
+        _Field('session', input.adopted?.sessionId ?? 'nothing adopted'),
+        _Field('observing', input.isObserving ? 'yes' : 'no'),
+        _Field('turned away', '${input.rejectedForeignMessages}'),
+      ],
     );
   }
 }
@@ -156,6 +168,12 @@ class _InputPanel extends ConsumerWidget {
         if (source == InputSourceKind.midi) const _InstrumentField(),
         _Field('events seen', '${activity.eventCount}'),
         _Field('resets', '${activity.resetCount}'),
+        _Field(
+          'faults',
+          activity.fault == null
+              ? '${activity.faultCount}'
+              : '${activity.faultCount} (${activity.fault!.name})',
+        ),
         _Field('pedal', activity.isPedalDown ? 'down' : 'up'),
         _Field('held', _notes(activity.pressedNoteNumbers)),
         _Field('ringing under pedal', _notes(activity.sustainedNoteNumbers)),
