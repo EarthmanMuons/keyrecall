@@ -12,5 +12,6 @@ export 'src/input_note_event.dart';
 export 'src/input_reducer.dart';
 export 'src/input_temporal_event.dart';
 export 'src/input_temporal_state.dart';
+export 'src/performance_clock_mapper.dart';
 export 'src/performance_timing.dart';
 export 'src/raw_input_envelope.dart';

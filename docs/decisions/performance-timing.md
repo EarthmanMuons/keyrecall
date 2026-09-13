@@ -1,6 +1,7 @@
 # Performance timing
 
-- **Status:** proposed. Nothing here is built.
+- **Status:** accepted. The state machine and conversion for a domain that does
+  not wrap are built; the wrap arithmetic is not.
 
 Whether KeyRecall is entitled to say when somebody played a note, and what it
 does when it is not.
@@ -87,7 +88,7 @@ boundary.
 
 **Decision.** Unavailability carries a typed reason, at least: `detecting`,
 `nonPerformanceDomain`, `unknownDomain`, `ambiguousWrap`, `continuityLost`,
-`missingTransportTimestamp`, `implausibleClockStep`.
+`missingTransportTimestamp`, `implausibleClockStep`, `unresolvedWrap`.
 
 Each one says what happens next, because that is what the reason is for:
 
@@ -100,6 +101,10 @@ unknownDomain                not a clock failure; refinement can lift either
 
 missingTransportTimestamp    this event only; a later complete sample is
                              timed again if continuity still holds
+
+unresolvedWrap               no timing while that clock is in use, and not a
+                             clock failure; the counter is recognized and
+                             cannot be placed on a continuous timeline
 
 ambiguousWrap                terminal for this observation
 implausibleClockStep
@@ -134,9 +139,24 @@ two. Measuring the rate instead would put the arrival clock back into the
 conversion, which is the thing this layer exists to avoid.
 
 **Consequences.** `ClockDomainShape` stays what was measured, and
-`PerformanceClockDefinition` pairs it with the rate that characterization
-supplies. Authorizing a new domain means recording both, from the trace, in one
-place.
+`PerformanceClockDefinition` holds the quantum, the rate, and the counter width
+that characterization supplies. Authorizing a new domain means recording all of
+them, from the trace, in one place.
+
+A definition asserts that one quantum is a whole number of microseconds:
+
+```text
+countsPerMillisecond > 0
+quantum * 1000 % countsPerMillisecond == 0
+```
+
+The characterized clocks satisfy it, at 1000 us and 100 us per quantum. The
+assertion is evaluated where the definitions are written, so a domain that does
+not satisfy it cannot enter a policy at all, and whoever adds it has to make the
+rounding decision first rather than discover later that it was made for them by
+a truncation. It is also what makes the conversion exact: every step is a
+multiple of the anchored shape's granularity, so every delta converts to whole
+microseconds with nothing thrown away.
 
 ## A wrap is inferred only when one answer fits
 
@@ -259,7 +279,9 @@ raw timing to revisit them is a later choice, not a default to fall into.
 **Decision.** The state machine first, with a seam for tests to drive
 authorization and transitions, and no conversion at all. Then conversion for an
 authorized domain that does not wrap, which is a count delta over the clock's
-rate. Then the modulus and the unique-candidate arithmetic.
+rate, measured from the anchor rather than accumulated so that no interval's
+rounding can build up. Then the modulus and the unique-candidate arithmetic,
+which is what `unresolvedWrap` stands in for until it exists.
 
 **Why.** The refusals are the part worth being certain of, and they can be
 proved before there is anything to convert: that arrival time never produces

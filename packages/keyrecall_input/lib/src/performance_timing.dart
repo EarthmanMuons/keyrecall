@@ -23,6 +23,10 @@ enum TimingUnavailableReason {
   /// again, if continuity still holds.
   missingTransportTimestamp,
 
+  /// The clock wraps, and nothing here can place a wrapping counter on a
+  /// continuous timeline. Holds for as long as that clock is in use.
+  unresolvedWrap,
+
   /// More than one wrap count fits the tolerated arrival uncertainty, or none
   /// does. Terminal.
   ambiguousWrap,
