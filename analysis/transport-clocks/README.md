@@ -117,36 +117,41 @@ current one. `session` on a delivery is the subscription that delivered it;
 
 ## What the takes show
 
-`analyze.py takes/*.json`. Six takes: a JamCorder adapter on iOS and on Android,
-and a Yamaha P-525 connected directly on iOS, all over BLE.
+`analyze.py takes/*.json`. Nine takes across two platforms and two instruments,
+all over BLE.
 
-|                                        | JamCorder, iOS  | JamCorder, Android | P-525 direct, iOS |
-| -------------------------------------- | --------------- | ------------------ | ----------------- |
-| Route                                  | ble (inferred)  | **ble (recorded)** | host (inferred)   |
-| Tick, ms per count                     | 1.00000         | 0.99941            | 1.00009e-06       |
-| Granularity                            | 1               | 1                  | 1000000           |
-| Wrap                                   | 8192, 3 seen    | 8192, 5 seen       | none in 23 s      |
-| Drift against arrival                  | 0 ms, 1 ms      | 0 ms, 0 ms         | 0 ms, 0 ms        |
-| Jitter                                 | -26 to +25 ms   | -30 to +30 ms      | -14 to +16 ms     |
-| **Chord spread, arrival vs transport** | **16 vs 18 ms** | **6 vs 15 ms**     | **11 vs 10 ms**   |
-| **Onset MAD, transport vs arrival**    | **8.5 vs 15.5** | **15.5 vs 21.5**   | **14.0 vs 16.0**  |
+|                                    | JamCorder, iOS | JamCorder, Android | P-525 direct, iOS |
+| ---------------------------------- | -------------- | ------------------ | ----------------- |
+| Route, as reported                 | ble            | ble                | **ble**           |
+| Tick, ms per count                 | 1.00000        | 0.99941            | 1.00009e-06       |
+| Granularity                        | 1              | 1                  | 1000000           |
+| Wrap                               | 8192, seen     | 8192, seen         | none in 23 s      |
+| Drift against arrival              | 0 ms           | 0 ms               | 0 ms              |
+| Jitter, idle                       | -26 to +25 ms  | -30 to +30 ms      | -14 to +16 ms     |
+| Chord spread, arrival vs transport | 16 vs 18 ms    | 6 vs 15 ms         | 11 vs 10 ms       |
+| Onset MAD, transport vs arrival    | 8.5 vs 15.5    | 15.5 vs 21.5       | 14.0 vs 16.0      |
 
 **Android preserves the BLE MIDI timebase.** Same 8192 modulus, same 1 ms tick,
-the same zero cumulative drift over a take. Whatever differs between the
-platforms, the clock the wire carries is not it, and one BLE-route contract can
-cover both.
+the same zero cumulative drift. One BLE clock contract covers both platforms.
 
-**The route field works, and the adapter goes by the BLE route on Android.**
-That half of the causal story is now observed rather than inferred. The other
-half, that the directly-connected piano goes by the host route, still rests on
-the shape of its clock: those takes predate the field.
+**The route does not explain the piano.** It was recorded once the harness kept
+the field, and it says `ble` for the P-525 as well. Two instruments reach the
+app by the same route and carry clocks from different domains: a 1 ms counter
+modulo 8192 from the adapter, a nanosecond counter with millisecond granularity
+and no wrap in 23 seconds from the piano. The earlier reading here, that the
+piano arrived by the host route, was an inference from the shape of its clock
+and it was wrong.
+
+What follows is a constraint on the mapper rather than a loose end: **the clock
+domain has to be detected from the data, not looked up from metadata.**
+Granularity and magnitude are observable at runtime and they separate these two
+cleanly. Nothing the transport reports about itself does.
 
 ### What a chord costs each clock
 
 Counting how often several notes land in one arrival millisecond does not
-compare across platforms, because they coalesce differently: iOS put eight
-chords into single milliseconds, Android almost none. The width of a group
-somebody struck together does compare.
+compare across platforms, because they coalesce differently. The width of a
+group somebody struck together does.
 
 ```text
 JamCorder, Android   played 15 ms wide, arrival says 6 ms
@@ -154,101 +159,71 @@ JamCorder, iOS       played 18 ms wide, arrival says 16 ms
 P-525 direct, iOS    played 10 ms wide, arrival says 11 ms
 ```
 
-On the BLE route, delivery narrows a chord and the transport clock knows how
-wide it really was; Android narrows it by more than half. On the host route the
-two clocks say the same thing, which is the clearest statement yet that a
-host-receive stamp carries nothing about onset that arrival does not.
+Delivery narrows a chord and the BLE stamp knows how wide it was, by more than
+half on Android. The piano's nanosecond clock adds nothing: its two readings
+agree, which is what a stamp applied after delivery looks like.
 
-### One route carries the instrument's time, the other carries the host's
+### A silence past the wrap, resolved
 
-This is the finding with consequences, and it is not about wrapping:
+The `pause` take has a 13,667 ms gap, which hides **two whole moduli**. No
+sequence of stamps can say how many epochs went by; arrival elapsed time can, by
+rounding elapsed-minus-step to whole moduli.
 
-```text
-JamCorder, BLE route     two releases arrive in one millisecond
-                         carrying stamps 14 ms apart
-P-525, host route        a strike and a release arrive in one millisecond
-                         carrying the same stamp, four times out of four
-```
+It is not a close call. Across every take the worst gap sat **0.496 of a
+modulus** away from an ambiguous rounding: arrival time would have to be wrong
+by about four seconds to pick the wrong epoch, against jitter measured in tens
+of milliseconds. After unwrapping that way the pause take reads 1.00044 ms per
+count with zero drift across the silence, the same as every other take.
 
-A host-receive timestamp is applied after the collapse, so it cannot recover
-what the instrument spread out and delivery ran together. The onset dispersion
-says the same thing more quietly: halved on the BLE route, essentially unchanged
-on the host route.
+That is the wrap rule, and also where it stops. A gap where arrival time could
+be wrong by half a modulus is a gap where timing has to go unavailable rather
+than be guessed.
 
-That makes it weaker than instrument time. It does not make it worthless, and
-the difference is worth keeping straight, because there are three clocks here
-and not two:
+### The stall did not show what it was meant to
 
-```text
-BLE route        the instrument's own message time
-                 survives host delivery and batching
-host route       the host's receive time
-                 cannot recover what was collapsed before the host saw it,
-                 but is taken before anything Dart does
-arrival clock    Dart processing time
-                 everything above, plus Dart-side scheduling
-```
+Under a deliberately loaded app, delivery jitter widened from -26..+25 ms to
+**-40..+40 ms** while cumulative drift stayed at zero. So the transport clock
+kept tracking through the load, which is the thing that had to be true.
 
-The `stall` take is what separates the second from the third. Nothing here does:
-these takes were played while the app was idle, so host time and arrival time
-had no reason to diverge. If a loaded app pulls them apart, host time is
-carrying something real and discarding it would throw away evidence.
+What did not happen is the interesting part: onset dispersion was **26.5 ms by
+transport against 25.5 by arrival**, no better. At this scale human timing
+variance swamps the delivery jitter the stall added, so the take cannot show a
+difference even where one exists. A stall heavy enough to produce multi-hundred
+millisecond delivery delays would; this one did not.
 
-So the useful reading is not "BLE timestamps work." It is:
+**Reported as a negative result rather than smoothed over.** The case for
+transport time still rests on the chord spreads and the idle onset dispersion,
+both of which are real and repeatable. It does not yet rest on the stall.
 
-> **The route decides what a transport timestamp is evidence about.** The BLE
-> route carries the instrument's own onset timing. The host route carries the
-> host's receive time, which is a weaker claim and not yet a worthless one.
+### What the piano was sending
 
-One consequence is worth stating plainly because it is counterintuitive: on this
-phone, practising through the adapter yields better timing evidence than
-connecting the piano directly.
+Half the P-525's deliveries were messages KeyRecall does not consume, two before
+every note-on and none before a note-off. They are now identified: **CC 19 and
+CC 88**. CC 88 is the MIDI high-resolution velocity prefix, which carries the
+low bits of the velocity that follows. CC 19 is undefined in the specification
+and is presumably the instrument's own per-note data.
 
-### What is only inferred
-
-The route is an inference from the shape of the clocks, not yet an observation.
-These four traces were recorded before the harness kept the plugin's route
-field, so nothing in them names it. Every later take carries `route`, and a
-single new pair from the same two instruments will confirm or refute it
-directly. Until then, treat the causal story as strongly supported rather than
-settled.
-
-The same gap applies to what the P-525 is sending: half its deliveries are
-messages KeyRecall does not consume, and the envelope collapsed them all into an
-unidentified `other`. Two of them precede every note-on and none precede a
-note-off. Later takes record the MIDI type and controller number, so they will
-say what those are rather than leaving them to be guessed at.
+Neither is sustain and neither ends notes, so the reducer ignores both, which is
+correct. What changed is that the trace now says so instead of leaving half an
+instrument's traffic unidentified.
 
 ### What is still open
 
-- **Which route the directly-connected piano arrives by**, observed rather than
-  inferred, and whether an instrument can change route between sessions. One
-  re-recorded iOS pair settles the first half.
-- **What the host route is worth.** It cannot carry onset timing, and that is
-  settled. Whether it still protects against Dart-side scheduling delay is not,
-  and `stall` on a host-routed instrument is what answers it. The layer this
-  feeds is likely capability-based rather than binary: source-timed, host-timed,
-  or unavailable.
-- **Whether Android also exposes a host route.** Its adapter arrives by the BLE
-  route and preserves the wire's clock. Whether a directly-paired instrument
-  there lands on the host route the way the piano does on iOS is untested, and
-  route selection may well differ by platform.
-- **Unwrapping across a silence.** No take has a gap anywhere near 8192 ms, so
-  nothing here tests it. A pause long enough to hide a whole epoch cannot be
-  resolved from stamps alone, and the `pause` take is what says whether arrival
-  elapsed time is a defensible wrap-count disambiguator or whether timing has to
-  go unavailable after a long enough gap.
-- **Whether delivery ever stretches rather than collapses.** The `stall` take is
-  the proof of value: if the transport intervals keep matching the playing while
-  the arrival intervals come apart, that settles which clock rhythm is read
-  from.
+- **Why two BLE instruments carry different clock domains**, given the same
+  reported route. The answer is somewhere in how the plugin obtains a timestamp
+  per device, and it decides whether detection can rely on granularity alone.
+- **Whether a heavy enough stall separates the clocks.** The one recorded did
+  not, and that is a limit of the take rather than a finding about the
+  transport.
+- **What the host route does**, if anything here ever uses it. Nothing recorded
+  so far has.
 - **Whether the origin needs mapping at all.** Measurement reads intervals, so
   an unwrapped transport timeline with its own arbitrary origin, held within one
-  observation, may be enough. That would avoid continuously estimating an affine
-  transformation between two clock domains, with arrival time kept as the
-  observation clock and as a check on the transport one.
+  observation, may be enough.
 
-Takes go in `takes/`, named for the platform, the instrument, and the take.
+Takes go in `takes/`, named for the platform, the instrument, and the take. The
+re-recorded iOS P-525 `pulse` and `chords`, and its `stall`, are not archived
+here yet; what they established is recorded above.
 
 ## What must not happen to this data
 

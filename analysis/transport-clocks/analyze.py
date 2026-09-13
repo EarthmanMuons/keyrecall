@@ -55,12 +55,23 @@ def nearest_modulus(estimate):
 
 
 def unwrap(rows, modulus):
-    """The transport timeline, continued across its own wraps."""
+    """The transport timeline, continued across its own wraps.
+
+    Counting one wrap per backward step is wrong, and the `pause` take proves
+    it: a silence longer than the modulus hides whole epochs, and no sequence
+    of stamps can say how many. Arrival elapsed time can, and with jitter of
+    tens of milliseconds against a modulus of thousands the margin is not
+    close. That is the rule a mapper would have to adopt, and it is also where
+    it would have to stop: a gap where arrival time could be wrong by half a
+    modulus is a gap where timing has to go unavailable instead.
+    """
     timeline = []
     epochs = 0
     for index, row in enumerate(rows):
-        if index and row["transport_ts"] < rows[index - 1]["transport_ts"]:
-            epochs += 1
+        if index:
+            step = row["transport_ts"] - rows[index - 1]["transport_ts"]
+            elapsed = row["arrival_ms"] - rows[index - 1]["arrival_ms"]
+            epochs += max(0, round((elapsed - step) / modulus))
         timeline.append(row["transport_ts"] + epochs * modulus)
     return timeline
 
@@ -174,7 +185,18 @@ def describe(path):
     longest = max(gaps) if gaps else 0
     if modulus:
         risky = len([gap for gap in gaps if gap >= modulus])
-        print(f"    gaps: longest silence {longest} ms, {risky} at or over the modulus")
+        # How close the worst gap came to an ambiguous wrap count. Each gap is
+        # resolved by rounding elapsed-minus-step to whole moduli, so the
+        # margin is how far that quotient sat from a half.
+        worst = 0.0
+        for index in range(1, len(rows)):
+            step = rows[index]["transport_ts"] - rows[index - 1]["transport_ts"]
+            quotient = (gaps[index - 1] - step) / modulus
+            worst = max(worst, abs(quotient - round(quotient)))
+        print(
+            f"    gaps: longest silence {longest} ms, {risky} at or over the "
+            f"modulus, worst wrap margin {0.5 - worst:.3f} of a modulus"
+        )
     else:
         print(f"    gaps: longest silence {longest} ms, nothing to wrap past")
 
