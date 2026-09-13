@@ -42,11 +42,16 @@ void main() {
     await Future<void>.delayed(Duration.zero);
   }
 
-  Future<void> playNote(int noteNumber, {required int at}) => deliver(
+  Future<void> playNote(
+    int noteNumber, {
+    required int at,
+    PerformanceTiming? timing,
+  }) => deliver(
     InputTemporalNoteOnEvent(
       timestampMs: at,
       noteNumber: noteNumber,
       velocity: 100,
+      timing: timing,
     ),
   );
 
@@ -55,6 +60,27 @@ void main() {
       .start(TechnicalMaterial('C', ScaleForm.major));
 
   AttemptCapture capture() => container.read(attemptTranscriptProvider);
+
+  // The instrument's clock reaches the transcript unchanged, and the arrival
+  // clock never stands in for it. A note nothing could time stays untimed
+  // rather than borrowing the timestamp that orders it.
+  test('a note carries the performance time it was given, or none', () async {
+    record();
+    await playNote(60, at: 1000, timing: const TimingAvailable(250000));
+    await playNote(62, at: 1400);
+    await playNote(
+      64,
+      at: 1800,
+      timing: const TimingUnavailable(TimingUnavailableReason.continuityLost),
+    );
+
+    expect(capture().notes.map((note) => note.performanceTimeUs), [
+      250000,
+      null,
+      null,
+    ]);
+    expect(capture().notes.map((note) => note.timestampMs), [1000, 1400, 1800]);
+  });
 
   // Once continuity has broken the capture is closed to further input: the
   // notes on either side are not one observation, so a later note-on must not

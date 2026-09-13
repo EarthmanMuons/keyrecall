@@ -22,10 +22,19 @@ class PlayedNote {
   /// or a tempo.
   final int timestampMs;
 
+  /// When it was played, on the instrument's own clock, in microseconds.
+  ///
+  /// Null when no performance time could be read for it, which is the ordinary
+  /// case on a transport nothing has characterized. An untimed note stays
+  /// untimed: [timestampMs] is a different measurement and never stands in for
+  /// this one.
+  final int? performanceTimeUs;
+
   PlayedNote({
     required this.sequence,
     required this.pitch,
     required this.timestampMs,
+    this.performanceTimeUs,
   }) {
     if (sequence < 0) {
       throw ArgumentError.value(sequence, 'sequence', 'must not be negative');
@@ -47,10 +56,12 @@ class PlayedNote {
       other is PlayedNote &&
       other.sequence == sequence &&
       other.pitch == pitch &&
-      other.timestampMs == timestampMs;
+      other.timestampMs == timestampMs &&
+      other.performanceTimeUs == performanceTimeUs;
 
   @override
-  int get hashCode => Object.hash(sequence, pitch, timestampMs);
+  int get hashCode =>
+      Object.hash(sequence, pitch, timestampMs, performanceTimeUs);
 
   @override
   String toString() => 'PlayedNote($sequence, $pitch, ${timestampMs}ms)';
@@ -100,9 +111,15 @@ class PerformanceTranscript {
   PerformanceTranscript appending({
     required SpelledPitch pitch,
     required int timestampMs,
+    int? performanceTimeUs,
   }) => PerformanceTranscript([
     ...notes,
-    PlayedNote(sequence: notes.length, pitch: pitch, timestampMs: timestampMs),
+    PlayedNote(
+      sequence: notes.length,
+      pitch: pitch,
+      timestampMs: timestampMs,
+      performanceTimeUs: performanceTimeUs,
+    ),
   ]);
 
   /// How many notes were played.

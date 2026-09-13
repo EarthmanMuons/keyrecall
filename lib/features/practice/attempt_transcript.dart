@@ -207,6 +207,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
       transcript: state.transcript.appending(
         pitch: spellObservedPitch(event.noteNumber, material: material),
         timestampMs: event.timestampMs,
+        performanceTimeUs: event.performanceTimeUs,
       ),
       recording: state.recording,
     );

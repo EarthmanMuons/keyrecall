@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 import 'input_integrity.dart';
+import 'performance_timing.dart';
 
 const _noteSetEquality = SetEquality<int>();
 
@@ -110,8 +111,19 @@ sealed class InputTemporalEvent {
   /// Milliseconds since the input clock started.
   final int timestampMs;
 
+  /// What the instrument's own clock said, where one was read.
+  ///
+  /// Null for an event no clock was consulted for, such as a boundary nobody
+  /// played. Otherwise the mapper's whole answer, kept rather than flattened
+  /// so that a consumer near the boundary can say why an event is untimed.
+  ///
+  /// [timestampMs] is not a substitute for it and never becomes one. The two
+  /// are different measurements: one orders the stream, the other is evidence
+  /// about playing.
+  final PerformanceTiming? timing;
+
   /// Throws [RangeError] for a timestamp that cannot be represented exactly.
-  InputTemporalEvent({required this.timestampMs}) {
+  InputTemporalEvent({required this.timestampMs, this.timing}) {
     if (timestampMs < 0 || timestampMs > _maximumExactJsonInteger) {
       throw RangeError.range(
         timestampMs,
@@ -121,6 +133,13 @@ sealed class InputTemporalEvent {
       );
     }
   }
+
+  /// When this was played, on the observation's performance timeline, or null
+  /// when that is not known.
+  int? get performanceTimeUs => switch (timing) {
+    TimingAvailable(:final performanceTimeUs) => performanceTimeUs,
+    _ => null,
+  };
 }
 
 /// A key was struck.
@@ -138,6 +157,7 @@ final class InputTemporalNoteOnEvent extends InputTemporalEvent {
     required super.timestampMs,
     required this.noteNumber,
     required this.velocity,
+    super.timing,
   }) {
     _requireNote(noteNumber, 'noteNumber');
     if (velocity < 1 || velocity > 127) {
@@ -165,6 +185,7 @@ final class InputTemporalNoteOffEvent extends InputTemporalEvent {
     required super.timestampMs,
     required this.noteNumber,
     required this.velocity,
+    super.timing,
   }) {
     _requireNote(noteNumber, 'noteNumber');
     if (velocity < 0 || velocity > 127) {
@@ -182,7 +203,11 @@ final class InputTemporalPedalEvent extends InputTemporalEvent {
   /// Whether the pedal is now down.
   final bool down;
 
-  InputTemporalPedalEvent({required super.timestampMs, required this.down});
+  InputTemporalPedalEvent({
+    required super.timestampMs,
+    required this.down,
+    super.timing,
+  });
 
   @override
   String toString() => 'Pedal(${down ? 'down' : 'up'}, at: ${timestampMs}ms)';

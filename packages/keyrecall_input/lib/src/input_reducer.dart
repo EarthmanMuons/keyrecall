@@ -1,6 +1,8 @@
 import 'input_integrity.dart';
 import 'input_temporal_event.dart';
 import 'input_temporal_state.dart';
+import 'performance_clock_mapper.dart';
+import 'performance_timing.dart';
 import 'raw_input_envelope.dart';
 
 /// Where an observation stands.
@@ -58,10 +60,17 @@ class _ChannelState {
 /// It is not a Riverpod object and holds no subscriptions. Wiring a transport
 /// to it, and deciding when an observation begins and ends, are the caller's.
 class InputReducer {
-  InputReducer({int sustainThreshold = _defaultSustainThreshold})
-    : _sustainThreshold = sustainThreshold;
+  /// [clock] reads the instrument's own timestamps. The reducer decides when
+  /// it is consulted and never how it answers, which is why the arithmetic
+  /// lives in [PerformanceClockMapper] and not here.
+  InputReducer({
+    int sustainThreshold = _defaultSustainThreshold,
+    PerformanceClockMapper? clock,
+  }) : _sustainThreshold = sustainThreshold,
+       _clock = clock ?? PerformanceClockMapper();
 
   final int _sustainThreshold;
+  final PerformanceClockMapper _clock;
 
   /// Per-channel ownership. The null key is a source that reports no channel.
   final Map<int?, _ChannelState> _channels = {};
@@ -86,6 +95,9 @@ class InputReducer {
 
   /// How many events were turned away for coming from another instrument.
   int get rejectedForeignCount => _rejectedForeignCount;
+
+  /// What has been read about the instrument's own clock.
+  PerformanceClockMapper get clock => _clock;
 
   /// Exactly what is sounding, across every channel.
   InputTemporalSnapshot get snapshot => _aggregate().snapshot;
@@ -120,6 +132,7 @@ class InputReducer {
   /// claim to know what is held.
   List<InputTemporalEvent> begin({required int timestampMs}) {
     _channels.clear();
+    _clock.restart();
     _fault = null;
     _phase = InputObservationPhase.observing;
     _lastTimestampMs = timestampMs;
@@ -229,7 +242,16 @@ class InputReducer {
     }
 
     _lastTimestampMs = timestampMs;
-    return _apply(envelope, timestampMs);
+    // One reading per delivery, whatever it normalizes to. Every event a
+    // delivery produces was played at the same moment, and asking twice would
+    // advance a timeline for one keyboard event.
+    final source = envelope.source;
+    final timing = _clock.map(
+      session: '${source.transport}/${source.deviceId}/${source.sessionId}',
+      arrivalMs: timestampMs,
+      timestamp: envelope.transportTimestamp,
+    );
+    return _apply(envelope, timestampMs, timing);
   }
 
   bool _admits(InputSourceIdentity source) {
@@ -269,7 +291,11 @@ class InputReducer {
     }
   }
 
-  List<InputTemporalEvent> _apply(RawInputEnvelope envelope, int timestampMs) {
+  List<InputTemporalEvent> _apply(
+    RawInputEnvelope envelope,
+    int timestampMs,
+    PerformanceTiming timing,
+  ) {
     final message = envelope.message;
     if (message.kind == RawInputKind.other) return const [];
 
@@ -290,7 +316,7 @@ class InputReducer {
 
     final before = _aggregate();
     _own(envelope.channel, message);
-    return _eventsToward(before, message, timestampMs);
+    return _eventsToward(before, message, timestampMs, timing);
   }
 
   /// Applies [message] to the channel that owns it.
@@ -368,6 +394,7 @@ class InputReducer {
     InputTemporalState before,
     RawInputMessage message,
     int timestampMs,
+    PerformanceTiming timing,
   ) {
     final after = _aggregate();
     if (before == after) return const [];
@@ -386,18 +413,21 @@ class InputReducer {
         InputTemporalPedalEvent(
           timestampMs: timestampMs,
           down: after.pedalDown,
+          timing: timing,
         ),
       for (final note in released)
         InputTemporalNoteOffEvent(
           timestampMs: timestampMs,
           noteNumber: note,
           velocity: message.velocity ?? 0,
+          timing: timing,
         ),
       for (final note in struck)
         InputTemporalNoteOnEvent(
           timestampMs: timestampMs,
           noteNumber: note,
           velocity: message.velocity ?? 1,
+          timing: timing,
         ),
     ];
 

@@ -307,6 +307,16 @@ time sometimes, and every timing reader has to handle both. The first version
 does not retroactively upgrade the notes that preceded authorization; buffering
 raw timing to revisit them is a later choice, not a default to fall into.
 
+The representation, which is implemented: `InputTemporalEvent.timing` carries
+the mapper's whole answer, including the reason when there is no time, and is
+null for a boundary nobody played. `PlayedNote.performanceTimeUs` is what
+survives into the transcript, an integer or nothing, with the reason dropped
+because measurement has no use for it. Neither layer has a path from observation
+time to performance time. What amount and continuity of performance time
+justifies a measurement claim is not settled here; those floors belong with the
+metrics that consume them, in
+[`evidence-and-measurement.md`](evidence-and-measurement.md).
+
 ## Building it in three slices
 
 **Decision.** The state machine first, with a seam for tests to drive

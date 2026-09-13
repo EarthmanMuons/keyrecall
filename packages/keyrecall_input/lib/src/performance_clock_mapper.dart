@@ -30,7 +30,7 @@ class PerformanceClockMapper {
   /// rounding.
   final int arrivalUncertaintyMs;
 
-  final ClockDomainDetector _detector = ClockDomainDetector();
+  ClockDomainDetector _detector = ClockDomainDetector();
   final PerformanceClockLifecycle _lifecycle = PerformanceClockLifecycle();
 
   String? _session;
@@ -43,6 +43,18 @@ class PerformanceClockMapper {
     this.policy = ClockDomainPolicy.characterized,
     this.arrivalUncertaintyMs = 1000,
   });
+
+  /// Starts over, for a new observation.
+  ///
+  /// A timeline belongs to the observation it was anchored in, and so does
+  /// what was measured about the clock: the same adapter has produced two
+  /// different shapes in two sessions with nothing reconnected between them.
+  void restart() {
+    _detector = ClockDomainDetector();
+    _lifecycle.restart();
+    _session = null;
+    _forget();
+  }
 
   /// Where the clock stands.
   PerformanceClockPhase get phase => _lifecycle.phase;
