@@ -143,19 +143,32 @@ Map<String, Object?> traceHeaderJson({
 /// tree.
 Map<String, Object?> recordToJson(MidiTransportRecord record) =>
     switch (record) {
-      MidiTransportDelivery(:final envelope, :final live) => {
+      MidiTransportDelivery(:final envelope, :final source, :final live) => {
         'seq': record.sequence,
         'kind': 'delivery',
         'arrival_ms': record.arrivalTimestampMs,
         'transport_ts': envelope.transportTimestamp,
         'device': envelope.source.deviceId,
         'transport': envelope.source.transport,
+        // Which of the plugin's routes carried it, which is not how the
+        // device describes itself and is what decides whose clock stamped it.
+        'route': source.route.name,
         'session': envelope.source.sessionId,
         'channel': envelope.channel,
         'message': envelope.message.kind.name,
         'note': envelope.message.note,
         'velocity': envelope.message.velocity,
         'sustain': envelope.message.sustainValue,
+        // What the transport said, for the messages KeyRecall does not
+        // consume. Without it, half an instrument's traffic is an
+        // unidentifiable 'other' in the trace that has to explain it.
+        'midi': {
+          'type': source.message.type.name,
+          'cc': source.message.ccNumber,
+          'cc_value': source.message.ccValue,
+          'program': source.message.program,
+          'bend': source.message.bend,
+        },
         'live': live,
       },
       MidiTransportBoundary(

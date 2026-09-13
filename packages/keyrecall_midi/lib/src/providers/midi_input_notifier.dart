@@ -229,6 +229,7 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
                 sequence: sequence,
                 arrivalTimestampMs: at,
                 envelope: envelope,
+                source: message,
                 live: _isLive(session),
               ),
             );

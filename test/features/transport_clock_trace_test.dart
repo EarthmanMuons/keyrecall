@@ -17,6 +17,18 @@ void main() {
         sequence: 7,
         arrivalTimestampMs: 8123,
         live: true,
+        source: const MidiSourceMessage(
+          message: MidiMessage(
+            type: MidiMessageType.noteOn,
+            channel: 3,
+            note: 64,
+            velocity: 91,
+          ),
+          deviceId: 'jamcorder',
+          transport: MidiTransportType.ble,
+          route: MidiRoute.ble,
+          transportTimestamp: 2416352,
+        ),
         envelope: const RawInputEnvelope(
           source: source,
           channel: 3,
@@ -45,6 +57,49 @@ void main() {
     expect(json['note'], 64);
     expect(json['velocity'], 91);
     expect(json['live'], isTrue);
+    expect(
+      json['route'],
+      'ble',
+      reason: 'which route carried it decides whose clock stamped it',
+    );
+  });
+
+  // Two BLE instruments on one phone reached the app by different routes and
+  // carried timestamps from different clocks. The envelope collapses whatever
+  // KeyRecall does not consume into one kind with no payload, which left half
+  // an instrument's traffic unidentifiable in the trace meant to explain it.
+  test('a message KeyRecall does not consume is still identified', () {
+    final json = recordToJson(
+      MidiTransportDelivery(
+        sequence: 3,
+        arrivalTimestampMs: 12,
+        live: true,
+        source: const MidiSourceMessage(
+          message: MidiMessage(
+            type: MidiMessageType.controlChange,
+            ccNumber: 88,
+            ccValue: 17,
+          ),
+          deviceId: 'p-525',
+          transport: MidiTransportType.ble,
+          route: MidiRoute.host,
+          transportTimestamp: 106068691000000,
+        ),
+        envelope: const RawInputEnvelope(
+          source: source,
+          arrivalTimestampMs: 12,
+          transportTimestamp: 106068691000000,
+          message: RawInputMessage(kind: RawInputKind.other),
+        ),
+      ),
+    );
+
+    expect(json['message'], 'other');
+    expect((json['midi']! as Map)['type'], 'controlChange');
+    expect((json['midi']! as Map)['cc'], 88);
+    expect((json['midi']! as Map)['cc_value'], 17);
+    expect(json['route'], 'host');
+    expect(json['transport_ts'], 106068691000000);
   });
 
   test('a rejected delivery is written down like any other', () {
@@ -53,6 +108,17 @@ void main() {
         sequence: 0,
         arrivalTimestampMs: 10,
         live: false,
+        source: const MidiSourceMessage(
+          message: MidiMessage(
+            type: MidiMessageType.noteOn,
+            note: 200,
+            velocity: 91,
+          ),
+          deviceId: 'jamcorder',
+          transport: MidiTransportType.ble,
+          route: MidiRoute.host,
+          transportTimestamp: 0,
+        ),
         envelope: const RawInputEnvelope(
           source: source,
           arrivalTimestampMs: 10,

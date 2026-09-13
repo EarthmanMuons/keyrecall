@@ -59,6 +59,7 @@ class MidiBleService {
       message: message,
       deviceId: event.device.id,
       transport: _transportOf(event.device.type),
+      route: _routeOf(event.transport),
       transportTimestamp: event.timestamp,
     );
   }
@@ -241,6 +242,20 @@ class MidiBleService {
 
   MidiTransportType _mapTransport(fmc.MidiDeviceType type) =>
       _transportOf(type);
+
+  /// Which route the plugin says delivered a message.
+  ///
+  /// Kept apart from the device's own description of itself, because the two
+  /// disagree for a BLE instrument the operating system has paired into its
+  /// own MIDI stack, and their timestamps come from different clocks.
+  static MidiRoute _routeOf(fmc.MidiTransport transport) {
+    return switch (transport) {
+      fmc.MidiTransport.native => MidiRoute.host,
+      fmc.MidiTransport.ble => MidiRoute.ble,
+      fmc.MidiTransport.network => MidiRoute.network,
+      fmc.MidiTransport.virtual => MidiRoute.virtual,
+    };
+  }
 
   static MidiTransportType _transportOf(fmc.MidiDeviceType type) {
     return switch (type) {

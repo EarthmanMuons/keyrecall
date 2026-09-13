@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import 'package:keyrecall_input/keyrecall_input.dart';
 
+import 'midi_source_message.dart';
+
 /// Why the observation changed hands.
 enum MidiTransportBoundaryKind {
   /// A transport subscription was opened, and with it an observation.
@@ -38,8 +40,16 @@ sealed class MidiTransportRecord {
 
 /// A message the transport delivered.
 final class MidiTransportDelivery extends MidiTransportRecord {
-  /// Everything known about it, both clocks included.
+  /// Everything the reducer was shown, both clocks included.
   final RawInputEnvelope envelope;
+
+  /// What the transport actually said, including the route that carried it.
+  ///
+  /// The envelope collapses everything KeyRecall does not consume into one
+  /// kind with no payload, which is the right shape for a reducer and the
+  /// wrong shape for characterization: half the messages an instrument sends
+  /// would be unidentifiable in the trace that has to explain it.
+  final MidiSourceMessage source;
 
   /// Whether the subscription that delivered it was still the live one.
   final bool live;
@@ -48,6 +58,7 @@ final class MidiTransportDelivery extends MidiTransportRecord {
     required super.sequence,
     required super.arrivalTimestampMs,
     required this.envelope,
+    required this.source,
     required this.live,
   });
 }
