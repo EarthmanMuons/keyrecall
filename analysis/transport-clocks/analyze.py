@@ -76,6 +76,67 @@ def unwrap(rows, modulus):
     return timeline
 
 
+def problems(trace, rows):
+    """What is wrong with a file, before anything is concluded from it.
+
+    Some of these takes were transcribed by hand from a phone, so the archive
+    has to be able to say when one does not hold together. A trace that fails
+    here is not evidence, whatever it appears to show.
+    """
+    found = []
+    records = trace["records"]
+
+    sequences = [record["seq"] for record in records]
+    if sequences != sorted(sequences):
+        found.append("records are not in sequence order")
+    gaps = [
+        (before, after)
+        for before, after in itertools.pairwise(sequences)
+        if after != before + 1
+    ]
+    if gaps:
+        found.append(
+            f"{len(gaps)} break(s) in the sequence, first {gaps[0][0]} to {gaps[0][1]}"
+        )
+
+    arrivals = [record["arrival_ms"] for record in records]
+    backward = [
+        (before, after)
+        for before, after in itertools.pairwise(arrivals)
+        if after < before
+    ]
+    if backward:
+        found.append(f"arrival time runs backward {len(backward)} time(s)")
+
+    for field in ("device", "transport", "route", "session"):
+        values = {record.get(field) for record in records}
+        if len(values) > 1:
+            found.append(f"{field} is not one value: {sorted(map(str, values))}")
+
+    for record in records:
+        note = record.get("note")
+        velocity = record.get("velocity")
+        if record["message"] in ("noteOn", "noteOff"):
+            if note is None or not 0 <= note <= 127:
+                found.append(f"seq {record['seq']}: note {note}")
+            if velocity is None or not 0 <= velocity <= 127:
+                found.append(f"seq {record['seq']}: velocity {velocity}")
+        elif note is not None or velocity is not None:
+            found.append(f"seq {record['seq']}: {record['message']} carries a note")
+
+    if rows:
+        steps = [
+            abs(after["transport_ts"] - before["transport_ts"])
+            for before, after in itertools.pairwise(rows)
+        ]
+        positive = [step for step in steps if step > 0]
+        if positive:
+            granularity = math.gcd(*positive) if len(positive) > 1 else positive[0]
+            if granularity not in (1, 1000000):
+                found.append(f"unfamiliar timestamp granularity {granularity}")
+    return found
+
+
 def describe(path):
     trace = json.loads(Path(path).read_text())
     rows = deliveries(trace)
@@ -91,6 +152,9 @@ def describe(path):
     total = len(trace["records"])
     missing = total - len(rows)
     print(f"    {len(rows)} stamped deliveries, {missing} without a stamp")
+
+    for problem in problems(trace, rows):
+        print(f"    PROBLEM: {problem}")
     if not rows:
         return
 

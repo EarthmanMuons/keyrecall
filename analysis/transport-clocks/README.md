@@ -179,7 +179,7 @@ That is the wrap rule, and also where it stops. A gap where arrival time could
 be wrong by half a modulus is a gap where timing has to go unavailable rather
 than be guessed.
 
-### The stall did not show what it was meant to
+### The stall did not show what it was meant to, on either clock
 
 Under a deliberately loaded app, delivery jitter widened from -26..+25 ms to
 **-40..+40 ms** while cumulative drift stayed at zero. So the transport clock
@@ -190,6 +190,11 @@ transport against 25.5 by arrival**, no better. At this scale human timing
 variance swamps the delivery jitter the stall added, so the take cannot show a
 difference even where one exists. A stall heavy enough to produce multi-hundred
 millisecond delivery delays would; this one did not.
+
+The P-525 under the same load says the same thing more flatly: **28.0 ms by
+transport against 28.0 by arrival**, and of two arrival instants carrying
+several notes, neither kept the stamps apart. Its clock adds nothing under load
+either, which is consistent with everything else it has shown.
 
 **Reported as a negative result rather than smoothed over.** The case for
 transport time still rests on the chord spreads and the idle onset dispersion,
@@ -213,17 +218,27 @@ instrument's traffic unidentified.
   reported route. The answer is somewhere in how the plugin obtains a timestamp
   per device, and it decides whether detection can rely on granularity alone.
 - **Whether a heavy enough stall separates the clocks.** The one recorded did
-  not, and that is a limit of the take rather than a finding about the
-  transport.
+  not, on either instrument, and that is a limit of the take rather than a
+  finding about the transport. The take that would answer it is a deliberately
+  pathological stall against a steady pattern: visible hundreds of milliseconds
+  of delivery distortion, where arrival spacing has to collapse or stretch if
+  the BLE clock is reconstructing anything arrival time is not.
 - **What the host route does**, if anything here ever uses it. Nothing recorded
   so far has.
 - **Whether the origin needs mapping at all.** Measurement reads intervals, so
   an unwrapped transport timeline with its own arbitrary origin, held within one
   observation, may be enough.
 
-Takes go in `takes/`, named for the platform, the instrument, and the take. The
-re-recorded iOS P-525 `pulse` and `chords`, and its `stall`, are not archived
-here yet; what they established is recorded above.
+Takes go in `takes/`, named for the platform, the instrument, and the take.
+
+### The traces check themselves
+
+Several were transcribed by hand from a phone, so `analyze.py` validates each
+file before concluding anything from it: contiguous sequence numbers,
+non-decreasing arrival time, one device, transport, route, and session
+throughout, notes and velocities inside 0..127, a message KeyRecall does not
+consume carrying no note, and a timestamp granularity it recognizes. A file that
+reports a `PROBLEM` is not evidence, whatever it appears to show. All nine pass.
 
 ## What must not happen to this data
 
