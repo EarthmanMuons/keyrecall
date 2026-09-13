@@ -10,6 +10,7 @@ import 'loop_failure.dart';
 import 'onset_diagnostic.dart';
 import 'practice_providers.dart';
 import 'timing_calibration.dart';
+import 'transport_clock_trace.dart';
 import 'trajectory_export.dart';
 
 /// What the practice loop is doing, for whoever is developing it.
@@ -223,6 +224,16 @@ class _Tools extends ConsumerWidget {
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (context) => const OnsetDiagnosticScreen(),
+          ),
+        ),
+      ),
+      _Tool(
+        icon: Icons.schedule,
+        title: 'Transport clocks',
+        subtitle: 'What the wire does with time, before anything reads it',
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => const TransportClockScreen(),
           ),
         ),
       ),

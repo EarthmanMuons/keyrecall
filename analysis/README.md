@@ -32,8 +32,15 @@ which may be intended, and the values are then regenerated from a Dart run.
 ```text
 onset-grouping/     what "at the same time" means on a real instrument
 timing-calibration/ what steady playing looks like on this input stack
+transport-clocks/   what the wire does with time, before anything reads it
 ```
 
 These are current. They hold recorded takes from real playing and the scripts
 that read them, and the constants they justify are consumed by the Dart
 packages. Adding takes here is how those constants get better.
+
+`transport-clocks/` is the odd one and is earlier than the other two: it has no
+takes and no script yet, and it justifies no constant. It exists to answer
+whether the transport's own timestamps can become trustworthy performance time
+at all, which nothing in the repository can settle by inspection. The other two
+measure playing through the input stack; this one measures the stack.
