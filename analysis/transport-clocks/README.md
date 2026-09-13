@@ -5,7 +5,8 @@
 - **Recorded:** September 13, 2026, iOS 26.6.2, a JamCorder adapter and a Yamaha
   P-525, both over BLE
 - **Feeds:** the transport-timing entry in
-  [`docs/roadmap.md`](../../docs/roadmap.md), step 1 of six
+  [`docs/roadmap.md`](../../docs/roadmap.md), which now carries the five
+  contracts these traces shaped
 
 ## The question
 
@@ -50,18 +51,26 @@ Deliberately boring. Each asks about the transport rather than about playing,
 and scripting them is what makes the shape of the performance known in advance,
 so a discontinuity can be attributed to delivery rather than to hesitation.
 
-| Take         | At the instrument                                  | Answers                                     |
-| ------------ | -------------------------------------------------- | ------------------------------------------- |
-| `pulse`      | scale or repeated note to a metronome, known bpm   | what both clocks do while nothing is wrong  |
-| `chords`     | three or four notes struck together, several times | packet time or message time                 |
-| `pause`      | play, stop ten seconds, play again                 | what the clocks do across a gap             |
-| `stall`      | keep playing while the app is made busy            | delivery delay, separated from playing      |
-| `background` | play, background half a minute, return, play       | continuity across a suspension              |
-| `reconnect`  | play, power off or walk away, return, play         | whether a transport clock survives its link |
+| Take         | At the instrument                                     | Answers                                     |
+| ------------ | ----------------------------------------------------- | ------------------------------------------- |
+| `pulse`      | scale or repeated note to a metronome, known bpm      | what both clocks do while nothing is wrong  |
+| `chords`     | three or four notes struck together, several times    | packet time or message time                 |
+| `pause`      | play, stop ten seconds, play again                    | what the clocks do across a gap             |
+| `stall`      | one note repeated evenly, app made as busy as it goes | delivery delay, separated from playing      |
+| `background` | play, background half a minute, return, play          | continuity across a suspension              |
+| `reconnect`  | play, power off or walk away, return, play            | whether a transport clock survives its link |
 
-Record each take on each combination worth comparing. One BLE keyboard on one
-phone answers nothing on its own: iOS against Android, BLE against USB, and more
-than one instrument are what turn a trace into a characterization.
+The `stall` take is deliberately adversarial rather than realistic. Two
+plausible ones came back inconclusive, because the delivery jitter they added,
+tens of milliseconds, sat inside how unevenly a person plays. A fixed repeated
+note gives a known interval structure, and the distortion has to reach hundreds
+of milliseconds before it can be told apart from playing at all.
+
+The matrix these takes were meant to fill is filled. One BLE keyboard on one
+phone answered nothing on its own, and comparing iOS against Android and two
+instruments against each other is what turned the traces into a
+characterization. What is left is not more combinations but one decisive
+`stall`.
 
 ## What a file holds
 

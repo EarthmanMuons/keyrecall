@@ -902,35 +902,58 @@ be trusted, continuity, temporal stability, and achieved tempo are absent, the
 way a channel nothing observed is absent, rather than computed from delivery
 artifacts. Pitch and order evidence continue regardless.
 
-The order the work has to happen in, because each step decides the next:
+Characterization is done except for one take; see
+[`analysis/transport-clocks/`](../analysis/transport-clocks/) for what nine
+traces across two platforms and two instruments established. What it settled,
+and what it refuted, shapes the five contracts the mapper has to meet.
 
-1. **Characterize the transports on hardware.** The units, range, and wrap
-   behavior of the BLE stamp; what USB does; whether a stamp is packet time,
-   message time, or something else; how batching behaves under ordinary playing
-   and under a deliberate stall; what background, resume, and reconnect do to
-   continuity. None of this is settleable by inspection, and the conversion
-   layer's design follows what devices actually emit.
-2. **Add a route-aware timing layer, beside the reducer rather than inside it.**
-   The reducer owns ordering and integrity of the observed stream. This answers
-   a different question: whether when a musical event happened is known well
-   enough to be timing evidence, and on whose authority. Characterization found
-   that two BLE instruments on one phone reach the app by different routes
-   carrying different clocks, so the dispatch is on the delivery route rather
-   than on the transport, and the output is a capability rather than a number:
-   source-timed, host-timed, or unavailable.
-3. **Make timing availability explicit in the normalized product.** Not by
-   replacing `arrivalTimestampMs` with a better-looking number: observation
-   time, performance time, and performance time unavailable are three different
-   things, and a second field or a small timing-evidence type keeps them apart.
-4. **Give the mapper a continuity contract.** Deterministic rules for the first
-   sample, wraparound, implausible transport jumps, a new session, and the two
-   clocks disagreeing by more than they should. Losing confidence makes timing
-   unavailable until a new trustworthy epoch is established.
-5. **Decide the queued-before-capture rule.** A message can arrive after the
-   recording window opened while its transport stamp says the key went down
-   before it did. Late delivery must not make that note evidence for the
-   attempt.
-6. **Wire measurement to performance time, and characterize what changed.**
+**What is known.** A BLE MIDI instrument reached through the app's own transport
+carries the specification's 13-bit timestamp: 1 ms per count, modulo 8192, with
+no cumulative drift against the arrival clock on either iOS or Android. It
+preserves onset timing that delivery collapses, halving onset dispersion on an
+idle app and reporting chords up to twice as wide as arrival time says they
+were. A directly connected piano reports the same route and carries a different
+clock entirely, with millisecond granularity expressed in nanoseconds and no
+wrap, and it adds nothing over arrival time on any take, idle or loaded. **So
+the clock domain has to be recognized from observed behavior, not looked up from
+anything the transport says about itself.**
+
+The one take still outstanding is an adversarial stall: two plausible ones could
+not separate the clocks, because the delivery jitter they added sat inside how
+unevenly a person plays.
+
+### The five contracts
+
+1. **Domain recognition.** Recognize the 13-bit, 1 ms, modulo-8192 clock as a
+   performance clock. Recognize the 1,000,000-count-granularity clock as known
+   and _not_ a performance clock. Anything else is unavailable. Three
+   categories, decided by what the stream did, not by metadata.
+2. **Domain conversion.** A performance clock yields an interval-preserving
+   local timeline whose origin stays arbitrary. No affine mapping onto arrival
+   time unless measurement is shown to need one: measurement reads intervals,
+   and estimating a transform between clock domains is work nothing has asked
+   for.
+3. **Wrap resolution.** Infer hidden epochs from arrival elapsed time, and
+   accept the result only when exactly one epoch count is compatible with a
+   configured arrival-uncertainty bound. Otherwise timing is unavailable rather
+   than guessed. The bound is a parameter, not a constant: the measured margin
+   was comfortable in every trace, and that is evidence rather than policy.
+4. **Continuity.** A new observation epoch resets the mapper. So does a session
+   change or a reconnect. A timestamp regression, an impossible rate, an
+   unfamiliar granularity, or an ambiguous wrap invalidates timing evidence for
+   that observation. Pitch and order evidence survive all of it, unless the
+   input boundary itself faults.
+5. **Measurement handoff.** A transcript note keeps its observation time and,
+   where there is one, its performance time. Timing metrics read performance
+   time when it is available, and go **absent** when it is not.
+
+That last contract is the one worth being strict about. Arrival time keeps
+earning its place for ordering, for resolving wraps, for integrity checks, and
+for diagnostics. What it must never do is stand in for performance time once the
+mapper has said there is none: a silent fallback would undo the reason for the
+whole phase, and it would do it invisibly.
+
+Then wire measurement to performance time and characterize what changed.
 
 Until all of that, [`system/input.md`](system/input.md) says plainly that
 arrival order is not performance timing, so nothing downstream is entitled to

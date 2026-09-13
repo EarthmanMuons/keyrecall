@@ -36,8 +36,11 @@ enum TransportTake {
   ),
   stall(
     'Loaded stall',
-    'Keep playing while the app is made busy: scroll hard, open and close '
-        'screens. Separates delivery delay from playing.',
+    'One note, over and over, as evenly as you can. Then make the app as '
+        'busy as you can manage while you keep playing it. Aim to make '
+        'delivery lurch by a good fraction of a second, not to imitate a '
+        'plausible phone: a mild stall hides inside how unevenly a person '
+        'plays, and two of those have already come back inconclusive.',
   ),
   background(
     'Background and resume',
