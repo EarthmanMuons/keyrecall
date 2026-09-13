@@ -41,6 +41,19 @@ It also means **lower dispersion is not better**. A clock reporting the same
 interval thirteen times running may be more accurate or may be carrying less,
 and no statistic computed from one clock decides which.
 
+Arrival still has two narrower jobs, and the line between them and a fallback is
+the whole point:
+
+```text
+transport determines elapsed performance time
+arrival may only choose an epoch, or veto an interpretation
+```
+
+It chooses which epoch a wrapping counter is in, and it refuses a transport
+interval that disagrees with it beyond a stated tolerance. It never supplies a
+time, corrects one, or smooths toward one, and within the tolerance the answer
+does not move by a microsecond however far arrival wanders.
+
 ## The output is a time, not a count
 
 **Decision.** The mapper answers with `PerformanceTiming`: either unavailable
@@ -106,6 +119,20 @@ implausibleClockStep
 continuityLost
 ```
 
+The three terminal reasons partition cleanly, which is what keeps them worth
+distinguishing:
+
+```text
+ambiguousWrap          several epoch counts fit, so the reading would be a
+                       guess
+
+implausibleClockStep   the domain offers readings and none of them is one the
+                       transport and the observation can both be describing
+
+continuityLost         structural: the shape or the authorization changed, or
+                       a clock with no characterized wrap ran backward
+```
+
 **Why.** Not for the learner model, which treats them alike, but so that
 "unavailable" does not become a bucket whose recovery semantics nobody can
 state. Three of these are terminal, one is event-local, and the rest can lift on
@@ -165,8 +192,15 @@ candidate(k) = r + k * M,  for integer k where candidate(k) >= 0
 accept iff exactly one candidate(k) lies within [(a - u) * g, (a + u) * g]
 ```
 
-No candidate means the clocks disagree beyond what policy tolerates; more than
-one means the wrap count is ambiguous. Neither is guessed.
+No candidate means the clocks disagree beyond what policy tolerates, which is
+`implausibleClockStep`; more than one means the wrap count would be a guess,
+which is `ambiguousWrap`. Neither is guessed.
+
+A clock with no characterized wrap is the same rule with `M` absent: it offers
+one candidate, `r` itself, and the same window either admits it or vetoes it.
+Without that, a non-wrapping domain would be trusted without bound, and a raw
+clock lurching by twenty seconds under a 700 ms delivery would become a
+confident twenty-second interval.
 
 `g` is the rate and not the quantum, which is the whole point of writing it in.
 Counts and milliseconds coincide only for the one wrapping domain characterized

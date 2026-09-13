@@ -9,16 +9,18 @@ import 'performance_timing.dart';
 /// Every sample is reclassified before it is converted, so a timeline never
 /// continues under a premise the policy has stopped accepting.
 ///
-/// Arrival time reaches the detector and goes no further. Nothing in the
-/// conversion can read it, which is what makes "arrival is not a fallback" a
+/// Arrival time never supplies a performance time. It has two narrower jobs
+/// and no others: choosing which epoch a wrapping counter is in, and vetoing a
+/// transport interval that disagrees with it beyond what policy tolerates.
+/// Within that tolerance the answer does not move by one microsecond however
+/// far arrival wanders, which is what makes "arrival is not a fallback" a
 /// property of the code rather than a branch nobody takes.
 ///
 /// See `docs/decisions/performance-timing.md`.
 class PerformanceClockMapper {
   final ClockDomainPolicy policy;
 
-  /// How far arrival elapsed time may sit from a candidate and still choose
-  /// it.
+  /// How far a transport interval and observation elapsed time may disagree.
   ///
   /// A bound on what the system tolerates, not a measurement. It has to be
   /// wide enough for a late delivery and for the drift between two clocks over
@@ -98,25 +100,26 @@ class PerformanceClockMapper {
     }
 
     final rawStep = timestamp - last;
-    final int counts;
     final modulus = clock.modulus;
-    if (modulus == null) {
-      // A counter with no characterized wrap has no reading under which this
-      // went forward, so there is nothing to infer and nothing to guess.
-      if (rawStep < 0) return _fail(TimingUnavailableReason.continuityLost);
-      counts = rawStep;
-    } else {
-      final resolved = _epochsResolved(
-        rawStep: rawStep,
-        modulus: modulus,
-        elapsedMs: arrivalMs - _lastArrivalMs!,
-        countsPerMillisecond: clock.countsPerMillisecond,
-      );
-      if (resolved == null) {
-        return _fail(TimingUnavailableReason.ambiguousWrap);
-      }
-      counts = resolved;
+    // A counter with no characterized wrap has no reading under which this
+    // went forward, so there is nothing to infer and nothing to guess.
+    if (modulus == null && rawStep < 0) {
+      return _fail(TimingUnavailableReason.continuityLost);
     }
+
+    final fit = _candidatesFitting(
+      rawStep: rawStep,
+      modulus: modulus,
+      elapsedMs: arrivalMs - _lastArrivalMs!,
+      countsPerMillisecond: clock.countsPerMillisecond,
+    );
+    // None means this interval is not one the two clocks can both be
+    // describing. Several mean the epoch count would be a guess.
+    if (fit.count == 0) {
+      return _fail(TimingUnavailableReason.implausibleClockStep);
+    }
+    if (fit.count > 1) return _fail(TimingUnavailableReason.ambiguousWrap);
+    final counts = fit.counts;
 
     _lastRaw = timestamp;
     _lastArrivalMs = arrivalMs;
@@ -131,24 +134,32 @@ class PerformanceClockMapper {
     );
   }
 
-  /// How far the counter really moved, if only one reading fits.
+  /// How many readings of this interval the two clocks can both be describing,
+  /// and which one, when there is only one.
   ///
   /// A silence longer than the modulus hides whole epochs, and no sequence of
-  /// stamps can say how many. Arrival elapsed time can, and this is the one
-  /// job it is trusted with: choosing an integer, not supplying a time.
+  /// stamps can say how many. Arrival elapsed time can, and that is all it is
+  /// trusted with: choosing an integer, not supplying a time. A clock with no
+  /// characterized wrap offers a single reading, which the same window either
+  /// admits or rejects.
   ///
   /// The comparison is made in counts rather than in time because both bounds
   /// convert to counts by multiplication, which is exact, while converting a
   /// candidate to microseconds is a division that would have to round at the
-  /// bounds. The tolerated uncertainty is still stated in milliseconds.
-  int? _epochsResolved({
+  /// bounds. The tolerated disagreement is still stated in milliseconds.
+  ({int count, int counts}) _candidatesFitting({
     required int rawStep,
-    required int modulus,
+    required int? modulus,
     required int elapsedMs,
     required int countsPerMillisecond,
   }) {
     final lowest = (elapsedMs - arrivalUncertaintyMs) * countsPerMillisecond;
     final highest = (elapsedMs + arrivalUncertaintyMs) * countsPerMillisecond;
+
+    if (modulus == null) {
+      final fits = rawStep >= lowest && rawStep <= highest;
+      return (count: fits ? 1 : 0, counts: rawStep);
+    }
 
     var first = _ceilDiv(lowest - rawStep, modulus);
     // Time does not run backward, whatever arrival says.
@@ -156,11 +167,10 @@ class PerformanceClockMapper {
     if (forward > first) first = forward;
     final last = _floorDiv(highest - rawStep, modulus);
 
-    // Anything but exactly one candidate is unanswerable: none means the
-    // clocks disagree beyond what policy tolerates, several mean the epoch
-    // count is a guess.
-    if (first != last) return null;
-    return rawStep + first * modulus;
+    return (
+      count: last < first ? 0 : last - first + 1,
+      counts: rawStep + first * modulus,
+    );
   }
 
   PerformanceTiming _fail(TimingUnavailableReason reason) {

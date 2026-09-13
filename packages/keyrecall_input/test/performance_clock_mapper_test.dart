@@ -27,17 +27,22 @@ const networkAnchor = 2000000;
 const wrappingWarmup = [100, 101, 102, 103, 104, 105, 106, 107, 108];
 
 extension on PerformanceClockMapper {
-  /// Feeds deliveries in, one arrival millisecond apart, and returns what each
-  /// was timed as.
+  /// Feeds deliveries in and returns what each was timed as.
   ///
-  /// The arrival spacing is deliberately uniform and deliberately wrong: no
-  /// conversion may read it.
+  /// Arrivals run one millisecond apart from [from] unless [arrivals] says
+  /// otherwise, which is close enough to the transport intervals to be
+  /// plausible and nowhere near equal to them.
   List<PerformanceTiming> feed(
     List<int?> timestamps, {
-    int arrivalStep = 1,
+    int from = 0,
+    int Function(int index)? arrivals,
   }) => [
     for (final (index, timestamp) in timestamps.indexed)
-      map(session: 'a', arrivalMs: index * arrivalStep, timestamp: timestamp),
+      map(
+        session: 'a',
+        arrivalMs: arrivals?.call(from + index) ?? from + index,
+        timestamp: timestamp,
+      ),
   ];
 }
 
@@ -77,7 +82,7 @@ void main() {
       expect(
         mapper.map(
           session: 'a',
-          arrivalMs: 1000,
+          arrivalMs: 722,
           timestamp: networkAnchor + 714000000,
         ),
         const TimingAvailable(714000),
@@ -90,7 +95,7 @@ void main() {
       expect(
         mapper.map(
           session: 'a',
-          arrivalMs: 1000,
+          arrivalMs: 8,
           timestamp: networkAnchor + 100000,
         ),
         const TimingAvailable(100),
@@ -100,7 +105,7 @@ void main() {
     test('times are measured from the anchor, not accumulated', () {
       final timings = mapper.feed([
         for (var step = 1; step <= 4; step++) networkAnchor + step * 100000,
-      ]);
+      ], from: networkWarmup.length);
 
       expect(timings, const [
         TimingAvailable(100),
@@ -112,7 +117,8 @@ void main() {
   });
 
   // The property the layer exists for, as an experiment rather than a branch:
-  // move arrival as far as it will go and see whether any answer moves.
+  // move arrival as far as it can go without being vetoed, and see whether any
+  // answer moves by a microsecond.
   test('arrival time cannot change a performance time', () {
     final stamps = [
       ...networkWarmup,
@@ -122,10 +128,30 @@ void main() {
     ];
 
     final steady = PerformanceClockMapper().feed(stamps);
-    final jittered = PerformanceClockMapper().feed(stamps, arrivalStep: 7919);
+    final jittered = PerformanceClockMapper().feed(
+      stamps,
+      arrivals: (index) => index + (index.isEven ? 400 : -400),
+    );
 
     expect(jittered, steady);
     expect(steady.last, const TimingAvailable(1000));
+  });
+
+  // Arrival's other job. It does not correct the transport clock and does not
+  // contribute to the answer; it refuses an interval the two clocks cannot
+  // both be describing, which would otherwise be confidently wrong evidence.
+  test('a transport interval arrival contradicts is terminal', () {
+    final mapper = PerformanceClockMapper()..feed(networkWarmup);
+
+    expect(
+      mapper.map(
+        session: 'a',
+        arrivalMs: networkWarmup.length,
+        timestamp: networkAnchor + 20000000000,
+      ),
+      const TimingUnavailable(TimingUnavailableReason.implausibleClockStep),
+    );
+    expect(mapper.phase, PerformanceClockPhase.failed);
   });
 
   group('a delivery without a timestamp', () {
@@ -236,14 +262,27 @@ void main() {
       );
     });
 
-    // Both neighboring epoch counts fit once arrival is useless, and a guess
-    // is not an answer.
-    test('a silence nothing can place is terminal', () {
+    // Half an epoch from either neighbor, so neither reading is one the two
+    // clocks can both be describing.
+    test('a silence no epoch count fits is terminal', () {
       expect(
         mapper.map(session: 'a', arrivalMs: 8095 + 4096, timestamp: 3),
-        const TimingUnavailable(TimingUnavailableReason.ambiguousWrap),
+        const TimingUnavailable(TimingUnavailableReason.implausibleClockStep),
       );
       expect(mapper.phase, PerformanceClockPhase.failed);
+    });
+
+    // Tolerating more disagreement than half a modulus is what makes two epoch
+    // counts fit at once, which is the parameter's real cost.
+    test('a silence two epoch counts fit is ambiguous', () {
+      final loose = PerformanceClockMapper(arrivalUncertaintyMs: 5000)
+        ..feed(wrappingWarmup)
+        ..map(session: 'a', arrivalMs: 8095, timestamp: 3);
+
+      expect(
+        loose.map(session: 'a', arrivalMs: 8095 + 4096, timestamp: 3),
+        const TimingUnavailable(TimingUnavailableReason.ambiguousWrap),
+      );
     });
   });
 
