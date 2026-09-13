@@ -155,4 +155,62 @@ void main() {
 
     expect(capture().isInterrupted, isFalse);
   });
+
+  group('a capture belongs to the attempt that recorded it', () {
+    // The screen for the next exercise is built before anything of its own is
+    // recorded, while the last attempt's capture is still here. Reading it
+    // showed its notes and acted on the interruption that ended it, which
+    // finished the new attempt before a note was played and then recorded it
+    // as one nobody played.
+    test('the next attempt reads nothing of the interrupted one', () async {
+      final notifier = container.read(attemptTranscriptProvider.notifier);
+      final first = notifier.start(TechnicalMaterial('C', ScaleForm.major));
+      await playNote(60, at: 100);
+      await deliver(
+        InputTemporalFaultEvent(
+          timestampMs: 101,
+          fault: InputIntegrityFault.observationGap,
+        ),
+      );
+
+      final interrupted = capture();
+      expect(interrupted.belongsTo(first), isTrue);
+      expect(interrupted.isInterrupted, isTrue);
+
+      // The next screen, which has not opened its window yet.
+      expect(
+        interrupted.belongsTo(null),
+        isFalse,
+        reason: 'an attempt that has recorded nothing owns no capture',
+      );
+
+      final second = notifier.start(TechnicalMaterial('G', ScaleForm.major));
+      expect(second, isNot(first));
+      expect(interrupted.belongsTo(second), isFalse);
+      expect(capture().isInterrupted, isFalse);
+    });
+
+    test('a discarded capture belongs to nobody', () {
+      final notifier = container.read(attemptTranscriptProvider.notifier);
+      final recording = notifier.start(TechnicalMaterial('C', ScaleForm.major));
+      notifier.discard();
+
+      expect(capture().belongsTo(recording), isFalse);
+      expect(AttemptCapture.none.belongsTo(0), isFalse);
+    });
+
+    test(
+      'notes and interruption keep the recording that produced them',
+      () async {
+        final recording = container
+            .read(attemptTranscriptProvider.notifier)
+            .start(TechnicalMaterial('C', ScaleForm.major));
+        await playNote(60, at: 100);
+        expect(capture().belongsTo(recording), isTrue);
+
+        await fail(StateError('gone'));
+        expect(capture().belongsTo(recording), isTrue);
+      },
+    );
+  });
 }

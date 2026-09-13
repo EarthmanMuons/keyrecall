@@ -700,6 +700,14 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   bool _finishing = false;
   int _painted = 0;
 
+  /// The recording this attempt started, and the only capture it may read.
+  ///
+  /// Null until the window opens. Before that there is nothing of this
+  /// attempt's to read, and the last attempt's capture is still in the
+  /// provider: reading it showed its notes and acted on the interruption that
+  /// ended it, which finished this attempt before anybody played a note.
+  int? _recording;
+
   /// How long the attempt has been running, counted by the watchdog rather
   /// than read off a clock, so the windows advance with the timers a test
   /// drives.
@@ -735,9 +743,10 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _screenWakeLock = ref.read(screenWakeLockProvider);
     _screenWakeLock.setEnabled(true).ignore();
     // The previous attempt's notes are still in the transcript, because
-    // closing an attempt reads them after recording stops. They are not this
-    // attempt's, and this screen can be asked about them before it has
-    // recorded anything of its own.
+    // closing an attempt reads them after recording stops. Letting them go is
+    // tidiness rather than the guarantee: this attempt reads only the capture
+    // its own recording produced, which it does not have until the window
+    // opens, so the frames before this callback runs are covered too.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) ref.read(attemptTranscriptProvider.notifier).discard();
     });
@@ -824,10 +833,22 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   void _beginListening() {
     setState(() {
       _phase = _Phase.playing;
-      ref
+      _recording = ref
           .read(attemptTranscriptProvider.notifier)
           .start(widget.exercise.material);
     });
+  }
+
+  /// Gives up whatever was being recorded, so nothing of it is read later.
+  void _abandonRecording() {
+    _recording = null;
+    ref.read(attemptTranscriptProvider.notifier).discard();
+  }
+
+  /// This attempt's capture, and nothing else's.
+  AttemptCapture get _capture {
+    final capture = ref.read(attemptTranscriptProvider);
+    return capture.belongsTo(_recording) ? capture : AttemptCapture.none;
   }
 
   void _beginCountIn() {
@@ -884,7 +905,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         if (_beatsLeft <= 0) {
           timer.cancel();
           _phase = _Phase.playing;
-          ref
+          _recording = ref
               .read(attemptTranscriptProvider.notifier)
               .start(widget.exercise.material);
           _watchdog = Timer.periodic(_watchdogTick, (_) => _watch());
@@ -898,13 +919,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _settling?.cancel();
     _countIn?.cancel();
     unawaited(_pulse.stop());
-    ref.read(attemptTranscriptProvider.notifier).discard();
+    _abandonRecording();
     setState(() => _phase = _Phase.paused);
   }
 
   void _backToReady() {
     if (_phase != _Phase.paused) return;
-    ref.read(attemptTranscriptProvider.notifier).discard();
+    _abandonRecording();
     _handover.reverse();
     setState(() {
       _phase = _Phase.ready;
@@ -933,7 +954,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       return;
     }
 
-    final played = ref.read(attemptTranscriptProvider).isNotEmpty;
+    final played = _capture.isNotEmpty;
     final asks =
         _quiet >= (played ? windows.afterPlaying : windows.beforePlaying);
     if (asks != _questioned) setState(() => _questioned = asks);
@@ -991,7 +1012,10 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       _ => showsPitchCueDuringAttempt(guidance),
     };
     final echoes = presentation.performanceFeedback != PerformanceFeedback.none;
-    final capture = ref.watch(attemptTranscriptProvider);
+    final watched = ref.watch(attemptTranscriptProvider);
+    final capture = watched.belongsTo(_recording)
+        ? watched
+        : AttemptCapture.none;
     final transcript = capture.transcript;
 
     if (capture.isInterrupted && !_finishing) {
@@ -1283,7 +1307,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _Phase.playing =>
       _questioned
           ? _Question(
-              played: ref.watch(attemptTranscriptProvider).isNotEmpty,
+              played: _capture.isNotEmpty,
               onDone: () => _finish(AttemptTermination.learnerStopped),
               onKeepPlaying: _keepPlaying,
             )

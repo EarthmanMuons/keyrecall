@@ -440,6 +440,20 @@ final practiceLoopProvider =
       retry: (_, _) => null,
     );
 
+/// Whether this attempt lost its input, however that reached here.
+///
+/// An attempt gets one terminal disposition. Once the input boundary has said
+/// the observation broke, nothing may reinterpret the same attempt as an
+/// ordinary one: the capture and the termination the screen closed with are
+/// two readings of the same fact, and either of them saying so settles it.
+///
+/// Both have to be consulted because they can disagree. The screen observes
+/// the interruption and the capture is discarded on its way out, which left
+/// the commit reading an empty, uninterrupted capture and recording an
+/// attempt nobody played rather than one whose instrument dropped.
+bool _wasInterrupted(AttemptCapture capture, AttemptTermination termination) =>
+    capture.isInterrupted || termination == AttemptTermination.inputInterrupted;
+
 class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// Whether a write is already running.
   ///
@@ -573,7 +587,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           // An interrupted capture is still an observation of what was played,
           // and what it is not is the learner stopping. Recording it as an
           // ordinary attempt would put an incomplete traversal down to them.
-          termination: capture.isInterrupted
+          termination: _wasInterrupted(capture, termination)
               ? AttemptTermination.inputInterrupted
               : termination,
         );
@@ -621,7 +635,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     _writing = true;
     try {
       state = await AsyncValue.guard(() async {
-        if (capture.isInterrupted) {
+        if (_wasInterrupted(capture, termination)) {
           final record = await current.session.closeUnmeasured(
             termination: AttemptTermination.inputInterrupted,
             reason: MeasurementUnavailableReason.inputInterrupted,

@@ -45,6 +45,15 @@ An `InputTemporalFaultEvent` says that has happened and why:
 | `timestampRegression` | time ran backward within one observation            |
 | `observationGap`      | observation was suspended, so continuity is unknown |
 
+**An attempt gets one terminal disposition.** Once the boundary has said the
+observation broke, nothing may reinterpret the same attempt as an ordinary one,
+and an attempt reads only the capture its own recording produced. Both halves
+were needed: the screen for the next exercise is built while the last attempt's
+capture is still in the provider, so it read that interruption as its own and
+ended before a note was played, and the commit then re-derived the disposition
+from a capture that had since been discarded and recorded an attempt nobody
+made.
+
 **A fault is terminal for the interval it ends.** The reducer stops admitting
 input, and nothing reopens the observation until a caller explicitly begins a
 new one. An instrument that resumes behaving perfectly does not repair an
@@ -173,7 +182,9 @@ them:
 
 - an integrity fault after any valid prefix never increases the number of
   accepted musical events;
-- once interrupted, a capture never becomes measurable again;
+- once interrupted, a capture never becomes measurable again, and nothing
+  downstream reclassifies the attempt it ended;
+- a capture belongs to the recording that produced it, and to no other attempt;
 - state reconstructed by replaying the normalized events equals the reducer's
   live snapshot;
 - a release of a key nobody pressed cannot create a sounding note;

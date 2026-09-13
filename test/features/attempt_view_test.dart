@@ -113,6 +113,52 @@ void main() {
     }
   });
 
+  // The hardware trace: backgrounding interrupts the capture, that attempt
+  // ends on it, and the screen for the next exercise is built while the
+  // interrupted capture is still in the provider. It used to read that
+  // capture as its own and finish before a note was played, which committed
+  // an attempt nobody made and put a second review on screen.
+  testWidgets('a new attempt does not end on the last one interruption', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1400, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    final finished = <AttemptTermination>[];
+    final container = ProviderContainer(overrides: [syntheticInstrument]);
+    addTearDown(container.dispose);
+
+    // The attempt before this one, ended by an input fault.
+    final notifier = container.read(attemptTranscriptProvider.notifier);
+    notifier.start(TechnicalMaterial('C', ScaleForm.major));
+    notifier.interruptForTest(InputIntegrityFault.observationGap);
+    expect(container.read(attemptTranscriptProvider).isInterrupted, isTrue);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          home: Scaffold(
+            body: AttemptView(
+              exercise: exerciseUnder(GuidanceContext.unguided),
+              onFinish: (termination) async => finished.add(termination),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      finished,
+      isEmpty,
+      reason: 'the attempt before this one is not this one to end',
+    );
+    expect(find.text('Ready'), findsOneWidget);
+  });
+
   testWidgets('keeps the screen awake while an exercise is visible', (
     tester,
   ) async {

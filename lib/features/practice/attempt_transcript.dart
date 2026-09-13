@@ -37,11 +37,30 @@ class AttemptCapture {
   /// what interrupted it. Null for an ordinary observation boundary.
   final InputIntegrityFault? fault;
 
+  /// Which recording produced this, or zero when no attempt did.
+  ///
+  /// What was played outlives the attempt that played it, so between attempts
+  /// this holds notes and a disposition belonging to the one before. An
+  /// attempt reads only the capture it started: without that, a screen that
+  /// has not begun recording shows the last attempt's notes and acts on the
+  /// interruption that ended it.
+  final int recording;
+
   const AttemptCapture({
     required this.transcript,
     this.isInterrupted = false,
     this.fault,
+    this.recording = 0,
   });
+
+  /// Nothing recorded, by nobody.
+  static final AttemptCapture none = AttemptCapture(
+    transcript: PerformanceTranscript.empty,
+  );
+
+  /// Whether [recording] is what produced this capture.
+  bool belongsTo(int? recording) =>
+      recording != null && recording != 0 && recording == this.recording;
 
   int get length => transcript.length;
   bool get isEmpty => transcript.isEmpty;
@@ -53,6 +72,9 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// The material being played, which is what spells an observation. Null when
   /// nothing is being recorded.
   TechnicalMaterial? _material;
+
+  /// Names each recording, so an attempt can tell its capture from the last.
+  int _recordings = 0;
 
   /// When the last accepted note arrived, so continuity is checked before the
   /// transcript is asked to hold something it would refuse.
@@ -83,10 +105,18 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   }
 
   /// Starts a fresh transcript for an attempt at [material].
-  void start(TechnicalMaterial material) {
+  ///
+  /// Returns the recording's name, which is what the attempt identifies its
+  /// own capture by.
+  int start(TechnicalMaterial material) {
     _material = material;
     _lastTimestampMs = 0;
-    state = AttemptCapture(transcript: PerformanceTranscript.empty);
+    _recordings += 1;
+    state = AttemptCapture(
+      transcript: PerformanceTranscript.empty,
+      recording: _recordings,
+    );
+    return _recordings;
   }
 
   /// Stops recording, keeping what was played.
@@ -104,8 +134,13 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   void discard() {
     _material = null;
     _lastTimestampMs = 0;
-    state = AttemptCapture(transcript: PerformanceTranscript.empty);
+    state = AttemptCapture.none;
   }
+
+  /// Ends the current recording the way the input boundary would, for a test
+  /// that needs the disposition without a source to break.
+  @visibleForTesting
+  void interruptForTest(InputIntegrityFault fault) => _interrupt(fault);
 
   void _record(InputTemporalEvent event) {
     final material = _material;
@@ -135,6 +170,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
         pitch: spellObservedPitch(event.noteNumber, material: material),
         timestampMs: event.timestampMs,
       ),
+      recording: state.recording,
     );
     ref
         .read(latencyProbeProvider.notifier)
@@ -155,6 +191,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
       transcript: state.transcript,
       isInterrupted: true,
       fault: fault,
+      recording: state.recording,
     );
   }
 }

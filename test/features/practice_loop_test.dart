@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -190,6 +191,70 @@ void main() {
     expect(learnerStateHash(after.session.state), learnerBefore);
   });
 
+  // What the hardware trace caught. Backgrounding interrupts the capture, the
+  // screen closes the attempt on it, and the capture is discarded on the way
+  // out. The commit then read an empty, uninterrupted capture and recorded an
+  // attempt nobody played, so the learner was told the instrument dropped and
+  // then told no notes came through.
+  test(
+    'an interrupted attempt is never recommitted as one nobody played',
+    () async {
+      final container = launch();
+      await place(container);
+      await loopOf(container);
+
+      await container
+          .read(practiceLoopProvider.notifier)
+          .finish(termination: AttemptTermination.inputInterrupted);
+      final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
+
+      expect(closed.closure.termination, AttemptTermination.inputInterrupted);
+      expect(
+        closed.closure.measurement,
+        isA<MeasurementUnavailable>().having(
+          (unavailable) => unavailable.reason,
+          'reason',
+          MeasurementUnavailableReason.inputInterrupted,
+        ),
+        reason: 'an attempt gets one terminal disposition, and this was it',
+      );
+    },
+  );
+
+  test(
+    'an attempt interrupted before a note is interrupted, not silent',
+    () async {
+      final container = ProviderContainer(
+        overrides: [
+          profileRepositoryProvider.overrideWith((ref) async => profiles),
+          inProcessScheduling,
+          practiceStoreProvider.overrideWith((ref) async => practice),
+          attemptTranscriptProvider.overrideWith(_InterruptedBeforeAnyNote.new),
+        ],
+      );
+      addTearDown(container.dispose);
+      await place(container);
+      await loopOf(container);
+
+      await container
+          .read(practiceLoopProvider.notifier)
+          .finish(termination: AttemptTermination.inactivityTimeout);
+      final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
+
+      expect(closed.closure.termination, AttemptTermination.inputInterrupted);
+      expect(
+        closed.closure.measurement,
+        isA<MeasurementUnavailable>().having(
+          (unavailable) => unavailable.reason,
+          'reason',
+          MeasurementUnavailableReason.inputInterrupted,
+        ),
+        reason:
+            'why nothing was captured is known, so silence is not the story',
+      );
+    },
+  );
+
   test('history survives a relaunch', () async {
     final first = launch();
     await place(first);
@@ -323,8 +388,23 @@ class _InterruptedCapture extends AttemptTranscriptNotifier {
         timestampMs: 1000 + index * 100,
       );
     }
-    return AttemptCapture(transcript: transcript, isInterrupted: true);
+    return AttemptCapture(
+      transcript: transcript,
+      isInterrupted: true,
+      recording: 1,
+    );
   }
+}
+
+/// A capture the input boundary broke before anything was played.
+class _InterruptedBeforeAnyNote extends AttemptTranscriptNotifier {
+  @override
+  AttemptCapture build() => AttemptCapture(
+    transcript: PerformanceTranscript.empty,
+    isInterrupted: true,
+    fault: InputIntegrityFault.observationGap,
+    recording: 1,
+  );
 }
 
 class _RecordingEraseStore extends InMemoryPracticeStore {
