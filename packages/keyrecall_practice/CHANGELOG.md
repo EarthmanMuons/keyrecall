@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Arpeggio candidate generation uses the shared `playableOn` instrument gate, so
+  a four-octave hands-together arpeggio, which V1's hand placement spreads over
+  eight octaves, is no longer offered on any keyboard.
 - `SchedulerHost` binds the resolved scope it decides against, along with the
   learner and policy constants to decide with, and takes the due requirement ids
   for a slot. A host that decides elsewhere establishes the candidate envelope

@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- The acquisition decoder hands a repetition count to `TraversalRepetitions`
+  instead of judging it, so what counts as a valid count stays a domain rule
+  rather than a serialization one. An invalid count is still a decode failure.
+
 - The historical fixtures are now named by learner model version. The `v1-8`
   pair is kept byte for byte, and what this build does with it is tested:
   readable, refused by exact replay, re-estimated only on request, and a cache

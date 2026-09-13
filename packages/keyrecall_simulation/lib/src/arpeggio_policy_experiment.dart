@@ -747,11 +747,27 @@ Iterable<CurriculumRequirement> _arpeggioRequirements(
   for (final span in material.progression.octaveSpans) {
     yield _requirement(material, HandConfiguration.right, span);
     yield _requirement(material, HandConfiguration.left, span);
-    if (span > 1) {
+    if (span > 1 && _handsTogetherFits(material, span)) {
       yield _requirement(material, HandConfiguration.together, span);
     }
   }
 }
+
+/// Whether a standard keyboard holds both hands over [span] octaves.
+///
+/// V1 places the hands a span apart, so hands together over four octaves
+/// covers eight and no instrument reaches it.
+bool _handsTogetherFits(ArpeggioMaterial material, int span) =>
+    InstrumentProfile().supportsRealizationWidth(
+      realize(
+        Exercise.linear(
+          material: material,
+          hands: HandConfiguration.together,
+          octaves: span,
+          direction: ExerciseDirection.up,
+        ),
+      ),
+    );
 
 CurriculumRequirement _requirement(
   TechnicalMaterial material,

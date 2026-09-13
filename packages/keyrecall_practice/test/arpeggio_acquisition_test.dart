@@ -109,7 +109,7 @@ void main() {
     // Two traversals of the one-octave triad, which is what the continuity
     // criterion needs and not a dose anyone chose: three intervals a traversal
     // and five wanted.
-    expect(task.portion, const TraversalRepetitions(2));
+    expect(task.portion, TraversalRepetitions(2));
     expect(notesOf(task), hasLength(8));
     // The family's own floor: right hand, one octave, ascending, cued.
     expect(task.parent.conditions.hands, HandConfiguration.right);

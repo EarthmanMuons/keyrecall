@@ -168,9 +168,9 @@ const _rhThumbTonic = _FingeringShape._(
   reversesForDescending: true,
 );
 
-/// Right hand with the thumb on the fourth degree as well, which is F major's
-/// exception and is reused by the F minors.
-const _rhThumbOnFour = _FingeringShape._(
+/// Right hand taking the fourth finger on the fourth degree and the thumb on
+/// the fifth, which is F major's exception and is reused by the F minors.
+const _rhFinger4OnDegree4 = _FingeringShape._(
   entry: [1],
   cycle: [2, 3, 4, 1, 2, 3, 1],
   terminalFinger: 4,
@@ -251,7 +251,7 @@ const Map<String, Map<Hand, _FingeringShape>> _scaleFingeringShapes = {
   'D_MAJOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'A_MAJOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'E_MAJOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
-  'F_MAJOR': {Hand.right: _rhThumbOnFour, Hand.left: _lh54321321},
+  'F_MAJOR': {Hand.right: _rhFinger4OnDegree4, Hand.left: _lh54321321},
   'B_MAJOR': {Hand.right: _rhThumbTonic, Hand.left: _lh43214321},
   'Db_MAJOR': {Hand.right: _rh23123412, Hand.left: _lh32143213},
   'F#_MAJOR': {Hand.right: _rh23412312, Hand.left: _lh43213214},
@@ -265,7 +265,7 @@ const Map<String, Map<Hand, _FingeringShape>> _scaleFingeringShapes = {
   'E_NATURAL_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'G_NATURAL_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'A_NATURAL_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
-  'F_NATURAL_MINOR': {Hand.right: _rhThumbOnFour, Hand.left: _lh54321321},
+  'F_NATURAL_MINOR': {Hand.right: _rhFinger4OnDegree4, Hand.left: _lh54321321},
   'B_NATURAL_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh43214321},
   'C#_NATURAL_MINOR': {Hand.right: _rh34123123, Hand.left: _lh32143213},
   'G#_NATURAL_MINOR': {Hand.right: _rh34123123, Hand.left: _lh32143213},
@@ -279,7 +279,7 @@ const Map<String, Map<Hand, _FingeringShape>> _scaleFingeringShapes = {
   'E_HARMONIC_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'G_HARMONIC_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'A_HARMONIC_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
-  'F_HARMONIC_MINOR': {Hand.right: _rhThumbOnFour, Hand.left: _lh54321321},
+  'F_HARMONIC_MINOR': {Hand.right: _rhFinger4OnDegree4, Hand.left: _lh54321321},
   'B_HARMONIC_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh43214321},
   'C#_HARMONIC_MINOR': {Hand.right: _rh34123123, Hand.left: _lh32143213},
   'G#_HARMONIC_MINOR': {Hand.right: _rh34123123, Hand.left: _lh32143213},
@@ -294,7 +294,7 @@ const Map<String, Map<Hand, _FingeringShape>> _scaleFingeringShapes = {
   'E_MELODIC_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'G_MELODIC_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
   'A_MELODIC_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh54321321},
-  'F_MELODIC_MINOR': {Hand.right: _rhThumbOnFour, Hand.left: _lh54321321},
+  'F_MELODIC_MINOR': {Hand.right: _rhFinger4OnDegree4, Hand.left: _lh54321321},
   'B_MELODIC_MINOR': {Hand.right: _rhThumbTonic, Hand.left: _lh43214321},
   'C#_MELODIC_MINOR': {Hand.right: _rh23123412, Hand.left: _lh32143213},
   'F#_MELODIC_MINOR': {Hand.right: _rh23123412, Hand.left: _lh43213214},
@@ -447,7 +447,8 @@ const Map<String, Map<Hand, _FingeringShape>> _selectedArpeggioFingeringShapes =
 const _scaleFingeringProvenance = FingeringProvenance._(
   source: 'KeyRecall Scale Fingering Taxonomy and Research',
   sourceEdition: '2026-08-18',
-  sourceLocation: 'docs/research/foundations/fingering.md §13',
+  sourceLocation:
+      'docs/research/foundations/fingering.md, The complete scale catalog',
   status: CanonicalFingeringStatus.canonicalSelected,
 );
 

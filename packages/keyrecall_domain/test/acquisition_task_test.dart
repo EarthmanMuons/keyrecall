@@ -75,7 +75,19 @@ void main() {
         AcquisitionScaffold.unmeteredRepetitions(1).portion,
         const FullTraversal(),
       );
-      expect(() => TraversalRepetitions(1), throwsA(isA<AssertionError>()));
+      expect(() => TraversalRepetitions(1), throwsArgumentError);
+      expect(() => TraversalRepetitions(0), throwsArgumentError);
+    });
+
+    test('are refused below one traversal', () {
+      expect(
+        () => AcquisitionScaffold.unmeteredRepetitions(0),
+        throwsArgumentError,
+      );
+      expect(
+        () => AcquisitionScaffold.unmeteredRepetitions(-1),
+        throwsArgumentError,
+      );
     });
   });
 

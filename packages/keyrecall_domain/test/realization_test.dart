@@ -395,8 +395,44 @@ void main() {
       );
     });
 
+    test('one sounding key is one expected note', () {
+      expect(
+        () => RealizationMoment(
+          position: 0,
+          metricOffset: 0,
+          notes: [
+            RealizedNote(
+              hand: Hand.left,
+              pitch: SpelledPitch(letter: NoteLetter.c, octave: 4),
+            ),
+            RealizedNote(
+              hand: Hand.right,
+              pitch: SpelledPitch(letter: NoteLetter.c, octave: 4),
+            ),
+          ],
+        ),
+        throwsArgumentError,
+      );
+    });
+
     test('an exercise that asks for nothing is not a realization', () {
       expect(() => ExerciseRealization([]), throwsArgumentError);
+    });
+
+    test('a moment sits at the position it carries', () {
+      RealizationMoment at(int position) => RealizationMoment(
+        position: position,
+        metricOffset: position.toDouble(),
+        notes: [
+          RealizedNote(
+            hand: Hand.right,
+            pitch: SpelledPitch(letter: NoteLetter.c, octave: 4),
+          ),
+        ],
+      );
+
+      expect(() => ExerciseRealization([at(1)]), throwsArgumentError);
+      expect(() => ExerciseRealization([at(0), at(2)]), throwsArgumentError);
     });
   });
 

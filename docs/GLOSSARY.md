@@ -514,8 +514,10 @@ exercise whether they move together or apart.
 What the connected instrument can physically play.
 
 Enough range information to keep the generator from producing exercises that do
-not fit. Other hardware metadata stays descriptive unless validated as a model
-input.
+not fit. It answers width, which is whether some placement of a realization fits
+within the key count; register checking would need the instrument's lowest and
+highest playable notes. Other hardware metadata stays descriptive unless
+validated as a model input.
 
 ### Introduction cap
 

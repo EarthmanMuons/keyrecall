@@ -55,7 +55,9 @@ acquisition floor, its entry tempo, and which execution and topology
 competencies it loads. Nothing outside the domain is allowed to interpret it.
 
 `InstrumentProfile` gates the whole catalog on what the connected instrument can
-physically play, before the learner model is consulted at all.
+physically play, before the learner model is consulted at all. It measures the
+realization the exercise asks for, both endpoints and both hands included, not
+one hand's nominal span.
 
 ## Guidance is a three-rung ladder
 

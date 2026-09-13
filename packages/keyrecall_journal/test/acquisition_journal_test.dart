@@ -121,7 +121,7 @@ void main() {
     );
 
     final restored = AcquisitionAttemptRecord.fromJson(record.toJson());
-    expect(restored.task.portion, const TraversalRepetitions(2));
+    expect(restored.task.portion, TraversalRepetitions(2));
     expect(restored.task, repeated);
   });
 

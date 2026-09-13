@@ -1,5 +1,7 @@
 import 'package:meta/meta.dart';
 
+import 'realization.dart';
+
 /// What the connected instrument can physically play.
 ///
 /// Consulted during candidate generation, before any learner state, so an
@@ -16,11 +18,20 @@ class InstrumentProfile {
     }
   }
 
-  /// Whether a traversal of [octaves] octaves fits on this instrument.
+  /// Whether [lowestPitch] through [highestPitch] fits within the keys.
   ///
-  /// A proxy for real register checking, which needs domain data this does not
-  /// carry.
-  bool supportsOctaveSpan(int octaves) => octaves * 12 <= keyCount;
+  /// Both endpoints are played, so a one-octave traversal wants thirteen keys
+  /// rather than twelve.
+  bool supportsPitchRange(int lowestPitch, int highestPitch) =>
+      highestPitch - lowestPitch + 1 <= keyCount;
+
+  /// Whether [realization] is narrow enough to fit on this instrument.
+  ///
+  /// Width, not register: a profile carrying only a key count can say that
+  /// some placement of the exercise fits, not that this one does. Answering
+  /// the second needs the instrument's lowest and highest playable notes.
+  bool supportsRealizationWidth(ExerciseRealization realization) =>
+      supportsPitchRange(realization.lowestPitch, realization.highestPitch);
 
   @override
   bool operator ==(Object other) =>

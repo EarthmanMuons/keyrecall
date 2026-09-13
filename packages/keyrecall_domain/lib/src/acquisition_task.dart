@@ -51,8 +51,15 @@ final class TraversalRepetitions extends TaskPortion {
   final int traversals;
 
   /// Throws [ArgumentError] for fewer than two, which is [FullTraversal].
-  const TraversalRepetitions(this.traversals)
-    : assert(traversals > 1, 'one traversal is a FullTraversal');
+  TraversalRepetitions(this.traversals) {
+    if (traversals < 2) {
+      throw ArgumentError.value(
+        traversals,
+        'traversals',
+        'one traversal is a FullTraversal',
+      );
+    }
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -309,13 +316,14 @@ class AcquisitionScaffold {
   /// For a pattern whose single traversal is too short to say anything about
   /// continuity. The family works out the fewest repetitions that supply what
   /// the criterion asks for.
+  ///
+  /// Throws [ArgumentError] for fewer than one traversal, which asks for no
+  /// work at all.
   AcquisitionScaffold.unmeteredRepetitions(int traversals)
     : this(
         timing: TimingDemand.unmetered,
         advancement: TaskAdvancement.learnerDriven,
-        portion: traversals > 1
-            ? TraversalRepetitions(traversals)
-            : const FullTraversal(),
+        portion: _repetitionsOf(traversals),
       );
 
   /// This scaffold applied to [parent].
@@ -340,3 +348,13 @@ class AcquisitionScaffold {
   String toString() =>
       'AcquisitionScaffold($portion, ${timing.id}, ${advancement.id})';
 }
+
+TaskPortion _repetitionsOf(int traversals) => switch (traversals) {
+  < 1 => throw ArgumentError.value(
+    traversals,
+    'traversals',
+    'must be at least one',
+  ),
+  1 => const FullTraversal(),
+  _ => TraversalRepetitions(traversals),
+};

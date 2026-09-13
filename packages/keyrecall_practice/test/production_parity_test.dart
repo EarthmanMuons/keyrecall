@@ -98,7 +98,7 @@ void _testProductionParity(List<TechnicalMaterial> catalog) {
           case PresentedAcquisition(:final task):
             kinds.add('acquisition');
             if (catalog.first is ArpeggioMaterial) {
-              expect(task.portion, const TraversalRepetitions(2));
+              expect(task.portion, TraversalRepetitions(2));
             }
             acquisitions++;
             final succeeds = acquisitions.isEven;

@@ -303,7 +303,7 @@ void main() {
 
   group('coverage', () {
     test('every scale form in the catalog has both hands', () {
-      for (final material in v1ScaleCatalog) {
+      for (final material in allScales) {
         for (final hand in Hand.values) {
           expect(
             canonicalFingering(material, hand),

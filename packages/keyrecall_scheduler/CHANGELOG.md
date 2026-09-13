@@ -12,6 +12,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Fixed
 
+- Candidate generation asks the instrument whether the exercise it would offer
+  fits, rather than whether one hand's octave span does. A two-octave
+  hands-together exercise needs 49 keys under V1's hand placement and no longer
+  reaches a keyboard too narrow to hold it. `playableOn` is that one answer,
+  shared by every family's candidate generation.
 - A held tempo probe keeps its place against a newer one. Every attempt of an
   underchallenged learner opens a probe, so letting each new one displace the
   one being held held every probe forever and asked for none of them, leaving

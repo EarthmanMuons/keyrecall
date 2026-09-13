@@ -45,13 +45,23 @@ void main() {
     });
 
     test('never offers an exercise the instrument cannot play', () {
+      // An octave is thirteen keys, and V1 places the hands a span apart.
+      expect(
+        generateCandidates(InstrumentProfile(keyCount: 12), materials),
+        isEmpty,
+      );
+
       final tiny = generateCandidates(
-        InstrumentProfile(keyCount: 12),
+        InstrumentProfile(keyCount: 13),
         materials,
       );
       expect(tiny, isNotEmpty);
       expect(
-        tiny.every((exercise) => exercise.conditions.octaves == 1),
+        tiny.every(
+          (exercise) =>
+              exercise.conditions.octaves == 1 &&
+              exercise.conditions.hands != HandConfiguration.together,
+        ),
         isTrue,
       );
     });

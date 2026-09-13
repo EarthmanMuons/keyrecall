@@ -329,9 +329,9 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         : requireInt(json, 'traversals', location: location);
     final taskPortion = switch (portion) {
       'FULL_TRAVERSAL' when traversals == 1 => const FullTraversal(),
-      'TRAVERSAL_REPETITIONS' when traversals > 1 => TraversalRepetitions(
-        traversals,
-      ),
+      // The domain owns what counts as a valid repetition; located() turns
+      // its refusal into a decode failure.
+      'TRAVERSAL_REPETITIONS' => TraversalRepetitions(traversals),
       _ => throw JournalFormatException(
         'unknown acquisition portion $portion over $traversals traversals',
         location: location,

@@ -12,6 +12,21 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Fixed
 
+- `InstrumentProfile` measures the realization an exercise asks for instead of
+  one hand's nominal span. `supportsPitchRange` and `supportsRealizationWidth`
+  replace `supportsOctaveSpan`, counting both endpoints of a traversal and the
+  distance V1 places the hands apart, so an exercise wider than the keyboard no
+  longer becomes a candidate.
+- `RealizationMoment` rejects two notes on one sounding key. A piano reports one
+  note-on however many hands are on it, so hands that meet belong in a single
+  `RealizedNote.shared` and the old representation asked for an observation no
+  performance could deliver.
+- `ExerciseRealization` requires each moment to carry the position it sits at,
+  which alignment indexes and staff rendering reads.
+- `TraversalRepetitions` and `AcquisitionScaffold.unmeteredRepetitions` throw
+  for counts they documented as invalid rather than asserting. A repetition
+  count below two, or a scaffold below one traversal, no longer survives with
+  assertions disabled.
 - `admissionBandOf` places arpeggios by the geography of their chord rather than
   answering `foundation` for everything without a scale form. A white-key triad
   is foundation material, a white root with black keys inside it is early

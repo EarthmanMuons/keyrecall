@@ -111,14 +111,32 @@ void main() {
   });
 
   group('instrument profile', () {
-    test('gates octave span by key count', () {
-      final upright = InstrumentProfile(keyCount: 88);
-      final compact = InstrumentProfile(keyCount: 25);
+    test('counts both endpoints of a pitch range', () {
+      final octave = InstrumentProfile(keyCount: 12);
 
-      expect(upright.supportsOctaveSpan(2), isTrue);
-      expect(upright.supportsOctaveSpan(7), isTrue);
-      expect(compact.supportsOctaveSpan(2), isTrue);
-      expect(compact.supportsOctaveSpan(3), isFalse);
+      expect(octave.supportsPitchRange(60, 71), isTrue);
+      expect(octave.supportsPitchRange(60, 72), isFalse);
+    });
+
+    test('measures the whole realization, not one hand', () {
+      final together = realize(
+        Exercise.linear(
+          material: TechnicalMaterial('C', ScaleForm.major),
+          hands: HandConfiguration.together,
+          octaves: 2,
+          direction: ExerciseDirection.up,
+        ),
+      );
+
+      expect(together.highestPitch - together.lowestPitch + 1, 49);
+      expect(
+        InstrumentProfile(keyCount: 88).supportsRealizationWidth(together),
+        isTrue,
+      );
+      expect(
+        InstrumentProfile(keyCount: 37).supportsRealizationWidth(together),
+        isFalse,
+      );
     });
 
     test('rejects an instrument with no keys', () {

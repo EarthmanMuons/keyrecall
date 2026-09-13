@@ -40,21 +40,55 @@ List<Exercise> generateCandidates(
   for (final material in materials)
     for (final hands in generatedHands)
       for (final octaves in generatedOctaves)
-        if (instrument.supportsOctaveSpan(octaves))
-          for (final direction in generatedDirections)
-            for (final handMotion in generatedHandMotions(hands))
-              for (final tempoBpm in generatedTempi)
-                for (final guidance in GuidanceContext.ladder)
-                  Exercise.linear(
-                    material: material,
-                    hands: hands,
-                    octaves: octaves,
-                    direction: direction,
-                    handMotion: handMotion,
-                    tempoBpm: tempoBpm,
-                    guidance: guidance,
-                  ),
+        for (final direction in generatedDirections)
+          for (final handMotion in generatedHandMotions(hands))
+            ..._presentationsOf(
+              instrument,
+              material: material,
+              hands: hands,
+              octaves: octaves,
+              direction: direction,
+              handMotion: handMotion,
+            ),
 ];
+
+/// Whether [exercise] fits on [instrument], asked of the notes it realizes to.
+///
+/// The realization is what the learner has to reach, so the whole of it is
+/// measured rather than one hand's nominal span: hands together sit an octave
+/// apart per octave of span, and both endpoints of a traversal are played.
+bool playableOn(InstrumentProfile instrument, Exercise exercise) =>
+    instrument.supportsRealizationWidth(realize(exercise));
+
+/// Every tempo and guidance rung of one shape, or none when it does not fit.
+///
+/// The instrument is asked once, because tempo and guidance reach no note.
+List<Exercise> _presentationsOf(
+  InstrumentProfile instrument, {
+  required TechnicalMaterial material,
+  required HandConfiguration hands,
+  required int octaves,
+  required ExerciseDirection direction,
+  required HandMotion handMotion,
+}) {
+  final tempi = [
+    for (final tempoBpm in generatedTempi)
+      Exercise.linear(
+        material: material,
+        hands: hands,
+        octaves: octaves,
+        direction: direction,
+        handMotion: handMotion,
+        tempoBpm: tempoBpm,
+      ),
+  ];
+  if (!playableOn(instrument, tempi.first)) return const [];
+  return [
+    for (final exercise in tempi)
+      for (final guidance in GuidanceContext.ladder)
+        exercise.withGuidance(guidance),
+  ];
+}
 
 /// The scale family's safe starting realizations within [candidates].
 AcquisitionFloor scaleAcquisitionFloor(Iterable<Exercise> candidates) =>

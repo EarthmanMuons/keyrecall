@@ -98,12 +98,14 @@ class RealizationMoment {
           notes: [for (final note in notes) note.shiftedByOctaves(octaves)],
         );
 
-  /// Throws [ArgumentError] when nothing sounds, or when a hand is asked to
-  /// play twice at once.
+  /// Throws [ArgumentError] when nothing sounds, when a hand is asked to play
+  /// twice at once, or when two notes ask for the same key.
   ///
   /// A moment is something that happens; silence is the absence of one. V1 has
   /// no chords, and a second note for one hand would make [noteFor] answer
-  /// arbitrarily.
+  /// arbitrarily. Two notes on one key would ask for two observations the
+  /// instrument reports as one note-on, which no performance can satisfy;
+  /// hands that meet belong in a single [RealizedNote.shared].
   RealizationMoment({
     required this.position,
     required this.metricOffset,
@@ -113,7 +115,8 @@ class RealizationMoment {
       throw ArgumentError.value(notes, 'notes', 'must not be empty');
     }
     final playing = <Hand>{};
-    for (final note in notes) {
+    final sounding = <int>{};
+    for (final note in this.notes) {
       for (final hand in note.hands) {
         if (!playing.add(hand)) {
           throw ArgumentError.value(
@@ -122,6 +125,13 @@ class RealizationMoment {
             'a hand plays at most one note per moment',
           );
         }
+      }
+      if (!sounding.add(note.midiNote)) {
+        throw ArgumentError.value(
+          notes,
+          'notes',
+          'notes on one key share a RealizedNote',
+        );
       }
     }
   }
@@ -163,14 +173,26 @@ class ExerciseRealization {
   /// The moments, in the order they are played.
   final List<RealizationMoment> moments;
 
-  /// Throws [ArgumentError] when there is nothing to play.
+  /// Throws [ArgumentError] when there is nothing to play, or when a moment
+  /// does not sit at the position it carries.
   ///
   /// An exercise that asks for no notes is not a task, and [lowestPitch] and
-  /// [highestPitch] have no answer on one.
+  /// [highestPitch] have no answer on one. Alignment indexes this list where
+  /// staff rendering reads [RealizationMoment.position], so the two have to be
+  /// the same number.
   ExerciseRealization(List<RealizationMoment> moments)
     : moments = List.unmodifiable(moments) {
     if (this.moments.isEmpty) {
       throw ArgumentError.value(moments, 'moments', 'must not be empty');
+    }
+    for (final (index, moment) in this.moments.indexed) {
+      if (moment.position != index) {
+        throw ArgumentError.value(
+          moments,
+          'moments',
+          'moment $index carries position ${moment.position}',
+        );
+      }
     }
   }
 

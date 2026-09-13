@@ -389,18 +389,17 @@ List<Exercise> _generateArpeggioCandidates(
   for (final hands in HandConfiguration.values)
     if (_hasCanonicalFingering(material, hands))
       for (final octaves in material.progression.octaveSpans)
-        if (instrument.supportsOctaveSpan(octaves))
-          for (final direction in _arpeggioDirections(policy))
-            for (final guidance in GuidanceContext.ladder)
-              Exercise.linear(
-                material: material,
-                hands: hands,
-                octaves: octaves,
-                direction: direction,
-                tempoBpm: policy.initialTempoBpm,
-                guidance: guidance,
-              ),
-];
+        for (final direction in _arpeggioDirections(policy))
+          for (final guidance in GuidanceContext.ladder)
+            Exercise.linear(
+              material: material,
+              hands: hands,
+              octaves: octaves,
+              direction: direction,
+              tempoBpm: policy.initialTempoBpm,
+              guidance: guidance,
+            ),
+].where((exercise) => playableOn(instrument, exercise)).toList();
 
 List<ExerciseDirection> _arpeggioDirections(ArpeggioPracticePolicy policy) =>
     policy.acquisitionFloorShape ==

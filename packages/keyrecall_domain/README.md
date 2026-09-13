@@ -58,6 +58,19 @@ judgments. Those are `keyrecall_learner` and `keyrecall_scheduler`.
   `v1ScaleCatalog` is a fixture the frozen Python prototype matches, not a
   product list.
 
+## Constructors are the boundary
+
+Every public constructor here either produces a canonical, valid value or
+refuses its input. A generator that happens to emit only canonical values is not
+what establishes an invariant the type claims: `realize` coalesces two hands on
+one key into a shared note, and `RealizationMoment` refuses the uncoalesced
+form; the journal decoder reads a repetition count, and `TraversalRepetitions`
+decides whether it is one.
+
+Validation is runtime, not `assert`. An assertion documents a programmer
+mistake, and production Dart runs with assertions disabled, so a documented
+`ArgumentError` has to be thrown to exist.
+
 ## Usage
 
 ```dart
