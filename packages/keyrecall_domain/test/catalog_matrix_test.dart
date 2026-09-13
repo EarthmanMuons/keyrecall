@@ -84,11 +84,25 @@ void main() {
         expect(line, everyElement(isNotNull), reason: '$reason $hand');
 
         final pitches = [for (final note in line) note!.midiNote];
-        final rises = pitches.first < pitches.last;
-        final ascends =
-            exercise.conditions.direction == ExerciseDirection.upDown ||
-            rises == _movesUp(exercise.conditions, hand);
-        expect(ascends, isTrue, reason: '$reason $hand');
+        // An up-down traversal plays the apex once, so its line is odd and
+        // turns at the center.
+        final apex = pitches.length ~/ 2;
+        for (var step = 1; step < pitches.length; step++) {
+          final climbs = switch (exercise.conditions.direction) {
+            ExerciseDirection.up => _movesUp(exercise.conditions, hand),
+            ExerciseDirection.upDown =>
+              step <= apex
+                  ? _movesUp(exercise.conditions, hand)
+                  : !_movesUp(exercise.conditions, hand),
+          };
+          final delta = pitches[step] - pitches[step - 1];
+
+          expect(
+            climbs ? delta > 0 : delta < 0,
+            isTrue,
+            reason: '$reason $hand from ${step - 1} to $step, by $delta',
+          );
+        }
       }
     }
   });
