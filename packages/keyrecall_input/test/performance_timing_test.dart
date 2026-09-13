@@ -64,6 +64,21 @@ void main() {
       expect(clock.unavailableReason, isNull);
     });
 
+    // Nothing measured, nothing to anchor to. Activating here would leave a
+    // timeline whose domain no later reading could contradict.
+    test('an authorization with no shape does not activate anything', () {
+      expect(
+        clock.reclassify(
+          authorization: ClockAuthorization.performance,
+          shape: null,
+        ),
+        PerformanceClockPhase.detecting,
+      );
+      expect(clock.isActive, isFalse);
+      expect(clock.anchoredShape, isNull);
+      expect(clock.unavailableReason, TimingUnavailableReason.detecting);
+    });
+
     test('refinement before a timeline costs nothing', () {
       clock
         ..unknown()
@@ -88,6 +103,30 @@ void main() {
     test('the same shape again changes nothing', () {
       expect(clock.authorize(), PerformanceClockPhase.active);
       expect(clock.anchoredShape, authorized);
+    });
+
+    // Losing the authorization is the same loss as losing the shape. A branch
+    // that checked only the shape would hold a timeline open on a clock the
+    // policy had stopped authorizing.
+    test('the shape surviving is not enough to stay active', () {
+      expect(
+        clock.reclassify(
+          authorization: ClockAuthorization.unavailable,
+          shape: authorized,
+        ),
+        PerformanceClockPhase.failed,
+      );
+      expect(clock.unavailableReason, TimingUnavailableReason.continuityLost);
+    });
+
+    test('an authorization arriving without a shape is a loss too', () {
+      expect(
+        clock.reclassify(
+          authorization: ClockAuthorization.performance,
+          shape: null,
+        ),
+        PerformanceClockPhase.failed,
+      );
     });
 
     test('losing continuity keeps the reason it was lost for', () {
@@ -163,6 +202,12 @@ void main() {
     test('a time carries the time and nothing else', () {
       expect(const TimingAvailable(120), const TimingAvailable(120));
       expect(const TimingAvailable(120), isNot(const TimingAvailable(121)));
+    });
+
+    // The network clock resolves to a tenth of a millisecond, which whole
+    // milliseconds cannot hold and floating point cannot compare exactly.
+    test('a time holds a tenth of a millisecond apart', () {
+      expect(const TimingAvailable(1500), isNot(const TimingAvailable(1600)));
     });
 
     test('an absence carries why', () {

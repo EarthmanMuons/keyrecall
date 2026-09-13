@@ -44,14 +44,23 @@ and no statistic computed from one clock decides which.
 ## The output is a time, not a count
 
 **Decision.** The mapper answers with `PerformanceTiming`: either unavailable
-with a reason, or available with a performance time in milliseconds on a
+with a reason, or available with a performance time in whole microseconds on a
 monotonic timeline whose origin is arbitrary. Raw counts do not leave this
 boundary.
 
-**Why.** Three domains have been seen, counting in units of 1, 100,000 and
-1,000,000 to the millisecond, and the fourth will not be the last. Converting at
-this boundary is the difference between adding a domain here and teaching every
+**Why.** Three domains have been seen, stepping in units of 1, 100,000 and
+1,000,000 counts, and the fourth will not be the last. Converting at this
+boundary is the difference between adding a domain here and teaching every
 reader of timing about a new unit.
+
+Microseconds rather than milliseconds because the network clock resolves to a
+tenth of a millisecond, and a whole-millisecond answer would discard the
+resolution it was authorized for. Integers rather than a fraction of a
+millisecond because these times are compared and replayed, and two runs of the
+same arithmetic have to agree exactly. Every characterized clock has a quantum
+that is a whole number of microseconds; a domain whose quantum is not cannot be
+authorized without first deciding a rounding rule, which is a decision to make
+against the trace that produces it.
 
 **Consequences.** Nothing downstream can tell which domain produced a
 measurement, which is the point. `available` carries a time and nothing else, so
@@ -108,16 +117,37 @@ travels for diagnostics, not for measurement: `available` carries a time and
 nothing else, and anything wanting to know why that time is believed asks the
 mapper's status instead.
 
+## A quantum is not a rate
+
+**Decision.** An authorized clock carries two numbers that are not
+interchangeable: the **quantum**, what every observed step is a multiple of,
+which is the clock's resolution, and the **rate** `g`, how many counts it
+advances per millisecond. The detector measures the quantum and never the rate.
+The rate is characterized, and it is what conversion divides by.
+
+**Why.** They coincide on two of the three domains, at 1 and at 1,000,000, and
+differ by a factor of ten on the third: the network session steps only in
+100,000 counts on a counter running near 1,000,000 counts to the millisecond, so
+it resolves to a tenth of a millisecond. Converting by the quantum would run
+that one clock ten times fast while passing every test written against the other
+two. Measuring the rate instead would put the arrival clock back into the
+conversion, which is the thing this layer exists to avoid.
+
+**Consequences.** `ClockDomainShape` stays what was measured, and
+`PerformanceClockDefinition` pairs it with the rate that characterization
+supplies. Authorizing a new domain means recording both, from the trace, in one
+place.
+
 ## A wrap is inferred only when one answer fits
 
-**Decision.** For a wrapping domain of modulus `M` counts and scale `g` counts
+**Decision.** For a wrapping domain of modulus `M` counts and rate `g` counts
 per millisecond, a raw delta `r` counts, an arrival elapsed `a` milliseconds,
 and a tolerated arrival uncertainty `u` milliseconds:
 
 ```text
-candidateMs(k) = (r + k * M) / g,  for integer k where the result is >= 0
+candidateUs(k) = (r + k * M) * 1000 / g,  for integer k where the result is >= 0
 
-accept iff exactly one candidateMs(k) lies within [a - u, a + u]
+accept iff exactly one candidateUs(k) lies within [(a - u) * 1000, (a + u) * 1000]
 ```
 
 No candidate means the clocks disagree beyond what policy tolerates; more than
@@ -127,9 +157,9 @@ The division by `g` is the whole point of writing it this way. Counts and
 milliseconds coincide only for the one wrapping domain characterized so far, at
 1 count per millisecond, and a wrapping clock at 100,000 would make the
 comparison nonsense while still appearing to work on every recorded trace.
-Candidates are converted to milliseconds rather than `a` and `u` converted to
-counts, so that the uncertainty bound stays a quantity somebody can reason about
-and the mapper's public unit is the one the arithmetic is done in.
+Candidates are converted to time rather than `a` and `u` converted to counts, so
+that the uncertainty bound stays a quantity somebody can reason about and the
+mapper's public unit is the one the arithmetic is done in.
 
 **Why.** A silence longer than the modulus hides whole epochs, and no sequence
 of stamps can say how many. Arrival elapsed time can, and this is the one job it
@@ -153,9 +183,9 @@ must not be confused. A gap wide enough to make two candidates fit yields
 
 > While neither active nor failed, reclassification moves freely between
 > `detecting` and `unauthorized`, or enters `active` when the currently measured
-> shape becomes authorized. Once active, a shape change or a continuity loss
-> fails the observation, and only a new observation or session returns anything
-> to `detecting`.
+> shape becomes authorized. `active` holds only while that same shape stays
+> authorized; anything else, including a continuity loss, fails the observation,
+> and only a new observation or session returns anything to `detecting`.
 
 Stated as the invariant rather than as a list of edges, because the edges are
 policy and the invariant is not. In particular **`unauthorized` reaches `active`
@@ -183,6 +213,11 @@ on eight steps can turn out to be a different one on eighty. While the mapper is
 still detecting, that is refinement and costs nothing. Once it is active, the
 timeline was built on a shape now known to be wrong, so it fails rather than
 reinterpreting what it already emitted.
+
+Staying active takes both halves of what activated it. A reading that keeps the
+shape but loses the authorization is the same loss by another route, and an
+authorization arriving with no measured shape activates nothing, so there is no
+arrangement of readings that anchors a timeline to no domain.
 
 A domain that is recognized and not authorized, or not recognized at all, never
 becomes active. It is not a fault, there is nothing to recover from, and it is
@@ -223,8 +258,8 @@ raw timing to revisit them is a later choice, not a default to fall into.
 
 **Decision.** The state machine first, with a seam for tests to drive
 authorization and transitions, and no conversion at all. Then conversion for an
-authorized domain that does not wrap, which is a count delta over a scale. Then
-the modulus and the unique-candidate arithmetic.
+authorized domain that does not wrap, which is a count delta over the clock's
+rate. Then the modulus and the unique-candidate arithmetic.
 
 **Why.** The refusals are the part worth being certain of, and they can be
 proved before there is anything to convert: that arrival time never produces

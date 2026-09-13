@@ -217,6 +217,51 @@ enum ClockAuthorization {
   unavailable,
 }
 
+/// An authorized clock, and what it takes to read a time off it.
+///
+/// Shape and rate are two different things. [ClockDomainShape.granularity] is
+/// the quantum: what every observed step is a multiple of, which is the
+/// clock's resolution. [countsPerMillisecond] is the rate: how fast the
+/// counter runs. They coincide on the millisecond counter and differ by a
+/// factor of ten on the network session, a quantum of 100,000 counts on a
+/// counter running near 1,000,000 counts to the millisecond, so that clock
+/// resolves to a tenth of a millisecond.
+///
+/// The rate is characterized rather than measured. The detector reports shape
+/// and stops there.
+@immutable
+class PerformanceClockDefinition {
+  /// What has to be measured for this clock to be recognized.
+  final ClockDomainShape shape;
+
+  /// How many raw counts the clock advances per millisecond.
+  final int countsPerMillisecond;
+
+  const PerformanceClockDefinition({
+    required this.shape,
+    required this.countsPerMillisecond,
+  });
+
+  /// The clock's resolution, in raw counts.
+  int get quantum => shape.granularity;
+
+  /// The counter's width, where one has been established.
+  int? get modulus => shape.modulus;
+
+  @override
+  bool operator ==(Object other) =>
+      other is PerformanceClockDefinition &&
+      other.shape == shape &&
+      other.countsPerMillisecond == countsPerMillisecond;
+
+  @override
+  int get hashCode => Object.hash(shape, countsPerMillisecond);
+
+  @override
+  String toString() =>
+      'PerformanceClockDefinition($shape at $countsPerMillisecond counts/ms)';
+}
+
 /// Which measured shapes KeyRecall believes about playing.
 ///
 /// Policy, not arithmetic. Every entry rests on the recorded takes in
@@ -234,9 +279,9 @@ enum ClockAuthorization {
 class ClockDomainPolicy {
   /// Shapes that may contribute performance timing.
   ///
-  /// A list rather than a set because a shape compares by value, and Dart
-  /// will not hold such a thing in a constant set.
-  final List<ClockDomainShape> performance;
+  /// A list rather than a set because these compare by value, and Dart will
+  /// not hold such a thing in a constant set.
+  final List<PerformanceClockDefinition> performance;
 
   /// Shapes that are understood and say nothing about playing.
   final List<ClockDomainShape> nonPerformance;
@@ -262,8 +307,14 @@ class ClockDomainPolicy {
   /// was ever seen to wrap and nothing else distinguishes them.
   static const ClockDomainPolicy characterized = ClockDomainPolicy(
     performance: [
-      ClockDomainShape(granularity: 1, modulus: 8192),
-      ClockDomainShape(granularity: 100000),
+      PerformanceClockDefinition(
+        shape: ClockDomainShape(granularity: 1, modulus: 8192),
+        countsPerMillisecond: 1,
+      ),
+      PerformanceClockDefinition(
+        shape: ClockDomainShape(granularity: 100000),
+        countsPerMillisecond: 1000000,
+      ),
     ],
     nonPerformance: [ClockDomainShape(granularity: 1000000)],
   );
@@ -279,7 +330,7 @@ class ClockDomainPolicy {
     if (shape == null || observation.steps < minimumSteps) {
       return ClockAuthorization.detecting;
     }
-    if (performance.contains(shape)) return ClockAuthorization.performance;
+    if (clockFor(shape) != null) return ClockAuthorization.performance;
     if (nonPerformance.contains(shape)) {
       return ClockAuthorization.nonPerformance;
     }
@@ -289,9 +340,17 @@ class ClockDomainPolicy {
     return ClockAuthorization.unavailable;
   }
 
+  /// The authorized clock of this shape, or null if none is.
+  PerformanceClockDefinition? clockFor(ClockDomainShape shape) {
+    for (final clock in performance) {
+      if (clock.shape == shape) return clock;
+    }
+    return null;
+  }
+
   /// Whether some authorized shape of this granularity is waiting on a wrap.
   bool _awaitsAWrap(int granularity) => [
-    ...performance,
+    ...performance.map((clock) => clock.shape),
     ...nonPerformance,
   ].any((shape) => shape.granularity == granularity && shape.modulus != null);
 }

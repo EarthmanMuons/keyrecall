@@ -163,11 +163,36 @@ void main() {
       );
       expect(
         const ClockDomainPolicy(
-          performance: [ClockDomainShape(granularity: 250)],
+          performance: [
+            PerformanceClockDefinition(
+              shape: ClockDomainShape(granularity: 250),
+              countsPerMillisecond: 250,
+            ),
+          ],
           nonPerformance: [],
         ).classify(observation),
         ClockAuthorization.performance,
       );
+    });
+
+    // The network clock only ever steps by 100,000 counts, on a counter
+    // running near 1,000,000 counts to the millisecond. Converting by the
+    // quantum would run it ten times fast, and every millisecond-counter test
+    // would still pass.
+    test('a quantum is not a rate', () {
+      final network = ClockDomainPolicy.characterized.clockFor(
+        const ClockDomainShape(granularity: 100000),
+      );
+
+      expect(network, isNotNull);
+      expect(network!.quantum, 100000);
+      expect(network.countsPerMillisecond, 1000000);
+
+      final counter = ClockDomainPolicy.characterized.clockFor(
+        const ClockDomainShape(granularity: 1, modulus: 8192),
+      );
+
+      expect(counter!.quantum, counter.countsPerMillisecond);
     });
 
     // A shape is granularity and wrap together, so the same counter width
@@ -177,14 +202,8 @@ void main() {
       const unwrapped = ClockDomainShape(granularity: 1);
 
       expect(wrapping, isNot(unwrapped));
-      expect(
-        ClockDomainPolicy.characterized.performance.contains(wrapping),
-        isTrue,
-      );
-      expect(
-        ClockDomainPolicy.characterized.performance.contains(unwrapped),
-        isFalse,
-      );
+      expect(ClockDomainPolicy.characterized.clockFor(wrapping), isNotNull);
+      expect(ClockDomainPolicy.characterized.clockFor(unwrapped), isNull);
     });
   });
 

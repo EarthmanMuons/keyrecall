@@ -46,20 +46,27 @@ sealed class PerformanceTiming {
 /// It carries the time and nothing else. Anything wanting to know why the
 /// time is believed reads the mapper's own state, so that measurement gets
 /// when and diagnostics get why, and neither has to know the other's answer.
+///
+/// Microseconds, as an integer, because the finest characterized clock
+/// resolves to a tenth of a millisecond and rounding that to whole
+/// milliseconds would throw away the resolution it was authorized for.
+/// Integers rather than a fraction of a millisecond because these times are
+/// compared and replayed, and two runs of the same arithmetic have to agree
+/// exactly.
 final class TimingAvailable extends PerformanceTiming {
-  final int performanceTimeMs;
+  final int performanceTimeUs;
 
-  const TimingAvailable(this.performanceTimeMs);
+  const TimingAvailable(this.performanceTimeUs);
 
   @override
   bool operator ==(Object other) =>
-      other is TimingAvailable && other.performanceTimeMs == performanceTimeMs;
+      other is TimingAvailable && other.performanceTimeUs == performanceTimeUs;
 
   @override
-  int get hashCode => performanceTimeMs.hashCode;
+  int get hashCode => performanceTimeUs.hashCode;
 
   @override
-  String toString() => 'TimingAvailable(${performanceTimeMs}ms)';
+  String toString() => 'TimingAvailable(${performanceTimeUs}us)';
 }
 
 /// No time, and why.
@@ -106,9 +113,9 @@ enum PerformanceClockPhase {
 ///
 /// > While neither active nor failed, reclassification moves freely between
 /// > detecting and unauthorized, or enters active when the currently measured
-/// > shape becomes authorized. Once active, a shape change or a continuity
-/// > loss fails the observation, and only a new observation returns anything
-/// > to detecting.
+/// > shape becomes authorized. Active holds only while that same shape stays
+/// > authorized; anything else, including a continuity loss, fails the
+/// > observation, and only a new observation returns anything to detecting.
 ///
 /// See `docs/decisions/performance-timing.md`.
 class PerformanceClockLifecycle {
@@ -134,7 +141,9 @@ class PerformanceClockLifecycle {
   /// the stream so far. A shape that narrows under an anchored timeline is a
   /// continuity loss rather than a refinement: the times already emitted were
   /// computed against a premise that is now known to be wrong, and nothing
-  /// here may reinterpret them.
+  /// here may reinterpret them. Losing the authorization is the same loss by
+  /// another route, so staying active requires both halves of what activated
+  /// it, and an authorization carrying no shape never activates anything.
   PerformanceClockPhase reclassify({
     required ClockAuthorization authorization,
     required ClockDomainShape? shape,
@@ -142,7 +151,9 @@ class PerformanceClockLifecycle {
     if (_phase == PerformanceClockPhase.failed) return _phase;
 
     if (_phase == PerformanceClockPhase.active) {
-      if (shape != _anchored) {
+      if (authorization != ClockAuthorization.performance ||
+          shape == null ||
+          shape != _anchored) {
         return loseContinuity(TimingUnavailableReason.continuityLost);
       }
       return _phase;
@@ -150,6 +161,10 @@ class PerformanceClockLifecycle {
 
     switch (authorization) {
       case ClockAuthorization.performance:
+        if (shape == null) {
+          _reason = TimingUnavailableReason.detecting;
+          return _phase = PerformanceClockPhase.detecting;
+        }
         _anchored = shape;
         _reason = null;
         return _phase = PerformanceClockPhase.active;
