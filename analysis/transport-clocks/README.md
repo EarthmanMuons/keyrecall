@@ -182,31 +182,57 @@ you cannot know which clock a recording captured until you look at it. The
 harness should say which domain is live before a take is recorded, or takes will
 keep landing on the wrong clock without anybody noticing.
 
-### A third domain, over the network
+### A third domain, and the clearest result in the set
 
 A MIDI network session to a Mac produces a third granularity: **100,000**, or
 0.1 ms, finer than anything else seen. `analyze.py` flags it as a domain nothing
 has characterized rather than as a broken file, which is the distinction the
-mapper has to make too.
+mapper has to make too. Its delivery jitter is far wider than BLE, -69 to +106
+ms against -26 to +25, with cumulative drift still zero.
 
-Its delivery jitter is far wider than BLE, -69 to +106 ms against -26 to +25,
-with cumulative drift still zero.
+Then the two clocks disagree about a scale somebody played by hand on a
+controller attached to the Mac:
 
-**What it means is genuinely unresolved**, and the two readings point opposite
-ways. Note-on intervals by arrival are 717 ms exactly, thirteen times out of
-twenty-eight, while by transport they range continuously from 669 to 825 ms.
+```text
+arrival    700 734 717 717 717 717 818 717 717 614 801 735 717 718 ...
+transport  740 669 751 742 689 754 744 754 693 685 825 701 710 724 ...
+```
 
-- If the Mac was playing something quantized, arrival is reporting the true
-  source timing and the network timestamps are the noisy ones.
-- If a person was playing, arrival cannot be that regular, and the exactness is
-  a delivery schedule making the clock look steadier by carrying less.
+**Arrival reports 717 ms exactly thirteen times out of twenty-eight**, and
+sixteen within a millisecond of it. Nobody plays like that. Transport varies
+continuously from 669 to 825 ms, which is what a person playing a scale looks
+like.
 
-Only knowing what generated the notes separates these, and nothing in the trace
-does. It is recorded as open rather than resolved.
+So the arrival clock is not measuring the playing on this path. Something in the
+network delivery regularizes it, and the regularized version is what reaches
+Dart.
 
-What it already proves is methodological: **lower dispersion is not better.** A
-clock that reports the same interval thirteen times running may be more accurate
-or may be less informative, and the statistic cannot tell you which.
+**This is the case the whole phase existed to find, and it is worse than the one
+that was expected.** The concern was that arrival time is noisy. Here it is not
+noisy, it is _wrong_, and wrong in the direction that looks like success:
+
+```text
+onsets by arrival     median 717 ms   MAD  1.0   stdev 48.0
+onsets by transport   median 714 ms   MAD 24.0   stdev 32.5
+```
+
+A measurement layer reading arrival time would score that human scale as
+metronomically steady, and temporal stability reads exactly this dispersion. The
+learner model would then hold evidence of superhuman evenness that nobody
+produced. That is the timing channel's version of manufacturing evidence, which
+is the failure the input boundary was rebuilt to prevent.
+
+Two consequences follow.
+
+**Lower dispersion is not better.** A clock reporting the same interval thirteen
+times running may be more accurate or may be carrying less, and no statistic
+computed from that clock alone can tell you which. The comparison only means
+something against a second clock or against known playing.
+
+**Arrival time is not a safe fallback.** Contract 5 says timing evidence goes
+absent rather than quietly reading arrival time instead. That was written as
+conservatism. On this path it is correctness: falling back would not be a weaker
+answer, it would be a confidently wrong one.
 
 ### What a chord costs each clock
 

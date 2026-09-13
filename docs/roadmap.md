@@ -907,16 +907,21 @@ Characterization is done except for one take; see
 traces across two platforms and two instruments established. What it settled,
 and what it refuted, shapes the five contracts the mapper has to meet.
 
-**What is known.** A BLE MIDI instrument reached through the app's own transport
-carries the specification's 13-bit timestamp: 1 ms per count, modulo 8192, with
-no cumulative drift against the arrival clock on either iOS or Android. It
-preserves onset timing that delivery collapses, halving onset dispersion on an
-idle app and reporting chords up to twice as wide as arrival time says they
-were. A directly connected piano reports the same route and carries a different
-clock entirely, with millisecond granularity expressed in nanoseconds and no
-wrap, and it adds nothing over arrival time on any take, idle or loaded. **So
-the clock domain has to be recognized from observed behavior, not looked up from
-anything the transport says about itself.**
+**What is known.** Three clock domains have been seen, at 1, 100,000 and
+1,000,000 counts to the millisecond, and one adapter produced two of them
+twenty-six minutes apart with nothing reconnected in between. **The domain
+belongs to the session, not to the device, the transport, or the route**, so it
+has to be read off the stream every time.
+
+A BLE MIDI stream carrying the specification's 13-bit timestamp runs at 1 ms per
+count, modulo 8192, with no cumulative drift against the arrival clock on either
+iOS or Android. It preserves onset timing that delivery collapses, halving onset
+dispersion on an idle app and reporting chords up to twice as wide as arrival
+time says they were. A directly connected piano reports the same route and
+carries a different clock entirely, with millisecond granularity expressed in
+nanoseconds and no wrap, and it adds nothing over arrival time on any take, idle
+or loaded. **So the clock domain has to be recognized from observed behavior,
+not looked up from anything the transport says about itself.**
 
 The one take still outstanding is an adversarial stall: two plausible ones could
 not separate the clocks, because the delivery jitter they added sat inside how
