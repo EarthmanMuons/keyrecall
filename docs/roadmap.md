@@ -937,7 +937,12 @@ unevenly a person plays.
    variation the arrival clock on its path destroys, while the 1,000,000-count
    domain is thoroughly recognized and has added nothing over arrival time on
    any take, idle or loaded. A shape nothing has recorded is unavailable rather
-   than assumed to behave like one that has.
+   than assumed to behave like one that has. Detection and policy are already
+   split this way in `keyrecall_input`: `ClockDomainDetector` measures
+   granularity and, where a wrap establishes one, the counter's width;
+   `ClockDomainPolicy` says which measured shapes may be believed. Authorizing a
+   fourth domain is an edit to the policy, not to the arithmetic.
+
 2. **Domain conversion.** A performance clock yields an interval-preserving
    local timeline whose origin stays arbitrary. No affine mapping onto arrival
    time unless measurement is shown to need one: measurement reads intervals,
@@ -948,6 +953,11 @@ unevenly a person plays.
    configured arrival-uncertainty bound. Otherwise timing is unavailable rather
    than guessed. The bound is a parameter, not a constant: the measured margin
    was comfortable in every trace, and that is evidence rather than policy.
+
+   This is the mapper's job and not the detector's. The detector answers only
+   what the counter looks like, and deliberately declines to say how many epochs
+   a long silence hid.
+
 4. **Continuity.** A new observation epoch resets the mapper. So does a session
    change or a reconnect. A timestamp regression, an impossible rate, an
    unfamiliar granularity, or an ambiguous wrap invalidates timing evidence for
@@ -956,6 +966,14 @@ unevenly a person plays.
 5. **Measurement handoff.** A transcript note keeps its observation time and,
    where there is one, its performance time. Timing metrics read performance
    time when it is available, and go **absent** when it is not.
+
+   An attempt can begin before the domain is identified, since naming one takes
+   several informative steps. The first version should not retroactively upgrade
+   the notes that preceded authorization: timing evidence is unavailable until
+   authorization is established and available from there on. Buffering raw
+   timing to revisit those notes, and whether a partly timed attempt is worth
+   measuring at all, are policy questions to settle separately rather than a
+   default to fall into.
 
 That last contract is the one worth being strict about. Arrival time keeps
 earning its place for ordering, for resolving wraps, for integrity checks, and

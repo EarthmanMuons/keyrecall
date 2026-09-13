@@ -5,6 +5,7 @@
 /// hold different beliefs about what is sounding.
 library;
 
+export 'src/clock_domain.dart';
 export 'src/input_event_clock.dart';
 export 'src/input_integrity.dart';
 export 'src/input_note_event.dart';
