@@ -14,6 +14,10 @@ enum MidiMessageType {
 @immutable
 class MidiMessage {
   final MidiMessageType type;
+
+  /// Which of the instrument's sixteen channels it arrived on.
+  final int channel;
+
   final int? note;
   final int? velocity;
   final int? ccNumber;
@@ -25,6 +29,7 @@ class MidiMessage {
 
   const MidiMessage({
     required this.type,
+    this.channel = 0,
     this.note,
     this.velocity,
     this.ccNumber,

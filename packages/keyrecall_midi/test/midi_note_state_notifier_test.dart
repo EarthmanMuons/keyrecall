@@ -123,23 +123,6 @@ void main() {
     });
   }
 
-  test('the pedal latch ignores MIDI pedal releases until cleared', () async {
-    final notifier = container.read(midiNoteStateProvider.notifier);
-    notifier.setPedalLatch(true);
-    notifier.setPedalDown(true);
-
-    await noteOn(60);
-    await noteOff(60);
-    await pedal(0);
-    expect(noteState().isPedalDown, isTrue, reason: 'latched');
-    expect(noteState().sustained, {60});
-
-    notifier.setPedalLatch(false);
-    await pedal(0);
-    expect(noteState().isPedalDown, isFalse);
-    expect(noteState().soundingNoteNumbers, isEmpty);
-  });
-
   test('losing the connection resets note state', () async {
     const device = MidiDevice(
       id: 'aaa',

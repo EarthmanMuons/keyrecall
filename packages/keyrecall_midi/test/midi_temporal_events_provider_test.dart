@@ -146,4 +146,208 @@ void main() {
       expect(reset.snapshot.sustainedNoteNumbers, isEmpty);
     });
   }
+
+  group('integrity', () {
+    // The failure that manufactured evidence: reading through an error let a
+    // capture keep collecting, and republished the last note as a new one.
+    test(
+      'a source error ends the observation instead of repeating a note',
+      () async {
+        ble.emitMessage(
+          const MidiMessage(
+            type: MidiMessageType.noteOn,
+            note: 60,
+            velocity: 90,
+          ),
+        );
+        await pumpEventQueue();
+        nowMs = 20;
+        ble.emitMessageError(StateError('link dropped'));
+        await pumpEventQueue();
+
+        expect(events.whereType<InputTemporalNoteOnEvent>(), hasLength(1));
+        final fault = events.last as InputTemporalFaultEvent;
+        expect(fault.fault, InputIntegrityFault.sourceFailure);
+        expect(container.read(midiInputProvider).isObserving, isFalse);
+      },
+    );
+
+    test('a faulted observation admits nothing further', () async {
+      ble.emitMessageError(StateError('link dropped'));
+      await pumpEventQueue();
+      final afterFault = events.length;
+
+      nowMs = 50;
+      ble.emitMessage(
+        const MidiMessage(type: MidiMessageType.noteOn, note: 64, velocity: 90),
+      );
+      await pumpEventQueue();
+
+      expect(events, hasLength(afterFault));
+    });
+
+    test('a source that ends unexpectedly is a fault, not silence', () async {
+      await ble.closeMessages();
+      await pumpEventQueue();
+
+      final fault = events.last as InputTemporalFaultEvent;
+      expect(fault.fault, InputIntegrityFault.sourceClosed);
+    });
+
+    test(
+      'a malformed payload faults rather than becoming a playable note',
+      () async {
+        ble.emitMessage(
+          const MidiMessage(
+            type: MidiMessageType.noteOn,
+            note: 200,
+            velocity: 90,
+          ),
+        );
+        await pumpEventQueue();
+
+        expect(events.whereType<InputTemporalNoteOnEvent>(), isEmpty);
+        expect(
+          (events.last as InputTemporalFaultEvent).fault,
+          InputIntegrityFault.malformedInput,
+        );
+      },
+    );
+
+    test(
+      'suspending observation ends it and resuming starts a new one',
+      () async {
+        ble.emitMessage(
+          const MidiMessage(
+            type: MidiMessageType.noteOn,
+            note: 60,
+            velocity: 90,
+          ),
+        );
+        await pumpEventQueue();
+
+        nowMs = 30;
+        final input = container.read(midiInputProvider.notifier);
+        input.suspendObservation();
+        await pumpEventQueue();
+
+        expect(
+          (events.last as InputTemporalFaultEvent).fault,
+          InputIntegrityFault.observationGap,
+        );
+        expect(
+          container.read(midiNoteStateProvider).soundingNoteNumbers,
+          isEmpty,
+        );
+
+        nowMs = 40;
+        input.resumeObservation();
+        await pumpEventQueue();
+
+        expect(events.last, isA<InputTemporalResetEvent>());
+        expect(container.read(midiInputProvider).isObserving, isTrue);
+      },
+    );
+  });
+
+  group('admission', () {
+    setUp(() async {
+      const device = MidiDevice(
+        id: 'adopted',
+        name: 'JamCorder',
+        transport: MidiTransportType.ble,
+        isConnected: false,
+      );
+      ble.discoverable = const [device];
+      await container
+          .read(midiConnectionStateProvider.notifier)
+          .connect(device);
+      await pumpEventQueue();
+      events.clear();
+    });
+
+    test('another live instrument cannot reach the normalized state', () async {
+      ble.emitMessage(
+        const MidiMessage(type: MidiMessageType.noteOn, note: 60, velocity: 90),
+        deviceId: 'someone-elses-pad',
+      );
+      await pumpEventQueue();
+
+      expect(events, isEmpty);
+      expect(container.read(midiNoteStateProvider).pressed, isEmpty);
+      expect(container.read(midiInputProvider).rejectedForeignMessages, 1);
+    });
+
+    test(
+      'a foreign all-notes-off cannot interrupt the adopted instrument',
+      () async {
+        ble.emitMessage(
+          const MidiMessage(
+            type: MidiMessageType.noteOn,
+            note: 60,
+            velocity: 90,
+          ),
+        );
+        await pumpEventQueue();
+        ble.emitMessage(
+          const MidiMessage(
+            type: MidiMessageType.controlChange,
+            ccNumber: MidiConstants.ccAllNotesOff,
+            ccValue: 0,
+          ),
+          deviceId: 'someone-elses-pad',
+        );
+        await pumpEventQueue();
+
+        expect(events.whereType<InputTemporalResetEvent>(), isEmpty);
+        expect(container.read(midiNoteStateProvider).pressed, {60});
+      },
+    );
+
+    test('every channel of the adopted instrument is one keyboard', () async {
+      ble.emitMessage(
+        const MidiMessage(
+          type: MidiMessageType.noteOn,
+          channel: 0,
+          note: 60,
+          velocity: 90,
+        ),
+      );
+      ble.emitMessage(
+        const MidiMessage(
+          type: MidiMessageType.noteOn,
+          channel: 3,
+          note: 48,
+          velocity: 90,
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(container.read(midiNoteStateProvider).pressed, {60, 48});
+    });
+  });
+
+  test('sounding state and the event stream cannot disagree', () async {
+    // An orphan release under the pedal used to reach sounding state while
+    // the stream reported nothing at all.
+    ble.emitMessage(
+      const MidiMessage(
+        type: MidiMessageType.controlChange,
+        ccNumber: MidiConstants.ccSustainPedal,
+        ccValue: 127,
+      ),
+    );
+    ble.emitMessage(
+      const MidiMessage(type: MidiMessageType.noteOff, note: 60, velocity: 0),
+    );
+    await pumpEventQueue();
+
+    expect(container.read(midiNoteStateProvider).sustained, isEmpty);
+
+    var replayed = InputTemporalState.silent;
+    for (final event in events) {
+      replayed = replayed.applying(event);
+    }
+    expect(replayed.soundingNoteNumbers, isEmpty);
+  });
 }

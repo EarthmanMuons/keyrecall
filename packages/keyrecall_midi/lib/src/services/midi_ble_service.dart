@@ -8,6 +8,7 @@ import 'package:flutter_midi_command/flutter_midi_command_messages.dart' as msg;
 import '../models/bluetooth_state.dart';
 import '../models/midi_device.dart';
 import '../models/midi_message.dart';
+import '../models/midi_source_message.dart';
 
 /// Low-level MIDI-over-BLE (Bluetooth Low Energy) transport service.
 ///
@@ -30,18 +31,37 @@ class MidiBleService {
   Stream<void> get onMidiSetupChanged =>
       (_midi.onMidiSetupChanged ?? const Stream.empty()).map((_) {});
 
-  /// Stream of parsed MIDI messages relevant to the app.
+  /// Stream of parsed MIDI messages relevant to the app, with their source.
   ///
   /// The plugin parses raw bytes into typed messages with per-source state
   /// (running status, multi-message packets); this service translates them
-  /// into the app's [MidiMessage] model and drops unused kinds. If the plugin
-  /// exposes no MIDI stream on this platform/version, this stream is empty.
-  Stream<MidiMessage> get onMidiMessages =>
+  /// into the app's [MidiMessage] model and drops unused kinds. Device,
+  /// transport, channel, and the plugin's timestamp are carried through
+  /// rather than discarded: the plugin merges every live source into this one
+  /// stream, so a message without them cannot be attributed to an instrument.
+  /// If the plugin exposes no MIDI stream on this platform/version, this
+  /// stream is empty.
+  Stream<MidiSourceMessage> get onMidiMessages =>
       _midi.onMidiDataReceived
-          ?.map((event) => mapMessage(event.message))
+          ?.map(mapEvent)
           .where((message) => message != null)
-          .cast<MidiMessage>() ??
-      const Stream<MidiMessage>.empty();
+          .cast<MidiSourceMessage>() ??
+      const Stream<MidiSourceMessage>.empty();
+
+  /// Translates a plugin event into the app's model, provenance intact.
+  ///
+  /// Returns null for message kinds the app does not consume.
+  @visibleForTesting
+  static MidiSourceMessage? mapEvent(fmc.MidiDataReceivedEvent event) {
+    final message = mapMessage(event.message);
+    if (message == null) return null;
+    return MidiSourceMessage(
+      message: message,
+      deviceId: event.device.id,
+      transport: _transportOf(event.device.type),
+      transportTimestamp: event.timestamp,
+    );
+  }
 
   /// Translates a plugin message into the app's [MidiMessage] model.
   ///
@@ -51,25 +71,30 @@ class MidiBleService {
     return switch (message) {
       final msg.NoteOnMessage m => MidiMessage(
         type: MidiMessageType.noteOn,
+        channel: m.channel,
         note: m.note,
         velocity: m.velocity,
       ),
       final msg.NoteOffMessage m => MidiMessage(
         type: MidiMessageType.noteOff,
+        channel: m.channel,
         note: m.note,
         velocity: m.velocity,
       ),
       final msg.CCMessage m => MidiMessage(
         type: MidiMessageType.controlChange,
+        channel: m.channel,
         ccNumber: m.controller,
         ccValue: m.value,
       ),
       final msg.PCMessage m => MidiMessage(
         type: MidiMessageType.programChange,
+        channel: m.channel,
         program: m.program,
       ),
       final msg.PitchBendMessage m => MidiMessage(
         type: MidiMessageType.pitchBend,
+        channel: m.channel,
         bend: m.bend,
       ),
       _ => null,
@@ -214,7 +239,10 @@ class MidiBleService {
     isConnected: device.connected,
   );
 
-  MidiTransportType _mapTransport(fmc.MidiDeviceType type) {
+  MidiTransportType _mapTransport(fmc.MidiDeviceType type) =>
+      _transportOf(type);
+
+  static MidiTransportType _transportOf(fmc.MidiDeviceType type) {
     return switch (type) {
       fmc.MidiDeviceType.ble => MidiTransportType.ble,
       fmc.MidiDeviceType.serial => MidiTransportType.usb,

@@ -41,10 +41,32 @@ set of expected differences rather than a mystery.
 - Doc comments referring to `MidiConnectionStatus` and
   `midiConnectionStatusProvider` were reworded, because those symbols were not
   vendored and a dangling reference is worse than a slightly different comment.
-- `midiNoteEventsProvider` is no longer exported from the library file. The file
-  stays for comparison against upstream; what changed is that it is not part of
-  this package's public surface, because the normalized temporal stream should
-  be the only reading of the wire KeyRecall has.
+- The input boundary was taken over outright. Upstream reads the raw message
+  stream from several places at once, each drawing its own conclusions;
+  KeyRecall needs one interpretation it can prove things about, so
+  `midi_input_notifier.dart` owns an `InputReducer` and everything else reads
+  it. What that displaced:
+  - `midi_note_state_notifier.dart` no longer tracks notes. `MidiNoteState` is
+    now derived from the reducer's snapshot, so sounding state and the event
+    stream cannot disagree. Its pedal latch went with it, unused.
+  - `midi_temporal_events_provider.dart` no longer normalizes. It delivers what
+    the reducer produced.
+  - `midi_note_events_provider.dart` and `midi_message_providers.dart` are gone.
+    Both were second readings of the wire, and the first substituted note zero
+    for a message without one.
+  - `MidiBleService.onMidiMessages` carries `MidiSourceMessage` rather than a
+    bare message. Upstream discards the device, transport, channel, and plugin
+    timestamp the plugin supplies; without them nothing downstream can tell the
+    adopted instrument from any other live source.
+  - `app_midi_lifecycle_provider.dart` ends the observation when the app leaves
+    the foreground and opens a new one on resume. The connection is still kept,
+    exactly as upstream keeps it.
+
+  A transport bug fixed here is still worth checking against WhatChord. A
+  divergence in this list is not: it is KeyRecall deciding that measurement
+  needs a boundary WhatChord has no use for. See
+  [`docs/system/input.md`](../../docs/system/input.md).
+
 - Dropped: `midi_connection_status_provider.dart` and everything under `pages/`
   and `widgets/`. Those are presentation, and they carried WhatChord's design
   system and its chord and key features with them. KeyRecall will write its own

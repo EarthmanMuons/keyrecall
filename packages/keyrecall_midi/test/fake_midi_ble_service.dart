@@ -25,7 +25,13 @@ void silenceDebugPrint() {
 class FakeMidiBleService implements MidiBleService {
   final _bluetoothStates = StreamController<BluetoothState>.broadcast();
   final _setupChanges = StreamController<void>.broadcast();
-  final _messages = StreamController<MidiMessage>.broadcast();
+  final _messages = StreamController<MidiSourceMessage>.broadcast();
+
+  /// Which instrument [emitMessage] attributes messages to.
+  ///
+  /// Defaults to whatever is connected, since that is the adopted instrument
+  /// and the only source the input boundary admits once one exists.
+  String? sourceDeviceId;
 
   BluetoothState currentBluetoothState = BluetoothState.poweredOn;
 
@@ -55,12 +61,33 @@ class FakeMidiBleService implements MidiBleService {
 
   void emitSetupChanged() => _setupChanges.add(null);
 
-  void emitMessage(MidiMessage message) => _messages.add(message);
+  void emitMessage(
+    MidiMessage message, {
+    String? deviceId,
+    MidiTransportType transport = MidiTransportType.ble,
+    int transportTimestamp = 0,
+  }) => _messages.add(
+    MidiSourceMessage(
+      message: message,
+      deviceId: deviceId ?? sourceDeviceId ?? _defaultSourceId,
+      transport: transport,
+      transportTimestamp: transportTimestamp,
+    ),
+  );
+
+  String get _defaultSourceId =>
+      connectedIds.isEmpty ? 'unadopted-device' : connectedIds.first;
+
+  /// Fails the message stream, the way a transport error reaches the app.
+  void emitMessageError(Object error) => _messages.addError(error);
+
+  /// Ends the message stream without the app tearing it down.
+  Future<void> closeMessages() => _messages.close();
 
   void dispose() {
     unawaited(_bluetoothStates.close());
     unawaited(_setupChanges.close());
-    unawaited(_messages.close());
+    if (!_messages.isClosed) unawaited(_messages.close());
   }
 
   @override
@@ -70,7 +97,7 @@ class FakeMidiBleService implements MidiBleService {
   Stream<void> get onMidiSetupChanged => _setupChanges.stream;
 
   @override
-  Stream<MidiMessage> get onMidiMessages => _messages.stream;
+  Stream<MidiSourceMessage> get onMidiMessages => _messages.stream;
 
   @override
   BluetoothState get bluetoothState => currentBluetoothState;

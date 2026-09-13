@@ -8,6 +8,7 @@ import '../midi_debug.dart';
 import '../models/midi_connection.dart';
 import '../providers/midi_connection_notifier.dart';
 import '../providers/midi_device_manager.dart';
+import '../providers/midi_input_notifier.dart';
 import '../providers/midi_preferences_notifier.dart';
 
 /// Installs app-wide MIDI lifecycle handling to coordinate behavior across
@@ -34,6 +35,9 @@ class _MidiLifecycleController with WidgetsBindingObserver {
 
     // Ensure the MIDI device manager is created early so it can install listeners and seed state.
     _ref.read(midiDeviceManagerProvider);
+    // The input boundary has to exist before the first note, not after the
+    // first listener: a suspension cannot end an observation nobody opened.
+    _ref.read(midiInputProvider);
 
     // Attempt reconnect at startup (foreground).
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -69,12 +73,15 @@ class _MidiLifecycleController with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     final connectionState = _ref.read(midiConnectionStateProvider.notifier);
     final midi = _ref.read(midiDeviceManagerProvider.notifier);
+    final input = _ref.read(midiInputProvider.notifier);
 
     if (_debugLog) debugPrint('[LIFE] state=$state');
     switch (state) {
       case AppLifecycleState.resumed:
         midi.setBackgrounded(false);
         connectionState.setBackgrounded(false);
+        // A new observation, not a continuation of the suspended one.
+        input.resumeObservation();
 
         // On iOS especially, the OS may drop Bluetooth connections while the
         // app is backgrounded with no watchdog running. Reconcile first so a
@@ -102,6 +109,11 @@ class _MidiLifecycleController with WidgetsBindingObserver {
       case AppLifecycleState.detached:
         midi.setBackgrounded(true);
         connectionState.setBackgrounded(true);
+        // Whatever the OS did with MIDI while suspended (buffered it,
+        // dropped it, delivered it late) is unknowable, so the observation
+        // ends here rather than pretending it continued. The link stays up:
+        // keeping the transport connected is a separate decision.
+        input.suspendObservation();
         // Fire-and-forget: best-effort scan stop is enough while
         // backgrounding.
         unawaited(connectionState.stopScanning());
