@@ -328,29 +328,31 @@ class _TransportClockScreenState extends ConsumerState<TransportClockScreen> {
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
-          // Locked while a take is running: which take this is belongs to the
-          // file, and changing it halfway would mislabel what was recorded.
-          IgnorePointer(
-            ignoring: trace.isRecording,
-            child: RadioGroup<TransportTake>(
-              groupValue: trace.take,
-              onChanged: (chosen) => recorder.use(chosen!),
-              child: Column(
-                children: [
-                  for (final take in TransportTake.values)
-                    RadioListTile<TransportTake>(
-                      value: take,
-                      title: Text(take.label),
-                      subtitle: Text(take.protocol),
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                ],
-              ),
-            ),
+          // One line rather than six tiles of protocol. The protocol belongs
+          // under the take that was chosen, where it is about to be followed,
+          // and not above the button that starts it: a picker tall enough to
+          // hold all six pushed every control off the bottom of the screen.
+          //
+          // A null callback is what locks it while a take is running. Which
+          // take this is belongs to the file, and changing it halfway would
+          // mislabel what was recorded.
+          DropdownButton<TransportTake>(
+            value: trace.take,
+            isExpanded: true,
+            onChanged: trace.isRecording
+                ? null
+                : (chosen) => recorder.use(chosen!),
+            items: [
+              for (final take in TransportTake.values)
+                DropdownMenuItem(value: take, child: Text(take.label)),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+          Text(trace.take.protocol, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 16),
           TextField(
             controller: _note,
+            enabled: !trace.isRecording,
             decoration: const InputDecoration(
               labelText: 'Anything the protocol does not say',
               hintText: '80bpm, right hand, two octaves',
@@ -372,6 +374,7 @@ class _TransportClockScreenState extends ConsumerState<TransportClockScreen> {
           ),
           const SizedBox(height: 8),
           Text(
+            '${trace.isRecording ? 'recording' : 'stopped'} \u00b7 '
             '${trace.deliveries} delivered, ${trace.boundaries} boundaries',
             style: theme.textTheme.bodyMedium,
           ),

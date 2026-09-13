@@ -25,10 +25,13 @@ conversion layer's design has to follow what they actually emit.
 
 ## How a take is recorded
 
-The app's **Transport clocks** developer tool, which watches the raw boundary
-and writes down what crossed it. It converts nothing and computes nothing: the
-first traces exist to decide what is worth computing, and a recorder that had
-already decided would bake its assumptions into the dataset meant to test them.
+The app's **Transport clocks** developer tool: pick the take, add a note if
+there is anything the protocol does not say, press **Start take**, play, press
+**Stop**, then save from the toolbar. The take and the note lock while a take is
+running, because what they name is the file. It watches the raw boundary and
+writes down what crossed it. It converts nothing and computes nothing: the first
+traces exist to decide what is worth computing, and a recorder that had already
+decided would bake its assumptions into the dataset meant to test them.
 
 Deliveries are taken **ahead of admission and normalization**, so messages the
 boundary rejected as foreign, stale, or malformed are in the file too. Those are
