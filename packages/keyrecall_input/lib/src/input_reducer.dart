@@ -21,6 +21,20 @@ const int _defaultSustainThreshold = 64;
 
 const int _maxDataByte = 127;
 
+/// The highest channel an instrument can address. The MIDI convention.
+const int _maxChannel = 15;
+
+/// What one channel of an instrument is holding.
+///
+/// Notes and the pedal are owned per channel because that is where an
+/// instrument owns them: a release on one channel ends that channel's hold and
+/// says nothing about the same pitch held on another.
+class _ChannelState {
+  final Set<int> pressed = {};
+  final Set<int> sustained = {};
+  bool pedalDown = false;
+}
+
 /// The one interpretation of raw input.
 ///
 /// Normalization, sounding state, source admission, and temporal continuity
@@ -34,6 +48,13 @@ const int _maxDataByte = 127;
 /// that reaches the stream, even if the instrument resumes behaving perfectly,
 /// until a caller explicitly opens a new observation with [begin].
 ///
+/// Ownership is tracked per channel; the product stream is one keyboard.
+/// Those are separate decisions. Merging channels for measurement is a
+/// deliberate policy, and it does not require forgetting which channel is
+/// holding what: a stage piano splitting its hands across two channels is one
+/// player playing, but a release on one hand's channel must not damp the
+/// other's note.
+///
 /// It is not a Riverpod object and holds no subscriptions. Wiring a transport
 /// to it, and deciding when an observation begins and ends, are the caller's.
 class InputReducer {
@@ -42,9 +63,8 @@ class InputReducer {
 
   final int _sustainThreshold;
 
-  final Set<int> _pressed = {};
-  final Set<int> _sustained = {};
-  bool _pedalDown = false;
+  /// Per-channel ownership. The null key is a source that reports no channel.
+  final Map<int?, _ChannelState> _channels = {};
 
   InputSourceIdentity? _adopted;
   InputObservationPhase _phase = InputObservationPhase.idle;
@@ -67,20 +87,19 @@ class InputReducer {
   /// How many events were turned away for coming from another instrument.
   int get rejectedForeignCount => _rejectedForeignCount;
 
-  /// Exactly what is sounding.
-  InputTemporalSnapshot get snapshot => InputTemporalSnapshot(
-    pressedNoteNumbers: _pressed,
-    sustainedNoteNumbers: _sustained,
-    pedalDown: _pedalDown,
-  );
+  /// Exactly what is sounding, across every channel.
+  InputTemporalSnapshot get snapshot => _aggregate().snapshot;
 
   /// The sounding state plus the fault that ended the observation, if any.
-  InputTemporalState get observation => InputTemporalState(
-    pressedNoteNumbers: {..._pressed},
-    sustainedNoteNumbers: {..._sustained},
-    pedalDown: _pedalDown,
-    fault: _fault,
-  );
+  InputTemporalState get observation {
+    final aggregate = _aggregate();
+    return InputTemporalState(
+      pressedNoteNumbers: aggregate.pressedNoteNumbers,
+      sustainedNoteNumbers: aggregate.sustainedNoteNumbers,
+      pedalDown: aggregate.pedalDown,
+      fault: _fault,
+    );
+  }
 
   /// Restricts admitted input to [source].
   ///
@@ -100,9 +119,7 @@ class InputReducer {
   /// observation that has just started has not seen a key go down and cannot
   /// claim to know what is held.
   List<InputTemporalEvent> begin({required int timestampMs}) {
-    _pressed.clear();
-    _sustained.clear();
-    _pedalDown = false;
+    _channels.clear();
     _fault = null;
     _phase = InputObservationPhase.observing;
     _lastTimestampMs = timestampMs;
@@ -120,7 +137,8 @@ class InputReducer {
   /// which replaying the last event cannot give it. The observation continues,
   /// but the boundary is real, so anything measuring across it must not.
   ///
-  /// Throws [StateError] when no observation is open.
+  /// Throws [StateError] when no observation is open. Use [opening] for a
+  /// consumer that has to be told where things stand either way.
   InputTemporalEvent resync({required int timestampMs}) {
     if (!isObserving) {
       throw StateError('cannot resync without an open observation');
@@ -129,6 +147,23 @@ class InputReducer {
     return InputTemporalResetEvent(
       timestampMs: _lastTimestampMs,
       snapshot: snapshot,
+    );
+  }
+
+  /// Where the observation stands, for a consumer attaching now.
+  ///
+  /// A reset carrying the snapshot while one is open, and otherwise the fault
+  /// that closed it. This never opens one: a consumer subscribing is not
+  /// evidence that a failed source recovered, and an observation that resumed
+  /// because somebody started watching would be exactly the claim the
+  /// terminal-fault rule exists to refuse.
+  InputTemporalEvent opening({required int timestampMs}) {
+    if (isObserving) return resync(timestampMs: timestampMs);
+    _lastTimestampMs = _atLeastLast(timestampMs);
+    return InputTemporalFaultEvent(
+      timestampMs: _lastTimestampMs,
+      fault: _fault ?? InputIntegrityFault.observationGap,
+      detail: _fault == null ? 'no observation has been opened' : null,
     );
   }
 
@@ -141,9 +176,7 @@ class InputReducer {
     String? detail,
   }) {
     if (_phase != InputObservationPhase.observing) return const [];
-    _pressed.clear();
-    _sustained.clear();
-    _pedalDown = false;
+    _channels.clear();
     _fault = fault;
     _phase = InputObservationPhase.faulted;
     _lastTimestampMs = _atLeastLast(timestampMs);
@@ -159,9 +192,9 @@ class InputReducer {
   /// Admits one raw event, returning what it normalizes to.
   ///
   /// An empty result is the ordinary case for input that changes nothing: a
-  /// repeated note-on for a key already down, a release of a key nobody
-  /// pressed, a message from another instrument, a message KeyRecall does not
-  /// consume.
+  /// repeated note-on for a key the same channel already holds, a release of a
+  /// key nobody pressed, a pitch another channel is still holding, a message
+  /// from another instrument, a message KeyRecall does not consume.
   List<InputTemporalEvent> receive(RawInputEnvelope envelope) {
     if (!isObserving) return const [];
 
@@ -186,7 +219,7 @@ class InputReducer {
       );
     }
 
-    final malformed = _malformation(envelope.message);
+    final malformed = _malformation(envelope);
     if (malformed != null) {
       return fail(
         InputIntegrityFault.malformedInput,
@@ -196,7 +229,7 @@ class InputReducer {
     }
 
     _lastTimestampMs = timestampMs;
-    return _apply(envelope.message, timestampMs);
+    return _apply(envelope, timestampMs);
   }
 
   bool _admits(InputSourceIdentity source) {
@@ -204,8 +237,14 @@ class InputReducer {
     return adopted == null || adopted == source;
   }
 
-  /// What is wrong with [message], or null when nothing is.
-  String? _malformation(RawInputMessage message) {
+  /// What is wrong with [envelope], or null when nothing is.
+  String? _malformation(RawInputEnvelope envelope) {
+    final channel = envelope.channel;
+    if (channel != null && (channel < 0 || channel > _maxChannel)) {
+      return 'channel $channel outside 0..$_maxChannel';
+    }
+
+    final message = envelope.message;
     switch (message.kind) {
       case RawInputKind.noteOn:
       case RawInputKind.noteOff:
@@ -230,67 +269,148 @@ class InputReducer {
     }
   }
 
-  List<InputTemporalEvent> _apply(RawInputMessage message, int timestampMs) {
+  List<InputTemporalEvent> _apply(RawInputEnvelope envelope, int timestampMs) {
+    final message = envelope.message;
+    if (message.kind == RawInputKind.other) return const [];
+
+    // All-notes-off is an administrative boundary rather than playing, and it
+    // is one whether or not anything happened to be sounding when it arrived.
+    if (message.kind == RawInputKind.allNotesOff) {
+      for (final channel in _channels.values) {
+        channel.pressed.clear();
+        channel.sustained.clear();
+      }
+      return [
+        InputTemporalResetEvent(
+          timestampMs: timestampMs,
+          snapshot: _aggregate().snapshot,
+        ),
+      ];
+    }
+
+    final before = _aggregate();
+    _own(envelope.channel, message);
+    return _eventsToward(before, message, timestampMs);
+  }
+
+  /// Applies [message] to the channel that owns it.
+  void _own(int? channel, RawInputMessage message) {
+    final owner = _channels.putIfAbsent(channel, _ChannelState.new);
     switch (message.kind) {
-      case RawInputKind.other:
-        return const [];
-
-      case RawInputKind.allNotesOff:
-        _pressed.clear();
-        _sustained.clear();
-        return [
-          InputTemporalResetEvent(
-            timestampMs: timestampMs,
-            snapshot: InputTemporalSnapshot(pedalDown: _pedalDown),
-          ),
-        ];
-
       case RawInputKind.sustain:
         final down = message.sustainValue! >= _sustainThreshold;
-        if (down == _pedalDown) return const [];
-        _pedalDown = down;
-        if (!down) _sustained.clear();
-        return [InputTemporalPedalEvent(timestampMs: timestampMs, down: down)];
-
+        if (down == owner.pedalDown) return;
+        owner.pedalDown = down;
+        if (!down) owner.sustained.clear();
       case RawInputKind.noteOn:
         // Velocity zero is how instruments spell a release.
         if (message.velocity == 0) {
-          return _release(message.note!, 0, timestampMs);
+          _releaseOn(owner, message.note!);
+          return;
         }
-        // A repeated note-on for a key already down is an input no-op. A
-        // reattack of a note the pedal was holding is not.
-        if (!_pressed.add(message.note!)) return const [];
-        _sustained.remove(message.note);
-        return [
-          InputTemporalNoteOnEvent(
-            timestampMs: timestampMs,
-            noteNumber: message.note!,
-            velocity: message.velocity!,
-          ),
-        ];
-
+        // A repeated note-on for a key this channel already holds is an input
+        // no-op. A reattack of a note the pedal was holding is not.
+        owner.pressed.add(message.note!);
+        owner.sustained.remove(message.note);
       case RawInputKind.noteOff:
-        return _release(message.note!, message.velocity!, timestampMs);
+        _releaseOn(owner, message.note!);
+      case RawInputKind.allNotesOff:
+      case RawInputKind.other:
+        return;
     }
   }
 
-  /// Releases [note], if this reducer believes it was held.
+  /// Ends [owner]'s hold on [note], if it had one.
   ///
   /// A release of a key nobody pressed changes nothing. Letting it through
   /// would let the pedal catch a note that never sounded, which is how
   /// sustained state came to contain pitches the event stream never reported.
-  List<InputTemporalEvent> _release(int note, int velocity, int timestampMs) {
-    if (!_pressed.remove(note)) return const [];
-    if (_pedalDown) {
-      _sustained.add(note);
+  void _releaseOn(_ChannelState owner, int note) {
+    if (!owner.pressed.remove(note)) return;
+    if (owner.pedalDown) {
+      owner.sustained.add(note);
     } else {
-      _sustained.remove(note);
+      owner.sustained.remove(note);
     }
+  }
+
+  /// What is sounding on the one keyboard every channel adds up to.
+  ///
+  /// A pitch held on any channel is held: that is what makes a release on one
+  /// channel unable to damp another's note. A pitch both held and sustained is
+  /// held, since the hold is what is keeping it down.
+  InputTemporalState _aggregate() {
+    final pressed = <int>{};
+    final sustained = <int>{};
+    var pedalDown = false;
+    for (final channel in _channels.values) {
+      pressed.addAll(channel.pressed);
+      sustained.addAll(channel.sustained);
+      pedalDown = pedalDown || channel.pedalDown;
+    }
+    sustained.removeAll(pressed);
+    return InputTemporalState(
+      pressedNoteNumbers: pressed,
+      sustainedNoteNumbers: sustained,
+      pedalDown: pedalDown,
+    );
+  }
+
+  /// The events that carry the aggregate keyboard from [before] to now.
+  ///
+  /// Derived from the difference rather than from the message, and then
+  /// checked by replaying them: if the normalized vocabulary cannot express
+  /// the transition, the result is a reset carrying the whole snapshot. That
+  /// is what makes "replaying the stream reproduces the snapshot" structural
+  /// instead of an argument about cases. Mixed pedal positions across channels
+  /// are the transition that needs it.
+  List<InputTemporalEvent> _eventsToward(
+    InputTemporalState before,
+    RawInputMessage message,
+    int timestampMs,
+  ) {
+    final after = _aggregate();
+    if (before == after) return const [];
+
+    // One message moves at most one note in or out of the aggregate, so the
+    // velocity it reports is the velocity of whichever note appears here.
+    final released =
+        before.pressedNoteNumbers.difference(after.pressedNoteNumbers).toList()
+          ..sort();
+    final struck =
+        after.pressedNoteNumbers.difference(before.pressedNoteNumbers).toList()
+          ..sort();
+
+    final events = <InputTemporalEvent>[
+      if (before.pedalDown != after.pedalDown)
+        InputTemporalPedalEvent(
+          timestampMs: timestampMs,
+          down: after.pedalDown,
+        ),
+      for (final note in released)
+        InputTemporalNoteOffEvent(
+          timestampMs: timestampMs,
+          noteNumber: note,
+          velocity: message.velocity ?? 0,
+        ),
+      for (final note in struck)
+        InputTemporalNoteOnEvent(
+          timestampMs: timestampMs,
+          noteNumber: note,
+          velocity: message.velocity ?? 1,
+        ),
+    ];
+
+    var replayed = before;
+    for (final event in events) {
+      replayed = replayed.applying(event);
+    }
+    if (replayed == after) return events;
+
     return [
-      InputTemporalNoteOffEvent(
+      InputTemporalResetEvent(
         timestampMs: timestampMs,
-        noteNumber: note,
-        velocity: velocity,
+        snapshot: after.snapshot,
       ),
     ];
   }

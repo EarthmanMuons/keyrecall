@@ -9,10 +9,12 @@ RawInputEnvelope noteOn(
   int note, {
   int velocity = 100,
   int at = 0,
+  int? channel,
   InputSourceIdentity source = piano,
 }) => RawInputEnvelope(
   source: source,
   arrivalTimestampMs: at,
+  channel: channel,
   message: RawInputMessage(
     kind: RawInputKind.noteOn,
     note: note,
@@ -24,10 +26,12 @@ RawInputEnvelope noteOff(
   int note, {
   int velocity = 0,
   int at = 0,
+  int? channel,
   InputSourceIdentity source = piano,
 }) => RawInputEnvelope(
   source: source,
   arrivalTimestampMs: at,
+  channel: channel,
   message: RawInputMessage(
     kind: RawInputKind.noteOff,
     note: note,
@@ -38,10 +42,12 @@ RawInputEnvelope noteOff(
 RawInputEnvelope sustain(
   int value, {
   int at = 0,
+  int? channel,
   InputSourceIdentity source = piano,
 }) => RawInputEnvelope(
   source: source,
   arrivalTimestampMs: at,
+  channel: channel,
   message: RawInputMessage(kind: RawInputKind.sustain, sustainValue: value),
 );
 
@@ -138,6 +144,87 @@ void main() {
 
       expect(emitted.whereType<InputTemporalNoteOffEvent>(), isEmpty);
       expect(reducer.snapshot.soundingNoteNumbers, isEmpty);
+    });
+  });
+
+  group('channel ownership', () {
+    // Merging channels for measurement is a policy about the product stream.
+    // It never meant forgetting which channel is holding what: a stage piano
+    // splits its hands across channels, and one hand releasing a pitch the
+    // other is also holding must not damp it.
+    test('a release only ends the releasing channel hold', () {
+      feed(noteOn(60, at: 1, channel: 0));
+      feed(noteOn(60, at: 2, channel: 3));
+      feed(noteOff(60, at: 3, channel: 0));
+
+      expect(reducer.snapshot.pressedNoteNumbers, {60});
+      expect(emitted.whereType<InputTemporalNoteOffEvent>(), isEmpty);
+
+      feed(noteOff(60, at: 4, channel: 3));
+
+      expect(reducer.snapshot.soundingNoteNumbers, isEmpty);
+      expect(emitted.whereType<InputTemporalNoteOffEvent>(), hasLength(1));
+    });
+
+    test('a pitch two channels hold is one sounding pitch', () {
+      feed(noteOn(60, at: 1, channel: 0));
+      feed(noteOn(60, at: 2, channel: 3));
+
+      expect(emitted.whereType<InputTemporalNoteOnEvent>(), hasLength(1));
+      expect(replayed().pressedNoteNumbers, {60});
+    });
+
+    test('one channel pedal cannot catch another channel note', () {
+      feed(sustain(127, at: 1, channel: 3));
+      feed(noteOn(60, at: 2, channel: 0));
+      feed(noteOff(60, at: 3, channel: 0));
+
+      expect(
+        reducer.snapshot.soundingNoteNumbers,
+        isEmpty,
+        reason: 'channel 0 has no pedal down',
+      );
+      expect(replayed().soundingNoteNumbers, isEmpty);
+    });
+
+    test('a repeated note-on is a no-op only on the same channel', () {
+      feed(noteOn(60, at: 1, channel: 0));
+      feed(noteOn(60, velocity: 120, at: 2, channel: 0));
+
+      expect(emitted.whereType<InputTemporalNoteOnEvent>(), hasLength(1));
+    });
+
+    test('all-notes-off clears every channel', () {
+      feed(noteOn(60, at: 1, channel: 0));
+      feed(noteOn(62, at: 2, channel: 3));
+      feed(allNotesOff(at: 3));
+
+      expect(reducer.snapshot.soundingNoteNumbers, isEmpty);
+      expect(replayed().soundingNoteNumbers, isEmpty);
+    });
+
+    test('a channel outside the instrument is malformed', () {
+      feed(noteOn(60, at: 1, channel: 16));
+
+      expect(reducer.fault, InputIntegrityFault.malformedInput);
+    });
+
+    test('mixed pedal positions still replay to the live snapshot', () {
+      feed(sustain(127, at: 1, channel: 0));
+      feed(noteOn(60, at: 2, channel: 0));
+      feed(noteOn(62, at: 3, channel: 3));
+      feed(noteOff(60, at: 4, channel: 0));
+      feed(noteOff(62, at: 5, channel: 3));
+      feed(noteOn(64, at: 6, channel: 3));
+      feed(sustain(0, at: 7, channel: 0));
+
+      final replay = replayed();
+      expect(replay.pressedNoteNumbers, reducer.snapshot.pressedNoteNumbers);
+      expect(
+        replay.sustainedNoteNumbers,
+        reducer.snapshot.sustainedNoteNumbers,
+      );
+      expect(replay.pedalDown, reducer.snapshot.pedalDown);
     });
   });
 
