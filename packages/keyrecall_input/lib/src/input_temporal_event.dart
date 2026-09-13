@@ -1,4 +1,9 @@
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
+import 'input_integrity.dart';
+
+const _noteSetEquality = SetEquality<int>();
 
 const int _maximumExactJsonInteger = 9007199254740991;
 
@@ -74,6 +79,20 @@ class InputTemporalSnapshot {
   /// Whether nothing is sounding.
   bool get isSilent =>
       pressedNoteNumbers.isEmpty && sustainedNoteNumbers.isEmpty;
+
+  @override
+  bool operator ==(Object other) =>
+      other is InputTemporalSnapshot &&
+      other.pedalDown == pedalDown &&
+      _noteSetEquality.equals(other.pressedNoteNumbers, pressedNoteNumbers) &&
+      _noteSetEquality.equals(other.sustainedNoteNumbers, sustainedNoteNumbers);
+
+  @override
+  int get hashCode => Object.hash(
+    pedalDown,
+    _noteSetEquality.hash(pressedNoteNumbers),
+    _noteSetEquality.hash(sustainedNoteNumbers),
+  );
 
   @override
   String toString() =>
@@ -183,4 +202,29 @@ final class InputTemporalResetEvent extends InputTemporalEvent {
 
   @override
   String toString() => 'Reset($snapshot, at: ${timestampMs}ms)';
+}
+
+/// The observation stopped being trustworthy, and this is why.
+///
+/// Terminal for the interval it ends: nothing after it belongs to the same
+/// observation, and no consumer may measure across it. Unlike a reset it
+/// carries no snapshot, because a boundary nobody can vouch for cannot report
+/// what was sounding at it. A consumer tracking held notes goes silent here.
+final class InputTemporalFaultEvent extends InputTemporalEvent {
+  /// What went wrong.
+  final InputIntegrityFault fault;
+
+  /// Diagnostic detail, never parsed.
+  final String? detail;
+
+  InputTemporalFaultEvent({
+    required super.timestampMs,
+    required this.fault,
+    this.detail,
+  });
+
+  @override
+  String toString() =>
+      'Fault(${fault.name}${detail == null ? '' : ': $detail'}, '
+      'at: ${timestampMs}ms)';
 }

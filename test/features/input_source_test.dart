@@ -36,6 +36,7 @@ class _Recorder {
         InputTemporalNoteOffEvent(:final noteNumber) => 'off $noteNumber',
         InputTemporalPedalEvent(:final down) => 'pedal ${down ? 'down' : 'up'}',
         InputTemporalResetEvent() => 'reset',
+        InputTemporalFaultEvent(:final fault) => 'fault ${fault.name}',
       },
   ];
 

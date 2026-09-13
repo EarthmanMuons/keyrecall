@@ -131,6 +131,10 @@ void main() {
           timestampMs: 3,
           snapshot: InputTemporalSnapshot.silent,
         ),
+        InputTemporalFaultEvent(
+          timestampMs: 4,
+          fault: InputIntegrityFault.sourceFailure,
+        ),
       ];
 
       final described = [
@@ -140,10 +144,11 @@ void main() {
             InputTemporalNoteOffEvent() => 'off',
             InputTemporalPedalEvent() => 'pedal',
             InputTemporalResetEvent() => 'reset',
+            InputTemporalFaultEvent() => 'fault',
           },
       ];
 
-      expect(described, ['on', 'off', 'pedal', 'reset']);
+      expect(described, ['on', 'off', 'pedal', 'reset', 'fault']);
     });
   });
 
