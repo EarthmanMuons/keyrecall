@@ -1,11 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:keyrecall_input/keyrecall_input.dart';
 
 import 'package:keyrecall/features/demo_input/demo_input.dart';
 import 'package:keyrecall/features/input/input.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  _initialization();
 
   late ProviderContainer container;
 
@@ -95,5 +100,56 @@ void main() {
 
     expect(activity().soundingNoteNumbers, {65});
     expect(activity().isPedalDown, isFalse);
+  });
+
+  test('a fault leaves nothing believed to be sounding', () async {
+    demo().setPedalDown(true);
+    await demo().playSequenceAndSettle(const [60], tempo: DemoInputTempo.brisk);
+    demo().releaseAll();
+    await pumpEventQueue();
+    expect(activity().soundingNoteNumbers, {60});
+
+    container
+        .read(inputActivityProvider.notifier)
+        .applyForTest(
+          InputTemporalFaultEvent(
+            timestampMs: 0,
+            fault: InputIntegrityFault.observationGap,
+          ),
+        );
+
+    expect(activity().soundingNoteNumbers, isEmpty);
+    expect(activity().fault, InputIntegrityFault.observationGap);
+    expect(activity().faultCount, 1);
+  });
+}
+
+void _initialization() {
+  // The panel is not always the first thing watching. A source that has
+  // already delivered means the notifier records during its own build, before
+  // there is a state to read or replace.
+  test('attaching to a source that has already spoken', () async {
+    final events = StreamController<InputTemporalEvent>.broadcast();
+    final container = ProviderContainer(
+      overrides: [
+        inputTemporalEventsProvider.overrideWith((ref) => events.stream),
+      ],
+    );
+    addTearDown(() async {
+      container.dispose();
+      await events.close();
+    });
+
+    final held = container.listen(inputTemporalEventsProvider, (_, _) {});
+    addTearDown(held.close);
+    events.add(
+      InputTemporalNoteOnEvent(timestampMs: 0, noteNumber: 60, velocity: 90),
+    );
+    await pumpEventQueue();
+
+    final activity = container.read(inputActivityProvider);
+
+    expect(activity.eventCount, 1);
+    expect(activity.pressedNoteNumbers, {60});
   });
 }

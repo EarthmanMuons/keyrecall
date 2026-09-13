@@ -7,25 +7,19 @@ import 'input_temporal_events_provider.dart';
 
 /// What the instrument is doing, as reconstructed from the event stream alone.
 ///
-/// Nothing here reads the source's internal state. Tracking notes by watching
-/// note-ons, note-offs, pedal events, and resets is exactly what any consumer
-/// of live input has to do, so building the display this way keeps the stream
-/// honest: if the events were not sufficient to know what is sounding, this
-/// would visibly drift.
+/// Nothing here reads the source's internal state. Tracking notes by replaying
+/// note-ons, note-offs, pedal events, resets, and faults is exactly what any
+/// consumer of live input has to do, so building the display this way keeps
+/// the stream honest: if the events were not sufficient to know what is
+/// sounding, this would visibly drift from the reducer's own snapshot.
 ///
-/// Held and sustained notes are kept apart for the same reason the source keeps
-/// them apart: a note-off under the pedal ends the hold and not the sound, so
-/// collapsing the two would report silence while the instrument is ringing.
+/// The replay itself is [InputTemporalState], shared with everything else that
+/// has to answer the same question. This adds only what a panel wants on top:
+/// a scrollback and some counters.
 @immutable
 class InputActivity {
-  /// Notes whose keys are believed to be held.
-  final Set<int> pressedNoteNumbers;
-
-  /// Notes released but believed to be ringing under the pedal.
-  final Set<int> sustainedNoteNumbers;
-
-  /// Whether the pedal is believed to be down.
-  final bool isPedalDown;
+  /// What the stream says is sounding.
+  final InputTemporalState observed;
 
   /// The most recent events, newest first, for watching the stream work.
   final List<String> recent;
@@ -39,23 +33,46 @@ class InputActivity {
   /// scoring layer may measure across.
   final int resetCount;
 
+  /// How many integrity faults have arrived.
+  final int faultCount;
+
   const InputActivity({
-    this.pressedNoteNumbers = const {},
-    this.sustainedNoteNumbers = const {},
-    this.isPedalDown = false,
+    this.observed = InputTemporalState.silent,
     this.recent = const [],
     this.eventCount = 0,
     this.resetCount = 0,
+    this.faultCount = 0,
   });
 
+  /// Notes whose keys are believed to be held.
+  Set<int> get pressedNoteNumbers => observed.pressedNoteNumbers;
+
+  /// Notes released but believed to be ringing under the pedal.
+  Set<int> get sustainedNoteNumbers => observed.sustainedNoteNumbers;
+
+  /// Whether the pedal is believed to be down.
+  bool get isPedalDown => observed.pedalDown;
+
   /// Every note believed to be making sound, however it is being held.
-  Set<int> get soundingNoteNumbers => {
-    ...pressedNoteNumbers,
-    ...sustainedNoteNumbers,
-  };
+  Set<int> get soundingNoteNumbers => observed.soundingNoteNumbers;
+
+  /// What ended the observation, if something did.
+  InputIntegrityFault? get fault => observed.fault;
 
   /// Whether any input has arrived at all.
   bool get isIdle => eventCount == 0;
+
+  /// This activity after [event].
+  InputActivity applying(InputTemporalEvent event) => InputActivity(
+    observed: observed.applying(event),
+    recent: [
+      '${event.timestampMs}ms  $event',
+      ...recent.take(_recentEventLimit - 1),
+    ],
+    eventCount: eventCount + 1,
+    resetCount: resetCount + (event is InputTemporalResetEvent ? 1 : 0),
+    faultCount: faultCount + (event is InputTemporalFaultEvent ? 1 : 0),
+  );
 }
 
 /// How many recent events the panel keeps. Enough to see a scale go by.
@@ -68,62 +85,39 @@ final inputActivityProvider =
     );
 
 class InputActivityNotifier extends Notifier<InputActivity> {
+  InputActivity _activity = const InputActivity();
+
+  /// Whether [build] has returned, and so whether [state] can be assigned.
+  ///
+  /// A source with something to deliver already delivers it during the
+  /// listen, before there is a state to read or replace.
+  bool _isBuilt = false;
+
   @override
   InputActivity build() {
+    _activity = const InputActivity();
+    _isBuilt = false;
     // Listening here is also what keeps the selected source subscribed for as
-    // long as anything is watching activity.
+    // long as anything is watching activity. Only data notifications: an
+    // AsyncError retains the previous value, and counting that as another
+    // event would report a note the instrument did not play twice.
     ref.listen<AsyncValue<InputTemporalEvent>>(inputTemporalEventsProvider, (
       _,
       next,
     ) {
-      final event = next.value;
-      if (event != null) _record(event);
+      if (next case AsyncData(:final value)) _record(value);
     }, fireImmediately: true);
-    return const InputActivity();
+    _isBuilt = true;
+    return _activity;
   }
 
+  /// Applies [event] as though it had arrived, for tests that need a source
+  /// failure the synthetic instrument cannot produce.
+  @visibleForTesting
+  void applyForTest(InputTemporalEvent event) => _record(event);
+
   void _record(InputTemporalEvent event) {
-    final pressed = {...state.pressedNoteNumbers};
-    final sustained = {...state.sustainedNoteNumbers};
-    var pedalDown = state.isPedalDown;
-
-    switch (event) {
-      case InputTemporalNoteOnEvent(:final noteNumber):
-        // A reattack takes the note back from the pedal: it is held again.
-        pressed.add(noteNumber);
-        sustained.remove(noteNumber);
-      case InputTemporalNoteOffEvent(:final noteNumber):
-        pressed.remove(noteNumber);
-        if (pedalDown) {
-          sustained.add(noteNumber);
-        } else {
-          sustained.remove(noteNumber);
-        }
-      case InputTemporalPedalEvent(:final down):
-        pedalDown = down;
-        // Lifting the pedal damps everything it was holding. No note-offs
-        // follow, because those already arrived when the keys came up.
-        if (!down) sustained.clear();
-      case InputTemporalResetEvent(:final snapshot):
-        pressed
-          ..clear()
-          ..addAll(snapshot.pressedNoteNumbers);
-        sustained
-          ..clear()
-          ..addAll(snapshot.sustainedNoteNumbers);
-        pedalDown = snapshot.pedalDown;
-    }
-
-    state = InputActivity(
-      pressedNoteNumbers: pressed,
-      sustainedNoteNumbers: sustained,
-      isPedalDown: pedalDown,
-      recent: [
-        '${event.timestampMs}ms  $event',
-        ...state.recent.take(_recentEventLimit - 1),
-      ],
-      eventCount: state.eventCount + 1,
-      resetCount: state.resetCount + (event is InputTemporalResetEvent ? 1 : 0),
-    );
+    _activity = _activity.applying(event);
+    if (_isBuilt) state = _activity;
   }
 }
