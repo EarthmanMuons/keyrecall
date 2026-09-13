@@ -56,6 +56,17 @@ consumer needing the whole snapshot. It also interrupts an attempt, because the
 notes on either side are not one observation, but it is not a failure and the
 stream continues.
 
+**Attaching a consumer is not recovery.** Asking where the observation stands
+never opens one. A consumer that subscribes says nothing about whether a failed
+transport came back, and an observation that resumed because something started
+watching would be exactly the claim the terminal-fault rule exists to refuse; a
+consumer attaching while the observation is closed is handed the fault instead.
+What does open one is an event that actually establishes an epoch: the app
+starting, a connection transition, adopting an instrument, returning to the
+foreground, or a failed subscription being replaced. That last one is why a
+transient transport error does not deafen the app until the next reconnect: the
+observation ends, and a new subscription opens a new one.
+
 ## Nothing is repaired into plausibility
 
 A backward timestamp is evidence that the observation is unreliable, not data to
@@ -83,10 +94,42 @@ keyboard in the room is not evidence that this one's stream broke. It is also
 what keeps a stale link from injecting notes, releasing notes it does not hold,
 moving the pedal, or ending an attempt with an all-notes-off.
 
+A reconnect is a new observation even when the device id did not change, so
+identity carries a session as well. The transport reports which device sent a
+message but never which link delivered it, so the session token is minted here,
+once per transport subscription, and closed over by that subscription's
+listener. A message from a superseded session is turned away by the same filter
+that turns away another instrument.
+
+### Channels are owned separately and measured together
+
 Every channel of the adopted instrument is one keyboard. A stage piano splitting
 hands across two channels is one player playing, and nothing KeyRecall measures
-is per-channel. The channel rides on the envelope so a narrower policy can be
-written without re-plumbing the boundary.
+is per-channel.
+
+That is a policy about the product stream, and it is not a reason to forget
+which channel is holding what. Notes and the pedal are owned per channel,
+because that is where an instrument owns them:
+
+```text
+pressed / sustained / pedal, per channel
+                  |
+                  v
+   one aggregate keyboard, and the events that explain it
+```
+
+So a release on one hand's channel cannot damp the same pitch the other hand is
+still holding, and one channel's pedal cannot catch another channel's note. What
+the aggregate collapses is only what a set of sounding pitches cannot represent:
+a pitch two channels hold is one pitch sounding.
+
+The emitted events are derived from the difference between the aggregate before
+and after, and then checked by replaying them against it. Where the normalized
+vocabulary cannot express a transition, the result is a reset carrying the whole
+snapshot rather than a stream that no longer describes the state. Mixed pedal
+positions across channels are the case that needs it. That is what makes
+"replaying the stream reproduces the snapshot" structural rather than an
+argument about cases.
 
 ## Two clocks, and only one of them is trusted
 
@@ -126,9 +169,10 @@ them:
 - state reconstructed by replaying the normalized events equals the reducer's
   live snapshot;
 - a release of a key nobody pressed cannot create a sounding note;
+- a release on one channel cannot end a pitch another channel is holding;
 - events from a source that is not the adopted instrument cannot alter
   normalized state;
 - every event in one observation is in nondecreasing time;
 - a lifecycle suspension ends the current observation;
 - a consumer attaching partway through is handed the whole snapshot, not
-  whatever arrives next.
+  whatever arrives next, and never reopens a closed observation by asking.

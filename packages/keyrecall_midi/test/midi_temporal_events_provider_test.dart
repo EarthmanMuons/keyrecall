@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -15,6 +17,15 @@ void main() {
   late ProviderContainer container;
   late List<InputTemporalEvent> events;
   late int nowMs;
+  late ProviderSubscription<Stream<InputTemporalEvent>> providerSubscription;
+  late StreamSubscription<InputTemporalEvent> streamSubscription;
+
+  /// Drops every consumer, so the next read builds the provider afresh.
+  Future<void> detach() async {
+    providerSubscription.close();
+    await streamSubscription.cancel();
+    await pumpEventQueue();
+  }
 
   setUp(() async {
     ble = FakeMidiBleService();
@@ -35,12 +46,12 @@ void main() {
     addTearDown(ble.dispose);
 
     events = [];
-    final providerSubscription = container.listen(
+    providerSubscription = container.listen(
       midiTemporalEventsProvider,
       (previous, next) {},
     );
     addTearDown(providerSubscription.close);
-    final streamSubscription = container
+    streamSubscription = container
         .read(midiTemporalEventsProvider)
         .listen(events.add);
     addTearDown(streamSubscription.cancel);
@@ -150,41 +161,57 @@ void main() {
   group('integrity', () {
     // The failure that manufactured evidence: reading through an error let a
     // capture keep collecting, and republished the last note as a new one.
+    // The failure that manufactured evidence: reading through an error let a
+    // capture keep collecting, and republished the last note as a new one.
+    test('a source error ends the observation before replacing it', () async {
+      ble.emitMessage(
+        const MidiMessage(type: MidiMessageType.noteOn, note: 60, velocity: 90),
+      );
+      await pumpEventQueue();
+      nowMs = 20;
+      ble.emitMessageError(StateError('link dropped'));
+      await pumpEventQueue();
+
+      expect(events.whereType<InputTemporalNoteOnEvent>(), hasLength(1));
+      final fault = events.firstWhere((e) => e is InputTemporalFaultEvent);
+      expect(
+        (fault as InputTemporalFaultEvent).fault,
+        InputIntegrityFault.sourceFailure,
+      );
+      expect(
+        events.last,
+        isA<InputTemporalResetEvent>(),
+        reason: 'a replaced subscription is a new observation, not the old one',
+      );
+      expect(
+        container.read(midiInputProvider).snapshot.isSilent,
+        isTrue,
+        reason: 'the new observation has not seen a key go down',
+      );
+    });
+
     test(
-      'a source error ends the observation instead of repeating a note',
+      'a suspended observation admits nothing until it is resumed',
       () async {
+        final input = container.read(midiInputProvider.notifier);
+        input.suspendObservation();
+        await pumpEventQueue();
+        final afterFault = events.length;
+
+        nowMs = 50;
         ble.emitMessage(
           const MidiMessage(
             type: MidiMessageType.noteOn,
-            note: 60,
+            note: 64,
             velocity: 90,
           ),
         );
         await pumpEventQueue();
-        nowMs = 20;
-        ble.emitMessageError(StateError('link dropped'));
-        await pumpEventQueue();
 
-        expect(events.whereType<InputTemporalNoteOnEvent>(), hasLength(1));
-        final fault = events.last as InputTemporalFaultEvent;
-        expect(fault.fault, InputIntegrityFault.sourceFailure);
-        expect(container.read(midiInputProvider).isObserving, isFalse);
+        expect(events, hasLength(afterFault));
+        expect(container.read(midiNoteStateProvider).pressed, isEmpty);
       },
     );
-
-    test('a faulted observation admits nothing further', () async {
-      ble.emitMessageError(StateError('link dropped'));
-      await pumpEventQueue();
-      final afterFault = events.length;
-
-      nowMs = 50;
-      ble.emitMessage(
-        const MidiMessage(type: MidiMessageType.noteOn, note: 64, velocity: 90),
-      );
-      await pumpEventQueue();
-
-      expect(events, hasLength(afterFault));
-    });
 
     test('a source that ends unexpectedly is a fault, not silence', () async {
       await ble.closeMessages();
@@ -192,6 +219,27 @@ void main() {
 
       final fault = events.last as InputTemporalFaultEvent;
       expect(fault.fault, InputIntegrityFault.sourceClosed);
+      expect(container.read(midiInputProvider).isObserving, isFalse);
+    });
+
+    // Attaching is not recovery. A consumer that subscribes after the source
+    // failed used to reopen the observation by asking what was sounding.
+    test('a consumer attaching cannot revive a closed observation', () async {
+      await ble.closeMessages();
+      await detach();
+
+      final opening = container.read(midiTemporalEventsProvider);
+      final attached = <InputTemporalEvent>[];
+      final listener = opening.listen(attached.add);
+      addTearDown(listener.cancel);
+      await pumpEventQueue();
+
+      expect(attached.single, isA<InputTemporalFaultEvent>());
+      expect(
+        (attached.single as InputTemporalFaultEvent).fault,
+        InputIntegrityFault.sourceClosed,
+      );
+      expect(container.read(midiInputProvider).isObserving, isFalse);
     });
 
     test(
@@ -303,6 +351,27 @@ void main() {
         expect(container.read(midiNoteStateProvider).pressed, {60});
       },
     );
+
+    // The transport reports a device id, never which link delivered a
+    // message, so a reconnect that reuses the id is indistinguishable at the
+    // wire. Each subscription mints its own token and the adopted identity
+    // moves with it, which is what makes a superseded session foreign rather
+    // than the adopted instrument playing.
+    test('every transport session is a distinct adopted identity', () async {
+      final first = container.read(midiInputProvider).adopted;
+      expect(first?.deviceId, 'adopted');
+      expect(first?.sessionId, isNotNull);
+
+      container.read(midiInputProvider.notifier)
+        ..suspendObservation()
+        ..resumeObservation();
+      await pumpEventQueue();
+
+      final second = container.read(midiInputProvider).adopted;
+      expect(second?.deviceId, 'adopted');
+      expect(second?.sessionId, isNot(first?.sessionId));
+      expect(second, isNot(first), reason: 'a new session is a new source');
+    });
 
     test('every channel of the adopted instrument is one keyboard', () async {
       ble.emitMessage(

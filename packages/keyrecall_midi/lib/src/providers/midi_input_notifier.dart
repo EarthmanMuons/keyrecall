@@ -38,12 +38,18 @@ class MidiInputState {
   /// Whether a continuous observation is open.
   final bool isObserving;
 
+  /// The instrument and transport session input is admitted from.
+  ///
+  /// Null while nothing is adopted, which is when every source is admitted.
+  final InputSourceIdentity? adopted;
+
   /// How many messages were turned away for coming from another instrument.
   final int rejectedForeignMessages;
 
   const MidiInputState({
     required this.snapshot,
     required this.isObserving,
+    this.adopted,
     this.fault,
     this.rejectedForeignMessages = 0,
   });
@@ -58,6 +64,20 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
 
   late final InputEventClock _clock;
   StreamSubscription<MidiSourceMessage>? _messages;
+
+  /// The instrument every session since adoption has been listening for.
+  MidiDevice? _instrument;
+
+  /// Counts the transport sessions opened, which is what names them.
+  ///
+  /// The transport reports a device id, never which link delivered a message,
+  /// so a reconnect that reuses the id is indistinguishable at the wire. The
+  /// token is minted here instead, once per subscription, and closed over by
+  /// that subscription's listener. A message arriving from a superseded
+  /// session carries the superseded token and is turned away by the same
+  /// admission filter that turns away another instrument, rather than being
+  /// admitted as the adopted instrument's playing.
+  int _sessionsOpened = 0;
 
   /// Whether [build] has returned, and so whether [state] can be assigned.
   bool _isBuilt = false;
@@ -79,8 +99,7 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
       unawaited(_events.close());
     });
 
-    _subscribe(ref.read(midiBleServiceProvider).onMidiMessages);
-    _emit(_reducer.begin(timestampMs: _clock()));
+    _openSession();
 
     // A connection that comes, goes, or is retried is a boundary in the
     // observation whether or not any note crossed it.
@@ -88,7 +107,7 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
       midiConnectionStateProvider.select((state) => state.phase),
       (previous, next) {
         if (previous == next) return;
-        _emit(_reducer.begin(timestampMs: _clock()));
+        _openSession();
       },
     );
 
@@ -97,8 +116,8 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
       midiDeviceManagerProvider.select((state) => state.connectedDevice),
       (previous, next) {
         if (previous?.id == next?.id) return;
-        _reducer.adopt(_identityOf(next));
-        _emit(_reducer.begin(timestampMs: _clock()));
+        _instrument = next;
+        _openSession();
       },
       fireImmediately: true,
     );
@@ -120,56 +139,75 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     ),
   );
 
-  /// Opens a fresh observation after a suspension or a fault.
+  /// Opens a fresh observation after a suspension.
+  ///
+  /// Coming back to the foreground is an establishment event, so it gets a new
+  /// transport session rather than resuming the one that was suspended.
   void resumeObservation() {
     if (_reducer.isObserving) return;
+    _openSession();
+  }
+
+  /// Where the observation stands, for a consumer attaching now.
+  ///
+  /// Never opens one. A consumer subscribing says nothing about whether a
+  /// failed transport recovered, and an observation that reopened because
+  /// something started watching would be the claim the terminal-fault rule
+  /// exists to refuse. A consumer attaching while the observation is closed is
+  /// handed the fault instead.
+  InputTemporalEvent openObservation() =>
+      _reducer.opening(timestampMs: _clock());
+
+  /// Replaces the transport subscription, and with it the observation.
+  ///
+  /// The only thing that opens an observation. Every caller is an actual
+  /// establishment event: the app starting, a connection transition, adopting
+  /// an instrument, coming back to the foreground, or a failed source being
+  /// resubscribed.
+  void _openSession() {
+    unawaited(_messages?.cancel());
+    final session = 'midi-${++_sessionsOpened}';
+    _reducer.adopt(_identityOf(_instrument, session));
+    _messages = ref
+        .read(midiBleServiceProvider)
+        .onMidiMessages
+        .listen(
+          (message) => _receive(session, message),
+          // An error is not a quiet gap in the input. Reading through it is
+          // how a capture kept collecting notes after its stream had already
+          // failed. The observation ends, and a new session replaces it, so a
+          // transient transport error does not deafen the app until the next
+          // reconnect.
+          onError: (Object error, StackTrace _) {
+            if (!kReleaseMode) debugPrint('MIDI message error: $error');
+            _emit(
+              _reducer.fail(
+                InputIntegrityFault.sourceFailure,
+                timestampMs: _clock(),
+                detail: '$error',
+              ),
+            );
+            _openSession();
+          },
+          // Nothing is left to resubscribe to, so this one stays closed.
+          onDone: () => _emit(
+            _reducer.fail(
+              InputIntegrityFault.sourceClosed,
+              timestampMs: _clock(),
+              detail: 'the MIDI source ended',
+            ),
+          ),
+          cancelOnError: false,
+        );
     _emit(_reducer.begin(timestampMs: _clock()));
   }
 
-  /// A boundary carrying the whole snapshot, for a consumer attaching now.
-  ///
-  /// Reopens the observation first when a fault closed it, so a listener can
-  /// always be handed a state to start from.
-  InputTemporalEvent openObservation() {
-    if (!_reducer.isObserving) {
-      _emit(_reducer.begin(timestampMs: _clock()));
-    }
-    return _reducer.resync(timestampMs: _clock());
-  }
-
-  void _subscribe(Stream<MidiSourceMessage> messages) {
-    unawaited(_messages?.cancel());
-    _messages = messages.listen(
-      _receive,
-      // An error is not a quiet gap in the input. Reading through it is how a
-      // capture kept collecting notes after its stream had already failed.
-      onError: (Object error, StackTrace _) {
-        if (!kReleaseMode) debugPrint('MIDI message error: $error');
-        _emit(
-          _reducer.fail(
-            InputIntegrityFault.sourceFailure,
-            timestampMs: _clock(),
-            detail: '$error',
-          ),
-        );
-      },
-      onDone: () => _emit(
-        _reducer.fail(
-          InputIntegrityFault.sourceClosed,
-          timestampMs: _clock(),
-          detail: 'the MIDI source ended',
-        ),
-      ),
-      cancelOnError: false,
-    );
-  }
-
-  void _receive(MidiSourceMessage source) {
+  void _receive(String session, MidiSourceMessage source) {
     final turnedAway = _reducer.rejectedForeignCount;
-    _emit(_reducer.receive(_envelope(source)));
-    // A message from another instrument produces no event but is still worth
-    // publishing: it is the only sign that something else is playing into the
-    // same transport.
+    _emit(_reducer.receive(_envelope(session, source)));
+    // A message from another instrument, or from a superseded session,
+    // produces no event but is still worth publishing: it is the only sign
+    // that something else is playing into the same transport.
     if (_reducer.rejectedForeignCount != turnedAway) _publish();
   }
 
@@ -179,16 +217,18 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// playing, and nothing KeyRecall measures is per-channel. The channel is
   /// carried on the envelope so a later policy can narrow this without
   /// re-plumbing the boundary.
-  RawInputEnvelope _envelope(MidiSourceMessage source) => RawInputEnvelope(
-    source: InputSourceIdentity(
-      deviceId: source.deviceId,
-      transport: source.transport.name,
-    ),
-    channel: source.message.channel,
-    message: _rawMessage(source.message),
-    transportTimestamp: source.transportTimestamp,
-    arrivalTimestampMs: _clock(),
-  );
+  RawInputEnvelope _envelope(String session, MidiSourceMessage source) =>
+      RawInputEnvelope(
+        source: InputSourceIdentity(
+          deviceId: source.deviceId,
+          transport: source.transport.name,
+          sessionId: session,
+        ),
+        channel: source.message.channel,
+        message: _rawMessage(source.message),
+        transportTimestamp: source.transportTimestamp,
+        arrivalTimestampMs: _clock(),
+      );
 
   static RawInputMessage _rawMessage(MidiMessage message) {
     switch (message.type) {
@@ -222,11 +262,13 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     }
   }
 
-  static InputSourceIdentity? _identityOf(MidiDevice? device) => device == null
+  static InputSourceIdentity? _identityOf(MidiDevice? device, String session) =>
+      device == null
       ? null
       : InputSourceIdentity(
           deviceId: device.id,
           transport: device.transport.name,
+          sessionId: session,
         );
 
   void _emit(List<InputTemporalEvent> events) {
@@ -245,6 +287,7 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   MidiInputState _currentState() => MidiInputState(
     snapshot: _reducer.snapshot,
     isObserving: _reducer.isObserving,
+    adopted: _reducer.adopted,
     fault: _reducer.fault,
     rejectedForeignMessages: _reducer.rejectedForeignCount,
   );

@@ -57,7 +57,9 @@ set of expected differences rather than a mystery.
   - `MidiBleService.onMidiMessages` carries `MidiSourceMessage` rather than a
     bare message. Upstream discards the device, transport, channel, and plugin
     timestamp the plugin supplies; without them nothing downstream can tell the
-    adopted instrument from any other live source.
+    adopted instrument from any other live source. Each transport subscription
+    also mints its own session token, so a reconnect that reuses a device id is
+    a different source rather than the same one.
   - `app_midi_lifecycle_provider.dart` ends the observation when the app leaves
     the foreground and opens a new one on resume. The connection is still kept,
     exactly as upstream keeps it.
