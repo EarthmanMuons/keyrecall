@@ -894,22 +894,44 @@ evidence currently inherits whatever the transport was doing.
 
 The transport's own timestamp is preserved on every `RawInputEnvelope` and is
 not yet interpreted. Substituting it would exchange one problem for another,
-because BLE stamps wrap and clock domains differ between transports. What is
-missing is the layer between them:
+because BLE stamps wrap and clock domains differ between transports.
 
-- unwrapping and converting the transport clock into the shared timeline, with a
-  continuity rule for when the conversion has lost track;
-- a policy for packets that originated before capture opened;
-- characterization of what the transports actually do, on hardware, since
-  nothing here can be settled by inspection;
-- a decision about degraded timing. Given how carefully measurement already
-  distinguishes an absent channel from a zero one, the answer is probably that
-  timing evidence becomes explicitly unavailable while pitch and order evidence
-  stay, rather than that arrival timing is quietly treated as trustworthy.
+**The governing rule is the timing analogue of the input boundary's.** Uncertain
+timing is never repaired into a plausible rhythm. Where transport timing cannot
+be trusted, continuity, temporal stability, and achieved tempo are absent, the
+way a channel nothing observed is absent, rather than computed from delivery
+artifacts. Pitch and order evidence continue regardless.
 
-Until then, [`system/input.md`](system/input.md) says plainly that arrival order
-is not performance timing, so nothing downstream is entitled to assume
-otherwise.
+The order the work has to happen in, because each step decides the next:
+
+1. **Characterize the transports on hardware.** The units, range, and wrap
+   behavior of the BLE stamp; what USB does; whether a stamp is packet time,
+   message time, or something else; how batching behaves under ordinary playing
+   and under a deliberate stall; what background, resume, and reconnect do to
+   continuity. None of this is settleable by inspection, and the conversion
+   layer's design follows what devices actually emit.
+2. **Add a clock mapper, beside the reducer rather than inside it.** The reducer
+   owns ordering and integrity of the observed stream. The mapper answers a
+   different question: whether when a musical event happened is known well
+   enough to be timing evidence. Teaching the reducer transport-specific timing
+   would put two jobs back in one place.
+3. **Make timing availability explicit in the normalized product.** Not by
+   replacing `arrivalTimestampMs` with a better-looking number: observation
+   time, performance time, and performance time unavailable are three different
+   things, and a second field or a small timing-evidence type keeps them apart.
+4. **Give the mapper a continuity contract.** Deterministic rules for the first
+   sample, wraparound, implausible transport jumps, a new session, and the two
+   clocks disagreeing by more than they should. Losing confidence makes timing
+   unavailable until a new trustworthy epoch is established.
+5. **Decide the queued-before-capture rule.** A message can arrive after the
+   recording window opened while its transport stamp says the key went down
+   before it did. Late delivery must not make that note evidence for the
+   attempt.
+6. **Wire measurement to performance time, and characterize what changed.**
+
+Until all of that, [`system/input.md`](system/input.md) says plainly that
+arrival order is not performance timing, so nothing downstream is entitled to
+assume otherwise.
 
 ### Transcript capture cost
 
