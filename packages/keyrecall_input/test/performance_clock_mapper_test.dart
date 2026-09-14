@@ -286,6 +286,84 @@ void main() {
     });
   });
 
+  // Every step being plausible on its own is not the same as the timeline
+  // keeping time. A clock that stops reports an interval of zero forever, and
+  // zero fits inside any short wait's window.
+  group('a timeline that stops keeping time', () {
+    test(
+      'a frozen clock does not report a minute of playing as one instant',
+      () {
+        final mapper = PerformanceClockMapper()..feed(networkWarmup);
+        final timings = [
+          for (var tick = 1; tick <= 120; tick++)
+            mapper.map(
+              session: 'a',
+              arrivalMs: networkWarmup.length + tick * 500,
+              timestamp: networkAnchor,
+            ),
+        ];
+
+        expect(timings.first, const TimingAvailable(0));
+        expect(
+          timings.last,
+          const TimingUnavailable(TimingUnavailableReason.implausibleClockStep),
+        );
+        expect(mapper.phase, PerformanceClockPhase.failed);
+        expect(
+          timings.whereType<TimingAvailable>(),
+          hasLength(lessThan(10)),
+          reason: 'it is caught within a few seconds, not eventually',
+        );
+      },
+    );
+
+    test('a clock running slow is caught however small each step is', () {
+      final mapper = PerformanceClockMapper()..feed(networkWarmup);
+      // Half speed: every delivery is individually well inside the window.
+      final timings = [
+        for (var tick = 1; tick <= 40; tick++)
+          mapper.map(
+            session: 'a',
+            arrivalMs: networkWarmup.length + tick * 500,
+            timestamp: networkAnchor + tick * 250 * 1000000,
+          ),
+      ];
+
+      expect(
+        timings.last,
+        const TimingUnavailable(TimingUnavailableReason.implausibleClockStep),
+      );
+    });
+
+    test('and ordinary playing is not', () {
+      final mapper = PerformanceClockMapper()..feed(networkWarmup);
+      final timings = [
+        for (var tick = 1; tick <= 120; tick++)
+          mapper.map(
+            session: 'a',
+            arrivalMs: networkWarmup.length + tick * 500,
+            timestamp: networkAnchor + tick * 500 * 1000000,
+          ),
+      ];
+
+      expect(timings, everyElement(isA<TimingAvailable>()));
+      expect(timings.last, const TimingAvailable(60000000));
+    });
+  });
+
+  // The counter cannot hold a value wider than the width that identified it.
+  test('a reading outside the counter contradicts its shape', () {
+    final mapper = PerformanceClockMapper()..feed(wrappingWarmup);
+    mapper.map(session: 'a', arrivalMs: 8095, timestamp: 3);
+    expect(mapper.clock?.modulus, 8192);
+
+    expect(
+      mapper.map(session: 'a', arrivalMs: 8195, timestamp: 8193),
+      const TimingUnavailable(TimingUnavailableReason.continuityLost),
+    );
+    expect(mapper.phase, PerformanceClockPhase.failed);
+  });
+
   test('a new session starts over with no timeline', () {
     mapper.feed(networkWarmup);
 

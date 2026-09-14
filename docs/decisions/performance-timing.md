@@ -54,6 +54,22 @@ interval that disagrees with it beyond a stated tolerance. It never supplies a
 time, corrects one, or smooths toward one, and within the tolerance the answer
 does not move by a microsecond however far arrival wanders.
 
+The veto is taken twice, against the step and against the timeline:
+
+```text
+each delivery   the interval is one the two clocks can both describe
+since anchoring abs(performanceMs - arrivalElapsedMs)
+                <= deliverySlackMs + elapsedMs * maxDriftFraction
+```
+
+The second is not implied by the first. A clock that has stopped reports an
+interval of zero forever, and zero sits inside any short wait's window, so a
+whole performance would read as one instant while every step passed. A clock
+running at the wrong rate survives the same way, one plausible step at a time.
+Measuring from the anchor is what stops a disagreement that accumulates from
+hiding by staying small. `maxDriftFraction` is 0.02, against a worst parting of
+0.006 of the elapsed time across the recorded takes.
+
 ## The output is a time, not a count
 
 **Decision.** The mapper answers with `PerformanceTiming`: either unavailable
@@ -195,6 +211,11 @@ accept iff exactly one candidate(k) lies within [(a - u) * g, (a + u) * g]
 No candidate means the clocks disagree beyond what policy tolerates, which is
 `implausibleClockStep`; more than one means the wrap count would be a guess,
 which is `ambiguousWrap`. Neither is guessed.
+
+A reading outside an established counter is neither of those. A counter modulo
+8192 cannot hold 8193, so a sample that does contradicts the shape the timeline
+was anchored to: that is `continuityLost`, checked before any candidate is
+considered.
 
 A clock with no characterized wrap is the same rule with `M` absent: it offers
 one candidate, `r` itself, and the same window either admits it or vetoes it.

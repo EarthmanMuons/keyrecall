@@ -30,6 +30,17 @@ class PerformanceClockMapper {
   /// rounding.
   final int arrivalUncertaintyMs;
 
+  /// How far the two clocks may drift apart, as a fraction of the time since
+  /// the timeline was anchored.
+  ///
+  /// The per-delivery allowance says each step is plausible on its own, which
+  /// a clock that has stopped satisfies forever: every interval it reports is
+  /// zero, and zero is within a second of any short wait. This one says the
+  /// timeline as a whole is still keeping time with the observation. Across
+  /// the recorded takes the two clocks parted by at most 0.6 per cent of the
+  /// elapsed time, so this leaves room for several times that.
+  final double maxDriftFraction;
+
   ClockDomainDetector _detector = ClockDomainDetector();
   final PerformanceClockLifecycle _lifecycle = PerformanceClockLifecycle();
 
@@ -37,11 +48,13 @@ class PerformanceClockMapper {
   PerformanceClockDefinition? _clock;
   int? _lastRaw;
   int? _lastArrivalMs;
+  int? _anchorArrivalMs;
   int _unwrappedCounts = 0;
 
   PerformanceClockMapper({
     this.policy = ClockDomainPolicy.characterized,
     this.arrivalUncertaintyMs = 1000,
+    this.maxDriftFraction = 0.02,
   });
 
   /// Starts over, for a new observation.
@@ -103,16 +116,24 @@ class PerformanceClockMapper {
         TimingUnavailableReason.missingTransportTimestamp,
       );
     }
+    final modulus = clock.modulus;
+    // The counter cannot be outside the width that identified it. A reading
+    // that is contradicts the shape the timeline was anchored to, which is
+    // structural rather than a step nobody can place.
+    if (modulus != null && (timestamp < 0 || timestamp >= modulus)) {
+      return _fail(TimingUnavailableReason.continuityLost);
+    }
+
     final last = _lastRaw;
     if (last == null) {
       _lastRaw = timestamp;
       _lastArrivalMs = arrivalMs;
+      _anchorArrivalMs = arrivalMs;
       _unwrappedCounts = 0;
       return const TimingAvailable(0);
     }
 
     final rawStep = timestamp - last;
-    final modulus = clock.modulus;
     // A counter with no characterized wrap has no reading under which this
     // went forward, so there is nothing to infer and nothing to guess.
     if (modulus == null && rawStep < 0) {
@@ -133,9 +154,20 @@ class PerformanceClockMapper {
     if (fit.count > 1) return _fail(TimingUnavailableReason.ambiguousWrap);
     final counts = fit.counts;
 
+    final unwrapped = _unwrappedCounts + counts;
+    // Every step being plausible on its own does not make the timeline
+    // plausible. A clock that has stopped reports an interval of zero
+    // forever, and zero is inside any short wait's window, so the whole
+    // performance would read as one instant. Arrival still chooses nothing
+    // here and supplies nothing: it refuses a timeline that has stopped
+    // keeping time with it.
+    if (!_keepsTime(unwrapped, arrivalMs, clock.countsPerMillisecond)) {
+      return _fail(TimingUnavailableReason.implausibleClockStep);
+    }
+
     _lastRaw = timestamp;
     _lastArrivalMs = arrivalMs;
-    _unwrappedCounts += counts;
+    _unwrappedCounts = unwrapped;
 
     // From the anchor rather than by accumulating converted intervals, so no
     // rounding can build up across an observation. The division is exact:
@@ -144,6 +176,20 @@ class PerformanceClockMapper {
     return TimingAvailable(
       _unwrappedCounts * 1000 ~/ clock.countsPerMillisecond,
     );
+  }
+
+  /// Whether the timeline is still keeping time with the observation.
+  ///
+  /// Measured from the anchor rather than delivery to delivery, so a
+  /// disagreement that accumulates cannot hide by staying small each time. The
+  /// allowance is what one delivery may be late by plus what the two clocks
+  /// may drift apart over the time that has passed.
+  bool _keepsTime(int unwrapped, int arrivalMs, int countsPerMillisecond) {
+    final elapsedMs = arrivalMs - _anchorArrivalMs!;
+    final performanceMs = unwrapped / countsPerMillisecond;
+    final allowanceMs =
+        arrivalUncertaintyMs + elapsedMs.abs() * maxDriftFraction;
+    return (performanceMs - elapsedMs).abs() <= allowanceMs;
   }
 
   /// How many readings of this interval the two clocks can both be describing,
@@ -195,6 +241,7 @@ class PerformanceClockMapper {
     _clock = null;
     _lastRaw = null;
     _lastArrivalMs = null;
+    _anchorArrivalMs = null;
     _unwrappedCounts = 0;
   }
 
