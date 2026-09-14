@@ -62,9 +62,37 @@ final practicePlanProvider =
       retry: (_, _) => null,
     );
 
+/// Which loaded plan a save is publishing for.
+///
+/// Deliberately not a [PracticeSessionIdentity]. A plan belongs to a profile
+/// and to one incarnation of this notifier, which is a shorter lifecycle than
+/// a sitting and not in step with it: reading the two generations as the same
+/// kind of thing would suggest a relationship that does not exist.
+@immutable
+class _PlanOwner {
+  final String profileId;
+  final int generation;
+
+  const _PlanOwner({required this.profileId, required this.generation});
+
+  factory _PlanOwner.next(String profileId) =>
+      _PlanOwner(profileId: profileId, generation: ++_loaded);
+
+  static int _loaded = 0;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _PlanOwner &&
+      other.profileId == profileId &&
+      other.generation == generation;
+
+  @override
+  int get hashCode => Object.hash(profileId, generation);
+}
+
 class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   /// Whose plan this notifier is holding, or null while it has none.
-  PracticeSessionIdentity? _owner;
+  _PlanOwner? _owner;
 
   /// Whether this build's scope has been torn down.
   bool _disposed = false;
@@ -89,7 +117,7 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
     if (profile == null) return PracticePlan.normal;
     final plan =
         await store.loadPracticePlan(profile.id) ?? PracticePlan.normal;
-    if (build == _builds) _owner = PracticeSessionIdentity.next(profile.id);
+    if (build == _builds) _owner = _PlanOwner.next(profile.id);
     return plan;
   }
 
@@ -104,11 +132,17 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   /// Ordered as well as owned. Two saves in flight can finish in either order,
   /// and the second to land would otherwise be the one stored and shown
   /// however recently it was asked for.
+  ///
+  /// Accepting one is taking it on. The store is resolved here rather than
+  /// when the write's turn comes, because a notifier disposed while this is
+  /// queued can no longer be asked for one, and a mutation that was accepted
+  /// is owed to the profile it names.
   Future<void> apply(PracticePlan plan) {
     final owner = _owner;
     if (owner == null) return Future<void>.value();
+    final storeFuture = ref.read(practiceStoreProvider.future);
 
-    final saving = _writes.then((_) => _save(owner, plan));
+    final saving = _writes.then((_) => _save(owner, plan, storeFuture));
     // A failed save must not swallow the one queued behind it.
     _writes = saving.then((_) {}, onError: (_, _) {});
     return saving;
@@ -117,11 +151,15 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   /// Saves [plan] for [owner], publishing it only while [owner] is still whose
   /// plan this is.
   ///
-  /// The save itself is addressed to a profile, so it stands whoever is
-  /// selected by the time it lands. What ownership governs is the publish.
-  Future<void> _save(PracticeSessionIdentity owner, PracticePlan plan) async {
-    if (_disposed) return;
-    final store = await ref.read(practiceStoreProvider.future);
+  /// The save is addressed to a profile, so it stands whoever is selected by
+  /// the time it lands and whether or not anything is still reading this. What
+  /// ownership governs is the publish.
+  Future<void> _save(
+    _PlanOwner owner,
+    PracticePlan plan,
+    Future<PracticeStore> storeFuture,
+  ) async {
+    final store = await storeFuture;
     await store.savePracticePlan(owner.profileId, plan);
     if (_disposed || _owner != owner) return;
     state = AsyncValue.data(plan);

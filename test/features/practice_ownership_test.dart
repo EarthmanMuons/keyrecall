@@ -132,6 +132,40 @@ void main() {
     },
   );
 
+  test('nothing can change a plan before its storage has resolved', () async {
+    // What the durability of an accepted plan change rests on. The write
+    // captures the store when the mutation is accepted, so the contract holds
+    // as long as nowhere the learner can ask for one is reachable before the
+    // store is there, which is what opening the loop establishes.
+    final container = launch();
+    await place(container);
+    await loopOf(container);
+
+    expect(container.read(practiceStoreProvider).hasValue, isTrue);
+  });
+
+  test('a plan change already accepted still lands', () async {
+    // Accepting an apply takes it on. Publishing it is the part that belongs
+    // to whoever is still reading; the write is owed to the profile it names,
+    // whether or not anything is left to show it.
+    final gate = Completer<void>();
+    final store = _GatedPlanStore(gate.future);
+    practice = store;
+    final container = launch();
+    await place(container);
+    await loopOf(container);
+    final profileId = (await profiles.selectedOrOldest())!.id;
+
+    final saving = container
+        .read(practicePlanProvider.notifier)
+        .apply(PracticePlan.normal.focusedOn(_minorMaterial));
+    container.dispose();
+    gate.complete();
+    await saving;
+
+    expect((await store.loadPracticePlan(profileId))!.isFocused, isTrue);
+  });
+
   test('a commit that failed is written again, not reopened', () async {
     final store = _FailsFirstAppend();
     practice = store;
