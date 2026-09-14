@@ -317,6 +317,38 @@ justifies a measurement claim is not settled here; those floors belong with the
 metrics that consume them, in
 [`evidence-and-measurement.md`](evidence-and-measurement.md).
 
+## What the learner is told about an unavailable clock
+
+**Decision.** Unavailable timing is explained where its absence is visible, and
+nowhere else. The mapper's own states say which case a learner is in:
+
+```text
+detecting                  nothing said; the first notes of an
+                           observation are expected to be untimed while
+                           the clock is being identified
+
+nonPerformanceDomain       a quiet, persistent explanation near connection
+                           status: timing feedback is unavailable for this
+                           connection, and note accuracy and completion are
+                           still measured
+
+an event-local hole        nothing said, unless it left a metric
+                           unavailable for that attempt
+
+metrics absent on review   explained where they would otherwise be blank
+```
+
+**Why.** The attempt is valid and useful, so this is a capability of the
+observation path rather than a judgment about the playing, and it must not read
+as an error with the performance. A domain that is recognized and unauthorized
+is persistent rather than intermittent, which is what earns it an explanation at
+the connection rather than per attempt.
+
+**Consequences.** Nothing is shown during an attempt, and nothing repeats per
+run. The model already carries what an explanation needs: the mapper's phase and
+reason, and `TimingEvidence.hasPace`, `isContinuityAssessable`, and
+`longestRunWaits` for why a particular attempt's metrics are absent.
+
 ## Building it in three slices
 
 **Decision.** The state machine first, with a seam for tests to drive
