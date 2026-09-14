@@ -180,17 +180,54 @@ abstract interface class ProfileRepository {
   /// pointing at nobody would leave the app with no defined learner.
   Future<Profile> select(String profileId);
 
-  /// Forgets [profileId], and returns the profile that was removed.
+  /// The active profile, the oldest one when profiles exist but none is
+  /// selected, or null when this install has nobody on it.
   ///
-  /// Only the index entry goes. Erasing the practice history is a separate call
-  /// to the practice store, because forgetting who somebody is and destroying
-  /// what they played are different decisions.
+  /// Deliberately does not create anybody. A profile carries an immutable
+  /// placement, so one conjured to keep the slot filled is a learner started
+  /// from a prior nobody chose and nobody can change afterwards.
+  ///
+  /// Profiles existing with none selected is the one case repaired here, by
+  /// choosing among the people who already exist. The repair writes the
+  /// selection and nothing else, and it is serialized with every other
+  /// mutation: two startup readers repairing at once must not both decide.
+  Future<Profile?> selectedOrOldest();
+
+  /// Records the intent to delete [profileId], durably, before anything of
+  /// theirs is destroyed.
+  ///
+  /// The first step of a deletion and the one that makes the rest resumable. A
+  /// profile under a recorded intent is no longer on the roster, and a crash
+  /// after this leaves an install that can finish the job rather than history
+  /// nothing identifies.
+  ///
+  /// Idempotent: recording an intent that already stands changes nothing.
+  ///
+  /// Throws [ArgumentError] when no such profile exists and none is being
+  /// deleted.
+  Future<void> beginDelete(String profileId);
+
+  /// Every profile this install began deleting and has not finished.
+  Future<List<String>> pendingDeletions();
+
+  /// Removes [profileId]'s record of itself, and the intent that named it.
+  ///
+  /// The last step of a deletion, run once the practice store has erased what
+  /// the profile recorded. Idempotent, so a resumed deletion can start from
+  /// wherever the interrupted one stopped.
   ///
   /// Deleting the active profile moves the selection to the oldest remaining
   /// one, since the app has to run as somebody. Deleting the last profile is
-  /// the one case that leaves nothing selected, and
-  /// [ProfileRepositoryDefaults.selectedOrOldest] reports that rather than
-  /// inventing a person.
+  /// the one case that leaves nothing selected, and [selectedOrOldest] reports
+  /// that rather than inventing a person.
+  Future<void> finishDelete(String profileId);
+
+  /// Forgets [profileId], and returns the profile that was removed.
+  ///
+  /// Only the profile's own record goes. Erasing the practice history is a
+  /// separate call to the practice store, because forgetting who somebody is
+  /// and destroying what they played are different decisions; [ProfileLifecycle]
+  /// is what orders the two.
   ///
   /// Throws [ArgumentError] when no such profile exists.
   Future<Profile> delete(String profileId);
@@ -201,27 +238,6 @@ abstract interface class ProfileRepository {
 /// Reads naturally beside real names in a switcher, and a caller with a
 /// localized string should pass its own.
 const String defaultProfileName = 'Me';
-
-/// Conveniences every [ProfileRepository] gets for free.
-extension ProfileRepositoryDefaults on ProfileRepository {
-  /// The active profile, the oldest one when profiles exist but none is
-  /// selected, or null when this install has nobody on it.
-  ///
-  /// Deliberately does not create anybody. A profile carries an immutable
-  /// placement, so one conjured to keep the slot filled is a learner started
-  /// from a prior nobody chose and nobody can change afterwards.
-  ///
-  /// Profiles existing with none selected is the one case repaired here, by
-  /// choosing among the people who already exist.
-  Future<Profile?> selectedOrOldest() async {
-    final active = await selected();
-    if (active != null) return active;
-
-    final existing = await list();
-    if (existing.isEmpty) return null;
-    return select(existing.first.id);
-  }
-}
 
 /// A [ProfileRepository] holding everything in memory.
 class InMemoryProfileRepository implements ProfileRepository {
@@ -238,13 +254,20 @@ class InMemoryProfileRepository implements ProfileRepository {
   ProfileIndex get index => _index;
 
   @override
-  Future<List<Profile>> list() async => _index.profiles;
+  Future<List<Profile>> list() async => [
+    for (final profile in _index.profiles)
+      if (!_deleting.contains(profile.id)) profile,
+  ];
 
   @override
-  Future<Profile?> selected() async => _index.selected;
+  Future<Profile?> selected() async {
+    final active = _index.selected;
+    return active == null || _deleting.contains(active.id) ? null : active;
+  }
 
   @override
-  Future<Profile?> find(String profileId) async => _index.find(profileId);
+  Future<Profile?> find(String profileId) async =>
+      _deleting.contains(profileId) ? null : _index.find(profileId);
 
   @override
   Future<Profile> create({
@@ -297,14 +320,45 @@ class InMemoryProfileRepository implements ProfileRepository {
   }
 
   @override
+  Future<Profile?> selectedOrOldest() async {
+    final active = await selected();
+    if (active != null) return active;
+    final existing = await list();
+    if (existing.isEmpty) return null;
+    return select(existing.first.id);
+  }
+
+  @override
+  Future<void> beginDelete(String profileId) async {
+    if (_deleting.contains(profileId)) return;
+    _requireProfile(profileId);
+    _deleting.add(profileId);
+  }
+
+  @override
+  Future<List<String>> pendingDeletions() async => List.unmodifiable(_deleting);
+
+  @override
+  Future<void> finishDelete(String profileId) async {
+    _index = _index.without(profileId);
+    _deleting.remove(profileId);
+  }
+
+  @override
   Future<Profile> delete(String profileId) async {
     final removed = _requireProfile(profileId);
-    _index = _index.without(profileId);
+    await beginDelete(profileId);
+    await finishDelete(profileId);
     return removed;
   }
 
+  /// Profiles whose deletion has been recorded and not finished.
+  final Set<String> _deleting = {};
+
   Profile _requireProfile(String profileId) {
-    final profile = _index.find(profileId);
+    final profile = _deleting.contains(profileId)
+        ? null
+        : _index.find(profileId);
     if (profile == null) {
       throw ArgumentError.value(profileId, 'profileId', 'no such profile');
     }

@@ -453,9 +453,18 @@ void main() {
 
       repository.indexFile.writeAsStringSync('{not json');
 
+      // The roster is unaffected: it is read from each profile's own record,
+      // and only the selection is stored here.
+      expect((await repository.list()).single.displayName, 'Alice');
       await expectLater(
-        repository.list(),
-        throwsA(isA<JournalFormatException>()),
+        repository.selected(),
+        throwsA(
+          isA<ProfileStorageException>().having(
+            (failure) => failure.artifact,
+            'artifact',
+            ProfileArtifact.selection,
+          ),
+        ),
       );
     });
 
@@ -474,8 +483,14 @@ void main() {
       repository.indexFile.writeAsStringSync(jsonEncode(json));
 
       await expectLater(
-        repository.list(),
-        throwsA(isA<JournalFormatException>()),
+        repository.selected(),
+        throwsA(
+          isA<ProfileStorageException>().having(
+            (failure) => failure.artifact,
+            'artifact',
+            ProfileArtifact.selection,
+          ),
+        ),
       );
     });
 
@@ -540,7 +555,16 @@ void main() {
       ).renameSync('${moved.path}/profile.json');
       Directory('${root.path}/${created.id}').deleteSync(recursive: true);
 
-      expect(repository.list(), throwsA(isA<JournalFormatException>()));
+      expect(
+        repository.list(),
+        throwsA(
+          isA<ProfileStorageException>().having(
+            (failure) => failure.artifact,
+            'artifact',
+            ProfileArtifact.genesis,
+          ),
+        ),
+      );
     });
   });
 
@@ -594,5 +618,133 @@ void main() {
       expect(Directory('${root.path}/${alice.id}').existsSync(), isTrue);
       expect(await profiles.list(), hasLength(2));
     });
+  });
+
+  group('concurrent mutations', () {
+    Future<Profile> add(FileProfileRepository repository, String name) =>
+        repository.create(
+          displayName: name,
+          createdAt: t0,
+          placement: PlacementTier.someExperience,
+        );
+
+    test('two creates both survive', () async {
+      final repository = FileProfileRepository(root, now: () => t0);
+
+      final created = await Future.wait([
+        add(repository, 'Alice'),
+        add(repository, 'Bob'),
+      ]);
+
+      expect(
+        (await repository.list()).map((profile) => profile.id),
+        unorderedEquals(created.map((profile) => profile.id)),
+      );
+    });
+
+    test('two repairs of a lost selection agree', () async {
+      final repository = FileProfileRepository(root, now: () => t0);
+      final alice = await add(repository, 'Alice');
+      repository.indexFile.deleteSync();
+
+      final repaired = await Future.wait([
+        repository.selectedOrOldest(),
+        repository.selectedOrOldest(),
+      ]);
+
+      expect(repaired.map((profile) => profile?.id), everyElement(alice.id));
+      expect((await repository.selected())?.id, alice.id);
+    });
+
+    test('a rename racing a create leaves both records standing', () async {
+      final repository = FileProfileRepository(root, now: () => t0);
+      final alice = await add(repository, 'Alice');
+
+      final results = await Future.wait([
+        repository.rename(alice.id, 'Alexandra'),
+        add(repository, 'Bob'),
+      ]);
+
+      final roster = await repository.list();
+      expect(roster, hasLength(2));
+      expect(
+        roster.map((profile) => profile.displayName),
+        unorderedEquals(['Alexandra', 'Bob']),
+      );
+      expect(results.first.id, alice.id);
+    });
+  });
+
+  group('deleting in two steps', () {
+    Future<Profile> add(ProfileRepository repository, String name) =>
+        repository.create(
+          displayName: name,
+          createdAt: t0,
+          placement: PlacementTier.someExperience,
+        );
+
+    forEachRepository('an intent takes the profile off the roster', (
+      repository,
+    ) async {
+      final alice = await add(repository, 'Alice');
+      await repository.beginDelete(alice.id);
+
+      expect(await repository.list(), isEmpty);
+      expect(await repository.find(alice.id), isNull);
+      expect(await repository.pendingDeletions(), [alice.id]);
+    });
+
+    forEachRepository('finishing is idempotent', (repository) async {
+      final alice = await add(repository, 'Alice');
+      await repository.beginDelete(alice.id);
+      await repository.finishDelete(alice.id);
+      await repository.finishDelete(alice.id);
+
+      expect(await repository.pendingDeletions(), isEmpty);
+      expect(await repository.list(), isEmpty);
+    });
+
+    forEachRepository('recording an intent twice changes nothing', (
+      repository,
+    ) async {
+      final alice = await add(repository, 'Alice');
+      await repository.beginDelete(alice.id);
+      await repository.beginDelete(alice.id);
+
+      expect(await repository.pendingDeletions(), [alice.id]);
+    });
+
+    test('an intent survives a restart', () async {
+      final repository = FileProfileRepository(root, now: () => t0);
+      final alice = await add(repository, 'Alice');
+      await add(repository, 'Bob');
+      await repository.beginDelete(alice.id);
+
+      final reopened = FileProfileRepository(root, now: () => t0);
+      expect(await reopened.pendingDeletions(), [alice.id]);
+      expect((await reopened.list()).single.displayName, 'Bob');
+
+      await reopened.finishDelete(alice.id);
+      expect(await reopened.pendingDeletions(), isEmpty);
+      expect(
+        FileProfileRepository(root).profileFileFor(alice.id).existsSync(),
+        isFalse,
+      );
+    });
+
+    test(
+      'an interrupted deletion hands the selection on when finished',
+      () async {
+        final repository = FileProfileRepository(root, now: () => t0);
+        final alice = await add(repository, 'Alice');
+        final bob = await add(repository, 'Bob');
+        await repository.select(alice.id);
+        await repository.beginDelete(alice.id);
+
+        await FileProfileRepository(root).finishDelete(alice.id);
+
+        expect((await repository.selected())?.id, bob.id);
+      },
+    );
   });
 }

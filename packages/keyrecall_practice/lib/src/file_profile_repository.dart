@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -6,12 +7,49 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'profile_repository.dart';
 
+/// Which durable profile artifact could not be read.
+enum ProfileArtifact {
+  /// The file recording which profile is active.
+  ///
+  /// Rewritable convenience: losing it costs a selection rather than an
+  /// identity, so repairing it destroys nothing anybody practiced.
+  selection,
+
+  /// A profile's own record of itself, which is the genesis of a history.
+  ///
+  /// Nothing here can be rebuilt. The creation instant anchors placement, and
+  /// placement is the prior every later posterior descends from.
+  genesis,
+}
+
+/// A profile artifact that could not be read, and which one it was.
+///
+/// Raised instead of a bare format error so a recovery has something to act
+/// on. An unreadable selection and an unreadable genesis both stop an install
+/// from opening, and the ways out of them have nothing in common.
+class ProfileStorageException implements Exception {
+  /// Which artifact failed.
+  final ProfileArtifact artifact;
+
+  /// Whose artifact it was, where the failure identifies somebody.
+  final String? profileId;
+
+  /// What actually went wrong.
+  final Object cause;
+
+  const ProfileStorageException(this.artifact, this.cause, {this.profileId});
+
+  @override
+  String toString() => '$cause';
+}
+
 /// A [ProfileRepository] backed by self-describing profile directories.
 ///
 /// ```text
 /// <root>/profiles.json          which profile is active
 /// <root>/<profile-id>/
 ///   profile.json                who this is: the replay genesis
+///   deleting.json               a deletion begun and not finished
 ///   journal.jsonl               what they played
 ///   checkpoint.json
 /// ```
@@ -32,15 +70,27 @@ import 'profile_repository.dart';
 /// rather than guessing from directory names, so a directory with no
 /// `profile.json` is orphaned storage rather than a person.
 ///
-/// A directory is named by profile id permanently, so renaming rewrites one
-/// small file and moves nothing. Every write goes to a temporary name and is
-/// renamed over its target, so a reader sees one version or the other and
-/// never a half-written one.
+/// Every operation writes only what it owns: selecting writes the selection,
+/// renaming rewrites one profile, and deleting removes its explicit target. A
+/// directory is named by profile id permanently, so renaming moves nothing.
+/// Mutations are serialized against each other, and each write goes to a
+/// temporary name of its own and is renamed over its target, so a reader sees
+/// one version or the other and never a half-written one.
 class FileProfileRepository implements ProfileRepository {
   /// Directory holding the index and the per-profile directories.
   final Directory root;
 
   final DateTime Function() _now;
+
+  /// What every mutation queues behind.
+  ///
+  /// One lock for the whole repository rather than one per profile: the
+  /// selection is shared state, and a create that establishes it races a
+  /// repair that rewrites it.
+  Future<void> _mutations = Future<void>.value();
+
+  /// Names this instance's temporary files apart from anybody else's.
+  int _temporaries = 0;
 
   FileProfileRepository(this.root, {DateTime Function()? now})
     : _now = now ?? (() => DateTime.now().toUtc());
@@ -54,17 +104,28 @@ class FileProfileRepository implements ProfileRepository {
 
   /// Where [profileId] records itself.
   File profileFileFor(String profileId) =>
-      File('${root.path}/${requireProfileId(profileId)}/profile.json');
+      File('${_directoryFor(profileId).path}/profile.json');
 
   @override
-  Future<List<Profile>> list() async => (await _read()).profiles;
+  Future<List<Profile>> list() async => _readProfiles();
 
   @override
-  Future<Profile?> selected() async => (await _read()).selected;
+  Future<Profile?> selected() async {
+    final id = await _readSelection();
+    if (id == null) return null;
+    for (final profile in await _readProfiles()) {
+      if (profile.id == id) return profile;
+    }
+    return null;
+  }
 
   @override
-  Future<Profile?> find(String profileId) async =>
-      (await _read()).find(profileId);
+  Future<Profile?> find(String profileId) async {
+    for (final profile in await _readProfiles()) {
+      if (profile.id == profileId) return profile;
+    }
+    return null;
+  }
 
   @override
   Future<Profile> create({
@@ -72,127 +133,215 @@ class FileProfileRepository implements ProfileRepository {
     required PlacementTier placement,
     DateTime? createdAt,
     String? presentationHint,
-  }) async {
-    final index = await _read();
+  }) => _serialize(() async {
+    final isFirst = (await _readProfiles()).isEmpty;
     final profile = Profile.create(
       displayName: displayName,
       placement: placement,
       createdAt: createdAt ?? _now(),
       presentationHint: presentationHint,
     );
-    await _write(
-      ProfileIndex(
-        profiles: [...index.profiles, profile],
-        selectedProfileId: index.isEmpty ? profile.id : index.selectedProfileId,
-      ),
-    );
+    await _writeProfile(profile);
+    // The first profile created becomes the active one, since an install with
+    // exactly one person should not need a separate selection step.
+    if (isFirst) await _writeSelection(profile.id);
     return profile;
-  }
+  });
 
   @override
-  Future<Profile> rename(String profileId, String displayName) =>
-      _replace(profileId, (profile) => profile.renamed(displayName));
+  Future<Profile> rename(String profileId, String displayName) => _serialize(
+    () => _replace(profileId, (profile) => profile.renamed(displayName)),
+  );
 
   @override
   Future<Profile> restyle(String profileId, String? presentationHint) =>
-      _replace(profileId, (profile) => profile.shownAs(presentationHint));
+      _serialize(
+        () =>
+            _replace(profileId, (profile) => profile.shownAs(presentationHint)),
+      );
 
-  /// Rewrites one profile's record of itself, leaving the selection alone.
+  /// Rewrites one profile's record of itself, and no other file.
   Future<Profile> _replace(
     String profileId,
     Profile Function(Profile) change,
   ) async {
-    final index = await _read();
-    final changed = change(_require(index, profileId));
-    await _write(
-      ProfileIndex(
-        profiles: [
-          for (final profile in index.profiles)
-            profile.id == profileId ? changed : profile,
-        ],
-        selectedProfileId: index.selectedProfileId,
-      ),
-    );
+    final changed = change(await _require(profileId));
+    await _writeProfile(changed);
     return changed;
   }
 
   @override
-  Future<Profile> select(String profileId) async {
-    final index = await _read();
-    final profile = _require(index, profileId);
-    await _write(
-      ProfileIndex(profiles: index.profiles, selectedProfileId: profileId),
-    );
+  Future<Profile> select(String profileId) => _serialize(() async {
+    final profile = await _require(profileId);
+    await _writeSelection(profileId);
     return profile;
+  });
+
+  @override
+  Future<Profile?> selectedOrOldest() => _serialize(() async {
+    final profiles = await _readProfiles();
+    final id = await _readSelection();
+    for (final profile in profiles) {
+      if (profile.id == id) return profile;
+    }
+    if (profiles.isEmpty) return null;
+    await _writeSelection(profiles.first.id);
+    return profiles.first;
+  });
+
+  @override
+  Future<void> beginDelete(String profileId) => _serialize(() async {
+    final marker = _deletionFileFor(profileId);
+    if (marker.existsSync()) return;
+    await _require(profileId);
+    await _writeAtomically(
+      marker,
+      canonicalJson({
+        'schema_version': profileIndexSchemaVersion,
+        'profile_id': profileId,
+      }),
+    );
+  });
+
+  @override
+  Future<List<String>> pendingDeletions() async {
+    if (!root.existsSync()) return const [];
+    return [
+      for (final entry in root.listSync().whereType<Directory>())
+        if (File('${entry.path}/deleting.json').existsSync())
+          entry.path.split(Platform.pathSeparator).last,
+    ]..sort();
   }
 
   @override
-  Future<Profile> delete(String profileId) async {
-    final index = await _read();
-    final removed = _require(index, profileId);
-    await _write(index.without(profileId));
-    return removed;
+  Future<void> finishDelete(String profileId) => _serialize(() async {
+    await _finishDelete(profileId);
+  });
+
+  @override
+  Future<Profile> delete(String profileId) => _serialize(() async {
+    final profile = await _require(profileId);
+    await _writeAtomically(
+      _deletionFileFor(profileId),
+      canonicalJson({
+        'schema_version': profileIndexSchemaVersion,
+        'profile_id': profileId,
+      }),
+    );
+    await _finishDelete(profileId);
+    return profile;
+  });
+
+  /// Removes the genesis, repairs the selection, and drops the intent.
+  ///
+  /// In that order, and each step idempotent, so an interruption anywhere
+  /// leaves a deletion the next call finishes rather than one that has to be
+  /// started again.
+  Future<void> _finishDelete(String profileId) async {
+    final genesis = profileFileFor(profileId);
+    if (genesis.existsSync()) await genesis.delete();
+
+    if (await _readSelection() == profileId) {
+      final remaining = await _readProfiles();
+      if (remaining.isEmpty) {
+        if (indexFile.existsSync()) await indexFile.delete();
+      } else {
+        await _writeSelection(remaining.first.id);
+      }
+    }
+
+    final marker = _deletionFileFor(profileId);
+    if (marker.existsSync()) await marker.delete();
   }
 
-  Profile _require(ProfileIndex index, String profileId) {
-    final profile = index.find(profileId);
+  Future<Profile> _require(String profileId) async {
+    final profile = await find(profileId);
     if (profile == null) {
       throw ArgumentError.value(profileId, 'profileId', 'no such profile');
     }
     return profile;
   }
 
-  /// Assembles the roster from the profiles on disk, and the selection from
-  /// the index.
+  /// Runs [operation] once every mutation already accepted has finished.
+  Future<T> _serialize<T>(Future<T> Function() operation) {
+    final done = Completer<void>();
+    final waitFor = _mutations;
+    _mutations = done.future;
+    return waitFor.then((_) => operation()).whenComplete(() => done.complete());
+  }
+
+  /// The roster, oldest first, read from each profile's record of itself.
   ///
-  /// A missing directory or index is an install nobody has used yet. A file
-  /// that exists and cannot be read is a different matter and fails: a profile
-  /// is the genesis of a history, and a reader that skipped an unreadable one
-  /// would present somebody with an install their practice had vanished from.
+  /// A missing directory is an install nobody has used yet. A genesis that
+  /// exists and cannot be read is a different matter and fails: a reader that
+  /// skipped an unreadable one would present somebody with an install their
+  /// practice had vanished from.
   ///
-  /// A selection naming a profile that is no longer here is dropped rather
-  /// than raised. It is the one piece of state here that is rewritable
-  /// convenience, and a crash between removing a profile and rewriting the
-  /// selection is exactly how it arises.
-  Future<ProfileIndex> _read() async {
-    if (!root.existsSync()) return ProfileIndex.empty();
+  /// A profile under a recorded deletion is not on the roster. The decision to
+  /// forget them is already durable, and listing them would offer somebody a
+  /// person the next startup finishes removing.
+  Future<List<Profile>> _readProfiles() async {
+    if (!root.existsSync()) return const [];
 
     final profiles = <Profile>[];
     for (final entry in root.listSync().whereType<Directory>()) {
+      final directoryName = entry.path.split(Platform.pathSeparator).last;
+      if (File('${entry.path}/deleting.json').existsSync()) continue;
       final file = File('${entry.path}/profile.json');
       if (!file.existsSync()) continue;
-      final profile = Profile.fromJson(
-        asMap(_decode(file, 'profile'), 'profile', location: file.path),
+      final profile = _located(
+        ProfileArtifact.genesis,
+        profileId: directoryName,
+        () => Profile.fromJson(
+          asMap(_decode(file, 'profile'), 'profile', location: file.path),
+        ),
       );
       // The directory name is where this profile's history is looked up, so a
       // record naming a different id would list a learner whose journal is
       // read from somewhere else.
-      final directoryName = entry.path.split(Platform.pathSeparator).last;
       if (profile.id != directoryName) {
-        throw JournalFormatException(
-          'profile "${profile.id}" is stored in directory "$directoryName"',
-          location: file.path,
+        throw ProfileStorageException(
+          ProfileArtifact.genesis,
+          JournalFormatException(
+            'profile "${profile.id}" is stored in directory "$directoryName"',
+            location: file.path,
+          ),
+          profileId: directoryName,
         );
       }
       profiles.add(profile);
     }
 
-    final selected = indexFile.existsSync()
-        ? ProfileIndex.selectionFromJson(
-            asMap(
-              _decode(indexFile, 'profile index'),
-              'profile index',
-              location: indexFile.path,
-            ),
-          )
-        : null;
+    return ProfileIndex(profiles: profiles).profiles;
+  }
 
-    return ProfileIndex(
-      profiles: profiles,
-      selectedProfileId: profiles.any((profile) => profile.id == selected)
-          ? selected
-          : null,
+  /// The recorded selection, whether or not it names anybody who exists.
+  Future<String?> _readSelection() async {
+    if (!indexFile.existsSync()) return null;
+    return _located(
+      ProfileArtifact.selection,
+      () => ProfileIndex.selectionFromJson(
+        asMap(
+          _decode(indexFile, 'profile index'),
+          'profile index',
+          location: indexFile.path,
+        ),
+      ),
     );
+  }
+
+  T _located<T>(
+    ProfileArtifact artifact,
+    T Function() read, {
+    String? profileId,
+  }) {
+    try {
+      return read();
+    } on ProfileStorageException {
+      rethrow;
+    } catch (error) {
+      throw ProfileStorageException(artifact, error, profileId: profileId);
+    }
   }
 
   Object? _decode(File file, String what) {
@@ -206,34 +355,38 @@ class FileProfileRepository implements ProfileRepository {
     }
   }
 
-  /// Writes every profile beside its own history, then the selection.
-  ///
-  /// Profiles first, and the selection last, because the selection is the part
-  /// that can be repaired by reading: a crash before it lands leaves everybody
-  /// present with nobody active, which resolves itself.
-  Future<void> _write(ProfileIndex index) async {
+  Future<void> _writeProfile(Profile profile) async {
+    final file = profileFileFor(profile.id);
+    await file.parent.create(recursive: true);
+    await _writeAtomically(file, canonicalJson(profile.toJson()));
+  }
+
+  Future<void> _writeSelection(String? profileId) async {
     await root.create(recursive: true);
-    for (final profile in index.profiles) {
-      final file = profileFileFor(profile.id);
-      await file.parent.create(recursive: true);
-      await _writeAtomically(file, canonicalJson(profile.toJson()));
-    }
-    for (final entry in root.listSync().whereType<Directory>()) {
-      final id = entry.path.split(Platform.pathSeparator).last;
-      if (index.find(id) != null) continue;
-      final file = File('${entry.path}/profile.json');
-      // Forgetting who somebody is takes their record of themselves with it.
-      // Leaving it would make the roster resurrect them on the next scan, and
-      // the history beside it becomes orphaned storage, which is what a
-      // deleted profile's leftover practice already was.
-      if (file.existsSync()) await file.delete();
-    }
-    await _writeAtomically(indexFile, canonicalJson(index.toJson()));
+    await _writeAtomically(
+      indexFile,
+      canonicalJson({
+        'schema_version': profileIndexSchemaVersion,
+        'selected_profile_id': profileId,
+      }),
+    );
   }
 
   Future<void> _writeAtomically(File file, String contents) async {
-    final temporary = File('${file.path}.tmp');
+    await file.parent.create(recursive: true);
+    // A name of its own per write. A shared one lets two writers rename the
+    // same temporary over different targets, and the loser's rename fails
+    // against a file that is no longer there.
+    final temporary = File(
+      '${file.path}.${identityHashCode(this)}-${_temporaries++}.tmp',
+    );
     await temporary.writeAsString(contents, flush: true);
     await temporary.rename(file.path);
   }
+
+  Directory _directoryFor(String profileId) =>
+      Directory('${root.path}/${requireProfileId(profileId)}');
+
+  File _deletionFileFor(String profileId) =>
+      File('${_directoryFor(profileId).path}/deleting.json');
 }
