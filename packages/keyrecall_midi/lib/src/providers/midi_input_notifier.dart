@@ -47,12 +47,24 @@ class MidiInputState {
   /// How many messages were turned away for coming from another instrument.
   final int rejectedForeignMessages;
 
+  /// What the adopted instrument's clock has been measured to be.
+  ///
+  /// The mapper's own reading, taken from the reducer that is timing the
+  /// stream, rather than a second detector's opinion of traffic that includes
+  /// sources this one turned away.
+  final ClockDomainObservation clockObservation;
+
+  /// Where that clock stands, which is what decides whether anything is timed.
+  final PerformanceClockPhase clockPhase;
+
   const MidiInputState({
     required this.snapshot,
     required this.isObserving,
     this.adopted,
     this.fault,
     this.rejectedForeignMessages = 0,
+    this.clockObservation = ClockDomainObservation.none,
+    this.clockPhase = PerformanceClockPhase.detecting,
   });
 }
 
@@ -423,5 +435,7 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     adopted: _reducer.adopted,
     fault: _reducer.fault,
     rejectedForeignMessages: _reducer.rejectedForeignCount,
+    clockObservation: _reducer.clock.observation,
+    clockPhase: _reducer.clock.phase,
   );
 }

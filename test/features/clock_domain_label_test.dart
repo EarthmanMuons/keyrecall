@@ -27,7 +27,7 @@ void main() {
           modulus: 8192,
         ),
       ),
-      '1 count/ms, modulo 8192',
+      'steps of 1 count at 1 counts/ms, modulo 8192',
     );
     expect(
       clockDomainLabel(
@@ -37,7 +37,24 @@ void main() {
           granularity: 1000000,
         ),
       ),
-      '1,000,000 counts/ms',
+      'steps of 1,000,000 counts',
+      reason: 'nothing authorized it, so there is no rate to report',
+    );
+  });
+
+  // The step size is the clock's resolution and not how fast it runs. On the
+  // network session they differ by a factor of ten, and the label said the
+  // quantum was the rate.
+  test('a step is not a rate', () {
+    expect(
+      clockDomainLabel(
+        const ClockDomainObservation(
+          session: 'a',
+          steps: 20,
+          granularity: 100000,
+        ),
+      ),
+      'steps of 100,000 counts at 1,000,000 counts/ms',
     );
   });
 

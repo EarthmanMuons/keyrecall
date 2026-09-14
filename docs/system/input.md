@@ -78,10 +78,13 @@ transport came back, and an observation that resumed because something started
 watching would be exactly the claim the terminal-fault rule exists to refuse; a
 consumer attaching while the observation is closed is handed the fault instead.
 What does open one is an event that actually establishes an epoch: the app
-starting, a connection transition, adopting an instrument, returning to the
-foreground, or a failed subscription being replaced. That last one is why a
-transient transport error does not deafen the app until the next reconnect: the
-observation ends, and a new subscription opens a new one.
+starting, a connection transition, adopting an instrument, or returning to the
+foreground. An epoch also needs three things to be true at once, and none of
+them can be inferred from the reducer's phase: the transport can still deliver,
+nobody has put observation down, and an instrument is adopted. An error during a
+suspension does not resume observation, a resume does not claim a stream that
+has ended, and an epoch that cannot be opened closes whatever was open rather
+than leaving an instrument holding keys it cannot still be holding.
 
 ## Nothing is repaired into plausibility
 
@@ -103,19 +106,26 @@ lost its device cannot be attributed to an instrument. Device, transport,
 channel, and the transport's own timestamp survive as far as the admission
 filter.
 
-While nothing is adopted, every source is admitted: there is no instrument to
-tell them apart from. Once an instrument is adopted, every other source is
-turned away and counted. That is a rejection, not a fault, because another
-keyboard in the room is not evidence that this one's stream broke. It is also
-what keeps a stale link from injecting notes, releasing notes it does not hold,
-moving the pedal, or ending an attempt with an all-notes-off.
+Nothing is admitted until an instrument is adopted. Before that there is no
+instrument for the sounding state to be about, and admitting every source made
+two keyboards one: a release from the second ended a hold the first was keeping,
+and alternating sources restarted the performance clock at every delivery.
+Unadopted traffic stays visible to whatever is discovering instruments, which is
+what it is for.
+
+Once an instrument is adopted, every other source is turned away and counted.
+That is a rejection, not a fault, because another keyboard in the room is not
+evidence that this one's stream broke. It is also what keeps a stale link from
+injecting notes, releasing notes it does not hold, moving the pedal, or ending
+an attempt with an all-notes-off.
 
 A reconnect is a new observation even when the device id did not change, so
 identity carries a session as well. The transport reports which device sent a
 message but never which link delivered it, so the session token is minted here,
-once per transport subscription, and closed over by that subscription's
-listener. A message from a superseded session is turned away by the same filter
-that turns away another instrument.
+once per epoch, and it names the epoch a message was processed in. It cannot
+prove that a packet the transport buffered before a boundary originated after
+it: what it establishes is which side of a boundary the app admitted it on,
+which is what lets a trace explain a discontinuity.
 
 **An observation epoch is not a subscription.** The transport is subscribed
 once, for as long as the boundary lives, and every epoch after the first leaves
@@ -160,18 +170,20 @@ argument about cases.
 `arrivalTimestampMs` is the shared monotonic input clock, read when the message
 was processed. It orders the stream, and that is all it does.
 
-`transportTimestamp` is the transport's own stamp, kept and never yet
-interpreted. Substituting it would not be an improvement on its own: BLE stamps
-wrap, and clock domains differ between transports.
+`transportTimestamp` is the transport's own stamp, in the transport's own clock
+domain. It is what performance timing is read from, once the domain has been
+recognized: the reducer consults `PerformanceClockMapper` once per admitted
+delivery, and every event that delivery normalizes to carries the answer.
 
 **Monotonic arrival order is not trustworthy performance timing.** A delayed
 batch can turn separated strikes into near-simultaneous arrivals, or a delivery
 stall into apparent hesitation, without violating anything the arrival clock
-promises. Timing evidence read from arrival times is therefore only as good as
-the transport was behaving, and nothing here can currently say whether it was.
-Deriving performance timing from the transport clock, with unwrapping,
-conversion, and a rule for when the derived timing may be believed at all, is
-not done; see [`../roadmap.md`](../roadmap.md).
+promises. So arrival never becomes performance time. It has two narrower jobs:
+choosing which epoch a wrapping counter is in, and vetoing a transport interval
+or a whole timeline that has stopped keeping time with it. An event carries a
+performance time or it carries none, and a transport nothing has characterized
+produces attempts with pitch evidence and no timing evidence at all. See
+[`../decisions/performance-timing.md`](../decisions/performance-timing.md).
 
 ## Suspension is a boundary
 
@@ -204,5 +216,8 @@ them:
 - a lifecycle suspension ends the current observation;
 - a consumer attaching partway through is handed the whole snapshot, not
   whatever arrives next, and never reopens a closed observation by asking;
-- a superseded transport subscription can neither play into the observation that
-  replaced it nor end it.
+- a recording belongs to one live observation, and one started against a dead
+  one is interrupted from the start;
+- an epoch is opened only while the transport can deliver, observation is not
+  suspended, and an instrument is adopted;
+- arrival time never becomes performance time, at any layer.
