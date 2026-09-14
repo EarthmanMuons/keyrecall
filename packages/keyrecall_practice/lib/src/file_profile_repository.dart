@@ -190,6 +190,11 @@ class FileProfileRepository implements ProfileRepository {
   });
 
   @override
+  Future<void> clearSelection() => _serialize(() async {
+    if (indexFile.existsSync()) await indexFile.delete();
+  });
+
+  @override
   Future<void> beginDelete(String profileId) => _serialize(() async {
     final marker = _deletionFileFor(profileId);
     if (marker.existsSync()) return;

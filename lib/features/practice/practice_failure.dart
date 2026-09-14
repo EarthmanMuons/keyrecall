@@ -6,8 +6,28 @@ enum PracticeFailure {
   ///
   /// The usual cause is a journal recorded under a learner model this build no
   /// longer runs, which no retry can change. This is the only failure erasing
-  /// answers.
+  /// answers, and it names the profile whose history it read.
   history,
+
+  /// Which profile is active could not be read.
+  ///
+  /// Rewritable convenience rather than identity: everybody is still here, and
+  /// the repair rewrites the selection and destroys nothing.
+  selection,
+
+  /// A profile's own record of itself could not be read.
+  ///
+  /// Nothing here can be rebuilt, and nothing here is safe to throw away: the
+  /// creation instant anchors placement, so a rewritten genesis reinterprets
+  /// the history rather than repairing it.
+  roster,
+
+  /// A sitting failed to open for a reason nothing classified.
+  ///
+  /// Deliberately not [history]. An unclassified failure says nothing about
+  /// what is on disk, and offering to erase a history nobody established was
+  /// unreadable answers a question nobody asked.
+  opening,
 
   /// A closed attempt did not reach authoritative history.
   ///
@@ -32,7 +52,14 @@ class PracticeLoopFailure implements Exception {
   /// What actually went wrong.
   final Object cause;
 
-  const PracticeLoopFailure(this.kind, this.cause);
+  /// Whose artifact failed, where the failure identified somebody.
+  ///
+  /// What a destructive recovery targets. A recovery that inferred its target
+  /// from whatever the app happened to be holding would erase an intact
+  /// history to repair a file somewhere else.
+  final String? profileId;
+
+  const PracticeLoopFailure(this.kind, this.cause, {this.profileId});
 
   @override
   String toString() => '$cause';

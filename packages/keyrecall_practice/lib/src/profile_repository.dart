@@ -193,6 +193,13 @@ abstract interface class ProfileRepository {
   /// mutation: two startup readers repairing at once must not both decide.
   Future<Profile?> selectedOrOldest();
 
+  /// Forgets which profile is active, leaving everybody in place.
+  ///
+  /// The repair for selection metadata this build cannot read. It destroys
+  /// nothing anybody practiced: [selectedOrOldest] chooses among the people
+  /// who already exist, and the answer is written back.
+  Future<void> clearSelection();
+
   /// Records the intent to delete [profileId], durably, before anything of
   /// theirs is destroyed.
   ///
@@ -326,6 +333,11 @@ class InMemoryProfileRepository implements ProfileRepository {
     final existing = await list();
     if (existing.isEmpty) return null;
     return select(existing.first.id);
+  }
+
+  @override
+  Future<void> clearSelection() async {
+    _index = ProfileIndex(profiles: _index.profiles);
   }
 
   @override

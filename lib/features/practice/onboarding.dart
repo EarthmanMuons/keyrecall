@@ -50,20 +50,51 @@ class Onboarding extends ConsumerStatefulWidget {
 class _OnboardingState extends ConsumerState<Onboarding> {
   PlacementTier? _tier;
   bool _isReadying = false;
+  bool _isPlacing = false;
+  String? _failure;
 
   void _continue(PlacementTier tier) => setState(() {
     _tier = tier;
     _isReadying = true;
   });
 
-  void _startPracticing() =>
-      ref.read(profileRosterProvider.notifier).place(_tier!);
+  /// Answers the placement question, and stays here until it is answered.
+  ///
+  /// The profile is what the answer produces, so a placement that did not
+  /// reach storage has to say so: leaving the button looking pressed would
+  /// strand somebody on a screen whose whole purpose already failed.
+  Future<void> _startPracticing() async {
+    if (_isPlacing) return;
+    setState(() {
+      _isPlacing = true;
+      _failure = null;
+    });
+    final placed = await ref.read(profileRosterProvider.notifier).place(_tier!);
+    if (!mounted) return;
+    setState(() {
+      _isPlacing = false;
+      _failure = switch (placed) {
+        ProfileChanged() => null,
+        // The profile exists, so the gate has already let this install
+        // through; what is missing is the selection, which resolving who is
+        // active repairs by choosing the only person here.
+        ProfilePartlyChanged() => null,
+        ProfileMutationBusy() => null,
+        ProfileMutationFailed(:final error) =>
+          'Setting up could not be finished: $error',
+      };
+    });
+  }
 
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(
       child: _isReadying
-          ? _ReadyStep(onStart: _startPracticing)
+          ? _ReadyStep(
+              onStart: _startPracticing,
+              isPlacing: _isPlacing,
+              failure: _failure,
+            )
           : _WelcomeStep(selected: _tier, onContinue: _continue),
     ),
   );
@@ -132,9 +163,15 @@ class _WelcomeStepState extends State<_WelcomeStep> {
 
 /// Getting an instrument attached, and how little there is to know.
 class _ReadyStep extends ConsumerWidget {
-  const _ReadyStep({required this.onStart});
+  const _ReadyStep({
+    required this.onStart,
+    required this.isPlacing,
+    this.failure,
+  });
 
   final VoidCallback onStart;
+  final bool isPlacing;
+  final String? failure;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -189,7 +226,19 @@ class _ReadyStep extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 28),
-        FilledButton(onPressed: onStart, child: const Text('Start practicing')),
+        if (failure != null) ...[
+          Text(
+            failure!,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.error,
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+        FilledButton(
+          onPressed: isPlacing ? null : onStart,
+          child: Text(isPlacing ? 'Setting up' : 'Start practicing'),
+        ),
       ],
     );
   }

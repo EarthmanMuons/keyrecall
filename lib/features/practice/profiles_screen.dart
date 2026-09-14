@@ -49,7 +49,12 @@ class _ProfilesScreenState extends ConsumerState<ProfilesScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Profiles')),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _addProfile(context, ref),
+        // One change at a time. The roster serializes them anyway; what this
+        // prevents is somebody asking for a second one and being told about
+        // the first.
+        onPressed: ref.watch(profileMutationProvider)
+            ? null
+            : () => _addProfile(context, ref),
         icon: const Icon(Icons.person_add),
         label: const Text('Add profile'),
       ),
@@ -141,8 +146,10 @@ class _ProfileTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = summary.profile;
     final notifier = ref.read(profileRosterProvider.notifier);
+    final isBusy = ref.watch(profileMutationProvider);
 
     return ListTile(
+      enabled: !isBusy,
       leading: _ProfileMark(profile: profile, isActive: summary.isActive),
       title: Text(
         profile.displayName,
@@ -153,10 +160,11 @@ class _ProfileTile extends ConsumerWidget {
       subtitle: Text(_history(summary)),
       // Tapping switches, which is the thing this screen is opened for. Every
       // other action is one menu away, so none of them can happen by accident.
-      onTap: summary.isActive
+      onTap: summary.isActive || isBusy
           ? null
           : () => _switchTo(context, notifier, profile),
       trailing: PopupMenuButton<_ProfileAction>(
+        enabled: !isBusy,
         onSelected: (action) => _run(context, ref, action),
         itemBuilder: (context) => [
           if (!summary.isActive)
@@ -192,9 +200,12 @@ class _ProfileTile extends ConsumerWidget {
     Profile profile,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    await notifier.select(profile.id);
-    messenger.showSnackBar(
-      SnackBar(content: Text('Now practicing as ${profile.displayName}')),
+    // Said only about a switch the roster confirmed. Announcing one because
+    // the call returned would name somebody who was never selected.
+    _report(
+      messenger,
+      await notifier.select(profile.id),
+      confirmation: 'Now practicing as ${profile.displayName}',
     );
   }
 
@@ -225,19 +236,24 @@ class _ProfileTile extends ConsumerWidget {
     _ProfileAction action,
   ) async {
     final notifier = ref.read(profileRosterProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
     final profile = summary.profile;
 
     switch (action) {
       case _ProfileAction.select:
-        await notifier.select(profile.id);
+        _report(
+          messenger,
+          await notifier.select(profile.id),
+          confirmation: 'Now practicing as ${profile.displayName}',
+        );
       case _ProfileAction.edit:
         final edits = await _editProfile(context, profile);
         if (edits == null) return;
         if (edits.name != profile.displayName) {
-          await notifier.rename(profile.id, edits.name);
+          _report(messenger, await notifier.rename(profile.id, edits.name));
         }
         if (edits.color != ProfileColor.of(profile)) {
-          await notifier.recolor(profile.id, edits.color);
+          _report(messenger, await notifier.recolor(profile.id, edits.color));
         }
       case _ProfileAction.eraseHistory:
         final erase = await _confirm(
@@ -252,7 +268,7 @@ class _ProfileTile extends ConsumerWidget {
               'profile itself stays. This cannot be undone.',
           confirmLabel: 'Erase',
         );
-        if (erase) await notifier.eraseHistory(profile.id);
+        if (erase) _report(messenger, await notifier.eraseHistory(profile.id));
       case _ProfileAction.delete:
         final delete = await _confirm(
           context,
@@ -262,13 +278,37 @@ class _ProfileTile extends ConsumerWidget {
               'cannot be undone.',
           confirmLabel: 'Delete',
         );
-        if (delete) await notifier.remove(profile.id);
+        if (delete) _report(messenger, await notifier.remove(profile.id));
     }
   }
 }
 
 /// What the menu on a profile offers.
 enum _ProfileAction { select, edit, eraseHistory, delete }
+
+/// Says what came of a mutation, and stays quiet when one simply worked.
+///
+/// Every outcome a mutation actually has is named here. A screen that spoke
+/// only for success would confirm changes that were refused for being second
+/// in line, and say nothing at all about ones that failed halfway.
+void _report(
+  ScaffoldMessengerState messenger,
+  ProfileMutation<Object?> result, {
+  String? confirmation,
+  String? partial,
+}) {
+  final message = switch (result) {
+    ProfileChanged() => confirmation,
+    ProfilePartlyChanged() =>
+      partial ?? 'That only partly worked. Check the list before trying again.',
+    ProfileMutationBusy() =>
+      'Another change is still going. Try again in a moment.',
+    ProfileMutationFailed(:final error) => 'That did not work: $error',
+  };
+  if (message != null) {
+    messenger.showSnackBar(SnackBar(content: Text(message)));
+  }
+}
 
 /// The profile's disc, marked when this is the one being practiced as.
 ///
@@ -430,7 +470,18 @@ Future<void> _addProfile(BuildContext context, WidgetRef ref) async {
   final placement = await askForPlacement(context);
   if (placement == null) return;
 
-  await ref.read(profileRosterProvider.notifier).add(name, placement);
+  if (!context.mounted) return;
+  final messenger = ScaffoldMessenger.of(context);
+  _report(
+    messenger,
+    await ref.read(profileRosterProvider.notifier).add(name, placement),
+    // The profile exists, and the retry is to switch to it from the list
+    // rather than to add it again: adding again makes a second $name with a
+    // history of their own.
+    partial:
+        '$name was added, but switching to them did not work. Tap them in '
+        'the list to practice as them.',
+  );
 }
 
 /// Asks for a display name, refusing an empty one.

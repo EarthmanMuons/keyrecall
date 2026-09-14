@@ -38,6 +38,37 @@ final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
   return FilePracticeStore(root);
 });
 
+/// Who exists on this install, and what each of them may still write.
+///
+/// Everything that creates, erases, or deletes a profile goes through here,
+/// and so does everything that needs to know who is active: resolving that is
+/// the first thing after a deletion the last run did not finish, and a sitting
+/// opened before that repair would run as somebody this install has already
+/// decided to forget.
+final profileLifecycleProvider = FutureProvider<ProfileLifecycle>((ref) async {
+  final repository = await ref.watch(profileRepositoryProvider.future);
+  final store = await ref.watch(practiceStoreProvider.future);
+  final lifecycle = ProfileLifecycle(repository: repository, store: store);
+  await lifecycle.resumeDeletions();
+  return lifecycle;
+});
+
+/// Whether a profile mutation is running.
+///
+/// Watched by the controls that must not compete with one another. Ordering
+/// the writes is the roster's job; this is only so a screen can stop offering
+/// a switch whose result it would have to guess at.
+final profileMutationProvider = NotifierProvider<ProfileMutationNotifier, bool>(
+  ProfileMutationNotifier.new,
+);
+
+class ProfileMutationNotifier extends Notifier<bool> {
+  @override
+  bool build() => false;
+
+  void _running(bool running) => state = running;
+}
+
 /// Every material the app can represent.
 ///
 /// What exists, not what anybody is offered: the goal narrows it and the
@@ -84,10 +115,22 @@ class _PlanOwner {
   final String profileId;
   final int generation;
 
-  const _PlanOwner({required this.profileId, required this.generation});
+  /// The incarnation this plan was loaded under, and the only one it writes
+  /// as: a plan saved after the history it describes was erased would be
+  /// intent for a learner nobody is any more.
+  final ProfileLifetime lifetime;
 
-  factory _PlanOwner.next(String profileId) =>
-      _PlanOwner(profileId: profileId, generation: ++_loaded);
+  const _PlanOwner({
+    required this.profileId,
+    required this.generation,
+    required this.lifetime,
+  });
+
+  factory _PlanOwner.next(ProfileLifetime lifetime) => _PlanOwner(
+    profileId: lifetime.profileId,
+    generation: ++_loaded,
+    lifetime: lifetime,
+  );
 
   static int _loaded = 0;
 
@@ -95,10 +138,11 @@ class _PlanOwner {
   bool operator ==(Object other) =>
       other is _PlanOwner &&
       other.profileId == profileId &&
-      other.generation == generation;
+      other.generation == generation &&
+      other.lifetime == lifetime;
 
   @override
-  int get hashCode => Object.hash(profileId, generation);
+  int get hashCode => Object.hash(profileId, generation, lifetime);
 }
 
 class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
@@ -119,18 +163,19 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
     _disposed = false;
     ref.onDispose(() => _disposed = true);
 
-    final repository = await ref.watch(profileRepositoryProvider.future);
-    final store = await ref.watch(practiceStoreProvider.future);
+    final lifecycle = await ref.watch(profileLifecycleProvider.future);
+    final store = lifecycle.store;
     final writes = ref.watch(practicePlanWritesProvider);
-    final profile = await repository.selectedOrOldest();
+    final profile = await lifecycle.repository.selectedOrOldest();
     if (profile == null) return PracticePlan.normal;
+    final lifetime = await store.lifetimeOf(profile.id);
     final plan =
         await writes.run(
           profile.id,
           () => store.loadPracticePlan(profile.id),
         ) ??
         PracticePlan.normal;
-    if (build == _builds) _owner = _PlanOwner.next(profile.id);
+    if (build == _builds) _owner = _PlanOwner.next(lifetime);
     return plan;
   }
 
@@ -155,11 +200,11 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   Future<void> apply(PracticePlan plan) {
     final owner = _owner;
     if (owner == null) return Future<void>.value();
-    final storeFuture = ref.read(practiceStoreProvider.future);
+    final lifecycle = ref.read(profileLifecycleProvider.future);
 
     return ref
         .read(practicePlanWritesProvider)
-        .run(owner.profileId, () => _save(owner, plan, storeFuture));
+        .run(owner.profileId, () => _save(owner, plan, lifecycle));
   }
 
   /// Saves [plan] for [owner], publishing it only while [owner] is still whose
@@ -171,10 +216,19 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   Future<void> _save(
     _PlanOwner owner,
     PracticePlan plan,
-    Future<PracticeStore> storeFuture,
+    Future<ProfileLifecycle> lifecycleFuture,
   ) async {
-    final store = await storeFuture;
-    await store.savePracticePlan(owner.profileId, plan);
+    final lifecycle = await lifecycleFuture;
+    try {
+      await lifecycle.store
+          .boundTo(owner.lifetime)
+          .savePracticePlan(owner.profileId, plan);
+    } on RetiredProfileLifetime {
+      // The history this plan was asked for is gone. A plan is intent rather
+      // than evidence, so there is nothing to recover and nothing to report:
+      // whatever erased it is already reopening what comes next.
+      return;
+    }
     if (_disposed || _owner != owner) return;
     state = AsyncValue.data(plan);
   }
@@ -241,9 +295,58 @@ final profileRosterProvider =
       retry: (_, _) => null,
     );
 
+/// What came of asking the roster to change something.
+///
+/// Not a nullable result. "Nothing happened because something else was
+/// running" and "it happened" are different answers, and a screen that
+/// confirms an unexamined one announces a switch that never occurred.
+@immutable
+sealed class ProfileMutation<T> {
+  const ProfileMutation();
+}
+
+/// The change landed.
+@immutable
+class ProfileChanged<T> extends ProfileMutation<T> {
+  /// What it produced.
+  final T value;
+
+  const ProfileChanged(this.value);
+}
+
+/// Part of the change landed, and the rest did not.
+///
+/// Carries what was committed, so finishing operates on that rather than
+/// running the whole thing again.
+@immutable
+class ProfilePartlyChanged<T> extends ProfileMutation<T> {
+  /// What was committed before it stopped.
+  final T value;
+
+  /// What stopped the rest.
+  final Object cause;
+
+  const ProfilePartlyChanged(this.value, this.cause);
+}
+
+/// Nothing was attempted, because another change was already running.
+@immutable
+class ProfileMutationBusy<T> extends ProfileMutation<T> {
+  const ProfileMutationBusy();
+}
+
+/// The change was attempted and did not land.
+@immutable
+class ProfileMutationFailed<T> extends ProfileMutation<T> {
+  /// What went wrong.
+  final Object error;
+
+  const ProfileMutationFailed(this.error);
+}
+
 /// Creating, renaming, switching, erasing, and deleting profiles.
 ///
-/// Every mutation goes through the repository and then reloads this list.
+/// Every mutation goes through the lifecycle and then reloads this list.
 /// Reloading the practice loop is separate and deliberate: reopening a sitting
 /// while an exercise is on screen leaves its decision pending, so the loop is
 /// invalidated only when a change actually moves the ground under it, which
@@ -253,10 +356,15 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   /// keeps the same flag.
   bool _writing = false;
 
+  /// A profile that was created and never selected, kept so the unfinished
+  /// half can be retried against that identity.
+  Profile? _unselected;
+
   @override
   Future<List<ProfileSummary>> build() async {
-    final repository = await ref.watch(profileRepositoryProvider.future);
-    final store = await ref.watch(practiceStoreProvider.future);
+    final lifecycle = await ref.watch(profileLifecycleProvider.future);
+    final repository = lifecycle.repository;
+    final store = lifecycle.store;
 
     final profiles = await repository.list();
     final activeId = (await repository.selected())?.id;
@@ -278,74 +386,130 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   /// the whole history is computed from: changing it would reinterpret every
   /// attempt rather than update a skill level, and erasing the history is the
   /// honest route to a different starting point.
-  Future<Profile?> add(String displayName, PlacementTier placement) =>
-      _mutate((repository, store) async {
-        final created = await repository.create(
-          displayName: displayName,
-          placement: placement,
-          // Told apart from whoever is already here, which is the whole reason
-          // a second profile is being made.
-          presentationHint: ProfileColor.unusedAmong(await repository.list())
-              .name,
-        );
-        await repository.select(created.id);
-        return (true, created);
-      });
+  Future<ProfileMutation<Profile>> add(
+    String displayName,
+    PlacementTier placement,
+  ) => _mutate(
+    (lifecycle) async => _reportCreation(
+      await lifecycle.create(
+        displayName: displayName,
+        placement: placement,
+        // Told apart from whoever is already here, which is the whole reason
+        // a second profile is being made.
+        presentationHint: ProfileColor.unusedAmong(
+          await lifecycle.repository.list(),
+        ).name,
+      ),
+    ),
+  );
 
   /// Places the learner this install has not asked about yet.
   ///
   /// The first-launch path, where the profile is conjured rather than named:
   /// what matters is that the tier it starts from is the one somebody chose,
   /// since nothing can change it afterwards.
-  ///
-  /// Placing an install that already has somebody on it returns them
-  /// unchanged, because the question was already answered and a second answer
-  /// would be one the history cannot honor.
-  Future<Profile?> place(PlacementTier placement) =>
-      _mutate((repository, store) async {
-        final existing = await repository.selectedOrOldest();
-        if (existing != null) return (true, existing);
+  Future<ProfileMutation<Profile>> place(PlacementTier placement) => _mutate(
+    (lifecycle) async => _reportCreation(
+      await lifecycle.place(
+        placement,
+        presentationHint: ProfileColor.values.first.name,
+      ),
+    ),
+  );
 
-        return (
+  /// Selects a profile that was created and never became the active one.
+  ///
+  /// The other half of an [add] or [place] that committed the identity and
+  /// stopped. Running the whole thing again would make a second person with a
+  /// history of their own.
+  Future<ProfileMutation<Profile>> finishAdding() {
+    final unselected = _unselected;
+    if (unselected == null) {
+      return _mutate(
+        (_) async => throw StateError('no profile is waiting to be selected'),
+      );
+    }
+    return _mutate(
+      (lifecycle) async =>
+          _reportCreation(await lifecycle.finishCreating(unselected)),
+    );
+  }
+
+  /// Whether a profile exists that nothing has selected yet.
+  bool get hasUnselectedProfile => _unselected != null;
+
+  /// Turns a creation into a mutation, retaining an identity still owed a
+  /// selection.
+  (bool, ProfileMutation<Profile>) _reportCreation(ProfileCreation creation) =>
+      switch (creation) {
+        ProfileCreated(:final profile) => (
           true,
-          await repository.create(
-            displayName: defaultProfileName,
-            placement: placement,
-            presentationHint: ProfileColor.values.first.name,
-          ),
-        );
-      });
+          ProfileChanged(_selected(profile)),
+        ),
+        ProfileSelectionPending(:final profile, :final cause) => (
+          true,
+          ProfilePartlyChanged(_unselected = profile, cause),
+        ),
+        ProfileNotCreated(:final cause) => (
+          false,
+          ProfileMutationFailed(cause),
+        ),
+      };
+
+  Profile _selected(Profile profile) {
+    _unselected = null;
+    return profile;
+  }
 
   /// Changes a profile's display name.
-  Future<Profile?> rename(String profileId, String displayName) =>
-      _mutate((repository, store) async {
-        final renamed = await repository.rename(profileId, displayName);
-        return (await _isActive(repository, profileId), renamed);
-      });
+  Future<ProfileMutation<Profile>> rename(
+    String profileId,
+    String displayName,
+  ) => _mutate((lifecycle) async {
+    final renamed = await lifecycle.repository.rename(profileId, displayName);
+    return (
+      await _isActive(lifecycle.repository, profileId),
+      ProfileChanged(renamed),
+    );
+  });
 
   /// Changes the color a profile is recognized by.
-  Future<Profile?> recolor(String profileId, ProfileColor color) =>
-      _mutate((repository, store) async {
-        final restyled = await repository.restyle(profileId, color.name);
-        return (await _isActive(repository, profileId), restyled);
-      });
+  Future<ProfileMutation<Profile>> recolor(
+    String profileId,
+    ProfileColor color,
+  ) => _mutate((lifecycle) async {
+    final restyled = await lifecycle.repository.restyle(profileId, color.name);
+    return (
+      await _isActive(lifecycle.repository, profileId),
+      ProfileChanged(restyled),
+    );
+  });
 
   /// Makes [profileId] the profile the practice loop runs as.
-  Future<Profile?> select(String profileId) =>
-      _mutate((repository, store) async {
-        final selected = await repository.select(profileId);
-        return (true, selected);
+  ///
+  /// The result reports the profile that is actually selected afterwards, so a
+  /// caller confirming a switch is confirming a committed one.
+  Future<ProfileMutation<Profile>> select(String profileId) =>
+      _mutate((lifecycle) async {
+        await lifecycle.repository.select(profileId);
+        final active = await lifecycle.repository.selected();
+        if (active == null || active.id != profileId) {
+          throw StateError('selecting $profileId did not take');
+        }
+        return (true, ProfileChanged(active));
       });
 
   /// Erases one profile's recorded practice, keeping the profile itself.
   ///
   /// The way to put a test profile back at placement without losing the name
-  /// it is recognized by.
-  Future<void> eraseHistory(String profileId) =>
-      _mutate((repository, store) async {
-        final active = await _isActive(repository, profileId);
-        await store.erase(profileId);
-        return (active, null);
+  /// it is recognized by. The placement survives too: it is who this profile
+  /// was when it was created, and starting from a different tier is a
+  /// different profile.
+  Future<ProfileMutation<void>> eraseHistory(String profileId) =>
+      _mutate((lifecycle) async {
+        final active = await _isActive(lifecycle.repository, profileId);
+        await lifecycle.eraseHistory(profileId);
+        return (active, const ProfileChanged<void>(null));
       });
 
   /// Deletes a profile and everything it recorded.
@@ -356,26 +520,41 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   /// conjuring a replacement: a profile carries a prior nobody can change
   /// later, so one made on somebody's behalf is the thing to avoid rather
   /// than the tidy outcome.
-  Future<void> remove(String profileId) => _mutate((repository, store) async {
-    final active = await _isActive(repository, profileId);
-    await repository.delete(profileId);
-    await store.erase(profileId);
-    return (active, null);
-  });
+  Future<ProfileMutation<void>> remove(String profileId) =>
+      _mutate((lifecycle) async {
+        final active = await _isActive(lifecycle.repository, profileId);
+        await lifecycle.delete(profileId);
+        return (active, const ProfileChanged<void>(null));
+      });
 
   /// Runs [change], reloads this list, and reloads the practice loop when the
   /// change touched the active profile.
-  Future<T?> _mutate<T>(
-    Future<(bool, T?)> Function(ProfileRepository, PracticeStore) change,
+  ///
+  /// The reload happens whether or not the change succeeded. Several of these
+  /// commit part of their work before they fail, and leaving the screen on
+  /// what it read beforehand would show a roster the storage disagrees with.
+  Future<ProfileMutation<T>> _mutate<T>(
+    Future<(bool, ProfileMutation<T>)> Function(ProfileLifecycle) change,
   ) async {
-    if (_writing) return null;
+    if (_writing) return ProfileMutationBusy<T>();
 
     _writing = true;
+    ref.read(profileMutationProvider.notifier)._running(true);
+    var touchedActive = false;
     try {
-      final repository = await ref.read(profileRepositoryProvider.future);
-      final store = await ref.read(practiceStoreProvider.future);
-      final (touchedActive, result) = await change(repository, store);
-
+      final lifecycle = await ref.read(profileLifecycleProvider.future);
+      final (touched, result) = await change(lifecycle);
+      touchedActive = touched;
+      return result;
+    } catch (error) {
+      // What failed may have committed something first, and there is no
+      // saying what from here, so everything reading profile state is asked
+      // again.
+      touchedActive = true;
+      return ProfileMutationFailed<T>(error);
+    } finally {
+      _writing = false;
+      ref.read(profileMutationProvider.notifier)._running(false);
       ref.invalidateSelf();
       if (touchedActive) {
         // The plan first: the loop reads it, and reopening a sitting against
@@ -383,9 +562,6 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
         ref.invalidate(practicePlanProvider);
         ref.invalidate(practiceLoopProvider);
       }
-      return result;
-    } finally {
-      _writing = false;
     }
   }
 
@@ -573,6 +749,13 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// starts anything further.
   PracticeSessionIdentity? _owner;
 
+  /// The incarnation this sitting writes as, or null while it has none.
+  ///
+  /// The sitting's own writes go through the bound store the session holds.
+  /// This is for the observations recorded beside it, which reach storage from
+  /// here rather than through the transaction.
+  ProfileLifetime? _lifetime;
+
   /// Whether this build's scope has been torn down.
   bool _disposed = false;
 
@@ -588,18 +771,38 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   Future<PracticeLoopState> build() async {
     final build = ++_builds;
     _owner = null;
+    _lifetime = null;
     _recovery = null;
     _disposed = false;
     ref.onDispose(() => _disposed = true);
 
-    final repository = await ref.watch(profileRepositoryProvider.future);
-    final store = await ref.watch(practiceStoreProvider.future);
+    // Deletions the last run did not finish are completed before anything
+    // asks who is active, so no sitting opens as somebody this install has
+    // already decided to forget.
+    final lifecycle = await ref.watch(profileLifecycleProvider.future);
+    final store = lifecycle.store;
 
     // Never conjures anybody. An install with no profile has not answered the
     // placement question, and answering it is what creates the learner; a
     // sitting opened before that would run as somebody started from a prior
     // nobody chose. The gate above this screen is what makes it unreachable.
-    final profile = await repository.selectedOrOldest();
+    //
+    // Each artifact is classified where it is read, so a recovery acts on the
+    // file that actually failed rather than on whatever this notifier happens
+    // to be holding.
+    final Profile? profile;
+    try {
+      profile = await lifecycle.repository.selectedOrOldest();
+    } on ProfileStorageException catch (error) {
+      throw PracticeLoopFailure(
+        switch (error.artifact) {
+          ProfileArtifact.selection => PracticeFailure.selection,
+          ProfileArtifact.genesis => PracticeFailure.roster,
+        },
+        error,
+        profileId: error.profileId,
+      );
+    }
     if (profile == null) {
       throw StateError('no profile on this install has been placed yet');
     }
@@ -618,14 +821,30 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     final catalog = ref.watch(practiceCatalogProvider);
     final plan = await ref.watch(practicePlanProvider.future);
     final scope = plan.resolve(catalog);
-    final session = await PracticeSession.open(
-      store: store,
-      profile: profile,
-      materials: catalog,
-      scheduler: scheduler,
-      goal: scope.goal,
-      focus: scope.focus,
-    );
+    // Bound to the incarnation standing now. Everything this sitting writes
+    // carries it, so an erase during the sitting refuses the writes rather
+    // than letting them put the erased history back.
+    final lifetime = await store.lifetimeOf(profile.id);
+    final PracticeSession session;
+    try {
+      session = await PracticeSession.open(
+        store: store.boundTo(lifetime),
+        profile: profile,
+        materials: catalog,
+        scheduler: scheduler,
+        goal: scope.goal,
+        focus: scope.focus,
+      );
+    } catch (error) {
+      await scheduler.dispose();
+      // This one is about the history, and it names whose: replaying it is
+      // what failed, and the way out destroys exactly that profile's journal.
+      throw PracticeLoopFailure(
+        PracticeFailure.history,
+        error,
+        profileId: profile.id,
+      );
+    }
 
     final identity = PracticeSessionIdentity.next(profile.id);
     // Replaced or torn down while opening, which are two ways of no longer
@@ -645,6 +864,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       );
     }
     _owner = identity;
+    _lifetime = lifetime;
 
     // An unresolved decision is presented again rather than discarded. It was
     // shown to someone under an attempt id that is already durable, and
@@ -970,29 +1190,38 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     }
   }
 
-  /// Erases this profile's history and starts over from placement.
+  /// Erases [profileId]'s history and starts over from its placement.
   ///
   /// Destroys recorded practice, which is what makes it a deliberate act
   /// rather than part of the loop: the journal exists so history is not
   /// rewritten, and this is the one operation that admits someone wants none
-  /// of it.
-  Future<void> eraseHistory() async {
+  /// of it. The profile and the tier it was placed at survive, because a
+  /// different starting point is a different learner rather than a cleared
+  /// one.
+  Future<void> eraseHistory(String profileId) =>
+      _repair((lifecycle) => lifecycle.eraseHistory(profileId));
+
+  /// Forgets which profile is active, and opens again.
+  ///
+  /// The recovery for selection metadata this build cannot read. Everybody is
+  /// still here, and reopening chooses among them: nothing anybody practiced
+  /// is touched, which is the whole difference between this and erasing.
+  Future<void> repairSelection() =>
+      _repair((lifecycle) => lifecycle.repository.clearSelection());
+
+  /// Runs a recovery and reopens everything that read what it changed.
+  ///
+  /// The target is passed in rather than resolved from state. The usual reason
+  /// to be here is that the loop would not load, and inferring what to destroy
+  /// from what this notifier happened to be holding is how an intact history
+  /// gets erased to repair a file somewhere else.
+  Future<void> _repair(Future<void> Function(ProfileLifecycle) recover) async {
     if (_writing) return;
 
     _writing = true;
-    final current = state.value;
     state = const AsyncValue.loading();
     try {
-      // The profile is resolved here rather than taken from the loop state,
-      // because the usual reason to erase is that the loop would not load and
-      // there is no state to take it from: a journal recorded under a learner
-      // model this build no longer runs cannot be replayed, and this is the
-      // way out. Requiring a loaded loop made the button do nothing in the one
-      // situation it exists for.
-      final repository = await ref.read(profileRepositoryProvider.future);
-      final store = await ref.read(practiceStoreProvider.future);
-      final profile = current?.profile ?? await repository.selectedOrOldest();
-      if (profile != null) await store.erase(profile.id);
+      await recover(await ref.read(profileLifecycleProvider.future));
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
       rethrow;
@@ -1023,11 +1252,25 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     await current.session.saveCheckpoint();
   }
 
+  /// Storage for the observations recorded beside this sitting, or null when
+  /// there is no sitting to record them for.
+  ///
+  /// Bound like everything else the sitting writes. An exposure is an
+  /// observation of a review screen, and a review of an attempt that has been
+  /// erased is describing something that no longer happened.
+  Future<PracticeStore?> _observing() async {
+    final lifetime = _lifetime;
+    if (lifetime == null) return null;
+    final lifecycle = await ref.read(profileLifecycleProvider.future);
+    return lifecycle.store.boundTo(lifetime);
+  }
+
   Future<void> recordFeedbackExposure({
     required AttemptRecord record,
     required List<ProgressEvent> progress,
   }) async {
-    final store = await ref.read(practiceStoreProvider.future);
+    final store = await _observing();
+    if (store == null) return;
     await store.appendFeedbackExposure(
       FeedbackExposure(
         profileId: record.profileId,
@@ -1064,7 +1307,8 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     final outcome = measured.outcome;
 
     try {
-      final store = await ref.read(practiceStoreProvider.future);
+      final store = await _observing();
+      if (store == null) return;
       final conditions = record.exercise.conditions;
       await store.appendCoordinationSample(
         CoordinationSample(
@@ -1098,7 +1342,8 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   }
 
   Future<void> recordAttemptDetailsViewed(AttemptRecord record) async {
-    final store = await ref.read(practiceStoreProvider.future);
+    final store = await _observing();
+    if (store == null) return;
     await store.appendFeedbackExposure(
       FeedbackExposure(
         profileId: record.profileId,

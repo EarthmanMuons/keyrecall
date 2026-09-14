@@ -6,11 +6,13 @@ import 'practice_providers.dart';
 
 /// A practice failure, and the ways out that its kind actually has.
 ///
-/// The three are not interchangeable. A journal this build cannot replay is
-/// the only one erasing answers; an attempt that did not reach history is
-/// still here to write, and reopening would find its decision pending and its
-/// performance gone; a decision that failed asks again on a sitting nothing is
-/// wrong with.
+/// They are not interchangeable. A journal this build cannot replay is the
+/// only one erasing answers, and it erases the profile the failure named; a
+/// selection nobody can read is repaired by forgetting it, which destroys
+/// nothing; a genesis that cannot be read has no safe repair at all; an
+/// attempt that did not reach history is still here to write, and reopening
+/// would find its decision pending and its performance gone; a decision that
+/// failed asks again on a sitting nothing is wrong with.
 class LoopFailure extends ConsumerWidget {
   const LoopFailure({
     required this.error,
@@ -23,22 +25,53 @@ class LoopFailure extends ConsumerWidget {
   final StackTrace? stackTrace;
   final bool showsStackTrace;
 
-  /// What went wrong, from a classified failure or from anything else, which
-  /// is a sitting that never opened.
+  /// What went wrong, from a classified failure.
+  ///
+  /// Anything unclassified is [PracticeFailure.opening]: a sitting that never
+  /// opened, for a reason nothing here established. Reading it as an
+  /// unreadable history would offer to destroy a journal nobody found fault
+  /// with.
   PracticeFailure get kind => switch (error) {
     PracticeLoopFailure(:final kind) => kind,
-    _ => PracticeFailure.history,
+    _ => PracticeFailure.opening,
+  };
+
+  /// Whose artifact failed, where the failure named somebody.
+  String? get profileId => switch (error) {
+    PracticeLoopFailure(:final profileId) => profileId,
+    _ => null,
   };
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final notifier = ref.read(practiceLoopProvider.notifier);
+    final target = profileId;
     final (title, explanation, retryLabel) = switch (kind) {
       PracticeFailure.history => (
         'This practice history could not be opened.',
         'Try again first. If it keeps failing, starting over is the only '
             'way in, and it throws away everything recorded so far.',
+        'Try again',
+      ),
+      PracticeFailure.selection => (
+        'Which profile to practice as could not be read.',
+        'Nothing anybody practiced is affected. Forgetting the setting picks '
+            'up the oldest profile on this install, and switching afterwards '
+            'works as it always did.',
+        'Try again',
+      ),
+      PracticeFailure.roster => (
+        'A profile on this install could not be read.',
+        'A profile records when it was created, and that is what everything '
+            'it played is measured from, so there is nothing safe to rebuild '
+            'it as. If a backup of this install exists, it is the way back.',
+        'Try again',
+      ),
+      PracticeFailure.opening => (
+        'Practice could not be started.',
+        'Nothing recorded has been touched. Try again, and if it keeps '
+            'failing the message below is what to report.',
         'Try again',
       ),
       PracticeFailure.commit => (
@@ -72,14 +105,22 @@ class LoopFailure extends ConsumerWidget {
         ),
         const SizedBox(height: 24),
         OutlinedButton(onPressed: notifier.retry, child: Text(retryLabel)),
-        // Only where the history itself is what cannot be read. Offered beside
-        // an attempt that is still savable, it destroys the practice it was
-        // meant to rescue.
-        if (kind == PracticeFailure.history) ...[
+        // Only where the history itself is what cannot be read, and only for
+        // the profile the failure named. Offered beside an attempt that is
+        // still savable, or aimed at whoever the app happened to be holding,
+        // it destroys the practice it was meant to rescue.
+        if (kind == PracticeFailure.history && target != null) ...[
           const SizedBox(height: 12),
           OutlinedButton(
-            onPressed: notifier.eraseHistory,
+            onPressed: () => notifier.eraseHistory(target),
             child: const Text('Erase this history and start over'),
+          ),
+        ],
+        if (kind == PracticeFailure.selection) ...[
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: notifier.repairSelection,
+            child: const Text('Forget it and use the oldest profile'),
           ),
         ],
         if (showsStackTrace && stackTrace != null) ...[

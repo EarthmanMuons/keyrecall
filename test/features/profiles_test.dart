@@ -161,29 +161,43 @@ void main() {
     expect(loop.profile.id, bob.id);
   });
 
-  test('profile authority is removed before history cleanup', () async {
-    final repository = InMemoryProfileRepository();
-    final profile = await repository.create(
-      displayName: 'Alice',
-      placement: PlacementTier.someExperience,
-    );
-    final store = _FailingEraseStore(InMemoryPracticeStore());
-    final container = ProviderContainer(
-      overrides: [
-        profileRepositoryProvider.overrideWith((ref) async => repository),
-        inProcessScheduling,
-        practiceStoreProvider.overrideWith((ref) async => store),
-      ],
-    );
-    addTearDown(container.dispose);
-    await container.read(profileRosterProvider.future);
-    await expectLater(
-      container.read(profileRosterProvider.notifier).remove(profile.id),
-      throwsStateError,
-    );
+  test(
+    'an interrupted deletion leaves an intent that can be finished',
+    () async {
+      final repository = InMemoryProfileRepository();
+      final profile = await repository.create(
+        displayName: 'Alice',
+        placement: PlacementTier.someExperience,
+      );
+      final store = _FailingEraseStore(InMemoryPracticeStore());
+      final container = ProviderContainer(
+        overrides: [
+          profileRepositoryProvider.overrideWith((ref) async => repository),
+          inProcessScheduling,
+          practiceStoreProvider.overrideWith((ref) async => store),
+        ],
+      );
+      addTearDown(container.dispose);
+      await container.read(profileRosterProvider.future);
+      final removed = await container
+          .read(profileRosterProvider.notifier)
+          .remove(profile.id);
 
-    expect(await repository.find(profile.id), isNull);
-  });
+      expect(removed, isA<ProfileMutationFailed<void>>());
+      // Off the roster from the moment the intent was durable, so nothing
+      // offers a profile this install has decided to forget. The history is
+      // still there, and so is the intent that names it.
+      expect(await repository.find(profile.id), isNull);
+      expect(await repository.pendingDeletions(), [profile.id]);
+
+      final resumed = ProfileLifecycle(
+        repository: repository,
+        store: InMemoryPracticeStore(),
+      );
+      expect(await resumed.resumeDeletions(), [profile.id]);
+      expect(await repository.pendingDeletions(), isEmpty);
+    },
+  );
 }
 
 class _FailingEraseStore with UnretiredLifetimes implements PracticeStore {

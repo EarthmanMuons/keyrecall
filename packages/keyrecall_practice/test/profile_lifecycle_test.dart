@@ -56,6 +56,9 @@ class _SelectionFailsOnce implements ProfileRepository {
       _repository.restyle(profileId, presentationHint);
 
   @override
+  Future<void> clearSelection() => _repository.clearSelection();
+
+  @override
   Future<void> beginDelete(String profileId) =>
       _repository.beginDelete(profileId);
 

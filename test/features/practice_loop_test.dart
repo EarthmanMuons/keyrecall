@@ -343,7 +343,7 @@ void main() {
     );
   });
 
-  test('erasing a loaded loop targets the profile on screen', () async {
+  test('erasing targets the profile it was given, not the selection', () async {
     final repository = InMemoryProfileRepository();
     final store = _RecordingEraseStore();
     final container = ProviderContainer(
@@ -364,7 +364,9 @@ void main() {
     );
     await repository.select(other.id);
 
-    await container.read(practiceLoopProvider.notifier).eraseHistory();
+    await container
+        .read(practiceLoopProvider.notifier)
+        .eraseHistory(loop.profile.id);
 
     expect(store.erased, [loop.profile.id]);
   });
