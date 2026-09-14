@@ -251,6 +251,37 @@ void main() {
     );
   });
 
+  test('a build abandoned while opening never decides', () async {
+    // Torn down rather than replaced. Nothing comes after it, so nothing else
+    // will have moved the generation on: a build that only asks whether it was
+    // superseded answers no, and goes on to decide for a sitting that no
+    // longer exists.
+    final store = _HoldsOnePendingRead();
+    practice = store;
+    final container = launch();
+    await place(container);
+    final first = await loopOf(container);
+    await first.session.abandonPending();
+    final profileId = (await profiles.selectedOrOldest())!.id;
+
+    final subscription = container.listen(practiceLoopProvider, (_, _) {});
+    final paused = Completer<void>();
+    store.gate = paused;
+    container.read(practiceLoopProvider.notifier).reopen();
+    await pumpEventQueue();
+
+    subscription.close();
+    container.dispose();
+    paused.complete();
+    await pumpEventQueue();
+
+    expect(
+      await store.loadPendingDecision(profileId),
+      isNull,
+      reason: 'a sitting nobody is holding decides nothing and writes nothing',
+    );
+  });
+
   test(
     'retrying while a frozen commit is being written does nothing',
     () async {
@@ -338,6 +369,53 @@ void main() {
       expect(after.attemptsRecorded, 1);
     },
   );
+
+  test('a decision that failed to persist retries without rebinding', () async {
+    // Deciding can fail for reasons that say nothing about where deciding
+    // happens. Rebinding then would diagnose a host failure nobody observed.
+    final host = _CountsItsBindings();
+    final store = _RefusesOnePendingWrite();
+    practice = store;
+    final container = ProviderContainer(
+      overrides: [
+        profileRepositoryProvider.overrideWith((ref) async => profiles),
+        practiceStoreProvider.overrideWith((ref) async => practice),
+        schedulerHostFactoryProvider.overrideWith(
+          (ref) =>
+              () => host,
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
+    await place(container);
+    final first = await loopOf(container);
+    final bindings = host.bindings;
+
+    store.refuses = true;
+    await container
+        .read(practiceLoopProvider.notifier)
+        .finish(
+          AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+          attempt: first.attempt!,
+        );
+    expect(
+      (container.read(practiceLoopProvider) as AsyncError).error,
+      isA<PracticeLoopFailure>().having(
+        (failure) => failure.kind,
+        'kind',
+        PracticeFailure.scheduling,
+      ),
+    );
+
+    await container.read(practiceLoopProvider.notifier).retry();
+
+    expect(
+      container.read(practiceLoopProvider),
+      isA<AsyncData<PracticeLoopState>>(),
+    );
+    expect(host.bindings, bindings, reason: 'the host never failed');
+  });
 
   test(
     'a plan load waits for a write already accepted for that profile',
@@ -526,5 +604,43 @@ class _LosesTheWorkerOnce extends InProcessScheduler {
       attemptedExercises: attemptedExercises,
       executionEvidenceRevisions: executionEvidenceRevisions,
     );
+  }
+}
+
+/// Counts what has been bound to it, and decides in this isolate.
+class _CountsItsBindings extends InProcessScheduler {
+  _CountsItsBindings()
+    : super(const SchedulerPipeline(learner: LearnerModel()));
+
+  int bindings = 0;
+
+  @override
+  Future<void> bind({
+    required ResolvedPracticeScope scope,
+    required PracticeEntryPolicy entry,
+    required LearnerModel learner,
+    required SchedulerConfig config,
+  }) async {
+    bindings++;
+    await super.bind(
+      scope: scope,
+      entry: entry,
+      learner: learner,
+      config: config,
+    );
+  }
+}
+
+/// Refuses the next pending-decision write, once.
+class _RefusesOnePendingWrite extends InMemoryPracticeStore {
+  bool refuses = false;
+
+  @override
+  Future<void> savePendingDecision(PendingDecision decision) async {
+    if (refuses) {
+      refuses = false;
+      throw StateError('storage is unavailable');
+    }
+    await super.savePendingDecision(decision);
   }
 }

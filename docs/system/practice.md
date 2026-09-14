@@ -79,9 +79,11 @@ The five rules the app layer holds to:
 4. **Superseded work may satisfy a durability obligation it already started, but
    may not publish into or schedule for the replacement.** An append in flight
    owes history an answer; the continuation that would have shown its result
-   does not get to run. A sitting superseded while it was opening stops before
-   deciding, because deciding persists a pending slot over the one its
-   replacement is presenting.
+   does not get to run. A sitting that was replaced or torn down while it was
+   opening stops before deciding, because deciding persists a pending slot over
+   whatever is presenting one now. Being replaced and being torn down are two
+   ways of no longer being the sitting rather than one: a build with nothing
+   after it is not superseded, and is just as gone.
 5. **A recoverable commit failure retains and retries the frozen close.**
    Reopening is a different recovery, and one that abandons the performance the
    learner already supplied.
@@ -107,19 +109,23 @@ Two resources are owned rather than shared:
 Failures are classified by what they leave standing, because that is what says
 how to recover:
 
-| Failure      | What is still valid                  | Recovery                |
-| ------------ | ------------------------------------ | ----------------------- |
-| `history`    | possibly no usable sitting           | reopen, or erase        |
-| `commit`     | the frozen close, on its own session | write that same attempt |
-| `scheduling` | everything recorded, and the sitting | rebind, and ask again   |
+| Failure      | What is still valid                  | Recovery                                    |
+| ------------ | ------------------------------------ | ------------------------------------------- |
+| `history`    | possibly no usable sitting           | reopen, or erase                            |
+| `commit`     | the frozen close, on its own session | write that same attempt                     |
+| `scheduling` | everything recorded, and the sitting | ask again, rebinding if the worker was lost |
 
 Erasing is offered for the first only. Beside an attempt that is still savable
 it destroys the practice it was meant to rescue.
 
-A scheduling failure is the host's rather than the sitting's: a worker that died
-took its binding and nothing authoritative, so recovery re-establishes where the
-sitting decides and asks the same question again, rather than reopening a
-sitting whose state never left this isolate.
+`scheduling` covers the whole of the decide-to-durability path, and not every
+failure in it is the host's. Where the worker was lost, recovery re-establishes
+where the sitting decides before asking again, because what died took its
+binding and nothing authoritative. Every other failure there, such as the
+pending slot not reaching storage, retries from the same still-authoritative
+sitting without rebinding: the host never said it was at fault, and diagnosing
+one nobody observed is its own kind of wrong answer. Neither reopens a sitting
+whose state never left this isolate.
 
 Plan reads are ordered behind plan writes for the same profile, above the
 notifier that performs them. A plan notifier is replaced whenever the selection

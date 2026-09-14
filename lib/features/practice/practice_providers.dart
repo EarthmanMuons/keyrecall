@@ -628,19 +628,20 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     );
 
     final identity = PracticeSessionIdentity.next(profile.id);
-    // Superseded while opening. This build's result is discarded either way;
+    // Replaced or torn down while opening, which are two ways of no longer
+    // being the sitting rather than one: a build with nothing after it is not
+    // superseded, and is just as gone. Either way this result is discarded;
     // what it must not do is go on to decide, because deciding persists a
-    // pending slot over the one the sitting that replaced it is presenting,
-    // and the attempt on screen and the attempt a relaunch recovers then
-    // disagree.
-    if (build != _builds) {
+    // pending slot over whatever is presenting one now, and the attempt on
+    // screen and the attempt a relaunch recovers then disagree.
+    if (_disposed || build != _builds) {
       await scheduler.dispose();
       return PracticeLoopState(
         identity: identity,
         profile: profile,
         plan: plan,
         session: session,
-        note: 'superseded while opening',
+        note: 'abandoned while opening',
       );
     }
     _owner = identity;
@@ -905,11 +906,13 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         PracticeFailure.scheduling,
         error,
         stackTrace,
-        // Where deciding failed, the host is what failed: a worker that died
-        // took its binding and nothing else, so the sitting re-establishes
-        // where it decides and asks the same question again.
+        // A lost worker took its binding and nothing else, so the sitting
+        // re-establishes where it decides before asking again. Deciding can
+        // fail for reasons that say nothing about the host, such as the
+        // pending slot not reaching storage, and rebinding for those would
+        // diagnose a failure nobody observed.
         retry: () {
-          closed.session.recoverScheduling();
+          if (error is SchedulerWorkerLost) closed.session.recoverScheduling();
           return _publish(closed);
         },
       );
