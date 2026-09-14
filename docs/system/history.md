@@ -34,6 +34,80 @@ whose it is.
 learner-model object, which is what keeps app-account concepts out of
 `keyrecall_learner`.
 
+## Profile lifetime
+
+A profile id says whose history a write belongs to. It does not say the history
+is still wanted, and that gap is what erasing and deleting have to close: both
+end a profile's recorded practice while work started before them is still in
+flight, and an id alone would let that work put back what was just destroyed.
+
+So every profile carries a durable `ProfileLifetime`: its id, and an incarnation
+that is replaced rather than cleared. A sitting binds to the one standing when
+it opened and writes through that view, and storage refuses anything naming an
+incarnation that has been retired. The check happens inside the same serialized
+operation as the write, so nothing can be retired between authorizing a write
+and performing it. It survives the process, so an interrupted deletion resumes
+against the incarnation it retired.
+
+The invariants:
+
+- a profile genesis has exactly one durable lifetime at a time;
+- only the standing lifetime may create durable practice state;
+- once erasure or deletion retires a lifetime, no work carrying it persists;
+- deletion is resumable after an interruption at every durable step;
+- repository operations mutate only their explicit target;
+- startup recovery may destroy only an artifact it positively identified;
+- once creation has committed a genesis, retries operate on that identity;
+- a confirmation reflects committed state, never an attempted mutation.
+
+`ProfileLifecycle` is the one place those sequences live. Below it the
+repository owns genesis and selection, and the store owns practice.
+
+### Creating is two durable facts
+
+The profile exists, and it is the active profile. They are separate writes, so
+creation reports which of them landed. A create whose selection failed comes
+back carrying the identity it committed, and finishing it selects that profile:
+running the create again would make a second person with a history of their own.
+
+### Deleting is a resumable state machine
+
+Intent first, then history, then genesis, then the intent itself:
+
+1. record the deletion intent, which takes the profile off the roster;
+2. retire the lifetime and erase everything the store holds;
+3. remove the profile's record of itself, handing the selection on;
+4. drop the intent.
+
+History goes before genesis because the genesis is what names it, and every step
+is idempotent. Startup finishes any recorded intent before anything asks who is
+active, so an interruption leaves a job to complete rather than storage nothing
+can attribute.
+
+### Erasing keeps who the profile is
+
+Erasing means "forget what you have learned about my playing", not "replace who
+this profile says I was". The display name, the color, and the **placement tier
+all survive**, because placement is the prior the whole history was computed
+against rather than something the history taught. Starting from a different tier
+is a different learner: today that means deleting the profile and creating
+another.
+
+### Recovery targets the artifact that failed
+
+Reading each artifact classifies its own failure, and a recovery may only change
+what the failure named:
+
+| Failed artifact                | What recovery does                                    |
+| ------------------------------ | ----------------------------------------------------- |
+| Selection metadata             | Forgets the selection; the oldest profile is chosen   |
+| A profile's genesis            | Nothing destructive; there is nothing safe to rebuild |
+| A journal that will not replay | Erases that profile's history, by id                  |
+| Anything unclassified          | Retries, and offers no erasure at all                 |
+
+Inferring the target from whatever the app happened to be holding is how an
+intact history gets erased to repair a file somewhere else.
+
 ## The five data products
 
 ### 1. Attempt journal, authoritative
