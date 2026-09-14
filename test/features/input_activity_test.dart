@@ -152,4 +152,38 @@ void _initialization() {
     expect(activity.eventCount, 1);
     expect(activity.pressedNoteNumbers, {60});
   });
+
+  // Replay cannot supply what happened before the panel attached, and the
+  // stream hands a late subscriber only the event it happened to catch. The
+  // first reading reported one key of a chord and no pedal.
+  test('attaching while a chord and the pedal are held', () async {
+    final events = StreamController<InputTemporalEvent>.broadcast();
+    final container = ProviderContainer(
+      overrides: [
+        inputTemporalEventsProvider.overrideWith((ref) => events.stream),
+        inputSnapshotProvider.overrideWithValue(
+          InputTemporalSnapshot(
+            pressedNoteNumbers: const {60, 64},
+            sustainedNoteNumbers: const {55},
+            pedalDown: true,
+          ),
+        ),
+      ],
+    );
+    addTearDown(() async {
+      container.dispose();
+      await events.close();
+    });
+
+    final activity = container.read(inputActivityProvider);
+
+    expect(activity.pressedNoteNumbers, {60, 64});
+    expect(activity.sustainedNoteNumbers, {55});
+    expect(activity.isPedalDown, isTrue);
+    expect(
+      activity.isIdle,
+      isTrue,
+      reason: 'nothing has been observed yet; this is where it starts',
+    );
+  });
 }

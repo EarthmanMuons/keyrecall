@@ -3,15 +3,21 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
 
+import 'input_source.dart';
 import 'input_temporal_events_provider.dart';
 
-/// What the instrument is doing, as reconstructed from the event stream alone.
+/// What the instrument is doing, as reconstructed from the event stream.
 ///
-/// Nothing here reads the source's internal state. Tracking notes by replaying
-/// note-ons, note-offs, pedal events, resets, and faults is exactly what any
-/// consumer of live input has to do, so building the display this way keeps
-/// the stream honest: if the events were not sufficient to know what is
-/// sounding, this would visibly drift from the reducer's own snapshot.
+/// Tracking notes by replaying note-ons, note-offs, pedal events, resets, and
+/// faults is exactly what any consumer of live input has to do, so building
+/// the display this way keeps the stream honest: if the events were not
+/// sufficient to know what is sounding, this would visibly drift from the
+/// reducer's own snapshot.
+///
+/// Where it starts is the one thing replay cannot supply. A consumer attaching
+/// partway through has no history, and the stream hands it only the event it
+/// happened to catch, so the opening value is the source's own snapshot and
+/// every value after it is replay.
 ///
 /// The replay itself is [InputTemporalState], shared with everything else that
 /// has to answer the same question. This adds only what a panel wants on top:
@@ -95,7 +101,17 @@ class InputActivityNotifier extends Notifier<InputActivity> {
 
   @override
   InputActivity build() {
-    _activity = const InputActivity();
+    // Whatever is already held, since this may be attaching to a stream that
+    // opened long ago. Reading the last event instead reported one key of a
+    // chord and no pedal.
+    final held = ref.read(inputSnapshotProvider);
+    _activity = InputActivity(
+      observed: InputTemporalState(
+        pressedNoteNumbers: held.pressedNoteNumbers,
+        sustainedNoteNumbers: held.sustainedNoteNumbers,
+        pedalDown: held.pedalDown,
+      ),
+    );
     _isBuilt = false;
     // Listening here is also what keeps the selected source subscribed for as
     // long as anything is watching activity. Only data notifications: an

@@ -136,17 +136,30 @@ class InputReducer {
   /// The opening [InputTemporalResetEvent] reports silence, because an
   /// observation that has just started has not seen a key go down and cannot
   /// claim to know what is held.
-  List<InputTemporalEvent> begin({required int timestampMs}) {
+  ///
+  /// [sounding] is for a source that can report what it is holding, such as
+  /// the synthetic instrument. The observation opens already holding it and
+  /// says so in the opening event. Replaying it as note-ons instead would tell
+  /// every consumer those keys were struck now, which is a performance nobody
+  /// gave.
+  List<InputTemporalEvent> begin({
+    required int timestampMs,
+    InputTemporalSnapshot? sounding,
+  }) {
     _channels.clear();
     _clock.restart();
     _fault = null;
     _phase = InputObservationPhase.observing;
     _lastTimestampMs = timestampMs;
+    final opening = sounding ?? InputTemporalSnapshot.silent;
+    if (!opening.isSilent || opening.pedalDown) {
+      final owner = _channels.putIfAbsent(null, _ChannelState.new)
+        ..pressed.addAll(opening.pressedNoteNumbers)
+        ..sustained.addAll(opening.sustainedNoteNumbers);
+      owner.pedalDown = opening.pedalDown;
+    }
     return [
-      InputTemporalResetEvent(
-        timestampMs: timestampMs,
-        snapshot: InputTemporalSnapshot.silent,
-      ),
+      InputTemporalResetEvent(timestampMs: timestampMs, snapshot: opening),
     ];
   }
 

@@ -88,16 +88,19 @@ final demoTemporalEventsProvider =
         previous = next;
       });
 
-      for (final event in reducer.begin(timestampMs: clock())) {
+      // Whatever the instrument is already holding is what the observation
+      // opens holding, pedal included. Playing it back in as note-ons would
+      // report keys as struck now, and would lose the pedal and the notes it
+      // is sustaining, which are not strikes at all.
+      for (final event in reducer.begin(
+        timestampMs: clock(),
+        sounding: InputTemporalSnapshot(
+          pressedNoteNumbers: previous.pressedNoteNumbers,
+          sustainedNoteNumbers: previous.sustainedNoteNumbers,
+          pedalDown: previous.isPedalDown,
+        ),
+      )) {
         controller.add(event);
-      }
-      // Whatever was already sounding when the stream opened is the
-      // instrument's, not this observation's: it is played back in so the
-      // reducer owns it, rather than asserted into the opening snapshot.
-      for (final note in previous.pressedNoteNumbers) {
-        feed(
-          RawInputMessage(kind: RawInputKind.noteOn, note: note, velocity: 100),
-        );
       }
 
       ref.onDispose(() async {

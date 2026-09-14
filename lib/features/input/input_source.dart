@@ -1,4 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keyrecall_input/keyrecall_input.dart';
+import 'package:keyrecall_midi/keyrecall_midi.dart';
+
+import '../demo_input/demo_input.dart';
 
 /// Where live input is coming from.
 enum InputSourceKind {
@@ -34,3 +38,25 @@ class InputSourceNotifier extends Notifier<InputSourceKind> {
     InputSourceKind.midi => InputSourceKind.demo,
   };
 }
+
+/// What the selected source says it is holding right now.
+///
+/// The source's own snapshot rather than a replay of its events, for a
+/// consumer that attaches partway through and has no history to replay. Every
+/// source keeps one because the reducer keeps one, and a consumer that started
+/// late would otherwise take the last event it happened to catch for the whole
+/// state.
+final inputSnapshotProvider = Provider<InputTemporalSnapshot>((ref) {
+  final source = ref.watch(inputSourceProvider);
+  switch (source) {
+    case InputSourceKind.demo:
+      final demo = ref.watch(demoInputProvider);
+      return InputTemporalSnapshot(
+        pressedNoteNumbers: demo.pressedNoteNumbers,
+        sustainedNoteNumbers: demo.sustainedNoteNumbers,
+        pedalDown: demo.isPedalDown,
+      );
+    case InputSourceKind.midi:
+      return ref.watch(midiInputProvider).snapshot;
+  }
+});
