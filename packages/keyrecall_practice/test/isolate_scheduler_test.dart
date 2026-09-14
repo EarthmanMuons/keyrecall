@@ -150,7 +150,8 @@ void main() {
         throwsA(isA<SchedulerWorkerLost>()),
       );
 
-      // And the dead worker is gone rather than still on offer.
+      // And the dead worker is reported as gone rather than as a scope nobody
+      // bound: one is a fault to recover from, the other a caller that forgot.
       await expectLater(
         scheduler.decide(
           epoch: 1,
@@ -162,7 +163,7 @@ void main() {
           dueRequirementIds: due,
           at: t0.plusDays(0.5),
         ),
-        throwsA(isA<StateError>()),
+        throwsA(isA<SchedulerWorkerLost>()),
       );
       await scheduler.dispose();
     },

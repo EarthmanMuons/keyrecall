@@ -44,6 +44,13 @@ class IsolateScheduler implements SchedulerHost {
   /// replaced it.
   int _bindings = 0;
 
+  /// Whether the worker went away on its own rather than being replaced.
+  ///
+  /// What tells a host that lost one from a host nobody has bound. Both have
+  /// no worker, and only the first is something a caller can recover from by
+  /// binding again.
+  bool _lost = false;
+
   @override
   Future<void> bind({
     required ResolvedPracticeScope scope,
@@ -77,7 +84,9 @@ class IsolateScheduler implements SchedulerHost {
       return;
     }
     worker.onLost = () {
-      if (identical(_worker, worker)) _worker = null;
+      if (!identical(_worker, worker)) return;
+      _worker = null;
+      _lost = true;
     };
     if (worker.isLost) {
       _worker = null;
@@ -97,6 +106,7 @@ class IsolateScheduler implements SchedulerHost {
   int _invalidate() {
     final worker = _worker;
     _worker = null;
+    _lost = false;
     worker?.stop();
     return ++_bindings;
   }
@@ -116,6 +126,11 @@ class IsolateScheduler implements SchedulerHost {
   }) async {
     final worker = _worker;
     if (worker == null) {
+      // A worker that died between decisions is a fault to recover from, and
+      // saying nothing is bound would report it as a caller that forgot to.
+      if (_lost) {
+        throw const SchedulerWorkerLost('the bound worker is gone');
+      }
       throw StateError('no scope is bound; bind one before deciding');
     }
     return worker.decide(
