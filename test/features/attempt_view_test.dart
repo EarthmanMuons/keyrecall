@@ -850,6 +850,7 @@ void main() {
             events.add(
               InputTemporalNoteOnEvent(
                 timestampMs: 1000 + index * 600,
+                timing: TimingAvailable((1000 + index * 600) * 1000),
                 noteNumber: note,
                 velocity: 100,
               ),

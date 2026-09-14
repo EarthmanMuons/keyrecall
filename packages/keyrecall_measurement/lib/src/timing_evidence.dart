@@ -143,22 +143,34 @@ class TimingEvidence {
     MeasurementPolicy policy = MeasurementPolicy.standard,
   }) {
     final onsets = _momentOnsets(alignment);
-    final spans = [
-      for (var i = 1; i < onsets.length; i++)
-        if (!restartPositions.any(
-          (start) =>
-              onsets[i - 1].position < start && start <= onsets[i].position,
-        ))
-          (
-            from: onsets[i - 1].position,
-            to: onsets[i].position,
-            intervalMs: onsets[i].onsetMs - onsets[i - 1].onsetMs,
-          ),
-    ];
+    final spans = <({int from, int to, double intervalMs})>[];
+    var run = 0;
+    var longestRun = 0;
+    for (var i = 1; i < onsets.length; i++) {
+      final before = onsets[i - 1];
+      final after = onsets[i];
+      // A moment the performance clock could not place leaves a hole, and a
+      // wait across a hole is a wait nobody played.
+      if (before.onsetUs == null || after.onsetUs == null) {
+        run = 0;
+        continue;
+      }
+      if (restartPositions.any(
+        (start) => before.position < start && start <= after.position,
+      )) {
+        continue;
+      }
+      spans.add((
+        from: before.position,
+        to: after.position,
+        intervalMs: (after.onsetUs! - before.onsetUs!) / 1000,
+      ));
+      run += 1;
+      if (run > longestRun) longestRun = run;
+    }
     final waits = [for (final span in spans) span.intervalMs];
     final pace = _paceOf(waits);
     final reference = _referenceOf(waits);
-    final longestRun = _longestRunOf(spans);
     final judged =
         reference != null && longestRun >= fewestContiguousWaitsForContinuity;
 
@@ -253,20 +265,7 @@ double? _dispersionOf(
   return deviation / ordinary.length / middle;
 }
 
-/// The most waits in a row that are one stretch of playing.
-///
-/// Every wait here qualifies, because the two things that remove one do not
-/// break the playing. A moment nothing arrived for widens the wait around it
-/// rather than splitting it, and the reset before a repeat is a boundary the
-/// task asked for rather than evidence that went missing: the learner played
-/// on either side of it and only the turnaround is not theirs to be judged on.
-///
-/// A hole in the timing itself is the break this exists to notice, and the
-/// clock that can produce one does not reach here yet.
-int _longestRunOf(List<({int from, int to, double intervalMs})> spans) =>
-    spans.length;
-
-/// When the moments that were played happened.
+/// When the moments that were played happened, on the instrument's own clock.
 ///
 /// One onset per moment, so the gap between the hands of one moment is not a
 /// wait and cannot read as an unsteady tempo.
@@ -276,16 +275,23 @@ int _longestRunOf(List<({int from, int to, double intervalMs})> spans) =>
 /// exactly on the beat read as a pause.
 ///
 /// A moment nothing arrived for has no onset, and a moment whose observations
-/// were all extra corresponds to no expected note, so neither appears.
-List<({int position, double onsetMs})> _momentOnsets(Alignment alignment) => [
+/// were all extra corresponds to no expected note, so neither appears. Neither
+/// is a hole: the playing went on either side of them and the wait around them
+/// covers a wider stretch of the exercise.
+///
+/// A moment that was played and could not be placed on the performance clock
+/// is a hole, and appears with no onset so that no wait crosses it. The
+/// arrival clock is not consulted for it, here or anywhere: an attempt on a
+/// transport nothing has characterized contributes no timing evidence.
+List<({int position, int? onsetUs})> _momentOnsets(Alignment alignment) => [
   for (final operation in alignment.operations)
     if (operation case MomentCorrespondence(
       :final realizationPosition,
-      :final onsetMs,
+      :final performanceOnsetUs,
       :final noteEdits,
     ))
       if (noteEdits.any((edit) => edit is Match || edit is Substitution))
-        (position: realizationPosition, onsetMs: onsetMs),
+        (position: realizationPosition, onsetUs: performanceOnsetUs),
 ];
 
 /// The value [fraction] of the way through [ordered], linearly interpolated.

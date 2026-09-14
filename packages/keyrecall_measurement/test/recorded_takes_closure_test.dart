@@ -188,6 +188,7 @@ void main() {
           transcript = transcript.appending(
             pitch: note.pitch,
             timestampMs: note.timestampMs,
+            performanceTimeUs: note.performanceTimeUs,
           );
         }
       }

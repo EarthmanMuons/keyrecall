@@ -27,6 +27,7 @@ void main() {
       transcript = transcript.appending(
         pitch: spellObservedPitch(midiNote, material: material),
         timestampMs: at,
+        performanceTimeUs: at * 1000,
       );
     }
     return transcript;

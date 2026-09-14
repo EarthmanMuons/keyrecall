@@ -53,6 +53,7 @@ Map<String, (Exercise, PerformanceTranscript)> singleHandCases() {
       transcript = transcript.appending(
         pitch: spellObservedPitch(midiNote, material: exercise.material),
         timestampMs: at,
+        performanceTimeUs: at * 1000,
       );
     }
     return transcript;

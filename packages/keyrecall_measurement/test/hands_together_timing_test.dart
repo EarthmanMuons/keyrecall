@@ -43,6 +43,7 @@ void main() {
       transcript = transcript.appending(
         pitch: pitch(midiNote),
         timestampMs: timestampMs,
+        performanceTimeUs: timestampMs * 1000,
       );
     }
     return transcript;

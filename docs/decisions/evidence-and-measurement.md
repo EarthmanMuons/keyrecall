@@ -209,6 +209,28 @@ a pitch that both a moment's right hand and the next moment's left hand ask for
 belongs to whichever it arrived beside, and the channels then read the
 correspondence that was chosen.
 
+## Every timing claim is read from the instrument's clock
+
+**Decision.** Tempo, temporal stability, continuity, and coordination are all
+read from `MomentCorrespondence.performanceOnsetUs` and `handAsynchronyUs`. A
+moment the performance clock could not place contributes no wait and breaks the
+stretch continuity is read from. A moment where either hand could not be placed
+contributes no spread. Nothing falls back to arrival time.
+
+**Why.** The arrival clock reported a scale played by hand as 717 ms exactly,
+thirteen intervals out of twenty-eight, where the transport clock ranged from
+669 to 825. A channel that quietly used it would not be a weaker answer but a
+confidently wrong one, and coordination would be the easiest place for it to
+come back in after being removed from the other three.
+
+**Consequences.** An attempt on a transport nothing has characterized carries
+pitch, order, and completion evidence and no timing evidence at all. That is the
+outcome [`performance-timing.md`](performance-timing.md) prefers to a fabricated
+one. The arrival-clock `onsetMs` and `handAsynchronyMs` stay on the alignment
+operations, because diagnostics, characterization, and the tests that compare
+the two clocks all need them; what changed is that no learner-facing channel
+reads them.
+
 ## A wait is trustworthy or it does not exist
 
 **Decision.** Timing metrics read waits from contiguous runs of timed playing,

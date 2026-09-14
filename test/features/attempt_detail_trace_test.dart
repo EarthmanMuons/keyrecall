@@ -25,6 +25,7 @@ void main() {
       transcript = transcript.appending(
         pitch: spellObservedPitch(note, material: material),
         timestampMs: timestamp,
+        performanceTimeUs: timestamp * 1000,
       );
     }
     return readPerformance(exercise: exercise, transcript: transcript);
@@ -113,6 +114,7 @@ void main() {
       transcript = transcript.appending(
         pitch: spellObservedPitch(note, material: harmonicMinor.material),
         timestampMs: index * 1000,
+        performanceTimeUs: (index * 1000) * 1000,
       );
     }
 
@@ -140,10 +142,12 @@ void main() {
           .appending(
             pitch: moment.noteFor(Hand.left)!.pitch,
             timestampMs: onset,
+            performanceTimeUs: onset * 1000,
           )
           .appending(
             pitch: moment.noteFor(Hand.right)!.pitch,
             timestampMs: onset + 20,
+            performanceTimeUs: (onset + 20) * 1000,
           );
     }
 

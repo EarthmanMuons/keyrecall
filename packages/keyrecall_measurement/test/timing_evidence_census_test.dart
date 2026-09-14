@@ -44,6 +44,7 @@ void main() {
       transcript = transcript.appending(
         pitch: moment.notes.single.pitch,
         timestampMs: at,
+        performanceTimeUs: at * 1000,
       );
     }
     return measure(realization: realization, transcript: transcript);

@@ -33,6 +33,7 @@ void main() {
       transcript = transcript.appending(
         pitch: spellObservedPitch(midiNote, material: material),
         timestampMs: at,
+        performanceTimeUs: at * 1000,
       );
     }
     return transcript;
@@ -200,6 +201,7 @@ void main() {
               material: arpeggio,
             ),
             timestampMs: onsets[moment.position],
+            performanceTimeUs: onsets[moment.position] * 1000,
           );
         }
         final observation = observeAcquisition(

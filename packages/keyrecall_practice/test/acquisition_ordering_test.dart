@@ -85,6 +85,7 @@ void main() {
             material: offer.task.parent.material,
           ),
           timestampMs: index * 600,
+          performanceTimeUs: (index * 600) * 1000,
         );
       }
       await supported.closeAcquisition(transcript, at: t0.plusDays(2));

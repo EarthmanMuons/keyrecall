@@ -43,6 +43,7 @@ PerformanceTranscript transcriptOf(String take) {
     transcript = transcript.appending(
       pitch: spellObservedPitch(note['note']! as int, material: material),
       timestampMs: note['ms']! as int,
+      performanceTimeUs: (note['ms']! as int) * 1000,
     );
   }
   return transcript;

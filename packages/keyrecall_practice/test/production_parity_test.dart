@@ -331,6 +331,7 @@ PerformanceTranscript cleanTraversal(AcquisitionTask task) {
         material: task.parent.material,
       ),
       timestampMs: index * 600,
+      performanceTimeUs: (index * 600) * 1000,
     );
   }
   return transcript;

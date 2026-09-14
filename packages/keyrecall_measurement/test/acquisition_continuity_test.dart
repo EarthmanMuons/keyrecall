@@ -31,6 +31,7 @@ void main() {
       transcript = transcript.appending(
         pitch: spellObservedPitch(midiNote, material: material),
         timestampMs: at,
+        performanceTimeUs: at * 1000,
       );
     }
     return transcript;
@@ -379,6 +380,7 @@ PerformanceTranscript _played(
     transcript = transcript.appending(
       pitch: spellObservedPitch(midiNote, material: exercise.material),
       timestampMs: at,
+      performanceTimeUs: at * 1000,
     );
   }
   return transcript;

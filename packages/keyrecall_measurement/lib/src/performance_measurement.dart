@@ -35,11 +35,12 @@ class PerformanceMeasurement {
   /// How far apart the hands were at each moment both of them corresponded to
   /// something that arrived, as right minus left, and where.
   ///
-  /// The series coordination is read from. A moment where a hand played nothing
-  /// is absent rather than zero, as is one the hands meet on, so the length is
-  /// what was measurable rather than what was asked for. Positions travel with
-  /// the values because where the hands were apart is a separate question from
-  /// how far apart they got.
+  /// The series coordination is read from, on the instrument's own clock. A
+  /// moment where a hand played nothing is absent rather than zero, as is one
+  /// the hands meet on and one where either hand's note could not be placed on
+  /// that clock, so the length is what was measurable rather than what was
+  /// asked for. Positions travel with the values because where the hands were
+  /// apart is a separate question from how far apart they got.
   final List<HandAsynchrony> handAsynchronies;
 
   /// Expected notes that arrived at all, whatever octave they sounded in.
@@ -308,9 +309,12 @@ PerformanceMeasurement measure({
       for (final operation in alignment.operations)
         if (operation case MomentCorrespondence(
           :final realizationPosition,
-          handAsynchronyMs: final asynchrony?,
+          handAsynchronyUs: final asynchrony?,
         ))
-          (position: realizationPosition, asynchronyMs: asynchrony),
+          (
+            position: realizationPosition,
+            asynchronyMs: (asynchrony / 1000).round(),
+          ),
     ],
     materialProduced: produced,
     soundedCorrectly: sounded,
@@ -413,7 +417,7 @@ int? _widestAsynchronyPositionOf(Alignment alignment) {
   for (final operation in alignment.operations) {
     if (operation case MomentCorrespondence(
       :final realizationPosition,
-      handAsynchronyMs: final asynchrony?,
+      handAsynchronyUs: final asynchrony?,
     )) {
       if (asynchrony.abs() > widest) {
         widest = asynchrony.abs();

@@ -50,6 +50,7 @@ void main() {
         transcript = transcript.appending(
           pitch: pitch(midiNote),
           timestampMs: timestampMs,
+          performanceTimeUs: timestampMs * 1000,
         );
       }
       at += 500;
@@ -83,6 +84,7 @@ void main() {
         transcript = transcript.appending(
           pitch: moment.notes.single.pitch,
           timestampMs: 1000 + index * 500,
+          performanceTimeUs: (1000 + index * 500) * 1000,
         );
       }
 
@@ -114,10 +116,15 @@ void main() {
       for (final (index, moment) in realization.moments.indexed) {
         final right = moment.noteFor(Hand.right)!.midiNote;
         transcript = transcript
-            .appending(pitch: moment.noteFor(Hand.left)!.pitch, timestampMs: at)
+            .appending(
+              pitch: moment.noteFor(Hand.left)!.pitch,
+              timestampMs: at,
+              performanceTimeUs: at * 1000,
+            )
             .appending(
               pitch: pitch(index == 1 ? right + 1 : right),
               timestampMs: at + 20,
+              performanceTimeUs: (at + 20) * 1000,
             );
         at += 500;
       }
@@ -236,14 +243,20 @@ void main() {
     var transcript = PerformanceTranscript.empty.appending(
       pitch: withUnison.moments.first.notes.single.pitch,
       timestampMs: 1000,
+      performanceTimeUs: 1000 * 1000,
     );
     var at = 2000;
     for (final moment in withUnison.moments.skip(1)) {
       transcript = transcript
-          .appending(pitch: moment.noteFor(Hand.left)!.pitch, timestampMs: at)
+          .appending(
+            pitch: moment.noteFor(Hand.left)!.pitch,
+            timestampMs: at,
+            performanceTimeUs: at * 1000,
+          )
           .appending(
             pitch: moment.noteFor(Hand.right)!.pitch,
             timestampMs: at + 40,
+            performanceTimeUs: (at + 40) * 1000,
           );
       at += 1000;
     }

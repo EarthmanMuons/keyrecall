@@ -141,6 +141,7 @@ PerformanceTranscript performAcquisition({
       transcript = transcript.appending(
         pitch: spellObservedPitch(wrong, material: material),
         timestampMs: at.round(),
+        performanceTimeUs: at.round() * 1000,
       );
       if (repairDraw >= _repairFloor + (1 - _repairFloor) * quality) {
         allExpectedPlayed = false;
@@ -152,6 +153,7 @@ PerformanceTranscript performAcquisition({
     transcript = transcript.appending(
       pitch: spellObservedPitch(expected.midiNote, material: material),
       timestampMs: at.round(),
+      performanceTimeUs: at.round() * 1000,
     );
   }
 

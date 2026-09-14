@@ -40,6 +40,7 @@ void main() {
           material: material,
         ),
         timestampMs: (startMs + index * gapMs).round(),
+        performanceTimeUs: ((startMs + index * gapMs).round()) * 1000,
       );
     }
     return measure(realization: realization, transcript: transcript);

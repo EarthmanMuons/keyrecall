@@ -56,6 +56,7 @@ void main() {
       transcript = transcript.appending(
         pitch: moments[index].noteFor(hand)!.pitch,
         timestampMs: at,
+        performanceTimeUs: at * 1000,
       );
     }
     return transcript;

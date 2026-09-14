@@ -38,6 +38,7 @@ void main() {
       transcript = transcript.appending(
         pitch: spellObservedPitch(midiNote, material: material),
         timestampMs: at,
+        performanceTimeUs: at * 1000,
       );
     }
     return transcript;
@@ -206,6 +207,7 @@ void main() {
           transcript = transcript.appending(
             pitch: moment.noteFor(hand)!.pitch,
             timestampMs: hand == Hand.right ? at + spread : at,
+            performanceTimeUs: (hand == Hand.right ? at + spread : at) * 1000,
           );
         }
       }
@@ -225,6 +227,7 @@ void main() {
           transcript = transcript.appending(
             pitch: moment.noteFor(hand)!.pitch,
             timestampMs: hand == Hand.right ? at + spread : at,
+            performanceTimeUs: (hand == Hand.right ? at + spread : at) * 1000,
           );
         }
       }
@@ -273,6 +276,7 @@ void main() {
           transcript = transcript.appending(
             pitch: moment.noteFor(hand)!.pitch,
             timestampMs: hand == Hand.right ? at + spread : at,
+            performanceTimeUs: (hand == Hand.right ? at + spread : at) * 1000,
           );
         }
       }

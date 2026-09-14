@@ -37,6 +37,7 @@ void main() {
       transcript = transcript.appending(
         pitch: pitch(midiNote),
         timestampMs: at,
+        performanceTimeUs: at * 1000,
       );
     }
     return measure(realization: realization, transcript: transcript);
@@ -100,6 +101,7 @@ void main() {
         transcript = transcript.appending(
           pitch: pitch(midiNote),
           timestampMs: at,
+          performanceTimeUs: at * 1000,
         );
       }
       return measure(realization: realization, transcript: transcript);

@@ -34,6 +34,9 @@ void main() {
         pitch: spellObservedPitch(midiNote, material: exercise.material),
         timestampMs:
             (index ~/ perMoment) * gapMs + (index % perMoment) * spreadMs,
+        performanceTimeUs:
+            ((index ~/ perMoment) * gapMs + (index % perMoment) * spreadMs) *
+            1000,
       );
     }
     return transcript;
