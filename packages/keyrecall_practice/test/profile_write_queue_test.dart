@@ -49,4 +49,31 @@ void main() {
 
     expect(await queue.run('alice', () async => 'after'), 'after');
   });
+
+  test(
+    'an operation throwing synchronously still releases the queue',
+    () async {
+      final queue = ProfileWriteQueue();
+
+      await expectLater(
+        queue.run<void>('alice', () => throw StateError('no')),
+        throwsStateError,
+      );
+
+      expect(await queue.run('alice', () async => 'after'), 'after');
+    },
+  );
+
+  test('a synchronous throw behind queued work releases the queue', () async {
+    final queue = ProfileWriteQueue();
+    final held = Completer<void>();
+    final first = queue.run('alice', () => held.future);
+
+    final thrown = queue.run<void>('alice', () => throw StateError('no'));
+    held.complete();
+
+    await first;
+    await expectLater(thrown, throwsStateError);
+    expect(await queue.run('alice', () async => 'after'), 'after');
+  });
 }

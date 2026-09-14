@@ -17,8 +17,12 @@ class ProfileWriteQueue {
     final done = Completer<void>();
     _tails[profileId] = done.future;
 
+    // Invoked through the future chain either way, so an operation that throws
+    // before its first suspension reaches the same cleanup as one whose future
+    // fails. Raised synchronously, it would escape before the handler below
+    // was installed and leave this profile's tail waiting forever.
     final result = waitFor == null
-        ? operation()
+        ? Future.sync(operation)
         : waitFor.then((_) => operation());
 
     return result.whenComplete(() {
