@@ -257,6 +257,14 @@ class FileProfileRepository implements ProfileRepository {
 
     final marker = _deletionFileFor(profileId);
     if (marker.existsSync()) await marker.delete();
+
+    // The directory goes only once nothing is left in it. Anything still
+    // there was not this repository's to remove, and a leftover file is
+    // somebody's evidence until whoever wrote it says otherwise.
+    final directory = _directoryFor(profileId);
+    if (directory.existsSync() && directory.listSync().isEmpty) {
+      await directory.delete();
+    }
   }
 
   Future<Profile> _require(String profileId) async {
