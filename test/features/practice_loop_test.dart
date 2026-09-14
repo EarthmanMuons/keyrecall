@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -8,6 +10,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
+import 'package:keyrecall/features/practice/practice_failure.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
 import '../support/scheduler_override.dart';
@@ -341,6 +344,98 @@ void main() {
       1,
       reason: 'the journal is the source of truth, not the process',
     );
+  });
+
+  group('over real storage', () {
+    late Directory root;
+
+    setUp(() {
+      root = Directory.systemTemp.createTempSync('keyrecall_startup_test');
+    });
+
+    tearDown(() {
+      if (root.existsSync()) root.deleteSync(recursive: true);
+    });
+
+    ProviderContainer onDisk() {
+      final container = ProviderContainer(
+        overrides: [
+          storageRootProvider.overrideWith((ref) async => root),
+          inProcessScheduling,
+        ],
+      );
+      addTearDown(container.dispose);
+      container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
+      return container;
+    }
+
+    test('unreadable selection metadata is repaired, not erased', () async {
+      final started = onDisk();
+      await place(started);
+      final before = await loopOf(started);
+      File('${root.path}/profiles.json').writeAsStringSync('{not json');
+
+      // A relaunch cannot say who is active, and that is all it cannot say.
+      final relaunched = onDisk();
+      final failure = await loopOf(relaunched)
+          .then<Object?>((_) => null, onError: (Object error) => error);
+      expect(
+        failure,
+        isA<PracticeLoopFailure>()
+            .having(
+              (failure) => failure.kind,
+              'kind',
+              PracticeFailure.selection,
+            )
+            .having((failure) => failure.profileId, 'profileId', isNull),
+      );
+
+      // The repair rewrites the selection and leaves the profile standing.
+      await relaunched.read(practiceLoopProvider.notifier).repairSelection();
+      final reopened = await loopOf(relaunched);
+      expect(reopened.profile.id, before.profile.id);
+      expect(reopened.profile.placement, before.profile.placement);
+    });
+
+    test('an unreadable genesis offers no way to destroy a history', () async {
+      final started = onDisk();
+      await place(started);
+      final before = await loopOf(started);
+      File('${root.path}/${before.profile.id}/profile.json')
+          .writeAsStringSync('{not json');
+
+      final failure = await loopOf(onDisk())
+          .then<Object?>((_) => null, onError: (Object error) => error);
+
+      expect(
+        failure,
+        isA<PracticeLoopFailure>()
+            .having((failure) => failure.kind, 'kind', PracticeFailure.roster)
+            .having(
+              (failure) => failure.profileId,
+              'profileId',
+              before.profile.id,
+            ),
+      );
+    });
+
+    test('a deletion the last run left recorded is finished first', () async {
+      final started = onDisk();
+      await place(started);
+      final before = await loopOf(started);
+      final repository = FileProfileRepository(root);
+      await repository.beginDelete(before.profile.id);
+
+      // Nobody is left, so the install is back at the placement question
+      // rather than practicing as somebody it decided to forget.
+      await expectLater(loopOf(onDisk()), throwsA(isA<StateError>()));
+      expect(await repository.pendingDeletions(), isEmpty);
+      expect(await repository.list(), isEmpty);
+      expect(
+        File('${root.path}/${before.profile.id}/journal.jsonl').existsSync(),
+        isFalse,
+      );
+    });
   });
 
   test('erasing targets the profile it was given, not the selection', () async {

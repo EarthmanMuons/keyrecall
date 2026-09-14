@@ -162,6 +162,80 @@ void main() {
   });
 
   test(
+    'a mutation asked for while one runs is refused, not confirmed',
+    () async {
+      final container = containerOn();
+      await container.read(profileRosterProvider.future);
+      final (alice, bob) = await seedTwo(container);
+      final notifier = container.read(profileRosterProvider.notifier);
+
+      final first = notifier.select(alice.id);
+      final second = await notifier.select(bob.id);
+      await first;
+
+      expect(second, isA<ProfileMutationBusy<Profile>>());
+      expect((await profiles.selected())?.id, alice.id);
+    },
+  );
+
+  test('a selection confirms the profile storage actually holds', () async {
+    final container = containerOn();
+    await container.read(profileRosterProvider.future);
+    final (alice, _) = await seedTwo(container);
+
+    final switched = await container
+        .read(profileRosterProvider.notifier)
+        .select(alice.id);
+
+    expect((switched as ProfileChanged<Profile>).value.id, alice.id);
+    expect((await profiles.selected())?.id, alice.id);
+  });
+
+  test('a create whose selection fails is finished, not repeated', () async {
+    final repository = _SelectionRefusesOnce(profiles);
+    final container = ProviderContainer(
+      overrides: [
+        profileRepositoryProvider.overrideWith((ref) async => repository),
+        inProcessScheduling,
+        practiceStoreProvider.overrideWith((ref) async => practice),
+      ],
+    );
+    addTearDown(container.dispose);
+    await container.read(profileRosterProvider.future);
+    final notifier = container.read(profileRosterProvider.notifier);
+
+    final added = await notifier.add('Bob', PlacementTier.someExperience);
+    expect(added, isA<ProfilePartlyChanged<Profile>>());
+    expect(notifier.hasUnselectedProfile, isTrue);
+    final created = (added as ProfilePartlyChanged<Profile>).value;
+
+    expect(await notifier.finishAdding(), isA<ProfileChanged<Profile>>());
+    expect((await profiles.list()).map((profile) => profile.id), [created.id]);
+    expect((await profiles.selected())?.id, created.id);
+    expect(notifier.hasUnselectedProfile, isFalse);
+  });
+
+  test('erasing a history keeps the profile and its placement', () async {
+    final container = containerOn();
+    await container.read(profileRosterProvider.future);
+    final created = await profiles.create(
+      displayName: 'Alice',
+      placement: PlacementTier.advanced,
+    );
+    await practice.savePracticePlan(created.id, PracticePlan.normal);
+
+    final erased = await container
+        .read(profileRosterProvider.notifier)
+        .eraseHistory(created.id);
+
+    expect(erased, isA<ProfileChanged<void>>());
+    final remaining = (await profiles.list()).single;
+    expect(remaining.id, created.id);
+    expect(remaining.placement, PlacementTier.advanced);
+    expect(await practice.loadPracticePlan(created.id), isNull);
+  });
+
+  test(
     'an interrupted deletion leaves an intent that can be finished',
     () async {
       final repository = InMemoryProfileRepository();
@@ -288,4 +362,69 @@ String _today() {
   final now = DateTime.now();
   return '${now.year}-${now.month.toString().padLeft(2, '0')}-'
       '${now.day.toString().padLeft(2, '0')}';
+}
+
+/// A repository whose first selection refuses, the way a full disk would.
+class _SelectionRefusesOnce implements ProfileRepository {
+  final ProfileRepository _repository;
+  bool _refused = false;
+
+  _SelectionRefusesOnce(this._repository);
+
+  @override
+  Future<Profile> select(String profileId) async {
+    if (_refused) return _repository.select(profileId);
+    _refused = true;
+    throw StateError('the selection could not be written');
+  }
+
+  @override
+  Future<Profile> create({
+    required String displayName,
+    required PlacementTier placement,
+    DateTime? createdAt,
+    String? presentationHint,
+  }) => _repository.create(
+    displayName: displayName,
+    placement: placement,
+    createdAt: createdAt,
+    presentationHint: presentationHint,
+  );
+
+  @override
+  Future<List<Profile>> list() => _repository.list();
+
+  @override
+  Future<Profile?> selected() => _repository.selected();
+
+  @override
+  Future<Profile?> selectedOrOldest() => _repository.selectedOrOldest();
+
+  @override
+  Future<Profile?> find(String profileId) => _repository.find(profileId);
+
+  @override
+  Future<Profile> rename(String profileId, String displayName) =>
+      _repository.rename(profileId, displayName);
+
+  @override
+  Future<Profile> restyle(String profileId, String? presentationHint) =>
+      _repository.restyle(profileId, presentationHint);
+
+  @override
+  Future<void> clearSelection() => _repository.clearSelection();
+
+  @override
+  Future<void> beginDelete(String profileId) =>
+      _repository.beginDelete(profileId);
+
+  @override
+  Future<List<String>> pendingDeletions() => _repository.pendingDeletions();
+
+  @override
+  Future<void> finishDelete(String profileId) =>
+      _repository.finishDelete(profileId);
+
+  @override
+  Future<Profile> delete(String profileId) => _repository.delete(profileId);
 }
