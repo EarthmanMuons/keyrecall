@@ -168,6 +168,44 @@ void main() {
     },
   );
 
+  test('a host disposed while binding does not install its worker', () async {
+    // The binding is named before the first await. Taken afterwards it would
+    // be whatever the lifecycle did during it, and a disposed host would come
+    // back holding disposal's own number and bind itself anyway.
+    final resolved =
+        PracticeScopeResolver().resolve(
+              goal: PracticeGoal.generalFluency,
+              focus: PracticeFocus.unrestricted,
+              catalog: fixtureMaterials,
+              instrument: InstrumentProfile(),
+            )
+            as ValidPracticeScope;
+    final scheduler = IsolateScheduler();
+
+    final binding = scheduler.bind(
+      scope: resolved.scope,
+      entry: resolved.entryPolicy,
+      learner: const LearnerModel(),
+      config: v1SchedulerConfig,
+    );
+    await scheduler.dispose();
+    await binding;
+
+    await expectLater(
+      scheduler.decide(
+        epoch: 0,
+        state: const LearnerModel().placementState(
+          PlacementTier.someExperience,
+          at: t0,
+        ),
+        session: SessionState(),
+        dueRequirementIds: const [],
+        at: t0.plusDays(0.5),
+      ),
+      throwsA(isA<StateError>()),
+    );
+  });
+
   test('a second decision in flight is refused, not misanswered', () async {
     // One verdict per request, matched by id. Before that, a worker answered
     // whatever it was last asked, so the second caller took the first one's

@@ -51,8 +51,10 @@ class IsolateScheduler implements SchedulerHost {
     required LearnerModel learner,
     required SchedulerConfig config,
   }) async {
-    await dispose();
-    final binding = _bindings;
+    // Named before yielding. A generation taken after an await is whatever the
+    // lifecycle did during it, so a binding disposed while spawning would come
+    // back holding the number that disposal issued and install itself anyway.
+    final binding = _invalidate();
 
     final _Worker worker;
     try {
@@ -85,10 +87,18 @@ class IsolateScheduler implements SchedulerHost {
   }
 
   @override
-  Future<void> dispose() async {
-    _bindings++;
-    _worker?.stop();
+  Future<void> dispose() async => _invalidate();
+
+  /// Ends whatever is bound, and names the operation replacing it.
+  ///
+  /// Synchronous, and the only thing that retires a worker. Binding and
+  /// disposal are one question asked twice, and an asynchronous lifecycle
+  /// operation calling another is what makes the ordering hard to see.
+  int _invalidate() {
+    final worker = _worker;
     _worker = null;
+    worker?.stop();
+    return ++_bindings;
   }
 
   @override

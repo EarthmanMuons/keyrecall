@@ -541,6 +541,18 @@ class PracticeSession {
     _bound = false;
   }
 
+  /// Re-establishes where this sitting's decisions are computed.
+  ///
+  /// What a host that lost its worker needs, and the whole of what it needs:
+  /// nothing authoritative went with the worker. The learner state, the
+  /// journal, and the pending slot never left this isolate, so the sitting
+  /// goes on being the sitting and the next decision binds the scope it holds
+  /// to a fresh worker.
+  ///
+  /// Not a reopen. Reopening would find this sitting's decision pending and
+  /// present it again, which is a heavier recovery than a lost worker earns.
+  void recoverScheduling() => _bound = false;
+
   /// Decides what to present next and makes that decision durable.
   ///
   /// Invalid and caught-up scopes return before scheduling and consume no
