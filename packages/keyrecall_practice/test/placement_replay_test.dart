@@ -110,6 +110,7 @@ void main() {
       placement: PlacementTier.beginner,
       createdAt: t0,
     );
+    await repository.select(profile.id);
     final store = FilePracticeStore(root);
     final expected = learnerStateHash(
       (await sessionOver(store, profile, attempts: 6)).state,

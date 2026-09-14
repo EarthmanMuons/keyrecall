@@ -70,22 +70,24 @@ void main() {
       expect(await repository.list(), hasLength(2));
     });
 
-    forEachRepository('selects the first profile but not the second', (
+    forEachRepository('writes the genesis and nothing else', (
       repository,
     ) async {
-      expect(await repository.selected(), isNull);
-
+      // One durable fact per call. A create that also established the
+      // selection would have to report a genesis that landed and a selection
+      // that did not as having done nothing at all.
       final first = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
         placement: PlacementTier.someExperience,
       );
       expect(
-        (await repository.selected())?.id,
-        first.id,
-        reason: 'an install with one person should not need a selection step',
+        await repository.selected(),
+        isNull,
+        reason: 'who is active is a separate write, even for the first one',
       );
 
+      await repository.select(first.id);
       await repository.create(
         displayName: 'Bob',
         createdAt: t0.plusDays(1),
@@ -153,6 +155,8 @@ void main() {
         createdAt: t0,
         placement: PlacementTier.someExperience,
       );
+      await repository.select(created.id);
+
       await repository.rename(created.id, 'Renamed');
 
       expect((await repository.selected())?.id, created.id);
@@ -201,7 +205,9 @@ void main() {
         placement: PlacementTier.someExperience,
       );
 
+      await repository.select(alice.id);
       expect((await repository.selected())?.id, alice.id);
+
       await repository.select(bob.id);
       expect((await repository.selected())?.id, bob.id);
     });
@@ -255,6 +261,8 @@ void main() {
         placement: PlacementTier.someExperience,
       );
 
+      await repository.select(alice.id);
+
       await repository.delete(bob.id);
 
       expect((await repository.selected())?.id, alice.id);
@@ -273,6 +281,8 @@ void main() {
         createdAt: t0.plusDays(1),
         placement: PlacementTier.someExperience,
       );
+
+      await repository.select(alice.id);
 
       await repository.delete(alice.id);
 
@@ -384,12 +394,6 @@ void main() {
         placement: PlacementTier.someExperience,
       );
 
-      final json =
-          jsonDecode(repository.indexFile.readAsStringSync())
-              as Map<String, Object?>;
-      json['selected_profile_id'] = null;
-      repository.indexFile.writeAsStringSync(jsonEncode(json));
-
       expect((await repository.selectedOrOldest())?.id, alice.id);
       expect(await repository.list(), hasLength(2));
     });
@@ -421,11 +425,12 @@ void main() {
 
     test('is written whole, never half', () async {
       final repository = FileProfileRepository(root, now: () => t0);
-      await repository.create(
+      final created = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
         placement: PlacementTier.someExperience,
       );
+      await repository.select(created.id);
 
       expect(repository.indexFile.existsSync(), isTrue);
       expect(File('${repository.indexFile.path}.tmp').existsSync(), isFalse);
@@ -445,11 +450,12 @@ void main() {
 
     test('corrupt metadata fails loudly', () async {
       final repository = FileProfileRepository(root, now: () => t0);
-      await repository.create(
+      final created = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
         placement: PlacementTier.someExperience,
       );
+      await repository.select(created.id);
 
       repository.indexFile.writeAsStringSync('{not json');
 
@@ -470,11 +476,12 @@ void main() {
 
     test('an unreadable schema version fails rather than guessing', () async {
       final repository = FileProfileRepository(root, now: () => t0);
-      await repository.create(
+      final created = await repository.create(
         displayName: 'Alice',
         createdAt: t0,
         placement: PlacementTier.someExperience,
       );
+      await repository.select(created.id);
 
       final json =
           jsonDecode(repository.indexFile.readAsStringSync())
@@ -505,6 +512,7 @@ void main() {
         createdAt: t0,
         placement: PlacementTier.someExperience,
       );
+      await repository.select(alice.id);
 
       final json =
           jsonDecode(repository.indexFile.readAsStringSync())
@@ -645,7 +653,6 @@ void main() {
     test('two repairs of a lost selection agree', () async {
       final repository = FileProfileRepository(root, now: () => t0);
       final alice = await add(repository, 'Alice');
-      repository.indexFile.deleteSync();
 
       final repaired = await Future.wait([
         repository.selectedOrOldest(),

@@ -134,7 +134,6 @@ class FileProfileRepository implements ProfileRepository {
     DateTime? createdAt,
     String? presentationHint,
   }) => _serialize(() async {
-    final isFirst = (await _readProfiles()).isEmpty;
     final profile = Profile.create(
       displayName: displayName,
       placement: placement,
@@ -142,9 +141,6 @@ class FileProfileRepository implements ProfileRepository {
       presentationHint: presentationHint,
     );
     await _writeProfile(profile);
-    // The first profile created becomes the active one, since an install with
-    // exactly one person should not need a separate selection step.
-    if (isFirst) await _writeSelection(profile.id);
     return profile;
   });
 

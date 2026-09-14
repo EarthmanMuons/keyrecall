@@ -67,6 +67,15 @@ class ProfileLifecycle {
 
   /// Creates a profile, and practices as it when [selecting].
   ///
+  /// The two durable facts are written here rather than inside the repository,
+  /// so the boundary between them is one this can report. A genesis that
+  /// landed is never described as nothing having happened, whether it is the
+  /// first profile on the install or the fifth.
+  ///
+  /// Creating without [selecting] leaves the install with a profile and no
+  /// active one, which [ProfileRepository.selectedOrOldest] resolves by
+  /// choosing among the people who exist.
+  ///
   /// [placement] is fixed for the life of the profile, because it is the prior
   /// the whole history is computed from: changing it would reinterpret every
   /// attempt rather than update a skill level.

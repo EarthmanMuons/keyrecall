@@ -65,10 +65,16 @@ repository owns genesis and selection, and the store owns practice.
 
 ### Creating is two durable facts
 
-The profile exists, and it is the active profile. They are separate writes, so
-creation reports which of them landed. A create whose selection failed comes
-back carrying the identity it committed, and finishing it selects that profile:
-running the create again would make a second person with a history of their own.
+The profile exists, and it is the active profile. They are separate writes, and
+the repository primitive commits only the first: `create` writes a genesis and
+never a selection, not even for the first profile on an install. Sequencing the
+two is the lifecycle's job, which is what lets it report which of them landed.
+
+A create whose selection failed comes back carrying the identity it committed,
+and finishing it selects that profile: running the create again would make a
+second person with a history of their own. An install left in that state
+resolves itself besides, because choosing among the people who exist is what
+`selectedOrOldest` already does.
 
 ### Deleting is a resumable state machine
 

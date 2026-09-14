@@ -144,16 +144,20 @@ abstract interface class ProfileRepository {
   /// The profile with [profileId], or null.
   Future<Profile?> find(String profileId);
 
-  /// Creates a profile and returns it.
+  /// Creates a profile's record of itself, and nothing else.
+  ///
+  /// One durable fact, so a caller that is told it happened knows exactly what
+  /// is on disk. Selecting the new profile is [select], and sequencing the two
+  /// is [ProfileLifecycle.create]: creating even the first profile does not
+  /// establish a selection here, because a create that wrote the genesis and
+  /// then failed to write the selection would have to report itself as having
+  /// done nothing.
   ///
   /// The id and creation instant are chosen once, here, and never change
-  /// again. The first profile created becomes the active one, since an install
-  /// with exactly one person should not need a separate selection step. Later
-  /// ones do not: adding somebody must not quietly switch who is practicing.
-  /// [placement] is where this learner's competency estimates start, and it
-  /// is fixed here for the life of the profile: it is the initial condition
-  /// every later posterior is computed from, so changing it would reinterpret
-  /// the history rather than update it.
+  /// again. [placement] is where this learner's competency estimates start,
+  /// and it is fixed here for the life of the profile: it is the initial
+  /// condition every later posterior is computed from, so changing it would
+  /// reinterpret the history rather than update it.
   Future<Profile> create({
     required String displayName,
     required PlacementTier placement,
@@ -291,7 +295,7 @@ class InMemoryProfileRepository implements ProfileRepository {
     );
     _index = ProfileIndex(
       profiles: [..._index.profiles, profile],
-      selectedProfileId: _index.isEmpty ? profile.id : _index.selectedProfileId,
+      selectedProfileId: _index.selectedProfileId,
     );
     return profile;
   }

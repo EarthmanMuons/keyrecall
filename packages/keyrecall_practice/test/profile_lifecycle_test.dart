@@ -138,6 +138,52 @@ void main() {
       expect((await repository.selected())?.id, pending.profile.id);
     });
 
+    test('a genesis on disk is never reported as nothing created', () async {
+      // The boundary the repository used to hide. Creating wrote the genesis
+      // and, for the first profile, the selection, so a selection that failed
+      // came back as a create that had not happened while profile.json was
+      // already on disk.
+      final repository = _SelectionFailsOnce(
+        FileProfileRepository(root, now: () => t0),
+      );
+      final lifecycle = ProfileLifecycle(
+        repository: repository,
+        store: FilePracticeStore(root),
+      );
+
+      final attempted = await lifecycle.create(
+        displayName: 'Alice',
+        placement: PlacementTier.someExperience,
+      );
+
+      expect(attempted, isA<ProfileSelectionPending>());
+      final created = (attempted as ProfileSelectionPending).profile;
+      expect(
+        FileProfileRepository(root).profileFileFor(created.id).existsSync(),
+        isTrue,
+        reason: 'the genesis landed, and the result has to say so',
+      );
+      expect(File('${root.path}/profiles.json').existsSync(), isFalse);
+
+      // A restart finds that profile and finishes the half that is owed,
+      // rather than placing the install again and making a second Alice.
+      final reopened = FileProfileRepository(root, now: () => t0);
+      expect((await reopened.list()).single.id, created.id);
+      expect(
+        await ProfileLifecycle(
+          repository: reopened,
+          store: FilePracticeStore(root),
+        ).place(PlacementTier.advanced),
+        isA<ProfileCreated>().having(
+          (placed) => placed.profile.id,
+          'profile',
+          created.id,
+        ),
+      );
+      expect((await reopened.list()).single.id, created.id);
+      expect((await reopened.selected())?.id, created.id);
+    });
+
     test('placing an install that has somebody returns them', () async {
       final lifecycle = inMemory();
       final placed = await lifecycle.place(PlacementTier.someExperience);

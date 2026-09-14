@@ -58,16 +58,18 @@ void main() {
 
   Future<(Profile, Profile)> seedTwo(ProviderContainer container) async {
     final repository = await container.read(profileRepositoryProvider.future);
-    return (
-      await repository.create(
-        displayName: 'Alice',
-        placement: PlacementTier.someExperience,
-      ),
-      await repository.create(
-        displayName: 'Bob',
-        placement: PlacementTier.beginner,
-      ),
+    final alice = await repository.create(
+      displayName: 'Alice',
+      placement: PlacementTier.someExperience,
     );
+    final bob = await repository.create(
+      displayName: 'Bob',
+      placement: PlacementTier.beginner,
+    );
+    // Creating writes a genesis and nothing else, so who is practicing is
+    // said here rather than inferred from who was made first.
+    await repository.select(alice.id);
+    return (alice, bob);
   }
 
   testWidgets('shows everybody, marking the one being practiced as', (
