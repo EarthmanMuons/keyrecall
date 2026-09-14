@@ -36,6 +36,7 @@ void main() {
     WidgetTester tester,
     GuidanceContext guidance, {
     PresentationConditions? presentation,
+    bool? observing,
   }) async {
     tester.view.physicalSize = const Size(1400, 2000);
     tester.view.devicePixelRatio = 1.0;
@@ -44,7 +45,17 @@ void main() {
     final finished = <AttemptTermination>[];
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [syntheticInstrument],
+        overrides: [
+          syntheticInstrument,
+          if (observing != null)
+            inputObservationProvider.overrideWith(
+              (ref) => (
+                isLive: observing,
+                observationId: observing ? 'test-1' : null,
+                fault: observing ? null : InputIntegrityFault.sourceClosed,
+              ),
+            ),
+        ],
         child: MaterialApp(
           home: Scaffold(
             body: AttemptView(
@@ -119,6 +130,49 @@ void main() {
   // interrupted capture is still in the provider. It used to read that
   // capture as its own and finish before a note was played, which committed
   // an attempt nobody made and put a second review on screen.
+  // An attempt started while nothing is being observed is interrupted before a
+  // note is played. Refusing it costs nothing; playing a whole exercise into a
+  // capture that was never going to count costs the exercise.
+  group('when nothing is being observed', () {
+    testWidgets('Ready does not start an attempt', (tester) async {
+      final finished = await pumpAttempt(
+        tester,
+        GuidanceContext.unguided,
+        observing: false,
+      );
+
+      final ready = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Ready'),
+      );
+      expect(ready.onPressed, isNull);
+
+      await tester.tap(find.text('Ready'), warnIfMissed: false);
+      await tester.pump();
+
+      expect(find.text('Ready'), findsOneWidget, reason: 'still at Ready');
+      expect(find.text('Counting in'), findsNothing);
+      expect(finished, isEmpty);
+    });
+
+    testWidgets('and says why', (tester) async {
+      await pumpAttempt(tester, GuidanceContext.unguided, observing: false);
+
+      expect(
+        find.text('Waiting for the instrument. Nothing is being observed yet.'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a live observation starts normally', (tester) async {
+      await pumpAttempt(tester, GuidanceContext.unguided, observing: true);
+
+      await tester.tap(find.text('Ready'));
+      await tester.pump();
+
+      expect(find.text('Counting in'), findsOneWidget);
+    });
+  });
+
   testWidgets('a new attempt does not end on the last one interruption', (
     tester,
   ) async {

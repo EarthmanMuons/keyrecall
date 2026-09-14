@@ -1,8 +1,11 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:material_ui/material_ui.dart';
+
+import 'input_source.dart';
 
 /// Scan for a MIDI instrument, connect to one, and see what happened.
 ///
@@ -108,6 +111,21 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
               _statusOf(connection),
               style: Theme.of(context).textTheme.bodySmall,
             ),
+            // A domain that is recognized and not authorized is a standing
+            // fact about this connection rather than something a longer
+            // attempt would fix, so it is said once, here, and not on every
+            // attempt. Nothing is said while the clock is still being
+            // identified: the first notes of an observation are expected to
+            // be untimed.
+            if (ref.watch(clockAuthorizationProvider) ==
+                ClockAuthorization.nonPerformance) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Timing feedback unavailable with this connection. '
+                'Note accuracy and completion are still measured.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: 8),
               Text(

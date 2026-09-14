@@ -74,6 +74,7 @@ void main() {
         clockTimingLabel((
           observation: authorized,
           phase: PerformanceClockPhase.active,
+          isObserving: true,
         )),
         'performance',
       );
@@ -84,6 +85,7 @@ void main() {
         clockTimingLabel((
           observation: authorized,
           phase: PerformanceClockPhase.failed,
+          isObserving: true,
         )),
         'unavailable, the timeline failed',
       );
@@ -94,8 +96,22 @@ void main() {
         clockTimingLabel((
           observation: authorized,
           phase: PerformanceClockPhase.detecting,
+          isObserving: true,
         )),
         'not yet timing',
+      );
+    });
+
+    // Suspending leaves the mapper's last phase standing, and nothing is
+    // being timed while nothing is being observed.
+    test('a closed observation is timing nothing, whatever it last was', () {
+      expect(
+        clockTimingLabel((
+          observation: authorized,
+          phase: PerformanceClockPhase.active,
+          isObserving: false,
+        )),
+        'unavailable, nothing is being observed',
       );
     });
 
@@ -108,6 +124,7 @@ void main() {
             granularity: 1000000,
           ),
           phase: PerformanceClockPhase.unauthorized,
+          isObserving: true,
         )),
         'not performance',
       );

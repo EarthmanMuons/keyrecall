@@ -551,8 +551,33 @@ class _AttemptSummaryView extends StatelessWidget {
               const SizedBox(height: 12),
               _TempoRow(achieved: achieved, target: summary.targetTempoBpm),
             ],
+            if (!summary.hasTiming) ...[
+              const SizedBox(height: 12),
+              const _TimingUnavailableRow(),
+            ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Why the timing rows are not here.
+///
+/// Absent rows and rows that scored nothing look the same, and they are not
+/// the same: the first is a limit of what the connection can be observed to
+/// do, and the second would be a judgment about the playing.
+class _TimingUnavailableRow extends StatelessWidget {
+  const _TimingUnavailableRow();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Text(
+      'Timing feedback unavailable for this connection. '
+      'Note accuracy and completion are still measured.',
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurfaceVariant,
       ),
     );
   }

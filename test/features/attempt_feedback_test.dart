@@ -15,8 +15,8 @@ void main() {
 
   Outcome outcome({
     double notes = 1,
-    double flow = 1,
-    double pulse = 1,
+    double? flow = 1,
+    double? pulse = 1,
     double tempo = 1,
     bool started = true,
     bool completed = true,
@@ -68,6 +68,23 @@ void main() {
     expect(summary.pulse, 0.7);
     expect(summary.achievedTempoBpm, 57);
     expect(summary.targetTempoBpm, 60);
+  });
+
+  // Rows that are absent and rows that scored nothing look the same on screen.
+  // An attempt on a transport nothing has characterized has no timing rows at
+  // all, and that is a limit of the observation rather than a judgment.
+  test('an attempt nothing could time says so rather than scoring zero', () {
+    final summary = summarizeAttempt(
+      record(0, outcome(notes: 0.9, flow: null, pulse: null, tempo: 0)),
+    )!;
+
+    expect(summary.notes, 0.9);
+    expect(summary.hasTiming, isFalse);
+    expect(summary.flow, isNull);
+    expect(summary.pulse, isNull);
+    expect(summary.achievedTempoBpm, isNull);
+
+    expect(summarizeAttempt(record(1, outcome(pulse: 0.7)))!.hasTiming, isTrue);
   });
 
   test('an attempt with no performance gets no summary', () {

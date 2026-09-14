@@ -814,8 +814,17 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// Whether this attempt asks for no tempo.
   bool get _isSelfPaced => widget.acquisition != null;
 
+  /// Whether the input boundary is observing, so an attempt could be recorded.
+  ///
+  /// An attempt started while nothing is being observed is interrupted before
+  /// a note is played. Nothing is lost by refusing it, and a learner who plays
+  /// a whole exercise into a capture that was never going to count has lost
+  /// the exercise.
+  bool get _canRecord => ref.watch(inputObservationProvider).isLive;
+
   /// Hands the screen over to the attempt, and starts it.
   void _start() {
+    if (!ref.read(inputObservationProvider).isLive) return;
     // Only where the rung has no further use for it. At the cued rung the
     // keyboard is the cue, and it stays where it is.
     if (_instrumentLeavesAtReady) _handover.forward();
@@ -1252,13 +1261,26 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           width: double.infinity,
           height: 88,
           child: FilledButton(
-            onPressed: _start,
+            onPressed: _canRecord ? _start : null,
             style: FilledButton.styleFrom(
               textStyle: Theme.of(context).textTheme.headlineSmall,
             ),
             child: const Text('Ready'),
           ),
         ),
+        // Why the button will not go, in the learner's terms. Silence here
+        // would leave a dead button and nothing to do about it.
+        if (!_canRecord) ...[
+          const SizedBox(height: 8),
+          Text(
+            ref.watch(instrumentReadinessProvider) ==
+                    InstrumentReadiness.disconnected
+                ? 'Connect your instrument to start.'
+                : 'Waiting for the instrument. Nothing is being observed yet.',
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+        ],
         // Only where retrieval is what the attempt would test, and only before
         // anything is played: afterwards, what happened is a question for the
         // performance rather than for the learner. Quiet beside Ready, because

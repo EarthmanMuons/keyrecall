@@ -90,3 +90,13 @@ final inputObservationProvider = Provider<InputObservationState>((ref) {
       );
   }
 });
+
+/// What the adopted instrument's clock is authorized to say about playing.
+///
+/// The policy's reading of what the mapper measured, for a surface that has to
+/// explain why timing is or is not available on this connection.
+final clockAuthorizationProvider = Provider<ClockAuthorization>(
+  (ref) => ClockDomainPolicy.characterized.classify(
+    ref.watch(midiInputProvider).clockObservation,
+  ),
+);

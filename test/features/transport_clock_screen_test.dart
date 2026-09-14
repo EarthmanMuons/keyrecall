@@ -84,7 +84,12 @@ void main() {
     final viewport = await pumpScreen(tester, const Size(750, 1334));
 
     expect(find.textContaining('clock detecting'), findsOneWidget);
-    expect(find.textContaining('timing use not yet known'), findsOneWidget);
+    // Nothing is adopted here, so nothing is being observed, and a shape the
+    // detector has not named yet is not the reason timing is unavailable.
+    expect(
+      find.textContaining('timing use unavailable, nothing is being observed'),
+      findsOneWidget,
+    );
     expect(
       rectOf(tester, find.textContaining('clock detecting')).bottom,
       lessThanOrEqualTo(viewport.bottom),

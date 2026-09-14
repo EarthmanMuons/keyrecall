@@ -15,7 +15,11 @@ import 'package:keyrecall_midi/keyrecall_midi.dart';
 /// while the adopted instrument's clock was something else.
 final clockDomainProvider = Provider<LiveClockDomain>((ref) {
   final input = ref.watch(midiInputProvider);
-  return (observation: input.clockObservation, phase: input.clockPhase);
+  return (
+    observation: input.clockObservation,
+    phase: input.clockPhase,
+    isObserving: input.isObserving,
+  );
 });
 
 /// What was measured about the clock, and where its timeline stands.
@@ -24,9 +28,12 @@ final clockDomainProvider = Provider<LiveClockDomain>((ref) {
 /// the domain the detector found; a phase is a property of this observation's
 /// timeline, which can have failed under a shape that is perfectly well
 /// authorized.
+/// [isObserving] is the third: a suspended observation leaves the mapper's
+/// last phase standing, and nothing is being timed while it does.
 typedef LiveClockDomain = ({
   ClockDomainObservation observation,
   PerformanceClockPhase phase,
+  bool isObserving,
 });
 
 /// The measured shape, for somebody reading it off a phone.
@@ -65,6 +72,7 @@ String clockTimingLabel(
   LiveClockDomain domain, {
   ClockDomainPolicy policy = ClockDomainPolicy.characterized,
 }) {
+  if (!domain.isObserving) return 'unavailable, nothing is being observed';
   final authorization = policy.classify(domain.observation);
   if (domain.phase == PerformanceClockPhase.failed) {
     return 'unavailable, the timeline failed';

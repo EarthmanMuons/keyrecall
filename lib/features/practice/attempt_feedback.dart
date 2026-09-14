@@ -28,6 +28,18 @@ class AttemptSummary {
     this.coordination,
     this.achievedTempoBpm,
   });
+
+  /// Whether anything about how the playing sat in time was measured.
+  ///
+  /// False for an attempt on a transport nothing has characterized, and for
+  /// one too short to read a pace from. What was played is still measured
+  /// either way, and a learner looking at rows that are simply missing has no
+  /// way to tell that from playing that scored nothing.
+  bool get hasTiming =>
+      flow != null ||
+      pulse != null ||
+      coordination != null ||
+      achievedTempoBpm != null;
 }
 
 AttemptSummary? summarizeAttempt(AttemptRecord record) =>
