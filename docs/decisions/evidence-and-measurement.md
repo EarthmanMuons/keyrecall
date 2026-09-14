@@ -252,36 +252,49 @@ requires timing runs into is unavailable evidence, not repeated failure.
 
 ## A wait is trustworthy or it does not exist
 
-**Decision.** Timing metrics read waits from contiguous runs of timed playing,
-derived from the transcript in `timingRunsOf`. A note carrying no performance
-time ends the run it falls in and belongs to none, and no wait is ever
-synthesized across it.
-
-**Why.** A performance can be partly timed: an attempt begins before the
-instrument's clock has been identified, a delivery arrives without a stamp, or
-the mapper stops vouching partway through. Dropping the untimed notes and taking
-differences over what is left would close the hole and report a wait nobody
-played, which is the same fabrication
-[`performance-timing.md`](performance-timing.md) refuses one layer down.
+**Decision.** Timing runs are over **aligned musical moments**. A moment with no
+performance onset ends the run it falls in and belongs to none, and no wait is
+ever synthesized across it. A note alignment classifies as an intrusion or a
+repeat is not a run boundary, because it realized no moment.
 
 ```text
-timed A -- untimed B -- timed C
+moment A timed -- moment B untimed -- moment C timed
 
 A -> B  lost
 B -> C  lost
 A -> C  never synthesized
+
+moment A timed -- untimed intrusion -- moment B timed
+
+A -> B  kept, because the intrusion realized nothing
 ```
 
-Consecutive notes sharing a performance time are one onset rather than several
-instant waits. One delivery is one moment however many notes it normalizes to,
-so a chord's zeros are simultaneity, not playing of no duration.
+**Why.** A performance can be partly timed: an attempt begins before the
+instrument's clock has been identified, a delivery arrives without a stamp, or
+the mapper stops vouching partway through. Dropping the untimed moments and
+taking differences over what is left would close the hole and report a wait
+nobody played, which is the same fabrication
+[`performance-timing.md`](performance-timing.md) refuses one layer down.
+
+The unit is a moment rather than a note because that is where the same question
+was already settled for chords and for two hands: alignment decides which played
+notes realize one musical moment, and this reads when those moments happened.
+Letting an untimed intrusion split a run would put intrusion evidence back into
+the timing channel after that separation was made deliberately. What does break
+a run is an untimed note that realized a moment and left nothing else to place
+it.
 
 An observation boundary needs no representation here. A reset or an integrity
 fault closes the capture, so notes from either side of one are never in the same
 transcript.
 
+`timingRunsOf` reads the same rule off a transcript, before alignment. It is a
+characterization helper for a single stream, not the production definition: it
+cannot know which notes realized a moment, so it treats every untimed note as a
+boundary and every equal-timed pair as one onset.
+
 **Consequences.** The denominator for any timing claim is usable waits, not
-notes. Six timed notes in one run are five waits, and the same six split by a
+notes. Six timed moments in one run are five waits, and the same six split by a
 hole are fewer.
 
 ## Two references, and a floor for each claim

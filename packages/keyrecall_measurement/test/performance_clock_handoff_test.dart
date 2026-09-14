@@ -107,6 +107,42 @@ void main() {
     });
   });
 
+  // Intrusion evidence and timing evidence were separated at the alignment
+  // boundary on purpose. A note that realized no moment cannot break the
+  // timing of the moments around it, whether or not anything could time it.
+  group('a note that realized nothing', () {
+    PerformanceMeasurement measuredWithIntrusion({required bool timed}) {
+      var transcript = PerformanceTranscript.empty;
+      for (final (position, midiNote) in scale.indexed) {
+        final atMs = 1000 + position * 500;
+        transcript = transcript.appending(
+          pitch: pitch(midiNote),
+          timestampMs: atMs,
+          performanceTimeUs: atMs * 1000,
+        );
+        if (position == 3) {
+          transcript = transcript.appending(
+            pitch: pitch(61),
+            timestampMs: atMs + 200,
+            performanceTimeUs: timed ? (atMs + 200) * 1000 : null,
+          );
+        }
+      }
+      return measure(realization: oneHand, transcript: transcript);
+    }
+
+    test('does not split the timing run, timed or not', () {
+      for (final timed in [true, false]) {
+        final measured = measuredWithIntrusion(timed: timed);
+
+        expect(measured.intrusions, 1, reason: 'timed: $timed');
+        expect(measured.timing.longestRunWaits, 7, reason: 'timed: $timed');
+        expect(measured.timing.gaps.map((gap) => gap.gapMs), everyElement(500));
+        expect(measured.continuity, 1.0);
+      }
+    });
+  });
+
   group('coordination', () {
     final twoHands = ExerciseRealization([
       for (final (position, midiNote) in scale.indexed)

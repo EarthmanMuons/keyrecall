@@ -48,7 +48,15 @@ class TimingRun {
   String toString() => 'TimingRun(${onsets.length} onsets, $waitCount waits)';
 }
 
-/// The stretches of [transcript] whose timing can be trusted.
+/// The stretches of [transcript] whose timing can be trusted, as a single
+/// stream of notes.
+///
+/// A characterization helper, not the production definition of a timing run:
+/// production reads runs over aligned musical moments, where alignment has
+/// already said which notes realized one. This sees notes, so it treats every
+/// untimed note as a boundary and every equal-timed pair as one onset, which is
+/// the right reading of a transcript and a stricter one than the metrics use.
+/// See `docs/decisions/evidence-and-measurement.md`.
 ///
 /// A note with no performance time ends the run it falls in and belongs to no
 /// run, so the two waits it would have been part of are both lost and neither
