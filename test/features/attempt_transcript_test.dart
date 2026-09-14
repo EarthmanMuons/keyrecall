@@ -241,6 +241,26 @@ void main() {
       expect(capture().isInterrupted, isFalse);
     });
 
+    // A recording belongs to the observation it started in. A reset opens the
+    // next one, and what was played on either side of it is not one
+    // performance however healthy the input looks at both ends.
+    test('a recording cannot cross into the observation after it', () async {
+      await observe();
+      record();
+      await playNote(60, at: 100);
+
+      await observe();
+      await playNote(62, at: 200);
+
+      expect(capture().isInterrupted, isTrue);
+      expect(capture().notes.map((note) => note.midiNote), [60]);
+      expect(
+        capture().notes.length,
+        1,
+        reason: 'the note after the boundary belongs to no attempt',
+      );
+    });
+
     // A fault that arrives between attempts reaches nobody's capture, so
     // nothing was going to arrive later to correct the next one. It recorded
     // no notes and Done closed it as ordinary playing.

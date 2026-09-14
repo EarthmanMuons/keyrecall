@@ -227,6 +227,9 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
       _interrupt(event.fault, detail: event.detail);
       return;
     }
+    // A reset opens the next observation, and a recording belongs to the one
+    // it started in. Continuing under the new one would let an attempt span a
+    // boundary while looking live at both ends.
     if (event is InputTemporalResetEvent) {
       _interrupt(null);
       return;
