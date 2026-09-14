@@ -166,9 +166,8 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
     _lastTimestampMs = 0;
     _recordings += 1;
     // A recording belongs to one live observation. Starting one while nothing
-    // is being observed produced a capture that looked ordinary and could be
-    // closed as playing nobody did, because no later event was going to arrive
-    // to correct it.
+    // is being observed has no observation to belong to, and no later event is
+    // coming to say so.
     final observation = _observation;
     _material = observation == null ? null : material;
     state = AttemptCapture(

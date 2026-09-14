@@ -156,11 +156,9 @@ class PerformanceClockMapper {
 
     final unwrapped = _unwrappedCounts + counts;
     // Every step being plausible on its own does not make the timeline
-    // plausible. A clock that has stopped reports an interval of zero
-    // forever, and zero is inside any short wait's window, so the whole
-    // performance would read as one instant. Arrival still chooses nothing
-    // here and supplies nothing: it refuses a timeline that has stopped
-    // keeping time with it.
+    // plausible: a clock that has stopped reports an interval of zero forever,
+    // and zero is inside any short wait's window. Arrival still chooses
+    // nothing here and supplies nothing.
     if (!_keepsTime(unwrapped, arrivalMs, clock.countsPerMillisecond)) {
       return _fail(TimingUnavailableReason.implausibleClockStep);
     }

@@ -102,8 +102,7 @@ class InputActivityNotifier extends Notifier<InputActivity> {
   @override
   InputActivity build() {
     // Whatever is already held, since this may be attaching to a stream that
-    // opened long ago. Reading the last event instead reported one key of a
-    // chord and no pedal.
+    // opened long ago. The last event is one event, not a state.
     final held = ref.read(inputSnapshotProvider);
     _activity = InputActivity(
       observed: InputTemporalState(

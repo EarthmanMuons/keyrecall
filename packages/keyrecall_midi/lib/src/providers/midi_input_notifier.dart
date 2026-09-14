@@ -225,20 +225,14 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// event: the app starting, a connection transition, adopting an instrument,
   /// coming back to the foreground, or a failed source being taken up again.
   ///
-  /// It does not touch the subscription, and an earlier version did. An
-  /// observation epoch is a fact about what KeyRecall can vouch for; a
-  /// subscription is a fact about the transport, and the plugin's stream is
-  /// the same stream throughout. Replacing it on every connection transition
-  /// dropped the platform's last listener and took its MIDI receivers down
-  /// with it, which on Android stopped delivery outright and then churned
-  /// through several epochs before anything arrived again.
+  /// It does not touch the subscription. An observation epoch is a fact about
+  /// what KeyRecall can vouch for; a subscription is a fact about the
+  /// transport, and the plugin's stream is the same stream throughout. See
+  /// `docs/system/input.md`.
   void _beginEpoch() {
-    // Three separate facts, and an epoch needs all of them. The transport has
-    // to be able to deliver, nobody may have put observation down, and an
-    // instrument has to be adopted for the input to be from. Inferring any of
-    // them from the reducer's phase is how an error reopened an observation
-    // that had been suspended, and how a resume claimed one on a stream that
-    // had already ended.
+    // Three separate facts, and an epoch needs all of them: the transport can
+    // deliver, nobody has put observation down, and an instrument is adopted.
+    // None of them follows from the reducer's phase.
     if (!_canObserve) {
       // Whatever was open cannot continue either: an instrument that went
       // away is not still holding the keys it was holding.
@@ -281,12 +275,9 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
         .onMidiMessages
         .listen(
           _receive,
-          // An error is not a quiet gap in the input. Reading through it is
-          // how a capture kept collecting notes after its stream had already
-          // failed. The observation ends and a new one opens; the
-          // subscription survives on its own, because it does not cancel on
-          // error, so a transient failure costs an epoch rather than the
-          // instrument.
+          // An error is not a quiet gap in the input: the observation ends
+          // and a new one opens. The subscription does not cancel on error,
+          // so a transient failure costs an epoch rather than the instrument.
           onError: (Object error, StackTrace _) {
             if (!kReleaseMode) debugPrint('MIDI message error: $error');
             _emit(

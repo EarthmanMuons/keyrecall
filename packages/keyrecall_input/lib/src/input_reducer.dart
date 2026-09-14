@@ -40,9 +40,8 @@ class _ChannelState {
 /// The one interpretation of raw input.
 ///
 /// Normalization, sounding state, source admission, and temporal continuity
-/// are the same decision made once. Every earlier version of this had them in
-/// separate places, which is how two authoritative representations came to
-/// disagree about whether a pitch was sounding.
+/// are the same decision made once, so no two consumers can hold different
+/// beliefs about whether a pitch is sounding.
 ///
 /// The governing rule is that an observation must be provable. The moment the
 /// reducer cannot show that what it emitted was one continuous stream from one
@@ -365,8 +364,7 @@ class InputReducer {
   /// Ends [owner]'s hold on [note], if it had one.
   ///
   /// A release of a key nobody pressed changes nothing. Letting it through
-  /// would let the pedal catch a note that never sounded, which is how
-  /// sustained state came to contain pitches the event stream never reported.
+  /// would let the pedal catch a note that never sounded.
   void _releaseOn(_ChannelState owner, int note) {
     if (!owner.pressed.remove(note)) return;
     if (owner.pedalDown) {
