@@ -739,6 +739,75 @@ void main() {
       );
     });
 
+    group('an intent is read before it means anything', () {
+      /// Writes [contents] as the deletion marker in [profileId]'s directory.
+      void markDeleting(String profileId, Object? contents) =>
+          File('${root.path}/$profileId/deleting.json')
+            ..createSync(recursive: true)
+            ..writeAsStringSync(
+              contents is String ? contents : jsonEncode(contents),
+            );
+
+      Matcher failsOnDeletionIntent(String profileId) => throwsA(
+        isA<ProfileStorageException>()
+            .having(
+              (failure) => failure.artifact,
+              'artifact',
+              ProfileArtifact.deletionIntent,
+            )
+            .having((failure) => failure.profileId, 'profileId', profileId),
+      );
+
+      test("one profile's intent does not delete another", () async {
+        final repository = FileProfileRepository(root, now: () => t0);
+        final alice = await add(repository, 'Alice');
+        final bob = await add(repository, 'Bob');
+
+        // Alice's marker, verbatim, in Bob's directory. It is a decision
+        // somebody made about Alice, and it is addressed to her history.
+        markDeleting(bob.id, ProfileDeletionIntent(alice.id).toJson());
+
+        expect(repository.pendingDeletions(), failsOnDeletionIntent(bob.id));
+        expect(repository.list(), failsOnDeletionIntent(bob.id));
+      });
+
+      test('an unsupported schema is refused, not obeyed', () async {
+        final repository = FileProfileRepository(root, now: () => t0);
+        final alice = await add(repository, 'Alice');
+        markDeleting(alice.id, {
+          'schema_version': profileDeletionSchemaVersion + 1,
+          'profile_id': alice.id,
+        });
+
+        expect(repository.pendingDeletions(), failsOnDeletionIntent(alice.id));
+        expect(
+          FileProfileRepository(root).profileFileFor(alice.id).existsSync(),
+          isTrue,
+        );
+      });
+
+      test('a malformed intent is refused, not ignored', () async {
+        final repository = FileProfileRepository(root, now: () => t0);
+        final alice = await add(repository, 'Alice');
+        markDeleting(alice.id, '{not json');
+
+        expect(repository.pendingDeletions(), failsOnDeletionIntent(alice.id));
+        // Refused rather than skipped: skipping would leave Alice off the
+        // roster forever, with nothing ever finishing her removal.
+        expect(repository.list(), failsOnDeletionIntent(alice.id));
+      });
+
+      test('one this build wrote resumes as before', () async {
+        final repository = FileProfileRepository(root, now: () => t0);
+        final alice = await add(repository, 'Alice');
+        await repository.beginDelete(alice.id);
+
+        expect(await FileProfileRepository(root).pendingDeletions(), [
+          alice.id,
+        ]);
+      });
+    });
+
     test(
       'an interrupted deletion hands the selection on when finished',
       () async {

@@ -63,11 +63,26 @@ class FilePracticeStore implements PracticeStore {
   Future<ProfileLifetime> lifetimeOf(String profileId) =>
       _queue.run(profileId, () => _lifetimeOf(profileId));
 
-  Future<ProfileLifetime> _lifetimeOf(String profileId) async {
+  /// The recorded incarnation, issuing one where nothing has.
+  ///
+  /// Issued on first ask rather than at creation, so an install written by an
+  /// earlier build acquires one the moment anything needs to be authorized.
+  /// Only for a caller that is about to hold it: authorizing a write reads
+  /// instead, because issuing one there would grant the authority it was
+  /// checking for.
+  Future<ProfileLifetime> _lifetimeOf(String profileId) async =>
+      await _readLifetime(profileId) ?? await _issueLifetime(profileId);
+
+  /// The recorded incarnation, or null where nothing has one.
+  ///
+  /// Reads and nothing else. Null is the answer for a profile that was
+  /// deleted as well as for one nothing has opened, and this deliberately
+  /// does not tell them apart: either way, a lifetime held from before has no
+  /// standing, and repairing storage to find that out would recreate what a
+  /// deletion just removed.
+  Future<ProfileLifetime?> _readLifetime(String profileId) async {
     final file = _lifetimeFile(profileId);
-    // Issued on first ask rather than at creation, so an install written by an
-    // earlier build acquires one the moment anything needs to be authorized.
-    if (!file.existsSync()) return _issueLifetime(profileId);
+    if (!file.existsSync()) return null;
     final json = asMap(
       await _decode(file, 'profile lifetime'),
       'profile lifetime',
@@ -122,7 +137,7 @@ class FilePracticeStore implements PracticeStore {
           'this store writes only for ${as.profileId}',
         );
       }
-      final current = await _lifetimeOf(profileId);
+      final current = await _readLifetime(profileId);
       if (current != as) throw RetiredProfileLifetime(as, current);
     }
     return operation();

@@ -104,15 +104,34 @@ another.
 Reading each artifact classifies its own failure, and a recovery may only change
 what the failure named:
 
-| Failed artifact                | What recovery does                                    |
-| ------------------------------ | ----------------------------------------------------- |
-| Selection metadata             | Forgets the selection; the oldest profile is chosen   |
-| A profile's genesis            | Nothing destructive; there is nothing safe to rebuild |
-| A journal that will not replay | Erases that profile's history, by id                  |
-| Anything unclassified          | Retries, and offers no erasure at all                 |
+| Failed artifact                | What recovery does                                                          |
+| ------------------------------ | --------------------------------------------------------------------------- |
+| Selection metadata             | Forgets the selection; the oldest profile is chosen                         |
+| A profile's genesis            | Nothing destructive; there is nothing safe to rebuild                       |
+| A deletion intent              | Nothing automatic; the file naming who was going is the one nobody can read |
+| A journal that will not replay | Erases that profile's history, by id                                        |
+| Anything unclassified          | Retries, and offers no erasure at all                                       |
 
 Inferring the target from whatever the app happened to be holding is how an
 intact history gets erased to repair a file somewhere else.
+
+Repair reaches storage directly rather than through a reconciled install.
+Startup reconciliation reads the same metadata a repair would be fixing, so a
+repair that waited for a clean start would wait for the thing it exists to fix:
+an interrupted deletion cannot finish without reading the selection, and a
+corrupt selection would then block the repair that makes it readable. The repair
+runs, then reconciliation is asked again.
+
+The rule underneath all of this:
+
+> Recovery and authorization are read-only until the artifact granting the
+> authority has been validated.
+
+Which is also why authorizing a write reads the incarnation rather than
+resolving one. Issuing a lifetime where none is recorded is how a session opens;
+doing it while checking whether a held lifetime may write would grant the
+authority being checked for, and recreate the storage a deletion had just
+removed.
 
 ## The five data products
 

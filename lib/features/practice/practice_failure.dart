@@ -22,6 +22,14 @@ enum PracticeFailure {
   /// the history rather than repairing it.
   roster,
 
+  /// A deletion this install began could not be read.
+  ///
+  /// The marker is what authorizes destroying a history, so one that does not
+  /// validate is refused rather than obeyed. Nothing automatic can repair it:
+  /// finishing the deletion and cancelling it are both decisions, and the file
+  /// that would say which is the one nobody can read.
+  deletion,
+
   /// A sitting failed to open for a reason nothing classified.
   ///
   /// Deliberately not [history]. An unclassified failure says nothing about

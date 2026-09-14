@@ -68,6 +68,13 @@ class LoopFailure extends ConsumerWidget {
             'it as. If a backup of this install exists, it is the way back.',
         'Try again',
       ),
+      PracticeFailure.deletion => (
+        'A profile this install was removing could not be read.',
+        'The record of what was being deleted is what says which profile it '
+            'was, so nothing here can finish the job or call it off. No '
+            'history has been touched.',
+        'Try again',
+      ),
       PracticeFailure.opening => (
         'Practice could not be started.',
         'Nothing recorded has been touched. Try again, and if it keeps '

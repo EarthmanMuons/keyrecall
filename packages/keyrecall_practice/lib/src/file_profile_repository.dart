@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:meta/meta.dart';
 
 import 'profile_repository.dart';
 
@@ -20,6 +21,71 @@ enum ProfileArtifact {
   /// Nothing here can be rebuilt. The creation instant anchors placement, and
   /// placement is the prior every later posterior descends from.
   genesis,
+
+  /// A deletion this install began and has not finished.
+  ///
+  /// A durable command rather than a flag, which is why it is read like one.
+  /// Its presence is what authorizes destroying a history, so one that cannot
+  /// be read is refused rather than obeyed or ignored.
+  deletionIntent,
+}
+
+/// Version of the deletion intent wire format.
+const int profileDeletionSchemaVersion = 1;
+
+/// A deletion this install recorded and has not finished.
+///
+/// Read and validated before it means anything. A file named `deleting.json`
+/// is not a decision somebody made about this profile until it says so: it can
+/// be a copy of another profile's, or written by a build that meant something
+/// else by it, and either would authorize destroying the wrong history.
+@immutable
+class ProfileDeletionIntent {
+  /// Whose deletion this is.
+  final String profileId;
+
+  const ProfileDeletionIntent(this.profileId);
+
+  Map<String, Object?> toJson() => {
+    'schema_version': profileDeletionSchemaVersion,
+    'profile_id': profileId,
+  };
+
+  /// The intent recorded in [json], for the profile stored at [directoryName].
+  ///
+  /// Throws [JournalFormatException] on anything unreadable, and on an intent
+  /// naming somebody other than the profile it was found under: that is a
+  /// command addressed to a history somewhere else.
+  static ProfileDeletionIntent fromJson(
+    Map<String, Object?> json, {
+    required String directoryName,
+  }) {
+    final version = requireInt(json, 'schema_version');
+    if (version != profileDeletionSchemaVersion) {
+      throw JournalFormatException(
+        'deletion intent schema version $version is not readable by this '
+        'build, which writes version $profileDeletionSchemaVersion',
+      );
+    }
+    final profileId = requireString(json, 'profile_id');
+    if (profileId != directoryName) {
+      throw JournalFormatException(
+        'a deletion recorded for profile "$profileId" is stored in directory '
+        '"$directoryName"',
+      );
+    }
+    return ProfileDeletionIntent(profileId);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ProfileDeletionIntent && other.profileId == profileId;
+
+  @override
+  int get hashCode => profileId.hashCode;
+
+  @override
+  String toString() => 'ProfileDeletionIntent($profileId)';
 }
 
 /// A profile artifact that could not be read, and which one it was.
@@ -197,10 +263,7 @@ class FileProfileRepository implements ProfileRepository {
     await _require(profileId);
     await _writeAtomically(
       marker,
-      canonicalJson({
-        'schema_version': profileIndexSchemaVersion,
-        'profile_id': profileId,
-      }),
+      canonicalJson(ProfileDeletionIntent(profileId).toJson()),
     );
   });
 
@@ -209,9 +272,32 @@ class FileProfileRepository implements ProfileRepository {
     if (!root.existsSync()) return const [];
     return [
       for (final entry in root.listSync().whereType<Directory>())
-        if (File('${entry.path}/deleting.json').existsSync())
-          entry.path.split(Platform.pathSeparator).last,
+        if (_readDeletion(entry) case final intent?) intent.profileId,
     ]..sort();
+  }
+
+  /// The deletion recorded in [directory], or null where it records none.
+  ///
+  /// The single reading of that file, so what takes a profile off the roster
+  /// and what authorizes destroying its history are the same judgement. A
+  /// marker that does not validate is neither: it fails, rather than hiding a
+  /// profile nothing will ever finish removing.
+  ProfileDeletionIntent? _readDeletion(Directory directory) {
+    final file = File('${directory.path}/deleting.json');
+    if (!file.existsSync()) return null;
+    final directoryName = directory.path.split(Platform.pathSeparator).last;
+    return _located(
+      ProfileArtifact.deletionIntent,
+      profileId: directoryName,
+      () => ProfileDeletionIntent.fromJson(
+        asMap(
+          _decode(file, 'deletion intent'),
+          'deletion intent',
+          location: file.path,
+        ),
+        directoryName: directoryName,
+      ),
+    );
   }
 
   @override
@@ -224,10 +310,7 @@ class FileProfileRepository implements ProfileRepository {
     final profile = await _require(profileId);
     await _writeAtomically(
       _deletionFileFor(profileId),
-      canonicalJson({
-        'schema_version': profileIndexSchemaVersion,
-        'profile_id': profileId,
-      }),
+      canonicalJson(ProfileDeletionIntent(profileId).toJson()),
     );
     await _finishDelete(profileId);
     return profile;
@@ -295,7 +378,7 @@ class FileProfileRepository implements ProfileRepository {
     final profiles = <Profile>[];
     for (final entry in root.listSync().whereType<Directory>()) {
       final directoryName = entry.path.split(Platform.pathSeparator).last;
-      if (File('${entry.path}/deleting.json').existsSync()) continue;
+      if (_readDeletion(entry) != null) continue;
       final file = File('${entry.path}/profile.json');
       if (!file.existsSync()) continue;
       final profile = _located(

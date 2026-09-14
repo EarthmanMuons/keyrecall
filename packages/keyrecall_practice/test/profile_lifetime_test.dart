@@ -106,6 +106,39 @@ void main() {
     },
   );
 
+  test('a refused write over deleted storage writes nothing at all', () async {
+    final store = FilePracticeStore(root);
+    final repository = FileProfileRepository(root, now: () => t0);
+    final profile = await repository.create(
+      displayName: 'Alice',
+      placement: PlacementTier.someExperience,
+      createdAt: t0,
+    );
+    final held = await store.lifetimeOf(profile.id);
+    final bound = store.boundTo(held);
+    await bound.savePracticePlan(profile.id, PracticePlan.normal);
+
+    await ProfileLifecycle(
+      repository: repository,
+      store: store,
+    ).delete(profile.id);
+    final directory = Directory('${root.path}/${profile.id}');
+    expect(directory.existsSync(), isFalse);
+
+    // Authorization reads. Asking whether this incarnation may write must not
+    // be what puts the profile's storage back.
+    await expectLater(
+      bound.savePracticePlan(profile.id, PracticePlan.normal),
+      throwsA(isA<RetiredProfileLifetime>()),
+    );
+    expect(directory.existsSync(), isFalse);
+    expect(
+      File('${root.path}/${profile.id}/lifetime.json').existsSync(),
+      isFalse,
+    );
+    expect(File('${root.path}/${profile.id}/plan.json').existsSync(), isFalse);
+  });
+
   test('an incarnation survives the process that issued it', () async {
     final store = FilePracticeStore(root);
     final held = await store.lifetimeOf(alice.id);

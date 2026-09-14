@@ -19,10 +19,16 @@ import 'profile_color.dart';
 /// Where this install keeps its history.
 ///
 /// One directory holding the profile index and a subdirectory per profile.
+///
+/// Retries are off here and on everything below it, for the reason the
+/// practice loop turns them off: these fail on storage this build cannot
+/// read, which a retry cannot change. Retried, a failure never settles, so
+/// what is waiting on it stays loading and the recovery that would fix it is
+/// never offered.
 final storageRootProvider = FutureProvider<Directory>((ref) async {
   final support = await getApplicationSupportDirectory();
   return Directory('${support.path}/keyrecall')..createSync(recursive: true);
-});
+}, retry: (_, _) => null);
 
 /// The profile index.
 final profileRepositoryProvider = FutureProvider<ProfileRepository>((
@@ -30,13 +36,26 @@ final profileRepositoryProvider = FutureProvider<ProfileRepository>((
 ) async {
   final root = await ref.watch(storageRootProvider.future);
   return FileProfileRepository(root);
-});
+}, retry: (_, _) => null);
 
 /// The journal and checkpoint store.
 final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
   final root = await ref.watch(storageRootProvider.future);
   return FilePracticeStore(root);
-});
+}, retry: (_, _) => null);
+
+/// Storage, paired, with nothing reconciled yet.
+///
+/// What repairing a broken artifact runs through. Repair cannot depend on the
+/// install having started cleanly: reconciliation reads the same metadata it
+/// would be repairing, so a recovery that waited for reconciliation to succeed
+/// would wait for the thing it exists to fix.
+final profileLifecycleRawProvider = FutureProvider<ProfileLifecycle>(
+  (ref) async => ProfileLifecycle(
+    repository: await ref.watch(profileRepositoryProvider.future),
+    store: await ref.watch(practiceStoreProvider.future),
+  ),
+);
 
 /// Who exists on this install, and what each of them may still write.
 ///
@@ -46,12 +65,10 @@ final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
 /// opened before that repair would run as somebody this install has already
 /// decided to forget.
 final profileLifecycleProvider = FutureProvider<ProfileLifecycle>((ref) async {
-  final repository = await ref.watch(profileRepositoryProvider.future);
-  final store = await ref.watch(practiceStoreProvider.future);
-  final lifecycle = ProfileLifecycle(repository: repository, store: store);
+  final lifecycle = await ref.watch(profileLifecycleRawProvider.future);
   await lifecycle.resumeDeletions();
   return lifecycle;
-});
+}, retry: (_, _) => null);
 
 /// Whether a profile mutation is running.
 ///
@@ -779,7 +796,12 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     // Deletions the last run did not finish are completed before anything
     // asks who is active, so no sitting opens as somebody this install has
     // already decided to forget.
-    final lifecycle = await ref.watch(profileLifecycleProvider.future);
+    final ProfileLifecycle lifecycle;
+    try {
+      lifecycle = await ref.watch(profileLifecycleProvider.future);
+    } on ProfileStorageException catch (error) {
+      throw _classify(error);
+    }
     final store = lifecycle.store;
 
     // Never conjures anybody. An install with no profile has not answered the
@@ -794,14 +816,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     try {
       profile = await lifecycle.repository.selectedOrOldest();
     } on ProfileStorageException catch (error) {
-      throw PracticeLoopFailure(
-        switch (error.artifact) {
-          ProfileArtifact.selection => PracticeFailure.selection,
-          ProfileArtifact.genesis => PracticeFailure.roster,
-        },
-        error,
-        profileId: error.profileId,
-      );
+      throw _classify(error);
     }
     if (profile == null) {
       throw StateError('no profile on this install has been placed yet');
@@ -896,6 +911,21 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       throw PracticeLoopFailure(PracticeFailure.scheduling, error);
     }
   }
+
+  /// What a failed profile artifact means for the sitting that wanted it.
+  ///
+  /// Classified where the artifact is read, and carrying whose it was, so the
+  /// recovery offered acts on the file that actually failed.
+  static PracticeLoopFailure _classify(ProfileStorageException error) =>
+      PracticeLoopFailure(
+        switch (error.artifact) {
+          ProfileArtifact.selection => PracticeFailure.selection,
+          ProfileArtifact.genesis => PracticeFailure.roster,
+          ProfileArtifact.deletionIntent => PracticeFailure.deletion,
+        },
+        error,
+        profileId: error.profileId,
+      );
 
   /// Whether [session] is the sitting this notifier is still holding.
   bool _owns(PracticeSessionIdentity session) =>
@@ -1221,13 +1251,19 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     _writing = true;
     state = const AsyncValue.loading();
     try {
-      await recover(await ref.read(profileLifecycleProvider.future));
+      // Through raw storage rather than the reconciled lifecycle. What is
+      // usually broken here is metadata reconciliation itself reads, so
+      // waiting for a clean start would make the repair need what it repairs.
+      await recover(await ref.read(profileLifecycleRawProvider.future));
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
       rethrow;
     } finally {
       _writing = false;
     }
+    // Reconciliation runs again now that the artifact it stumbled on is
+    // readable, and a deletion it could not finish before is finished now.
+    ref.invalidate(profileLifecycleProvider);
     ref.invalidateSelf();
     // Erasing takes the plan with the history, so what is on screen has to be
     // read again rather than assumed.

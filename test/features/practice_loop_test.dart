@@ -419,6 +419,78 @@ void main() {
       );
     });
 
+    test('a repair unblocks the startup that could not run', () async {
+      // The two failures together, which is where the dependency shows: the
+      // deletion cannot finish without reading the selection, and repairing
+      // the selection must not need the startup that is stuck on it.
+      final started = onDisk();
+      await place(started);
+      final staying = await loopOf(started);
+      final repository = FileProfileRepository(root);
+      final going = await repository.create(
+        displayName: 'Bob',
+        placement: PlacementTier.beginner,
+      );
+      await repository.beginDelete(going.id);
+      File('${root.path}/profiles.json').writeAsStringSync('{not json');
+
+      final relaunched = onDisk();
+      final failure = await loopOf(relaunched)
+          .then<Object?>((_) => null, onError: (Object error) => error);
+      expect(
+        failure,
+        isA<PracticeLoopFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          PracticeFailure.selection,
+        ),
+      );
+
+      await relaunched.read(practiceLoopProvider.notifier).repairSelection();
+
+      // Startup runs again against readable metadata, so the deletion it
+      // could not reach before is finished now.
+      final reopened = await loopOf(relaunched);
+      expect(reopened.profile.id, staying.profile.id);
+      expect(await repository.pendingDeletions(), isEmpty);
+      expect((await repository.list()).single.id, staying.profile.id);
+      expect(Directory('${root.path}/${going.id}').existsSync(), isFalse);
+    });
+
+    test('a deletion this build cannot read destroys nothing', () async {
+      final started = onDisk();
+      await place(started);
+      final before = await loopOf(started);
+      File('${root.path}/${before.profile.id}/deleting.json')
+        ..createSync(recursive: true)
+        ..writeAsStringSync('{not json');
+
+      final failure = await loopOf(onDisk())
+          .then<Object?>((_) => null, onError: (Object error) => error);
+
+      expect(
+        failure,
+        isA<PracticeLoopFailure>()
+            .having((failure) => failure.kind, 'kind', PracticeFailure.deletion)
+            .having(
+              (failure) => failure.profileId,
+              'profileId',
+              before.profile.id,
+            ),
+      );
+      expect(
+        FileProfileRepository(root)
+            .profileFileFor(before.profile.id)
+            .existsSync(),
+        isTrue,
+        reason: 'a marker nobody can read authorizes nothing',
+      );
+      expect(
+        File('${root.path}/${before.profile.id}/lifetime.json').existsSync(),
+        isTrue,
+      );
+    });
+
     test('a deletion the last run left recorded is finished first', () async {
       final started = onDisk();
       await place(started);
