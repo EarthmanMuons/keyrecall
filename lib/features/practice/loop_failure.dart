@@ -71,8 +71,8 @@ class LoopFailure extends ConsumerWidget {
       PracticeFailure.deletion => (
         'A profile this install was removing could not be read.',
         'The record of what was being deleted is what says which profile it '
-            'was, so nothing here can finish the job or call it off. No '
-            'history has been touched.',
+            'was, so nothing here can finish the job or call it off. Nothing '
+            'further will be removed automatically.',
         'Try again',
       ),
       PracticeFailure.opening => (

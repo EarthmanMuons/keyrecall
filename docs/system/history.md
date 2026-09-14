@@ -104,13 +104,13 @@ another.
 Reading each artifact classifies its own failure, and a recovery may only change
 what the failure named:
 
-| Failed artifact                | What recovery does                                                          |
-| ------------------------------ | --------------------------------------------------------------------------- |
-| Selection metadata             | Forgets the selection; the oldest profile is chosen                         |
-| A profile's genesis            | Nothing destructive; there is nothing safe to rebuild                       |
-| A deletion intent              | Nothing automatic; the file naming who was going is the one nobody can read |
-| A journal that will not replay | Erases that profile's history, by id                                        |
-| Anything unclassified          | Retries, and offers no erasure at all                                       |
+| Failed artifact                | What recovery does                                                                   |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| Selection metadata             | Forgets the selection; the oldest profile is chosen                                  |
+| A profile's genesis            | Nothing destructive; there is nothing safe to rebuild                                |
+| A deletion intent              | Nothing further is removed; the file naming who was going is the one nobody can read |
+| A journal that will not replay | Erases that profile's history, by id                                                 |
+| Anything unclassified          | Retries, and offers no erasure at all                                                |
 
 Inferring the target from whatever the app happened to be holding is how an
 intact history gets erased to repair a file somewhere else.

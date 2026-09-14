@@ -28,6 +28,10 @@ enum PracticeFailure {
   /// validate is refused rather than obeyed. Nothing automatic can repair it:
   /// finishing the deletion and cancelling it are both decisions, and the file
   /// that would say which is the one nobody can read.
+  ///
+  /// What this guarantees is that nothing further is removed. How far the
+  /// deletion had already got before the marker became unreadable is exactly
+  /// what cannot be established from here, so nothing says it got nowhere.
   deletion,
 
   /// A sitting failed to open for a reason nothing classified.
