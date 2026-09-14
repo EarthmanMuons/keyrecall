@@ -757,7 +757,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     PerformanceReading? reading,
   ) async {
     final measurement = reading?.measurement;
-    if (measurement == null || measurement.handAsynchronies.isEmpty) return;
+    final coordination = measurement?.coordination;
+    // Nothing to calibrate a bound against when no moment was measured, and a
+    // sample standing in for one would be calibrating against itself.
+    if (measurement == null || coordination == null) return;
     final measured = record.closure.measurement;
     if (measured is! Measured) return;
     final outcome = measured.outcome;
@@ -779,7 +782,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           tempoBpm: conditions.tempoBpm,
           achievedTempoRatio: outcome.measuredTempoRatio,
           guidanceIndependence: record.exercise.guidance.independence,
-          coordinationScore: measurement.coordination ?? 1,
+          coordinationScore: coordination,
           synchronizedAsynchronyMs: measurement.policy.synchronizedAsynchronyMs,
           reportedAsFault:
               diagnose(

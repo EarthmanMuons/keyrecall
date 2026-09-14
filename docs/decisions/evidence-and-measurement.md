@@ -231,6 +231,25 @@ operations, because diagnostics, characterization, and the tests that compare
 the two clocks all need them; what changed is that no learner-facing channel
 reads them.
 
+The attempt is kept and the channel goes absent, rather than the attempt being
+invalidated:
+
+```text
+a channel was assessed         it carries evidence
+a channel was not              it carries none
+the other channels             proceed as they are
+```
+
+Absence is never a poor score. The execution channel takes no weight from an
+attempt that measured no timing, the motor competencies keep their priors,
+practice quality averages the channels the attempt established, and acquisition
+answers `unestablished` rather than `interrupted`: the sequence was demonstrated
+and the evidence one verdict needs was not available. Suppressing the attempt
+instead would make timing a prerequisite for learning anything, which is a much
+stronger claim than refusing to invent it. The uncharacterized domain is
+persistent rather than intermittent, so what a progression that genuinely
+requires timing runs into is unavailable evidence, not repeated failure.
+
 ## A wait is trustworthy or it does not exist
 
 **Decision.** Timing metrics read waits from contiguous runs of timed playing,

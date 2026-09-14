@@ -40,6 +40,20 @@ void main() {
   AcquisitionObservation observe(List<int> notes, List<int> gaps) =>
       observeAcquisition(task: task, transcript: played(notes, gaps));
 
+  /// The same playing, on a transport whose clock nothing has characterized.
+  AcquisitionObservation observeUntimed(List<int> notes, List<int> gaps) {
+    var transcript = PerformanceTranscript.empty;
+    var at = 0;
+    for (final (index, midiNote) in notes.indexed) {
+      at += index == 0 ? 0 : gaps[index - 1];
+      transcript = transcript.appending(
+        pitch: spellObservedPitch(midiNote, material: material),
+        timestampMs: at,
+      );
+    }
+    return observeAcquisition(task: task, transcript: transcript);
+  }
+
   /// Even playing at [gapMs] a note.
   List<int> even(int gapMs, {int notes = 8}) => [
     for (var i = 1; i < notes; i++) gapMs,
@@ -197,6 +211,40 @@ void main() {
         repeated.completion,
         AcquisitionCompletion.completedWithCorrections,
       );
+    });
+  });
+
+  // The task was performed and part of it was observed. What is missing is the
+  // evidence one verdict needs, which is not the same as the verdict going
+  // badly: the sequence was demonstrated and continuity could not be
+  // established, so the probe is not earned rather than failed.
+  group('an attempt nothing could time', () {
+    test('demonstrates the sequence and establishes no continuity', () {
+      final result = observeUntimed(expected, even(600));
+
+      expect(result.completion, AcquisitionCompletion.completedCleanly);
+      expect(result.stalls, isEmpty);
+      expect(result.continuity, AcquisitionContinuity.unestablished);
+      expect(result.earnsParentProbe, isFalse);
+    });
+
+    test('is not read as an interruption however long the waits were', () {
+      final result = observeUntimed(expected, const [
+        600,
+        600,
+        10000,
+        600,
+        600,
+        600,
+        600,
+      ]);
+
+      expect(
+        result.continuity,
+        AcquisitionContinuity.unestablished,
+        reason: 'nothing here measured that wait, so nothing calls it a stall',
+      );
+      expect(result.stalls, isEmpty);
     });
   });
 
