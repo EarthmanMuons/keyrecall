@@ -4,6 +4,7 @@ import 'coordination_log.dart';
 import 'feedback_exposure.dart';
 import 'pending_decision.dart';
 import 'practice_plan.dart';
+import 'profile_lifetime.dart';
 
 /// Durable storage for one install's practice history.
 ///
@@ -45,6 +46,32 @@ import 'practice_plan.dart';
 /// erase leaves, so that attempt survives the erase. See
 /// `docs/roadmap.md` section 4.14.
 abstract interface class PracticeStore {
+  /// The incarnation of [profileId] that may write now.
+  ///
+  /// Issued on first ask and durable from then on, so a relaunch that reopens
+  /// a history is holding the same incarnation the last one did.
+  Future<ProfileLifetime> lifetimeOf(String profileId);
+
+  /// Ends the current incarnation of [profileId] and returns its replacement.
+  ///
+  /// The barrier erasure and deletion put down. Work accepted before this may
+  /// finish computing, but nothing holding the retired incarnation may
+  /// persist afterwards: pressing erase is a cut, and history from before it
+  /// does not come back because an append was already in flight.
+  Future<ProfileLifetime> retireLifetime(String profileId);
+
+  /// Drops everything stored for [profileId], incarnation record included.
+  ///
+  /// For a profile that is going away rather than starting over. Nothing is
+  /// coming back, so there is no incarnation left to authorize.
+  Future<void> forget(String profileId);
+
+  /// A view of this store whose writes are refused once [lifetime] is retired.
+  ///
+  /// What a sitting writes through. The check happens where the write does, so
+  /// an erase cannot land between an authorization and the append it allowed.
+  PracticeStore boundTo(ProfileLifetime lifetime);
+
   /// Decision-time diagnostics keyed by attempt id, separate from evidence.
   Future<Map<String, String>> loadSelectionDiagnostics(String profileId);
 
@@ -139,7 +166,38 @@ abstract interface class PracticeStore {
   /// Destroys history rather than correcting it, which is the one operation a
   /// journal is otherwise built to prevent, so nothing in the practice loop
   /// calls it: it exists for a person who has decided to start over.
+  ///
+  /// Retires the profile's incarnation as part of the same operation, so work
+  /// that was already accepted cannot write the erased history back.
   Future<void> erase(String profileId);
+}
+
+/// Lifetime bookkeeping for a store that has no durable incarnations.
+///
+/// For test doubles and tools standing in for a store. One incarnation per
+/// profile that is never retired, so nothing a bound view writes is refused.
+mixin UnretiredLifetimes implements PracticeStore {
+  final Map<String, ProfileLifetime> _lifetimes = {};
+
+  @override
+  Future<ProfileLifetime> lifetimeOf(String profileId) async =>
+      _lifetimes.putIfAbsent(profileId, () => ProfileLifetime.next(profileId));
+
+  @override
+  Future<ProfileLifetime> retireLifetime(String profileId) async {
+    final replacement = ProfileLifetime.next(profileId);
+    _lifetimes[profileId] = replacement;
+    return replacement;
+  }
+
+  @override
+  Future<void> forget(String profileId) async {
+    _lifetimes.remove(profileId);
+    await erase(profileId);
+  }
+
+  @override
+  PracticeStore boundTo(ProfileLifetime lifetime) => this;
 }
 
 /// A [PracticeStore] that keeps everything in memory.
@@ -148,6 +206,40 @@ abstract interface class PracticeStore {
 /// enforces the same invariants as a durable store, so a test that passes here
 /// is testing the transaction rather than the file format.
 class InMemoryPracticeStore implements PracticeStore {
+  final Map<String, ProfileLifetime> _lifetimes = {};
+
+  @override
+  Future<ProfileLifetime> lifetimeOf(String profileId) async =>
+      _lifetimes.putIfAbsent(profileId, () => ProfileLifetime.next(profileId));
+
+  @override
+  Future<ProfileLifetime> retireLifetime(String profileId) async {
+    final replacement = ProfileLifetime.next(profileId);
+    _lifetimes[profileId] = replacement;
+    return replacement;
+  }
+
+  @override
+  Future<void> forget(String profileId) async {
+    await erase(profileId);
+    _lifetimes.remove(profileId);
+  }
+
+  @override
+  PracticeStore boundTo(ProfileLifetime lifetime) =>
+      _LifetimeBoundMemoryStore(this, lifetime);
+
+  /// Refuses [lifetime] once it is no longer the incarnation that may write.
+  ///
+  /// Synchronous against the maps it guards, which is what makes it a barrier
+  /// rather than a check: nothing can be retired between this and the write it
+  /// authorizes.
+  void _requireActive(ProfileLifetime lifetime) {
+    final current = _lifetimes[lifetime.profileId];
+    if (current == lifetime) return;
+    throw RetiredProfileLifetime(lifetime, current);
+  }
+
   final Map<String, Map<String, String>> _selections = {};
 
   @override
@@ -286,6 +378,7 @@ class InMemoryPracticeStore implements PracticeStore {
 
   @override
   Future<void> erase(String profileId) async {
+    await retireLifetime(profileId);
     _selections.remove(profileId);
     _journals.remove(profileId);
     _acquisitionLogs.remove(profileId);
@@ -317,4 +410,136 @@ class InMemoryPracticeStore implements PracticeStore {
           ),
         ),
       );
+}
+
+/// An [InMemoryPracticeStore] view that writes only as one incarnation.
+///
+/// Reads pass through: what a retired sitting may not do is persist, and
+/// refusing it the history it already replayed would only hide where the
+/// refusal came from.
+class _LifetimeBoundMemoryStore implements PracticeStore {
+  final InMemoryPracticeStore _store;
+  final ProfileLifetime _lifetime;
+
+  _LifetimeBoundMemoryStore(this._store, this._lifetime);
+
+  void _authorize(String profileId) {
+    if (profileId != _lifetime.profileId) {
+      throw ArgumentError.value(
+        profileId,
+        'profileId',
+        'this store writes only for ${_lifetime.profileId}',
+      );
+    }
+    _store._requireActive(_lifetime);
+  }
+
+  @override
+  Future<ProfileLifetime> lifetimeOf(String profileId) =>
+      _store.lifetimeOf(profileId);
+
+  @override
+  Future<ProfileLifetime> retireLifetime(String profileId) =>
+      _store.retireLifetime(profileId);
+
+  @override
+  Future<void> forget(String profileId) => _store.forget(profileId);
+
+  @override
+  PracticeStore boundTo(ProfileLifetime lifetime) => _store.boundTo(lifetime);
+
+  @override
+  Future<Map<String, String>> loadSelectionDiagnostics(String profileId) =>
+      _store.loadSelectionDiagnostics(profileId);
+
+  @override
+  Future<void> appendSelectionDiagnostics(
+    String profileId,
+    String attemptId,
+    String diagnostics,
+  ) async {
+    _authorize(profileId);
+    await _store.appendSelectionDiagnostics(profileId, attemptId, diagnostics);
+  }
+
+  @override
+  Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) =>
+      _store.loadJournal(profileId, createdAt: createdAt);
+
+  @override
+  Future<void> appendAttempt(AttemptRecord record) async {
+    _authorize(record.profileId);
+    await _store.appendAttempt(record);
+  }
+
+  @override
+  Future<AcquisitionJournal> loadAcquisitionJournal(
+    String profileId, {
+    DateTime? createdAt,
+  }) => _store.loadAcquisitionJournal(profileId, createdAt: createdAt);
+
+  @override
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) async {
+    _authorize(entry.identity.profileId);
+    await _store.appendAcquisitionEntry(entry);
+  }
+
+  @override
+  Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId) =>
+      _store.loadFeedbackExposures(profileId);
+
+  @override
+  Future<void> appendFeedbackExposure(FeedbackExposure exposure) async {
+    _authorize(exposure.profileId);
+    await _store.appendFeedbackExposure(exposure);
+  }
+
+  @override
+  Future<PendingDecision?> loadPendingDecision(String profileId) =>
+      _store.loadPendingDecision(profileId);
+
+  @override
+  Future<void> savePendingDecision(PendingDecision decision) async {
+    _authorize(decision.profileId);
+    await _store.savePendingDecision(decision);
+  }
+
+  @override
+  Future<void> clearPendingDecision(String profileId) async {
+    _authorize(profileId);
+    await _store.clearPendingDecision(profileId);
+  }
+
+  @override
+  Future<List<CoordinationSample>> loadCoordinationSamples(String profileId) =>
+      _store.loadCoordinationSamples(profileId);
+
+  @override
+  Future<void> appendCoordinationSample(CoordinationSample sample) async {
+    _authorize(sample.profileId);
+    await _store.appendCoordinationSample(sample);
+  }
+
+  @override
+  Future<PracticePlan?> loadPracticePlan(String profileId) =>
+      _store.loadPracticePlan(profileId);
+
+  @override
+  Future<void> savePracticePlan(String profileId, PracticePlan plan) async {
+    _authorize(profileId);
+    await _store.savePracticePlan(profileId, plan);
+  }
+
+  @override
+  Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) =>
+      _store.loadCheckpoint(profileId);
+
+  @override
+  Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) async {
+    _authorize(checkpoint.profileId);
+    await _store.saveCheckpoint(checkpoint);
+  }
+
+  @override
+  Future<void> erase(String profileId) => _store.erase(profileId);
 }

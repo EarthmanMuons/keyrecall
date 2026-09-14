@@ -11,7 +11,7 @@ import 'support/fixtures.dart';
 ///
 /// Models the failure a process crash does not cover: storage that throws and
 /// leaves the program running, free to try again.
-class FlakyPracticeStore implements PracticeStore {
+class FlakyPracticeStore with UnretiredLifetimes implements PracticeStore {
   @override
   Future<Map<String, String>> loadSelectionDiagnostics(String profileId) =>
       inner.loadSelectionDiagnostics(profileId);
@@ -163,7 +163,7 @@ class FlakyPracticeStore implements PracticeStore {
 /// A store that hands back a pending decision the caller did not file.
 ///
 /// Models a misplaced or corrupted `pending.json`.
-class MisfilingPracticeStore implements PracticeStore {
+class MisfilingPracticeStore with UnretiredLifetimes implements PracticeStore {
   @override
   Future<Map<String, String>> loadSelectionDiagnostics(String profileId) =>
       inner.loadSelectionDiagnostics(profileId);

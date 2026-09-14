@@ -186,7 +186,7 @@ void main() {
   });
 }
 
-class _FailingEraseStore implements PracticeStore {
+class _FailingEraseStore with UnretiredLifetimes implements PracticeStore {
   @override
   Future<Map<String, String>> loadSelectionDiagnostics(String profileId) =>
       inner.loadSelectionDiagnostics(profileId);

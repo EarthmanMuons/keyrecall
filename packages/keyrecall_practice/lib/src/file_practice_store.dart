@@ -10,11 +10,13 @@ import 'json_lines.dart';
 import 'pending_decision.dart';
 import 'practice_plan.dart';
 import 'practice_store.dart';
+import 'profile_lifetime.dart';
 import 'profile_write_queue.dart';
 
 /// A [PracticeStore] backed by ordinary files, one directory per profile.
 ///
 /// ```text
+/// <root>/<profileId>/lifetime.json    which incarnation may write
 /// <root>/<profileId>/journal.jsonl     append-only, authoritative
 /// <root>/<profileId>/feedback.jsonl    append-only exposure record
 /// <root>/<profileId>/pending.json      one slot, replaced or removed
@@ -58,6 +60,75 @@ class FilePracticeStore implements PracticeStore {
   }) => FilePracticeStore(Directory(path), params: params);
 
   @override
+  Future<ProfileLifetime> lifetimeOf(String profileId) =>
+      _queue.run(profileId, () => _lifetimeOf(profileId));
+
+  Future<ProfileLifetime> _lifetimeOf(String profileId) async {
+    final file = _lifetimeFile(profileId);
+    // Issued on first ask rather than at creation, so an install written by an
+    // earlier build acquires one the moment anything needs to be authorized.
+    if (!file.existsSync()) return _issueLifetime(profileId);
+    final json = asMap(
+      await _decode(file, 'profile lifetime'),
+      'profile lifetime',
+      location: file.path,
+    );
+    return located(
+      () => ProfileLifetime.fromJson(json),
+      'profile lifetime',
+      location: file.path,
+    );
+  }
+
+  Future<ProfileLifetime> _issueLifetime(String profileId) async {
+    final lifetime = ProfileLifetime.next(profileId);
+    await _writeAtomically(
+      _lifetimeFile(profileId),
+      canonicalJson(lifetime.toJson()),
+    );
+    return lifetime;
+  }
+
+  @override
+  Future<ProfileLifetime> retireLifetime(String profileId) =>
+      _queue.run(profileId, () => _issueLifetime(profileId));
+
+  @override
+  Future<void> forget(String profileId) => _queue.run(profileId, () async {
+    await _erase(profileId);
+    final file = _lifetimeFile(profileId);
+    if (file.existsSync()) await file.delete();
+  });
+
+  @override
+  PracticeStore boundTo(ProfileLifetime lifetime) =>
+      _LifetimeBoundFileStore(this, lifetime);
+
+  /// Runs [operation] on [profileId]'s queue, refusing it when [as] names an
+  /// incarnation that has been retired.
+  ///
+  /// The check runs inside the queued operation rather than before it, so
+  /// nothing can be retired between authorizing a write and performing it.
+  Future<T> _write<T>(
+    String profileId,
+    ProfileLifetime? as,
+    Future<T> Function() operation,
+  ) => _queue.run(profileId, () async {
+    if (as != null) {
+      if (as.profileId != profileId) {
+        throw ArgumentError.value(
+          profileId,
+          'profileId',
+          'this store writes only for ${as.profileId}',
+        );
+      }
+      final current = await _lifetimeOf(profileId);
+      if (current != as) throw RetiredProfileLifetime(as, current);
+    }
+    return operation();
+  });
+
+  @override
   Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) =>
       _queue.run(profileId, () => _loadJournal(profileId, createdAt));
 
@@ -84,7 +155,7 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<void> appendAttempt(AttemptRecord record) =>
-      _queue.run(record.profileId, () => _appendAttempt(record));
+      _write(record.profileId, null, () => _appendAttempt(record));
 
   Future<void> _appendAttempt(AttemptRecord record) async {
     await _recoverErase(record.profileId);
@@ -139,8 +210,9 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
-  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) => _queue.run(
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) => _write(
     entry.identity.profileId,
+    null,
     () => _appendAcquisitionEntry(entry),
   );
 
@@ -208,7 +280,7 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<void> appendFeedbackExposure(FeedbackExposure exposure) =>
-      _queue.run(exposure.profileId, () => _appendFeedbackExposure(exposure));
+      _write(exposure.profileId, null, () => _appendFeedbackExposure(exposure));
 
   Future<void> _appendFeedbackExposure(FeedbackExposure exposure) async {
     await _recoverErase(exposure.profileId);
@@ -257,7 +329,7 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<void> savePendingDecision(PendingDecision decision) =>
-      _queue.run(decision.profileId, () => _savePendingDecision(decision));
+      _write(decision.profileId, null, () => _savePendingDecision(decision));
 
   Future<void> _savePendingDecision(PendingDecision decision) async {
     await _recoverErase(decision.profileId);
@@ -269,7 +341,7 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<void> clearPendingDecision(String profileId) =>
-      _queue.run(profileId, () => _clearPendingDecision(profileId));
+      _write(profileId, null, () => _clearPendingDecision(profileId));
 
   Future<void> _clearPendingDecision(String profileId) async {
     await _recoverErase(profileId);
@@ -319,7 +391,17 @@ class FilePracticeStore implements PracticeStore {
     String profileId,
     String attemptId,
     String diagnostics,
-  ) => _queue.run(profileId, () async {
+  ) => _write(
+    profileId,
+    null,
+    () => _appendSelectionDiagnostics(profileId, attemptId, diagnostics),
+  );
+
+  Future<void> _appendSelectionDiagnostics(
+    String profileId,
+    String attemptId,
+    String diagnostics,
+  ) async {
     final existing = await _loadSelectionDiagnostics(profileId);
     if (existing.containsKey(attemptId)) return;
     final file = _selectionFile(profileId);
@@ -329,7 +411,7 @@ class FilePracticeStore implements PracticeStore {
       file,
       canonicalJson({'attempt_id': attemptId, 'diagnostics': diagnostics}),
     );
-  });
+  }
 
   Future<List<CoordinationSample>> _loadCoordinationSamples(
     String profileId,
@@ -364,7 +446,7 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<void> appendCoordinationSample(CoordinationSample sample) =>
-      _queue.run(sample.profileId, () => _appendCoordinationSample(sample));
+      _write(sample.profileId, null, () => _appendCoordinationSample(sample));
 
   Future<void> _appendCoordinationSample(CoordinationSample sample) async {
     await _recoverErase(sample.profileId);
@@ -398,7 +480,7 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
-      _queue.run(profileId, () => _savePracticePlan(profileId, plan));
+      _write(profileId, null, () => _savePracticePlan(profileId, plan));
 
   Future<void> _savePracticePlan(String profileId, PracticePlan plan) async {
     await _recoverErase(profileId);
@@ -427,7 +509,7 @@ class FilePracticeStore implements PracticeStore {
 
   @override
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
-      _queue.run(checkpoint.profileId, () => _saveCheckpoint(checkpoint));
+      _write(checkpoint.profileId, null, () => _saveCheckpoint(checkpoint));
 
   Future<void> _saveCheckpoint(LearnerStateCheckpoint checkpoint) async {
     await _recoverErase(checkpoint.profileId);
@@ -491,10 +573,17 @@ class FilePracticeStore implements PracticeStore {
 
   Future<void> _writeAtomically(File file, String contents) async {
     await file.parent.create(recursive: true);
-    final temporary = File('${file.path}.tmp');
+    // A name of its own per write, so two writers cannot rename one temporary
+    // over different targets.
+    final temporary = File(
+      '${file.path}.${identityHashCode(this)}-${_temporaries++}.tmp',
+    );
     await temporary.writeAsString(contents, flush: true);
     await temporary.rename(file.path);
   }
+
+  /// Names this instance's temporary files apart from anybody else's.
+  int _temporaries = 0;
 
   /// Deletes the files this store wrote, and nothing else in the directory.
   ///
@@ -511,6 +600,10 @@ class FilePracticeStore implements PracticeStore {
   Future<void> _erase(String profileId) async {
     final directory = _profileDirectory(profileId);
     if (!directory.existsSync()) return;
+    // Retired first. An append accepted before the erase runs after it on this
+    // queue, and what stops it putting the history back is that the
+    // incarnation it holds is already gone by the time it is authorized.
+    await _issueLifetime(profileId);
     await _writeAtomically(_eraseMarker(profileId), '');
     await _finishErase(profileId);
   }
@@ -520,20 +613,29 @@ class FilePracticeStore implements PracticeStore {
   }
 
   Future<void> _finishErase(String profileId) async {
-    for (final file in [
-      _journalFile(profileId),
-      _acquisitionFile(profileId),
-      _pendingFile(profileId),
-      _checkpointFile(profileId),
-      _feedbackFile(profileId),
-      _planFile(profileId),
-      _coordinationFile(profileId),
-      _selectionFile(profileId),
-      File('${_pendingFile(profileId).path}.tmp'),
-      File('${_checkpointFile(profileId).path}.tmp'),
-      File('${_planFile(profileId).path}.tmp'),
-    ]) {
-      if (file.existsSync()) await file.delete();
+    final erasable = {
+      for (final file in [
+        _journalFile(profileId),
+        _acquisitionFile(profileId),
+        _pendingFile(profileId),
+        _checkpointFile(profileId),
+        _feedbackFile(profileId),
+        _planFile(profileId),
+        _coordinationFile(profileId),
+        _selectionFile(profileId),
+      ])
+        file.path.split(Platform.pathSeparator).last,
+    };
+    // A half-written temporary belongs to the file it was going to replace, so
+    // it goes with it. Matched by prefix because every write names its own.
+    for (final entry in _profileDirectory(profileId).listSync()) {
+      if (entry is! File) continue;
+      final name = entry.path.split(Platform.pathSeparator).last;
+      if (erasable.any(
+        (target) => name == target || name.startsWith('$target.'),
+      )) {
+        await entry.delete();
+      }
     }
     final marker = _eraseMarker(profileId);
     if (marker.existsSync()) await marker.delete();
@@ -579,4 +681,141 @@ class FilePracticeStore implements PracticeStore {
 
   File _eraseMarker(String profileId) =>
       File('${_profileDirectory(profileId).path}/practice-erasing');
+
+  File _lifetimeFile(String profileId) =>
+      File('${_profileDirectory(profileId).path}/lifetime.json');
+}
+
+/// A [FilePracticeStore] view that writes only as one incarnation.
+///
+/// Reads pass through: what a retired sitting may not do is persist, and
+/// refusing it the history it already replayed would only hide where the
+/// refusal came from.
+class _LifetimeBoundFileStore implements PracticeStore {
+  final FilePracticeStore _store;
+  final ProfileLifetime _lifetime;
+
+  _LifetimeBoundFileStore(this._store, this._lifetime);
+
+  @override
+  Future<ProfileLifetime> lifetimeOf(String profileId) =>
+      _store.lifetimeOf(profileId);
+
+  @override
+  Future<ProfileLifetime> retireLifetime(String profileId) =>
+      _store.retireLifetime(profileId);
+
+  @override
+  Future<void> forget(String profileId) => _store.forget(profileId);
+
+  @override
+  PracticeStore boundTo(ProfileLifetime lifetime) => _store.boundTo(lifetime);
+
+  @override
+  Future<Map<String, String>> loadSelectionDiagnostics(String profileId) =>
+      _store.loadSelectionDiagnostics(profileId);
+
+  @override
+  Future<void> appendSelectionDiagnostics(
+    String profileId,
+    String attemptId,
+    String diagnostics,
+  ) => _store._write(
+    profileId,
+    _lifetime,
+    () => _store._appendSelectionDiagnostics(profileId, attemptId, diagnostics),
+  );
+
+  @override
+  Future<AttemptJournal> loadJournal(String profileId, {DateTime? createdAt}) =>
+      _store.loadJournal(profileId, createdAt: createdAt);
+
+  @override
+  Future<void> appendAttempt(AttemptRecord record) => _store._write(
+    record.profileId,
+    _lifetime,
+    () => _store._appendAttempt(record),
+  );
+
+  @override
+  Future<AcquisitionJournal> loadAcquisitionJournal(
+    String profileId, {
+    DateTime? createdAt,
+  }) => _store.loadAcquisitionJournal(profileId, createdAt: createdAt);
+
+  @override
+  Future<void> appendAcquisitionEntry(AcquisitionEntry entry) => _store._write(
+    entry.identity.profileId,
+    _lifetime,
+    () => _store._appendAcquisitionEntry(entry),
+  );
+
+  @override
+  Future<List<FeedbackExposure>> loadFeedbackExposures(String profileId) =>
+      _store.loadFeedbackExposures(profileId);
+
+  @override
+  Future<void> appendFeedbackExposure(FeedbackExposure exposure) =>
+      _store._write(
+        exposure.profileId,
+        _lifetime,
+        () => _store._appendFeedbackExposure(exposure),
+      );
+
+  @override
+  Future<PendingDecision?> loadPendingDecision(String profileId) =>
+      _store.loadPendingDecision(profileId);
+
+  @override
+  Future<void> savePendingDecision(PendingDecision decision) => _store._write(
+    decision.profileId,
+    _lifetime,
+    () => _store._savePendingDecision(decision),
+  );
+
+  @override
+  Future<void> clearPendingDecision(String profileId) => _store._write(
+    profileId,
+    _lifetime,
+    () => _store._clearPendingDecision(profileId),
+  );
+
+  @override
+  Future<List<CoordinationSample>> loadCoordinationSamples(String profileId) =>
+      _store.loadCoordinationSamples(profileId);
+
+  @override
+  Future<void> appendCoordinationSample(CoordinationSample sample) =>
+      _store._write(
+        sample.profileId,
+        _lifetime,
+        () => _store._appendCoordinationSample(sample),
+      );
+
+  @override
+  Future<PracticePlan?> loadPracticePlan(String profileId) =>
+      _store.loadPracticePlan(profileId);
+
+  @override
+  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
+      _store._write(
+        profileId,
+        _lifetime,
+        () => _store._savePracticePlan(profileId, plan),
+      );
+
+  @override
+  Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) =>
+      _store.loadCheckpoint(profileId);
+
+  @override
+  Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
+      _store._write(
+        checkpoint.profileId,
+        _lifetime,
+        () => _store._saveCheckpoint(checkpoint),
+      );
+
+  @override
+  Future<void> erase(String profileId) => _store.erase(profileId);
 }
