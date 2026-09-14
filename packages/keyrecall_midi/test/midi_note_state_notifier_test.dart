@@ -30,6 +30,7 @@ void main() {
     addTearDown(ble.dispose);
     final subscription = container.listen(midiNoteStateProvider, (_, _) {});
     addTearDown(subscription.close);
+    await adoptInstrument(container, ble);
   });
 
   MidiNoteState noteState() => container.read(midiNoteStateProvider);

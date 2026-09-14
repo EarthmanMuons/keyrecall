@@ -35,9 +35,11 @@ void main() {
     addTearDown(container.dispose);
     addTearDown(ble.dispose);
 
-    records = [];
     final held = container.listen(midiInputProvider, (_, _) {});
     addTearDown(held.close);
+    await adoptInstrument(container, ble);
+
+    records = [];
     final trace = container
         .read(midiInputProvider.notifier)
         .transportRecords

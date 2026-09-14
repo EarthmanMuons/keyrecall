@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keyrecall_midi/keyrecall_midi.dart';
@@ -172,4 +173,26 @@ class FakeBluetoothPermissionService implements BluetoothPermissionService {
 
   @override
   Future<BluetoothAccessResult> ensureBluetoothAccess() async => result;
+}
+
+/// The instrument tests play through.
+const MidiDevice testInstrument = MidiDevice(
+  id: 'aaa',
+  name: 'JamCorder',
+  transport: MidiTransportType.ble,
+  isConnected: false,
+);
+
+/// Connects [device] and waits for the input boundary to adopt it.
+///
+/// Nothing is admitted before adoption, so a test that plays notes needs an
+/// instrument for them to have come from.
+Future<void> adoptInstrument(
+  ProviderContainer container,
+  FakeMidiBleService ble, {
+  MidiDevice device = testInstrument,
+}) async {
+  ble.discoverable = [device];
+  await container.read(midiConnectionStateProvider.notifier).connect(device);
+  await pumpEventQueue();
 }

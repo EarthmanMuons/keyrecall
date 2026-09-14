@@ -45,6 +45,8 @@ void main() {
     addTearDown(container.dispose);
     addTearDown(ble.dispose);
 
+    await adoptInstrument(container, ble);
+
     events = [];
     providerSubscription = container.listen(
       midiTemporalEventsProvider,

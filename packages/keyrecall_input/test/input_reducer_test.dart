@@ -74,7 +74,7 @@ void main() {
   }
 
   setUp(() {
-    reducer = InputReducer();
+    reducer = InputReducer()..adopt(piano);
     emitted = [...reducer.begin(timestampMs: 0)];
   });
 
@@ -300,11 +300,26 @@ void main() {
   });
 
   group('admission', () {
-    test('every source is admitted while none is adopted', () {
-      feed(noteOn(60, at: 1, source: other));
+    // Two keyboards are not one keyboard, and before one is adopted there is
+    // nothing to tell them apart from. Admitting both would let the second's
+    // release end a hold the first is keeping, and would restart the
+    // performance clock at every delivery.
+    test('nothing is admitted while none is adopted', () {
+      final unadopted = InputReducer()..begin(timestampMs: 0);
 
-      expect(reducer.snapshot.pressedNoteNumbers, {60});
-      expect(reducer.rejectedForeignCount, 0);
+      expect(unadopted.receive(noteOn(60, at: 1)), isEmpty);
+      expect(unadopted.snapshot.isSilent, isTrue);
+      expect(unadopted.rejectedForeignCount, 1);
+      expect(unadopted.isObserving, isTrue);
+    });
+
+    test('a foreign release cannot reach a note nobody adopted', () {
+      final unadopted = InputReducer()..begin(timestampMs: 0);
+      unadopted
+        ..receive(noteOn(60, at: 1))
+        ..receive(noteOff(60, at: 2, source: other));
+
+      expect(unadopted.snapshot.isSilent, isTrue);
     });
 
     test('an adopted instrument turns other sources away', () {

@@ -37,6 +37,15 @@ void main() {
     await Future<void>.delayed(Duration.zero);
   }
 
+  /// Opens an observation, the way a source does when its stream is
+  /// subscribed. Nothing can be recorded until one is open.
+  Future<void> observe() => deliver(
+    InputTemporalResetEvent(
+      timestampMs: 0,
+      snapshot: InputTemporalSnapshot.silent,
+    ),
+  );
+
   Future<void> fail(Object error) async {
     events.addError(error);
     await Future<void>.delayed(Duration.zero);
@@ -65,6 +74,7 @@ void main() {
   // clock never stands in for it. A note nothing could time stays untimed
   // rather than borrowing the timestamp that orders it.
   test('a note carries the performance time it was given, or none', () async {
+    await observe();
     record();
     await playNote(60, at: 1000, timing: const TimingAvailable(250000));
     await playNote(62, at: 1400);
@@ -86,6 +96,7 @@ void main() {
   // notes on either side are not one observation, so a later note-on must not
   // quietly reopen the attempt that was interrupted.
   test('an interrupted capture cannot resume', () async {
+    await observe();
     record();
     await playNote(60, at: 1000);
     await deliver(
@@ -114,6 +125,7 @@ void main() {
   test(
     'a stream failure interrupts rather than repeating the last note',
     () async {
+      await observe();
       record();
       await playNote(60, at: 1000);
       await fail(StateError('the instrument went away'));
@@ -130,6 +142,7 @@ void main() {
   );
 
   test('an integrity fault interrupts and keeps its reason', () async {
+    await observe();
     record();
     await playNote(60, at: 1000);
     await deliver(
@@ -147,6 +160,7 @@ void main() {
   // A timestamp going backward is evidence the observation is unreliable, not
   // bad data to drop: dropping it let an input fault read as a missing note.
   test('a backward timestamp interrupts instead of losing a note', () async {
+    await observe();
     record();
     await playNote(60, at: 100);
     await playNote(62, at: 90);
@@ -161,9 +175,11 @@ void main() {
   });
 
   test('a fresh attempt starts from an uninterrupted capture', () async {
+    await observe();
     record();
     await playNote(60, at: 100);
     await fail(StateError('the instrument went away'));
+    await observe();
     record();
 
     expect(capture().isEmpty, isTrue);
@@ -213,8 +229,48 @@ void main() {
       final second = notifier.start(TechnicalMaterial('G', ScaleForm.major));
       expect(second, isNot(first));
       expect(interrupted.belongsTo(second), isFalse);
+
+      // Nothing has been observed since the fault, so there is no observation
+      // for this recording to belong to.
+      expect(capture().isInterrupted, isTrue);
+
+      await observe();
+      final third = notifier.start(TechnicalMaterial('G', ScaleForm.major));
+
+      expect(capture().belongsTo(third), isTrue);
       expect(capture().isInterrupted, isFalse);
     });
+
+    // A fault that arrives between attempts reaches nobody's capture, so
+    // nothing was going to arrive later to correct the next one. It recorded
+    // no notes and Done closed it as ordinary playing.
+    test(
+      'a recording started against a dead observation is interrupted',
+      () async {
+        final notifier = container.read(attemptTranscriptProvider.notifier);
+        await observe();
+        await deliver(
+          InputTemporalFaultEvent(
+            timestampMs: 10,
+            fault: InputIntegrityFault.sourceClosed,
+          ),
+        );
+
+        expect(notifier.isObservationLive, isFalse);
+        final recording = notifier.start(
+          TechnicalMaterial('C', ScaleForm.major),
+        );
+
+        expect(capture().belongsTo(recording), isTrue);
+        expect(capture().isInterrupted, isTrue);
+        expect(capture().fault, InputIntegrityFault.sourceClosed);
+
+        // And it stays closed: a note arriving after it cannot make it look
+        // like an attempt somebody played.
+        await playNote(60, at: 20);
+        expect(capture().isEmpty, isTrue);
+      },
+    );
 
     test('a discarded capture belongs to nobody', () {
       final notifier = container.read(attemptTranscriptProvider.notifier);

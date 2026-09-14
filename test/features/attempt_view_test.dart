@@ -836,6 +836,15 @@ void main() {
           final events = StreamController<InputTemporalEvent>();
           addTearDown(events.close);
           final finished = await pumpAcquisition(tester, events: events.stream);
+          // The source opens its observation; nothing can be recorded before
+          // one is live.
+          events.add(
+            InputTemporalResetEvent(
+              timestampMs: 0,
+              snapshot: InputTemporalSnapshot.silent,
+            ),
+          );
+          await tester.pump();
           final container = ProviderScope.containerOf(
             tester.element(find.byType(AttemptView)),
           );

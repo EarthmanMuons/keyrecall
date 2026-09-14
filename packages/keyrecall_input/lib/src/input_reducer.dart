@@ -115,10 +115,16 @@ class InputReducer {
 
   /// Restricts admitted input to [source].
   ///
-  /// While nothing is adopted every source is admitted, because there is no
-  /// instrument to tell them apart from. Once one is, everything else is
-  /// turned away rather than faulting the observation: another keyboard in the
-  /// room is not evidence that this one's stream broke.
+  /// Nothing is admitted until one is adopted. Before that there is no
+  /// instrument for the sounding state to be about, and admitting every source
+  /// would make two keyboards one: a release from the second ends a hold the
+  /// first is still keeping, and alternating sources restart the performance
+  /// clock at every delivery. Unadopted traffic is still visible to whatever
+  /// is discovering instruments, which is what it is for.
+  ///
+  /// Once one is adopted, everything else is turned away rather than faulting
+  /// the observation: another keyboard in the room is not evidence that this
+  /// one's stream broke.
   ///
   /// Adoption does not open or close an observation. A caller swapping
   /// instruments calls [begin] as well, since the notes on either side of the
@@ -254,10 +260,7 @@ class InputReducer {
     return _apply(envelope, timestampMs, timing);
   }
 
-  bool _admits(InputSourceIdentity source) {
-    final adopted = _adopted;
-    return adopted == null || adopted == source;
-  }
+  bool _admits(InputSourceIdentity source) => _adopted == source;
 
   /// What is wrong with [envelope], or null when nothing is.
   String? _malformation(RawInputEnvelope envelope) {

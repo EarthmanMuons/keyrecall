@@ -61,7 +61,7 @@ void main() {
   late InputReducer reducer;
 
   setUp(() {
-    reducer = InputReducer();
+    reducer = InputReducer()..adopt(piano);
     reducer.begin(timestampMs: 0);
   });
 

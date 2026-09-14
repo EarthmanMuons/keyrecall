@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:keyrecall_input_sources/keyrecall_input_sources.dart';
+import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 
 import 'fake_midi_ble_service.dart';
@@ -103,6 +104,7 @@ void main() {
     final held = container.listen(midiInputProvider, (_, _) {});
     addTearDown(held.close);
     await pumpEventQueue();
+    await adoptInstrument(container, ble);
   });
 
   MidiInputNotifier input() => container.read(midiInputProvider.notifier);
@@ -168,6 +170,66 @@ void main() {
     await pumpEventQueue();
 
     expect(state().snapshot.pressedNoteNumbers, {64});
+  });
+
+  // Three separate facts: the transport can deliver, nobody has put
+  // observation down, and an instrument is adopted. An epoch needs all of
+  // them, and inferring any from the reducer's phase is what let these two
+  // reopen an observation nothing could vouch for.
+  group('an epoch cannot be opened by inference', () {
+    test('an error during a suspension does not resume it', () async {
+      input().suspendObservation();
+      await pumpEventQueue();
+      expect(state().isObserving, isFalse);
+
+      ble.emitMessageError(StateError('link hiccup'));
+      await pumpEventQueue();
+
+      expect(
+        state().isObserving,
+        isFalse,
+        reason: 'the app is still in the background',
+      );
+      expect(state().fault, InputIntegrityFault.observationGap);
+
+      input().resumeObservation();
+      await pumpEventQueue();
+
+      expect(state().isObserving, isTrue);
+    });
+
+    test('a resume does not claim a transport that ended', () async {
+      await ble.closeMessages();
+      await pumpEventQueue();
+      expect(state().fault, InputIntegrityFault.sourceClosed);
+
+      input().resumeObservation();
+      await pumpEventQueue();
+
+      expect(
+        state().isObserving,
+        isFalse,
+        reason: 'a subscription that ended cannot deliver again',
+      );
+    });
+
+    test('a connection transition does not revive an ended transport', () async {
+      await ble.closeMessages();
+      await pumpEventQueue();
+
+      await adoptInstrument(
+        container,
+        ble,
+        device: const MidiDevice(
+          id: 'another',
+          name: 'Other',
+          transport: MidiTransportType.ble,
+          isConnected: false,
+        ),
+      );
+
+      expect(state().isObserving, isFalse);
+    });
   });
 
   test('a readopted instrument is a new source', () async {

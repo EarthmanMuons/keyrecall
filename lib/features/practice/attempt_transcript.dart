@@ -114,6 +114,19 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// Names each recording, so an attempt can tell its capture from the last.
   int _recordings = 0;
 
+  /// Names each live input observation, and is null while none is.
+  ///
+  /// A separate question from [_recordings]: that one says which attempt owns
+  /// a capture, this one says which uninterrupted observation supplied it.
+  /// Tracked whether or not anything is recording, because a source that fails
+  /// between attempts is the case this exists for: nothing else would arrive
+  /// to say so before the next attempt closed as ordinary playing.
+  int? _observation;
+  int _observations = 0;
+
+  /// What closed the last observation, for a recording that starts after it.
+  InputIntegrityFault? _lastFault;
+
   /// When the last accepted note arrived, so continuity is checked before the
   /// transcript is asked to hold something it would refuse.
   int _lastTimestampMs = 0;
@@ -129,8 +142,11 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
     ) {
       switch (next) {
         case AsyncData(:final value):
+          _observe(value);
           _record(value);
         case AsyncError(:final error):
+          _observation = null;
+          _lastFault = InputIntegrityFault.sourceFailure;
           _interrupt(
             InputIntegrityFault.sourceFailure,
             detail: error.toString(),
@@ -147,15 +163,25 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// Returns the recording's name, which is what the attempt identifies its
   /// own capture by.
   int start(TechnicalMaterial material) {
-    _material = material;
     _lastTimestampMs = 0;
     _recordings += 1;
+    // A recording belongs to one live observation. Starting one while nothing
+    // is being observed produced a capture that looked ordinary and could be
+    // closed as playing nobody did, because no later event was going to arrive
+    // to correct it.
+    final observation = _observation;
+    _material = observation == null ? null : material;
     state = AttemptCapture(
       transcript: PerformanceTranscript.empty,
       recording: _recordings,
+      isInterrupted: observation == null,
+      fault: observation == null ? _lastFault : null,
     );
     return _recordings;
   }
+
+  /// Whether a live observation is available to record.
+  bool get isObservationLive => _observation != null;
 
   /// Stops recording, keeping what was played.
   ///
@@ -179,6 +205,20 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// that needs the disposition without a source to break.
   @visibleForTesting
   void interruptForTest(InputIntegrityFault fault) => _interrupt(fault);
+
+  /// Follows the health of the input, recording or not.
+  void _observe(InputTemporalEvent event) {
+    switch (event) {
+      case InputTemporalResetEvent():
+        _observation = ++_observations;
+        _lastFault = null;
+      case InputTemporalFaultEvent(:final fault):
+        _observation = null;
+        _lastFault = fault;
+      case _:
+        break;
+    }
+  }
 
   void _record(InputTemporalEvent event) {
     final material = _material;

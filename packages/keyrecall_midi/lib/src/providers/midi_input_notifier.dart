@@ -41,7 +41,7 @@ class MidiInputState {
 
   /// The instrument and transport session input is admitted from.
   ///
-  /// Null while nothing is adopted, which is when every source is admitted.
+  /// Null while nothing is adopted, which is when nothing is admitted.
   final InputSourceIdentity? adopted;
 
   /// How many messages were turned away for coming from another instrument.
@@ -83,6 +83,21 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// message fell on.
   String _session = 'midi-0';
   int _sessionsOpened = 0;
+
+  /// Whether the transport can still deliver.
+  ///
+  /// False once its stream ends, which the subscription cannot come back
+  /// from. Tracked rather than inferred from the reducer, because an
+  /// observation being closed says nothing about whether the transport could
+  /// open another one.
+  bool _transportAlive = false;
+
+  /// Whether observation was deliberately put down.
+  ///
+  /// Backgrounding sets this, and only coming back clears it. An error
+  /// arriving in between must not take it for an invitation to start
+  /// observing again.
+  bool _suspended = false;
 
   /// Whether [build] has returned, and so whether [state] can be assigned.
   bool _isBuilt = false;
@@ -150,19 +165,23 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// Backgrounding is the case that matters. The link is deliberately left up,
   /// because whether to keep the transport connected is a separate decision
   /// from whether KeyRecall can still claim to be watching.
-  void suspendObservation() => _emit(
-    _reducer.fail(
-      InputIntegrityFault.observationGap,
-      timestampMs: _clock(),
-      detail: 'observation suspended',
-    ),
-  );
+  void suspendObservation() {
+    _suspended = true;
+    _emit(
+      _reducer.fail(
+        InputIntegrityFault.observationGap,
+        timestampMs: _clock(),
+        detail: 'observation suspended',
+      ),
+    );
+  }
 
   /// Opens a fresh observation after a suspension.
   ///
   /// Coming back to the foreground is an establishment event, so it opens a
   /// new observation rather than resuming the one that was suspended.
   void resumeObservation() {
+    _suspended = false;
     if (_reducer.isObserving) return;
     _beginEpoch();
   }
@@ -202,6 +221,28 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
   /// with it, which on Android stopped delivery outright and then churned
   /// through several epochs before anything arrived again.
   void _beginEpoch() {
+    // Three separate facts, and an epoch needs all of them. The transport has
+    // to be able to deliver, nobody may have put observation down, and an
+    // instrument has to be adopted for the input to be from. Inferring any of
+    // them from the reducer's phase is how an error reopened an observation
+    // that had been suspended, and how a resume claimed one on a stream that
+    // had already ended.
+    if (!_canObserve) {
+      // Whatever was open cannot continue either: an instrument that went
+      // away is not still holding the keys it was holding.
+      _emit(
+        _reducer.fail(
+          InputIntegrityFault.observationGap,
+          timestampMs: _clock(),
+          detail: _instrument == null
+              ? 'no instrument adopted'
+              : _suspended
+              ? 'observation suspended'
+              : 'the MIDI source ended',
+        ),
+      );
+      return;
+    }
     final session = 'midi-${++_sessionsOpened}';
     _session = session;
     _reducer.adopt(_identityOf(_instrument, session));
@@ -217,8 +258,12 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     _emit(_reducer.begin(timestampMs: _clock()));
   }
 
+  /// Whether an observation can be opened at all.
+  bool get _canObserve => _transportAlive && !_suspended && _instrument != null;
+
   /// Attaches to the transport, once, for as long as this notifier lives.
   void _listen() {
+    _transportAlive = true;
     _messages = ref
         .read(midiBleServiceProvider)
         .onMidiMessages
@@ -241,14 +286,19 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
             );
             _beginEpoch();
           },
-          // Nothing is left to observe, so this one stays closed.
-          onDone: () => _emit(
-            _reducer.fail(
-              InputIntegrityFault.sourceClosed,
-              timestampMs: _clock(),
-              detail: 'the MIDI source ended',
-            ),
-          ),
+          // Nothing is left to observe, and this subscription cannot deliver
+          // again. Recovery takes an actual replacement rather than somebody
+          // asking for one.
+          onDone: () {
+            _transportAlive = false;
+            _emit(
+              _reducer.fail(
+                InputIntegrityFault.sourceClosed,
+                timestampMs: _clock(),
+                detail: 'the MIDI source ended',
+              ),
+            );
+          },
           cancelOnError: false,
         );
   }
