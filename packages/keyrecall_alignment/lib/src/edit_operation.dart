@@ -200,12 +200,31 @@ final class MomentCorrespondence extends MomentOperation {
   @override
   final int realizationPosition;
 
-  /// When the moment happened: the median arrival of the observations it
-  /// consumed.
+  /// When the moment happened: the center of the notes that realized it.
   ///
-  /// Median rather than earliest, so a spread attack does not drag the moment
-  /// toward whichever finger led. Fractional for an even-sized run.
+  /// The midpoint of the earliest and latest arrival among the observations
+  /// that took an expected note's place, so a spread attack does not drag the
+  /// moment toward whichever finger led or lagged. Fractional for an odd
+  /// spread.
+  ///
+  /// Only notes that realized something contribute. A repeat or an intrusion
+  /// beside the moment consumed no expected note, so it cannot move when the
+  /// moment happened however close it landed; it is repetition and intrusion
+  /// evidence instead. A substitution does contribute: a wrong pitch is still
+  /// an attempt at that moment, and when it happened is a different question
+  /// from whether it was right.
+  ///
+  /// A moment that nothing realized falls back to the center of whatever it
+  /// consumed, since it has no realization to be centered on. Timing does not
+  /// read those moments.
   final double onsetMs;
+
+  /// The same center on the instrument's own clock, in microseconds, or null
+  /// when nothing that realized the moment carried a performance time.
+  ///
+  /// One timed note is enough to say when the moment happened. Its partner
+  /// being untimed costs the spread, not the moment.
+  final int? performanceOnsetUs;
 
   /// How far apart the hands were, as right minus left.
   ///
@@ -214,11 +233,17 @@ final class MomentCorrespondence extends MomentOperation {
   /// hand that played nothing leaves this absent rather than zero.
   final int? handAsynchronyMs;
 
+  /// The same spread on the instrument's own clock, in microseconds, or null
+  /// unless both hands corresponded and both were timed.
+  final int? handAsynchronyUs;
+
   MomentCorrespondence({
     required this.realizationPosition,
     required super.noteEdits,
     required this.onsetMs,
+    this.performanceOnsetUs,
     this.handAsynchronyMs,
+    this.handAsynchronyUs,
   });
 
   @override
@@ -226,14 +251,18 @@ final class MomentCorrespondence extends MomentOperation {
       other is MomentCorrespondence &&
       other.realizationPosition == realizationPosition &&
       other.onsetMs == onsetMs &&
+      other.performanceOnsetUs == performanceOnsetUs &&
       other.handAsynchronyMs == handAsynchronyMs &&
+      other.handAsynchronyUs == handAsynchronyUs &&
       _noteEditEquality.equals(other.noteEdits, noteEdits);
 
   @override
   int get hashCode => Object.hash(
     realizationPosition,
     onsetMs,
+    performanceOnsetUs,
     handAsynchronyMs,
+    handAsynchronyUs,
     _noteEditEquality.hash(noteEdits),
   );
 

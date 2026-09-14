@@ -308,7 +308,41 @@ calls that attempt interrupted instead of unestablished. Constants moved with
 the statistics they read and are stated against the takes above rather than
 carried over.
 
-## What alignment deliberately does not do
+## A moment happens where the notes that realized it are centered
+
+**Decision.** A moment's onset is the midpoint of the earliest and latest of the
+observations that took an expected note's place. A repeat or an intrusion beside
+the moment consumed no expected note, so it cannot move when the moment
+happened. A substitution can, since a wrong pitch is still an attempt at that
+moment. The same rule on the instrument's clock gives the moment's performance
+onset, and one timed contributor is enough: its partner being untimed costs the
+spread, not the moment.
+
+```text
+moment center = midpoint of the realizing notes
+coordination  = latest realizing note - earliest
+```
+
+**Why.** The onset was the median of everything the moment consumed, which let a
+note that realized nothing decide when the moment was: an extra note 500 ms
+after the expected one moved its moment 500 ms late, and the wait after it 500
+ms early. Pitch correctness, rhythmic placement, and coordination are separate
+channels, and an intrusion belongs to the first two, not the third.
+
+The midpoint rather than either edge. Taking the first note gives the timeline
+to whichever hand anticipates and taking the last gives it to whichever lags,
+while the midpoint leaves a moment with a neutral center and the full
+disagreement in the coordination channel. Half a microsecond is discarded for an
+odd spread, which is below the resolution of every characterized clock and,
+unlike a fraction, is the same on every replay.
+
+**Consequences.** Which of two identical pitches realized a moment is still
+alignment's choice, and it takes the later one, reading the earlier as an extra
+note played before the moment. The onset then follows the note it chose. Making
+the earlier one the realization is a change to the tie-break in the traceback,
+and it costs more than it buys: it also makes a restart match the abandoned
+attempt and park the complete one as intrusions, turning every restart into an
+interruption in the middle of a performance.
 
 - **Timing.** Relating arrival times to expected times needs a tempo model that
   does not exist, and inventing one inside an aligner would hide it.

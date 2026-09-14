@@ -299,12 +299,34 @@ List<MomentOperation> _traceBack(
   return operations.reversed.toList();
 }
 
-double _medianOf(List<int> values) {
-  final ordered = [...values]..sort();
-  final middle = ordered.length ~/ 2;
-  return ordered.length.isOdd
-      ? ordered[middle].toDouble()
-      : (ordered[middle - 1] + ordered[middle]) / 2;
+/// The center of a grouped attack: halfway between its ends.
+///
+/// Not a median, which would follow whichever side of a three-note roll held
+/// two of its notes. The moment is where its extent is centered, and how wide
+/// that extent is is the coordination measurement.
+double _centerOf(List<int> values) {
+  var earliest = values.first;
+  var latest = values.first;
+  for (final value in values) {
+    if (value < earliest) earliest = value;
+    if (value > latest) latest = value;
+  }
+  return earliest + (latest - earliest) / 2;
+}
+
+/// The same center, kept exact.
+///
+/// Integer halves rather than a fraction of a microsecond, because these times
+/// are compared and replayed. Half a microsecond is below the resolution of
+/// every characterized clock.
+int _centerUsOf(List<int> values) {
+  var earliest = values.first;
+  var latest = values.first;
+  for (final value in values) {
+    if (value < earliest) earliest = value;
+    if (value > latest) latest = value;
+  }
+  return earliest + (latest - earliest) ~/ 2;
 }
 
 /// The cheapest reading of one moment against one run of observations.
@@ -329,19 +351,31 @@ class _MomentMatcher {
   /// The operation for [moment] against the run in `[start, end)`.
   MomentCorrespondence momentFor(int moment, int start, int end) {
     final edits = _read(moment, start, end).edits;
-    final arrival = {
-      for (final note in observed.sublist(start, end))
-        note.sequence: note.timestampMs,
+    final consumed = {
+      for (final note in observed.sublist(start, end)) note.sequence: note,
     };
-    final acted = <Hand, int>{
+    // Only what took an expected note's place says when the moment happened.
+    // A repeat or an intrusion beside it realized nothing, so it is evidence
+    // of something else.
+    final realizing = <int, PlayedNote>{
+      for (final edit in edits)
+        if (edit
+            case Match(:final observedSequence) ||
+                Substitution(:final observedSequence))
+          observedSequence: consumed[observedSequence]!,
+    };
+    final acted = <Hand, PlayedNote>{
       for (final edit in edits)
         if (edit
             case Match(:final hands, :final observedSequence) ||
                 Substitution(:final hands, :final observedSequence))
-          for (final hand in hands) hand: arrival[observedSequence]!,
+          for (final hand in hands) hand: consumed[observedSequence]!,
     };
     final left = acted[Hand.left];
     final right = acted[Hand.right];
+    final timed = [
+      for (final note in realizing.values) ?note.performanceTimeUs,
+    ];
 
     // Where the hands meet on one key the instrument reports a single onset,
     // so their asynchrony is unobservable rather than zero.
@@ -355,10 +389,20 @@ class _MomentMatcher {
     return MomentCorrespondence(
       realizationPosition: moment,
       noteEdits: edits,
-      onsetMs: _medianOf(arrival.values.toList()),
+      onsetMs: _centerOf([
+        for (final note in (realizing.isEmpty ? consumed : realizing).values)
+          note.timestampMs,
+      ]),
+      performanceOnsetUs: timed.isEmpty ? null : _centerUsOf(timed),
       handAsynchronyMs: shared || left == null || right == null
           ? null
-          : right - left,
+          : right.timestampMs - left.timestampMs,
+      handAsynchronyUs:
+          shared ||
+              left?.performanceTimeUs == null ||
+              right?.performanceTimeUs == null
+          ? null
+          : right!.performanceTimeUs! - left!.performanceTimeUs!,
     );
   }
 
