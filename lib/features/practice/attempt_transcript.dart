@@ -127,12 +127,23 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// What closed the last observation, for a recording that starts after it.
   InputIntegrityFault? _lastFault;
 
+  /// Whether the stream has said anything about its lifecycle yet.
+  ///
+  /// Until it has, the source's own state is what this knows. After it has,
+  /// the events are: they come from the same reducer the source answers from,
+  /// and they are the more recent word.
+  bool _heardLifecycle = false;
+
   /// When the last accepted note arrived, so continuity is checked before the
   /// transcript is asked to hold something it would refuse.
   int _lastTimestampMs = 0;
 
   @override
   AttemptCapture build() {
+    // Where the source says it stands, before any event arrives. The shared
+    // stream hands a late subscriber the event it last delivered, which may be
+    // a note, and a note is not a lifecycle fact.
+    _adopt(ref.read(inputObservationProvider));
     // Only actual data notifications. An AsyncError keeps the previous value,
     // so reading `.value` past a failure re-delivers the last note and writes
     // it into the transcript a second time.
@@ -145,6 +156,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
           _observe(value);
           _record(value);
         case AsyncError(:final error):
+          _heardLifecycle = true;
           _observation = null;
           _lastFault = InputIntegrityFault.sourceFailure;
           _interrupt(
@@ -165,6 +177,9 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   int start(TechnicalMaterial material) {
     _lastTimestampMs = 0;
     _recordings += 1;
+    // Asked again rather than remembered: nothing guarantees an event arrived
+    // between building and starting, and the source knows.
+    _adopt(ref.read(inputObservationProvider));
     // A recording belongs to one live observation. Starting one while nothing
     // is being observed has no observation to belong to, and no later event is
     // coming to say so.
@@ -205,13 +220,29 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   @visibleForTesting
   void interruptForTest(InputIntegrityFault fault) => _interrupt(fault);
 
+  /// Takes the source's word for where its observation stands.
+  ///
+  /// Only when it says something this has not already heard from the stream: a
+  /// fault the events carried stays a fault until an event says otherwise.
+  void _adopt(InputObservationState source) {
+    if (_heardLifecycle) return;
+    if (source.isLive) {
+      _observation = ++_observations;
+      return;
+    }
+    _observation = null;
+    _lastFault = source.fault;
+  }
+
   /// Follows the health of the input, recording or not.
   void _observe(InputTemporalEvent event) {
     switch (event) {
       case InputTemporalResetEvent():
+        _heardLifecycle = true;
         _observation = ++_observations;
         _lastFault = null;
       case InputTemporalFaultEvent(:final fault):
+        _heardLifecycle = true;
         _observation = null;
         _lastFault = fault;
       case _:

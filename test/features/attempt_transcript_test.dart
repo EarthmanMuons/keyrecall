@@ -8,15 +8,29 @@ import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 
+/// A source that is observing.
+const live = (isLive: true, observationId: 'test-1', fault: null);
+
+/// A source whose observation has ended.
+const dead = (
+  isLive: false,
+  observationId: null,
+  fault: InputIntegrityFault.sourceClosed,
+);
+
 void main() {
   late StreamController<InputTemporalEvent> events;
   late ProviderContainer container;
+  late InputObservationState observation;
 
   setUp(() {
     events = StreamController<InputTemporalEvent>();
+    observation = live;
     container = ProviderContainer(
       overrides: [
         inputTemporalEventsProvider.overrideWith((ref) => events.stream),
+        // The stream is faked, so its lifecycle has to be faked with it.
+        inputObservationProvider.overrideWith((ref) => observation),
       ],
     );
     addTearDown(() async {
@@ -239,6 +253,47 @@ void main() {
 
       expect(capture().belongsTo(third), isTrue);
       expect(capture().isInterrupted, isFalse);
+    });
+
+    // The capture is not always the first consumer. The shared stream hands a
+    // late subscriber whatever it last delivered, which may be a note, and a
+    // note says nothing about the lifecycle: every attempt after that read the
+    // healthy observation as a dead one and threw its notes away.
+    test('attaching to an observation that has already played', () async {
+      // Nothing has opened an observation as far as this notifier heard: the
+      // only event is a note, the way a late subscriber sees one.
+      await deliver(
+        InputTemporalNoteOnEvent(
+          timestampMs: 50,
+          noteNumber: 60,
+          velocity: 100,
+        ),
+      );
+
+      final notifier = container.read(attemptTranscriptProvider.notifier);
+      expect(notifier.isObservationLive, isTrue);
+
+      final recording = notifier.start(TechnicalMaterial('C', ScaleForm.major));
+      await playNote(62, at: 100);
+
+      expect(capture().belongsTo(recording), isTrue);
+      expect(capture().isInterrupted, isFalse);
+      expect(capture().notes.map((note) => note.midiNote), [62]);
+    });
+
+    test('and to one the source says has ended', () async {
+      observation = dead;
+      container
+        ..invalidate(inputObservationProvider)
+        ..invalidate(attemptTranscriptProvider);
+
+      final notifier = container.read(attemptTranscriptProvider.notifier);
+      expect(notifier.isObservationLive, isFalse);
+
+      notifier.start(TechnicalMaterial('C', ScaleForm.major));
+
+      expect(capture().isInterrupted, isTrue);
+      expect(capture().fault, InputIntegrityFault.sourceClosed);
     });
 
     // A recording belongs to the observation it started in. A reset opens the

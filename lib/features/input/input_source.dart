@@ -60,3 +60,33 @@ final inputSnapshotProvider = Provider<InputTemporalSnapshot>((ref) {
       return ref.watch(midiInputProvider).snapshot;
   }
 });
+
+/// Whether the selected source is observing, and which observation it is on.
+///
+/// The source's own lifecycle state rather than a reading of its events. A
+/// consumer that attaches partway through is handed whatever event the shared
+/// stream last delivered, which may be a note rather than the opening reset,
+/// and a note is not a lifecycle fact.
+typedef InputObservationState = ({
+  bool isLive,
+  String? observationId,
+  InputIntegrityFault? fault,
+});
+
+/// Where the selected source's observation stands right now.
+final inputObservationProvider = Provider<InputObservationState>((ref) {
+  final source = ref.watch(inputSourceProvider);
+  switch (source) {
+    case InputSourceKind.demo:
+      // The synthetic instrument observes for as long as its stream exists,
+      // and the stream opens one when it is built.
+      return (isLive: true, observationId: 'demo', fault: null);
+    case InputSourceKind.midi:
+      final input = ref.watch(midiInputProvider);
+      return (
+        isLive: input.isObserving,
+        observationId: input.adopted?.sessionId,
+        fault: input.fault,
+      );
+  }
+});
