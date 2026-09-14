@@ -93,6 +93,8 @@ void main() {
           .read(practiceLoopProvider.notifier)
           .finish(
             AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+
+            attempt: container.read(practiceLoopProvider).requireValue.attempt!,
           );
       final next = container.read(practiceLoopProvider).value!;
 
@@ -127,9 +129,11 @@ void main() {
     await Future.wait([
       notifier.finish(
         AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+        attempt: before.attempt!,
       ),
       notifier.finish(
         AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+        attempt: before.attempt!,
       ),
     ]);
     final after = container.read(practiceLoopProvider).value!;
@@ -160,6 +164,8 @@ void main() {
         .read(practiceLoopProvider.notifier)
         .finish(
           AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+
+          attempt: container.read(practiceLoopProvider).requireValue.attempt!,
         );
     final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
 
@@ -187,6 +193,8 @@ void main() {
             termination: AttemptTermination.learnerStopped,
             capture: _interruptedAfterThreeNotes,
           ),
+
+          attempt: container.read(practiceLoopProvider).requireValue.attempt!,
         );
     final after = container.read(practiceLoopProvider).value!;
     final closed = after.lastCommitted!;
@@ -219,6 +227,8 @@ void main() {
           .read(practiceLoopProvider.notifier)
           .finish(
             AttemptCompletion.unplayed(AttemptTermination.inputInterrupted),
+
+            attempt: container.read(practiceLoopProvider).requireValue.attempt!,
           );
       final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
 
@@ -254,6 +264,8 @@ void main() {
                 recording: 1,
               ),
             ),
+
+            attempt: container.read(practiceLoopProvider).requireValue.attempt!,
           );
       final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
 
@@ -297,6 +309,8 @@ void main() {
               recording: played.recording,
             ),
           ),
+
+          attempt: container.read(practiceLoopProvider).requireValue.attempt!,
         );
     final closed = container.read(practiceLoopProvider).value!.lastCommitted!;
 
@@ -314,7 +328,10 @@ void main() {
     await loopOf(first);
     await first
         .read(practiceLoopProvider.notifier)
-        .finish(AttemptCompletion.unplayed(AttemptTermination.learnerStopped));
+        .finish(
+          AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+          attempt: first.read(practiceLoopProvider).requireValue.attempt!,
+        );
     first.dispose();
 
     final second = await loopOf(launch());
@@ -392,6 +409,11 @@ void main() {
             .read(practiceLoopProvider.notifier)
             .finish(
               AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+
+              attempt: container
+                  .read(practiceLoopProvider)
+                  .requireValue
+                  .attempt!,
             );
         final resumed = container.read(practiceLoopProvider).value!;
 
@@ -414,6 +436,8 @@ void main() {
           .read(practiceLoopProvider.notifier)
           .finish(
             AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+
+            attempt: container.read(practiceLoopProvider).requireValue.attempt!,
           );
       final committed = container
           .read(practiceLoopProvider)

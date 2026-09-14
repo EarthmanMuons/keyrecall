@@ -23,7 +23,10 @@ void main() {
           (ref) async => InMemoryPracticeStore(),
         ),
         if (scheduler != null)
-          schedulerHostProvider.overrideWith((ref) => scheduler),
+          schedulerHostFactoryProvider.overrideWith(
+            (ref) =>
+                () => scheduler,
+          ),
       ],
     );
     container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
@@ -34,21 +37,27 @@ void main() {
     return container;
   }
 
+  /// The host the open sitting decides on, which is the one it opened.
+  IsolateScheduler workerOf(ProviderContainer container) =>
+      container.read(practiceLoopProvider).requireValue.session.scheduler
+          as IsolateScheduler;
+
   test('the app schedules on a worker isolate', () async {
     final container = await launch();
     addTearDown(container.dispose);
 
-    expect(container.read(schedulerHostProvider), isA<IsolateScheduler>());
+    expect(workerOf(container), isA<IsolateScheduler>());
   });
 
   test('disposing the container tears the worker down', () async {
     final container = await launch();
-    final scheduler = container.read(schedulerHostProvider) as IsolateScheduler;
+    final scheduler = workerOf(container);
 
     container.dispose();
 
-    // The host is disposed with the provider, so the request it would have
-    // taken has nowhere to run rather than a worker still holding a scope.
+    // The host is disposed with the sitting that opened it, so the request it
+    // would have taken has nowhere to run rather than a worker still holding
+    // a scope.
     await expectLater(
       scheduler.decide(
         epoch: 0,
@@ -78,6 +87,7 @@ void main() {
           .read(practiceLoopProvider.notifier)
           .decline(
             AttemptCompletion.unplayed(AttemptTermination.learnerDeclined),
+            attempt: decided.attempt!,
           );
     }
     expect(scheduler.decisions, greaterThanOrEqualTo(2));

@@ -49,6 +49,64 @@ recomputed. The app reads its clock again on every call and may hand over a
 fresh transcript, so a rebuilt record would offer the same attempt id carrying
 different content, which an authoritative log refuses.
 
+## Who owns asynchronous work
+
+The transaction contract above is about one session. This one is about which
+session an asynchronous result belongs to, and it exists because every part of
+the app can be locally correct while the app still applies a valid result to the
+wrong owner: the journal validates a transaction, the worker evaluates a
+request, the capture records notes, and the profile repository switches
+profiles, and none of them can see that the sitting moved under the result.
+
+> **An asynchronous continuation may finish work for its original owner, but it
+> may publish state or start further work only if that owner is still current.**
+
+A `PracticeSessionIdentity` names one live instantiation of a profile's practice
+session, and reopening the same profile produces a new generation. A
+`PracticeAttemptOwner` names an attempt and the session that issued it.
+
+The five rules the app layer holds to:
+
+1. **A selected profile does not identify an asynchronous operation's owner.**
+   An operation carries the identity it began under, and never resolves the
+   owner again after an await.
+2. **A generation uniquely identifies one live sitting.** Two sittings for one
+   profile are two owners, whatever the storage underneath them says.
+3. **An attempt belongs permanently to the session generation that issued it.**
+   Completion names its target: `finish`, `decline`, and `finishAcquisition`
+   take the owner the presentation was issued with, so evidence that arrives
+   after the ground moved lands nowhere rather than on whoever is selected.
+4. **Superseded work may satisfy a durability obligation it already started, but
+   may not publish into or schedule for the replacement.** An append in flight
+   owes history an answer; the continuation that would have shown its result
+   does not get to run.
+5. **A recoverable commit failure retains and retries the frozen close.**
+   Reopening is a different recovery, and one that abandons the performance the
+   learner already supplied.
+
+Two resources are owned rather than shared:
+
+- **A scheduler host belongs to the sitting that opened it**, for that sitting's
+  lifetime. Binding replaces the scope a host holds, so a shared host answers
+  both sittings against whichever scope bound last. Worker requests carry ids
+  and are answered by id; a worker that dies, however it dies, fails every
+  request outstanding on it rather than leaving them pending.
+- **A recording belongs to the attempt that started it.** Leaving the screen
+  closes that recording by name, so an attempt that is gone stops collecting
+  notes and cannot close a recording a later attempt has already opened.
+
+Failures are classified by what they leave standing, because that is what says
+how to recover:
+
+| Failure      | What is still valid                  | Recovery                 |
+| ------------ | ------------------------------------ | ------------------------ |
+| `history`    | possibly no usable sitting           | reopen, or erase         |
+| `commit`     | the frozen close, on its own session | write that same attempt  |
+| `scheduling` | everything recorded, and the sitting | ask for a decision again |
+
+Erasing is offered for the first only. Beside an attempt that is still savable
+it destroys the practice it was meant to rescue.
+
 ## During an attempt
 
 `PerformanceFeedback` describes what the learner sees of their own playing while

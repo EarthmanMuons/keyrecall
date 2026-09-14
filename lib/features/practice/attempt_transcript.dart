@@ -215,6 +215,19 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
     state = AttemptCapture.none;
   }
 
+  /// Closes the window [recording] opened.
+  ///
+  /// What an attempt leaving the screen releases, so nothing played after it
+  /// is gone arrives as part of it. Named rather than unconditional: the
+  /// attempt after this one may already have opened its own recording, and
+  /// closing that would end a window somebody is playing into.
+  ///
+  /// What was played stays until the next attempt discards it, the way it does
+  /// between any two attempts.
+  void release(int? recording) {
+    if (state.belongsTo(recording)) stop();
+  }
+
   /// Ends the current recording the way the input boundary would, for a test
   /// that needs the disposition without a source to break.
   @visibleForTesting

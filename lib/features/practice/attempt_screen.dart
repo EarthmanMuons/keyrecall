@@ -213,19 +213,21 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
       );
     }
 
-    final attemptId =
-        loop.value?.presented?.decision.attemptId ??
-        loop.value?.pending?.attemptId ??
-        loop.value?.acquisition?.attemptId;
+    // Carried rather than looked up again when the attempt ends: what closes
+    // an attempt names the sitting that issued it, so a completion that
+    // arrives after the ground moved lands nowhere instead of on whoever is
+    // selected by then.
+    final attempt = loop.value?.attempt;
+    final attemptId = attempt?.attemptId;
     if (_playing != attemptId) _playing = null;
 
     // Past the review, so what is being built is the attempt itself. Deciding
     // happened while the review was still on screen; this frame is where the
     // exercise actually reaches the learner, and it is what a probe earned by
     // supported work is discharged against.
-    if (attemptId != null && _presented.add(attemptId)) {
+    if (attempt != null && _presented.add(attempt.attemptId)) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(notifier.acknowledgePresentation(attemptId));
+        if (mounted) unawaited(notifier.acknowledgePresentation(attempt));
       });
     }
 
@@ -249,7 +251,8 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           exercise: value.acquisition!.task.parent,
           acquisition: value.acquisition!.task,
           metBefore: value.hasMet(value.acquisition!.task.parent.material),
-          onFinish: notifier.finishAcquisition,
+          onFinish: (completion) =>
+              notifier.finishAcquisition(completion, attempt: attempt!),
           onUnderWay: () => setState(() => _playing = attemptId),
           onBackToReady: () => setState(() => _playing = null),
         ),
@@ -260,8 +263,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           exercise: value.exercise!,
           metBefore: value.hasMet(value.exercise!.material),
           admittedBy: value.presented?.decision.decision.challengeBypass,
-          onFinish: notifier.finish,
-          onDecline: notifier.decline,
+          onFinish: (completion) =>
+              notifier.finish(completion, attempt: attempt!),
+          onDecline: (completion) =>
+              notifier.decline(completion, attempt: attempt!),
           onUnderWay: () => setState(() => _playing = attemptId),
           onBackToReady: () => setState(() => _playing = null),
         ),
@@ -732,8 +737,10 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   bool _questioned = false;
 
   /// Held rather than read on demand, because the pulse has to be silenced
-  /// from [dispose], where reading a provider is no longer safe.
+  /// and the recording released from [dispose], where reading a provider is no
+  /// longer safe.
   late final PulseClicker _pulse;
+  late final AttemptTranscriptNotifier _transcript;
   late final ScreenWakeLock _screenWakeLock;
 
   @override
@@ -746,6 +753,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       value: 1,
     )..reverse();
     _pulse = ref.read(pulseClickerProvider);
+    _transcript = ref.read(attemptTranscriptProvider.notifier);
     _screenWakeLock = ref.read(screenWakeLockProvider);
     _screenWakeLock.setEnabled(true).ignore();
     // The previous attempt's notes are still in the transcript, because
@@ -754,7 +762,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // its own recording produced, which it does not have until the window
     // opens, so the frames before this callback runs are covered too.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) ref.read(attemptTranscriptProvider.notifier).discard();
+      if (mounted) _transcript.discard();
     });
     // Warmed up while the learner reads the screen, so neither the first beat
     // nor the first drawn note is waiting on something to load.
@@ -770,9 +778,11 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _settling?.cancel();
     _countIn?.cancel();
     _watchdog?.cancel();
-    // Leaving the screen ends the attempt, and a pulse that outlived it would
-    // keep sounding over whatever comes next.
+    // Leaving the screen ends the attempt: a pulse that outlived it would keep
+    // sounding over whatever comes next, and a recording that outlived it
+    // would take notes nobody played into it.
     unawaited(_pulse.stop());
+    _transcript.release(_recording);
     super.dispose();
   }
 
@@ -848,16 +858,14 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   void _beginListening() {
     setState(() {
       _phase = _Phase.playing;
-      _recording = ref
-          .read(attemptTranscriptProvider.notifier)
-          .start(widget.exercise.material);
+      _recording = _transcript.start(widget.exercise.material);
     });
   }
 
   /// Gives up whatever was being recorded, so nothing of it is read later.
   void _abandonRecording() {
     _recording = null;
-    ref.read(attemptTranscriptProvider.notifier).discard();
+    _transcript.discard();
   }
 
   /// This attempt's capture, and nothing else's.
@@ -920,9 +928,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         if (_beatsLeft <= 0) {
           timer.cancel();
           _phase = _Phase.playing;
-          _recording = ref
-              .read(attemptTranscriptProvider.notifier)
-              .start(widget.exercise.material);
+          _recording = _transcript.start(widget.exercise.material);
           _watchdog = Timer.periodic(_watchdogTick, (_) => _watch());
         }
       });
@@ -990,7 +996,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       termination: AttemptTermination.learnerDeclined,
       capture: _capture,
     );
-    ref.read(attemptTranscriptProvider.notifier).stop();
+    _transcript.stop();
     setState(() => _phase = _Phase.finishing);
     await _handOverTheScreen();
     await widget.onDecline!(completion);
@@ -1019,7 +1025,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       termination: termination,
       capture: _capture,
     );
-    ref.read(attemptTranscriptProvider.notifier).stop();
+    _transcript.stop();
     setState(() => _phase = _Phase.finishing);
     await _handOverTheScreen();
     // What was played is the evidence. Nobody is asked how it went.

@@ -128,6 +128,8 @@ void main() {
         .read(practiceLoopProvider.notifier)
         .finish(
           AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+
+          attempt: container.read(practiceLoopProvider).requireValue.attempt!,
         );
 
     final loop = container.read(practiceLoopProvider).value!;

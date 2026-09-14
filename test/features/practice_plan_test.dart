@@ -107,6 +107,8 @@ void main() {
         .read(practiceLoopProvider.notifier)
         .finish(
           AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+
+          attempt: container.read(practiceLoopProvider).requireValue.attempt!,
         );
 
     final loop = container.read(practiceLoopProvider).value!;
@@ -127,6 +129,8 @@ void main() {
         .read(practiceLoopProvider.notifier)
         .finish(
           AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+
+          attempt: container.read(practiceLoopProvider).requireValue.attempt!,
         );
 
     final loop = container.read(practiceLoopProvider).value!;
@@ -156,7 +160,10 @@ void main() {
     await container.read(practiceLoopProvider.future);
     await container
         .read(practiceLoopProvider.notifier)
-        .finish(AttemptCompletion.unplayed(AttemptTermination.learnerStopped));
+        .finish(
+          AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+          attempt: container.read(practiceLoopProvider).requireValue.attempt!,
+        );
 
     final loop = container.read(practiceLoopProvider).value!;
     expect(
