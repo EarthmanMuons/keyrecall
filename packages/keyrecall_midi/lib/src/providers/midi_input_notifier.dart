@@ -308,6 +308,8 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
 
   void _receive(MidiSourceMessage source) {
     final turnedAway = _reducer.rejectedForeignCount;
+    final clock = _reducer.clock.observation;
+    final phase = _reducer.clock.phase;
     final envelope = _envelope(source);
     // Ahead of anything deciding what it means: a message the boundary goes
     // on to reject is one the dataset may have to explain a discontinuity
@@ -322,10 +324,15 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
       ),
     );
     _emit(_reducer.receive(envelope));
-    // A message from another instrument produces no event but is still worth
-    // publishing: it is the only sign that something else is playing into the
-    // same transport.
-    if (_reducer.rejectedForeignCount != turnedAway) _publish();
+    // Not every delivery that changes what is known produces an event. A
+    // message from another instrument is the only sign that something else is
+    // playing into the same transport, and a controller message can measure
+    // the clock or fail its timeline without moving a single key.
+    if (_reducer.rejectedForeignCount != turnedAway ||
+        _reducer.clock.observation != clock ||
+        _reducer.clock.phase != phase) {
+      _publish();
+    }
   }
 
   /// Every channel of the adopted instrument is one keyboard.

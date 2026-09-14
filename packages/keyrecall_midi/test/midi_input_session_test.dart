@@ -172,6 +172,51 @@ void main() {
     expect(state().snapshot.pressedNoteNumbers, {64});
   });
 
+  // The published state is what diagnostics read. A delivery that measures the
+  // clock, or fails its timeline, does not have to move a key, and the
+  // musical-event path was acting as the only notification boundary.
+  group('what the clock is doing reaches the state', () {
+    /// A controller message, which normalizes to no event at all.
+    void controller(int value, {required int transportTimestamp}) {
+      ble.emitMessage(
+        MidiMessage(
+          type: MidiMessageType.controlChange,
+          ccNumber: 1,
+          ccValue: value,
+        ),
+        transportTimestamp: transportTimestamp,
+      );
+    }
+
+    test('a delivery nobody played still advances the measurement', () async {
+      for (var step = 1; step <= 9; step++) {
+        nowMs = step;
+        controller(step, transportTimestamp: step * 100000);
+        await pumpEventQueue();
+      }
+
+      expect(state().clockObservation.steps, 8);
+      expect(state().clockObservation.granularity, 100000);
+    });
+
+    test('and a timeline that fails is published when it fails', () async {
+      for (var step = 1; step <= 10; step++) {
+        nowMs = step;
+        controller(step, transportTimestamp: step * 100000);
+        await pumpEventQueue();
+      }
+      expect(state().clockPhase, PerformanceClockPhase.active);
+
+      // A reading the clock cannot have produced, on a domain with no
+      // characterized wrap.
+      nowMs = 11;
+      controller(11, transportTimestamp: 100000);
+      await pumpEventQueue();
+
+      expect(state().clockPhase, PerformanceClockPhase.failed);
+    });
+  });
+
   // Three separate facts: the transport can deliver, nobody has put
   // observation down, and an instrument is adopted. An epoch needs all of
   // them, and inferring any from the reducer's phase is what let these two

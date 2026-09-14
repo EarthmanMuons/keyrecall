@@ -58,6 +58,62 @@ void main() {
     );
   });
 
+  // An authorized shape is a property of the domain; a usable timeline is a
+  // property of this observation. The screen reported the first as the second,
+  // so a failed timeline still read as performance timing.
+  group('timing availability is not shape authorization', () {
+    const authorized = ClockDomainObservation(
+      session: 'a',
+      steps: 20,
+      granularity: 1,
+      modulus: 8192,
+    );
+
+    test('an active timeline on an authorized shape is timing', () {
+      expect(
+        clockTimingLabel((
+          observation: authorized,
+          phase: PerformanceClockPhase.active,
+        )),
+        'performance',
+      );
+    });
+
+    test('a failed timeline is not, however good the shape is', () {
+      expect(
+        clockTimingLabel((
+          observation: authorized,
+          phase: PerformanceClockPhase.failed,
+        )),
+        'unavailable, the timeline failed',
+      );
+    });
+
+    test('an authorized shape that has not anchored yet is not either', () {
+      expect(
+        clockTimingLabel((
+          observation: authorized,
+          phase: PerformanceClockPhase.detecting,
+        )),
+        'not yet timing',
+      );
+    });
+
+    test('an unauthorized shape says what the policy says', () {
+      expect(
+        clockTimingLabel((
+          observation: const ClockDomainObservation(
+            session: 'a',
+            steps: 20,
+            granularity: 1000000,
+          ),
+          phase: PerformanceClockPhase.unauthorized,
+        )),
+        'not performance',
+      );
+    });
+  });
+
   test('every authorization has words for it', () {
     for (final authorization in ClockAuthorization.values) {
       expect(clockAuthorizationLabel(authorization), isNotEmpty);

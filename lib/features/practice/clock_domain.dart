@@ -13,9 +13,21 @@ import 'package:keyrecall_midi/keyrecall_midi.dart';
 /// its own over the transport records, which include the traffic the boundary
 /// turned away, so the screen could name a shape nothing was timing against
 /// while the adopted instrument's clock was something else.
-final clockDomainProvider = Provider<ClockDomainObservation>(
-  (ref) => ref.watch(midiInputProvider).clockObservation,
-);
+final clockDomainProvider = Provider<LiveClockDomain>((ref) {
+  final input = ref.watch(midiInputProvider);
+  return (observation: input.clockObservation, phase: input.clockPhase);
+});
+
+/// What was measured about the clock, and where its timeline stands.
+///
+/// Two questions, and the second is not the first. A shape is a property of
+/// the domain the detector found; a phase is a property of this observation's
+/// timeline, which can have failed under a shape that is perfectly well
+/// authorized.
+typedef LiveClockDomain = ({
+  ClockDomainObservation observation,
+  PerformanceClockPhase phase,
+});
 
 /// The measured shape, for somebody reading it off a phone.
 ///
@@ -42,6 +54,26 @@ String clockDomainLabel(
       : ' at ${_grouped(clock.countsPerMillisecond)} counts/ms';
   final modulus = observation.modulus;
   return modulus == null ? '$quantum$rate' : '$quantum$rate, modulo $modulus';
+}
+
+/// What timing can be read from the clock right now.
+///
+/// A shape being authorized is not the same as a timeline being usable, so
+/// this reports the phase where they disagree. Saying "performance" for a
+/// failed timeline would report an authorization as an availability.
+String clockTimingLabel(
+  LiveClockDomain domain, {
+  ClockDomainPolicy policy = ClockDomainPolicy.characterized,
+}) {
+  final authorization = policy.classify(domain.observation);
+  if (domain.phase == PerformanceClockPhase.failed) {
+    return 'unavailable, the timeline failed';
+  }
+  if (authorization == ClockAuthorization.performance &&
+      domain.phase != PerformanceClockPhase.active) {
+    return 'not yet timing';
+  }
+  return clockAuthorizationLabel(authorization);
 }
 
 /// What that shape is allowed to say about playing.

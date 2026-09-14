@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 
 import 'clock_domain.dart';
@@ -463,19 +462,17 @@ class _ClockDomain extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final domain = ref.watch(clockDomainProvider);
     final theme = Theme.of(context);
-    final use = clockAuthorizationLabel(
-      ClockDomainPolicy.characterized.classify(domain),
-    );
+    final use = clockTimingLabel(domain);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'clock ${clockDomainLabel(domain)}',
+          'clock ${clockDomainLabel(domain.observation)}',
           style: theme.textTheme.bodyMedium,
         ),
         Text(
-          'timing use $use \u00b7 ${domain.steps} steps seen',
+          'timing use $use \u00b7 ${domain.observation.steps} steps seen',
           style: theme.textTheme.bodySmall,
         ),
       ],
