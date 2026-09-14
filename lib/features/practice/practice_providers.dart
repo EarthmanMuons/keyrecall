@@ -52,6 +52,17 @@ final practiceCatalogProvider = Provider<List<TechnicalMaterial>>(
   (ref) => [...allScales, ...allRootPositionArpeggios],
 );
 
+/// Orders plan reads behind the plan writes already accepted for a profile.
+///
+/// Above the notifier, because a plan notifier is replaced whenever the
+/// selection changes and its own queue cannot order a write against the read
+/// the notifier that replaced it performs. Once a mutation for a profile is
+/// accepted, a later load of that profile sees it or something later, rather
+/// than the state it was asked to replace.
+final practicePlanWritesProvider = Provider<ProfileWriteQueue>(
+  (ref) => ProfileWriteQueue(),
+);
+
 /// What the active profile is working toward, and drawing from now.
 ///
 /// Absent storage means nobody has been asked, which is [PracticePlan.normal]:
@@ -101,9 +112,6 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   /// the build that replaced it already has.
   int _builds = 0;
 
-  /// The writes already queued, which the next one is ordered behind.
-  Future<void> _writes = Future<void>.value();
-
   @override
   Future<PracticePlan> build() async {
     final build = ++_builds;
@@ -113,10 +121,15 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
 
     final repository = await ref.watch(profileRepositoryProvider.future);
     final store = await ref.watch(practiceStoreProvider.future);
+    final writes = ref.watch(practicePlanWritesProvider);
     final profile = await repository.selectedOrOldest();
     if (profile == null) return PracticePlan.normal;
     final plan =
-        await store.loadPracticePlan(profile.id) ?? PracticePlan.normal;
+        await writes.run(
+          profile.id,
+          () => store.loadPracticePlan(profile.id),
+        ) ??
+        PracticePlan.normal;
     if (build == _builds) _owner = _PlanOwner.next(profile.id);
     return plan;
   }
@@ -129,23 +142,24 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   /// presents the same exercise again, while anything being recorded at the
   /// time goes with the screen that was recording it.
   ///
-  /// Ordered as well as owned. Two saves in flight can finish in either order,
-  /// and the second to land would otherwise be the one stored and shown
-  /// however recently it was asked for.
+  /// Ordered as well as owned, on the profile's queue rather than this
+  /// notifier's. Two saves in flight can finish in either order, and the
+  /// second to land would otherwise be the one stored and shown however
+  /// recently it was asked for; a load that overtook an accepted save would
+  /// show the state that save was asked to replace.
   ///
-  /// Accepting one is taking it on. The store is resolved here rather than
-  /// when the write's turn comes, because a notifier disposed while this is
-  /// queued can no longer be asked for one, and a mutation that was accepted
-  /// is owed to the profile it names.
+  /// Accepting one is taking it on. The write is queued here rather than when
+  /// its turn comes, and the store is resolved here too, because a notifier
+  /// disposed while this is queued can no longer be asked for one and a
+  /// mutation that was accepted is owed to the profile it names.
   Future<void> apply(PracticePlan plan) {
     final owner = _owner;
     if (owner == null) return Future<void>.value();
     final storeFuture = ref.read(practiceStoreProvider.future);
 
-    final saving = _writes.then((_) => _save(owner, plan, storeFuture));
-    // A failed save must not swallow the one queued behind it.
-    _writes = saving.then((_) {}, onError: (_, _) {});
-    return saving;
+    return ref
+        .read(practicePlanWritesProvider)
+        .run(owner.profileId, () => _save(owner, plan, storeFuture));
   }
 
   /// Saves [plan] for [owner], publishing it only while [owner] is still whose
@@ -614,7 +628,22 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     );
 
     final identity = PracticeSessionIdentity.next(profile.id);
-    if (build == _builds) _owner = identity;
+    // Superseded while opening. This build's result is discarded either way;
+    // what it must not do is go on to decide, because deciding persists a
+    // pending slot over the one the sitting that replaced it is presenting,
+    // and the attempt on screen and the attempt a relaunch recovers then
+    // disagree.
+    if (build != _builds) {
+      await scheduler.dispose();
+      return PracticeLoopState(
+        identity: identity,
+        profile: profile,
+        plan: plan,
+        session: session,
+        note: 'superseded while opening',
+      );
+    }
+    _owner = identity;
 
     // An unresolved decision is presented again rather than discarded. It was
     // shown to someone under an attempt id that is already durable, and
@@ -668,19 +697,21 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     // the transcript holds by the time this runs.
     final transcript = completion.transcript;
 
-    await _close(attempt, () async {
-      final record = await current.session.closeDeclined(
-        transcript: transcript,
-        observedWallTime: DateTime.now().toUtc(),
-      );
-      return PracticeLoopState(
-        identity: current.identity,
-        profile: current.profile,
-        plan: current.plan,
-        session: current.session,
-        lastCommitted: record,
-      );
-    });
+    await _serialize(
+      () => _close(attempt, () async {
+        final record = await current.session.closeDeclined(
+          transcript: transcript,
+          observedWallTime: DateTime.now().toUtc(),
+        );
+        return PracticeLoopState(
+          identity: current.identity,
+          profile: current.profile,
+          plan: current.plan,
+          session: current.session,
+          lastCommitted: record,
+        );
+      }),
+    );
   }
 
   /// Says the outstanding attempt has actually reached the learner.
@@ -689,6 +720,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// one's review is still on screen, and a prepared decision can be discarded
   /// before anybody sees it.
   Future<void> acknowledgePresentation(PracticeAttemptOwner attempt) async {
+    if (!_owns(attempt.session)) return;
     final current = state.value;
     if (current == null || current.attempt != attempt) return;
     await current.session.acknowledgePresentation(attempt.attemptId);
@@ -710,26 +742,28 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     final current = _answerable(attempt);
     if (current == null || current.acquisition == null) return;
 
-    await _close(attempt, () async {
-      final record = await current.session.closeAcquisition(
-        completion.transcript,
-        at: DateTime.now().toUtc(),
-        // An interrupted capture is still an observation of what was played,
-        // and what it is not is the learner stopping. Recording it as an
-        // ordinary attempt would put an incomplete traversal down to them.
-        termination: completion.isInterrupted
-            ? AttemptTermination.inputInterrupted
-            : completion.termination,
-      );
-      return PracticeLoopState(
-        identity: current.identity,
-        profile: current.profile,
-        plan: current.plan,
-        session: current.session,
-        coverage: current.coverage,
-        lastAcquisition: record,
-      );
-    });
+    await _serialize(
+      () => _close(attempt, () async {
+        final record = await current.session.closeAcquisition(
+          completion.transcript,
+          at: DateTime.now().toUtc(),
+          // An interrupted capture is still an observation of what was played,
+          // and what it is not is the learner stopping. Recording it as an
+          // ordinary attempt would put an incomplete traversal down to them.
+          termination: completion.isInterrupted
+              ? AttemptTermination.inputInterrupted
+              : completion.termination,
+        );
+        return PracticeLoopState(
+          identity: current.identity,
+          profile: current.profile,
+          plan: current.plan,
+          session: current.session,
+          coverage: current.coverage,
+          lastAcquisition: record,
+        );
+      }),
+    );
   }
 
   /// Commits what was played and moves to the next exercise.
@@ -755,55 +789,57 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     if (current == null) return;
     final transcript = completion.transcript;
 
-    await _close(attempt, () async {
-      if (completion.isInterrupted) {
-        final record = await current.session.closeUnmeasured(
-          termination: AttemptTermination.inputInterrupted,
-          reason: MeasurementUnavailableReason.inputInterrupted,
-          observedWallTime: DateTime.now().toUtc(),
-        );
-        return PracticeLoopState(
-          identity: current.identity,
-          profile: current.profile,
-          plan: current.plan,
-          session: current.session,
-          lastCommitted: record,
-        );
-      }
+    await _serialize(
+      () => _close(attempt, () async {
+        if (completion.isInterrupted) {
+          final record = await current.session.closeUnmeasured(
+            termination: AttemptTermination.inputInterrupted,
+            reason: MeasurementUnavailableReason.inputInterrupted,
+            observedWallTime: DateTime.now().toUtc(),
+          );
+          return PracticeLoopState(
+            identity: current.identity,
+            profile: current.profile,
+            plan: current.plan,
+            session: current.session,
+            lastCommitted: record,
+          );
+        }
 
-      final unplayed =
-          transcript.isEmpty &&
-          completion.termination != AttemptTermination.learnerStopped;
-      if (unplayed) {
-        final record = await current.session.closeUnmeasured(
+        final unplayed =
+            transcript.isEmpty &&
+            completion.termination != AttemptTermination.learnerStopped;
+        if (unplayed) {
+          final record = await current.session.closeUnmeasured(
+            termination: completion.termination,
+            reason: MeasurementUnavailableReason.nothingPlayed,
+            observedWallTime: DateTime.now().toUtc(),
+          );
+          return PracticeLoopState(
+            identity: current.identity,
+            profile: current.profile,
+            plan: current.plan,
+            session: current.session,
+            lastCommitted: record,
+          );
+        }
+
+        final closed = await current.session.closeFromPerformance(
+          transcript,
           termination: completion.termination,
-          reason: MeasurementUnavailableReason.nothingPlayed,
           observedWallTime: DateTime.now().toUtc(),
         );
+        await _recordCoordination(closed.record, closed.reading);
         return PracticeLoopState(
           identity: current.identity,
           profile: current.profile,
           plan: current.plan,
           session: current.session,
-          lastCommitted: record,
+          lastCommitted: closed.record,
+          lastReading: closed.reading,
         );
-      }
-
-      final closed = await current.session.closeFromPerformance(
-        transcript,
-        termination: completion.termination,
-        observedWallTime: DateTime.now().toUtc(),
-      );
-      await _recordCoordination(closed.record, closed.reading);
-      return PracticeLoopState(
-        identity: current.identity,
-        profile: current.profile,
-        plan: current.plan,
-        session: current.session,
-        lastCommitted: closed.record,
-        lastReading: closed.reading,
-      );
-    });
+      }),
+    );
   }
 
   /// The sitting [attempt] belongs to, if it is still the one on screen and
@@ -812,9 +848,14 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// The ownership check is here rather than at the transaction, because a
   /// completion that names an attempt this sitting is not holding is evidence
   /// about somebody else's slot and there is nowhere to put it.
+  ///
+  /// Ownership is asked of the notifier first and of the state second. State
+  /// is retained across a failure and a rebuild, so a value that still holds
+  /// the right attempt is not on its own evidence that its sitting is current.
   PracticeLoopState? _answerable(PracticeAttemptOwner attempt) {
+    if (_writing || !_owns(attempt.session)) return null;
     final current = state.value;
-    if (_writing || current == null || !current.isAwaitingAnswer) return null;
+    if (current == null || !current.isAwaitingAnswer) return null;
     return current.attempt == attempt ? current : null;
   }
 
@@ -833,29 +874,24 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     PracticeAttemptOwner attempt,
     Future<PracticeLoopState> Function() close,
   ) async {
-    _writing = true;
+    final PracticeLoopState closed;
     try {
-      final PracticeLoopState closed;
-      try {
-        closed = await close();
-      } catch (error, stackTrace) {
-        // The transaction stays frozen on the session, so the recovery is to
-        // write this same attempt again rather than to open a sitting that
-        // would find its decision pending and its performance gone.
-        _fail(
-          attempt.session,
-          PracticeFailure.commit,
-          error,
-          stackTrace,
-          retry: () => _close(attempt, close),
-        );
-        return;
-      }
-      if (!_owns(attempt.session)) return;
-      await _publish(closed);
-    } finally {
-      _writing = false;
+      closed = await close();
+    } catch (error, stackTrace) {
+      // The transaction stays frozen on the session, so the recovery is to
+      // write this same attempt again rather than to open a sitting that
+      // would find its decision pending and its performance gone.
+      _fail(
+        attempt.session,
+        PracticeFailure.commit,
+        error,
+        stackTrace,
+        retry: () => _close(attempt, close),
+      );
+      return;
     }
+    if (!_owns(attempt.session)) return;
+    await _publish(closed);
   }
 
   /// Decides the next slot from [closed] and publishes the result.
@@ -869,7 +905,13 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         PracticeFailure.scheduling,
         error,
         stackTrace,
-        retry: () => _publish(closed),
+        // Where deciding failed, the host is what failed: a worker that died
+        // took its binding and nothing else, so the sitting re-establishes
+        // where it decides and asks the same question again.
+        retry: () {
+          closed.session.recoverScheduling();
+          return _publish(closed);
+        },
       );
       return;
     }
@@ -897,13 +939,32 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// the session that owns them. Anything else reopens, which is what a
   /// sitting that never opened has.
   Future<void> retry() async {
+    // A recovery already running is what this exists to finish, not something
+    // to start again. Reopening now would abandon a frozen commit mid-write
+    // and leave the sitting on screen behind durable history.
+    if (_writing) return;
+
     final recovery = _recovery;
-    if (recovery == null || !_owns(recovery.session) || _writing) {
+    if (recovery == null || !_owns(recovery.session)) {
       _recovery = null;
       ref.invalidateSelf();
       return;
     }
-    await recovery.retry();
+    await _serialize(recovery.retry);
+  }
+
+  /// Runs [work] as the one thing this notifier is writing.
+  ///
+  /// The single-flight boundary for everything that closes, decides, or
+  /// recovers. Held here rather than inside each of them so a recovery and the
+  /// operation it is recovering cannot both be running.
+  Future<void> _serialize(Future<void> Function() work) async {
+    _writing = true;
+    try {
+      await work();
+    } finally {
+      _writing = false;
+    }
   }
 
   /// Erases this profile's history and starts over from placement.

@@ -7,6 +7,7 @@ import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
@@ -193,7 +194,9 @@ void main() {
     );
 
     await container.read(practiceLoopProvider.notifier).retry();
-    final after = container.read(practiceLoopProvider).requireValue;
+    final recovered = container.read(practiceLoopProvider);
+    expect(recovered, isA<AsyncData<PracticeLoopState>>());
+    final after = recovered.requireValue;
 
     expect(
       after.lastCommitted!.identity.attemptId,
@@ -204,6 +207,169 @@ void main() {
     expect(after.attemptsRecorded, 1);
     expect(store.appends, 2);
   });
+
+  test('a build superseded while opening never decides', () async {
+    // An old build that runs on decides a slot and persists it, so the attempt
+    // on screen and the attempt a relaunch would recover stop being the same
+    // one. Finishing the open is harmless; going on to decide is not.
+    final store = _HoldsOnePendingRead();
+    practice = store;
+    final container = launch();
+    await place(container);
+    final first = await loopOf(container);
+    // Nothing to resume, so a reopened sitting decides rather than presenting
+    // the slot it recovered.
+    await first.session.abandonPending();
+
+    // Listened to, so reopening rebuilds when it is invalidated rather than
+    // when somebody next reads.
+    final subscription = container.listen(practiceLoopProvider, (_, _) {});
+    addTearDown(subscription.close);
+
+    final notifier = container.read(practiceLoopProvider.notifier);
+    final paused = Completer<void>();
+    store.gate = paused;
+    notifier.reopen();
+    await pumpEventQueue();
+    // A replacement that runs to completion behind the paused one.
+    notifier.reopen();
+    final replacement = await loopOf(container);
+
+    paused.complete();
+    await pumpEventQueue();
+
+    final profileId = (await profiles.selectedOrOldest())!.id;
+    final pending = await store.loadPendingDecision(profileId);
+    expect(
+      pending!.attemptId,
+      replacement.attempt!.attemptId,
+      reason: 'what is recorded as pending is what is on screen',
+    );
+    expect(
+      container.read(practiceLoopProvider).requireValue.identity,
+      replacement.identity,
+    );
+  });
+
+  test(
+    'retrying while a frozen commit is being written does nothing',
+    () async {
+      final store = _FailsThenHoldsAppend();
+      practice = store;
+      final container = launch();
+      await place(container);
+      final first = await loopOf(container);
+      final notifier = container.read(practiceLoopProvider.notifier);
+
+      await notifier.finish(
+        AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+        attempt: first.attempt!,
+      );
+      expect(container.read(practiceLoopProvider), isA<AsyncError<dynamic>>());
+
+      final retrying = notifier.retry();
+      await pumpEventQueue();
+      // The recovery this would restart is the one still writing. Reopening now
+      // is how the sitting on screen ends up behind durable history.
+      await notifier.retry();
+      store.gate.complete();
+      await retrying;
+
+      final recovered = container.read(practiceLoopProvider);
+      expect(recovered, isA<AsyncData<PracticeLoopState>>());
+      final after = recovered.requireValue;
+      expect(after.identity, first.identity);
+      expect(after.attemptsRecorded, 1);
+      expect(after.lastCommitted!.identity.attemptId, first.attempt!.attemptId);
+      expect(store.appends, 2, reason: 'one failure and one retry, not three');
+    },
+  );
+
+  test(
+    'a decision that lost its worker is asked again on a fresh one',
+    () async {
+      final host = _LosesTheWorkerOnce();
+      final container = ProviderContainer(
+        overrides: [
+          profileRepositoryProvider.overrideWith((ref) async => profiles),
+          practiceStoreProvider.overrideWith((ref) async => practice),
+          schedulerHostFactoryProvider.overrideWith(
+            (ref) =>
+                () => host,
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
+      await place(container);
+      final first = await loopOf(container);
+
+      await container
+          .read(practiceLoopProvider.notifier)
+          .finish(
+            AttemptCompletion.unplayed(AttemptTermination.learnerStopped),
+            attempt: first.attempt!,
+          );
+
+      final failed = container.read(practiceLoopProvider);
+      expect(
+        (failed as AsyncError).error,
+        isA<PracticeLoopFailure>().having(
+          (failure) => failure.kind,
+          'kind',
+          PracticeFailure.scheduling,
+        ),
+      );
+
+      await container.read(practiceLoopProvider.notifier).retry();
+      final recovered = container.read(practiceLoopProvider);
+
+      // Read as an AsyncValue, not through it: a failure carries the last
+      // value forward, so a state that still holds an exercise is not on its
+      // own evidence that anything recovered.
+      expect(
+        recovered,
+        isA<AsyncData<PracticeLoopState>>(),
+        reason: 'the sitting rebinds where it decides rather than reopening',
+      );
+      final after = recovered.requireValue;
+      expect(after.presented, isNotNull);
+      expect(after.identity, first.identity);
+      expect(after.attemptsRecorded, 1);
+    },
+  );
+
+  test(
+    'a plan load waits for a write already accepted for that profile',
+    () async {
+      final gate = Completer<void>();
+      final store = _GatedPlanStore(gate.future);
+      practice = store;
+      final container = launch();
+      await place(container);
+      await loopOf(container);
+      final profileId = (await profiles.selectedOrOldest())!.id;
+
+      final saving = container
+          .read(practicePlanProvider.notifier)
+          .apply(PracticePlan.normal.focusedOn(_minorMaterial));
+      await switchProfile(container);
+      await container.read(profileRosterProvider.notifier).select(profileId);
+
+      // Back on the profile whose save is still in flight. Reading storage now
+      // would read the state that save was asked to replace.
+      final reopening = loopOf(container);
+      await pumpEventQueue();
+      gate.complete();
+      await saving;
+      await reopening;
+
+      expect(
+        container.read(practicePlanProvider).requireValue.isFocused,
+        isTrue,
+      );
+    },
+  );
 
   test('releasing a recording closes only the one it names', () async {
     // Whether a window is still open is read the way the input boundary would
@@ -269,5 +435,96 @@ class _FailsFirstAppend extends InMemoryPracticeStore {
     appends++;
     if (appends == 1) throw StateError('storage is unavailable');
     await super.appendAttempt(record);
+  }
+}
+
+/// Holds the first pending-decision read taken while it is armed, in flight.
+///
+/// What comes back is what storage held when the read was made, which is what
+/// a build that started before the one replacing it is working from.
+class _HoldsOnePendingRead extends InMemoryPracticeStore {
+  Completer<void>? gate;
+
+  @override
+  Future<PendingDecision?> loadPendingDecision(String profileId) async {
+    final held = gate;
+    gate = null;
+    final answer = await super.loadPendingDecision(profileId);
+    if (held != null) await held.future;
+    return answer;
+  }
+}
+
+/// Refuses the first append and holds the second until it is let go.
+class _FailsThenHoldsAppend extends InMemoryPracticeStore {
+  final Completer<void> gate = Completer<void>();
+  int appends = 0;
+
+  @override
+  Future<void> appendAttempt(AttemptRecord record) async {
+    appends++;
+    if (appends == 1) throw StateError('storage is unavailable');
+    await gate.future;
+    await super.appendAttempt(record);
+  }
+}
+
+/// Loses its worker once, the way a host whose isolate died does: the request
+/// fails, and nothing decides again until something binds.
+class _LosesTheWorkerOnce extends InProcessScheduler {
+  _LosesTheWorkerOnce()
+    : super(const SchedulerPipeline(learner: LearnerModel()));
+
+  bool _bound = false;
+  int _decisions = 0;
+
+  @override
+  Future<void> bind({
+    required ResolvedPracticeScope scope,
+    required PracticeEntryPolicy entry,
+    required LearnerModel learner,
+    required SchedulerConfig config,
+  }) async {
+    _bound = true;
+    await super.bind(
+      scope: scope,
+      entry: entry,
+      learner: learner,
+      config: config,
+    );
+  }
+
+  @override
+  Future<SchedulerVerdict> decide({
+    required int epoch,
+    required LearnerState state,
+    required SessionState session,
+    required List<String> dueRequirementIds,
+    required DateTime at,
+    AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
+    AcquisitionProgress? acquisition,
+    Set<Exercise>? attemptedExercises,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+  }) {
+    if (!_bound) {
+      throw StateError('no scope is bound; bind one before deciding');
+    }
+    if (++_decisions == 2) {
+      _bound = false;
+      throw const SchedulerWorkerLost();
+    }
+    return super.decide(
+      epoch: epoch,
+      state: state,
+      session: session,
+      dueRequirementIds: dueRequirementIds,
+      at: at,
+      acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
+      acquisition: acquisition,
+      attemptedExercises: attemptedExercises,
+      executionEvidenceRevisions: executionEvidenceRevisions,
+    );
   }
 }
