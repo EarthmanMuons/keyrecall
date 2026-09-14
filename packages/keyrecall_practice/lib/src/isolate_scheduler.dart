@@ -29,10 +29,20 @@ class SchedulerWorkerLost implements Exception {
 /// with a compact competition report.
 ///
 /// Disposable by construction. It owns no durability and no lifecycle policy:
-/// a worker that dies mid-decision fails that request and nothing else, and the
-/// session decides again from the state it never gave up.
+/// a worker that dies mid-decision fails that request and nothing else,
+/// however it died, and the session decides again from the state it never gave
+/// up.
+///
+/// One host belongs to one sitting. Binding replaces the scope the worker
+/// holds, so a host two sittings share decides both of their slots against
+/// whichever scope bound last.
 class IsolateScheduler implements SchedulerHost {
   _Worker? _worker;
+
+  /// Names each binding, so a startup that was superseded or disposed while
+  /// its isolate was spawning does not install its worker over the one that
+  /// replaced it.
+  int _bindings = 0;
 
   @override
   Future<void> bind({
@@ -42,16 +52,41 @@ class IsolateScheduler implements SchedulerHost {
     required SchedulerConfig config,
   }) async {
     await dispose();
-    _worker = await _Worker.start(
-      scope: scope,
-      entry: entry,
-      learner: learner,
-      config: config,
-    );
+    final binding = _bindings;
+
+    final _Worker worker;
+    try {
+      worker = await _Worker.start(
+        scope: scope,
+        entry: entry,
+        learner: learner,
+        config: config,
+      );
+    } on SchedulerWorkerLost {
+      rethrow;
+    } catch (error) {
+      throw SchedulerWorkerLost(error);
+    }
+
+    if (binding != _bindings) {
+      // Disposed or bound again while this one was spawning. The isolate it
+      // just made answers a scope nobody is practicing under.
+      worker.stop();
+      return;
+    }
+    worker.onLost = () {
+      if (identical(_worker, worker)) _worker = null;
+    };
+    if (worker.isLost) {
+      _worker = null;
+      throw const SchedulerWorkerLost('the worker died during startup');
+    }
+    _worker = worker;
   }
 
   @override
   Future<void> dispose() async {
+    _bindings++;
     _worker?.stop();
     _worker = null;
   }
@@ -75,6 +110,7 @@ class IsolateScheduler implements SchedulerHost {
     }
     return worker.decide(
       _DecisionRequest(
+        id: worker.nextRequestId(),
         epoch: epoch,
         state: state,
         session: session,
@@ -91,6 +127,13 @@ class IsolateScheduler implements SchedulerHost {
 }
 
 class _DecisionRequest {
+  /// Which request this is, echoed by the answer.
+  ///
+  /// What correlates the two. A worker answering whatever it was last asked
+  /// cannot tell one caller's verdict from another's, and a verdict handed to
+  /// the wrong caller is valid and wrong.
+  final int id;
+
   final int epoch;
   final LearnerState state;
   final SessionState session;
@@ -103,6 +146,7 @@ class _DecisionRequest {
   final Map<ExecutionContext, int> executionEvidenceRevisions;
 
   const _DecisionRequest({
+    required this.id,
     required this.epoch,
     required this.state,
     required this.session,
@@ -117,6 +161,7 @@ class _DecisionRequest {
 }
 
 class _DecisionResponse {
+  final int id;
   final String diagnostics;
   final int epoch;
   final CandidateTrace? chosen;
@@ -126,6 +171,7 @@ class _DecisionResponse {
   final SelectionEffect effect;
 
   const _DecisionResponse({
+    required this.id,
     required this.diagnostics,
     required this.epoch,
     required this.chosen,
@@ -162,16 +208,23 @@ class _DecisionResponse {
 }
 
 /// One spawned isolate holding one scope, and the port pair that talks to it.
+///
+/// Three states and no others: starting, ready, and lost. Lost is terminal and
+/// covers every way a worker can go away, whether it was stopped or died,
+/// because a caller waiting on an answer needs the same thing from all of them.
 class _Worker {
   final Isolate _isolate;
   final SendPort _requests;
   final ReceivePort _responses;
 
-  /// The request this worker is answering, if any.
-  ///
-  /// One at a time, because a session decides one slot at a time: a second
-  /// request cannot exist while the first is unanswered.
-  Completer<_DecisionResponse>? _waiting;
+  /// The requests this worker has not answered, by id.
+  final Map<int, Completer<_DecisionResponse>> _waiting = {};
+
+  int _requestIds = 0;
+  bool _lost = false;
+
+  /// Told when this worker goes away on its own, so the host stops offering it.
+  void Function()? onLost;
 
   _Worker._(this._isolate, this._requests, this._responses);
 
@@ -183,47 +236,108 @@ class _Worker {
   }) async {
     final responses = ReceivePort();
     final ready = Completer<SendPort>();
-    final isolate = await Isolate.spawn(_serve, (
-      responses.sendPort,
-      scope,
-      entry,
-      learner,
-      config,
-    ));
-    late final _Worker worker;
+    _Worker? started;
+    // A worker can be lost before there is a worker to lose it. Startup
+    // failure and death during startup are the same fact arriving early, and
+    // both have to reach the caller: without this it waits on a port nothing
+    // will ever send to.
+    SchedulerWorkerLost? lostAtStartup;
+    void lose(SchedulerWorkerLost cause) {
+      if (started case final worker?) {
+        worker._lose(cause);
+        return;
+      }
+      lostAtStartup ??= cause;
+      if (!ready.isCompleted) ready.completeError(cause);
+    }
+
+    // An isolate that fails to start, throws while deciding, or exits for any
+    // other reason reports here.
     responses.listen((message) {
-      if (message is SendPort) {
-        ready.complete(message);
-      } else {
-        worker._answer(message as _DecisionResponse);
+      switch (message) {
+        case SendPort():
+          if (!ready.isCompleted) ready.complete(message);
+        case _DecisionResponse():
+          started?._answer(message);
+        case List():
+          // The pair an uncaught error in the isolate sends: the error and its
+          // stack, both already strings.
+          lose(SchedulerWorkerLost(message.first));
+        case _:
+          lose(const SchedulerWorkerLost('the worker exited'));
       }
     });
-    return worker = _Worker._(isolate, await ready.future, responses);
+
+    final Isolate isolate;
+    try {
+      isolate = await Isolate.spawn(
+        _serve,
+        (responses.sendPort, scope, entry, learner, config),
+        onError: responses.sendPort,
+        onExit: responses.sendPort,
+      );
+    } catch (_) {
+      responses.close();
+      rethrow;
+    }
+
+    final SendPort requests;
+    try {
+      requests = await ready.future;
+    } catch (_) {
+      responses.close();
+      isolate.kill(priority: Isolate.immediate);
+      rethrow;
+    }
+    started = _Worker._(isolate, requests, responses);
+    if (lostAtStartup case final cause?) started._lose(cause);
+    return started;
   }
 
+  /// Whether this worker is gone, however it went.
+  bool get isLost => _lost;
+
+  int nextRequestId() => ++_requestIds;
+
   Future<SchedulerVerdict> decide(_DecisionRequest request) {
+    if (_lost) return Future.error(const SchedulerWorkerLost());
+    // One at a time, because a session decides one slot at a time. Two
+    // overlapping requests are a caller deciding two slots at once, which is a
+    // question about which slot the session is on rather than one a worker can
+    // answer.
+    if (_waiting.isNotEmpty) {
+      return Future.error(
+        StateError('a decision is already in flight on this worker'),
+      );
+    }
     final completer = Completer<_DecisionResponse>();
-    _waiting = completer;
+    _waiting[request.id] = completer;
     _requests.send(request);
     return completer.future.then((response) => response.verdict);
   }
 
   void _answer(_DecisionResponse response) {
-    final completer = _waiting;
-    _waiting = null;
+    final completer = _waiting.remove(response.id);
     if (completer != null && !completer.isCompleted) {
       completer.complete(response);
     }
   }
 
-  void stop() {
-    final completer = _waiting;
-    _waiting = null;
-    if (completer != null && !completer.isCompleted) {
-      completer.completeError(const SchedulerWorkerLost());
+  /// Ends this worker deliberately.
+  void stop() => _lose(const SchedulerWorkerLost(), announce: false);
+
+  /// Ends this worker, failing whatever it was answering.
+  void _lose(SchedulerWorkerLost cause, {bool announce = true}) {
+    if (_lost) return;
+    _lost = true;
+    final waiting = _waiting.values.toList();
+    _waiting.clear();
+    for (final completer in waiting) {
+      if (!completer.isCompleted) completer.completeError(cause);
     }
     _responses.close();
     _isolate.kill(priority: Isolate.immediate);
+    if (announce) onLost?.call();
   }
 
   static Future<void> _serve(
@@ -259,6 +373,7 @@ class _Worker {
       );
       replies.send(
         _DecisionResponse(
+          id: request.id,
           diagnostics: slot.result.diagnostics,
           epoch: request.epoch,
           chosen: switch (slot.result) {

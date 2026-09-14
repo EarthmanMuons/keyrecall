@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -97,4 +98,109 @@ void main() {
     expect(await store.loadPendingDecision(alice.id), isNotNull);
     await scheduler.dispose();
   });
+
+  /// A host bound to the fixture catalog, and the requirements it may choose
+  /// between.
+  Future<(IsolateScheduler, List<String>)> boundHost(
+    LearnerModel learner,
+  ) async {
+    final resolved =
+        PracticeScopeResolver().resolve(
+              goal: PracticeGoal.generalFluency,
+              focus: PracticeFocus.unrestricted,
+              catalog: fixtureMaterials,
+              instrument: InstrumentProfile(),
+            )
+            as ValidPracticeScope;
+    final scheduler = IsolateScheduler();
+    await scheduler.bind(
+      scope: resolved.scope,
+      entry: resolved.entryPolicy,
+      learner: learner,
+      config: v1SchedulerConfig,
+    );
+    return (
+      scheduler,
+      [
+        for (final requirement in resolved.scope.requirements)
+          requirement.requirement.id,
+      ],
+    );
+  }
+
+  test(
+    'a worker that dies deciding fails the request it was answering',
+    () async {
+      // The class promises that a worker lost mid-decision fails that request
+      // and nothing else. Disposal always did; an isolate that actually died
+      // left the caller waiting for an answer nobody was going to send.
+      final (scheduler, due) = await boundHost(const _ExplodingLearner());
+
+      await expectLater(
+        scheduler.decide(
+          epoch: 0,
+          state: const LearnerModel().placementState(
+            PlacementTier.someExperience,
+            at: t0,
+          ),
+          session: SessionState(),
+          dueRequirementIds: due,
+          at: t0.plusDays(0.5),
+        ),
+        throwsA(isA<SchedulerWorkerLost>()),
+      );
+
+      // And the dead worker is gone rather than still on offer.
+      await expectLater(
+        scheduler.decide(
+          epoch: 1,
+          state: const LearnerModel().placementState(
+            PlacementTier.someExperience,
+            at: t0,
+          ),
+          session: SessionState(),
+          dueRequirementIds: due,
+          at: t0.plusDays(0.5),
+        ),
+        throwsA(isA<StateError>()),
+      );
+      await scheduler.dispose();
+    },
+  );
+
+  test('a second decision in flight is refused, not misanswered', () async {
+    // One verdict per request, matched by id. Before that, a worker answered
+    // whatever it was last asked, so the second caller took the first one's
+    // verdict and the first waited forever.
+    final (scheduler, due) = await boundHost(const LearnerModel());
+    addTearDown(scheduler.dispose);
+
+    Future<SchedulerVerdict> ask(int epoch) => scheduler.decide(
+      epoch: epoch,
+      state: const LearnerModel().placementState(
+        PlacementTier.someExperience,
+        at: t0,
+      ),
+      session: SessionState(),
+      dueRequirementIds: due,
+      at: t0.plusDays(0.5),
+    );
+
+    final first = ask(7);
+    // Listened to as it is made, or the refusal lands as an unhandled error
+    // rather than as this test's expectation.
+    final refused = expectLater(ask(8), throwsA(isA<StateError>()));
+
+    expect((await first).epoch, 7);
+    await refused;
+  });
+}
+
+/// Dies where the pipeline asks it anything, which is inside the worker.
+class _ExplodingLearner extends LearnerModel {
+  const _ExplodingLearner();
+
+  @override
+  double executionProbability(LearnerState state, Exercise exercise) =>
+      throw StateError('the worker died deciding this slot');
 }
