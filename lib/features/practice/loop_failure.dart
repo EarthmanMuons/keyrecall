@@ -1,5 +1,4 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'practice_failure.dart';
@@ -142,7 +141,7 @@ class LoopFailure extends ConsumerWidget {
           OutlinedButton(
             onPressed: () => ref
                 .read(practicePlanProvider.notifier)
-                .apply(PracticePlan.normal),
+                .replaceWithNormalPractice(),
             child: const Text('Practice normally instead'),
           ),
         ],

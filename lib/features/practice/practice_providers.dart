@@ -198,14 +198,24 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
     final profile = await lifecycle.repository.selectedOrOldest();
     if (profile == null) return PracticePlan.normal;
     final lifetime = await store.lifetimeOf(profile.id);
-    final plan =
-        await writes.run(
-          profile.id,
-          () => store.loadPracticePlan(profile.id),
-        ) ??
-        PracticePlan.normal;
+    // Ownership is established before the plan is read, and deliberately not
+    // from it. A plan nobody can decode is exactly the one that has to be
+    // replaceable, and a recovery that needed the stored plan to construct
+    // its own address would be unreachable for the failure it exists for.
     if (build == _builds) _owner = _PlanOwner.next(lifetime);
-    return plan;
+    try {
+      final stored = await writes.run(
+        profile.id,
+        () => store.loadPracticePlan(profile.id),
+      );
+      return stored ?? PracticePlan.normal;
+    } catch (error) {
+      throw PracticeLoopFailure(
+        PracticeFailure.plan,
+        UnusablePracticePlan(PlanFault.unreadable, '$error'),
+        profileId: profile.id,
+      );
+    }
   }
 
   /// Records [plan] and applies it to the next undecided slot.
@@ -261,6 +271,15 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
     if (_disposed || _owner != owner) return;
     state = AsyncValue.data(plan);
   }
+
+  /// Replaces whatever is stored with normal practice.
+  ///
+  /// The way out of a plan this build cannot read, and the reason it takes no
+  /// argument and reads nothing: the stored plan is the thing that failed, so
+  /// recovery cannot be asked to reconstruct it. It is addressed to the
+  /// profile incarnation this notifier loaded for, so an erase in the meantime
+  /// refuses it rather than putting a plan back under a learner nobody is.
+  Future<void> replaceWithNormalPractice() => apply(PracticePlan.normal);
 
   /// Drops the focus, keeping the goal.
   Future<void> practiceNormally() async {
@@ -855,9 +874,12 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       await scheduler.dispose();
       throw PracticeLoopFailure(
         PracticeFailure.plan,
-        'this practice plan names '
-        '${failures.map((failure) => failure.reference).join(', ')}, '
-        'which this version does not recognize',
+        UnusablePracticePlan(
+          PlanFault.unresolvable,
+          'this practice plan names '
+          '${failures.map((failure) => failure.reference).join(', ')}, '
+          'which this version does not recognize',
+        ),
         profileId: profile.id,
       );
     }

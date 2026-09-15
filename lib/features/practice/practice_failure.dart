@@ -62,6 +62,34 @@ enum PracticeFailure {
   scheduling,
 }
 
+/// Why a stored plan cannot be practiced under.
+///
+/// Both reach the same recovery, because replacing the plan is the only thing
+/// either leaves to do. They are kept apart behind it: a representation nobody
+/// can decode and one that decodes and names something this build cannot
+/// resolve are different things to migrate, measure, and fix.
+enum PlanFault {
+  /// The stored representation could not be read back at all.
+  unreadable,
+
+  /// It was read, and names a goal or material this build cannot resolve.
+  unresolvable,
+}
+
+/// A stored plan that could not be practiced under, and why.
+@immutable
+class UnusablePracticePlan implements Exception {
+  final PlanFault fault;
+
+  /// What to say about it where the failure is shown.
+  final String explanation;
+
+  const UnusablePracticePlan(this.fault, this.explanation);
+
+  @override
+  String toString() => explanation;
+}
+
 /// A practice failure, classified by what is still valid behind it.
 @immutable
 class PracticeLoopFailure implements Exception {

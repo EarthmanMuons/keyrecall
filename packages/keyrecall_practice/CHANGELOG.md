@@ -33,6 +33,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   Requirements retained because they prepare one carry a support role instead,
   so a target that also supports a selected target no longer joins the
   intersection it was excluded from.
+- `PracticePlan.focusedOn` collapses a focus that narrows nothing to practicing
+  normally, so nothing durable holds a focus over the whole catalog. A stored
+  focus whose facets are all present and empty reads back as that unfocused plan
+  rather than being refused, since a build whose chooser offered it could write
+  one; a facet that is missing entirely is still unreadable.
 - `goalEmphasisOf` takes the strongest weight over a material before dropping
   neutral results, so `0.5` beside `1.0` no longer de-emphasizes the material
   something else asked for.

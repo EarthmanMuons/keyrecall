@@ -198,6 +198,52 @@ void main() {
     });
   });
 
+  group('a focus that narrows nothing', () {
+    test('is not a focus, it is practicing normally', () {
+      final plan = PracticePlan.normal.focusedOn(
+        ActiveFocus(
+          label: 'Nothing selected',
+          strength: FocusStrength.exclusive,
+          material: MaterialFocus(),
+        ),
+      );
+
+      expect(plan.isFocused, isFalse);
+      expect(plan, PracticePlan.normal);
+    });
+
+    test('keeps the goal it was asked under', () {
+      final plan = PracticePlan(goalId: 'OTHER_GOAL').focusedOn(
+        ActiveFocus(
+          label: 'Nothing selected',
+          strength: FocusStrength.emphasis,
+          material: MaterialFocus(),
+        ),
+      );
+
+      expect(plan.goalId, 'OTHER_GOAL');
+      expect(plan.isFocused, isFalse);
+    });
+
+    test('is never what a stored plan holds', () {
+      final stored = PracticePlan.normal
+          .focusedOn(
+            ActiveFocus(
+              label: 'Nothing selected',
+              strength: FocusStrength.exclusive,
+              material: MaterialFocus(),
+            ),
+          )
+          .toJson();
+
+      expect(
+        PracticePlan.fromJson(stored),
+        PracticePlan.normal,
+        reason: 'what is written round-trips, which is the whole invariant',
+      );
+    });
+  });
+
   group('storing a plan', () {
     test('a plan survives being written and read back', () {
       final plan = PracticePlan.normal.focusedOn(_minorMaterial);
@@ -234,7 +280,7 @@ void main() {
       );
     });
 
-    test('a focus that narrows nothing is refused', () {
+    test('a stored focus that narrows nothing reads as no focus', () {
       final json = PracticePlan.normal
           .focusedOn(
             ActiveFocus(
@@ -250,8 +296,9 @@ void main() {
       material['tonics'] = <String>[];
 
       expect(
-        () => PracticePlan.fromJson(json),
-        throwsA(isA<JournalFormatException>()),
+        PracticePlan.fromJson(json),
+        PracticePlan.normal,
+        reason: 'a build whose chooser wrote this described normal practice',
       );
     });
 

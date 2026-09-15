@@ -159,32 +159,18 @@ class ActiveFocus {
     'label': label,
   };
 
-  /// Reads a focus back, refusing one that narrows nothing.
-  ///
-  /// Practicing normally is a plan with no focus at all, so a stored focus
-  /// that selects the whole catalog is a request this build failed to read
-  /// rather than a request to practice everything.
-  factory ActiveFocus.fromJson(Map<String, Object?> json) {
-    final material = MaterialFocus.fromJson(
+  factory ActiveFocus.fromJson(Map<String, Object?> json) => ActiveFocus(
+    material: MaterialFocus.fromJson(
       asMap(json['material'], 'material', location: 'practice plan'),
-    );
-    if (material.isEmpty) {
-      throw const JournalFormatException(
-        'a focus names the material it draws from',
-        location: 'focus',
-      );
-    }
-    return ActiveFocus(
-      material: material,
-      strength: FocusStrength.values.firstWhere(
-        (strength) =>
-            strength.name == requireString(json, 'strength', location: 'focus'),
-        orElse: () =>
-            throw const JournalFormatException('unknown focus strength'),
-      ),
-      label: requireString(json, 'label', location: 'focus'),
-    );
-  }
+    ),
+    strength: FocusStrength.values.firstWhere(
+      (strength) =>
+          strength.name == requireString(json, 'strength', location: 'focus'),
+      orElse: () =>
+          throw const JournalFormatException('unknown focus strength'),
+    ),
+    label: requireString(json, 'label', location: 'focus'),
+  );
 
   @override
   bool operator ==(Object other) =>
@@ -247,8 +233,17 @@ class PracticePlan {
 
   bool get isFocused => focus != null;
 
-  PracticePlan focusedOn(ActiveFocus focus) =>
-      PracticePlan(goalId: goalId, focus: focus);
+  /// This plan focused on [focus], or practicing normally where it narrows
+  /// nothing.
+  ///
+  /// A focus over the whole catalog is what practicing normally already is,
+  /// and it is collapsed here rather than stored, so nothing durable holds a
+  /// focus that means everything. Whoever asked did choose something: the
+  /// chooser's empty state says "stop drawing from less than all of it",
+  /// which this plan expresses by having no focus.
+  PracticePlan focusedOn(ActiveFocus focus) => focus.material.isEmpty
+      ? practicingNormally()
+      : PracticePlan(goalId: goalId, focus: focus);
 
   PracticePlan practicingNormally() => PracticePlan(goalId: goalId);
 
@@ -322,7 +317,7 @@ class PracticePlan {
       );
     }
     final focus = json['focus'];
-    return PracticePlan(
+    final plan = PracticePlan(
       goalId: requireString(json, 'goal_id', location: 'practice plan'),
       focus: focus == null
           ? null
@@ -330,6 +325,14 @@ class PracticePlan {
               asMap(focus, 'focus', location: 'practice plan'),
             ),
     );
+    // A facet that is present and empty narrows nothing, which a build whose
+    // chooser offered that could write. It is read as the unfocused plan it
+    // describes rather than refused, because what it asked for is legible. A
+    // facet that is not there at all is a different thing and threw above:
+    // nothing establishes what it said, and reading it as empty would widen
+    // whatever was asked for.
+    final stored = plan.focus;
+    return stored == null ? plan : plan.focusedOn(stored);
   }
 
   @override

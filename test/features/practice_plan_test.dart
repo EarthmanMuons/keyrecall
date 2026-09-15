@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -7,7 +10,9 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/focus_sheet.dart';
+import 'package:keyrecall/features/practice/loop_failure.dart';
 import 'package:keyrecall/features/practice/practice_failure.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:keyrecall/features/practice/practice_focus.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
@@ -211,6 +216,189 @@ void main() {
     await container.read(practicePlanProvider.notifier).practiceNormally();
 
     expect(container.read(practicePlanProvider).value!.isFocused, isFalse);
+  });
+
+  group('a stored plan this build cannot read', () {
+    late Directory root;
+
+    setUp(() {
+      root = Directory.systemTemp.createTempSync('keyrecall_plan_test');
+    });
+
+    tearDown(() {
+      if (root.existsSync()) root.deleteSync(recursive: true);
+    });
+
+    ProviderContainer onDisk() {
+      final container = ProviderContainer(
+        overrides: [
+          storageRootProvider.overrideWith((ref) async => root),
+          inProcessScheduling,
+          practiceCatalogProvider.overrideWithValue(_catalog),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.read(inputSourceProvider.notifier).use(InputSourceKind.demo);
+      return container;
+    }
+
+    Future<Profile> placedOn(ProviderContainer container) async {
+      await place(container);
+      return (await container.read(practiceLoopProvider.future)).profile;
+    }
+
+    void corruptPlanOf(Profile profile) =>
+        File('${root.path}/${profile.id}/plan.json')
+            .writeAsStringSync('{not json');
+
+    Future<Object?> failureFrom(ProviderContainer container) => container
+        .read(practiceLoopProvider.future)
+        .then<Object?>((_) => null, onError: (Object error) => error);
+
+    test('reports the plan rather than the sitting it stopped', () async {
+      final started = onDisk();
+      final profile = await placedOn(started);
+      started.dispose();
+      corruptPlanOf(profile);
+
+      final failure = await failureFrom(onDisk());
+
+      expect(
+        failure,
+        isA<PracticeLoopFailure>()
+            .having((failure) => failure.kind, 'kind', PracticeFailure.plan)
+            .having((failure) => failure.profileId, 'profileId', profile.id)
+            .having(
+              (failure) => failure.cause,
+              'cause',
+              isA<UnusablePracticePlan>().having(
+                (cause) => cause.fault,
+                'fault',
+                PlanFault.unreadable,
+              ),
+            ),
+      );
+    });
+
+    test('is replaceable although it never decoded', () async {
+      final started = onDisk();
+      final profile = await placedOn(started);
+      started.dispose();
+      corruptPlanOf(profile);
+
+      final relaunched = onDisk();
+      expect(await failureFrom(relaunched), isA<PracticeLoopFailure>());
+      await relaunched
+          .read(practicePlanProvider.notifier)
+          .replaceWithNormalPractice();
+
+      expect(
+        await FilePracticeStore(root).loadPracticePlan(profile.id),
+        PracticePlan.normal,
+        reason: 'the replacement is addressed to the profile that failed',
+      );
+      relaunched.dispose();
+      final reopened = await onDisk().read(practiceLoopProvider.future);
+      expect(reopened.profile.id, profile.id);
+      expect(reopened.plan, PracticePlan.normal);
+    });
+
+    test('a replacement leaves everybody else alone', () async {
+      final started = onDisk();
+      final profile = await placedOn(started);
+      final repository = FileProfileRepository(root);
+      final other = await repository.create(
+        displayName: 'Bob',
+        placement: PlacementTier.beginner,
+      );
+      final store = FilePracticeStore(root);
+      final held = PracticePlan.normal.focusedOn(_minorMaterial);
+      await store.savePracticePlan(other.id, held);
+      started.dispose();
+      corruptPlanOf(profile);
+
+      final relaunched = onDisk();
+      await failureFrom(relaunched);
+      await relaunched
+          .read(practicePlanProvider.notifier)
+          .replaceWithNormalPractice();
+
+      expect(await store.loadPracticePlan(other.id), held);
+    });
+
+    test('a replacement does not follow the profile into a new life', () async {
+      final started = onDisk();
+      final profile = await placedOn(started);
+      started.dispose();
+      corruptPlanOf(profile);
+
+      final relaunched = onDisk();
+      await failureFrom(relaunched);
+      // The history the failed plan belonged to is destroyed while the
+      // failure is on screen, so the learner holding it is no longer the
+      // learner the repair would write for.
+      await relaunched
+          .read(profileRosterProvider.notifier)
+          .eraseHistory(profile.id);
+      await relaunched
+          .read(practicePlanProvider.notifier)
+          .replaceWithNormalPractice();
+
+      expect(
+        await FilePracticeStore(root).loadPracticePlan(profile.id),
+        isNull,
+        reason: 'a stale incarnation writes nothing over the new one',
+      );
+    });
+  });
+
+  testWidgets('the plan failure offers replacement and no retry', (
+    tester,
+  ) async {
+    final container = launch();
+    await place(container);
+    await container.read(practicePlanProvider.future);
+    await container
+        .read(practicePlanProvider.notifier)
+        .apply(PracticePlan.normal.focusedOn(_minorMaterial));
+    final replaced = Completer<PracticePlan>();
+    final subscription = container.listen(practicePlanProvider, (_, next) {
+      if (next case AsyncData(:final value) when !value.isFocused) {
+        if (!replaced.isCompleted) replaced.complete(value);
+      }
+    });
+    addTearDown(subscription.close);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const MaterialApp(
+          home: LoopFailure(
+            error: PracticeLoopFailure(
+              PracticeFailure.plan,
+              UnusablePracticePlan(PlanFault.unreadable, 'unreadable'),
+              profileId: 'profile',
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.text('Try again'),
+      findsNothing,
+      reason:
+          'the plan reads the same every time, so asking again answers it '
+          'with the same failure',
+    );
+    expect(find.text('Practice normally instead'), findsOneWidget);
+
+    await tester.tap(find.text('Practice normally instead'));
+    await tester.pump();
+    await replaced.future;
+
+    final profile = (await profiles.selectedOrOldest())!;
+    expect(await practice.loadPracticePlan(profile.id), PracticePlan.normal);
   });
 
   test('the focus control says its state where the icon cannot', () {
