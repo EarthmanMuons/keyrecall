@@ -69,6 +69,12 @@ class ExportedAttempt {
 /// ordering exports. Nothing that fits a learner is entitled to read them: a
 /// fit sees the exercise, the outcome and the familiarity, which is what makes
 /// it a statement about playing rather than about who was playing.
+///
+/// What it does not yet see is the presentation an attempt ran under, which the
+/// attempt journal records and this format does not, so an export states what
+/// was played completely and the conditions it was played under only in part.
+/// Deferred deliberately, with a trigger: see the roadmap's reserved extensions
+/// before treating an export as calibration data.
 class SittingExport {
   final int schemaVersion;
   final String profileId;

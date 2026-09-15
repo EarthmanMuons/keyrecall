@@ -421,6 +421,40 @@ the project learns how pianists learn
 
 Population fitting must not become a prerequisite for local operation.
 
+### Presentation provenance in the sitting export
+
+A sitting export carries the exercise, the outcome, and the familiarity. It does
+not carry what the attempt was presented under, which the attempt journal now
+records: the resolved conditions, what the app delivered on each fallible
+channel, and the policy that chose them. So an export is a complete statement of
+what was played and an incomplete statement of the conditions it was played
+under.
+
+That is a real gap rather than a cosmetic one, because presentation is part of
+the provenance of an observation. A fit that cannot see whether the material was
+cued, whether fingering was shown, or whether the count-in actually sounded is
+fitting a variable the project already believes affects the reading.
+
+It is deliberately not fixed yet. The presentation model is still moving as the
+integration audits run, and bumping an export format once per audit would cost
+more than it buys while nothing depends on the exports.
+
+The trigger is the point where exports stop being a way to look at the app and
+start being data the project may use:
+
+> Before the first sitting export that is meant as calibration or training data,
+> add presentation provenance to the exported observation and bump
+> `sittingExportSchemaVersion`.
+
+Waiting past that point is the expensive mistake, because it accumulates a
+dataset missing a variable whose effect on interpretation is already understood.
+
+Backward compatibility is not owed here yet. There are no external users and no
+irreplaceable datasets, so the new format should be structurally correct and
+older exports should be rejected or explicitly marked unknown rather than
+migrated. Migration policy is a question for when compatibility becomes a
+product obligation.
+
 ## Learner-model extensions
 
 ### Performance envelopes
