@@ -175,14 +175,16 @@ record needed to estimate how feedback affected later observations.
 One row per part of the review rather than one for the whole screen. A review
 scrolls, and all of it is built whether or not any of it is reached, so a single
 row would claim exposure to feedback nobody scrolled to. A part is recorded when
-it was drawn, on the route in front, with the app on screen, and the detail
-sheet reports itself from its own route rather than from the tap that asked for
-one. None of that says anybody looked, which a screen cannot establish; what it
-says is that everything between the app and the learner was out of the way.
+it was painted: on the route in front, with the app on screen, and inside the
+scroll it sits in rather than merely inside the window, because a section below
+the fold has real bounds and is painted in none of them. The detail sheet
+reports itself from its own route rather than from the tap that asked for one.
+None of that says anybody looked, which a screen cannot establish; what it says
+is that everything between the app and the learner was out of the way.
 
 The surface that drew a part does not get to conclude it was recorded. It
 reports, and the sitting that owns the history answers whether the report
-stands; a refusal leaves the question to be asked again on a later frame.
+stands; a refusal is asked again, on a wait that lengthens each time.
 
 Feedback exposure never changes evidence weight. Any effect on later attempts is
 something to be learned from preserved histories, not assumed by the update

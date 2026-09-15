@@ -218,4 +218,122 @@ void main() {
       expect(asked.where((one) => one == 'second'), hasLength(1));
     });
   });
+
+  group('content clipped by the scroll it sits in', () {
+    /// A viewport 100 tall at the top of the window, with the gate 300 into
+    /// its content: well inside the window, and clipped out of the box it
+    /// actually scrolls in.
+    Future<ScrollController> pumpClipped(
+      WidgetTester tester,
+      List<int> asked,
+    ) async {
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: 400,
+                height: 100,
+                child: SingleChildScrollView(
+                  controller: scroll,
+                  child: Column(
+                    children: [
+                      const SizedBox(width: 400, height: 300),
+                      ExposureGate(
+                        presentation: 'below the fold',
+                        onExposed: () async {
+                          asked.add(asked.length);
+                          return true;
+                        },
+                        child: const SizedBox(width: 400, height: 50),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      return scroll;
+    }
+
+    testWidgets('is not reported while it is clipped', (tester) async {
+      final asked = <int>[];
+      await pumpClipped(tester, asked);
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        asked,
+        isEmpty,
+        reason:
+            'it has real bounds inside the window and is painted in none of '
+            'them, so reporting it claims a section nobody scrolled to',
+      );
+    });
+
+    testWidgets('is reported once scrolling brings it into view', (
+      tester,
+    ) async {
+      final asked = <int>[];
+      final scroll = await pumpClipped(tester, asked);
+      await tester.pump(const Duration(seconds: 1));
+      expect(asked, isEmpty);
+
+      scroll.jumpTo(300);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(asked, hasLength(1));
+    });
+  });
+
+  group('when the report itself fails', () {
+    Future<List<int>> pumpThrowing(
+      WidgetTester tester, {
+      required bool synchronously,
+    }) async {
+      final asked = <int>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ExposureGate(
+              presentation: 'one presentation',
+              onExposed: () {
+                asked.add(asked.length);
+                if (synchronously) throw StateError('no store');
+                return Future<bool>.error(StateError('no store'));
+              },
+              child: const SizedBox(width: 200, height: 200),
+            ),
+          ),
+        ),
+      );
+      return asked;
+    }
+
+    for (final (name, synchronously) in [
+      ('a failed future', false),
+      ('a callback that throws before returning one', true),
+    ]) {
+      testWidgets('$name is a refusal, and is asked again', (tester) async {
+        final asked = await pumpThrowing(tester, synchronously: synchronously);
+
+        final askedAtFirst = asked.length;
+        expect(askedAtFirst, greaterThan(0));
+        expect(
+          tester.takeException(),
+          isNull,
+          reason:
+              'a failed report must not escape into the frame that asked '
+              'for it',
+        );
+        await tester.pump(const Duration(seconds: 1));
+        expect(asked.length, greaterThan(askedAtFirst));
+      });
+    }
+  });
 }

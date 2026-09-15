@@ -55,6 +55,37 @@ class ExposureConditions {
 bool isWithinViewport(Rect content, Rect viewport) =>
     !content.isEmpty && content.overlaps(viewport);
 
+/// Where [box] actually reaches the screen, in global coordinates.
+///
+/// Its own bounds narrowed by every ancestor that clips them. A scroll view
+/// lays out all of a column it can measure and paints only the part in its
+/// viewport, so a section below the fold has real global bounds and is on
+/// screen in none of them. Comparing against the window alone reports it as
+/// seen, which for feedback exposure is a claim about a section the learner
+/// never scrolled to.
+///
+/// Empty when nothing of it is painted.
+Rect visibleBounds(RenderBox box) {
+  var visible = MatrixUtils.transformRect(
+    box.getTransformTo(null),
+    Offset.zero & box.size,
+  );
+  RenderObject child = box;
+  for (
+    var ancestor = child.parent;
+    ancestor != null;
+    child = ancestor, ancestor = ancestor.parent
+  ) {
+    final clip = ancestor.describeApproximatePaintClip(child);
+    if (clip == null) continue;
+    visible = visible.intersect(
+      MatrixUtils.transformRect(ancestor.getTransformTo(null), clip),
+    );
+    if (visible.isEmpty) return Rect.zero;
+  }
+  return visible;
+}
+
 /// Whether the app is foregrounded, as the binding currently has it.
 bool appIsForeground() =>
     SchedulerBinding.instance.lifecycleState == null ||
@@ -188,10 +219,7 @@ class _ExposureGateState extends State<ExposureGate>
       isOnScreen:
           render is RenderBox &&
           render.hasSize &&
-          isWithinViewport(
-            render.localToGlobal(Offset.zero) & render.size,
-            viewport,
-          ),
+          isWithinViewport(visibleBounds(render), viewport),
     );
   }
 
@@ -201,11 +229,15 @@ class _ExposureGateState extends State<ExposureGate>
 
     final presentation = widget.presentation;
     _reporting = true;
-    final bool accepted;
+    var accepted = false;
     try {
       // A report that threw is a report nobody took, which is the refusal
-      // case. It must not escape into the frame that asked for it.
-      accepted = await widget.onExposed().catchError((_) => false);
+      // case. It must not escape into the frame that asked for it. The call
+      // is inside the guard as well as the wait, because a callback can throw
+      // before it ever returns a future.
+      accepted = await widget.onExposed();
+    } on Object {
+      accepted = false;
     } finally {
       // Before anything below schedules: a check asked for while this one is
       // still in flight is dropped, so nothing may ask until this is not.
