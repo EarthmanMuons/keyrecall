@@ -20,13 +20,13 @@ String? cueSemantics({
   required Exercise exercise,
   required PresentationConditions presentation,
   required bool showsCue,
-  AcquisitionTask? acquisition,
 }) {
   if (!showsCue || !presentation.pitchCue.suppliesMaterial) return null;
 
-  final realization = acquisition == null
-      ? realize(exercise)
-      : realizeAcquisition(acquisition);
+  // One traversal, which is what the staff and the keyboard draw. A supported
+  // task repeats what is on screen rather than showing more of it, and the
+  // task statement is where how many times belongs.
+  final realization = realize(exercise);
   final fingering = presentation.motorCue == MotorCue.fingering
       ? {
           for (final hand in realization.hands)

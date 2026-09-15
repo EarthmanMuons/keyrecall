@@ -1149,7 +1149,6 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       exercise: exercise,
       presentation: presentation,
       showsCue: showsCue,
-      acquisition: widget.acquisition,
     );
     final spokenEcho = echoSemantics(
       transcript: transcript,
