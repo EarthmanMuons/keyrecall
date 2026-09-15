@@ -56,8 +56,8 @@ class GoalScreen extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                '${coverage.coveredTargets} of ${coverage.targetCount} '
-                'covered so far',
+                '${coverageScopeName(plan)}: ${coverage.coveredTargets} of '
+                '${coverage.targetCount} covered so far',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -74,6 +74,16 @@ class GoalScreen extends ConsumerWidget {
 /// The registry resolution reads, so a goal that can be chosen here is one a
 /// stored plan can be resolved under.
 final List<String> offeredGoalIds = supportedGoals.keys.toList();
+
+/// What the coverage on screen is coverage of.
+///
+/// An exclusive focus is what decides it. Coverage counts the targets the
+/// active scope resolved to, and an exclusive focus is the one thing that
+/// makes those fewer than the goal's, so "1 of 1" under a goal heading would
+/// otherwise read as having finished the goal. An emphasis narrows nothing, so
+/// the count is still the goal's.
+String coverageScopeName(PracticePlan plan) =>
+    plan.focus?.isExclusive ?? false ? 'In this focus' : 'Goal progress';
 
 /// What a goal is called where a learner reads it.
 String goalName(String goalId) => switch (goalId) {
