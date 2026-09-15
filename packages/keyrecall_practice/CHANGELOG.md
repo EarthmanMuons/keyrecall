@@ -24,6 +24,19 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   criterion is read as the requested tempo times the achieved ratio, so a clean
   60 BPM performance no longer covers a 120 BPM requirement and a fast
   performance under a slower request can.
+- `PracticePlan.resolve` returns `ResolvedPlan` or `UnresolvablePlan` and
+  validates before selecting. An unknown `goalId` and a focus naming material
+  vocabulary this build has no meaning for both fail, rather than resolving to
+  unrestricted practice. A persisted focus missing a facet, or one that narrows
+  nothing, is refused when it is read.
+- An exclusive focus's completion targets are the requirements it named.
+  Requirements retained because they prepare one carry a support role instead,
+  so a target that also supports a selected target no longer joins the
+  intersection it was excluded from.
+- `goalEmphasisOf` takes the strongest weight over a material before dropping
+  neutral results, so `0.5` beside `1.0` no longer de-emphasizes the material
+  something else asked for.
+
 ### Changed
 
 - Arpeggio candidate generation uses the shared `playableOn` instrument gate, so

@@ -17,8 +17,9 @@ says what to draw from right now.
 
 > **Status:** structural scope resolution, requirement state, terminal outcomes,
 > the acquisition floor, goal persistence, emphasis ranking, and the first focus
-> surface are built. Named external curricula and a per-requirement completion
-> criterion are proposed; the sections below say which is which.
+> surface are built. Named external curricula, several goals at once, and a
+> per-requirement completion criterion are proposed; the sections below say
+> which is which.
 
 ## The catalog is not the candidate pool
 
@@ -85,10 +86,18 @@ emphasis     candidates stay eligible; matching ones gain goal relevance
 "Only" and "prefer" have different semantics, and the product should say which
 one it is applying.
 
-Multiple goals combine their target requirements by union. An exclusive focus
-then intersects that combined scope; an emphasis does not narrow it. A material
-that is a target of any active goal stays a target rather than being demoted to
-support by another.
+**Proposed:** multiple goals combine their target requirements by union. An
+exclusive focus then intersects that combined scope; an emphasis does not narrow
+it. A material that is a target of any active goal stays a target rather than
+being demoted to support by another. What is built resolves one goal, from a
+registry of the goals this build knows; a stored identifier outside it fails
+resolution rather than becoming a goal over the whole catalog.
+
+A resolved requirement carries its roles rather than inheriting the one the
+curriculum declared. An exclusive focus names the targets, and a requirement
+outside it that prepares one is retained as support and takes no part in
+coverage. Roles are not exclusive: a selected target that also prepares another
+selected target is both.
 
 The scheduler boundary:
 

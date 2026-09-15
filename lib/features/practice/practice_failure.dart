@@ -48,6 +48,13 @@ enum PracticeFailure {
   /// and abandon the performance the learner already supplied.
   commit,
 
+  /// The stored goal or focus names something this build cannot read.
+  ///
+  /// Nothing recorded is affected, and nothing is retried into: the plan says
+  /// the same thing every time it is read. Practicing normally replaces it,
+  /// which is the one repair that does not guess at what was meant.
+  plan,
+
   /// The next exercise could not be decided.
   ///
   /// Everything recorded is durable and the session never gave up the state it

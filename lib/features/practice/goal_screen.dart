@@ -70,7 +70,10 @@ class GoalScreen extends ConsumerWidget {
 }
 
 /// The goals this build can practice, in the order they are offered.
-const List<String> offeredGoalIds = ['GENERAL_FLUENCY'];
+///
+/// The registry resolution reads, so a goal that can be chosen here is one a
+/// stored plan can be resolved under.
+final List<String> offeredGoalIds = supportedGoals.keys.toList();
 
 /// What a goal is called where a learner reads it.
 String goalName(String goalId) => switch (goalId) {

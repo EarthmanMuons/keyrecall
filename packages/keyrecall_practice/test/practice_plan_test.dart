@@ -82,7 +82,7 @@ void main() {
 
   group('resolving a plan', () {
     test('practicing normally narrows and emphasizes nothing', () {
-      final resolved = PracticePlan.normal.resolve(_catalog);
+      final resolved = PracticePlan.normal.resolve(_catalog) as ResolvedPlan;
 
       expect(resolved.goal.isScoped, isFalse);
       expect(resolved.focus.exclusiveRequirementIds, isNull);
@@ -90,9 +90,9 @@ void main() {
     });
 
     test('an emphasis focus weights its material and excludes nothing', () {
-      final resolved = PracticePlan.normal
-          .focusedOn(_minorMaterial)
-          .resolve(_catalog);
+      final resolved =
+          PracticePlan.normal.focusedOn(_minorMaterial).resolve(_catalog)
+              as ResolvedPlan;
 
       expect(resolved.focus.exclusiveRequirementIds, isNull);
       expect(resolved.focus.emphasisByRequirementId, hasLength(3));
@@ -103,15 +103,17 @@ void main() {
     });
 
     test('an exclusive focus names what may be generated at all', () {
-      final resolved = PracticePlan.normal
-          .focusedOn(
-            ActiveFocus(
-              label: '1 material',
-              strength: FocusStrength.exclusive,
-              material: MaterialFocus(tonics: {'D'}),
-            ),
-          )
-          .resolve(_catalog);
+      final resolved =
+          PracticePlan.normal
+                  .focusedOn(
+                    ActiveFocus(
+                      label: '1 material',
+                      strength: FocusStrength.exclusive,
+                      material: MaterialFocus(tonics: {'D'}),
+                    ),
+                  )
+                  .resolve(_catalog)
+              as ResolvedPlan;
 
       expect(resolved.focus.exclusiveRequirementIds, hasLength(1));
       expect(resolved.focus.emphasisByRequirementId, isEmpty);
@@ -119,7 +121,7 @@ void main() {
 
     test('a focus names requirements the goal actually generated', () {
       final plan = PracticePlan.normal.focusedOn(_minorMaterial);
-      final resolved = plan.resolve(_catalog);
+      final resolved = plan.resolve(_catalog) as ResolvedPlan;
 
       final resolution = PracticeScopeResolver().resolve(
         goal: resolved.goal,
@@ -136,6 +138,66 @@ void main() {
     });
   });
 
+  group('a plan this build cannot read', () {
+    test('an unknown goal resolves to nothing rather than to everything', () {
+      final resolution = PracticePlan(goalId: 'UNKNOWN_EXAM').resolve(_catalog);
+
+      expect(
+        (resolution as UnresolvablePlan).failures.single.code,
+        ScopeResolutionFailureCode.unknownGoal,
+      );
+    });
+
+    test('a focus naming vocabulary this build lacks fails the plan', () {
+      final resolution = PracticePlan.normal
+          .focusedOn(
+            ActiveFocus(
+              label: 'Blues',
+              strength: FocusStrength.emphasis,
+              material: MaterialFocus(scaleFormIds: {'BLUES'}),
+            ),
+          )
+          .resolve(_catalog);
+
+      expect(
+        (resolution as UnresolvablePlan).failures.single.reference,
+        'BLUES',
+      );
+    });
+
+    test('one unreadable name fails a selection the rest of which reads', () {
+      final resolution = PracticePlan.normal
+          .focusedOn(
+            ActiveFocus(
+              label: 'Two keys',
+              strength: FocusStrength.exclusive,
+              material: MaterialFocus(tonics: {'C', 'H'}),
+            ),
+          )
+          .resolve(_catalog);
+
+      expect(
+        (resolution as UnresolvablePlan).failures.map(
+          (failure) => failure.reference,
+        ),
+        ['H'],
+        reason: 'the readable half is not what the learner asked for',
+      );
+    });
+
+    test('a form this catalog lacks is still a form this build reads', () {
+      final resolution = PracticePlan.normal
+          .focusedOn(_minorMaterial)
+          .resolve(_catalog);
+
+      expect(
+        resolution,
+        isA<ResolvedPlan>(),
+        reason: 'melodic minor is stocked nowhere here and is still meaningful',
+      );
+    });
+  });
+
   group('storing a plan', () {
     test('a plan survives being written and read back', () {
       final plan = PracticePlan.normal.focusedOn(_minorMaterial);
@@ -146,6 +208,46 @@ void main() {
     test('a plan from a later build is refused rather than guessed at', () {
       final json = PracticePlan.normal.toJson()
         ..['schema_version'] = practicePlanSchemaVersion + 1;
+
+      expect(
+        () => PracticePlan.fromJson(json),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('a focus missing a facet is refused rather than read as empty', () {
+      final json = PracticePlan.normal
+          .focusedOn(
+            ActiveFocus(
+              label: 'C major only',
+              strength: FocusStrength.exclusive,
+              material: MaterialFocus(tonics: {'C'}),
+            ),
+          )
+          .toJson();
+      (json['focus']! as Map<String, Object?>)['material'] =
+          <String, Object?>{};
+
+      expect(
+        () => PracticePlan.fromJson(json),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('a focus that narrows nothing is refused', () {
+      final json = PracticePlan.normal
+          .focusedOn(
+            ActiveFocus(
+              label: 'Everything',
+              strength: FocusStrength.exclusive,
+              material: MaterialFocus(tonics: {'C'}),
+            ),
+          )
+          .toJson();
+      final material =
+          (json['focus']! as Map<String, Object?>)['material']!
+              as Map<String, Object?>;
+      material['tonics'] = <String>[];
 
       expect(
         () => PracticePlan.fromJson(json),

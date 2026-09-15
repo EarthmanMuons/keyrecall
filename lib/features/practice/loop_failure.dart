@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import 'practice_failure.dart';
@@ -88,6 +89,14 @@ class LoopFailure extends ConsumerWidget {
             'twice.',
         'Save this attempt again',
       ),
+      PracticeFailure.plan => (
+        'This goal and focus could not be read.',
+        'Nothing practiced is affected. What was stored asks for material '
+            'this version does not recognize, so it is left alone rather than '
+            'guessed at. Practicing normally replaces it with a goal over '
+            'everything and no focus.',
+        'Try again',
+      ),
       PracticeFailure.scheduling => (
         'The next exercise could not be chosen.',
         'Everything practiced so far is recorded. Nothing is lost by asking '
@@ -121,6 +130,15 @@ class LoopFailure extends ConsumerWidget {
           OutlinedButton(
             onPressed: () => notifier.eraseHistory(target),
             child: const Text('Erase this history and start over'),
+          ),
+        ],
+        if (kind == PracticeFailure.plan) ...[
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: () => ref
+                .read(practicePlanProvider.notifier)
+                .apply(PracticePlan.normal),
+            child: const Text('Practice normally instead'),
           ),
         ],
         if (kind == PracticeFailure.selection) ...[

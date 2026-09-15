@@ -65,6 +65,23 @@ class MaterialFocus {
   /// Whether this focus narrows anything.
   bool get isEmpty => !namesFamilyFacet && tonics.isEmpty;
 
+  /// The identifiers this build has no meaning for.
+  ///
+  /// Vocabulary rather than catalog presence: a form this build knows and this
+  /// install happens to stock no material for is a selection that reaches
+  /// nothing, which is not the same as a request nobody can read.
+  List<String> get unreadableIdentifiers => [
+    for (final familyId in familyIds)
+      if (!TechnicalMaterial.familyIds.contains(familyId)) familyId,
+    for (final formId in scaleFormIds)
+      if (!ScaleForm.values.any((form) => form.id == formId)) formId,
+    for (final qualityId in arpeggioQualityIds)
+      if (!ArpeggioQuality.values.any((quality) => quality.id == qualityId))
+        qualityId,
+    for (final tonic in tonics)
+      if (!TechnicalMaterial.isCanonicalTonic(tonic)) tonic,
+  ];
+
   /// Whether [material] is what this focus asked for.
   bool matches(TechnicalMaterial material) {
     if (tonics.isNotEmpty && !tonics.contains(material.tonic)) return false;
@@ -142,18 +159,32 @@ class ActiveFocus {
     'label': label,
   };
 
-  factory ActiveFocus.fromJson(Map<String, Object?> json) => ActiveFocus(
-    material: MaterialFocus.fromJson(
+  /// Reads a focus back, refusing one that narrows nothing.
+  ///
+  /// Practicing normally is a plan with no focus at all, so a stored focus
+  /// that selects the whole catalog is a request this build failed to read
+  /// rather than a request to practice everything.
+  factory ActiveFocus.fromJson(Map<String, Object?> json) {
+    final material = MaterialFocus.fromJson(
       asMap(json['material'], 'material', location: 'practice plan'),
-    ),
-    strength: FocusStrength.values.firstWhere(
-      (strength) =>
-          strength.name == requireString(json, 'strength', location: 'focus'),
-      orElse: () =>
-          throw const JournalFormatException('unknown focus strength'),
-    ),
-    label: requireString(json, 'label', location: 'focus'),
-  );
+    );
+    if (material.isEmpty) {
+      throw const JournalFormatException(
+        'a focus names the material it draws from',
+        location: 'focus',
+      );
+    }
+    return ActiveFocus(
+      material: material,
+      strength: FocusStrength.values.firstWhere(
+        (strength) =>
+            strength.name == requireString(json, 'strength', location: 'focus'),
+        orElse: () =>
+            throw const JournalFormatException('unknown focus strength'),
+      ),
+      label: requireString(json, 'label', location: 'focus'),
+    );
+  }
 
   @override
   bool operator ==(Object other) =>
@@ -164,6 +195,39 @@ class ActiveFocus {
 
   @override
   int get hashCode => Object.hash(material, strength, label);
+}
+
+/// The goals this build knows how to resolve, in the order they are offered.
+///
+/// A stored identifier outside this registry is refused rather than turned
+/// into a goal of its own. A goal nothing describes carries no materials and
+/// no curriculum, so honoring one would quietly practice the whole catalog
+/// under a name the learner chose for something narrower.
+const Map<String, PracticeGoal> supportedGoals = {
+  'GENERAL_FLUENCY': PracticeGoal.generalFluency,
+};
+
+/// The result of reading a plan against this build and one catalog.
+sealed class PlanResolution {
+  const PlanResolution();
+}
+
+/// A plan this build can practice under.
+@immutable
+final class ResolvedPlan extends PlanResolution {
+  final PracticeGoal goal;
+  final PracticeFocus focus;
+
+  const ResolvedPlan({required this.goal, required this.focus});
+}
+
+/// A plan naming something this build cannot interpret.
+@immutable
+final class UnresolvablePlan extends PlanResolution {
+  final List<ScopeResolutionFailure> failures;
+
+  UnresolvablePlan(Iterable<ScopeResolutionFailure> failures)
+    : failures = List.unmodifiable(failures);
 }
 
 /// What one profile is working toward, and what it is drawing from now.
@@ -193,22 +257,40 @@ class PracticePlan {
   /// The requirement ids a focus names are the ones the goal's curriculum
   /// generates for the catalog it was resolved against, so a focus can only
   /// ever name material the goal already contains.
-  ({PracticeGoal goal, PracticeFocus focus}) resolve(
-    List<TechnicalMaterial> catalog,
-  ) {
-    final goal = goalId == PracticePlan.normal.goalId
-        ? PracticeGoal.generalFluency
-        : PracticeGoal(id: goalId);
+  ///
+  /// Everything the plan names is checked before anything is selected, and a
+  /// name this build cannot read fails the plan. The one thing resolution must
+  /// never do is widen: a typo, a retired identifier, or a goal from a later
+  /// build has to be distinguishable from a learner asking for everything.
+  PlanResolution resolve(List<TechnicalMaterial> catalog) {
     final active = focus;
+    final goal = supportedGoals[goalId];
+    final failures = <ScopeResolutionFailure>[
+      if (goal == null)
+        ScopeResolutionFailure(
+          code: ScopeResolutionFailureCode.unknownGoal,
+          reference: goalId,
+        ),
+      if (active != null)
+        for (final identifier in active.material.unreadableIdentifiers)
+          ScopeResolutionFailure(
+            code: ScopeResolutionFailureCode.unreadableFocus,
+            reference: identifier,
+          ),
+    ];
+    if (failures.isNotEmpty || goal == null) {
+      return UnresolvablePlan(failures);
+    }
+
     if (active == null) {
-      return (goal: goal, focus: PracticeFocus.unrestricted);
+      return ResolvedPlan(goal: goal, focus: PracticeFocus.unrestricted);
     }
 
     final requirementIds = {
       for (final material in active.material.selectionOf(catalog))
         catalogRequirementId(goal.id, material.materialId),
     };
-    return (
+    return ResolvedPlan(
       goal: goal,
       focus: active.isExclusive
           ? PracticeFocus(exclusiveRequirementIds: requirementIds)
@@ -258,9 +340,13 @@ class PracticePlan {
   int get hashCode => Object.hash(goalId, focus);
 }
 
+/// The strings at [field], which must be there.
+///
+/// A missing facet is not an empty one. Reading it as empty turns "C major
+/// only" whose payload did not survive into a focus that narrows nothing, and
+/// an exclusive one at that.
 Set<String> _stringSet(Map<String, Object?> json, String field) {
   final value = json[field];
-  if (value == null) return const {};
   if (value is! List) {
     throw JournalFormatException('$field must be a list', location: 'focus');
   }

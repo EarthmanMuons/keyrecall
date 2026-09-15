@@ -7,6 +7,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/focus_sheet.dart';
+import 'package:keyrecall/features/practice/practice_failure.dart';
 import 'package:keyrecall/features/practice/practice_focus.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
@@ -172,6 +173,32 @@ void main() {
       reason: 'the new exclusive focus no longer permits the failed material',
     );
   });
+
+  test(
+    'a goal this build cannot read stops the loop rather than widening it',
+    () async {
+      final container = launch();
+      await place(container);
+      final profile = (await profiles.selectedOrOldest())!;
+      await practice.savePracticePlan(
+        profile.id,
+        const PracticePlan(goalId: 'UNKNOWN_EXAM'),
+      );
+
+      final relaunched = launch();
+
+      await expectLater(
+        relaunched.read(practiceLoopProvider.future),
+        throwsA(
+          isA<PracticeLoopFailure>().having(
+            (failure) => failure.kind,
+            'kind',
+            PracticeFailure.plan,
+          ),
+        ),
+      );
+    },
+  );
 
   test('practicing normally again drops the focus', () async {
     final container = launch();

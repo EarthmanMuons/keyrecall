@@ -23,17 +23,22 @@ List<Exercise> candidatesDueIn(
 ///
 /// Requirements are what a focus weights and candidates are generated per
 /// material, so two requirements over one material contribute the stronger of
-/// their weights rather than each other's.
+/// their weights rather than each other's. The strongest is taken before
+/// neutral results are dropped: doing it the other way round would let a
+/// de-emphasized requirement answer for a material something else asked for.
 GoalEmphasis goalEmphasisOf(ResolvedPracticeScope scope) {
-  final weights = <String, double>{};
+  final strongest = <String, double>{};
   for (final requirement in scope.requirements) {
-    if (requirement.emphasis == GoalEmphasis.unemphasized) continue;
     final materialId = requirement.material.materialId;
-    final held = weights[materialId];
+    final held = strongest[materialId];
     if (held == null || requirement.emphasis > held) {
-      weights[materialId] = requirement.emphasis;
+      strongest[materialId] = requirement.emphasis;
     }
   }
+  final weights = {
+    for (final entry in strongest.entries)
+      if (entry.value != GoalEmphasis.unemphasized) entry.key: entry.value,
+  };
   return weights.isEmpty ? GoalEmphasis.none : GoalEmphasis(weights);
 }
 

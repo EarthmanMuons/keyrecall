@@ -847,7 +847,21 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     // learner last asked for.
     final catalog = ref.watch(practiceCatalogProvider);
     final plan = await ref.watch(practicePlanProvider.future);
-    final scope = plan.resolve(catalog);
+    // A plan naming something this build cannot read stops the sitting rather
+    // than opening a wider one. What was stored is intent, and the failure a
+    // learner can act on is being told their plan was not understood.
+    final resolution = plan.resolve(catalog);
+    if (resolution case UnresolvablePlan(:final failures)) {
+      await scheduler.dispose();
+      throw PracticeLoopFailure(
+        PracticeFailure.plan,
+        'this practice plan names '
+        '${failures.map((failure) => failure.reference).join(', ')}, '
+        'which this version does not recognize',
+        profileId: profile.id,
+      );
+    }
+    final scope = resolution as ResolvedPlan;
     // Bound to the incarnation standing now. Everything this sitting writes
     // carries it, so an erase during the sitting refuses the writes rather
     // than letting them put the erased history back.

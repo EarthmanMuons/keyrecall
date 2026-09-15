@@ -99,6 +99,12 @@ String catalogRequirementId(String goalId, String materialId) =>
 
 /// Why a requested goal and focus could not become a practice scope.
 enum ScopeResolutionFailureCode {
+  /// A stored goal identifier no goal in this build answers to.
+  unknownGoal,
+
+  /// A stored focus naming material vocabulary this build has no meaning for.
+  unreadableFocus,
+
   duplicateRequirementId,
   unknownMaterial,
   unknownFamily,
@@ -256,6 +262,10 @@ class PracticeScopeResolver {
       );
     }
 
+    // What completing this scope means. A requirement outside an exclusive
+    // focus is never one of these, however the curriculum declared it: it can
+    // still be retained as preparation, and preparation is not a completion
+    // target.
     final activeTargetIds = {
       for (final requirement in curriculum.requirements)
         if (requirement.role == CurriculumRequirementRole.target &&
@@ -275,17 +285,22 @@ class PracticeScopeResolver {
       );
     }
 
+    final supportIds = _supportersOf(activeTargetIds, curriculum.requirements);
     final activeRequirements = [
       for (final requirement in curriculum.requirements)
         if (exclusiveIds == null ||
             activeTargetIds.contains(requirement.id) ||
-            requirement.supportsRequirementIds.any(activeTargetIds.contains))
+            supportIds.contains(requirement.id))
           requirement,
     ];
 
     final catalogById = {
       for (final material in catalog) material.materialId: material,
     };
+    // Generation reads the material and the instrument and nothing else, so
+    // requirements over one material share a pool rather than each building an
+    // identical one.
+    final candidatesByMaterial = <String, List<Exercise>>{};
     final resolved = <ResolvedRequirement>[];
     for (final requirement in activeRequirements) {
       final material = catalogById[requirement.materialId];
@@ -310,7 +325,10 @@ class PracticeScopeResolver {
         );
         continue;
       }
-      final candidates = family.generate(instrument, material);
+      final candidates = candidatesByMaterial.putIfAbsent(
+        material.materialId,
+        () => family.generate(instrument, material),
+      );
       final targetCandidates = candidates
           .where(requirement.constraints.matches)
           .toList();
@@ -330,6 +348,13 @@ class PracticeScopeResolver {
           material: material,
           targetCandidates: targetCandidates,
           candidates: candidates,
+          roles: {
+            if (activeTargetIds.contains(requirement.id))
+              ResolvedRequirementRole.target,
+            if (supportIds.contains(requirement.id) ||
+                requirement.role == CurriculumRequirementRole.support)
+              ResolvedRequirementRole.support,
+          },
           emphasis: focus.emphasisByRequirementId[requirement.id] ?? 1,
         ),
       );
@@ -379,6 +404,26 @@ class PracticeScopeResolver {
       ],
     );
   }
+}
+
+/// Every requirement preparing one of [targetIds], through any chain of them.
+Set<String> _supportersOf(
+  Set<String> targetIds,
+  List<CurriculumRequirement> requirements,
+) {
+  final supporters = <String>{};
+  var frontier = targetIds;
+  while (frontier.isNotEmpty) {
+    final reached = {
+      for (final requirement in requirements)
+        if (!supporters.contains(requirement.id) &&
+            requirement.supportsRequirementIds.any(frontier.contains))
+          requirement.id,
+    };
+    supporters.addAll(reached);
+    frontier = reached;
+  }
+  return supporters;
 }
 
 List<Exercise> _generateArpeggioCandidates(

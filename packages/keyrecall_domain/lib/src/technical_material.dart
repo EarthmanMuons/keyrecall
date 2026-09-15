@@ -93,6 +93,9 @@ sealed class TechnicalMaterial {
   static const String scaleFamilyId = 'SCALE';
   static const String arpeggioFamilyId = 'ARPEGGIO';
 
+  /// Every family this build can represent.
+  static const Set<String> familyIds = {scaleFamilyId, arpeggioFamilyId};
+
   const TechnicalMaterial._();
 
   factory TechnicalMaterial(String tonic, ScaleForm form) = ScaleMaterial;

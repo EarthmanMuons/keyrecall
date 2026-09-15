@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -263,5 +264,117 @@ void main() {
       result.scope.requirements.map((resolved) => resolved.requirement.id),
       containsAll(['TARGET', 'SUPPORT']),
     );
+    expect(result.scope.targetRequirementIds, {'TARGET'});
+    expect(result.scope.supportRequirementIds, {'SUPPORT'});
+  });
+
+  test('a target retained as support is not a completion target', () {
+    final material = fixtureMaterials.first;
+    final result =
+        resolver.resolve(
+              goal: PracticeGoal(
+                id: 'GOAL',
+                curriculum: _pairCurriculum(material),
+              ),
+              focus: PracticeFocus(exclusiveRequirementIds: {'A'}),
+              catalog: fixtureMaterials,
+              instrument: InstrumentProfile(),
+            )
+            as ValidPracticeScope;
+
+    expect(
+      result.scope.requirements.map((resolved) => resolved.requirement.id),
+      containsAll(['A', 'B']),
+      reason: 'B still prepares A, so it stays available to schedule',
+    );
+    expect(result.scope.targetRequirementIds, {'A'});
+    expect(result.scope.supportRequirementIds, {'B'});
+  });
+
+  test('both hold where both were selected', () {
+    final material = fixtureMaterials.first;
+    final result =
+        resolver.resolve(
+              goal: PracticeGoal(
+                id: 'GOAL',
+                curriculum: _pairCurriculum(material),
+              ),
+              focus: PracticeFocus.unrestricted,
+              catalog: fixtureMaterials,
+              instrument: InstrumentProfile(),
+            )
+            as ValidPracticeScope;
+
+    expect(result.scope.targetRequirementIds, {'A', 'B'});
+    expect(result.scope.supportRequirementIds, {
+      'B',
+    }, reason: 'roles are not exclusive: B is a target that also prepares one');
+  });
+
+  test('one material is realized once, however many requirements name it', () {
+    final material = fixtureMaterials.first;
+    final family = _CountingFamily();
+    final result =
+        PracticeScopeResolver(families: [family]).resolve(
+              goal: PracticeGoal(
+                id: 'GOAL',
+                curriculum: _pairCurriculum(material),
+              ),
+              focus: PracticeFocus.unrestricted,
+              catalog: fixtureMaterials,
+              instrument: InstrumentProfile(),
+            )
+            as ValidPracticeScope;
+
+    expect(family.generated, 1);
+    final [first, second] = result.scope.requirements;
+    expect(first.candidates, second.candidates);
   });
 }
+
+/// The scale family, counting how often it is asked to realize material.
+class _CountingFamily implements PracticeMaterialFamily {
+  final PracticeMaterialFamily _scales = const ScalePracticeMaterialFamily();
+  int generated = 0;
+
+  @override
+  String get familyId => _scales.familyId;
+
+  @override
+  double get entryTempoBpm => _scales.entryTempoBpm;
+
+  @override
+  List<Exercise> generate(
+    InstrumentProfile instrument,
+    TechnicalMaterial material,
+  ) {
+    generated++;
+    return _scales.generate(instrument, material);
+  }
+
+  @override
+  AcquisitionFloor acquisitionFloorFor(
+    Iterable<AcquisitionFloorRequest> requests,
+  ) => _scales.acquisitionFloorFor(requests);
+}
+
+/// Two targets over one material, the second declaring it prepares the first.
+Curriculum _pairCurriculum(TechnicalMaterial material) => Curriculum(
+  id: 'PAIR',
+  version: '1',
+  requirements: [
+    CurriculumRequirement(
+      id: 'A',
+      familyId: material.familyId,
+      materialId: material.materialId,
+      constraints: const ExerciseConstraints(octaves: 2),
+    ),
+    CurriculumRequirement(
+      id: 'B',
+      familyId: material.familyId,
+      materialId: material.materialId,
+      constraints: const ExerciseConstraints(octaves: 1),
+      supportsRequirementIds: {'A'},
+    ),
+  ],
+);
