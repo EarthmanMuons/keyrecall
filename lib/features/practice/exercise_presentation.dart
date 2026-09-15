@@ -50,19 +50,65 @@ String _timesName(int times) => switch (times) {
 /// supported work does not answer, and a line that implied an answer would be
 /// making the claim the whole design exists to withhold.
 ///
-/// Each case is a distinct thing to have done, because the app knows which one
-/// it was. "Not all of it came out" covered running out, playing something else
-/// and never starting at once, and left the learner to work out which of them
-/// the app meant.
+/// Read from how the attempt ended and how far it got, never from what is
+/// missing. "You stopped" attributes the ending to the learner, and only the
+/// learner saying so supports that. An input fault says what was recorded
+/// and leaves the ending unattributed, because the notes that did not arrive
+/// may well have been played; a timeout, a limit and a record whose format
+/// could not say get the same neutral wording, for the same reason.
+///
+/// A task asking for more than one traversal says how many came out. Telling
+/// somebody who played the arpeggio once of twice that they stopped before the
+/// end describes neither what they did nor what was asked for.
 String acquisitionOutcomeLine(AcquisitionAttemptRecord record) {
   final noun = materialNoun(record.parent.material);
-  if (!record.started) return 'Nothing came through that time.';
-  if (record.completion.isComplete) {
-    return 'You played the whole $noun, at your own pace.';
+  final asked = record.task.portion.traversals;
+  final recorded = _recordedTraversals(record);
+
+  if (record.termination == AttemptTermination.inputInterrupted) {
+    if (recorded == 0) {
+      return 'The connection was interrupted before the whole $noun was '
+          'recorded.';
+    }
+    return recorded == asked
+        ? 'The connection was interrupted. The whole $noun was recorded'
+              '${asked == 1 ? '' : ' ${_timesName(asked)}'}.'
+        : 'The connection was interrupted after $recorded of $asked times '
+              'through the $noun.';
   }
-  return record.firstAbsentPosition != null
+
+  if (!record.started) return 'Nothing came through that time.';
+
+  if (record.completion.isComplete) {
+    return asked == 1
+        ? 'You played the whole $noun, at your own pace.'
+        : 'You played the whole $noun ${_timesName(asked)}, at your own pace.';
+  }
+
+  if (record.firstAbsentPosition == null) {
+    return 'Some of the notes were not the ones in the $noun.';
+  }
+  if (recorded > 0) {
+    return 'You played the $noun $recorded of $asked times.';
+  }
+  if (record.termination != AttemptTermination.learnerStopped) {
+    return 'The $noun was not played all the way through.';
+  }
+  return asked == 1
       ? 'You stopped before the end of the $noun.'
-      : 'Some of the notes were not the ones in the $noun.';
+      : 'You stopped before the end of the first time through the $noun.';
+}
+
+/// How many whole traversals the attempt has a record of.
+///
+/// Counted from where the notes ran out, which is the only progress a record
+/// locates. An attempt that produced the material produced every traversal of
+/// it, however it came out.
+int _recordedTraversals(AcquisitionAttemptRecord record) {
+  if (record.completion.isComplete) return record.task.portion.traversals;
+  final absent = record.firstAbsentPosition;
+  if (absent == null) return 0;
+  return absent ~/ realize(record.parent).moments.length;
 }
 
 /// The note the material is named after, spelled the way it is written.

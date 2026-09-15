@@ -307,41 +307,51 @@ void main() {
       expect(selfPacedInstruction(4), contains('4 times'));
     });
 
-    test('says what a supported attempt actually did', () {
-      AcquisitionAttemptRecord closed(
-        TechnicalMaterial material, {
-        bool started = true,
-        AcquisitionCompletion completion = AcquisitionCompletion.notCompleted,
-        int? firstAbsentPosition,
-      }) => AcquisitionAttemptRecord(
-        journalSequence: 0,
-        identity: AttemptIdentity(
-          profileId: 'abc12345',
-          attemptId: 'acq-0',
-          sessionId: 'sitting-1',
-          indexInSession: 0,
-          occurredAt: DateTime.utc(2026, 9, 9),
+    AcquisitionAttemptRecord closed(
+      TechnicalMaterial material, {
+      bool started = true,
+      AcquisitionCompletion completion = AcquisitionCompletion.notCompleted,
+      int? firstAbsentPosition,
+      int traversals = 1,
+      AttemptTermination termination = AttemptTermination.learnerStopped,
+    }) => AcquisitionAttemptRecord(
+      journalSequence: 0,
+      identity: AttemptIdentity(
+        profileId: 'abc12345',
+        attemptId: 'acq-0',
+        sessionId: 'sitting-1',
+        indexInSession: 0,
+        occurredAt: DateTime.utc(2026, 9, 9),
+      ),
+      task: AcquisitionTask(
+        parent: Exercise.linear(
+          material: material,
+          hands: HandConfiguration.right,
+          octaves: 1,
+          direction: ExerciseDirection.up,
+          tempoBpm: 60,
+          guidance: GuidanceContext.continuouslyCued,
         ),
-        task: AcquisitionTask.unmeteredTraversal(
-          Exercise.linear(
-            material: material,
-            hands: HandConfiguration.right,
-            octaves: 1,
-            direction: ExerciseDirection.up,
-            tempoBpm: 60,
-            guidance: GuidanceContext.continuouslyCued,
-          ),
-        ),
-        started: started,
-        completion: completion,
-        repairs: 0,
-        repeats: 0,
-        intrusions: 0,
-        firstAbsentPosition: firstAbsentPosition,
-        earnedProbe: false,
-        gaps: const [],
-      );
+        timing: TimingDemand.unmetered,
+        advancement: TaskAdvancement.learnerDriven,
+        portion: traversals == 1
+            ? const FullTraversal()
+            : TraversalRepetitions(traversals),
+      ),
+      termination: termination,
+      started: started,
+      completion: completion,
+      repairs: 0,
+      repeats: 0,
+      intrusions: 0,
+      firstAbsentPosition: firstAbsentPosition,
+      earnedProbe: false,
+      sequence: CriterionVerdict.notMet,
+      continuity: CriterionVerdict.unavailable,
+      gaps: const [],
+    );
 
+    test('says what a supported attempt actually did', () {
       final scale = TechnicalMaterial('C', ScaleForm.major);
       final arpeggio = ArpeggioMaterial('C', ArpeggioQuality.major);
 
@@ -369,6 +379,89 @@ void main() {
       expect(
         acquisitionOutcomeLine(closed(arpeggio, firstAbsentPosition: 3)),
         'You stopped before the end of the arpeggio.',
+      );
+    });
+
+    test('does not put an interrupted capture down to the learner', () {
+      // "You stopped" is a claim about what the learner did, and an input
+      // fault is not evidence of it. What the app can say is what it recorded.
+      expect(
+        acquisitionOutcomeLine(
+          closed(
+            TechnicalMaterial('C', ScaleForm.major),
+            firstAbsentPosition: 5,
+            termination: AttemptTermination.inputInterrupted,
+          ),
+        ),
+        'The connection was interrupted before the whole scale was recorded.',
+      );
+      expect(
+        acquisitionOutcomeLine(
+          closed(
+            TechnicalMaterial('C', ScaleForm.major),
+            completion: AcquisitionCompletion.completedCleanly,
+            termination: AttemptTermination.inputInterrupted,
+          ),
+        ),
+        'The connection was interrupted. The whole scale was recorded.',
+      );
+      // A timeout is not the learner either, and neither is a record whose
+      // format could not say how it ended.
+      for (final termination in [
+        AttemptTermination.inactivityTimeout,
+        AttemptTermination.durationLimit,
+      ]) {
+        expect(
+          acquisitionOutcomeLine(
+            closed(
+              TechnicalMaterial('C', ScaleForm.major),
+              firstAbsentPosition: 5,
+              termination: termination,
+            ),
+          ),
+          'The scale was not played all the way through.',
+        );
+      }
+    });
+
+    test('says how many of the asked-for traversals came out', () {
+      final arpeggio = ArpeggioMaterial('C', ArpeggioQuality.major);
+
+      // One whole traversal of two is not stopping before the end: the
+      // learner finished the arpeggio once.
+      expect(
+        acquisitionOutcomeLine(
+          closed(arpeggio, traversals: 2, firstAbsentPosition: 6),
+        ),
+        'You played the arpeggio 1 of 2 times.',
+      );
+      expect(
+        acquisitionOutcomeLine(
+          closed(arpeggio, traversals: 2, firstAbsentPosition: 2),
+        ),
+        'You stopped before the end of the first time through the arpeggio.',
+      );
+      expect(
+        acquisitionOutcomeLine(
+          closed(
+            arpeggio,
+            traversals: 2,
+            completion: AcquisitionCompletion.completedCleanly,
+          ),
+        ),
+        'You played the whole arpeggio twice, at your own pace.',
+      );
+      expect(
+        acquisitionOutcomeLine(
+          closed(
+            arpeggio,
+            traversals: 2,
+            firstAbsentPosition: 6,
+            termination: AttemptTermination.inputInterrupted,
+          ),
+        ),
+        'The connection was interrupted after 1 of 2 times through the '
+        'arpeggio.',
       );
     });
 

@@ -6,9 +6,6 @@ import 'measurement_policy.dart';
 import 'performance_measurement.dart';
 import 'timing_evidence.dart';
 
-/// Whether this attempt supplies enough evidence to judge continuity.
-enum AcquisitionContinuity { unestablished, unbroken, interrupted }
-
 /// The fewest complete traversals of [realization] continuity can be read from.
 ///
 /// Each traversal supplies one fewer interval than it has moments, and the
@@ -24,6 +21,20 @@ int traversalsForContinuity(ExerciseRealization realization) {
     );
   }
   return (fewestContiguousWaitsForContinuity + intervals - 1) ~/ intervals;
+}
+
+/// Every transition continuity is a claim about in [task], in order.
+///
+/// The transitions inside a traversal, and only those. The turnaround between
+/// one traversal and the next is the reset the task asked for, so nothing is
+/// owed there and nothing is judged there.
+List<(int, int)> acquisitionContinuityTransitions(AcquisitionTask task) {
+  final length = realize(task.parent).moments.length;
+  return [
+    for (var repetition = 0; repetition < task.portion.traversals; repetition++)
+      for (var offset = 0; offset + 1 < length; offset++)
+        (repetition * length + offset, repetition * length + offset + 1),
+  ];
 }
 
 /// What was observed about one acquisition attempt.
@@ -106,16 +117,48 @@ class AcquisitionObservation {
       if (gap.ratio! >= policy.brokenIntervalRatio) gap,
   ];
 
-  /// Continuity needs a pace the longest wait cannot have set by itself.
+  /// Whether every transition continuity is a claim about was timed.
   ///
-  /// Absence of a detected stall establishes nothing without one, so a task
-  /// whose single traversal supplies too few waits asks for more traversals
-  /// rather than moving the bar.
-  AcquisitionContinuity get continuity => stalls.isNotEmpty
-      ? AcquisitionContinuity.interrupted
-      : timing.isContinuityAssessable && !_hasAmbiguousTraversal
-      ? AcquisitionContinuity.unbroken
-      : AcquisitionContinuity.unestablished;
+  /// Coverage of the transitions themselves, not a count of waits. Six waits
+  /// out of seven are enough arithmetic for a pace and are not enough evidence
+  /// that the playing never stopped, because nothing was observed across the
+  /// transition that is missing. A wait spanning a moment nothing arrived for
+  /// covers a stretch rather than a transition, so it establishes none of the
+  /// transitions inside it.
+  bool get isFullyTimed {
+    final observed = {
+      for (final gap in gaps) (gap.fromPosition, gap.toPosition),
+    };
+    return acquisitionContinuityTransitions(task).every(observed.contains);
+  }
+
+  /// Whether the playing stopped inside a traversal.
+  ///
+  /// A detected stall is a stop, whatever else is missing: the wait was
+  /// observed and judged, and the transitions nobody timed cannot take that
+  /// back.
+  ///
+  /// Otherwise unbroken needs everything. Every transition the criterion
+  /// covers has to have been timed, and there has to be a pace the longest
+  /// wait cannot have set by itself, which is why a task whose single
+  /// traversal supplies too few waits asks for more traversals rather than
+  /// moving the bar.
+  CriterionVerdict get continuity => stalls.isNotEmpty
+      ? CriterionVerdict.notMet
+      : isFullyTimed && timing.isContinuityAssessable && !_hasAmbiguousTraversal
+      ? CriterionVerdict.met
+      : CriterionVerdict.unavailable;
+
+  /// Whether the material came out, right the first time.
+  ///
+  /// Always answerable from the notes that arrived: a substitution, a deletion
+  /// and a repair are each something that was observed to happen. Whether the
+  /// transcript is the whole of what happened is capture integrity's question,
+  /// and closure folds it in.
+  CriterionVerdict get sequence =>
+      completion == AcquisitionCompletion.completedCleanly
+      ? CriterionVerdict.met
+      : CriterionVerdict.notMet;
 
   /// Pooling repetitions can hide a hesitation that recurs in each traversal.
   /// Large internal spread with no pooled stall leaves continuity unknown.
@@ -149,11 +192,22 @@ class AcquisitionObservation {
   /// time and the learner did not stop inside it. Completion through correction
   /// is recorded as practice.
   ///
+  /// Every criterion met, and not merely none of them failed. An attempt that
+  /// could not judge continuity has not shown the playing held together.
+  ///
   /// Eligibility only. Whether to conduct the probe, and how many criterion
   /// successes it takes, are the scheduler's to decide.
   bool get earnsParentProbe =>
-      completion == AcquisitionCompletion.completedCleanly &&
-      continuity == AcquisitionContinuity.unbroken;
+      sequence == CriterionVerdict.met && continuity == CriterionVerdict.met;
+
+  /// Whether the attempt positively established that a criterion was not met.
+  ///
+  /// What supported work failing means, and the only reading of an attempt
+  /// that says anything about the learner having fallen short. An attempt that
+  /// judged nothing is not this.
+  bool get showsCriterionFailure =>
+      sequence == CriterionVerdict.notMet ||
+      continuity == CriterionVerdict.notMet;
 
   @override
   String toString() =>

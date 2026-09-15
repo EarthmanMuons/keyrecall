@@ -122,6 +122,6 @@ AcquisitionFloor scaleAcquisitionFloorFor(
           // step apart and the order is the thing being learned, so a
           // traversal the learner paces themselves asks the whole question
           // without any of the tempo.
-          scaffold: const AcquisitionScaffold.unmeteredTraversal(),
+          scaffold: AcquisitionScaffold.unmeteredTraversal(),
         ),
 ]);

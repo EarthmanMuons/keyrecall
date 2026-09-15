@@ -72,11 +72,7 @@ void main() {
           AcquisitionCompletion.completedCleanly,
           reason: '$gapMs ms',
         );
-        expect(
-          result.continuity,
-          AcquisitionContinuity.unbroken,
-          reason: '$gapMs ms',
-        );
+        expect(result.continuity, CriterionVerdict.met, reason: '$gapMs ms');
         expect(result.earnsParentProbe, isTrue, reason: '$gapMs ms');
       }
     });
@@ -95,7 +91,7 @@ void main() {
         750,
       ]);
 
-      expect(uneven.continuity, AcquisitionContinuity.unbroken);
+      expect(uneven.continuity, CriterionVerdict.met);
       expect(uneven.earnsParentProbe, isTrue);
     });
   });
@@ -111,7 +107,7 @@ void main() {
 
         expect(
           result.continuity,
-          AcquisitionContinuity.interrupted,
+          CriterionVerdict.notMet,
           reason: 'stall before $position',
         );
         expect(result.stalls.single.toPosition, position);
@@ -166,7 +162,7 @@ void main() {
         600,
       ]);
 
-      expect(hesitant.continuity, AcquisitionContinuity.unbroken);
+      expect(hesitant.continuity, CriterionVerdict.met);
       expect(hesitant.stalls, isEmpty);
     });
   });
@@ -224,7 +220,7 @@ void main() {
 
       expect(result.completion, AcquisitionCompletion.completedCleanly);
       expect(result.stalls, isEmpty);
-      expect(result.continuity, AcquisitionContinuity.unestablished);
+      expect(result.continuity, CriterionVerdict.unavailable);
       expect(result.earnsParentProbe, isFalse);
     });
 
@@ -241,10 +237,66 @@ void main() {
 
       expect(
         result.continuity,
-        AcquisitionContinuity.unestablished,
+        CriterionVerdict.unavailable,
         reason: 'nothing here measured that wait, so nothing calls it a stall',
       );
       expect(result.stalls, isEmpty);
+    });
+  });
+
+  // Continuity is a claim about every transition inside a traversal, so the
+  // evidence it needs is every one of those transitions, not enough waits to
+  // compute a pace from.
+  group('an attempt that could time only part of itself', () {
+    /// The same clean playing with the performance clock missing at [absent].
+    AcquisitionObservation observeMissing(Set<int> absent) {
+      var transcript = PerformanceTranscript.empty;
+      var at = 0;
+      for (final (index, midiNote) in expected.indexed) {
+        at += index == 0 ? 0 : 600;
+        transcript = transcript.appending(
+          pitch: spellObservedPitch(midiNote, material: material),
+          timestampMs: at,
+          performanceTimeUs: absent.contains(index) ? null : at * 1000,
+        );
+      }
+      return observeAcquisition(task: task, transcript: transcript);
+    }
+
+    for (final (where, absent) in [
+      ('at the beginning', {0}),
+      ('inside', {4}),
+      ('at the end', {7}),
+    ]) {
+      test('establishes no continuity with a note untimed $where', () {
+        final result = observeMissing(absent);
+
+        expect(result.completion, AcquisitionCompletion.completedCleanly);
+        expect(result.stalls, isEmpty);
+        expect(result.isFullyTimed, isFalse);
+        expect(result.continuity, CriterionVerdict.unavailable);
+        expect(result.earnsParentProbe, isFalse);
+      });
+    }
+
+    test('still calls an observed stall an interruption', () {
+      // A wait that was timed and was long is a stop, and the transitions
+      // nobody timed do not take that back.
+      var transcript = PerformanceTranscript.empty;
+      var at = 0;
+      for (final (index, midiNote) in expected.indexed) {
+        at += index == 0 ? 0 : (index == 5 ? 9000 : 600);
+        transcript = transcript.appending(
+          pitch: spellObservedPitch(midiNote, material: material),
+          timestampMs: at,
+          performanceTimeUs: index == 0 ? null : at * 1000,
+        );
+      }
+      final result = observeAcquisition(task: task, transcript: transcript);
+
+      expect(result.isFullyTimed, isFalse);
+      expect(result.stalls, isNotEmpty);
+      expect(result.continuity, CriterionVerdict.notMet);
     });
   });
 
@@ -276,7 +328,7 @@ void main() {
           );
           expect(result.completion, AcquisitionCompletion.completedCleanly);
           expect(result.stalls, hasLength(2));
-          expect(result.continuity, AcquisitionContinuity.interrupted);
+          expect(result.continuity, CriterionVerdict.notMet);
           expect(result.earnsParentProbe, isFalse);
         },
       );
@@ -295,8 +347,21 @@ void main() {
           3000,
         ], parent),
       );
-      expect(result.continuity, AcquisitionContinuity.unbroken);
+      expect(result.continuity, CriterionVerdict.met);
       expect(result.earnsParentProbe, isTrue);
+    });
+
+    test('the criterion covers every transition but the resets', () {
+      // Four moments twice over: three transitions inside each traversal, and
+      // the turnaround between them belongs to neither.
+      expect(acquisitionContinuityTransitions(task), [
+        (0, 1),
+        (1, 2),
+        (2, 3),
+        (4, 5),
+        (5, 6),
+        (6, 7),
+      ]);
     });
 
     for (final omittedStarts in [1, 2]) {
@@ -327,7 +392,7 @@ void main() {
       // maximum, so absence of a detected stall proves nothing.
       final short = observe(expected.take(4).toList(), even(600, notes: 4));
 
-      expect(short.continuity, AcquisitionContinuity.unestablished);
+      expect(short.continuity, CriterionVerdict.unavailable);
       expect(short.stalls, isEmpty);
       expect(short.earnsParentProbe, isFalse);
     });
@@ -363,7 +428,7 @@ void main() {
       expect(result.completion, AcquisitionCompletion.completedCleanly);
       expect(result.gaps, hasLength(6));
       expect(result.stalls, isEmpty);
-      expect(result.continuity, AcquisitionContinuity.unbroken);
+      expect(result.continuity, CriterionVerdict.met);
       expect(result.earnsParentProbe, isTrue);
     });
 
@@ -398,7 +463,7 @@ void main() {
       );
 
       expect(result.stalls, isNotEmpty);
-      expect(result.continuity, AcquisitionContinuity.interrupted);
+      expect(result.continuity, CriterionVerdict.notMet);
       expect(result.earnsParentProbe, isFalse);
     });
 
@@ -410,7 +475,7 @@ void main() {
 
       expect(silent.started, isFalse);
       expect(silent.completion, AcquisitionCompletion.notCompleted);
-      expect(silent.continuity, AcquisitionContinuity.unestablished);
+      expect(silent.continuity, CriterionVerdict.unavailable);
       expect(silent.gaps, isEmpty);
     });
   });

@@ -41,6 +41,7 @@ const Set<int> readableAcquisitionVersions = {
   4,
   5,
   6,
+  7,
   acquisitionSchemaVersion,
 };
 
@@ -204,6 +205,14 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// in force at the time read it.
   final bool earnedProbe;
 
+  /// Whether the material came out right the first time, after capture
+  /// integrity was folded in.
+  final CriterionVerdict sequence;
+
+  /// Whether the playing held together inside each traversal, after capture
+  /// integrity was folded in.
+  final CriterionVerdict continuity;
+
   /// Throws [ArgumentError] for anything no observation produces: a probe
   /// earned without completing, a negative count or position, or a wait that
   /// does not run forward from one position to a later one.
@@ -221,6 +230,8 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     required this.intrusions,
     required this.earnedProbe,
     required List<RecordedGap> gaps,
+    required this.sequence,
+    required this.continuity,
     this.termination,
     this.firstAbsentPosition,
     this.schemaVersion = acquisitionSchemaVersion,
@@ -236,6 +247,15 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         earnedProbe,
         'earnedProbe',
         'a criterion success is a completion',
+      );
+    }
+    if (earnedProbe &&
+        (sequence != CriterionVerdict.met ||
+            continuity != CriterionVerdict.met)) {
+      throw ArgumentError.value(
+        earnedProbe,
+        'earnedProbe',
+        'a probe is earned by every criterion being met',
       );
     }
     for (final (name, count) in [
@@ -276,6 +296,15 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// Which profile this attempt belongs to.
   String get profileId => identity.profileId;
 
+  /// Whether this attempt positively established that a criterion was not met.
+  ///
+  /// What the scheduler suppresses supported work on. An attempt that judged
+  /// nothing is not this, and neither is one whose capture may have lost
+  /// events, because the verdicts stored here already have that folded in.
+  bool get showsCriterionFailure =>
+      sequence == CriterionVerdict.notMet ||
+      continuity == CriterionVerdict.notMet;
+
   /// The exercise a criterion success here would earn a probe of.
   @override
   Exercise get parent => task.parent;
@@ -312,6 +341,8 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     'intrusions': intrusions,
     'first_absent_position': firstAbsentPosition,
     'earned_probe': earnedProbe,
+    'sequence_criterion': sequence.id,
+    'continuity_criterion': continuity.id,
     'gaps': [
       for (final gap in gaps)
         {
@@ -352,6 +383,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         location: location,
       ),
     };
+    final earnedProbe = requireBool(json, 'earned_probe', location: location);
     final completionId = requireString(json, 'completion', location: location);
     final completion = AcquisitionCompletion.values.firstWhere(
       (value) => value.id == completionId,
@@ -416,11 +448,43 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         'first_absent_position',
         location: location,
       ),
-      earnedProbe: requireBool(json, 'earned_probe', location: location),
+      earnedProbe: earnedProbe,
+      sequence: _verdictOf(json, 'sequence_criterion', earnedProbe, location),
+      continuity: _verdictOf(
+        json,
+        'continuity_criterion',
+        earnedProbe,
+        location,
+      ),
       gaps: [
         for (final entry in _requireGaps(json, location))
           _decodeGap(asMap(entry, 'gap', location: location), location),
       ],
+    );
+  }
+
+  /// What a criterion verdict was, where the format could say.
+  ///
+  /// A record before version 8 stored one boolean for every criterion at once.
+  /// An earned probe says each of them was met, and nothing else does: a
+  /// record that earned none cannot say which criterion fell short or whether
+  /// any of them was judged at all, so it reads back as unavailable rather
+  /// than as a failure it never recorded.
+  static CriterionVerdict _verdictOf(
+    Map<String, Object?> json,
+    String key,
+    bool earnedProbe,
+    String location,
+  ) {
+    final written = json[key];
+    if (written == null) {
+      return earnedProbe ? CriterionVerdict.met : CriterionVerdict.unavailable;
+    }
+    return located(
+      () =>
+          CriterionVerdict.fromId(requireString(json, key, location: location)),
+      key,
+      location: location,
     );
   }
 
@@ -663,6 +727,7 @@ class AcquisitionJournal {
           parent: record.parent,
           completed: record.completion.isComplete,
           earnedProbe: record.earnedProbe,
+          criterionFailure: record.showsCriterionFailure,
           executionEvidenceRevision: record.executionEvidenceRevision,
           at: record.identity.occurredAt,
         ),

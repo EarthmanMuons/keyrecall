@@ -21,8 +21,11 @@ Map<String, Object?> encodeAcquisitionRecord(
     record.lastCriterionSuccessAt,
   ),
   'last_probe_served_at': encodeOptionalTime(record.lastProbeServedAt),
-  'last_unsuccessful_at': encodeOptionalTime(record.lastUnsuccessfulAt),
-  'evidence_revision_at_failure': record.evidenceRevisionAtFailure,
+  'last_criterion_failure_at': encodeOptionalTime(
+    record.lastCriterionFailureAt,
+  ),
+  'evidence_revision_at_criterion_failure':
+      record.evidenceRevisionAtCriterionFailure,
 };
 
 /// Writes acquisition progress, ordered so the same progress encodes
@@ -100,17 +103,17 @@ AcquisitionProgress decodeAcquisitionProgress(
         location: location,
       );
     }
-    if (!record.containsKey('evidence_revision_at_failure')) {
+    if (!record.containsKey('evidence_revision_at_criterion_failure')) {
       throw JournalFormatException(
         'acquisition progress has no causal revision; replay its acquisition log',
         location: location,
       );
     }
-    final revision = record['evidence_revision_at_failure'] == null
+    final revision = record['evidence_revision_at_criterion_failure'] == null
         ? null
         : requireInt(
             record,
-            'evidence_revision_at_failure',
+            'evidence_revision_at_criterion_failure',
             location: location,
           );
     if (revision != null && revision < 0) {
@@ -119,10 +122,10 @@ AcquisitionProgress decodeAcquisitionProgress(
         location: location,
       );
     }
-    if (!record.containsKey('last_unsuccessful_at')) {
+    if (!record.containsKey('last_criterion_failure_at')) {
       throw JournalFormatException(
-        'acquisition progress does not say when supported work last failed; '
-        'replay its acquisition log',
+        'acquisition progress does not say when supported work last showed a '
+        'criterion not met; replay its acquisition log',
         location: location,
       );
     }
@@ -151,7 +154,7 @@ AcquisitionProgress decodeAcquisitionProgress(
       );
     }
     byParent[parent] = AcquisitionRecord(
-      evidenceRevisionAtFailure: revision,
+      evidenceRevisionAtCriterionFailure: revision,
       attempts: attempts,
       completions: completions,
       criterionSuccesses: criterionSuccesses,
@@ -160,9 +163,9 @@ AcquisitionProgress decodeAcquisitionProgress(
       lastAttemptAt: requireTime(record, 'last_attempt_at', location: location),
       lastCriterionSuccessAt: lastCriterionSuccessAt,
       lastProbeServedAt: lastProbeServedAt,
-      lastUnsuccessfulAt: readOptionalTime(
+      lastCriterionFailureAt: readOptionalTime(
         record,
-        'last_unsuccessful_at',
+        'last_criterion_failure_at',
         location: location,
       ),
     );

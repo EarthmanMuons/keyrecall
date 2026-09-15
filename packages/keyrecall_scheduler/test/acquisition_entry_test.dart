@@ -196,7 +196,7 @@ void main() {
         AcquisitionFloorEntry(
           requirementId: material.materialId,
           exercise: floor,
-          scaffold: const AcquisitionScaffold.unmeteredTraversal(),
+          scaffold: AcquisitionScaffold.unmeteredTraversal(),
         ),
       ]);
       final offered = pipeline.acquisitionFor(
@@ -447,12 +447,13 @@ void main() {
     });
   });
 
-  group('after supported work that produced nothing', () {
+  group('after supported work that showed a criterion not met', () {
     AcquisitionProgress failedAt(DateTime at) =>
         const AcquisitionProgress.empty().recording(
           parent: floor,
           completed: false,
           earnedProbe: false,
+          criterionFailure: true,
           at: at,
           executionEvidenceRevision: 2,
         );
@@ -499,9 +500,60 @@ void main() {
         parent: floor,
         completed: false,
         earnedProbe: false,
+        criterionFailure: true,
         at: t0,
       );
       expect(pipeline.acquisitionSetAside({}, legacy, floor), isFalse);
+    });
+
+    test('an attempt that judged nothing holds nothing back', () {
+      // Neither earning a probe nor establishing a failure. A lost event or a
+      // wait nobody timed says nothing about the learner, and a scaffold
+      // suppressed over it would charge them for it.
+      final unavailable = const AcquisitionProgress.empty().recording(
+        parent: floor,
+        completed: false,
+        earnedProbe: false,
+        at: t0,
+        executionEvidenceRevision: 2,
+      );
+
+      expect(
+        unavailable.recordFor(floor)!.evidenceRevisionAtCriterionFailure,
+        isNull,
+      );
+      expect(unavailable.recordFor(floor)!.lastCriterionFailureAt, isNull);
+      expect(
+        pipeline.acquisitionSetAside(
+          {executionContextOf(floor): 2},
+          unavailable,
+          floor,
+        ),
+        isFalse,
+      );
+    });
+
+    test('an attempt that judged nothing leaves an older hold standing', () {
+      // Absence of evidence does not lift a hold either. What lifts one is
+      // ordinary work in the parent's context, not a supported attempt that
+      // could not answer the question.
+      final held = failedAt(t0).recording(
+        parent: floor,
+        completed: false,
+        earnedProbe: false,
+        at: t0,
+        executionEvidenceRevision: 2,
+      );
+
+      expect(held.recordFor(floor)!.evidenceRevisionAtCriterionFailure, 2);
+      expect(
+        pipeline.acquisitionSetAside(
+          {executionContextOf(floor): 2},
+          held,
+          floor,
+        ),
+        isTrue,
+      );
     });
 
     test(
@@ -516,7 +568,7 @@ void main() {
               executionEvidenceRevision: 3,
             )
             .serving(parent: floor, at: t0);
-        expect(success.recordFor(floor)!.evidenceRevisionAtFailure, 2);
+        expect(success.recordFor(floor)!.evidenceRevisionAtCriterionFailure, 2);
         expect(
           pipeline.acquisitionSetAside(
             {executionContextOf(floor): 3},

@@ -1,3 +1,4 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
@@ -55,6 +56,19 @@ enum AttemptTermination {
     (termination) => termination.id == id,
     orElse: () => throw ArgumentError.value(id, 'id', 'unknown termination'),
   );
+
+  /// Whether an attempt ending this way was wholly observed.
+  ///
+  /// Distinguished rather than treated alike. Every other ending here leaves
+  /// the transcript the whole of what the learner played up to it: the learner
+  /// tapping Done, the app closing a covered traversal, a timeout, a limit and
+  /// a cutoff all stop the observing, and none of them loses what had already
+  /// arrived. Only a restarted input stream can drop an event out of the
+  /// middle, which makes the retained transcript a prefix of the truth at best.
+  CaptureIntegrity get captureIntegrity =>
+      this == AttemptTermination.inputInterrupted
+      ? CaptureIntegrity.compromised
+      : CaptureIntegrity.trustworthy;
 }
 
 /// Why an attempt has no measured outcome.

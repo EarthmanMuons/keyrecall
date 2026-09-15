@@ -234,6 +234,105 @@ void main() {
       expect(progress.earnsParentProbe(parent), isTrue);
     });
 
+    test('records what each criterion established, separately', () {
+      final stalled = acquisitionRecordOf(
+        observation: observedWith(stallBefore: 4),
+        identity: identityAt(0),
+        journalSequence: 0,
+      );
+
+      expect(stalled.sequence, CriterionVerdict.met);
+      expect(stalled.continuity, CriterionVerdict.notMet);
+      expect(stalled.earnedProbe, isFalse);
+      expect(stalled.showsCriterionFailure, isTrue);
+    });
+
+    test('a capture that may have lost events judges nothing', () {
+      // The transcript reads as a clean traversal, and the interruption says
+      // it might not be the whole of what happened. A prefix that looks clean
+      // cannot show the complete attempt was.
+      final interrupted = acquisitionRecordOf(
+        observation: observedWith(),
+        identity: identityAt(0),
+        journalSequence: 0,
+        termination: AttemptTermination.inputInterrupted,
+      );
+
+      expect(interrupted.completion, AcquisitionCompletion.completedCleanly);
+      expect(interrupted.sequence, CriterionVerdict.unavailable);
+      expect(interrupted.continuity, CriterionVerdict.unavailable);
+      expect(interrupted.earnedProbe, isFalse);
+      expect(
+        interrupted.showsCriterionFailure,
+        isFalse,
+        reason: 'a lost event is not the learner falling short',
+      );
+      expect(
+        interrupted.gaps,
+        hasLength(expected.length - 1),
+        reason: 'what was observed is still kept',
+      );
+    });
+
+    test('a traversal nothing could time shows no failure either', () {
+      // The sequence was demonstrated and continuity was not judged. Reading
+      // that as the learner falling short would suppress the scaffold over a
+      // transport whose clock nothing has characterized.
+      var untimed = PerformanceTranscript.empty;
+      for (final (index, midiNote) in expected.indexed) {
+        untimed = untimed.appending(
+          pitch: spellObservedPitch(midiNote, material: material),
+          timestampMs: index * 900,
+        );
+      }
+      final record = acquisitionRecordOf(
+        observation: observeAcquisition(task: task, transcript: untimed),
+        identity: identityAt(0),
+        journalSequence: 0,
+      );
+
+      expect(record.sequence, CriterionVerdict.met);
+      expect(record.continuity, CriterionVerdict.unavailable);
+      expect(record.earnedProbe, isFalse);
+      expect(record.showsCriterionFailure, isFalse);
+    });
+
+    test('an unavailable verdict leaves the scaffold on offer', () {
+      // The whole point of separating the two. Both of these earn no probe,
+      // and only the stall says the learner did not manage it.
+      final log =
+          AcquisitionJournal(
+            AcquisitionJournalHeader(profileId: 'abc12345', createdAt: t0),
+          )..append(
+            acquisitionRecordOf(
+              observation: observedWith(),
+              identity: identityAt(0),
+              journalSequence: 0,
+              termination: AttemptTermination.inputInterrupted,
+              executionEvidenceRevision: 3,
+            ),
+          );
+
+      var record = log.replay().recordFor(parent)!;
+      expect(record.attempts, 1);
+      expect(record.criterionSuccesses, 0);
+      expect(record.evidenceRevisionAtCriterionFailure, isNull);
+      expect(record.lastCriterionFailureAt, isNull);
+
+      log.append(
+        acquisitionRecordOf(
+          observation: observedWith(stallBefore: 4),
+          identity: identityAt(1),
+          journalSequence: 1,
+          executionEvidenceRevision: 3,
+        ),
+      );
+
+      record = log.replay().recordFor(parent)!;
+      expect(record.evidenceRevisionAtCriterionFailure, 3);
+      expect(record.lastCriterionFailureAt, identityAt(1).occurredAt);
+    });
+
     test('survives being written out and read back', () {
       final log =
           AcquisitionJournal(

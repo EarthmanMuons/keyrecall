@@ -307,6 +307,8 @@ void main() {
           repeats: 0,
           intrusions: 0,
           earnedProbe: true,
+          sequence: CriterionVerdict.met,
+          continuity: CriterionVerdict.met,
           gaps: const [],
         );
 

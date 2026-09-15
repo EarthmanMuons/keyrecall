@@ -68,7 +68,15 @@ const int checkpointSchemaVersion = 3;
 /// Version 7 records what a supported attempt was presented under, the way an
 /// ordinary attempt does. Earlier records leave it unsaid rather than having it
 /// derived for them, for the reason [attemptSchemaVersion]'s version 5 gives.
-const int acquisitionSchemaVersion = 7;
+///
+/// Version 8 records each acquisition criterion as met, not met, or
+/// unavailable, rather than only whether every criterion was met at once.
+/// Earlier records read back with each criterion met when they earned a probe
+/// and unavailable when they did not: one boolean cannot say which criterion
+/// fell short, nor whether the attempt was in a position to judge it, and
+/// reading a failure out of it would turn a missing wait or a lost event into
+/// evidence about the learner.
+const int acquisitionSchemaVersion = 8;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

@@ -84,6 +84,8 @@ void main() {
           repeats: 0,
           intrusions: 0,
           earnedProbe: false,
+          sequence: CriterionVerdict.notMet,
+          continuity: CriterionVerdict.unavailable,
           gaps: const [],
         ),
       );

@@ -107,16 +107,60 @@ void main() {
     });
   });
 
-  group('a task that relaxes nothing', () {
-    test('is refused, because it is its own parent', () {
+  group('a task that asks for a tempo', () {
+    test('is refused, whatever else it relaxes', () {
+      // Supported work is self-paced throughout, so a metered task is a
+      // declaration nothing downstream implements. A full traversal at the
+      // parent's tempo is also the parent itself.
+      for (final portion in [const FullTraversal(), TraversalRepetitions(2)]) {
+        expect(
+          () => AcquisitionTask(
+            parent: parent,
+            timing: TimingDemand.metered,
+            advancement: TaskAdvancement.learnerDriven,
+            portion: portion,
+          ),
+          throwsArgumentError,
+          reason: '$portion',
+        );
+      }
+    });
+
+    test('is refused where a family declares it', () {
+      // Refused at the declaration rather than at presentation, so no learner
+      // is stuck behind a scaffold that cannot be offered.
       expect(
-        () => AcquisitionTask(
-          parent: parent,
+        () => AcquisitionScaffold(
           timing: TimingDemand.metered,
           advancement: TaskAdvancement.learnerDriven,
         ),
         throwsArgumentError,
       );
+    });
+  });
+
+  group('criterion verdicts', () {
+    test('round trip through their identifiers', () {
+      for (final verdict in CriterionVerdict.values) {
+        expect(CriterionVerdict.fromId(verdict.id), verdict);
+      }
+      expect(() => CriterionVerdict.fromId('MAYBE'), throwsArgumentError);
+    });
+
+    test('are only assessable where the evidence was there', () {
+      expect(CriterionVerdict.met.isAssessable, isTrue);
+      expect(CriterionVerdict.notMet.isAssessable, isTrue);
+      expect(CriterionVerdict.unavailable.isAssessable, isFalse);
+    });
+
+    test('a compromised capture answers nothing either way', () {
+      for (final verdict in CriterionVerdict.values) {
+        expect(
+          verdict.under(CaptureIntegrity.compromised),
+          CriterionVerdict.unavailable,
+        );
+        expect(verdict.under(CaptureIntegrity.trustworthy), verdict);
+      }
     });
   });
 

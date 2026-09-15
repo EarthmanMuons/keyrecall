@@ -52,6 +52,10 @@ void main() {
     intrusions: 1,
     firstAbsentPosition: completion.isComplete ? null : 4,
     earnedProbe: earnedProbe,
+    sequence: earnedProbe ? CriterionVerdict.met : CriterionVerdict.notMet,
+    continuity: earnedProbe
+        ? CriterionVerdict.met
+        : CriterionVerdict.unavailable,
     gaps: gaps,
   );
 
@@ -130,7 +134,7 @@ void main() {
       expect(restored.attempts.single.observedWallTime, wallTime);
       expect(restored.attempts.single.executionEvidenceRevision, 7);
       final progress = restored.replay();
-      expect(progress.recordFor(parent)!.evidenceRevisionAtFailure, 7);
+      expect(progress.recordFor(parent)!.evidenceRevisionAtCriterionFailure, 7);
       expect(
         decodeAcquisitionProgress(
           encodeAcquisitionProgress(progress),
@@ -154,6 +158,8 @@ void main() {
       repeats: 0,
       intrusions: 0,
       earnedProbe: true,
+      sequence: CriterionVerdict.met,
+      continuity: CriterionVerdict.met,
       gaps: const [],
     );
 
@@ -183,16 +189,121 @@ void main() {
         ..remove('observed_wall_time');
       final legacy = AcquisitionAttemptRecord.fromJson(json);
       final log = emptyLog()..append(legacy);
-      expect(log.replay().recordFor(parent)!.evidenceRevisionAtFailure, isNull);
+      expect(
+        log.replay().recordFor(parent)!.evidenceRevisionAtCriterionFailure,
+        isNull,
+      );
       log.append(recordAt(1, earnedProbe: false, executionEvidenceRevision: 2));
       expect(
         AcquisitionJournal.fromJsonLines(
           log.toJsonLines(),
-        ).replay().recordFor(parent)!.evidenceRevisionAtFailure,
+        ).replay().recordFor(parent)!.evidenceRevisionAtCriterionFailure,
         2,
       );
     });
   }
+
+  group('capture integrity', () {
+    test('only a restarted input stream can have lost an event', () {
+      // Every other ending stops the observing without losing what already
+      // arrived, so treating them alike would throw away trustworthy evidence
+      // whenever an attempt did not end by the learner saying so.
+      for (final termination in AttemptTermination.values) {
+        expect(
+          termination.captureIntegrity,
+          termination == AttemptTermination.inputInterrupted
+              ? CaptureIntegrity.compromised
+              : CaptureIntegrity.trustworthy,
+          reason: termination.id,
+        );
+      }
+    });
+  });
+
+  group('criterion verdicts', () {
+    test('survive the round trip separately from the probe', () {
+      final log = emptyLog()
+        ..append(
+          AcquisitionAttemptRecord(
+            journalSequence: 0,
+            identity: recordAt(0).identity,
+            task: task,
+            started: true,
+            completion: AcquisitionCompletion.completedCleanly,
+            repairs: 0,
+            repeats: 0,
+            intrusions: 0,
+            earnedProbe: false,
+            sequence: CriterionVerdict.met,
+            continuity: CriterionVerdict.unavailable,
+            gaps: const [],
+          ),
+        );
+
+      final record = AcquisitionJournal.fromJsonLines(
+        log.toJsonLines(),
+      ).attempts.single;
+
+      expect(record.sequence, CriterionVerdict.met);
+      expect(record.continuity, CriterionVerdict.unavailable);
+      expect(record.earnedProbe, isFalse);
+      expect(record.showsCriterionFailure, isFalse);
+    });
+
+    test('a record that earned a probe met every criterion', () {
+      expect(
+        () => AcquisitionAttemptRecord(
+          journalSequence: 0,
+          identity: recordAt(0).identity,
+          task: task,
+          started: true,
+          completion: AcquisitionCompletion.completedCleanly,
+          repairs: 0,
+          repeats: 0,
+          intrusions: 0,
+          earnedProbe: true,
+          sequence: CriterionVerdict.met,
+          continuity: CriterionVerdict.unavailable,
+          gaps: const [],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    for (final (earned, expected) in [
+      (true, CriterionVerdict.met),
+      (false, CriterionVerdict.unavailable),
+    ]) {
+      test('a version 7 record that earned $earned reads back $expected', () {
+        // One boolean cannot say which criterion fell short, nor whether the
+        // attempt could judge it, so nothing but an earned probe is read as a
+        // verdict about the learner.
+        final json = recordAt(0, earnedProbe: earned).toJson()
+          ..['schema_version'] = 7
+          ..remove('sequence_criterion')
+          ..remove('continuity_criterion');
+        final legacy = AcquisitionAttemptRecord.fromJson(json);
+
+        expect(legacy.sequence, expected);
+        expect(legacy.continuity, expected);
+        expect(legacy.showsCriterionFailure, isFalse);
+      });
+    }
+
+    test('a version 7 failure holds no scaffold back', () {
+      final json = recordAt(0, earnedProbe: false).toJson()
+        ..['schema_version'] = 7
+        ..['execution_evidence_revision'] = 2
+        ..remove('sequence_criterion')
+        ..remove('continuity_criterion');
+      final log = emptyLog()..append(AcquisitionAttemptRecord.fromJson(json));
+
+      expect(
+        log.replay().recordFor(parent)!.evidenceRevisionAtCriterionFailure,
+        isNull,
+      );
+    });
+  });
 
   group('a round trip', () {
     test('preserves the facts and the verdict that was recorded', () {

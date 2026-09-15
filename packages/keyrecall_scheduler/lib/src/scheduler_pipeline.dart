@@ -1136,10 +1136,14 @@ class SchedulerPipeline {
 
   /// Whether supported work on [parent] is set aside for now.
   ///
-  /// A supported attempt that produced nothing answered the question it asked,
-  /// so offering the same scaffold again on no new evidence repeats it. With
-  /// several floors stuck at once, that is how supported work fills a sitting
-  /// by rotation while never repeating a parent twice running.
+  /// A supported attempt that showed a criterion not met answered the question
+  /// it asked, so offering the same scaffold again on no new evidence repeats
+  /// it. With several floors stuck at once, that is how supported work fills a
+  /// sitting by rotation while never repeating a parent twice running.
+  ///
+  /// A demonstrated failure only. An attempt whose evidence could not answer
+  /// the question has not asked it, so the scaffold stays on offer: suppressing
+  /// it would charge the learner for a lost event or a wait nobody timed.
   ///
   /// Ordinary evidence in the parent's own execution context lifts it: the
   /// reset is something new about the learner, not enough other work having
@@ -1149,7 +1153,9 @@ class SchedulerPipeline {
     AcquisitionProgress progress,
     Exercise parent,
   ) {
-    final failed = progress.recordFor(parent)?.evidenceRevisionAtFailure;
+    final failed = progress
+        .recordFor(parent)
+        ?.evidenceRevisionAtCriterionFailure;
     if (failed == null) return false;
     final evidence =
         executionEvidenceRevisions[executionContextOf(parent)] ?? 0;

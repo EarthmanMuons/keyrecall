@@ -110,6 +110,8 @@ void main() {
       repeats: 0,
       intrusions: 2,
       earnedProbe: false,
+      sequence: CriterionVerdict.notMet,
+      continuity: CriterionVerdict.unavailable,
       termination: AttemptTermination.learnerStopped,
       gaps: const [(fromPosition: 2, toPosition: 3, gapMs: 3200, ratio: 3.4)],
     );

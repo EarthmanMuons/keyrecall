@@ -171,7 +171,7 @@ void main() {
       expect(short.gaps.last.ratio, isNull);
       expect(short.timing.assessableGaps, isEmpty);
       expect(short.stalls, isEmpty);
-      expect(short.continuity, AcquisitionContinuity.unestablished);
+      expect(short.continuity, CriterionVerdict.unavailable);
     });
 
     test('does not call even playing a stall', () {
@@ -209,7 +209,7 @@ void main() {
           transcript: transcript,
         );
         expect(observation.completion, AcquisitionCompletion.completedCleanly);
-        expect(observation.continuity, AcquisitionContinuity.unestablished);
+        expect(observation.continuity, CriterionVerdict.unavailable);
         expect(observation.earnsParentProbe, isFalse);
       }
     });

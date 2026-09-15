@@ -16,9 +16,17 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 /// off at six notes are the same performance and different evidence about the
 /// learner.
 ///
-/// The probe verdict is read here, once, and stored. Replay uses what was
-/// stored rather than asking again, so a threshold that moves later changes
-/// what the next attempt earns and never what a past one did.
+/// It is also where capture integrity enters. Measurement reads a musical
+/// observation and has no business knowing the ways a capture can fail; what
+/// the two together say is an acquisition verdict, and this is the one place
+/// both are in hand. A capture that may have lost events leaves every criterion
+/// unavailable: the notes that arrived are still what was played, and the ones
+/// that did not may have been played too, so the attempt establishes neither a
+/// clean traversal nor a learner who fell short of one.
+///
+/// The verdicts are read here, once, and stored. Replay uses what was stored
+/// rather than asking again, so a threshold that moves later changes what the
+/// next attempt earns and never what a past one did.
 AcquisitionAttemptRecord acquisitionRecordOf({
   required AcquisitionObservation observation,
   required AttemptIdentity identity,
@@ -27,31 +35,39 @@ AcquisitionAttemptRecord acquisitionRecordOf({
   PresentationRecord? presentation,
   int? executionEvidenceRevision,
   DateTime? observedWallTime,
-}) => AcquisitionAttemptRecord(
-  journalSequence: journalSequence,
-  identity: identity,
-  executionEvidenceRevision: executionEvidenceRevision,
-  observedWallTime: observedWallTime,
-  termination: termination,
-  task: observation.task,
-  presentation: presentation,
-  started: observation.started,
-  completion: observation.completion,
-  repairs: observation.repairs,
-  repeats: observation.repeats,
-  intrusions: observation.intrusions,
-  firstAbsentPosition: observation.firstAbsentPosition,
-  earnedProbe: observation.earnsParentProbe,
-  gaps: [
-    for (final gap in observation.gaps)
-      (
-        fromPosition: gap.fromPosition,
-        toPosition: gap.toPosition,
-        gapMs: gap.gapMs,
-        ratio: gap.ratio,
-      ),
-  ],
-);
+}) {
+  final integrity = termination.captureIntegrity;
+  final sequence = observation.sequence.under(integrity);
+  final continuity = observation.continuity.under(integrity);
+  return AcquisitionAttemptRecord(
+    journalSequence: journalSequence,
+    identity: identity,
+    executionEvidenceRevision: executionEvidenceRevision,
+    observedWallTime: observedWallTime,
+    termination: termination,
+    task: observation.task,
+    presentation: presentation,
+    started: observation.started,
+    completion: observation.completion,
+    repairs: observation.repairs,
+    repeats: observation.repeats,
+    intrusions: observation.intrusions,
+    firstAbsentPosition: observation.firstAbsentPosition,
+    sequence: sequence,
+    continuity: continuity,
+    earnedProbe:
+        sequence == CriterionVerdict.met && continuity == CriterionVerdict.met,
+    gaps: [
+      for (final gap in observation.gaps)
+        (
+          fromPosition: gap.fromPosition,
+          toPosition: gap.toPosition,
+          gapMs: gap.gapMs,
+          ratio: gap.ratio,
+        ),
+    ],
+  );
+}
 
 /// The service record an ordinary presentation of [presented] owes, or null
 /// when it owes none.

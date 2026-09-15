@@ -157,6 +157,66 @@ enum AcquisitionCompletion {
   bool get isComplete => this != AcquisitionCompletion.notCompleted;
 }
 
+/// What an attempt established about one acquisition criterion.
+///
+/// Three values, because "the learner did not do it" and "this attempt cannot
+/// say whether they did" are different facts and only the first is evidence
+/// about the learner. Collapsing them into a boolean is what lets a missing
+/// timestamp or a lost event read as a demonstrated failure.
+enum CriterionVerdict {
+  /// The attempt positively establishes the criterion.
+  met('MET'),
+
+  /// The attempt carries enough trustworthy evidence to judge the criterion,
+  /// and it was not satisfied.
+  notMet('NOT_MET'),
+
+  /// The attempt cannot answer the question, because the evidence it needs is
+  /// incomplete or cannot be trusted.
+  unavailable('UNAVAILABLE');
+
+  const CriterionVerdict(this.id);
+
+  /// Stable identifier used in persisted records and traces.
+  final String id;
+
+  /// The verdict with the given [id].
+  ///
+  /// Throws [ArgumentError] when no verdict matches.
+  static CriterionVerdict fromId(String id) => values.firstWhere(
+    (verdict) => verdict.id == id,
+    orElse: () =>
+        throw ArgumentError.value(id, 'id', 'unknown criterion verdict'),
+  );
+
+  /// Whether this attempt could judge the criterion at all.
+  bool get isAssessable => this != CriterionVerdict.unavailable;
+
+  /// What this verdict becomes once capture integrity is folded in.
+  ///
+  /// A capture that may have lost events says nothing either way: the notes
+  /// that arrived are still what was played, and the ones that did not may
+  /// have been played too.
+  CriterionVerdict under(CaptureIntegrity integrity) =>
+      integrity == CaptureIntegrity.trustworthy
+      ? this
+      : CriterionVerdict.unavailable;
+}
+
+/// Whether what was captured can be reasoned from.
+///
+/// Provenance, not performance. It says whether the transcript is the whole of
+/// what happened, which is a precondition for every criterion rather than a
+/// criterion of its own.
+enum CaptureIntegrity {
+  /// Everything the learner played during the attempt was observed.
+  trustworthy,
+
+  /// Events may have been lost, so the transcript is a prefix of the truth at
+  /// best.
+  compromised,
+}
+
 /// Supported acquisition of part of an ordinary exercise.
 ///
 /// Not an [Exercise]. An exercise under any guidance rung is still an ordinary
@@ -183,24 +243,28 @@ class AcquisitionTask {
   /// Who decides when the next moment happens.
   final TaskAdvancement advancement;
 
-  /// Throws [ArgumentError] when nothing about the parent is relaxed.
+  /// Throws [ArgumentError] when the task asks for a tempo.
   ///
-  /// A task that asks for the whole parent, at its tempo, sequenced by the
-  /// learner *is* the parent, and admitting it here would fence off evidence
-  /// the attempt earned.
+  /// Supported work is self-paced throughout: it is presented without a pulse,
+  /// observed against the learner's own pace, and reviewed in words that say
+  /// so. A metered task is representable and nothing downstream implements it,
+  /// so it is refused here rather than presented as something it is not.
+  ///
+  /// This is also what keeps a task from being its own parent. A task asking
+  /// for the whole parent, at its tempo, sequenced by the learner *is* the
+  /// parent, and dropping the tempo obligation is what every supported task
+  /// relaxes.
   AcquisitionTask({
     required this.parent,
     required this.timing,
     required this.advancement,
     this.portion = const FullTraversal(),
   }) {
-    if (portion is FullTraversal &&
-        timing == TimingDemand.metered &&
-        advancement == TaskAdvancement.learnerDriven) {
+    if (timing == TimingDemand.metered) {
       throw ArgumentError.value(
-        parent,
-        'parent',
-        'an acquisition task relaxes something about its parent',
+        timing,
+        'timing',
+        'supported work is self-paced',
       );
     }
   }
@@ -298,14 +362,28 @@ class AcquisitionScaffold {
   /// How much of the parent is played.
   final TaskPortion portion;
 
-  const AcquisitionScaffold({
+  /// Throws [ArgumentError] when the scaffold asks for a tempo, for the reason
+  /// [AcquisitionTask] gives.
+  ///
+  /// Checked where a family declares it rather than where the task is built,
+  /// so a declaration that cannot be presented is refused before any learner
+  /// is stuck behind it.
+  AcquisitionScaffold({
     required this.timing,
     required this.advancement,
     this.portion = const FullTraversal(),
-  });
+  }) {
+    if (timing == TimingDemand.metered) {
+      throw ArgumentError.value(
+        timing,
+        'timing',
+        'supported work is self-paced',
+      );
+    }
+  }
 
   /// The whole traversal, at whatever pace the learner takes.
-  const AcquisitionScaffold.unmeteredTraversal()
+  AcquisitionScaffold.unmeteredTraversal()
     : this(
         timing: TimingDemand.unmetered,
         advancement: TaskAdvancement.learnerDriven,

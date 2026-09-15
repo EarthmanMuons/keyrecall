@@ -58,7 +58,7 @@ void main() {
       expect(
         reopened.acquisitionProgress
             .recordFor(offered.task.parent)!
-            .evidenceRevisionAtFailure,
+            .evidenceRevisionAtCriterionFailure,
         0,
       );
     },
@@ -120,6 +120,7 @@ void main() {
       parent: parent,
       completed: false,
       earnedProbe: false,
+      criterionFailure: true,
       at: record.identity.occurredAt,
       executionEvidenceRevision: 1,
     );

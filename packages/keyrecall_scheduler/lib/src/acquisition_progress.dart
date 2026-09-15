@@ -38,14 +38,21 @@ class AcquisitionRecord {
   /// When a probe of the parent was last presented, or null if none has been.
   final DateTime? lastProbeServedAt;
 
-  /// When supported work on this parent last failed to earn a probe, or null.
+  /// When supported work on this parent last showed a criterion not met, or
+  /// null.
   ///
-  /// Chronology only; recurrence uses [evidenceRevisionAtFailure].
-  final DateTime? lastUnsuccessfulAt;
+  /// Chronology only; recurrence uses [evidenceRevisionAtCriterionFailure].
+  final DateTime? lastCriterionFailureAt;
 
-  /// Ordinary evidence revision for this context when acquisition last failed.
-  /// Null when no failure supplied a causal coordinate.
-  final int? evidenceRevisionAtFailure;
+  /// Ordinary evidence revision for this context when a criterion was last
+  /// demonstrably not met. Null when no such attempt supplied a causal
+  /// coordinate.
+  ///
+  /// Named for the criterion rather than for the attempt, because only a
+  /// demonstrated failure belongs here. An attempt that could not judge its
+  /// criteria says nothing about the learner, and letting it set this would
+  /// suppress the scaffold over a lost event or an untimed wait.
+  final int? evidenceRevisionAtCriterionFailure;
 
   const AcquisitionRecord({
     required this.attempts,
@@ -56,8 +63,8 @@ class AcquisitionRecord {
     this.criterionSuccessesServed = 0,
     this.lastCriterionSuccessAt,
     this.lastProbeServedAt,
-    this.lastUnsuccessfulAt,
-    this.evidenceRevisionAtFailure,
+    this.lastCriterionFailureAt,
+    this.evidenceRevisionAtCriterionFailure,
   });
 
   /// Whether a criterion success here has earned a probe of the parent.
@@ -86,8 +93,9 @@ class AcquisitionRecord {
       other.lastAttemptAt == lastAttemptAt &&
       other.lastCriterionSuccessAt == lastCriterionSuccessAt &&
       other.lastProbeServedAt == lastProbeServedAt &&
-      other.lastUnsuccessfulAt == lastUnsuccessfulAt &&
-      other.evidenceRevisionAtFailure == evidenceRevisionAtFailure;
+      other.lastCriterionFailureAt == lastCriterionFailureAt &&
+      other.evidenceRevisionAtCriterionFailure ==
+          evidenceRevisionAtCriterionFailure;
 
   @override
   int get hashCode => Object.hash(
@@ -99,8 +107,8 @@ class AcquisitionRecord {
     lastAttemptAt,
     lastCriterionSuccessAt,
     lastProbeServedAt,
-    lastUnsuccessfulAt,
-    evidenceRevisionAtFailure,
+    lastCriterionFailureAt,
+    evidenceRevisionAtCriterionFailure,
   );
 
   @override
@@ -141,9 +149,9 @@ class AcquisitionProgress {
   /// What acquisition on [parent] has produced, or null if none is recorded.
   AcquisitionRecord? recordFor(Exercise parent) => _byParent[parent];
 
-  /// When supported work on [parent] last failed to earn a probe, or null.
-  DateTime? lastUnsuccessfulAt(Exercise parent) =>
-      _byParent[parent]?.lastUnsuccessfulAt;
+  /// When supported work on [parent] last showed a criterion not met, or null.
+  DateTime? lastCriterionFailureAt(Exercise parent) =>
+      _byParent[parent]?.lastCriterionFailureAt;
 
   /// Whether acquisition work on [parent] has ever earned a probe.
   bool earnsParentProbe(Exercise parent) =>
@@ -158,17 +166,24 @@ class AcquisitionProgress {
 
   /// This progress with one attempt at [parent] added.
   ///
-  /// Takes the two facts rather than the observation that carried them, so
-  /// nothing here depends on the measurement layer and no measurement can be
-  /// mistaken for the evidence a learner-model update consumes.
+  /// Takes the facts rather than the observation that carried them, so nothing
+  /// here depends on the measurement layer and no measurement can be mistaken
+  /// for the evidence a learner-model update consumes.
   ///
-  /// Throws [ArgumentError] when an attempt earns a probe without completing,
-  /// which no observation produces and which would make the counts disagree.
+  /// [earnedProbe] and [criterionFailure] are separate questions, and an
+  /// attempt can answer no to both. Supported work that could not judge its
+  /// criteria earns nothing and establishes nothing, so it leaves the marker
+  /// the scaffold is suppressed by exactly where it was.
+  ///
+  /// Throws [ArgumentError] when an attempt earns a probe without completing or
+  /// while demonstrating a criterion failure, neither of which any observation
+  /// produces and both of which would make the record disagree with itself.
   AcquisitionProgress recording({
     required Exercise parent,
     required bool completed,
     required bool earnedProbe,
     required DateTime at,
+    bool criterionFailure = false,
     int? executionEvidenceRevision,
   }) {
     if (executionEvidenceRevision != null && executionEvidenceRevision < 0) {
@@ -182,6 +197,13 @@ class AcquisitionProgress {
         earnedProbe,
         'earnedProbe',
         'a criterion success is a completion',
+      );
+    }
+    if (earnedProbe && criterionFailure) {
+      throw ArgumentError.value(
+        criterionFailure,
+        'criterionFailure',
+        'an attempt that earned a probe met every criterion',
       );
     }
     final previous = _byParent[parent];
@@ -199,10 +221,12 @@ class AcquisitionProgress {
             ? at
             : previous?.lastCriterionSuccessAt,
         lastProbeServedAt: previous?.lastProbeServedAt,
-        lastUnsuccessfulAt: earnedProbe ? previous?.lastUnsuccessfulAt : at,
-        evidenceRevisionAtFailure: earnedProbe
-            ? previous?.evidenceRevisionAtFailure
-            : executionEvidenceRevision,
+        lastCriterionFailureAt: criterionFailure
+            ? at
+            : previous?.lastCriterionFailureAt,
+        evidenceRevisionAtCriterionFailure: criterionFailure
+            ? executionEvidenceRevision
+            : previous?.evidenceRevisionAtCriterionFailure,
       ),
     });
   }
@@ -243,8 +267,9 @@ class AcquisitionProgress {
         lastAttemptAt: previous.lastAttemptAt,
         lastCriterionSuccessAt: previous.lastCriterionSuccessAt,
         lastProbeServedAt: at,
-        lastUnsuccessfulAt: previous.lastUnsuccessfulAt,
-        evidenceRevisionAtFailure: previous.evidenceRevisionAtFailure,
+        lastCriterionFailureAt: previous.lastCriterionFailureAt,
+        evidenceRevisionAtCriterionFailure:
+            previous.evidenceRevisionAtCriterionFailure,
       ),
     });
   }

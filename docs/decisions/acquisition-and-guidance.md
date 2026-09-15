@@ -154,6 +154,25 @@ is already single-hand, one-octave, ascending, continuously cued, so almost
 nothing about the material changes and the question narrows to one thing: can
 the learner produce this sequence when time is not the limiting resource?
 
+Also built: `TraversalRepetitions`, the same traversal played through more than
+once. Continuity is a claim about a stretch of playing that did not stop, and a
+pattern too short to supply one asks for more traversals rather than for a lower
+bar; a four-moment arpeggio supplies three intervals, and the criterion wants
+five, so the arpeggio floor declares two. The repetitions are the parent's
+material exactly, never a wider span, so nothing about what is being played
+changes.
+
+The boundary between one traversal and the next belongs to neither. The learner
+resets their hand there, the task asked them to, and the wait it costs is not a
+hesitation: it is neither reported as a gap, nor allowed into the references the
+other waits are judged against, nor required to have been timed. Continuity is a
+claim about every other transition, the ones inside a traversal.
+
+Every task is self-paced. `TimingDemand.metered` is representable and nothing
+presents it, so both `AcquisitionTask` and `AcquisitionScaffold` refuse it at
+construction rather than leaving a family free to declare work the app would
+show as something else.
+
 Deliberately not built, each for a stated reason:
 
 - **Fragments.** A fixed three- or five-note entry pattern can end _before_ the
@@ -190,3 +209,37 @@ history.
 **Consequences.** The acquisition record keeps facts _and_ the verdict it was
 written with, since a later criterion change must not silently reinterpret what
 an old attempt earned.
+
+## Not demonstrated is not failed
+
+**Decision.** Each acquisition criterion is recorded as **met**, **not met**, or
+**unavailable**, and only `notMet` is evidence about the learner.
+
+**Why.** One boolean per attempt collapses two different facts. "The learner did
+not manage it" and "this attempt cannot say whether they did" read identically,
+and the scheduler suppresses the scaffold on either, so a lost MIDI event or a
+transport whose clock nothing has characterized became a durable reason to stop
+offering the learner the help they were stuck without.
+
+Where each verdict is settled:
+
+| Criterion  | Reads                                                | `unavailable` when                                              |
+| ---------- | ---------------------------------------------------- | --------------------------------------------------------------- |
+| Sequence   | Whether the material came out, right the first time. | Capture integrity says events may have been lost.               |
+| Continuity | Whether the playing stopped inside a traversal.      | The same, or a transition the criterion covers was never timed. |
+
+Continuity asks for coverage of the transitions themselves, not a count of
+waits. Six waits out of seven are enough arithmetic for a pace and are not
+evidence that the playing never stopped, because nothing was observed across the
+transition that is missing.
+
+Capture integrity is folded in at closure, not in measurement. Measurement reads
+a musical observation and has no business knowing the ways a capture can fail;
+closure has both in hand. Only `inputInterrupted` is compromised: every other
+ending stops the observing without losing what had already arrived.
+
+**Consequences.** `earnedProbe` is every criterion met, not merely none failed.
+`evidenceRevisionAtCriterionFailure` is set by a demonstrated `notMet` alone, so
+an attempt that judged nothing neither earns a probe nor sets the scaffold
+aside. A record that was already observed keeps its gaps whatever its verdicts
+say, since what arrived is still what was played.
