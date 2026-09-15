@@ -249,6 +249,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           // second one the first one's finished state.
           key: ValueKey(value.acquisition!.attemptId),
           exercise: value.acquisition!.task.parent,
+          presentation: presentationFor(
+            value.acquisition!.task.parent.guidance,
+            exercise: value.acquisition!.task.parent,
+          ),
           acquisition: value.acquisition!.task,
           metBefore: value.hasMet(value.acquisition!.task.parent.material),
           onFinish: (completion) =>
@@ -261,6 +265,10 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           // the previous attempt's phase.
           key: ValueKey(attemptId),
           exercise: value.exercise!,
+          presentation: presentationFor(
+            value.exercise!.guidance,
+            exercise: value.exercise!,
+          ),
           metBefore: value.hasMet(value.exercise!.material),
           admittedBy: value.presented?.decision.decision.challengeBypass,
           onFinish: (completion) =>
@@ -614,11 +622,11 @@ enum _Phase {
 class AttemptView extends ConsumerStatefulWidget {
   const AttemptView({
     required this.exercise,
+    required this.presentation,
     required this.onFinish,
     this.onDecline,
     this.onUnderWay,
     this.onBackToReady,
-    this.presentation,
     this.acquisition,
     this.admittedBy,
     this.metBefore = true,
@@ -669,10 +677,12 @@ class AttemptView extends ConsumerStatefulWidget {
   /// Says the presentation returned to Ready before the attempt began.
   final VoidCallback? onBackToReady;
 
-  /// What to present it under, when something other than practice policy is
-  /// choosing. Only the debug case list passes this, to compare one exercise
-  /// in more than one modality.
-  final PresentationConditions? presentation;
+  /// The conditions this attempt runs under, already resolved.
+  ///
+  /// Handed in rather than worked out here. Practice policy is the only thing
+  /// that turns a rung and an exercise into channels, and a surface that read
+  /// the rung again would be a second policy nothing records.
+  final PresentationConditions presentation;
 
   /// Whether this material has ever been presented to this learner.
   ///
@@ -813,13 +823,9 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// The same reading the build makes of what each surface is for: with the
   /// cue withdrawn and the echo going to the staff, the diagram is a picture
   /// of an instrument nobody is being told anything about.
-  bool get _instrumentLeavesAtReady {
-    final presentation =
-        widget.presentation ??
-        presentationFor(widget.exercise.guidance, exercise: widget.exercise);
-    return presentation.performanceFeedback != PerformanceFeedback.none &&
-        !showsPitchCueDuringAttempt(widget.exercise.guidance);
-  }
+  bool get _instrumentLeavesAtReady =>
+      widget.presentation.performanceFeedback != PerformanceFeedback.none &&
+      !showsPitchCueDuringAttempt(widget.exercise.guidance);
 
   /// Whether this attempt asks for no tempo.
   bool get _isSelfPaced => widget.acquisition != null;
@@ -888,13 +894,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   }
 
   void _countInAndPlay() {
-    final tempoSupport =
-        (widget.presentation ??
-                presentationFor(
-                  widget.exercise.guidance,
-                  exercise: widget.exercise,
-                ))
-            .tempoSupport;
+    final tempoSupport = widget.presentation.tempoSupport;
     final beat = Duration(
       microseconds:
           (60 *
@@ -1036,12 +1036,14 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   Widget build(BuildContext context) {
     final exercise = widget.exercise;
     final guidance = exercise.guidance;
-    final presentation =
-        widget.presentation ?? presentationFor(guidance, exercise: exercise);
+    final presentation = widget.presentation;
 
+    // Fails closed on a cue this app has no surface for, rather than drawing
+    // the whole sequence for a presentation that asked for part of it.
+    final drawsCue = drawsWholeSequence(presentation.pitchCue);
     final showsCue = switch (_phase) {
-      _Phase.ready => presentation.pitchCue.suppliesMaterial,
-      _ => showsPitchCueDuringAttempt(guidance),
+      _Phase.ready => drawsCue,
+      _ => drawsCue && showsPitchCueDuringAttempt(guidance),
     };
     final echoes = presentation.performanceFeedback != PerformanceFeedback.none;
     final watched = ref.watch(attemptTranscriptProvider);
@@ -1124,7 +1126,10 @@ class _AttemptViewState extends ConsumerState<AttemptView>
               exercise: exercise,
               acquisition: widget.acquisition,
               showsFingering: presentation.motorCue == MotorCue.fingering,
-              locates: echoes && _phase == _Phase.playing,
+              locates:
+                  presentation.locatorFeedback ==
+                      LocatorFeedback.positionTracking &&
+                  _phase == _Phase.playing,
             ),
           if (staffCarriesTranscript)
             TranscriptStaff(transcript: transcript, exercise: exercise),

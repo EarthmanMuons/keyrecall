@@ -1,9 +1,16 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
+/// Which presentation rules resolved an attempt's conditions.
+///
+/// Recorded beside the conditions themselves, not instead of them: it says
+/// which policy applied, while the conditions say what the learner was given,
+/// so reading history never depends on this build's rules still running.
+const String presentationPolicyVersion = 'v1-presentation-0';
+
 /// What V1 puts in front of a learner for a decided exercise.
 ///
-/// The scheduler names a guidance rung and this turns it into the four
-/// information channels an attempt is made under. Keeping the two apart is what
+/// The scheduler names a guidance rung and this turns it into the information
+/// channels an attempt is made under. Keeping the two apart is what
 /// stops a presentation choice from multiplying the candidate space or riding
 /// along with a guidance change and making an attempt's evidence
 /// unattributable.
@@ -17,6 +24,10 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// questions: the keyboard says which key and names a finger, the staff says
 /// which note in the notation a learner meets elsewhere. The unguided rung
 /// shows neither.
+///
+/// This is the only place an exercise and a rung become presentation
+/// conditions. Everything downstream consumes what it decided, so a surface
+/// cannot reach its own reading of what the rung allows.
 PresentationConditions presentationFor(
   GuidanceContext guidance, {
   Exercise? exercise,
@@ -35,6 +46,12 @@ PresentationConditions presentationFor(
     motorCue: fingered ? MotorCue.fingering : MotorCue.none,
     performanceFeedback: PerformanceFeedback.neutralEcho,
     tempoSupport: TempoSupport.countInOnly,
+    // Only where a cue staff is on screen while the attempt runs. Withdrawing
+    // the cue at Ready takes the locator with it, and there is nothing for it
+    // to travel over at a rung that supplies nothing.
+    locatorFeedback: guidance.concurrentPitchCues && supplied
+        ? LocatorFeedback.positionTracking
+        : LocatorFeedback.none,
   );
   // Not an assert: the rule has to hold in release builds too.
   if (!presentation.suitsGuidance(guidance)) {
@@ -54,6 +71,21 @@ PresentationConditions presentationFor(
 /// rung.
 bool showsPitchCueDuringAttempt(GuidanceContext guidance) =>
     guidance.concurrentPitchCues;
+
+/// Whether a supplied pitch cue writes out the whole sequence.
+///
+/// Fails closed. [PitchCue.startOnly] and [PitchCue.limitedLookahead] name
+/// restrictions nothing here draws, and rendering one as a full cue would
+/// silently supply more of the material than was asked for, under a record
+/// saying less was.
+bool drawsWholeSequence(PitchCue cue) => switch (cue) {
+  PitchCue.none => false,
+  PitchCue.full => true,
+  PitchCue.startOnly || PitchCue.limitedLookahead => throw UnsupportedError(
+    'no surface draws a ${cue.id} pitch cue; presenting one as a full cue '
+    'would supply material the presentation withheld',
+  ),
+};
 
 /// Whether a cue in [modality] is written on a staff.
 bool cueOnStaff(CueModality? modality) =>

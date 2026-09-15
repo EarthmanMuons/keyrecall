@@ -169,7 +169,7 @@ void main() {
       }
     });
 
-    test('varies nothing but the pitch cue across the rungs', () {
+    test('varies nothing but the pitch cue and what rides on it', () {
       for (final guidance in GuidanceContext.ladder) {
         final presentation = presentationFor(guidance);
         expect(presentation.tempoSupport, TempoSupport.countInOnly);
@@ -180,6 +180,37 @@ void main() {
           reason:
               'a rung change must move one variable, so the echo and the '
               'count-in are the same at every rung',
+        );
+      }
+    });
+
+    test('locates only where a cue staff is on screen while playing', () {
+      expect(
+        presentationFor(GuidanceContext.continuouslyCued).locatorFeedback,
+        LocatorFeedback.positionTracking,
+      );
+      for (final guidance in [
+        GuidanceContext.notesPreviewedOnly,
+        GuidanceContext.unguided,
+      ]) {
+        expect(
+          presentationFor(guidance).locatorFeedback,
+          LocatorFeedback.none,
+          reason:
+              'a withdrawn cue takes the locator with it, and an unguided '
+              'rung never had one to travel over',
+        );
+      }
+    });
+
+    test('refuses to draw a pitch cue no surface restricts', () {
+      expect(drawsWholeSequence(PitchCue.none), isFalse);
+      expect(drawsWholeSequence(PitchCue.full), isTrue);
+      for (final cue in [PitchCue.startOnly, PitchCue.limitedLookahead]) {
+        expect(
+          () => drawsWholeSequence(cue),
+          throwsUnsupportedError,
+          reason: 'drawing it in full would supply what it withheld',
         );
       }
     });

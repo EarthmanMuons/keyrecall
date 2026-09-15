@@ -11,6 +11,7 @@ import 'package:material_ui/material_ui.dart';
 import 'export_directory.dart';
 import 'attempt_screen.dart';
 import 'attempt_transcript.dart';
+import 'presentation_policy.dart';
 
 /// One cell of the timing matrix: a tempo, a span, and which repetition.
 @immutable
@@ -311,6 +312,10 @@ class _TimingCalibrationScreenState
         body: AttemptView(
           key: ValueKey(position),
           exercise: cell.exercise,
+          presentation: presentationFor(
+            cell.exercise.guidance,
+            exercise: cell.exercise,
+          ),
           onFinish: (completion) => _finish(position, cell, completion),
         ),
       );

@@ -17,6 +17,7 @@ import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/screen_wake_lock.dart';
 import 'package:keyrecall/features/practice/staff_cue.dart';
+import 'package:keyrecall/features/practice/presentation_policy.dart';
 import 'package:keyrecall/features/practice/staff_score.dart';
 
 import '../support/synthetic_instrument.dart';
@@ -63,7 +64,9 @@ void main() {
               // would keep the previous attempt's phase.
               key: ValueKey(guidance.independence),
               exercise: exerciseUnder(guidance),
-              presentation: presentation,
+              presentation:
+                  presentation ??
+                  presentationFor(guidance, exercise: exerciseUnder(guidance)),
               onFinish: (completion) async =>
                   finished.add(completion.termination),
             ),
@@ -197,6 +200,7 @@ void main() {
           home: Scaffold(
             body: AttemptView(
               exercise: exerciseUnder(GuidanceContext.unguided),
+              presentation: presentationFor(GuidanceContext.unguided),
               onFinish: (completion) async =>
                   finished.add(completion.termination),
             ),
@@ -229,6 +233,7 @@ void main() {
           home: Scaffold(
             body: AttemptView(
               exercise: exerciseUnder(GuidanceContext.unguided),
+              presentation: presentationFor(GuidanceContext.unguided),
               onFinish: (_) async {},
             ),
           ),
@@ -667,6 +672,7 @@ void main() {
             body: AttemptView(
               key: key,
               exercise: exerciseUnder(GuidanceContext.unguided),
+              presentation: presentationFor(GuidanceContext.unguided),
               onFinish: (_) async {},
               onDecline: (_) async {},
             ),
@@ -721,6 +727,7 @@ void main() {
               body: AttemptView(
                 key: ValueKey(admittedBy),
                 exercise: probe,
+                presentation: presentationFor(probe.guidance, exercise: probe),
                 admittedBy: admittedBy,
                 onFinish: (_) async {},
               ),
@@ -768,6 +775,10 @@ void main() {
             home: Scaffold(
               body: AttemptView(
                 exercise: parent,
+                presentation: presentationFor(
+                  parent.guidance,
+                  exercise: parent,
+                ),
                 acquisition: task,
                 onFinish: (_) async {},
               ),
@@ -828,6 +839,10 @@ void main() {
               body: AttemptView(
                 key: const ValueKey('acquisition'),
                 exercise: parent,
+                presentation: presentationFor(
+                  parent.guidance,
+                  exercise: parent,
+                ),
                 acquisition: task,
                 onFinish: (completion) async =>
                     finished.add(completion.termination),

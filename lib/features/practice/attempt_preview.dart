@@ -82,9 +82,8 @@ class _PreviewState extends State<_Preview> {
   ///
   /// Reachable here and nowhere else. Practice policy is count-in only, and a
   /// metronome the learner could switch on mid-sitting would change what an
-  /// attempt observes without the record saying so: presentation is derivable
-  /// from the exercise today, and staying derivable is why it is not stored.
-  /// These cases record nothing, so hearing one costs nothing.
+  /// attempt observes; only policy decides that for an attempt anything is
+  /// recorded of. These cases record nothing, so hearing one costs nothing.
   TempoSupport _tempoSupport = TempoSupport.countInOnly;
 
   @override
@@ -97,6 +96,12 @@ class _PreviewState extends State<_Preview> {
       motorCue: policy.motorCue,
       performanceFeedback: policy.performanceFeedback,
       tempoSupport: _tempoSupport,
+      // The locator travels over a cue staff, so looking at the same case as
+      // marked keys has nothing for it to travel over.
+      locatorFeedback:
+          cueOnStaff(policy.pitchCue.suppliesMaterial ? _modality : null)
+          ? policy.locatorFeedback
+          : LocatorFeedback.none,
     );
 
     return Scaffold(
