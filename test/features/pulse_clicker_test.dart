@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -264,6 +265,40 @@ void main() {
       await clicker.stop();
     });
 
+    test(
+      'failing stale leaves the engine open under its replacement',
+      () async {
+        final sink = _GatedSink();
+        final clicker = await started(sink);
+        sink.requestFrames();
+        await Future<void>.delayed(Duration.zero);
+
+        await clicker.play(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        );
+        sink.fail(1);
+        await Future<void>.delayed(Duration.zero);
+
+        // Not only that the report stayed put: the pulse that replaced it must
+        // still be able to hand audio over.
+        final taken = sink.accepted;
+        sink.requestFrames();
+        await Future<void>.delayed(Duration.zero);
+
+        expect(
+          sink.accepted,
+          greaterThan(taken),
+          reason:
+              'a chunk from the pulse before this one says nothing about the '
+              'engine this one is using',
+        );
+        sink.complete(2);
+        await clicker.stop();
+      },
+    );
+
     test('never lets a pulse report fewer beats than it already had', () async {
       final sink = _GatedSink();
       final clicker = await started(sink);
@@ -281,12 +316,147 @@ void main() {
       expect(clicker.delivered.deliveredBeats, greaterThanOrEqualTo(highest));
     });
   });
+
+  group('a playback queued behind an earlier teardown', () {
+    /// Plays once, then leaves a teardown pending so the next play has to
+    /// wait behind it.
+    Future<PulseClicker> tearingDown(_GatedReleaseSink sink) async {
+      final clicker = PulseClicker(sink: sink);
+      await clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+      unawaited(clicker.stop());
+      await Future<void>.delayed(Duration.zero);
+      return clicker;
+    }
+
+    test('never starts once it has been cancelled', () async {
+      final sink = _GatedReleaseSink();
+      final clicker = await tearingDown(sink);
+
+      final queued = clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+      await Future<void>.delayed(Duration.zero);
+      final cancelling = clicker.stop();
+
+      final prepares = sink.prepares;
+      final feeds = sink.feeds;
+      sink.completeRelease();
+      final report = await queued;
+      await cancelling;
+
+      expect(
+        sink.prepares,
+        prepares,
+        reason: 'waking up later does not make it the current pulse',
+      );
+      expect(sink.feeds, feeds);
+      expect(report.deliveredBeats, 0);
+    });
+
+    test('never starts once another playback has replaced it', () async {
+      final sink = _GatedReleaseSink();
+      final clicker = await tearingDown(sink);
+
+      final fedBefore = sink.feeds;
+      final queued = clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+      await Future<void>.delayed(Duration.zero);
+      // Not a cancellation: a different pulse, which is its own way of ending
+      // this one's claim on the engine.
+      final replacing = clicker.play(
+        countInBeats: 2,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+
+      sink.completeRelease();
+      final abandoned = await queued;
+      await replacing;
+
+      expect(abandoned.deliveredBeats, 0);
+      expect(abandoned.requestedBeats, 4);
+      expect(
+        sink.feeds - fedBefore,
+        1,
+        reason:
+            'only the pulse that replaced it hands anything over; the one it '
+            'replaced woke up to an open engine and must not use it',
+      );
+      expect(
+        clicker.delivered.requestedBeats,
+        2,
+        reason: 'the pulse that replaced it is the one being reported',
+      );
+      await clicker.stop();
+    });
+  });
+
+  group('two playbacks sharing one preparation', () {
+    /// The frame the second click of the first chunk starts on, which says
+    /// whose pulse the engine was actually given.
+    ///
+    /// Well past the first click, whose decay crosses the threshold more than
+    /// once on the way down.
+    int secondClick(_GatedPrepareSink sink) =>
+        sink.onsets.firstWhere((frame) => frame > 5000);
+
+    test(
+      'hands the engine the pulse that is current, not the one it replaced',
+      () async {
+        final sink = _GatedPrepareSink();
+        final clicker = PulseClicker(sink: sink);
+
+        // No stop anywhere. The second playback simply replaces the first while
+        // the engine is still opening, so both wait on the same preparation and
+        // both wake up to a ready engine: the stop generation cannot tell them
+        // apart, and only the pulse can.
+        final replaced = clicker.play(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        );
+        await sink.started.future;
+        final current = clicker.play(
+          countInBeats: 2,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 300),
+        );
+
+        sink.completePreparation();
+        final abandoned = await replaced;
+        await current;
+
+        expect(
+          secondClick(sink),
+          closeTo(0.3 * 44100, 500),
+          reason:
+              'a beat of the pulse on screen; at 750 ms it is the abandoned '
+              'playback the learner is hearing',
+        );
+        expect(abandoned.deliveredBeats, 0);
+        expect(clicker.delivered.requestedBeats, 2);
+        await clicker.stop();
+      },
+    );
+  });
 }
 
 /// An engine that takes a chunk only when the test hands it over.
 class _GatedSink implements PulseAudioSink {
   void Function(int)? _onFeed;
   final List<Completer<void>> _feeds = [];
+
+  /// Chunks this sink has been handed, answered or not.
+  int get accepted => _feeds.length;
 
   void requestFrames() => _onFeed?.call(0);
 
@@ -452,4 +622,70 @@ class _DelayedFeedSink implements PulseAudioSink {
 
   @override
   Future<void> release() async => releaseCalls++;
+}
+
+/// An engine whose teardown finishes only when the test says.
+class _GatedReleaseSink implements PulseAudioSink {
+  final _released = Completer<void>();
+  int prepares = 0;
+  int feeds = 0;
+
+  void completeRelease() {
+    if (!_released.isCompleted) _released.complete();
+  }
+
+  @override
+  void setFeedCallback(void Function(int)? callback) {}
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async => prepares++;
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async => feeds++;
+
+  @override
+  Future<void> release() => _released.future;
+}
+
+/// An engine that opens only when the test says, recording where the clicks
+/// of the first chunk it is given fall.
+class _GatedPrepareSink implements PulseAudioSink {
+  final started = Completer<void>();
+  final _prepared = Completer<void>();
+  final List<int> onsets = [];
+  int feeds = 0;
+
+  void completePreparation() {
+    if (!_prepared.isCompleted) _prepared.complete();
+  }
+
+  @override
+  void setFeedCallback(void Function(int)? callback) {}
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async {
+    if (!started.isCompleted) started.complete();
+    await _prepared.future;
+  }
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async {
+    if (feeds++ > 0) return;
+    final data = frames.bytes;
+    var quiet = true;
+    for (var frame = 0; frame * 2 + 1 < data.lengthInBytes; frame++) {
+      final loud = data.getInt16(frame * 2, Endian.host).abs() > 500;
+      if (loud && quiet) onsets.add(frame);
+      quiet = !loud;
+    }
+  }
+
+  @override
+  Future<void> release() async {}
 }

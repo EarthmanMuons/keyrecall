@@ -155,14 +155,20 @@ class PulseClicker {
   /// Cheap to call again: the engine is released after each count-in, so this
   /// is what brings it back for the next one.
   Future<void> prepare() async {
+    // Taken before the wait, not after it. Waking up later must not make this
+    // the current preparation: the stop it is queued behind may itself have
+    // been the thing that cancelled it, and adopting the generation that
+    // cancellation created is how a silenced pulse came back to life.
+    final generation = _generation;
     final stopping = _stopping;
     if (stopping != null) await stopping;
+    if (generation != _generation) return;
     if (_ready || _unavailable) return;
     final pending = _preparing;
     if (pending != null) return pending;
 
     late final Future<void> operation;
-    operation = _prepare(_generation).whenComplete(() {
+    operation = _prepare(generation).whenComplete(() {
       if (identical(_preparing, operation)) _preparing = null;
     });
     _preparing = operation;
@@ -226,14 +232,23 @@ class PulseClicker {
     // has got to, dropping the beats it missed instead of playing them late.
     final since = Stopwatch()..start();
     final beats = countInBeats + continuingBeats;
+    // This playback's identity, taken before it waits on anything. Every
+    // continuation below proves it still holds both before touching playback
+    // state: a pulse that resumed later does not thereby become the current
+    // one, whether it was replaced by another play or silenced by a stop.
+    final generation = _generation;
     // Nothing of this pulse has been handed over until the engine takes some
     // of it, so that is what it reports while it is opening.
-    _pulse++;
+    final pulse = ++_pulse;
     _pulseBeats = beats;
     _pulseSkipped = 0;
     _acceptedFrames = 0;
     _delivered = TempoDelivery.silent(beats, reason: 'the engine is opening');
     await prepare();
+    // Nothing below may run for a pulse that is no longer the one on screen:
+    // installing a track, arming the release, and handing audio over are all
+    // this playback acting, and it has been cancelled or replaced.
+    if (!_owns(pulse, generation)) return _cancelled(beats);
     if (!_ready) {
       return _delivered = TempoDelivery.silent(
         beats,
@@ -278,8 +293,22 @@ class PulseClicker {
     // Only the first chunk has been handed over by now; the engine asks for
     // the rest as it plays, and each one that lands moves this on. What the
     // attempt records is read when it closes, not here.
-    return _delivered;
+    return _owns(pulse, generation) ? _delivered : _cancelled(beats);
   }
+
+  /// Whether this playback is still the one the clicker is running.
+  ///
+  /// Two questions, because being replaced by another pulse and being silenced
+  /// are different events that both end a playback's claim on the engine.
+  bool _owns(int pulse, int generation) =>
+      pulse == _pulse && generation == _generation;
+
+  /// What a playback that never got to sound reports.
+  ///
+  /// Its own report rather than whatever [delivered] now holds, which belongs
+  /// to the pulse that replaced it.
+  TempoDelivery _cancelled(int beats) =>
+      TempoDelivery.silent(beats, reason: 'the pulse ended before it sounded');
 
   /// Notes how much of the pulse the engine has taken.
   ///
@@ -394,12 +423,16 @@ class PulseClicker {
       _acceptedFrames = math.max(_acceptedFrames, through);
       _recordQueued();
     } on Object catch (error) {
+      // Before anything shared moves. A chunk belonging to a pulse that has
+      // been replaced says nothing about the engine the replacement is using,
+      // and closing that engine here would silence a pulse whose own audio was
+      // being taken perfectly well.
+      if (pulse != _pulse) return;
       _ready = false;
       _unavailable = true;
       _silence = '$error';
       // Nothing to unaccept: this chunk never advanced the accepted position,
       // so what the sink already took stays counted.
-      if (pulse != _pulse) return;
       _recordQueued(failure: '$error');
     }
   }
