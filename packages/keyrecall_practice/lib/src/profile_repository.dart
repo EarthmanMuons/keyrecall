@@ -212,7 +212,10 @@ abstract interface class ProfileRepository {
   /// after this leaves an install that can finish the job rather than history
   /// nothing identifies.
   ///
-  /// Idempotent: recording an intent that already stands changes nothing.
+  /// Idempotent: an intent that already stands and validates is left alone.
+  /// This returns successfully only having written a valid intent or having
+  /// read one belonging to this profile, because what waits on it returning is
+  /// the destruction of that profile's history.
   ///
   /// Throws [ArgumentError] when no such profile exists and none is being
   /// deleted.

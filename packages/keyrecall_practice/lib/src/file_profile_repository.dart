@@ -258,11 +258,14 @@ class FileProfileRepository implements ProfileRepository {
 
   @override
   Future<void> beginDelete(String profileId) => _serialize(() async {
-    final marker = _deletionFileFor(profileId);
-    if (marker.existsSync()) return;
+    // Through the same reader as everything else, and before the roster is
+    // consulted: a deletion already recorded has taken this profile off it.
+    // Returning on the file merely being there would make this the one way
+    // past validation, and what waits on this returning is the destruction.
+    if (_readDeletion(_directoryFor(profileId)) != null) return;
     await _require(profileId);
     await _writeAtomically(
-      marker,
+      _deletionFileFor(profileId),
       canonicalJson(ProfileDeletionIntent(profileId).toJson()),
     );
   });

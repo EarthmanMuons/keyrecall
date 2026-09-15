@@ -80,7 +80,8 @@ resolves itself besides, because choosing among the people who exist is what
 
 Intent first, then history, then genesis, then the intent itself:
 
-1. record the deletion intent, which takes the profile off the roster;
+1. record the deletion intent, or read and validate the one already there, which
+   takes the profile off the roster;
 2. retire the lifetime and erase everything the store holds;
 3. remove the profile's record of itself, handing the selection on;
 4. drop the intent.
@@ -89,6 +90,19 @@ History goes before genesis because the genesis is what names it, and every step
 is idempotent. Startup finishes any recorded intent before anything asks who is
 active, so an interruption leaves a job to complete rather than storage nothing
 can attribute.
+
+The intent is a durable command, not a flag, so it is read like one: its schema
+version, its fields, and whether it names the profile it was found under are all
+checked before it means anything. A file called `deleting.json` is not a
+decision somebody made about this profile until it says so, and one that does
+not validate is refused rather than obeyed or ignored.
+
+There is one reading of that file, and step 1 is the only way past it. It
+decides roster visibility, it decides what startup may resume, and it is what a
+deletion being retried consults, so a marker cannot hide somebody without also
+being the thing that authorizes finishing their removal. Step 1 returns
+successfully only having written a valid intent or having read one belonging to
+that profile, because what waits on it returning is the destruction.
 
 ### Erasing keeps who the profile is
 

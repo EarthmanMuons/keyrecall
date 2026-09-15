@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -273,6 +274,128 @@ void main() {
         repository.profileFileFor(created.profile.id).existsSync(),
         isFalse,
       );
+    });
+
+    group('an intent already on disk is read before anything is destroyed', () {
+      /// A file-backed install with Alice on it and something recorded.
+      Future<(ProfileLifecycle, Profile)> withPractice() async {
+        final lifecycle = ProfileLifecycle(
+          repository: FileProfileRepository(root, now: () => t0),
+          store: FilePracticeStore(root),
+        );
+        final created =
+            (await lifecycle.create(
+                  displayName: 'Alice',
+                  placement: PlacementTier.someExperience,
+                ))
+                as ProfileCreated;
+        // An incarnation, the way opening a sitting establishes one, so the
+        // deletion has all three of a profile's durable parts to destroy.
+        await lifecycle.store.lifetimeOf(created.profile.id);
+        await lifecycle.store.savePracticePlan(
+          created.profile.id,
+          PracticePlan.normal,
+        );
+        return (lifecycle, created.profile);
+      }
+
+      void markDeleting(String profileId, Object? contents) => File(
+        '${root.path}/$profileId/deleting.json',
+      ).writeAsStringSync(contents is String ? contents : jsonEncode(contents));
+
+      /// Everything a deletion would have destroyed, still here.
+      Future<void> expectUntouched(
+        ProfileLifecycle lifecycle,
+        Profile profile,
+      ) async {
+        expect(
+          File('${root.path}/${profile.id}/profile.json').existsSync(),
+          isTrue,
+          reason: 'the genesis',
+        );
+        expect(
+          File('${root.path}/${profile.id}/lifetime.json').existsSync(),
+          isTrue,
+          reason: 'the incarnation',
+        );
+        expect(
+          await lifecycle.store.loadPracticePlan(profile.id),
+          PracticePlan.normal,
+          reason: 'what was recorded',
+        );
+        expect(
+          File('${root.path}/${profile.id}/deleting.json').existsSync(),
+          isTrue,
+          reason: 'and the marker itself, for somebody to look at',
+        );
+      }
+
+      Matcher failsOnDeletionIntent(String profileId) => throwsA(
+        isA<ProfileStorageException>()
+            .having(
+              (failure) => failure.artifact,
+              'artifact',
+              ProfileArtifact.deletionIntent,
+            )
+            .having((failure) => failure.profileId, 'profileId', profileId),
+      );
+
+      test('a malformed one stops the deletion', () async {
+        final (lifecycle, profile) = await withPractice();
+        markDeleting(profile.id, '{not json');
+
+        await expectLater(
+          lifecycle.delete(profile.id),
+          failsOnDeletionIntent(profile.id),
+        );
+        await expectUntouched(lifecycle, profile);
+      });
+
+      test("another profile's stops the deletion", () async {
+        final (lifecycle, profile) = await withPractice();
+        markDeleting(
+          profile.id,
+          const ProfileDeletionIntent('somebody-else').toJson(),
+        );
+
+        await expectLater(
+          lifecycle.delete(profile.id),
+          failsOnDeletionIntent(profile.id),
+        );
+        await expectUntouched(lifecycle, profile);
+      });
+
+      test('an unsupported one stops the deletion', () async {
+        final (lifecycle, profile) = await withPractice();
+        markDeleting(profile.id, {
+          'schema_version': profileDeletionSchemaVersion + 1,
+          'profile_id': profile.id,
+        });
+
+        await expectLater(
+          lifecycle.delete(profile.id),
+          failsOnDeletionIntent(profile.id),
+        );
+        await expectUntouched(lifecycle, profile);
+      });
+
+      test('a valid one is resumed rather than refused', () async {
+        final (lifecycle, profile) = await withPractice();
+        await lifecycle.repository.beginDelete(profile.id);
+
+        await lifecycle.delete(profile.id);
+
+        expect(await lifecycle.store.loadPracticePlan(profile.id), isNull);
+        expect(
+          File('${root.path}/${profile.id}/profile.json').existsSync(),
+          isFalse,
+        );
+        expect(
+          File('${root.path}/${profile.id}/deleting.json').existsSync(),
+          isFalse,
+        );
+        expect(await lifecycle.repository.pendingDeletions(), isEmpty);
+      });
     });
 
     test('resuming twice is no worse than resuming once', () async {
