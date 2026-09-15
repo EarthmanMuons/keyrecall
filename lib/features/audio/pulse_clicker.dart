@@ -16,9 +16,9 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// performance timing would need.
 ///
 /// Best effort: a device that will not give us an audio engine leaves the
-/// count-in silent rather than failing an attempt. [PulseClicker.play] says so
-/// rather than swallowing it, because an attempt that heard nothing did not run
-/// under the tempo support it was resolved to have.
+/// count-in silent rather than failing an attempt. [PulseClicker.delivered]
+/// says so rather than swallowing it, because an attempt that was supplied no
+/// pulse did not run under the tempo support it was resolved to have.
 final pulseClickerProvider = Provider<PulseClicker>((ref) {
   final clicker = PulseClicker();
   ref.onDispose(clicker.stop);
@@ -107,18 +107,31 @@ class PulseClicker {
   bool _unavailable = false;
   String? _silence;
   TempoDelivery _delivered = TempoDelivery.notRequested();
+
+  /// The pulse being handed over: how many beats it holds, how long each one
+  /// is in frames, and how many of them were already behind the cursor when
+  /// the engine opened.
+  int _pulseBeats = 0;
+  int _pulseBeatFrames = 1;
+  int _pulseSkipped = 0;
   int _generation = 0;
   Future<void>? _preparing;
   Future<void>? _stopping;
   Future<void>? _feeding;
   Timer? _release;
 
-  /// What the pulse this clicker was last asked for has sounded so far.
+  /// What the pulse this clicker was last asked for has handed over so far.
   ///
   /// Readable without waiting, because an attempt ends when the learner ends
-  /// it and must not be held open for an audio engine to finish answering.
-  /// It moves only forward within one pulse: nothing is queued until the
-  /// engine opens, and once queued it stays counted.
+  /// it and must not be held open for an audio engine to finish answering. It
+  /// moves only forward within one pulse: nothing is queued until the engine
+  /// opens, and a beat the engine accepted stays counted even if a later chunk
+  /// fails.
+  ///
+  /// A queued beat is one the audio layer took, not one anybody is known to
+  /// have heard. The sink says it accepted the frames and nothing on this path
+  /// reports back from the speaker, so this is the strongest claim available:
+  /// the app supplied it.
   TempoDelivery get delivered => _delivered;
 
   /// Prepares the engine, if this device has one to give.
@@ -171,7 +184,7 @@ class PulseClicker {
   }
 
   /// Sounds [countInBeats] counting beats and then [continuingBeats] more,
-  /// [beat] apart, starting now, and reports how much of that was queued.
+  /// [beat] apart, starting now.
   ///
   /// Pass zero continuing beats for a count-in that stops and leaves the
   /// learner holding the pulse.
@@ -182,9 +195,10 @@ class PulseClicker {
   /// One sample clock means the beats cannot drift against each other however
   /// busy the app is.
   ///
-  /// The returned report counts beats queued from their own start. A beat the
-  /// engine was too slow to reach is dropped rather than played late, and a
-  /// dropped beat is one the learner did not hear.
+  /// How much of it the engine took is [delivered], which goes on moving as
+  /// the engine asks for the rest. A beat the engine was too slow to reach is
+  /// dropped rather than played late, and a dropped beat is one the learner
+  /// was never supplied.
   Future<TempoDelivery> play({
     required int countInBeats,
     required int continuingBeats,
@@ -196,8 +210,10 @@ class PulseClicker {
     // has got to, dropping the beats it missed instead of playing them late.
     final since = Stopwatch()..start();
     final beats = countInBeats + continuingBeats;
-    // Nothing of this pulse has sounded until the engine takes some of it, so
-    // that is what it reports while it is opening.
+    // Nothing of this pulse has been handed over until the engine takes some
+    // of it, so that is what it reports while it is opening.
+    _pulseBeats = beats;
+    _pulseSkipped = 0;
     _delivered = TempoDelivery.silent(beats, reason: 'the engine is opening');
     await prepare();
     if (!_ready) {
@@ -225,8 +241,14 @@ class PulseClicker {
       0,
       track.length,
     );
-    // Read before anything is handed over, since feeding moves the cursor on.
-    final startFrame = _fed;
+    // A beat is lost only once its whole click is behind the cursor. Opening
+    // the engine a millisecond into the first click clips it inaudibly, and
+    // counting that as a beat nobody heard would report a shortfall that is
+    // not one.
+    _pulseBeatFrames = beatFrames;
+    _pulseSkipped = _fed <= _clickFrames
+        ? 0
+        : (_fed - _clickFrames) ~/ beatFrames + 1;
 
     // Released once the tail has played out, by which point the engine has
     // already stopped itself. Tearing it down while it is still sounding is
@@ -235,25 +257,33 @@ class PulseClicker {
     _release = Timer(beat * beats + _tail * 2, stop);
 
     await _feedNext();
-    if (!_ready) {
-      return _delivered = TempoDelivery.silent(
-        beats,
-        reason: _silence ?? 'no audio engine',
-      );
-    }
-    // A beat is lost only once its whole click is behind the cursor. Opening
-    // the engine a millisecond into the first click clips it inaudibly, and
-    // counting that as a beat nobody heard would report a shortfall that is
-    // not one.
-    final skipped = startFrame <= _clickFrames
+    // Only the first chunk has been handed over by now; the engine asks for
+    // the rest as it plays, and each one that lands moves this on. What the
+    // attempt records is read when it closes, not here.
+    return _delivered;
+  }
+
+  /// Notes how much of the pulse the engine has taken.
+  ///
+  /// Only ever forward. A chunk that failed leaves the beats already accepted
+  /// counted, because they were: a later failure does not unqueue them, and
+  /// reporting the whole pulse as silent would lose the difference between an
+  /// engine that never opened and one that stopped partway.
+  void _recordQueued({String? failure}) {
+    if (_pulseBeats == 0) return;
+    final through = _fed < _clickFrames
         ? 0
-        : (startFrame - _clickFrames) ~/ beatFrames + 1;
-    return TempoDelivery(
-      requestedBeats: beats,
-      deliveredBeats: (beats - skipped).clamp(0, beats),
-      failureReason: skipped == 0
-          ? null
-          : 'the engine opened $skipped beats in',
+        : (_fed - _clickFrames) ~/ _pulseBeatFrames + 1;
+    final queued = (through - _pulseSkipped).clamp(0, _pulseBeats);
+    _delivered = TempoDelivery(
+      requestedBeats: _pulseBeats,
+      deliveredBeats: queued,
+      failureReason: switch (queued) {
+        _ when failure != null => failure,
+        _ when queued == _pulseBeats => null,
+        0 => 'the engine took none of the pulse',
+        _ => 'the engine took $queued of $_pulseBeats beats',
+      },
     );
   }
 
@@ -326,10 +356,15 @@ class PulseClicker {
     if (!_ready) return;
     try {
       await _sink.feed(PcmArrayInt16(bytes: ByteData.sublistView(frames)));
+      _recordQueued();
     } on Object catch (error) {
       _ready = false;
       _unavailable = true;
       _silence = '$error';
+      // The cursor already moved past these frames, so what was handed over is
+      // counted from before them.
+      _fed -= frames.length;
+      _recordQueued(failure: '$error');
     }
   }
 

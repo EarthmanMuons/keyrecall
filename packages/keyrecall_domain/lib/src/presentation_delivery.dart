@@ -25,18 +25,23 @@ enum ChannelDelivery {
   bool get fellShort => this != ChannelDelivery.complete;
 }
 
-/// What the pulse actually sounded.
+/// How much of the pulse the app managed to supply.
 ///
 /// Audio preparation is best effort, so an attempt can proceed under a count-in
 /// that never sounded or that started late and dropped the beats it missed.
 /// Neither outcome changes what the attempt asked of the learner, and neither
-/// may be recorded as a count-in that was heard.
+/// may be recorded as a count-in that was supplied.
+///
+/// A delivered beat is one the audio layer accepted, not one anybody is known
+/// to have heard. Nothing on this path reports back from the speaker, so that
+/// is the strongest claim available: the app handed it over. Whether it reached
+/// the room is a question only a device with playback completion could answer.
 @immutable
 class TempoDelivery {
   /// Beats the presentation asked the audio layer for.
   final int requestedBeats;
 
-  /// Beats of those that were queued from their own start.
+  /// Beats of those the audio layer accepted, counted from their own start.
   final int deliveredBeats;
 
   /// Why the pulse fell short, when the audio layer said.
@@ -65,15 +70,15 @@ class TempoDelivery {
   /// `TempoSupport.none` owes the learner.
   TempoDelivery.notRequested() : this(requestedBeats: 0, deliveredBeats: 0);
 
-  /// Every requested beat, sounded from the first.
+  /// Every requested beat, handed over from the first.
   TempoDelivery.complete(int beats)
     : this(requestedBeats: beats, deliveredBeats: beats);
 
-  /// Nothing sounded, for [reason].
+  /// Nothing was handed over at all, for [reason].
   TempoDelivery.silent(int beats, {String? reason})
     : this(requestedBeats: beats, deliveredBeats: 0, failureReason: reason);
 
-  /// How much of the requested pulse was sounded.
+  /// How much of the requested pulse the audio layer took.
   ChannelDelivery get delivery {
     if (deliveredBeats == requestedBeats) return ChannelDelivery.complete;
     if (deliveredBeats == 0) return ChannelDelivery.unavailable;

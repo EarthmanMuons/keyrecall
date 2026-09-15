@@ -61,33 +61,81 @@ void main() {
     expect(sink.hasFeedCallback, isFalse);
   });
 
-  group('what it reports having sounded', () {
-    test('a count-in it queued in full', () async {
-      final clicker = PulseClicker(sink: _RecordingSink());
-
-      final delivery = await clicker.play(
+  group('what it reports having handed over', () {
+    /// A count-in of four at 750 ms is three and a half seconds of audio,
+    /// which the engine takes a second at a time.
+    Future<PulseClicker> countIn(_RecordingSink sink) async {
+      final clicker = PulseClicker(sink: sink);
+      await clicker.play(
         countInBeats: 4,
         continuingBeats: 0,
         beat: const Duration(milliseconds: 750),
       );
+      return clicker;
+    }
 
-      expect(delivery.delivery, ChannelDelivery.complete);
-      expect(delivery.deliveredBeats, 4);
+    test('counts only the beats the engine has taken so far', () async {
+      final sink = _RecordingSink();
+      final clicker = await countIn(sink);
+
+      expect(
+        clicker.delivered.deliveredBeats,
+        lessThan(4),
+        reason:
+            'one chunk is a second of a three-second count-in, and the '
+            'rest has not been offered yet',
+      );
+      expect(clicker.delivered.delivery, ChannelDelivery.partial);
       await clicker.stop();
     });
 
-    test('a count-in a device with no engine never sounded', () async {
-      final clicker = PulseClicker(sink: _RefusingSink());
+    test('is complete once the whole pulse has been taken', () async {
+      final sink = _RecordingSink();
+      final clicker = await countIn(sink);
+      for (var chunk = 0; chunk < 4; chunk++) {
+        sink.requestFrames();
+        await Future<void>.delayed(Duration.zero);
+      }
 
-      final delivery = await clicker.play(
+      expect(clicker.delivered.deliveredBeats, 4);
+      expect(clicker.delivered.delivery, ChannelDelivery.complete);
+      expect(clicker.delivered.failureReason, isNull);
+      await clicker.stop();
+    });
+
+    test('a device with no engine took none of it', () async {
+      final clicker = PulseClicker(sink: _RefusingSink());
+      await clicker.play(
         countInBeats: 4,
         continuingBeats: 0,
         beat: const Duration(milliseconds: 750),
       );
 
-      expect(delivery.delivery, ChannelDelivery.unavailable);
-      expect(delivery.deliveredBeats, 0);
-      expect(delivery.failureReason, contains('no audio on this device'));
+      expect(clicker.delivered.delivery, ChannelDelivery.unavailable);
+      expect(clicker.delivered.deliveredBeats, 0);
+      expect(clicker.delivered.failureReason, contains('no audio'));
+      await clicker.stop();
+    });
+
+    test('keeps what was taken when a later chunk fails', () async {
+      final sink = _FailingAfterFirstFeedSink();
+      final clicker = PulseClicker(sink: sink);
+      await clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+      final afterFirst = clicker.delivered.deliveredBeats;
+      sink.requestFrames();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(afterFirst, greaterThan(0));
+      expect(
+        clicker.delivered.deliveredBeats,
+        afterFirst,
+        reason: 'a failure later does not unqueue what the engine already took',
+      );
+      expect(clicker.delivered.delivery, ChannelDelivery.partial);
       await clicker.stop();
     });
 
@@ -161,6 +209,31 @@ class _RecordingSink implements PulseAudioSink {
     largestBuffer = largestBuffer > bufferedFrames
         ? largestBuffer
         : bufferedFrames;
+  }
+
+  @override
+  Future<void> release() async {}
+}
+
+/// Takes the first chunk and refuses everything after it.
+class _FailingAfterFirstFeedSink implements PulseAudioSink {
+  void Function(int)? _onFeed;
+  int feeds = 0;
+
+  void requestFrames() => _onFeed!(0);
+
+  @override
+  void setFeedCallback(void Function(int)? callback) => _onFeed = callback;
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async {}
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async {
+    if (feeds++ > 0) throw StateError('the engine stopped taking frames');
   }
 
   @override
