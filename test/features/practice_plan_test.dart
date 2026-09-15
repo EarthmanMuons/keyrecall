@@ -357,6 +357,7 @@ void main() {
   ) async {
     final container = launch();
     await place(container);
+    final profile = (await profiles.selectedOrOldest())!;
     await container.read(practicePlanProvider.future);
     await container
         .read(practicePlanProvider.notifier)
@@ -372,12 +373,12 @@ void main() {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
-        child: const MaterialApp(
+        child: MaterialApp(
           home: LoopFailure(
             error: PracticeLoopFailure(
               PracticeFailure.plan,
-              UnusablePracticePlan(PlanFault.unreadable, 'unreadable'),
-              profileId: 'profile',
+              const UnusablePracticePlan(PlanFault.unreadable, 'unreadable'),
+              profileId: profile.id,
             ),
           ),
         ),
@@ -397,7 +398,6 @@ void main() {
     await tester.pump();
     await replaced.future;
 
-    final profile = (await profiles.selectedOrOldest())!;
     expect(await practice.loadPracticePlan(profile.id), PracticePlan.normal);
   });
 
