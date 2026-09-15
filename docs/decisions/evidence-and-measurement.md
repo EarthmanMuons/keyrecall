@@ -20,6 +20,27 @@ that never _light_ anything. Three separate pieces of matching logic would
 otherwise drift apart and leak an evaluative judgment under a neutral feedback
 condition.
 
+## The locator is contingent feedback, not a neutral display
+
+**Decision.** Locator highlighting is recorded on a channel of its own,
+`LocatorFeedback`, and is not counted as absent feedback.
+
+**Why.** The rule above says that placing an observation into an expected
+position, or omitting one that does not fit, is a comparison whose result is
+being shown. The locator does exactly that: a matching arrival lights the note
+it matched and an unmatched one lights nothing, so the display is contingent on
+agreement with the target. Exempting it while the rule named it was a
+contradiction, and calling it neutral was the part that was wrong.
+
+**Consequences.** It is still permitted, and nothing about the display changes.
+What changes is what may be said about an attempt that ran under it: the locator
+is low-bandwidth contingent feedback, not evaluative outcome feedback, because
+it says "that note is here in what you were asked for" and never that anything
+was right, wrong, or late. It runs only where a cue staff is on screen during
+the attempt, which today is the continuously cued rung alone, so no attempt that
+observes independent retrieval has ever carried it. An attempt under a locator
+must not be attributed as one under no feedback.
+
 ## Rejected: a single grouping threshold
 
 **Decision.** Grouping produces _proposals_ that enter alignment as costs, never
