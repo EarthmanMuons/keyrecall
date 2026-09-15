@@ -102,7 +102,7 @@ resolved rather than guessed at. `PracticeSession` is where that ordering lives.
 
 ## Before changing behavior
 
-Three things about this codebase will surprise you if nobody says them first.
+Four things about this codebase will surprise you if nobody says them first.
 
 **The journal is the history, and learner state is not stored.** Every attempt
 is appended and never rewritten, and what the app believes about a player is
@@ -122,6 +122,16 @@ practice loop. If you are touching storage, read
 [`docs/system/validation-boundaries.md`](docs/system/validation-boundaries.md)
 for where invalid values are rejected and why the parameter registries are
 allowed to use assertions.
+
+**Final state can hide stale asynchronous output.** Where an operation sends
+something out of the app, a replacement usually overwrites the bookkeeping after
+the obsolete output has already escaped. Counters and end-state reports then
+agree with each other and with nothing the user got: the count-in bug that
+taught us this handed the learner an abandoned playback's pulse while every
+aggregate in the test still described the current one. Testing such a path means
+observing what actually left the app, in order, rather than what the controller
+believes afterwards, and varying the runs enough that the two are
+distinguishable at all.
 
 Simulation is the fastest way to find out whether a scheduler change is sane.
 `packages/keyrecall_simulation/bin/sweep.dart` runs every synthetic player over
