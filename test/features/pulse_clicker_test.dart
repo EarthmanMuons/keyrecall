@@ -182,6 +182,144 @@ void main() {
     expect(sink.prepareCalls, 2);
     await clicker.stop();
   });
+
+  group('a feed that completes late', () {
+    /// Plays a count-in whose chunks are handed over only when the test says.
+    Future<PulseClicker> started(_GatedSink sink) async {
+      final clicker = PulseClicker(sink: sink);
+      final playing = clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+      await Future<void>.delayed(Duration.zero);
+      sink.complete(0);
+      await playing;
+      return clicker;
+    }
+
+    test('still counts once stopping has begun', () async {
+      final sink = _GatedSink();
+      final clicker = await started(sink);
+      final accepted = clicker.delivered.deliveredBeats;
+      expect(accepted, greaterThan(0));
+
+      sink.requestFrames();
+      await Future<void>.delayed(Duration.zero);
+      final stopping = clicker.stop();
+      sink.complete(1);
+      await stopping;
+
+      expect(
+        clicker.delivered.deliveredBeats,
+        greaterThanOrEqualTo(accepted),
+        reason:
+            'silencing a pulse cannot unaccept frames the engine already took',
+      );
+    });
+
+    test('keeps what was accepted when it fails after stopping', () async {
+      final sink = _GatedSink();
+      final clicker = await started(sink);
+      final accepted = clicker.delivered.deliveredBeats;
+
+      sink.requestFrames();
+      await Future<void>.delayed(Duration.zero);
+      final stopping = clicker.stop();
+      sink.fail(1);
+      await stopping;
+
+      expect(clicker.delivered.deliveredBeats, accepted);
+      expect(clicker.delivered.delivery, ChannelDelivery.partial);
+    });
+
+    test('does not touch the pulse that replaced it', () async {
+      final sink = _GatedSink();
+      final clicker = await started(sink);
+      sink.requestFrames();
+      await Future<void>.delayed(Duration.zero);
+
+      // A second pulse on the same clicker, while the first one's chunk is
+      // still out. Nothing of this one has been handed over yet.
+      final playing = clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+      await playing;
+      final before = clicker.delivered;
+      expect(before.deliveredBeats, 0);
+
+      sink.complete(1);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        clicker.delivered,
+        before,
+        reason:
+            'that chunk was audio the pulse before this one asked for, and '
+            'this one has still had nothing handed over',
+      );
+      sink.complete(2);
+      await clicker.stop();
+    });
+
+    test('never lets a pulse report fewer beats than it already had', () async {
+      final sink = _GatedSink();
+      final clicker = await started(sink);
+      var highest = clicker.delivered.deliveredBeats;
+
+      for (var chunk = 1; chunk < 4; chunk++) {
+        sink.requestFrames();
+        await Future<void>.delayed(Duration.zero);
+        sink.complete(chunk);
+        await Future<void>.delayed(Duration.zero);
+        expect(clicker.delivered.deliveredBeats, greaterThanOrEqualTo(highest));
+        highest = clicker.delivered.deliveredBeats;
+      }
+      await clicker.stop();
+      expect(clicker.delivered.deliveredBeats, greaterThanOrEqualTo(highest));
+    });
+  });
+}
+
+/// An engine that takes a chunk only when the test hands it over.
+class _GatedSink implements PulseAudioSink {
+  void Function(int)? _onFeed;
+  final List<Completer<void>> _feeds = [];
+
+  void requestFrames() => _onFeed?.call(0);
+
+  void complete(int chunk) {
+    if (chunk < _feeds.length && !_feeds[chunk].isCompleted) {
+      _feeds[chunk].complete();
+    }
+  }
+
+  void fail(int chunk) {
+    if (chunk < _feeds.length && !_feeds[chunk].isCompleted) {
+      _feeds[chunk].completeError(StateError('the engine stopped taking it'));
+    }
+  }
+
+  @override
+  void setFeedCallback(void Function(int)? callback) => _onFeed = callback;
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async {}
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) {
+    final completer = Completer<void>();
+    _feeds.add(completer);
+    return completer.future;
+  }
+
+  @override
+  Future<void> release() async {}
 }
 
 class _RecordingSink implements PulseAudioSink {

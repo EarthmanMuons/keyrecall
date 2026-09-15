@@ -114,6 +114,22 @@ class PulseClicker {
   int _pulseBeats = 0;
   int _pulseBeatFrames = 1;
   int _pulseSkipped = 0;
+
+  /// Which pulse is current, counted up by [play].
+  ///
+  /// Not [_generation], which counts stops. A pulse that is being silenced is
+  /// still the pulse whose frames the sink took, so a feed completing during
+  /// the teardown belongs to it and is counted; a feed completing after the
+  /// next pulse has started belongs to neither and is dropped.
+  int _pulse = 0;
+
+  /// How far into the track the sink has actually accepted.
+  ///
+  /// Kept apart from [_fed], which is a scheduling cursor that [stop] is free
+  /// to reset. This is accounting for something that already happened, so it
+  /// only ever moves forward within a pulse, and silencing a pulse cannot
+  /// unaccept frames the engine took.
+  int _acceptedFrames = 0;
   int _generation = 0;
   Future<void>? _preparing;
   Future<void>? _stopping;
@@ -212,8 +228,10 @@ class PulseClicker {
     final beats = countInBeats + continuingBeats;
     // Nothing of this pulse has been handed over until the engine takes some
     // of it, so that is what it reports while it is opening.
+    _pulse++;
     _pulseBeats = beats;
     _pulseSkipped = 0;
+    _acceptedFrames = 0;
     _delivered = TempoDelivery.silent(beats, reason: 'the engine is opening');
     await prepare();
     if (!_ready) {
@@ -271,9 +289,9 @@ class PulseClicker {
   /// engine that never opened and one that stopped partway.
   void _recordQueued({String? failure}) {
     if (_pulseBeats == 0) return;
-    final through = _fed < _clickFrames
+    final through = _acceptedFrames < _clickFrames
         ? 0
-        : (_fed - _clickFrames) ~/ _pulseBeatFrames + 1;
+        : (_acceptedFrames - _clickFrames) ~/ _pulseBeatFrames + 1;
     final queued = (through - _pulseSkipped).clamp(0, _pulseBeats);
     _delivered = TempoDelivery(
       requestedBeats: _pulseBeats,
@@ -291,6 +309,11 @@ class PulseClicker {
   ///
   /// Public because an attempt can end before its last beat, and a metronome
   /// still ticking over a finished attempt is the app talking over the learner.
+  ///
+  /// Resets scheduling and nothing else. What the sink already accepted is a
+  /// fact about an attempt that has happened, and silencing what is left of a
+  /// pulse cannot make it un-happen; an attempt closing after this reads the
+  /// same delivery it would have read before.
   Future<void> stop() async {
     _generation++;
     _release?.cancel();
@@ -344,26 +367,39 @@ class PulseClicker {
     final end = math.min(_fed + _chunkFrames, track.length);
     final frames = Int16List.fromList(Int16List.sublistView(track, _fed, end));
     _fed = end;
+    // Captured before the handover, so what this feed accounts for is decided
+    // by the chunk it took rather than by wherever scheduling has reached when
+    // it comes back.
+    final pulse = _pulse;
     late final Future<void> operation;
-    operation = _feed(frames).whenComplete(() {
+    operation = _feed(frames, pulse: pulse, through: end).whenComplete(() {
       if (identical(_feeding, operation)) _feeding = null;
     });
     _feeding = operation;
     await operation;
   }
 
-  Future<void> _feed(Int16List frames) async {
+  Future<void> _feed(
+    Int16List frames, {
+    required int pulse,
+    required int through,
+  }) async {
     if (!_ready) return;
     try {
       await _sink.feed(PcmArrayInt16(bytes: ByteData.sublistView(frames)));
+      // Only ever forward, and only for the pulse this chunk came from. A
+      // completion that arrives after the next pulse has started describes
+      // audio that pulse never asked for.
+      if (pulse != _pulse) return;
+      _acceptedFrames = math.max(_acceptedFrames, through);
       _recordQueued();
     } on Object catch (error) {
       _ready = false;
       _unavailable = true;
       _silence = '$error';
-      // The cursor already moved past these frames, so what was handed over is
-      // counted from before them.
-      _fed -= frames.length;
+      // Nothing to unaccept: this chunk never advanced the accepted position,
+      // so what the sink already took stays counted.
+      if (pulse != _pulse) return;
       _recordQueued(failure: '$error');
     }
   }
