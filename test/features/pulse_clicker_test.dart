@@ -448,6 +448,45 @@ void main() {
       },
     );
   });
+
+  group('a refill arriving while a new playback is opening', () {
+    test('hands over nothing, because no track is installed', () async {
+      final sink = _RefillSink();
+      final clicker = PulseClicker(sink: sink);
+      await clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+      final submitted = sink.chunks.length;
+
+      // The replacement claims the pulse synchronously and then waits. The
+      // engine asks for more inside that wait, when the only track that has
+      // ever been installed is the one being replaced.
+      final replacing = clicker.play(
+        countInBeats: 2,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 300),
+      );
+      sink.requestFrames();
+      final inGap = sink.chunks.length - submitted;
+      await replacing;
+
+      expect(
+        inGap,
+        0,
+        reason: 'the replaced playback has no claim on the engine left',
+      );
+      expect(
+        sink.secondClickOf(sink.chunks.length - 1),
+        closeTo(0.3 * 44100, 500),
+        reason:
+            'what was handed over is the audio of the playback that asked '
+            'for it, not the one it replaced',
+      );
+      await clicker.stop();
+    });
+  });
 }
 
 /// An engine that takes a chunk only when the test hands it over.
@@ -684,6 +723,45 @@ class _GatedPrepareSink implements PulseAudioSink {
       if (loud && quiet) onsets.add(frame);
       quiet = !loud;
     }
+  }
+
+  @override
+  Future<void> release() async {}
+}
+
+/// An engine that accepts everything, asks for more only when the test says,
+/// and keeps what it was given.
+class _RefillSink implements PulseAudioSink {
+  void Function(int)? _onFeed;
+  final List<List<int>> chunks = [];
+
+  void requestFrames() => _onFeed?.call(0);
+
+  /// The frame the second click of chunk [index] starts on, well past the
+  /// first click, whose decay crosses the threshold on the way down.
+  int secondClickOf(int index) =>
+      chunks[index].firstWhere((frame) => frame > 5000);
+
+  @override
+  void setFeedCallback(void Function(int)? callback) => _onFeed = callback;
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async {}
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async {
+    final data = frames.bytes;
+    final onsets = <int>[];
+    var quiet = true;
+    for (var frame = 0; frame * 2 + 1 < data.lengthInBytes; frame++) {
+      final loud = data.getInt16(frame * 2, Endian.host).abs() > 500;
+      if (loud && quiet) onsets.add(frame);
+      quiet = !loud;
+    }
+    chunks.add(onsets);
   }
 
   @override

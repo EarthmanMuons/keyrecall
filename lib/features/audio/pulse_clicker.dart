@@ -98,9 +98,12 @@ class PulseClicker {
   /// on every callback. A second at a time keeps that copy small.
   static const Duration _chunk = Duration(seconds: 1);
 
-  /// The pulse being played, and how far into it the engine has been fed.
-  Int16List? _track;
-  int _fed = 0;
+  /// The track currently refillable, and nothing if none is.
+  ///
+  /// One object rather than a track beside a cursor beside a pulse: a refill
+  /// takes its bytes and the identity it submits them under from the same
+  /// place, so it cannot hand over one playback's audio stamped as another's.
+  _InstalledTrack? _installed;
   final PulseAudioSink _sink;
   bool _ready = false;
   bool _opened = false;
@@ -237,10 +240,20 @@ class PulseClicker {
     // state: a pulse that resumed later does not thereby become the current
     // one, whether it was replaced by another play or silenced by a stop.
     final generation = _generation;
-    // Nothing of this pulse has been handed over until the engine takes some
-    // of it, so that is what it reports while it is opening.
     final pulse = ++_pulse;
+    // Detached before this waits on anything. From here until this playback
+    // installs its own track there is nothing to refill from, so a callback
+    // arriving in that gap cannot hand over the audio of the playback this one
+    // just replaced.
+    _installed = null;
+    // Every figure this pulse is accounted against, established in one step
+    // with the pulse itself, so no window exists where one of them describes
+    // this playback and another still describes the one before it. Nothing has
+    // been handed over until the engine takes some of it, which is what it
+    // reports while it is opening.
+    final beatFrames = beat.inMicroseconds * _sampleRate ~/ 1000000;
     _pulseBeats = beats;
+    _pulseBeatFrames = beatFrames;
     _pulseSkipped = 0;
     _acceptedFrames = 0;
     _delivered = TempoDelivery.silent(beats, reason: 'the engine is opening');
@@ -256,7 +269,6 @@ class PulseClicker {
       );
     }
 
-    final beatFrames = beat.inMicroseconds * _sampleRate ~/ 1000000;
     final tailFrames = _tail.inMicroseconds * _sampleRate ~/ 1000000;
     final track = Int16List(beatFrames * beats + tailFrames);
     for (var index = 0; index < beats; index++) {
@@ -269,19 +281,16 @@ class PulseClicker {
         hz: index % _beatsPerBar == 0 ? _downbeatHz : _beatHz,
       );
     }
-    _track = track;
-    _fed = (since.elapsedMicroseconds * _sampleRate ~/ 1000000).clamp(
-      0,
-      track.length,
-    );
+    final startFrame = (since.elapsedMicroseconds * _sampleRate ~/ 1000000)
+        .clamp(0, track.length);
+    _installed = _InstalledTrack(pulse: pulse, frames: track, fed: startFrame);
     // A beat is lost only once its whole click is behind the cursor. Opening
     // the engine a millisecond into the first click clips it inaudibly, and
     // counting that as a beat nobody heard would report a shortfall that is
     // not one.
-    _pulseBeatFrames = beatFrames;
-    _pulseSkipped = _fed <= _clickFrames
+    _pulseSkipped = startFrame <= _clickFrames
         ? 0
-        : (_fed - _clickFrames) ~/ beatFrames + 1;
+        : (startFrame - _clickFrames) ~/ beatFrames + 1;
 
     // Released once the tail has played out, by which point the engine has
     // already stopped itself. Tearing it down while it is still sounding is
@@ -347,8 +356,7 @@ class PulseClicker {
     _generation++;
     _release?.cancel();
     _release = null;
-    _track = null;
-    _fed = 0;
+    _installed = null;
     _ready = false;
     _sink.setFeedCallback(null);
     final pending = _stopping;
@@ -390,16 +398,19 @@ class PulseClicker {
   /// something to leave to chance in the one place where order is the audio.
   Future<void> _feedNext() async {
     if (!_ready || _feeding != null) return;
-    final track = _track;
-    if (track == null || _fed >= track.length) return;
+    // Bytes and identity from one object, read together. A track and a pulse
+    // counter read separately can disagree, and did: a refill arriving while a
+    // new playback was opening the engine took the old track and submitted it
+    // as the new one's audio.
+    final installed = _installed;
+    if (installed == null || installed.fed >= installed.frames.length) return;
 
-    final end = math.min(_fed + _chunkFrames, track.length);
-    final frames = Int16List.fromList(Int16List.sublistView(track, _fed, end));
-    _fed = end;
-    // Captured before the handover, so what this feed accounts for is decided
-    // by the chunk it took rather than by wherever scheduling has reached when
-    // it comes back.
-    final pulse = _pulse;
+    final end = math.min(installed.fed + _chunkFrames, installed.frames.length);
+    final frames = Int16List.fromList(
+      Int16List.sublistView(installed.frames, installed.fed, end),
+    );
+    installed.fed = end;
+    final pulse = installed.pulse;
     late final Future<void> operation;
     operation = _feed(frames, pulse: pulse, through: end).whenComplete(() {
       if (identical(_feeding, operation)) _feeding = null;
@@ -450,4 +461,22 @@ class PulseClicker {
       track[at + i] = (math.sin(2 * math.pi * hz * t) * decay * 12000).round();
     }
   }
+}
+
+/// A rendered pulse and how far into it the engine has been fed, held together
+/// with the playback it belongs to.
+class _InstalledTrack {
+  _InstalledTrack({
+    required this.pulse,
+    required this.frames,
+    required this.fed,
+  });
+
+  /// Which playback rendered these frames.
+  final int pulse;
+
+  final Int16List frames;
+
+  /// How far the engine has been offered, in frames.
+  int fed;
 }
