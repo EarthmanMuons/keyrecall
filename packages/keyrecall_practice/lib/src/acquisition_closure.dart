@@ -24,6 +24,7 @@ AcquisitionAttemptRecord acquisitionRecordOf({
   required AttemptIdentity identity,
   required int journalSequence,
   AttemptTermination termination = AttemptTermination.learnerStopped,
+  PresentationRecord? presentation,
   int? executionEvidenceRevision,
   DateTime? observedWallTime,
 }) => AcquisitionAttemptRecord(
@@ -33,6 +34,7 @@ AcquisitionAttemptRecord acquisitionRecordOf({
   observedWallTime: observedWallTime,
   termination: termination,
   task: observation.task,
+  presentation: presentation,
   started: observation.started,
   completion: observation.completion,
   repairs: observation.repairs,

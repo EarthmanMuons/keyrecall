@@ -70,6 +70,19 @@ PresentationConditions presentationFor(
   return presentation;
 }
 
+/// What a supported task is presented under.
+///
+/// One argument, because the two facts that decide it are both the task's: the
+/// parent supplies the notes and the cues, and the task is what removes the
+/// tempo. Resolving from the parent alone is how a self-paced attempt came to
+/// record a count-in it never runs, and that is a mistake this cannot express.
+PresentationConditions presentationForTask(AcquisitionTask task) =>
+    presentationFor(
+      task.parent.guidance,
+      exercise: task.parent,
+      acquisition: task,
+    );
+
 /// Whether the pitch cue is still on screen once the attempt has started.
 ///
 /// The rung owns this, not the cue: [GuidanceContext.notesPreviewedOnly]

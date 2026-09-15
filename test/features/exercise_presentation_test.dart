@@ -209,17 +209,22 @@ void main() {
         hands: HandConfiguration.right,
         guidance: GuidanceContext.continuouslyCued,
       );
+      final task = AcquisitionTask.unmeteredTraversal(parent);
 
+      // Resolved from the task, which is the only form the screen uses: the
+      // parent alone cannot say the tempo was removed, and asking it was how
+      // a self-paced attempt came to record a count-in it never runs.
       expect(
-        presentationFor(
-          parent.guidance,
-          exercise: parent,
-          acquisition: AcquisitionTask.unmeteredTraversal(parent),
-        ).tempoSupport,
+        presentationForTask(task).tempoSupport,
         TempoSupport.none,
         reason:
             'a supported task removed the tempo, so there is no pulse to '
             'count in to and nothing to record as having counted one',
+      );
+      expect(
+        presentationForTask(task).pitchCue,
+        presentationFor(parent.guidance, exercise: parent).pitchCue,
+        reason: 'the task removes the tempo and nothing else',
       );
     });
 

@@ -31,6 +31,7 @@ void main() {
     List<RecordedGap> gaps = const [],
     int? executionEvidenceRevision,
     DateTime? observedWallTime,
+    PresentationRecord? presentation,
   }) => AcquisitionAttemptRecord(
     executionEvidenceRevision: executionEvidenceRevision,
     observedWallTime: observedWallTime,
@@ -43,6 +44,7 @@ void main() {
       occurredAt: t0.add(after),
     ),
     task: task,
+    presentation: presentation,
     started: true,
     completion: completion,
     repairs: 1,
@@ -52,6 +54,41 @@ void main() {
     earnedProbe: earnedProbe,
     gaps: gaps,
   );
+
+  group('what a supported attempt was presented under', () {
+    final unmetered = PresentationRecord(
+      policyVersion: 'v1-presentation-0',
+      conditions: PresentationConditions(
+        pitchCue: PitchCue.full,
+        cueModality: CueModality.keyboardAndStaff,
+        motorCue: MotorCue.fingering,
+        performanceFeedback: PerformanceFeedback.neutralEcho,
+        // The whole point of the task: no pulse was asked for, so none was
+        // owed and none fell short.
+        tempoSupport: TempoSupport.none,
+        locatorFeedback: LocatorFeedback.positionTracking,
+      ),
+      delivery: PresentationDelivery(tempo: TempoDelivery.notRequested()),
+    );
+
+    test('survives the round trip', () {
+      final reread = AcquisitionAttemptRecord.fromJson(
+        jsonDecode(jsonEncode(recordAt(0, presentation: unmetered).toJson()))
+            as Map<String, Object?>,
+      );
+
+      expect(reread.presentation, unmetered);
+      expect(reread.presentation!.conditions.tempoSupport, TempoSupport.none);
+    });
+
+    test('is unsaid for a record written before the format carried it', () {
+      final older = recordAt(0).toJson()
+        ..remove('presentation')
+        ..['schema_version'] = 6;
+
+      expect(AcquisitionAttemptRecord.fromJson(older).presentation, isNull);
+    });
+  });
 
   test('replay uses append order when service and success share a time', () {
     final log = emptyLog()..append(recordAt(0));

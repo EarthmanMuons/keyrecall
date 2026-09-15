@@ -909,6 +909,7 @@ class PracticeSession {
     required DateTime at,
     AttemptTermination termination = AttemptTermination.learnerStopped,
     MeasurementPolicy policy = MeasurementPolicy.standard,
+    PresentationRecord? presentation,
   }) async {
     final outstanding = _outstandingAcquisition;
     if (outstanding == null) {
@@ -934,6 +935,7 @@ class PracticeSession {
       ),
       journalSequence: _acquisition.nextSequence,
       termination: termination,
+      presentation: presentation,
       observedWallTime: logicalTime == at ? null : at,
       executionEvidenceRevision:
           executionEvidenceRevisions(_journal.records)[executionContextOf(

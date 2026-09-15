@@ -64,7 +64,11 @@ const int checkpointSchemaVersion = 3;
 /// happened in an attempt too short to judge its waits against each other.
 /// Earlier versions wrote a ratio for every wait they recorded, including waits
 /// no baseline could carry, so those ratios are read as written.
-const int acquisitionSchemaVersion = 6;
+///
+/// Version 7 records what a supported attempt was presented under, the way an
+/// ordinary attempt does. Earlier records leave it unsaid rather than having it
+/// derived for them, for the reason [attemptSchemaVersion]'s version 5 gives.
+const int acquisitionSchemaVersion = 7;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

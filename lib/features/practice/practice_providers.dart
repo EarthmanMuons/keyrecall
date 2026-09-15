@@ -988,7 +988,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// Answers whether the sitting took it. A screen reporting an exposure does
   /// not get to conclude it was recorded: an attempt this sitting no longer
   /// holds is refused, and a write that failed is refused, so the surface can
-  /// ask again on a later frame rather than marking it done.
+  /// ask again rather than marking it done.
   Future<bool> acknowledgePresentation(PracticeAttemptOwner attempt) async {
     if (!_owns(attempt.session)) return false;
     final current = state.value;
@@ -1021,6 +1021,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       () => _close(attempt, () async {
         final record = await current.session.closeAcquisition(
           completion.transcript,
+          presentation: completion.presentation,
           at: DateTime.now().toUtc(),
           // An interrupted capture is still an observation of what was played,
           // and what it is not is the learner stopping. Recording it as an

@@ -8,6 +8,7 @@ import 'attempt_closure.dart';
 import 'attempt_record.dart';
 import 'canonical_json.dart';
 import 'codecs/domain_codec.dart';
+import 'presentation_record.dart';
 import 'profile.dart';
 import 'schema.dart';
 
@@ -39,6 +40,7 @@ const Set<int> readableAcquisitionVersions = {
   3,
   4,
   5,
+  6,
   acquisitionSchemaVersion,
 };
 
@@ -154,6 +156,15 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// The task that was presented.
   final AcquisitionTask task;
 
+  /// What it was presented under, or null for a record written before the
+  /// format carried it.
+  ///
+  /// A supported attempt is an observation like any other, and the conditions
+  /// it was made under are part of its provenance. Nothing reconstructs them
+  /// for an older record: what a task implied depended on the policy of the
+  /// build that presented it.
+  final PresentationRecord? presentation;
+
   /// Whether anything was played at all.
   final bool started;
 
@@ -202,6 +213,7 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     this.observedWallTime,
     this.executionEvidenceRevision,
     required this.task,
+    this.presentation,
     required this.started,
     required this.completion,
     required this.repairs,
@@ -289,6 +301,9 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
     'traversals': task.portion.traversals,
     'timing': task.timing.id,
     'advancement': task.advancement.id,
+    'presentation': presentation == null
+        ? null
+        : encodePresentation(presentation!),
     'started': started,
     'termination': termination?.id,
     'completion': completion.id,
@@ -380,6 +395,13 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
           requireString(json, 'advancement', location: location),
         ),
       ),
+      presentation: switch (json['presentation']) {
+        null => null,
+        final Object encoded => decodePresentation(
+          asMap(encoded, 'presentation', location: location),
+          location: location,
+        ),
+      },
       started: requireBool(json, 'started', location: location),
       // Absent in version 1, and meaning two things at once in version 2,
       // which wrote the learner stopping and the app ending a covered
