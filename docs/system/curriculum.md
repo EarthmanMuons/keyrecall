@@ -198,3 +198,23 @@ test prevents family policy from entering the scheduler package at all.
 
 That claim is tested rather than asserted; see
 [`../decisions/curriculum-and-progression.md`](../decisions/curriculum-and-progression.md).
+
+## Open questions
+
+Intentionally not settled. What is implemented is safe; the evidence to justify
+stronger policy does not exist yet, and the current answer should not be read as
+the decided one.
+
+- **Pitch integrity and traversal length.** Completion reads a ratio, so the
+  same number of wrong notes passes on a longer traversal and fails on a shorter
+  one. Whether it should be an absolute allowance, or a ratio with one, is a
+  calibration question for real practice data.
+
+- **Cycles in support relationships.** Resolution terminates safely when support
+  declarations form a cycle, which is not the same as deciding whether a cycle
+  is meaningful, suspicious, or invalid. That belongs with curriculum
+  validation, when authored curricula arrive.
+
+- **Per-requirement completion criteria.** One `RequirementCompletionPolicy` is
+  shared by every requirement in a build. Letting a requirement name its own
+  standard stays proposed, and is worth revisiting alongside authored curricula.
