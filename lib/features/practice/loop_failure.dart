@@ -13,7 +13,9 @@ import 'practice_providers.dart';
 /// nothing; a genesis that cannot be read has no safe repair at all; an
 /// attempt that did not reach history is still here to write, and reopening
 /// would find its decision pending and its performance gone; a decision that
-/// failed asks again on a sitting nothing is wrong with.
+/// failed asks again on a sitting nothing is wrong with; a stored plan nobody
+/// can read says the same thing every time it is read, so it is the one
+/// failure with nothing to ask again and replacing it is the only way on.
 class LoopFailure extends ConsumerWidget {
   const LoopFailure({
     required this.error,
@@ -48,7 +50,9 @@ class LoopFailure extends ConsumerWidget {
     final theme = Theme.of(context);
     final notifier = ref.read(practiceLoopProvider.notifier);
     final target = profileId;
-    final (title, explanation, retryLabel) = switch (kind) {
+    // A null label is a failure asking again cannot answer, so no retry is
+    // offered for it.
+    final (title, explanation, String? retryLabel) = switch (kind) {
       PracticeFailure.history => (
         'This practice history could not be opened.',
         'Try again first. If it keeps failing, starting over is the only '
@@ -95,7 +99,7 @@ class LoopFailure extends ConsumerWidget {
             'this version does not recognize, so it is left alone rather than '
             'guessed at. Practicing normally replaces it with a goal over '
             'everything and no focus.',
-        'Try again',
+        null,
       ),
       PracticeFailure.scheduling => (
         'The next exercise could not be chosen.',
@@ -120,7 +124,8 @@ class LoopFailure extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 24),
-        OutlinedButton(onPressed: notifier.retry, child: Text(retryLabel)),
+        if (retryLabel != null)
+          OutlinedButton(onPressed: notifier.retry, child: Text(retryLabel)),
         // Only where the history itself is what cannot be read, and only for
         // the profile the failure named. Offered beside an attempt that is
         // still savable, or aimed at whoever the app happened to be holding,

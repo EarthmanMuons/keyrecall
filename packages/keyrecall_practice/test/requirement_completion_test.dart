@@ -9,6 +9,12 @@ import 'support/fixtures.dart';
 
 final _material = fixtureMaterials.first;
 
+/// What [Outcome] records when an attempt established no pace.
+///
+/// Zero rather than null: the ratio is the one channel that says absence with
+/// a sentinel, which [Outcome.measuredTempoRatio] is the one reading of.
+const double _noPaceEstablished = 0;
+
 void main() {
   group('tempo', () {
     test('a clean performance below the required pace does not cover', () {
@@ -39,10 +45,17 @@ void main() {
     });
 
     test('an attempt that established no pace leaves tempo unknown', () {
+      final outcome = _outcome(tempoRatio: _noPaceEstablished);
+      expect(
+        outcome.measuredTempoRatio,
+        isNull,
+        reason: 'the sentinel is the absence of a pace, not a slow one',
+      );
+
       final assessment = _assess(
         requirement: _requirement(minimumTempoBpm: 120),
         exercise: _exercise(tempoBpm: 120),
-        outcome: _outcome(tempoRatio: 0),
+        outcome: outcome,
       );
 
       expect(assessment.tempo, CompletionCriterion.unknown);
