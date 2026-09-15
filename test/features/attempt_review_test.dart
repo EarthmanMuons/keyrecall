@@ -288,7 +288,7 @@ void main() {
       );
     }
     final reading = readPerformance(exercise: previous, transcript: transcript);
-    var detailsViewed = 0;
+    final exposed = <ReviewExposure>[];
 
     await tester.pumpWidget(
       MaterialApp(
@@ -300,7 +300,10 @@ void main() {
             next: NextPracticePreview(material: gMajor),
             instrument: InstrumentReadiness.connected,
             onNext: () {},
-            onDetailsViewed: () => detailsViewed++,
+            onExposed: (exposure) async {
+              exposed.add(exposure);
+              return true;
+            },
           ),
         ),
       ),
@@ -346,7 +349,11 @@ void main() {
     await tester.tap(find.text('View details'));
     await tester.pumpAndSettle();
     expect(find.text('Attempt details'), findsOneWidget);
-    expect(detailsViewed, 1);
+    expect(
+      exposed.map((exposure) => exposure.feedback),
+      contains(PostAttemptFeedback.detailedDiagnostic),
+      reason: 'the sheet reports itself from the frame it drew',
+    );
     Navigator.of(tester.element(find.text('Attempt details'))).pop();
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(find.text('Continue'), 200);

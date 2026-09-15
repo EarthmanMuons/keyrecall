@@ -104,6 +104,86 @@ void main() {
     await tester.pump(const Duration(milliseconds: 750 * 5));
   }
 
+  group('what the attempt says it ran under', () {
+    testWidgets('carries the resolved conditions to the close', (tester) async {
+      tester.view.physicalSize = const Size(1400, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final exercise = exerciseUnder(GuidanceContext.continuouslyCued);
+      final completions = <AttemptCompletion>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syntheticInstrument],
+          child: MaterialApp(
+            home: Scaffold(
+              body: AttemptView(
+                exercise: exercise,
+                presentation: presentationFor(
+                  exercise.guidance,
+                  exercise: exercise,
+                ),
+                onFinish: (completion) async => completions.add(completion),
+              ),
+            ),
+          ),
+        ),
+      );
+      await readyAndCountIn(tester);
+      await tester.pump(const Duration(minutes: 5));
+      await tester.pumpAndSettle();
+
+      final presentation = completions.single.presentation!;
+      expect(presentation.policyVersion, presentationPolicyVersion);
+      expect(presentation.conditions.pitchCue, PitchCue.full);
+      expect(
+        presentation.conditions.locatorFeedback,
+        LocatorFeedback.positionTracking,
+      );
+    });
+
+    testWidgets('records a count-in no engine sounded as silence', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1400, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final exercise = exerciseUnder(GuidanceContext.unguided);
+      final completions = <AttemptCompletion>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [syntheticInstrument],
+          child: MaterialApp(
+            home: Scaffold(
+              body: AttemptView(
+                exercise: exercise,
+                presentation: presentationFor(
+                  exercise.guidance,
+                  exercise: exercise,
+                ),
+                onFinish: (completion) async => completions.add(completion),
+              ),
+            ),
+          ),
+        ),
+      );
+      await readyAndCountIn(tester);
+      await tester.pump(const Duration(minutes: 5));
+      await tester.pumpAndSettle();
+
+      final presentation = completions.single.presentation!;
+      expect(presentation.conditions.tempoSupport, TempoSupport.countInOnly);
+      expect(
+        presentation.delivery.tempo.delivery,
+        ChannelDelivery.unavailable,
+        reason:
+            'the test binding has no audio engine, and an attempt that heard '
+            'nothing did not get the count-in it was resolved to have',
+      );
+    });
+  });
+
   testWidgets('the task statement is there at every rung', (tester) async {
     for (final guidance in GuidanceContext.ladder) {
       await pumpAttempt(tester, guidance);
@@ -778,6 +858,7 @@ void main() {
                 presentation: presentationFor(
                   parent.guidance,
                   exercise: parent,
+                  acquisition: task,
                 ),
                 acquisition: task,
                 onFinish: (_) async {},
@@ -842,6 +923,7 @@ void main() {
                 presentation: presentationFor(
                   parent.guidance,
                   exercise: parent,
+                  acquisition: task,
                 ),
                 acquisition: task,
                 onFinish: (completion) async =>

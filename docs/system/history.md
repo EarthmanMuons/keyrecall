@@ -168,14 +168,29 @@ Append-only and retained locally, but **not learner evidence**. It records what
 the post-attempt review actually showed: the feedback level, whether personal
 progress appeared, and every named progress event in the displayed statement.
 
-It is scoped to a profile, idempotent on attempt id, and cannot be recorded
-unless the journal already contains that attempt. Losing one does not change
-replay, but it destroys the record needed to estimate how feedback affected
-later observations.
+It is scoped to a profile and cannot be recorded unless the journal already
+contains that attempt. Losing one does not change replay, but it destroys the
+record needed to estimate how feedback affected later observations.
+
+One row per part of the review rather than one for the whole screen. A review
+scrolls, and all of it is built whether or not any of it is reached, so a single
+row would claim exposure to feedback nobody scrolled to. A part is recorded when
+it was drawn, on the route in front, with the app on screen, and the detail
+sheet reports itself from its own route rather than from the tap that asked for
+one. None of that says anybody looked, which a screen cannot establish; what it
+says is that everything between the app and the learner was out of the way.
+
+The surface that drew a part does not get to conclude it was recorded. It
+reports, and the sitting that owns the history answers whether the report
+stands; a refusal leaves the question to be asked again on a later frame.
 
 Feedback exposure never changes evidence weight. Any effect on later attempts is
 something to be learned from preserved histories, not assumed by the update
 model.
+
+Presentation is not in this stream. What an attempt was resolved to present, and
+what of it the app delivered, is part of the attempt record itself: it is a
+condition the observation was made under rather than something shown afterwards.
 
 ### 3. Checkpoint, disposable acceleration
 

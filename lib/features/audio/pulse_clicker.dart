@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 /// The click that sounds the pulse.
 ///
@@ -15,7 +16,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// performance timing would need.
 ///
 /// Best effort: a device that will not give us an audio engine leaves the
-/// count-in silent rather than failing an attempt.
+/// count-in silent rather than failing an attempt. [PulseClicker.play] says so
+/// rather than swallowing it, because an attempt that heard nothing did not run
+/// under the tempo support it was resolved to have.
 final pulseClickerProvider = Provider<PulseClicker>((ref) {
   final clicker = PulseClicker();
   ref.onDispose(clicker.stop);
@@ -102,11 +105,21 @@ class PulseClicker {
   bool _ready = false;
   bool _opened = false;
   bool _unavailable = false;
+  String? _silence;
+  TempoDelivery _delivered = TempoDelivery.notRequested();
   int _generation = 0;
   Future<void>? _preparing;
   Future<void>? _stopping;
   Future<void>? _feeding;
   Timer? _release;
+
+  /// What the pulse this clicker was last asked for has sounded so far.
+  ///
+  /// Readable without waiting, because an attempt ends when the learner ends
+  /// it and must not be held open for an audio engine to finish answering.
+  /// It moves only forward within one pulse: nothing is queued until the
+  /// engine opens, and once queued it stays counted.
+  TempoDelivery get delivered => _delivered;
 
   /// Prepares the engine, if this device has one to give.
   ///
@@ -151,13 +164,14 @@ class PulseClicker {
       // that refuses the category: all of them mean no click, and none of them
       // mean the attempt cannot proceed.
       if (generation == _generation) _unavailable = true;
+      _silence = '$error';
       _sink.setFeedCallback(null);
       if (kDebugMode) debugPrint('[audio] no count-in click: $error');
     }
   }
 
   /// Sounds [countInBeats] counting beats and then [continuingBeats] more,
-  /// [beat] apart, starting now.
+  /// [beat] apart, starting now, and reports how much of that was queued.
   ///
   /// Pass zero continuing beats for a count-in that stops and leaves the
   /// learner holding the pulse.
@@ -167,7 +181,11 @@ class PulseClicker {
   ///
   /// One sample clock means the beats cannot drift against each other however
   /// busy the app is.
-  Future<void> play({
+  ///
+  /// The returned report counts beats queued from their own start. A beat the
+  /// engine was too slow to reach is dropped rather than played late, and a
+  /// dropped beat is one the learner did not hear.
+  Future<TempoDelivery> play({
     required int countInBeats,
     required int continuingBeats,
     required Duration beat,
@@ -177,10 +195,18 @@ class PulseClicker {
     // holding the numbers back, the audio starts from wherever the count-in
     // has got to, dropping the beats it missed instead of playing them late.
     final since = Stopwatch()..start();
-    await prepare();
-    if (!_ready) return;
-
     final beats = countInBeats + continuingBeats;
+    // Nothing of this pulse has sounded until the engine takes some of it, so
+    // that is what it reports while it is opening.
+    _delivered = TempoDelivery.silent(beats, reason: 'the engine is opening');
+    await prepare();
+    if (!_ready) {
+      return _delivered = TempoDelivery.silent(
+        beats,
+        reason: _silence ?? 'no audio engine',
+      );
+    }
+
     final beatFrames = beat.inMicroseconds * _sampleRate ~/ 1000000;
     final tailFrames = _tail.inMicroseconds * _sampleRate ~/ 1000000;
     final track = Int16List(beatFrames * beats + tailFrames);
@@ -199,6 +225,8 @@ class PulseClicker {
       0,
       track.length,
     );
+    // Read before anything is handed over, since feeding moves the cursor on.
+    final startFrame = _fed;
 
     // Released once the tail has played out, by which point the engine has
     // already stopped itself. Tearing it down while it is still sounding is
@@ -207,6 +235,26 @@ class PulseClicker {
     _release = Timer(beat * beats + _tail * 2, stop);
 
     await _feedNext();
+    if (!_ready) {
+      return _delivered = TempoDelivery.silent(
+        beats,
+        reason: _silence ?? 'no audio engine',
+      );
+    }
+    // A beat is lost only once its whole click is behind the cursor. Opening
+    // the engine a millisecond into the first click clips it inaudibly, and
+    // counting that as a beat nobody heard would report a shortfall that is
+    // not one.
+    final skipped = startFrame <= _clickFrames
+        ? 0
+        : (startFrame - _clickFrames) ~/ beatFrames + 1;
+    return TempoDelivery(
+      requestedBeats: beats,
+      deliveredBeats: (beats - skipped).clamp(0, beats),
+      failureReason: skipped == 0
+          ? null
+          : 'the engine opened $skipped beats in',
+    );
   }
 
   /// Silences the pulse and releases the engine.
@@ -248,6 +296,9 @@ class PulseClicker {
 
   static int get _chunkFrames => _chunk.inMicroseconds * _sampleRate ~/ 1000000;
 
+  static int get _clickFrames =>
+      _clickLength.inMicroseconds * _sampleRate ~/ 1000000;
+
   /// Hands over the next chunk, or nothing once the pulse has all been given.
   ///
   /// One at a time. The engine asks for more from a callback, and the cursor
@@ -275,9 +326,10 @@ class PulseClicker {
     if (!_ready) return;
     try {
       await _sink.feed(PcmArrayInt16(bytes: ByteData.sublistView(frames)));
-    } on Object {
+    } on Object catch (error) {
       _ready = false;
       _unavailable = true;
+      _silence = '$error';
     }
   }
 
@@ -288,8 +340,7 @@ class PulseClicker {
     required int at,
     required double hz,
   }) {
-    final length = _clickLength.inMicroseconds * _sampleRate ~/ 1000000;
-    for (var i = 0; i < length && at + i < track.length; i++) {
+    for (var i = 0; i < _clickFrames && at + i < track.length; i++) {
       final t = i / _sampleRate;
       final decay = math.exp(-t * 60);
       track[at + i] = (math.sin(2 * math.pi * hz * t) * decay * 12000).round();

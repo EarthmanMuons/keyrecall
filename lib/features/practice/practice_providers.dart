@@ -38,6 +38,18 @@ final profileRepositoryProvider = FutureProvider<ProfileRepository>((
   return FileProfileRepository(root);
 }, retry: (_, _) => null);
 
+/// Which build of the app is writing, as the installed package names it.
+///
+/// Recorded on every attempt beside the model versions. A presentation is
+/// resolved by this build's policy and drawn by its renderers, so the build is
+/// part of what the recorded conditions mean.
+///
+/// Overridden at launch, where there is a package to ask. Nothing else may
+/// hold a sitting closed while it asks: a test binding has no package, and a
+/// build that cannot name itself says nothing rather than naming something
+/// else.
+final appBuildVersionProvider = Provider<String?>((ref) => null);
+
 /// The journal and checkpoint store.
 final practiceStoreProvider = FutureProvider<PracticeStore>((ref) async {
   final root = await ref.watch(storageRootProvider.future);
@@ -845,6 +857,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       session = await PracticeSession.open(
         store: store.boundTo(lifetime),
         profile: profile,
+        appBuildVersion: ref.watch(appBuildVersionProvider),
         materials: catalog,
         scheduler: scheduler,
         goal: scope.goal,
@@ -952,6 +965,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       () => _close(attempt, () async {
         final record = await current.session.closeDeclined(
           transcript: transcript,
+          presentation: completion.presentation,
           observedWallTime: DateTime.now().toUtc(),
         );
         return PracticeLoopState(
@@ -970,11 +984,21 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// Deciding is not presenting: the next exercise is prepared while the last
   /// one's review is still on screen, and a prepared decision can be discarded
   /// before anybody sees it.
-  Future<void> acknowledgePresentation(PracticeAttemptOwner attempt) async {
-    if (!_owns(attempt.session)) return;
+  ///
+  /// Answers whether the sitting took it. A screen reporting an exposure does
+  /// not get to conclude it was recorded: an attempt this sitting no longer
+  /// holds is refused, and a write that failed is refused, so the surface can
+  /// ask again on a later frame rather than marking it done.
+  Future<bool> acknowledgePresentation(PracticeAttemptOwner attempt) async {
+    if (!_owns(attempt.session)) return false;
     final current = state.value;
-    if (current == null || current.attempt != attempt) return;
-    await current.session.acknowledgePresentation(attempt.attemptId);
+    if (current == null || current.attempt != attempt) return false;
+    try {
+      await current.session.acknowledgePresentation(attempt.attemptId);
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Records what a supported attempt produced and moves on.
@@ -1046,6 +1070,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           final record = await current.session.closeUnmeasured(
             termination: AttemptTermination.inputInterrupted,
             reason: MeasurementUnavailableReason.inputInterrupted,
+            presentation: completion.presentation,
             observedWallTime: DateTime.now().toUtc(),
           );
           return PracticeLoopState(
@@ -1064,6 +1089,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           final record = await current.session.closeUnmeasured(
             termination: completion.termination,
             reason: MeasurementUnavailableReason.nothingPlayed,
+            presentation: completion.presentation,
             observedWallTime: DateTime.now().toUtc(),
           );
           return PracticeLoopState(
@@ -1078,6 +1104,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         final closed = await current.session.closeFromPerformance(
           transcript,
           termination: completion.termination,
+          presentation: completion.presentation,
           observedWallTime: DateTime.now().toUtc(),
         );
         await _recordCoordination(closed.record, closed.reading);
@@ -1301,26 +1328,38 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     return lifecycle.store.boundTo(lifetime);
   }
 
-  Future<void> recordFeedbackExposure({
+  /// Records that one part of a review was actually in front of the learner.
+  ///
+  /// One row per part rather than one for the whole screen. A review scrolls,
+  /// and what it holds is built whether or not it is ever reached, so a single
+  /// row for all of it would claim exposure to feedback nobody scrolled to.
+  ///
+  /// Answers whether it was written, for the reason [acknowledgePresentation]
+  /// does.
+  Future<bool> recordFeedbackExposure({
     required AttemptRecord record,
-    required List<ProgressEvent> progress,
+    PostAttemptFeedback postAttemptFeedback = PostAttemptFeedback.none,
+    List<ProgressEvent> progress = const [],
   }) async {
-    final store = await _observing();
-    if (store == null) return;
-    await store.appendFeedbackExposure(
-      FeedbackExposure(
-        profileId: record.profileId,
-        attemptId: record.identity.attemptId,
-        shownAt: DateTime.now().toUtc(),
-        postAttemptFeedback: record.closure.measurement is Measured
-            ? PostAttemptFeedback.diagnostic
-            : PostAttemptFeedback.none,
-        progressFeedback: progress.isEmpty
-            ? ProgressFeedback.none
-            : ProgressFeedback.personalProgress,
-        progressEvents: progress.map((event) => event.type),
-      ),
-    );
+    try {
+      final store = await _observing();
+      if (store == null) return false;
+      await store.appendFeedbackExposure(
+        FeedbackExposure(
+          profileId: record.profileId,
+          attemptId: record.identity.attemptId,
+          shownAt: DateTime.now().toUtc(),
+          postAttemptFeedback: postAttemptFeedback,
+          progressFeedback: progress.isEmpty
+              ? ProgressFeedback.none
+              : ProgressFeedback.personalProgress,
+          progressEvents: progress.map((event) => event.type),
+        ),
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Logs how far apart the hands arrived, for the calibration question about
@@ -1375,21 +1414,6 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     } catch (_) {
       // A diagnostic log nobody is waiting on.
     }
-  }
-
-  Future<void> recordAttemptDetailsViewed(AttemptRecord record) async {
-    final store = await _observing();
-    if (store == null) return;
-    await store.appendFeedbackExposure(
-      FeedbackExposure(
-        profileId: record.profileId,
-        attemptId: record.identity.attemptId,
-        shownAt: DateTime.now().toUtc(),
-        postAttemptFeedback: PostAttemptFeedback.detailedDiagnostic,
-        progressFeedback: ProgressFeedback.none,
-        progressEvents: const [],
-      ),
-    );
   }
 
   /// Asks the scheduler for the next exercise.

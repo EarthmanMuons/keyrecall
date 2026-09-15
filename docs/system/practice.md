@@ -147,8 +147,13 @@ The **neutral echo** lights the keys currently held on the keyboard diagram. The
 staff is static until the traversal starts, then lights the note each hand has
 reached, for as long as that key is held.
 
-The **staff locator is an orientation aid, not a reading of the performance**,
-and the two are deliberately different things:
+The **staff locator is low-bandwidth contingent feedback** on a channel of its
+own, `LocatorFeedback`. It depends on what was played matching what was
+expected, so it is not neutral, and an attempt that ran under it is not an
+attempt under no feedback; see
+[evidence and measurement](../decisions/evidence-and-measurement.md). It is
+still not a reading of the performance, and the two are deliberately different
+things:
 
 - Each hand travels its own line, so one hand's mistake leaves the other's
   highlight alone.
@@ -167,6 +172,46 @@ The tolerances never light anything. A notehead lights only while the key it is
 written for is down, so the staff never stands for a note that was not played.
 Measurement is unaffected: it reads the same arrivals strictly and keeps every
 departure the locator travels through.
+
+Policy opens the locator only where a cue staff is on screen while the attempt
+runs, which is the continuously cued rung. A withdrawn cue takes it with it, and
+an unguided rung never had a staff for it to travel over.
+
+### What the record says it ran under
+
+Presentation is recorded with the attempt rather than derived from it. What a
+rung and an exercise imply depends on app policy, on whether the catalog could
+finger the material, and on what the renderers draw, so a later policy change
+would otherwise make the same recorded exercise mean a different exposure.
+
+Three things are kept apart:
+
+```text
+resolved    what policy decided this attempt was to contain
+delivered   what the app actually supplied on each fallible channel
+exposed     which surfaces the learner had an opportunity to perceive
+```
+
+The first two are on the attempt record, with the presentation policy version
+that resolved them. The third is the feedback exposure stream and the moment an
+outstanding attempt is acknowledged as presented.
+
+Only audio can half happen, so it is the only delivery reported today: a
+count-in that never sounded, or one whose engine opened late and dropped the
+beats it missed, is recorded as the shortfall it was rather than as the count-in
+policy asked for. The shortfall never rewrites the intent, because scaffolding
+that was withheld and scaffolding that was promised and missing are different
+facts about an attempt.
+
+Practice policy is the only thing that turns a rung and an exercise into
+channels. A surface that read the rung again would be a second policy nothing
+records, and a pitch cue whose restriction no surface implements is refused
+rather than drawn in full.
+
+Every channel recorded as supplied is supplied to a screen reader too, from the
+same resolved conditions: the cue and the echo are painted, and neither engraved
+noteheads nor marked keys describe themselves. The words withdraw exactly when
+the cue does, and they name a finger only where the motor channel is open.
 
 ## How an attempt ends
 

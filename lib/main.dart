@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'features/practice/onboarding.dart';
+import 'features/practice/practice_providers.dart';
 import 'layout.dart';
 import 'theme.dart';
 
@@ -13,10 +15,19 @@ Future<void> main() async {
   // whether the app reconnects on its own, and a provider that discovers the
   // store later would have already answered that question with a guess.
   final preferences = await SharedPreferences.getInstance();
+  // Asked once, here, because this is the only place there is a package to
+  // ask. Every attempt records it, and a sitting must not wait on a platform
+  // query to open.
+  final package = await PackageInfo.fromPlatform();
 
   runApp(
     ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(preferences)],
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(preferences),
+        appBuildVersionProvider.overrideWithValue(
+          '${package.version}+${package.buildNumber}',
+        ),
+      ],
       child: const KeyRecallApp(),
     ),
   );

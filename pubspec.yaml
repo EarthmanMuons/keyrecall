@@ -55,6 +55,7 @@ dependencies:
   keyrecall_simulation:
     path: packages/keyrecall_simulation
   material_ui: ^1.1.0
+  package_info_plus: ^10.0.0
   path_provider: ^2.1.5
   shared_preferences: ^2.5.4
   wakelock_plus: ^1.8.0

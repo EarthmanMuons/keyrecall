@@ -203,6 +203,26 @@ void main() {
       }
     });
 
+    test('asks for no pulse where no tempo was asked for', () {
+      final parent = Exercise.linear(
+        material: TechnicalMaterial('C', ScaleForm.major),
+        hands: HandConfiguration.right,
+        guidance: GuidanceContext.continuouslyCued,
+      );
+
+      expect(
+        presentationFor(
+          parent.guidance,
+          exercise: parent,
+          acquisition: AcquisitionTask.unmeteredTraversal(parent),
+        ).tempoSupport,
+        TempoSupport.none,
+        reason:
+            'a supported task removed the tempo, so there is no pulse to '
+            'count in to and nothing to record as having counted one',
+      );
+    });
+
     test('refuses to draw a pitch cue no surface restricts', () {
       expect(drawsWholeSequence(PitchCue.none), isFalse);
       expect(drawsWholeSequence(PitchCue.full), isTrue);

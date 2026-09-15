@@ -16,7 +16,8 @@ const String presentationPolicyVersion = 'v1-presentation-0';
 /// unattributable.
 ///
 /// V1 is uniform: a cue on both the keyboard and the staff or no cue at all,
-/// always a neutral echo, always a count-in and no more. Only the pitch cue
+/// always a neutral echo, and a count-in and no more wherever a tempo is asked
+/// for. Only the pitch cue
 /// varies with the rung, so a rung change moves one variable. Fingering varies
 /// with the material, shown wherever the catalog has one that is not a guess.
 ///
@@ -31,6 +32,7 @@ const String presentationPolicyVersion = 'v1-presentation-0';
 PresentationConditions presentationFor(
   GuidanceContext guidance, {
   Exercise? exercise,
+  AcquisitionTask? acquisition,
 }) {
   final supplied = guidance.isMaterialSupplied;
   // Fingering is execution support and rides with the cue: naming the finger
@@ -45,7 +47,12 @@ PresentationConditions presentationFor(
     cueModality: supplied ? CueModality.keyboardAndStaff : null,
     motorCue: fingered ? MotorCue.fingering : MotorCue.none,
     performanceFeedback: PerformanceFeedback.neutralEcho,
-    tempoSupport: TempoSupport.countInOnly,
+    // A supported task asks for no pulse at all: there is no tempo to hold, so
+    // there is nothing to count in to. Saying count-in here would record a
+    // support the attempt deliberately removed.
+    tempoSupport: acquisition == null
+        ? TempoSupport.countInOnly
+        : TempoSupport.none,
     // Only where a cue staff is on screen while the attempt runs. Withdrawing
     // the cue at Ready takes the locator with it, and there is nothing for it
     // to travel over at a rung that supplies nothing.

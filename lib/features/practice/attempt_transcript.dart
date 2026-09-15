@@ -85,10 +85,24 @@ class AttemptCompletion {
   /// What was played, as it stood when the attempt ended.
   final AttemptCapture capture;
 
-  const AttemptCompletion({required this.termination, required this.capture});
+  /// What the attempt was presented under, and what of it was delivered.
+  ///
+  /// Carried with the capture rather than looked up when the record is
+  /// written: the conditions, the shortfalls and the evidence are one fact
+  /// about one attempt, and the screen that ran it is the only place all three
+  /// are still true together.
+  final PresentationRecord? presentation;
+
+  const AttemptCompletion({
+    required this.termination,
+    required this.capture,
+    this.presentation,
+  });
 
   /// Nothing played, however the attempt ended.
-  AttemptCompletion.unplayed(this.termination) : capture = AttemptCapture.none;
+  AttemptCompletion.unplayed(this.termination)
+    : capture = AttemptCapture.none,
+      presentation = null;
 
   /// What was played.
   PerformanceTranscript get transcript => capture.transcript;

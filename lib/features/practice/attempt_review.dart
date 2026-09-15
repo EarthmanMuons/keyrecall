@@ -12,6 +12,7 @@ import 'attempt_diagnosis.dart';
 import 'attempt_feedback.dart';
 import 'attempt_summary_help.dart';
 import 'exercise_presentation.dart';
+import 'presentation_exposure.dart';
 
 /// Why the scheduler chose what it chose, when it can be said honestly.
 ///
@@ -196,6 +197,22 @@ class NextPracticePreview {
   const NextPracticePreview({required this.material, this.explanation});
 }
 
+/// One part of a review, and what the feedback log calls it.
+///
+/// A review is reported a part at a time because it is a scrolling screen: the
+/// whole of it is built whether or not any of it is reached, and one row for
+/// all of it would record exposure to feedback nobody scrolled to.
+@immutable
+class ReviewExposure {
+  /// What kind of performance feedback this part is.
+  final PostAttemptFeedback feedback;
+
+  /// The longitudinal claims this part makes, if it makes any.
+  final List<ProgressEvent> progress;
+
+  const ReviewExposure(this.feedback, {this.progress = const []});
+}
+
 /// What just happened, and what is next.
 ///
 /// Shown between attempts, over a decision that has already been made: the
@@ -211,7 +228,7 @@ class AttemptReview extends StatelessWidget {
     required this.instrument,
     this.continues = false,
     this.reading,
-    this.onDetailsViewed,
+    this.onExposed,
     super.key,
   });
 
@@ -221,7 +238,9 @@ class AttemptReview extends StatelessWidget {
   /// What it was read from, when the closure came from a performance.
   final PerformanceReading? reading;
 
-  final VoidCallback? onDetailsViewed;
+  /// Records that one part of this review reached the learner, answering
+  /// whether the sitting that owns the history took the report.
+  final Future<bool> Function(ReviewExposure)? onExposed;
 
   /// What has been decided to come next, if anything.
   final NextPracticePreview? next;
@@ -285,12 +304,24 @@ class AttemptReview extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        silence?.sentence ??
-                            diagnosis?.sentence ??
-                            unreadableSentence(record.closure),
-                        style: theme.textTheme.headlineMedium,
-                        textAlign: TextAlign.start,
+                      _Exposed(
+                        // Diagnostic only where a fault is named. A line
+                        // saying nothing arrived, or that nothing could be
+                        // read, interprets no performance.
+                        report: ReviewExposure(
+                          diagnosis == null
+                              ? PostAttemptFeedback.none
+                              : PostAttemptFeedback.diagnostic,
+                        ),
+                        onExposed: onExposed,
+                        attempt: record.identity.attemptId,
+                        child: Text(
+                          silence?.sentence ??
+                              diagnosis?.sentence ??
+                              unreadableSentence(record.closure),
+                          style: theme.textTheme.headlineMedium,
+                          textAlign: TextAlign.start,
+                        ),
                       ),
                       if (silence != null) ...[
                         const SizedBox(height: 16),
@@ -298,11 +329,19 @@ class AttemptReview extends StatelessWidget {
                       ],
                       if (summary != null) ...[
                         const SizedBox(height: 28),
-                        _AttemptSummaryView(
-                          summary,
-                          onHelp: () => showAttemptSummaryHelp(
-                            context,
-                            includesCoordination: summary.coordination != null,
+                        _Exposed(
+                          report: const ReviewExposure(
+                            PostAttemptFeedback.summary,
+                          ),
+                          onExposed: onExposed,
+                          attempt: record.identity.attemptId,
+                          child: _AttemptSummaryView(
+                            summary,
+                            onHelp: () => showAttemptSummaryHelp(
+                              context,
+                              includesCoordination:
+                                  summary.coordination != null,
+                            ),
                           ),
                         ),
                         if (detailTrace != null) ...[
@@ -310,16 +349,23 @@ class AttemptReview extends StatelessWidget {
                           Align(
                             alignment: Alignment.centerRight,
                             child: TextButton.icon(
-                              onPressed: () async {
-                                final details = showAttemptDetails(
-                                  context,
-                                  exercise: record.exercise,
-                                  trace: detailTrace,
-                                  achievedTempoBpm: summary.achievedTempoBpm,
-                                );
-                                onDetailsViewed?.call();
-                                await details;
-                              },
+                              // Awaited, so the sheet reports itself from its
+                              // own route rather than the request to open one
+                              // standing in for the frame it first drew.
+                              onPressed: () => showAttemptDetails(
+                                context,
+                                exercise: record.exercise,
+                                trace: detailTrace,
+                                achievedTempoBpm: summary.achievedTempoBpm,
+                                onExposed: onExposed == null
+                                    ? null
+                                    : () => onExposed!(
+                                        const ReviewExposure(
+                                          PostAttemptFeedback
+                                              .detailedDiagnostic,
+                                        ),
+                                      ),
+                              ),
                               icon: const Icon(Icons.query_stats),
                               label: const Text('View details'),
                             ),
@@ -328,7 +374,15 @@ class AttemptReview extends StatelessWidget {
                       ],
                       if (progress != null) ...[
                         const SizedBox(height: 24),
-                        _ProgressStatement(progress),
+                        _Exposed(
+                          report: ReviewExposure(
+                            PostAttemptFeedback.none,
+                            progress: progressEvents,
+                          ),
+                          onExposed: onExposed,
+                          attempt: record.identity.attemptId,
+                          child: _ProgressStatement(progress),
+                        ),
                       ],
                       const SizedBox(height: 40),
                       const Spacer(),
@@ -429,6 +483,36 @@ enum _Silence {
 }
 
 /// The remedy for silence, offered where the silence is reported.
+/// One part of a review, reported when it is actually on screen.
+///
+/// Identified by the attempt and the kind of feedback, so scrolling back to a
+/// part already reported does not report it twice, and the same part of the
+/// next attempt's review is a new thing to report.
+class _Exposed extends StatelessWidget {
+  const _Exposed({
+    required this.report,
+    required this.onExposed,
+    required this.attempt,
+    required this.child,
+  });
+
+  final ReviewExposure report;
+  final Future<bool> Function(ReviewExposure)? onExposed;
+  final String attempt;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final record = onExposed;
+    if (record == null) return child;
+    return ExposureGate(
+      presentation: (attempt, report.feedback, report.progress.length),
+      onExposed: () => record(report),
+      child: child,
+    );
+  }
+}
+
 class _SilenceHelp extends StatelessWidget {
   const _SilenceHelp(this.silence);
 

@@ -16,9 +16,9 @@ import '../audio/pulse_clicker.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
 import 'acquisition_review.dart';
-import 'attempt_feedback.dart';
 import 'attempt_review.dart';
 import 'attempt_transcript.dart';
+import 'cue_semantics.dart';
 import 'developer_screen.dart';
 import 'exercise_presentation.dart';
 import 'fingering.dart';
@@ -28,6 +28,7 @@ import 'latency_probe.dart';
 import 'loop_failure.dart';
 import 'goal_screen.dart';
 import 'practice_providers.dart';
+import 'presentation_exposure.dart';
 import 'presentation_policy.dart';
 import 'profile_avatar.dart';
 import 'scheduler_benchmark.dart';
@@ -91,9 +92,6 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
   /// looking at a screen is not something the practice history should carry.
   String? _reviewed;
 
-  final Set<String> _feedbackRecorded = {};
-  final Set<String> _detailsRecorded = {};
-
   /// The attempt being played right now, if one is.
   ///
   /// The bar keeps its place and changes what it holds: nothing on it is
@@ -105,10 +103,6 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 
   /// The supported attempt whose transition has been dismissed.
   String? _acquisitionReviewed;
-
-  /// Attempts whose screen has been built, so presentation is acknowledged
-  /// once each rather than on every frame.
-  final Set<String> _presented = {};
 
   /// What the loop has decided next, as a transition can describe it.
   ///
@@ -152,24 +146,6 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     final committed = loop.value?.lastCommitted;
     if (committed != null && committed.identity.attemptId != _reviewed) {
       final history = loop.value!.session.journal.records;
-      final progress = progressEventsFor(committed, history: history);
-      if (!_feedbackRecorded.contains(committed.identity.attemptId)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          if (!mounted ||
-              _feedbackRecorded.contains(committed.identity.attemptId)) {
-            return;
-          }
-          _feedbackRecorded.add(committed.identity.attemptId);
-          try {
-            await notifier.recordFeedbackExposure(
-              record: committed,
-              progress: progress,
-            );
-          } catch (_) {
-            _feedbackRecorded.remove(committed.identity.attemptId);
-          }
-        });
-      }
       return Scaffold(
         // The review is still about the attempt that just ran, so the bar
         // keeps holding it. Continue hands the screen back, and the bar comes
@@ -184,15 +160,11 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           reading: loop.value?.lastReading,
           next: _upNext(loop.value!, committed),
           continues: loop.value?.acquisition != null,
-          onDetailsViewed: () {
-            final attemptId = committed.identity.attemptId;
-            if (!_detailsRecorded.add(attemptId)) return;
-            unawaited(
-              notifier.recordAttemptDetailsViewed(committed).catchError((_) {
-                _detailsRecorded.remove(attemptId);
-              }),
-            );
-          },
+          onExposed: (exposure) => notifier.recordFeedbackExposure(
+            record: committed,
+            postAttemptFeedback: exposure.feedback,
+            progress: exposure.progress,
+          ),
           onNext: () =>
               setState(() => _reviewed = committed.identity.attemptId),
         ),
@@ -221,15 +193,51 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     final attemptId = attempt?.attemptId;
     if (_playing != attemptId) _playing = null;
 
-    // Past the review, so what is being built is the attempt itself. Deciding
-    // happened while the review was still on screen; this frame is where the
-    // exercise actually reaches the learner, and it is what a probe earned by
-    // supported work is discharged against.
-    if (attempt != null && _presented.add(attempt.attemptId)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(notifier.acknowledgePresentation(attempt));
-      });
-    }
+    final presenting = switch (loop) {
+      // Supported acquisition, which is the same screen with one demand
+      // removed rather than a mode of its own.
+      AsyncData(:final value) when value.acquisition != null => AttemptView(
+        // Keyed on the presentation, not the task. Two offers of the same
+        // task are two attempts at it, and a shared key would hand the
+        // second one the first one's finished state.
+        key: ValueKey(value.acquisition!.attemptId),
+        exercise: value.acquisition!.task.parent,
+        presentation: presentationFor(
+          value.acquisition!.task.parent.guidance,
+          exercise: value.acquisition!.task.parent,
+        ),
+        acquisition: value.acquisition!.task,
+        metBefore: value.hasMet(value.acquisition!.task.parent.material),
+        onFinish: (completion) =>
+            notifier.finishAcquisition(completion, attempt: attempt!),
+        onUnderWay: () => setState(() => _playing = attemptId),
+        onBackToReady: () => setState(() => _playing = null),
+      ),
+      AsyncData(:final value) when value.exercise != null => AttemptView(
+        // A new decision restarts the view at Ready rather than inheriting
+        // the previous attempt's phase.
+        key: ValueKey(attemptId),
+        exercise: value.exercise!,
+        presentation: presentationFor(
+          value.exercise!.guidance,
+          exercise: value.exercise!,
+        ),
+        metBefore: value.hasMet(value.exercise!.material),
+        admittedBy: value.presented?.decision.decision.challengeBypass,
+        onFinish: (completion) =>
+            notifier.finish(completion, attempt: attempt!),
+        onDecline: (completion) =>
+            notifier.decline(completion, attempt: attempt!),
+        onUnderWay: () => setState(() => _playing = attemptId),
+        onBackToReady: () => setState(() => _playing = null),
+      ),
+      AsyncData(:final value) => _NothingToPlay(state: value),
+      AsyncError(:final error, :final stackTrace) => LoopFailure(
+        error: error,
+        stackTrace: stackTrace,
+      ),
+      _ => const Center(child: CircularProgressIndicator()),
+    };
 
     return Scaffold(
       appBar: _PracticeAppBar(
@@ -240,53 +248,42 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         // obligation rather than lowering it.
         showsTempo: loop.value?.acquisition == null,
       ),
-      body: switch (loop) {
-        // Supported acquisition, which is the same screen with one demand
-        // removed rather than a mode of its own.
-        AsyncData(:final value) when value.acquisition != null => AttemptView(
-          // Keyed on the presentation, not the task. Two offers of the same
-          // task are two attempts at it, and a shared key would hand the
-          // second one the first one's finished state.
-          key: ValueKey(value.acquisition!.attemptId),
-          exercise: value.acquisition!.task.parent,
-          presentation: presentationFor(
-            value.acquisition!.task.parent.guidance,
-            exercise: value.acquisition!.task.parent,
-          ),
-          acquisition: value.acquisition!.task,
-          metBefore: value.hasMet(value.acquisition!.task.parent.material),
-          onFinish: (completion) =>
-              notifier.finishAcquisition(completion, attempt: attempt!),
-          onUnderWay: () => setState(() => _playing = attemptId),
-          onBackToReady: () => setState(() => _playing = null),
-        ),
-        AsyncData(:final value) when value.exercise != null => AttemptView(
-          // A new decision restarts the view at Ready rather than inheriting
-          // the previous attempt's phase.
-          key: ValueKey(attemptId),
-          exercise: value.exercise!,
-          presentation: presentationFor(
-            value.exercise!.guidance,
-            exercise: value.exercise!,
-          ),
-          metBefore: value.hasMet(value.exercise!.material),
-          admittedBy: value.presented?.decision.decision.challengeBypass,
-          onFinish: (completion) =>
-              notifier.finish(completion, attempt: attempt!),
-          onDecline: (completion) =>
-              notifier.decline(completion, attempt: attempt!),
-          onUnderWay: () => setState(() => _playing = attemptId),
-          onBackToReady: () => setState(() => _playing = null),
-        ),
-        AsyncData(:final value) => _NothingToPlay(state: value),
-        AsyncError(:final error, :final stackTrace) => LoopFailure(
-          error: error,
-          stackTrace: stackTrace,
-        ),
-        _ => const Center(child: CircularProgressIndicator()),
-      },
+      // Deciding is not presenting, and building is not presenting either.
+      // What discharges a probe earned by supported work is the exercise
+      // reaching a learner: drawn, on the route in front, with the app on
+      // screen. The sitting decides whether the report stands, so a refusal
+      // leaves the question to be asked again next frame.
+      body: attempt == null
+          ? presenting
+          : ExposureGate(
+              presentation: attempt,
+              onExposed: () => notifier.acknowledgePresentation(attempt),
+              child: presenting,
+            ),
     );
   }
+}
+
+/// A painted surface and what it says, for a reader who cannot see it.
+///
+/// The painting contributes nothing of its own: marked keys and engraved
+/// noteheads have no semantics, and the ones a renderer does supply would be a
+/// second, ungoverned account of what is on screen. A null description leaves
+/// the surface out of the tree entirely, which is what a withdrawn cue is.
+class _Described extends StatelessWidget {
+  const _Described(this.description, {required this.child});
+
+  final String? description;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => description == null
+      ? ExcludeSemantics(child: child)
+      : Semantics(
+          container: true,
+          label: description,
+          child: ExcludeSemantics(child: child),
+        );
 }
 
 /// The bar over every practice state: the app's name, the instrument, and a
@@ -721,6 +718,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   bool _finishing = false;
   int _painted = 0;
 
+  /// Whether this attempt got as far as asking the clicker for a pulse.
+  ///
+  /// A self-paced task never does, and neither does an attempt declined at
+  /// Ready: nothing was owed, so nothing fell short.
+  bool _askedForAPulse = false;
+
   /// The recording this attempt started, and the only capture it may read.
   ///
   /// Null until the window opens. Before that there is nothing of this
@@ -907,12 +910,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // this timer does, and the audio catches up to the count rather than the
     // count waiting on the audio.
     if (tempoSupport != TempoSupport.none) {
+      _askedForAPulse = true;
       unawaited(
         _pulse.play(
           countInBeats: _countInBeats,
-          // A metronome outlasts the notes on purpose. Ending the pulse on
-          // the last expected beat would stop it under anyone playing at
-          // all slowly, which is exactly who is following it.
+          // A metronome outlasts the notes on purpose. Ending the pulse on the
+          // last expected beat would stop it under anyone playing at all
+          // slowly, which is exactly who is following it.
           continuingBeats: tempoSupport == TempoSupport.metronomeThroughout
               ? realize(widget.exercise).moments.length + _countInBeats
               : 0,
@@ -991,10 +995,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     if (_finishing) return;
     _finishing = true;
     _watchdog?.cancel();
+    final presentation = _presented;
     unawaited(_pulse.stop());
     final completion = AttemptCompletion(
       termination: AttemptTermination.learnerDeclined,
       capture: _capture,
+      presentation: presentation,
     );
     _transcript.stop();
     setState(() => _phase = _Phase.finishing);
@@ -1013,17 +1019,33 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     await Future<void>.delayed(attemptTransition);
   }
 
+  /// What this attempt ran under, and what of it the app supplied.
+  ///
+  /// Read before the pulse is silenced, so what it sounded is what the attempt
+  /// heard rather than what is left of it after the teardown. The clicker is
+  /// shared across the sitting, so an attempt that never asked it for a pulse
+  /// reports no pulse rather than the last attempt's answer.
+  PresentationRecord get _presented => PresentationRecord(
+    policyVersion: presentationPolicyVersion,
+    conditions: widget.presentation,
+    delivery: PresentationDelivery(
+      tempo: _askedForAPulse ? _pulse.delivered : TempoDelivery.notRequested(),
+    ),
+  );
+
   Future<void> _finish(AttemptTermination termination) async {
     if (_finishing) return;
     _finishing = true;
     _watchdog?.cancel();
-    unawaited(_pulse.stop());
     // Read before the screen is handed over, and carried rather than left to
-    // be looked up again: an attempt's disposition and its evidence are one
-    // fact about one instant.
+    // be looked up again: an attempt's disposition, what it was presented
+    // under and its evidence are one fact about one instant.
+    final presentation = _presented;
+    unawaited(_pulse.stop());
     final completion = AttemptCompletion(
       termination: termination,
       capture: _capture,
+      presentation: presentation,
     );
     _transcript.stop();
     setState(() => _phase = _Phase.finishing);
@@ -1114,6 +1136,26 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       ),
       secondChild: const SizedBox(width: double.infinity),
     );
+    // The cue and the echo in words, for a learner who is not reading the
+    // screen. Both are painted, and neither engraved noteheads nor marked keys
+    // describe themselves, so without this the channels recorded as supplied
+    // would be supplied to some learners and not others.
+    //
+    // Governed by the same resolved presentation as the pixels, which is what
+    // makes the two representations the same disclosure: the words withdraw at
+    // Ready with the cue, and they name a finger only where the motor channel
+    // is open.
+    final spokenCue = cueSemantics(
+      exercise: exercise,
+      presentation: presentation,
+      showsCue: showsCue,
+      acquisition: widget.acquisition,
+    );
+    final spokenEcho = echoSemantics(
+      transcript: transcript,
+      presentation: presentation,
+    );
+
     final notation = AnimatedOpacity(
       duration: attemptTransition,
       opacity: _phase == _Phase.paused ? 0.35 : 1,
@@ -1122,26 +1164,41 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         follows: staffCarriesTranscript,
         children: [
           if (showsCue && cueOnStaff(presentation.cueModality))
-            StaffCue(
-              exercise: exercise,
-              acquisition: widget.acquisition,
-              showsFingering: presentation.motorCue == MotorCue.fingering,
-              locates:
-                  presentation.locatorFeedback ==
-                      LocatorFeedback.positionTracking &&
-                  _phase == _Phase.playing,
+            _Described(
+              spokenCue,
+              child: StaffCue(
+                exercise: exercise,
+                acquisition: widget.acquisition,
+                showsFingering: presentation.motorCue == MotorCue.fingering,
+                locates:
+                    presentation.locatorFeedback ==
+                        LocatorFeedback.positionTracking &&
+                    _phase == _Phase.playing,
+              ),
             ),
           if (staffCarriesTranscript)
-            TranscriptStaff(transcript: transcript, exercise: exercise),
+            _Described(
+              spokenEcho,
+              child: TranscriptStaff(
+                transcript: transcript,
+                exercise: exercise,
+              ),
+            ),
         ],
       ),
     );
-    final instrument = _Instrument(
-      exercise: exercise,
-      showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
-      echoes: echoes,
-      showsFingering: presentation.motorCue == MotorCue.fingering,
-      height: layout.instrumentHeight,
+    final instrument = _Described(
+      // Only where the keyboard is the cue. Where it is not, it is an
+      // instrument with nothing written on it, and describing it would name
+      // notes the presentation withheld.
+      showsCue && cueOnKeyboard(presentation.cueModality) ? spokenCue : null,
+      child: _Instrument(
+        exercise: exercise,
+        showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
+        echoes: echoes,
+        showsFingering: presentation.motorCue == MotorCue.fingering,
+        height: layout.instrumentHeight,
+      ),
     );
     // Sized to what the phase actually needs, and animated between them: the
     // Ready block is three things tall and Done is one, and the music takes

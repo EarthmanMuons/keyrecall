@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:keyrecall_domain/keyrecall_domain.dart';
+
 import 'package:keyrecall/features/audio/pulse_clicker.dart';
 
 void main() {
@@ -59,6 +61,55 @@ void main() {
     expect(sink.hasFeedCallback, isFalse);
   });
 
+  group('what it reports having sounded', () {
+    test('a count-in it queued in full', () async {
+      final clicker = PulseClicker(sink: _RecordingSink());
+
+      final delivery = await clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+
+      expect(delivery.delivery, ChannelDelivery.complete);
+      expect(delivery.deliveredBeats, 4);
+      await clicker.stop();
+    });
+
+    test('a count-in a device with no engine never sounded', () async {
+      final clicker = PulseClicker(sink: _RefusingSink());
+
+      final delivery = await clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+
+      expect(delivery.delivery, ChannelDelivery.unavailable);
+      expect(delivery.deliveredBeats, 0);
+      expect(delivery.failureReason, contains('no audio on this device'));
+      await clicker.stop();
+    });
+
+    test('a count-in the attempt ended before it opened', () async {
+      final sink = _DelayedSink();
+      final clicker = PulseClicker(sink: sink);
+      final playing = clicker.play(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      );
+      await sink.started.future;
+
+      final stopping = clicker.stop();
+      sink.completePreparation();
+      final delivery = await playing;
+      await stopping;
+
+      expect(delivery.deliveredBeats, 0);
+    });
+  });
+
   test('reopening waits for queued audio to flush', () async {
     final sink = _DelayedFeedSink();
     final clicker = PulseClicker(sink: sink);
@@ -111,6 +162,23 @@ class _RecordingSink implements PulseAudioSink {
         ? largestBuffer
         : bufferedFrames;
   }
+
+  @override
+  Future<void> release() async {}
+}
+
+class _RefusingSink implements PulseAudioSink {
+  @override
+  void setFeedCallback(void Function(int)? callback) {}
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async => throw StateError('no audio on this device');
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async {}
 
   @override
   Future<void> release() async {}

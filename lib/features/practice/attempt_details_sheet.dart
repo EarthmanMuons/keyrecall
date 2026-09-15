@@ -6,6 +6,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
 import 'attempt_detail_trace.dart';
+import 'presentation_exposure.dart';
 import 'attempt_diagnosis.dart';
 
 const double _minimumTraceHorizontalPadding = 0.15;
@@ -18,16 +19,25 @@ Future<void> showAttemptDetails(
   required Exercise exercise,
   required AttemptDetailTrace trace,
   required double? achievedTempoBpm,
+  Future<bool> Function()? onExposed,
 }) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
   isScrollControlled: true,
   constraints: BoxConstraints(maxHeight: _detailsMaxHeight(context)),
-  builder: (context) => AttemptDetailsSheet(
-    exercise: exercise,
-    trace: trace,
-    achievedTempoBpm: achievedTempoBpm,
-  ),
+  builder: (context) {
+    final sheet = AttemptDetailsSheet(
+      exercise: exercise,
+      trace: trace,
+      achievedTempoBpm: achievedTempoBpm,
+    );
+    // Reported from inside the sheet's own route, on the frame it draws.
+    // Asking for a sheet is not showing one, and a request that was refused
+    // or dismissed before it rendered exposed nothing.
+    return onExposed == null
+        ? sheet
+        : ExposureGate(presentation: trace, onExposed: onExposed, child: sheet);
+  },
 );
 
 /// Everything below the app bar. The inset comes from the view rather than
