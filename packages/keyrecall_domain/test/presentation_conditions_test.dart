@@ -9,13 +9,39 @@ void main() {
     MotorCue motorCue = MotorCue.none,
     PerformanceFeedback performanceFeedback = PerformanceFeedback.neutralEcho,
     TempoSupport tempoSupport = TempoSupport.countInOnly,
+    LocatorFeedback locatorFeedback = LocatorFeedback.none,
   }) => PresentationConditions(
     pitchCue: pitchCue,
     cueModality: cueModality,
     motorCue: motorCue,
     performanceFeedback: performanceFeedback,
     tempoSupport: tempoSupport,
+    locatorFeedback: locatorFeedback,
   );
+
+  group('locator feedback', () {
+    test('is a channel of its own, contingent on agreement', () {
+      expect(LocatorFeedback.none.isContingentOnAgreement, isFalse);
+      expect(LocatorFeedback.positionTracking.isContingentOnAgreement, isTrue);
+    });
+
+    test('cannot locate playing the learner is not shown', () {
+      expect(
+        () => conditions(
+          performanceFeedback: PerformanceFeedback.none,
+          locatorFeedback: LocatorFeedback.positionTracking,
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('separates two presentations that differ in nothing else', () {
+      expect(
+        conditions(locatorFeedback: LocatorFeedback.positionTracking),
+        isNot(conditions()),
+      );
+    });
+  });
 
   group('cue and modality', () {
     test('a supplied cue needs a way to present it', () {

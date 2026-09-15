@@ -64,21 +64,31 @@ void main() {
     expect(replayed.stateHash, recordedStateHash);
   });
 
-  test('a stored checkpoint still covers that journal', () {
-    final journal = journalOf('attempt-journal-v4-v1-9.jsonl');
-    final checkpoint = checkpointOf('checkpoint-v3-v1-9.json');
-
-    expect(checkpoint.contentHash, recordedStateHash);
+  test('a stored checkpoint still holds the state that journal produced', () {
     expect(
-      validateCheckpointAgainstJournal(
-        checkpoint,
-        journal: journal,
-        learnerModelVersion: params.modelVersion,
-        genesisStateHash: learnerStateHash(genesis()),
-      ),
-      isNull,
+      checkpointOf('checkpoint-v3-v1-9.json').contentHash,
+      recordedStateHash,
     );
   });
+
+  test(
+    'a checkpoint digested under an earlier attempt format is a cache miss',
+    () {
+      // A history digest covers each record as this build encodes it, so an
+      // attempt-format bump moves every link in the chain. The checkpoint is
+      // still readable and still holds the right state; what it can no longer
+      // prove is which history it skipped, and the price of that is one replay.
+      expect(
+        validateCheckpointAgainstJournal(
+          checkpointOf('checkpoint-v3-v1-9.json'),
+          journal: journalOf('attempt-journal-v4-v1-9.jsonl'),
+          learnerModelVersion: params.modelVersion,
+          genesisStateHash: learnerStateHash(genesis()),
+        ),
+        isNotNull,
+      );
+    },
+  );
 
   group('a journal from a superseded learner model', () {
     test('still reads, because the wire format did not change', () {

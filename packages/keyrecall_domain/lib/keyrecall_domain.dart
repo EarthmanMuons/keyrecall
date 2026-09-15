@@ -24,6 +24,7 @@ export 'src/motor_opportunity.dart';
 export 'src/performance_transcript.dart';
 export 'src/pitch_spelling.dart';
 export 'src/presentation_conditions.dart';
+export 'src/presentation_delivery.dart';
 export 'src/practice_goal.dart';
 export 'src/realization.dart';
 export 'src/scale_catalog.dart';

@@ -12,7 +12,13 @@
 /// Version 1 is retained because upgrading it exercises a real structural
 /// change, where an outcome and its derived evidence became the measured
 /// branch of a lifecycle sum.
-const int attemptSchemaVersion = 4;
+///
+/// Version 5 records the presentation an attempt ran under and what of it the
+/// app delivered. Nothing is filled in for an earlier record: what a rung
+/// implied depended on the policy of the build that presented it, and
+/// reconstructing it from today's policy would claim an exposure that was never
+/// stored.
+const int attemptSchemaVersion = 5;
 
 /// Version of the checkpoint wire format.
 ///

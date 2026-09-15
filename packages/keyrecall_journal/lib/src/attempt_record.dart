@@ -8,6 +8,7 @@ import 'codecs/closure_codec.dart';
 import 'codecs/domain_codec.dart';
 import 'codecs/learner_codec.dart';
 import 'codecs/scheduler_codec.dart';
+import 'presentation_record.dart';
 import 'profile.dart';
 import 'schema.dart';
 import 'upgrade.dart';
@@ -173,6 +174,15 @@ class AttemptRecord {
   /// The exercise actually presented.
   final Exercise exercise;
 
+  /// What the attempt was presented under, or null for a record written before
+  /// presentation was part of the format.
+  ///
+  /// Nothing reconstructs it for those. The rung they carry says whether the
+  /// material was supplied and not what the learner saw or heard of it, and
+  /// inventing the rest from whatever policy exists now would put a claim on a
+  /// record that never made one.
+  final PresentationRecord? presentation;
+
   /// Why the scheduler chose it, or null when it was not scheduler-selected.
   ///
   /// Absent for a scripted or diagnostic attempt. Present for every attempt the
@@ -202,6 +212,7 @@ class AttemptRecord {
     required this.provenance,
     required this.exercise,
     required this.closure,
+    this.presentation,
     this.decision,
     this.stateBeforeHash,
     this.stateAfterHash,
@@ -221,6 +232,7 @@ class AttemptRecord {
     identity: identity,
     provenance: provenance,
     exercise: exercise,
+    presentation: presentation,
     closure: closure,
     decision: decision,
     stateBeforeHash: before,
@@ -246,6 +258,9 @@ class AttemptRecord {
       'app_build_version': provenance.appBuildVersion,
     },
     'exercise': encodeExercise(exercise),
+    'presentation': presentation == null
+        ? null
+        : encodePresentation(presentation!),
     'decision': decision == null
         ? null
         : encodeDecision(decision!, encodePrediction),
@@ -279,6 +294,7 @@ class AttemptRecord {
     final location = 'attempt $attemptId';
     final provenanceJson = requireMap(json, 'provenance', location: location);
     final decisionJson = json['decision'];
+    final presentationJson = json['presentation'];
 
     return AttemptRecord(
       schemaVersion: version,
@@ -320,6 +336,12 @@ class AttemptRecord {
         requireMap(json, 'exercise', location: location),
         location: location,
       ),
+      presentation: presentationJson == null
+          ? null
+          : decodePresentation(
+              asMap(presentationJson, 'presentation', location: location),
+              location: location,
+            ),
       decision: decisionJson == null
           ? null
           : decodeDecision(

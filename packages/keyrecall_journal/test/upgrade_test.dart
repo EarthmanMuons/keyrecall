@@ -32,7 +32,7 @@ Map<String, Object?> version2(Map<String, Object?> current) {
 }
 
 Map<String, Object?> version3(Map<String, Object?> current) {
-  final old = Map<String, Object?>.of(current)..['schema_version'] = 3;
+  final old = version4(current)..['schema_version'] = 3;
   final exercise = old['exercise'];
   if (exercise is Map<String, Object?>) {
     old['exercise'] = Map<String, Object?>.of(exercise)
@@ -40,6 +40,11 @@ Map<String, Object?> version3(Map<String, Object?> current) {
   }
   return old;
 }
+
+Map<String, Object?> version4(Map<String, Object?> current) =>
+    Map<String, Object?>.of(current)
+      ..['schema_version'] = 4
+      ..remove('presentation');
 
 void main() {
   final recorded = recordSession();
@@ -167,6 +172,17 @@ void main() {
           original.exercise.opportunities,
         );
         expect(upgraded.exercise.opportunitySites, isEmpty);
+      }
+    });
+  });
+
+  group('version 4 to current', () {
+    test('leaves the presentation unsaid rather than deriving one', () {
+      for (final original in journal.records) {
+        final upgraded = AttemptRecord.fromJson(version4(original.toJson()));
+
+        expect(upgraded.presentation, isNull);
+        expect(upgraded.exercise.guidance, original.exercise.guidance);
       }
     });
   });

@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import '../canonical_json.dart';
+import '../presentation_record.dart';
 import '../schema.dart';
 
 /// Serializes the exercise that was actually presented.
@@ -192,3 +193,147 @@ InstrumentProfile decodeInstrument(
 }) => InstrumentProfile(
   keyCount: requireInt(json, 'key_count', location: location),
 );
+
+/// Writes the conditions an attempt was presented under.
+///
+/// Every channel by its own stable id, so a record says what was supplied
+/// without a reader having to know which policy produced it.
+Map<String, Object?> encodePresentationConditions(
+  PresentationConditions conditions,
+) => {
+  'pitch_cue': conditions.pitchCue.id,
+  'cue_modality': conditions.cueModality?.id,
+  'motor_cue': conditions.motorCue.id,
+  'performance_feedback': conditions.performanceFeedback.id,
+  'tempo_support': conditions.tempoSupport.id,
+  'locator_feedback': conditions.locatorFeedback.id,
+};
+
+/// Reads presentation conditions back.
+PresentationConditions decodePresentationConditions(
+  Map<String, Object?> json, {
+  String? location,
+}) {
+  final modality = asOptionalString(
+    json['cue_modality'],
+    'cue_modality',
+    location: location,
+  );
+  return PresentationConditions(
+    pitchCue: _byId(
+      PitchCue.values,
+      (value) => value.id,
+      requireString(json, 'pitch_cue', location: location),
+      'pitch cue',
+      location,
+    ),
+    cueModality: modality == null
+        ? null
+        : _byId<CueModality>(
+            CueModality.values,
+            (value) => value.id,
+            modality,
+            'cue modality',
+            location,
+          ),
+    motorCue: _byId(
+      MotorCue.values,
+      (value) => value.id,
+      requireString(json, 'motor_cue', location: location),
+      'motor cue',
+      location,
+    ),
+    performanceFeedback: _byId(
+      PerformanceFeedback.values,
+      (value) => value.id,
+      requireString(json, 'performance_feedback', location: location),
+      'performance feedback',
+      location,
+    ),
+    tempoSupport: _byId(
+      TempoSupport.values,
+      (value) => value.id,
+      requireString(json, 'tempo_support', location: location),
+      'tempo support',
+      location,
+    ),
+    locatorFeedback: _byId(
+      LocatorFeedback.values,
+      (value) => value.id,
+      requireString(json, 'locator_feedback', location: location),
+      'locator feedback',
+      location,
+    ),
+  );
+}
+
+/// Writes what the fallible presentation channels supplied.
+Map<String, Object?> encodePresentationDelivery(
+  PresentationDelivery delivery,
+) => {
+  'tempo': {
+    'delivery': delivery.tempo.delivery.id,
+    'requested_beats': delivery.tempo.requestedBeats,
+    'delivered_beats': delivery.tempo.deliveredBeats,
+    'failure_reason': delivery.tempo.failureReason,
+  },
+};
+
+/// Reads a delivery report back.
+///
+/// The delivery classification is derived from the counts rather than read, so
+/// a record cannot claim a complete count-in beside the beats that say
+/// otherwise.
+PresentationDelivery decodePresentationDelivery(
+  Map<String, Object?> json, {
+  String? location,
+}) {
+  final tempo = requireMap(json, 'tempo', location: location);
+  return PresentationDelivery(
+    tempo: TempoDelivery(
+      requestedBeats: requireInt(tempo, 'requested_beats', location: location),
+      deliveredBeats: requireInt(tempo, 'delivered_beats', location: location),
+      failureReason: asOptionalString(
+        tempo['failure_reason'],
+        'failure_reason',
+        location: location,
+      ),
+    ),
+  );
+}
+
+/// Writes what an attempt was presented under, with the policy that decided it.
+Map<String, Object?> encodePresentation(PresentationRecord presentation) => {
+  'policy_version': presentation.policyVersion,
+  'conditions': encodePresentationConditions(presentation.conditions),
+  'delivery': encodePresentationDelivery(presentation.delivery),
+};
+
+/// Reads a presentation record back.
+PresentationRecord decodePresentation(
+  Map<String, Object?> json, {
+  String? location,
+}) => PresentationRecord(
+  policyVersion: requireString(json, 'policy_version', location: location),
+  conditions: decodePresentationConditions(
+    requireMap(json, 'conditions', location: location),
+    location: location,
+  ),
+  delivery: decodePresentationDelivery(
+    requireMap(json, 'delivery', location: location),
+    location: location,
+  ),
+);
+
+T _byId<T>(
+  List<T> values,
+  String Function(T) idOf,
+  String id,
+  String what,
+  String? location,
+) {
+  for (final value in values) {
+    if (idOf(value) == id) return value;
+  }
+  throw JournalFormatException('unknown $what "$id"', location: location);
+}

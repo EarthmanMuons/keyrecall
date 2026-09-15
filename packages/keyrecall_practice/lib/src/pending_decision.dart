@@ -160,6 +160,7 @@ class PendingDecision {
   AttemptRecord complete({
     required AttemptClosure closure,
     required String stateAfterHash,
+    PresentationRecord? presentation,
     DateTime? observedWallTime,
   }) => AttemptRecord(
     journalSequence: journalSequence,
@@ -173,6 +174,7 @@ class PendingDecision {
     observedWallTime: observedWallTime ?? this.observedWallTime,
     provenance: provenance,
     exercise: exercise,
+    presentation: presentation,
     decision: decision,
     closure: closure,
     stateBeforeHash: stateBeforeHash,

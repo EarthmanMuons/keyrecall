@@ -12,9 +12,10 @@ Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) {
   final version = json['schema_version'];
   return switch (version) {
     attemptSchemaVersion => json,
-    3 => _version3To4(json),
-    2 => _version3To4(_version2To3(json)),
-    1 => _version3To4(_version2To3(_version1To2(json))),
+    4 => _version4To5(json),
+    3 => _version4To5(_version3To4(json)),
+    2 => _version4To5(_version3To4(_version2To3(json))),
+    1 => _version4To5(_version3To4(_version2To3(_version1To2(json)))),
     _ => throw JournalFormatException(
       'attempt schema version $version is not upgradable by this build, which '
       'writes version $attemptSchemaVersion',
@@ -44,10 +45,13 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
     switch (json['schema_version']) {
       attemptSchemaVersion => json,
-      3 => _version3To4(json),
-      2 => _version3To4(_version2To3(json)),
-      1 => _version3To4(
-        _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+      4 => _version4To5(json),
+      3 => _version4To5(_version3To4(json)),
+      2 => _version4To5(_version3To4(_version2To3(json))),
+      1 => _version4To5(
+        _version3To4(
+          _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+        ),
       ),
       final version => throw JournalFormatException(
         'pending decision schema version $version is not upgradable by this '
@@ -64,7 +68,7 @@ Map<String, Object?> _stampedForward(
 }) {
   final version = json['schema_version'];
   if (version == attemptSchemaVersion) return json;
-  if (version == 1 || version == 2 || version == 3) {
+  if (version == 1 || version == 2 || version == 3 || version == 4) {
     return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
@@ -126,3 +130,10 @@ Map<String, Object?> _version3To4(Map<String, Object?> json) {
   }
   return upgraded;
 }
+
+/// Version 4 recorded no presentation at all. It stays absent, which is what
+/// those records can honestly say: the conditions they ran under were never
+/// written down, and deriving them from a policy that has since moved would
+/// assert an exposure nobody observed.
+Map<String, Object?> _version4To5(Map<String, Object?> json) =>
+    Map<String, Object?>.of(json)..['schema_version'] = 5;

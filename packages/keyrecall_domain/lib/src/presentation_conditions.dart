@@ -131,7 +131,32 @@ enum TempoSupport {
   final String id;
 }
 
-/// What information an attempt was given, on four independent channels.
+/// What the app tells the learner, during the attempt, about where their
+/// playing lands in the material.
+///
+/// Its own channel because it is neither prospective nor neutral. A locator
+/// matches an arrival against the notes expected next and lights the one it
+/// matched, so the display is contingent on agreement with the target even
+/// though it never names a right or a wrong. It says "that note is here in what
+/// you were asked for" and nothing about how the attempt is going.
+enum LocatorFeedback {
+  /// Nothing places what was played into the material.
+  none('NONE'),
+
+  /// The written note each hand has reached is marked while it is held.
+  positionTracking('POSITION_TRACKING');
+
+  const LocatorFeedback(this.id);
+
+  /// Stable identifier, and the spelling the wire format takes.
+  final String id;
+
+  /// Whether the display depends on what the learner played matching what was
+  /// expected.
+  bool get isContingentOnAgreement => this != LocatorFeedback.none;
+}
+
+/// What information an attempt was given, on five independent channels.
 ///
 /// Facts about the attempt, not a second scheduler. The scheduler names a
 /// coarse guidance rung and practice policy turns that into these channels,
@@ -141,9 +166,10 @@ enum TempoSupport {
 /// but its clef supplies nothing, so withdrawal takes information away rather
 /// than taking the UI away.
 ///
-/// Not persisted: every V1 attempt is a full keyboard cue or none, no
-/// fingering, a neutral echo, and a count-in. Add it to the wire format before
-/// any second presentation value becomes reachable.
+/// Persisted with the attempt that ran under them. What a rung and an
+/// exercise imply depends on app policy, on what the catalog could finger, and
+/// on what the renderers draw, so a later policy change would otherwise make
+/// the same recorded exercise mean a different exposure.
 @immutable
 class PresentationConditions {
   /// How much of the material is supplied before it is played.
@@ -161,20 +187,33 @@ class PresentationConditions {
   /// How much of the pulse is supplied.
   final TempoSupport tempoSupport;
 
-  /// Throws [ArgumentError] when a modality is given without a cue to present
-  /// or a cue is given with no way to present it.
+  /// What the learner is told about where their playing sits in the material.
+  final LocatorFeedback locatorFeedback;
+
+  /// Throws [ArgumentError] when a modality is given without a cue to present,
+  /// when a cue is given with no way to present it, or when a locator runs
+  /// under a feedback channel that shows the learner nothing of their playing.
   PresentationConditions({
     required this.pitchCue,
     required this.motorCue,
     required this.performanceFeedback,
     required this.tempoSupport,
     this.cueModality,
+    this.locatorFeedback = LocatorFeedback.none,
   }) {
     if (pitchCue.suppliesMaterial != (cueModality != null)) {
       throw ArgumentError.value(
         cueModality,
         'cueModality',
         'must be given exactly when a pitch cue supplies material',
+      );
+    }
+    if (locatorFeedback.isContingentOnAgreement &&
+        performanceFeedback == PerformanceFeedback.none) {
+      throw ArgumentError.value(
+        locatorFeedback,
+        'locatorFeedback',
+        'cannot locate playing that is not shown',
       );
     }
   }
@@ -198,7 +237,8 @@ class PresentationConditions {
       other.cueModality == cueModality &&
       other.motorCue == motorCue &&
       other.performanceFeedback == performanceFeedback &&
-      other.tempoSupport == tempoSupport;
+      other.tempoSupport == tempoSupport &&
+      other.locatorFeedback == locatorFeedback;
 
   @override
   int get hashCode => Object.hash(
@@ -207,10 +247,12 @@ class PresentationConditions {
     motorCue,
     performanceFeedback,
     tempoSupport,
+    locatorFeedback,
   );
 
   @override
   String toString() =>
       'PresentationConditions(${pitchCue.id}, ${cueModality?.id ?? '-'}, '
-      '${motorCue.id}, ${performanceFeedback.id}, ${tempoSupport.id})';
+      '${motorCue.id}, ${performanceFeedback.id}, ${tempoSupport.id}, '
+      '${locatorFeedback.id})';
 }

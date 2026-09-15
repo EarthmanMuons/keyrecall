@@ -111,6 +111,80 @@ void main() {
       }
     });
 
+    group('presentation', () {
+      AttemptRecord recordWith(PresentationRecord? presentation) {
+        final exercise = exerciseFor(v1ScaleCatalog.first);
+        final outcome = outcomeOf();
+        return AttemptRecord(
+          journalSequence: 0,
+          identity: AttemptIdentity(
+            profileId: testProfile.id,
+            attemptId: 'a',
+            sessionId: 's',
+            indexInSession: 0,
+            occurredAt: t0,
+          ),
+          provenance: provenance,
+          exercise: exercise,
+          presentation: presentation,
+          closure: AttemptClosure.measured(
+            termination: AttemptTermination.learnerStopped,
+            outcome: outcome,
+            weights: evidenceWeightsFor(exercise, outcome),
+            memoryUpdate: const MemoryUpdateDiagnostics(),
+          ),
+        );
+      }
+
+      AttemptRecord reread(AttemptRecord record) => AttemptRecord.fromJson(
+        jsonDecode(jsonEncode(record.toJson())) as Map<String, Object?>,
+      );
+
+      test(
+        'every channel survives, including the ones policy never varies',
+        () {
+          final presentation = PresentationRecord(
+            policyVersion: 'v1-presentation-0',
+            conditions: PresentationConditions(
+              pitchCue: PitchCue.full,
+              cueModality: CueModality.keyboardAndStaff,
+              motorCue: MotorCue.fingering,
+              performanceFeedback: PerformanceFeedback.neutralEcho,
+              tempoSupport: TempoSupport.countInOnly,
+              locatorFeedback: LocatorFeedback.positionTracking,
+            ),
+            delivery: PresentationDelivery(tempo: TempoDelivery.complete(4)),
+          );
+
+          expect(reread(recordWith(presentation)).presentation, presentation);
+        },
+      );
+
+      test('what was intended survives a channel that fell short', () {
+        final presentation = PresentationRecord(
+          policyVersion: 'v1-presentation-0',
+          conditions: PresentationConditions(
+            pitchCue: PitchCue.none,
+            motorCue: MotorCue.none,
+            performanceFeedback: PerformanceFeedback.neutralEcho,
+            tempoSupport: TempoSupport.countInOnly,
+          ),
+          delivery: PresentationDelivery(
+            tempo: TempoDelivery.silent(4, reason: 'no audio engine'),
+          ),
+        );
+        final stored = reread(recordWith(presentation)).presentation!;
+
+        expect(stored.conditions.tempoSupport, TempoSupport.countInOnly);
+        expect(stored.delivery.tempo.delivery, ChannelDelivery.unavailable);
+        expect(stored.delivery.tempo.failureReason, 'no audio engine');
+      });
+
+      test('an attempt that recorded none reads back as none', () {
+        expect(reread(recordWith(null)).presentation, isNull);
+      });
+    });
+
     test('timestamps keep sub-millisecond precision', () {
       final precise = DateTime.utc(2026, 3, 4, 5, 6, 7, 8, 9);
       final identity = AttemptIdentity(
