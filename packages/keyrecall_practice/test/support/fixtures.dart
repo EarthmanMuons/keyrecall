@@ -253,6 +253,43 @@ PerformanceTranscript playedFor(
   return transcript;
 }
 
+/// One recorded attempt at [exercise], for tests that assess history directly.
+AttemptRecord recordOf(
+  Exercise exercise, {
+  Outcome? outcome,
+  MeasurementUnavailableReason? unmeasured,
+  int sequence = 0,
+  AttemptTermination termination = AttemptTermination.learnerStopped,
+}) {
+  final measured = outcome ?? outcomeFor(exercise);
+  return AttemptRecord(
+    journalSequence: sequence,
+    identity: AttemptIdentity(
+      profileId: alice.id,
+      attemptId: 'attempt-$sequence',
+      sessionId: 'session',
+      indexInSession: sequence,
+      occurredAt: t0.plusDays(sequence + 1),
+    ),
+    provenance: ModelProvenance(
+      learnerModelVersion: learner.params.modelVersion,
+      schedulerModelVersion: v1SchedulerConfig.modelVersion,
+    ),
+    exercise: exercise,
+    closure: unmeasured == null
+        ? AttemptClosure.measured(
+            termination: termination,
+            outcome: measured,
+            weights: evidenceWeightsFor(exercise, measured),
+            memoryUpdate: const MemoryUpdateDiagnostics(),
+          )
+        : AttemptClosure.unmeasured(
+            termination: termination,
+            reason: unmeasured,
+          ),
+  );
+}
+
 /// The measurement a record carries, for tests that know it has one.
 Measured measuredOf(AttemptRecord record) =>
     record.closure.measurement as Measured;

@@ -24,14 +24,25 @@ class ExerciseConstraints {
     this.minimumTempoBpm,
   });
 
-  bool matches(Exercise exercise) {
+  /// Whether [exercise] realizes the shape this requirement names.
+  ///
+  /// Tempo is excluded. [minimumTempoBpm] is a pace to be demonstrated, and
+  /// what an attempt demonstrated is measured rather than requested, so an
+  /// assessment matches structure here and reads the pace off the outcome.
+  bool matchesStructure(Exercise exercise) {
     final conditions = exercise.conditions;
     return (hands == null || conditions.hands == hands) &&
         (octaves == null || conditions.octaves == octaves) &&
         (direction == null || conditions.direction == direction) &&
-        (handMotion == null || conditions.handMotion == handMotion) &&
-        (minimumTempoBpm == null || conditions.tempoBpm >= minimumTempoBpm!);
+        (handMotion == null || conditions.handMotion == handMotion);
   }
+
+  /// Whether [exercise] is a realization this requirement asks for, including
+  /// the tempo it is presented at.
+  bool matches(Exercise exercise) =>
+      matchesStructure(exercise) &&
+      (minimumTempoBpm == null ||
+          exercise.conditions.tempoBpm >= minimumTempoBpm!);
 }
 
 /// One stable, independently assessable capability in a curriculum.
@@ -119,6 +130,15 @@ class PracticeFocus {
   static const unrestricted = PracticeFocus._();
 }
 
+/// How a requirement takes part in one resolved scope.
+///
+/// Separate from [CurriculumRequirementRole], which is what the curriculum
+/// declares. Both can hold at once: a selected target that also prepares
+/// another selected target is required for completion and retained as
+/// preparation, and an unselected one that prepares a selected target is
+/// retained without being required.
+enum ResolvedRequirementRole { target, support }
+
 /// One requirement after its material and realizations have resolved.
 @immutable
 class ResolvedRequirement {
@@ -126,6 +146,7 @@ class ResolvedRequirement {
   final TechnicalMaterial material;
   final List<Exercise> targetCandidates;
   final List<Exercise> candidates;
+  final Set<ResolvedRequirementRole> roles;
   final double emphasis;
 
   ResolvedRequirement({
@@ -133,9 +154,17 @@ class ResolvedRequirement {
     required this.material,
     Iterable<Exercise>? targetCandidates,
     required Iterable<Exercise> candidates,
+    Set<ResolvedRequirementRole> roles = const {ResolvedRequirementRole.target},
     this.emphasis = 1,
   }) : targetCandidates = List.unmodifiable(targetCandidates ?? candidates),
-       candidates = List.unmodifiable(candidates);
+       candidates = List.unmodifiable(candidates),
+       roles = Set.unmodifiable(roles);
+
+  /// Whether completing this requirement is part of completing the goal.
+  bool get isTarget => roles.contains(ResolvedRequirementRole.target);
+
+  /// Whether this requirement is retained as preparation for a target.
+  bool get isSupport => roles.contains(ResolvedRequirementRole.support);
 }
 
 /// The distinct candidates [requirements] resolve to, in requirement order.
@@ -170,7 +199,19 @@ class ResolvedPracticeScope {
     required Iterable<ResolvedRequirement> requirements,
   }) : requirements = List.unmodifiable(requirements);
 
-  Iterable<ResolvedRequirement> get targets => requirements.where(
-    (resolved) => resolved.requirement.role == CurriculumRequirementRole.target,
-  );
+  /// The requirements completing this scope means completing.
+  Iterable<ResolvedRequirement> get targets =>
+      requirements.where((resolved) => resolved.isTarget);
+
+  /// The requirements retained as preparation for those targets.
+  Iterable<ResolvedRequirement> get supports =>
+      requirements.where((resolved) => resolved.isSupport);
+
+  Set<String> get targetRequirementIds => {
+    for (final resolved in targets) resolved.requirement.id,
+  };
+
+  Set<String> get supportRequirementIds => {
+    for (final resolved in supports) resolved.requirement.id,
+  };
 }

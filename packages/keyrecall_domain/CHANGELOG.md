@@ -10,6 +10,17 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ## [Unreleased]
 
+### Added
+
+- `ExerciseConstraints.matchesStructure`, the shape a requirement names without
+  its tempo criterion, so an assessment can match structure and read the pace
+  off what was measured.
+- `ResolvedRequirementRole`, and the roles a `ResolvedRequirement` holds in the
+  scope that resolved it. `ResolvedPracticeScope.targets` reads them instead of
+  what the curriculum declared, and `supports` and the two id sets say what was
+  retained as preparation. Both roles can hold at once.
+- `TechnicalMaterial.familyIds`, every family this build can represent.
+
 ### Fixed
 
 - `InstrumentProfile` measures the realization an exercise asks for instead of

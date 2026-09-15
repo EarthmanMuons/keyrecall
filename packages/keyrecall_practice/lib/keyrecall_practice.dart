@@ -32,6 +32,7 @@ export 'src/profile_lifecycle.dart';
 export 'src/profile_lifetime.dart';
 export 'src/profile_repository.dart';
 export 'src/profile_write_queue.dart';
+export 'src/requirement_completion.dart';
 export 'src/requirement_state.dart';
 export 'src/isolate_scheduler.dart';
 export 'src/scheduler_host.dart';

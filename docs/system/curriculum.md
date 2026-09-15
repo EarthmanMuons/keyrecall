@@ -17,7 +17,8 @@ says what to draw from right now.
 
 > **Status:** structural scope resolution, requirement state, terminal outcomes,
 > the acquisition floor, goal persistence, emphasis ranking, and the first focus
-> surface are built. Named external curricula are proposed.
+> surface are built. Named external curricula and a per-requirement completion
+> criterion are proposed; the sections below say which is which.
 
 ## The catalog is not the candidate pool
 
@@ -51,9 +52,14 @@ CurriculumRequirement
     material family and material identity
     required execution conditions
     acceptable realization constraints
-    performance or reliability criterion
     optional tempo criterion
 ```
+
+**Proposed:** a criterion per requirement. What is built is one completion
+policy shared by every requirement in a build, `RequirementCompletionPolicy`,
+which a requirement's own tempo criterion is read against. A requirement that
+wanted a different standard of accuracy or reliability than its neighbors cannot
+say so yet.
 
 A requirement does not prescribe an ordered lesson, a fixed exercise, or the
 next selection. One- and two-handed preparation, cue fading, tempo progression,
@@ -112,11 +118,31 @@ A material dropped from scope and restored later is exactly where it was.
 Coverage and current scheduling demand are independent:
 
 ```text
-coverage complete    every requirement has met its completion criterion
+coverage complete    every target has been demonstrated
 caught up            nothing in scope currently warrants practice
 blocked              unresolved requirements exist, but no candidate is usable
 invalid scope        one or more requirements cannot be resolved
 ```
+
+A target is covered when one recorded attempt at its shape met every criterion
+the completion policy names: the exercise was played through, the material was
+retrieved without cues, the pitches were accurate, the timing was fluent, the
+hands were together where both played, and the measured pace reached the
+requirement's tempo. Tempo is read as the requested tempo times the achieved
+ratio, so what the learner played is what counts rather than what they were
+asked for. A criterion the attempt carried no evidence about is unknown rather
+than failed, and an unknown criterion does not cover.
+
+This is the curriculum's own policy and deliberately not the learner model's
+evidence predicates. The learner asks what a performance says about the learner;
+completion asks whether the performance demonstrated the requirement, which is
+why it names pitch accuracy and coordination that the execution channel excludes
+on purpose.
+
+**Caught up is a memory claim, not an execution one.** Maintenance for a covered
+target reads retrieval health alone. "Nothing needs practice now" therefore
+means no retrieval maintenance is due; it does not mean the learner could
+currently play every target to the standard that covered it.
 
 A narrow curriculum can genuinely be caught up, and inventing work to keep the
 loop busy would be a product defect. The player is told nothing in this focus

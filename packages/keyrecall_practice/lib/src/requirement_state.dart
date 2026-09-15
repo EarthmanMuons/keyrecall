@@ -3,7 +3,13 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
+import 'requirement_completion.dart';
+
 /// Retrieval health below which a covered requirement warrants maintenance.
+///
+/// Maintenance is a memory question only. A covered requirement whose
+/// retrieval is still healthy is not due, however long it has been since the
+/// learner played it at the pace they covered it at.
 const double requirementMaintenanceRetrievalFloor = 0.75;
 
 /// Whether one requirement has been demonstrated to its completion target.
@@ -158,11 +164,9 @@ class PracticeScopeEvaluator {
           at: at,
         ),
     ];
-    final targets = requirements.where(
-      (state) =>
-          state.resolved.requirement.role == CurriculumRequirementRole.target,
-    );
-    final targetList = targets.toList();
+    final targetList = requirements
+        .where((state) => state.resolved.isTarget)
+        .toList();
     return EvaluatedPracticeScope(
       scope: scope,
       requirements: requirements,
@@ -201,18 +205,13 @@ RequirementState _assessDemonstratedRequirement({
   required LearnerModel learner,
   required DateTime at,
 }) {
-  final covered = journal.records.any((record) {
-    if (record.exercise.material != resolved.material ||
-        !resolved.requirement.constraints.matches(record.exercise)) {
-      return false;
-    }
-    return switch (record.closure.measurement) {
-      Measured(:final outcome) =>
-        outcome.retrieval == FactualRetrieval.succeeded &&
-            learner.executionWasManaged(outcome),
-      MeasurementUnavailable() => false,
-    };
-  });
+  final covered = journal.records.any(
+    (record) => assessRequirementAttempt(
+      requirement: resolved.requirement,
+      material: resolved.material,
+      record: record,
+    ).isCovered,
+  );
   if (!covered) {
     return RequirementState(
       resolved: resolved,
