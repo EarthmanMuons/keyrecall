@@ -63,10 +63,12 @@ bool appIsForeground() =>
 /// Reports [onExposed] the first frame its child is actually in front of the
 /// learner, and not before.
 ///
-/// [onExposed] answers whether its owner accepted the report. A refusal leaves
-/// this armed, so an exposure is never permanently recorded by the surface
-/// that drew it: the transaction that owns the history decides, and until it
-/// does, a later frame asks again.
+/// [onExposed] answers whether its owner accepted the report. A refusal is
+/// asked again rather than merely left armed, so an exposure is never
+/// permanently recorded by the surface that drew it and a refusal that nothing
+/// else happens to disturb is not silently dropped. The wait doubles after
+/// each refusal, so a write that is not going to succeed is not retried at
+/// speed for as long as the screen is up.
 ///
 /// Re-arms when [presentation] changes, because a second presentation is a
 /// second thing to have been exposed to.
@@ -90,12 +92,26 @@ class ExposureGate extends StatefulWidget {
   State<ExposureGate> createState() => _ExposureGateState();
 }
 
+/// How long a refused report waits before being asked again, and the longest
+/// that wait grows to.
+///
+/// Timed rather than counted in frames. A frame runs only when something asks
+/// for one, so a screen that has settled produces none, and a retry that waited
+/// for the next frame would wait for activity that may never come.
+const Duration _firstRetry = Duration(milliseconds: 250);
+const Duration _slowestRetry = Duration(seconds: 30);
+
 class _ExposureGateState extends State<ExposureGate>
     with WidgetsBindingObserver {
   /// What has been reported and accepted. Null once a new presentation
   /// arrives, and left alone while a report is in flight.
   Object? _reported;
   bool _reporting = false;
+
+  Timer? _retry;
+
+  /// How long to wait after the next refusal, doubling to a ceiling.
+  Duration _backoff = _firstRetry;
   ScrollPosition? _scroll;
   final List<Animation<double>> _moving = [];
 
@@ -133,12 +149,16 @@ class _ExposureGateState extends State<ExposureGate>
   @override
   void didUpdateWidget(ExposureGate old) {
     super.didUpdateWidget(old);
-    if (old.presentation != widget.presentation) _reported = null;
+    if (old.presentation != widget.presentation) {
+      _reported = null;
+      _rearm();
+    }
     _scheduleCheck();
   }
 
   @override
   void dispose() {
+    _retry?.cancel();
     _scroll?.removeListener(_scheduleCheck);
     for (final animation in _moving) {
       animation.removeListener(_scheduleCheck);
@@ -182,10 +202,33 @@ class _ExposureGateState extends State<ExposureGate>
     final presentation = widget.presentation;
     _reporting = true;
     try {
-      if (await widget.onExposed()) _reported = presentation;
+      if (await widget.onExposed()) {
+        _reported = presentation;
+        _rearm();
+        return;
+      }
     } finally {
       _reporting = false;
     }
+    if (mounted) _retryAfterRefusal();
+  }
+
+  /// Asks again once the wait is up, and waits twice as long after that.
+  ///
+  /// A refusal is usually a stale attempt or a write that did not land, and
+  /// neither is answered by asking again immediately or by asking forever at
+  /// full speed.
+  void _retryAfterRefusal() {
+    _retry?.cancel();
+    _retry = Timer(_backoff, _check);
+    final next = _backoff * 2;
+    _backoff = next > _slowestRetry ? _slowestRetry : next;
+  }
+
+  void _rearm() {
+    _retry?.cancel();
+    _retry = null;
+    _backoff = _firstRetry;
   }
 
   @override
