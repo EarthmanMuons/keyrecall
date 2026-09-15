@@ -201,16 +201,38 @@ class _ExposureGateState extends State<ExposureGate>
 
     final presentation = widget.presentation;
     _reporting = true;
+    final bool accepted;
     try {
-      if (await widget.onExposed()) {
-        _reported = presentation;
-        _rearm();
-        return;
-      }
+      // A report that threw is a report nobody took, which is the refusal
+      // case. It must not escape into the frame that asked for it.
+      accepted = await widget.onExposed().catchError((_) => false);
     } finally {
+      // Before anything below schedules: a check asked for while this one is
+      // still in flight is dropped, so nothing may ask until this is not.
       _reporting = false;
     }
-    if (mounted) _retryAfterRefusal();
+    if (!mounted) return;
+
+    // What was on screen changed while its owner was deciding. Whatever it
+    // decided was about the presentation that has gone, and says nothing about
+    // the one standing now, which has not been reported at all. The change
+    // arrived while this was in flight, so the check it asked for was dropped
+    // and this is the one that has to ask again.
+    if (widget.presentation != presentation) {
+      _rearm();
+      // Asked for directly rather than on the next frame, for the reason the
+      // retry is timed: the tree that replaced the presentation has already
+      // been built, and nothing is obliged to build another.
+      _retry = Timer(Duration.zero, _check);
+      return;
+    }
+
+    if (accepted) {
+      _reported = presentation;
+      _rearm();
+      return;
+    }
+    _retryAfterRefusal();
   }
 
   /// Asks again once the wait is up, and waits twice as long after that.

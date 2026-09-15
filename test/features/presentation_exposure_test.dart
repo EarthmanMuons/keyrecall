@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -137,6 +139,83 @@ void main() {
       expect(asked, hasLength(1));
       await tester.pump(const Duration(seconds: 30));
       expect(asked, hasLength(1));
+    });
+  });
+
+  group('when the presentation changes while a report is in flight', () {
+    /// Pumps a gate over [presentation] whose owner does not answer until
+    /// [answering] completes, recording what each report was about.
+    Future<void> pumpGate(
+      WidgetTester tester,
+      Object presentation, {
+      required Completer<bool> answering,
+      required List<Object> asked,
+    }) => tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ExposureGate(
+            presentation: presentation,
+            onExposed: () {
+              asked.add(presentation);
+              return answering.isCompleted
+                  ? Future.value(true)
+                  : answering.future;
+            },
+            child: const SizedBox(width: 200, height: 200),
+          ),
+        ),
+      ),
+    );
+
+    testWidgets('reports the one that replaced it, once the first is taken', (
+      tester,
+    ) async {
+      final answering = Completer<bool>();
+      final asked = <Object>[];
+
+      await pumpGate(tester, 'first', answering: answering, asked: asked);
+      expect(asked, ['first']);
+
+      // The second arrives while the owner is still deciding about the first.
+      await pumpGate(tester, 'second', answering: answering, asked: asked);
+      answering.complete(true);
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(
+        asked,
+        contains('second'),
+        reason:
+            'taking the first settles nothing about the second, which has '
+            'not been reported at all',
+      );
+    });
+
+    testWidgets('reports the replacement when the first was refused too', (
+      tester,
+    ) async {
+      final answering = Completer<bool>();
+      final asked = <Object>[];
+
+      await pumpGate(tester, 'first', answering: answering, asked: asked);
+      await pumpGate(tester, 'second', answering: answering, asked: asked);
+      answering.complete(false);
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(asked, contains('second'));
+    });
+
+    testWidgets('does not mark the replacement reported by the first', (
+      tester,
+    ) async {
+      final answering = Completer<bool>();
+      final asked = <Object>[];
+
+      await pumpGate(tester, 'first', answering: answering, asked: asked);
+      await pumpGate(tester, 'second', answering: answering, asked: asked);
+      answering.complete(true);
+      await tester.pump(const Duration(seconds: 1));
+
+      expect(asked.where((one) => one == 'second'), hasLength(1));
     });
   });
 }
