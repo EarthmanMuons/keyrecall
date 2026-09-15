@@ -1,6 +1,9 @@
 import 'dart:async';
 
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
+import 'package:flutter/semantics.dart';
+
+import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -10,6 +13,7 @@ import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:keyrecall/features/audio/pulse_clicker.dart';
 import 'package:keyrecall/features/demo_input/demo_input.dart';
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/piano/piano.dart';
@@ -142,6 +146,55 @@ void main() {
       );
     });
 
+    testWidgets('records a count-in the engine took as delivered', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1400, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final exercise = exerciseUnder(GuidanceContext.unguided);
+      final completions = <AttemptCompletion>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            syntheticInstrument,
+            // An engine that takes everything offered, which a test binding
+            // otherwise has none of. Without it the only count-in this suite
+            // can observe is a failed one.
+            pulseClickerProvider.overrideWithValue(
+              PulseClicker(sink: _DrainingSink()),
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: AttemptView(
+                exercise: exercise,
+                presentation: presentationFor(
+                  exercise.guidance,
+                  exercise: exercise,
+                ),
+                onFinish: (completion) async => completions.add(completion),
+              ),
+            ),
+          ),
+        ),
+      );
+      await readyAndCountIn(tester);
+      await tester.pump(const Duration(minutes: 5));
+      await tester.pumpAndSettle();
+
+      final tempo = completions.single.presentation!.delivery.tempo;
+      expect(
+        tempo.deliveredBeats,
+        greaterThan(0),
+        reason:
+            'the engine took the pulse, and a record saying it took none '
+            'describes a silent count-in that did not happen',
+      );
+      expect(tempo.requestedBeats, 4);
+    });
+
     testWidgets('records a count-in no engine sounded as silence', (
       tester,
     ) async {
@@ -181,6 +234,117 @@ void main() {
             'the test binding has no audio engine, and an attempt that heard '
             'nothing did not get the count-in it was resolved to have',
       );
+    });
+  });
+
+  group('what a screen reader is given', () {
+    setUp(() {
+      // The tree is only built while something is listening for it.
+      final handle = TestWidgetsFlutterBinding.instance.ensureSemantics();
+      addTearDown(handle.dispose);
+    });
+
+    /// Every label in the semantics tree, in traversal order.
+    String semanticsOf(WidgetTester tester) {
+      final labels = <String>[];
+      void visit(SemanticsNode node) {
+        if (node.label.isNotEmpty) labels.add(node.label);
+        node.visitChildren((child) {
+          visit(child);
+          return true;
+        });
+      }
+
+      visit(tester.getSemantics(find.byType(MaterialApp)));
+      return labels.join(' | ');
+    }
+
+    testWidgets('carries the cue, the echo and the locator while playing', (
+      tester,
+    ) async {
+      await pumpAttempt(tester, GuidanceContext.continuouslyCued);
+      await readyAndCountIn(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AttemptView)),
+      );
+
+      final expected = realize(exerciseUnder(GuidanceContext.continuouslyCued))
+          .moments
+          .first
+          .noteFor(Hand.right)!
+          .midiNote;
+      container.read(demoInputProvider.notifier).playChord({expected});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final said = semanticsOf(tester);
+      expect(said, contains('C major'), reason: 'the cue');
+      expect(said, contains('Played so far'), reason: 'the echo');
+      expect(said, contains('on note 1 of'), reason: 'the locator');
+    });
+
+    testWidgets('echoes a note the exercise did not ask for', (tester) async {
+      await pumpAttempt(tester, GuidanceContext.continuouslyCued);
+      await readyAndCountIn(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AttemptView)),
+      );
+
+      // A semitone above the first note, which is in no C major scale.
+      container.read(demoInputProvider.notifier).playChord({61});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final said = semanticsOf(tester);
+      expect(
+        said,
+        contains('Played so far: C♯'),
+        reason: 'the echo shows what was played, judged or not',
+      );
+      expect(
+        said,
+        isNot(contains('on note')),
+        reason:
+            'the locator places arrivals that match, and this one matched '
+            'nothing; saying otherwise would be a verdict',
+      );
+    });
+
+    testWidgets('withdraws the cue at Ready and keeps the echo', (
+      tester,
+    ) async {
+      await pumpAttempt(tester, GuidanceContext.notesPreviewedOnly);
+      expect(
+        semanticsOf(tester),
+        contains('C major, right hand'),
+        reason: 'the notes are previewed, so they are said',
+      );
+
+      await readyAndCountIn(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AttemptView)),
+      );
+      container.read(demoInputProvider.notifier).playChord({60});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      final said = semanticsOf(tester);
+      expect(
+        said,
+        isNot(contains('C major, right hand, up and down')),
+        reason:
+            'the words withdraw with the cue, or the previewed rung would '
+            'supply the material throughout for a screen-reader user',
+      );
+      expect(said, contains('Played so far'));
+    });
+
+    testWidgets('says nothing of the material at the unguided rung', (
+      tester,
+    ) async {
+      await pumpAttempt(tester, GuidanceContext.unguided);
+
+      expect(semanticsOf(tester), isNot(contains('C major, right hand,')));
     });
   });
 
@@ -1066,4 +1230,27 @@ class _RecordingScreenWakeLock implements ScreenWakeLock {
 
   @override
   Future<void> setEnabled(bool enabled) async => states.add(enabled);
+}
+
+/// An audio engine that accepts everything it is offered, asking for the next
+/// chunk as soon as it has taken one.
+class _DrainingSink implements PulseAudioSink {
+  void Function(int)? _onFeed;
+
+  @override
+  void setFeedCallback(void Function(int)? callback) => _onFeed = callback;
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async {}
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async {
+    scheduleMicrotask(() => _onFeed?.call(0));
+  }
+
+  @override
+  Future<void> release() async {}
 }

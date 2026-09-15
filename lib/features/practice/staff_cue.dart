@@ -9,6 +9,7 @@ import '../input/input_activity.dart';
 import 'attempt_transcript.dart';
 import 'fingering.dart';
 import 'staff_score.dart';
+import 'cue_semantics.dart';
 import 'traversal_locator.dart';
 
 /// Loads the engraving font's metrics before a staff needs them.
@@ -236,11 +237,25 @@ crisp.CrispNotationTheme staffTheme(BuildContext context) {
 class StaffCue extends ConsumerStatefulWidget {
   const StaffCue({
     required this.exercise,
+    required this.presentation,
     this.acquisition,
+    this.description,
     this.showsFingering = false,
     this.locates = false,
     super.key,
   });
+
+  /// The conditions this staff is drawing under, which decide what it may say
+  /// about the performance as well as what it draws.
+  final PresentationConditions presentation;
+
+  /// The cue in words, or null where nothing is cued.
+  ///
+  /// Owned here rather than wrapped around this widget, because the locator
+  /// travels while the attempt runs and its words have to travel with it. A
+  /// caller that described the staff from outside would state the cue once and
+  /// never say where the hands got to.
+  final String? description;
 
   /// The exercise whose realization is drawn.
   final Exercise exercise;
@@ -256,9 +271,9 @@ class StaffCue extends ConsumerStatefulWidget {
 
   /// Whether the note each hand has reached is lit while it is held.
   ///
-  /// Orientation, not evaluation: it says which written note the learner has
-  /// their hands on, and it is worth saying only once the traversal is under
-  /// way. Before that the staff is static and the keyboard alone answers what
+  /// Contingent feedback rather than evaluation: it says which written note
+  /// the learner has their hands on, and it is worth saying only once the
+  /// traversal is under way. Before that the staff is static and the keyboard alone answers what
   /// is being played, since a locator with nothing to locate would just be
   /// lighting a pitch wherever it happens to be written.
   ///
@@ -314,6 +329,27 @@ class _StaffCueState extends ConsumerState<StaffCue> {
     final located = widget.locates ? _located : null;
     final theme = staffTheme(context);
 
+    // The engraving has no semantics of its own, so the staff says what it is
+    // showing: the cue it was given, and where the locator has each hand. Two
+    // fragments on two channels, so withdrawing one does not take the other.
+    Widget described(Widget staff) => _LocatorSemantics(
+      description: widget.description,
+      locator: () => locatorSemantics(
+        realization: widget.acquisition == null
+            ? realize(widget.exercise)
+            : realizeAcquisition(widget.acquisition!),
+        transcript: ref.read(attemptTranscriptProvider).transcript,
+        pressedNotes: ref.read(inputActivityProvider).pressedNoteNumbers,
+        presentation: widget.presentation,
+        traversalLength: widget.acquisition == null
+            ? null
+            : realize(widget.exercise).moments.length,
+      ),
+      locates: widget.locates,
+      located: _located,
+      child: staff,
+    );
+
     // The cue is showing the scale on purpose, so it is written the way a
     // scale book writes it. The staff that grows from what was played is not;
     // see [TranscriptStaff].
@@ -322,32 +358,76 @@ class _StaffCueState extends ConsumerState<StaffCue> {
     );
 
     if (realization.hands.length > 1) {
-      return FittedGrandStaff(
-        staffGap: showsFingering ? _fingeredStaffGap : _standardStaffGap,
-        grandStaff: grandStaffFor(
+      return described(
+        FittedGrandStaff(
+          staffGap: showsFingering ? _fingeredStaffGap : _standardStaffGap,
+          grandStaff: grandStaffFor(
+            realization,
+            fingering: {
+              if (showsFingering)
+                for (final hand in realization.hands)
+                  hand: displayFingeringFor(exercise, hand),
+            },
+            keySignature: keySignature,
+          ),
+          theme: theme,
+          highlightedIds: located,
+        ),
+      );
+    }
+    return described(
+      FittedStaff(
+        score: staffScoreFor(
           realization,
-          fingering: {
-            if (showsFingering)
-              for (final hand in realization.hands)
-                hand: displayFingeringFor(exercise, hand),
-          },
+          realization.hands.single,
+          fingering: showsFingering
+              ? displayFingeringFor(exercise, realization.hands.single)
+              : null,
           keySignature: keySignature,
         ),
         theme: theme,
         highlightedIds: located,
-      );
-    }
-    return FittedStaff(
-      score: staffScoreFor(
-        realization,
-        realization.hands.single,
-        fingering: showsFingering
-            ? displayFingeringFor(exercise, realization.hands.single)
-            : null,
-        keySignature: keySignature,
       ),
-      theme: theme,
-      highlightedIds: located,
+    );
+  }
+}
+
+/// A staff and what it is saying, rebuilt when the locator moves.
+///
+/// Listens to the same notifier the highlights do, so the words follow the
+/// marks without the staff being measured again.
+class _LocatorSemantics extends StatelessWidget {
+  const _LocatorSemantics({
+    required this.description,
+    required this.locator,
+    required this.locates,
+    required this.located,
+    required this.child,
+  });
+
+  final String? description;
+  final String? Function() locator;
+  final bool locates;
+  final ValueListenable<Set<String>> located;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final painted = ExcludeSemantics(child: child);
+    if (!locates) {
+      return description == null
+          ? painted
+          : Semantics(container: true, label: description, child: painted);
+    }
+    return ValueListenableBuilder(
+      valueListenable: located,
+      builder: (context, _, _) {
+        final said = [?description, ?locator()].join(' ');
+        return said.isEmpty
+            ? painted
+            : Semantics(container: true, label: said, child: painted);
+      },
+      child: painted,
     );
   }
 }

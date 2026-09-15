@@ -203,15 +203,29 @@ policy asked for. The shortfall never rewrites the intent, because scaffolding
 that was withheld and scaffolding that was promised and missing are different
 facts about an attempt.
 
+What it counts is beats the audio layer accepted, which is the strongest claim
+available: nothing on that path reports back from the speaker, so a delivered
+beat is one the app supplied rather than one anybody is known to have heard.
+
 Practice policy is the only thing that turns a rung and an exercise into
 channels. A surface that read the rung again would be a second policy nothing
 records, and a pitch cue whose restriction no surface implements is refused
 rather than drawn in full.
 
 Every channel recorded as supplied is supplied to a screen reader too, from the
-same resolved conditions: the cue and the echo are painted, and neither engraved
-noteheads nor marked keys describe themselves. The words withdraw exactly when
-the cue does, and they name a finger only where the motor channel is open.
+same resolved conditions: none of it describes itself, because engraved
+noteheads and marked keys are painted. Three fragments, each governed by its own
+channel so withdrawing one leaves the others:
+
+```text
+cue        the material and, where the motor channel is open, the fingering
+echo       what was played, in the order it arrived, judged or not
+locator    where a held note sits in the material, while it is held
+```
+
+The cue withdraws exactly when it does visually. A note the exercise did not ask
+for appears in the echo and not in the locator, which is what the two channels
+mean: one reports arrivals and the other places the ones that matched.
 
 ## How an attempt ends
 

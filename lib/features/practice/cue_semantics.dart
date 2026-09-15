@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'exercise_presentation.dart';
+import 'traversal_locator.dart';
 
 /// The cue, in words, for a learner who is not reading the screen.
 ///
@@ -96,3 +97,38 @@ String _line(
 }
 
 String _handName(Hand hand) => hand == Hand.right ? 'Right hand' : 'Left hand';
+
+/// Where the locator says each hand has got to, in words.
+///
+/// The locator's channel and only its: it places a held note into the material
+/// and says nothing about whether anything was right. Governed by
+/// [LocatorFeedback] rather than by the echo, because it is contingent on what
+/// was played matching what was expected and the echo is not.
+///
+/// Null when the channel is closed or nothing is currently located, so a
+/// screen reader is told where a hand is exactly when the staff shows it.
+String? locatorSemantics({
+  required ExerciseRealization realization,
+  required PerformanceTranscript transcript,
+  required Set<int> pressedNotes,
+  required PresentationConditions presentation,
+  int? traversalLength,
+}) {
+  if (presentation.locatorFeedback != LocatorFeedback.positionTracking) {
+    return null;
+  }
+  final total = traversalLength ?? realization.moments.length;
+  final reached = <String>[];
+  for (final MapEntry(key: hand, value: position) in reachedMoments(
+    realization,
+    transcript,
+  ).entries) {
+    final note = realization.moments[position].noteFor(hand)!;
+    if (!pressedNotes.contains(note.midiNote)) continue;
+    reached.add(
+      '${_handName(hand)} on note ${position % total + 1} of $total, '
+      '${note.pitch.prettyLabel}.',
+    );
+  }
+  return reached.isEmpty ? null : reached.join(' ');
+}

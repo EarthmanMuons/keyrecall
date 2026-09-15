@@ -7,12 +7,18 @@ const int _lookahead = 2;
 
 /// The notes of the moments each hand has reached, of those still held.
 ///
-/// An orientation aid, built to stay with a learner rather than to be right
-/// about their performance: it asks only which written note somebody is on, and
-/// gives up the distinctions it does not need for that. A hand travels on its
-/// own, so one hand's mistake leaves the other's highlight alone, and an
-/// arrival the expected note did not match is looked for in the two notes after
-/// it.
+/// Low-bandwidth contingent feedback, built to stay with a learner rather
+/// than to be right about their performance: it asks only which written note
+/// somebody is on, and gives up the distinctions it does not need for that.
+///
+/// Contingent because a matched arrival lights the note it matched and an
+/// unmatched one lights nothing, so the display depends on agreement with the
+/// target. It is still not evaluative: it never says anything was right,
+/// wrong, or late. See `LocatorFeedback`.
+///
+/// A hand travels on its own, so one hand's mistake leaves the other's
+/// highlight alone, and an arrival the expected note did not match is looked
+/// for in the two notes after it.
 ///
 /// The register is not tolerated. A hand that enters the exercise in another
 /// octave stays dark for the rest of the traversal rather than lighting up

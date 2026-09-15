@@ -202,10 +202,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         // second one the first one's finished state.
         key: ValueKey(value.acquisition!.attemptId),
         exercise: value.acquisition!.task.parent,
-        presentation: presentationFor(
-          value.acquisition!.task.parent.guidance,
-          exercise: value.acquisition!.task.parent,
-        ),
+        presentation: presentationForTask(value.acquisition!.task),
         acquisition: value.acquisition!.task,
         metBefore: value.hasMet(value.acquisition!.task.parent.material),
         onFinish: (completion) =>
@@ -271,19 +268,23 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
 /// second, ungoverned account of what is on screen. A null description leaves
 /// the surface out of the tree entirely, which is what a withdrawn cue is.
 class _Described extends StatelessWidget {
-  const _Described(this.description, {required this.child});
+  const _Described(this.fragments, {required this.child});
 
-  final String? description;
+  /// What this surface is saying, one fragment per channel. Each is null when
+  /// its channel is closed, so a withdrawn cue takes its sentence with it and
+  /// leaves whatever else the surface is still permitted to say.
+  final List<String?> fragments;
+
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => description == null
-      ? ExcludeSemantics(child: child)
-      : Semantics(
-          container: true,
-          label: description,
-          child: ExcludeSemantics(child: child),
-        );
+  Widget build(BuildContext context) {
+    final said = fragments.nonNulls.join(' ');
+    final painted = ExcludeSemantics(child: child);
+    return said.isEmpty
+        ? painted
+        : Semantics(container: true, label: said, child: painted);
+  }
 }
 
 /// The bar over every practice state: the app's name, the instrument, and a
@@ -1163,21 +1164,20 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         follows: staffCarriesTranscript,
         children: [
           if (showsCue && cueOnStaff(presentation.cueModality))
-            _Described(
-              spokenCue,
-              child: StaffCue(
-                exercise: exercise,
-                acquisition: widget.acquisition,
-                showsFingering: presentation.motorCue == MotorCue.fingering,
-                locates:
-                    presentation.locatorFeedback ==
-                        LocatorFeedback.positionTracking &&
-                    _phase == _Phase.playing,
-              ),
+            StaffCue(
+              exercise: exercise,
+              presentation: presentation,
+              description: spokenCue,
+              acquisition: widget.acquisition,
+              showsFingering: presentation.motorCue == MotorCue.fingering,
+              locates:
+                  presentation.locatorFeedback ==
+                      LocatorFeedback.positionTracking &&
+                  _phase == _Phase.playing,
             ),
           if (staffCarriesTranscript)
             _Described(
-              spokenEcho,
+              [spokenEcho],
               child: TranscriptStaff(
                 transcript: transcript,
                 exercise: exercise,
@@ -1187,10 +1187,15 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       ),
     );
     final instrument = _Described(
-      // Only where the keyboard is the cue. Where it is not, it is an
-      // instrument with nothing written on it, and describing it would name
-      // notes the presentation withheld.
-      showsCue && cueOnKeyboard(presentation.cueModality) ? spokenCue : null,
+      // Two channels on one surface. The cue only where the keyboard carries
+      // it: elsewhere it is an instrument with nothing written on it, and
+      // describing it would name notes the presentation withheld. The echo
+      // wherever the keys light at all, because lit keys are exactly what a
+      // screen reader is getting none of.
+      [
+        if (showsCue && cueOnKeyboard(presentation.cueModality)) spokenCue,
+        spokenEcho,
+      ],
       child: _Instrument(
         exercise: exercise,
         showsCue: showsCue && cueOnKeyboard(presentation.cueModality),
