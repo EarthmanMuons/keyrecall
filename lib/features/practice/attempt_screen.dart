@@ -1325,6 +1325,21 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     },
   );
 
+  /// What to say about timing before an attempt, where an attempt would
+  /// otherwise find out afterwards.
+  ///
+  /// Nothing while the clock is being identified: the first notes played settle
+  /// that, and saying so before every first attempt would be noise.
+  String? _timingNotice(TimingReadiness? readiness) => switch (readiness) {
+    null || TimingReadiness.establishing || TimingReadiness.ready => null,
+    TimingReadiness.unavailable =>
+      'This connection does not report timing KeyRecall can use, so only '
+          'notes and completion will be measured.',
+    TimingReadiness.failed =>
+      "Timing stopped when your piano's clock lost its place. Reconnect to "
+          'measure timing again.',
+  };
+
   Widget _control() => switch (_phase) {
     _Phase.ready => Column(
       children: [
@@ -1353,6 +1368,20 @@ class _AttemptViewState extends ConsumerState<AttemptView>
             style: Theme.of(context).textTheme.bodySmall,
             textAlign: TextAlign.center,
           ),
+        ],
+        if (_timingNotice(ref.watch(timingReadinessProvider))
+            case final notice?) ...[
+          const SizedBox(height: 8),
+          Text(
+            notice,
+            style: Theme.of(context).textTheme.bodySmall,
+            textAlign: TextAlign.center,
+          ),
+          if (ref.watch(timingReadinessProvider) == TimingReadiness.failed)
+            TextButton(
+              onPressed: () => MidiDeviceSheet.show(context),
+              child: const Text('Check connection'),
+            ),
         ],
         // Only where retrieval is what the attempt would test, and only before
         // anything is played: afterwards, what happened is a question for the

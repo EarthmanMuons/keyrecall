@@ -376,10 +376,14 @@ detecting                  nothing said; the first notes of an
                            observation are expected to be untimed while
                            the clock is being identified
 
-nonPerformanceDomain       a quiet, persistent explanation near connection
-                           status: timing feedback is unavailable for this
-                           connection, and note accuracy and completion are
-                           still measured
+nonPerformanceDomain,      a quiet, persistent explanation under Ready,
+unknownDomain              before the attempt: this connection does not
+                           report usable timing, so notes and completion
+                           are what will be measured
+
+failed                     the same place, with the recovery: reconnecting
+                           opens a new observation, which is the only
+                           thing that restores a lost timeline
 
 an event-local hole        nothing said, unless it left a metric
                            unavailable for that attempt
