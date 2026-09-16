@@ -331,10 +331,12 @@ across a boundary is exactly how a take lands on a clock nobody expected.
 ### The host route carries playing
 
 Why two BLE instruments carried different domains under the same reported route
-turned out to be the plugin: it decodes a BLE instrument itself, hands it to
-CoreMIDI once the operating system exposes it, and labels both paths `ble`. With
-the route reported correctly, `ios-yamaha-host-pulse` is the first take that
-says which path it measured, and every delivery in it came by `host`.
+turned out to be the plugin: it decodes a BLE instrument itself, can hand it to
+CoreMIDI if the operating system exposes it, and labels both paths `ble`. The
+JamCorder normally stays on the decoder; a directly connected P-525 arrives by
+the host route. With the route reported correctly, `ios-yamaha-host-pulse` is
+the first take that says which path it measured, and every delivery in it came
+by `host`.
 
 Its clock tracks the playing exactly over the take and differs from arrival note
 by note:

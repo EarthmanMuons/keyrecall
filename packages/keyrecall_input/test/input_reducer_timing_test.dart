@@ -162,7 +162,8 @@ void main() {
   });
 
   // One adapter has reached the app by two paths through the same plugin, each
-  // with its own clock, and the handoff between them happens mid-observation.
+  // with its own clock. A switch between them is not expected, and if one
+  // happens mid-observation it must not cost the rest of it.
   test('a change of timestamp path is a new clock, not a broken one', () {
     const ble = TimestampSource(
       path: 'ble',

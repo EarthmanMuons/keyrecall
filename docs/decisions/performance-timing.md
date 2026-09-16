@@ -321,23 +321,24 @@ shape.
 
 **Why.** On iOS the MIDI plugin connects a BLE instrument through its own BLE
 decoder, which delivers the BLE MIDI packet timestamp (a 1 ms counter modulo
-8192), and then hands the instrument to CoreMIDI in the background once the
+8192), and can then hand the instrument to CoreMIDI in the background if the
 operating system exposes it, after which the platform delivers host nanosecond
 stamps. Both arrive labeled `ble`, because the plugin names the transport after
-the device type. Read as one stream, that handoff either failed an active
-timeline for the rest of the observation or, before the first wrap, left the
-detector measuring a mixture of two clocks that never identified. Both were
-persistent loss of timing across every exercise that followed. Separately, a
-millisecond counter is only identified by a wrap, so every observation spent its
-first 8.2 seconds of stamped deliveries untimed even though the decoder already
-knew the format.
+the device type. Staying on the decoder is the normal supported path, and one
+recorded take landed on the host clock instead. Read as one stream, a handoff
+either failed an active timeline for the rest of the observation or, before the
+first wrap, left the detector measuring a mixture of two clocks that never
+identified. Both were persistent loss of timing across every exercise that
+followed. Separately, a millisecond counter is only identified by a wrap, so
+every observation spent its first 8.2 seconds of stamped deliveries untimed even
+though the decoder already knew the format.
 
 **Consequences.** The route now tells the two paths apart by the device object
 the plugin delivers, the BLE route declares its format, and timing through the
 plugin's decoder starts with the second delivery. The host route is still
-detected rather than declared, since nothing documents its format, so a
-handed-off instrument is untimed for the eight steps it takes to identify its
-nanosecond clock and is timed after that; see
+detected rather than declared, since nothing documents its format, so an
+instrument that does reach it is untimed for the eight steps it takes to
+identify its nanosecond clock and is timed after that; see
 [`analysis/transport-clocks/`](../../analysis/transport-clocks/) for why that
 domain is authorized.
 
