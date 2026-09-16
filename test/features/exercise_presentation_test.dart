@@ -369,7 +369,7 @@ void main() {
       );
       expect(
         acquisitionOutcomeLine(closed(scale, firstAbsentPosition: 5)),
-        'You stopped before the end of the scale.',
+        'You stopped before completing the scale.',
       );
       // Every position was played and some of them were something else, which
       // is a different thing to have done than running out.
@@ -384,7 +384,7 @@ void main() {
       // The family's own word, so an arpeggio is never called a scale.
       expect(
         acquisitionOutcomeLine(closed(arpeggio, firstAbsentPosition: 3)),
-        'You stopped before the end of the arpeggio.',
+        'You stopped before completing the arpeggio.',
       );
     });
 
@@ -399,7 +399,7 @@ void main() {
             termination: AttemptTermination.inputInterrupted,
           ),
         ),
-        'The connection was interrupted before the whole scale was recorded.',
+        'The connection was interrupted before the scale was fully recorded.',
       );
       expect(
         acquisitionOutcomeLine(
@@ -425,7 +425,7 @@ void main() {
               termination: termination,
             ),
           ),
-          'The scale was not played all the way through.',
+          'The scale was not completed.',
         );
       }
     });
@@ -433,19 +433,17 @@ void main() {
     test('says where the playing got to, not what it produced', () {
       final arpeggio = ArpeggioMaterial('C', ArpeggioQuality.major);
 
-      // Where the playing got to, never how many traversals came out.
-      expect(
-        acquisitionOutcomeLine(
-          closed(arpeggio, traversals: 2, firstAbsentPosition: 6),
-        ),
-        'You stopped during the second time through the arpeggio.',
-      );
-      expect(
-        acquisitionOutcomeLine(
-          closed(arpeggio, traversals: 2, firstAbsentPosition: 2),
-        ),
-        'You stopped during the first time through the arpeggio.',
-      );
+      // Neither how many traversals came out nor which one the playing ended
+      // in: the record establishes neither.
+      for (final absent in [2, 6]) {
+        expect(
+          acquisitionOutcomeLine(
+            closed(arpeggio, traversals: 2, firstAbsentPosition: absent),
+          ),
+          'You stopped before completing the arpeggio.',
+          reason: 'first absent at $absent',
+        );
+      }
       expect(
         acquisitionOutcomeLine(
           closed(
@@ -465,9 +463,80 @@ void main() {
             termination: AttemptTermination.inputInterrupted,
           ),
         ),
-        'The connection was interrupted during the second time through the '
-        'arpeggio.',
+        'The connection was interrupted before the arpeggio was fully '
+        'recorded.',
       );
+    });
+
+    test('does not read where playing ended out of what is missing', () {
+      // The earliest moment nothing arrived for is not where the attempt
+      // ended: this omits a note inside the first traversal and then plays on
+      // through the final note of the second. Wording that located the ending
+      // from that field would put it in the traversal the learner finished.
+      final material = ArpeggioMaterial('C', ArpeggioQuality.major);
+      final task = AcquisitionScaffold.unmeteredRepetitions(2).taskFor(
+        Exercise.linear(
+          material: material,
+          hands: HandConfiguration.right,
+          octaves: 1,
+          direction: ExerciseDirection.up,
+          tempoBpm: 60,
+          guidance: GuidanceContext.continuouslyCued,
+        ),
+      );
+      final wanted = [
+        for (final moment in realizeAcquisition(task).moments)
+          moment.noteFor(Hand.right)!.midiNote,
+      ];
+      final played = [...wanted]..removeAt(2);
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, midiNote) in played.indexed) {
+        transcript = transcript.appending(
+          pitch: spellObservedPitch(midiNote, material: material),
+          timestampMs: index * 600,
+          performanceTimeUs: index * 600 * 1000,
+        );
+      }
+      AcquisitionAttemptRecord closedWith(AttemptTermination termination) =>
+          acquisitionRecordOf(
+            observation: observeAcquisition(task: task, transcript: transcript),
+            identity: AttemptIdentity(
+              profileId: 'abc12345',
+              attemptId: 'acq-0',
+              sessionId: 'sitting-1',
+              indexInSession: 0,
+              occurredAt: DateTime.utc(2026, 9, 9),
+            ),
+            journalSequence: 0,
+            termination: termination,
+          );
+
+      final stopped = closedWith(AttemptTermination.learnerStopped);
+      expect(stopped.completion, AcquisitionCompletion.notCompleted);
+      expect(
+        stopped.firstAbsentPosition,
+        lessThan(realize(stopped.parent).moments.length),
+        reason: 'the omission is inside the first traversal',
+      );
+      expect(
+        acquisitionOutcomeLine(stopped),
+        'You stopped before completing the arpeggio.',
+      );
+      expect(
+        acquisitionOutcomeLine(closedWith(AttemptTermination.inputInterrupted)),
+        'The connection was interrupted before the arpeggio was fully '
+        'recorded.',
+      );
+      for (final record in [
+        stopped,
+        closedWith(AttemptTermination.inputInterrupted),
+      ]) {
+        expect(
+          acquisitionOutcomeLine(record),
+          isNot(anyOf(contains('first'), contains('second'))),
+          reason: 'no field says which traversal the playing ended in',
+        );
+      }
     });
 
     test('never claims a traversal that positions alone cannot establish', () {
@@ -518,7 +587,7 @@ void main() {
       expect(record.firstAbsentPosition, 5);
       expect(
         acquisitionOutcomeLine(record),
-        'You stopped during the second time through the arpeggio.',
+        'You stopped before completing the arpeggio.',
       );
       expect(
         acquisitionOutcomeLine(record),
