@@ -33,6 +33,7 @@ class MidiDeviceSheet extends ConsumerStatefulWidget {
 class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
   late final MidiConnectionNotifier _connection;
   String? _error;
+  int _selectionGeneration = 0;
 
   @override
   void initState() {
@@ -60,12 +61,21 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
   }
 
   Future<void> _connect(MidiDevice device) async {
+    final generation = ++_selectionGeneration;
     setState(() => _error = null);
-    await _connection.connect(device);
-    if (!mounted) return;
+    try {
+      await _connection.connect(device);
+    } catch (error) {
+      if (!mounted || generation != _selectionGeneration) return;
+      setState(() {
+        _error = error is MidiException ? error.message : 'Could not connect.';
+      });
+      return;
+    }
+    if (!mounted || generation != _selectionGeneration) return;
 
     final state = ref.read(midiConnectionStateProvider);
-    if (state.isConnected) {
+    if (state.isConnected && state.device?.id == device.id) {
       Navigator.of(context).pop(state.device);
     } else {
       setState(() => _error = state.message ?? 'Could not connect.');
@@ -149,14 +159,35 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
                         title: Text(device.displayName ?? device.id),
                         subtitle: Text(device.transport.label),
                         trailing: device.id == connection.device?.id
-                            ? const Icon(Icons.link)
+                            ? connection.isAttemptingConnection
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : connection.isConnected
+                                  ? const Icon(Icons.link)
+                                  : null
                             : null,
-                        onTap: connection.isAttemptingConnection
+                        onTap:
+                            connection.isAttemptingConnection &&
+                                device.id == connection.device?.id
                             ? null
                             : () => _connect(device),
                       ),
                   ],
                 ),
+              ),
+            if (connection.isAttemptingConnection)
+              TextButton(
+                onPressed: () {
+                  _selectionGeneration++;
+                  setState(() => _error = null);
+                  unawaited(_connection.disconnect());
+                },
+                child: const Text('Cancel'),
               ),
             if (connection.isConnected)
               TextButton(

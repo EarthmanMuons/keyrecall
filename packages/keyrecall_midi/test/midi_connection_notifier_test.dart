@@ -87,6 +87,115 @@ void main() {
     prefs = await SharedPreferences.getInstance();
   });
 
+  const deviceB = MidiDevice(
+    id: 'bbb',
+    name: 'Stage Piano',
+    transport: MidiTransportType.ble,
+    isConnected: false,
+  );
+
+  for (final delay in [Duration.zero, const Duration(seconds: 5)]) {
+    test('manual selection supersedes reconnect after $delay', () {
+      fakeAsync((async) {
+        final h = _Harness(async, prefs);
+        h.seedLastConnected(async, _deviceA);
+        h.ble.discoverable = const [deviceB];
+        unawaited(
+          h.notifier.tryAutoReconnect(reason: MidiReconnectTrigger.startup),
+        );
+        async.flushMicrotasks();
+        async.elapse(delay);
+
+        unawaited(h.notifier.connect(deviceB));
+        async.flushMicrotasks();
+        expect(h.state.device?.id, deviceB.id);
+        expect(h.state.isConnected, isTrue);
+
+        h.ble.discoverable = const [_deviceA, deviceB];
+        async.elapse(const Duration(minutes: 2));
+        expect(h.state.device?.id, deviceB.id);
+        expect(h.ble.connectedIds, {deviceB.id});
+        expect(h.ble.connectCalls, 1);
+        h.dispose(async);
+      });
+    });
+  }
+
+  for (final fail in [false, true]) {
+    test('superseded native connect cannot replace the selection, fail=$fail', () {
+      fakeAsync((async) {
+        final h = _Harness(async, prefs);
+        final gate = Completer<void>();
+        h.ble.connectGate = gate;
+        unawaited(h.notifier.connect(_deviceA));
+        async.flushMicrotasks();
+
+        h.ble.connectGate = null;
+        h.ble.discoverable = const [deviceB];
+        unawaited(h.notifier.connect(deviceB));
+        async.flushMicrotasks();
+        expect(h.state.device?.id, deviceB.id);
+        expect(h.state.isConnected, isTrue);
+        expect(h.ble.disconnectCalls, 1);
+
+        if (fail) h.ble.connectError = const MidiException('Old attempt failed');
+        gate.complete();
+        async.flushMicrotasks();
+        expect(h.state.device?.id, deviceB.id);
+        expect(h.state.isConnected, isTrue);
+        expect(h.ble.connectedIds, {deviceB.id});
+        h.dispose(async);
+      });
+    });
+  }
+
+  test('cancel permits an immediate retry of the same device', () {
+    fakeAsync((async) {
+      final h = _Harness(async, prefs);
+      final gate = Completer<void>();
+      h.ble.connectGate = gate;
+      unawaited(h.notifier.connect(_deviceA));
+      async.flushMicrotasks();
+      unawaited(h.notifier.disconnect());
+      expect(h.state.phase, MidiConnectionPhase.idle);
+      async.flushMicrotasks();
+
+      h.ble.connectGate = null;
+      h.ble.discoverable = const [_deviceA];
+      unawaited(h.notifier.connect(_deviceA));
+      async.flushMicrotasks();
+      gate.complete();
+      async.flushMicrotasks();
+      expect(h.state.isConnected, isTrue);
+      expect(h.ble.connectedIds, {_deviceA.id});
+      h.dispose(async);
+    });
+  });
+
+  test('user cancel suppresses resume and Bluetooth recovery', () {
+    fakeAsync((async) {
+      final h = _Harness(async, prefs);
+      h.seedLastConnected(async, _deviceA);
+      unawaited(
+        h.notifier.tryAutoReconnect(reason: MidiReconnectTrigger.startup),
+      );
+      async.flushMicrotasks();
+      unawaited(h.notifier.cancel());
+      async.flushMicrotasks();
+      h.ble.discoverable = const [_deviceA];
+      h.ble.emitBluetoothState(BluetoothState.poweredOff);
+      async.flushMicrotasks();
+      h.ble.emitBluetoothState(BluetoothState.poweredOn);
+      unawaited(
+        h.notifier.tryAutoReconnect(reason: MidiReconnectTrigger.resume),
+      );
+      async.flushMicrotasks();
+      async.elapse(const Duration(seconds: 10));
+      expect(h.ble.connectCalls, 0);
+      h.dispose(async);
+    });
+  });
+
   test('startup reconnect retries with exponential backoff until the device '
       'reappears', () {
     fakeAsync((async) {

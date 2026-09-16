@@ -73,6 +73,12 @@ set of expected differences rather than a mystery.
   needs a boundary WhatChord has no use for. See
   [`docs/system/input.md`](../../docs/system/input.md).
 
+- Connection attempts carry a generation so a manual selection supersedes
+  reconnect discovery, backoff, and pending connection results. Cancel
+  suppresses automatic reconnect, and disconnect also tears down a pending
+  native connection. Late results cannot overwrite or disconnect a newer
+  selection.
+
 - Dropped: `midi_connection_status_provider.dart` and everything under `pages/`
   and `widgets/`. Those are presentation, and they carried WhatChord's design
   system and its chord and key features with them. KeyRecall will write its own

@@ -151,6 +151,7 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
   // at entry and re-checks it before publishing a connected device, so a
   // disconnect that races a mid-flight connect cannot be silently undone.
   int _connectGeneration = 0;
+  MidiDevice? _connectingDevice;
 
   // Lazy Bluetooth central prime.
   bool _centralStarted = false;
@@ -278,11 +279,14 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
     // Capture the generation for this attempt. A newer connect supersedes older
     // in-flight ones, and any disconnect invalidates them.
     final generation = ++_connectGeneration;
+    _connectingDevice = device;
     try {
       if (_debugLog) debugPrint('[MGR] connect id=${device.id}');
       if (device.transport == MidiTransportType.ble) {
         await _ensureBluetoothCentralReady();
       }
+
+      if (generation != _connectGeneration) return;
 
       // Switching devices: drop the current connection first, or its link
       // stays open at the plugin level and keeps delivering MIDI alongside
@@ -296,6 +300,7 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
             transport: previous.transport,
           );
         } catch (_) {}
+        if (generation != _connectGeneration) return;
         _setConnectedDevice(null);
       }
 
@@ -314,7 +319,10 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
         }
         // Best-effort teardown of the superseded link.
         try {
-          await _disconnectBestEffort(device.id, transport: device.transport);
+          if (_connectingDevice?.id != device.id &&
+              state.connectedDevice?.id != device.id) {
+            await _disconnectBestEffort(device.id, transport: device.transport);
+          }
         } catch (_) {}
         return;
       }
@@ -328,6 +336,8 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
       throw MidiException(e.message, e);
     } catch (e) {
       throw MidiException('Failed to connect to device', e);
+    } finally {
+      if (generation == _connectGeneration) _connectingDevice = null;
     }
   }
 
@@ -336,20 +346,23 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
     // it self-aborts instead of re-publishing a connection after the drop.
     _connectGeneration++;
 
-    final current = state.connectedDevice;
-    if (current == null) return;
-
-    try {
-      if (_debugLog) debugPrint('[MGR] disconnect id=${current.id}');
-      // Best-effort; do not force a prime only to disconnect. If the central
-      // was never started, this is a no-op.
-      await _disconnectBestEffort(current.id, transport: current.transport);
-    } catch (e) {
-      if (!kReleaseMode) {
-        debugPrint('Warning: Error disconnecting MIDI device: $e');
+    final devices = {
+      for (final device in [
+        ?state.connectedDevice,
+        ?_connectingDevice,
+      ])
+        device.id: device,
+    };
+    _connectingDevice = null;
+    _setConnectedDevice(null);
+    for (final device in devices.values) {
+      try {
+        await _disconnectBestEffort(device.id, transport: device.transport);
+      } catch (e) {
+        if (!kReleaseMode) {
+          debugPrint('Warning: Error disconnecting MIDI device: $e');
+        }
       }
-    } finally {
-      _setConnectedDevice(null);
     }
   }
 
@@ -364,6 +377,7 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
   }
 
   Future<bool> reconnect(String deviceId) async {
+    final generation = _connectGeneration;
     try {
       final connected = state.connectedDevice;
       final requiresBluetooth = connected?.id == deviceId
@@ -371,11 +385,14 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
           : true;
       if (requiresBluetooth) {
         await _ensureBluetoothCentralReady();
+        if (generation != _connectGeneration) return false;
         await _ensureScanning();
       }
       await _refreshDeviceList(bypassThrottle: true);
 
+      if (generation != _connectGeneration) return false;
       final device = await _waitForDevice(deviceId);
+      if (generation != _connectGeneration) return false;
       if (device == null) return false;
 
       await connect(device);

@@ -49,6 +49,7 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
 
   bool _backgrounded = false;
   bool _attemptInFlight = false;
+  int _attemptGeneration = 0;
   DateTime? _backgroundBeganAt;
   Duration? _lastBackgroundDuration;
 
@@ -77,13 +78,12 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
     MidiCancelReason reason = MidiCancelReason.userCancel,
   }) async {
     if (_debugLog) debugPrint('[CONN] cancel reason=${reason.name}');
+    final generation = ++_attemptGeneration;
+    _attemptInFlight = false;
     _cancelRequested = true;
+    if (reason == MidiCancelReason.userCancel) _autoReconnectSuppressed = true;
     _retriggerAfterAttempt = false;
     _cancelRetry();
-    // Do not clear `_attemptInFlight` here: cancel only requests early exit.
-    // The active reconnect run clears the flag in tryAutoReconnect's `finally`
-    // after all in-flight async work has unwound.
-
     final connected = ref.read(midiDeviceManagerProvider).connectedDevice;
 
     // Backgrounding must not drop a live connection; only pause scanning. A
@@ -105,9 +105,11 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
     try {
       await _midi.disconnect();
     } catch (_) {}
+    if (generation != _attemptGeneration) return;
     try {
       await _midi.stopScanning();
     } catch (_) {}
+    if (generation != _attemptGeneration) return;
 
     final bt =
         _lastBluetoothState ??
@@ -369,6 +371,7 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
       _lastAutoReconnectAt = now;
     }
 
+    final generation = ++_attemptGeneration;
     _attemptInFlight = true;
     try {
       final prefs = ref.read(midiPreferencesProvider);
@@ -411,6 +414,7 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
                 timeout: _stillConnectedTimeout,
                 onTimeout: false,
               );
+        if (_reconnectAborted(generation)) return;
         if (stillConnected == true) {
           if (_debugLog) {
             debugPrint('[CONN] stillConnected id=$lastConnectedDeviceId');
@@ -435,6 +439,7 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
       // Preflight: publish attempt=1 before the connection attempt starts.
       state = state.copyWith(
         phase: MidiConnectionPhase.connecting,
+        device: lastConnectedDevice,
         message: isManual
             ? 'Connecting to last connected device…'
             : (reason == MidiReconnectTrigger.startup
@@ -450,11 +455,12 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
       if (requiresBluetooth) {
         final ok =
             await _withTimeoutOr(
-              _ensureBluetoothAccessOrSetUnavailable(),
+              _ensureBluetoothAccessOrSetUnavailable(generation: generation),
               timeout: _bluetoothAccessTimeout,
               onTimeout: false,
             ) ??
             false;
+        if (_reconnectAborted(generation)) return;
         if (!ok) {
           if (_debugLog) debugPrint('[CONN] bluetooth access not ok');
           _cancelRetry();
@@ -489,6 +495,7 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
               onTimeout: null,
             );
           } catch (_) {
+            if (_reconnectAborted(generation)) return;
             if (_debugLog) debugPrint('[CONN] bluetooth prime failed');
             // If priming fails, treat Bluetooth as not ready and stop.
             _cancelRetry();
@@ -502,7 +509,9 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
             return;
           }
 
+          if (_reconnectAborted(generation)) return;
           bt = await _awaitBluetoothState() ?? BluetoothState.unknown;
+          if (_reconnectAborted(generation)) return;
         }
 
         if (!_bluetoothReady(bt)) {
@@ -529,21 +538,24 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
 
       await _reconnectWithBackoff(
         lastConnectedDeviceId,
+        generation: generation,
         hint: lastConnectedDevice,
       );
     } finally {
-      _attemptInFlight = false;
-      if (_retriggerAfterAttempt) {
-        _retriggerAfterAttempt = false;
-        if (!_backgrounded) {
-          unawaited(
-            Future<void>.microtask(() {
-              if (_backgrounded || _attemptInFlight) return;
-              unawaited(
-                tryAutoReconnect(reason: MidiReconnectTrigger.bluetoothReady),
-              );
-            }),
-          );
+      if (generation == _attemptGeneration) {
+        _attemptInFlight = false;
+        if (_retriggerAfterAttempt) {
+          _retriggerAfterAttempt = false;
+          if (!_backgrounded) {
+            unawaited(
+              Future<void>.microtask(() {
+                if (_backgrounded || _attemptInFlight) return;
+                unawaited(
+                  tryAutoReconnect(reason: MidiReconnectTrigger.bluetoothReady),
+                );
+              }),
+            );
+          }
         }
       }
     }
@@ -551,21 +563,22 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
 
   /// Whether the active reconnect run should stop at the next checkpoint:
   /// re-checked after every await in [_reconnectWithBackoff].
-  bool get _reconnectAborted => _backgrounded || _cancelRequested;
+  bool _reconnectAborted(int generation) =>
+      generation != _attemptGeneration || _backgrounded || _cancelRequested;
 
   Future<void> _reconnectWithBackoff(
     String deviceId, {
+    required int generation,
     MidiDevice? hint,
   }) async {
+    if (_reconnectAborted(generation)) return;
     _cancelRetry();
-    if (_cancelRequested) return;
-    _cancelRequested = false; // start fresh for this run
 
     var currentId = deviceId;
     var currentHint = hint;
 
     for (var attempt = 1; attempt <= _maxAttempts; attempt++) {
-      if (_reconnectAborted) return;
+      if (_reconnectAborted(generation)) return;
       if (_debugLog) {
         debugPrint('[CONN] reconnect attempt=$attempt id=$currentId');
       }
@@ -575,7 +588,7 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
         timeout: _findTargetTimeout,
         onTimeout: null,
       );
-      if (_reconnectAborted) return;
+      if (_reconnectAborted(generation)) return;
 
       if (target == null) {
         if (_debugLog) {
@@ -595,12 +608,13 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
           );
         }
       }
-      if (_reconnectAborted) return;
+      if (_reconnectAborted(generation)) return;
 
       state = MidiConnectionState(
         phase: attempt == 1
             ? MidiConnectionPhase.connecting
             : MidiConnectionPhase.retrying,
+        device: target ?? currentHint,
         attempt: attempt,
         nextDelay: null,
         message: attempt == 1
@@ -619,13 +633,13 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
       if (_debugLog) {
         debugPrint('[CONN] reconnect result ok=$ok attempt=$attempt');
       }
-      if (_reconnectAborted) return;
+      if (_reconnectAborted(generation)) return;
       if (ok) {
         final published = await _awaitConnectedPublish(
           currentId,
           timeout: _connectedPublishTimeout,
         );
-        if (_reconnectAborted) return;
+        if (_reconnectAborted(generation)) return;
         if (published) return;
         if (_debugLog) {
           debugPrint(
@@ -643,13 +657,13 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
         message: 'Retrying in ${delay.inSeconds}s…',
       );
 
-      if (_reconnectAborted) return;
+      if (_reconnectAborted(generation)) return;
       await _sleep(delay);
-      if (_reconnectAborted) return;
+      if (_reconnectAborted(generation)) return;
     }
 
     // Terminal state after max attempts.
-    if (!_reconnectAborted) {
+    if (!_reconnectAborted(generation)) {
       state = MidiConnectionState(
         phase: MidiConnectionPhase.deviceUnavailable,
         message:
@@ -748,22 +762,13 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
 
   /// Connect to a device and save it as the last connected device.
   Future<void> connect(MidiDevice device) async {
-    // Cancel any backoff/retry loop; this is an explicit user action.
+    final supersedingAttempt = _attemptInFlight;
+    final generation = ++_attemptGeneration;
     _cancelRetry();
-    // Explicit connect clears any prior disconnect suppression.
+    _cancelRequested = false;
     _autoReconnectSuppressed = false;
-    // Mark the attempt in flight so the device-switch teardown (previous
-    // device dropping mid-connect) does not read as an unexpected loss.
+    _retriggerAfterAttempt = false;
     _attemptInFlight = true;
-    if (_debugLog) debugPrint('[CONN] connect id=${device.id}');
-
-    if (device.transport == MidiTransportType.ble) {
-      final ok = await _ensureBluetoothAccessOrSetUnavailable();
-      if (!ok) {
-        throw MidiException('Bluetooth unavailable (${state.unavailability})');
-      }
-    }
-
     // Publish "connecting" with the specific device so UI can render per-row spinners.
     state = MidiConnectionState(
       phase: MidiConnectionPhase.connecting,
@@ -774,10 +779,23 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
     );
 
     try {
+      if (supersedingAttempt) await _midi.disconnect();
+      if (_reconnectAborted(generation)) return;
+      if (device.transport == MidiTransportType.ble) {
+        final ok = await _ensureBluetoothAccessOrSetUnavailable(
+          generation: generation,
+        );
+        if (_reconnectAborted(generation)) return;
+        if (!ok) {
+          throw MidiException('Bluetooth unavailable (${state.unavailability})');
+        }
+      }
       await _midi.connect(device);
       // Success path is handled by your connectedMidiDeviceProvider listener,
       // which will set phase=connected and persist the device.
     } on MidiException catch (e) {
+      if (_reconnectAborted(generation)) return;
+      if (state.phase == MidiConnectionPhase.bluetoothUnavailable) rethrow;
       state = MidiConnectionState(
         phase: MidiConnectionPhase.error,
         device: device,
@@ -785,6 +803,7 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
       );
       rethrow;
     } catch (e) {
+      if (_reconnectAborted(generation)) return;
       state = MidiConnectionState(
         phase: MidiConnectionPhase.error,
         device: device,
@@ -792,7 +811,7 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
       );
       rethrow;
     } finally {
-      _attemptInFlight = false;
+      if (generation == _attemptGeneration) _attemptInFlight = false;
     }
   }
 
@@ -801,17 +820,14 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
   /// Stops any in-flight reconnect, drops the connection, and suppresses
   /// automatic reconnect until the user connects again.
   Future<void> disconnect() async {
-    if (_debugLog) debugPrint('[CONN] disconnect');
+    ++_attemptGeneration;
+    _attemptInFlight = false;
     _cancelRequested = true;
     _autoReconnectSuppressed = true;
     _retriggerAfterAttempt = false;
     _cancelRetry();
-
-    await _midi.disconnect();
-
-    // Own the state: the connected-device listener only resets to idle from the
-    // `connected` phase, so a mid-flight `connecting`/`retrying` would get stuck.
     state = const MidiConnectionState.idle();
+    await _midi.disconnect();
   }
 
   /// Manually trigger a reconnection attempt.
@@ -823,8 +839,9 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
     return connected?.isConnected == true;
   }
 
-  Future<bool> _ensureBluetoothAccessOrSetUnavailable() async {
+  Future<bool> _ensureBluetoothAccessOrSetUnavailable({int? generation}) async {
     final access = await _midi.ensureBluetoothAccess();
+    if (generation != null && _reconnectAborted(generation)) return false;
     if (access.isReady) return true;
 
     final reason = switch (access.state) {
