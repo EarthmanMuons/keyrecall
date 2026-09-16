@@ -325,6 +325,65 @@ void main() {
       expect(diagnosis.sentence, 'It ran out on the way up.');
     });
 
+    test('is what a missing tail means, not any missing note', () {
+      // A moment skipped on the way past is a gap the playing continued after,
+      // so nothing about it says where the learner got to. Locating the
+      // ending from the first missing moment put it at the start of a
+      // traversal the learner finished.
+      final skipped = [...expected]..removeAt(2);
+      final diagnosis = diagnosisOf(played(skipped));
+
+      expect(diagnosis.finished, isFalse);
+      expect(diagnosis.ranOut, isFalse);
+      expect(diagnosis.sentence, isNot(contains('ran out')));
+      expect(diagnosis.sentence, 'A note was missed on the way up.');
+    });
+
+    test('names how many were missed once there is more than one', () {
+      final skipped = [...expected]
+        ..removeAt(6)
+        ..removeAt(2);
+      final diagnosis = diagnosisOf(played(skipped));
+
+      expect(diagnosis.ranOut, isFalse);
+      expect(diagnosis.sentence, '2 notes were missed.');
+    });
+
+    test('does not put an ending nobody chose down to the learner', () {
+      // The same truncation, ended two ways. Only the learner stopping is
+      // them having stopped; a timeout and a restarted input stream end the
+      // attempt without their deciding to.
+      final truncated = played(expected.take(5).toList());
+
+      expect(
+        diagnosisOf(truncated).sentence,
+        'It ran out on the way up.',
+        reason: 'the learner ended this one',
+      );
+      for (final termination in [
+        AttemptTermination.inactivityTimeout,
+        AttemptTermination.durationLimit,
+        AttemptTermination.inputInterrupted,
+      ]) {
+        final reading = readPerformance(
+          exercise: exercise,
+          transcript: truncated,
+        );
+        final diagnosis = diagnose(
+          exercise: exercise,
+          closure: closureOf(reading.outcome, termination: termination),
+          reading: reading,
+        )!;
+
+        expect(diagnosis.ranOut, isTrue, reason: termination.id);
+        expect(
+          diagnosis.sentence,
+          'The attempt ended on the way up.',
+          reason: termination.id,
+        );
+      }
+    });
+
     test('playing nothing invents no fault and no place', () {
       final diagnosis = diagnosisOf(PerformanceTranscript.empty);
 

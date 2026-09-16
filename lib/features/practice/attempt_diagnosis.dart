@@ -68,8 +68,24 @@ class AttemptDiagnosis {
   /// The channel the attempt fell down in, or null when none did.
   final AttemptFault? fault;
 
-  /// Where the fault showed, or null when nothing locates it.
+  /// Where the fault showed, or where the playing ended for an attempt that
+  /// ran out, or null when nothing locates it.
   final TraversalLandmark? where;
+
+  /// Whether what the attempt never played is a suffix of the traversal.
+  ///
+  /// Running out is playing that stopped and did not resume, which is a
+  /// different thing from a note missed on the way past. An attempt that
+  /// omitted a moment and went on to the end did not run out of anything, and
+  /// the notes it missed are what there is to say about it.
+  final bool ranOut;
+
+  /// Whether the learner is the one who ended it.
+  ///
+  /// Only they can be said to have stopped. A timeout, a limit, a cutoff and a
+  /// restarted input stream all end an attempt without the learner deciding
+  /// to, so the sentence says the attempt ended rather than that they stopped.
+  final bool endedByLearner;
 
   /// Whether the learner reported that the material would not come.
   final bool declined;
@@ -84,6 +100,10 @@ class AttemptDiagnosis {
   /// Notes that arrived without being asked for, or null when nothing counted
   /// them.
   final int? extraNotes;
+
+  /// Notes that were asked for and never arrived, or null when nothing counted
+  /// them.
+  final int? missedNotes;
 
   /// Whether every wrong pitch was the right note in the wrong octave.
   ///
@@ -100,8 +120,11 @@ class AttemptDiagnosis {
     required this.where,
     required this.declined,
     required this.handsTogether,
+    this.ranOut = false,
+    this.endedByLearner = false,
     this.slippedNotes,
     this.extraNotes,
+    this.missedNotes,
     this.registerOnly = false,
   });
 
@@ -109,10 +132,17 @@ class AttemptDiagnosis {
   String get sentence {
     if (declined) return 'Noted. We will come back to it.';
     if (!started) return 'No notes came through.';
-    if (!finished) {
-      return where == null
-          ? 'That one did not get all the way through.'
-          : 'It ran out ${where!.phrase}.';
+    // Only a traversal that stopped and did not resume ran out. An attempt
+    // that missed a moment and played on to the end is described by its notes,
+    // which is what the fault below says.
+    if (!finished && ranOut) {
+      if (where == null) return 'That one did not get all the way through.';
+      return endedByLearner
+          ? 'It ran out ${where!.phrase}.'
+          : 'The attempt ended ${where!.phrase}.';
+    }
+    if (!finished && fault == null) {
+      return 'That one did not get all the way through.';
     }
 
     return switch (fault) {
@@ -136,14 +166,16 @@ class AttemptDiagnosis {
   /// went worst. The edit script knows how many, so this says how many, and
   /// falls back to the vague version only when there is no script to ask.
   ///
-  /// A wrong note and an extra note are different things and are named
-  /// differently, but only while the attempt made one kind of mistake. An
-  /// attempt that made both is totaled instead: naming one kind would hide
-  /// the other, and naming both is the changelog this is meant not to be.
+  /// A wrong note, an extra note and a note that never came are different
+  /// things and are named differently, but only while the attempt made one
+  /// kind of mistake. An attempt that made more than one is totaled instead:
+  /// naming one kind would hide the others, and naming all of them is the
+  /// changelog this is meant not to be.
   String get _notesSentence {
     final slipped = slippedNotes;
     final extra = extraNotes;
-    if (slipped == null || extra == null) {
+    final missed = missedNotes;
+    if (slipped == null || extra == null || missed == null) {
       return 'A few pitches slipped$_where.';
     }
     if (registerOnly) {
@@ -151,7 +183,10 @@ class AttemptDiagnosis {
           ? 'Right note, wrong octave$_where.'
           : 'Right notes, an octave off.';
     }
-    if (slipped > 0 && extra > 0) return '${slipped + extra} notes went wrong.';
+    final kinds = [slipped, extra, missed].where((count) => count > 0).length;
+    if (kinds > 1) return '${slipped + extra + missed} notes went wrong.';
+    if (missed == 1) return 'A note was missed$_where.';
+    if (missed > 1) return '$missed notes were missed.';
     if (slipped == 1) return 'A pitch slipped$_where.';
     if (slipped > 1) return '$slipped pitches slipped$_where.';
     return extra == 1
@@ -209,19 +244,21 @@ AttemptDiagnosis? diagnose({
   if (closure.measurement case Measured(:final outcome)) {
     final script = reading?.measurement.reading;
     final fault = _faultIn(outcome);
+    final endOfPlaying = script == null ? null : _endOfPlaying(script);
     return AttemptDiagnosis(
       started: outcome.started,
       finished: outcome.completed,
       fault: fault,
-      where: _locate(
-        outcome.completed ? fault : null,
-        exercise: exercise,
-        reading: reading,
-      ),
+      ranOut: endOfPlaying != null,
+      endedByLearner: closure.termination == AttemptTermination.learnerStopped,
+      where: endOfPlaying != null
+          ? landmarkAt(endOfPlaying, realize(exercise))
+          : _locate(fault, exercise: exercise, reading: reading),
       declined: closure.termination == AttemptTermination.learnerDeclined,
       handsTogether: exercise.conditions.hands == HandConfiguration.together,
       slippedNotes: script?.substituted,
       extraNotes: script?.inserted,
+      missedNotes: script?.deleted,
       registerOnly: script != null && _isRegisterOnly(script),
     );
   }
@@ -270,11 +307,42 @@ AttemptFault? _faultIn(Outcome outcome) {
   return null;
 }
 
+/// Where the playing ended, when what never arrived is a suffix of the
+/// traversal, or null when the attempt did not run out.
+///
+/// The far end of the playing, not the near end of what is missing. A moment
+/// the learner skipped and played past is a gap inside the traversal, and the
+/// attempt went on after it, so nothing about it says where the playing
+/// stopped. Only a run of missing moments with nothing after it does, and then
+/// the last moment that arrived is where the learner got to.
+///
+/// Null for a finished attempt too, which has no missing moment to be the tail
+/// of anything.
+int? _endOfPlaying(AlignmentReading script) {
+  int? lastCovered;
+  var missing = false;
+  for (final operation in script.alignment.operations) {
+    switch (operation) {
+      case MomentDeletion():
+        missing = true;
+      case MomentCorrespondence(:final realizationPosition, :final noteEdits):
+        if (noteEdits.any((edit) => edit is Match || edit is Substitution)) {
+          // Playing resumed after a gap, so the gap is not a tail.
+          if (missing) return null;
+          lastCovered = realizationPosition;
+        }
+      case MomentInsertion():
+        break;
+    }
+  }
+  return missing ? lastCovered : null;
+}
+
 /// Where [fault] showed, or null when the reading cannot say.
 ///
-/// An unfinished attempt is located by where it ran out instead, which is why
-/// the caller passes no fault for one: the interesting place is the end of the
-/// playing, not the first thing that went wrong inside it.
+/// Faults only. Where an attempt ran out is a different question, answered by
+/// [_endOfPlaying] from the far end of the playing rather than from the first
+/// thing missing inside it.
 TraversalLandmark? _locate(
   AttemptFault? fault, {
   required Exercise exercise,
@@ -291,12 +359,13 @@ TraversalLandmark? _locate(
   }
 
   final position = switch (fault) {
-    null => script.firstAbsentPosition,
-    // Only one wrong note has a place. Naming where the first of several
-    // happened would read as a claim about all of them, and the rest may have
-    // been somewhere else entirely.
+    null => null,
+    // Only one note out of place has a place. Naming where the first of
+    // several happened would read as a claim about all of them, and the rest
+    // may have been somewhere else entirely. A note that never came is one of
+    // them: the moment it was asked for is exactly where it is missing from.
     AttemptFault.notes =>
-      script.substituted + script.inserted != 1
+      script.substituted + script.inserted + script.deleted != 1
           ? null
           : switch (script.firstDeparture) {
               AtExpectedPosition(:final position) => position,
