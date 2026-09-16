@@ -5,8 +5,15 @@ import 'package:material_ui/material_ui.dart';
 
 import 'package:keyrecall/features/practice/attempt_detail_trace.dart';
 import 'package:keyrecall/features/practice/attempt_details_sheet.dart';
+import 'package:keyrecall/features/practice/attempt_evidence.dart';
 
 void main() {
+  const measured = AttemptEvidence(
+    continuity: ChannelEvidence.observed,
+    steadiness: ChannelEvidence.observed,
+    coordination: ChannelEvidence.observed,
+  );
+
   final exercise = Exercise.linear(
     material: TechnicalMaterial('C', ScaleForm.major),
     hands: HandConfiguration.together,
@@ -60,6 +67,7 @@ void main() {
           body: AttemptDetailsSheet(
             exercise: exercise,
             trace: trace,
+            evidence: measured,
             achievedTempoBpm: 58.4,
           ),
         ),
@@ -134,6 +142,7 @@ void main() {
           body: AttemptDetailsSheet(
             exercise: suffixExercise,
             trace: trace,
+            evidence: measured,
             achievedTempoBpm: 104,
           ),
         ),
@@ -184,6 +193,7 @@ void main() {
           body: AttemptDetailsSheet(
             exercise: exercise,
             trace: trace,
+            evidence: measured,
             achievedTempoBpm: 60,
           ),
         ),
@@ -230,6 +240,7 @@ void main() {
           body: AttemptDetailsSheet(
             exercise: exercise,
             trace: trace,
+            evidence: measured,
             achievedTempoBpm: 60,
           ),
         ),

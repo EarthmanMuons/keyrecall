@@ -6,8 +6,9 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
 import 'attempt_detail_trace.dart';
-import 'presentation_exposure.dart';
 import 'attempt_diagnosis.dart';
+import 'attempt_evidence.dart';
+import 'presentation_exposure.dart';
 
 const double _minimumTraceHorizontalPadding = 0.15;
 const double _traceHorizontalPaddingFraction = 0.015;
@@ -18,6 +19,7 @@ Future<void> showAttemptDetails(
   BuildContext context, {
   required Exercise exercise,
   required AttemptDetailTrace trace,
+  required AttemptEvidence evidence,
   required double? achievedTempoBpm,
   Future<bool> Function()? onExposed,
 }) => showModalBottomSheet<void>(
@@ -29,6 +31,7 @@ Future<void> showAttemptDetails(
     final sheet = AttemptDetailsSheet(
       exercise: exercise,
       trace: trace,
+      evidence: evidence,
       achievedTempoBpm: achievedTempoBpm,
     );
     // Reported from inside the sheet's own route, on the frame it draws.
@@ -53,12 +56,17 @@ class AttemptDetailsSheet extends StatelessWidget {
   const AttemptDetailsSheet({
     required this.exercise,
     required this.trace,
+    required this.evidence,
     required this.achievedTempoBpm,
     super.key,
   });
 
   final Exercise exercise;
   final AttemptDetailTrace trace;
+
+  /// Which timing channels were measured, so an absent chart or break reads as
+  /// unmeasured rather than as nothing to show.
+  final AttemptEvidence evidence;
 
   /// The pace the attempt played at, or null when it established none.
   final double? achievedTempoBpm;
@@ -86,7 +94,19 @@ class AttemptDetailsSheet extends StatelessWidget {
                 const SizedBox(height: 24),
                 _NotesDetail(trace: trace, exercise: exercise),
                 const SizedBox(height: 28),
-                _FlowDetail(trace: trace, exercise: exercise),
+                _FlowDetail(
+                  trace: trace,
+                  exercise: exercise,
+                  assessed: evidence.continuity == ChannelEvidence.observed,
+                ),
+                if (trace.pulse.isEmpty &&
+                    evidence.steadiness == ChannelEvidence.unobserved) ...[
+                  const SizedBox(height: 28),
+                  const _UnmeasuredDetail(
+                    title: 'Pulse',
+                    explanation: 'Not enough timed playing to read a pulse.',
+                  ),
+                ],
                 if (trace.pulse.isNotEmpty) ...[
                   const SizedBox(height: 28),
                   _TraceSection(
@@ -99,6 +119,15 @@ class AttemptDetailsSheet extends StatelessWidget {
                     centerLabel: 'on pulse',
                     lowerLabel: 'late',
                     deviationLabel: 'Largest deviation',
+                  ),
+                ],
+                if (trace.coordination.isEmpty &&
+                    evidence.coordination == ChannelEvidence.unobserved) ...[
+                  const SizedBox(height: 28),
+                  const _UnmeasuredDetail(
+                    title: 'Coordination',
+                    explanation:
+                        'The hands could not be timed against each other.',
                   ),
                 ],
                 if (trace.coordination.isNotEmpty) ...[
@@ -321,11 +350,36 @@ class _NoteMarker extends StatelessWidget {
   }
 }
 
+/// A channel nothing measured, said as that rather than left out.
+class _UnmeasuredDetail extends StatelessWidget {
+  const _UnmeasuredDetail({required this.title, required this.explanation});
+
+  final String title;
+  final String explanation;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _SectionHeading(title),
+      const SizedBox(height: 4),
+      Text(explanation, style: Theme.of(context).textTheme.bodyMedium),
+    ],
+  );
+}
+
 class _FlowDetail extends StatelessWidget {
-  const _FlowDetail({required this.trace, required this.exercise});
+  const _FlowDetail({
+    required this.trace,
+    required this.exercise,
+    required this.assessed,
+  });
 
   final AttemptDetailTrace trace;
   final Exercise exercise;
+
+  /// Whether continuity was judged, without which no break is not a claim.
+  final bool assessed;
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +387,9 @@ class _FlowDetail extends StatelessWidget {
     final gap = trace.flowGap;
     final realization = realize(exercise);
     final gapDescription = gap == null
-        ? 'No pronounced break.'
+        ? assessed
+              ? 'No pronounced break.'
+              : 'Not enough timed playing to judge breaks.'
         : 'Longest break · ${_durationText(gap.durationMs)} '
               'before ${_momentLabel(realization, gap.beforePosition)} '
               '${landmarkAt(gap.beforePosition, realization).phrase}';

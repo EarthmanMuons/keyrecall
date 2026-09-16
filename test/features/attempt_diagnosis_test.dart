@@ -5,6 +5,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/practice/attempt_diagnosis.dart';
+import 'package:keyrecall/features/practice/attempt_evidence.dart';
 
 /// What the screen between attempts is allowed to say about the attempt.
 ///
@@ -77,6 +78,57 @@ void main() {
       expect(diagnosis.fault, isNull);
       expect(diagnosis.where, isNull);
       expect(diagnosis.sentence, 'Played cleanly and steadily throughout.');
+    });
+  });
+
+  group('a clean run nobody could time', () {
+    PerformanceTranscript untimed(Exercise of) {
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, moment) in realize(of).moments.indexed) {
+        for (final note in moment.notes) {
+          transcript = transcript.appending(
+            pitch: note.pitch,
+            timestampMs: index * 1000,
+          );
+        }
+      }
+      return transcript;
+    }
+
+    test('claims the notes and nothing about how they sat in time', () {
+      final diagnosis = diagnosisOf(untimed(exercise));
+
+      expect(diagnosis.fault, isNull);
+      expect(diagnosis.sentence, 'Played cleanly.');
+    });
+
+    test('claims no hands together it did not measure', () {
+      final together = exerciseFor(HandConfiguration.together);
+
+      final diagnosis = diagnosisOf(untimed(together), of: together);
+
+      expect(diagnosis.evidence.coordination, ChannelEvidence.unobserved);
+      expect(diagnosis.sentence, 'Played cleanly with both hands.');
+    });
+
+    test('with one hand timed claims no hands together either', () {
+      final together = exerciseFor(HandConfiguration.together);
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, moment) in realize(together).moments.indexed) {
+        for (final hand in Hand.values) {
+          final at = index * 1000;
+          transcript = transcript.appending(
+            pitch: moment.noteFor(hand)!.pitch,
+            timestampMs: at,
+            performanceTimeUs: hand == Hand.right ? at * 1000 : null,
+          );
+        }
+      }
+
+      final diagnosis = diagnosisOf(transcript, of: together);
+
+      expect(diagnosis.fault, isNull);
+      expect(diagnosis.sentence, 'Played cleanly with both hands.');
     });
   });
 

@@ -9,6 +9,7 @@ import '../input/input.dart';
 import 'attempt_detail_trace.dart';
 import 'attempt_details_sheet.dart';
 import 'attempt_diagnosis.dart';
+import 'attempt_evidence.dart';
 import 'attempt_feedback.dart';
 import 'attempt_summary_help.dart';
 import 'exercise_presentation.dart';
@@ -276,6 +277,10 @@ class AttemptReview extends StatelessWidget {
     final detailTrace = reading == null
         ? null
         : attemptDetailTraceFor(reading!);
+    final evidence = switch (record.closure.measurement) {
+      Measured(:final outcome) => AttemptEvidence.of(record.exercise, outcome),
+      MeasurementUnavailable() => null,
+    };
     final progressEvents = progressEventsFor(record, history: history);
     final progress = progressStatementFor(record, progressEvents);
     final reason = upcoming?.explanation;
@@ -344,7 +349,10 @@ class AttemptReview extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (detailTrace != null) ...[
+                        if ((detailTrace, evidence) case (
+                          final detailTrace?,
+                          final evidence?,
+                        )) ...[
                           const SizedBox(height: 4),
                           Align(
                             alignment: Alignment.centerRight,
@@ -356,6 +364,7 @@ class AttemptReview extends StatelessWidget {
                                 context,
                                 exercise: record.exercise,
                                 trace: detailTrace,
+                                evidence: evidence,
                                 achievedTempoBpm: summary.achievedTempoBpm,
                                 onExposed: onExposed == null
                                     ? null

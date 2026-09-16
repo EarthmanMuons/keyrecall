@@ -7,6 +7,8 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
+import 'attempt_evidence.dart';
+
 /// Which evidence channel an attempt's fault came from.
 ///
 /// The observation model keeps these apart all the way down, and the point of
@@ -93,6 +95,10 @@ class AttemptDiagnosis {
   /// Whether the exercise asked for both hands.
   final bool handsTogether;
 
+  /// Which timing channels were measured, which is what a clean sentence may
+  /// say about how the playing sat in time.
+  final AttemptEvidence evidence;
+
   /// Expected notes something else was played for, or null when nothing
   /// counted them.
   final int? slippedNotes;
@@ -120,6 +126,7 @@ class AttemptDiagnosis {
     required this.where,
     required this.declined,
     required this.handsTogether,
+    required this.evidence,
     this.ranOut = false,
     this.endedByLearner = false,
     this.slippedNotes,
@@ -146,10 +153,7 @@ class AttemptDiagnosis {
     }
 
     return switch (fault) {
-      null =>
-        handsTogether
-            ? 'Played cleanly, hands together the whole way.'
-            : 'Played cleanly and steadily throughout.',
+      null => _cleanSentence,
       AttemptFault.notes => _notesSentence,
       AttemptFault.continuity =>
         'The notes were right, but the pause interrupted the flow$_where.',
@@ -157,6 +161,30 @@ class AttemptDiagnosis {
         'The notes were right, but the pulse kept moving around.',
       AttemptFault.coordination =>
         'Both hands had the notes, but they came apart$_where.',
+    };
+  }
+
+  /// A clean attempt, claiming no more about its timing than was measured.
+  ///
+  /// The notes alone support "cleanly". Steadiness, playing throughout, and the
+  /// hands being together each need their own channel observed, and an attempt
+  /// nothing could time says only what its notes support.
+  String get _cleanSentence {
+    bool observed(ChannelEvidence channel) =>
+        channel == ChannelEvidence.observed;
+    if (handsTogether) {
+      return observed(evidence.coordination)
+          ? 'Played cleanly, hands together the whole way.'
+          : 'Played cleanly with both hands.';
+    }
+    return switch ((
+      observed(evidence.steadiness),
+      observed(evidence.continuity),
+    )) {
+      (true, true) => 'Played cleanly and steadily throughout.',
+      (true, false) => 'Played cleanly and steadily.',
+      (false, true) => 'Played cleanly, without a break.',
+      (false, false) => 'Played cleanly.',
     };
   }
 
@@ -256,6 +284,7 @@ AttemptDiagnosis? diagnose({
           : _locate(fault, exercise: exercise, reading: reading),
       declined: closure.termination == AttemptTermination.learnerDeclined,
       handsTogether: exercise.conditions.hands == HandConfiguration.together,
+      evidence: AttemptEvidence.of(exercise, outcome),
       slippedNotes: script?.substituted,
       extraNotes: script?.inserted,
       missedNotes: script?.deleted,

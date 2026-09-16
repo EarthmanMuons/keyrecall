@@ -5,6 +5,8 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
+import 'attempt_evidence.dart';
+
 /// The learner-facing measurements from one performance.
 @immutable
 class AttemptSummary {
@@ -86,7 +88,7 @@ List<ProgressEvent> progressEventsFor(
   );
 
   final events = <ProgressEvent>[];
-  if (_isClean(outcome) && !earlier.any(_recordIsClean)) {
+  if (_recordIsClean(current) && !earlier.any(_recordIsClean)) {
     events.add(const ProgressEvent(ProgressEventKind.firstCleanCompletion));
   }
 
@@ -145,7 +147,8 @@ String? progressStatementFor(
 
 bool _recordIsClean(AttemptRecord record) =>
     switch (record.closure.measurement) {
-      Measured(:final outcome) => outcome.completed && _isClean(outcome),
+      Measured(:final outcome) =>
+        outcome.completed && _isClean(record.exercise, outcome),
       MeasurementUnavailable() => false,
     };
 
@@ -158,11 +161,17 @@ bool _recordWasCompletedIndependently(AttemptRecord record) =>
       MeasurementUnavailable() => false,
     };
 
-bool _isClean(Outcome outcome) =>
+/// Whether every channel the exercise asks about was measured and met.
+///
+/// Coordination passes over only where the exercise does not ask for it. Two
+/// hands whose spread nobody measured have not been shown to be together.
+bool _isClean(Exercise exercise, Outcome outcome) =>
     outcome.pitchIntegrity == 1 &&
     outcome.continuity == 1 &&
     outcome.temporalStability == 1 &&
-    (outcome.coordination ?? 1) == 1;
+    (AttemptEvidence.of(exercise, outcome).coordination ==
+            ChannelEvidence.inapplicable ||
+        outcome.coordination == 1);
 
 String _handsPhrase(AttemptRecord record) =>
     switch (record.exercise.conditions.hands) {

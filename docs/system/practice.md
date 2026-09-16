@@ -307,11 +307,15 @@ are never learner-facing.
 
 **Progress evidence** comes from named events with explicit truth conditions:
 first clean completion, first independent completion, and repeated reliability
-once the last three comparable attempts were clean. Comparable means the same
-material, pattern, and execution conditions including tempo; guidance may vary.
-An event is emitted only when its condition first becomes true, so most reviews
-carry no progress statement. Coinciding events combine into one sentence rather
-than stacking notices.
+once the last three comparable attempts were clean. Clean needs every channel
+the exercise asks about observed and met, so unmeasured coordination never makes
+a hands-together attempt clean. Comparable means the same material, pattern, and
+execution conditions including tempo; guidance may vary. First clean and first
+independent completion are lifetime milestones, emitted only when their
+condition first becomes true. Repeated reliability is a streak: it is emitted
+when a run of clean attempts reaches three, and again whenever a new run does
+after an attempt that was not clean. Most reviews carry no progress statement.
+Coinciding events combine into one sentence rather than stacking notices.
 
 What the review actually showed is recorded in the feedback exposure stream; see
 [`history.md`](history.md).

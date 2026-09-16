@@ -197,6 +197,25 @@ has no null to report. Its raw field reports an unobserved pace as zero, and
 asking what pace was observed goes through it, so a performance too short to
 time enters no tempo statistic rather than entering it as a stop.
 
+## Absent is not good either
+
+**Decision.** A positive claim that depends on a channel is made only when that
+channel applied to the exercise and was observed. Coordination is inapplicable
+to one hand and unobserved in two hands nobody could time against each other,
+and only the first may be passed over.
+
+**Why.** Null had been read as "nothing wrong" wherever a presentation needed a
+yes or no. A pitch-correct attempt with no timing read as played "steadily
+throughout", an unjudged continuity read as "no pronounced break", and two hands
+with one of them untimed earned a first clean completion. Each of those turned
+evidence nobody collected into praise.
+
+**Consequences.** `AttemptEvidence` carries observed, unobserved, or
+inapplicable per timing channel, and the diagnosis, the detail sheet, and the
+progress events all read it. The notes can still support "played cleanly" on
+their own. A clean milestone needs every applicable channel observed and met.
+Unobserved stays neutral in the other direction too: it names no fault.
+
 ## The sensors do not write the ontology
 
 **Decision.** No register competency, despite measurement being able to see

@@ -18,6 +18,7 @@ void main() {
     double? flow = 1,
     double? pulse = 1,
     double tempo = 1,
+    double? coordination,
     bool started = true,
     bool completed = true,
     FactualRetrieval retrieval = FactualRetrieval.succeeded,
@@ -30,6 +31,7 @@ void main() {
     continuity: flow,
     temporalStability: pulse,
     achievedTempoRatio: tempo,
+    coordination: coordination,
     topologyAccuracy: notes,
   );
 
@@ -103,6 +105,51 @@ void main() {
     expect(
       progressStatementFor(clean, events),
       'First clean right-hand run at 60 BPM.',
+    );
+  });
+
+  test('unmeasured coordination does not make hands together clean', () {
+    final together = Exercise.linear(
+      material: exercise.material,
+      hands: HandConfiguration.together,
+      tempoBpm: 60,
+    );
+    final unmeasured = [
+      for (var index = 0; index < 3; index++)
+        record(index, outcome(), task: together),
+    ];
+
+    for (final attempt in unmeasured) {
+      expect(
+        progressEventsFor(
+          attempt,
+          history: unmeasured,
+        ).map((event) => event.type),
+        isNot(
+          anyOf(
+            contains(ProgressEventKind.firstCleanCompletion),
+            contains(ProgressEventKind.repeatedReliability),
+          ),
+        ),
+      );
+    }
+
+    final measured = record(3, outcome(coordination: 1), task: together);
+    expect(
+      progressEventsFor(
+        measured,
+        history: [...unmeasured, measured],
+      ).map((event) => event.type),
+      contains(ProgressEventKind.firstCleanCompletion),
+    );
+  });
+
+  test('coordination is not asked of one hand', () {
+    final clean = record(0, outcome());
+
+    expect(
+      progressEventsFor(clean, history: [clean]).map((event) => event.type),
+      contains(ProgressEventKind.firstCleanCompletion),
     );
   });
 
