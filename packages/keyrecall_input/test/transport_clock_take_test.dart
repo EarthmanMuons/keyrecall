@@ -7,7 +7,7 @@ import 'package:keyrecall_input/keyrecall_input.dart';
 
 /// The recorded takes, replayed through the mapper exactly as they arrived.
 ///
-/// These eleven files are the whole evidence base for what the policy
+/// These twelve files are the whole evidence base for what the policy
 /// authorizes, so the mapper has to keep agreeing with them. Anything derived
 /// here is derived from the deliveries themselves: no expected timeline is
 /// stored alongside the takes, because a stored answer would only record what
@@ -28,12 +28,13 @@ const expected = {
   'ios-jamcorder-stall-repeated': (
     granularity: 1000000,
     modulus: null,
-    timed: 0,
+    timed: 60,
   ),
   'ios-network-pulse': (granularity: 100000, modulus: null, timed: 50),
-  'ios-yamaha-chords': (granularity: 1000000, modulus: null, timed: 0),
-  'ios-yamaha-pulse': (granularity: 1000000, modulus: null, timed: 0),
-  'ios-yamaha-stall': (granularity: 1000000, modulus: null, timed: 0),
+  'ios-yamaha-chords': (granularity: 1000000, modulus: null, timed: 89),
+  'ios-yamaha-host-pulse': (granularity: 1000000, modulus: null, timed: 105),
+  'ios-yamaha-pulse': (granularity: 1000000, modulus: null, timed: 105),
+  'ios-yamaha-stall': (granularity: 1000000, modulus: null, timed: 229),
 };
 
 /// What replaying one take produced.
@@ -177,5 +178,51 @@ void main() {
       replayed.timings.indexWhere((timing) => timing is TimingAvailable),
       identifying,
     );
+  });
+
+  // The host route, recorded once the route was reported correctly. Its stamps
+  // are the intervals, and arrival, which disagrees with them by up to a dozen
+  // milliseconds a note, supplies none of them.
+  test('the host take is timed by its stamps rather than its arrivals', () {
+    final records =
+        ((json.decode(
+                      File(
+                        '${takes.path}/ios-yamaha-host-pulse.json',
+                      ).readAsStringSync(),
+                    )
+                    as Map<String, dynamic>)['records']
+                as List)
+            .cast<Map<String, dynamic>>();
+    final replayed = replay('ios-yamaha-host-pulse');
+
+    final notes = [
+      for (final (index, record) in records.indexed)
+        if (record['message'] == 'noteOn')
+          if (replayed.timings[index] case TimingAvailable(
+            :final performanceTimeUs,
+          ))
+            (
+              performanceUs: performanceTimeUs,
+              stampUs: (record['transport_ts'] as int) ~/ 1000,
+              arrivalMs: record['arrival_ms'] as int,
+            ),
+    ];
+    final performed = [
+      for (var index = 1; index < notes.length; index++)
+        notes[index].performanceUs - notes[index - 1].performanceUs,
+    ];
+    final stamped = [
+      for (var index = 1; index < notes.length; index++)
+        notes[index].stampUs - notes[index - 1].stampUs,
+    ];
+    final arrived = [
+      for (var index = 1; index < notes.length; index++)
+        (notes[index].arrivalMs - notes[index - 1].arrivalMs) * 1000,
+    ];
+
+    expect(records.every((record) => record['route'] == 'host'), isTrue);
+    expect(notes, hasLength(26), reason: 'the first three notes identify it');
+    expect(performed, stamped);
+    expect(performed, isNot(arrived));
   });
 }

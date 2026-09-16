@@ -3,6 +3,13 @@ import 'package:keyrecall_input/keyrecall_input.dart';
 
 import 'package:keyrecall/features/practice/clock_domain.dart';
 
+/// A policy that understands the nanosecond clock and refuses it, since the
+/// characterized one no longer refuses anything.
+const refusingNanoseconds = ClockDomainPolicy(
+  performance: [],
+  nonPerformance: [ClockDomainShape(granularity: 1000000)],
+);
+
 void main() {
   // The measuring and the trusting are tested in keyrecall_input. What is
   // left here is the wording, and one rule about it: the screen must never
@@ -31,13 +38,9 @@ void main() {
     );
     expect(
       clockDomainLabel(
-        const ClockDomainObservation(
-          session: 'a',
-          steps: 20,
-          granularity: 1000000,
-        ),
+        const ClockDomainObservation(session: 'a', steps: 20, granularity: 250),
       ),
-      'steps of 1,000,000 counts',
+      'steps of 250 counts',
       reason: 'nothing authorized it, so there is no rate to report',
     );
   });
@@ -125,7 +128,7 @@ void main() {
           ),
           phase: PerformanceClockPhase.unauthorized,
           isObserving: true,
-        )),
+        ), policy: refusingNanoseconds),
         'not performance',
       );
     });

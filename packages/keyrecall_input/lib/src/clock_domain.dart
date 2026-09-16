@@ -293,9 +293,9 @@ class PerformanceClockDefinition {
 /// between "a counter stepping in milliseconds" and "the counter these takes
 /// characterized". Recognizing a shape is also not the same as trusting it:
 /// the 100,000-count domain carries the variation of playing that its own
-/// arrival clock flattened away, while the 1,000,000-count domain is
-/// thoroughly recognized and has added nothing over arrival time on any take,
-/// idle or loaded.
+/// arrival clock flattened away, and the 1,000,000-count domain is trusted
+/// because deliveries that reached the app in the same millisecond carry
+/// stamps several milliseconds apart, which no stamp applied on arrival can.
 @immutable
 class ClockDomainPolicy {
   /// Shapes that may contribute performance timing.
@@ -326,6 +326,9 @@ class ClockDomainPolicy {
   /// counter modulo 8192, not every clock that happens to step in
   /// milliseconds. The other two are authorized without one, because neither
   /// was ever seen to wrap and nothing else distinguishes them.
+  ///
+  /// Nothing recorded is currently understood and refused, so the refused list
+  /// is empty rather than absent.
   static const ClockDomainPolicy characterized = ClockDomainPolicy(
     performance: [
       PerformanceClockDefinition(
@@ -337,8 +340,12 @@ class ClockDomainPolicy {
         quantum: 100000,
         countsPerMillisecond: 1000000,
       ),
+      PerformanceClockDefinition(
+        quantum: 1000000,
+        countsPerMillisecond: 1000000,
+      ),
     ],
-    nonPerformance: [ClockDomainShape(granularity: 1000000)],
+    nonPerformance: [],
   );
 
   /// What [observation] may be used for.

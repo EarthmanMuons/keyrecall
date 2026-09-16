@@ -335,8 +335,11 @@ knew the format.
 **Consequences.** The route now tells the two paths apart by the device object
 the plugin delivers, the BLE route declares its format, and timing through the
 plugin's decoder starts with the second delivery. The host route is still
-detected, and its nanosecond domain is still unauthorized, so a handed-off
-instrument carries no timing until a recorded take on that route says otherwise.
+detected rather than declared, since nothing documents its format, so a
+handed-off instrument is untimed for the eight steps it takes to identify its
+nanosecond clock and is timed after that; see
+[`analysis/transport-clocks/`](../../analysis/transport-clocks/) for why that
+domain is authorized.
 
 ## Events are marked; measurement decides what that is worth
 
@@ -434,7 +437,8 @@ not to become a second way of driving the mapper in production.
 
 Whether the 100,000-count domain generalizes beyond the one session that
 produced it. Whether a stall heavy enough to separate the clocks exists, after
-three attempts failed to arrange one. Whether the host-style domain is worth
-anything at all under conditions nothing has recorded. Each would change the
-policy in `ClockDomainPolicy`, which is where they would change it, and none
-would change the arithmetic that measures a clock.
+three attempts failed to arrange one. Whether the host route stamps every
+instrument from its own clock, as it does the two recorded, or somewhere applies
+a stamp on receipt. Each would change the policy in `ClockDomainPolicy`, which
+is where they would change it, and none would change the arithmetic that
+measures a clock.

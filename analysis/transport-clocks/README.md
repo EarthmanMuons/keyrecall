@@ -257,8 +257,9 @@ P-525 direct, iOS    played 10 ms wide, arrival says 11 ms
 ```
 
 Delivery narrows a chord and the BLE stamp knows how wide it was, by more than
-half on Android. The piano's nanosecond clock adds nothing: its two readings
-agree, which is what a stamp applied after delivery looks like.
+half on Android. The piano's nanosecond clock adds nothing here: its two
+readings agree. That was read at the time as a stamp applied after delivery, and
+the host take below shows it is not one.
 
 ### A silence past the wrap, resolved
 
@@ -327,14 +328,43 @@ assuming it behaves like a recorded one, and starts over at a session boundary.
 That last one matters most. A domain belongs to a session, and carrying one
 across a boundary is exactly how a take lands on a clock nobody expected.
 
+### The host route carries playing
+
+Why two BLE instruments carried different domains under the same reported route
+turned out to be the plugin: it decodes a BLE instrument itself, hands it to
+CoreMIDI once the operating system exposes it, and labels both paths `ble`. With
+the route reported correctly, `ios-yamaha-host-pulse` is the first take that
+says which path it measured, and every delivery in it came by `host`.
+
+Its clock tracks the playing exactly over the take and differs from arrival note
+by note:
+
+```text
+first to last note-on   arrival 21,247 ms   host 21,247 ms
+jitter                  -13..12 ms, median 0, drift 0
+```
+
+Agreement alone would not separate a performance clock from a stamp applied on
+receipt. What does is that **deliveries reaching the app in the same millisecond
+carry stamps several milliseconds apart**, which a stamp applied on arrival
+cannot do. It holds on every host take, not only the new one:
+
+```text
+                        largest stamp spread within one arrival ms
+ios-yamaha-host-pulse   3 ms
+ios-yamaha-pulse        3 ms
+ios-yamaha-chords       8 ms
+ios-yamaha-stall        4 ms
+```
+
+The stamps also land on whole milliseconds expressed in nanoseconds, which is
+the BLE MIDI packet timestamp carried into host time rather than a host clock
+read at delivery. The domain is authorized. Its earlier takes showing nothing
+over arrival time is the same negative result the BLE stalls gave: the playing
+varied more than delivery did.
+
 ### What is still open
 
-- **Whether the host-route nanosecond domain carries playing.** Why two BLE
-  instruments carried different domains under the same reported route is now
-  known: the plugin decodes a BLE instrument itself and then hands it to
-  CoreMIDI once the operating system exposes it, and it labels both paths `ble`.
-  The route is now reported correctly, so a take recorded after this can say
-  which path it measured.
 - **Nothing about the stall.** Three attempts could not separate the clocks
   under load, and the question is retired rather than open. Its job was to prove
   delivery can distort timing enough to matter; the network take proved
@@ -355,7 +385,8 @@ file before concluding anything from it: contiguous sequence numbers,
 non-decreasing arrival time, one device, transport, route, and session
 throughout, notes and velocities inside 0..127, a message KeyRecall does not
 consume carrying no note, and a timestamp granularity it recognizes. A file that
-reports a `PROBLEM` is not evidence, whatever it appears to show. All nine pass.
+reports a `PROBLEM` is not evidence, whatever it appears to show. All of them
+pass.
 
 ## What must not happen to this data
 

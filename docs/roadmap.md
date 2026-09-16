@@ -953,9 +953,10 @@ iOS or Android. It preserves onset timing that delivery collapses, halving onset
 dispersion on an idle app and reporting chords up to twice as wide as arrival
 time says they were. A directly connected piano reports the same route and
 carries a different clock entirely, with millisecond granularity expressed in
-nanoseconds and no wrap, and it adds nothing over arrival time on any take, idle
-or loaded. **So the clock domain has to be recognized from observed behavior,
-not looked up from anything the transport says about itself.**
+nanoseconds and no wrap. That turned out to be the operating system's own MIDI
+stack carrying the instrument's timestamps into host time, and it is authorized
+as well. **So the clock domain has to be recognized from observed behavior, not
+looked up from anything the transport says about itself.**
 
 The one take still outstanding is an adversarial stall: two plausible ones could
 not separate the clocks, because the delivery jitter they added sat inside how
@@ -972,12 +973,12 @@ follows is the summary.
    and where the counter wraps if it has been seen to. Then decide separately
    whether that domain may contribute performance timing. Recognizing units does
    not confer authority, and the takes are why: the 100,000-count domain carries
-   variation the arrival clock on its path destroys, while the 1,000,000-count
-   domain is thoroughly recognized and has added nothing over arrival time on
-   any take, idle or loaded. A shape nothing has recorded is unavailable rather
-   than assumed to behave like one that has. Detection and policy are already
-   split this way in `keyrecall_input`: `ClockDomainDetector` measures
-   granularity and, where a wrap establishes one, the counter's width;
+   variation the arrival clock on its path destroys, and the 1,000,000-count
+   domain was held back until a take showed stamps several milliseconds apart on
+   deliveries that reached the app together. A shape nothing has recorded is
+   unavailable rather than assumed to behave like one that has. Detection and
+   policy are already split this way in `keyrecall_input`: `ClockDomainDetector`
+   measures granularity and, where a wrap establishes one, the counter's width;
    `ClockDomainPolicy` says which measured shapes may be believed. Authorizing a
    fourth domain is an edit to the policy, not to the arithmetic.
 

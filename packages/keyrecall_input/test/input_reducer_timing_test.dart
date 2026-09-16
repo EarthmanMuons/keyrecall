@@ -209,11 +209,11 @@ void main() {
         ),
     ];
 
-    expect(after.map((event) => event.performanceTimeUs), everyElement(isNull));
-    expect(reducer.clock.phase, isNot(PerformanceClockPhase.failed));
     expect(
-      after.last.timing,
-      const TimingUnavailable(TimingUnavailableReason.nonPerformanceDomain),
+      after.first.timing,
+      const TimingUnavailable(TimingUnavailableReason.detecting),
     );
+    expect(after.last.performanceTimeUs, isNotNull);
+    expect(reducer.clock.phase, PerformanceClockPhase.active);
   });
 }

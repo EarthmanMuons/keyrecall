@@ -63,15 +63,15 @@ void main() {
       expect(earlier.granularity, 1);
       expect(useOf(earlier), ClockAuthorization.performance);
       expect(later.granularity, 1000000);
-      expect(useOf(later), ClockAuthorization.nonPerformance);
+      expect(useOf(later), ClockAuthorization.performance);
     });
 
-    test('the piano is recognized and not a performance clock', () {
-      final observation = readingOf('ios-yamaha-pulse');
+    test('the host clock is nanoseconds at millisecond resolution', () {
+      final observation = readingOf('ios-yamaha-host-pulse');
 
       expect(observation.granularity, 1000000);
       expect(observation.modulus, isNull, reason: 'it was never seen to wrap');
-      expect(useOf(observation), ClockAuthorization.nonPerformance);
+      expect(useOf(observation), ClockAuthorization.performance);
     });
 
     test('the network session is finer, and carries playing', () {
@@ -212,7 +212,7 @@ void main() {
         ClockDomainPolicy.characterized.performance.map(
           (clock) => clock.quantumUs,
         ),
-        [1000, 100],
+        [1000, 100, 1000],
       );
     });
 
