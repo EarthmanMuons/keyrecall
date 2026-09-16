@@ -149,6 +149,87 @@ void main() {
     });
   }
 
+  for (final oldConnectFinishesFirst in [false, true]) {
+    test('same-device retry waits for native teardown, '
+        'old connect finishes first=$oldConnectFinishesFirst', () {
+      fakeAsync((async) {
+        final h = _Harness(async, prefs);
+        final connectGate = Completer<void>();
+        final disconnectGate = Completer<void>();
+        h.ble.connectGate = connectGate;
+        h.ble.disconnectGate = disconnectGate;
+        unawaited(h.notifier.connect(_deviceA));
+        async.flushMicrotasks();
+
+        unawaited(h.notifier.cancelConnectionAttempt());
+        expect(h.state.phase, MidiConnectionPhase.idle);
+        expect(h.ble.disconnectCalls, 1);
+        h.ble.connectGate = null;
+        unawaited(h.notifier.connect(_deviceA));
+        async.flushMicrotasks();
+        expect(h.state.phase, MidiConnectionPhase.connecting);
+        expect(h.ble.connectCalls, 1, reason: 'native teardown still owns A');
+
+        if (oldConnectFinishesFirst) {
+          connectGate.complete();
+          async.flushMicrotasks();
+        }
+        disconnectGate.complete();
+        async.flushMicrotasks();
+        expect(h.ble.connectCalls, 2);
+        expect(h.state.isConnected, isTrue);
+
+        if (!oldConnectFinishesFirst) {
+          connectGate.complete();
+          async.flushMicrotasks();
+        }
+        expect(h.ble.connectedIds, {_deviceA.id});
+        expect(h.ble.disconnectCalls, 1);
+        h.dispose(async);
+      });
+    });
+  }
+
+  test('same-device retry waits for stale-connect cleanup already in progress', () {
+    fakeAsync((async) {
+      final h = _Harness(async, prefs);
+      final connectGate = Completer<void>();
+      h.ble.connectGate = connectGate;
+      unawaited(h.notifier.connect(_deviceA));
+      async.flushMicrotasks();
+      unawaited(h.notifier.cancelConnectionAttempt());
+      async.flushMicrotasks();
+
+      final disconnectGate = Completer<void>();
+      h.ble.disconnectGate = disconnectGate;
+      connectGate.complete();
+      async.flushMicrotasks();
+      expect(h.ble.disconnectCalls, 2);
+
+      h.ble.connectGate = null;
+      unawaited(h.notifier.connect(_deviceA));
+      async.flushMicrotasks();
+      expect(h.ble.connectCalls, 1);
+      disconnectGate.complete();
+      async.flushMicrotasks();
+      expect(h.state.isConnected, isTrue);
+      expect(h.ble.connectedIds, {_deviceA.id});
+      h.dispose(async);
+    });
+  });
+
+  test('canceling an attempt does not disconnect an established instrument', () {
+    fakeAsync((async) {
+      final h = _Harness(async, prefs);
+      h.connectNow(async, _deviceA);
+      unawaited(h.notifier.cancelConnectionAttempt());
+      async.flushMicrotasks();
+      expect(h.state.isConnected, isTrue);
+      expect(h.ble.disconnectCalls, 0);
+      h.dispose(async);
+    });
+  });
+
   test('cancel permits an immediate retry of the same device', () {
     fakeAsync((async) {
       final h = _Harness(async, prefs);

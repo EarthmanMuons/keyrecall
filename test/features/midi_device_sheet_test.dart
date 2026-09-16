@@ -89,7 +89,9 @@ void main() {
     tester,
   ) async {
     final gate = Completer<void>();
+    final disconnectGate = Completer<void>();
     ble.connectGate = gate;
+    ble.disconnectGate = disconnectGate;
     await openSheet(tester);
     await tester.tap(find.text('Stage Piano'));
     await tester.pump();
@@ -102,6 +104,10 @@ void main() {
 
     ble.connectGate = null;
     await tester.tap(find.text('Stage Piano'));
+    await tester.pump();
+    expect(ble.connectCalls, 1);
+    expect(find.byType(MidiDeviceSheet), findsOneWidget);
+    disconnectGate.complete();
     await tester.pump();
     gate.complete();
     await tester.pumpAndSettle();

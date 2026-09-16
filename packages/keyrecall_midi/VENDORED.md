@@ -77,7 +77,9 @@ set of expected differences rather than a mystery.
   reconnect discovery, backoff, and pending connection results. Cancel
   suppresses automatic reconnect, and disconnect also tears down a pending
   native connection. Late results cannot overwrite or disconnect a newer
-  selection.
+  selection. Native teardown is tracked per device, and a new connection waits
+  for that device's pending teardown, including cleanup from a stale connection
+  completion.
 
 - Dropped: `midi_connection_status_provider.dart` and everything under `pages/`
   and `widgets/`. Those are presentation, and they carried WhatChord's design

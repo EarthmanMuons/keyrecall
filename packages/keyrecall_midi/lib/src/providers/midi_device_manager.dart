@@ -152,6 +152,7 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
   // disconnect that races a mid-flight connect cannot be silently undone.
   int _connectGeneration = 0;
   MidiDevice? _connectingDevice;
+  final Map<String, Future<void>> _pendingTeardowns = {};
 
   // Lazy Bluetooth central prime.
   bool _centralStarted = false;
@@ -304,6 +305,15 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
         _setConnectedDevice(null);
       }
 
+      while (true) {
+        final teardown = _pendingTeardowns[device.id];
+        if (teardown == null) break;
+        try {
+          await teardown;
+        } catch (_) {}
+        if (generation != _connectGeneration) return;
+      }
+
       // Since flutter_midi_command 1.0.6, connect blocks through pairing and
       // notification setup and returns only once the device reports
       // connected (or throws a typed failure), so no post-connect verify,
@@ -317,7 +327,8 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
         if (_debugLog) {
           debugPrint('[MGR] connect superseded id=${device.id}; aborting');
         }
-        // Best-effort teardown of the superseded link.
+        // Native device IDs cannot distinguish attempts. A newer attempt
+        // connecting or connected to this ID owns its physical link.
         try {
           if (_connectingDevice?.id != device.id &&
               state.connectedDevice?.id != device.id) {
@@ -355,25 +366,34 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
     };
     _connectingDevice = null;
     _setConnectedDevice(null);
-    for (final device in devices.values) {
-      try {
-        await _disconnectBestEffort(device.id, transport: device.transport);
-      } catch (e) {
-        if (!kReleaseMode) {
-          debugPrint('Warning: Error disconnecting MIDI device: $e');
+    await Future.wait(
+      devices.values.map((device) async {
+        try {
+          await _disconnectBestEffort(device.id, transport: device.transport);
+        } catch (e) {
+          if (!kReleaseMode) {
+            debugPrint('Warning: Error disconnecting MIDI device: $e');
+          }
         }
-      }
-    }
+      }),
+    );
   }
 
   Future<void> _disconnectBestEffort(
     String deviceId, {
     required MidiTransportType transport,
-  }) async {
+  }) {
     if (transport == MidiTransportType.ble && !_centralStarted) {
-      return; // preserve "don’t prime to disconnect"
+      return Future.value();
     }
-    await _ble.disconnect(deviceId);
+    final pending = _pendingTeardowns[deviceId];
+    if (pending != null) return pending;
+
+    final teardown = _ble.disconnect(deviceId).whenComplete(() {
+      unawaited(_pendingTeardowns.remove(deviceId));
+    });
+    _pendingTeardowns[deviceId] = teardown;
+    return teardown;
   }
 
   Future<bool> reconnect(String deviceId) async {

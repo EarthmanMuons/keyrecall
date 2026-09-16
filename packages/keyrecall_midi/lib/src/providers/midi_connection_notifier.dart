@@ -815,6 +815,12 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
     }
   }
 
+  /// Cancels a pending selection, leaving discovery available.
+  Future<void> cancelConnectionAttempt() {
+    if (!state.isAttemptingConnection) return Future.value();
+    return disconnect();
+  }
+
   /// Disconnect from the current device (explicit user action).
   ///
   /// Stops any in-flight reconnect, drops the connection, and suppresses

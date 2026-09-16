@@ -185,7 +185,7 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
                 onPressed: () {
                   _selectionGeneration++;
                   setState(() => _error = null);
-                  unawaited(_connection.disconnect());
+                  unawaited(_connection.cancelConnectionAttempt());
                 },
                 child: const Text('Cancel'),
               ),

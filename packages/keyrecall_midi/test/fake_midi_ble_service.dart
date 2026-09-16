@@ -52,6 +52,9 @@ class FakeMidiBleService implements MidiBleService {
   /// interleave a disconnect with an in-flight connect.
   Completer<void>? connectGate;
 
+  /// Delays native teardown until the gate completes.
+  Completer<void>? disconnectGate;
+
   /// When set, [connect] throws this instead of connecting.
   Object? connectError;
 
@@ -157,6 +160,8 @@ class FakeMidiBleService implements MidiBleService {
   @override
   Future<void> disconnect(String deviceId) async {
     disconnectCalls += 1;
+    final gate = disconnectGate;
+    if (gate != null) await gate.future;
     connectedIds.remove(deviceId);
   }
 
