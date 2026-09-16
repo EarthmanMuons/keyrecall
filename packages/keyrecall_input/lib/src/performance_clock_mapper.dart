@@ -46,6 +46,7 @@ class PerformanceClockMapper {
 
   String? _session;
   PerformanceClockDefinition? _clock;
+  int _generation = -1;
   int? _lastRaw;
   int? _lastArrivalMs;
   int? _anchorArrivalMs;
@@ -107,20 +108,22 @@ class PerformanceClockMapper {
     final declared = declaredShape != null && _consistent(declaredShape)
         ? declaredShape
         : null;
+    final shape = declared ?? observation.shape;
     final phase = _lifecycle.reclassify(
       authorization: declared == null
           ? policy.classify(observation)
           : policy.clockFor(declared) != null
           ? ClockAuthorization.performance
           : ClockAuthorization.unavailable,
-      shape: declared ?? observation.shape,
+      shape: shape,
+      refinesAnchored: _refines(_lifecycle.anchoredShape, shape),
     );
     if (phase != PerformanceClockPhase.active) {
       _forget();
       return TimingUnavailable(_lifecycle.unavailableReason!);
     }
 
-    final clock = _clock ??= policy.clockFor(_lifecycle.anchoredShape!)!;
+    final clock = _clock = policy.clockFor(_lifecycle.anchoredShape!)!;
     // A delivery without a stamp is this event's absence and nothing more.
     // Moving the anchor or the last position for it would time the next
     // complete delivery against a sample that never happened.
@@ -143,7 +146,8 @@ class PerformanceClockMapper {
       _lastArrivalMs = arrivalMs;
       _anchorArrivalMs = arrivalMs;
       _unwrappedCounts = 0;
-      return const TimingAvailable(0);
+      _generation += 1;
+      return TimingAvailable(0, generation: _generation);
     }
 
     final rawStep = timestamp - last;
@@ -186,7 +190,27 @@ class PerformanceClockMapper {
     // this clock's quantum, and a quantum is a whole number of microseconds.
     return TimingAvailable(
       _unwrappedCounts * 1000 ~/ clock.countsPerMillisecond,
+      generation: _generation,
     );
+  }
+
+  /// Whether [shape] is the [anchored] clock measured more finely.
+  ///
+  /// A greatest common divisor only ever narrows, so a clock can show a finer
+  /// quantum after it was authorized on a coarser one. That is the same clock
+  /// when both shapes are authorized at the same rate, wrap the same way, and
+  /// the old quantum is a whole number of new ones: the counts already
+  /// unwrapped keep their meaning, and the timeline has the same origin. Any
+  /// other change is a different clock.
+  bool _refines(ClockDomainShape? anchored, ClockDomainShape? shape) {
+    if (anchored == null || shape == null || shape == anchored) return false;
+    final from = policy.clockFor(anchored);
+    final to = policy.clockFor(shape);
+    return from != null &&
+        to != null &&
+        to.modulus == from.modulus &&
+        to.countsPerMillisecond == from.countsPerMillisecond &&
+        from.quantum % to.quantum == 0;
   }
 
   /// Whether what has been measured still fits [declared].

@@ -24,6 +24,10 @@ enum TimingShortfall {
   /// The instrument sent notes without timestamps.
   missingTimestamps,
 
+  /// The connection switched to a different clock partway through, and times
+  /// from two clocks cannot be compared.
+  clockReplaced,
+
   /// Every note was timed and there were too few of them.
   insufficientObservations,
 }
@@ -36,8 +40,10 @@ enum TimingShortfall {
 TimingShortfall timingShortfallFor(
   TimingUnavailableReason? lastUntimed, {
   required InputSourceKind source,
+  bool clockReplaced = false,
 }) {
   if (!source.requiresInstrument) return TimingShortfall.unsupportedSource;
+  if (clockReplaced) return TimingShortfall.clockReplaced;
   return switch (lastUntimed) {
     null => TimingShortfall.insufficientObservations,
     TimingUnavailableReason.detecting => TimingShortfall.identifyingClock,
@@ -70,6 +76,9 @@ String timingShortfallSentence(TimingShortfall? shortfall) =>
       TimingShortfall.missingTimestamps =>
         'Timing is unavailable because your piano sent notes without '
             'timestamps.',
+      TimingShortfall.clockReplaced =>
+        'Timing stopped partway through because the connection switched to a '
+            'different clock. The next attempt is timed on the new one.',
       TimingShortfall.insufficientObservations =>
         'Too short to read timing from.',
     };

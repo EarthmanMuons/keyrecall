@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
+import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
@@ -127,6 +128,85 @@ void main() {
         timing: const TimingUnavailable(TimingUnavailableReason.continuityLost),
       );
       expect(capture().lastUntimed, TimingUnavailableReason.continuityLost);
+    },
+  );
+
+  // A path handoff mid-attempt starts a new timeline at a new origin. The
+  // notes on either side were played, and their times cannot be compared, so
+  // no wait may be read across the switch.
+  test(
+    'a replaced clock stops timing the attempt rather than mixing origins',
+    () async {
+      const piano = InputSourceIdentity(
+        deviceId: 'piano',
+        transport: 'ble',
+        sessionId: 'midi-1',
+      );
+      final reducer = InputReducer()..adopt(piano);
+      reducer.begin(timestampMs: 0);
+
+      List<InputTemporalEvent> strike(
+        int note, {
+        required int at,
+        required int stamp,
+        required TimestampSource source,
+      }) => reducer.receive(
+        RawInputEnvelope(
+          source: piano,
+          arrivalTimestampMs: at,
+          transportTimestamp: stamp,
+          timestampSource: source,
+          message: RawInputMessage(
+            kind: RawInputKind.noteOn,
+            note: note,
+            velocity: 100,
+          ),
+        ),
+      );
+
+      const host = TimestampSource(path: 'host');
+      const ble = TimestampSource(
+        path: 'ble',
+        declaredShape: ClockDomainShape(granularity: 1, modulus: 8192),
+      );
+
+      await observe();
+      record();
+      var at = 0;
+      for (var index = 0; index < 16; index++) {
+        at = index * 400 + index % 2;
+        for (final event in strike(
+          40 + index,
+          at: at,
+          stamp: 9000000000000 + at * 1000000,
+          source: host,
+        )) {
+          await deliver(event);
+        }
+      }
+      final beforeSwitch = capture().notes.last.performanceTimeUs;
+      expect(beforeSwitch, greaterThan(2000000));
+
+      for (var index = 0; index < 4; index++) {
+        at += 400;
+        for (final event in strike(
+          60 + index,
+          at: at,
+          stamp: 1000 + index * 400,
+          source: ble,
+        )) {
+          expect((event.timing! as TimingAvailable).generation, 1);
+          await deliver(event);
+        }
+      }
+
+      expect(capture().notes, hasLength(20));
+      expect(capture().clockReplaced, isTrue);
+      expect(
+        capture().notes.skip(16).map((note) => note.performanceTimeUs),
+        everyElement(isNull),
+      );
+      expect(usableWaitsUsOf(capture().transcript), everyElement(isPositive));
     },
   );
 

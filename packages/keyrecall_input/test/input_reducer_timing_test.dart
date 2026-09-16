@@ -216,5 +216,13 @@ void main() {
     );
     expect(after.last.performanceTimeUs, isNotNull);
     expect(reducer.clock.phase, PerformanceClockPhase.active);
+    expect(
+      {
+        for (final event in [...before, ...after])
+          if (event.timing case TimingAvailable(:final generation)) generation,
+      },
+      {0, 1},
+      reason: 'the two clocks are two timelines and say so',
+    );
   });
 }

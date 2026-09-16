@@ -257,9 +257,10 @@ candidates fit yields `ambiguousWrap`, which is terminal.
 
 > While neither active nor failed, reclassification moves freely between
 > `detecting` and `unauthorized`, or enters `active` when the currently measured
-> shape becomes authorized. `active` holds only while that same shape stays
-> authorized; anything else, including a continuity loss, fails the observation,
-> and only a new observation or session returns anything to `detecting`.
+> shape becomes authorized. `active` holds only while that same shape, or a
+> finer measurement of the same clock, stays authorized; anything else,
+> including a continuity loss, fails the observation, and only a new observation
+> or session returns anything to `detecting`.
 
 Stated as the invariant rather than as a list of edges, because the edges are
 policy and the invariant is not. In particular **`unauthorized` reaches `active`
@@ -285,8 +286,13 @@ A **shape that changes** is the other one. Granularity is a running greatest
 common divisor, so it can narrow as more steps arrive, and a domain authorized
 on eight steps can turn out to be a different one on eighty. While the mapper is
 still detecting, that is refinement and costs nothing. Once it is active, the
-timeline was built on a shape now known to be wrong, so it fails rather than
-reinterpreting what it already emitted.
+timeline fails rather than reinterpreting what it already emitted, with one
+exception: a finer quantum on a clock authorized at the same rate with the same
+wrap is the same clock measured more precisely. The counts already unwrapped
+keep their meaning and the origin does not move, so nothing emitted needs
+reinterpreting. The two nanosecond shapes are the case that exists: a
+100,000-count clock can spend its first eight steps on whole milliseconds and be
+authorized as the 1,000,000-count one.
 
 Staying active takes both halves of what activated it. A reading that keeps the
 shape but loses the authorization is the same loss by another route, and an
@@ -335,10 +341,13 @@ though the decoder already knew the format.
 
 **Consequences.** The route now tells the two paths apart by the device object
 the plugin delivers, the BLE route declares its format, and timing through the
-plugin's decoder starts with the second delivery. The host route is still
-detected rather than declared, since nothing documents its format, so an
-instrument that does reach it is untimed for the eight steps it takes to
-identify its nanosecond clock and is timed after that; see
+plugin's decoder starts with the second delivery. Every timeline carries a
+generation, and a capture that sees a timed note on a different generation from
+the ones before it records that note and the rest of the attempt untimed, so no
+wait is read across two origins while what was played still counts. The host
+route is still detected rather than declared, since nothing documents its
+format, so an instrument that does reach it is untimed for the eight steps it
+takes to identify its nanosecond clock and is timed after that; see
 [`analysis/transport-clocks/`](../../analysis/transport-clocks/) for why that
 domain is authorized.
 

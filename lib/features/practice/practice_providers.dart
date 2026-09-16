@@ -1162,6 +1162,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           lastTimingShortfall: timingShortfallFor(
             completion.capture.lastUntimed,
             source: ref.read(inputSourceProvider),
+            clockReplaced: completion.capture.clockReplaced,
           ),
         );
       }),

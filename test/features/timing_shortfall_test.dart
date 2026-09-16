@@ -56,4 +56,15 @@ void main() {
       contains('connection'),
     );
   });
+
+  test('a replaced clock is said as that, not as a short attempt', () {
+    expect(
+      timingShortfallFor(
+        null,
+        source: InputSourceKind.midi,
+        clockReplaced: true,
+      ),
+      TimingShortfall.clockReplaced,
+    );
+  });
 }

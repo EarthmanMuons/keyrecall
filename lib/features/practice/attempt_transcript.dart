@@ -51,12 +51,20 @@ class AttemptCapture {
   /// when every note was timed.
   final TimingUnavailableReason? lastUntimed;
 
+  /// Whether a note arrived on a different timeline from the notes timed
+  /// before it.
+  ///
+  /// Two timelines have unrelated origins, so from that note on nothing in the
+  /// attempt is timed. What was played still counts.
+  final bool clockReplaced;
+
   const AttemptCapture({
     required this.transcript,
     this.isInterrupted = false,
     this.fault,
     this.recording = 0,
     this.lastUntimed,
+    this.clockReplaced = false,
   });
 
   /// Nothing recorded, by nobody.
@@ -157,6 +165,9 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// transcript is asked to hold something it would refuse.
   int _lastTimestampMs = 0;
 
+  /// The timeline this recording's timed notes are on, once one is.
+  int? _timingGeneration;
+
   @override
   AttemptCapture build() {
     // Where the source says it stands, before any event arrives. The shared
@@ -195,6 +206,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// own capture by.
   int start(TechnicalMaterial material) {
     _lastTimestampMs = 0;
+    _timingGeneration = null;
     _recordings += 1;
     // Asked again rather than remembered: nothing guarantees an event arrived
     // between building and starting, and the source knows.
@@ -231,6 +243,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   void discard() {
     _material = null;
     _lastTimestampMs = 0;
+    _timingGeneration = null;
     state = AttemptCapture.none;
   }
 
@@ -308,17 +321,23 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
 
     final sequence = state.length;
     _lastTimestampMs = event.timestampMs;
+    final timing = event.timing;
+    final replaced =
+        state.clockReplaced ||
+        (timing is TimingAvailable &&
+            (_timingGeneration ??= timing.generation) != timing.generation);
     state = AttemptCapture(
       transcript: state.transcript.appending(
         pitch: spellObservedPitch(event.noteNumber, material: material),
         timestampMs: event.timestampMs,
-        performanceTimeUs: event.performanceTimeUs,
+        performanceTimeUs: replaced ? null : event.performanceTimeUs,
       ),
       recording: state.recording,
-      lastUntimed: switch (event.timing) {
+      lastUntimed: switch (timing) {
         TimingUnavailable(:final reason) => reason,
         _ => state.lastUntimed,
       },
+      clockReplaced: replaced,
     );
     ref
         .read(latencyProbeProvider.notifier)
@@ -341,6 +360,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
       fault: fault,
       recording: state.recording,
       lastUntimed: state.lastUntimed,
+      clockReplaced: state.clockReplaced,
     );
   }
 }

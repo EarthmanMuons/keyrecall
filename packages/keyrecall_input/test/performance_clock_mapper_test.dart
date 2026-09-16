@@ -416,4 +416,57 @@ void main() {
       );
     });
   });
+
+  // A greatest common divisor only narrows, so a clock can be authorized on a
+  // coarser quantum than it really has. Both nanosecond shapes run at a million
+  // counts a millisecond with no wrap, so the finer one is the same clock.
+  group('a finer quantum found after activation', () {
+    final hostWarmup = [for (final stamp in networkWarmup) stamp * 10];
+
+    test('keeps the timeline it refines', () {
+      final warmup = mapper.feed(hostWarmup);
+      expect(warmup.last, const TimingAvailable(0));
+      expect(mapper.observation.granularity, 1000000);
+
+      final refined = mapper.feed([
+        hostWarmup.last + 1100000,
+        hostWarmup.last + 2200000,
+      ], from: hostWarmup.length);
+
+      expect(mapper.observation.granularity, 100000);
+      expect(mapper.phase, PerformanceClockPhase.active);
+      expect(refined, const [TimingAvailable(1100), TimingAvailable(2200)]);
+    });
+
+    test('but a finer shape at another rate is a different clock', () {
+      final mixed = PerformanceClockMapper(
+        policy: const ClockDomainPolicy(
+          performance: [
+            PerformanceClockDefinition(
+              quantum: 1000,
+              countsPerMillisecond: 1000,
+            ),
+            PerformanceClockDefinition(quantum: 100, countsPerMillisecond: 100),
+          ],
+          nonPerformance: [],
+        ),
+      );
+      final warmup = [for (final stamp in networkWarmup) stamp ~/ 100];
+      for (final (index, stamp) in warmup.indexed) {
+        mixed.map(session: 'a', arrivalMs: index, timestamp: stamp);
+      }
+      expect(mixed.phase, PerformanceClockPhase.active);
+
+      final timing = mixed.map(
+        session: 'a',
+        arrivalMs: 9,
+        timestamp: warmup.last + 1100,
+      );
+
+      expect(
+        timing,
+        const TimingUnavailable(TimingUnavailableReason.continuityLost),
+      );
+    });
+  });
 }

@@ -56,17 +56,27 @@ sealed class PerformanceTiming {
 final class TimingAvailable extends PerformanceTiming {
   final int performanceTimeUs;
 
-  const TimingAvailable(this.performanceTimeUs);
+  /// Which timeline [performanceTimeUs] is on.
+  ///
+  /// Every timeline has its own arbitrary origin, so two times are comparable
+  /// only when their generations are equal. A new one begins whenever a clock
+  /// is anchored again, such as after the timestamp path changes.
+  final int generation;
+
+  const TimingAvailable(this.performanceTimeUs, {this.generation = 0});
 
   @override
   bool operator ==(Object other) =>
-      other is TimingAvailable && other.performanceTimeUs == performanceTimeUs;
+      other is TimingAvailable &&
+      other.performanceTimeUs == performanceTimeUs &&
+      other.generation == generation;
 
   @override
-  int get hashCode => performanceTimeUs.hashCode;
+  int get hashCode => Object.hash(performanceTimeUs, generation);
 
   @override
-  String toString() => 'TimingAvailable(${performanceTimeUs}us)';
+  String toString() =>
+      'TimingAvailable(${performanceTimeUs}us, generation $generation)';
 }
 
 /// No time, and why.
@@ -113,9 +123,10 @@ enum PerformanceClockPhase {
 ///
 /// > While neither active nor failed, reclassification moves freely between
 /// > detecting and unauthorized, or enters active when the currently measured
-/// > shape becomes authorized. Active holds only while that same shape stays
-/// > authorized; anything else, including a continuity loss, fails the
-/// > observation, and only a new observation returns anything to detecting.
+/// > shape becomes authorized. Active holds only while that same shape, or a
+/// > finer measurement of the same clock, stays authorized; anything else,
+/// > including a continuity loss, fails the observation, and only a new
+/// > observation returns anything to detecting.
 ///
 /// See `docs/decisions/performance-timing.md`.
 class PerformanceClockLifecycle {
@@ -144,17 +155,26 @@ class PerformanceClockLifecycle {
   /// here may reinterpret them. Losing the authorization is the same loss by
   /// another route, so staying active requires both halves of what activated
   /// it, and an authorization carrying no shape never activates anything.
+  ///
+  /// [refinesAnchored] says the new shape is the anchored clock measured more
+  /// finely rather than a different clock, which only the caller holding the
+  /// policy can establish. The timeline survives that and nothing else.
   PerformanceClockPhase reclassify({
     required ClockAuthorization authorization,
     required ClockDomainShape? shape,
+    bool refinesAnchored = false,
   }) {
     if (_phase == PerformanceClockPhase.failed) return _phase;
 
     if (_phase == PerformanceClockPhase.active) {
-      if (authorization != ClockAuthorization.performance ||
-          shape == null ||
-          shape != _anchored) {
+      if (authorization != ClockAuthorization.performance || shape == null) {
         return loseContinuity(TimingUnavailableReason.continuityLost);
+      }
+      if (shape != _anchored) {
+        if (!refinesAnchored) {
+          return loseContinuity(TimingUnavailableReason.continuityLost);
+        }
+        _anchored = shape;
       }
       return _phase;
     }
