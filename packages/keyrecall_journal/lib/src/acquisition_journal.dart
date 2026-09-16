@@ -131,7 +131,9 @@ sealed class AcquisitionEntry {
 ///
 /// [earnedProbe] is the verdict as it stood, recorded beside those facts so a
 /// threshold that moves afterwards cannot make a past attempt read differently
-/// than it did.
+/// than it did. It is exactly every criterion being met, checked in both
+/// directions: a record saying otherwise contradicts itself, and replay would
+/// carry the criteria forward while refusing the success they state.
 ///
 /// It carries no outcome, no measurement, and no scores. Nothing here can be
 /// folded into learner state, which is why this log exists apart from the one
@@ -249,13 +251,13 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         'a criterion success is a completion',
       );
     }
-    if (earnedProbe &&
-        (sequence != CriterionVerdict.met ||
-            continuity != CriterionVerdict.met)) {
+    if (earnedProbe !=
+        (sequence == CriterionVerdict.met &&
+            continuity == CriterionVerdict.met)) {
       throw ArgumentError.value(
         earnedProbe,
         'earnedProbe',
-        'a probe is earned by every criterion being met',
+        'a probe is earned by every criterion being met, and by nothing else',
       );
     }
     for (final (name, count) in [
@@ -449,11 +451,18 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         location: location,
       ),
       earnedProbe: earnedProbe,
-      sequence: _verdictOf(json, 'sequence_criterion', earnedProbe, location),
+      sequence: _verdictOf(
+        json,
+        'sequence_criterion',
+        earnedProbe,
+        version,
+        location,
+      ),
       continuity: _verdictOf(
         json,
         'continuity_criterion',
         earnedProbe,
+        version,
         location,
       ),
       gaps: [
@@ -470,14 +479,19 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
   /// record that earned none cannot say which criterion fell short or whether
   /// any of them was judged at all, so it reads back as unavailable rather
   /// than as a failure it never recorded.
+  ///
+  /// Inferred from the version rather than from the field being absent. A
+  /// version 8 record states every criterion, so one that does not is damaged,
+  /// and reading it as though it came from a format that could not say would
+  /// turn corruption into a verdict.
   static CriterionVerdict _verdictOf(
     Map<String, Object?> json,
     String key,
     bool earnedProbe,
+    int version,
     String location,
   ) {
-    final written = json[key];
-    if (written == null) {
+    if (version < 8) {
       return earnedProbe ? CriterionVerdict.met : CriterionVerdict.unavailable;
     }
     return located(

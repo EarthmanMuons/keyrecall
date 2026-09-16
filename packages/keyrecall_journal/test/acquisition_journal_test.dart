@@ -250,23 +250,78 @@ void main() {
       expect(record.showsCriterionFailure, isFalse);
     });
 
-    test('a record that earned a probe met every criterion', () {
+    test('are what earning a probe means, in both directions', () {
+      // An earned probe is exactly every criterion met. A record saying
+      // otherwise contradicts itself, and replay would carry the criteria
+      // forward while refusing the success they state.
+      AcquisitionAttemptRecord recordWith({
+        required bool earnedProbe,
+        required CriterionVerdict continuity,
+      }) => AcquisitionAttemptRecord(
+        journalSequence: 0,
+        identity: recordAt(0).identity,
+        task: task,
+        started: true,
+        completion: AcquisitionCompletion.completedCleanly,
+        repairs: 0,
+        repeats: 0,
+        intrusions: 0,
+        earnedProbe: earnedProbe,
+        sequence: CriterionVerdict.met,
+        continuity: continuity,
+        gaps: const [],
+      );
+
       expect(
-        () => AcquisitionAttemptRecord(
-          journalSequence: 0,
-          identity: recordAt(0).identity,
-          task: task,
-          started: true,
-          completion: AcquisitionCompletion.completedCleanly,
-          repairs: 0,
-          repeats: 0,
-          intrusions: 0,
+        () => recordWith(
           earnedProbe: true,
-          sequence: CriterionVerdict.met,
           continuity: CriterionVerdict.unavailable,
-          gaps: const [],
         ),
         throwsArgumentError,
+        reason: 'earned without every criterion met',
+      );
+      expect(
+        () => recordWith(earnedProbe: false, continuity: CriterionVerdict.met),
+        throwsArgumentError,
+        reason: 'every criterion met without earning',
+      );
+      expect(
+        recordWith(
+          earnedProbe: true,
+          continuity: CriterionVerdict.met,
+        ).earnedProbe,
+        isTrue,
+      );
+      expect(
+        recordWith(
+          earnedProbe: false,
+          continuity: CriterionVerdict.notMet,
+        ).earnedProbe,
+        isFalse,
+      );
+    });
+
+    test('a version 8 record that does not state them is damaged', () {
+      // Version 8 states every criterion, so absence is corruption rather
+      // than a format that could not say, whatever the probe boolean says.
+      for (final key in ['sequence_criterion', 'continuity_criterion']) {
+        for (final earned in [true, false]) {
+          final json = recordAt(0, earnedProbe: earned).toJson()..remove(key);
+          expect(
+            () => AcquisitionAttemptRecord.fromJson(json),
+            throwsA(isA<JournalFormatException>()),
+            reason: '$key, earned $earned',
+          );
+        }
+      }
+    });
+
+    test('an unknown verdict is refused rather than guessed at', () {
+      final json = recordAt(0).toJson()..['continuity_criterion'] = 'MAYBE';
+
+      expect(
+        () => AcquisitionAttemptRecord.fromJson(json),
+        throwsA(isA<JournalFormatException>()),
       );
     });
 

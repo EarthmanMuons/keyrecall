@@ -6,6 +6,11 @@ import '../schema.dart';
 import 'domain_codec.dart';
 
 /// Writes one parent's acquisition history.
+///
+/// Not a stored format. Nothing in the app persists progress: it is replayed
+/// from the acquisition log, and this is what a trajectory export and the
+/// parity tests read it through. Its keys therefore follow the fields rather
+/// than a schema version, and a rename here breaks no file on disk.
 Map<String, Object?> encodeAcquisitionRecord(
   Exercise parent,
   AcquisitionRecord record,
