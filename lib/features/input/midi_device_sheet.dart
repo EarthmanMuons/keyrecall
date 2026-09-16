@@ -7,14 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'input_source.dart';
 
-/// Scan for a MIDI instrument, connect to one, and see what happened.
-///
-/// The smallest surface that makes the vendored transport usable on real
-/// hardware: everything below it, including retries, auto-reconnect, and
-/// remembering the last device, already exists in `keyrecall_midi`. Modeled on
-/// WhatChord's picker without bringing its design across, and not a settings
-/// screen: Bluetooth permission prompts, transport explanations, and status
-/// affordances belong to a real design rather than to a debug sheet.
+/// Discover instruments and manage the current MIDI connection.
 class MidiDeviceSheet extends ConsumerStatefulWidget {
   const MidiDeviceSheet({super.key});
 
@@ -23,6 +16,7 @@ class MidiDeviceSheet extends ConsumerStatefulWidget {
       showModalBottomSheet<MidiDevice>(
         context: context,
         isScrollControlled: true,
+        showDragHandle: true,
         builder: (context) => const MidiDeviceSheet(),
       );
 
@@ -52,6 +46,7 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
   }
 
   Future<void> _scan() async {
+    if (!mounted) return;
     setState(() => _error = null);
     try {
       await _connection.refreshDevices();
@@ -84,13 +79,18 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final devices = ref.watch(midiDeviceManagerProvider).devices;
-    final isScanning = ref.watch(midiDeviceManagerProvider).isScanning;
+    final manager = ref.watch(midiDeviceManagerProvider);
     final connection = ref.watch(midiConnectionStateProvider);
+    final connected = connection.isConnected ? connection.device : null;
+    final devices = [
+      ?connected,
+      ...manager.devices.where((device) => device.id != connected?.id),
+    ];
+    final theme = Theme.of(context);
 
     return SafeArea(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,16 +100,10 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
                 Expanded(
                   child: Text(
                     'MIDI instruments',
-                    style: Theme.of(context).textTheme.titleMedium,
+                    style: theme.textTheme.titleLarge,
                   ),
                 ),
-                if (isScanning)
-                  const SizedBox(
-                    height: 16,
-                    width: 16,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
+                if (!manager.isScanning)
                   IconButton(
                     tooltip: 'Scan again',
                     onPressed: _scan,
@@ -117,10 +111,19 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
                   ),
               ],
             ),
-            Text(
-              _statusOf(connection),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
+            const SizedBox(height: 4),
+            if (manager.isScanning) const _ScanningStatus(),
+            if (!connection.isConnected) ...[
+              const SizedBox(height: 4),
+              Text(
+                _statusOf(connection),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: connection.phase == MidiConnectionPhase.error
+                      ? theme.colorScheme.error
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
             // A domain that is recognized and not authorized is a standing
             // fact about this connection rather than something a longer
             // attempt would fix, so it is said once, here, and not on every
@@ -136,14 +139,14 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
-            if (_error != null) ...[
+            if (_error != null && _error != connection.message) ...[
               const SizedBox(height: 8),
               Text(
                 _error!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ],
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             if (devices.isEmpty)
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 24),
@@ -151,51 +154,75 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
               )
             else
               Flexible(
-                child: ListView(
+                child: ListView.separated(
+                  padding: EdgeInsets.zero,
                   shrinkWrap: true,
-                  children: [
-                    for (final device in devices)
-                      ListTile(
-                        title: Text(device.displayName ?? device.id),
-                        subtitle: Text(device.transport.label),
-                        trailing: device.id == connection.device?.id
-                            ? connection.isAttemptingConnection
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : connection.isConnected
-                                  ? const Icon(Icons.link)
-                                  : null
-                            : null,
-                        onTap:
-                            connection.isAttemptingConnection &&
-                                device.id == connection.device?.id
-                            ? null
-                            : () => _connect(device),
+                  itemCount: devices.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 4),
+                  itemBuilder: (context, index) {
+                    final device = devices[index];
+                    final isConnected = device.id == connected?.id;
+                    final isConnecting =
+                        connection.isAttemptingConnection &&
+                        device.id == connection.device?.id;
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
                       ),
-                  ],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      selected: isConnected,
+                      selectedTileColor: theme.colorScheme.primaryContainer,
+                      selectedColor: theme.colorScheme.onPrimaryContainer,
+                      title: Text(device.displayName ?? device.id),
+                      subtitle: Text(
+                        isConnected
+                            ? '${device.transport.label} · Connected'
+                            : device.transport.label,
+                      ),
+                      trailing: isConnecting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : isConnected
+                          ? const Icon(Icons.check_circle_outline)
+                          : null,
+                      onTap: isConnecting ? null : () => _connect(device),
+                    );
+                  },
                 ),
               ),
+            if (connection.isAttemptingConnection || connection.isConnected)
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: Divider(height: 1),
+              ),
             if (connection.isAttemptingConnection)
-              TextButton(
-                onPressed: () {
-                  _selectionGeneration++;
-                  setState(() => _error = null);
-                  unawaited(_connection.cancelConnectionAttempt());
-                },
-                child: const Text('Cancel'),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    _selectionGeneration++;
+                    setState(() => _error = null);
+                    unawaited(_connection.cancelConnectionAttempt());
+                  },
+                  child: const Text('Cancel'),
+                ),
               ),
             if (connection.isConnected)
-              TextButton(
-                onPressed: () async {
-                  await _connection.disconnect();
-                  if (context.mounted) setState(() {});
-                },
-                child: const Text('Disconnect'),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () async {
+                    await _connection.disconnect();
+                    if (context.mounted) setState(() => _error = null);
+                  },
+                  icon: const Icon(Icons.link_off, size: 18),
+                  label: const Text('Disconnect'),
+                ),
               ),
           ],
         ),
@@ -213,4 +240,70 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
         MidiConnectionPhase.error => connection.message ?? 'Could not connect.',
         _ => 'Not connected',
       };
+}
+
+class _ScanningStatus extends StatefulWidget {
+  const _ScanningStatus();
+
+  @override
+  State<_ScanningStatus> createState() => _ScanningStatusState();
+}
+
+class _ScanningStatusState extends State<_ScanningStatus>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulse;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+      lowerBound: 0.35,
+      value: 1,
+    );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pulse.stop();
+      _pulse.value = 1;
+    } else if (!_pulse.isAnimating) {
+      unawaited(_pulse.repeat(reverse: true));
+    }
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Row(
+      children: [
+        FadeTransition(
+          opacity: _pulse,
+          child: Icon(
+            Icons.bluetooth_searching,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            'Scanning for instruments',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }

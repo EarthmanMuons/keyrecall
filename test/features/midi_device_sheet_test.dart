@@ -41,11 +41,22 @@ void main() {
     ble.dispose();
   });
 
-  Future<void> openSheet(WidgetTester tester) async {
+  Future<void> openSheet(
+    WidgetTester tester, {
+    bool disableAnimations = false,
+    double textScale = 1,
+  }) async {
     await tester.pumpWidget(
       UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              disableAnimations: disableAnimations,
+              textScaler: TextScaler.linear(textScale),
+            ),
+            child: child!,
+          ),
           home: Scaffold(
             body: Builder(
               builder: (context) => TextButton(
@@ -61,6 +72,59 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
   }
+
+  testWidgets('scan pulses and respects reduced motion', (tester) async {
+    await openSheet(tester);
+    final fade = find.descendant(
+      of: find.byType(MidiDeviceSheet),
+      matching: find.byType(FadeTransition),
+    );
+    final opacity = tester.widget<FadeTransition>(fade).opacity;
+    final before = opacity.value;
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(opacity.value, isNot(before));
+
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+    await openSheet(tester, disableAnimations: true);
+    final still = tester.widget<FadeTransition>(fade).opacity;
+    expect(still.value, 1);
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(still.value, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
+
+  testWidgets('connected row stays visible at phone width with larger text', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await container
+        .read(midiConnectionStateProvider.notifier)
+        .connect(_otherInstrument);
+    ble.discoverable = [testInstrument];
+    await openSheet(tester, textScale: 1.5);
+
+    expect(find.text('Bluetooth · Connected'), findsOneWidget);
+    expect(find.textContaining('Connected to'), findsNothing);
+    expect(find.byIcon(Icons.check_circle_outline), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text('Stage Piano')).dy,
+      lessThan(tester.getTopLeft(find.text(testInstrument.name)).dy),
+    );
+    expect(tester.takeException(), isNull);
+
+    await tester.tap(find.text('Disconnect'));
+    await tester.pump();
+    expect(find.text('Bluetooth · Connected'), findsNothing);
+    expect(find.text('Scanning for instruments'), findsOneWidget);
+    expect(find.text('Not connected'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
 
   testWidgets('another instrument can be selected during auto reconnect', (
     tester,
