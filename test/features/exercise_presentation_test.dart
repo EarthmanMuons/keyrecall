@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
+import 'package:keyrecall_measurement/keyrecall_measurement.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/practice/exercise_presentation.dart';
 import 'package:keyrecall/features/practice/presentation_policy.dart';
@@ -346,7 +348,11 @@ void main() {
       intrusions: 0,
       firstAbsentPosition: firstAbsentPosition,
       earnedProbe: false,
-      sequence: CriterionVerdict.notMet,
+      // A capture that may have lost events judges no criterion, which the
+      // record itself enforces.
+      sequence: termination == AttemptTermination.inputInterrupted
+          ? CriterionVerdict.unavailable
+          : CriterionVerdict.notMet,
       continuity: CriterionVerdict.unavailable,
       gaps: const [],
     );
@@ -424,22 +430,21 @@ void main() {
       }
     });
 
-    test('says how many of the asked-for traversals came out', () {
+    test('says where the playing got to, not what it produced', () {
       final arpeggio = ArpeggioMaterial('C', ArpeggioQuality.major);
 
-      // One whole traversal of two is not stopping before the end: the
-      // learner finished the arpeggio once.
+      // Where the playing got to, never how many traversals came out.
       expect(
         acquisitionOutcomeLine(
           closed(arpeggio, traversals: 2, firstAbsentPosition: 6),
         ),
-        'You played the arpeggio 1 of 2 times.',
+        'You stopped during the second time through the arpeggio.',
       );
       expect(
         acquisitionOutcomeLine(
           closed(arpeggio, traversals: 2, firstAbsentPosition: 2),
         ),
-        'You stopped before the end of the first time through the arpeggio.',
+        'You stopped during the first time through the arpeggio.',
       );
       expect(
         acquisitionOutcomeLine(
@@ -460,8 +465,65 @@ void main() {
             termination: AttemptTermination.inputInterrupted,
           ),
         ),
-        'The connection was interrupted after 1 of 2 times through the '
+        'The connection was interrupted during the second time through the '
         'arpeggio.',
+      );
+    });
+
+    test('never claims a traversal that positions alone cannot establish', () {
+      // Built through measurement rather than by supplying the fields, so the
+      // test cannot encode the same mistaken assumption the copy did. The
+      // first note is something else and the playing stops in the second
+      // traversal: positions past the boundary are covered, and no traversal
+      // was produced.
+      final material = ArpeggioMaterial('C', ArpeggioQuality.major);
+      final task = AcquisitionScaffold.unmeteredRepetitions(2).taskFor(
+        Exercise.linear(
+          material: material,
+          hands: HandConfiguration.right,
+          octaves: 1,
+          direction: ExerciseDirection.up,
+          tempoBpm: 60,
+          guidance: GuidanceContext.continuouslyCued,
+        ),
+      );
+      final wanted = [
+        for (final moment in realizeAcquisition(task).moments)
+          moment.noteFor(Hand.right)!.midiNote,
+      ];
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, midiNote) in [
+        wanted.first + 1,
+        ...wanted.sublist(1, 5),
+      ].indexed) {
+        transcript = transcript.appending(
+          pitch: spellObservedPitch(midiNote, material: material),
+          timestampMs: index * 600,
+          performanceTimeUs: index * 600 * 1000,
+        );
+      }
+      final record = acquisitionRecordOf(
+        observation: observeAcquisition(task: task, transcript: transcript),
+        identity: AttemptIdentity(
+          profileId: 'abc12345',
+          attemptId: 'acq-0',
+          sessionId: 'sitting-1',
+          indexInSession: 0,
+          occurredAt: DateTime.utc(2026, 9, 9),
+        ),
+        journalSequence: 0,
+      );
+
+      expect(record.completion, AcquisitionCompletion.notCompleted);
+      expect(record.firstAbsentPosition, 5);
+      expect(
+        acquisitionOutcomeLine(record),
+        'You stopped during the second time through the arpeggio.',
+      );
+      expect(
+        acquisitionOutcomeLine(record),
+        isNot(contains('1 of 2')),
+        reason: 'a covered position is not a produced traversal',
       );
     });
 

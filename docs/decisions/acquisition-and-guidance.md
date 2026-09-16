@@ -238,6 +238,13 @@ a musical observation and has no business knowing the ways a capture can fail;
 closure has both in hand. Only `inputInterrupted` is compromised: every other
 ending stops the observing without losing what had already arrived.
 
+The record enforces the same rule for the version that can state it. A version 8
+`inputInterrupted` record whose criteria are anything but `unavailable` is
+refused, so a damaged or hand-built record cannot state a failure over
+compromised evidence and have replay suppress the scaffold on it. Older records
+keep the verdicts their format meant, since today's integrity rule is not
+reconstructible from them.
+
 **Consequences.** `earnedProbe` is every criterion met, not merely none failed.
 `evidenceRevisionAtCriterionFailure` is set by a demonstrated `notMet` alone, so
 an attempt that judged nothing neither earns a probe nor sets the scaffold

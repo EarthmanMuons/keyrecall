@@ -57,24 +57,24 @@ String _timesName(int times) => switch (times) {
 /// may well have been played; a timeout, a limit and a record whose format
 /// could not say get the same neutral wording, for the same reason.
 ///
-/// A task asking for more than one traversal says how many came out. Telling
-/// somebody who played the arpeggio once of twice that they stopped before the
-/// end describes neither what they did nor what was asked for.
+/// A task asking for more than one traversal says where the playing got to,
+/// and never how many traversals came out. Where an attempt reached is a fact
+/// about position; what it produced is a fact about the notes, and only a
+/// completed attempt says every traversal was produced.
 String acquisitionOutcomeLine(AcquisitionAttemptRecord record) {
   final noun = materialNoun(record.parent.material);
   final asked = record.task.portion.traversals;
-  final recorded = _recordedTraversals(record);
+  final reached = _traversalIndexReached(record);
 
   if (record.termination == AttemptTermination.inputInterrupted) {
-    if (recorded == 0) {
-      return 'The connection was interrupted before the whole $noun was '
-          'recorded.';
+    if (record.completion.isComplete) {
+      return 'The connection was interrupted. The whole $noun was recorded'
+          '${asked == 1 ? '' : ' ${_timesName(asked)}'}.';
     }
-    return recorded == asked
-        ? 'The connection was interrupted. The whole $noun was recorded'
-              '${asked == 1 ? '' : ' ${_timesName(asked)}'}.'
-        : 'The connection was interrupted after $recorded of $asked times '
-              'through the $noun.';
+    return reached == null || asked == 1
+        ? 'The connection was interrupted before the whole $noun was recorded.'
+        : 'The connection was interrupted during the ${_ordinalName(reached)} '
+              'time through the $noun.';
   }
 
   if (!record.started) return 'Nothing came through that time.';
@@ -85,31 +85,39 @@ String acquisitionOutcomeLine(AcquisitionAttemptRecord record) {
         : 'You played the whole $noun ${_timesName(asked)}, at your own pace.';
   }
 
-  if (record.firstAbsentPosition == null) {
+  if (reached == null) {
     return 'Some of the notes were not the ones in the $noun.';
-  }
-  if (recorded > 0) {
-    return 'You played the $noun $recorded of $asked times.';
   }
   if (record.termination != AttemptTermination.learnerStopped) {
     return 'The $noun was not played all the way through.';
   }
   return asked == 1
       ? 'You stopped before the end of the $noun.'
-      : 'You stopped before the end of the first time through the $noun.';
+      : 'You stopped during the ${_ordinalName(reached)} time through the '
+            '$noun.';
 }
 
-/// How many whole traversals the attempt has a record of.
+/// Which traversal the playing had reached when the notes ran out, from zero,
+/// or null when nothing ran out.
 ///
-/// Counted from where the notes ran out, which is the only progress a record
-/// locates. An attempt that produced the material produced every traversal of
-/// it, however it came out.
-int _recordedTraversals(AcquisitionAttemptRecord record) {
-  if (record.completion.isComplete) return record.task.portion.traversals;
+/// Positional progress, and deliberately not a count of traversals produced.
+/// Alignment accounts for a position with a substitution, so a traversal being
+/// behind the learner says where they got to and not that it came out: an
+/// attempt whose first note was something else and which stopped in the second
+/// traversal has produced no traversal at all.
+int? _traversalIndexReached(AcquisitionAttemptRecord record) {
   final absent = record.firstAbsentPosition;
-  if (absent == null) return 0;
+  if (absent == null) return null;
   return absent ~/ realize(record.parent).moments.length;
 }
+
+/// Which time through it was, as a learner would say it.
+String _ordinalName(int index) => switch (index) {
+  0 => 'first',
+  1 => 'second',
+  2 => 'third',
+  _ => '${index + 1}th',
+};
 
 /// The note the material is named after, spelled the way it is written.
 String tonicName(TechnicalMaterial material) => prettyTonic(material.tonic);

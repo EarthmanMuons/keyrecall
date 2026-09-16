@@ -301,6 +301,79 @@ void main() {
       );
     });
 
+    test('a version 8 interrupted record judges nothing', () {
+      // The closure rule made an invariant of the record. Without it a
+      // hand-built or damaged record could state a failure over compromised
+      // evidence, and replay would suppress the scaffold on it.
+      AcquisitionAttemptRecord interruptedWith({
+        required CriterionVerdict sequence,
+        required CriterionVerdict continuity,
+        int schemaVersion = acquisitionSchemaVersion,
+      }) => AcquisitionAttemptRecord(
+        schemaVersion: schemaVersion,
+        journalSequence: 0,
+        identity: recordAt(0).identity,
+        task: task,
+        termination: AttemptTermination.inputInterrupted,
+        started: true,
+        completion: AcquisitionCompletion.notCompleted,
+        repairs: 0,
+        repeats: 0,
+        intrusions: 0,
+        earnedProbe: false,
+        sequence: sequence,
+        continuity: continuity,
+        gaps: const [],
+      );
+
+      expect(
+        interruptedWith(
+          sequence: CriterionVerdict.unavailable,
+          continuity: CriterionVerdict.unavailable,
+        ).showsCriterionFailure,
+        isFalse,
+      );
+      for (final (sequence, continuity) in [
+        (CriterionVerdict.notMet, CriterionVerdict.unavailable),
+        (CriterionVerdict.unavailable, CriterionVerdict.notMet),
+        (CriterionVerdict.met, CriterionVerdict.unavailable),
+      ]) {
+        expect(
+          () => interruptedWith(sequence: sequence, continuity: continuity),
+          throwsArgumentError,
+          reason: '$sequence, $continuity',
+        );
+      }
+    });
+
+    test('a version 7 interrupted record keeps what it recorded', () {
+      // Older verdicts mean what the format that wrote them meant, and
+      // today's integrity rule is not reconstructible from them.
+      final legacy = AcquisitionAttemptRecord(
+        schemaVersion: 7,
+        journalSequence: 0,
+        identity: recordAt(0).identity,
+        task: task,
+        termination: AttemptTermination.inputInterrupted,
+        started: true,
+        completion: AcquisitionCompletion.notCompleted,
+        repairs: 0,
+        repeats: 0,
+        intrusions: 0,
+        earnedProbe: false,
+        sequence: CriterionVerdict.notMet,
+        continuity: CriterionVerdict.unavailable,
+        gaps: const [],
+      );
+
+      expect(legacy.sequence, CriterionVerdict.notMet);
+      expect(
+        AcquisitionAttemptRecord.fromJson(legacy.toJson()).sequence,
+        CriterionVerdict.unavailable,
+        reason: 'a version 7 record states no criterion of its own',
+      );
+    });
+
     test('a version 8 record that does not state them is damaged', () {
       // Version 8 states every criterion, so absence is corruption rather
       // than a format that could not say, whatever the probe boolean says.

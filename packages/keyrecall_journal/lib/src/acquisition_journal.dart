@@ -135,6 +135,13 @@ sealed class AcquisitionEntry {
 /// directions: a record saying otherwise contradicts itself, and replay would
 /// carry the criteria forward while refusing the success they state.
 ///
+/// A version 8 record whose capture may have lost events judges no criterion,
+/// which is the closure rule made an invariant of the record. Without it a
+/// hand-built or damaged record could state a failure over compromised
+/// evidence, and replay would suppress the scaffold on it. Older records are
+/// left alone: their verdicts mean what the format that wrote them meant, and
+/// today's integrity rule is not reconstructible from them.
+///
 /// It carries no outcome, no measurement, and no scores. Nothing here can be
 /// folded into learner state, which is why this log exists apart from the one
 /// that can.
@@ -258,6 +265,16 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
         earnedProbe,
         'earnedProbe',
         'a probe is earned by every criterion being met, and by nothing else',
+      );
+    }
+    if (schemaVersion >= 8 &&
+        termination == AttemptTermination.inputInterrupted &&
+        (sequence != CriterionVerdict.unavailable ||
+            continuity != CriterionVerdict.unavailable)) {
+      throw ArgumentError.value(
+        termination,
+        'termination',
+        'a capture that may have lost events judges no criterion',
       );
     }
     for (final (name, count) in [
