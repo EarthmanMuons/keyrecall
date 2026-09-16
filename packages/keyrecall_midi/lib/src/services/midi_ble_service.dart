@@ -33,14 +33,14 @@ class MidiBleService {
 
   /// Stream of parsed MIDI messages relevant to the app, with their source.
   ///
-  /// The plugin parses raw bytes into typed messages with per-source state
-  /// (running status, multi-message packets); this service translates them
-  /// into the app's [MidiMessage] model and drops unused kinds. Device,
-  /// transport, channel, and the plugin's timestamp are carried through
-  /// rather than discarded: the plugin merges every live source into this one
-  /// stream, so a message without them cannot be attributed to an instrument.
-  /// If the plugin exposes no MIDI stream on this platform/version, this
-  /// stream is empty.
+  /// Every plugin transport resolves running status, strips its framing,
+  /// and isolates real-time bytes before parsing, so each event carries one
+  /// complete typed message; this service translates them into the app's
+  /// [MidiMessage] model and drops unused kinds. Device, transport, channel,
+  /// and the plugin's timestamp are carried through rather than discarded: the
+  /// plugin merges every live source into this one stream, so a message without
+  /// them cannot be attributed to an instrument. If the plugin exposes no MIDI
+  /// stream on this platform/version, this stream is empty.
   Stream<MidiSourceMessage> get onMidiMessages =>
       _midi.onMidiDataReceived
           ?.map(mapEvent)
