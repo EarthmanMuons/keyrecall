@@ -82,10 +82,16 @@ class PerformanceClockMapper {
   ///
   /// [arrivalMs] is when the delivery reached the app, which is evidence about
   /// the clock's shape and never about when anybody played.
+  ///
+  /// [declaredShape] is the shape the timestamp's format defines, where the
+  /// path that produced it says. It stands in for detection until the stream
+  /// contradicts it, and policy authorizes it exactly as it would a measured
+  /// one.
   PerformanceTiming map({
     required String? session,
     required int arrivalMs,
     int? timestamp,
+    ClockDomainShape? declaredShape,
   }) {
     if (session != _session) {
       _session = session;
@@ -98,9 +104,16 @@ class PerformanceClockMapper {
       arrivalMs: arrivalMs,
       timestamp: timestamp,
     );
+    final declared = declaredShape != null && _consistent(declaredShape)
+        ? declaredShape
+        : null;
     final phase = _lifecycle.reclassify(
-      authorization: policy.classify(observation),
-      shape: observation.shape,
+      authorization: declared == null
+          ? policy.classify(observation)
+          : policy.clockFor(declared) != null
+          ? ClockAuthorization.performance
+          : ClockAuthorization.unavailable,
+      shape: declared ?? observation.shape,
     );
     if (phase != PerformanceClockPhase.active) {
       _forget();
@@ -174,6 +187,19 @@ class PerformanceClockMapper {
     return TimingAvailable(
       _unwrappedCounts * 1000 ~/ clock.countsPerMillisecond,
     );
+  }
+
+  /// Whether what has been measured still fits [declared].
+  ///
+  /// Every step has to be a multiple of its quantum and any wrap has to be its
+  /// width. A stream that breaks either is not in the declared format, and it
+  /// falls back to the shape that was measured.
+  bool _consistent(ClockDomainShape declared) {
+    final measured = observation;
+    final granularity = measured.granularity;
+    final modulus = measured.modulus;
+    return (granularity == null || granularity % declared.granularity == 0) &&
+        (modulus == null || modulus == declared.modulus);
   }
 
   /// Whether the timeline is still keeping time with the observation.

@@ -264,10 +264,14 @@ class InputReducer {
     // delivery produces was played at the same moment, and asking twice would
     // advance a timeline for one keyboard event.
     final source = envelope.source;
+    final stamped = envelope.timestampSource;
     final timing = _clock.map(
-      session: '${source.transport}/${source.deviceId}/${source.sessionId}',
+      session:
+          '${source.transport}/${source.deviceId}/${source.sessionId}'
+          '/${stamped?.path}',
       arrivalMs: timestampMs,
       timestamp: envelope.transportTimestamp,
+      declaredShape: stamped?.declaredShape,
     );
     return _apply(envelope, timestampMs, timing);
   }

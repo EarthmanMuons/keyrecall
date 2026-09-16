@@ -1,5 +1,7 @@
 import 'package:meta/meta.dart';
 
+import 'clock_domain.dart';
+
 /// Which instrument, over which transport, on which connection.
 ///
 /// Identity is what lets the boundary tell the adopted instrument from any
@@ -85,6 +87,43 @@ class RawInputMessage {
   };
 }
 
+/// Which path stamped a transport timestamp, and what it documents.
+///
+/// A device and its reported transport do not identify a clock: one adapter
+/// has delivered two different domains by two different paths through the
+/// same plugin. The path does, so a change of path is a new clock rather than
+/// a discontinuity in the old one.
+@immutable
+class TimestampSource {
+  /// Names the path, such as the decoder or operating system stack that
+  /// produced the stamp.
+  final String path;
+
+  /// The shape the path's format defines, where it defines one.
+  ///
+  /// A declaration identifies a clock without waiting for the stream to show
+  /// it, which for a wrapping counter means waiting for a wrap. It does not
+  /// authorize anything: policy still decides whether the shape is believed,
+  /// and a stream that contradicts it is measured rather than trusted.
+  final ClockDomainShape? declaredShape;
+
+  const TimestampSource({required this.path, this.declaredShape});
+
+  @override
+  bool operator ==(Object other) =>
+      other is TimestampSource &&
+      other.path == path &&
+      other.declaredShape == declaredShape;
+
+  @override
+  int get hashCode => Object.hash(path, declaredShape);
+
+  @override
+  String toString() =>
+      'TimestampSource($path'
+      '${declaredShape == null ? '' : ', declares $declaredShape'})';
+}
+
 /// A raw message with everything known about where and when it arrived.
 ///
 /// Two clocks, deliberately kept apart. [arrivalTimestampMs] is the app's
@@ -104,6 +143,9 @@ class RawInputEnvelope {
   /// The transport's own timestamp, uninterpreted.
   final int? transportTimestamp;
 
+  /// Where [transportTimestamp] came from, where the transport can say.
+  final TimestampSource? timestampSource;
+
   /// The shared input clock's reading when this message was processed.
   final int arrivalTimestampMs;
 
@@ -113,6 +155,7 @@ class RawInputEnvelope {
     required this.arrivalTimestampMs,
     this.channel,
     this.transportTimestamp,
+    this.timestampSource,
   });
 
   @override

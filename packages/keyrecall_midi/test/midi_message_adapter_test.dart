@@ -1,9 +1,36 @@
+import 'package:flutter_midi_command/flutter_midi_command.dart' as fmc;
 import 'package:flutter_midi_command/flutter_midi_command_messages.dart' as msg;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 
+/// A device the way the plugin's injected BLE transport delivers one.
+class _TransportDevice extends fmc.MidiDevice {
+  _TransportDevice() : super('jam', 'JamCorder', fmc.MidiDeviceType.ble, true);
+}
+
 void main() {
+  // The plugin labels a message by device type, so a BLE instrument it has
+  // handed to the operating system's MIDI stack still arrives saying ble.
+  group('MidiBleService.routeOf', () {
+    test('a BLE device from the plugin transport is the BLE route', () {
+      expect(
+        MidiBleService.routeOf(fmc.MidiTransport.ble, _TransportDevice()),
+        MidiRoute.ble,
+      );
+    });
+
+    test('a BLE device from the platform is the host route', () {
+      expect(
+        MidiBleService.routeOf(
+          fmc.MidiTransport.ble,
+          fmc.MidiDevice('jam', 'JamCorder', fmc.MidiDeviceType.ble, true),
+        ),
+        MidiRoute.host,
+      );
+    });
+  });
+
   group('MidiBleService.mapMessage', () {
     test('maps note on', () {
       final result = MidiBleService.mapMessage(

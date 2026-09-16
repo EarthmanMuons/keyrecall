@@ -60,6 +60,10 @@ set of expected differences rather than a mystery.
     adopted instrument from any other live source. Each transport subscription
     also mints its own session token, so a reconnect that reuses a device id is
     a different source rather than the same one.
+  - `MidiBleService` reports a BLE instrument the plugin has handed off to the
+    platform MIDI stack as the host route. Upstream takes the plugin's transport
+    label, which names the device type and so says `ble` for both paths, whose
+    timestamps come from different clocks.
   - `app_midi_lifecycle_provider.dart` ends the observation when the app leaves
     the foreground and opens a new one on resume. The connection is still kept,
     exactly as upstream keeps it.

@@ -374,4 +374,46 @@ void main() {
     expect(mapper.phase, PerformanceClockPhase.detecting);
     expect(mapper.clock, isNull);
   });
+
+  group('a declared shape', () {
+    const bleMidi = ClockDomainShape(granularity: 1, modulus: 8192);
+
+    PerformanceTiming declared(int arrivalMs, int timestamp) => mapper.map(
+      session: 'a',
+      arrivalMs: arrivalMs,
+      timestamp: timestamp,
+      declaredShape: bleMidi,
+    );
+
+    test('times from the first delivery rather than after a wrap', () {
+      expect(declared(0, 8000), const TimingAvailable(0));
+      expect(declared(150, 8150), const TimingAvailable(150000));
+      expect(declared(400, 208), const TimingAvailable(400000));
+      expect(mapper.phase, PerformanceClockPhase.active);
+    });
+
+    test('is still authorized by policy rather than by being declared', () {
+      final timing = mapper.map(
+        session: 'a',
+        arrivalMs: 0,
+        timestamp: 0,
+        declaredShape: const ClockDomainShape(granularity: 7),
+      );
+
+      expect(
+        timing,
+        const TimingUnavailable(TimingUnavailableReason.unknownDomain),
+      );
+    });
+
+    test('that the stream contradicts is not believed', () {
+      declared(0, 100);
+      declared(10, 110);
+
+      expect(
+        declared(20, 9000),
+        const TimingUnavailable(TimingUnavailableReason.continuityLost),
+      );
+    });
+  });
 }

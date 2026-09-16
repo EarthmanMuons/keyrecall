@@ -160,4 +160,60 @@ void main() {
     expect(opened.single.timing, isNull);
     expect(opened.single.performanceTimeUs, isNull);
   });
+
+  // One adapter has reached the app by two paths through the same plugin, each
+  // with its own clock, and the handoff between them happens mid-observation.
+  test('a change of timestamp path is a new clock, not a broken one', () {
+    const ble = TimestampSource(
+      path: 'ble',
+      declaredShape: ClockDomainShape(granularity: 1, modulus: 8192),
+    );
+    const host = TimestampSource(path: 'host');
+
+    RawInputEnvelope stamped(
+      int note,
+      int at,
+      int stamp,
+      TimestampSource source,
+    ) => RawInputEnvelope(
+      source: piano,
+      arrivalTimestampMs: at,
+      transportTimestamp: stamp,
+      timestampSource: source,
+      message: RawInputMessage(
+        kind: RawInputKind.noteOn,
+        note: note,
+        velocity: 100,
+      ),
+    );
+
+    final before = [
+      for (var index = 0; index < 3; index++)
+        ...reducer.receive(stamped(60 + index, index * 500, index * 500, ble)),
+    ];
+    expect(before.map((event) => event.performanceTimeUs), [
+      0,
+      500000,
+      1000000,
+    ]);
+
+    final after = [
+      for (var index = 0; index < 10; index++)
+        ...reducer.receive(
+          stamped(
+            70 + index,
+            2000 + index * 500,
+            5000000000000 + (index * 500 + index % 2) * 1000000,
+            host,
+          ),
+        ),
+    ];
+
+    expect(after.map((event) => event.performanceTimeUs), everyElement(isNull));
+    expect(reducer.clock.phase, isNot(PerformanceClockPhase.failed));
+    expect(
+      after.last.timing,
+      const TimingUnavailable(TimingUnavailableReason.nonPerformanceDomain),
+    );
+  });
 }

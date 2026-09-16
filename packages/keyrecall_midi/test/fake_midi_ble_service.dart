@@ -66,12 +66,14 @@ class FakeMidiBleService implements MidiBleService {
     MidiMessage message, {
     String? deviceId,
     MidiTransportType transport = MidiTransportType.ble,
+    MidiRoute route = MidiRoute.unknown,
     int transportTimestamp = 0,
   }) => _messages.add(
     MidiSourceMessage(
       message: message,
       deviceId: deviceId ?? sourceDeviceId ?? _defaultSourceId,
       transport: transport,
+      route: route,
       transportTimestamp: transportTimestamp,
     ),
   );

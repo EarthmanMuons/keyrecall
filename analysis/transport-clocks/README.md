@@ -329,9 +329,12 @@ across a boundary is exactly how a take lands on a clock nobody expected.
 
 ### What is still open
 
-- **Why two BLE instruments carry different clock domains**, given the same
-  reported route. The answer is somewhere in how the plugin obtains a timestamp
-  per device, and it decides whether detection can rely on granularity alone.
+- **Whether the host-route nanosecond domain carries playing.** Why two BLE
+  instruments carried different domains under the same reported route is now
+  known: the plugin decodes a BLE instrument itself and then hands it to
+  CoreMIDI once the operating system exposes it, and it labels both paths `ble`.
+  The route is now reported correctly, so a take recorded after this can say
+  which path it measured.
 - **Nothing about the stall.** Three attempts could not separate the clocks
   under load, and the question is retired rather than open. Its job was to prove
   delivery can distort timing enough to matter; the network take proved

@@ -59,7 +59,7 @@ class MidiBleService {
       message: message,
       deviceId: event.device.id,
       transport: _transportOf(event.device.type),
-      route: _routeOf(event.transport),
+      route: _routeOf(event),
       transportTimestamp: event.timestamp,
     );
   }
@@ -243,19 +243,30 @@ class MidiBleService {
   MidiTransportType _mapTransport(fmc.MidiDeviceType type) =>
       _transportOf(type);
 
-  /// Which route the plugin says delivered a message.
+  /// Which route delivered a message.
   ///
   /// Kept apart from the device's own description of itself, because the two
   /// disagree for a BLE instrument the operating system has paired into its
   /// own MIDI stack, and their timestamps come from different clocks.
-  static MidiRoute _routeOf(fmc.MidiTransport transport) {
+  ///
+  /// The plugin names the transport after the device type, so a BLE
+  /// instrument it has handed off to CoreMIDI still says `ble`. Its injected
+  /// BLE transport delivers its own device subclass, while the platform
+  /// delivers plain devices, and that is what tells the two routes apart.
+  @visibleForTesting
+  static MidiRoute routeOf(fmc.MidiTransport transport, fmc.MidiDevice device) {
     return switch (transport) {
       fmc.MidiTransport.native => MidiRoute.host,
+      fmc.MidiTransport.ble when device.runtimeType == fmc.MidiDevice =>
+        MidiRoute.host,
       fmc.MidiTransport.ble => MidiRoute.ble,
       fmc.MidiTransport.network => MidiRoute.network,
       fmc.MidiTransport.virtual => MidiRoute.virtual,
     };
   }
+
+  static MidiRoute _routeOf(fmc.MidiDataReceivedEvent event) =>
+      routeOf(event.transport, event.device);
 
   static MidiTransportType _transportOf(fmc.MidiDeviceType type) {
     return switch (type) {

@@ -310,6 +310,34 @@ than one note's. Pitch and order evidence are untouched: a timing failure is not
 an input-integrity failure, and only the input boundary may say an observation
 was not one continuous performance.
 
+## A clock belongs to the path that stamped it
+
+**Decision.** Every raw envelope can carry a `TimestampSource`: the path that
+produced its stamp, and the shape that path's format defines where it defines
+one. A change of path is a new clock session for the mapper rather than a shape
+changing under the old one. A declared shape stands in for detection until the
+stream contradicts it, and policy authorizes it exactly as it would a measured
+shape.
+
+**Why.** On iOS the MIDI plugin connects a BLE instrument through its own BLE
+decoder, which delivers the BLE MIDI packet timestamp (a 1 ms counter modulo
+8192), and then hands the instrument to CoreMIDI in the background once the
+operating system exposes it, after which the platform delivers host nanosecond
+stamps. Both arrive labeled `ble`, because the plugin names the transport after
+the device type. Read as one stream, that handoff either failed an active
+timeline for the rest of the observation or, before the first wrap, left the
+detector measuring a mixture of two clocks that never identified. Both were
+persistent loss of timing across every exercise that followed. Separately, a
+millisecond counter is only identified by a wrap, so every observation spent its
+first 8.2 seconds of stamped deliveries untimed even though the decoder already
+knew the format.
+
+**Consequences.** The route now tells the two paths apart by the device object
+the plugin delivers, the BLE route declares its format, and timing through the
+plugin's decoder starts with the second delivery. The host route is still
+detected, and its nanosecond domain is still unauthorized, so a handed-off
+instrument carries no timing until a recorded take on that route says otherwise.
+
 ## Events are marked; measurement decides what that is worth
 
 **Decision.** The mapper marks each event timed or untimed and stops there.

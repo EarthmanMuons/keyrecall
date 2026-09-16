@@ -199,6 +199,25 @@ void main() {
       expect(state().clockObservation.granularity, 100000);
     });
 
+    test('the BLE route is timed without waiting for a wrap', () async {
+      for (var step = 1; step <= 3; step++) {
+        nowMs = step * 100;
+        ble.emitMessage(
+          MidiMessage(
+            type: MidiMessageType.controlChange,
+            ccNumber: 1,
+            ccValue: step,
+          ),
+          route: MidiRoute.ble,
+          transportTimestamp: 1000 + step * 100,
+        );
+        await pumpEventQueue();
+      }
+
+      expect(state().clockObservation.modulus, isNull);
+      expect(state().clockPhase, PerformanceClockPhase.active);
+    });
+
     test('and a timeline that fails is published when it fails', () async {
       for (var step = 1; step <= 10; step++) {
         nowMs = step;

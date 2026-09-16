@@ -350,7 +350,21 @@ class MidiInputNotifier extends Notifier<MidiInputState> {
     channel: source.message.channel,
     message: _rawMessage(source.message),
     transportTimestamp: source.transportTimestamp,
+    timestampSource: TimestampSource(
+      path: source.route.name,
+      declaredShape: source.route == MidiRoute.ble ? _bleMidiTimestamp : null,
+    ),
     arrivalTimestampMs: _clock(),
+  );
+
+  /// The BLE MIDI packet timestamp: 13 bits of milliseconds.
+  ///
+  /// Defined by the BLE MIDI format the plugin's own decoder reads, so a
+  /// message known to come through that decoder need not wait for a wrap to
+  /// show which clock it carries.
+  static const _bleMidiTimestamp = ClockDomainShape(
+    granularity: 1,
+    modulus: 8192,
   );
 
   static RawInputMessage _rawMessage(MidiMessage message) {

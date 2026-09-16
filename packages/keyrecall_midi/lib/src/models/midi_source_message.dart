@@ -36,11 +36,11 @@ class MidiSourceMessage {
   /// knowing which route it came by.
   final MidiRoute route;
 
-  /// The plugin's own timestamp, in the transport's clock domain.
+  /// The plugin's own timestamp, in the clock domain of [route].
   ///
-  /// Kept, not interpreted. BLE stamps wrap and the clock domains differ
-  /// between transports, so turning this into performance timing needs a
-  /// conversion layer that does not exist yet.
+  /// Kept, not interpreted here. The BLE route carries the BLE MIDI packet
+  /// timestamp, a millisecond counter modulo 8192, and the host route carries
+  /// the operating system's own stamp.
   final int transportTimestamp;
 
   const MidiSourceMessage({
