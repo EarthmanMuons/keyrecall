@@ -45,6 +45,73 @@ void main() {
     expect(trace.pulse[2].value, -100);
   });
 
+  test('arrival jitter does not reach a steady performance clock', () {
+    var transcript = PerformanceTranscript.empty;
+    for (final (index, note) in expected.indexed) {
+      transcript = transcript.appending(
+        pitch: spellObservedPitch(note, material: material),
+        timestampMs: index * 1000 + (index.isOdd ? 200 : 0),
+        performanceTimeUs: index * 1000 * 1000,
+      );
+    }
+    final reading = readPerformance(exercise: exercise, transcript: transcript);
+
+    final trace = attemptDetailTraceFor(reading);
+
+    expect(reading.outcome.temporalStability, 1);
+    expect(trace.pulse, isNotEmpty);
+    expect(trace.pulse.map((point) => point.value), everyElement(0));
+    expect(trace.flowGap, isNull);
+  });
+
+  test('an untimed performance charts no timing at all', () {
+    final handsTogether = Exercise.linear(
+      material: material,
+      hands: HandConfiguration.together,
+      direction: ExerciseDirection.up,
+      tempoBpm: 60,
+    );
+    var transcript = PerformanceTranscript.empty;
+    for (final (index, moment) in realize(handsTogether).moments.indexed) {
+      transcript = transcript
+          .appending(
+            pitch: moment.noteFor(Hand.left)!.pitch,
+            timestampMs: index * 1000,
+          )
+          .appending(
+            pitch: moment.noteFor(Hand.right)!.pitch,
+            timestampMs: index * 1000 + 30,
+          );
+    }
+
+    final trace = attemptDetailTraceFor(
+      readPerformance(exercise: handsTogether, transcript: transcript),
+    );
+
+    expect(trace.pulse, isEmpty);
+    expect(trace.coordination, isEmpty);
+    expect(trace.flowGap, isNull);
+  });
+
+  test('an untimed moment leaves a hole rather than a stitched interval', () {
+    var transcript = PerformanceTranscript.empty;
+    for (final (index, note) in expected.indexed) {
+      transcript = transcript.appending(
+        pitch: spellObservedPitch(note, material: material),
+        timestampMs: index * 1000,
+        performanceTimeUs: index == 5 ? null : index * 1000 * 1000,
+      );
+    }
+
+    final trace = attemptDetailTraceFor(
+      readPerformance(exercise: exercise, transcript: transcript),
+    );
+
+    final positions = trace.pulse.map((point) => point.position);
+    expect(positions, isNot(contains(5)));
+    expect(positions, isNot(contains(6)));
+  });
+
   test('a missing realization moment leaves no pulse interval across it', () {
     final played = [...expected]..removeAt(5);
     final gaps = List<int>.filled(played.length - 1, 1000);

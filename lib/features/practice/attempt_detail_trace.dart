@@ -70,57 +70,39 @@ class AttemptDetailTrace {
       .length;
 }
 
+/// What review shows about [reading], read from the evidence measurement read.
+///
+/// Every timing point comes from the performance clock through the same gaps
+/// and hand spreads the scores were computed from, so a hole the clock could
+/// not place stays a hole here and an attempt with no timing charts none.
 AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
   final measurement = reading.measurement;
-  final correspondences = [
-    for (final operation in measurement.alignment.operations)
-      if (operation case MomentCorrespondence()) operation,
-  ];
-  final timedMoments = [
-    for (final operation in correspondences)
-      if (operation.noteEdits.any(
-        (edit) => edit is Match || edit is Substitution,
-      ))
-        operation,
-  ];
+  final timing = measurement.timing;
+
   FlowGap? flowGap;
-  final gapPosition = measurement.longestGapBeforePosition;
-  // An unmeasured continuity makes no claim about the longest gap, so nothing
-  // is highlighted.
+  final gapPosition = timing.longestGapBeforePosition;
   if (gapPosition != null && (reading.outcome.continuity ?? 1) < 1) {
-    for (var index = 1; index < timedMoments.length; index++) {
-      if (timedMoments[index].realizationPosition == gapPosition) {
+    for (final gap in timing.gaps) {
+      if (gap.toPosition == gapPosition) {
         flowGap = FlowGap(
           beforePosition: gapPosition,
-          durationMs:
-              timedMoments[index].onsetMs - timedMoments[index - 1].onsetMs,
+          durationMs: gap.gapMs.toDouble(),
         );
         break;
       }
     }
   }
 
-  final medianInterval = measurement.medianIntervalMs;
-  final pulse = <AttemptTracePoint>[];
-  if (medianInterval != null) {
-    for (var index = 1; index < timedMoments.length; index++) {
-      if (timedMoments[index].realizationPosition !=
-          timedMoments[index - 1].realizationPosition + 1) {
-        continue;
-      }
-      if (timedMoments[index].realizationPosition == flowGap?.beforePosition) {
-        continue;
-      }
-      final interval =
-          timedMoments[index].onsetMs - timedMoments[index - 1].onsetMs;
-      pulse.add(
-        AttemptTracePoint(
-          position: timedMoments[index].realizationPosition,
-          value: medianInterval - interval,
-        ),
-      );
-    }
-  }
+  final pace = timing.paceMs;
+  final pulse = <AttemptTracePoint>[
+    // Charted only where the pulse score was read, so the chart never
+    // explains a score nobody measured.
+    if (pace != null && timing.dispersion != null)
+      for (final gap in timing.gaps)
+        if (gap.toPosition == gap.fromPosition + 1 &&
+            gap.toPosition != flowGap?.beforePosition)
+          AttemptTracePoint(position: gap.toPosition, value: pace - gap.gapMs),
+  ];
 
   final notes = List<NoteMomentStatus>.filled(
     measurement.expectedMoments,
@@ -189,12 +171,11 @@ AttemptDetailTrace attemptDetailTraceFor(PerformanceReading reading) {
     momentCount: measurement.expectedMoments,
     pulse: pulse,
     coordination: [
-      for (final operation in correspondences)
-        if (operation.handAsynchronyMs case final asynchrony?)
-          AttemptTracePoint(
-            position: operation.realizationPosition,
-            value: -asynchrony.toDouble(),
-          ),
+      for (final moment in measurement.handAsynchronies)
+        AttemptTracePoint(
+          position: moment.position,
+          value: -moment.asynchronyMs.toDouble(),
+        ),
     ],
     notes: notes,
     noteDepartures: noteDepartures,
