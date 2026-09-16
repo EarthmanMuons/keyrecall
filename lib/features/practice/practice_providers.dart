@@ -9,12 +9,14 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../input/input.dart';
 import 'attempt_diagnosis.dart';
 import 'attempt_feedback.dart';
 import 'attempt_transcript.dart';
 import 'practice_failure.dart';
 import 'practice_ownership.dart';
 import 'profile_color.dart';
+import 'timing_shortfall.dart';
 
 /// Where this install keeps its history.
 ///
@@ -709,6 +711,10 @@ class PracticeLoopState {
   /// persists this, so it lives exactly as long as the review that reads it.
   final PerformanceReading? lastReading;
 
+  /// Why [lastReading] carries no timing where it carries none, as far as the
+  /// notes it was read from could say.
+  final TimingShortfall? lastTimingShortfall;
+
   /// Why there is nothing to present, when there is nothing.
   final String? note;
 
@@ -725,6 +731,7 @@ class PracticeLoopState {
     this.lastCommitted,
     this.lastAcquisition,
     this.lastReading,
+    this.lastTimingShortfall,
     this.note,
   });
 
@@ -1152,6 +1159,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           session: current.session,
           lastCommitted: closed.record,
           lastReading: closed.reading,
+          lastTimingShortfall: timingShortfallFor(
+            completion.capture.lastUntimed,
+            source: ref.read(inputSourceProvider),
+          ),
         );
       }),
     );
@@ -1471,6 +1482,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastCommitted: from.lastCommitted,
         lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
+        lastTimingShortfall: from.lastTimingShortfall,
         note: from.note,
       ),
       // The inputs moved while the decision was being computed. The loop asks
@@ -1486,6 +1498,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastCommitted: from.lastCommitted,
         lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
+        lastTimingShortfall: from.lastTimingShortfall,
         note: 'practice blocked: ${reason.name}',
       ),
       PracticeCaughtUp(:final coverage) => PracticeLoopState(
@@ -1498,6 +1511,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastCommitted: from.lastCommitted,
         lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
+        lastTimingShortfall: from.lastTimingShortfall,
         note: 'practice caught up',
       ),
       final PresentedAcquisition offered => PracticeLoopState(
@@ -1510,6 +1524,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastCommitted: from.lastCommitted,
         lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
+        lastTimingShortfall: from.lastTimingShortfall,
         note: from.note,
       ),
       PracticeInvalidScope(:final failures) => PracticeLoopState(
@@ -1522,6 +1537,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         lastCommitted: from.lastCommitted,
         lastAcquisition: from.lastAcquisition,
         lastReading: from.lastReading,
+        lastTimingShortfall: from.lastTimingShortfall,
         note:
             'invalid practice scope: '
             '${failures.map((failure) => failure.code.name).join(', ')}',

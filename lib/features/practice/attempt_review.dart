@@ -14,6 +14,7 @@ import 'attempt_feedback.dart';
 import 'attempt_summary_help.dart';
 import 'exercise_presentation.dart';
 import 'presentation_exposure.dart';
+import 'timing_shortfall.dart';
 
 /// Why the scheduler chose what it chose, when it can be said honestly.
 ///
@@ -229,6 +230,7 @@ class AttemptReview extends StatelessWidget {
     required this.instrument,
     this.continues = false,
     this.reading,
+    this.timingShortfall,
     this.onExposed,
     super.key,
   });
@@ -238,6 +240,9 @@ class AttemptReview extends StatelessWidget {
 
   /// What it was read from, when the closure came from a performance.
   final PerformanceReading? reading;
+
+  /// Why the attempt carries no timing, where the capture could say.
+  final TimingShortfall? timingShortfall;
 
   /// Records that one part of this review reached the learner, answering
   /// whether the sitting that owns the history took the report.
@@ -342,6 +347,7 @@ class AttemptReview extends StatelessWidget {
                           attempt: record.identity.attemptId,
                           child: _AttemptSummaryView(
                             summary,
+                            timingShortfall: timingShortfall,
                             onHelp: () => showAttemptSummaryHelp(
                               context,
                               includesCoordination:
@@ -611,9 +617,14 @@ class _ProgressStatement extends StatelessWidget {
 }
 
 class _AttemptSummaryView extends StatelessWidget {
-  const _AttemptSummaryView(this.summary, {required this.onHelp});
+  const _AttemptSummaryView(
+    this.summary, {
+    required this.timingShortfall,
+    required this.onHelp,
+  });
 
   final AttemptSummary summary;
+  final TimingShortfall? timingShortfall;
   final VoidCallback onHelp;
 
   @override
@@ -646,7 +657,7 @@ class _AttemptSummaryView extends StatelessWidget {
             ],
             if (!summary.hasTiming) ...[
               const SizedBox(height: 12),
-              const _TimingUnavailableRow(),
+              _TimingUnavailableRow(timingShortfall),
             ],
           ],
         ),
@@ -658,16 +669,18 @@ class _AttemptSummaryView extends StatelessWidget {
 /// Why the timing rows are not here.
 ///
 /// Absent rows and rows that scored nothing look the same, and they are not
-/// the same: the first is a limit of what the connection can be observed to
+/// the same: the first is a limit of what this attempt could be observed to
 /// do, and the second would be a judgment about the playing.
 class _TimingUnavailableRow extends StatelessWidget {
-  const _TimingUnavailableRow();
+  const _TimingUnavailableRow(this.shortfall);
+
+  final TimingShortfall? shortfall;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Text(
-      'Timing feedback unavailable for this connection. '
+      '${timingShortfallSentence(shortfall)} '
       'Note accuracy and completion are still measured.',
       style: theme.textTheme.bodySmall?.copyWith(
         color: theme.colorScheme.onSurfaceVariant,

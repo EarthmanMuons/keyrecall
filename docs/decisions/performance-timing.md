@@ -384,7 +384,12 @@ nonPerformanceDomain       a quiet, persistent explanation near connection
 an event-local hole        nothing said, unless it left a metric
                            unavailable for that attempt
 
-metrics absent on review   explained where they would otherwise be blank
+metrics absent on review   explained where they would otherwise be blank,
+                           with the attempt's own reason: the clock still
+                           being identified, a clock KeyRecall does not
+                           read, a lost timeline, missing timestamps, a
+                           source that stamps nothing, or too few timed
+                           notes
 ```
 
 **Why.** The attempt is valid and useful, so this is a capability of the
@@ -393,10 +398,11 @@ as an error with the performance. A domain that is recognized and unauthorized
 is persistent rather than intermittent, which is what earns it an explanation at
 the connection rather than per attempt.
 
-**Consequences.** Nothing is shown during an attempt, and nothing repeats per
-run. The model already carries what an explanation needs: the mapper's phase and
-reason, and `TimingEvidence.hasPace`, `isContinuityAssessable`, and
-`longestRunWaits` for why a particular attempt's metrics are absent.
+**Consequences.** Nothing is shown during an attempt. The transcript keeps no
+reason, so the capture keeps why its most recent untimed note was untimed, and
+the review turns that into a `TimingShortfall`. An attempt whose notes were all
+timed and still has no timing was too short, which is not the connection's doing
+and is not said to be.
 
 ## Building it in three slices
 

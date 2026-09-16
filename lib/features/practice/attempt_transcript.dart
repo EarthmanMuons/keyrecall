@@ -47,11 +47,16 @@ class AttemptCapture {
   /// interruption that ended it.
   final int recording;
 
+  /// Why the most recent untimed note carried no performance time, or null
+  /// when every note was timed.
+  final TimingUnavailableReason? lastUntimed;
+
   const AttemptCapture({
     required this.transcript,
     this.isInterrupted = false,
     this.fault,
     this.recording = 0,
+    this.lastUntimed,
   });
 
   /// Nothing recorded, by nobody.
@@ -310,6 +315,10 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
         performanceTimeUs: event.performanceTimeUs,
       ),
       recording: state.recording,
+      lastUntimed: switch (event.timing) {
+        TimingUnavailable(:final reason) => reason,
+        _ => state.lastUntimed,
+      },
     );
     ref
         .read(latencyProbeProvider.notifier)
@@ -331,6 +340,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
       isInterrupted: true,
       fault: fault,
       recording: state.recording,
+      lastUntimed: state.lastUntimed,
     );
   }
 }

@@ -106,6 +106,30 @@ void main() {
     expect(capture().notes.map((note) => note.timestampMs), [1000, 1400, 1800]);
   });
 
+  // The transcript keeps no reason, so the capture keeps the one that matters
+  // for explaining an attempt with no timing: why its latest hole is a hole.
+  test(
+    'the capture keeps why its most recent untimed note was untimed',
+    () async {
+      await observe();
+      record();
+      await playNote(
+        60,
+        at: 1000,
+        timing: const TimingUnavailable(TimingUnavailableReason.detecting),
+      );
+      await playNote(62, at: 1400, timing: const TimingAvailable(0));
+      expect(capture().lastUntimed, TimingUnavailableReason.detecting);
+
+      await playNote(
+        64,
+        at: 1800,
+        timing: const TimingUnavailable(TimingUnavailableReason.continuityLost),
+      );
+      expect(capture().lastUntimed, TimingUnavailableReason.continuityLost);
+    },
+  );
+
   // Once continuity has broken the capture is closed to further input: the
   // notes on either side are not one observation, so a later note-on must not
   // quietly reopen the attempt that was interrupted.

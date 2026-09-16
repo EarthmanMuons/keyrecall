@@ -158,6 +158,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
           history: history,
           instrument: ref.watch(instrumentReadinessProvider),
           reading: loop.value?.lastReading,
+          timingShortfall: loop.value?.lastTimingShortfall,
           next: _upNext(loop.value!, committed),
           continues: loop.value?.acquisition != null,
           onExposed: (exposure) => notifier.recordFeedbackExposure(
