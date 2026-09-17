@@ -203,6 +203,24 @@ void main() {
       expect(at(344, 0.7)?.sector, 11);
     });
 
+    test('gives each key a target clear of every other key', () {
+      final targets = [
+        for (var sector = 0; sector < 12; sector++)
+          geometry.semanticTargetOf(sector),
+      ];
+
+      for (final (i, a) in targets.indexed) {
+        expect(a.x.abs() + a.side / 2, lessThanOrEqualTo(1));
+        expect(a.y.abs() + a.side / 2, lessThanOrEqualTo(1));
+        for (final b in targets.skip(i + 1)) {
+          final apart = math.max((a.x - b.x).abs(), (a.y - b.y).abs());
+          expect(apart, greaterThanOrEqualTo(a.side - 1e-9));
+        }
+      }
+      // About 52 logical pixels on a wheel 360 across.
+      expect(targets.first.side * 180, greaterThan(48));
+    });
+
     test('has nothing outside the rings or in the middle', () {
       expect(at(0, 0), isNull);
       expect(at(0, KeyWheelGeometry.innerRadius - 0.01), isNull);

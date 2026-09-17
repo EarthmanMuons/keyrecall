@@ -209,6 +209,38 @@ class KeyWheelGeometry {
   /// The angle [sector] is centered on, clockwise from twelve o'clock.
   double centerAngleOf(int sector) => sector * 2 * math.pi / 12;
 
+  /// Where assistive technology finds [sector]: a square centered on the
+  /// sector's outer edge, in the same coordinates as [cellAt].
+  ///
+  /// One target a key rather than one a cell. The innermost ring is too narrow
+  /// for cell-sized targets anyone can hit, so the key is the button and its
+  /// sheet lists the forms. The side is the largest that keeps every target
+  /// clear of its neighbors.
+  ({double x, double y, double side}) semanticTargetOf(int sector) {
+    final angle = centerAngleOf(sector);
+    return (
+      x: outerRadius * math.sin(angle),
+      y: -outerRadius * math.cos(angle),
+      side: _semanticSide,
+    );
+  }
+
+  /// The side every semantic target shares, bounded by the closest pair of
+  /// neighboring sector centers along either axis.
+  static final double _semanticSide = [
+    for (var sector = 0; sector < 12; sector++)
+      math.max(
+        (outerRadius *
+                (math.sin((sector + 1) * math.pi / 6) -
+                    math.sin(sector * math.pi / 6)))
+            .abs(),
+        (outerRadius *
+                (math.cos((sector + 1) * math.pi / 6) -
+                    math.cos(sector * math.pi / 6)))
+            .abs(),
+      ),
+  ].reduce(math.min);
+
   /// The cell at ([x], [y]), where both run from -1 to 1 across the square with
   /// y increasing downward, or null outside the rings.
   WheelCell? cellAt(double x, double y) {

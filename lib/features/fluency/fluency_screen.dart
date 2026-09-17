@@ -163,7 +163,7 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
               labelStyle: theme.textTheme.labelLarge!.copyWith(
                 color: theme.colorScheme.onSurface,
               ),
-              describe: (material) => _cellDescription(summary[material]),
+              describe: (sector) => _keyDescription(summary, sector),
               onTap: (sector, form) => _openKey(summary, sectors[sector], form),
             ),
             const SizedBox(height: 12),
@@ -197,6 +197,12 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
     );
   }
 
+  String _keyDescription(FluencySummary summary, KeySector sector) => [
+    for (final form in ScaleForm.values)
+      if (sector.forms[form] case final material?)
+        _cellDescription(summary[material]),
+  ].join('; ');
+
   String _cellDescription(MaterialFluency fluency) {
     final name = materialName(fluency.material);
     return switch (_lens) {
@@ -222,9 +228,9 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
 const List<(String, String)> _helpEntries = [
   (
     'Keys',
-    'Each slice is one key. They are arranged around the circle of fifths, '
-        'so neighboring keys share all but one note, but you can simply read '
-        'the names.',
+    'Each slice holds the scales that start on the same piano key, such as '
+        'D♭ major and C♯ minor. Slices follow the circle of fifths, so '
+        'neighbors share all but one note, but you can simply read the names.',
   ),
   (
     'Rings',
@@ -332,7 +338,10 @@ class KeyWheel extends StatelessWidget {
   /// The color of a cell the catalog holds no scale for.
   final Color emptyColor;
   final TextStyle labelStyle;
-  final String Function(ScaleMaterial material) describe;
+
+  /// What a key reads as to assistive technology, which finds the wheel one
+  /// key at a time.
+  final String Function(KeySector sector) describe;
   final void Function(int sector, ScaleForm form) onTap;
 
   static const _geometry = KeyWheelGeometry();
@@ -384,7 +393,7 @@ class _KeyWheelPainter extends CustomPainter {
   final Color Function(ScaleMaterial material) fill;
   final Color emptyColor;
   final TextStyle labelStyle;
-  final String Function(ScaleMaterial material) describe;
+  final String Function(KeySector sector) describe;
   final void Function(int sector, ScaleForm form) onTap;
 
   static const _geometry = KeyWheelGeometry();
@@ -466,30 +475,29 @@ class _KeyWheelPainter extends CustomPainter {
   @override
   SemanticsBuilderCallback get semanticsBuilder => (size) {
     final half = size.width / 2;
-    final center = Offset(half, half);
     return [
       for (final (index, sector) in sectors.indexed)
-        for (final form in ScaleForm.values)
-          if (sector.forms[form] case final material?)
-            CustomPainterSemantics(
-              rect: _cellBounds(center, half, index, form),
-              properties: SemanticsProperties(
-                label: describe(material),
-                button: true,
-                textDirection: TextDirection.ltr,
-                onTap: () => onTap(index, form),
-              ),
+        if (ScaleForm.values.where(sector.forms.containsKey).firstOrNull
+            case final form?)
+          CustomPainterSemantics(
+            rect: _targetOf(index, half),
+            properties: SemanticsProperties(
+              label: describe(sector),
+              button: true,
+              textDirection: TextDirection.ltr,
+              onTap: () => onTap(index, form),
             ),
+          ),
     ];
   };
 
-  Rect _cellBounds(Offset center, double half, int index, ScaleForm form) {
-    final (outer, inner) = _geometry.ringOf(form);
-    final angle = _geometry.centerAngleOf(index);
-    final radius = (outer + inner) / 2 * half;
-    final middle = center + Offset(math.sin(angle), -math.cos(angle)) * radius;
-    final extent = (outer - inner) * half;
-    return Rect.fromCenter(center: middle, width: extent, height: extent);
+  Rect _targetOf(int sector, double half) {
+    final target = _geometry.semanticTargetOf(sector);
+    return Rect.fromCenter(
+      center: Offset(half + target.x * half, half + target.y * half),
+      width: target.side * half,
+      height: target.side * half,
+    );
   }
 
   @override

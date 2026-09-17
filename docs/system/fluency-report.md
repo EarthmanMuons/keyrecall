@@ -178,8 +178,15 @@ hands lens is also proposed.
 
 Tonic names are prominent enough that the wheel works as a compact catalog for a
 learner who does not know the circle of fifths, and a help sheet explains the
-order. Every cell is a semantic button described by its lens, and tapping one
-opens the detail sheet focused on that form.
+order. It is a pitch-class wheel arranged by fifths rather than a notation
+circle: a slice groups the scales starting on one piano key, so D flat major and
+C sharp minor share one, and its labels give both spellings.
+
+Tapping a cell opens the detail sheet focused on that form. Assistive technology
+finds the wheel one key at a time instead: the innermost ring is too narrow for
+cell-sized targets that do not overlap, so each key is a single button, about 50
+logical pixels square at phone width and clear of its neighbors, whose label
+reads every form and whose sheet lists them.
 
 Arpeggios are not yet on the map. They would use the same wheel with two rings
 for root-position major and minor; inversions and further families add
