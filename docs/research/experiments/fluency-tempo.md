@@ -1,9 +1,10 @@
 # Fluency tempo policies
 
-> **Status:** characterization. `TempoQualification.v1` and the three rung
-> policies exist in `keyrecall_practice`. **No report rule promoted.**
+> **Status:** characterization. **Promoted:** demonstrated tempo keeps
+> `TempoQualification.v1`, and the trend chart reads playing pace, unqualified,
+> from the most independent rung with one observation.
 
-Which rule the fluency report's typical-tempo chart should read, measured on
+Which rule the fluency report's tempo trend chart should read, measured on
 histories the production loop produced rather than argued from the design.
 
 ## What was run
@@ -75,15 +76,34 @@ for a beginner's left hand is partly an artifact of that model, and the
 direction of the result, not its size, is what carries over. Three sittings of
 twenty attempts a week is one schedule among many.
 
-## What it leaves open
+## The rule promoted
 
-The chart's rule is less a choice between guidance policies than a choice
-between two questions:
+The chart and the key map's tempo lens answer different questions, so they no
+longer share a rule. Demonstrated tempo stays qualified, because it is a
+capability claim. The trend reads **playing pace**: every completed attempt with
+a measured pace, at the pace played, from the most independent rung with one
+observation. Rerun with that rule beside the others:
 
-- **demonstrated pace**, qualified attempts only, which is honest and empty for
-  weak hands; or
-- **playing pace**, every completed attempt with a measured pace, which always
-  has a value and says nothing about whether the playing was controlled.
+```text
+share of seeds with a value, mean pace, mean observations
+                          week 1           week 4           week 8
+true_beginner, left
+  best (min 3)             0%               0%               0%
+  playing                100%  59 n=2.1    92%  59 n=1.5    67%  59 n=1.9
+true_beginner, together
+  best (min 3)             0%               0%               0%
+  playing                 33%  58 n=1.0   100%  58 n=1.8   100%  57 n=4.7
+uneven_hands, right
+  best (min 3)           100%  80 n=6.8   100% 146 n=11.1   92% 163 n=5.8
+  playing                100%  99 n=6.6   100% 148 n=11.1  100% 165 n=5.4
+```
 
-Whichever is chosen, a week should be read from one rung, and a value resting on
-one or two observations needs a presentation that says so.
+Two consequences to present honestly. A beginner's weaker hand now has a line,
+and it is flat just under 60, the slowest tempo candidate generation offers, so
+the chart shows a hand that has not moved rather than showing nothing. And
+playing pace is uncapped, so a player who runs ahead of the request reads faster
+than they demonstrated, as the uneven player's right hand does in its first
+week.
+
+Weeks stay sparse. Most beginner weeks rest on one or two attempts, which is why
+the count travels with each value.

@@ -8,7 +8,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// What each candidate rule for the typical-tempo chart would show a learner,
+/// What each candidate rule for the tempo trend chart would show a learner,
 /// week by week, over histories the production loop produced.
 ///
 /// The question is whether reading only unguided playing leaves the chart empty
@@ -64,12 +64,13 @@ Future<void> main(List<String> arguments) async {
   final runs = batches.expand((batch) => batch).toList();
 
   stdout.writeln(
-    'typical tempo by rule, $seeds seeds, ${plan.weeks} weeks x '
+    'weekly tempo by rule, $seeds seeds, ${plan.weeks} weeks x '
     '${plan.sittingsPerWeek} sittings x ${plan.slots} slots, '
     'in ${stopwatch.elapsed.inSeconds}s\n'
     '  cell = share of seeds with a value, mean median bpm, mean observations\n'
     '  pooled mixes rungs; unguided reads rung 2; best reads the most '
-    'independent rung with >= ${plan.minimum}, shown with its rung mix\n',
+    'independent rung with >= ${plan.minimum}, shown with its rung mix;\n'
+    '  playing reads every completed attempt with a pace, unqualified\n',
   );
 
   for (final player in players) {
@@ -82,7 +83,8 @@ Future<void> main(List<String> arguments) async {
       stdout.writeln(
         '  ${hands.id.toLowerCase()}\n'
         '  ${'week'.padRight(6)}${'pooled'.padRight(20)}'
-        '${'unguided'.padRight(20)}${'best'.padRight(20)}rungs 2/1/0',
+        '${'unguided'.padRight(20)}${'best'.padRight(20)}'
+        '${'playing'.padRight(20)}rungs 2/1/0',
       );
       for (var week = 0; week < plan.weeks; week++) {
         String cell(String rule) {
@@ -117,7 +119,7 @@ Future<void> main(List<String> arguments) async {
         );
         stdout.writeln(
           '  ${'${week + 1}'.padRight(6)}${cell('pooled')}${cell('unguided')}'
-          '${cell('best')}${rungs.join('/')}',
+          '${cell('best')}${cell('playing')}${rungs.join('/')}',
         );
       }
     }
@@ -240,9 +242,16 @@ Future<_Run> _run(TrajectoryJob job, _Plan plan) async {
     for (final MapEntry(key: rule, value: policy) in rules.entries)
       for (final hands in HandConfiguration.values)
         (rule, hands): _padded(
-          weeklyTempos(days, hands: hands, policy: policy),
+          weeklyTempos(
+            days,
+            hands: hands,
+            policy: policy,
+            qualification: TempoQualification.v1,
+          ),
           plan.weeks,
         ),
+    for (final hands in HandConfiguration.values)
+      ('playing', hands): _padded(playingPace(days, hands: hands), plan.weeks),
   };
   final tempos = demonstratedTempos(days).keys.where(
     (context) =>

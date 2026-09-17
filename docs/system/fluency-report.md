@@ -88,16 +88,26 @@ An attempt without authorized timing has no motor score and contributes no
 tempo. The report says once, in words, when an instrument's timing is missing,
 rather than showing slowness.
 
-### Typical tempo
+### Playing pace
 
-The median of a week's qualifying tempos for one hand configuration at one
-octave, read from **one guidance rung**, never combined from daily summaries and
-never pooled across rungs. It exists for the trend chart, where a maximum is too
-noisy to read as development.
+How fast a hand configuration has actually been playing, week by week. An
+observational trend rather than a capability claim, so it is not qualified:
+every completed attempt with an authorized measured pace counts, whatever its
+motor score, at the pace played rather than capped at the request. The
+structural requirements stay, since an attempt that was not completed or
+established no pace says nothing about playing speed.
 
-Which rung, and whether the chart should read qualified attempts at all, is
-open. Characterization found the guidance rule matters only in the first weeks,
-while the motor bar leaves a beginner's weaker hand empty for weeks; see
+Each week reads **one guidance rung**, the most independent with at least one
+observation, and never pools rungs or combines daily summaries. The number of
+attempts behind a week is carried with it. A week of one or two attempts is
+drawn lighter or labeled with its count, never given an interval: the learner
+did only play that often. Learner-facing copy says "playing pace this week", not
+median.
+
+Demonstrated tempo and playing pace answer different questions, so they read
+different rules. Characterization showed why: a beginner's weaker hand can
+collect weeks of measured attempts without one clearing the qualification bar;
+see
 [`../research/experiments/fluency-tempo.md`](../research/experiments/fluency-tempo.md).
 
 ### Due for review
@@ -168,7 +178,7 @@ a unit a person recognizes as progress.
 Because demonstration is best-ever, the series only rises, and the title says
 milestones so nobody expects forgetting to appear in it.
 
-**Typical tempo** draws one line per hand configuration. Hands together starts
+**Playing pace** draws one line per hand configuration. Hands together starts
 when coordination does. Weeks without practice stay on the axis as gaps.
 
 ## Detail sheet
@@ -240,9 +250,6 @@ The first three are useful on their own while competency calibration moves.
 ## Open questions
 
 - Which hand configuration the tempo lens shows when several have a value.
-- Whether typical tempo reads demonstrated pace, which leaves weak hands empty,
-  or playing pace, which always has a value, and how a week resting on one or
-  two observations is shown.
 - The retrievability threshold for due for review, and whether it should match
   what the scheduler treats as due.
 - The reference exercise for each competency's skill zones.

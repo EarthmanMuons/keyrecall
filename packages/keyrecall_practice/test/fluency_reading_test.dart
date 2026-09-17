@@ -122,6 +122,7 @@ void main() {
         days,
         hands: HandConfiguration.right,
         policy: const SingleRung(2),
+        qualification: TempoQualification.v1,
       ).single;
       expect(week.medianTempoBpm, 60);
       expect(week.observations, 4);
@@ -194,6 +195,45 @@ void main() {
       expect(unguided.observations, 1);
     });
 
+    test('playing pace counts unqualified attempts at the pace played', () {
+      final days = _days([
+        (day: 0, record: _attempt(quality: 0.2, tempoBpm: 100, ratio: 0.7)),
+        (day: 0, record: _attempt(quality: 0.2, tempoBpm: 100, ratio: 1.2)),
+      ]);
+
+      final week = playingPace(days, hands: HandConfiguration.right).single;
+      expect(week.medianTempoBpm, closeTo(95, 1e-9));
+      expect(week.observations, 2);
+      expect(
+        weeklyTempos(
+          days,
+          hands: HandConfiguration.right,
+          policy: const SingleRung(2),
+          qualification: TempoQualification.v1,
+        ).single.medianTempoBpm,
+        isNull,
+      );
+    });
+
+    test('playing pace reads the most independent rung with one attempt', () {
+      final days = _days([
+        for (var i = 0; i < 5; i++)
+          (
+            day: 0,
+            record: _attempt(
+              guidance: GuidanceContext.continuouslyCued,
+              tempoBpm: 100,
+            ),
+          ),
+        (day: 0, record: _attempt(tempoBpm: 60)),
+      ]);
+
+      final week = playingPace(days, hands: HandConfiguration.right).single;
+      expect(week.guidanceIndependence, 2);
+      expect(week.medianTempoBpm, 60);
+      expect(week.observations, 1);
+    });
+
     test('a week with no rung meeting the minimum has no value', () {
       final days = _days([(day: 0, record: _attempt())]);
 
@@ -237,6 +277,7 @@ AttemptRecord Function(int sequence) _attempt({
   HandConfiguration hands = HandConfiguration.right,
   int octaves = 1,
   double tempoBpm = 80,
+  double ratio = 1,
   double quality = 0.9,
 }) =>
     (sequence) => recordOf(
@@ -260,7 +301,7 @@ AttemptRecord Function(int sequence) _attempt({
         pitchIntegrity: quality,
         continuity: quality,
         temporalStability: quality,
-        achievedTempoRatio: 1,
+        achievedTempoRatio: ratio,
         topologyAccuracy: quality,
       ),
     );

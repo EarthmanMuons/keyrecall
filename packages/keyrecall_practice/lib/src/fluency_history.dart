@@ -285,6 +285,9 @@ class TempoObservation {
     }
   }
 
+  /// The pace actually played.
+  double get playedTempoBpm => requestedTempoBpm * tempoRatio;
+
   /// What [record] observed about pace, or null when it established none.
   static TempoObservation? of(AttemptRecord record) {
     if (record.closure.measurement case Measured(:final outcome)) {

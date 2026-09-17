@@ -113,7 +113,7 @@ final class SingleRung extends TempoRungPolicy {
 }
 
 /// Each week, the most independent rung with at least [minimumObservations]
-/// qualifying observations.
+/// counted observations.
 final class MostIndependentRung extends TempoRungPolicy {
   final int minimumObservations;
 
@@ -124,7 +124,7 @@ final class MostIndependentRung extends TempoRungPolicy {
   String toString() => 'most independent, at least $minimumObservations';
 }
 
-/// One week of a typical-tempo series.
+/// One week of a weekly pace series.
 @immutable
 class WeeklyTempo {
   /// The Monday the week starts on.
@@ -134,7 +134,7 @@ class WeeklyTempo {
   /// were pooled.
   final int? guidanceIndependence;
 
-  /// The median qualifying pace, or null when the week has none.
+  /// The median pace, or null when the week has none.
   final double? medianTempoBpm;
 
   /// How many observations the median was read from.
@@ -153,16 +153,36 @@ class WeeklyTempo {
       'from $observations)';
 }
 
-/// The typical pace for [hands] in each week from the first practiced to the
+/// How fast [hands] has been playing, week by week.
+///
+/// An observational trend rather than a capability claim: every completed
+/// attempt with a measured pace counts, whatever its motor score, at the pace
+/// actually played. Each week reads the most independent rung with any
+/// observation, so rungs are never pooled, and [WeeklyTempo.observations]
+/// carries how little a sparse week rests on.
+List<WeeklyTempo> playingPace(
+  List<FluencyDay> days, {
+  required HandConfiguration hands,
+  int octaves = 1,
+}) => weeklyTempos(
+  days,
+  hands: hands,
+  policy: const MostIndependentRung(minimumObservations: 1),
+  octaves: octaves,
+);
+
+/// The median pace for [hands] in each week from the first practiced to the
 /// last, weeks without a value included.
 ///
+/// With a [qualification], only its qualifying observations count, at the pace
+/// they demonstrate. Without one, every observation counts at the pace played.
 /// Parallel motion only, at [octaves]. The median is taken over the week's
 /// observations directly, never combined from daily summaries.
 List<WeeklyTempo> weeklyTempos(
   List<FluencyDay> days, {
   required HandConfiguration hands,
   required TempoRungPolicy policy,
-  TempoQualification qualification = TempoQualification.v1,
+  TempoQualification? qualification,
   int octaves = 1,
 }) {
   if (days.isEmpty) return const [];
@@ -176,7 +196,7 @@ List<WeeklyTempo> weeklyTempos(
                 observation.hands == hands &&
                 observation.handMotion == HandMotion.parallel &&
                 observation.octaves == octaves &&
-                qualification.qualifies(observation),
+                (qualification?.qualifies(observation) ?? true),
           ),
         );
   }
@@ -208,7 +228,10 @@ List<WeeklyTempo> weeklyTempos(
       WeeklyTempo(
         week: week,
         guidanceIndependence: selected.isEmpty ? null : rung,
-        medianTempoBpm: _median(selected.map(qualification.tempoOf).toList()),
+        medianTempoBpm: _median([
+          for (final observation in selected)
+            qualification?.tempoOf(observation) ?? observation.playedTempoBpm,
+        ]),
         observations: selected.length,
       ),
     );
