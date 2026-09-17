@@ -1,0 +1,199 @@
+// ABC codec follow-up fixes: octave-specific accidental carry, sparse-lyric
+// alignment (`*` for unsung notes), and a mid-piece final barline style.
+
+import 'package:crisp_notation_core/crisp_notation_core.dart';
+import 'package:test/test.dart';
+
+List<NoteElement> _notesOf(Score s) => [
+      for (final m in s.measures)
+        for (final e in m.elements)
+          if (e is NoteElement) e,
+    ];
+
+NoteElement _n(Step s, NoteDuration d, {int octave = 4, String? id}) =>
+    NoteElement(
+      pitches: [Pitch(s, octave: octave)],
+      duration: d,
+      id: id,
+    );
+
+const _q = NoteDuration(DurationBase.quarter);
+
+void main() {
+  test('an accidental carries only within the same octave', () {
+    // Bar: ^c (C#5) then c, (C4). ABC 2.1: the sharp does NOT carry to the
+    // lower-octave c — it reads natural.
+    final score = scoreFromAbc('X:1\nT:t\nM:4/4\nL:1/4\nK:C\n^c c, z2 |\n');
+    final notes = _notesOf(score);
+    expect(notes, hasLength(greaterThanOrEqualTo(2)));
+    final high = notes[0].pitches.single;
+    final low = notes[1].pitches.single;
+    expect(high.step, Step.c);
+    expect(high.alter, 1, reason: '^c is C#');
+    expect(low.step, Step.c);
+    expect(low.octave, lessThan(high.octave), reason: 'c, is an octave lower');
+    expect(
+      low.alter,
+      0,
+      reason: 'the sharp must NOT carry to the lower-octave c',
+    );
+  });
+
+  test('a sparse lyric line round-trips onto its own notes', () {
+    // Three notes; a syllable on note 1 and note 3 only (note 2 unsung).
+    final score = Score(
+      clef: Clef.treble,
+      measures: [
+        Measure([
+          _n(Step.c, _q, id: 'a'),
+          _n(Step.d, _q, id: 'b'),
+          _n(Step.e, _q, id: 'c'),
+          _n(Step.f, _q, id: 'd'),
+        ]),
+      ],
+      lyrics: const [Lyric('a', 'do'), Lyric('c', 'mi')],
+    );
+    final back = scoreFromAbc(scoreToAbc(score));
+    // The reader binds lyrics by the note ids it assigns; check text→pitch.
+    final notes = _notesOf(back);
+    String? lyricAt(String id) {
+      for (final l in back.lyrics) {
+        if (l.elementId == id) return l.text;
+      }
+      return null;
+    }
+
+    // Map the re-read note ids by their step so we can locate note 1 and 3.
+    String idOfStep(Step s) =>
+        notes.firstWhere((n) => n.pitches.single.step == s).id!;
+    expect(
+      lyricAt(idOfStep(Step.c)),
+      'do',
+      reason: 'note 1 keeps its syllable',
+    );
+    expect(lyricAt(idOfStep(Step.d)), isNull, reason: 'note 2 stays unsung');
+    expect(
+      lyricAt(idOfStep(Step.e)),
+      'mi',
+      reason: 'note 3 keeps its syllable (not shifted to note 2)',
+    );
+  });
+
+  test('a mid-piece final barline keeps its style', () {
+    final score = Score(
+      clef: Clef.treble,
+      measures: [
+        Measure([
+          _n(Step.c, _q),
+          _n(Step.d, _q),
+          _n(Step.e, _q),
+          _n(Step.f, _q),
+        ], barline: BarlineStyle.finalBar),
+        Measure([
+          _n(Step.g, _q),
+          _n(Step.a, _q),
+          _n(Step.b, _q),
+          _n(Step.c, _q, octave: 5),
+        ]),
+      ],
+    );
+    final back = scoreFromAbc(scoreToAbc(score));
+    expect(
+      back.measures.first.barline,
+      BarlineStyle.finalBar,
+      reason: 'the mid-piece final barline was written as plain |',
+    );
+  });
+
+  test('a mid-score clef change round-trips (writer emitted no clef at all)',
+      () {
+    // Regression: the ABC writer wrote key/meter changes but never a clef
+    // change, so a switch to bass mid-tune was silently lost (the reader could
+    // already parse `[K:… clef=…]`). Combine a clef+key change, then a bar that
+    // stays put, to catch a spurious change leaking onto the next bar.
+    final score = Score(
+      clef: Clef.treble,
+      keySignature: const KeySignature(0),
+      measures: [
+        Measure([_n(Step.g, _q)]),
+        Measure(
+          [_n(Step.c, _q, octave: 3)],
+          clefChange: Clef.bass,
+          keyChange: const KeySignature(2),
+        ),
+        Measure([_n(Step.d, _q, octave: 3)]),
+      ],
+    );
+    final back = scoreFromAbc(scoreToAbc(score));
+    expect(back.measures[1].clefChange, Clef.bass,
+        reason: 'bar 2 goes to bass');
+    expect(back.measures[1].keyChange, const KeySignature(2),
+        reason: 'bar 2 gains 2 sharps');
+    expect(back.measures[2].clefChange, isNull,
+        reason: 'bar 3 stays in bass — no spurious clef change');
+    expect(back.measures[2].keyChange, isNull,
+        reason: 'bar 3 keeps 2 sharps — no spurious key change');
+  });
+
+  test('a clef-only change carries no spurious key change, and treble returns',
+      () {
+    final score = Score(
+      clef: Clef.treble,
+      measures: [
+        Measure([_n(Step.g, _q)]),
+        Measure([_n(Step.c, _q, octave: 3)], clefChange: Clef.bass),
+        Measure([_n(Step.g, _q)], clefChange: Clef.treble),
+      ],
+    );
+    final back = scoreFromAbc(scoreToAbc(score));
+    expect(back.measures[1].clefChange, Clef.bass);
+    expect(back.measures[1].keyChange, isNull,
+        reason: 'the running key is re-stated, not changed');
+    expect(back.measures[2].clefChange, Clef.treble,
+        reason:
+            'a change back to treble is kept (reader now reads clef=treble)');
+  });
+
+  test('a non-treble initial clef round-trips through the ABC header', () {
+    final score = Score(
+      clef: Clef.bass,
+      measures: [
+        Measure([_n(Step.c, _q, octave: 3)]),
+      ],
+    );
+    expect(scoreFromAbc(scoreToAbc(score)).clef, Clef.bass);
+  });
+
+  test('grace notes round-trip even on a note with no id', () {
+    // Regression: the ABC writer gated `{…}` grace-note output on `id != null`
+    // (copied from the id-keyed chord-symbol / dynamics branches), so an id-less
+    // note silently lost its grace notes — even though grace notes live on the
+    // element and the reader parses `{…}` positionally.
+    NoteElement graced(String? id, GraceStyle style) => NoteElement(
+          pitches: [Pitch(Step.g, octave: 4)],
+          duration: _q,
+          graceNotes: [Pitch(Step.f, octave: 4), Pitch(Step.e, octave: 4)],
+          graceStyle: style,
+          id: id,
+        );
+    for (final id in <String?>[null, 'x']) {
+      for (final style in GraceStyle.values) {
+        final score = Score(
+          clef: Clef.treble,
+          measures: [
+            Measure([
+              graced(id, style),
+              _n(Step.a, NoteDuration(DurationBase.half, dots: 1)),
+            ]),
+          ],
+        );
+        final back = scoreFromAbc(scoreToAbc(score));
+        final note =
+            back.measures.first.elements.whereType<NoteElement>().first;
+        expect(note.graceNotes, hasLength(2),
+            reason: 'grace notes kept (id=$id, $style)');
+        expect(note.graceStyle, style, reason: 'grace style kept (id=$id)');
+      }
+    }
+  });
+}

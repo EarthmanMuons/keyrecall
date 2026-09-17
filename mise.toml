@@ -73,7 +73,7 @@ run_tests() {
   fi
 }
 
-for package in packages/*/; do
+for package in packages/*/ third_party/crisp_notation/packages/*/; do
   run_tests "${package%/}" &
   test_pids="$test_pids $!"
 done

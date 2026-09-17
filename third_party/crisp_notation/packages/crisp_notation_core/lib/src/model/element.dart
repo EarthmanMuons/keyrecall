@@ -1,0 +1,1882 @@
+/// Score elements: notes, chords and rests.
+library;
+
+import '../internal/util.dart';
+import '../theory/duration.dart';
+import '../theory/pitch.dart';
+
+/// Articulation marks attachable to a [NoteElement].
+enum Articulation {
+  /// Short, detached (dot).
+  staccato,
+
+  /// Held for full value (dash).
+  tenuto,
+
+  /// Emphasized (horizontal wedge).
+  accent,
+
+  /// Strongly emphasized (vertical wedge).
+  marcato,
+
+  /// Held beyond its value (fermata; always drawn above the element).
+  fermata,
+
+  /// Up-bow — string bowing, drawn above the element (always).
+  upBow,
+
+  /// Down-bow — string bowing, drawn above the element (always).
+  downBow,
+
+  /// Staccatissimo — shorter and more detached than staccato, drawn as a
+  /// wedge. Distinct from [staccato]: a format that has both means both, and
+  /// collapsing them loses the composer's distinction.
+  ///
+  /// Measured before adding: 103 of 1,500 sampled `.mxl` and 56 of 1,500
+  /// `.mscx` carry a real one (not a style definition — MuseScore DEFINES every
+  /// articulation in its style block, so grepping the word finds files that
+  /// merely could use it).
+  staccatissimo,
+
+  /// Breath mark — a comma above the staff telling the player to breathe, drawn
+  /// AFTER the note it follows.
+  ///
+  /// It lives here rather than in a class of its own because that is how the
+  /// formats themselves model it: MusicXML puts `<breath-mark/>` inside
+  /// `<notations><articulations>`. Measured: 196 of 1,500 `.mscx`, 88 of 1,500
+  /// `.mxl`, and 580 of 4,106 `.ly` (`\breathe`).
+  breath,
+}
+
+/// Arpeggio (rolled chord) direction, drawn as a vertical wavy line to the
+/// left of the chord (v0.7.2). The arrow points the way the roll travels.
+enum Arpeggio {
+  /// Rolled low → high; arrowhead at the top.
+  up,
+
+  /// Rolled high → low; arrowhead at the bottom.
+  down,
+}
+
+/// Ornaments drawn above a note (v0.6.2).
+enum Ornament {
+  /// Trill (tr).
+  trill,
+
+  /// Short trill / upper mordent (squiggle without a line).
+  shortTrill,
+
+  /// Mordent / lower mordent (squiggle with a vertical line).
+  mordent,
+
+  /// Turn (Doppelschlag).
+  turn,
+
+  /// Inverted turn (turn from below).
+  invertedTurn,
+
+  /// Trill with a sharp above it — the upper auxiliary is raised (baroque).
+  trillSharp,
+
+  /// Trill with a flat above it — the upper auxiliary is lowered (baroque).
+  trillFlat,
+
+  /// Trill with a natural above it — the upper auxiliary is natural (baroque).
+  trillNatural;
+
+  /// For a trill-with-accidental variant, the accidental drawn above the `tr`
+  /// (as a small standard accidental glyph); null for the plain ornaments.
+  int? get trillAccidentalAlter => switch (this) {
+        trillSharp => 1,
+        trillFlat => -1,
+        trillNatural => 0,
+        _ => null,
+      };
+}
+
+/// A single rhythmic event in a measure: a note/chord or a rest.
+///
+/// Elements are value types; treat their lists as immutable. The optional
+/// [id] tags the element for the interaction layer (hit testing,
+/// highlighting) — ids should be unique within a score.
+sealed class MusicElement {
+  /// Identifier for hit testing and highlighting; null = not addressable.
+  final String? id;
+
+  /// The element's rhythmic duration.
+  final NoteDuration duration;
+
+  /// Creates an element with [duration] and an optional interaction [id].
+  const MusicElement({required this.duration, this.id});
+}
+
+/// The shape of a note's head, overriding the default oval. Applies to the
+/// whole element (all pitches of a chord); the duration still selects the
+/// filled/open/whole/double-whole variant of the shape.
+enum NoteheadShape {
+  /// The normal oval notehead (default).
+  normal,
+
+  /// An "x" head — unpitched / percussion, or a dead note.
+  x,
+
+  /// A diamond head — harmonics and some unpitched notation.
+  diamond,
+
+  /// An upward triangle head — a common shape-note / percussion head.
+  triangleUp,
+
+  /// A slash head — rhythm-only ("play the chord") notation.
+  slash,
+
+  /// A circled-x head — for special effects and cue markings.
+  circleX,
+}
+
+/// The [NoteElement.fingerings] value that means the LEFT-HAND THUMB, written
+/// `T` — a string player's fingering, and on the cello the mark that says the
+/// hand has come out of the neck into thumb position.
+///
+/// Negative on purpose: fingerings are digits, and `5` is already the pianist's
+/// little finger, so the thumb cannot be spelled as a digit without colliding.
+/// MusicXML writes it as the text `T`, which is what editions print.
+const int kFingeringThumb = -1;
+
+/// How a note's [NoteElement.graceNotes] are performed and drawn.
+enum GraceStyle {
+  /// Acciaccatura — a crushed grace, drawn with a slash through the stem
+  /// (the default; MusicXML `<grace slash="yes">`).
+  acciaccatura,
+
+  /// Appoggiatura — a leaning grace with no slash, notated at its written
+  /// value (MusicXML `<grace>` / `slash="no"`).
+  appoggiatura,
+}
+
+/// A note (one pitch) or chord (several pitches) sharing one duration and,
+/// when rendered, one stem.
+class NoteElement extends MusicElement {
+  /// The sounding pitches; length 1 = single note, more = chord.
+  final List<Pitch> pitches;
+
+  /// Accidental override: `true` forces an accidental (courtesy accidental),
+  /// `false` hides it, `null` (default) shows one exactly when the pitch
+  /// deviates from what the key signature and earlier accidentals in the
+  /// measure imply.
+  final bool? showAccidental;
+
+  /// Ties this note/chord to the **next** note element (also across a
+  /// barline). Only pitches present identically in both elements are
+  /// tied; a tie into a rest or nothing draws no curve.
+  final bool tieToNext;
+
+  /// Articulation marks: drawn on the notehead side (opposite the stem),
+  /// stacked outward in enum order; a fermata always goes above.
+  final Set<Articulation> articulations;
+
+  /// Grace notes played before this element, drawn as small eighths to its
+  /// left. Their [graceStyle] chooses acciaccatura (slashed) or appoggiatura.
+  final List<Pitch> graceNotes;
+
+  /// Whether [graceNotes] are an acciaccatura (slashed, the default) or an
+  /// appoggiatura (unslashed).
+  final GraceStyle graceStyle;
+
+  /// Ornament drawn above the element (above a fermata when both exist).
+  final Ornament? ornament;
+
+  /// Fingering marks stacked above the note, in list order from the notehead
+  /// upward: digits 0–9, or [kFingeringThumb] for a string player's `T`.
+  /// Usually one per pitch of a chord, but the length is not tied to
+  /// [pitches]; an empty list draws nothing.
+  final List<int> fingerings;
+
+  /// Arpeggio (rolled chord) sign drawn as a vertical wavy line to the left
+  /// of the chord, or null. Model-only (no DSL shorthand).
+  final Arpeggio? arpeggio;
+
+  /// Single-note tremolo: 1–5 strokes drawn through the stem, or null. Model
+  /// only. Requires a stemmed note (ignored on whole notes and breves).
+  final int? tremolo;
+
+  /// The notehead shape for this element (default [NoteheadShape.normal]).
+  final NoteheadShape notehead;
+
+  /// The performed note-on velocity (0..127), when the source captures it (e.g.
+  /// a MIDI import). Null for notated scores that express loudness through
+  /// [DynamicMarking]s instead. A player can voice this as a per-note gain, and
+  /// `scoreToMidi` writes it back when present.
+  final int? velocity;
+
+  /// Creates a note or chord from [pitches] and a [duration].
+  ///
+  /// [pitches] must be non-empty. (Not asserted: list lengths cannot be
+  /// checked in a const constructor.)
+  const NoteElement({
+    required this.pitches,
+    required super.duration,
+    this.showAccidental,
+    this.tieToNext = false,
+    this.articulations = const {},
+    this.graceNotes = const [],
+    this.graceStyle = GraceStyle.acciaccatura,
+    this.ornament,
+    this.fingerings = const [],
+    this.arpeggio,
+    this.tremolo,
+    this.notehead = NoteheadShape.normal,
+    this.velocity,
+    super.id,
+  });
+
+  /// Convenience for a single-pitch note.
+  NoteElement.note(
+    Pitch pitch,
+    NoteDuration duration, {
+    bool? showAccidental,
+    bool tieToNext = false,
+    Set<Articulation> articulations = const {},
+    List<Pitch> graceNotes = const [],
+    GraceStyle graceStyle = GraceStyle.acciaccatura,
+    Ornament? ornament,
+    List<int> fingerings = const [],
+    Arpeggio? arpeggio,
+    int? tremolo,
+    NoteheadShape notehead = NoteheadShape.normal,
+    int? velocity,
+    String? id,
+  }) : this(
+          pitches: [pitch],
+          duration: duration,
+          showAccidental: showAccidental,
+          tieToNext: tieToNext,
+          articulations: articulations,
+          graceNotes: graceNotes,
+          graceStyle: graceStyle,
+          ornament: ornament,
+          fingerings: fingerings,
+          arpeggio: arpeggio,
+          tremolo: tremolo,
+          notehead: notehead,
+          velocity: velocity,
+          id: id,
+        );
+
+  /// This NoteElement with the given fields replaced.
+  ///
+  /// A null argument means "leave this field alone", so a nullable field cannot
+  /// be CLEARED through [copyWith] — construct one directly for that. Every
+  /// constructor parameter has a counterpart here, and a test reads this file to
+  /// prove it stays that way when fields are added.
+  NoteElement copyWith({
+    List<Pitch>? pitches,
+    NoteDuration? duration,
+    bool? showAccidental,
+    bool? tieToNext,
+    Set<Articulation>? articulations,
+    List<Pitch>? graceNotes,
+    GraceStyle? graceStyle,
+    Ornament? ornament,
+    List<int>? fingerings,
+    Arpeggio? arpeggio,
+    int? tremolo,
+    NoteheadShape? notehead,
+    int? velocity,
+    String? id,
+  }) =>
+      NoteElement(
+        pitches: pitches ?? this.pitches,
+        duration: duration ?? this.duration,
+        showAccidental: showAccidental ?? this.showAccidental,
+        tieToNext: tieToNext ?? this.tieToNext,
+        articulations: articulations ?? this.articulations,
+        graceNotes: graceNotes ?? this.graceNotes,
+        graceStyle: graceStyle ?? this.graceStyle,
+        ornament: ornament ?? this.ornament,
+        fingerings: fingerings ?? this.fingerings,
+        arpeggio: arpeggio ?? this.arpeggio,
+        tremolo: tremolo ?? this.tremolo,
+        notehead: notehead ?? this.notehead,
+        velocity: velocity ?? this.velocity,
+        id: id ?? this.id,
+      );
+
+  @override
+  bool operator ==(Object other) =>
+      other is NoteElement &&
+      other.duration == duration &&
+      other.showAccidental == showAccidental &&
+      other.tieToNext == tieToNext &&
+      other.ornament == ornament &&
+      other.id == id &&
+      other.arpeggio == arpeggio &&
+      other.tremolo == tremolo &&
+      other.notehead == notehead &&
+      other.velocity == velocity &&
+      other.graceStyle == graceStyle &&
+      listEquals(other.pitches, pitches) &&
+      setEquals(other.articulations, articulations) &&
+      listEquals(other.graceNotes, graceNotes) &&
+      listEquals(other.fingerings, fingerings);
+
+  @override
+  int get hashCode => Object.hash(
+        duration,
+        showAccidental,
+        tieToNext,
+        ornament,
+        arpeggio,
+        tremolo,
+        notehead,
+        id,
+        graceStyle,
+        velocity,
+        Object.hashAll(pitches),
+        Object.hashAllUnordered(articulations),
+        Object.hashAll(graceNotes),
+        Object.hashAll(fingerings),
+      );
+
+  @override
+  String toString() =>
+      'NoteElement(${pitches.join('+')}, $duration${tieToNext ? ', tied' : ''}'
+      '${articulations.isEmpty ? '' : ', ${articulations.map((a) => a.name).join('+')}'}'
+      '${graceNotes.isEmpty ? '' : ', grace: ${graceNotes.join('+')}'}'
+      '${fingerings.isEmpty ? '' : ', fingers: ${fingerings.join(',')}'}'
+      '${arpeggio == null ? '' : ', ${arpeggio!.name} arpeggio'}'
+      '${tremolo == null ? '' : ', tremolo $tremolo'}'
+      '${notehead == NoteheadShape.normal ? '' : ', ${notehead.name} head'}'
+      '${id == null ? '' : ', id: $id'})';
+}
+
+/// A slur between two note elements, referenced by their ids.
+///
+/// The start element must come before the end element in reading order;
+/// both ids must exist in the score (the layout engine throws an
+/// [ArgumentError] otherwise). Use ties ([NoteElement.tieToNext]) for
+/// same-pitch connections; slurs are phrasing marks over any pitches.
+class Slur {
+  /// Id of the note element the slur starts on.
+  final String startId;
+
+  /// Id of the note element the slur ends on.
+  final String endId;
+
+  /// Creates a slur from [startId] to [endId].
+  const Slur(this.startId, this.endId);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Slur && other.startId == startId && other.endId == endId;
+
+  @override
+  int get hashCode => Object.hash(startId, endId);
+
+  @override
+  String toString() => 'Slur($startId -> $endId)';
+}
+
+/// A string bend on a tab note, referenced by its id. [steps] is the bend
+/// amount in whole steps: 1.0 = full (a whole tone), 0.5 = half, 1.5 = one
+/// and a half, 0.25 = quarter. Rendered as an upward bend arrow with the
+/// amount label; ignored by standard-notation rendering.
+/// One point in a [Bend] or [TremoloBar] curve: at [offset] (0 = the note's
+/// attack, 1 = its release) the pitch has changed by [steps] whole tones
+/// (positive = up, negative = down). A sequence of points describes an
+/// arbitrary bend/whammy contour — bend-release, prebend, dip, dive-and-return
+/// — on the standard quarter-tone point grid used by tab interchange formats.
+class BendPoint {
+  /// Position along the note's duration, 0 (attack) .. 1 (release).
+  final double offset;
+
+  /// Pitch change at [offset], in whole tones (positive up, negative down).
+  final double steps;
+
+  /// Creates a bend/whammy point at [offset] reaching [steps] whole tones.
+  const BendPoint(this.offset, this.steps);
+
+  @override
+  bool operator ==(Object other) =>
+      other is BendPoint && other.offset == offset && other.steps == steps;
+
+  @override
+  int get hashCode => Object.hash(offset, steps);
+
+  @override
+  String toString() => 'BendPoint($offset, ${steps}st)';
+}
+
+/// A string bend on a tab note, referenced by its id. A plain bend rises to
+/// [steps] whole tones (½ / full / 1½ …). Pass [points] for a multi-segment
+/// contour — bend-release (up then back), prebend (starts already bent, i.e. a
+/// point at offset 0 with steps > 0), prebend-release, bend-release-bend — as a
+/// quarter-tone point grid; when [points] is non-empty the tab engine draws the
+/// contour and ignores [steps]. Rendered by the tab engine only.
+class Bend {
+  /// Id of the bent note.
+  final String noteId;
+
+  /// Bend amount in whole steps (1.0 = full). Used only when [points] is empty.
+  final double steps;
+
+  /// An explicit bend contour; empty (default) = a plain rise to [steps].
+  final List<BendPoint> points;
+
+  /// Creates a plain bend on [noteId] (default a full-step bend).
+  const Bend(this.noteId, {this.steps = 1.0}) : points = const [];
+
+  /// Creates a multi-point bend contour on [noteId] from [points] (each a
+  /// [BendPoint] on the 0..1 offset grid). Use for bend-release, prebend, etc.
+  const Bend.curve(this.noteId, this.points) : steps = 1.0;
+
+  @override
+  bool operator ==(Object other) =>
+      other is Bend &&
+      other.noteId == noteId &&
+      other.steps == steps &&
+      listEquals(other.points, points);
+
+  @override
+  int get hashCode => Object.hash(noteId, steps, Object.hashAll(points));
+
+  @override
+  String toString() => points.isEmpty
+      ? 'Bend($noteId, ${steps}st)'
+      : 'Bend.curve($noteId, $points)';
+}
+
+/// A vibrato on a note, referenced by its id: a horizontal wavy line drawn
+/// above the note (on both the notation and tab staves). [wide] selects a
+/// larger-amplitude (whammy-bar/exaggerated) wave.
+class Vibrato {
+  /// Id of the vibrato'd note.
+  final String noteId;
+
+  /// Whether to draw a wide (large-amplitude) wave rather than a normal one.
+  final bool wide;
+
+  /// Creates a vibrato on [noteId] (default a normal-width wave).
+  const Vibrato(this.noteId, {this.wide = false});
+
+  @override
+  bool operator ==(Object other) =>
+      other is Vibrato && other.noteId == noteId && other.wide == wide;
+
+  @override
+  int get hashCode => Object.hash(noteId, wide);
+
+  @override
+  String toString() => 'Vibrato($noteId${wide ? ', wide' : ''})';
+}
+
+/// A palm-mute span over a run of notes, referenced by the first and last
+/// note's ids (a single note if [startId] == [endId]): a "P.M." label
+/// followed by a dashed bracket line above the staff (drawn on both the
+/// notation and tab staves).
+class PalmMute {
+  /// Id of the first muted note.
+  final String startId;
+
+  /// Id of the last muted note.
+  final String endId;
+
+  /// Creates a palm-mute span from [startId] to [endId].
+  const PalmMute(this.startId, this.endId);
+
+  @override
+  bool operator ==(Object other) =>
+      other is PalmMute && other.startId == startId && other.endId == endId;
+
+  @override
+  int get hashCode => Object.hash(startId, endId);
+
+  @override
+  String toString() => 'PalmMute($startId -> $endId)';
+}
+
+/// A let-ring span over a run of notes, referenced by the first and last
+/// note's ids (a single note if [startId] == [endId]): a "let ring" label
+/// followed by a dashed bracket line above the staff (drawn on both the
+/// notation and tab staves).
+class LetRing {
+  /// Id of the first note that rings.
+  final String startId;
+
+  /// Id of the last note that rings.
+  final String endId;
+
+  /// Creates a let-ring span from [startId] to [endId].
+  const LetRing(this.startId, this.endId);
+
+  @override
+  bool operator ==(Object other) =>
+      other is LetRing && other.startId == startId && other.endId == endId;
+
+  @override
+  int get hashCode => Object.hash(startId, endId);
+
+  @override
+  String toString() => 'LetRing($startId -> $endId)';
+}
+
+/// How a tab note's fret digit is presented — for muted, softly-played and
+/// harmonic notes (mutually exclusive per note).
+enum TabNoteStyle {
+  /// Dead (muted): each sounding string shows an "x" instead of a fret.
+  dead,
+
+  /// Ghost (played softly): the fret digit is drawn in parentheses, `(3)`.
+  ghost,
+
+  /// Natural harmonic: the fret digit is drawn in angle brackets, `<12>`.
+  harmonic,
+
+  /// Artificial harmonic: fret in angle brackets with an "A.H." label above.
+  artificialHarmonic,
+
+  /// Pinch (pick) harmonic: fret in angle brackets with a "P.H." label above.
+  pinchHarmonic,
+
+  /// Tapped harmonic: fret in angle brackets with a "T.H." label above.
+  tappedHarmonic,
+
+  /// Semi-harmonic (partly damped): fret in angle brackets with an "S.H."
+  /// label above.
+  semiHarmonic,
+
+  /// Feedback harmonic: fret in angle brackets with an "Fbk." label above.
+  feedbackHarmonic,
+}
+
+/// The short label drawn above a harmonic [style], or null for a natural
+/// harmonic (which carries no label) and non-harmonic styles.
+String? harmonicLabel(TabNoteStyle? style) => switch (style) {
+      TabNoteStyle.artificialHarmonic => 'A.H.',
+      TabNoteStyle.pinchHarmonic => 'P.H.',
+      TabNoteStyle.tappedHarmonic => 'T.H.',
+      TabNoteStyle.semiHarmonic => 'S.H.',
+      TabNoteStyle.feedbackHarmonic => 'Fbk.',
+      _ => null,
+    };
+
+/// Whether a [TabNoteStyle] is one of the harmonic variants (natural,
+/// artificial, pinch, tapped, semi or feedback) — all drawn with the
+/// angle-bracketed fret.
+bool isHarmonicStyle(TabNoteStyle style) =>
+    style == TabNoteStyle.harmonic ||
+    style == TabNoteStyle.artificialHarmonic ||
+    style == TabNoteStyle.pinchHarmonic ||
+    style == TabNoteStyle.tappedHarmonic ||
+    style == TabNoteStyle.semiHarmonic ||
+    style == TabNoteStyle.feedbackHarmonic;
+
+/// Marks a tab note with a [TabNoteStyle] — [TabNoteStyle.dead] (muted "x"),
+/// [TabNoteStyle.ghost] (parenthesized) or [TabNoteStyle.harmonic]
+/// (angle-bracketed) — referenced by the note's id. Rendered by the tab engine only;
+/// ignored by standard-notation rendering. (Named to avoid clashing with the
+/// rendering layer's drag-preview `GhostNote`.)
+class TabNoteMark {
+  /// Id of the marked note.
+  final String noteId;
+
+  /// Whether the note is dead or ghosted.
+  final TabNoteStyle style;
+
+  /// Marks [noteId] with [style].
+  const TabNoteMark(this.noteId, this.style);
+
+  @override
+  bool operator ==(Object other) =>
+      other is TabNoteMark && other.noteId == noteId && other.style == style;
+
+  @override
+  int get hashCode => Object.hash(noteId, style);
+
+  @override
+  String toString() => 'TabNoteMark($noteId, ${style.name})';
+}
+
+/// A BARRE: one finger laid flat across several strings at one fret, held for
+/// the chord anchored at [noteId].
+///
+/// ⚠ This is a distinct fact from the fingering digits, which is why it needs
+/// its own record. A barre chord's digits already come out right — every string
+/// stopped at the hand's fret is finger 1 — but "1, 1, 1" does not say that ONE
+/// finger lies across them, and a player reads the barre, not the repetition.
+/// Guitar Pro files state it explicitly and we used to drop it on import.
+///
+/// [fret] is where the finger lies. [lowestString] is Guitar Pro's own
+/// `BarreString` value, PRESERVED VERBATIM: on the files inspected it is a
+/// string index (string 0 is the top tab line, so the barre covers
+/// `0..lowestString`), but that reading is inferred from data rather than from
+/// a specification, so nothing here reinterprets or rescales it. Null means the
+/// file gave only a fret.
+class TabBarre {
+  /// Id of the note element the barre is held for.
+  final String noteId;
+
+  /// The fret the finger lies across.
+  final int fret;
+
+  /// The furthest string the barre reaches, or null when the file did not say.
+  final int? lowestString;
+
+  /// Records a barre at [fret] for [noteId].
+  const TabBarre(this.noteId, this.fret, {this.lowestString});
+
+  /// How the fret is PRINTED: a Roman numeral, as guitar editions set it —
+  /// `CIII` is this with a leading C (for *ceja* / *barré*).
+  ///
+  /// ⚠ Lives here, on the thing it describes, so there is exactly one of it.
+  /// The engraver needs it to draw the mark and an editor needs it to show the
+  /// same text in a tab grid; two copies would be a drift waiting to happen,
+  /// and the app already has an unrelated I–VI lookup for STRING numerals that
+  /// must not be pressed into service for frets.
+  String get roman {
+    if (fret <= 0 || fret > 24) return '$fret';
+    const numerals = <(int, String)>[
+      (10, 'X'),
+      (9, 'IX'),
+      (5, 'V'),
+      (4, 'IV'),
+      (1, 'I'),
+    ];
+    var n = fret;
+    final out = StringBuffer();
+    for (final (value, symbol) in numerals) {
+      while (n >= value) {
+        out.write(symbol);
+        n -= value;
+      }
+    }
+    return out.toString();
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is TabBarre &&
+      other.noteId == noteId &&
+      other.fret == fret &&
+      other.lowestString == lowestString;
+
+  @override
+  int get hashCode => Object.hash(noteId, fret, lowestString);
+
+  @override
+  String toString() => 'TabBarre($noteId, fret $fret'
+      '${lowestString == null ? '' : ', to string $lowestString'})';
+}
+
+/// Pins a tab note/chord to explicit strings, overriding the tab engine's
+/// default lowest-fret placement. [strings] gives the string index for each
+/// pitch of the note **in the note's pitch order** (`0` = top tab line). An
+/// entry whose fret would be negative or out of range is ignored (the engine
+/// falls back to lowest-fret for that pitch). Rendered by the tab engine only.
+class TabVoicing {
+  /// Id of the note whose string placement is pinned.
+  final String noteId;
+
+  /// String index per pitch, in the note's pitch order (0 = top line).
+  final List<int> strings;
+
+  /// Pins [noteId]'s pitches to [strings].
+  const TabVoicing(this.noteId, this.strings);
+
+  @override
+  bool operator ==(Object other) =>
+      other is TabVoicing &&
+      other.noteId == noteId &&
+      _listEquals(other.strings, strings);
+
+  @override
+  int get hashCode => Object.hash(noteId, Object.hashAll(strings));
+
+  @override
+  String toString() => 'TabVoicing($noteId, $strings)';
+
+  static bool _listEquals(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+}
+
+/// A chord fretboard diagram.
+///
+/// [frets] gives the fret for each string in **tuning order** — index 0 is the
+/// top tab line (the highest-sounding string), matching `Tuning`. A value of
+/// `0` is an open string, `-1` a muted (x) string, and `n > 0` the fretted
+/// number. The diagram draws the lowest string on the left. [baseFret] is the
+/// fret of the top row (1 draws the nut); [fretSpan] the number of rows shown.
+/// Optional [name] labels it, [fingers] annotates finger numbers per string
+/// (parallel to [frets]; a null entry draws none), and [barreFret] draws a
+/// barre across all strings at that fret.
+class ChordDiagram {
+  /// Fret per string in tuning order (0 = open, -1 = muted, n = fretted).
+  final List<int> frets;
+
+  /// Chord name drawn above the grid, or null.
+  final String? name;
+
+  /// Finger numbers per string (parallel to [frets]; null entry = none).
+  final List<int?>? fingers;
+
+  /// Fret of the top row (1 = at the nut).
+  final int baseFret;
+
+  /// Number of fret rows drawn.
+  final int fretSpan;
+
+  /// Fret of a barre across all strings, or null.
+  final int? barreFret;
+
+  /// Creates a chord diagram.
+  const ChordDiagram(
+    this.frets, {
+    this.name,
+    this.fingers,
+    this.baseFret = 1,
+    this.fretSpan = 4,
+    this.barreFret,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is ChordDiagram &&
+      _intListEq(other.frets, frets) &&
+      other.name == name &&
+      _nIntListEq(other.fingers, fingers) &&
+      other.baseFret == baseFret &&
+      other.fretSpan == fretSpan &&
+      other.barreFret == barreFret;
+
+  @override
+  int get hashCode => Object.hash(
+        Object.hashAll(frets),
+        name,
+        fingers == null ? null : Object.hashAll(fingers!),
+        baseFret,
+        fretSpan,
+        barreFret,
+      );
+
+  @override
+  String toString() => 'ChordDiagram(${name ?? '?'}: $frets'
+      '${baseFret == 1 ? '' : ' @$baseFret'})';
+
+  static bool _intListEq(List<int> a, List<int> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  static bool _nIntListEq(List<int?>? a, List<int?>? b) {
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+}
+
+/// A [ChordDiagram] placed above a note element (by [elementId]) on a staff —
+/// the lead-sheet convention of a diagram over the note where the chord
+/// changes. [scale] sizes the diagram down for the staff (default 0.6).
+class PlacedChordDiagram {
+  /// Id of the note the diagram sits above.
+  final String elementId;
+
+  /// The diagram to draw.
+  final ChordDiagram diagram;
+
+  /// Size factor applied to the standalone diagram (default 0.6).
+  final double scale;
+
+  /// Places [diagram] above the note with id [elementId].
+  const PlacedChordDiagram(this.elementId, this.diagram, {this.scale = 0.6});
+
+  @override
+  bool operator ==(Object other) =>
+      other is PlacedChordDiagram &&
+      other.elementId == elementId &&
+      other.diagram == diagram &&
+      other.scale == scale;
+
+  @override
+  int get hashCode => Object.hash(elementId, diagram, scale);
+
+  @override
+  String toString() => 'PlacedChordDiagram($elementId, $diagram)';
+}
+
+/// A tapped tab note (left- or right-hand tapping), referenced by its id: a
+/// "T" drawn above the fret. Rendered by the tab engine only; ignored by
+/// standard-notation rendering.
+class Tap {
+  /// Id of the tapped note.
+  final String noteId;
+
+  /// Marks [noteId] as tapped.
+  const Tap(this.noteId);
+
+  @override
+  bool operator ==(Object other) => other is Tap && other.noteId == noteId;
+
+  @override
+  int get hashCode => noteId.hashCode;
+
+  @override
+  String toString() => 'Tap($noteId)';
+}
+
+/// A tremolo-bar (whammy) gesture on a tab note, referenced by its id. This is
+/// a *separate* system from string [Bend]s. A plain bar dips to [steps] whole
+/// tones (negative = dive down) and returns to pitch — drawn as a V above the
+/// fret. Pass [points] for an explicit contour — dip, dive, dive-and-return,
+/// return-and-dip — as a [BendPoint] grid (offset 0..1, steps in whole tones);
+/// when [points] is non-empty the tab engine draws the contour and ignores
+/// [steps]. Rendered by the tab engine only; ignored by standard notation.
+class TremoloBar {
+  /// Id of the note the bar acts on.
+  final String noteId;
+
+  /// Pitch change in whole tones at the low point (negative = dive down). Used
+  /// only when [points] is empty.
+  final double steps;
+
+  /// An explicit whammy contour; empty (default) = a plain dip to [steps].
+  final List<BendPoint> points;
+
+  /// Creates a tremolo-bar dip on [noteId] (default a whole-step dive).
+  const TremoloBar(this.noteId, {this.steps = -1.0}) : points = const [];
+
+  /// Creates a tremolo-bar contour on [noteId] from [points] (each a
+  /// [BendPoint]). Use for dip / dive / dive-and-return gestures.
+  const TremoloBar.curve(this.noteId, this.points) : steps = -1.0;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TremoloBar &&
+      other.noteId == noteId &&
+      other.steps == steps &&
+      listEquals(other.points, points);
+
+  @override
+  int get hashCode => Object.hash(noteId, steps, Object.hashAll(points));
+
+  @override
+  String toString() => points.isEmpty
+      ? 'TremoloBar($noteId, ${steps}st)'
+      : 'TremoloBar.curve($noteId, $points)';
+}
+
+/// A right-hand (plucking) finger for classical-guitar tab: p (thumb / pulgar),
+/// i (index / índice), m (middle / medio), a (ring / anular). Drawn below the
+/// fret. Rendered by the tab engine only.
+enum RightHandFinger {
+  /// Thumb (p).
+  thumb('p'),
+
+  /// Index (i).
+  indexFinger('i'),
+
+  /// Middle (m).
+  middle('m'),
+
+  /// Ring (a).
+  ring('a');
+
+  const RightHandFinger(this.label);
+
+  /// The single-letter p-i-m-a label.
+  final String label;
+}
+
+/// A right-hand fingering on a tab note, referenced by its id. Rendered as the
+/// [finger]'s p/i/m/a letter below the fret; ignored by standard notation.
+class TabFingering {
+  /// Id of the fingered note.
+  final String noteId;
+
+  /// Which plucking finger.
+  final RightHandFinger finger;
+
+  /// Assigns [finger] to [noteId].
+  const TabFingering(this.noteId, this.finger);
+
+  @override
+  bool operator ==(Object other) =>
+      other is TabFingering && other.noteId == noteId && other.finger == finger;
+
+  @override
+  int get hashCode => Object.hash(noteId, finger);
+
+  @override
+  String toString() => 'TabFingering($noteId, ${finger.label})';
+}
+
+/// A slap (thumb) or pop (snapped-string) attack on a tab note — the bass
+/// technique — referenced by its id. Drawn as "S" (slap) or "P" (pop) above the
+/// fret. Rendered by the tab engine only.
+class SlapPop {
+  /// Id of the struck note.
+  final String noteId;
+
+  /// True for a pop (snap), false for a slap (thumb).
+  final bool pop;
+
+  /// Marks [noteId] as a slap (default) or pop.
+  const SlapPop(this.noteId, {this.pop = false});
+
+  @override
+  bool operator ==(Object other) =>
+      other is SlapPop && other.noteId == noteId && other.pop == pop;
+
+  @override
+  int get hashCode => Object.hash(noteId, pop);
+
+  @override
+  String toString() => 'SlapPop($noteId, ${pop ? 'pop' : 'slap'})';
+}
+
+/// Rapid repeated (tremolo) picking of a tab note, referenced by its id. Drawn
+/// as [strokes] short slashes below the fret. Rendered by the tab engine only.
+class TremoloPicking {
+  /// Id of the tremolo-picked note.
+  final String noteId;
+
+  /// Number of slashes (the picking density); at least 1.
+  final int strokes;
+
+  /// Marks [noteId] as tremolo-picked (default three slashes).
+  const TremoloPicking(this.noteId, {this.strokes = 3})
+      : assert(strokes >= 1, 'strokes must be >= 1');
+
+  @override
+  bool operator ==(Object other) =>
+      other is TremoloPicking &&
+      other.noteId == noteId &&
+      other.strokes == strokes;
+
+  @override
+  int get hashCode => Object.hash(noteId, strokes);
+
+  @override
+  String toString() => 'TremoloPicking($noteId, $strokes)';
+}
+
+/// A rasgueado (flamenco strum) on a tab note or chord, referenced by its id.
+/// Drawn as a downward strum arrow through the strings at the note. Rendered by
+/// the tab engine only.
+class Rasgueado {
+  /// Id of the strummed note/chord.
+  final String noteId;
+
+  /// The finger-sequence pattern label drawn above the strum (e.g. `p a m i`,
+  /// `amii`), or null for an unlabelled rasgueado.
+  final String? pattern;
+
+  /// Marks [noteId] as rasgueado, optionally with a strum [pattern] label.
+  const Rasgueado(this.noteId, {this.pattern});
+
+  @override
+  bool operator ==(Object other) =>
+      other is Rasgueado && other.noteId == noteId && other.pattern == pattern;
+
+  @override
+  int get hashCode => Object.hash(noteId, pattern);
+
+  @override
+  String toString() =>
+      'Rasgueado($noteId${pattern == null ? '' : ', "$pattern"'})';
+}
+
+/// A golpe — a percussive tap on the guitar body (flamenco / fingerstyle),
+/// referenced by a note's id. Drawn as a small cross ("×") above the fret.
+/// Rendered by the tab engine only.
+class Golpe {
+  /// Id of the note the tap coincides with.
+  final String noteId;
+
+  /// Marks [noteId] with a golpe tap.
+  const Golpe(this.noteId);
+
+  @override
+  bool operator ==(Object other) => other is Golpe && other.noteId == noteId;
+
+  @override
+  int get hashCode => noteId.hashCode;
+
+  @override
+  String toString() => 'Golpe($noteId)';
+}
+
+/// A wah-pedal position mark on a note, referenced by its id: "o" (pedal open /
+/// toe up) or "+" (pedal closed / toe down), drawn above the fret — the
+/// brass-mute convention reused for wah. Rendered by the tab engine only.
+class Wah {
+  /// Id of the marked note.
+  final String noteId;
+
+  /// True for an open pedal ("o"), false for a closed pedal ("+").
+  final bool open;
+
+  /// Marks [noteId] with a wah position ([open] = "o", else "+").
+  const Wah(this.noteId, {this.open = false});
+
+  @override
+  bool operator ==(Object other) =>
+      other is Wah && other.noteId == noteId && other.open == open;
+
+  @override
+  int get hashCode => Object.hash(noteId, open);
+
+  @override
+  String toString() => 'Wah($noteId, ${open ? 'open' : 'closed'})';
+}
+
+/// A volume fade (swell) spanning a run of notes, referenced by the first and
+/// last note's ids: a growing wedge for a fade-in, a shrinking wedge for a
+/// fade-out, drawn above the staff. Rendered by the tab engine only.
+class Fade {
+  /// Id of the first note in the fade.
+  final String startId;
+
+  /// Id of the last note in the fade.
+  final String endId;
+
+  /// True for a fade-out (shrinking wedge), false for a fade-in (growing).
+  final bool out;
+
+  /// Creates a fade from [startId] to [endId] ([out] = fade-out).
+  const Fade(this.startId, this.endId, {this.out = false});
+
+  @override
+  bool operator ==(Object other) =>
+      other is Fade &&
+      other.startId == startId &&
+      other.endId == endId &&
+      other.out == out;
+
+  @override
+  int get hashCode => Object.hash(startId, endId, out);
+
+  @override
+  String toString() => 'Fade($startId -> $endId, ${out ? 'out' : 'in'})';
+}
+
+/// Direction of a [TabSlide] into or out of a single note. "In" slides start
+/// off the fretboard and land on the note; "out" slides leave it toward nowhere
+/// (a fade). (A shift/legato slide *between two notes* uses [Glissando].)
+enum SlideInOut {
+  /// Slide up into the note from a lower, unspecified fret.
+  inFromBelow,
+
+  /// Slide down into the note from a higher, unspecified fret.
+  inFromAbove,
+
+  /// Slide off the note upward to nowhere.
+  outUpward,
+
+  /// Slide off the note downward to nowhere.
+  outDownward,
+}
+
+/// A slide into or out of a single tab note (a scoop / fall / doit), referenced
+/// by its id — as opposed to a [Glissando], which connects two notes. Drawn as
+/// a short diagonal line entering or leaving the fret digit in the [direction].
+/// Rendered by the tab engine only.
+class TabSlide {
+  /// Id of the note the slide attaches to.
+  final String noteId;
+
+  /// Whether the slide enters from below/above or leaves upward/downward.
+  final SlideInOut direction;
+
+  /// Creates a slide in/out on [noteId] in [direction].
+  const TabSlide(this.noteId, this.direction);
+
+  /// True for the two "in" directions (the diagonal approaches the note).
+  bool get isIn =>
+      direction == SlideInOut.inFromBelow ||
+      direction == SlideInOut.inFromAbove;
+
+  @override
+  bool operator ==(Object other) =>
+      other is TabSlide &&
+      other.noteId == noteId &&
+      other.direction == direction;
+
+  @override
+  int get hashCode => Object.hash(noteId, direction);
+
+  @override
+  String toString() => 'TabSlide($noteId, ${direction.name})';
+}
+
+/// A pick-stroke direction mark on a tab note, referenced by its id: a
+/// downstroke (⊓) or an upstroke (∨) drawn above the fret. Rendered by the tab
+/// engine only.
+class PickStroke {
+  /// Id of the picked note.
+  final String noteId;
+
+  /// True for an upstroke (∨), false for a downstroke (⊓).
+  final bool up;
+
+  /// Marks [noteId] as a downstroke (default) or upstroke.
+  const PickStroke(this.noteId, {this.up = false});
+
+  @override
+  bool operator ==(Object other) =>
+      other is PickStroke && other.noteId == noteId && other.up == up;
+
+  @override
+  int get hashCode => Object.hash(noteId, up);
+
+  @override
+  String toString() => 'PickStroke($noteId, ${up ? 'up' : 'down'})';
+}
+
+/// A glissando/slide: a straight line drawn from one note to a later one,
+/// referenced by their ids (like [Slur]). The start must precede the end in
+/// reading order and both ids must exist, or layout throws an
+/// [ArgumentError]. Model-only (no DSL shorthand).
+class Glissando {
+  /// Id of the note the line starts on.
+  final String startId;
+
+  /// Id of the note the line ends on.
+  final String endId;
+
+  /// Creates a glissando from [startId] to [endId].
+  const Glissando(this.startId, this.endId);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Glissando && other.startId == startId && other.endId == endId;
+
+  @override
+  int get hashCode => Object.hash(startId, endId);
+
+  @override
+  String toString() => 'Glissando($startId -> $endId)';
+}
+
+/// A portamento between two note elements: a smooth **curved** slide line
+/// (as opposed to a [Glissando]'s straight line) connecting the start and end
+/// noteheads. Model-only / render-only.
+class Portamento {
+  /// Id of the note the slide starts on.
+  final String startId;
+
+  /// Id of the note the slide ends on.
+  final String endId;
+
+  /// Creates a portamento from [startId] to [endId].
+  const Portamento(this.startId, this.endId);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Portamento && other.startId == startId && other.endId == endId;
+
+  @override
+  int get hashCode => Object.hash(startId, endId);
+
+  @override
+  String toString() => 'Portamento($startId -> $endId)';
+}
+
+/// A feathered (fanned) beam over a run of notes, referenced by the first
+/// and last note's ids: the beam count fans from [beginBeams] at the start to
+/// [endBeams] at the end (unequal → accelerando if growing, ritardando if
+/// shrinking). The spanned notes are forced into one beam group regardless of
+/// meter. Model-only. Both ids must exist and the start must precede the end,
+/// or layout throws an [ArgumentError].
+class FeatheredBeam {
+  /// Id of the first note in the fan.
+  final String startId;
+
+  /// Id of the last note in the fan.
+  final String endId;
+
+  /// Number of beams at the start (≥ 1).
+  final int beginBeams;
+
+  /// Number of beams at the end (≥ 1).
+  final int endBeams;
+
+  /// Creates a feathered beam; defaults fan 1 → 4 (accelerando).
+  const FeatheredBeam(
+    this.startId,
+    this.endId, {
+    this.beginBeams = 1,
+    this.endBeams = 4,
+  })  : assert(beginBeams >= 1, 'beginBeams must be >= 1'),
+        assert(endBeams >= 1, 'endBeams must be >= 1'),
+        assert(beginBeams != endBeams, 'a feathered beam must change count');
+
+  @override
+  bool operator ==(Object other) =>
+      other is FeatheredBeam &&
+      other.startId == startId &&
+      other.endId == endId &&
+      other.beginBeams == beginBeams &&
+      other.endBeams == endBeams;
+
+  @override
+  int get hashCode => Object.hash(startId, endId, beginBeams, endBeams);
+
+  @override
+  String toString() =>
+      'FeatheredBeam($startId -> $endId, $beginBeams..$endBeams)';
+}
+
+/// Forces the beam over a run of notes to a fixed slant (and into one beam
+/// group), referenced by the first and last note's ids. [slant] is the beam's
+/// total vertical change from the first stem to the last, in staff spaces and
+/// layout coordinates (y grows downward): **0 = horizontal**, positive slopes
+/// down to the right, negative up to the right. Model-only. Both ids must
+/// exist and the start must precede the end, or layout throws an
+/// [ArgumentError].
+class BeamSlant {
+  /// Id of the first note under the beam.
+  final String startId;
+
+  /// Id of the last note under the beam.
+  final String endId;
+
+  /// Total vertical change (staff spaces, y-down); 0 = horizontal.
+  final double slant;
+
+  /// Creates a forced beam slant (default horizontal).
+  const BeamSlant(this.startId, this.endId, {this.slant = 0});
+
+  @override
+  bool operator ==(Object other) =>
+      other is BeamSlant &&
+      other.startId == startId &&
+      other.endId == endId &&
+      other.slant == slant;
+
+  @override
+  int get hashCode => Object.hash(startId, endId, slant);
+
+  @override
+  String toString() => 'BeamSlant($startId -> $endId, slant $slant)';
+}
+
+/// Beams a run of notes across one or more barlines, referenced by the first
+/// and last note's ids: the notes from [startId] through [endId] (which lie in
+/// different measures) are drawn under a single beam that continues over the
+/// barline, instead of each measure beaming on its own. Same id/order rules as
+/// [Slur]. Model-only. Used for syncopation notation; the run must stay within
+/// one system (a beam cannot cross a line break).
+class CrossMeasureBeam {
+  /// Id of the first note under the beam.
+  final String startId;
+
+  /// Id of the last note under the beam (in a later measure).
+  final String endId;
+
+  /// Creates a cross-measure beam from [startId] to [endId].
+  const CrossMeasureBeam(this.startId, this.endId);
+
+  @override
+  bool operator ==(Object other) =>
+      other is CrossMeasureBeam &&
+      other.startId == startId &&
+      other.endId == endId;
+
+  @override
+  int get hashCode => Object.hash(startId, endId);
+
+  @override
+  String toString() => 'CrossMeasureBeam($startId -> $endId)';
+}
+
+/// A sustain-pedal span: "Ped." under the start note and a release star
+/// under the end note, referenced by their ids. Same id/order rules as
+/// [Slur]/[Glissando]. Model-only (no DSL shorthand).
+class Pedal {
+  /// Id of the note the pedal presses on.
+  final String startId;
+
+  /// Id of the note the pedal releases on.
+  final String endId;
+
+  /// Creates a pedal span from [startId] to [endId].
+  const Pedal(this.startId, this.endId);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Pedal && other.startId == startId && other.endId == endId;
+
+  @override
+  int get hashCode => Object.hash(startId, endId);
+
+  @override
+  String toString() => 'Pedal($startId -> $endId)';
+}
+
+/// A rest.
+class RestElement extends MusicElement {
+  /// Creates a rest of [duration].
+  const RestElement(NoteDuration duration, {super.id})
+      : super(duration: duration);
+
+  @override
+  bool operator ==(Object other) =>
+      other is RestElement && other.duration == duration && other.id == id;
+
+  @override
+  int get hashCode => Object.hash(duration, id);
+
+  @override
+  String toString() => 'RestElement($duration${id == null ? '' : ', id: $id'})';
+}
+
+/// Dynamic levels supported in v0.3.
+enum DynamicLevel {
+  /// Pianissimo.
+  pp,
+
+  /// Piano.
+  p,
+
+  /// Mezzo-piano.
+  mp,
+
+  /// Mezzo-forte.
+  mf,
+
+  /// Forte.
+  f,
+
+  /// Fortissimo.
+  ff,
+
+  // Extended levels (appended to keep the original indices stable).
+
+  /// Pianississimo.
+  ppp,
+
+  /// Pianissississimo.
+  pppp,
+
+  /// Fortississimo.
+  fff,
+
+  /// Fortissississimo.
+  ffff,
+
+  /// Sforzando (sudden accent).
+  sf,
+
+  /// Sforzato (strong sudden accent).
+  sfz,
+
+  /// Sforzato-fortissimo.
+  sffz,
+
+  /// Forzando.
+  fz,
+
+  /// Forte-piano (loud then immediately soft).
+  fp,
+
+  /// Rinforzando.
+  rf,
+}
+
+/// A dynamic marking attached to a note element (drawn centered below it,
+/// under the staff).
+class DynamicMarking {
+  /// Id of the note element the marking belongs to.
+  final String elementId;
+
+  /// The dynamic level.
+  final DynamicLevel level;
+
+  /// Creates a dynamic marking.
+  const DynamicMarking(this.elementId, this.level);
+
+  @override
+  bool operator ==(Object other) =>
+      other is DynamicMarking &&
+      other.elementId == elementId &&
+      other.level == level;
+
+  @override
+  int get hashCode => Object.hash(elementId, level);
+
+  @override
+  String toString() => 'DynamicMarking($elementId: ${level.name})';
+}
+
+/// Direction of a [Hairpin].
+enum HairpinType {
+  /// Opening wedge (getting louder).
+  crescendo,
+
+  /// Closing wedge (getting softer).
+  diminuendo,
+}
+
+/// A crescendo/diminuendo wedge between two note elements, drawn below
+/// the staff on the dynamics line.
+class Hairpin {
+  /// Id of the note element the wedge starts on.
+  final String startId;
+
+  /// Id of the note element the wedge ends on.
+  final String endId;
+
+  /// Whether the wedge opens (crescendo) or closes (diminuendo).
+  final HairpinType type;
+
+  /// Creates a hairpin.
+  const Hairpin(this.startId, this.endId, this.type);
+
+  @override
+  bool operator ==(Object other) =>
+      other is Hairpin &&
+      other.startId == startId &&
+      other.endId == endId &&
+      other.type == type;
+
+  @override
+  int get hashCode => Object.hash(startId, endId, type);
+
+  @override
+  String toString() => 'Hairpin($startId -> $endId, ${type.name})';
+}
+
+/// One lyric syllable attached to a note element, drawn below the staff.
+class Lyric {
+  /// Id of the note element the syllable sits under.
+  final String elementId;
+
+  /// The syllable text (without hyphen/extender markers).
+  final String text;
+
+  /// Whether a hyphen connects this syllable to the next one (the word
+  /// continues on a later note).
+  final bool hyphenToNext;
+
+  /// Whether an extender (melisma) line follows this word-final syllable
+  /// while subsequent notes carry no lyric of their own.
+  final bool extender;
+
+  /// Verse number (1-based). Verses stack top-to-bottom below the staff, each
+  /// on its own baseline; syllables of the same verse never overlap.
+  final int verse;
+
+  /// Whether this syllable elides (synalepha) into the next syllable — the two
+  /// are sung on the *same* note and joined by an undertie (‿). The following
+  /// [Lyric] shares this [elementId] and [verse]. MusicXML `<elision>`.
+  final bool elidesToNext;
+
+  /// Creates a lyric syllable.
+  const Lyric(
+    this.elementId,
+    this.text, {
+    this.hyphenToNext = false,
+    this.extender = false,
+    this.verse = 1,
+    this.elidesToNext = false,
+  }) : assert(verse >= 1, 'verse must be >= 1');
+
+  @override
+  bool operator ==(Object other) =>
+      other is Lyric &&
+      other.elementId == elementId &&
+      other.text == text &&
+      other.hyphenToNext == hyphenToNext &&
+      other.extender == extender &&
+      other.verse == verse &&
+      other.elidesToNext == elidesToNext;
+
+  @override
+  int get hashCode =>
+      Object.hash(elementId, text, hyphenToNext, extender, verse, elidesToNext);
+
+  @override
+  String toString() => 'Lyric($elementId: "$text"'
+      '${hyphenToNext ? ' -' : ''}${extender ? ' _' : ''}'
+      '${elidesToNext ? ' ‿' : ''}${verse == 1 ? '' : ', v$verse'})';
+}
+
+/// Where staff text is placed relative to its anchor staff.
+enum AnnotationPlacement {
+  /// Text above the staff.
+  above,
+
+  /// Text below the staff.
+  below,
+}
+
+/// A text annotation anchored at a note element: chord symbols, rehearsal
+/// marks, tempo/expression text.
+class Annotation {
+  /// Id of the note element the text sits above.
+  final String elementId;
+
+  /// The text to display (e.g. `C`, `G7/B`, `Andante`).
+  final String text;
+
+  /// Staff side for this text.
+  final AnnotationPlacement placement;
+
+  /// Creates an annotation.
+  const Annotation(
+    this.elementId,
+    this.text, {
+    this.placement = AnnotationPlacement.above,
+  });
+
+  @override
+  bool operator ==(Object other) =>
+      other is Annotation &&
+      other.elementId == elementId &&
+      other.text == text &&
+      other.placement == placement;
+
+  @override
+  int get hashCode => Object.hash(elementId, text, placement);
+
+  @override
+  String toString() => 'Annotation($elementId: "$text"'
+      '${placement == AnnotationPlacement.above ? '' : ', below'})';
+}
+
+/// The quality of a [ChordSymbol]. [musicXmlKind] is the MusicXML `<kind>`
+/// value; [suffix] is what follows the root in the printed symbol
+/// (`Cmaj7` = root `C` + suffix `maj7`).
+enum ChordSymbolKind {
+  /// Major triad (no suffix).
+  major('major', ''),
+
+  /// Minor triad (`m`).
+  minor('minor', 'm'),
+
+  /// Diminished triad (`dim`).
+  diminished('diminished', 'dim'),
+
+  /// Augmented triad (`aug`).
+  augmented('augmented', 'aug'),
+
+  /// Dominant seventh (`7`).
+  dominantSeventh('dominant', '7'),
+
+  /// Major seventh (`maj7`).
+  majorSeventh('major-seventh', 'maj7'),
+
+  /// Minor seventh (`m7`).
+  minorSeventh('minor-seventh', 'm7'),
+
+  /// Half-diminished seventh (`m7♭5`).
+  halfDiminishedSeventh('half-diminished', 'm7b5'),
+
+  /// Diminished seventh (`dim7`).
+  diminishedSeventh('diminished-seventh', 'dim7'),
+
+  /// Minor/major seventh (`mMaj7`).
+  minorMajorSeventh('major-minor', 'mMaj7'),
+
+  /// Major sixth (`6`).
+  sixth('major-sixth', '6'),
+
+  /// Minor sixth (`m6`).
+  minorSixth('minor-sixth', 'm6'),
+
+  /// Dominant ninth (`9`).
+  dominantNinth('dominant-ninth', '9'),
+
+  /// Suspended fourth (`sus4`).
+  suspendedFourth('suspended-fourth', 'sus4'),
+
+  /// Suspended second (`sus2`).
+  suspendedSecond('suspended-second', 'sus2');
+
+  const ChordSymbolKind(this.musicXmlKind, this.suffix);
+
+  /// The MusicXML `<kind>` value.
+  final String musicXmlKind;
+
+  /// The printed suffix after the root note name.
+  final String suffix;
+}
+
+/// A structured chord symbol (lead-sheet harmony) anchored above a note
+/// element by [elementId]: a [root] note, a [quality], and an optional slash
+/// [bass]. Unlike a free-text [Annotation], the root/bass are real [Pitch]es,
+/// so the symbol transposes correctly. The **octave** of [root]/[bass] is
+/// ignored — a chord symbol is a pitch class — so equality compares only the
+/// step and alteration.
+class ChordSymbol {
+  /// Id of the note element the symbol sits above.
+  final String elementId;
+
+  /// The chord root (octave ignored).
+  final Pitch root;
+
+  /// The chord quality.
+  final ChordSymbolKind quality;
+
+  /// The slash-chord bass (octave ignored), or null.
+  final Pitch? bass;
+
+  /// Creates a chord symbol on [elementId].
+  const ChordSymbol(this.elementId, this.root, this.quality, {this.bass});
+
+  /// The printed symbol, e.g. `Cmaj7`, `G7/B`, `F#m7b5`.
+  String get text => '${_name(root)}${quality.suffix}'
+      '${bass == null ? '' : '/${_name(bass!)}'}';
+
+  static String _name(Pitch pitch) {
+    const acc = {2: '##', 1: '#', 0: '', -1: 'b', -2: 'bb'};
+    return '${pitch.step.name.toUpperCase()}${acc[pitch.alter]}';
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ChordSymbol &&
+      other.elementId == elementId &&
+      other.root.step == root.step &&
+      other.root.alter == root.alter &&
+      other.quality == quality &&
+      other.bass?.step == bass?.step &&
+      other.bass?.alter == bass?.alter;
+
+  @override
+  int get hashCode => Object.hash(
+        elementId,
+        root.step,
+        root.alter,
+        quality,
+        bass?.step,
+        bass?.alter,
+      );
+
+  @override
+  String toString() => 'ChordSymbol($elementId: "$text")';
+}
+
+/// A breath / pause symbol drawn after a note, above the top of the staff.
+enum BreathSymbol {
+  /// A comma (breath mark).
+  comma,
+
+  /// A caesura ("railroad tracks" — a longer break / grand pause).
+  caesura,
+}
+
+/// Places a [BreathSymbol] after the note element with [noteId] — a breath
+/// mark or caesura above the staff. Round-trips as MusicXML
+/// `<breath-mark>` / `<caesura>`.
+class BreathMark {
+  /// Id of the note the symbol follows.
+  final String noteId;
+
+  /// Which symbol to draw.
+  final BreathSymbol symbol;
+
+  /// Marks a breath / caesura after [noteId].
+  const BreathMark(this.noteId, this.symbol);
+
+  @override
+  bool operator ==(Object other) =>
+      other is BreathMark && other.noteId == noteId && other.symbol == symbol;
+
+  @override
+  int get hashCode => Object.hash(noteId, symbol);
+
+  @override
+  String toString() => 'BreathMark($noteId, ${symbol.name})';
+}
+
+/// A laissez-vibrer ("let vibrate", l.v.) tie: a short curved tie trailing off
+/// the right of [noteId] with no destination note — the ring-on notation for
+/// piano, harp, vibraphone and cymbals. One is drawn per notehead of the
+/// (possibly chord) element. [down] forces the curve below (true) or above
+/// (false) the note; null follows the note's stem direction like an ordinary
+/// tie.
+class LaissezVibrer {
+  /// Id of the note the l.v. tie hangs off.
+  final String noteId;
+
+  /// Curve direction override: true = below, false = above, null = auto
+  /// (opposite the stem, as a normal tie).
+  final bool? down;
+
+  /// Marks [noteId] with a laissez-vibrer tie.
+  const LaissezVibrer(this.noteId, {this.down});
+
+  @override
+  bool operator ==(Object other) =>
+      other is LaissezVibrer && other.noteId == noteId && other.down == down;
+
+  @override
+  int get hashCode => Object.hash(noteId, down);
+
+  @override
+  String toString() => 'LaissezVibrer($noteId${down == null ? '' : ', '
+      '${down! ? 'down' : 'up'}'})';
+}
+
+/// Figured-bass figures under a bass note (thoroughbass / continuo),
+/// referenced by the note's id. [figures] are the stacked rows top-to-bottom —
+/// each a short spec string of digits and alterations rendered with the SMuFL
+/// figured-bass glyphs: digits `0`–`9`, `#`/`♯`, `b`/`♭`, `n`/`♮` and `+`
+/// (e.g. `6`, `#6`, `b7`, `4+`). Drawn below the staff, aligned under the note;
+/// ignored by tab rendering.
+class FiguredBass {
+  /// Id of the bass note the figures sit under.
+  final String noteId;
+
+  /// The figure rows, top to bottom (e.g. `['6', '4']` for a 6/4 chord).
+  final List<String> figures;
+
+  /// Creates a figured-bass stack on [noteId].
+  const FiguredBass(this.noteId, this.figures);
+
+  @override
+  bool operator ==(Object other) =>
+      other is FiguredBass &&
+      other.noteId == noteId &&
+      listEquals(other.figures, figures);
+
+  @override
+  int get hashCode => Object.hash(noteId, Object.hashAll(figures));
+
+  @override
+  String toString() => 'FiguredBass($noteId: ${figures.join('/')})';
+}
+
+/// A jazz / brass articulation attached to a note — a short gestural line
+/// drawn just before or after the notehead (from a SMuFL brass glyph). These
+/// round-trip as standard MusicXML `<articulations>`.
+enum JazzArticulation {
+  /// Scoop — slides up into the note from below (drawn before the notehead).
+  scoop,
+
+  /// Doit — a short upward flick off the end of the note (drawn after).
+  doit,
+
+  /// Fall (falloff) — drops away below the note at its end (drawn after).
+  fall,
+
+  /// Plop — drops into the note from above (drawn before the notehead).
+  plop,
+
+  /// Lift — a longer upward gesture off the note's end (drawn after).
+  lift,
+
+  /// Flip — an upper-neighbour flip off the note's end (drawn after).
+  flip,
+
+  /// Smear — a smeared slide up into the note (drawn before the notehead).
+  smear,
+
+  /// Bend — the note bends up and back at its end (drawn after).
+  bend;
+
+  /// Whether the mark is drawn before (left of) the notehead rather than
+  /// after it.
+  bool get isBefore => this == scoop || this == plop || this == smear;
+
+  /// Whether the mark is anchored to the top notehead (a rising gesture)
+  /// rather than the bottom.
+  bool get rises =>
+      this == doit ||
+      this == plop ||
+      this == lift ||
+      this == flip ||
+      this == bend;
+}
+
+/// Marks a note element with a [JazzArticulation], referenced by its id.
+/// Rendered by the notation engine (not tab).
+class JazzMark {
+  /// Id of the marked note.
+  final String noteId;
+
+  /// Which jazz articulation to draw.
+  final JazzArticulation type;
+
+  /// Marks [noteId] with [type].
+  const JazzMark(this.noteId, this.type);
+
+  @override
+  bool operator ==(Object other) =>
+      other is JazzMark && other.noteId == noteId && other.type == type;
+
+  @override
+  int get hashCode => Object.hash(noteId, type);
+
+  @override
+  String toString() => 'JazzMark($noteId, ${type.name})';
+}
+
+/// An ottava bracket: the spanned elements are written an octave off
+/// their sounding pitch, with a dashed bracket marking the range.
+class Ottava {
+  /// Id of the first spanned note element.
+  final String startId;
+
+  /// Id of the last spanned note element (inclusive).
+  final String endId;
+
+  /// False = 8va (bracket above; written an octave lower than sounding),
+  /// true = 8vb (bracket below; written an octave higher).
+  final bool down;
+
+  /// Creates an ottava span.
+  const Ottava(this.startId, this.endId, {this.down = false});
+
+  @override
+  bool operator ==(Object other) =>
+      other is Ottava &&
+      other.startId == startId &&
+      other.endId == endId &&
+      other.down == down;
+
+  @override
+  int get hashCode => Object.hash(startId, endId, down);
+
+  @override
+  String toString() => 'Ottava($startId -> $endId, ${down ? '8vb' : '8va'})';
+}
+
+/// An extended trill: a `tr` above [startId] followed by a wavy line running to
+/// the end of [endId] (a single note if [startId] == [endId]). Drawn above the
+/// staff. Use this instead of `Ornament.trill` when the trill should show its
+/// duration with a wiggle line.
+class TrillExtension {
+  /// Id of the note the trill starts on.
+  final String startId;
+
+  /// Id of the last note the wavy line reaches (inclusive).
+  final String endId;
+
+  /// Creates an extended-trill span from [startId] to [endId].
+  const TrillExtension(this.startId, this.endId);
+
+  @override
+  bool operator ==(Object other) =>
+      other is TrillExtension &&
+      other.startId == startId &&
+      other.endId == endId;
+
+  @override
+  int get hashCode => Object.hash(startId, endId);
+
+  @override
+  String toString() => 'TrillExtension($startId -> $endId)';
+}

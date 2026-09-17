@@ -1,0 +1,1035 @@
+/// MEI (Music Encoding Initiative) export: [Score] → an `<mei>` document, a
+/// **subset** codec that round-trips through `scoreFromMei`.
+///
+/// MEI is the open, standards-body XML for notation used across digital
+/// musicology (Verovio, music21). Covered subset: clef (with mid-score
+/// changes), key and time signatures (numeric + common/cut + additive),
+/// measures, notes/chords, rests, durations (breve…64th with dots), two
+/// voices (layers), ties, pickup measures, articulations (`@artic`/`@fermata`)
+/// and ornaments (`<trill>`/`<mordent>`/`<turn>` control events). Pitch
+/// spelling round-trips via gestural accidentals (`accid.ges`). Slurs
+/// (`<slur>`), dynamics (`<dynam>`), tuplets (`<tuplet>`), lyrics
+/// (`<verse>/<syl>`), repeats/voltas (`@left/@right` + `<ending>`), navigation
+/// (`<repeatMark>`) and single-note tremolo (`@stem.mod`) round-trip. Pure Dart
+/// (web-safe).
+library;
+
+import '../layout/multi_part.dart';
+import '../model/element.dart';
+import '../model/measure.dart';
+import '../model/score.dart';
+import '../theory/chord_name.dart';
+import '../theory/clef.dart';
+import '../theory/duration.dart';
+import '../theory/fraction.dart';
+import '../theory/key_signature.dart';
+import '../theory/pitch.dart';
+import '../theory/time_signature.dart';
+
+const _meiNs = 'http://www.music-encoding.org/ns/mei';
+
+/// MEI `@dur` value for each undotted [DurationBase].
+const _durValues = {
+  DurationBase.long: 'long',
+  DurationBase.breve: 'breve',
+  DurationBase.whole: '1',
+  DurationBase.half: '2',
+  DurationBase.quarter: '4',
+  DurationBase.eighth: '8',
+  DurationBase.sixteenth: '16',
+  DurationBase.thirtySecond: '32',
+  DurationBase.sixtyFourth: '64',
+  // MEI's @dur runs on to 2048; without these a 128th fell out of the map and
+  // was written with no duration at all, which reads back as a whole note.
+  DurationBase.oneHundredTwentyEighth: '128',
+  DurationBase.twoHundredFiftySixth: '256',
+  DurationBase.fiveHundredTwelfth: '512',
+  DurationBase.oneThousandTwentyFourth: '1024',
+};
+
+/// Accidental code per alteration (written `@accid` / gestural `@accid.ges`).
+const _accidCodes = {2: 'x', 1: 's', 0: 'n', -1: 'f', -2: 'ff'};
+
+/// The (shape, line, dis, disPlace) of a clef for MEI's clef attributes.
+(String, int, int?, String?) _clefParts(Clef clef) => switch (clef) {
+      Clef.treble => ('G', 2, null, null),
+      Clef.bass => ('F', 4, null, null),
+      Clef.alto => ('C', 3, null, null),
+      Clef.tenor => ('C', 4, null, null),
+      Clef.treble8va => ('G', 2, 8, 'above'),
+      Clef.treble8vb => ('G', 2, 8, 'below'),
+      Clef.bass8vb => ('F', 4, 8, 'below'),
+      Clef.frenchViolin => ('G', 1, null, null),
+      Clef.soprano => ('C', 1, null, null),
+      Clef.mezzoSoprano => ('C', 2, null, null),
+      Clef.baritone => ('F', 3, null, null),
+      Clef.subbass => ('F', 5, null, null),
+      Clef.percussion => ('perc', 3, null, null),
+    };
+
+/// MEI `@keysig`/`@sig` string for [key]: `0`, `2s`, `3f`.
+String meiKeySig(KeySignature key) => key.fifths == 0
+    ? '0'
+    : key.fifths > 0
+        ? '${key.fifths}s'
+        : '${-key.fifths}f';
+
+/// Serializes [score] as a single-staff MEI document. [title] fills the
+/// header. Round-trips through `scoreFromMei` for the data the subset shares.
+String scoreToMei(Score score, {String title = 'Music'}) {
+  final meta = score.metadata;
+  final resp = StringBuffer();
+  if (meta.composer != null) {
+    resp.write('<persName role="composer">${_escape(meta.composer!)}'
+        '</persName>');
+  }
+  if (meta.lyricist != null) {
+    resp.write('<persName role="lyricist">${_escape(meta.lyricist!)}'
+        '</persName>');
+  }
+  final titleStmt = '<title>${_escape(meta.title ?? title)}</title>'
+      '${resp.isEmpty ? '' : '<respStmt>$resp</respStmt>'}';
+  final pubStmt = meta.copyright == null
+      ? '<pubStmt/>'
+      : '<pubStmt><availability>${_escape(meta.copyright!)}</availability>'
+          '</pubStmt>';
+  final out = StringBuffer()
+    ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
+    ..writeln('<mei xmlns="$_meiNs" meiversion="5.0">')
+    ..writeln('  <meiHead><fileDesc><titleStmt>$titleStmt</titleStmt>'
+        '$pubStmt</fileDesc></meiHead>')
+    ..writeln('  <music><body><mdiv><score>');
+
+  // Leading scoreDef: key + meter on the scoreDef, clef on the staffDef.
+  final (shape, line, dis, disPlace) = _clefParts(score.clef);
+  final meterAttrs = score.timeSignature == null
+      ? ''
+      : ' ${_meterAttrs(score.timeSignature!, dotted: true)}';
+  final t = score.tempo;
+  final mm = t == null
+      ? ''
+      : ' mm="${_bpm(t.bpm)}" mm.unit="${_durValues[t.beatUnit]}"'
+          '${t.dots == 0 ? '' : ' mm.dots="${t.dots}"'}';
+  out.writeln('    <scoreDef keysig="${meiKeySig(score.keySignature)}"'
+      '$meterAttrs$mm>');
+  final label = score.metadata.instrument == null
+      ? ''
+      : ' label="${_escape(score.metadata.instrument!)}"';
+  out.writeln('      <staffGrp><staffDef n="1"$label lines="5" '
+      'clef.shape="$shape" clef.line="$line"'
+      '${dis == null ? '' : ' clef.dis="$dis" clef.dis.place="$disPlace"'}'
+      '/></staffGrp>');
+  out.writeln('    </scoreDef>');
+  out.writeln('    <section>');
+
+  // Lyrics are `<verse>/<syl>` children of their note, keyed by note id and
+  // ordered by verse so stacked verses stay in reading order.
+  final lyricsById = <String, List<Lyric>>{};
+  for (final lyric in score.lyrics) {
+    (lyricsById[lyric.elementId] ??= []).add(lyric);
+  }
+  for (final list in lyricsById.values) {
+    list.sort((a, b) => a.verse.compareTo(b.verse));
+  }
+
+  for (var m = 0; m < score.measures.length; m++) {
+    // A volta (1st/2nd ending) is an <ending n="…"> wrapping its measure(s).
+    final volta = score.measures[m].volta;
+    if (volta != null) out.writeln('      <ending n="$volta">');
+    _writeMeasure(out, score, m, lyricsById);
+    if (volta != null) out.writeln('      </ending>');
+  }
+
+  out
+    ..writeln('    </section>')
+    ..writeln('  </score></mdiv></body></music>')
+    ..writeln('</mei>');
+  return out.toString();
+}
+
+/// A [multiPart] score → a multi-staff MEI document: one `<staffDef>` and one
+/// `<staff>` per part per measure, so an orchestral score keeps EVERY part
+/// (unlike [scoreToMei], which writes a single staff). Round-trips through
+/// `multiPartScoreFromMei`. Key/meter come from the first part; each part keeps
+/// its own clef, and its element ids are part-prefixed so control events
+/// (ornaments/slurs/dynamics) stay unique across staves. Repeats/voltas and
+/// navigation are document-global in MEI, so they follow the first part.
+String multiPartToMei(MultiPartScore multiPart,
+    {String title = 'Music', List<String>? partNames}) {
+  final parts = multiPart.parts;
+  if (parts.isEmpty) {
+    return scoreToMei(Score(clef: Clef.treble, measures: const []),
+        title: title);
+  }
+  if (parts.length == 1) return scoreToMei(parts.first, title: title);
+
+  final lead = parts.first;
+  final meta = lead.metadata;
+  final resp = StringBuffer();
+  if (meta.composer != null) {
+    resp.write('<persName role="composer">${_escape(meta.composer!)}'
+        '</persName>');
+  }
+  if (meta.lyricist != null) {
+    resp.write('<persName role="lyricist">${_escape(meta.lyricist!)}'
+        '</persName>');
+  }
+  final titleStmt = '<title>${_escape(meta.title ?? title)}</title>'
+      '${resp.isEmpty ? '' : '<respStmt>$resp</respStmt>'}';
+  final pubStmt = meta.copyright == null
+      ? '<pubStmt/>'
+      : '<pubStmt><availability>${_escape(meta.copyright!)}</availability>'
+          '</pubStmt>';
+  final out = StringBuffer()
+    ..writeln('<?xml version="1.0" encoding="UTF-8"?>')
+    ..writeln('<mei xmlns="$_meiNs" meiversion="5.0">')
+    ..writeln('  <meiHead><fileDesc><titleStmt>$titleStmt</titleStmt>'
+        '$pubStmt</fileDesc></meiHead>')
+    ..writeln('  <music><body><mdiv><score>');
+
+  final meterAttrs = lead.timeSignature == null
+      ? ''
+      : ' ${_meterAttrs(lead.timeSignature!, dotted: true)}';
+  final t = lead.tempo;
+  final mm = t == null
+      ? ''
+      : ' mm="${_bpm(t.bpm)}" mm.unit="${_durValues[t.beatUnit]}"'
+          '${t.dots == 0 ? '' : ' mm.dots="${t.dots}"'}';
+  out.writeln('    <scoreDef keysig="${meiKeySig(lead.keySignature)}"'
+      '$meterAttrs$mm>');
+  out.writeln('      <staffGrp>');
+  for (var p = 0; p < parts.length; p++) {
+    final (shape, line, dis, disPlace) = _clefParts(parts[p].clef);
+    final name = (partNames != null && p < partNames.length)
+        ? partNames[p]
+        : parts[p].metadata.instrument;
+    final label = name == null ? '' : ' label="${_escape(name)}"';
+    out.writeln('        <staffDef n="${p + 1}"$label lines="5" '
+        'clef.shape="$shape" clef.line="$line"'
+        '${dis == null ? '' : ' clef.dis="$dis" clef.dis.place="$disPlace"'}/>');
+  }
+  out
+    ..writeln('      </staffGrp>')
+    ..writeln('    </scoreDef>')
+    ..writeln('    <section>');
+
+  final lyricMaps = [for (final part in parts) _lyricsByIdOf(part)];
+  final measureCount =
+      parts.map((p) => p.measures.length).reduce((a, b) => a > b ? a : b);
+
+  for (var m = 0; m < measureCount; m++) {
+    final master = m < lead.measures.length ? lead.measures[m] : null;
+    final volta = master?.volta;
+    if (volta != null) out.writeln('      <ending n="$volta">');
+    final metcon = (master?.pickup ?? false) ? ' metcon="false"' : '';
+    final number = lead.barNumberAt(m) ?? 0;
+    final left = (master?.startRepeat ?? false) ? ' left="rptstart"' : '';
+    final right = (master?.endRepeat ?? false) ? ' right="rptend"' : '';
+    out.writeln('      <measure n="$number"$metcon$left$right>');
+
+    for (var p = 0; p < parts.length; p++) {
+      final measure =
+          m < parts[p].measures.length ? parts[p].measures[m] : null;
+      out.writeln('        <staff n="${p + 1}">');
+      if (measure != null) {
+        // Each voice gets ONLY its own spans. A TupletSpan addresses one
+        // voice by index, so handing voice 1 the whole list stamps an inner
+        // voice's triplet onto voice 1's notes — and since its endIndex is
+        // usually out of range there, the group never closes and swallows the
+        // rest of the layer. Inner voices used to get no spans at all, which
+        // silently un-tripleted every one of their tuplets.
+        _writeLayer(out, 1, measure.elements, _midChanges(measure),
+            measureIndex: m,
+            tuplets: measure.tupletsForVoice(0),
+            lyricsById: lyricMaps[p],
+            lvIds: {for (final l in parts[p].laissezVibrer) l.noteId},
+            cueIds: parts[p].cueNoteIds.toSet(),
+            inlineClefs: measure.inlineClefs,
+            idPrefix: 'p${p}_');
+        for (final (n, voice) in [
+          (2, measure.voice2),
+          (3, measure.voice3),
+          (4, measure.voice4),
+        ]) {
+          if (voice.isNotEmpty) {
+            _writeLayer(out, n, voice, '',
+                measureIndex: m,
+                tuplets: measure.tupletsForVoice(n - 1),
+                lyricsById: lyricMaps[p],
+                lvIds: {for (final l in parts[p].laissezVibrer) l.noteId},
+                cueIds: parts[p].cueNoteIds.toSet(),
+                idPrefix: 'p${p}_');
+          }
+        }
+      } else {
+        out.writeln('          <layer n="1"/>'); // a shorter part rests here
+      }
+      out.writeln('        </staff>');
+    }
+
+    final controls = StringBuffer();
+    for (var p = 0; p < parts.length; p++) {
+      final measure =
+          m < parts[p].measures.length ? parts[p].measures[m] : null;
+      if (measure != null) {
+        controls.write(_measureControls(parts[p], measure, m, 'p${p}_'));
+      }
+    }
+    if (master?.navigation != null) {
+      controls.write('<repeatMark func="${master!.navigation!.name}"/>');
+    }
+    if (controls.isNotEmpty) out.writeln('        $controls');
+    out.writeln('      </measure>');
+    if (volta != null) out.writeln('      </ending>');
+  }
+
+  out
+    ..writeln('    </section>')
+    ..writeln('  </score></mdiv></body></music>')
+    ..writeln('</mei>');
+  return out.toString();
+}
+
+/// Verse-sorted lyric syllables of [score] keyed by note id.
+Map<String, List<Lyric>> _lyricsByIdOf(Score score) {
+  final map = <String, List<Lyric>>{};
+  for (final lyric in score.lyrics) {
+    (map[lyric.elementId] ??= []).add(lyric);
+  }
+  for (final list in map.values) {
+    list.sort((a, b) => a.verse.compareTo(b.verse));
+  }
+  return map;
+}
+
+/// The inline `<clef>/<keySig>/<meterSig>` prefix for a measure's mid-score
+/// changes (opens layer 1).
+String _midChanges(Measure measure) {
+  final changes = StringBuffer();
+  if (measure.clefChange != null) {
+    final (shape, line, dis, disPlace) = _clefParts(measure.clefChange!);
+    changes.write('<clef shape="$shape" line="$line"'
+        '${dis == null ? '' : ' dis="$dis" dis.place="$disPlace"'}/>');
+  }
+  if (measure.keyChange != null) {
+    changes.write('<keySig sig="${meiKeySig(measure.keyChange!)}"/>');
+  }
+  if (measure.timeChange != null) {
+    changes.write(
+        '<meterSig ${_meterAttrs(measure.timeChange!, dotted: false)}/>');
+  }
+  return changes.toString();
+}
+
+/// The ornament/slur/dynamic control events for one part's [measure] (navigation
+/// is handled once at the document level). Note ids are [prefix]-qualified to
+/// stay unique across staves.
+String _measureControls(
+    Score score, Measure measure, int index, String prefix) {
+  final controls = StringBuffer();
+  // An extended trill is ONE `<trill>` carrying `@endid`, not a separate span
+  // element beside the ornament — emitting both would print the trill sign
+  // twice. `_meiIdFor` yields `prefix + element.id`, the same id space the
+  // other control events address a note in, so the two line up.
+  String? trillEndFor(String meiId) {
+    for (final t in score.trillExtensions) {
+      if ('$prefix${t.startId}' == meiId) return '$prefix${t.endId}';
+    }
+    return null;
+  }
+
+  for (final (voiceNum, voice) in [
+    (1, measure.elements),
+    (2, measure.voice2),
+    (3, measure.voice3),
+    (4, measure.voice4),
+  ]) {
+    for (var i = 0; i < voice.length; i++) {
+      final element = voice[i];
+      if (element is NoteElement && element.ornament != null) {
+        final id = _meiIdFor(element, index, voiceNum, i, prefix: prefix);
+        if (id != null) {
+          controls.write(
+              _ornamentEvent(element.ornament!, id, trillEnd: trillEndFor(id)));
+        }
+      }
+    }
+  }
+  final measureIds = {
+    for (final e in [
+      ...measure.elements,
+      ...measure.voice2,
+      ...measure.voice3,
+      ...measure.voice4,
+    ])
+      if (e.id != null) e.id!,
+  };
+  // Fingering is `<fing>`, a control event anchored to its note like the
+  // others. MusicXML was the only format carrying it.
+  for (final e in [
+    ...measure.elements,
+    ...measure.voice2,
+    ...measure.voice3,
+    ...measure.voice4,
+  ]) {
+    if (e is! NoteElement || e.fingerings.isEmpty || e.id == null) continue;
+    if (!measureIds.contains(e.id)) continue;
+    for (final f in e.fingerings) {
+      controls.write('<fing startid="#$prefix${e.id}">$f</fing>');
+    }
+  }
+  for (final e in [
+    ...measure.elements,
+    ...measure.voice2,
+    ...measure.voice3,
+    ...measure.voice4,
+  ]) {
+    if (e is! NoteElement || e.arpeggio == null || e.id == null) continue;
+    if (!measureIds.contains(e.id)) continue;
+    controls.write('<arpeg startid="#$prefix${e.id}" '
+        'order="${e.arpeggio == Arpeggio.down ? 'down' : 'up'}"/>');
+  }
+  // Figured bass is `<harm>` wrapping an `<fb>` of `<f>` figures — the same
+  // control event chord symbols use, with structure inside instead of text.
+  for (final f in score.figuredBass) {
+    if (!measureIds.contains(f.noteId)) continue;
+    controls.write('<harm startid="#$prefix${f.noteId}"><fb>'
+        '${f.figures.map((x) => '<f>${_escape(x)}</f>').join()}'
+        '</fb></harm>');
+  }
+  for (final slur in score.slurs) {
+    if (measureIds.contains(slur.startId)) {
+      controls.write('<slur startid="#$prefix${slur.startId}" '
+          'endid="#$prefix${slur.endId}"/>');
+    }
+  }
+  for (final dyn in score.dynamics) {
+    if (measureIds.contains(dyn.elementId)) {
+      controls.write('<dynam startid="#$prefix${dyn.elementId}">'
+          '${dyn.level.name}</dynam>');
+    }
+  }
+  // `<hairpin form="cres|dim">`, the same shape as `<slur>`. MEI has always
+  // been able to carry these; we simply never wrote them, which is why MEI is
+  // one of the four codecs that drops `Hairpin` today.
+  for (final h in score.hairpins) {
+    if (measureIds.contains(h.startId)) {
+      controls.write(
+          '<hairpin form="${h.type == HairpinType.crescendo ? 'cres' : 'dim'}"'
+          ' startid="#$prefix${h.startId}" endid="#$prefix${h.endId}"/>');
+    }
+  }
+  // A breath is `<breath>`, a control event of its own — MEI has no @artic for
+  // it, which is why the model files it under Articulation but the writer does
+  // not go through the @artic table.
+  for (final e in [
+    ...measure.elements,
+    ...measure.voice2,
+    ...measure.voice3,
+    ...measure.voice4,
+  ]) {
+    if (e is NoteElement &&
+        e.id != null &&
+        e.articulations.contains(Articulation.breath)) {
+      controls.write('<breath startid="#$prefix${e.id}"/>');
+    }
+  }
+  // A text mark is `<dir>`, anchored to its note by id. MEI has always had it;
+  // we simply never wrote one, so MusicXML was the ONLY format carrying
+  // annotations at all.
+  for (final a in score.annotations) {
+    if (measureIds.contains(a.elementId)) {
+      final place =
+          a.placement == AnnotationPlacement.below ? 'below' : 'above';
+      controls.write('<dir place="$place" startid="#$prefix${a.elementId}">'
+          '${_escape(a.text)}</dir>');
+    }
+  }
+  // Harmony is `<harm>`, anchored the same way. Its content is the chord
+  // LABEL, so it goes out through the shared canonical formatter and comes
+  // back through the shared parser — MEI has no structured root/quality
+  // attributes to mirror MusicXML's <harmony> with.
+  //
+  // ⚠️ This file emits control events from TWO places (single-part and
+  // multi-part); a mark added to only one of them vanishes on the other path.
+  for (final c in score.chordSymbols) {
+    if (measureIds.contains(c.elementId)) {
+      controls.write('<harm startid="#$prefix${c.elementId}">'
+          '${_escape(chordName(c))}</harm>');
+    }
+  }
+  // A glissando is `<gliss>`, a start/end control event like `<slur>`.
+  // ⚠️ MEI spells BOTH with `<gliss>`; `@lform` is what separates them — a
+  // glissando is the WAVY line, a portamento the plain one. Without it the two
+  // concepts collapse into one on the way back.
+  for (final g in score.glissandos) {
+    if (measureIds.contains(g.startId) && measureIds.contains(g.endId)) {
+      controls.write('<gliss startid="#$prefix${g.startId}" '
+          'endid="#$prefix${g.endId}" lform="wavy"/>');
+    }
+  }
+  for (final p in score.portamentos) {
+    if (measureIds.contains(p.startId) && measureIds.contains(p.endId)) {
+      controls.write('<gliss startid="#$prefix${p.startId}" '
+          'endid="#$prefix${p.endId}" lform="solid"/>');
+    }
+  }
+  // An ottava is `<octave>`, a pedal `<pedal>` — both start/end control events.
+  // `dis.place` follows the model's `down`, which uses the MusicXML sense: down
+  // means the notes are WRITTEN LOWER, i.e. an 8va bracket ABOVE them.
+  for (final oc in score.ottavas) {
+    if (measureIds.contains(oc.startId) && measureIds.contains(oc.endId)) {
+      controls.write('<octave startid="#$prefix${oc.startId}" '
+          'endid="#$prefix${oc.endId}" dis="8" '
+          'dis.place="${oc.down ? 'above' : 'below'}"/>');
+    }
+  }
+  for (final pd in score.pedals) {
+    if (measureIds.contains(pd.startId) && measureIds.contains(pd.endId)) {
+      controls.write('<pedal startid="#$prefix${pd.startId}" '
+          'endid="#$prefix${pd.endId}" dir="down"/>');
+    }
+  }
+  // A trill extension whose start note carries NO trill ornament still needs
+  // its `<trill>` — the span rides on the ornament event when there is one,
+  // and would otherwise have no element at all.
+  for (final t in score.trillExtensions) {
+    if (!measureIds.contains(t.startId) || !measureIds.contains(t.endId)) {
+      continue;
+    }
+    if (_startsWithTrillOrnament(score, t.startId)) continue;
+    controls.write(
+        '<trill startid="#$prefix${t.startId}" endid="#$prefix${t.endId}"/>');
+  }
+  // A mid-score tempo change is a `<tempo>` control event carrying the same
+  // `@mm` attributes `<scoreDef>` uses for the initial one — which was the only
+  // tempo ever written.
+  final tc = measure.tempoChange;
+  if (tc != null) {
+    controls.write('<tempo tstamp="1" mm="${_bpm(tc.bpm)}" '
+        'mm.unit="${_durValues[tc.beatUnit]}"'
+        '${tc.dots == 0 ? '' : ' mm.dots="${tc.dots}"'}/>');
+  }
+  return controls.toString();
+}
+
+String _meterAttrs(TimeSignature time, {required bool dotted}) {
+  final count = time.components?.join('+') ?? '${time.beats}';
+  final p = dotted ? 'meter.' : '';
+  final sym = switch (time.symbol) {
+    TimeSymbol.common => ' ${p}sym="common"',
+    TimeSymbol.cut => ' ${p}sym="cut"',
+    TimeSymbol.numeric => '',
+  };
+  return '${p}count="$count" ${p}unit="${time.beatUnit}"$sym';
+}
+
+void _writeMeasure(StringBuffer out, Score score, int index,
+    Map<String, List<Lyric>> lyricsById) {
+  final measure = score.measures[index];
+  final metcon = measure.pickup ? ' metcon="false"' : '';
+  final number = score.barNumberAt(index) ?? 0;
+  // Repeats are barline attributes on the measure itself — and so is the
+  // barline STYLE, which shares `@right` with them. A repeat wins the slot:
+  // `right="rptend"` says more than `right="dbl"`, and MEI has no way to say
+  // both.
+  final left = measure.startRepeat ? ' left="rptstart"' : '';
+  final rightVal = measure.endRepeat ? 'rptend' : _meiBarline[measure.barline];
+  final right = rightVal == null ? '' : ' right="$rightVal"';
+  out.writeln('      <measure n="$number"$metcon$left$right>');
+  out.writeln('        <staff n="1">');
+
+  // Mid-score changes open layer 1 as inline clef/keySig/meterSig.
+  final changes = StringBuffer();
+  if (measure.clefChange != null) {
+    final (shape, line, dis, disPlace) = _clefParts(measure.clefChange!);
+    changes.write('<clef shape="$shape" line="$line"'
+        '${dis == null ? '' : ' dis="$dis" dis.place="$disPlace"'}/>');
+  }
+  if (measure.keyChange != null) {
+    changes.write('<keySig sig="${meiKeySig(measure.keyChange!)}"/>');
+  }
+  if (measure.timeChange != null) {
+    changes.write('<meterSig ${_meterAttrs(measure.timeChange!, dotted: false)}'
+        '/>');
+  }
+
+  _writeLayer(out, 1, measure.elements, changes.toString(),
+      measureIndex: index,
+      tuplets: measure.tupletsForVoice(0),
+      lyricsById: lyricsById,
+      lvIds: {for (final l in score.laissezVibrer) l.noteId},
+      cueIds: score.cueNoteIds.toSet(),
+      inlineClefs: measure.inlineClefs);
+  for (final (n, voice) in [
+    (2, measure.voice2),
+    (3, measure.voice3),
+    (4, measure.voice4),
+  ]) {
+    if (voice.isNotEmpty) {
+      _writeLayer(out, n, voice, '',
+          measureIndex: index,
+          tuplets: measure.tupletsForVoice(n - 1),
+          lyricsById: lyricsById,
+          lvIds: {for (final l in score.laissezVibrer) l.noteId},
+          cueIds: score.cueNoteIds.toSet());
+    }
+  }
+  out.writeln('        </staff>');
+
+  // Ornaments and slurs are control events anchored to a note by its xml:id.
+  // A note that carries an ornament but no id of its own gets a deterministic
+  // position-derived id (see _meiIdFor) — the same one _writeLayer stamps on
+  // the <note> — so the ornament keeps its anchor instead of being dropped.
+  final controls = StringBuffer();
+  // An extended trill is ONE `<trill>` carrying `@endid`, not a separate span
+  // element beside the ornament — emitting both would print the trill sign
+  // twice. `_meiIdFor` yields `prefix + element.id`, the same id space the
+  // other control events address a note in, so the two line up.
+  String? trillEndFor(String meiId) {
+    for (final t in score.trillExtensions) {
+      if (t.startId == meiId) return t.endId;
+    }
+    return null;
+  }
+
+  for (final (voiceNum, voice) in [
+    (1, measure.elements),
+    (2, measure.voice2),
+    (3, measure.voice3),
+    (4, measure.voice4),
+  ]) {
+    for (var i = 0; i < voice.length; i++) {
+      final element = voice[i];
+      if (element is NoteElement && element.ornament != null) {
+        final id = _meiIdFor(element, index, voiceNum, i);
+        if (id != null) {
+          controls.write(
+              _ornamentEvent(element.ornament!, id, trillEnd: trillEndFor(id)));
+        }
+      }
+    }
+  }
+  // A slur is emitted in the measure that holds its start note.
+  final measureIds = {
+    for (final e in [
+      ...measure.elements,
+      ...measure.voice2,
+      ...measure.voice3,
+      ...measure.voice4,
+    ])
+      if (e.id != null) e.id!,
+  };
+  // Fingering is `<fing>`, a control event anchored to its note like the
+  // others. MusicXML was the only format carrying it.
+  for (final e in [
+    ...measure.elements,
+    ...measure.voice2,
+    ...measure.voice3,
+    ...measure.voice4,
+  ]) {
+    if (e is! NoteElement || e.fingerings.isEmpty || e.id == null) continue;
+    if (!measureIds.contains(e.id)) continue;
+    for (final f in e.fingerings) {
+      controls.write('<fing startid="#${e.id}">$f</fing>');
+    }
+  }
+  for (final e in [
+    ...measure.elements,
+    ...measure.voice2,
+    ...measure.voice3,
+    ...measure.voice4,
+  ]) {
+    if (e is! NoteElement || e.arpeggio == null || e.id == null) continue;
+    if (!measureIds.contains(e.id)) continue;
+    controls.write('<arpeg startid="#${e.id}" '
+        'order="${e.arpeggio == Arpeggio.down ? 'down' : 'up'}"/>');
+  }
+  // Figured bass is `<harm>` wrapping an `<fb>` of `<f>` figures — the same
+  // control event chord symbols use, with structure inside instead of text.
+  for (final f in score.figuredBass) {
+    if (!measureIds.contains(f.noteId)) continue;
+    controls.write('<harm startid="#${f.noteId}"><fb>'
+        '${f.figures.map((x) => '<f>${_escape(x)}</f>').join()}'
+        '</fb></harm>');
+  }
+  for (final slur in score.slurs) {
+    if (measureIds.contains(slur.startId)) {
+      controls
+          .write('<slur startid="#${slur.startId}" endid="#${slur.endId}"/>');
+    }
+  }
+  // Dynamics are `<dynam>` control events anchored to their note by id, the
+  // dynamic word (pp…fff, sf…) carried as the element's text.
+  for (final dyn in score.dynamics) {
+    if (measureIds.contains(dyn.elementId)) {
+      controls.write('<dynam startid="#${dyn.elementId}">${dyn.level.name}'
+          '</dynam>');
+    }
+  }
+  // `<hairpin form="cres|dim">`, the same shape as `<slur>`.
+  //
+  // ⚠️ This file has TWO control-event emitters — this one for a single Score
+  // and `_measureControls` for the multi-part path — and adding a control event
+  // to only one of them is a silent half-fix. Both carry hairpins now.
+  for (final h in score.hairpins) {
+    if (measureIds.contains(h.startId)) {
+      controls.write(
+          '<hairpin form="${h.type == HairpinType.crescendo ? 'cres' : 'dim'}"'
+          ' startid="#${h.startId}" endid="#${h.endId}"/>');
+    }
+  }
+  // Same for the single-Score emitter — see the two-emitter warning above.
+  for (final e in [
+    ...measure.elements,
+    ...measure.voice2,
+    ...measure.voice3,
+    ...measure.voice4,
+  ]) {
+    if (e is NoteElement &&
+        e.id != null &&
+        e.articulations.contains(Articulation.breath)) {
+      controls.write('<breath startid="#${e.id}"/>');
+    }
+  }
+  // A text mark is `<dir>`, anchored to its note by id. MEI has always had it;
+  // we simply never wrote one, so MusicXML was the ONLY format carrying
+  // annotations at all.
+  for (final a in score.annotations) {
+    if (measureIds.contains(a.elementId)) {
+      final place =
+          a.placement == AnnotationPlacement.below ? 'below' : 'above';
+      controls.write('<dir place="$place" startid="#${a.elementId}">'
+          '${_escape(a.text)}</dir>');
+    }
+  }
+  // Harmony is `<harm>`, anchored the same way. Its content is the chord
+  // LABEL, so it goes out through the shared canonical formatter and comes
+  // back through the shared parser — MEI has no structured root/quality
+  // attributes to mirror MusicXML's <harmony> with.
+  //
+  // ⚠️ This file emits control events from TWO places (single-part and
+  // multi-part); a mark added to only one of them vanishes on the other path.
+  for (final c in score.chordSymbols) {
+    if (measureIds.contains(c.elementId)) {
+      controls.write('<harm startid="#${c.elementId}">'
+          '${_escape(chordName(c))}</harm>');
+    }
+  }
+  // A glissando is `<gliss>`, a start/end control event like `<slur>`.
+  // ⚠️ MEI spells BOTH with `<gliss>`; `@lform` is what separates them — a
+  // glissando is the WAVY line, a portamento the plain one. Without it the two
+  // concepts collapse into one on the way back.
+  for (final g in score.glissandos) {
+    if (measureIds.contains(g.startId) && measureIds.contains(g.endId)) {
+      controls.write('<gliss startid="#${g.startId}" '
+          'endid="#${g.endId}" lform="wavy"/>');
+    }
+  }
+  for (final p in score.portamentos) {
+    if (measureIds.contains(p.startId) && measureIds.contains(p.endId)) {
+      controls.write('<gliss startid="#${p.startId}" '
+          'endid="#${p.endId}" lform="solid"/>');
+    }
+  }
+  // An ottava is `<octave>`, a pedal `<pedal>` — both start/end control events.
+  // `dis.place` follows the model's `down`, which uses the MusicXML sense: down
+  // means the notes are WRITTEN LOWER, i.e. an 8va bracket ABOVE them.
+  for (final oc in score.ottavas) {
+    if (measureIds.contains(oc.startId) && measureIds.contains(oc.endId)) {
+      controls.write('<octave startid="#${oc.startId}" '
+          'endid="#${oc.endId}" dis="8" '
+          'dis.place="${oc.down ? 'above' : 'below'}"/>');
+    }
+  }
+  for (final pd in score.pedals) {
+    if (measureIds.contains(pd.startId) && measureIds.contains(pd.endId)) {
+      controls.write('<pedal startid="#${pd.startId}" '
+          'endid="#${pd.endId}" dir="down"/>');
+    }
+  }
+  // A trill extension whose start note carries NO trill ornament still needs
+  // its `<trill>` — the span rides on the ornament event when there is one,
+  // and would otherwise have no element at all.
+  for (final t in score.trillExtensions) {
+    if (!measureIds.contains(t.startId) || !measureIds.contains(t.endId)) {
+      continue;
+    }
+    if (_startsWithTrillOrnament(score, t.startId)) continue;
+    controls.write('<trill startid="#${t.startId}" endid="#${t.endId}"/>');
+  }
+  // A mid-score tempo change is a `<tempo>` control event carrying the same
+  // `@mm` attributes `<scoreDef>` uses for the initial one — which was the only
+  // tempo ever written.
+  final tc = measure.tempoChange;
+  if (tc != null) {
+    controls.write('<tempo tstamp="1" mm="${_bpm(tc.bpm)}" '
+        'mm.unit="${_durValues[tc.beatUnit]}"'
+        '${tc.dots == 0 ? '' : ' mm.dots="${tc.dots}"'}/>');
+  }
+  // A navigation mark (D.C., D.S., segno, coda, fine, …) is a measure-level
+  // <repeatMark>; @func carries the model's own name so every variant (incl.
+  // the compound al-fine/al-coda forms) round-trips exactly.
+  if (measure.navigation != null) {
+    controls.write('<repeatMark func="${measure.navigation!.name}"/>');
+  }
+  if (controls.isNotEmpty) out.writeln('        $controls');
+  out.writeln('      </measure>');
+}
+
+/// The xml:id used to anchor a note's control events (its ornament). A note
+/// keeps its own [NoteElement.id]; an ornamented note that lacks one is given a
+/// deterministic, position-derived id (`o<measure>_<voice>_<index>`) so the
+/// ornament still has a `startid` to point at — previously such notes silently
+/// lost their ornament. Position is unique within a document, so these never
+/// collide, and only ornamented notes get one (unornamented id-less notes stay
+/// id-free, keeping the output minimal). Returns null when there is nothing to
+/// anchor.
+String? _meiIdFor(NoteElement e, int measure, int voice, int index,
+    {String prefix = ''}) {
+  final base =
+      e.id ?? (e.ornament != null ? 'o${measure}_${voice}_$index' : null);
+  return base == null ? null : '$prefix$base';
+}
+
+/// The `<verse>/<syl>` children for a note's [lyrics] (already verse-sorted).
+/// `@con` carries the continuation to the next syllable: `d`=hyphen (word
+/// continues), `u`=melisma extender, `b`=elision.
+String _verses(List<Lyric>? lyrics) {
+  if (lyrics == null || lyrics.isEmpty) return '';
+  final out = StringBuffer();
+  for (final l in lyrics) {
+    final con = l.elidesToNext
+        ? ' con="b"'
+        : l.hyphenToNext
+            ? ' con="d"'
+            : l.extender
+                ? ' con="u"'
+                : '';
+    out.write('<verse n="${l.verse}"><syl$con>${_escape(l.text)}</syl>'
+        '</verse>');
+  }
+  return out.toString();
+}
+
+/// A `<trill>`/`<mordent>`/`<turn>` control event anchored to note [id].
+///
+/// [trillEnd] is where an extended trill's wavy line stops, when there is one.
+String _ornamentEvent(Ornament ornament, String id, {String? trillEnd}) =>
+    switch (ornament) {
+      Ornament.trill => trillEnd == null
+          ? '<trill startid="#$id"/>'
+          : '<trill startid="#$id" endid="#$trillEnd"/>',
+      Ornament.shortTrill => '<mordent form="upper" startid="#$id"/>',
+      Ornament.mordent => '<mordent form="lower" startid="#$id"/>',
+      Ornament.turn => '<turn startid="#$id"/>',
+      Ornament.invertedTurn => '<turn form="lower" startid="#$id"/>',
+      // MEI has no trill-with-accidental sign; fall back to a plain trill.
+      Ornament.trillSharp ||
+      Ornament.trillFlat ||
+      Ornament.trillNatural =>
+        '<trill startid="#$id"/>',
+    };
+
+void _writeLayer(
+    StringBuffer out, int n, List<MusicElement> elements, String prefix,
+    {required int measureIndex,
+    Map<String, List<Lyric>> lyricsById = const {},
+    List<TupletSpan> tuplets = const [],
+    Set<String> lvIds = const {},
+    Set<String> cueIds = const {},
+    List<InlineClefChange> inlineClefs = const [],
+    String idPrefix = ''}) {
+  out.write('          <layer n="$n">$prefix');
+  // A MID-BAR clef is a `<clef>` INSIDE the layer at its own onset. The
+  // measure-level ones ride the layer PREFIX (`_midChanges`), which is why
+  // this needs its own pass rather than another entry there.
+  // // ⚠️ REACHED-OR-PASSED, not an exact match. An inline clef's onset is a
+  // position in the BAR, and it need not coincide with a boundary in THIS
+  // voice — a piano score whose left hand crosses staves puts clefs at 3/8
+  // and 1/8 while voice 1 holds longer notes. Requiring equality dropped 22
+  // of 37 clef changes in one corpus file, identically in every format.
+  final pendingClefs = [...inlineClefs]
+    ..sort((a, b) => a.onset.compareTo(b.onset));
+  var clefAt = Fraction.zero;
+  for (var i = 0; i < elements.length; i++) {
+    final element = elements[i];
+    while (pendingClefs.isNotEmpty && !(clefAt < pendingClefs.first.onset)) {
+      final ic = pendingClefs.removeAt(0);
+      final (shape, line, dis, disPlace) = _clefParts(ic.clef);
+      out.write('<clef shape="$shape" line="$line"'
+          '${dis == null ? '' : ' dis="$dis" dis.place="$disPlace"'}/>');
+    }
+    clefAt = clefAt + element.duration.toFraction();
+    for (final t in tuplets) {
+      if (t.startIndex == i) {
+        out.write('<tuplet num="${t.actual}" numbase="${t.normal}">');
+      }
+    }
+    if (element is RestElement) {
+      out.write('<rest ${_durAttrs(element.duration)}/>');
+    } else if (element is NoteElement) {
+      // Grace notes precede the principal note (MEI `<note grace="acc|unacc">`;
+      // acc = appoggiatura, unacc = acciaccatura). No duration in the model, so
+      // they are written as small eighths.
+      if (element.graceNotes.isNotEmpty) {
+        final g =
+            element.graceStyle == GraceStyle.appoggiatura ? 'acc' : 'unacc';
+        for (final pitch in element.graceNotes) {
+          out.write('<note grace="$g" dur="8" ${_pitchAttrs(pitch, null)}/>');
+        }
+      }
+      // MEI ties are a CHAIN: `i` opens it, `m` continues, `t` closes it. We
+      // only ever wrote `i`, so every tie was left unterminated — verovio
+      // reports "Expected @tie median or terminal" and SKIPS the note outright.
+      // Our own reader is lenient about it, which is exactly why no round trip
+      // could see this; it took a third-party renderer.
+      final tiedFromPrev = i > 0 &&
+          elements[i - 1] is NoteElement &&
+          (elements[i - 1] as NoteElement).tieToNext;
+      final tie = switch ((tiedFromPrev, element.tieToNext)) {
+        (true, true) => ' tie="m"',
+        (true, false) => ' tie="t"',
+        (false, true) => ' tie="i"',
+        _ => '',
+      };
+      final artic = _articAttrs(element.articulations);
+      // A single-note tremolo is N slashes through the stem (MEI @stem.mod).
+      final trem =
+          element.tremolo == null ? '' : ' stem.mod="${element.tremolo}slash"';
+      final anchorId = _meiIdFor(element, measureIndex, n, i, prefix: idPrefix);
+      final xmlId = anchorId == null ? '' : ' xml:id="$anchorId"';
+      // Let-ring is an ATTRIBUTE on the note in MEI, not a control event, so
+      // it rides here rather than with the spans.
+      final lv =
+          element.id != null && lvIds.contains(element.id) ? ' lv="true"' : '';
+      // `@head.shape` is an ATTRIBUTE on the note, like `@lv` — not a control
+      // event. `normal` writes nothing so an ordinary note is unchanged.
+      final cue = element.id != null && cueIds.contains(element.id)
+          ? ' cue="true"'
+          : '';
+      final headShape = _meiHead[element.notehead];
+      final headAttr = headShape == null ? '' : ' head.shape="$headShape"';
+      final verses = element.id == null ? '' : _verses(lyricsById[element.id]);
+      if (element.pitches.length == 1) {
+        final head = '<note$xmlId ${_durAttrs(element.duration)} '
+            '${_pitchAttrs(element.pitches.single, element.showAccidental)}'
+            '$tie$artic$trem$lv$headAttr$cue';
+        out.write(verses.isEmpty ? '$head/>' : '$head>$verses</note>');
+      } else {
+        out.write('<chord$xmlId ${_durAttrs(element.duration)}'
+            '$tie$artic$trem$lv$headAttr$cue>');
+        for (final pitch in element.pitches) {
+          out.write('<note ${_pitchAttrs(pitch, element.showAccidental)}/>');
+        }
+        out.write('$verses</chord>');
+      }
+    }
+    for (final t in tuplets) {
+      // Close at the span's end OR at the last element, whichever comes first.
+      // A span whose endIndex runs past this layer's elements — which happens
+      // whenever a span addressing another voice reaches this one — otherwise
+      // opened a `<tuplet>` that was never closed, and the document would not
+      // parse back at all.
+      if (t.endIndex == i ||
+          (i == elements.length - 1 && t.endIndex > i && t.startIndex <= i)) {
+        out.write('</tuplet>');
+      }
+    }
+  }
+  // ⚠️ A clef at the bar's END onset sits PAST the last element, so the loop
+  // above never reaches it — that is exactly where kern puts a `*clef` change
+  // announced at the end of a measure, and it was 22 of 37 in one file.
+  for (final ic in pendingClefs) {
+    final (shape, line, dis, disPlace) = _clefParts(ic.clef);
+    out.write('<clef shape="$shape" line="$line"'
+        '${dis == null ? '' : ' dis="$dis" dis.place="$disPlace"'}/>');
+  }
+  out.writeln('</layer>');
+}
+
+String _durAttrs(NoteDuration duration) {
+  final dots = duration.dots == 0 ? '' : ' dots="${duration.dots}"';
+  return 'dur="${_durValues[duration.base]}"$dots';
+}
+
+/// MEI `@artic` token per articulation (fermata is a separate `@fermata`).
+const meiArtic = {
+  Articulation.staccato: 'stacc',
+  Articulation.tenuto: 'ten',
+  Articulation.accent: 'acc',
+  Articulation.marcato: 'marc',
+  Articulation.upBow: 'upbow',
+  Articulation.downBow: 'dnbow',
+  Articulation.staccatissimo: 'stacciss',
+  // MEI has no @artic for a breath; it is a `<breath/>` control event, so it is
+  // handled separately rather than mapped here.
+};
+
+/// The `@artic`/`@fermata` attributes for an element's [articulations].
+String _articAttrs(Set<Articulation> articulations) {
+  final tokens = [
+    for (final a in Articulation.values)
+      if (articulations.contains(a) && meiArtic[a] != null) meiArtic[a],
+  ];
+  final artic = tokens.isEmpty ? '' : ' artic="${tokens.join(' ')}"';
+  final fermata =
+      articulations.contains(Articulation.fermata) ? ' fermata="above"' : '';
+  return '$artic$fermata';
+}
+
+String _pitchAttrs(Pitch pitch, bool? showAccidental) {
+  final accidGes =
+      pitch.alter == 0 ? '' : ' accid.ges="${_accidCodes[pitch.alter]}"';
+  final accid =
+      showAccidental == true ? ' accid="${_accidCodes[pitch.alter]}"' : '';
+  return 'pname="${pitch.step.name}" oct="${pitch.octave}"$accidGes$accid';
+}
+
+String _escape(String text) => text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;');
+
+/// A bpm as a compact string (no trailing `.0`).
+String _bpm(double bpm) =>
+    bpm == bpm.roundToDouble() ? bpm.round().toString() : bpm.toString();
+
+/// Whether the note [id] starts on carries a trill ornament, in which case its
+/// extension rides on that ornament's own `<trill>` rather than needing one.
+bool _startsWithTrillOrnament(Score score, String id) {
+  for (final m in score.measures) {
+    for (var v = 0; v < 4; v++) {
+      for (final e in m.voiceAt(v)) {
+        if (e is NoteElement && e.id == id) return e.ornament == Ornament.trill;
+      }
+    }
+  }
+  return false;
+}
+
+/// The model's barline styles in MEI's `@right`/`@left` vocabulary. `normal` is
+/// the default and writes nothing, so an ordinary bar stays byte-identical.
+const Map<BarlineStyle, String?> _meiBarline = {
+  BarlineStyle.normal: null,
+  BarlineStyle.doubleBar: 'dbl',
+  BarlineStyle.finalBar: 'end',
+  BarlineStyle.heavy: 'heavy',
+  BarlineStyle.dashed: 'dashed',
+  BarlineStyle.dotted: 'dotted',
+  BarlineStyle.tick: 'single',
+  BarlineStyle.short: 'single',
+  BarlineStyle.reverseFinal: 'rptstart',
+  BarlineStyle.none: 'invis',
+};
+
+/// The model's notehead shapes in MEI's `@head.shape` vocabulary.
+const Map<NoteheadShape, String?> _meiHead = {
+  NoteheadShape.normal: null,
+  NoteheadShape.x: 'x',
+  NoteheadShape.diamond: 'diamond',
+  NoteheadShape.triangleUp: 'isotriangle',
+  NoteheadShape.slash: 'slash',
+  NoteheadShape.circleX: 'circle',
+};
