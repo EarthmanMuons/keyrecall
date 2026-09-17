@@ -1,8 +1,9 @@
 # The fluency report
 
 - **Status:** partly built. The fluency history projection, its storage, its
-  queries, and the key map with its detail sheet are built. The summary header,
-  review marks, time charts, and skills panel are proposed.
+  queries, the key map with its detail sheet, and the playing pace chart are
+  built. The summary header, review marks, recall milestones, and skills panel
+  are proposed.
 
 A menu destination, beside Goal, that answers three questions a learner asks
 about their practice, and keeps them apart:
@@ -201,8 +202,19 @@ a unit a person recognizes as progress.
 Because demonstration is best-ever, the series only rises, and the title says
 milestones so nobody expects forgetting to appear in it.
 
-**Playing pace** draws one line per hand configuration. Hands together starts
-when coordination does. Weeks without practice stay on the axis as gaps.
+**Playing pace** is built, below the key map after a section break rather than
+as another lens, since it answers a different question. It draws the last eight
+weeks, ending with the current one, as one line per hand configuration across
+all materials. The window is presentation policy; the weekly series underneath
+accepts any range.
+
+A week without a value breaks its line rather than being drawn across, so hands
+together simply starts when coordination does. A week resting on one or two
+attempts is a hollow point. Tapping a point gives its pace, how many attempts it
+rests on, and the rung it was read from; the rung can change between weeks and
+is not drawn, because the simulations showed it mostly stops mattering. There is
+no smoothing, trend line, or change figure: sparse weekly medians cannot carry
+them.
 
 ## Detail sheet
 

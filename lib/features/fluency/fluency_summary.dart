@@ -268,6 +268,16 @@ String demonstrationName(DemonstrationLevel? level) => switch (level) {
 /// When something was last demonstrated, as a date a learner reads: the year
 /// only when it is not the year of [now].
 String demonstratedOn(DateTime at, {required DateTime now}) {
+  final local = at.toLocal();
+  return _dateName(local.year, local.month, local.day, now.toLocal().year);
+}
+
+/// A calendar day as a learner reads it, with the year only when it is not the
+/// year of [today].
+String dayName(CalendarDay day, {required CalendarDay today}) =>
+    _dateName(day.year, day.month, day.day, today.year);
+
+String _dateName(int year, int month, int day, int currentYear) {
   const months = [
     'Jan',
     'Feb',
@@ -282,9 +292,8 @@ String demonstratedOn(DateTime at, {required DateTime now}) {
     'Nov',
     'Dec',
   ];
-  final local = at.toLocal();
-  final date = '${months[local.month - 1]} ${local.day}';
-  return local.year == now.toLocal().year ? date : '$date, ${local.year}';
+  final date = '${months[month - 1]} $day';
+  return year == currentYear ? date : '$date, $year';
 }
 
 /// A demonstrated tempo as a table cell, naming the support it was shown with

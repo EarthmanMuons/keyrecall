@@ -11,12 +11,17 @@ import '../practice/exercise_presentation.dart';
 import '../practice/practice_providers.dart';
 import '../practice/task_help.dart';
 import 'fluency_summary.dart';
+import 'playing_pace_chart.dart';
 
-/// What the selected profile has demonstrated, read fresh each time the report
-/// opens.
+/// What the report reads: the summary the key map shares with its sheet, and
+/// the days the charts are drawn from.
+typedef FluencyReport = ({FluencySummary summary, List<FluencyDay> days});
+
+/// What the selected profile has demonstrated and played, read fresh each time
+/// the report opens.
 ///
 /// Null when nobody on this install has been placed yet.
-final fluencySummaryProvider = FutureProvider.autoDispose<FluencySummary?>((
+final fluencyReportProvider = FutureProvider.autoDispose<FluencyReport?>((
   ref,
 ) async {
   final lifecycle = await ref.watch(profileLifecycleProvider.future);
@@ -31,9 +36,12 @@ final fluencySummaryProvider = FutureProvider.autoDispose<FluencySummary?>((
     onSaveFailure: (error, _) =>
         debugPrint('[fluency] history computed but not saved: $error'),
   );
-  return FluencySummary.of(
-    history.days,
-    catalog: ref.watch(practiceCatalogProvider),
+  return (
+    summary: FluencySummary.of(
+      history.days,
+      catalog: ref.watch(practiceCatalogProvider),
+    ),
+    days: history.days,
   );
 });
 
@@ -54,7 +62,7 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final summary = ref.watch(fluencySummaryProvider);
+    final report = ref.watch(fluencyReportProvider);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Fluency'),
@@ -70,11 +78,11 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
           ),
         ],
       ),
-      body: switch (summary) {
+      body: switch (report) {
         AsyncError() => _Unavailable(
-          onRetry: () => ref.invalidate(fluencySummaryProvider),
+          onRetry: () => ref.invalidate(fluencyReportProvider),
         ),
-        AsyncValue(hasValue: true, value: final summary?) => _body(summary),
+        AsyncValue(hasValue: true, value: final report?) => _body(report),
         AsyncValue(hasValue: true) => const Center(
           child: Text('Fluency appears once you have started practicing.'),
         ),
@@ -83,7 +91,8 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
     );
   }
 
-  Widget _body(FluencySummary summary) {
+  Widget _body(FluencyReport report) {
+    final summary = report.summary;
     final theme = Theme.of(context);
     final layout = Layout.of(context);
     final catalog = ref.watch(practiceCatalogProvider);
@@ -190,6 +199,13 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
               textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+            PlayingPaceChart(
+              days: report.days,
+              today: CalendarDay.localOf(DateTime.now()),
             ),
           ],
         ),
