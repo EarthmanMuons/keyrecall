@@ -67,3 +67,6 @@ Flutter added a `build/**` analyzer exclusion to the Flutter package.
 
 - Extend beams to the outer stem edges, preserving the slope at the stem centers
   and the middle-line clearance. Includes cross-staff beams and geometry tests.
+- Draw the grand staff's start line from the upper staff's top line to the lower
+  staff's bottom line, including every wrapped interactive system. Ledger lines
+  outside the five-line staves do not extend this conventional system boundary.

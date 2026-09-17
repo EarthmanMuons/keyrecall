@@ -326,8 +326,15 @@ class RenderGrandStaffView extends RenderBox {
       );
     }
 
-    connect(
-        0, layout.upper.primitives.whereType<LinePrimitive>().first.thickness);
+    canvas.drawLine(
+      upper,
+      lower + Offset(0, 4 * _scale),
+      Paint()
+        ..color = _theme.staffColor
+        ..strokeWidth =
+            layout.upper.primitives.whereType<LinePrimitive>().first.thickness *
+                _scale,
+    );
     for (final line in layout.upper.primitives.whereType<LinePrimitive>()) {
       final vertical = line.from.x == line.to.x;
       final fullStaff = line.from.y == 0 && line.to.y == 4 ||

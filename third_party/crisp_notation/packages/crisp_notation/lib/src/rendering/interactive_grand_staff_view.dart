@@ -954,7 +954,15 @@ class RenderInteractiveGrandStaffView extends RenderBox
       }
 
       final lines = layout.upper.primitives.whereType<LinePrimitive>();
-      if (lines.isNotEmpty) connect(0, lines.first.thickness);
+      if (lines.isNotEmpty) {
+        canvas.drawLine(
+          upper,
+          lower + Offset(0, 4 * _staffSpace),
+          Paint()
+            ..color = _theme.staffColor
+            ..strokeWidth = lines.first.thickness * _staffSpace,
+        );
+      }
       for (final line in lines) {
         final vertical = line.from.x == line.to.x;
         final fullStaff = line.from.y == 0 && line.to.y == 4 ||
