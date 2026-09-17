@@ -1,7 +1,10 @@
 import 'dart:async';
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 
 import 'package:crisp_notation/crisp_notation.dart' as crisp;
-import 'package:flutter/semantics.dart';
 
 import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -107,6 +110,97 @@ void main() {
     // Four beats at the default 80 bpm, plus a beat of margin.
     await tester.pump(const Duration(milliseconds: 750 * 5));
   }
+
+  testWidgets('two-hand staff is visible on a phone', (tester) async {
+    crisp.MusicFonts.debugReset();
+    await tester.runAsync(() async {
+      final loader = FontLoader('packages/crisp_notation/Bravura')
+        ..addFont(
+          rootBundle.load('packages/crisp_notation/assets/fonts/Bravura.otf'),
+        );
+      await loader.load();
+    });
+    tester.view.physicalSize = const Size(1179, 2556);
+    tester.view.devicePixelRatio = 3;
+    tester.view.padding = const FakeViewPadding(top: 177, bottom: 102);
+    addTearDown(tester.view.reset);
+    final exercise = Exercise.linear(
+      material: TechnicalMaterial('F#', ScaleForm.harmonicMinor),
+      hands: HandConfiguration.together,
+      guidance: GuidanceContext.continuouslyCued,
+    );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [syntheticInstrument],
+        child: RepaintBoundary(
+          key: const ValueKey('phone-frame'),
+          child: MaterialApp(
+            theme: ThemeData.dark(),
+            home: Scaffold(
+              body: AttemptView(
+                exercise: exercise,
+                presentation: presentationFor(
+                  exercise.guidance,
+                  exercise: exercise,
+                ),
+                onFinish: (_) async {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    for (var i = 0; i < 10; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 20)),
+      );
+      await tester.pump();
+    }
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    final finder = find.byType(crisp.InteractiveGrandStaffView);
+    expect(finder, findsOneWidget);
+    final render = tester.renderObject<crisp.RenderInteractiveGrandStaffView>(
+      finder,
+    );
+    expect(render.grandStaffSystems, isNotNull);
+    expect(render.grandStaffSystems!.systems, isNotEmpty);
+    expect(
+      tester.getRect(finder).overlaps(const Rect.fromLTWH(0, 0, 393, 852)),
+      isTrue,
+    );
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.byKey(const ValueKey('phone-frame')),
+    );
+    await tester.runAsync(() async {
+      final image = await boundary.toImage();
+      final bytes = await image.toByteData(format: ui.ImageByteFormat.rawRgba);
+      final origin = render.localToGlobal(render.upperOrigin(0));
+      final width =
+          render.grandStaffSystems!.systems.first.layout.width * render.scale;
+      final color = render.theme.staffColor;
+      var staffPixels = 0;
+      for (
+        var y = origin.dy.floor();
+        y <= (origin.dy + 4 * render.scale).ceil();
+        y++
+      ) {
+        for (var x = origin.dx.ceil(); x < (origin.dx + width).floor(); x++) {
+          if (x < 0 || x >= image.width || y < 0 || y >= image.height) continue;
+          final offset = (y * image.width + x) * 4;
+          if ((bytes!.getUint8(offset) - (color.r * 255).round()).abs() < 8 &&
+              (bytes.getUint8(offset + 1) - (color.g * 255).round()).abs() <
+                  8 &&
+              (bytes.getUint8(offset + 2) - (color.b * 255).round()).abs() <
+                  8) {
+            staffPixels++;
+          }
+        }
+      }
+      expect(staffPixels, greaterThan(100));
+      image.dispose();
+    });
+  });
 
   group('what the attempt says it ran under', () {
     testWidgets('carries the resolved conditions to the close', (tester) async {

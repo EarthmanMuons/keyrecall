@@ -37,15 +37,8 @@ const double _maximumStaffSpace = 16;
 /// so a system that would fall below it gives up a bar instead.
 const double _readableStaffSpace = 9;
 
-/// Staff spaces between the staves of a grand staff, and the wider gap a
-/// braced system needs when it is carrying fingering.
-///
-/// The engraver writes every digit above its note, so the lower staff's sit
-/// between the staves and collide with what is written over the upper one.
-/// Widening the gap is what this layer can do about that; the fix is a
-/// placement the engraver does not yet expose.
+/// Staff spaces between the staves of a grand staff.
 const double _standardStaffGap = 4;
-const double _fingeredStaffGap = 9;
 
 /// One staff, wrapped into systems and drawn as large as the width allows.
 ///
@@ -221,6 +214,7 @@ crisp.CrispNotationTheme staffTheme(BuildContext context) {
     staffColor: scheme.onSurfaceVariant,
     noteColor: scheme.onSurface,
     highlightColor: scheme.primary,
+    fingeringPlacement: crisp.FingeringPlacement.outsideStaff,
   );
 }
 
@@ -360,7 +354,6 @@ class _StaffCueState extends ConsumerState<StaffCue> {
     if (realization.hands.length > 1) {
       return described(
         FittedGrandStaff(
-          staffGap: showsFingering ? _fingeredStaffGap : _standardStaffGap,
           grandStaff: grandStaffFor(
             realization,
             fingering: {

@@ -206,7 +206,12 @@ double? fittedGrandStaffSpace(
 
 crisp.LayoutSettings? _layoutSettings() {
   final metadata = crisp.MusicFonts.metadataOrNull(crisp.MusicFont.bravura);
-  return metadata == null ? null : crisp.LayoutSettings(metadata: metadata);
+  return metadata == null
+      ? null
+      : crisp.LayoutSettings(
+          metadata: metadata,
+          fingeringPlacement: crisp.FingeringPlacement.outsideStaff,
+        );
 }
 
 /// Both staves, braced together, for an exercise played with both hands.
