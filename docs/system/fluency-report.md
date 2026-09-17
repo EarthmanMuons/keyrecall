@@ -195,14 +195,18 @@ managed tempo, and weekly statistics are all read-time policy.
 Due for review, durability, skill ranges, and trouble spots are current
 inferences and are never projected.
 
-Days are assigned by a caller-supplied function, the device's local date by
-default. That is a build parameter rather than a recorded fact, so a history
-built in one time zone is rebuilt rather than reinterpreted in another.
+Days are assigned by a `DayPartition`, the device's local date in production.
+The journal records instants and not the civil day they fell on, so the day is a
+build parameter rather than a fact. The partition's identity is persisted with
+the projection, and one built under another partition is rebuilt rather than
+extended with days assigned a different way. If the local day at performance
+time ever matters as evidence, it has to be captured in the attempt record when
+it is committed; it cannot be recovered from UTC later.
 
-The projection records its schema version, its profile, and how many journal
-records it covers. It is rebuilt whole from the journal when any of those
-disagree, and reading refuses an attempt total that does not match the coverage
-it claims. Three properties are tested:
+The projection records its schema version, its profile, its day partition, and
+how many journal records it covers. It is rebuilt whole from the journal when
+any of those disagree, and reading refuses an attempt total that does not match
+the coverage it claims. Three properties are tested:
 
 - **Equivalence.** Rebuilding from the journal equals applying its records one
   at a time, including across a write and read at every prefix.

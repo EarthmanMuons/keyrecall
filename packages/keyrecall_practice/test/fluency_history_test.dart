@@ -11,21 +11,21 @@ import 'support/fixtures.dart';
 
 final _material = fixtureMaterials.first;
 
-CalendarDay _utcDay(DateTime at) => CalendarDay(at.year, at.month, at.day);
+final _utcDay = DayPartition.utc;
 
-CalendarDay _oneDay(DateTime _) => CalendarDay(2026, 1, 1);
+final _oneDay = DayPartition('ONE_DAY', (_) => CalendarDay(2026, 1, 1));
 
 void main() {
   group('projection contract', () {
     test('rebuilding equals applying the same records one at a time', () async {
       final journal = await _practisedJournal();
-      final incremental = FluencyHistory.empty(alice.id, dayOf: _utcDay);
+      final incremental = FluencyHistory.empty(alice.id, partition: _utcDay);
       for (final record in journal.records) {
         incremental.apply(record);
       }
 
       expect(journal.length, greaterThan(20));
-      expect(incremental, FluencyHistory.rebuild(journal, dayOf: _utcDay));
+      expect(incremental, FluencyHistory.rebuild(journal, partition: _utcDay));
       expect(incremental.days.length, greaterThan(1));
       expect({
         for (final day in incremental.days)
@@ -39,14 +39,14 @@ void main() {
       'a history read back mid-journal continues to the rebuilt one',
       () async {
         final journal = await _practisedJournal();
-        final rebuilt = FluencyHistory.rebuild(journal, dayOf: _utcDay);
+        final rebuilt = FluencyHistory.rebuild(journal, partition: _utcDay);
 
         for (var split = 0; split <= journal.length; split++) {
-          final prefix = FluencyHistory.empty(alice.id, dayOf: _utcDay);
+          final prefix = FluencyHistory.empty(alice.id, partition: _utcDay);
           journal.records.take(split).forEach(prefix.apply);
           final restored = FluencyHistory.fromJson(
             _roundTrip(prefix.toJson()),
-            dayOf: _utcDay,
+            partition: _utcDay,
           );
           journal.records.skip(split).forEach(restored.apply);
 
@@ -57,7 +57,7 @@ void main() {
 
     test('a later record never rewrites an earlier observation', () async {
       final journal = await _practisedJournal();
-      final history = FluencyHistory.empty(alice.id, dayOf: _utcDay);
+      final history = FluencyHistory.empty(alice.id, partition: _utcDay);
 
       for (final record in journal.records) {
         final before = history.days;
@@ -78,7 +78,7 @@ void main() {
       final journal = await _practisedJournal();
       final before = [for (final record in journal.records) record.toJson()];
 
-      FluencyHistory.rebuild(journal, dayOf: _utcDay);
+      FluencyHistory.rebuild(journal, partition: _utcDay);
 
       expect([for (final record in journal.records) record.toJson()], before);
     });
@@ -107,6 +107,16 @@ void main() {
       );
     });
 
+    test('an untested retrieval is not cued unless cues were showing', () {
+      expect(
+        _level(
+          guidance: GuidanceContext.notesPreviewedOnly,
+          retrieval: FactualRetrieval.notTested,
+        ),
+        isNull,
+      );
+    });
+
     test('a failed retrieval demonstrates nothing, even when completed', () {
       expect(
         _level(
@@ -118,7 +128,7 @@ void main() {
     });
 
     test('a later failure or weaker rung keeps the day\'s best', () {
-      final history = FluencyHistory.empty(alice.id, dayOf: _oneDay)
+      final history = FluencyHistory.empty(alice.id, partition: _oneDay)
         ..apply(_record(0, guidance: GuidanceContext.unguided))
         ..apply(
           _record(
@@ -142,7 +152,7 @@ void main() {
     });
 
     test('a repeat at the best rung moves its date forward', () {
-      final history = FluencyHistory.empty(alice.id, dayOf: _oneDay)
+      final history = FluencyHistory.empty(alice.id, partition: _oneDay)
         ..apply(_record(0))
         ..apply(_record(1));
 
@@ -153,7 +163,7 @@ void main() {
     });
 
     test('an unmeasured attempt counts as practice and nothing else', () {
-      final history = FluencyHistory.empty(alice.id, dayOf: _oneDay)
+      final history = FluencyHistory.empty(alice.id, partition: _oneDay)
         ..apply(
           recordOf(
             _exercise(),
@@ -209,7 +219,7 @@ void main() {
 
   group('refusals', () {
     test('a record out of sequence is refused', () {
-      final history = FluencyHistory.empty(alice.id, dayOf: _oneDay);
+      final history = FluencyHistory.empty(alice.id, partition: _oneDay);
 
       expect(() => history.apply(_record(1)), throwsArgumentError);
       history.apply(_record(0));
@@ -218,7 +228,7 @@ void main() {
     });
 
     test('a record from another profile is refused', () {
-      final history = FluencyHistory.empty('someone-else', dayOf: _oneDay);
+      final history = FluencyHistory.empty('someone-else', partition: _oneDay);
 
       expect(() => history.apply(_record(0)), throwsArgumentError);
     });
@@ -227,7 +237,7 @@ void main() {
       var day = 2;
       final history = FluencyHistory.empty(
         alice.id,
-        dayOf: (_) => CalendarDay(2026, 1, day--),
+        partition: DayPartition('BACKWARD', (_) => CalendarDay(2026, 1, day--)),
       )..apply(_record(0));
 
       expect(() => history.apply(_record(1)), throwsArgumentError);
@@ -238,7 +248,16 @@ void main() {
       final json = _history()..['schema_version'] = 2;
 
       expect(
-        () => FluencyHistory.fromJson(json),
+        () => FluencyHistory.fromJson(json, partition: _oneDay),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('a history built under another day partition is not read', () {
+      final json = _history(partition: _utcDay);
+
+      expect(
+        () => FluencyHistory.fromJson(json, partition: _oneDay),
         throwsA(isA<JournalFormatException>()),
       );
     });
@@ -247,17 +266,17 @@ void main() {
       final json = _history()..['covered_records'] = 5;
 
       expect(
-        () => FluencyHistory.fromJson(json),
+        () => FluencyHistory.fromJson(json, partition: _oneDay),
         throwsA(isA<JournalFormatException>()),
       );
     });
 
     test('days out of order are not read', () {
-      final json = _history(dayOf: _utcDay);
+      final json = _history(partition: _utcDay);
       json['days'] = (json['days']! as List).reversed.toList();
 
       expect(
-        () => FluencyHistory.fromJson(json),
+        () => FluencyHistory.fromJson(json, partition: _utcDay),
         throwsA(isA<JournalFormatException>()),
       );
     });
@@ -269,7 +288,7 @@ void main() {
       day['demonstrations'] = [...demonstrations, ...demonstrations];
 
       expect(
-        () => FluencyHistory.fromJson(json),
+        () => FluencyHistory.fromJson(json, partition: _oneDay),
         throwsA(isA<JournalFormatException>()),
       );
     });
@@ -280,7 +299,7 @@ void main() {
           '2026-02-31';
 
       expect(
-        () => FluencyHistory.fromJson(json),
+        () => FluencyHistory.fromJson(json, partition: _oneDay),
         throwsA(isA<JournalFormatException>()),
       );
     });
@@ -316,10 +335,11 @@ void _expectExtends(FluencyDay after, FluencyDay before) {
 Map<String, Object?> _roundTrip(Map<String, Object?> json) =>
     jsonDecode(jsonEncode(json)) as Map<String, Object?>;
 
-Map<String, Object?> _history({DayOf dayOf = _oneDay}) {
-  final history = FluencyHistory.empty(alice.id, dayOf: dayOf)
-    ..apply(_record(0))
-    ..apply(_record(1, guidance: GuidanceContext.notesPreviewedOnly));
+Map<String, Object?> _history({DayPartition? partition}) {
+  final history =
+      FluencyHistory.empty(alice.id, partition: partition ?? _oneDay)
+        ..apply(_record(0))
+        ..apply(_record(1, guidance: GuidanceContext.notesPreviewedOnly));
   return _roundTrip(history.toJson());
 }
 

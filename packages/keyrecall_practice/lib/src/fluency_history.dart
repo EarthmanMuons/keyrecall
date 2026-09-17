@@ -64,8 +64,42 @@ class CalendarDay implements Comparable<CalendarDay> {
       '${day.toString().padLeft(2, '0')}';
 }
 
-/// Assigns an attempt's instant to the day it is reported under.
-typedef DayOf = CalendarDay Function(DateTime occurredAt);
+/// How attempts are assigned to days, and a stable name for that assignment.
+///
+/// The journal records instants, not the civil day they fell on, so the day is
+/// a build parameter. Its [id] is persisted with a projection, so one built
+/// under a different partition is rebuilt rather than extended with days
+/// assigned another way.
+@immutable
+class DayPartition {
+  final String id;
+  final CalendarDay Function(DateTime at) dayOf;
+
+  const DayPartition(this.id, this.dayOf);
+
+  /// Days as UTC reckons them.
+  static final DayPartition utc = DayPartition(
+    'UTC',
+    (at) => CalendarDay(at.toUtc().year, at.toUtc().month, at.toUtc().day),
+  );
+
+  /// Days in the device's time zone.
+  ///
+  /// Named by the zone's offsets in January and July, which distinguishes a
+  /// move between zones and a change of daylight-saving rules without the
+  /// zone database the platform does not expose.
+  factory DayPartition.local() {
+    int offsetInMonth(int month) =>
+        DateTime.utc(2026, month).toLocal().timeZoneOffset.inMinutes;
+    return DayPartition(
+      'LOCAL:${offsetInMonth(1)}:${offsetInMonth(7)}',
+      CalendarDay.localOf,
+    );
+  }
+
+  @override
+  String toString() => 'DayPartition($id)';
+}
 
 /// How independently a material was produced.
 ///
@@ -105,7 +139,10 @@ enum DemonstrationLevel {
           GuidanceContext.notesPreviewedOnly => notesPreviewed,
           _ => null,
         },
-        FactualRetrieval.notTested when outcome.completed => cued,
+        FactualRetrieval.notTested
+            when outcome.completed &&
+                record.exercise.guidance == GuidanceContext.continuouslyCued =>
+          cued,
         _ => null,
       };
     }
@@ -464,25 +501,25 @@ class FluencyDay {
 /// back into learner state or scheduling, and deleting it loses nothing the
 /// journal cannot rebuild.
 ///
-/// Days are assigned by [dayOf], which is a build parameter rather than a
+/// Days are assigned by [partition], which is a build parameter rather than a
 /// recorded fact: a projection built under one time zone is rebuilt, not
 /// reinterpreted, under another.
 class FluencyHistory {
   final String profileId;
-  final DayOf dayOf;
+  final DayPartition partition;
 
   final List<FluencyDay> _days;
   int _coveredRecords;
 
   /// A history covering no attempts.
-  FluencyHistory.empty(String profileId, {this.dayOf = CalendarDay.localOf})
+  FluencyHistory.empty(String profileId, {required this.partition})
     : profileId = requireProfileId(profileId),
       _days = [],
       _coveredRecords = 0;
 
   FluencyHistory._(
     this.profileId,
-    this.dayOf,
+    this.partition,
     this._days,
     this._coveredRecords,
   );
@@ -490,11 +527,11 @@ class FluencyHistory {
   /// The history [journal] projects to.
   factory FluencyHistory.rebuild(
     AttemptJournal journal, {
-    DayOf dayOf = CalendarDay.localOf,
+    required DayPartition partition,
   }) {
     final history = FluencyHistory.empty(
       journal.header.profileId,
-      dayOf: dayOf,
+      partition: partition,
     );
     journal.records.forEach(history.apply);
     return history;
@@ -526,7 +563,7 @@ class FluencyHistory {
         '${record.journalSequence}, expected $_coveredRecords',
       );
     }
-    final day = dayOf(record.identity.occurredAt);
+    final day = partition.dayOf(record.identity.occurredAt);
     final latest = _days.isEmpty ? null : _days.last;
     if (latest != null && day.compareTo(latest.day) < 0) {
       throw ArgumentError(
@@ -545,27 +582,41 @@ class FluencyHistory {
   Map<String, Object?> toJson() => {
     'schema_version': fluencyHistorySchemaVersion,
     'profile_id': profileId,
+    'day_partition': partition.id,
     'covered_records': _coveredRecords,
     'days': [for (final day in _days) day.toJson()],
   };
 
   /// Reads a history back.
   ///
-  /// Throws [JournalFormatException] for another schema version or anything
-  /// inconsistent, including days out of order or an attempt total that
-  /// disagrees with the records it claims to cover. The caller rebuilds from
+  /// Throws [JournalFormatException] for another schema version, another day
+  /// partition, or anything inconsistent, including days out of order or an
+  /// attempt total that disagrees with the records it claims to cover. The caller rebuilds from
   /// the journal rather than trusting a partial reading.
   factory FluencyHistory.fromJson(
     Map<String, Object?> json, {
-    DayOf dayOf = CalendarDay.localOf,
-  }) => located(() => FluencyHistory._fromJson(json, dayOf), 'fluency history');
+    required DayPartition partition,
+  }) => located(
+    () => FluencyHistory._fromJson(json, partition),
+    'fluency history',
+  );
 
-  static FluencyHistory _fromJson(Map<String, Object?> json, DayOf dayOf) {
+  static FluencyHistory _fromJson(
+    Map<String, Object?> json,
+    DayPartition partition,
+  ) {
     final version = requireInt(json, 'schema_version');
     if (version != fluencyHistorySchemaVersion) {
       throw JournalFormatException(
         'fluency history schema version $version is not readable by this '
         'build, which writes version $fluencyHistorySchemaVersion',
+      );
+    }
+    final partitionId = requireString(json, 'day_partition');
+    if (partitionId != partition.id) {
+      throw JournalFormatException(
+        'fluency history was built under day partition $partitionId, not '
+        '${partition.id}',
       );
     }
     final covered = requireInt(json, 'covered_records');
@@ -588,7 +639,7 @@ class FluencyHistory {
     }
     return FluencyHistory._(
       requireProfileId(requireString(json, 'profile_id')),
-      dayOf,
+      partition,
       days,
       covered,
     );
@@ -598,6 +649,7 @@ class FluencyHistory {
   bool operator ==(Object other) =>
       other is FluencyHistory &&
       other.profileId == profileId &&
+      other.partition.id == partition.id &&
       other._coveredRecords == _coveredRecords &&
       _sameList(other._days, _days);
 
