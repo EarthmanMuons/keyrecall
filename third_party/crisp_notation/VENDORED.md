@@ -70,3 +70,9 @@ Flutter added a `build/**` analyzer exclusion to the Flutter package.
 - Draw the grand staff's start line from the upper staff's top line to the lower
   staff's bottom line, including every wrapped interactive system. Ledger lines
   outside the five-line staves do not extend this conventional system boundary.
+- Add optional above-staff, below-staff, and clef-based outside-staff fingering
+  placement through layout settings and notation themes. Preserve the original
+  above-note default. Place fingerings after other notation, using the staff
+  edge as a baseline with local glyph-metric clearance and outward stacking. A
+  focused, reviewed screenshot baseline covers piano fingering, beam edges, and
+  the grand staff start line.
