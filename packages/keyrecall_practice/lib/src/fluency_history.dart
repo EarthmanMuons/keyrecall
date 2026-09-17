@@ -523,18 +523,21 @@ class FluencyHistory {
 
   final List<FluencyDay> _days;
   int _coveredRecords;
+  String _coversHistoryHash;
 
   /// A history covering no attempts.
   FluencyHistory.empty(String profileId, {required this.partition})
     : profileId = requireProfileId(profileId),
       _days = [],
-      _coveredRecords = 0;
+      _coveredRecords = 0,
+      _coversHistoryHash = _genesisHash(profileId);
 
   FluencyHistory._(
     this.profileId,
     this.partition,
     this._days,
     this._coveredRecords,
+    this._coversHistoryHash,
   );
 
   /// The history [journal] projects to.
@@ -553,6 +556,24 @@ class FluencyHistory {
   /// How many journal records this covers, which is also the sequence the next
   /// applied record must carry.
   int get coveredRecords => _coveredRecords;
+
+  /// Digest of every record this covers, in order.
+  ///
+  /// A count alone cannot tell a stored projection of this journal from one of
+  /// a history an erase replaced with as many attempts.
+  String get coversHistoryHash => _coversHistoryHash;
+
+  /// Whether this covers exactly the first [coveredRecords] records of
+  /// [journal], so the rest can be applied rather than everything rebuilt.
+  bool coversPrefixOf(AttemptJournal journal) {
+    if (journal.header.profileId != profileId) return false;
+    if (_coveredRecords > journal.length) return false;
+    var digest = _genesisHash(profileId);
+    for (final record in journal.records.take(_coveredRecords)) {
+      digest = _chainHash(digest, record);
+    }
+    return digest == _coversHistoryHash;
+  }
 
   /// Every day with practice, in calendar order.
   List<FluencyDay> get days => List.unmodifiable(_days);
@@ -590,6 +611,7 @@ class FluencyHistory {
       _days.add(FluencyDay.of(day, record));
     }
     _coveredRecords++;
+    _coversHistoryHash = _chainHash(_coversHistoryHash, record);
   }
 
   Map<String, Object?> toJson() => {
@@ -597,6 +619,7 @@ class FluencyHistory {
     'profile_id': profileId,
     'day_partition': partition.id,
     'covered_records': _coveredRecords,
+    'covers_history_hash': _coversHistoryHash,
     'days': [for (final day in _days) day.toJson()],
   };
 
@@ -655,6 +678,7 @@ class FluencyHistory {
       partition,
       days,
       covered,
+      requireString(json, 'covers_history_hash'),
     );
   }
 
@@ -664,6 +688,7 @@ class FluencyHistory {
       other.profileId == profileId &&
       other.partition.id == partition.id &&
       other._coveredRecords == _coveredRecords &&
+      other._coversHistoryHash == _coversHistoryHash &&
       _sameList(other._days, _days);
 
   @override
@@ -674,6 +699,14 @@ class FluencyHistory {
       'FluencyHistory($profileId, $_coveredRecords attempts, '
       '${_days.length} days)';
 }
+
+String _genesisHash(String profileId) =>
+    contentHash({'fluency_history': profileId});
+
+String _chainHash(String previous, AttemptRecord record) => contentHash({
+  'previous': previous,
+  'attempt': contentHash(record.toJson()),
+});
 
 List<Object?> _list(Map<String, Object?> json, String key) {
   final value = json[key];

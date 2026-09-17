@@ -1,6 +1,7 @@
 # The fluency report
 
-- **Status:** proposed. Only the fluency history projection is built.
+- **Status:** proposed. The fluency history projection, its storage, and its
+  queries are built; nothing learner-facing is.
 
 A menu destination, beside Goal, that answers three questions a learner asks
 about their practice, and keeps them apart:
@@ -226,17 +227,29 @@ extended with days assigned a different way. If the local day at performance
 time ever matters as evidence, it has to be captured in the attempt record when
 it is committed; it cannot be recovered from UTC later.
 
-The projection records its schema version, its profile, its day partition, and
-how many journal records it covers. It is rebuilt whole from the journal when
-any of those disagree, and reading refuses an attempt total that does not match
-the coverage it claims. Three properties are tested:
+The projection records its schema version, its profile, its day partition, how
+many journal records it covers, and a digest chained over those records. A count
+alone cannot tell this journal from a history an erase replaced with as many
+attempts, and the digest can.
+
+It is stored in one overwritable slot per profile. `openFluencyHistory` reads
+the saved projection, extends it when it still covers a prefix of the journal,
+and otherwise rebuilds it: when it cannot be read, was built under another
+partition, covers more than the journal holds, or covers different records. It
+saves only when the result covers something the saved one did not. Erasing a
+profile takes the slot along, and a retired incarnation cannot write one.
+
+Four properties are tested:
 
 - **Equivalence.** Rebuilding from the journal equals applying its records one
-  at a time, including across a write and read at every prefix.
+  at a time, including across a write and read at every prefix, and equals what
+  extending a saved projection produces.
 - **Prefix stability.** Applying a record never changes an earlier day, and only
   extends the latest one.
-- **Irrelevance.** Projecting never writes to the journal. Nothing in learner
-  state or scheduling reads the projection, so deleting it changes nothing else.
+- **Staleness.** A saved projection of any other history is rebuilt rather than
+  extended.
+- **Irrelevance.** Reopening practice with the projection saved, deleted, or
+  corrupt yields the same learner state and the same next decision.
 
 ## Build order
 

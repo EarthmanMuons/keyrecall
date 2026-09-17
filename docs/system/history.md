@@ -203,10 +203,12 @@ read as such.
 
 ### 4. Fluency history, a rebuildable projection
 
-Does not exist yet, and is where time-series thinking belongs. A chart over
-years of practice should not scan the whole journal per frame, so it wants
-derived storage: daily sufficient statistics from which report series are
-computed, downsampled with age. Its proposed shape is in
+Where time-series thinking belongs. A chart over years of practice should not
+scan the whole journal per frame, so `FluencyHistory` keeps daily observations
+from which report series are computed, in one overwritable slot per profile.
+`openFluencyHistory` extends the saved projection when it still covers a prefix
+of the journal and rebuilds it otherwise; erasing a profile takes it along. Its
+contents and the reports read from it are in
 [`fluency-report.md`](fluency-report.md).
 
 All of that is safe **because the projection is disposable**. Delete it, rebuild

@@ -6,6 +6,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 
 import 'coordination_log.dart';
 import 'feedback_exposure.dart';
+import 'fluency_history.dart';
 import 'json_lines.dart';
 import 'pending_decision.dart';
 import 'practice_plan.dart';
@@ -21,6 +22,7 @@ import 'profile_write_queue.dart';
 /// <root>/<profileId>/feedback.jsonl    append-only exposure record
 /// <root>/<profileId>/pending.json      one slot, replaced or removed
 /// <root>/<profileId>/checkpoint.json   one slot, replaced
+/// <root>/<profileId>/fluency.json      one slot, replaced
 /// <root>/<profileId>/plan.json         one slot, replaced
 /// <root>/<profileId>/coordination.jsonl append-only diagnostic log
 /// <root>/<profileId>/selections.jsonl  append-only selection diagnostics
@@ -534,6 +536,45 @@ class FilePracticeStore implements PracticeStore {
     );
   }
 
+  @override
+  Future<FluencyHistory?> loadFluencyHistory(
+    String profileId, {
+    required DayPartition partition,
+  }) => _queue.run(profileId, () => _loadFluencyHistory(profileId, partition));
+
+  Future<FluencyHistory?> _loadFluencyHistory(
+    String profileId,
+    DayPartition partition,
+  ) async {
+    await _recoverErase(profileId);
+    final file = _fluencyFile(profileId);
+    if (!file.existsSync()) return null;
+    final json = asMap(
+      await _decode(file, 'fluency history'),
+      'fluency history',
+      location: file.path,
+    );
+    final history = located(
+      () => FluencyHistory.fromJson(json, partition: partition),
+      'fluency history',
+      location: file.path,
+    );
+    _requireOwnership(history.profileId, profileId, file);
+    return history;
+  }
+
+  @override
+  Future<void> saveFluencyHistory(FluencyHistory history) =>
+      _write(history.profileId, null, () => _saveFluencyHistory(history));
+
+  Future<void> _saveFluencyHistory(FluencyHistory history) async {
+    await _recoverErase(history.profileId);
+    await _writeAtomically(
+      _fluencyFile(history.profileId),
+      canonicalJson(history.toJson()),
+    );
+  }
+
   /// Reads the records that were fully committed.
   ///
   /// A crash mid-append can leave a final record without its terminating
@@ -634,6 +675,7 @@ class FilePracticeStore implements PracticeStore {
         _acquisitionFile(profileId),
         _pendingFile(profileId),
         _checkpointFile(profileId),
+        _fluencyFile(profileId),
         _feedbackFile(profileId),
         _planFile(profileId),
         _coordinationFile(profileId),
@@ -681,6 +723,9 @@ class FilePracticeStore implements PracticeStore {
 
   File _checkpointFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/checkpoint.json');
+
+  File _fluencyFile(String profileId) =>
+      File('${_profileDirectory(profileId).path}/fluency.json');
 
   File _coordinationFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/coordination.jsonl');
@@ -830,6 +875,19 @@ class _LifetimeBoundFileStore implements PracticeStore {
         _lifetime,
         () => _store._saveCheckpoint(checkpoint),
       );
+
+  @override
+  Future<FluencyHistory?> loadFluencyHistory(
+    String profileId, {
+    required DayPartition partition,
+  }) => _store.loadFluencyHistory(profileId, partition: partition);
+
+  @override
+  Future<void> saveFluencyHistory(FluencyHistory history) => _store._write(
+    history.profileId,
+    _lifetime,
+    () => _store._saveFluencyHistory(history),
+  );
 
   @override
   Future<void> erase(String profileId) => _store.erase(profileId);

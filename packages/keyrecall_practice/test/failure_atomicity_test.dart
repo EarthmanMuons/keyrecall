@@ -114,6 +114,16 @@ class FlakyPracticeStore with UnretiredLifetimes implements PracticeStore {
       inner.saveCheckpoint(checkpoint);
 
   @override
+  Future<FluencyHistory?> loadFluencyHistory(
+    String profileId, {
+    required DayPartition partition,
+  }) => inner.loadFluencyHistory(profileId, partition: partition);
+
+  @override
+  Future<void> saveFluencyHistory(FluencyHistory history) =>
+      inner.saveFluencyHistory(history);
+
+  @override
   Future<List<CoordinationSample>> loadCoordinationSamples(String profileId) =>
       inner.loadCoordinationSamples(profileId);
 
@@ -217,6 +227,16 @@ class MisfilingPracticeStore with UnretiredLifetimes implements PracticeStore {
   @override
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) =>
       inner.saveCheckpoint(checkpoint);
+
+  @override
+  Future<FluencyHistory?> loadFluencyHistory(
+    String profileId, {
+    required DayPartition partition,
+  }) => inner.loadFluencyHistory(profileId, partition: partition);
+
+  @override
+  Future<void> saveFluencyHistory(FluencyHistory history) =>
+      inner.saveFluencyHistory(history);
 
   @override
   Future<List<CoordinationSample>> loadCoordinationSamples(String profileId) =>

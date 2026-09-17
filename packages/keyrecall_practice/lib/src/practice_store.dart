@@ -2,6 +2,7 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'coordination_log.dart';
 import 'feedback_exposure.dart';
+import 'fluency_history.dart';
 import 'pending_decision.dart';
 import 'practice_plan.dart';
 import 'profile_lifetime.dart';
@@ -18,6 +19,8 @@ import 'profile_lifetime.dart';
 ///   resolved rather than guessed at.
 /// - **Checkpoints** are a single overwritable slot per profile, and losing one
 ///   costs only replay time.
+/// - **Fluency history** is a single overwritable slot per profile, a
+///   projection of the journal that losing costs only a rebuild.
 /// - **Coordination samples** are an append-only diagnostic log, not evidence.
 ///   Nothing replays them and losing them costs only the ability to look back
 ///   at how far apart the hands actually arrived.
@@ -161,6 +164,19 @@ abstract interface class PracticeStore {
   /// Saves [checkpoint], replacing any earlier one.
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint);
 
+  /// The saved fluency history for [profileId], if one was saved.
+  ///
+  /// Throws [JournalFormatException] for one that cannot be read, including one
+  /// built under another [partition]. It is a projection, so a caller treats
+  /// that as nothing saved.
+  Future<FluencyHistory?> loadFluencyHistory(
+    String profileId, {
+    required DayPartition partition,
+  });
+
+  /// Saves [history], replacing any earlier one.
+  Future<void> saveFluencyHistory(FluencyHistory history);
+
   /// Erases everything recorded for [profileId].
   ///
   /// Destroys history rather than correcting it, which is the one operation a
@@ -263,6 +279,7 @@ class InMemoryPracticeStore implements PracticeStore {
   final Map<String, AcquisitionJournal> _acquisitionLogs = {};
   final Map<String, PendingDecision> _pending = {};
   final Map<String, LearnerStateCheckpoint> _checkpoints = {};
+  final Map<String, Map<String, Object?>> _fluencyHistories = {};
   final Map<String, PracticePlan> _plans = {};
   final Map<String, Map<String, CoordinationSample>> _coordination = {};
   final Map<String, Map<(String, PostAttemptFeedback), FeedbackExposure>>
@@ -377,6 +394,22 @@ class InMemoryPracticeStore implements PracticeStore {
   }
 
   @override
+  Future<FluencyHistory?> loadFluencyHistory(
+    String profileId, {
+    required DayPartition partition,
+  }) async => switch (_fluencyHistories[profileId]) {
+    final json? => FluencyHistory.fromJson(json, partition: partition),
+    null => null,
+  };
+
+  /// Held encoded, so a caller extending the history it saved cannot change
+  /// what was saved.
+  @override
+  Future<void> saveFluencyHistory(FluencyHistory history) async {
+    _fluencyHistories[history.profileId] = history.toJson();
+  }
+
+  @override
   Future<void> erase(String profileId) async {
     await retireLifetime(profileId);
     _selections.remove(profileId);
@@ -384,6 +417,7 @@ class InMemoryPracticeStore implements PracticeStore {
     _acquisitionLogs.remove(profileId);
     _pending.remove(profileId);
     _checkpoints.remove(profileId);
+    _fluencyHistories.remove(profileId);
     _feedback.remove(profileId);
     _plans.remove(profileId);
     _coordination.remove(profileId);
@@ -538,6 +572,18 @@ class _LifetimeBoundMemoryStore implements PracticeStore {
   Future<void> saveCheckpoint(LearnerStateCheckpoint checkpoint) async {
     _authorize(checkpoint.profileId);
     await _store.saveCheckpoint(checkpoint);
+  }
+
+  @override
+  Future<FluencyHistory?> loadFluencyHistory(
+    String profileId, {
+    required DayPartition partition,
+  }) => _store.loadFluencyHistory(profileId, partition: partition);
+
+  @override
+  Future<void> saveFluencyHistory(FluencyHistory history) async {
+    _authorize(history.profileId);
+    await _store.saveFluencyHistory(history);
   }
 
   @override
