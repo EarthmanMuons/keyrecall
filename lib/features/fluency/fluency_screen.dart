@@ -10,8 +10,10 @@ import '../../layout.dart';
 import '../practice/exercise_presentation.dart';
 import '../practice/practice_providers.dart';
 import '../practice/task_help.dart';
+import 'fluency_shades.dart';
 import 'fluency_summary.dart';
 import 'playing_pace_chart.dart';
+import 'recall_milestones_chart.dart';
 
 /// What the report reads: the summary the key map shares with its sheet, and
 /// the days the charts are drawn from.
@@ -98,7 +100,8 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
     final catalog = ref.watch(practiceCatalogProvider);
     final scales = catalog.whereType<ScaleMaterial>().toList();
     final sectors = keySectors(catalog);
-    final shades = _Shades(theme.colorScheme);
+    final shades = FluencyShades(theme.colorScheme);
+    final today = CalendarDay.localOf(DateTime.now());
 
     Color fill(ScaleMaterial material) {
       final fluency = summary[material];
@@ -203,10 +206,13 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
             const SizedBox(height: 24),
             const Divider(),
             const SizedBox(height: 16),
-            PlayingPaceChart(
+            RecallMilestonesChart(
               days: report.days,
-              today: CalendarDay.localOf(DateTime.now()),
+              materialIds: {for (final scale in scales) scale.materialId},
+              today: today,
             ),
+            const SizedBox(height: 32),
+            PlayingPaceChart(days: report.days, today: today),
           ],
         ),
       ),
@@ -272,23 +278,6 @@ String _handsLabel(HandConfiguration hands) => switch (hands) {
   HandConfiguration.left => 'Left hand',
   HandConfiguration.together => 'Together',
 };
-
-/// The ramp both lenses shade on, from nothing shown to the most shown.
-class _Shades {
-  final ColorScheme scheme;
-
-  const _Shades(this.scheme);
-
-  Color _step(int step) => switch (step) {
-    0 => scheme.surfaceContainerHighest,
-    _ => Color.lerp(scheme.surfaceContainerHighest, scheme.primary, step / 3)!,
-  };
-
-  Color ofLevel(DemonstrationLevel? level) =>
-      _step(level == null ? 0 : level.index + 1);
-
-  Color ofBand(TempoBand band) => _step(band.index);
-}
 
 class _LegendEntry extends StatelessWidget {
   const _LegendEntry({required this.color, required this.label});

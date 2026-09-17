@@ -1,9 +1,8 @@
 # The fluency report
 
 - **Status:** partly built. The fluency history projection, its storage, its
-  queries, the key map with its detail sheet, and the playing pace chart are
-  built. The summary header, review marks, recall milestones, and skills panel
-  are proposed.
+  queries, the key map with its detail sheet, and both time charts are built.
+  The summary header, review marks, and skills panel are proposed.
 
 A menu destination, beside Goal, that answers three questions a learner asks
 about their practice, and keeps them apart:
@@ -198,9 +197,13 @@ detail-sheet dimensions, not rings.
 Weeks, not sittings. A sitting is where someone happened to stop, and a week is
 a unit a person recognizes as progress.
 
-**Recall milestones** stacks materials by demonstrated independence per week.
-Because demonstration is best-ever, the series only rises, and the title says
-milestones so nobody expects forgetting to appear in it.
+**Recall milestones** is built, above playing pace. It stacks the catalog's
+scales by the strongest level each had reached by the end of each of the last
+eight weeks, from memory at the base. The counts are cumulative over the whole
+history rather than the window, and best-ever, so the bars only grow and the
+title says milestones so nobody expects forgetting to appear in it. Tapping a
+week gives its count at each level. It shares the key map's shade ramp, so a
+level is one color throughout the report.
 
 **Playing pace** is built, below the key map after a section break rather than
 as another lens, since it answers a different question. It draws the last eight
