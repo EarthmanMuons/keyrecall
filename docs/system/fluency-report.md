@@ -67,26 +67,38 @@ detail sheet.
 
 ### Demonstrated tempo
 
-The fastest pace of an attempt whose execution was managed, as
-`LearnerModel.executionWasManaged` defines it: the requested tempo times the
-measured tempo ratio, capped at the requested tempo, so neither a request the
-learner fell short of nor an unscheduled overshoot counts. Kept per material,
-hands, motion, octave span, **and guidance rung**.
+The fastest pace of an attempt that qualifies under `TempoQualification`: the
+requested tempo times the measured tempo ratio, capped at the requested tempo,
+so neither a request the learner fell short of nor an unscheduled overshoot
+counts. Kept per material, hands, motion, octave span, **and guidance rung**.
+
+Qualification is the report's own versioned rule, read from observed fields
+only. Version 1 uses the same motor-score bar as
+`LearnerModel.executionWasManaged`, but it does not follow that threshold: the
+learner model is uncalibrated, and tuning it must not rewrite what a learner's
+history says they demonstrated. Changing the report's rule is a deliberate
+change to its identity.
 
 `MaterialExecutionState.demonstratedTempoByOctaves` cannot serve. It records the
 request rather than the pace, and it is not keyed by guidance, so a cued attempt
 and an unguided one at the same tempo share a slot. A tempo played while reading
 cues is a different demonstration.
 
-An attempt without authorized timing has no motor score, is never managed, and
-contributes no tempo. The report says once, in words, when an instrument's
-timing is missing, rather than showing slowness.
+An attempt without authorized timing has no motor score and contributes no
+tempo. The report says once, in words, when an instrument's timing is missing,
+rather than showing slowness.
 
 ### Typical tempo
 
-The median demonstrated tempo over every managed attempt in a week, per hand
-configuration, at one octave, never a combination of daily summaries. It exists
-for the trend chart, where a maximum is too noisy to read as development.
+The median of a week's qualifying tempos for one hand configuration at one
+octave, read from **one guidance rung**, never combined from daily summaries and
+never pooled across rungs. It exists for the trend chart, where a maximum is too
+noisy to read as development.
+
+Which rung, and whether the chart should read qualified attempts at all, is
+open. Characterization found the guidance rule matters only in the first weeks,
+while the motor bar leaves a beginner's weaker hand empty for weeks; see
+[`../research/experiments/fluency-tempo.md`](../research/experiments/fluency-tempo.md).
 
 ### Due for review
 
@@ -190,7 +202,8 @@ Only structural absences are filtered. A tempo observation is kept for an
 attempt that was not managed, because managed is a learner-model threshold, and
 the projection holds no learner-model interpretation at all. That is why it
 needs no model version: a model change cannot invalidate it. Best-ever levels,
-managed tempo, and weekly statistics are all read-time policy.
+qualified tempo, and weekly statistics are all read-time policy, in
+`fluency_reading.dart`.
 
 Due for review, durability, skill ranges, and trouble spots are current
 inferences and are never projected.
@@ -227,9 +240,9 @@ The first three are useful on their own while competency calibration moves.
 ## Open questions
 
 - Which hand configuration the tempo lens shows when several have a value.
-- Whether typical tempo should share the tempo lens's unguided restriction,
-  which would leave the chart empty for a learner who has not yet played from
-  memory, or use the most independent rung with enough observations.
+- Whether typical tempo reads demonstrated pace, which leaves weak hands empty,
+  or playing pace, which always has a value, and how a week resting on one or
+  two observations is shown.
 - The retrievability threshold for due for review, and whether it should match
   what the scheduler treats as due.
 - The reference exercise for each competency's skill zones.

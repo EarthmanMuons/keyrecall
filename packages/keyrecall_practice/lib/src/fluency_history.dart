@@ -45,6 +45,16 @@ class CalendarDay implements Comparable<CalendarDay> {
     );
   }
 
+  /// The day [days] after this one.
+  CalendarDay plusDays(int days) {
+    final shifted = DateTime.utc(year, month, day + days);
+    return CalendarDay(shifted.year, shifted.month, shifted.day);
+  }
+
+  /// The Monday of the week this day falls in.
+  CalendarDay get weekStart =>
+      plusDays(1 - DateTime.utc(year, month, day).weekday);
+
   @override
   int compareTo(CalendarDay other) => _ordinal.compareTo(other._ordinal);
 
