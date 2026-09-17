@@ -7,7 +7,7 @@ does when it is not.
 
 The evidence is eleven recorded traces in
 [`../../analysis/transport-clocks/`](../../analysis/transport-clocks/). What
-they established about clocks is in that README; the sequencing is in
+they established about clocks is in that README; what remains open is in
 [`../roadmap.md`](../roadmap.md). This file is the contract the layer has to
 meet.
 

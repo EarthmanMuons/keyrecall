@@ -136,9 +136,7 @@ distinguishable at all.
 Simulation is the fastest way to find out whether a scheduler change is sane.
 `packages/keyrecall_simulation/bin/sweep.dart` runs every synthetic player over
 many seeds and reports what went wrong; the invariant tests run a handful of
-seeds on every commit. One is skipped on purpose; see
-[`docs/roadmap.md`](docs/roadmap.md), "A sitting with nothing to offer", before
-you try to make it pass.
+seeds on every commit.
 
 ## Which document is authoritative
 

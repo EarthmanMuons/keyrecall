@@ -9,7 +9,7 @@
 - **Feeds:**
   [`docs/decisions/performance-timing.md`](../../docs/decisions/performance-timing.md),
   and the transport-timing entry in [`docs/roadmap.md`](../../docs/roadmap.md),
-  which now carries the five contracts these traces shaped
+  which carries what these traces left open
 
 ## The question
 

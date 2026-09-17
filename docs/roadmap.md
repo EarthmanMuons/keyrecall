@@ -784,9 +784,10 @@ that span - which is also what supplies the entry tempo.
 
 ### A sitting with nothing to offer
 
-`_NothingToPlay` remains an error state in the app. Scheduler absence is no
-longer ambiguous: `SchedulerPipeline.decide` returns `CandidateSelected` or
-`SelectionBlocked`, with admission exhaustion named as a blocked reason.
+The app distinguishes a caught-up scope, an invalid scope, and a blocked slot,
+and only the last is presented as a defect. Scheduler absence is not ambiguous:
+`SchedulerPipeline.decide` returns `CandidateSelected` or `SelectionBlocked`,
+with admission exhaustion named as a blocked reason.
 
 A learner who fails most of what they are given has each material walked toward
 support by recovery. Cued attempts never observe retrieval, so nothing
@@ -918,124 +919,32 @@ Until the slope is measured, generating sub-sixty candidates would ship a
 difficulty axis the model has almost no reason to prefer. The candidate space
 and the coefficient have to move together.
 
-### Performance timing from the transport clock
+### Performance timing beyond the characterized clocks
 
-Input events are stamped with the shared monotonic arrival clock, read when Dart
-processes the message. That orders the stream correctly and says nothing
-reliable about rhythm: a delayed BLE batch turns separated strikes into
-near-simultaneous arrivals, and a delivery stall reads as hesitation. Timing
-evidence currently inherits whatever the transport was doing.
+Timing evidence is read from the transport's own clock, and is absent wherever
+that clock cannot be trusted. The contract is
+[`decisions/performance-timing.md`](decisions/performance-timing.md), the
+evidence is [`analysis/transport-clocks/`](../analysis/transport-clocks/), and
+[`system/input.md`](system/input.md) describes the boundary as built.
 
-The transport's own timestamp is preserved on every `RawInputEnvelope` and is
-not yet interpreted. Substituting it would exchange one problem for another,
-because BLE stamps wrap and clock domains differ between transports.
+What stays deferred is only what the eleven takes could not settle:
 
-**The governing rule is the timing analogue of the input boundary's.** Uncertain
-timing is never repaired into a plausible rhythm. Where transport timing cannot
-be trusted, continuity, temporal stability, and achieved tempo are absent, the
-way a channel nothing observed is absent, rather than computed from delivery
-artifacts. Pitch and order evidence continue regardless.
+- **Other clock domains.** Whether the 100,000-count domain generalizes beyond
+  the one session that produced it, and whether the host route stamps every
+  instrument from its own clock or somewhere applies a stamp on receipt. Each is
+  a change to `ClockDomainPolicy` backed by a recorded take, never an assumption
+  that an unrecorded shape behaves like a recorded one.
+- **Notes before authorization.** Naming a domain takes several informative
+  steps, so an attempt can begin untimed. Those notes are not upgraded once the
+  domain is known. Buffering raw timing to revisit them is a separate choice,
+  worth making only if early-attempt timing loss turns out to matter.
+- **An origin mapping.** Measurement reads intervals within one observation, so
+  no affine mapping onto arrival time exists. It should be added only if
+  something needs to compare performance times across observations.
 
-Characterization is done except for one take; see
-[`analysis/transport-clocks/`](../analysis/transport-clocks/) for what nine
-traces across two platforms and two instruments established. What it settled,
-and what it refuted, shapes the five contracts the mapper has to meet.
-
-**What is known.** Three clock domains have been seen, at 1, 100,000 and
-1,000,000 counts to the millisecond, and one adapter produced two of them
-twenty-six minutes apart with nothing reconnected in between. **The domain
-belongs to the session, not to the device, the transport, or the route**, so it
-has to be read off the stream every time.
-
-A BLE MIDI stream carrying the specification's 13-bit timestamp runs at 1 ms per
-count, modulo 8192, with no cumulative drift against the arrival clock on either
-iOS or Android. It preserves onset timing that delivery collapses, halving onset
-dispersion on an idle app and reporting chords up to twice as wide as arrival
-time says they were. A directly connected piano reports the same route and
-carries a different clock entirely, with millisecond granularity expressed in
-nanoseconds and no wrap. That turned out to be the operating system's own MIDI
-stack carrying the instrument's timestamps into host time, and it is authorized
-as well. **So the clock domain has to be recognized from observed behavior, not
-looked up from anything the transport says about itself.**
-
-The one take still outstanding is an adversarial stall: two plausible ones could
-not separate the clocks, because the delivery jitter they added sat inside how
-unevenly a person plays.
-
-### The five contracts
-
-They are written out, with the reasoning and the evidence behind each, in
-[`decisions/performance-timing.md`](decisions/performance-timing.md). What
-follows is the summary.
-
-1. **Domain recognition, then performance authorization.** Two decisions, not
-   one. First read the domain off the stream: what every step is a multiple of,
-   and where the counter wraps if it has been seen to. Then decide separately
-   whether that domain may contribute performance timing. Recognizing units does
-   not confer authority, and the takes are why: the 100,000-count domain carries
-   variation the arrival clock on its path destroys, and the 1,000,000-count
-   domain was held back until a take showed stamps several milliseconds apart on
-   deliveries that reached the app together. A shape nothing has recorded is
-   unavailable rather than assumed to behave like one that has. Detection and
-   policy are already split this way in `keyrecall_input`: `ClockDomainDetector`
-   measures granularity and, where a wrap establishes one, the counter's width;
-   `ClockDomainPolicy` says which measured shapes may be believed. Authorizing a
-   fourth domain is an edit to the policy, not to the arithmetic.
-
-   **A granularity is not a domain.** The policy authorizes shapes, meaning
-   granularity and wrap together, because a counter stepping in milliseconds
-   that wraps at 8192 and one stepping in milliseconds that has never been seen
-   to wrap are different clocks, and only one of them is characterized. A
-   millisecond counter whose wrap has not come round yet is still being
-   identified rather than trusted or rejected. Where a characterized domain has
-   simply never been observed to wrap, the policy authorizes it without one,
-   which is a stated choice rather than an accident of how the list was written:
-   a null modulus means no wrap has been established, not a counter that does
-   not wrap, and nothing here can tell those apart.
-
-2. **Domain conversion.** A performance clock yields an interval-preserving
-   local timeline whose origin stays arbitrary. No affine mapping onto arrival
-   time unless measurement is shown to need one: measurement reads intervals,
-   and estimating a transform between clock domains is work nothing has asked
-   for.
-3. **Wrap resolution.** Infer hidden epochs from arrival elapsed time, and
-   accept the result only when exactly one epoch count is compatible with a
-   configured arrival-uncertainty bound. Otherwise timing is unavailable rather
-   than guessed. The bound is a parameter, not a constant: the measured margin
-   was comfortable in every trace, and that is evidence rather than policy.
-
-   This is the mapper's job and not the detector's. The detector answers only
-   what the counter looks like, and deliberately declines to say how many epochs
-   a long silence hid.
-
-4. **Continuity.** A new observation epoch resets the mapper. So does a session
-   change or a reconnect. A timestamp regression, an impossible rate, an
-   unfamiliar granularity, or an ambiguous wrap invalidates timing evidence for
-   that observation. Pitch and order evidence survive all of it, unless the
-   input boundary itself faults.
-5. **Measurement handoff.** A transcript note keeps its observation time and,
-   where there is one, its performance time. Timing metrics read performance
-   time when it is available, and go **absent** when it is not.
-
-   An attempt can begin before the domain is identified, since naming one takes
-   several informative steps. The first version should not retroactively upgrade
-   the notes that preceded authorization: timing evidence is unavailable until
-   authorization is established and available from there on. Buffering raw
-   timing to revisit those notes, and whether a partly timed attempt is worth
-   measuring at all, are policy questions to settle separately rather than a
-   default to fall into.
-
-That last contract is the one worth being strict about. Arrival time keeps
-earning its place for ordering, for resolving wraps, for integrity checks, and
-for diagnostics. What it must never do is stand in for performance time once the
-mapper has said there is none: a silent fallback would undo the reason for the
-whole phase, and it would do it invisibly.
-
-Then wire measurement to performance time and characterize what changed.
-
-Until all of that, [`system/input.md`](system/input.md) says plainly that
-arrival order is not performance timing, so nothing downstream is entitled to
-assume otherwise.
+The adversarial stall is retired rather than open: the network take showed
+ordinary delivery regularizing timing without any load, which is the stronger
+result the stall was meant to approach.
 
 ### Transcript capture cost
 
@@ -1050,34 +959,6 @@ Both costs are what an attempt is for.
 The measurement that would change this is a profile of a real attempt, not the
 shape of the loop. Worth taking if a longer form than a scale is ever recorded
 as one transcript, or if the staff drops frames while somebody plays.
-
-### A commit conceived before an erase
-
-Store operations for one profile run one at a time, so no two interleave. That
-is ordering, not agreement about which history an operation was conceived
-against, and one gap follows from the difference:
-
-```text
-1. a session reads an empty journal and prepares attempt sequence 0
-2. the roster erases that profile's history
-3. the session's append runs
-4. sequence 0 is contiguous against the journal the erase left
-5. the erased history now holds that attempt
-```
-
-Every other stale write is already refused. A sequence above zero is not
-contiguous against an emptied journal, and a checkpoint covering attempts the
-journal no longer has is a cache miss rather than a seed. Only the first attempt
-of a profile with no history lands silently.
-
-The principled fix is a history generation: a token a session takes when it
-opens and presents on every write, so a store can refuse work conceived against
-a history it has since destroyed. It was not taken here because it is a change
-to `PracticeStore` and to everything implementing it, which is more than the
-size of the hole.
-
-Reproduced by driving `PracticeLoopNotifier.finish` and
-`ProfileRosterNotifier.eraseHistory` concurrently over one store.
 
 ### A rebuilt window reinterprets history under the current model
 
