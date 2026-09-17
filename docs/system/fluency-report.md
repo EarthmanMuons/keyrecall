@@ -1,6 +1,6 @@
 # The fluency report
 
-- **Status:** proposed. Nothing described here is built.
+- **Status:** proposed. Only the fluency history projection is built.
 
 A menu destination, beside Goal, that answers three questions a learner asks
 about their practice, and keeps them apart:
@@ -67,15 +67,16 @@ detail sheet.
 
 ### Demonstrated tempo
 
-The fastest tempo of an attempt whose execution was managed, as
-`LearnerModel.executionWasManaged` defines it, read the way the execution
-frontier reads it: the requested tempo times the achieved ratio, capped at the
-requested tempo. Kept per material, hands, motion, octave span, **and guidance
-rung**.
+The fastest pace of an attempt whose execution was managed, as
+`LearnerModel.executionWasManaged` defines it: the requested tempo times the
+measured tempo ratio, capped at the requested tempo, so neither a request the
+learner fell short of nor an unscheduled overshoot counts. Kept per material,
+hands, motion, octave span, **and guidance rung**.
 
-`MaterialExecutionState.demonstratedTempoByOctaves` cannot serve, because it is
-not keyed by guidance: a cued attempt and an unguided one at the same tempo
-share a slot. A tempo played while reading cues is a different demonstration.
+`MaterialExecutionState.demonstratedTempoByOctaves` cannot serve. It records the
+request rather than the pace, and it is not keyed by guidance, so a cued attempt
+and an unguided one at the same tempo share a slot. A tempo played while reading
+cues is a different demonstration.
 
 An attempt without authorized timing has no motor score, is never managed, and
 contributes no tempo. The report says once, in words, when an instrument's
@@ -83,9 +84,9 @@ timing is missing, rather than showing slowness.
 
 ### Typical tempo
 
-The weekly median of demonstrated-tempo values from qualifying attempts in that
-week, per hand configuration, at one octave. It exists for the trend chart,
-where a maximum is too noisy to read as development.
+The median demonstrated tempo over every managed attempt in a week, per hand
+configuration, at one octave, never a combination of daily summaries. It exists
+for the trend chart, where a maximum is too noisy to read as development.
 
 ### Due for review
 
@@ -167,14 +168,48 @@ material, if it is ever exposed, belongs here rather than in the report.
 
 ## Fluency history
 
-The projection `history.md` reserves. It stores **daily sufficient statistics**
-from which report series are computed, not interpreted report state, so
-presentation policy is never frozen into history.
+`FluencyHistory` in `keyrecall_practice` is the projection `history.md`
+reserves. It stores **observations rather than report statistics**: a series is
+computed when it is read, so presentation policy is never frozen into storage.
 
-Each projection carries its schema version, the learner model version that
-produced it, and the journal sequence it covers. It is disposable: when the
-schema or an interpreting version changes, it is rebuilt whole from the journal,
-which remains the only authority.
+Aggregation keeps whatever a later statistic needs. A weekly median cannot be
+computed from daily medians, since a day of thirty attempts and a day of two
+would weigh the same, so tempo is kept as one observation per attempt rather
+than as a daily summary. Per day it holds:
+
+```text
+attempts          committed attempts, measured or not
+demonstrations    per material, the strongest level that day and when it
+                  was last reached
+tempo             per completed attempt with a pace and a motor score:
+                  material, hands, motion, octaves, guidance rung,
+                  requested tempo, tempo ratio, motor score, time
+```
+
+Only structural absences are filtered. A tempo observation is kept for an
+attempt that was not managed, because managed is a learner-model threshold, and
+the projection holds no learner-model interpretation at all. That is why it
+needs no model version: a model change cannot invalidate it. Best-ever levels,
+managed tempo, and weekly statistics are all read-time policy.
+
+Due for review, durability, skill ranges, and trouble spots are current
+inferences and are never projected.
+
+Days are assigned by a caller-supplied function, the device's local date by
+default. That is a build parameter rather than a recorded fact, so a history
+built in one time zone is rebuilt rather than reinterpreted in another.
+
+The projection records its schema version, its profile, and how many journal
+records it covers. It is rebuilt whole from the journal when any of those
+disagree, and reading refuses an attempt total that does not match the coverage
+it claims. Three properties are tested:
+
+- **Equivalence.** Rebuilding from the journal equals applying its records one
+  at a time, including across a write and read at every prefix.
+- **Prefix stability.** Applying a record never changes an earlier day, and only
+  extends the latest one.
+- **Irrelevance.** Projecting never writes to the journal. Nothing in learner
+  state or scheduling reads the projection, so deleting it changes nothing else.
 
 ## Build order
 
@@ -190,7 +225,7 @@ The first three are useful on their own while competency calibration moves.
 - Which hand configuration the tempo lens shows when several have a value.
 - Whether typical tempo should share the tempo lens's unguided restriction,
   which would leave the chart empty for a learner who has not yet played from
-  memory.
+  memory, or use the most independent rung with enough observations.
 - The retrievability threshold for due for review, and whether it should match
   what the scheduler treats as due.
 - The reference exercise for each competency's skill zones.

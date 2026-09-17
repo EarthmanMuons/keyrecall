@@ -20,6 +20,7 @@ export 'src/acquisition_closure.dart';
 export 'src/attempt_windows.dart';
 export 'src/file_practice_store.dart';
 export 'src/file_profile_repository.dart';
+export 'src/fluency_history.dart';
 export 'src/coordination_log.dart';
 export 'src/feedback_exposure.dart';
 export 'src/json_lines.dart';
