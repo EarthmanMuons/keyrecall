@@ -102,8 +102,10 @@ Each week reads **one guidance rung**, the most independent with at least one
 observation, and never pools rungs or combines daily summaries. The number of
 attempts behind a week is carried with it. A week of one or two attempts is
 drawn lighter or labeled with its count, never given an interval: the learner
-did only play that often. Learner-facing copy says "playing pace this week", not
-median.
+did only play that often. Learner-facing copy calls it playing pace, never
+demonstrated, achieved, or best tempo, and says "playing pace this week" rather
+than median. It is uncapped on purpose: an attempt asked for at 80 and played at
+99 did not demonstrate 99, but it was played at 99.
 
 Demonstrated tempo and playing pace answer different questions, so they read
 different rules. Characterization showed why: a beginner's weaker hand can
@@ -238,6 +240,14 @@ and otherwise rebuilds it: when it cannot be read, was built under another
 partition, covers more than the journal holds, or covers different records. It
 saves only when the result covers something the saved one did not. Erasing a
 profile takes the slot along, and a retired incarnation cannot write one.
+
+The report reads through `readFluencyHistory`, which reports a failed save
+instead of throwing it: the history it computed is already correct, and a cache
+that could not be written costs only the next opening's time. Failing to read
+the journal still fails the report.
+
+Checking coverage rehashes every covered record on each opening. That is the
+obvious cost to revisit if journals grow large enough for it to matter.
 
 Four properties are tested:
 

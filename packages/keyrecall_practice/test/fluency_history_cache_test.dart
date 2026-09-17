@@ -141,6 +141,41 @@ void main() {
     });
   });
 
+  group('a save that fails', () {
+    Future<PracticeStore> retired() async {
+      final store = FilePracticeStore(root);
+      await practise(await openSession(store), attempts: 3);
+      final held = await store.lifetimeOf(alice.id);
+      await store.retireLifetime(alice.id);
+      return store.boundTo(held);
+    }
+
+    test('fails opening', () async {
+      final store = await retired();
+
+      await expectLater(
+        openFluencyHistory(store, alice.id, partition: _partition),
+        throwsA(isA<RetiredProfileLifetime>()),
+      );
+    });
+
+    test('is reported rather than failing a read', () async {
+      final store = await retired();
+      final failures = <Object>[];
+
+      final history = await readFluencyHistory(
+        store,
+        alice.id,
+        partition: _partition,
+        onSaveFailure: (error, _) => failures.add(error),
+      );
+
+      expect(history, await rebuilt(store));
+      expect(failures.single, isA<RetiredProfileLifetime>());
+      expect(fluencyFile().existsSync(), isFalse);
+    });
+  });
+
   test('erasing a profile takes its fluency history along', () async {
     final store = FilePracticeStore(root);
     await practise(await openSession(store), attempts: 3);
