@@ -165,32 +165,38 @@ class _MidiDeviceSheetState extends ConsumerState<MidiDeviceSheet> {
                     final isConnecting =
                         connection.isAttemptingConnection &&
                         device.id == connection.device?.id;
-                    return ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
+                    // Keep tile ink inside the scroll viewport.
+                    return Material(
+                      type: MaterialType.transparency,
+                      child: ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        selected: isConnected,
+                        selectedTileColor: theme.colorScheme.primaryContainer,
+                        selectedColor: theme.colorScheme.onPrimaryContainer,
+                        title: Text(device.displayName ?? device.id),
+                        subtitle: Text(
+                          isConnected
+                              ? '${device.transport.label} · Connected'
+                              : device.transport.label,
+                        ),
+                        trailing: isConnecting
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : isConnected
+                            ? const Icon(Icons.check_circle_outline)
+                            : null,
+                        onTap: isConnecting ? null : () => _connect(device),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      selected: isConnected,
-                      selectedTileColor: theme.colorScheme.primaryContainer,
-                      selectedColor: theme.colorScheme.onPrimaryContainer,
-                      title: Text(device.displayName ?? device.id),
-                      subtitle: Text(
-                        isConnected
-                            ? '${device.transport.label} · Connected'
-                            : device.transport.label,
-                      ),
-                      trailing: isConnecting
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : isConnected
-                          ? const Icon(Icons.check_circle_outline)
-                          : null,
-                      onTap: isConnecting ? null : () => _connect(device),
                     );
                   },
                 ),

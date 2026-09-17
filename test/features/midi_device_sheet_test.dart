@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:ui' as ui;
+
+import 'package:flutter/rendering.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -47,21 +50,24 @@ void main() {
     double textScale = 1,
   }) async {
     await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          builder: (context, child) => MediaQuery(
-            data: MediaQuery.of(context).copyWith(
-              disableAnimations: disableAnimations,
-              textScaler: TextScaler.linear(textScale),
+      RepaintBoundary(
+        key: const ValueKey('picker-capture'),
+        child: UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            builder: (context, child) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(
+                disableAnimations: disableAnimations,
+                textScaler: TextScaler.linear(textScale),
+              ),
+              child: child!,
             ),
-            child: child!,
-          ),
-          home: Scaffold(
-            body: Builder(
-              builder: (context) => TextButton(
-                onPressed: () => MidiDeviceSheet.show(context),
-                child: const Text('Choose instrument'),
+            home: Scaffold(
+              body: Builder(
+                builder: (context) => TextButton(
+                  onPressed: () => MidiDeviceSheet.show(context),
+                  child: const Text('Choose instrument'),
+                ),
               ),
             ),
           ),
@@ -72,6 +78,63 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
   }
+
+  testWidgets('selected row paint stays inside the scrolling list', (
+    tester,
+  ) async {
+    ble.discoverable = [
+      _otherInstrument,
+      for (var index = 0; index < 12; index++)
+        MidiDevice(
+          id: 'instrument-$index',
+          name: 'Instrument $index',
+          transport: MidiTransportType.ble,
+          isConnected: false,
+        ),
+    ];
+    await container
+        .read(midiConnectionStateProvider.notifier)
+        .connect(_otherInstrument);
+    await openSheet(tester, disableAnimations: true);
+
+    final list = find.descendant(
+      of: find.byType(MidiDeviceSheet),
+      matching: find.byType(ListView),
+    );
+    final headingPoint = tester.getTopLeft(list) + const Offset(40, -8);
+    final boundary = tester.renderObject<RenderRepaintBoundary>(
+      find.byKey(const ValueKey('picker-capture')),
+    );
+    Future<List<int>?> headingPixel() => tester.runAsync(() async {
+      final image = await boundary.toImage();
+      try {
+        final bytes = (await image.toByteData(
+          format: ui.ImageByteFormat.rawRgba,
+        ))!;
+        final offset =
+            (headingPoint.dy.toInt() * image.width + headingPoint.dx.toInt()) *
+            4;
+        return bytes.buffer.asUint8List(offset, 4).toList();
+      } finally {
+        image.dispose();
+      }
+    });
+
+    final before = await headingPixel();
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(of: list, matching: find.byType(Scrollable)),
+    );
+    scrollable.position.jumpTo(48);
+    await tester.pump();
+    expect(
+      await headingPixel(),
+      before,
+      reason: 'the selected background must not paint above the list',
+    );
+    await container.read(midiConnectionStateProvider.notifier).disconnect();
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump();
+  });
 
   testWidgets('scan pulses and respects reduced motion', (tester) async {
     await openSheet(tester);
