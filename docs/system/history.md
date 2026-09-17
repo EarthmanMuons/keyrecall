@@ -205,8 +205,9 @@ read as such.
 
 Does not exist yet, and is where time-series thinking belongs. A chart over
 years of practice should not scan the whole journal per frame, so it wants
-derived storage: per-session and per-day summaries, posteriors over time, tempo
-and quality distributions, downsampled with age.
+derived storage: daily sufficient statistics from which report series are
+computed, downsampled with age. Its proposed shape is in
+[`fluency-report.md`](fluency-report.md).
 
 All of that is safe **because the projection is disposable**. Delete it, rebuild
 it. That property is what keeps the aggregation honest, and it buys something

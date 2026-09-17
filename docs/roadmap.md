@@ -1027,21 +1027,14 @@ never infer the finger actually used from standard MIDI alone.
 
 ## Learner-facing product ideas
 
-### Fluency Profile
+### Fluency report
 
-Internal model state should not be shown raw. A future Fluency Profile may
-translate it into useful descriptions of:
+Proposed in [`system/fluency-report.md`](system/fluency-report.md): demonstrated
+facts, current inferences, and a factual history, kept visibly apart.
 
-- recall and delayed reliability;
-- accuracy and continuity;
-- timing and tempo capability;
-- right/left/combined coordination;
-- consistency and robustness; and
-- current readiness versus longer-term retention where evidence supports a
-  useful distinction.
-
-These are derived presentations, not one-to-one latent variables. Labels must
-communicate uncertainty and avoid implying precision the model does not have.
+Still deferred beyond it, because nothing yet measures them: consistency and
+robustness across conditions, and current readiness as distinct from longer-term
+retention. Both wait on performance envelopes and transient session state.
 
 ### A hand shown rather than named
 
