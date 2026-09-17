@@ -62,5 +62,8 @@ the required checks before committing.
 ## Local patches
 
 The packages' development dependencies on `lints` and `flutter_lints` use
-`^6.0.0` to match KeyRecall's workspace. Runtime source and tests are unchanged.
+`^6.0.0` to match KeyRecall's workspace. Runtime patches are listed below.
 Flutter added a `build/**` analyzer exclusion to the Flutter package.
+
+- Extend beams to the outer stem edges, preserving the slope at the stem centers
+  and the middle-line clearance. Includes cross-staff beams and geometry tests.
