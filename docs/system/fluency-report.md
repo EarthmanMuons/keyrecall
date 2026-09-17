@@ -1,7 +1,8 @@
 # The fluency report
 
-- **Status:** proposed. The fluency history projection, its storage, and its
-  queries are built; nothing learner-facing is.
+- **Status:** partly built. The fluency history projection, its storage, its
+  queries, and the key map with its detail sheet are built. The summary header,
+  review marks, time charts, and skills panel are proposed.
 
 A menu destination, beside Goal, that answers three questions a learner asks
 about their practice, and keeps them apart:
@@ -152,25 +153,37 @@ calendar day with at least one committed attempt.
 
 A circle of fifths with one ring per scale form, major outermost. The wheel is a
 **material selector**: each cell is one material, and every realization
-dimension (hands, span, tempo, guidance) belongs in the detail sheet.
+dimension (hands, span, tempo, guidance) belongs in the detail sheet. Every key
+keeps its sector whether or not the catalog holds a scale on it, and each sector
+is labeled with its major spelling and, where different, its minor one.
 
-Fill encodes a demonstrated fact, and a separate secondary mark encodes due for
-review. Hatching is avoided at phone cell sizes; an outer-edge notch or a thin
-contrasting border is the candidate. A lens switches what the fill means without
-moving any cell:
+Fill encodes a demonstrated fact, and a lens switches what the fill means
+without moving any cell:
 
 ```text
-Recall demonstrated   from memory, notes previewed, cued, not yet demonstrated
-Tempo                 demonstrated tempo, unguided, one octave
-Hands                 one hand, each hand, hands together
+Recall   from memory, notes previewed, with cues, not yet
+Tempo    demonstrated tempo from memory, one octave, for the hands selected
 ```
 
-Tonic names are prominent enough that the wheel works as a compact catalog for a
-learner who does not know the circle of fifths, and a small help affordance
-explains the order. Tapping a cell opens the detail sheet focused on that form.
+The tempo lens has an explicit right hand, left hand, and together selector
+rather than one representative value. A learner at 100 with the right hand, 72
+with the left, and 60 together has no single honest tempo for that scale, and
+switching hands is cheap because no cell moves. Its bands, under 72, 72 to 99,
+and 100 and up, are a reading aid for small cells; the exact tempo is one tap
+away.
 
-Arpeggios use the same wheel with two rings for root-position major and minor.
-Inversions and further families add detail-sheet dimensions, not rings.
+**Proposed:** a secondary mark for due for review. Hatching is avoided at phone
+cell sizes; an outer-edge notch or a thin contrasting border is the candidate. A
+hands lens is also proposed.
+
+Tonic names are prominent enough that the wheel works as a compact catalog for a
+learner who does not know the circle of fifths, and a help sheet explains the
+order. Every cell is a semantic button described by its lens, and tapping one
+opens the detail sheet focused on that form.
+
+Arpeggios are not yet on the map. They would use the same wheel with two rings
+for root-position major and minor; inversions and further families add
+detail-sheet dimensions, not rings.
 
 ## Over time
 
@@ -186,10 +199,17 @@ when coordination does. Weeks without practice stay on the axis as gaps.
 
 ## Detail sheet
 
-For one tonic, each form with its demonstrated independence, the date last
-demonstrated, its review status, its durability in words, and a table of
-demonstrated tempo by hand configuration and octave span. Attempt history for a
+For one key, each form with its demonstrated independence and the date it was
+last demonstrated, and for the focused form a table of demonstrated tempo by
+hand configuration and octave span. Each cell reads the most independent rung
+with a tempo and names the support when it was not from memory, so a table never
+reads "96" for a tempo shown with cues.
+
+**Proposed:** review status and durability in words. Attempt history for a
 material, if it is ever exposed, belongs here rather than in the report.
+
+The key map and the sheet read one `FluencySummary`, so a cell and the sheet it
+opens cannot disagree.
 
 ## Fluency history
 
@@ -272,7 +292,6 @@ The first three are useful on their own while competency calibration moves.
 
 ## Open questions
 
-- Which hand configuration the tempo lens shows when several have a value.
 - The retrievability threshold for due for review, and whether it should match
   what the scheduler treats as due.
 - The reference exercise for each competency's skill zones.

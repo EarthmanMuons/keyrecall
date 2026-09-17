@@ -45,8 +45,8 @@ when changing any of it.
 | [`history.md`](history.md)                             | The journal, checkpoints, replay, and the five data products                  |
 | [`validation-boundaries.md`](validation-boundaries.md) | Which constructors throw and which assert                                     |
 
-[`fluency-report.md`](fluency-report.md) is mostly proposed rather than built:
-what the learner-facing progress report may claim, and how.
+[`fluency-report.md`](fluency-report.md) is partly built: what the
+learner-facing progress report may claim, and how.
 
 ## Why it is shaped this way
 

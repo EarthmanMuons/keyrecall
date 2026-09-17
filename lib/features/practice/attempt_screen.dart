@@ -13,6 +13,7 @@ import 'package:material_ui/material_ui.dart';
 import '../../layout.dart';
 import '../../wordmark.dart';
 import '../audio/pulse_clicker.dart';
+import '../fluency/fluency_screen.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
 import 'acquisition_review.dart';
@@ -503,6 +504,16 @@ class _MenuButton extends StatelessWidget {
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.flag_outlined),
           title: Text('Goal'),
+        ),
+      ),
+      PopupMenuItem(
+        value: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (context) => const FluencyScreen()),
+        ),
+        child: const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.insights_outlined),
+          title: Text('Fluency'),
         ),
       ),
       // Temporary, and deliberately not behind the build-mode check the

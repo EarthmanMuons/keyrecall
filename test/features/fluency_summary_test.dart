@@ -147,6 +147,30 @@ void main() {
     expect(TempoBand.of(100), TempoBand.from100);
   });
 
+  group('copy', () {
+    test('a date carries its year only when it is not this one', () {
+      final now = DateTime(2026, 9, 17);
+
+      expect(demonstratedOn(DateTime(2026, 9, 8, 12), now: now), 'Sep 8');
+      expect(
+        demonstratedOn(DateTime(2025, 12, 30, 12), now: now),
+        'Dec 30, 2025',
+      );
+    });
+
+    test('a tempo names the support it was shown with', () {
+      expect(rungTempoName((tempoBpm: 96.4, guidanceIndependence: 2)), '96');
+      expect(
+        rungTempoName((tempoBpm: 88, guidanceIndependence: 1)),
+        '88 previewed',
+      );
+      expect(
+        rungTempoName((tempoBpm: 72, guidanceIndependence: 0)),
+        '72 with cues',
+      );
+    });
+  });
+
   group('the wheel', () {
     const geometry = KeyWheelGeometry();
 

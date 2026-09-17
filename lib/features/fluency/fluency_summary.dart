@@ -224,3 +224,44 @@ class KeyWheelGeometry {
     return (sector: sector, form: ScaleForm.values[ring]);
   }
 }
+
+/// What a demonstration level is called on the key map.
+String demonstrationName(DemonstrationLevel? level) => switch (level) {
+  null => 'Not yet',
+  DemonstrationLevel.cued => 'With cues',
+  DemonstrationLevel.notesPreviewed => 'Notes previewed',
+  DemonstrationLevel.fromMemory => 'From memory',
+};
+
+/// When something was last demonstrated, as a date a learner reads: the year
+/// only when it is not the year of [now].
+String demonstratedOn(DateTime at, {required DateTime now}) {
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final local = at.toLocal();
+  final date = '${months[local.month - 1]} ${local.day}';
+  return local.year == now.toLocal().year ? date : '$date, ${local.year}';
+}
+
+/// A demonstrated tempo as a table cell, naming the support it was shown with
+/// when that was not from memory.
+String rungTempoName(RungTempo tempo) {
+  final bpm = tempo.tempoBpm.round();
+  return switch (tempo.guidanceIndependence) {
+    2 => '$bpm',
+    1 => '$bpm previewed',
+    _ => '$bpm with cues',
+  };
+}
