@@ -153,8 +153,7 @@ class RecallMilestonesChart extends StatelessWidget {
               [
                 'Week of ${dayName(weeks[group.x].week, today: today)}',
                 for (final level in _stackOrder)
-                  '${weeks[group.x].countAt(level)} '
-                      '${demonstrationName(level).toLowerCase()}',
+                  _countDescription(weeks[group.x], level),
               ].join('\n'),
               theme.textTheme.bodySmall!.copyWith(
                 color: theme.colorScheme.onInverseSurface,
@@ -211,10 +210,20 @@ class RecallMilestonesChart extends StatelessWidget {
   String _weekLabel(CalendarDay week, int index) =>
       index == _weeks - 1 ? 'This week' : dayName(week, today: today);
 
+  String _countDescription(WeeklyMilestones week, DemonstrationLevel level) {
+    final count = week.countAt(level);
+    final noun = count == 1 ? 'scale' : 'scales';
+    final support = switch (level) {
+      DemonstrationLevel.fromMemory => 'from memory',
+      DemonstrationLevel.notesPreviewed => 'with notes previewed',
+      DemonstrationLevel.cued => 'with cues',
+    };
+    return '$count $noun $support';
+  }
+
   String _description(WeeklyMilestones week) => [
     'Week of ${dayName(week.week, today: today)}.',
-    for (final level in _stackOrder)
-      '${week.countAt(level)} ${demonstrationName(level).toLowerCase()}.',
+    for (final level in _stackOrder) '${_countDescription(week, level)}.',
   ].join(' ');
 }
 

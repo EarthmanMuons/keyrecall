@@ -124,13 +124,15 @@ void main() {
     expect(find.bySemanticsLabel(RegExp(r'^Week of ')), findsNWidgets(8));
     expect(
       find.bySemanticsLabel(
-        'Week of Sep 7. 0 from memory. 1 notes previewed. 0 with cues.',
+        'Week of Sep 7. 0 scales from memory. '
+        '1 scale with notes previewed. 0 scales with cues.',
       ),
       findsOneWidget,
     );
     expect(
       find.bySemanticsLabel(
-        'Week of Aug 31. 0 from memory. 0 notes previewed. 0 with cues.',
+        'Week of Aug 31. 0 scales from memory. '
+        '0 scales with notes previewed. 0 scales with cues.',
       ),
       findsOneWidget,
     );
