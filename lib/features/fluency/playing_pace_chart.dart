@@ -77,7 +77,11 @@ class PlayingPaceChart extends StatelessWidget {
             spacing: 16,
             runSpacing: 8,
             children: [
-              for (final hands in HandConfiguration.values)
+              for (final hands in const [
+                HandConfiguration.left,
+                HandConfiguration.right,
+                HandConfiguration.together,
+              ])
                 _LegendLine(color: colors[hands], label: _handsName(hands)),
             ],
           ),
