@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -42,7 +41,9 @@ void main() {
   ) async {
     await pumpReport(tester);
     final gesture = await tester.startGesture(point(tester, 0, -0.73));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 150));
+    expect(find.text('C major'), findsNothing);
+    await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('C major'), findsOneWidget);
     expect(find.byType(BottomSheet), findsNothing);
     await gesture.moveTo(point(tester, 0.45, 0));
@@ -64,7 +65,7 @@ void main() {
   ) async {
     await pumpReport(tester);
     final gesture = await tester.startGesture(point(tester, 0, -0.73));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 250));
     await gesture.moveTo(point(tester, 0, 0));
     await tester.pump();
     expect(find.text('Release to cancel'), findsOneWidget);
@@ -79,7 +80,7 @@ void main() {
   ) async {
     await pumpReport(tester);
     final gesture = await tester.startGesture(point(tester, 0, -0.73));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
+    await tester.pump(const Duration(milliseconds: 250));
     await gesture.cancel();
     await tester.pumpAndSettle();
     expect(find.text('C major'), findsNothing);

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -365,6 +366,7 @@ class _KeyWheelState extends State<KeyWheel> {
   bool _scrubbing = false;
 
   static const _geometry = KeyWheelGeometry();
+  static const _holdDelay = Duration(milliseconds: 200);
 
   @override
   Widget build(BuildContext context) => AspectRatio(
@@ -375,18 +377,33 @@ class _KeyWheelState extends State<KeyWheel> {
         final previewAtTop =
             _preview != null &&
             math.cos(_geometry.centerAngleOf(_preview!.sector)) < 0;
-        return GestureDetector(
-          onTapUp: (details) => _select(_cellAt(details.localPosition, half)),
-          onLongPressStart: (details) =>
-              _previewAt(details.localPosition, half),
-          onLongPressMoveUpdate: (details) =>
-              _previewAt(details.localPosition, half),
-          onLongPressEnd: (details) {
-            final cell = _cellAt(details.localPosition, half);
-            _clearPreview();
-            _select(cell);
+        return RawGestureDetector(
+          gestures: {
+            TapGestureRecognizer:
+                GestureRecognizerFactoryWithHandlers<TapGestureRecognizer>(
+                  TapGestureRecognizer.new,
+                  (recognizer) =>
+                      recognizer.onTapUp = (details) =>
+                          _select(_cellAt(details.localPosition, half)),
+                ),
+            LongPressGestureRecognizer:
+                GestureRecognizerFactoryWithHandlers<
+                  LongPressGestureRecognizer
+                >(() => LongPressGestureRecognizer(duration: _holdDelay), (
+                  recognizer,
+                ) {
+                  recognizer.onLongPressStart = (details) =>
+                      _previewAt(details.localPosition, half);
+                  recognizer.onLongPressMoveUpdate = (details) =>
+                      _previewAt(details.localPosition, half);
+                  recognizer.onLongPressEnd = (details) {
+                    final cell = _cellAt(details.localPosition, half);
+                    _clearPreview();
+                    _select(cell);
+                  };
+                  recognizer.onLongPressCancel = _clearPreview;
+                }),
           },
-          onLongPressCancel: _clearPreview,
           excludeFromSemantics: true,
           child: FocusTraversalGroup(
             policy: OrderedTraversalPolicy(),
