@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 import 'fluency_shades.dart';
 import 'fluency_summary.dart';
 import 'fluency_trends.dart';
+import 'weekly_chart_semantics.dart';
 
 /// How many scales have reached each level of recall, week by week.
 ///
@@ -61,9 +62,8 @@ class RecallMilestonesChart extends StatelessWidget {
         if (weeks.last.total == 0)
           Text('No scales demonstrated yet.', style: theme.textTheme.bodyMedium)
         else ...[
-          Semantics(
-            label: _description(weeks.last),
-            excludeSemantics: true,
+          WeeklyChartSemantics(
+            labels: [for (final week in weeks) _description(week)],
             child: SizedBox(height: 180, child: _chart(theme, shades, weeks)),
           ),
           const SizedBox(height: 12),
@@ -212,7 +212,7 @@ class RecallMilestonesChart extends StatelessWidget {
       index == _weeks - 1 ? 'This week' : dayName(week, today: today);
 
   String _description(WeeklyMilestones week) => [
-    'Recall milestones this week:',
+    'Week of ${dayName(week.week, today: today)}.',
     for (final level in _stackOrder)
       '${week.countAt(level)} ${demonstrationName(level).toLowerCase()}.',
   ].join(' ');

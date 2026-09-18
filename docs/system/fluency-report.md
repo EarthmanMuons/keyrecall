@@ -186,7 +186,8 @@ Tapping a cell opens the detail sheet focused on that form. Assistive technology
 finds the wheel one key at a time instead: the innermost ring is too narrow for
 cell-sized targets that do not overlap, so each key is a single button, about 50
 logical pixels square at phone width and clear of its neighbors, whose label
-reads every form and whose sheet lists them.
+reads every form and whose sheet lists them. The same targets accept keyboard
+focus in circle order, show a focus outline, and open with Enter or Space.
 
 Arpeggios are not yet on the map. They would use the same wheel with two rings
 for root-position major and minor; inversions and further families add
@@ -202,22 +203,25 @@ scales by the strongest level each had reached by the end of each of the last
 eight weeks, from memory at the base. The counts are cumulative over the whole
 history rather than the window, and best-ever, so the bars only grow and the
 title says milestones so nobody expects forgetting to appear in it. Tapping a
-week gives its count at each level. It shares the key map's shade ramp, so a
-level is one color throughout the report.
+week gives its count at each level. Each week also has a screen-reader entry
+with those counts. It shares the key map's shade ramp, so a level is one color
+throughout the report.
 
 **Playing pace** is built, below the key map after a section break rather than
 as another lens, since it answers a different question. It draws the last eight
 weeks, ending with the current one, as one line per hand configuration across
-all materials. The window is presentation policy; the weekly series underneath
-accepts any range.
+all materials, restricted to one octave in parallel motion. The description and
+empty state name that restriction. The window is presentation policy; the weekly
+series underneath accepts any range.
 
 A week without a value breaks its line rather than being drawn across, so hands
 together simply starts when coordination does. A week resting on one or two
 attempts is a hollow point. Tapping a point gives its pace, how many attempts it
 rests on, and the rung it was read from; the rung can change between weeks and
 is not drawn, because the simulations showed it mostly stops mattering. There is
-no smoothing, trend line, or change figure: sparse weekly medians cannot carry
-them.
+one screen-reader entry per week with every hand's pace, count, and support,
+including explicit gaps. There is no smoothing, trend line, or change figure:
+sparse weekly medians cannot carry them.
 
 ## Detail sheet
 

@@ -7,6 +7,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'fluency_summary.dart';
 import 'fluency_trends.dart';
+import 'weekly_chart_semantics.dart';
 
 /// How fast each hand configuration has been playing, over recent weeks.
 ///
@@ -61,9 +62,11 @@ class PlayingPaceChart extends StatelessWidget {
             style: theme.textTheme.bodyMedium,
           )
         else ...[
-          Semantics(
-            label: _description(series),
-            excludeSemantics: true,
+          WeeklyChartSemantics(
+            labels: [
+              for (var index = 0; index < _weeks; index++)
+                _description(series, index),
+            ],
             child: SizedBox(
               height: 200,
               child: _chart(theme, colors, series, values),
@@ -216,18 +219,15 @@ class PlayingPaceChart extends StatelessWidget {
   String _weekLabel(CalendarDay week, int index) =>
       index == _weeks - 1 ? 'This week' : dayName(week, today: today);
 
-  String _description(Map<HandConfiguration, List<WeeklyTempo>> series) => [
-    'Playing pace over the last $_weeks weeks.',
+  String _description(
+    Map<HandConfiguration, List<WeeklyTempo>> series,
+    int index,
+  ) => [
+    'Week of ${dayName(series.values.first[index].week, today: today)}.',
     for (final MapEntry(key: hands, value: weeks) in series.entries)
-      switch (weeks.lastWhere(
-        (week) => week.medianTempoBpm != null,
-        orElse: () => weeks.last,
-      )) {
-        final week when week.medianTempoBpm == null =>
-          '${_handsName(hands)}: not measured.',
-        final week =>
-          '${_handsName(hands)}: ${playingPaceDetail(week)!.join(', ')}, '
-              'week of ${dayName(week.week, today: today)}.',
+      switch (playingPaceDetail(weeks[index])) {
+        final detail? => '${_handsName(hands)}: ${detail.join(', ')}.',
+        null => '${_handsName(hands)}: not measured.',
       },
   ].join(' ');
 }

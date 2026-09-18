@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 
-import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -367,19 +367,96 @@ class KeyWheel extends StatelessWidget {
             if (!sectors[cell.sector].forms.containsKey(cell.form)) return;
             onTap(cell.sector, cell.form);
           },
-          child: CustomPaint(
-            size: Size.square(constraints.maxWidth),
-            painter: _KeyWheelPainter(
-              sectors: sectors,
-              fill: fill,
-              emptyColor: emptyColor,
-              labelStyle: labelStyle,
-              describe: describe,
-              onTap: onTap,
+          excludeFromSemantics: true,
+          child: FocusTraversalGroup(
+            policy: OrderedTraversalPolicy(),
+            child: Stack(
+              children: [
+                CustomPaint(
+                  size: Size.square(constraints.maxWidth),
+                  painter: _KeyWheelPainter(
+                    sectors: sectors,
+                    fill: fill,
+                    emptyColor: emptyColor,
+                    labelStyle: labelStyle,
+                  ),
+                ),
+                for (final (index, sector) in sectors.indexed)
+                  if (ScaleForm.values
+                          .where(sector.forms.containsKey)
+                          .firstOrNull
+                      case final form?)
+                    Positioned.fromRect(
+                      rect: _targetOf(index, half),
+                      child: FocusTraversalOrder(
+                        order: NumericFocusOrder(index.toDouble()),
+                        child: _KeyTarget(
+                          label: describe(sector),
+                          onActivate: () => onTap(index, form),
+                        ),
+                      ),
+                    ),
+              ],
             ),
           ),
         );
       },
+    ),
+  );
+
+  Rect _targetOf(int sector, double half) {
+    final target = _geometry.semanticTargetOf(sector);
+    return Rect.fromCenter(
+      center: Offset(half + target.x * half, half + target.y * half),
+      width: target.side * half,
+      height: target.side * half,
+    );
+  }
+}
+
+class _KeyTarget extends StatefulWidget {
+  const _KeyTarget({required this.label, required this.onActivate});
+
+  final String label;
+  final VoidCallback onActivate;
+
+  @override
+  State<_KeyTarget> createState() => _KeyTargetState();
+}
+
+class _KeyTargetState extends State<_KeyTarget> {
+  bool _showFocus = false;
+
+  @override
+  Widget build(BuildContext context) => FocusableActionDetector(
+    onShowFocusHighlight: (show) => setState(() => _showFocus = show),
+    shortcuts: const {
+      SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+      SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+    },
+    actions: {
+      ActivateIntent: CallbackAction<ActivateIntent>(
+        onInvoke: (_) => widget.onActivate(),
+      ),
+    },
+    child: Semantics(
+      label: widget.label,
+      button: true,
+      onTap: widget.onActivate,
+      child: IgnorePointer(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            border: _showFocus
+                ? Border.all(
+                    color: Theme.of(context).colorScheme.onSurface,
+                    width: 2,
+                  )
+                : null,
+          ),
+          child: const SizedBox.expand(),
+        ),
+      ),
     ),
   );
 }
@@ -390,16 +467,12 @@ class _KeyWheelPainter extends CustomPainter {
     required this.fill,
     required this.emptyColor,
     required this.labelStyle,
-    required this.describe,
-    required this.onTap,
   });
 
   final List<KeySector> sectors;
   final Color Function(ScaleMaterial material) fill;
   final Color emptyColor;
   final TextStyle labelStyle;
-  final String Function(KeySector sector) describe;
-  final void Function(int sector, ScaleForm form) onTap;
 
   static const _geometry = KeyWheelGeometry();
   static const _sweep = 2 * math.pi / 12;
@@ -478,38 +551,7 @@ class _KeyWheelPainter extends CustomPainter {
   }
 
   @override
-  SemanticsBuilderCallback get semanticsBuilder => (size) {
-    final half = size.width / 2;
-    return [
-      for (final (index, sector) in sectors.indexed)
-        if (ScaleForm.values.where(sector.forms.containsKey).firstOrNull
-            case final form?)
-          CustomPainterSemantics(
-            rect: _targetOf(index, half),
-            properties: SemanticsProperties(
-              label: describe(sector),
-              button: true,
-              textDirection: TextDirection.ltr,
-              onTap: () => onTap(index, form),
-            ),
-          ),
-    ];
-  };
-
-  Rect _targetOf(int sector, double half) {
-    final target = _geometry.semanticTargetOf(sector);
-    return Rect.fromCenter(
-      center: Offset(half + target.x * half, half + target.y * half),
-      width: target.side * half,
-      height: target.side * half,
-    );
-  }
-
-  @override
   bool shouldRepaint(_KeyWheelPainter old) => true;
-
-  @override
-  bool shouldRebuildSemantics(_KeyWheelPainter old) => true;
 }
 
 /// One key opened: each form's demonstration, and the focused form's tempos.
