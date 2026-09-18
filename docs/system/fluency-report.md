@@ -165,12 +165,12 @@ Recall   from memory, notes previewed, with cues, not yet
 Tempo    demonstrated tempo from memory, one octave, for the hands selected
 ```
 
-The tempo lens has an explicit right hand, left hand, and together selector
-rather than one representative value. A learner at 100 with the right hand, 72
-with the left, and 60 together has no single honest tempo for that scale, and
-switching hands is cheap because no cell moves. Its bands, under 72, 72 to 99,
-and 100 and up, are a reading aid for small cells; the exact tempo is one tap
-away.
+The tempo lens has an explicit left hand, right hand, and together selector
+rather than one representative value. Its hand icons are ordered left, right,
+then together. A learner at 100 with the right hand, 72 with the left, and 60
+together has no single honest tempo for that scale, and switching hands is cheap
+because no cell moves. Its bands, under 72, 72 to 99, and 100 and up, are a
+reading aid for small cells; the exact tempo is one tap away.
 
 **Proposed:** a secondary mark for due for review. Hatching is avoided at phone
 cell sizes; an outer-edge notch or a thin contrasting border is the candidate. A
@@ -182,12 +182,14 @@ order. It is a pitch-class wheel arranged by fifths rather than a notation
 circle: a slice groups the scales starting on one piano key, so D flat major and
 C sharp minor share one, and its labels give both spellings.
 
-Tapping a cell opens the detail sheet focused on that form. Assistive technology
-finds the wheel one key at a time instead: the innermost ring is too narrow for
-cell-sized targets that do not overlap, so each key is a single button, about 50
-logical pixels square at phone width and clear of its neighbors, whose label
-reads every form and whose sheet lists them. The same targets accept keyboard
-focus in circle order, show a focus outline, and open with Enter or Space.
+Tapping a cell opens the detail sheet focused on that form. Holding and sliding
+previews a cell with an outline and its scale name; releasing opens that form.
+Releasing outside the rings cancels. Assistive technology finds the wheel one
+key at a time instead: the innermost ring is too narrow for cell-sized targets
+that do not overlap, so each key is a single button, about 50 logical pixels
+square at phone width and clear of its neighbors, whose label reads every form
+and whose sheet lists them. The same targets accept keyboard focus in circle
+order, show a focus outline, and open with Enter or Space.
 
 Arpeggios are not yet on the map. They would use the same wheel with two rings
 for root-position major and minor; inversions and further families add
@@ -227,7 +229,8 @@ sparse weekly medians cannot carry them.
 
 For one key, each form with its demonstrated independence and the date it was
 last demonstrated, and for the focused form a table of demonstrated tempo by
-hand configuration and octave span. Each cell reads the most independent rung
+hand configuration and octave span. Tapping an expanded form collapses it;
+tapping another form expands that one. Each cell reads the most independent rung
 with a tempo and names the support when it was not from memory, so a table never
 reads "96" for a tempo shown with cues.
 

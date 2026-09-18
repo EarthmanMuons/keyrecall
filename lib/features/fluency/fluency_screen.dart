@@ -8,6 +8,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
 import '../practice/exercise_presentation.dart';
+import '../practice/hands_icon.dart';
 import '../practice/practice_providers.dart';
 import '../practice/task_help.dart';
 import 'fluency_shades.dart';
@@ -156,12 +157,18 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
               const SizedBox(height: 8),
               SegmentedButton<HandConfiguration>(
                 segments: [
-                  for (final hands in HandConfiguration.values)
+                  for (final hands in const [
+                    HandConfiguration.left,
+                    HandConfiguration.right,
+                    HandConfiguration.together,
+                  ])
                     ButtonSegment(
                       value: hands,
-                      label: Text(_handsLabel(hands)),
+                      icon: HandsIcon(hands),
+                      tooltip: _handsLabel(hands),
                     ),
                 ],
+                showSelectedIcon: false,
                 selected: {_hands},
                 onSelectionChanged: (selected) =>
                     setState(() => _hands = selected.single),
@@ -197,7 +204,7 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
             const SizedBox(height: 12),
             Text(
               'Major on the outside, then natural, harmonic, and melodic '
-              'minor. Tap a key for its tempos.',
+              'minor. Tap a scale for its tempos, or hold and slide to choose.',
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
@@ -326,7 +333,7 @@ class _Unavailable extends StatelessWidget {
 }
 
 /// The circle of keys, one ring per scale form.
-class KeyWheel extends StatelessWidget {
+class KeyWheel extends StatefulWidget {
   const KeyWheel({
     super.key,
     required this.sectors,
@@ -349,6 +356,14 @@ class KeyWheel extends StatelessWidget {
   final String Function(KeySector sector) describe;
   final void Function(int sector, ScaleForm form) onTap;
 
+  @override
+  State<KeyWheel> createState() => _KeyWheelState();
+}
+
+class _KeyWheelState extends State<KeyWheel> {
+  WheelCell? _preview;
+  bool _scrubbing = false;
+
   static const _geometry = KeyWheelGeometry();
 
   @override
@@ -357,16 +372,21 @@ class KeyWheel extends StatelessWidget {
     child: LayoutBuilder(
       builder: (context, constraints) {
         final half = constraints.maxWidth / 2;
+        final previewAtTop =
+            _preview != null &&
+            math.cos(_geometry.centerAngleOf(_preview!.sector)) < 0;
         return GestureDetector(
-          onTapUp: (details) {
-            final cell = _geometry.cellAt(
-              (details.localPosition.dx - half) / half,
-              (details.localPosition.dy - half) / half,
-            );
-            if (cell == null) return;
-            if (!sectors[cell.sector].forms.containsKey(cell.form)) return;
-            onTap(cell.sector, cell.form);
+          onTapUp: (details) => _select(_cellAt(details.localPosition, half)),
+          onLongPressStart: (details) =>
+              _previewAt(details.localPosition, half),
+          onLongPressMoveUpdate: (details) =>
+              _previewAt(details.localPosition, half),
+          onLongPressEnd: (details) {
+            final cell = _cellAt(details.localPosition, half);
+            _clearPreview();
+            _select(cell);
           },
+          onLongPressCancel: _clearPreview,
           excludeFromSemantics: true,
           child: FocusTraversalGroup(
             policy: OrderedTraversalPolicy(),
@@ -375,13 +395,47 @@ class KeyWheel extends StatelessWidget {
                 CustomPaint(
                   size: Size.square(constraints.maxWidth),
                   painter: _KeyWheelPainter(
-                    sectors: sectors,
-                    fill: fill,
-                    emptyColor: emptyColor,
-                    labelStyle: labelStyle,
+                    sectors: widget.sectors,
+                    fill: widget.fill,
+                    emptyColor: widget.emptyColor,
+                    labelStyle: widget.labelStyle,
+                    preview: _preview,
+                    highlightColor: Theme.of(context).colorScheme.onSurface,
                   ),
                 ),
-                for (final (index, sector) in sectors.indexed)
+                if (_scrubbing)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    top: previewAtTop ? 0 : null,
+                    bottom: previewAtTop ? null : 0,
+                    child: IgnorePointer(
+                      child: Material(
+                        color: Theme.of(context).colorScheme.inverseSurface,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            _preview == null
+                                ? 'Release to cancel'
+                                : materialName(
+                                    widget
+                                        .sectors[_preview!.sector]
+                                        .forms[_preview!.form]!,
+                                  ),
+                            textAlign: TextAlign.center,
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onInverseSurface,
+                                ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                for (final (index, sector) in widget.sectors.indexed)
                   if (ScaleForm.values
                           .where(sector.forms.containsKey)
                           .firstOrNull
@@ -391,8 +445,8 @@ class KeyWheel extends StatelessWidget {
                       child: FocusTraversalOrder(
                         order: NumericFocusOrder(index.toDouble()),
                         child: _KeyTarget(
-                          label: describe(sector),
-                          onActivate: () => onTap(index, form),
+                          label: widget.describe(sector),
+                          onActivate: () => widget.onTap(index, form),
                         ),
                       ),
                     ),
@@ -403,6 +457,31 @@ class KeyWheel extends StatelessWidget {
       },
     ),
   );
+
+  WheelCell? _cellAt(Offset position, double half) {
+    final cell = _geometry.cellAt(
+      (position.dx - half) / half,
+      (position.dy - half) / half,
+    );
+    return cell != null &&
+            widget.sectors[cell.sector].forms.containsKey(cell.form)
+        ? cell
+        : null;
+  }
+
+  void _previewAt(Offset position, double half) => setState(() {
+    _scrubbing = true;
+    _preview = _cellAt(position, half);
+  });
+
+  void _clearPreview() => setState(() {
+    _scrubbing = false;
+    _preview = null;
+  });
+
+  void _select(WheelCell? cell) {
+    if (cell != null) widget.onTap(cell.sector, cell.form);
+  }
 
   Rect _targetOf(int sector, double half) {
     final target = _geometry.semanticTargetOf(sector);
@@ -467,12 +546,16 @@ class _KeyWheelPainter extends CustomPainter {
     required this.fill,
     required this.emptyColor,
     required this.labelStyle,
+    required this.preview,
+    required this.highlightColor,
   });
 
   final List<KeySector> sectors;
   final Color Function(ScaleMaterial material) fill;
   final Color emptyColor;
   final TextStyle labelStyle;
+  final WheelCell? preview;
+  final Color highlightColor;
 
   static const _geometry = KeyWheelGeometry();
   static const _sweep = 2 * math.pi / 12;
@@ -504,6 +587,27 @@ class _KeyWheelPainter extends CustomPainter {
           ..drawPath(path, separator);
       }
       _label(canvas, center, half, index, sector);
+    }
+    if (preview case final cell?) {
+      final (outer, inner) = _geometry.ringOf(cell.form);
+      final start =
+          _geometry.centerAngleOf(cell.sector) - _sweep / 2 - math.pi / 2;
+      final path = _cell(center, outer * half, inner * half, start);
+      canvas
+        ..drawPath(
+          path,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 6
+            ..color = emptyColor,
+        )
+        ..drawPath(
+          path,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..color = highlightColor,
+        );
     }
   }
 
@@ -571,7 +675,7 @@ class _KeySheet extends StatefulWidget {
 }
 
 class _KeySheetState extends State<_KeySheet> {
-  late ScaleForm _form = widget.initialForm;
+  late ScaleForm? _form = widget.initialForm;
 
   @override
   Widget build(BuildContext context) {
@@ -594,7 +698,8 @@ class _KeySheetState extends State<_KeySheet> {
                 fluency: widget.summary[material],
                 now: now,
                 selected: form == _form,
-                onTap: () => setState(() => _form = form),
+                onTap: () =>
+                    setState(() => _form = _form == form ? null : form),
               ),
               if (form == _form) _TempoTable(fluency: widget.summary[material]),
             ],
@@ -629,18 +734,21 @@ class _FormRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final demonstration = fluency.demonstration;
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      selected: selected,
-      title: Text(materialName(fluency.material)),
-      subtitle: Text(
-        demonstration == null
-            ? 'Not demonstrated yet'
-            : '${demonstrationName(demonstration.level)}, last '
-                  '${demonstratedOn(demonstration.lastAt, now: now)}',
+    return Semantics(
+      expanded: selected,
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        selected: selected,
+        title: Text(materialName(fluency.material)),
+        subtitle: Text(
+          demonstration == null
+              ? 'Not demonstrated yet'
+              : '${demonstrationName(demonstration.level)}, last '
+                    '${demonstratedOn(demonstration.lastAt, now: now)}',
+        ),
+        trailing: Icon(selected ? Icons.expand_less : Icons.expand_more),
+        onTap: onTap,
       ),
-      trailing: Icon(selected ? Icons.expand_less : Icons.expand_more),
-      onTap: onTap,
     );
   }
 }
