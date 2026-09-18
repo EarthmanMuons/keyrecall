@@ -47,8 +47,8 @@ class PlayingPaceChart extends StatelessWidget {
         Text('Playing pace', style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
         Text(
-          'How fast you played during practice, week by week. Hollow points '
-          'rest on one or two attempts.',
+          'How fast you played one octave in parallel motion during practice. '
+          'Hollow points rest on one or two attempts.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -56,7 +56,8 @@ class PlayingPaceChart extends StatelessWidget {
         const SizedBox(height: 16),
         if (values.isEmpty)
           Text(
-            'No measured playing pace in the last $_weeks weeks.',
+            'No measured one-octave, parallel-motion playing pace in the last '
+            '$_weeks weeks.',
             style: theme.textTheme.bodyMedium,
           )
         else ...[
