@@ -84,6 +84,56 @@ void main() {
     });
   });
 
+  test('equal zone labels cannot hide the Jerusalem/Athens day difference', () {
+    final record = AttemptRecord.fromJson({
+      ..._record(0).toJson(),
+      'occurred_at': '2026-03-27T21:30:00.000Z',
+    });
+    DayPartition offset(int hours) => DayPartition('LOCAL', (at) {
+      final local = at.toUtc().add(Duration(hours: hours));
+      return CalendarDay(local.year, local.month, local.day);
+    });
+    final history = FluencyHistory.empty(alice.id, partition: offset(3))
+      ..apply(record);
+    final restored = FluencyHistory.fromJson(
+      history.toJson(),
+      partition: offset(2),
+    );
+    final journal = AttemptJournal(
+      JournalHeader(profileId: alice.id, createdAt: t0),
+    )..append(record);
+
+    expect(history.days.single.day, CalendarDay(2026, 3, 28));
+    expect(
+      restored.partition.dayOf(record.identity.occurredAt),
+      CalendarDay(2026, 3, 27),
+    );
+    expect(restored.coversPrefixOf(journal), isFalse);
+  });
+
+  test('prefix validation includes attempts without observations', () {
+    final record = recordOf(
+      _exercise(),
+      unmeasured: MeasurementUnavailableReason.notAvailable,
+    );
+    final history = FluencyHistory.empty(alice.id, partition: _utcDay)
+      ..apply(record);
+    final restored = FluencyHistory.fromJson(
+      history.toJson(),
+      partition: DayPartition(
+        _utcDay.id,
+        (at) => _utcDay.dayOf(at).plusDays(1),
+      ),
+    );
+    expect(restored.days.single.demonstrations, isEmpty);
+    expect(restored.days.single.tempos, isEmpty);
+    final journal = AttemptJournal(
+      JournalHeader(profileId: alice.id, createdAt: t0),
+    );
+    journal.append(record);
+    expect(restored.coversPrefixOf(journal), isFalse);
+  });
+
   group('demonstrations', () {
     test('a retrieval success is filed at the rung it succeeded under', () {
       expect(

@@ -74,12 +74,12 @@ class CalendarDay implements Comparable<CalendarDay> {
       '${day.toString().padLeft(2, '0')}';
 }
 
-/// How attempts are assigned to days, and a stable name for that assignment.
+/// How attempts are assigned to days, and a descriptive name for that policy.
 ///
 /// The journal records instants, not the civil day they fell on, so the day is
 /// a build parameter. Its [id] is persisted with a projection, so one built
-/// under a different partition is rebuilt rather than extended with days
-/// assigned another way.
+/// under a different policy is rebuilt. Matching names still require checking
+/// every covered record's day assignment before reuse.
 @immutable
 class DayPartition {
   final String id;
@@ -95,17 +95,9 @@ class DayPartition {
 
   /// Days in the device's time zone.
   ///
-  /// Named by the zone's offsets in January and July, which distinguishes a
-  /// move between zones and a change of daylight-saving rules without the
-  /// zone database the platform does not expose.
-  factory DayPartition.local() {
-    int offsetInMonth(int month) =>
-        DateTime.utc(2026, month).toLocal().timeZoneOffset.inMinutes;
-    return DayPartition(
-      'LOCAL:${offsetInMonth(1)}:${offsetInMonth(7)}',
-      CalendarDay.localOf,
-    );
-  }
+  /// The platform does not expose a stable identity for its time zone rules.
+  /// Cached day assignments are checked against the journal before reuse.
+  factory DayPartition.local() => DayPartition('LOCAL', CalendarDay.localOf);
 
   @override
   String toString() => 'DayPartition($id)';
@@ -564,12 +556,21 @@ class FluencyHistory {
   String get coversHistoryHash => _coversHistoryHash;
 
   /// Whether this covers exactly the first [coveredRecords] records of
-  /// [journal], so the rest can be applied rather than everything rebuilt.
+  /// [journal] under the current day assignments, so the rest can be applied
+  /// rather than everything rebuilt.
   bool coversPrefixOf(AttemptJournal journal) {
     if (journal.header.profileId != profileId) return false;
     if (_coveredRecords > journal.length) return false;
     var digest = _genesisHash(profileId);
+    var dayIndex = 0;
+    var attemptsInDay = 0;
     for (final record in journal.records.take(_coveredRecords)) {
+      final day = _days[dayIndex];
+      if (partition.dayOf(record.identity.occurredAt) != day.day) return false;
+      if (++attemptsInDay == day.attempts) {
+        dayIndex++;
+        attemptsInDay = 0;
+      }
       digest = _chainHash(digest, record);
     }
     return digest == _coversHistoryHash;

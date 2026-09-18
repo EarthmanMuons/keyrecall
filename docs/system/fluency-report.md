@@ -265,11 +265,13 @@ inferences and are never projected.
 
 Days are assigned by a `DayPartition`, the device's local date in production.
 The journal records instants and not the civil day they fell on, so the day is a
-build parameter rather than a fact. The partition's identity is persisted with
-the projection, and one built under another partition is rebuilt rather than
-extended with days assigned a different way. If the local day at performance
-time ever matters as evidence, it has to be captured in the attempt record when
-it is committed; it cannot be recovered from UTC later.
+build parameter rather than a fact. A saved projection is reused only when its
+covered journal records still map to the same calendar days under the current
+partition. This is checked alongside the prefix digest, including attempts that
+produced no demonstration or tempo observation. The partition name is
+descriptive; it does not establish equivalence of time zone rules. If the local
+day at performance time ever matters as evidence, it has to be captured in the
+attempt record when it is committed; it cannot be recovered from UTC later.
 
 The projection records its schema version, its profile, its day partition, how
 many journal records it covers, and a digest chained over those records. A count
@@ -286,10 +288,12 @@ profile takes the slot along, and a retired incarnation cannot write one.
 The report reads through `readFluencyHistory`, which reports a failed save
 instead of throwing it: the history it computed is already correct, and a cache
 that could not be written costs only the next opening's time. Failing to read
-the journal still fails the report.
+the journal still fails the report. A cache-local filesystem read failure is
+treated as a cache miss, so the report can rebuild from the readable journal.
 
-Checking coverage rehashes every covered record on each opening. That is the
-obvious cost to revisit if journals grow large enough for it to matter.
+Checking coverage rehashes every covered record and validates its day assignment
+on each opening. That is the obvious cost to revisit if journals grow large
+enough for it to matter.
 
 Four properties are tested:
 

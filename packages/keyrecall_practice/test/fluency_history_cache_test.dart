@@ -105,6 +105,18 @@ void main() {
       await expectRebuilt(store);
     });
 
+    test('when the same partition id assigns different days', () async {
+      final store = FilePracticeStore(root);
+      await practise(await openSession(store), attempts: 4);
+      final shifted = DayPartition(
+        _partition.id,
+        (at) => _partition.dayOf(at).plusDays(1),
+      );
+      await openFluencyHistory(store, alice.id, partition: shifted);
+
+      await expectRebuilt(store);
+    });
+
     test('when it covers another history of the same length', () async {
       final store = FilePracticeStore(root);
       await practise(await openSession(store), attempts: 4);
@@ -139,6 +151,35 @@ void main() {
 
       await expectRebuilt(store);
     });
+  });
+
+  test('a cache I/O failure rebuilds from the readable journal', () async {
+    final store = _UnreadableCache(const FileSystemException('unreadable'));
+    await practise(await openSession(store), attempts: 3);
+
+    final history = await readFluencyHistory(
+      store,
+      alice.id,
+      partition: _partition,
+      onSaveFailure: (_, _) => fail('saving should succeed'),
+    );
+
+    expect(history, await rebuilt(store));
+  });
+
+  test('a cache programming error still propagates', () async {
+    final error = StateError('defect');
+    final store = _UnreadableCache(error);
+
+    await expectLater(
+      readFluencyHistory(
+        store,
+        alice.id,
+        partition: _partition,
+        onSaveFailure: (_, _) => fail('must not try to save'),
+      ),
+      throwsA(same(error)),
+    );
   });
 
   group('a save that fails', () {
@@ -254,4 +295,16 @@ void main() {
     expect(withProjection, without);
     expect(withCorruptProjection, without);
   });
+}
+
+class _UnreadableCache extends InMemoryPracticeStore {
+  _UnreadableCache(this.error);
+
+  final Object error;
+
+  @override
+  Future<FluencyHistory?> loadFluencyHistory(
+    String profileId, {
+    required DayPartition partition,
+  }) async => throw error;
 }

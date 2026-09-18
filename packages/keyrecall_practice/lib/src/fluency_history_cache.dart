@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'fluency_history.dart';
@@ -80,6 +82,8 @@ Future<FluencyHistory?> _readable(
   try {
     return await store.loadFluencyHistory(profileId, partition: partition);
   } on JournalFormatException {
+    return null;
+  } on FileSystemException {
     return null;
   }
 }
