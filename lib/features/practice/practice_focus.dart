@@ -12,9 +12,9 @@ class FocusSuggestion {
 
   const FocusSuggestion({required this.label, required this.material});
 
-  ActiveFocus asEmphasis() => ActiveFocus(
+  ActiveFocus asExclusive() => ActiveFocus(
     label: label,
-    strength: FocusStrength.emphasis,
+    strength: FocusStrength.exclusive,
     material: material,
   );
 }
@@ -36,20 +36,40 @@ List<String> familyIdsIn(List<TechnicalMaterial> catalog) => [
   ...{for (final material in catalog) material.familyId},
 ];
 
-/// Every scale form present in [catalog].
-List<ScaleForm> scaleFormsIn(List<TechnicalMaterial> catalog) => [
+/// Every form present in [catalog], counting an arpeggio as the form its
+/// chord quality spells.
+///
+/// One facet over both families. A scale carries a form and an arpeggio a
+/// chord quality, but somebody asking for minor material is asking one
+/// question, and answering it twice is two lists that look like a distinction.
+List<ScaleForm> formsIn(List<TechnicalMaterial> catalog) => [
   for (final form in ScaleForm.values)
-    if (catalog.any((material) => material.scaleForm == form)) form,
+    if (catalog.any((material) => _spells(material, form))) form,
 ];
 
-/// Every chord quality present in [catalog].
-List<ArpeggioQuality> arpeggioQualitiesIn(List<TechnicalMaterial> catalog) => [
-  for (final quality in ArpeggioQuality.values)
-    if (catalog.any(
-      (material) => material is ArpeggioMaterial && material.quality == quality,
-    ))
-      quality,
-];
+/// The chord quality [form] asks for where a focus reaches arpeggios.
+ArpeggioQuality arpeggioQualityFor(ScaleForm form) => switch (form) {
+  ScaleForm.major => ArpeggioQuality.major,
+  _ => ArpeggioQuality.minor,
+};
+
+/// The forms [focus] asked for, in whichever family it named them.
+///
+/// A quality with no form of its own beside it comes back as the form that
+/// spells it, so a focus stored as arpeggios alone still opens on something.
+Set<ScaleForm> formsOf(MaterialFocus focus) {
+  final forms = {
+    for (final form in ScaleForm.values)
+      if (focus.scaleFormIds.contains(form.id)) form,
+  };
+  for (final quality in ArpeggioQuality.values) {
+    if (focus.arpeggioQualityIds.contains(quality.id) &&
+        !forms.any((form) => arpeggioQualityFor(form) == quality)) {
+      forms.add(_canonicalForm(quality));
+    }
+  }
+  return forms;
+}
 
 /// Every key present in [catalog], in the order the catalog spells them.
 List<String> tonicsIn(List<TechnicalMaterial> catalog) => [
@@ -63,18 +83,12 @@ String familyName(String familyId) => switch (familyId) {
   _ => familyId,
 };
 
-/// What a scale form is called on its own, rather than after a key.
-String scaleFormName(ScaleForm form) => switch (form) {
+/// What a form is called on its own, rather than after a key.
+String formName(ScaleForm form) => switch (form) {
   ScaleForm.major => 'Major',
   ScaleForm.naturalMinor => 'Natural minor',
   ScaleForm.harmonicMinor => 'Harmonic minor',
   ScaleForm.melodicMinor => 'Melodic minor',
-};
-
-/// What a chord quality is called on its own.
-String arpeggioQualityName(ArpeggioQuality quality) => switch (quality) {
-  ArpeggioQuality.major => 'Major',
-  ArpeggioQuality.minor => 'Minor',
 };
 
 /// How a set of materials is described where it has no name of its own.
@@ -95,6 +109,19 @@ final List<FocusSuggestion> _candidateSuggestions = [
   FocusSuggestion(label: 'Major material', material: _major()),
   FocusSuggestion(label: 'Minor material', material: _minor()),
 ];
+
+/// Whether [material] is of [form], reading an arpeggio's chord quality as the
+/// form it spells.
+bool _spells(TechnicalMaterial material, ScaleForm form) => switch (material) {
+  ScaleMaterial(form: final theirs) => theirs == form,
+  ArpeggioMaterial(:final quality) => _canonicalForm(quality) == form,
+};
+
+/// The form a chord quality spells, where one form has to stand for it.
+ScaleForm _canonicalForm(ArpeggioQuality quality) => switch (quality) {
+  ArpeggioQuality.major => ScaleForm.major,
+  ArpeggioQuality.minor => ScaleForm.naturalMinor,
+};
 
 /// Whether [suggestion] selects some of [catalog] but not all of it.
 bool _narrows(FocusSuggestion suggestion, List<TechnicalMaterial> catalog) {

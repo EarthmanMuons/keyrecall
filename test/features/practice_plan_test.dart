@@ -13,6 +13,7 @@ import 'package:keyrecall/features/practice/focus_sheet.dart';
 import 'package:keyrecall/features/practice/loop_failure.dart';
 import 'package:keyrecall/features/practice/practice_failure.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:keyrecall/features/practice/exercise_presentation.dart';
 import 'package:keyrecall/features/practice/practice_focus.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
@@ -102,24 +103,36 @@ void main() {
           ),
         );
 
-    // The attempt already on screen is unaffected: its decision is durable,
-    // so the reopened sitting finds it pending. The focus governs the slot
-    // after it.
+    // The attempt on screen goes with the material it came from. Nobody
+    // answered it, so there is nothing to keep, and showing it again is what
+    // makes a focus look like it did nothing.
     final reopened = await container.read(practiceLoopProvider.future);
-    expect(reopened.pending, isNotNull);
-    // Closed unmeasured rather than as a failure, which would open a recovery
-    // context and put the failed exercise back in front of the learner.
-    await container
-        .read(practiceLoopProvider.notifier)
-        .finish(
-          AttemptCompletion.unplayed(AttemptTermination.inactivityTimeout),
+    expect(reopened.pending, isNull);
+    expect(reopened.presented, isNotNull);
+    expect(reopened.presented!.exercise.material.tonic, 'A');
+  });
 
-          attempt: container.read(practiceLoopProvider).requireValue.attempt!,
+  test('an attempt the new focus still reaches is kept', () async {
+    final container = launch();
+    await place(container);
+    final opened = await container.read(practiceLoopProvider.future);
+    final presented = opened.presented!.exercise.material;
+
+    await container
+        .read(practicePlanProvider.notifier)
+        .apply(
+          PracticePlan.normal.focusedOn(
+            ActiveFocus(
+              label: materialName(presented),
+              strength: FocusStrength.exclusive,
+              material: MaterialFocus(tonics: {presented.tonic}),
+            ),
+          ),
         );
 
-    final loop = container.read(practiceLoopProvider).value!;
-    expect(loop.presented, isNotNull);
-    expect(loop.presented!.exercise.material.tonic, 'A');
+    final reopened = await container.read(practiceLoopProvider.future);
+    expect(reopened.pending, isNotNull);
+    expect(reopened.exercise!.material.materialId, presented.materialId);
   });
 
   test('an emphasis focus leaves the rest of the goal reachable', () async {

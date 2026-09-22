@@ -22,6 +22,10 @@ String focusButtonLabel(PracticePlan plan) => switch (plan.focus) {
 /// under it come from the material the active goal actually contains, so this
 /// list is not a taxonomy somebody has to learn: it is what there is to ask
 /// for. Anything more particular is a screen away rather than on this one.
+///
+/// Choosing one narrows practice to it. Somebody who asks for minor material
+/// and keeps being shown major material has been told the choice did nothing,
+/// and emphasis is the rarer intent, offered where material is chosen by hand.
 Future<void> showFocusSheet(BuildContext context) => showModalBottomSheet<void>(
   context: context,
   showDragHandle: true,
@@ -67,8 +71,8 @@ class _FocusSheet extends ConsumerWidget {
                   Text('Practice focus', style: theme.textTheme.titleLarge),
                   const SizedBox(height: 4),
                   Text(
-                    'KeyRecall emphasizes what you ask for and keeps including '
-                    'other useful practice.',
+                    'KeyRecall draws only from what you ask for until you '
+                    'practice normally again.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -85,11 +89,8 @@ class _FocusSheet extends ConsumerWidget {
             for (final suggestion in suggestions)
               _Choice(
                 label: suggestion.label,
-                selected:
-                    focus != null &&
-                    !focus.isExclusive &&
-                    focus.material == suggestion.material,
-                onTap: () => apply(suggestion.asEmphasis()),
+                selected: focus?.material == suggestion.material,
+                onTap: () => apply(suggestion.asExclusive()),
               ),
             if (focus != null &&
                 !suggestions.any(

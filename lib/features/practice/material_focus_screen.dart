@@ -15,10 +15,10 @@ import 'practice_providers.dart';
 /// them. Nothing here is a route the scheduler takes: the selection says what
 /// may be drawn from, and what to practice next remains KeyRecall's question.
 ///
-/// The two ways to use a selection are kept apart on the way out. Emphasizing
-/// it leaves everything else in the goal eligible; practicing only it does not,
-/// and a learner who has come this far is the one person who wants to be asked
-/// which they mean.
+/// The two ways to use a selection are kept apart on the way out. Practicing
+/// only the selection is what choosing material reads as, so it leads;
+/// emphasizing it leaves everything else in the goal eligible and is offered
+/// under it for the learner who means that instead.
 class MaterialFocusScreen extends ConsumerStatefulWidget {
   const MaterialFocusScreen({super.key});
 
@@ -29,8 +29,7 @@ class MaterialFocusScreen extends ConsumerStatefulWidget {
 
 class _MaterialFocusScreenState extends ConsumerState<MaterialFocusScreen> {
   final Set<String> _familyIds = {};
-  final Set<String> _scaleFormIds = {};
-  final Set<String> _arpeggioQualityIds = {};
+  final Set<ScaleForm> _forms = {};
   final Set<String> _tonics = {};
 
   /// Seeded from the focus in force, so opening this from an active focus
@@ -39,12 +38,14 @@ class _MaterialFocusScreenState extends ConsumerState<MaterialFocusScreen> {
 
   MaterialFocus get _selection => MaterialFocus(
     familyIds: _familyIds,
-    scaleFormIds: _scaleFormIds,
-    arpeggioQualityIds: _arpeggioQualityIds,
+    scaleFormIds: {for (final form in _forms) form.id},
+    arpeggioQualityIds: {
+      for (final form in _forms) arpeggioQualityFor(form).id,
+    },
     tonics: _tonics,
   );
 
-  void _toggle(Set<String> facet, String value, {required bool selected}) =>
+  void _toggle<T>(Set<T> facet, T value, {required bool selected}) =>
       setState(() => selected ? facet.add(value) : facet.remove(value));
 
   Future<void> _apply(FocusStrength strength, String label) async {
@@ -71,14 +72,12 @@ class _MaterialFocusScreenState extends ConsumerState<MaterialFocusScreen> {
     if (!_seeded && held != null) {
       _seeded = true;
       _familyIds.addAll(held.familyIds);
-      _scaleFormIds.addAll(held.scaleFormIds);
-      _arpeggioQualityIds.addAll(held.arpeggioQualityIds);
+      _forms.addAll(formsOf(held));
       _tonics.addAll(held.tonics);
     }
 
     final families = familyIdsIn(catalog);
-    final forms = scaleFormsIn(catalog);
-    final qualities = arpeggioQualitiesIn(catalog);
+    final forms = formsIn(catalog);
     final selection = _selection.selectionOf(catalog);
 
     return Scaffold(
@@ -101,30 +100,14 @@ class _MaterialFocusScreenState extends ConsumerState<MaterialFocusScreen> {
             ),
           if (forms.isNotEmpty)
             _Facet(
-              title: 'Scale form',
+              title: 'Form',
               children: [
                 for (final form in forms)
                   _Option(
-                    label: scaleFormName(form),
-                    selected: _scaleFormIds.contains(form.id),
+                    label: formName(form),
+                    selected: _forms.contains(form),
                     onSelected: (selected) =>
-                        _toggle(_scaleFormIds, form.id, selected: selected),
-                  ),
-              ],
-            ),
-          if (qualities.isNotEmpty)
-            _Facet(
-              title: 'Chord quality',
-              children: [
-                for (final quality in qualities)
-                  _Option(
-                    label: arpeggioQualityName(quality),
-                    selected: _arpeggioQualityIds.contains(quality.id),
-                    onSelected: (selected) => _toggle(
-                      _arpeggioQualityIds,
-                      quality.id,
-                      selected: selected,
-                    ),
+                        _toggle(_forms, form, selected: selected),
                   ),
               ],
             ),
@@ -144,12 +127,12 @@ class _MaterialFocusScreenState extends ConsumerState<MaterialFocusScreen> {
       ),
       bottomNavigationBar: _Actions(
         selection: selection,
-        onEmphasize: selection.isEmpty
-            ? null
-            : () => _apply(FocusStrength.emphasis, selectionLabel(selection)),
         onExclude: selection.isEmpty
             ? null
             : () => _apply(FocusStrength.exclusive, selectionLabel(selection)),
+        onEmphasize: selection.isEmpty
+            ? null
+            : () => _apply(FocusStrength.emphasis, selectionLabel(selection)),
       ),
     );
   }
@@ -227,13 +210,13 @@ class _Option extends StatelessWidget {
 class _Actions extends StatelessWidget {
   const _Actions({
     required this.selection,
-    required this.onEmphasize,
     required this.onExclude,
+    required this.onEmphasize,
   });
 
   final List<TechnicalMaterial> selection;
-  final VoidCallback? onEmphasize;
   final VoidCallback? onExclude;
+  final VoidCallback? onEmphasize;
 
   @override
   Widget build(BuildContext context) {
@@ -260,6 +243,13 @@ class _Actions extends StatelessWidget {
             // and a paragraph under both of them asks somebody to hold two
             // buttons in their head while they read it.
             FilledButton(
+              onPressed: onExclude,
+              child: const Text('Practice only these'),
+            ),
+            const SizedBox(height: 6),
+            _Explanation('Temporarily exclude everything else.'),
+            const SizedBox(height: 16),
+            OutlinedButton(
               onPressed: onEmphasize,
               child: const Text('Focus on these'),
             ),
@@ -267,13 +257,6 @@ class _Actions extends StatelessWidget {
             _Explanation(
               'Emphasize these while keeping other useful material in the mix.',
             ),
-            const SizedBox(height: 16),
-            OutlinedButton(
-              onPressed: onExclude,
-              child: const Text('Practice only these'),
-            ),
-            const SizedBox(height: 6),
-            _Explanation('Temporarily exclude everything else.'),
           ],
         ),
       ),

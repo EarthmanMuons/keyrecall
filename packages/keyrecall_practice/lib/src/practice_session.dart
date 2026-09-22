@@ -442,7 +442,7 @@ class PracticeSession {
       replay.state,
     );
 
-    return PracticeSession._(
+    final session = PracticeSession._(
       learner: learner,
       pipeline: resolvedPipeline,
       scheduler: resolvedScheduler,
@@ -464,6 +464,30 @@ class PracticeSession {
       acquisition: acquisition,
       pending: pending,
     );
+    await session._abandonPendingOutsideScope();
+    return session;
+  }
+
+  /// Drops a recovered decision the scope in force does not draw from.
+  ///
+  /// A pending slot is disposable, and the scope can have moved since it was
+  /// made: being shown the same exercise again after narrowing practice reads
+  /// as the narrowing having done nothing. Abandoning costs one exercise
+  /// nobody answered. A scope that did not resolve keeps its slot, because
+  /// nothing has been established about what may be practiced instead.
+  Future<void> _abandonPendingOutsideScope() async {
+    final pending = _pending;
+    if (pending == null) return;
+    if (_scopeResolution case ValidPracticeScope(:final scope)) {
+      final materialId = pending.exercise.material.materialId;
+      if (scope.requirements.any(
+        (requirement) => requirement.material.materialId == materialId,
+      )) {
+        return;
+      }
+      _pending = null;
+      await store.clearPendingDecision(profile.id);
+    }
   }
 
   /// The learner state this sitting reasons from.
