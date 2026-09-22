@@ -2,10 +2,10 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:keyrecall_input/keyrecall_input.dart';
+import 'package:keyrecall_input_sources/keyrecall_input_sources.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:keyrecall_input_sources/keyrecall_input_sources.dart';
-import 'package:keyrecall_input/keyrecall_input.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 
 import 'fake_midi_ble_service.dart';
@@ -277,23 +277,26 @@ void main() {
       );
     });
 
-    test('a connection transition does not revive an ended transport', () async {
-      await ble.closeMessages();
-      await pumpEventQueue();
+    test(
+      'a connection transition does not revive an ended transport',
+      () async {
+        await ble.closeMessages();
+        await pumpEventQueue();
 
-      await adoptInstrument(
-        container,
-        ble,
-        device: const MidiDevice(
-          id: 'another',
-          name: 'Other',
-          transport: MidiTransportType.ble,
-          isConnected: false,
-        ),
-      );
+        await adoptInstrument(
+          container,
+          ble,
+          device: const MidiDevice(
+            id: 'another',
+            name: 'Other',
+            transport: MidiTransportType.ble,
+            isConnected: false,
+          ),
+        );
 
-      expect(state().isObserving, isFalse);
-    });
+        expect(state().isObserving, isFalse);
+      },
+    );
   });
 
   test('a readopted instrument is a new source', () async {

@@ -358,10 +358,7 @@ class MidiDeviceManager extends Notifier<MidiDeviceManagerState> {
     _connectGeneration++;
 
     final devices = {
-      for (final device in [
-        ?state.connectedDevice,
-        ?_connectingDevice,
-      ])
+      for (final device in [?state.connectedDevice, ?_connectingDevice])
         device.id: device,
     };
     _connectingDevice = null;

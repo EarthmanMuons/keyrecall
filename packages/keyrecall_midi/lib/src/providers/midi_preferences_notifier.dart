@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../midi_preference_store.dart';
-
 import '../models/midi_device.dart';
 import '../models/midi_preferences.dart';
 import '../persistence/midi_preferences_keys.dart';

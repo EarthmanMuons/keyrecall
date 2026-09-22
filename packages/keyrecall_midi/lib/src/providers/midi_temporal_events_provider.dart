@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import 'package:keyrecall_input/keyrecall_input.dart';
 
 import 'midi_input_notifier.dart';

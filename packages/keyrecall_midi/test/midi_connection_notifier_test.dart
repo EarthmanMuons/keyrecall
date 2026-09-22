@@ -122,31 +122,36 @@ void main() {
   }
 
   for (final fail in [false, true]) {
-    test('superseded native connect cannot replace the selection, fail=$fail', () {
-      fakeAsync((async) {
-        final h = _Harness(async, prefs);
-        final gate = Completer<void>();
-        h.ble.connectGate = gate;
-        unawaited(h.notifier.connect(_deviceA));
-        async.flushMicrotasks();
+    test(
+      'superseded native connect cannot replace the selection, fail=$fail',
+      () {
+        fakeAsync((async) {
+          final h = _Harness(async, prefs);
+          final gate = Completer<void>();
+          h.ble.connectGate = gate;
+          unawaited(h.notifier.connect(_deviceA));
+          async.flushMicrotasks();
 
-        h.ble.connectGate = null;
-        h.ble.discoverable = const [deviceB];
-        unawaited(h.notifier.connect(deviceB));
-        async.flushMicrotasks();
-        expect(h.state.device?.id, deviceB.id);
-        expect(h.state.isConnected, isTrue);
-        expect(h.ble.disconnectCalls, 1);
+          h.ble.connectGate = null;
+          h.ble.discoverable = const [deviceB];
+          unawaited(h.notifier.connect(deviceB));
+          async.flushMicrotasks();
+          expect(h.state.device?.id, deviceB.id);
+          expect(h.state.isConnected, isTrue);
+          expect(h.ble.disconnectCalls, 1);
 
-        if (fail) h.ble.connectError = const MidiException('Old attempt failed');
-        gate.complete();
-        async.flushMicrotasks();
-        expect(h.state.device?.id, deviceB.id);
-        expect(h.state.isConnected, isTrue);
-        expect(h.ble.connectedIds, {deviceB.id});
-        h.dispose(async);
-      });
-    });
+          if (fail) {
+            h.ble.connectError = const MidiException('Old attempt failed');
+          }
+          gate.complete();
+          async.flushMicrotasks();
+          expect(h.state.device?.id, deviceB.id);
+          expect(h.state.isConnected, isTrue);
+          expect(h.ble.connectedIds, {deviceB.id});
+          h.dispose(async);
+        });
+      },
+    );
   }
 
   for (final oldConnectFinishesFirst in [false, true]) {
@@ -190,45 +195,51 @@ void main() {
     });
   }
 
-  test('same-device retry waits for stale-connect cleanup already in progress', () {
-    fakeAsync((async) {
-      final h = _Harness(async, prefs);
-      final connectGate = Completer<void>();
-      h.ble.connectGate = connectGate;
-      unawaited(h.notifier.connect(_deviceA));
-      async.flushMicrotasks();
-      unawaited(h.notifier.cancelConnectionAttempt());
-      async.flushMicrotasks();
+  test(
+    'same-device retry waits for stale-connect cleanup already in progress',
+    () {
+      fakeAsync((async) {
+        final h = _Harness(async, prefs);
+        final connectGate = Completer<void>();
+        h.ble.connectGate = connectGate;
+        unawaited(h.notifier.connect(_deviceA));
+        async.flushMicrotasks();
+        unawaited(h.notifier.cancelConnectionAttempt());
+        async.flushMicrotasks();
 
-      final disconnectGate = Completer<void>();
-      h.ble.disconnectGate = disconnectGate;
-      connectGate.complete();
-      async.flushMicrotasks();
-      expect(h.ble.disconnectCalls, 2);
+        final disconnectGate = Completer<void>();
+        h.ble.disconnectGate = disconnectGate;
+        connectGate.complete();
+        async.flushMicrotasks();
+        expect(h.ble.disconnectCalls, 2);
 
-      h.ble.connectGate = null;
-      unawaited(h.notifier.connect(_deviceA));
-      async.flushMicrotasks();
-      expect(h.ble.connectCalls, 1);
-      disconnectGate.complete();
-      async.flushMicrotasks();
-      expect(h.state.isConnected, isTrue);
-      expect(h.ble.connectedIds, {_deviceA.id});
-      h.dispose(async);
-    });
-  });
+        h.ble.connectGate = null;
+        unawaited(h.notifier.connect(_deviceA));
+        async.flushMicrotasks();
+        expect(h.ble.connectCalls, 1);
+        disconnectGate.complete();
+        async.flushMicrotasks();
+        expect(h.state.isConnected, isTrue);
+        expect(h.ble.connectedIds, {_deviceA.id});
+        h.dispose(async);
+      });
+    },
+  );
 
-  test('canceling an attempt does not disconnect an established instrument', () {
-    fakeAsync((async) {
-      final h = _Harness(async, prefs);
-      h.connectNow(async, _deviceA);
-      unawaited(h.notifier.cancelConnectionAttempt());
-      async.flushMicrotasks();
-      expect(h.state.isConnected, isTrue);
-      expect(h.ble.disconnectCalls, 0);
-      h.dispose(async);
-    });
-  });
+  test(
+    'canceling an attempt does not disconnect an established instrument',
+    () {
+      fakeAsync((async) {
+        final h = _Harness(async, prefs);
+        h.connectNow(async, _deviceA);
+        unawaited(h.notifier.cancelConnectionAttempt());
+        async.flushMicrotasks();
+        expect(h.state.isConnected, isTrue);
+        expect(h.ble.disconnectCalls, 0);
+        h.dispose(async);
+      });
+    },
+  );
 
   test('cancel permits an immediate retry of the same device', () {
     fakeAsync((async) {

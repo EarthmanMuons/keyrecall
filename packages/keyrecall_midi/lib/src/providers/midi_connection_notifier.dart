@@ -787,7 +787,9 @@ class MidiConnectionNotifier extends Notifier<MidiConnectionState> {
         );
         if (_reconnectAborted(generation)) return;
         if (!ok) {
-          throw MidiException('Bluetooth unavailable (${state.unavailability})');
+          throw MidiException(
+            'Bluetooth unavailable (${state.unavailability})',
+          );
         }
       }
       await _midi.connect(device);
