@@ -15,8 +15,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// );
 /// ```
 ///
-/// A store of its own, rather than a reach into the host app's, so nothing
-/// outside MIDI has to depend on this package to find its own settings.
+/// A provider of its own, rather than a reach into the host app's, so nothing
+/// outside MIDI has to depend on this package to find its own settings. The
+/// host may back both with the same [SharedPreferences] instance; the `midi.`
+/// key prefix is what keeps this package's data apart from the app's.
 ///
 /// Throwing rather than defaulting is deliberate. A silent empty store would
 /// look like a first launch, and the app would quietly forget which instrument

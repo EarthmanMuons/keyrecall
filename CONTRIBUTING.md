@@ -57,14 +57,15 @@ it, and it rewrites that package's `analysis_options.yaml` on the way past.
 Markdown and the Python analysis tooling have their own tasks
 (`markdown:format`, `python:check`), also run by CI when those files change.
 
-Two things the analyzer will not tell you:
+One thing the analyzer will not tell you:
 
 - **There is no code generation.** No `build_runner`, no `.g.dart`. If you find
-  yourself reaching for it, that is a decision rather than a step. Every package
-  shares one analyzer baseline,
-  [`analysis_options_package.yaml`](analysis_options_package.yaml), and the app
-  adds the Flutter lints on top of it. Change the shared file rather than a
-  package's.
+  yourself reaching for it, that is a decision rather than a step.
+
+Every package shares one analyzer baseline,
+[`analysis_options_package.yaml`](analysis_options_package.yaml), and the app
+adds the Flutter lints on top of it. Change the shared file rather than a
+package's.
 
 ## The workspace
 

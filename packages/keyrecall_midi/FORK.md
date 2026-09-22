@@ -34,10 +34,12 @@ Kept because it is the list worth reading before backporting anything to
 WhatChord, not because a diff against upstream is expected to be clean.
 
 - The input vocabulary moved to `keyrecall_input`, so the imports point there.
-- `midiPreferenceStoreProvider` is the store this package persists to, declared
-  here and overridden at startup. Upstream reaches for the host app's
+- `midiPreferenceStoreProvider` is the provider this package persists through,
+  declared here and overridden at startup. Upstream reaches for the host app's
   `sharedPreferencesProvider`, which would make every app setting depend on the
-  MIDI package to find its own storage.
+  MIDI package to find its own storage. The host may back both with the same
+  `SharedPreferences` instance; the `midi.` key prefix is what keeps the two
+  apart.
 - `inputEventClockProvider` comes from `keyrecall_input_sources`, which sits
   below every input source. A synthetic source has no business depending on this
   package to find out what time it is.

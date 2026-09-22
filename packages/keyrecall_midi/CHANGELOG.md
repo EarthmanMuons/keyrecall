@@ -18,5 +18,6 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   FORK.md.
 - The upstream tests for those providers, so the behavior is checkable here
   rather than only in WhatChord.
-- `midiPreferenceStoreProvider`, the store this package persists to. It replaces
-  the host app's `sharedPreferencesProvider`, which no longer lives here.
+- `midiPreferenceStoreProvider`, the provider this package persists through,
+  under `midi.` keys. It replaces the host app's `sharedPreferencesProvider`,
+  which no longer lives here.
