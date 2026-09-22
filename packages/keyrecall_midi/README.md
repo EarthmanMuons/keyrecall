@@ -1,7 +1,7 @@
 # keyrecall_midi
 
-Bluetooth MIDI transport, vendored from WhatChord. See
-[VENDORED.md](VENDORED.md) before changing anything here.
+Bluetooth MIDI transport, forked from WhatChord. See [FORK.md](FORK.md) for
+where the two have parted ways.
 
 ```mermaid
 flowchart TD
@@ -44,7 +44,7 @@ without one. Reading it as a performance would mistake a held chord for a scale.
 ## Reconnection
 
 A connection can end without the platform saying so. What this package does
-about it, and why, is the accumulated knowledge VENDORED.md exists to protect:
+about it, and why, is the accumulated knowledge FORK.md exists to protect:
 
 - Calls that can hang are bounded, because some devices never return.
 - The device graph is reconciled on resume, because iOS drops Bluetooth links

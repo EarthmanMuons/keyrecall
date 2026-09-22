@@ -22,7 +22,7 @@
 /// one event stream. Nothing else may interpret raw MIDI: two interpretations
 /// of the same messages will disagree, and one of them will be measured.
 ///
-/// Vendored from WhatChord; see VENDORED.md for what that means for changes.
+/// Forked from WhatChord; see FORK.md for where the two have parted ways.
 library;
 
 export 'src/midi_debug.dart';

@@ -60,15 +60,11 @@ Markdown and the Python analysis tooling have their own tasks
 Two things the analyzer will not tell you:
 
 - **There is no code generation.** No `build_runner`, no `.g.dart`. If you find
-  yourself reaching for it, that is a decision rather than a step.
-- **`packages/keyrecall_midi` is excluded from formatting and import ordering.**
-  It is vendored; see [its `VENDORED.md`](packages/keyrecall_midi/VENDORED.md)
-  before touching anything in it.
-
-Every package shares one analyzer baseline,
-[`analysis_options_package.yaml`](analysis_options_package.yaml), and the app
-adds the Flutter lints on top of it. Change the shared file rather than a
-package's.
+  yourself reaching for it, that is a decision rather than a step. Every package
+  shares one analyzer baseline,
+  [`analysis_options_package.yaml`](analysis_options_package.yaml), and the app
+  adds the Flutter lints on top of it. Change the shared file rather than a
+  package's.
 
 ## The workspace
 
@@ -81,7 +77,7 @@ packages/
   keyrecall_domain       exercises, material, conditions, realization, fingering
   keyrecall_input        the normalized live-input vocabulary (pure Dart)
   keyrecall_input_sources  the shared clock every input source stamps against
-  keyrecall_midi         Bluetooth MIDI transport (vendored)
+  keyrecall_midi         Bluetooth MIDI transport (forked from WhatChord)
   keyrecall_alignment    which played note corresponds to which expected one
   keyrecall_measurement  what an aligned performance was, on separate channels
   keyrecall_learner      the learner model: competencies, memory, execution

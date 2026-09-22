@@ -35,7 +35,7 @@ enum MidiConnectionPhase {
 /// Internal connection state with full workflow details.
 ///
 /// Tracks retry attempts, delays, and internal phases. Presentation is the
-/// host app's concern; WhatChord's status layer was not vendored.
+/// host app's concern; WhatChord's status layer did not come across.
 @immutable
 class MidiConnectionState {
   final MidiConnectionPhase phase;

@@ -1,7 +1,8 @@
-# Vendored from WhatChord
+# Forked from WhatChord
 
-Most of this package is copied from the WhatChord MIDI feature
-(`~/src/whatchord/lib/features/midi/`) rather than written here.
+This package started as a copy of the WhatChord MIDI feature
+(`~/src/whatchord/lib/features/midi/`) and is now a fork: it answers to
+KeyRecall, and tracking upstream is no longer a goal.
 
 ## Why it was copied rather than rewritten
 
@@ -18,29 +19,32 @@ rediscovering it.
 
 ## What that means for changes
 
-These files are deliberately kept close to their origin, including formatting
-and comment style that does not match the rest of this repository. That is the
-cost of being able to compare against upstream later.
+Change it the way you would change any package here. Correctness work,
+refactoring, and repository style all apply, and nothing has to be justified
+against upstream first.
 
-- **Fixing a transport bug here?** Consider whether WhatChord has it too.
-- **Restyling?** Don't, unless the file is being taken over outright.
-- **Adding KeyRecall-specific behavior?** Put it in a new file rather than
-  threading it through a vendored one.
+What remains true is the direction of the debt: WhatChord is where this
+knowledge was earned, so a transport bug fixed here is worth reporting there.
+The reverse no longer holds. KeyRecall measures performance, WhatChord
+recognizes chords, and the two want different things from the same radio.
 
-## What was changed on the way in
+## How it already differs
 
-Every adjustment is listed here, so a future diff against upstream has a known
-set of expected differences rather than a mystery.
+Kept because it is the list worth reading before backporting anything to
+WhatChord, not because a diff against upstream is expected to be clean.
 
 - The input vocabulary moved to `keyrecall_input`, so the imports point there.
-- `sharedPreferencesProvider` is defined in this package instead of being
-  imported from the host app's core.
+- `midiPreferenceStoreProvider` is the store this package persists to, declared
+  here and overridden at startup. Upstream reaches for the host app's
+  `sharedPreferencesProvider`, which would make every app setting depend on the
+  MIDI package to find its own storage.
 - `inputEventClockProvider` comes from `keyrecall_input_sources`, which sits
   below every input source. A synthetic source has no business depending on this
   package to find out what time it is.
 - Doc comments referring to `MidiConnectionStatus` and
-  `midiConnectionStatusProvider` were reworded, because those symbols were not
-  vendored and a dangling reference is worse than a slightly different comment.
+  `midiConnectionStatusProvider` were reworded, because those symbols did not
+  come across and a dangling reference is worse than a slightly different
+  comment.
 - The input boundary was taken over outright. Upstream reads the raw message
   stream from several places at once, each drawing its own conclusions;
   KeyRecall needs one interpretation it can prove things about, so
@@ -68,10 +72,8 @@ set of expected differences rather than a mystery.
     the foreground and opens a new one on resume. The connection is still kept,
     exactly as upstream keeps it.
 
-  A transport bug fixed here is still worth checking against WhatChord. A
-  divergence in this list is not: it is KeyRecall deciding that measurement
-  needs a boundary WhatChord has no use for. See
-  [`docs/system/input.md`](../../docs/system/input.md).
+  This is KeyRecall deciding that measurement needs a boundary WhatChord has no
+  use for. See [`docs/system/input.md`](../../docs/system/input.md).
 
 - Connection attempts carry a generation so a manual selection supersedes
   reconnect discovery, backoff, and pending connection results. Cancel
@@ -87,10 +89,9 @@ set of expected differences rather than a mystery.
   against the same state.
 
 The tests under `test/` came across too, with the same import rewrites. They are
-what makes the vendored behavior checkable here rather than only upstream.
+what makes this behavior checkable here rather than only upstream.
 
-## What was not brought over yet
+## What was not brought over
 
 The demo input source, which lives outside the MIDI feature in WhatChord
-(`features/demo/`). It is what makes the practice loop runnable with no hardware
-attached, and it is the obvious next thing to vendor.
+(`features/demo/`). KeyRecall wrote its own in `lib/features/demo_input/`.

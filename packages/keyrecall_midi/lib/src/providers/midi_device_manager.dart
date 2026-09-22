@@ -66,7 +66,7 @@ class MidiDeviceManagerState {
 /// **Not Responsible For:**
 /// - Retry logic (see [MidiConnectionNotifier])
 /// - Auto-reconnect workflows (see [MidiConnectionNotifier])
-/// - UI state presentation (the host app's concern; not vendored)
+/// - UI state presentation (the host app's concern)
 ///
 /// This is the "dumb" transport layer. Higher-level orchestration lives
 /// in [MidiConnectionNotifier].

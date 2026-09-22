@@ -12,9 +12,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
-- MIDI transport vendored from WhatChord: the plugin boundary, the device graph
+- MIDI transport forked from WhatChord: the plugin boundary, the device graph
   manager, the connection state machine with auto-reconnect and backoff, note
   and pedal state tracking, and the normalized temporal event stream. See
-  VENDORED.md.
-- The upstream tests for the vendored providers, so the behavior is checkable
-  here rather than only in WhatChord.
+  FORK.md.
+- The upstream tests for those providers, so the behavior is checkable here
+  rather than only in WhatChord.
+- `midiPreferenceStoreProvider`, the store this package persists to. It replaces
+  the host app's `sharedPreferencesProvider`, which no longer lives here.
