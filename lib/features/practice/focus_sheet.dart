@@ -89,7 +89,10 @@ class _FocusSheet extends ConsumerWidget {
             for (final suggestion in suggestions)
               _Choice(
                 label: suggestion.label,
-                selected: focus?.material == suggestion.material,
+                selected:
+                    focus != null &&
+                    focus.isExclusive &&
+                    focus.material == suggestion.material,
                 onTap: () => apply(suggestion.asExclusive()),
               ),
             if (focus != null &&

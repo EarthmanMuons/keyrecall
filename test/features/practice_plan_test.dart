@@ -434,6 +434,45 @@ void main() {
     );
   });
 
+  test('a minor form reaches the scales that spell it and no chords', () {
+    final catalog = <TechnicalMaterial>[
+      ..._catalog,
+      ScaleMaterial('A', ScaleForm.harmonicMinor),
+      ArpeggioMaterial('A', ArpeggioQuality.minor),
+    ];
+
+    expect(formFacets({FocusForm.harmonicMinor}).selectionOf(catalog), [
+      ScaleMaterial('A', ScaleForm.harmonicMinor),
+    ], reason: 'a minor triad is not a harmonic-minor scale');
+    expect(
+      formFacets({FocusForm.minor})
+          .selectionOf(catalog)
+          .map((material) => material.materialId),
+      containsAll([
+        ScaleMaterial('A', ScaleForm.naturalMinor).materialId,
+        ScaleMaterial('A', ScaleForm.harmonicMinor).materialId,
+        ArpeggioMaterial('A', ArpeggioQuality.minor).materialId,
+      ]),
+      reason: 'minor material is one question across both families',
+    );
+  });
+
+  test('a focus reopens on what it asked for, not on what it contains', () {
+    expect(formsOf(formFacets({FocusForm.minor})), {FocusForm.minor});
+    expect(formsOf(formFacets({FocusForm.harmonicMinor})), {
+      FocusForm.harmonicMinor,
+    });
+    expect(formsOf(MaterialFocus(tonics: {'A'})), isEmpty);
+  });
+
+  test('only the forms a catalog holds are offered', () {
+    expect(formsIn(_catalog), [
+      FocusForm.major,
+      FocusForm.minor,
+      FocusForm.naturalMinor,
+    ]);
+  });
+
   test('suggestions describe the catalog rather than a fixed taxonomy', () {
     final labels = focusSuggestionsFor(_catalog)
         .map((suggestion) => suggestion.label);

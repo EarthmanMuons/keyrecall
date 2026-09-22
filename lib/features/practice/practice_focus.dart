@@ -36,39 +36,54 @@ List<String> familyIdsIn(List<TechnicalMaterial> catalog) => [
   ...{for (final material in catalog) material.familyId},
 ];
 
-/// Every form present in [catalog], counting an arpeggio as the form its
-/// chord quality spells.
+/// A form a learner can narrow practice to.
 ///
-/// One facet over both families. A scale carries a form and an arpeggio a
-/// chord quality, but somebody asking for minor material is asking one
-/// question, and answering it twice is two lists that look like a distinction.
-List<ScaleForm> formsIn(List<TechnicalMaterial> catalog) => [
-  for (final form in ScaleForm.values)
-    if (catalog.any((material) => _spells(material, form))) form,
+/// [major] and [minor] reach both families, because asking for minor material
+/// is one question and a minor triad answers it as readily as a minor scale.
+/// The three minor forms are distinctions only a scale carries, so they reach
+/// the scales that spell them and no arpeggios: somebody asking for harmonic
+/// minor is asking about that scale, not about minor chords.
+enum FocusForm { major, minor, naturalMinor, harmonicMinor, melodicMinor }
+
+/// The form choices worth offering over [catalog].
+///
+/// One offered when it reaches something, so a catalog of one family or one
+/// tonality is not answered with a list of choices that select nothing.
+List<FocusForm> formsIn(List<TechnicalMaterial> catalog) => [
+  for (final form in FocusForm.values)
+    if (formFacets({form}).selectionOf(catalog).isNotEmpty) form,
 ];
 
-/// The chord quality [form] asks for where a focus reaches arpeggios.
-ArpeggioQuality arpeggioQualityFor(ScaleForm form) => switch (form) {
-  ScaleForm.major => ArpeggioQuality.major,
-  _ => ArpeggioQuality.minor,
-};
+/// The material facets [forms] comes to.
+MaterialFocus formFacets(Set<FocusForm> forms) => MaterialFocus(
+  scaleFormIds: {
+    for (final form in forms)
+      for (final scaleForm in _scaleFormsOf(form)) scaleForm.id,
+  },
+  arpeggioQualityIds: {
+    for (final form in forms)
+      for (final quality in _qualitiesOf(form)) quality.id,
+  },
+);
 
-/// The forms [focus] asked for, in whichever family it named them.
+/// The form choices [focus] asked for, less the ones a broader choice already
+/// covers.
 ///
-/// A quality with no form of its own beside it comes back as the form that
-/// spells it, so a focus stored as arpeggios alone still opens on something.
-Set<ScaleForm> formsOf(MaterialFocus focus) {
-  final forms = {
-    for (final form in ScaleForm.values)
-      if (focus.scaleFormIds.contains(form.id)) form,
-  };
-  for (final quality in ArpeggioQuality.values) {
-    if (focus.arpeggioQualityIds.contains(quality.id) &&
-        !forms.any((form) => arpeggioQualityFor(form) == quality)) {
-      forms.add(_canonicalForm(quality));
+/// What reopens the material screen on what a focus said rather than on every
+/// choice that happens to be contained in it: a focus on minor material is one
+/// chip, not that chip and the three minor scale forms under it.
+Set<FocusForm> formsOf(MaterialFocus focus) {
+  final chosen = <FocusForm>{};
+  for (final form in FocusForm.values) {
+    final facets = formFacets({form});
+    final asked =
+        facets.scaleFormIds.every(focus.scaleFormIds.contains) &&
+        facets.arpeggioQualityIds.every(focus.arpeggioQualityIds.contains);
+    if (asked && !chosen.any((already) => _covers(already, form))) {
+      chosen.add(form);
     }
   }
-  return forms;
+  return chosen;
 }
 
 /// Every key present in [catalog], in the order the catalog spells them.
@@ -83,12 +98,13 @@ String familyName(String familyId) => switch (familyId) {
   _ => familyId,
 };
 
-/// What a form is called on its own, rather than after a key.
-String formName(ScaleForm form) => switch (form) {
-  ScaleForm.major => 'Major',
-  ScaleForm.naturalMinor => 'Natural minor',
-  ScaleForm.harmonicMinor => 'Harmonic minor',
-  ScaleForm.melodicMinor => 'Melodic minor',
+/// What a form choice is called on its own, rather than after a key.
+String formName(FocusForm form) => switch (form) {
+  FocusForm.major => 'Major',
+  FocusForm.minor => 'Minor',
+  FocusForm.naturalMinor => 'Natural minor',
+  FocusForm.harmonicMinor => 'Harmonic minor',
+  FocusForm.melodicMinor => 'Melodic minor',
 };
 
 /// How a set of materials is described where it has no name of its own.
@@ -110,18 +126,30 @@ final List<FocusSuggestion> _candidateSuggestions = [
   FocusSuggestion(label: 'Minor material', material: _minor()),
 ];
 
-/// Whether [material] is of [form], reading an arpeggio's chord quality as the
-/// form it spells.
-bool _spells(TechnicalMaterial material, ScaleForm form) => switch (material) {
-  ScaleMaterial(form: final theirs) => theirs == form,
-  ArpeggioMaterial(:final quality) => _canonicalForm(quality) == form,
+/// The scale forms [form] asks for.
+Set<ScaleForm> _scaleFormsOf(FocusForm form) => switch (form) {
+  FocusForm.major => {ScaleForm.major},
+  FocusForm.minor => {
+    ScaleForm.naturalMinor,
+    ScaleForm.harmonicMinor,
+    ScaleForm.melodicMinor,
+  },
+  FocusForm.naturalMinor => {ScaleForm.naturalMinor},
+  FocusForm.harmonicMinor => {ScaleForm.harmonicMinor},
+  FocusForm.melodicMinor => {ScaleForm.melodicMinor},
 };
 
-/// The form a chord quality spells, where one form has to stand for it.
-ScaleForm _canonicalForm(ArpeggioQuality quality) => switch (quality) {
-  ArpeggioQuality.major => ScaleForm.major,
-  ArpeggioQuality.minor => ScaleForm.naturalMinor,
+/// The chord qualities [form] asks for, which only a tonality names.
+Set<ArpeggioQuality> _qualitiesOf(FocusForm form) => switch (form) {
+  FocusForm.major => {ArpeggioQuality.major},
+  FocusForm.minor => {ArpeggioQuality.minor},
+  _ => const {},
 };
+
+/// Whether choosing [form] already asks for everything [other] asks for.
+bool _covers(FocusForm form, FocusForm other) =>
+    _scaleFormsOf(other).every(_scaleFormsOf(form).contains) &&
+    _qualitiesOf(other).every(_qualitiesOf(form).contains);
 
 /// Whether [suggestion] selects some of [catalog] but not all of it.
 bool _narrows(FocusSuggestion suggestion, List<TechnicalMaterial> catalog) {
@@ -135,16 +163,6 @@ MaterialFocus _scales() =>
 MaterialFocus _arpeggios() =>
     MaterialFocus(familyIds: const {TechnicalMaterial.arpeggioFamilyId});
 
-MaterialFocus _major() => MaterialFocus(
-  scaleFormIds: {ScaleForm.major.id},
-  arpeggioQualityIds: {ArpeggioQuality.major.id},
-);
+MaterialFocus _major() => formFacets({FocusForm.major});
 
-MaterialFocus _minor() => MaterialFocus(
-  scaleFormIds: {
-    ScaleForm.naturalMinor.id,
-    ScaleForm.harmonicMinor.id,
-    ScaleForm.melodicMinor.id,
-  },
-  arpeggioQualityIds: {ArpeggioQuality.minor.id},
-);
+MaterialFocus _minor() => formFacets({FocusForm.minor});

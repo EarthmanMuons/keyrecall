@@ -29,21 +29,22 @@ class MaterialFocusScreen extends ConsumerStatefulWidget {
 
 class _MaterialFocusScreenState extends ConsumerState<MaterialFocusScreen> {
   final Set<String> _familyIds = {};
-  final Set<ScaleForm> _forms = {};
+  final Set<FocusForm> _forms = {};
   final Set<String> _tonics = {};
 
   /// Seeded from the focus in force, so opening this from an active focus
   /// starts where that focus left off rather than at nothing selected.
   bool _seeded = false;
 
-  MaterialFocus get _selection => MaterialFocus(
-    familyIds: _familyIds,
-    scaleFormIds: {for (final form in _forms) form.id},
-    arpeggioQualityIds: {
-      for (final form in _forms) arpeggioQualityFor(form).id,
-    },
-    tonics: _tonics,
-  );
+  MaterialFocus get _selection {
+    final forms = formFacets(_forms);
+    return MaterialFocus(
+      familyIds: _familyIds,
+      scaleFormIds: forms.scaleFormIds,
+      arpeggioQualityIds: forms.arpeggioQualityIds,
+      tonics: _tonics,
+    );
+  }
 
   void _toggle<T>(Set<T> facet, T value, {required bool selected}) =>
       setState(() => selected ? facet.add(value) : facet.remove(value));

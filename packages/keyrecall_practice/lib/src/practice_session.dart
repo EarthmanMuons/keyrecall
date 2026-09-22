@@ -468,23 +468,36 @@ class PracticeSession {
     return session;
   }
 
-  /// Drops a recovered decision the scope in force does not draw from.
+  /// Drops a recovered decision no requirement in force asks for.
   ///
   /// A pending slot is disposable, and the scope can have moved since it was
   /// made: being shown the same exercise again after narrowing practice reads
   /// as the narrowing having done nothing. Abandoning costs one exercise
   /// nobody answered. A scope that did not resolve keeps its slot, because
   /// nothing has been established about what may be practiced instead.
+  ///
+  /// Read against the candidate envelope rather than the material alone, so a
+  /// scope that keeps the material and admits a different shape of it drops
+  /// the slot too. Tempo and guidance are excluded: the scheduler varies both
+  /// within a candidate, and reaches rungs no candidate sits at.
   Future<void> _abandonPendingOutsideScope() async {
     final pending = _pending;
     if (pending == null) return;
-    if (_scopeResolution case ValidPracticeScope(:final scope)) {
-      final materialId = pending.exercise.material.materialId;
-      if (scope.requirements.any(
-        (requirement) => requirement.material.materialId == materialId,
-      )) {
-        return;
-      }
+    if (_scopeResolution case ValidPracticeScope()) {
+      final exercise = pending.exercise;
+      final shape = ExerciseConstraints(
+        hands: exercise.conditions.hands,
+        octaves: exercise.conditions.octaves,
+        direction: exercise.conditions.direction,
+        handMotion: exercise.conditions.handMotion,
+      );
+      final admitted = candidates.any(
+        (candidate) =>
+            candidate.material.materialId == exercise.material.materialId &&
+            candidate.pattern == exercise.pattern &&
+            shape.matchesStructure(candidate),
+      );
+      if (admitted) return;
       _pending = null;
       await store.clearPendingDecision(profile.id);
     }
