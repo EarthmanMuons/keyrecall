@@ -11,6 +11,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import '../../theme_mode.dart';
 import '../../wordmark.dart';
 import '../audio/pulse_clicker.dart';
 import '../fluency/fluency_screen.dart';
@@ -471,83 +472,111 @@ class _RunningTask extends StatelessWidget {
 ///
 /// Wears the active profile's color where more than one person practices
 /// here, so a glance at the bar says whose history the next attempt lands in.
-class _MenuButton extends StatelessWidget {
+class _MenuButton extends ConsumerWidget {
   const _MenuButton({required this.profile, required this.showsProfile});
 
   final Profile? profile;
   final bool showsProfile;
 
   @override
-  Widget build(BuildContext context) => PopupMenuButton<VoidCallback>(
-    onSelected: (open) => open(),
-    icon: showsProfile && profile != null
-        ? ProfileAvatar(profile: profile!, radius: 15)
-        : null,
-    itemBuilder: (context) => [
-      PopupMenuItem(
-        value: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (context) => const ProfilesScreen()),
-        ),
-        child: ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: profile == null
-              ? const Icon(Icons.people_outline)
-              : ProfileAvatar(profile: profile!, radius: 16),
-          title: Text(profile?.displayName ?? 'Profiles'),
-        ),
-      ),
-      PopupMenuItem(
-        value: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (context) => const GoalScreen()),
-        ),
-        child: const ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.flag_outlined),
-          title: Text('Goal'),
-        ),
-      ),
-      PopupMenuItem(
-        value: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (context) => const FluencyScreen()),
-        ),
-        child: const ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.insights_outlined),
-          title: Text('Fluency'),
-        ),
-      ),
-      // Temporary, and deliberately not behind the build-mode check the
-      // developer screen is: what it measures is release-build scheduling cost
-      // on real hardware, which is the one thing a profile build cannot say.
-      PopupMenuItem(
-        value: () => Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (context) => const SchedulerBenchmarkScreen(),
-          ),
-        ),
-        child: const ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.speed),
-          title: Text('Scheduler benchmark'),
-        ),
-      ),
-      // A profile build is how this gets taken to a real instrument across the
-      // room, and a release build is what a learner sees.
-      if (!kReleaseMode)
+  Widget build(BuildContext context, WidgetRef ref) {
+    final themeMode = ref.watch(themeModeProvider);
+
+    return PopupMenuButton<VoidCallback>(
+      onSelected: (open) => open(),
+      icon: showsProfile && profile != null
+          ? ProfileAvatar(profile: profile!, radius: 15)
+          : null,
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: () => Navigator.of(context).push(
             MaterialPageRoute<void>(
-              builder: (context) => const DeveloperScreen(),
+              builder: (context) => const ProfilesScreen(),
+            ),
+          ),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: profile == null
+                ? const Icon(Icons.people_outline)
+                : ProfileAvatar(profile: profile!, radius: 16),
+            title: Text(profile?.displayName ?? 'Profiles'),
+          ),
+        ),
+        PopupMenuItem(
+          value: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(builder: (context) => const GoalScreen()),
+          ),
+          child: const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.flag_outlined),
+            title: Text('Goal'),
+          ),
+        ),
+        PopupMenuItem(
+          value: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => const FluencyScreen(),
             ),
           ),
           child: const ListTile(
             contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.build_outlined),
-            title: Text('Developer'),
+            leading: Icon(Icons.insights_outlined),
+            title: Text('Fluency'),
           ),
         ),
-    ],
-  );
+        // A learner practices at whatever hour they have, and the palette the
+        // system picked is not always the one that suits the room.
+        PopupMenuItem(
+          value: () => ref.read(themeModeProvider.notifier).advance(),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(switch (themeMode) {
+              ThemeMode.system => Icons.brightness_auto_outlined,
+              ThemeMode.light => Icons.light_mode_outlined,
+              ThemeMode.dark => Icons.dark_mode_outlined,
+            }),
+            title: const Text('Theme'),
+            trailing: Text(
+              themeModeName(themeMode),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ),
+        // Temporary, and deliberately not behind the build-mode check the
+        // developer screen is: what it measures is release-build scheduling cost
+        // on real hardware, which is the one thing a profile build cannot say.
+        PopupMenuItem(
+          value: () => Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (context) => const SchedulerBenchmarkScreen(),
+            ),
+          ),
+          child: const ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.speed),
+            title: Text('Scheduler benchmark'),
+          ),
+        ),
+        // A profile build is how this gets taken to a real instrument across the
+        // room, and a release build is what a learner sees.
+        if (!kReleaseMode)
+          PopupMenuItem(
+            value: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (context) => const DeveloperScreen(),
+              ),
+            ),
+            child: const ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.build_outlined),
+              title: Text('Developer'),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 /// What practice is drawing from, and the way to change it.

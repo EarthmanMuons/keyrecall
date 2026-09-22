@@ -8,6 +8,7 @@ import 'features/practice/onboarding.dart';
 import 'features/practice/practice_providers.dart';
 import 'layout.dart';
 import 'theme.dart';
+import 'theme_mode.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -47,6 +48,7 @@ class KeyRecallApp extends ConsumerWidget {
       title: 'KeyRecall',
       theme: keyRecallTheme(lightColorScheme),
       darkTheme: keyRecallTheme(darkColorScheme),
+      themeMode: ref.watch(themeModeProvider),
       // Above the navigator, so routes, sheets, and dialogs all read the same
       // layout.
       builder: (context, child) => LayoutScope(child: child!),
