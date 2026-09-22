@@ -58,5 +58,9 @@ app.*.map.json
 packages/*/build/
 third_party/**/build/
 
+# Golden comparison artifacts. A single failing run writes four images per
+# golden, and the working copy is tracked automatically.
+**/test/failures/
+
 .ruff_cache/
 analysis/*/generated/
