@@ -29,7 +29,7 @@ class _Harness {
     : ble = FakeMidiBleService() {
     container = ProviderContainer(
       overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
+        midiPreferenceStoreProvider.overrideWithValue(prefs),
         midiBleServiceProvider.overrideWithValue(ble),
         bluetoothPermissionServiceProvider.overrideWithValue(
           FakeBluetoothPermissionService(),

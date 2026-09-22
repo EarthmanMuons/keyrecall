@@ -53,4 +53,4 @@ export 'src/providers/midi_wakelock_provider.dart';
 export 'src/services/bluetooth_permission_service.dart';
 export 'src/services/midi_ble_service.dart';
 export 'src/services/midi_output_sender.dart';
-export 'src/shared_preferences_provider.dart';
+export 'src/midi_preference_store.dart';

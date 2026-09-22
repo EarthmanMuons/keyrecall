@@ -24,7 +24,7 @@ void main() {
     nowMs = 0;
     container = ProviderContainer(
       overrides: [
-        sharedPreferencesProvider.overrideWithValue(preferences),
+        midiPreferenceStoreProvider.overrideWithValue(preferences),
         midiBleServiceProvider.overrideWithValue(ble),
         bluetoothPermissionServiceProvider.overrideWithValue(
           const FakeBluetoothPermissionService(),

@@ -33,7 +33,7 @@ void main() {
     final prefs = await SharedPreferences.getInstance();
     container = ProviderContainer(
       overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
+        midiPreferenceStoreProvider.overrideWithValue(prefs),
         midiBleServiceProvider.overrideWithValue(ble),
         bluetoothPermissionServiceProvider.overrideWithValue(
           FakeBluetoothPermissionService(),

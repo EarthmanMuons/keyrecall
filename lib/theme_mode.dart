@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:material_ui/material_ui.dart';
+
+import 'preferences.dart';
 
 /// Which of the app's two palettes is in force, if the learner has said.
 final themeModeProvider = NotifierProvider<ThemeModeNotifier, ThemeMode>(

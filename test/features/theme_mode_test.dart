@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:keyrecall/preferences.dart';
 import 'package:keyrecall/theme_mode.dart';
 
 void main() {
@@ -49,7 +49,7 @@ void main() {
     expect(container.read(themeModeProvider), ThemeMode.system);
   });
 
-  test('choosing a mode takes effect and survives the next launch', () async {
+  test('choosing a mode updates state and persists the choice', () async {
     final container = await containerWith(const {});
 
     await container.read(themeModeProvider.notifier).set(ThemeMode.light);

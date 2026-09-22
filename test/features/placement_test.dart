@@ -6,12 +6,14 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/attempt_screen.dart';
 import 'package:keyrecall/features/practice/onboarding.dart';
 import 'package:keyrecall/features/practice/placement.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
+import 'package:keyrecall/preferences.dart';
 
 import '../support/scheduler_override.dart';
 
@@ -26,10 +28,13 @@ import 'package:keyrecall/features/practice/profiles_screen.dart';
 void main() {
   late InMemoryProfileRepository profiles;
   late InMemoryPracticeStore practice;
+  late SharedPreferences preferences;
 
-  setUp(() {
+  setUp(() async {
     profiles = InMemoryProfileRepository();
     practice = InMemoryPracticeStore();
+    SharedPreferences.setMockInitialValues(const {});
+    preferences = await SharedPreferences.getInstance();
   });
 
   ProviderContainer containerOn() {
@@ -38,6 +43,7 @@ void main() {
         profileRepositoryProvider.overrideWith((ref) async => profiles),
         inProcessScheduling,
         practiceStoreProvider.overrideWith((ref) async => practice),
+        sharedPreferencesProvider.overrideWithValue(preferences),
       ],
     );
     addTearDown(container.dispose);

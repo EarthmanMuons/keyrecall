@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../shared_preferences_provider.dart';
+import '../midi_preference_store.dart';
 
 import '../models/midi_device.dart';
 import '../models/midi_preferences.dart';
@@ -38,7 +38,7 @@ final hasLastConnectedMidiDeviceProvider = Provider<bool>((ref) {
 class MidiPreferencesNotifier extends Notifier<MidiPreferences> {
   @override
   MidiPreferences build() {
-    final prefs = ref.watch(sharedPreferencesProvider);
+    final prefs = ref.watch(midiPreferenceStoreProvider);
 
     final lastConnectedDeviceId = prefs.getString(
       MidiPreferencesKeys.lastConnectedDeviceId,
@@ -61,7 +61,7 @@ class MidiPreferencesNotifier extends Notifier<MidiPreferences> {
   }
 
   Future<void> setLastConnectedDevice(MidiDevice device) async {
-    final prefs = ref.read(sharedPreferencesProvider);
+    final prefs = ref.read(midiPreferenceStoreProvider);
 
     // Persist a stable representation (don’t persist a stale isConnected flag).
     final toStore = device.copyWith(isConnected: false);
@@ -86,7 +86,7 @@ class MidiPreferencesNotifier extends Notifier<MidiPreferences> {
   }
 
   Future<void> clearLastConnectedDevice() async {
-    final prefs = ref.read(sharedPreferencesProvider);
+    final prefs = ref.read(midiPreferenceStoreProvider);
 
     state = state.copyWith(clearLastConnectedDevice: true);
 
@@ -96,14 +96,14 @@ class MidiPreferencesNotifier extends Notifier<MidiPreferences> {
   }
 
   Future<void> setAutoReconnect(bool enabled) async {
-    final prefs = ref.read(sharedPreferencesProvider);
+    final prefs = ref.read(midiPreferenceStoreProvider);
 
     state = state.copyWith(autoReconnect: enabled);
     await prefs.setBool(MidiPreferencesKeys.autoReconnect, enabled);
   }
 
   Future<void> clearAllMidiData() async {
-    final prefs = ref.read(sharedPreferencesProvider);
+    final prefs = ref.read(midiPreferenceStoreProvider);
 
     // Preserve defaults for autoReconnect (true) after reset.
     state = const MidiPreferences.defaults();

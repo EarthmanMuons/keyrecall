@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'features/practice/onboarding.dart';
 import 'features/practice/practice_providers.dart';
 import 'layout.dart';
+import 'preferences.dart';
 import 'theme.dart';
 import 'theme_mode.dart';
 
@@ -25,6 +26,7 @@ Future<void> main() async {
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(preferences),
+        midiPreferenceStoreProvider.overrideWithValue(preferences),
         appBuildVersionProvider.overrideWithValue(
           '${package.version}+${package.buildNumber}',
         ),

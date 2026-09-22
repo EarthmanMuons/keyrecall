@@ -30,7 +30,7 @@ void main() {
     ble = FakeMidiBleService()..discoverable = [_otherInstrument];
     container = ProviderContainer(
       overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
+        midiPreferenceStoreProvider.overrideWithValue(prefs),
         midiBleServiceProvider.overrideWithValue(ble),
         bluetoothPermissionServiceProvider.overrideWithValue(
           const FakeBluetoothPermissionService(),
