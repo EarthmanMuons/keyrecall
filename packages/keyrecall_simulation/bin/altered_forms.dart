@@ -1,0 +1,114 @@
+import 'dart:io';
+
+import 'package:args/args.dart';
+import 'package:keyrecall_domain/keyrecall_domain.dart';
+
+import 'package:keyrecall_simulation/keyrecall_simulation.dart';
+
+/// When harmonic and melodic minor are first introduced, and what the learner
+/// held at that moment, across goal and focus shapes.
+Future<void> main(List<String> arguments) async {
+  final parser = ArgParser()
+    ..addOption('seeds', defaultsTo: '4')
+    ..addOption('slots', defaultsTo: '120')
+    ..addOption('jobs', defaultsTo: '8');
+  final options = parser.parse(arguments);
+  final seeds = int.parse(options.option('seeds')!);
+  final slots = int.parse(options.option('slots')!);
+  final jobs = int.parse(options.option('jobs')!);
+
+  final stopwatch = Stopwatch()..start();
+  final runs = await runAlteredFormMatrix(
+    arms: const [AlteredFormArm.shipped],
+    seeds: seeds,
+    slots: slots,
+    parallelism: jobs,
+    onProgress: (completed, total) {
+      if (completed == total || completed % 16 == 0) {
+        stderr.writeln(
+          'completed $completed/$total trajectories '
+          '(${stopwatch.elapsed.inSeconds}s)',
+        );
+      }
+    },
+  );
+
+  stdout
+    ..writeln(
+      'altered-form census: $seeds seeds x $slots slots, $jobs jobs, '
+      '${stopwatch.elapsed.inSeconds}s',
+    )
+    ..writeln(
+      [
+        'arm',
+        'scope',
+        'player',
+        'runs',
+        'harmonic',
+        'harmonic_slot',
+        'majors',
+        'naturals',
+        'bands',
+        'own_natural',
+        'waiver_open',
+        'melodic',
+        'melodic_slot',
+        'support_share',
+        'blocked',
+        'caught_up',
+      ].join('\t'),
+    );
+
+  final groups = <String, List<AlteredFormRun>>{};
+  for (final run in runs) {
+    groups
+        .putIfAbsent('${run.armId}/${run.scope.name}/${run.playerId}', () => [])
+        .add(run);
+  }
+  for (final group in groups.values) {
+    final first = group.first;
+    final harmonic = [
+      for (final run in group) ?run.first(ScaleForm.harmonicMinor),
+    ];
+    final melodic = [
+      for (final run in group) ?run.first(ScaleForm.melodicMinor),
+    ];
+    final selections = group.fold(0, (sum, run) => sum + run.selections);
+    final support = group.fold(0, (sum, run) => sum + run.supportSelections);
+    stdout.writeln(
+      [
+        first.armId,
+        first.scope.name,
+        first.playerId,
+        '${group.length}',
+        '${harmonic.length}',
+        _mean(harmonic.map((introduction) => introduction.slot)),
+        _mean(harmonic.map((introduction) => introduction.majorsRetrieved)),
+        _mean(
+          harmonic.map((introduction) => introduction.naturalMinorsRetrieved),
+        ),
+        _mean(harmonic.map((introduction) => introduction.bandsRetrieved)),
+        '${harmonic.where((introduction) => introduction.naturalMinorRetrieved).length}',
+        '${harmonic.where((introduction) => introduction.waiverOpen).length}',
+        '${melodic.length}',
+        _mean(melodic.map((introduction) => introduction.slot)),
+        selections == 0 ? '-' : (support / selections).toStringAsFixed(3),
+        _terminals(group, AlteredFormTerminal.blocked),
+        _terminals(group, AlteredFormTerminal.caughtUp),
+      ].join('\t'),
+    );
+  }
+}
+
+String _mean(Iterable<int> values) => values.isEmpty
+    ? '-'
+    : (values.reduce((a, b) => a + b) / values.length).toStringAsFixed(1);
+
+/// How many runs ended at [terminal], and the mean slot they ended on.
+String _terminals(List<AlteredFormRun> group, AlteredFormTerminal terminal) {
+  final ended = [
+    for (final run in group)
+      if (run.terminal == terminal) run.terminalSlot!,
+  ];
+  return ended.isEmpty ? '0' : '${ended.length}@${_mean(ended)}';
+}
