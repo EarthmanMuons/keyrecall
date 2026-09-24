@@ -43,8 +43,8 @@ flowchart TD
 
     M --> F1[major]
     F1 -->|no gate| F2[natural minor]
-    F2 -->|"REQUIRES: core breadth"| F3[harmonic minor]
-    F2 -->|"REQUIRES: wider core breadth"| F4[melodic minor]
+    F2 -->|"REQUIRES: same tonic, then core breadth"| F3[harmonic minor]
+    F2 -->|"REQUIRES: same tonic, then wider core breadth"| F4[melodic minor]
 
     M --> E1[unseen material]
     E1 -->|REQUIRES| E2[cued first encounter]
@@ -107,16 +107,25 @@ kept alongside it.
 ## The minor forms
 
 **Decision.** Major and natural minor are unordered with respect to each other.
-Harmonic and melodic minor are barred from first introduction until a foundation
-exists: both hands observed separately, some hands-together work on ordinary
-material, and a breadth of major and natural-minor material actually retrieved,
-spread over more than one band, per hand. Melodic minor asks for more breadth
-than harmonic, and neither form requires the other. The wait is lifted by
-observed, fluent hands-together coordination, and by nothing else.
+Harmonic and melodic minor are barred from first introduction until two things
+hold, for each hand the exercise asks for:
 
-**Why.** The _conceptual object changes_ test. Meeting a new idea of what minor
-means while ordinary scales are still unsettled enlarges the vocabulary faster
-than the base under it.
+- **the scale being altered:** the natural minor of the same tonic, retrieved
+  from memory by that hand; and
+- **the phase:** both hands observed separately, some hands-together work on
+  ordinary material, and a breadth of major and natural-minor material that hand
+  has retrieved, spread over more than one band.
+
+Melodic minor asks for more breadth than harmonic, and neither form requires the
+other. Observed, fluent hands-together coordination waives the phase and never
+the scale being altered. The breadth asked for is capped at what the hand could
+still have: its own retrievals, wherever they were earned, and the ordinary
+material the slot still offers.
+
+**Why.** The _conceptual object changes_ test, twice over. Meeting a new idea of
+what minor means while ordinary scales are still unsettled enlarges the
+vocabulary faster than the base under it, and an alteration of a scale the hand
+cannot yet produce is not an alteration of anything it knows.
 
 **Evidence.** The curricula give **no** support for a natural → harmonic →
 melodic ladder, and the two most explicit ones disagree with each other. ABRSM
@@ -128,13 +137,25 @@ natural-minor breadth. So the gate is a KeyRecall pedagogical hypothesis,
 justified by the vocabulary argument rather than by curriculum convention, and
 it is deliberately breadth rather than a mastery threshold.
 
-**Consequences.** Breadth is per hand, by the same reading the bands use: a
-fluent right hand is not evidence about the left. The waiver reads the phase's
-own defining dimension. Observed because placement seeds the mean and a
-self-report must not skip the phase; fluent because exposure is what the
-ordinary path already asks for. The rule exists so a beginner's vocabulary does
-not outrun their base, not to make an experienced player re-earn what they
-arrived with.
+**Consequences.** Both parts are per hand, by the same reading the bands use: a
+fluent right hand is not evidence about the left. Material memory cannot say
+which hand retrieved a scale, so the session rebuilds each hand's successful
+retrievals from the journal, a hands-together retrieval counting for both hands.
+Retrieval is deliberately stronger than the generic material prerequisite, which
+accepts cued playing and only ranks a candidate down.
+
+The waiver reads the phase's own defining dimension. Observed because placement
+seeds the mean and a self-report must not skip the phase; fluent because
+exposure is what the ordinary path already asks for. The rule exists so a
+beginner's vocabulary does not outrun their base, not to make an experienced
+player re-earn what they arrived with.
+
+The cap exists because an uncapped count blocks a goal or focus that holds
+little ordinary material, and blocks any scope once coverage has retired the
+ordinary material the count is waiting on. It never goes below the same-tonic
+scale. The numbers themselves, six and eight retrievals over two bands, remain
+first guesses; see
+[`../research/experiments/altered-forms.md`](../research/experiments/altered-forms.md).
 
 ## One octave to two
 

@@ -34,6 +34,7 @@ citation key is not an argument.
 | [`trajectories.md`](experiments/trajectories.md)                 | What goes wrong over a trajectory rather than a decision   |
 | [`introduction-breadth.md`](experiments/introduction-breadth.md) | How much new material may be open at once                  |
 | [`arpeggio-policy.md`](experiments/arpeggio-policy.md)           | Is the arpeggio policy viable, and is a competency missing |
+| [`altered-forms.md`](experiments/altered-forms.md)               | What each part of the altered-form gate does, by scope     |
 | [`player-calibration.md`](experiments/player-calibration.md)     | Can a synthetic player be fitted to a real sitting         |
 | [`fluency-tempo.md`](experiments/fluency-tempo.md)               | Which rule a typical-tempo chart can read                  |
 

@@ -54,15 +54,20 @@ does not know the scale.
 A third rule asks a question of its own: whether the learner's vocabulary of
 scale forms should grow yet. Harmonic and melodic minor are not harder keys,
 they are new ideas about what minor means, and meeting one while ordinary scales
-are still unsettled enlarges the vocabulary faster than the base under it. They
-wait on both hands observed, some hands-together work, and a breadth of major
-and natural-minor material the learner has actually retrieved, spread over more
-than one band. Breadth is per hand, by the same reading the bands use: a fluent
-right hand is not evidence about the left. The wait is lifted for someone with
-observed, fluent hands-together coordination, since the rule exists so a
-beginner's vocabulary does not outrun their base rather than to make an
-experienced player re-earn what they arrived with. Unlike the other rules here,
-it is a barrier to first introduction rather than a ranking disadvantage.
+are still unsettled enlarges the vocabulary faster than the base under it. Each
+waits first on the scale it alters: the natural minor of the same tonic,
+retrieved by the hand being asked, which the session rebuilds per hand from the
+journal because memory cannot say which hand produced a scale. Then on the
+phase: both hands observed, some hands-together work, and a breadth of major and
+natural-minor material that hand has retrieved, spread over more than one band.
+Breadth is per hand, by the same reading the bands use: a fluent right hand is
+not evidence about the left, and it is capped at what the hand could still have,
+its own retrievals plus the ordinary material the slot offers. The phase is
+waived for someone with observed, fluent hands-together coordination, since the
+rule exists so a beginner's vocabulary does not outrun their base rather than to
+make an experienced player re-earn what they arrived with; the scale being
+altered is never waived. Unlike the other rules here, it is a barrier to first
+introduction rather than a ranking disadvantage.
 
 So eligibility reads competency state and factual observation history: whether a
 material has an entry at all, and whether it has ever been retrieved. It does

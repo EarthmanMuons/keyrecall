@@ -43,6 +43,14 @@ introduced scale as support for its hands-together requirement; a strict custom
 request may decline support outside the named materials while still allowing
 easier realizations of those materials.
 
+What the domain declares is always retained. A material that names another as
+its prerequisite, as an inversion names its root position and an altered minor
+form names its natural minor, brings that material into scope as support,
+through any chain of them. Resolution keeps the curriculum's own requirements
+over it where there are any, and otherwise makes one. Without that, an exclusive
+focus on an altered form would exclude the one scale it waits for, and could
+only end blocked.
+
 ## Requirements describe capability, not lessons
 
 A curriculum is a provenance-backed set of requirements, each describing an
