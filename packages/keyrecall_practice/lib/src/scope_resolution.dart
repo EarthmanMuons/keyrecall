@@ -285,18 +285,34 @@ class PracticeScopeResolver {
       );
     }
 
-    final supportIds = _supportersOf(activeTargetIds, curriculum.requirements);
-    final activeRequirements = [
-      for (final requirement in curriculum.requirements)
-        if (exclusiveIds == null ||
-            activeTargetIds.contains(requirement.id) ||
-            supportIds.contains(requirement.id))
-          requirement,
-    ];
-
     final catalogById = {
       for (final material in catalog) material.materialId: material,
     };
+    final declaredSupportIds = _supportersOf(
+      activeTargetIds,
+      curriculum.requirements,
+    );
+    final retained = [
+      for (final requirement in curriculum.requirements)
+        if (exclusiveIds == null ||
+            activeTargetIds.contains(requirement.id) ||
+            declaredSupportIds.contains(requirement.id))
+          requirement,
+    ];
+    final prerequisites = _prerequisiteSupportFor(
+      retained,
+      curriculum,
+      catalogById,
+    );
+    final supportIds = {
+      ...declaredSupportIds,
+      for (final requirement in prerequisites) requirement.id,
+    };
+    final activeRequirements = [
+      ...retained,
+      for (final requirement in prerequisites)
+        if (!retained.contains(requirement)) requirement,
+    ];
     // Generation reads the material and the instrument and nothing else, so
     // requirements over one material share a pool rather than each building an
     // identical one.
@@ -424,6 +440,76 @@ Set<String> _supportersOf(
     frontier = reached;
   }
   return supporters;
+}
+
+/// The requirements that prepare [retained] because a material declares the
+/// other as its prerequisite, through any chain of them.
+///
+/// A prerequisite the scope left out would otherwise make its dependent
+/// unreachable, so an exclusive focus on an inversion, or on an altered minor
+/// form, would be blocked by the very material it needs first. The
+/// curriculum's own requirements over a prerequisite material are retained
+/// where it has any; otherwise one is made, preparing whatever named it. A
+/// prerequisite the catalog does not hold cannot be offered, and is left to
+/// the scheduler to report as blocked.
+List<CurriculumRequirement> _prerequisiteSupportFor(
+  List<CurriculumRequirement> retained,
+  Curriculum curriculum,
+  Map<String, TechnicalMaterial> catalogById,
+) {
+  final requirementsByMaterial = <String, List<CurriculumRequirement>>{};
+  for (final requirement in curriculum.requirements) {
+    requirementsByMaterial
+        .putIfAbsent(requirement.materialId, () => [])
+        .add(requirement);
+  }
+  Iterable<String> requirementIdsOf(String materialId) =>
+      requirementsByMaterial[materialId]?.map(
+        (requirement) => requirement.id,
+      ) ??
+      [catalogRequirementId(curriculum.id, materialId)];
+
+  final dependentsByMaterial = <String, Set<String>>{};
+  var frontier = [
+    for (final requirement in retained)
+      (requirement.materialId, requirement.id),
+  ];
+  while (frontier.isNotEmpty) {
+    final next = <(String, String)>[];
+    for (final (materialId, requirementId) in frontier) {
+      final material = catalogById[materialId];
+      if (material == null) continue;
+      for (final prerequisiteId
+          in material.progression.prerequisiteMaterialIds) {
+        if (!catalogById.containsKey(prerequisiteId)) continue;
+        final firstVisit = !dependentsByMaterial.containsKey(prerequisiteId);
+        dependentsByMaterial
+            .putIfAbsent(prerequisiteId, () => {})
+            .add(requirementId);
+        if (firstVisit) {
+          for (final id in requirementIdsOf(prerequisiteId)) {
+            next.add((prerequisiteId, id));
+          }
+        }
+      }
+    }
+    frontier = next;
+  }
+
+  return [
+    for (final MapEntry(key: materialId, value: dependents)
+        in dependentsByMaterial.entries)
+      ...requirementsByMaterial[materialId] ??
+          [
+            CurriculumRequirement(
+              id: catalogRequirementId(curriculum.id, materialId),
+              familyId: catalogById[materialId]!.familyId,
+              materialId: materialId,
+              role: CurriculumRequirementRole.support,
+              supportsRequirementIds: dependents,
+            ),
+          ],
+  ];
 }
 
 List<Exercise> _generateArpeggioCandidates(

@@ -311,6 +311,81 @@ void main() {
     }, reason: 'roles are not exclusive: B is a target that also prepares one');
   });
 
+  group('declared material prerequisites', () {
+    final root = ArpeggioMaterial('C', ArpeggioQuality.major);
+    final inversion = ArpeggioMaterial(
+      'C',
+      ArpeggioQuality.major,
+      inversion: ArpeggioInversion.first,
+    );
+    final catalog = [root, inversion];
+    final inversionResolver = PracticeScopeResolver(
+      families: [_OneShapeFamily(TechnicalMaterial.arpeggioFamilyId)],
+    );
+
+    test('an exclusive focus retains the prerequisite as support', () {
+      final goal = PracticeGoal(
+        id: 'GOAL',
+        targetMaterialIds: {root.materialId, inversion.materialId},
+      );
+      final inversionId = catalogRequirementId(goal.id, inversion.materialId);
+      final rootId = catalogRequirementId(goal.id, root.materialId);
+
+      final result =
+          inversionResolver.resolve(
+                goal: goal,
+                focus: PracticeFocus(exclusiveRequirementIds: {inversionId}),
+                catalog: catalog,
+                instrument: InstrumentProfile(),
+              )
+              as ValidPracticeScope;
+
+      expect(result.scope.targetRequirementIds, {inversionId});
+      expect(result.scope.supportRequirementIds, {rootId});
+    });
+
+    test('a goal that never named the prerequisite is given one', () {
+      final goal = PracticeGoal(
+        id: 'GOAL',
+        targetMaterialIds: {inversion.materialId},
+      );
+
+      final result =
+          inversionResolver.resolve(
+                goal: goal,
+                focus: PracticeFocus.unrestricted,
+                catalog: catalog,
+                instrument: InstrumentProfile(),
+              )
+              as ValidPracticeScope;
+
+      final support = result.scope.requirements.singleWhere(
+        (resolved) => resolved.isSupport,
+      );
+      expect(support.material, root);
+      expect(support.isTarget, isFalse);
+      expect(support.requirement.supportsRequirementIds, {
+        catalogRequirementId(goal.id, inversion.materialId),
+      });
+    });
+
+    test('a prerequisite the catalog does not hold is not offered', () {
+      final result =
+          inversionResolver.resolve(
+                goal: PracticeGoal(
+                  id: 'GOAL',
+                  targetMaterialIds: {inversion.materialId},
+                ),
+                focus: PracticeFocus.unrestricted,
+                catalog: [inversion],
+                instrument: InstrumentProfile(),
+              )
+              as ValidPracticeScope;
+
+      expect(result.scope.requirements.single.material, inversion);
+    });
+  });
+
   test('one material is realized once, however many requirements name it', () {
     final material = fixtureMaterials.first;
     final family = _CountingFamily();
@@ -356,6 +431,38 @@ class _CountingFamily implements PracticeMaterialFamily {
   AcquisitionFloor acquisitionFloorFor(
     Iterable<AcquisitionFloorRequest> requests,
   ) => _scales.acquisitionFloorFor(requests);
+}
+
+/// A family offering one right-hand ascending realization of anything.
+///
+/// Inversions have no sourced fingering, so the production arpeggio family
+/// realizes none of them; resolution is what is under test, not realization.
+class _OneShapeFamily implements PracticeMaterialFamily {
+  @override
+  final String familyId;
+
+  _OneShapeFamily(this.familyId);
+
+  @override
+  double get entryTempoBpm => 60;
+
+  @override
+  List<Exercise> generate(
+    InstrumentProfile instrument,
+    TechnicalMaterial material,
+  ) => [
+    Exercise.linear(
+      material: material,
+      hands: HandConfiguration.right,
+      direction: ExerciseDirection.up,
+      tempoBpm: entryTempoBpm,
+    ),
+  ];
+
+  @override
+  AcquisitionFloor acquisitionFloorFor(
+    Iterable<AcquisitionFloorRequest> requests,
+  ) => AcquisitionFloor(const []);
 }
 
 /// Two targets over one material, the second declaring it prepares the first.
