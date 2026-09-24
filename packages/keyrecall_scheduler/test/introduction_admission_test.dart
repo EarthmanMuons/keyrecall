@@ -228,12 +228,23 @@ void main() {
     }
     ready.competency(Competency.handsTogetherCoordination).mean =
         v1SchedulerConfig.eligibility.fluentHandsTogetherFloor;
+    final harmonic = introduction('A', form: ScaleForm.harmonicMinor);
 
     expect(
-      pipeline.isIntroducible(
-        ready,
-        introduction('A', form: ScaleForm.harmonicMinor),
-      ),
+      pipeline.isIntroducible(ready, harmonic),
+      isFalse,
+      reason: 'the waiver lifts the phase and never the scale being altered',
+    );
+
+    final natural = introduction('A', form: ScaleForm.naturalMinor);
+    played(ready, natural);
+    ready
+            .materialMemoryFor(natural.material.materialId, learnerParams)
+            .factualLastRetrievalAt =
+        t0;
+
+    expect(
+      pipeline.isIntroducible(ready, harmonic),
       isTrue,
       reason: 'the waiver is a way past the phase, not past the barrier only',
     );

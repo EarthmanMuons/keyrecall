@@ -692,6 +692,7 @@ class PracticeSession {
       acquisitionFamilyFloor: familyFloor,
       acquisition: acquisitionProgress,
       attemptedExercises: attemptedExercises(_journal.records),
+      retrievedMaterialHands: retrievedMaterialHands(_journal.records),
       executionEvidenceRevisions: executionEvidenceRevisions(_journal.records),
     );
     // Nothing is applied and nothing is written: while this was computed, the

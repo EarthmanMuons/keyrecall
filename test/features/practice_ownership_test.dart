@@ -583,6 +583,7 @@ class _LosesTheWorkerOnce extends InProcessScheduler {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
   }) {
     if (!_bound) {
@@ -602,6 +603,7 @@ class _LosesTheWorkerOnce extends InProcessScheduler {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedExercises: attemptedExercises,
+      retrievedMaterialHands: retrievedMaterialHands,
       executionEvidenceRevisions: executionEvidenceRevisions,
     );
   }

@@ -74,7 +74,26 @@ class DecisionFacts {
   /// lets every caller that predates it decide exactly as it did.
   final Set<Exercise>? attemptedExercises;
 
-  DecisionFacts(this.state, {this.attemptedExercises});
+  /// Each material a hand has produced from memory, or null where the caller
+  /// supplied no history.
+  ///
+  /// Null falls back to what learner state can say on its own: the material
+  /// retrieved, and this hand having played it. That projection cannot tell a
+  /// hand that retrieved a scale from one that only played it cued while the
+  /// other retrieved it, which is why a caller with a journal supplies this.
+  final Set<(String, Hand)>? retrievedMaterialHands;
+
+  DecisionFacts(
+    this.state, {
+    this.attemptedExercises,
+    this.retrievedMaterialHands,
+  });
+
+  /// Whether [hand] has produced [materialId] from memory.
+  bool hasRetrieved(String materialId, Hand hand) =>
+      retrievedMaterialHands?.contains((materialId, hand)) ??
+      (state.materialMemory[materialId]?.hasFactualRetrieval == true &&
+          state.hasPlayed(materialId, hand.configuration));
 }
 
 /// The candidates considered and the reasoned outcome of one attempt slot.
@@ -276,6 +295,7 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
@@ -290,6 +310,7 @@ class SchedulerPipeline {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedExercises: attemptedExercises,
+      retrievedMaterialHands: retrievedMaterialHands,
       executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
@@ -319,6 +340,7 @@ class SchedulerPipeline {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
@@ -344,6 +366,7 @@ class SchedulerPipeline {
       candidates: candidates,
       at: at,
       attemptedExercises: attemptedExercises,
+      retrievedMaterialHands: retrievedMaterialHands,
       executionEvidenceRevisions: executionEvidenceRevisions,
       overrides: {
         ...overrides,
@@ -411,6 +434,7 @@ class SchedulerPipeline {
           candidates: candidates,
           at: at,
           attemptedExercises: attemptedExercises,
+          retrievedMaterialHands: retrievedMaterialHands,
           executionEvidenceRevisions: executionEvidenceRevisions,
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
@@ -569,9 +593,9 @@ class SchedulerPipeline {
 
     // An altered minor form is a new idea rather than a new key, so its
     // prerequisite is a curriculum phase rather than keyboard geography.
-    if (scaleForm != null && !coreForms.contains(scaleForm)) {
-      final breadth = _alteredFormDecisionFor(state, scaleForm, hands, facts);
-      if (breadth != null) return breadth;
+    if (material case final ScaleMaterial scale) {
+      final foundation = _alteredFormDecisionFor(state, scale, hands, facts);
+      if (foundation != null) return foundation;
     }
 
     if (!_materialPrerequisitesSatisfied(state, exercise)) {
@@ -760,11 +784,11 @@ class SchedulerPipeline {
     Exercise exercise, {
     DecisionFacts? facts,
   }) {
-    final form = exercise.material.scaleForm;
-    return form == null ||
+    final material = exercise.material;
+    return material is! ScaleMaterial ||
         _alteredFormDecisionFor(
               state,
-              form,
+              material,
               exercise.conditions.hands,
               facts,
             ) ==
@@ -774,7 +798,11 @@ class SchedulerPipeline {
   /// Whether an altered minor form has to wait for a foundation under it, or
   /// null when it does not and the ordinary rules decide.
   ///
-  /// A curriculum phase transition rather than a threshold, so it asks for
+  /// First, the scale it alters: the natural minor of the same tonic, retrieved
+  /// by each hand it asks for. The conceptual base, and never waived, because
+  /// being past the phase says nothing about knowing this key.
+  ///
+  /// Then a curriculum phase transition rather than a threshold, so it asks for
   /// three observable markers of the phase, none of which harmonic minor needs
   /// mechanically. `docs/decisions/curriculum-and-progression.md` carries the
   /// curriculum rationale for each.
@@ -787,14 +815,31 @@ class SchedulerPipeline {
   ///
   /// Each asks whether a channel has been *observed* rather than where its mean
   /// sits, because placement seeds means from what the learner said about
-  /// themselves. Waived by observed fluent hands-together coordination, and
-  /// only by that; see [_hasFluentHandsTogether].
+  /// themselves. The phase is waived by observed fluent hands-together
+  /// coordination, and only by that; see [_hasFluentHandsTogether].
   EligibilityDecision? _alteredFormDecisionFor(
     LearnerState state,
-    ScaleForm form,
+    ScaleMaterial material,
     HandConfiguration hands,
     DecisionFacts? facts,
   ) {
+    final form = material.form;
+    if (coreForms.contains(form)) return null;
+
+    if (config.eligibility.sameTonicAlteredFormPrerequisite) {
+      final natural = ScaleMaterial(material.tonic, ScaleForm.naturalMinor);
+      final memo = facts ?? DecisionFacts(state);
+      for (final hand in hands.hands) {
+        if (memo.hasRetrieved(natural.materialId, hand)) continue;
+        return EligibilityDecision(
+          EligibilityTier.provisionallyEligible,
+          'the ${hand.id.toLowerCase()} hand has not retrieved '
+          '${natural.materialId}, which ${form.id} alters',
+          code: EligibilityReason.alteredFormNaturalMinorFoundation,
+        );
+      }
+    }
+
     final required = switch (form) {
       ScaleForm.harmonicMinor => config.eligibility.harmonicMinorCoreRetrievals,
       ScaleForm.melodicMinor => config.eligibility.melodicMinorCoreRetrievals,
@@ -1748,6 +1793,7 @@ class SchedulerPipeline {
     required List<Exercise> candidates,
     required DateTime at,
     Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
@@ -1780,7 +1826,11 @@ class SchedulerPipeline {
     ];
     // One memo for the slot, so the questions eligibility asks of state alone
     // are answered once rather than once per candidate.
-    final facts = DecisionFacts(state, attemptedExercises: attemptedExercises);
+    final facts = DecisionFacts(
+      state,
+      attemptedExercises: attemptedExercises,
+      retrievedMaterialHands: retrievedMaterialHands,
+    );
     final introducible = introducibleTier(
       state,
       refined,

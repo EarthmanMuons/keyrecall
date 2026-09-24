@@ -168,6 +168,24 @@ void main() {
         TechnicalMaterial('A', ScaleForm.harmonicMinor),
         guidance: GuidanceContext.notesPreviewedOnly,
       );
+      final natural = TechnicalMaterial('A', ScaleForm.naturalMinor);
+      state
+              .materialMemoryFor(natural.materialId, learnerParams)
+              .factualLastRetrievalAt =
+          t0;
+      state
+              .materialExecutionFor(
+                (
+                  natural.materialId,
+                  harmonic.conditions.hands,
+                  HandMotion.parallel,
+                ),
+                t0,
+                learnerParams,
+                familyId: natural.familyId,
+              )
+              .lastEvidenceAt =
+          t0;
 
       final before = pipeline.eligibilityFor(state, harmonic);
       expect(before.code, EligibilityReason.harmonicMinorRepertoireBreadth);

@@ -367,6 +367,7 @@ class _RecordingHost implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
   }) async => last = await inner.decide(
     epoch: epoch,
@@ -378,6 +379,7 @@ class _RecordingHost implements SchedulerHost {
     acquisitionFamilyFloor: acquisitionFamilyFloor,
     acquisition: acquisition,
     attemptedExercises: attemptedExercises,
+    retrievedMaterialHands: retrievedMaterialHands,
     executionEvidenceRevisions: executionEvidenceRevisions,
   );
 }

@@ -84,6 +84,14 @@ class EligibilityConfig {
   /// onboarding answer never does.
   final double fluentHandsTogetherFloor;
 
+  /// Whether an altered minor form waits for the hand it asks for to have
+  /// retrieved the natural minor of the same tonic.
+  ///
+  /// The one part of the altered-form foundation the waiver never lifts. The
+  /// waiver says a learner is past the phase; it says nothing about whether
+  /// they know the scale being altered.
+  final bool sameTonicAlteredFormPrerequisite;
+
   const EligibilityConfig({
     required this.multiOctaveExecutionFloor,
     required this.gentleTempoBpm,
@@ -95,7 +103,27 @@ class EligibilityConfig {
     required this.melodicMinorCoreRetrievals,
     required this.coreRetrievalBands,
     required this.fluentHandsTogetherFloor,
+    required this.sameTonicAlteredFormPrerequisite,
   });
+
+  /// The same thresholds under a different altered-form policy.
+  EligibilityConfig withAlteredFormPolicy({
+    bool? sameTonicAlteredFormPrerequisite,
+  }) => EligibilityConfig(
+    multiOctaveExecutionFloor: multiOctaveExecutionFloor,
+    gentleTempoBpm: gentleTempoBpm,
+    earlyTransferExecutionFloor: earlyTransferExecutionFloor,
+    intermediateExecutionFloor: intermediateExecutionFloor,
+    advancedExecutionFloor: advancedExecutionFloor,
+    minorTopologyFloor: minorTopologyFloor,
+    harmonicMinorCoreRetrievals: harmonicMinorCoreRetrievals,
+    melodicMinorCoreRetrievals: melodicMinorCoreRetrievals,
+    coreRetrievalBands: coreRetrievalBands,
+    fluentHandsTogetherFloor: fluentHandsTogetherFloor,
+    sameTonicAlteredFormPrerequisite:
+        sameTonicAlteredFormPrerequisite ??
+        this.sameTonicAlteredFormPrerequisite,
+  );
 
   /// The execution floor [band] asks for.
   double executionFloorFor(AdmissionBand band) => switch (band) {
@@ -573,6 +601,22 @@ class SchedulerConfig {
         novelty: novelty,
       );
 
+  /// The same policy with [eligibility] deciding what is ready.
+  SchedulerConfig withEligibility(EligibilityConfig eligibility) =>
+      SchedulerConfig(
+        modelVersion: modelVersion,
+        eligibility: eligibility,
+        safety: safety,
+        challenge: challenge,
+        diversity: diversity,
+        probe: probe,
+        pacing: pacing,
+        dose: dose,
+        rankTolerances: rankTolerances,
+        introductions: introductions,
+        novelty: novelty,
+      );
+
   /// The same policy with [novelty] in force, or unconstrained when null.
   SchedulerConfig withNovelty(NoveltyConfig? novelty) => SchedulerConfig(
     modelVersion: modelVersion,
@@ -599,7 +643,7 @@ class SchedulerConfig {
 /// frozen for initial production; the numbers are starting points for
 /// calibration against real practice data.
 const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
-  modelVersion: 'v1-4',
+  modelVersion: 'v1-5',
   eligibility: EligibilityConfig(
     multiOctaveExecutionFloor: -0.5,
     gentleTempoBpm: 60,
@@ -611,6 +655,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     melodicMinorCoreRetrievals: 8,
     coreRetrievalBands: 2,
     fluentHandsTogetherFloor: 1.0,
+    sameTonicAlteredFormPrerequisite: true,
   ),
   safety: SafetyConfig(),
   challenge: ChallengeConfig(pMin: 0.60, pMax: 0.90, pIntroductionMin: 0.15),

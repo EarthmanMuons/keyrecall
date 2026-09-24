@@ -63,6 +63,10 @@ enum EligibilityReason {
   /// This material family requires another material phase first.
   materialProgressionPrerequisite('MATERIAL_PROGRESSION_PREREQUISITE'),
 
+  /// An altered minor form asks for the hand playing it to have retrieved its
+  /// tonic's natural minor first.
+  alteredFormNaturalMinorFoundation('ALTERED_FORM_NATURAL_MINOR_FOUNDATION'),
+
   /// An altered minor form asks for both hands to have been observed
   /// separately first.
   alteredFormHandsFoundation('ALTERED_FORM_HANDS_FOUNDATION'),

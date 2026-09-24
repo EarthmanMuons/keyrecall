@@ -122,6 +122,7 @@ class IsolateScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
   }) async {
     final worker = _worker;
@@ -145,6 +146,7 @@ class IsolateScheduler implements SchedulerHost {
         acquisitionFamilyFloor: acquisitionFamilyFloor,
         acquisition: acquisition,
         attemptedExercises: attemptedExercises,
+        retrievedMaterialHands: retrievedMaterialHands,
         executionEvidenceRevisions: executionEvidenceRevisions,
       ),
     );
@@ -168,6 +170,7 @@ class _DecisionRequest {
   final AcquisitionFloor? acquisitionFamilyFloor;
   final AcquisitionProgress? acquisition;
   final Set<Exercise>? attemptedExercises;
+  final Set<(String, Hand)>? retrievedMaterialHands;
   final Map<ExecutionContext, int> executionEvidenceRevisions;
 
   const _DecisionRequest({
@@ -181,6 +184,7 @@ class _DecisionRequest {
     required this.acquisitionFamilyFloor,
     required this.acquisition,
     required this.attemptedExercises,
+    required this.retrievedMaterialHands,
     required this.executionEvidenceRevisions,
   });
 }
@@ -392,6 +396,7 @@ class _Worker {
         acquisitionFamilyFloor: request.acquisitionFamilyFloor,
         acquisition: request.acquisition,
         attemptedExercises: request.attemptedExercises,
+        retrievedMaterialHands: request.retrievedMaterialHands,
         executionEvidenceRevisions: request.executionEvidenceRevisions,
         practiceEntryPolicy: entry,
         emphasis: emphasis,

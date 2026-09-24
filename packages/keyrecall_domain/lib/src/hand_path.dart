@@ -15,6 +15,12 @@ enum Hand {
     (hand) => hand.id == id,
     orElse: () => throw ArgumentError.value(id, 'id', 'unknown hand'),
   );
+
+  /// This hand playing alone.
+  HandConfiguration get configuration => switch (this) {
+    Hand.left => HandConfiguration.left,
+    Hand.right => HandConfiguration.right,
+  };
 }
 
 /// Which signed scale degree each hand plays at each moment.

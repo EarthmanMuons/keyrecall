@@ -222,7 +222,7 @@ void main() {
       expect(
         decide(state, scale('A', ScaleForm.harmonicMinor)).tier,
         EligibilityTier.fullyEligible,
-        reason: 'the curricula give no support for a per-key ladder',
+        reason: 'topology is a competency, and the tonic is the foundation\'s',
       );
     });
 
@@ -245,11 +245,21 @@ void main() {
         scale('A', ScaleForm.harmonicMinor, hands: hands);
     Exercise melodic() => scale('A', ScaleForm.melodicMinor);
 
-    /// A learner who can transfer, so only the foundation is left to decide it.
-    LearnerState transferable() {
+    /// A learner who can transfer and has A natural minor in both hands, so
+    /// only the phase is left to decide it.
+    LearnerState transferable({bool knowingTheTonic = true}) {
       final state = learnerAt(0.0);
       state.competency(Competency.naturalMinorTopology).mean = 0.5;
       state.competency(Competency.harmonicMinorTopology).mean = 0.5;
+      if (knowingTheTonic) {
+        for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+          retrieving(
+            state,
+            TechnicalMaterial('A', ScaleForm.naturalMinor),
+            hands: hands,
+          );
+        }
+      }
       return state;
     }
 
@@ -375,7 +385,7 @@ void main() {
     test('a narrow base is not a broad one, however many scales', () {
       // Every scale from one band, which the early-transfer band has enough of
       // to clear the count on its own. Breadth is the point, so it does not.
-      final narrow = observing(transferable(), [
+      final narrow = observing(transferable(knowingTheTonic: false), [
         Competency.rhScaleExecution,
         Competency.lhScaleExecution,
         Competency.handsTogetherCoordination,
@@ -408,7 +418,7 @@ void main() {
         reason: 'enough of them to clear the count',
       );
       expect(
-        decide(narrow, harmonic()).code,
+        decide(narrow, scale('E', ScaleForm.harmonicMinor)).code,
         EligibilityReason.harmonicMinorRepertoireBreadth,
         reason: 'and all of them in one band',
       );
@@ -501,6 +511,127 @@ void main() {
         EligibilityTier.fullyEligible,
         reason: 'the left hand has played it',
       );
+    });
+
+    group('its own natural minor', () {
+      final dNatural = TechnicalMaterial('D', ScaleForm.naturalMinor);
+      Exercise dHarmonic(HandConfiguration hands) =>
+          scale('D', ScaleForm.harmonicMinor, hands: hands);
+
+      /// The phase behind the learner, D natural minor played by both hands
+      /// and retrieved by the right alone.
+      LearnerState rightRetrievedLeftCued() {
+        final state = withFoundation(transferable());
+        state.materialMemory.remove(dNatural.materialId);
+        for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+          retrieving(state, dNatural, hands: hands);
+        }
+        return state;
+      }
+
+      EligibilityDecision decideWith(
+        LearnerState state,
+        Exercise exercise,
+        Set<(String, Hand)> retrieved,
+      ) {
+        state.materialMemoryFor(exercise.material.materialId, learnerParams);
+        return pipeline.eligibilityFor(
+          state,
+          exercise,
+          facts: DecisionFacts(state, retrievedMaterialHands: retrieved),
+        );
+      }
+
+      test('is asked of the hand that retrieved it, not of the material', () {
+        final state = rightRetrievedLeftCued();
+        final retrieved = {(dNatural.materialId, Hand.right)};
+
+        expect(
+          decideWith(state, dHarmonic(HandConfiguration.right), retrieved).tier,
+          EligibilityTier.fullyEligible,
+        );
+        expect(
+          decideWith(state, dHarmonic(HandConfiguration.left), retrieved).code,
+          EligibilityReason.alteredFormNaturalMinorFoundation,
+          reason: 'memory knows D natural minor was retrieved, not by whom',
+        );
+        expect(
+          decideWith(
+            state,
+            dHarmonic(HandConfiguration.together),
+            retrieved,
+          ).code,
+          EligibilityReason.alteredFormNaturalMinorFoundation,
+        );
+      });
+
+      test('is a barrier, not the generic prerequisite\'s rank penalty', () {
+        // The declaration is the same one scope resolution reads, and the
+        // generic reading of it is satisfied: the hand has demonstrated the
+        // scale. Played is not known, and the altered form is not introduced.
+        final state = rightRetrievedLeftCued();
+        final left = dHarmonic(HandConfiguration.left);
+
+        expect(
+          state
+              .materialExecution[(
+                dNatural.materialId,
+                HandConfiguration.left,
+                HandMotion.parallel,
+              )]!
+              .demonstratedTempoByOctaves,
+          isNotEmpty,
+        );
+        expect(
+          pipeline.isIntroducible(
+            state,
+            left,
+            facts: DecisionFacts(
+              state,
+              retrievedMaterialHands: {(dNatural.materialId, Hand.right)},
+            ),
+          ),
+          isFalse,
+        );
+      });
+
+      test('is not lifted by the waiver', () {
+        final fluent = observing(transferable(), [
+          Competency.handsTogetherCoordination,
+        ]);
+        fluent.competency(Competency.handsTogetherCoordination).mean =
+            config.eligibility.fluentHandsTogetherFloor;
+
+        expect(
+          decideWith(fluent, dHarmonic(HandConfiguration.right), const {}).code,
+          EligibilityReason.alteredFormNaturalMinorFoundation,
+        );
+      });
+
+      test('can be switched off for a census', () {
+        final off = SchedulerPipeline(
+          learner: const LearnerModel(),
+          config: config.withEligibility(
+            config.eligibility.withAlteredFormPolicy(
+              sameTonicAlteredFormPrerequisite: false,
+            ),
+          ),
+        );
+        final state = rightRetrievedLeftCued();
+        final left = dHarmonic(HandConfiguration.left);
+        state.materialMemoryFor(left.material.materialId, learnerParams);
+
+        expect(
+          off
+              .eligibilityFor(
+                state,
+                left,
+                facts: DecisionFacts(state, retrievedMaterialHands: const {}),
+              )
+              .code,
+          isNot(EligibilityReason.alteredFormNaturalMinorFoundation),
+        );
+      });
     });
 
     test('it says nothing about major or natural minor', () {

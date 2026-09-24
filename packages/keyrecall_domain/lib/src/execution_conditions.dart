@@ -1,6 +1,7 @@
 import 'package:meta/meta.dart';
 
 import 'competency.dart';
+import 'hand_path.dart';
 
 /// Which hand or hands play the exercise.
 ///
@@ -31,6 +32,12 @@ enum HandConfiguration {
 
   /// Whether this configuration involves the left hand.
   bool get usesLeftHand => this != HandConfiguration.right;
+
+  /// The hands this configuration plays with.
+  List<Hand> get hands => [
+    if (usesRightHand) Hand.right,
+    if (usesLeftHand) Hand.left,
+  ];
 
   /// The broad execution competencies this configuration exercises.
   Set<Competency> get executionCompetencies => {

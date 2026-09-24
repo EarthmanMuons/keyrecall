@@ -96,6 +96,61 @@ void main() {
     expect(attemptedExercises(restored.records), isNot(contains(other)));
   });
 
+  test('a retrieval belongs to the hands that produced it', () {
+    Exercise playing(String tonic, HandConfiguration hands) => Exercise.linear(
+      material: TechnicalMaterial(tonic, ScaleForm.naturalMinor),
+      hands: hands,
+      octaves: 1,
+      direction: ExerciseDirection.up,
+      tempoBpm: 60,
+    );
+    AttemptClosure measuredWith(Exercise exercise, FactualRetrieval retrieval) {
+      final outcome = Outcome(
+        started: true,
+        retrieval: retrieval,
+        completed: true,
+        materialRetrieval: 1.0,
+        pitchIntegrity: 1.0,
+        continuity: 1.0,
+        temporalStability: 1.0,
+        achievedTempoRatio: 1.0,
+        topologyAccuracy: 1.0,
+      );
+      return AttemptClosure.measured(
+        termination: AttemptTermination.learnerStopped,
+        outcome: outcome,
+        weights: evidenceWeightsFor(exercise, outcome),
+        memoryUpdate: const MemoryUpdateDiagnostics(),
+      );
+    }
+
+    final attempts = [
+      (playing('D', HandConfiguration.right), FactualRetrieval.succeeded),
+      (playing('D', HandConfiguration.left), FactualRetrieval.notTested),
+      (playing('E', HandConfiguration.together), FactualRetrieval.succeeded),
+      (playing('F', HandConfiguration.right), FactualRetrieval.failed),
+    ];
+    final records = [
+      for (final (index, (exercise, retrieval)) in attempts.indexed)
+        AttemptRecord(
+          journalSequence: index,
+          identity: identityAt(index),
+          provenance: ModelProvenance.of(
+            learnerParams: v1LearnerParams,
+            schedulerModelVersion: v1SchedulerConfig.modelVersion,
+          ),
+          exercise: exercise,
+          closure: measuredWith(exercise, retrieval),
+        ),
+    ];
+
+    expect(retrievedMaterialHands(records), {
+      ('D_NATURAL_MINOR', Hand.right),
+      ('E_NATURAL_MINOR', Hand.right),
+      ('E_NATURAL_MINOR', Hand.left),
+    });
+  });
+
   group('serving a probe by presenting the parent', () {
     final other = Exercise.linear(
       material: TechnicalMaterial('G', ScaleForm.major),

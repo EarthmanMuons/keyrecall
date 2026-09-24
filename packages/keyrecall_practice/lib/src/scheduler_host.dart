@@ -152,9 +152,10 @@ abstract interface class SchedulerHost {
   /// [dueRequirementIds] names the requirements whose candidates the slot may
   /// choose between, against the bound scope.
   ///
-  /// [acquisition] and [attemptedExercises] are rebuilt from persisted
-  /// history by the caller, because a host holds no history of its own. Omit
-  /// them and the slot decides exactly as it did before acquisition existed.
+  /// [acquisition], [attemptedExercises], and [retrievedMaterialHands] are
+  /// rebuilt from persisted history by the caller, because a host holds no
+  /// history of its own. Omit them and the slot decides from learner state
+  /// alone.
   Future<SchedulerVerdict> decide({
     required int epoch,
     required LearnerState state,
@@ -165,6 +166,7 @@ abstract interface class SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
   });
 
@@ -215,6 +217,7 @@ class InProcessScheduler implements SchedulerHost {
     AcquisitionFloor? acquisitionFamilyFloor,
     AcquisitionProgress? acquisition,
     Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
   }) async {
     final slot = pipeline.evaluateSlot(
@@ -226,6 +229,7 @@ class InProcessScheduler implements SchedulerHost {
       acquisitionFamilyFloor: acquisitionFamilyFloor,
       acquisition: acquisition,
       attemptedExercises: attemptedExercises,
+      retrievedMaterialHands: retrievedMaterialHands,
       executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: _entry,
       emphasis: _emphasis,

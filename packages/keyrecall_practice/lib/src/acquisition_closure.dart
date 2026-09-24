@@ -117,6 +117,20 @@ Set<Exercise> attemptedExercises(Iterable<AttemptRecord> records) => {
       if (outcome.started && weights.materialExecution > 0) record.exercise,
 };
 
+/// Each material a hand has produced from memory, as material and hand.
+///
+/// Memory is keyed by material alone and cannot say which hand retrieved it,
+/// so a prerequisite asked of one hand reads this instead. It is the same
+/// condition that forms memory: a successful factual retrieval. Hands together
+/// is both hands producing the scale, so it counts for each.
+Set<(String, Hand)> retrievedMaterialHands(Iterable<AttemptRecord> records) => {
+  for (final record in records)
+    if (record.closure.measurement case Measured(:final outcome))
+      if (outcome.retrieval == FactualRetrieval.succeeded)
+        for (final hand in record.exercise.conditions.hands.hands)
+          (record.exercise.material.materialId, hand),
+};
+
 /// Causal revisions reconstructed only from informative ordinary execution.
 Map<ExecutionContext, int> executionEvidenceRevisions(
   Iterable<AttemptRecord> records,
