@@ -1,9 +1,9 @@
 # Altered forms
 
 > **Status:** characterization of the altered-form foundation across goal and
-> focus shapes. The same-tonic prerequisite, exact per-hand breadth, and the
-> scope-aware cap are promoted; the breadth numbers are not revisited. One
-> blocking mechanism is diagnosed and left open.
+> focus shapes. The same-tonic prerequisite, exact per-hand breadth, the
+> scope-aware cap, and live support are promoted; the breadth numbers are not
+> revisited.
 
 The altered-form gate decides when harmonic and melodic minor may first be met.
 It was built against the general goal, where the catalog always holds more
@@ -87,11 +87,11 @@ identical with and without it. It acts only where the scope runs out: blocked
 runs fall by a third in the broad and foundation-only scopes, and melodic minor
 in the broad scope goes from 5 arrivals to 17.
 
-## What is left: coverage retires what the gate waits on
+## Coverage retired what the gate waited on
 
-The runs still blocked in the narrow scopes are mostly the strongest archetypes,
-blocked within a slot or two. The mechanism, from one advanced run focused on D
-harmonic minor:
+After the cap, the runs still blocked in the narrow scopes were mostly the
+strongest archetypes, blocked within a slot or two. From one advanced run
+focused on D harmonic minor:
 
 1. Slot 0 offers D natural minor, the declared support, and the right hand
    retrieves it at the notes-previewed rung.
@@ -101,15 +101,46 @@ harmonic minor:
    observed", and left-hand D harmonic minor waits on the left hand's own D
    natural minor. Neither can happen: the material both need has been retired.
 
-The broad scope's remaining blocks are the same shape one level up, with core
-targets covered before the phase markers were met.
+The broad scope's blocks were the same shape one level up, with core targets
+covered before the phase markers were met.
 
-The cap deliberately does not touch the phase markers, and should not: two hands
-observed and some hands-together work are what the phase is. The likely fix is
-on the coverage side instead: a requirement that prepares an uncovered target
-stays due until that target is covered, so preparation remains offered while
-what it prepares is unfinished. That is a change to what "due" means for every
-family, not to the altered-form gate, and is not made here.
+The cap deliberately does not touch the phase markers, which are what the phase
+is. The fix is on the offering side and leaves coverage alone: covered material
+stays **live** while a due requirement is barred in every realization it asks
+for and is waiting on that material. The scheduler, which owns the gate, says
+what a barred exercise is waiting on, as material and hand configuration; the
+session offers live material only in those configurations and retires it the
+moment the dependent moves.
+
+Two narrower versions were tried first and are worth recording:
+
+- **Live while the dependent is barred, whatever it waits on.** An altered form
+  waiting on breadth kept its own natural minor live, which adds nothing to a
+  breadth it is already counted in, and crowded out the material that would. A
+  `fast_but_placed_low` run in the broad scope spent 40 of 60 slots on it.
+- **Live material offered in every hand.** The scheduler practiced the hand it
+  found easiest, already covered and healthy, and never the hand the barrier was
+  waiting for: 45 of 60 slots for `uneven_hands` in the foundation-only scope.
+
+Hands-together waits also name a hand not yet ready at the gentlest span, since
+hands together is reached through the separate hands.
+
+With live support, 52 runs per scope, harmonic minor reached and runs blocked:
+
+| Scope            | Harmonic reached | Blocked | Live picks per run |
+| ---------------- | ---------------: | ------: | -----------------: |
+| `general`        |               32 |       0 |                0.0 |
+| `broad`          |               46 |       0 |                5.3 |
+| `narrowAltered`  |               52 |       0 |                5.3 |
+| `foundationOnly` |               45 |       0 |                2.8 |
+
+Against the capped shipped policy before it, blocked runs fall from 25, 40, and
+28 to none, and harmonic minor is reached in 46, 52, and 45 runs rather than 20,
+12, and 17. The general scope never offers live support, since it offers
+everything already, and is unchanged. Live picks after the first altered form
+opened are zero in the narrow scopes; the 1.4 in the broad scope are other
+altered forms still waiting on their own natural minors. The runs that end
+without harmonic minor end caught up or at the slot limit, not blocked.
 
 ## Interpretation boundary
 

@@ -51,6 +51,15 @@ over it where there are any, and otherwise makes one. Without that, an exclusive
 focus on an altered form would exclude the one scale it waits for, and could
 only end blocked.
 
+Retaining it is not enough on its own, because a narrow scope offers only what
+is due and coverage retires a requirement once it is demonstrated. Covered
+support therefore stays **live** while a due requirement is barred in every
+realization it asks for and waiting on that support's material, and is offered
+only in the hand configurations it is waited on in. The scheduler says what a
+barred exercise waits on; the session keeps the material live until nothing
+does. Coverage itself is unchanged: live support is about what is offered, not
+about what has been demonstrated.
+
 ## Requirements describe capability, not lessons
 
 A curriculum is a provenance-backed set of requirements, each describing an
