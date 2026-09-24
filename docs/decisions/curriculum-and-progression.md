@@ -43,8 +43,8 @@ flowchart TD
 
     M --> F1[major]
     F1 -->|no gate| F2[natural minor]
-    F2 -->|REQUIRES| F3[harmonic minor]
-    F3 -->|REQUIRES| F4[melodic minor]
+    F2 -->|"REQUIRES: core breadth"| F3[harmonic minor]
+    F2 -->|"REQUIRES: wider core breadth"| F4[melodic minor]
 
     M --> E1[unseen material]
     E1 -->|REQUIRES| E2[cued first encounter]
@@ -107,24 +107,34 @@ kept alongside it.
 ## The minor forms
 
 **Decision.** Major and natural minor are unordered with respect to each other.
-Harmonic minor and then melodic minor each require breadth, not mastery: a
-breadth of major and natural-minor material actually retrieved, spread over more
-than one band, per hand. The wait is lifted for a learner already fluent in the
-hand the exercise asks for.
+Harmonic and melodic minor are barred from first introduction until a foundation
+exists: both hands observed separately, some hands-together work on ordinary
+material, and a breadth of major and natural-minor material actually retrieved,
+spread over more than one band, per hand. Melodic minor asks for more breadth
+than harmonic, and neither form requires the other. The wait is lifted by
+observed, fluent hands-together coordination, and by nothing else.
 
 **Why.** The _conceptual object changes_ test. Meeting a new idea of what minor
 means while ordinary scales are still unsettled enlarges the vocabulary faster
 than the base under it.
 
-**Evidence.** The curricula give **no** support for a universal natural →
-harmonic → melodic ladder; ABRSM lets candidates choose the form at lower
-grades. So the gate is justified by the vocabulary argument, not by curriculum
-convention, and it is deliberately breadth rather than a mastery threshold.
+**Evidence.** The curricula give **no** support for a natural → harmonic →
+melodic ladder, and the two most explicit ones disagree with each other. ABRSM
+permits any minor form, at the candidate's choice, from Initial Grade; it
+requires harmonic or melodic from Grade 3, and both from Grade 6 [ABRSM2025].
+RCM requires natural and harmonic minor at Level 1, and harmonic and melodic
+from Level 2 [RCM2022]. Neither defers altered forms behind major and
+natural-minor breadth. So the gate is a KeyRecall pedagogical hypothesis,
+justified by the vocabulary argument rather than by curriculum convention, and
+it is deliberately breadth rather than a mastery threshold.
 
-**Consequences.** Per hand, by the same reading the bands use: a fluent right
-hand is not evidence about the left. The rule exists so a beginner's vocabulary
-does not outrun their base, not to make an experienced player re-earn what they
-arrived with, which is why fluency lifts it.
+**Consequences.** Breadth is per hand, by the same reading the bands use: a
+fluent right hand is not evidence about the left. The waiver reads the phase's
+own defining dimension. Observed because placement seeds the mean and a
+self-report must not skip the phase; fluent because exposure is what the
+ordinary path already asks for. The rule exists so a beginner's vocabulary does
+not outrun their base, not to make an experienced player re-earn what they
+arrived with.
 
 ## One octave to two
 

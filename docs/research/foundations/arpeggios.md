@@ -22,11 +22,10 @@ arpeggios in root position. Hands, octave span, traversal direction, tempo, and
 guidance are realization conditions. Inversion changes the ordered pitch
 topology and remains part of material identity.
 
-The complete root-position fingering corpus is now represented by
-`allRootPositionArpeggios`. It is a supported domain catalog for policy
-characterization, not approval to add arpeggios to the product's active
-learner-facing catalog. Family-specific motor characterization and observational
-validation still precede that promotion.
+The complete root-position fingering corpus is represented by
+`allRootPositionArpeggios` and is part of the production catalog alongside the
+scales. Learner-model extension analysis and instrument validation remain open;
+see section 9.
 
 ## 2. Deliberate boundary
 
@@ -70,9 +69,10 @@ so it is curriculum evidence rather than canonical-fingering authority.
 The
 [Royal Conservatory Piano Syllabus, 2022 Edition](https://teacherportal.rcmusic.com/getattachment/57f3734d-97e5-4777-b67e-4b1111ee31a3/piano-syllabus-2022-edition.pdf)
 introduces tonic arpeggios as separate-hand, two-octave, root-position work at
-Level 5. Level 7 uses two octaves hands together in root position and
-inversions; Level 8 expands these to four octaves. Earlier levels contain broken
-triads rather than calling the same activity an arpeggio.
+Level 4, continued at Level 5. Level 6 adds dominant sevenths. Level 7 uses two
+octaves hands together in root position and inversions; Level 8 expands these to
+four octaves. Earlier levels contain broken tonic triads with their inversions,
+from Preparatory B, rather than calling the same activity an arpeggio.
 
 The
 [Trinity Piano syllabus, online edition February 2026](https://www.trinitycollege.com/resource?id=9079)
@@ -163,6 +163,34 @@ hypothesis, not a literature-derived constant. Its sign is defensible; its
 magnitude is not. Promotion requires the characterization and observational
 workflow in [`extending-the-model.md`](../extending-the-model.md), not another
 curriculum citation.
+
+### 3.4 Admission bands against examination order
+
+The arpeggio admission bands are derived from chord geometry rather than taken
+from a syllabus, which makes the ABRSM progression an independent check on them.
+Each material below carries the grade at which ABRSM first requires its
+arpeggio, in any range or hand configuration, with the Initial Grade five-note
+pattern counted as grade 0:
+
+| Band                  | Major (grade)                  | Minor (grade)                  |
+| --------------------- | ------------------------------ | ------------------------------ |
+| foundation            | C (0), F (6), G (1)            | A (1), D (0), E (2)            |
+| early transfer        | D (2), A (2), E (5), B (4)     | G (2), C (3), B (3), F (4)     |
+| intermediate keyboard | Bb (3), Eb (3), Ab (4), Db (5) | F# (4), C# (5), G# (5), Bb (5) |
+| advanced keyboard     | F# (4)                         | Eb (5)                         |
+
+The Spearman rank correlation between band and grade is 0.59 over all 24
+materials, and 0.77 without F major. The scale bands, which were taken from the
+sources rather than derived, correlate at 0.90 with ABRSM's first scale grade.
+
+The disagreements are where ABRSM's arpeggio keys follow its scale keys, since
+each grade's arpeggios are the keys its scales introduce. F major is all white
+and not required as an arpeggio until Grade 6; E and B major arrive late as
+scales. Neither is a claim about hand shape, and Clark's grouping by left-hand
+geometry supports the shape reading. The derivation is therefore corroborated as
+a prior about where to start, not as a sequence, which is all a band claims. No
+external source reviewed prescribes a universal arpeggio key order, and the
+boards disagree about when arpeggios begin at all.
 
 ## 4. Canonical material identity
 
@@ -410,7 +438,7 @@ ordering of arpeggios.
 
 ## 9. Promotion gates
 
-Before adding arpeggios to the active learner-facing catalog:
+What a material family has to clear, and where arpeggios stand:
 
 1. Normalize canonical major and minor triad fingerings for every included tonic
    and hand, with source locations and preserved disagreements.
@@ -436,22 +464,18 @@ selects both families without introducing a family-specific scheduler path.
 Full-catalog policy characterization is complete. Learner-model extension
 analysis and instrument validation remain open.
 
-The app can offer the arpeggio catalog from a developer-only switch, off on
-every launch and absent from a release build. It exists to make the open gates
-observable on an instrument rather than to ship them, so a session run under it
-is diagnostic and not calibration evidence. Four things are worth watching, in
-this order:
+Arpeggios are in the production catalog without a switch. Generation is family
+neutral, entry tempo and transferable pace are scoped by family, and progression
+distinguishes span, tempo, and hands together, so the open gates are what device
+use has to answer rather than what holds the family back. Keeping a scale-only
+mode would only preserve somewhere for single-family assumptions to return.
 
-1. where progression stalls, since arpeggios generate one ascending realization
-   at one tempo while a scale generates a tempo ladder;
-2. whether the family transfer coefficient produces obviously overconfident or
-   underconfident first predictions;
-3. whether pacing interleaves the families rather than alternating them
-   mechanically; and
-4. where learner-facing copy still says "scale" for material that is not one.
-
-Changing the coefficient to make a device session feel better would turn a
-diagnostic into calibration under gates that remain open.
+The caveat that travels with it is `rhoFamily`, which lets an arpeggio
+competency borrow from its scale counterpart while its own evidence is thin. It
+is an unvalidated coefficient like the rest of v1, bounded because it shrinks as
+direct evidence arrives, and a calibration target for real attempts. Changing it
+to make a device session feel better would turn a diagnostic into calibration
+under gates that remain open.
 
 The first policy-sensitivity census is recorded in
 [`arpeggio-policy-characterization.md`](../experiments/arpeggio-policy.md). It
@@ -471,6 +495,7 @@ does not change the scheduler's generic entry-tempo contract.
 | Which positions enter first?                   | Root position; inversions are a later phase.               |
 | Are C/G/D fixture fingerings sourced?          | Yes; D left hand is `5 3 2 1`.                             |
 | Is the fixture floor proven?                   | No.                                                        |
-| Is `rhoFamily = 0.35` evidence-backed?         | No; it remains fixture-only.                               |
+| Is `rhoFamily = 0.35` evidence-backed?         | No; it is an uncalibrated production coefficient.          |
 | Are exam tempi generic targets?                | No; they belong to curriculum requirements.                |
-| May the catalog expand now?                    | No; the promotion gates remain open.                       |
+| Is the root-position corpus in production?     | Yes; gates 7 and 8 remain open.                            |
+| May the catalog expand beyond it?              | No; inversion fingering is unsourced.                      |
