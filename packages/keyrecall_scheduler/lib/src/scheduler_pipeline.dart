@@ -803,6 +803,86 @@ class SchedulerPipeline {
             null;
   }
 
+  /// Whether admission refuses [exercise] outright, for a curriculum phase
+  /// its material has not reached, whatever it would rank.
+  ///
+  /// Only ever of work this hand configuration has not met: a phase bars a
+  /// first meeting and leaves recovery of what was already met alone.
+  bool isCurriculumBarred(
+    LearnerState state,
+    Exercise exercise, {
+    DecisionFacts? facts,
+  }) =>
+      !state.hasPlayed(
+        exercise.material.materialId,
+        exercise.conditions.hands,
+      ) &&
+      !isIntroducible(state, exercise, facts: facts);
+
+  /// What [exercise] is barred waiting on, as declared prerequisite material
+  /// and the hand configuration that has to play it, or empty when it is not
+  /// barred or nothing it declares could open it.
+  ///
+  /// What lets a caller keep material offered for as long as a barred exercise
+  /// is waiting on it, in the realization it is waiting for, and no longer. An
+  /// altered form waiting on a hand's natural minor, or on phase markers that
+  /// scale can supply, waits on that scale in that hand; one waiting on breadth
+  /// does not, since a scale already counted adds nothing to it.
+  Set<(String, HandConfiguration)> barringPrerequisitesOf(
+    LearnerState state,
+    Exercise exercise, {
+    DecisionFacts? facts,
+  }) {
+    final material = exercise.material;
+    if (material is! ScaleMaterial ||
+        !isCurriculumBarred(state, exercise, facts: facts)) {
+      return const {};
+    }
+    final natural = ScaleMaterial(material.tonic, ScaleForm.naturalMinor);
+    final evidence = facts ?? DecisionFacts(state);
+    if (config.eligibility.sameTonicAlteredFormPrerequisite) {
+      final missing = {
+        for (final hand in exercise.conditions.hands.hands)
+          if (!evidence.hasRetrieved(natural.materialId, hand))
+            (natural.materialId, hand.configuration),
+      };
+      if (missing.isNotEmpty) return missing;
+    }
+    final decision = _alteredFormDecisionFor(
+      state,
+      material,
+      exercise.conditions.hands,
+      facts,
+    );
+    return switch (decision?.code) {
+      EligibilityReason.alteredFormHandsFoundation => {
+        for (final hand in Hand.values)
+          if (!state.isObserved(_executionCompetencyOf(hand.configuration)))
+            (natural.materialId, hand.configuration),
+      },
+      // Reached through the separate hands where the material says so, so a
+      // hand not yet ready at the gentlest span is waited on first.
+      EligibilityReason.alteredFormHandsTogetherFoundation => {
+        (natural.materialId, HandConfiguration.together),
+        if (natural.progression.requiresSeparateHandsBeforeTogether)
+          for (final hand in Hand.values)
+            if ((state
+                        .materialExecution[(
+                          natural.materialId,
+                          hand.configuration,
+                          HandMotion.parallel,
+                        )]
+                        ?.coordinationReadyTempoAt(
+                          natural.progression.octaveSpans.first,
+                        ) ??
+                    0) <=
+                0)
+              (natural.materialId, hand.configuration),
+      },
+      _ => const {},
+    };
+  }
+
   /// Whether an altered minor form has to wait for a foundation under it, or
   /// null when it does not and the ordinary rules decide.
   ///
@@ -1751,11 +1831,7 @@ class SchedulerPipeline {
     DecisionFacts? facts,
     required PracticeEntryPolicy practiceEntryPolicy,
   }) {
-    if (!state.hasPlayed(
-          exercise.material.materialId,
-          exercise.conditions.hands,
-        ) &&
-        !isIntroducible(state, exercise, facts: facts)) {
+    if (isCurriculumBarred(state, exercise, facts: facts)) {
       return const AdmissionDecision.refused(AdmissionRefusal.curriculum);
     }
     final bypass = challengeBypassFor(

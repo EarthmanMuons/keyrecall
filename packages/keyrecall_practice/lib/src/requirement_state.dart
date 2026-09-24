@@ -66,6 +66,49 @@ class EvaluatedPracticeScope {
       requirements.where((state) => state.isDue);
 
   bool get isCaughtUp => dueRequirements.isEmpty;
+
+  /// Requirements that are not due and must stay offered anyway, because a due
+  /// requirement cannot move until their material supplies something, with the
+  /// hand configurations it is waiting for.
+  ///
+  /// Coverage says a requirement was demonstrated; it does not say its
+  /// material has finished preparing anything else. An altered minor form met
+  /// in neither hand still needs its natural minor in the left hand after the
+  /// right hand's retrieval has covered it, and retiring that material with
+  /// the coverage leaves the dependent waiting on work nothing offers.
+  ///
+  /// [waitingOn] names the material and hands a requirement cannot move
+  /// without, and is empty for one that can move or that nothing declared
+  /// could open. Each link is asked on its own: live material brings its own
+  /// prerequisites along only when it is waiting on them too. Once nothing
+  /// waits on it, it goes back to ordinary due-ness.
+  Map<RequirementState, Set<HandConfiguration>> liveSupport(
+    Set<(String, HandConfiguration)> Function(ResolvedRequirement requirement)
+    waitingOn,
+  ) {
+    final byMaterial = <String, List<RequirementState>>{};
+    for (final state in requirements) {
+      byMaterial
+          .putIfAbsent(state.resolved.material.materialId, () => [])
+          .add(state);
+    }
+    final live = <RequirementState, Set<HandConfiguration>>{};
+    var waiting = dueRequirements.toList();
+    while (waiting.isNotEmpty) {
+      final next = <RequirementState>[];
+      for (final dependent in waiting) {
+        for (final (materialId, hands) in waitingOn(dependent.resolved)) {
+          for (final state in byMaterial[materialId] ?? const []) {
+            if (state.isDue) continue;
+            if (!live.containsKey(state)) next.add(state);
+            live.putIfAbsent(state, () => {}).add(hands);
+          }
+        }
+      }
+      waiting = next;
+    }
+    return live;
+  }
 }
 
 typedef RequirementAssessor =

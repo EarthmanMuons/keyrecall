@@ -772,6 +772,100 @@ void main() {
       });
     });
 
+    group('what a barred form is waiting on', () {
+      final dNatural = TechnicalMaterial('D', ScaleForm.naturalMinor);
+      Exercise dHarmonic(HandConfiguration hands) =>
+          scale('D', ScaleForm.harmonicMinor, hands: hands);
+
+      Set<(String, HandConfiguration)> waitingOn(
+        LearnerState state,
+        Exercise exercise,
+        Set<(String, Hand)> retrieved,
+      ) => pipeline.barringPrerequisitesOf(
+        state,
+        exercise,
+        facts: DecisionFacts(state, retrievedMaterialHands: retrieved),
+      );
+
+      test('is the natural minor, in the hand that has not retrieved it', () {
+        final state = withFoundation(transferable());
+
+        expect(
+          waitingOn(state, dHarmonic(HandConfiguration.together), {
+            (dNatural.materialId, Hand.right),
+          }),
+          {(dNatural.materialId, HandConfiguration.left)},
+        );
+      });
+
+      test('is hands-together work, through a hand not yet ready for it', () {
+        final state = observing(transferable(), [
+          Competency.rhScaleExecution,
+          Competency.lhScaleExecution,
+        ]);
+        final both = {
+          (dNatural.materialId, Hand.right),
+          (dNatural.materialId, Hand.left),
+        };
+
+        expect(waitingOn(state, dHarmonic(HandConfiguration.right), both), {
+          (dNatural.materialId, HandConfiguration.together),
+          (dNatural.materialId, HandConfiguration.right),
+          (dNatural.materialId, HandConfiguration.left),
+        });
+
+        state
+                .materialExecutionFor(
+                  (
+                    dNatural.materialId,
+                    HandConfiguration.right,
+                    HandMotion.parallel,
+                  ),
+                  t0,
+                  learnerParams,
+                  familyId: dNatural.familyId,
+                )
+                .coordinationReadyTempoByOctaves[1] =
+            60;
+        expect(
+          waitingOn(state, dHarmonic(HandConfiguration.right), both),
+          isNot(contains((dNatural.materialId, HandConfiguration.right))),
+          reason: 'the right hand is ready to be put with the left',
+        );
+      });
+
+      test('is nothing a prerequisite can supply when it is breadth', () {
+        final state = observing(transferable(), [
+          Competency.rhScaleExecution,
+          Competency.lhScaleExecution,
+          Competency.handsTogetherCoordination,
+        ]);
+
+        expect(
+          waitingOn(state, scale('A', ScaleForm.harmonicMinor), {
+            (
+              TechnicalMaterial('A', ScaleForm.naturalMinor).materialId,
+              Hand.right,
+            ),
+          }),
+          isEmpty,
+        );
+      });
+
+      test('is nothing when the form is not barred', () {
+        final state = withFoundation(transferable());
+
+        expect(
+          waitingOn(state, dHarmonic(HandConfiguration.right), {
+            for (final material in allScales)
+              if (coreForms.contains(material.form))
+                for (final hand in Hand.values) (material.materialId, hand),
+          }),
+          isEmpty,
+        );
+      });
+    });
+
     test('it says nothing about major or natural minor', () {
       for (final form in coreForms) {
         expect(

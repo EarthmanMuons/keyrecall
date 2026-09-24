@@ -3,20 +3,42 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
-/// The candidates [dueRequirementIds] name, against [scope].
+/// The candidates [dueRequirementIds] name, against [scope], and those of
+/// live support in only the hand configurations [liveSupportHands] names.
 ///
 /// The requirement ids travel instead of the exercises: a slot's envelope is
 /// ten thousand of them, and a host that already holds the scope can rebuild
 /// the subset from a list of strings.
 List<Exercise> candidatesDueIn(
   ResolvedPracticeScope scope,
-  List<String> dueRequirementIds,
-) {
+  List<String> dueRequirementIds, [
+  Map<String, Set<HandConfiguration>> liveSupportHands = const {},
+]) {
   final due = dueRequirementIds.toSet();
-  return distinctCandidatesOf([
+  final candidates = distinctCandidatesOf([
     for (final requirement in scope.requirements)
       if (due.contains(requirement.requirement.id)) requirement,
   ]);
+  if (liveSupportHands.isEmpty) return candidates;
+  final offered = {
+    for (final exercise in candidates) exercise.material.materialId,
+  };
+  final live = <String, Set<HandConfiguration>>{};
+  for (final requirement in scope.requirements) {
+    final hands = liveSupportHands[requirement.requirement.id];
+    final materialId = requirement.material.materialId;
+    if (hands == null || offered.contains(materialId)) continue;
+    live.putIfAbsent(materialId, () => {}).addAll(hands);
+  }
+  final added = <String>{};
+  return [
+    ...candidates,
+    for (final requirement in scope.requirements)
+      if (live[requirement.material.materialId] case final hands?
+          when added.add(requirement.material.materialId))
+        for (final exercise in requirement.candidates)
+          if (hands.contains(exercise.conditions.hands)) exercise,
+  ];
 }
 
 /// The emphasis [scope] puts on each of its materials.
@@ -161,6 +183,7 @@ abstract interface class SchedulerHost {
     required LearnerState state,
     required SessionState session,
     required List<String> dueRequirementIds,
+    Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -212,6 +235,7 @@ class InProcessScheduler implements SchedulerHost {
     required LearnerState state,
     required SessionState session,
     required List<String> dueRequirementIds,
+    Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -223,7 +247,7 @@ class InProcessScheduler implements SchedulerHost {
     final slot = pipeline.evaluateSlot(
       state: state,
       session: session,
-      candidates: candidatesDueIn(_scope!, dueRequirementIds),
+      candidates: candidatesDueIn(_scope!, dueRequirementIds, liveSupportHands),
       at: at,
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: acquisitionFamilyFloor,

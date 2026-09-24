@@ -40,4 +40,20 @@ void main() {
       greaterThan(0),
     );
   });
+
+  test('a focus on one altered form reaches it rather than blocking', () async {
+    // Its natural minor is covered by the first right-hand retrieval, and the
+    // form then waits on that scale in the left hand and hands together.
+    final [run] = await runAlteredFormMatrix(
+      arms: [AlteredFormArm.shipped],
+      scopes: const [AlteredFormScope.narrowAltered],
+      players: [PlayerArchetypes.advanced],
+      seeds: 1,
+      slots: 30,
+    );
+
+    expect(run.first(ScaleForm.harmonicMinor), isNotNull);
+    expect(run.terminal, isNot(AlteredFormTerminal.blocked));
+    expect(run.liveSupportSelections, greaterThan(0));
+  });
 }

@@ -94,6 +94,17 @@ class AlteredFormRun {
   final int seed;
   final int selections;
   final int supportSelections;
+
+  /// Selections of material offered only because a due requirement could not
+  /// be introduced without it.
+  final int liveSupportSelections;
+
+  /// Those after the first altered form was introduced, when nothing should
+  /// still be waiting on them.
+  final int liveSupportSelectionsAfterOpening;
+
+  /// Slots at which anything was offered as live support.
+  final int liveSupportSlots;
   final int supportedSlots;
   final List<AlteredFormIntroduction> introductions;
   final AlteredFormTerminal terminal;
@@ -106,6 +117,9 @@ class AlteredFormRun {
     required this.seed,
     required this.selections,
     required this.supportSelections,
+    required this.liveSupportSelections,
+    required this.liveSupportSelectionsAfterOpening,
+    required this.liveSupportSlots,
     required this.supportedSlots,
     required Iterable<AlteredFormIntroduction> introductions,
     required this.terminal,
@@ -227,6 +241,9 @@ Future<AlteredFormRun> runAlteredFormTrajectory({
   final met = <(String, HandConfiguration)>{};
   var selections = 0;
   var supportSelections = 0;
+  var liveSupportSelections = 0;
+  var liveSupportSelectionsAfterOpening = 0;
+  var liveSupportSlots = 0;
   var supportedSlots = 0;
 
   AlteredFormRun finish(AlteredFormTerminal terminal, int? slot) =>
@@ -237,6 +254,9 @@ Future<AlteredFormRun> runAlteredFormTrajectory({
         seed: seed,
         selections: selections,
         supportSelections: supportSelections,
+        liveSupportSelections: liveSupportSelections,
+        liveSupportSelectionsAfterOpening: liveSupportSelectionsAfterOpening,
+        liveSupportSlots: liveSupportSlots,
         supportedSlots: supportedSlots,
         introductions: introductions,
         terminal: terminal,
@@ -247,11 +267,20 @@ Future<AlteredFormRun> runAlteredFormTrajectory({
     final at = at0.add(Duration(minutes: slot + 1));
     final outcome = await session.decideOutcome(at: at);
     switch (outcome) {
-      case PresentedAttempt(:final exercise, :final decision):
+      case PresentedAttempt(
+        :final exercise,
+        :final decision,
+        :final liveSupportMaterialIds,
+      ):
         selections++;
         final material = exercise.material;
         if (!fixture.targetMaterialIds.contains(material.materialId)) {
           supportSelections++;
+        }
+        if (liveSupportMaterialIds.isNotEmpty) liveSupportSlots++;
+        if (liveSupportMaterialIds.contains(material.materialId)) {
+          liveSupportSelections++;
+          if (introductions.isNotEmpty) liveSupportSelectionsAfterOpening++;
         }
         final form = material.scaleForm;
         final hands = exercise.conditions.hands;

@@ -117,6 +117,7 @@ class IsolateScheduler implements SchedulerHost {
     required LearnerState state,
     required SessionState session,
     required List<String> dueRequirementIds,
+    Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -141,6 +142,7 @@ class IsolateScheduler implements SchedulerHost {
         state: state,
         session: session,
         dueRequirementIds: dueRequirementIds,
+        liveSupportHands: liveSupportHands,
         at: at,
         acquisitionFloor: acquisitionFloor,
         acquisitionFamilyFloor: acquisitionFamilyFloor,
@@ -165,6 +167,7 @@ class _DecisionRequest {
   final LearnerState state;
   final SessionState session;
   final List<String> dueRequirementIds;
+  final Map<String, Set<HandConfiguration>> liveSupportHands;
   final DateTime at;
   final AcquisitionFloor? acquisitionFloor;
   final AcquisitionFloor? acquisitionFamilyFloor;
@@ -179,6 +182,7 @@ class _DecisionRequest {
     required this.state,
     required this.session,
     required this.dueRequirementIds,
+    required this.liveSupportHands,
     required this.at,
     required this.acquisitionFloor,
     required this.acquisitionFamilyFloor,
@@ -390,7 +394,11 @@ class _Worker {
       final slot = pipeline.evaluateSlot(
         state: request.state,
         session: request.session,
-        candidates: candidatesDueIn(scope, request.dueRequirementIds),
+        candidates: candidatesDueIn(
+          scope,
+          request.dueRequirementIds,
+          request.liveSupportHands,
+        ),
         at: request.at,
         acquisitionFloor: request.acquisitionFloor,
         acquisitionFamilyFloor: request.acquisitionFamilyFloor,

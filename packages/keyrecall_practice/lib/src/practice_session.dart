@@ -107,7 +107,15 @@ class PresentedAttempt extends PracticeDecision {
   /// Curriculum coverage at the instant this exercise was selected.
   final ScopeCoverage? coverage;
 
-  const PresentedAttempt(this.decision, {this.coverage});
+  /// Material offered only because a due requirement could not be introduced
+  /// without it; see [EvaluatedPracticeScope.liveSupport].
+  final Set<String> liveSupportMaterialIds;
+
+  const PresentedAttempt(
+    this.decision, {
+    this.coverage,
+    this.liveSupportMaterialIds = const {},
+  });
 
   /// The exercise to present.
   Exercise get exercise => decision.exercise;
@@ -590,6 +598,26 @@ class PracticeSession {
   /// present it again, which is a heavier recovery than a lost worker earns.
   void recoverScheduling() => _bound = false;
 
+  /// What a requirement cannot move without: what admission's barrier is
+  /// waiting on, when it bars every realization the requirement asks for, and
+  /// nothing otherwise.
+  Set<(String, HandConfiguration)> Function(ResolvedRequirement) _waitingOnIn(
+    DecisionFacts facts,
+  ) => (requirement) {
+    final candidates = requirement.targetCandidates;
+    if (candidates.isEmpty ||
+        !candidates.every(
+          (exercise) =>
+              pipeline.isCurriculumBarred(facts.state, exercise, facts: facts),
+        )) {
+      return const {};
+    }
+    return {
+      for (final exercise in candidates)
+        ...pipeline.barringPrerequisitesOf(facts.state, exercise, facts: facts),
+    };
+  };
+
   /// Decides what to present next and makes that decision durable.
   ///
   /// Invalid and caught-up scopes return before scheduling and consume no
@@ -649,9 +677,28 @@ class PracticeSession {
     if (scope.isNarrow && evaluated.isCaughtUp) {
       return PracticeCaughtUp(evaluated.coverage);
     }
-    final due = scope.isNarrow
+    final retrieved = retrievedMaterialHands(_journal.records);
+    // A narrow scope offers only what is due, so it is the one that can retire
+    // material a dependent is still waiting on. A general sitting offers
+    // everything already.
+    final liveSupport = scope.isNarrow
+        ? evaluated.liveSupport(
+            _waitingOnIn(
+              DecisionFacts(
+                scratch,
+                retrievedMaterialHands: retrieved,
+                offeredMaterialIds: {
+                  for (final requirement in scope.requirements)
+                    requirement.material.materialId,
+                },
+              ),
+            ),
+          )
+        : const <RequirementState, Set<HandConfiguration>>{};
+    final offered = scope.isNarrow
         ? evaluated.dueRequirements.toList()
         : evaluated.requirements;
+    final due = [...offered, ...liveSupport.keys];
     // Two questions of the same value, and only one of them is narrow. Ordinary
     // admission reaches for a safe entry when a scoped slot has nothing left to
     // offer, which a general sitting never runs out of work to need.
@@ -685,14 +732,18 @@ class PracticeSession {
       state: scratch,
       session: _session,
       dueRequirementIds: [
-        for (final requirement in due) requirement.resolved.requirement.id,
+        for (final requirement in offered) requirement.resolved.requirement.id,
       ],
+      liveSupportHands: {
+        for (final MapEntry(key: state, value: hands) in liveSupport.entries)
+          state.resolved.requirement.id: hands,
+      },
       at: at,
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: familyFloor,
       acquisition: acquisitionProgress,
       attemptedExercises: attemptedExercises(_journal.records),
-      retrievedMaterialHands: retrievedMaterialHands(_journal.records),
+      retrievedMaterialHands: retrieved,
       executionEvidenceRevisions: executionEvidenceRevisions(_journal.records),
     );
     // Nothing is applied and nothing is written: while this was computed, the
@@ -751,7 +802,14 @@ class PracticeSession {
     // Durable before the exercise is shown. Everything after this point is
     // recoverable; before it, nothing was presented.
     await store.savePendingDecision(decision);
-    final presented = PresentedAttempt(decision, coverage: evaluated.coverage);
+    final presented = PresentedAttempt(
+      decision,
+      coverage: evaluated.coverage,
+      liveSupportMaterialIds: {
+        for (final state in liveSupport.keys)
+          state.resolved.material.materialId,
+      },
+    );
     _outstanding = presented;
     return presented;
   }
