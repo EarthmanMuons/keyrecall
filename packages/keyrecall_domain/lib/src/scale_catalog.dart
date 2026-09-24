@@ -48,16 +48,20 @@ final List<ScaleMaterial> allScales = List.unmodifiable([
 
 /// The reference corpus the simulation runs against.
 ///
-/// Seven materials covering all four forms. A fixture rather than a product
-/// decision: the pinned trace digests hash runs over exactly this list, so
-/// changing it invalidates them.
+/// Ten materials covering all four forms, each altered form beside the natural
+/// minor it builds on. A fixture rather than a product decision: the pinned
+/// trace digests hash runs over exactly this list, so changing it invalidates
+/// them.
 final List<ScaleMaterial> v1ScaleCatalog = List.unmodifiable([
   ScaleMaterial('C', ScaleForm.major),
   ScaleMaterial('G', ScaleForm.major),
   ScaleMaterial('F', ScaleForm.major),
   ScaleMaterial('A', ScaleForm.naturalMinor),
+  ScaleMaterial('D', ScaleForm.naturalMinor),
   ScaleMaterial('D', ScaleForm.harmonicMinor),
+  ScaleMaterial('F#', ScaleForm.naturalMinor),
   ScaleMaterial('F#', ScaleForm.harmonicMinor),
+  ScaleMaterial('E', ScaleForm.naturalMinor),
   ScaleMaterial('E', ScaleForm.melodicMinor),
 ]);
 

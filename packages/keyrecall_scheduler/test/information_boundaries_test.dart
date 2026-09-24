@@ -185,15 +185,14 @@ void main() {
           ..logCurrentHalfLife = math.log(0.001)
           ..logConsolidatedHalfLife = math.log(0.001);
         for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
-          state
-                  .materialExecutionFor(
-                    (material.materialId, hands, HandMotion.parallel),
-                    t0,
-                    learnerParams,
-                    familyId: material.familyId,
-                  )
-                  .lastEvidenceAt =
-              t0;
+          state.materialExecutionFor(
+              (material.materialId, hands, HandMotion.parallel),
+              t0,
+              learnerParams,
+              familyId: material.familyId,
+            )
+            ..lastEvidenceAt = t0
+            ..demonstratedTempoByOctaves[1] = 60;
         }
       }
 

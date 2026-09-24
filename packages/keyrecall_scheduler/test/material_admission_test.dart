@@ -50,12 +50,34 @@ void main() {
     return state;
   }
 
+  /// Records that [hands] has played [material] through one octave and
+  /// retrieved it.
+  ///
+  /// Both halves, because the gates read both: memory says a scale was
+  /// retrieved and execution residuals say which hand was playing.
+  LearnerState retrieving(
+    LearnerState state,
+    TechnicalMaterial material, {
+    HandConfiguration hands = HandConfiguration.right,
+  }) {
+    state
+            .materialMemoryFor(material.materialId, learnerParams)
+            .factualLastRetrievalAt =
+        t0;
+    state.materialExecutionFor(
+        (material.materialId, hands, HandMotion.parallel),
+        t0,
+        learnerParams,
+        familyId: material.familyId,
+      )
+      ..lastEvidenceAt = t0
+      ..demonstratedTempoByOctaves[1] = 60;
+    return state;
+  }
+
   /// Records that [hands] has played and retrieved [count] major and
   /// natural-minor scales, spread over as many admission bands as the catalog
   /// offers.
-  ///
-  /// Both halves, because the gate reads both: memory says a scale was
-  /// retrieved and execution residuals say which hand was playing.
   LearnerState withHandBreadth(
     LearnerState state, {
     int count = 24,
@@ -71,19 +93,7 @@ void main() {
         );
 
     for (final material in core.take(count)) {
-      state
-              .materialMemoryFor(material.materialId, learnerParams)
-              .factualLastRetrievalAt =
-          t0;
-      state
-              .materialExecutionFor(
-                (material.materialId, hands, HandMotion.parallel),
-                t0,
-                learnerParams,
-                familyId: material.familyId,
-              )
-              .lastEvidenceAt =
-          t0;
+      retrieving(state, material, hands: hands);
     }
     return state;
   }
@@ -430,9 +440,10 @@ void main() {
       // together this well is playing it with two hands that each work, so
       // asking them for six ordinary scales in each hand first would be an
       // artificial path through material they have just shown.
-      final fluent = observing(transferable(), [
-        Competency.handsTogetherCoordination,
-      ]);
+      final fluent = retrieving(
+        observing(transferable(), [Competency.handsTogetherCoordination]),
+        TechnicalMaterial('A', ScaleForm.naturalMinor),
+      );
       fluent.competency(Competency.handsTogetherCoordination).mean =
           config.eligibility.fluentHandsTogetherFloor;
 
@@ -467,6 +478,28 @@ void main() {
       expect(
         decide(exposed, harmonic()).tier,
         EligibilityTier.provisionallyEligible,
+      );
+    });
+
+    test('its own natural minor is what it builds on', () {
+      final state = withFoundation(transferable());
+      state
+          .materialExecution[(
+            TechnicalMaterial('A', ScaleForm.naturalMinor).materialId,
+            HandConfiguration.right,
+            HandMotion.parallel,
+          )]!
+          .demonstratedTempoByOctaves
+          .clear();
+
+      expect(
+        decide(state, harmonic()).code,
+        EligibilityReason.materialProgressionPrerequisite,
+      );
+      expect(
+        decide(state, harmonic(hands: HandConfiguration.left)).tier,
+        EligibilityTier.fullyEligible,
+        reason: 'the left hand has played it',
       );
     });
 

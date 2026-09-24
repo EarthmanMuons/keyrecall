@@ -32,7 +32,7 @@ void main() {
     guidance: GuidanceContext.continuouslyCued,
   );
 
-  Outcome handsTogether({required double quality}) => Outcome(
+  Outcome played({required double quality}) => Outcome(
     started: true,
     retrieval: FactualRetrieval.succeeded,
     completed: true,
@@ -45,13 +45,38 @@ void main() {
     coordination: quality,
   );
 
+  final naturalMinor = exerciseFor(
+    TechnicalMaterial('A', ScaleForm.naturalMinor),
+    octaves: 1,
+    guidance: GuidanceContext.unguided,
+  );
+
+  /// Plays A natural minor once, cleanly, in the hand harmonic minor asks for.
+  ///
+  /// The waiver lifts the foundation and never the scale an altered form is
+  /// built on, so a learner it is asked about has to have played that scale.
+  void playNaturalMinor(LearnerState state) {
+    final at = t0.add(const Duration(minutes: 1));
+    final outcome = played(quality: 1.0);
+    model.propagate(state, at);
+    model.applyOutcome(
+      state: state,
+      exercise: naturalMinor,
+      outcome: outcome,
+      weights: evidenceWeightsFor(naturalMinor, outcome),
+      prediction: model.predict(state, naturalMinor, at: at),
+      at: at,
+    );
+  }
+
   /// Plays hands-together attempts of the given qualities, and reports after
   /// which one the waiver opened, or null when it never did.
   int? opensAfter(PlacementTier tier, List<double> qualities) {
     final state = model.placementState(tier, at: t0);
+    playNaturalMinor(state);
     for (final (index, quality) in qualities.indexed) {
       final at = t0.add(Duration(minutes: 5 * (index + 1)));
-      final outcome = handsTogether(quality: quality);
+      final outcome = played(quality: quality);
       model.propagate(state, at);
       model.applyOutcome(
         state: state,

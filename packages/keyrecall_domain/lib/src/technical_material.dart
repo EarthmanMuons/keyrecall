@@ -318,8 +318,18 @@ final class ScaleMaterial extends TechnicalMaterial {
   FingeringTransitionKind get fingeringTransitionKind =>
       FingeringTransitionKind.scalarCrossing;
 
+  /// An altered minor form is its tonic's natural minor with a degree
+  /// changed, so it declares that scale as the material it builds on.
   @override
-  MaterialProgression get progression => _scaleProgression;
+  late final MaterialProgression progression = switch (form) {
+    ScaleForm.major || ScaleForm.naturalMinor => _scaleProgression,
+    ScaleForm.harmonicMinor || ScaleForm.melodicMinor => MaterialProgression(
+      octaveSpans: _scaleProgression.octaveSpans,
+      prerequisiteMaterialIds: {
+        ScaleMaterial(tonic, ScaleForm.naturalMinor).materialId,
+      },
+    ),
+  };
 
   @override
   Set<Competency> executionCompetenciesFor(HandConfiguration hands) =>

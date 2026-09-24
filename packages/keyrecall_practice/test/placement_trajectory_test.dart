@@ -31,7 +31,7 @@ void main() {
         createdAt: t0,
         placement: tier,
       ),
-      // The production catalog, not the seven-material equivalence fixture:
+      // The production catalog, not the equivalence fixture:
       // what a learner is offered depends on how much appropriate material
       // exists, so a shorter list answers a different question.
       materials: allScales,
