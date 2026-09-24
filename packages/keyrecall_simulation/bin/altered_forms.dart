@@ -11,7 +11,8 @@ Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('seeds', defaultsTo: '4')
     ..addOption('slots', defaultsTo: '120')
-    ..addOption('jobs', defaultsTo: '8');
+    ..addOption('jobs', defaultsTo: '8')
+    ..addFlag('factorial', help: 'cross the two altered-form switches');
   final options = parser.parse(arguments);
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
@@ -19,7 +20,9 @@ Future<void> main(List<String> arguments) async {
 
   final stopwatch = Stopwatch()..start();
   final runs = await runAlteredFormMatrix(
-    arms: const [AlteredFormArm.shipped],
+    arms: options.flag('factorial')
+        ? AlteredFormArm.factorial
+        : [AlteredFormArm.shipped],
     seeds: seeds,
     slots: slots,
     parallelism: jobs,

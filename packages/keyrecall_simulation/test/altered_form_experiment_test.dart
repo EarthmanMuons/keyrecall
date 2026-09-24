@@ -26,7 +26,7 @@ void main() {
 
   test('an introduction records what the learner held', () async {
     final [run] = await runAlteredFormMatrix(
-      arms: const [AlteredFormArm.shipped],
+      arms: [AlteredFormArm.shipped],
       scopes: const [AlteredFormScope.broad],
       players: [PlayerArchetypes.intermediate],
       seeds: 1,

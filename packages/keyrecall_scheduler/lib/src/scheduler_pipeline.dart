@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 
@@ -61,6 +63,7 @@ class DecisionFacts {
   final ExecutionMemo execution = ExecutionMemo();
 
   final Map<HandConfiguration, (int, int)> _breadth = {};
+  final Map<HandConfiguration, (int, int)> _reachable = {};
   final Map<(String, HandConfiguration), double> _executionMean = {};
   final Map<ScaleForm, double> _minorTopology = {};
   bool? _fluentHandsTogether;
@@ -83,10 +86,15 @@ class DecisionFacts {
   /// other retrieved it, which is why a caller with a journal supplies this.
   final Set<(String, Hand)>? retrievedMaterialHands;
 
+  /// The materials this slot's candidates name, or null where the caller
+  /// named none.
+  final Set<String>? offeredMaterialIds;
+
   DecisionFacts(
     this.state, {
     this.attemptedExercises,
     this.retrievedMaterialHands,
+    this.offeredMaterialIds,
   });
 
   /// Whether [hand] has produced [materialId] from memory.
@@ -869,16 +877,25 @@ class SchedulerPipeline {
       );
     }
 
-    final bands = config.eligibility.coreRetrievalBands;
     for (final hand in HandConfiguration.values) {
       if (hand == HandConfiguration.together) continue;
       final (retrieved, spread) = _ordinaryBreadthFor(state, hand, facts);
-      if (retrieved >= required && spread >= bands) continue;
+      var (count, bands) = (required, config.eligibility.coreRetrievalBands);
+      if (config.eligibility.scopeAwareAlteredFormBreadth) {
+        final (reachable, reachableBands) = _reachableBreadthFor(
+          state,
+          hand,
+          facts,
+        );
+        count = math.min(count, reachable);
+        bands = math.min(bands, reachableBands);
+      }
+      if (retrieved >= count && spread >= bands) continue;
       return EligibilityDecision(
         EligibilityTier.provisionallyEligible,
         'the ${hand.id.toLowerCase()} hand has $retrieved major and '
         'natural-minor scales retrieved across $spread bands, and ${form.id} '
-        'asks for $required across $bands',
+        'asks for $count across $bands',
         code: form == ScaleForm.melodicMinor
             ? EligibilityReason.melodicMinorRepertoireBreadth
             : EligibilityReason.harmonicMinorRepertoireBreadth,
@@ -914,6 +931,39 @@ class SchedulerPipeline {
     final breadth = (retrieved, spread.length);
     facts?._breadth[hand] = breadth;
     return breadth;
+  }
+
+  /// How much ordinary-form breadth [hand] could have: the scales it has
+  /// retrieved and those this slot can still offer it, with the bands they
+  /// span.
+  ///
+  /// What the breadth requirement is capped at, so a goal or focus that holds
+  /// little ordinary material asks for what it can give rather than blocking
+  /// for good. History counts wherever it was earned, since narrowing a goal
+  /// must not take back what a learner already has; what is offered is read
+  /// from the slot, which is where material a scope has retired stops being
+  /// available. Uncapped when the caller named no candidates.
+  (int, int) _reachableBreadthFor(
+    LearnerState state,
+    HandConfiguration hand,
+    DecisionFacts? facts,
+  ) {
+    final offered = facts?.offeredMaterialIds;
+    if (offered == null) return (allScales.length, AdmissionBand.values.length);
+    final memo = facts!._reachable[hand];
+    if (memo != null) return memo;
+    final spread = <AdmissionBand>{};
+    var reachable = 0;
+    for (final material in allScales) {
+      if (!coreForms.contains(material.form)) continue;
+      if (!offered.contains(material.materialId) &&
+          !facts.hasRetrieved(material.materialId, hand.hands.single)) {
+        continue;
+      }
+      reachable++;
+      spread.add(admissionBandOf(material));
+    }
+    return facts._reachable[hand] = (reachable, spread.length);
   }
 
   /// Whether hands-together playing has been observed and is fluent.
@@ -1828,6 +1878,9 @@ class SchedulerPipeline {
       state,
       attemptedExercises: attemptedExercises,
       retrievedMaterialHands: retrievedMaterialHands,
+      offeredMaterialIds: {
+        for (final exercise in refined) exercise.material.materialId,
+      },
     );
     final introducible = introducibleTier(
       state,

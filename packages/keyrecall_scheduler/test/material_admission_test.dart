@@ -655,6 +655,123 @@ void main() {
       });
     });
 
+    group('in a scope with little ordinary material', () {
+      final aNatural = TechnicalMaterial('A', ScaleForm.naturalMinor);
+      final aHarmonic = TechnicalMaterial('A', ScaleForm.harmonicMinor);
+
+      /// Past the phase markers, with A natural minor in both hands and
+      /// nothing else.
+      LearnerState phaseBehind() => observing(transferable(), [
+        Competency.rhScaleExecution,
+        Competency.lhScaleExecution,
+        Competency.handsTogetherCoordination,
+      ]);
+
+      EligibilityDecision offering(
+        LearnerState state,
+        Set<TechnicalMaterial> offered, {
+        SchedulerPipeline over = pipeline,
+      }) {
+        state.materialMemoryFor(aHarmonic.materialId, learnerParams);
+        return over.eligibilityFor(
+          state,
+          harmonic(),
+          facts: DecisionFacts(
+            state,
+            offeredMaterialIds: {
+              for (final material in offered) material.materialId,
+            },
+          ),
+        );
+      }
+
+      test('asks for the breadth the slot can still give', () {
+        final state = phaseBehind();
+
+        expect(
+          decide(state, harmonic()).code,
+          EligibilityReason.harmonicMinorRepertoireBreadth,
+          reason: 'uncapped, one scale is not six',
+        );
+        expect(
+          offering(state, {aNatural, aHarmonic}).tier,
+          EligibilityTier.fullyEligible,
+          reason: 'and one scale is all this scope holds',
+        );
+      });
+
+      test('still waits for ordinary material it does offer', () {
+        final state = phaseBehind();
+        final offered = {
+          aNatural,
+          aHarmonic,
+          TechnicalMaterial('C', ScaleForm.major),
+          TechnicalMaterial('E', ScaleForm.naturalMinor),
+        };
+
+        expect(
+          offering(state, offered).code,
+          EligibilityReason.harmonicMinorRepertoireBreadth,
+        );
+        for (final material in offered) {
+          if (!coreForms.contains(material.scaleForm)) continue;
+          for (final hands in [
+            HandConfiguration.right,
+            HandConfiguration.left,
+          ]) {
+            retrieving(state, material, hands: hands);
+          }
+        }
+        expect(
+          offering(state, offered).tier,
+          EligibilityTier.fullyEligible,
+          reason: 'three scales over two bands is everything it can give',
+        );
+      });
+
+      test('keeps what was earned elsewhere', () {
+        final state = withFoundation(
+          transferable(),
+          count: config.eligibility.harmonicMinorCoreRetrievals,
+        );
+
+        expect(
+          offering(state, {aHarmonic}).tier,
+          EligibilityTier.fullyEligible,
+          reason: 'narrowing a goal does not take back breadth already there',
+        );
+      });
+
+      test('never goes below the natural minor it alters', () {
+        final state = observing(transferable(knowingTheTonic: false), [
+          Competency.rhScaleExecution,
+          Competency.lhScaleExecution,
+          Competency.handsTogetherCoordination,
+        ]);
+
+        expect(
+          offering(state, {aHarmonic}).code,
+          EligibilityReason.alteredFormNaturalMinorFoundation,
+        );
+      });
+
+      test('can be switched off for a census', () {
+        final uncapped = SchedulerPipeline(
+          learner: const LearnerModel(),
+          config: config.withEligibility(
+            config.eligibility.withAlteredFormPolicy(
+              scopeAwareAlteredFormBreadth: false,
+            ),
+          ),
+        );
+
+        expect(
+          offering(phaseBehind(), {aNatural, aHarmonic}, over: uncapped).code,
+          EligibilityReason.harmonicMinorRepertoireBreadth,
+        );
+      });
+    });
+
     test('it says nothing about major or natural minor', () {
       for (final form in coreForms) {
         expect(

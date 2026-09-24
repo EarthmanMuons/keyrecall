@@ -92,6 +92,15 @@ class EligibilityConfig {
   /// they know the scale being altered.
   final bool sameTonicAlteredFormPrerequisite;
 
+  /// Whether the breadth an altered form waits for is capped at what each hand
+  /// could have: its own retrievals and the ordinary material the slot still
+  /// offers.
+  ///
+  /// Without it, a goal holding few ordinary scales can never open an altered
+  /// form it names, and blocks. The same-tonic prerequisite is the floor the
+  /// cap cannot go below.
+  final bool scopeAwareAlteredFormBreadth;
+
   const EligibilityConfig({
     required this.multiOctaveExecutionFloor,
     required this.gentleTempoBpm,
@@ -104,11 +113,13 @@ class EligibilityConfig {
     required this.coreRetrievalBands,
     required this.fluentHandsTogetherFloor,
     required this.sameTonicAlteredFormPrerequisite,
+    required this.scopeAwareAlteredFormBreadth,
   });
 
   /// The same thresholds under a different altered-form policy.
   EligibilityConfig withAlteredFormPolicy({
     bool? sameTonicAlteredFormPrerequisite,
+    bool? scopeAwareAlteredFormBreadth,
   }) => EligibilityConfig(
     multiOctaveExecutionFloor: multiOctaveExecutionFloor,
     gentleTempoBpm: gentleTempoBpm,
@@ -123,6 +134,8 @@ class EligibilityConfig {
     sameTonicAlteredFormPrerequisite:
         sameTonicAlteredFormPrerequisite ??
         this.sameTonicAlteredFormPrerequisite,
+    scopeAwareAlteredFormBreadth:
+        scopeAwareAlteredFormBreadth ?? this.scopeAwareAlteredFormBreadth,
   );
 
   /// The execution floor [band] asks for.
@@ -656,6 +669,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     coreRetrievalBands: 2,
     fluentHandsTogetherFloor: 1.0,
     sameTonicAlteredFormPrerequisite: true,
+    scopeAwareAlteredFormBreadth: true,
   ),
   safety: SafetyConfig(),
   challenge: ChallengeConfig(pMin: 0.60, pMax: 0.90, pIntroductionMin: 0.15),

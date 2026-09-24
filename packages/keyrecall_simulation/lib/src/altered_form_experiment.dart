@@ -33,12 +33,33 @@ class AlteredFormArm {
   final String id;
   final SchedulerConfig config;
 
-  const AlteredFormArm({required this.id, required this.config});
+  AlteredFormArm({required this.id, required this.config});
 
-  static const shipped = AlteredFormArm(
+  static final shipped = AlteredFormArm(
     id: 'shipped',
     config: v1SchedulerConfig,
   );
+
+  /// The same-tonic prerequisite and the scope-aware breadth cap, crossed.
+  static List<AlteredFormArm> get factorial => [
+    for (final (sameTonic, scopeAware) in [
+      (false, false),
+      (true, false),
+      (false, true),
+      (true, true),
+    ])
+      AlteredFormArm(
+        id:
+            '${sameTonic ? 'tonic' : 'no_tonic'}_'
+            '${scopeAware ? 'capped' : 'uncapped'}',
+        config: v1SchedulerConfig.withEligibility(
+          v1SchedulerConfig.eligibility.withAlteredFormPolicy(
+            sameTonicAlteredFormPrerequisite: sameTonic,
+            scopeAwareAlteredFormBreadth: scopeAware,
+          ),
+        ),
+      ),
+  ];
 }
 
 /// What the learner held when an altered form was first introduced.
