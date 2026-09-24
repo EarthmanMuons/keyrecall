@@ -529,6 +529,14 @@ void main() {
         return state;
       }
 
+      /// Every core scale retrieved by both hands, except D natural minor by
+      /// the left.
+      final rightRetrieved = {
+        for (final material in allScales)
+          if (coreForms.contains(material.form))
+            for (final hand in Hand.values) (material.materialId, hand),
+      }..remove((dNatural.materialId, Hand.left));
+
       EligibilityDecision decideWith(
         LearnerState state,
         Exercise exercise,
@@ -544,7 +552,7 @@ void main() {
 
       test('is asked of the hand that retrieved it, not of the material', () {
         final state = rightRetrievedLeftCued();
-        final retrieved = {(dNatural.materialId, Hand.right)};
+        final retrieved = rightRetrieved;
 
         expect(
           decideWith(state, dHarmonic(HandConfiguration.right), retrieved).tier,
@@ -562,6 +570,22 @@ void main() {
             retrieved,
           ).code,
           EligibilityReason.alteredFormNaturalMinorFoundation,
+        );
+      });
+
+      test('and breadth is counted the same way', () {
+        // Both hands played every core scale, and memory says each was
+        // retrieved. Only the right hand's retrievals were its own.
+        final state = withFoundation(transferable());
+        final rightOnly = {
+          for (final (materialId, hand) in rightRetrieved)
+            if (hand == Hand.right) (materialId, hand),
+          (dNatural.materialId, Hand.left),
+        };
+
+        expect(
+          decideWith(state, dHarmonic(HandConfiguration.left), rightOnly).code,
+          EligibilityReason.harmonicMinorRepertoireBreadth,
         );
       });
 
@@ -586,10 +610,7 @@ void main() {
           pipeline.isIntroducible(
             state,
             left,
-            facts: DecisionFacts(
-              state,
-              retrievedMaterialHands: {(dNatural.materialId, Hand.right)},
-            ),
+            facts: DecisionFacts(state, retrievedMaterialHands: rightRetrieved),
           ),
           isFalse,
         );

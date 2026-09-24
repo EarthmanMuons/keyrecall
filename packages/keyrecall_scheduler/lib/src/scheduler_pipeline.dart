@@ -887,15 +887,12 @@ class SchedulerPipeline {
     return null;
   }
 
-  /// How many ordinary-form scales [hand] has played and had retrieved, and
-  /// how many admission bands they span.
+  /// How many ordinary-form scales [hand] has retrieved, and how many
+  /// admission bands they span.
   ///
-  /// Memory knows a scale was retrieved without knowing which hand played;
-  /// execution residuals know a hand played it without knowing whether
-  /// anything was remembered. Requiring both is the closest this state comes to
-  /// "this hand has this scale", and it is a projection rather than a record: a
-  /// scale retrieved by one hand and merely played by the other counts for
-  /// both.
+  /// The same per-hand retrieval the natural-minor prerequisite reads, so the
+  /// two parts of the foundation agree about what "this hand has this scale"
+  /// means. See [DecisionFacts.hasRetrieved].
   (int, int) _ordinaryBreadthFor(
     LearnerState state,
     HandConfiguration hand,
@@ -903,13 +900,14 @@ class SchedulerPipeline {
   ) {
     final memo = facts?._breadth[hand];
     if (memo != null) return memo;
+    final evidence = facts ?? DecisionFacts(state);
     final spread = <AdmissionBand>{};
     var retrieved = 0;
     for (final material in allScales) {
       if (!coreForms.contains(material.form)) continue;
-      final memory = state.materialMemory[material.materialId];
-      if (memory?.hasFactualRetrieval != true) continue;
-      if (!state.hasPlayed(material.materialId, hand)) continue;
+      if (!evidence.hasRetrieved(material.materialId, hand.hands.single)) {
+        continue;
+      }
       retrieved++;
       spread.add(admissionBandOf(material));
     }
