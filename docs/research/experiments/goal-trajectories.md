@@ -118,6 +118,53 @@ nine; per-decision cost is dominated by the number of candidates scored, which
 the envelope shrinks for a finite goal, and grows only mildly with history,
 about 115 ms a decision at 50 slots and 200 ms at 400.
 
+## 24-key fluency over a thousand slots
+
+The same goal over 50 daily sittings of 20 slots, the same thirteen archetypes
+and four seeds, with coverage split by family every ten sittings.
+
+```console
+dart run keyrecall_simulation:goal_horizon --scope keyFluency --seeds 4 \
+  --sittings 50 --every 10 --jobs 5 --out key_fluency.jsonl
+```
+
+| Sittings | Slots | Covered | Scales of 24 | Arpeggios of 24 | Target-shaped | Arpeggio picks | Unguided |
+| -------: | ----: | ------: | -----------: | --------------: | ------------: | -------------: | -------: |
+|       10 |   193 |   0.012 |          0.3 |             0.2 |         0.017 |          0.536 |    0.499 |
+|       20 |   389 |   0.053 |          1.4 |             1.1 |         0.041 |          0.515 |    0.684 |
+|       30 |   586 |   0.108 |          3.2 |             1.9 |         0.057 |          0.498 |    0.754 |
+|       40 |   785 |   0.192 |          5.9 |             3.3 |         0.058 |          0.534 |    0.788 |
+|       50 |   984 |   0.280 |          8.2 |             5.2 |         0.061 |          0.557 |    0.820 |
+
+The pick shares are over each interval of ten sittings ending at that row.
+Nothing blocked and nothing was caught up; no run finished. A quarter was
+covered in 28 of 52 runs, near slot 723, and half in 9, near slot 728. The
+advanced and reliable archetypes reached 40 and 39 of 48; the uneven-handed and
+coordination-limited ones covered none, as a goal made entirely of
+hands-together targets would predict.
+
+**It accumulates rather than stalls.** Coverage grows faster each interval, and
+guidance moves the right way, cued picks falling from 14% to 4%. There is no
+plateau followed by a burst.
+
+**But target-shaped work stays near 6% of practice.** Hands together, two
+octaves, and up and down each settle near 35% of picks, and their conjunction,
+which is the only thing that covers a target, is a small fraction of that. The
+envelope keeps practice on the way to the targets; nothing within it prefers
+arriving. Goal emphasis weights a material, so the shape that would cover it is
+one candidate among its many precursors.
+
+**Arpeggios take more practice and cover less.** About half of every interval's
+picks are arpeggios, yet 5.2 arpeggios are covered against 8.2 scales. The two
+single-family archetypes cover only the family they are strong in, 19 and 0,
+which is consistent with the family transfer question the placement work left
+open.
+
+The step this points to is the one the envelope deliberately did not take: a
+goal term that prefers the realizations matching an uncovered target's shape,
+not only the target's material. It would be a ranking change, and is not made
+here.
+
 ## Interpretation boundary
 
 Synthetic players over ten short sittings. The census says what the goals ask
