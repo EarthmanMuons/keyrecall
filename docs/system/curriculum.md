@@ -16,10 +16,10 @@ body of capability. A goal says what outcome this player is pursuing. A focus
 says what to draw from right now.
 
 > **Status:** structural scope resolution, requirement state, terminal outcomes,
-> the acquisition floor, goal persistence, emphasis ranking, and the first focus
-> surface are built. Named external curricula, several goals at once, and a
-> per-requirement completion criterion are proposed; the sections below say
-> which is which.
+> the acquisition floor, goal persistence, emphasis ranking, the first focus
+> surface, and three KeyRecall goals are built. Examination curricula, several
+> goals at once, and a per-requirement completion criterion are proposed; the
+> sections below say which is which.
 
 ## The catalog is not the candidate pool
 
@@ -86,6 +86,26 @@ machinery.
 
 Named curricula carry their source and edition. A syllabus update creates a new
 definition rather than silently changing what a completed goal meant.
+
+## The goals KeyRecall offers
+
+Three, each KeyRecall's own destination rather than an examination's.
+Examination syllabi informed the material and its order; they are not what a
+goal is named after, since no syllabus asks for exactly these sets.
+
+| Goal              | Targets                                                                          |
+| ----------------- | -------------------------------------------------------------------------------- |
+| General technique | every material in the catalog, in any realization, with no end point             |
+| Foundations       | C G D A F Bb major and A E D G natural minor, each hand, one octave, up and down |
+| 24-key fluency    | every major and natural-minor scale, hands together, two octaves, up and down    |
+
+General technique grows with the catalog, so a family added later joins it, and
+it makes no completion claim. Foundations is chosen for geography: both of the
+two earliest admission bands, and three fingering families rather than one,
+which is why it holds B flat major and not E major. 24-key fluency holds the
+scales only for now; its root-position arpeggios join as a new version once they
+are generated up and down. Neither names an altered minor form, which extends a
+tonality rather than defining it.
 
 ## Goals and focus answer different questions
 

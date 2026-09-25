@@ -14,10 +14,8 @@ import 'practice_providers.dart';
 /// temporary intent, it has its own control on the practice screen, and one
 /// page holding both taught that they were the same kind of thing.
 ///
-/// The choice is made on this page rather than in a sheet it opens. One goal
-/// exists and it is still offered as a list with the current one marked, since
-/// a goal is something a learner picks and a row that only ever reads back
-/// teaches them it is not.
+/// The choice is made on this page rather than in a sheet it opens, as a list
+/// with the current goal marked.
 class GoalScreen extends ConsumerWidget {
   const GoalScreen({super.key});
 
@@ -46,13 +44,13 @@ class GoalScreen extends ConsumerWidget {
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(goalName(goalId)),
-              subtitle: Text(goalDescription(catalog)),
+              subtitle: Text(goalDescription(goalId, catalog)),
               trailing: goalId == plan.goalId ? const Icon(Icons.check) : null,
               onTap: () => ref
                   .read(practicePlanProvider.notifier)
                   .apply(PracticePlan(goalId: goalId, focus: plan.focus)),
             ),
-          if (coverage != null)
+          if (coverage != null && hasFinishLine(plan))
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
@@ -85,23 +83,47 @@ final List<String> offeredGoalIds = supportedGoals.keys.toList();
 String coverageScopeName(PracticePlan plan) =>
     plan.focus?.isExclusive ?? false ? 'In this focus' : 'Goal progress';
 
+/// Whether coverage of [plan] is a count toward an end.
+///
+/// General technique is open-ended: it grows with the catalog and is never
+/// finished, so a fraction of it would read as a finish line that does not
+/// exist. A focus inside it is a chosen set and can be finished.
+bool hasFinishLine(PracticePlan plan) =>
+    plan.goalId != PracticeGoal.generalFluency.id ||
+    (plan.focus?.isExclusive ?? false);
+
 /// What a goal is called where a learner reads it.
 String goalName(String goalId) => switch (goalId) {
-  'GENERAL_FLUENCY' => 'General piano technique',
+  'GENERAL_FLUENCY' => 'General technique',
+  'FOUNDATIONS' => 'Foundations',
+  'KEY_FLUENCY_24' => '24-key fluency',
   _ => goalId,
 };
 
-/// What the goal covers, in terms of what the catalog actually holds.
-String goalDescription(List<TechnicalMaterial> catalog) {
+/// What the goal asks for, in terms of what the catalog actually holds.
+String goalDescription(String goalId, List<TechnicalMaterial> catalog) =>
+    switch (goalId) {
+      'FOUNDATIONS' =>
+        'Ten common major and minor scales across the keyboard, each hand '
+            'on its own, from memory.',
+      'KEY_FLUENCY_24' =>
+        'All 24 major and minor scales, hands together over two octaves, '
+            'from memory.',
+      _ => _everythingIn(catalog),
+    };
+
+String _everythingIn(List<TechnicalMaterial> catalog) {
   final families = familyIdsIn(catalog)
       .map(familyName)
       .map((name) => name.toLowerCase());
   return switch (families.length) {
     0 => 'Nothing is installed to practice.',
-    1 => 'Every one of the ${families.single} KeyRecall supports.',
+    1 =>
+      'Everything in the ${families.single} KeyRecall supports, with no end '
+          'point.',
     _ =>
-      'Every one of the '
+      'Everything in the '
           '${families.take(families.length - 1).join(', ')} and '
-          '${families.last} KeyRecall supports.',
+          '${families.last} KeyRecall supports, with no end point.',
   };
 }

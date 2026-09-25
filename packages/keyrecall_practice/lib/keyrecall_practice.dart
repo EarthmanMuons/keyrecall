@@ -28,6 +28,7 @@ export 'src/feedback_exposure.dart';
 export 'src/json_lines.dart';
 export 'src/pending_decision.dart';
 export 'src/performance_closure.dart';
+export 'src/goal_curricula.dart';
 export 'src/practice_plan.dart';
 export 'src/practice_session.dart';
 export 'src/practice_store.dart';

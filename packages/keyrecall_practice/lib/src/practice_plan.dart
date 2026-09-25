@@ -3,6 +3,7 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:meta/meta.dart';
 
+import 'goal_curricula.dart';
 import 'scope_resolution.dart';
 
 /// Version of the practice plan wire format.
@@ -189,9 +190,17 @@ class ActiveFocus {
 /// into a goal of its own. A goal nothing describes carries no materials and
 /// no curriculum, so honoring one would quietly practice the whole catalog
 /// under a name the learner chose for something narrower.
-const Map<String, PracticeGoal> supportedGoals = {
+final Map<String, PracticeGoal> supportedGoals = Map.unmodifiable({
   'GENERAL_FLUENCY': PracticeGoal.generalFluency,
-};
+  'FOUNDATIONS': PracticeGoal(
+    id: 'FOUNDATIONS',
+    curriculum: foundationsCurriculum,
+  ),
+  'KEY_FLUENCY_24': PracticeGoal(
+    id: 'KEY_FLUENCY_24',
+    curriculum: keyFluencyCurriculum,
+  ),
+});
 
 /// The result of reading a plan against this build and one catalog.
 sealed class PlanResolution {
