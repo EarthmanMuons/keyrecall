@@ -37,6 +37,33 @@ class ExerciseConstraints {
         (handMotion == null || conditions.handMotion == handMotion);
   }
 
+  /// Whether [conditions] is this shape or on the declared way to it.
+  ///
+  /// What a finite goal offers of a material: its target, and the realizations
+  /// [progression] says come before it. A narrower span, ascending before up
+  /// and down, and each hand alone before both where the material asks for
+  /// that. A condition this names nothing about admits everything. Tempo and
+  /// guidance are not shape, and every rung stays available as preparation.
+  bool admitsOnTheWay(
+    ExecutionConditions conditions,
+    MaterialProgression progression,
+  ) =>
+      switch (hands) {
+        null => true,
+        HandConfiguration.together =>
+          conditions.hands == HandConfiguration.together ||
+              progression.requiresSeparateHandsBeforeTogether,
+        final named => conditions.hands == named,
+      } &&
+      (handMotion == null ||
+          conditions.hands != HandConfiguration.together ||
+          conditions.handMotion == handMotion) &&
+      (octaves == null || conditions.octaves <= octaves!) &&
+      switch (direction) {
+        null || ExerciseDirection.upDown => true,
+        ExerciseDirection.up => conditions.direction == ExerciseDirection.up,
+      };
+
   /// Whether [exercise] is a realization this requirement asks for, including
   /// the tempo it is presented at.
   bool matches(Exercise exercise) =>
@@ -162,7 +189,16 @@ class ResolvedRequirement {
   final CurriculumRequirement requirement;
   final TechnicalMaterial material;
   final List<Exercise> targetCandidates;
+
+  /// What the scope offers of this material: its targets and the way to them.
   final List<Exercise> candidates;
+
+  /// Every realization the family generates for this material.
+  ///
+  /// Wider than [candidates] in a finite goal. Live support draws from it,
+  /// because what a barred dependent waits on need not be anything this goal
+  /// targets.
+  final List<Exercise> realizations;
   final Set<ResolvedRequirementRole> roles;
   final double emphasis;
 
@@ -171,10 +207,12 @@ class ResolvedRequirement {
     required this.material,
     Iterable<Exercise>? targetCandidates,
     required Iterable<Exercise> candidates,
+    Iterable<Exercise>? realizations,
     Set<ResolvedRequirementRole> roles = const {ResolvedRequirementRole.target},
     this.emphasis = 1,
   }) : targetCandidates = List.unmodifiable(targetCandidates ?? candidates),
        candidates = List.unmodifiable(candidates),
+       realizations = List.unmodifiable(realizations ?? candidates),
        roles = Set.unmodifiable(roles);
 
   /// Whether completing this requirement is part of completing the goal.

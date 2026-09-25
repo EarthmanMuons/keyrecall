@@ -139,4 +139,141 @@ void main() {
       }
     });
   });
+
+  group('what a goal offers', () {
+    Set<T> offered<T>(String goalId, T Function(Exercise) facet) => {
+      for (final requirement in resolved(goalId).requirements)
+        for (final exercise in requirement.candidates) facet(exercise),
+    };
+
+    test(
+      'Foundations offers one hand, one octave, and the way to up and down',
+      () {
+        expect(
+          offered('FOUNDATIONS', (exercise) => exercise.conditions.hands),
+          {HandConfiguration.right, HandConfiguration.left},
+        );
+        expect(
+          offered('FOUNDATIONS', (exercise) => exercise.conditions.octaves),
+          {1},
+        );
+        expect(
+          offered('FOUNDATIONS', (exercise) => exercise.conditions.direction),
+          ExerciseDirection.values.toSet(),
+        );
+        expect(
+          offered('FOUNDATIONS', (exercise) => exercise.guidance),
+          GuidanceContext.ladder.toSet(),
+          reason: 'every more supported rung is preparation for from memory',
+        );
+      },
+    );
+
+    test(
+      '24-key fluency offers the way to its targets and nothing past them',
+      () {
+        expect(
+          offered('KEY_FLUENCY_24', (exercise) => exercise.conditions.hands),
+          HandConfiguration.values.toSet(),
+        );
+        expect(
+          offered('KEY_FLUENCY_24', (exercise) => exercise.conditions.octaves),
+          {1, 2},
+          reason: 'four-octave arpeggios lie past a two-octave target',
+        );
+        expect(
+          offered(
+            'KEY_FLUENCY_24',
+            (exercise) => exercise.conditions.direction,
+          ),
+          ExerciseDirection.values.toSet(),
+        );
+      },
+    );
+
+    test('general technique offers everything the families generate', () {
+      for (final requirement in resolved('GENERAL_FLUENCY').requirements) {
+        expect(requirement.candidates, requirement.realizations);
+      }
+    });
+
+    test('a focus inside a goal keeps the goal\'s shape', () {
+      final plan =
+          PracticePlan(goalId: 'FOUNDATIONS')
+                  .focusedOn(
+                    ActiveFocus(
+                      label: 'B flat major',
+                      strength: FocusStrength.exclusive,
+                      material: MaterialFocus(
+                        scaleFormIds: {ScaleForm.major.id},
+                        tonics: {'Bb'},
+                      ),
+                    ),
+                  )
+                  .resolve(catalog)
+              as ResolvedPlan;
+      final scope =
+          (PracticeScopeResolver().resolve(
+                    goal: plan.goal,
+                    focus: plan.focus,
+                    catalog: catalog,
+                    instrument: InstrumentProfile(),
+                  )
+                  as ValidPracticeScope)
+              .scope;
+
+      for (final requirement in scope.requirements) {
+        for (final exercise in requirement.candidates) {
+          expect(exercise.conditions.hands, isNot(HandConfiguration.together));
+          expect(exercise.conditions.octaves, 1);
+        }
+      }
+    });
+
+    test('support is offered on the way to what it prepares', () {
+      final harmonic = TechnicalMaterial('D', ScaleForm.harmonicMinor);
+      final scope =
+          (PracticeScopeResolver().resolve(
+                    goal: PracticeGoal(
+                      id: 'ONE',
+                      curriculum: Curriculum(
+                        id: 'ONE',
+                        version: '1',
+                        requirements: [
+                          CurriculumRequirement(
+                            id: 'D_HARMONIC_RH',
+                            familyId: harmonic.familyId,
+                            materialId: harmonic.materialId,
+                            constraints: const ExerciseConstraints(
+                              hands: HandConfiguration.right,
+                              octaves: 1,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    focus: PracticeFocus.unrestricted,
+                    catalog: catalog,
+                    instrument: InstrumentProfile(),
+                  )
+                  as ValidPracticeScope)
+              .scope;
+      final support = scope.requirements.singleWhere(
+        (requirement) => requirement.isSupport,
+      );
+
+      expect(
+        {for (final exercise in support.candidates) exercise.conditions.hands},
+        {HandConfiguration.right},
+      );
+      expect(
+        {
+          for (final exercise in support.realizations)
+            exercise.conditions.hands,
+        },
+        HandConfiguration.values.toSet(),
+        reason: 'live support can still offer what a barrier waits on',
+      );
+    });
+  });
 }

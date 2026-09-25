@@ -60,6 +60,16 @@ barred exercise waits on; the session keeps the material live until nothing
 does. Coverage itself is unchanged: live support is about what is offered, not
 about what has been demonstrated.
 
+A goal narrows realization as well as material. A requirement names a shape, and
+a finite goal offers a material only on the way to what its requirements ask of
+it: a span no wider than the target's, ascending before up and down, and each
+hand alone before both where the material asks for that. Guidance and tempo are
+not shape, so every more supported rung stays available. Support is offered on
+the way to what it prepares, and a goal naming no shape, such as general
+technique, offers everything. Live support is the one exception, drawn from
+every realization, because what a barrier waits on need not be anything the goal
+targets.
+
 ## Requirements describe capability, not lessons
 
 A curriculum is a provenance-backed set of requirements, each describing an

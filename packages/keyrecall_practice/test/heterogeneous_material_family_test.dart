@@ -97,7 +97,11 @@ void main() {
           .add(entry.exercise);
     }
 
-    expect(byRequirement['C_SCALE_RH'], hasLength(2));
+    expect(
+      byRequirement['C_SCALE_RH']!.single.conditions.hands,
+      HandConfiguration.right,
+      reason: 'the left hand is not on the way to a right-hand requirement',
+    );
     expect(byRequirement['C_ARPEGGIO_RH'], hasLength(1));
     expect(
       byRequirement['C_ARPEGGIO_RH']!.single.conditions.hands,

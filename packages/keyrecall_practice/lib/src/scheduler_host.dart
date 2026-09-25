@@ -36,7 +36,7 @@ List<Exercise> candidatesDueIn(
     for (final requirement in scope.requirements)
       if (live[requirement.material.materialId] case final hands?
           when added.add(requirement.material.materialId))
-        for (final exercise in requirement.candidates)
+        for (final exercise in requirement.realizations)
           if (hands.contains(exercise.conditions.hands)) exercise,
   ];
 }

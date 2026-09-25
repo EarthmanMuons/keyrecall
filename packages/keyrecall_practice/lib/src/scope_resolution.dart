@@ -313,9 +313,34 @@ class PracticeScopeResolver {
       for (final requirement in prerequisites)
         if (!retained.contains(requirement)) requirement,
     ];
+    // What each material is offered as: the way to whatever the scope asks of
+    // it. A support is offered on the way to what it prepares rather than to a
+    // shape of its own, so a finite goal holds nothing its targets do not lead
+    // to, and a goal naming no shape offers everything.
+    final activeById = {
+      for (final requirement in activeRequirements) requirement.id: requirement,
+    };
+    final envelopeByMaterial = <String, List<ExerciseConstraints>>{};
+    for (final requirement in activeRequirements) {
+      final dependents = activeTargetIds.contains(requirement.id)
+          ? const <CurriculumRequirement>[]
+          : [
+              for (final id in requirement.supportsRequirementIds)
+                ?activeById[id],
+            ];
+      envelopeByMaterial
+          .putIfAbsent(requirement.materialId, () => [])
+          .addAll(
+            dependents.isEmpty
+                ? [requirement.constraints]
+                : [for (final dependent in dependents) dependent.constraints],
+          );
+    }
+
     // Generation reads the material and the instrument and nothing else, so
     // requirements over one material share a pool rather than each building an
     // identical one.
+    final realizationsByMaterial = <String, List<Exercise>>{};
     final candidatesByMaterial = <String, List<Exercise>>{};
     final resolved = <ResolvedRequirement>[];
     for (final requirement in activeRequirements) {
@@ -341,9 +366,22 @@ class PracticeScopeResolver {
         );
         continue;
       }
-      final candidates = candidatesByMaterial.putIfAbsent(
+      final realizations = realizationsByMaterial.putIfAbsent(
         material.materialId,
         () => family.generate(instrument, material),
+      );
+      final candidates = candidatesByMaterial.putIfAbsent(
+        material.materialId,
+        () => [
+          for (final exercise in realizations)
+            if (envelopeByMaterial[material.materialId]!.any(
+              (constraints) => constraints.admitsOnTheWay(
+                exercise.conditions,
+                material.progression,
+              ),
+            ))
+              exercise,
+        ],
       );
       final targetCandidates = candidates
           .where(requirement.constraints.matches)
@@ -364,6 +402,7 @@ class PracticeScopeResolver {
           material: material,
           targetCandidates: targetCandidates,
           candidates: candidates,
+          realizations: realizations,
           roles: {
             if (activeTargetIds.contains(requirement.id))
               ResolvedRequirementRole.target,
