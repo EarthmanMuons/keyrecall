@@ -148,9 +148,65 @@ What is left between the three placements after this is the challenge band, and
 that reads the prediction gap itself. Closing it is the model's question, not a
 gate's.
 
+## With the scheduler choosing
+
+The same player run three times under a goal, once per placement, over 25 daily
+sittings of 20 slots, with the shipped floors. Each placement is offered
+different work and so gathers different evidence, which is the question the
+fixed history could not ask: whether the scheduler lets them converge. After 3,
+6, 10, and 25 sittings the three are compared on coverage, on the largest total
+variation distance between two placements' mix of picks since the previous
+checkpoint, and on the least overlap between two placements' fully eligible
+sets, read from their own learner states. Thirteen archetypes, two seeds, two
+goals, 2980 seconds.
+
+```console
+dart run keyrecall_simulation:closed_loop_placement --seeds 2 --jobs 4 \
+  --out closed_loop_placement.jsonl
+```
+
+Means over the 26 groups per goal:
+
+| Goal        | Sittings | Coverage gap | Guidance | Hands | Octaves | Direction | Family | Eligible overlap |
+| ----------- | -------: | -----------: | -------: | ----: | ------: | --------: | -----: | ---------------: |
+| Foundations |        3 |        0.085 |    0.095 | 0.052 |       - |     0.084 |      - |            0.696 |
+| Foundations |       25 |        0.075 |    0.054 | 0.081 |       - |     0.038 |      - |            0.975 |
+| General     |        3 |        0.095 |    0.145 | 0.122 |   0.197 |     0.084 |  0.085 |            0.205 |
+| General     |       10 |        0.150 |    0.136 | 0.142 |   0.125 |     0.058 |  0.250 |            0.360 |
+| General     |       25 |        0.106 |    0.060 | 0.103 |   0.070 |     0.045 |  0.169 |            0.584 |
+
+Mean slot at which each placement first reached a milestone, and in how many
+groups:
+
+| Goal        | Milestone         | Beginner | Some experience | Advanced |
+| ----------- | ----------------- | -------: | --------------: | -------: |
+| Foundations | first unguided    |   8 (26) |          7 (26) |   6 (26) |
+| Foundations | half covered      | 109 (23) |         83 (23) |  98 (24) |
+| Foundations | fully covered     | 197 (20) |        209 (23) | 198 (23) |
+| General     | first unguided    |  21 (26) |          7 (26) |   6 (26) |
+| General     | first two octaves |  37 (26) |          4 (26) |   4 (26) |
+| General     | half covered      | 312 (19) |        212 (20) | 226 (20) |
+
+**Foundations does what placement promises.** The three placements end within a
+few percent of each other in what they practice and nearly agree on what is
+eligible, and a beginner placement finishes the goal as soon as an advanced one
+does. Its envelope keeps the route short, so the prior has little room to steer
+it.
+
+**General technique converges, slowly.** Eligible overlap rises steadily and is
+still rising at 500 slots, and the mix of span, guidance, and hands narrows. The
+beginner placement is the transient: it reaches two octaves thirty slots later
+and half its catalog about a hundred slots later, and the family mix is the last
+facet to agree. Nothing in the data says it stops converging; it does say that
+over a catalog this wide the start costs something for a long time.
+
+**Same next pick is too strict a measure here.** No group's three placements
+picked the same exercise from a fresh sitting at any checkpoint, which reads
+less as divergence than as three genuinely different histories breaking every
+tie differently. Overlap is the measure that carries the result.
+
 ## Interpretation boundary
 
 Synthetic players whose performance is generated from the same competency
-structure the model assumes, which if anything flatters identifiability. The
-closed-loop half, whether the scheduler's own choices widen or narrow these
-gaps, is still to run, after the finite-goal realization envelope.
+structure the model assumes, which if anything flatters identifiability, and 500
+slots is still a finite horizon for general technique.
