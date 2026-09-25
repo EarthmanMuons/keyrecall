@@ -278,12 +278,29 @@ void main() {
   });
 
   group('uncovered target shapes', () {
-    test('are a finite goal\'s target realizations, and only those named', () {
+    test('are the realizations that could cover the target named', () {
       final scope = resolved('FOUNDATIONS');
       final one = scope.requirements.first;
       final targets = uncoveredTargetsIn(scope, [one.requirement.id]);
 
-      expect(targets, one.targetCandidates.toSet());
+      expect(targets, isNotEmpty);
+      expect(targets, everyElement(isIn(one.targetCandidates)));
+      expect(
+        one.targetCandidates.where(targets.contains),
+        everyElement(
+          predicate<Exercise>(
+            (exercise) => !exercise.guidance.isMaterialSupplied,
+          ),
+        ),
+        reason: 'Foundations is covered only from memory',
+      );
+      expect(
+        one.targetCandidates.any(
+          (exercise) => exercise.guidance.isMaterialSupplied,
+        ),
+        isTrue,
+        reason: 'the supported shapes exist, and are left out',
+      );
     });
 
     test('are nothing for a goal that names no shape', () {

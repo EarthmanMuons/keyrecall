@@ -42,10 +42,13 @@ List<Exercise> candidatesDueIn(
   ];
 }
 
-/// The target-shaped candidates of [uncoveredTargetIds], against [scope].
+/// The candidates that could cover one of [uncoveredTargetIds], against
+/// [scope].
 ///
 /// Only a requirement that names a shape has one to prefer; a catalog goal's
-/// requirement names none, so general technique contributes nothing here.
+/// requirement names none, so general technique contributes nothing here. A
+/// target's shape under guidance its coverage refuses is not arriving, and is
+/// left to ordinary ranking.
 Set<Exercise> uncoveredTargetsIn(
   ResolvedPracticeScope scope,
   List<String> uncoveredTargetIds,
@@ -56,7 +59,9 @@ Set<Exercise> uncoveredTargetsIn(
     for (final requirement in scope.requirements)
       if (uncovered.contains(requirement.requirement.id) &&
           requirement.requirement.constraints.namesShape)
-        ...requirement.targetCandidates,
+        for (final exercise in requirement.targetCandidates)
+          if (requirement.requirement.retrieval.admits(exercise.guidance))
+            exercise,
   };
 }
 

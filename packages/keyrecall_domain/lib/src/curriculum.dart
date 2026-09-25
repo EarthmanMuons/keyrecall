@@ -2,6 +2,7 @@ import 'package:meta/meta.dart';
 
 import 'execution_conditions.dart';
 import 'exercise.dart';
+import 'guidance_context.dart';
 import 'technical_material.dart';
 
 /// Whether a curriculum requirement is an outcome or preparation for one.
@@ -90,7 +91,13 @@ enum CoverageRetrieval {
   observed,
 
   /// Nothing about the material shown first.
-  unguided,
+  unguided;
+
+  /// Whether an attempt presented with [guidance] could satisfy this.
+  bool admits(GuidanceContext guidance) => switch (this) {
+    observed => guidance.isRetrievalObserved,
+    unguided => !guidance.isMaterialSupplied,
+  };
 }
 
 /// One stable, independently assessable capability in a curriculum.
