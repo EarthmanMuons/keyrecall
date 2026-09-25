@@ -15,6 +15,19 @@ import 'trajectory.dart';
 ///
 /// The learner model and scheduler are the production ones. Only the person is
 /// synthetic, which is what makes a finding here a finding about KeyRecall.
+/// How much of each slot a run keeps.
+enum TraceRetention {
+  /// Every stage of every slot, for scheduler analysis.
+  full,
+
+  /// The history alone: what was chosen, what happened, and when.
+  ///
+  /// Evidence rather than diagnostics. A long run that keeps the ranked
+  /// alternatives of every slot holds thousands of traces per slot, which a
+  /// replay of the history has no use for.
+  selectedOnly,
+}
+
 Trajectory runTrajectory({
   required SyntheticPlayer player,
   required int seed,
@@ -70,6 +83,7 @@ Trajectory runSittings({
   required List<Sitting> sittings,
   double minutesPerSlot = 1.0,
   SchedulerPipeline pipeline = const SchedulerPipeline(learner: LearnerModel()),
+  TraceRetention traceRetention = TraceRetention.full,
   InstrumentProfile? instrument,
   List<Exercise>? generated,
   AcquisitionFloor? acquisitionFloor,
@@ -204,8 +218,10 @@ Trajectory runSittings({
             index: index,
             at: at,
             sitting: sitting,
-            traces: traces,
-            selectable: available,
+            traces: traceRetention == TraceRetention.full ? traces : const [],
+            selectable: traceRetention == TraceRetention.full
+                ? available
+                : const [],
             candidates: _candidateCounts(candidates.length, traces, available),
             probe: ProbeState(
               pendingBefore: probeBefore,
@@ -230,6 +246,7 @@ Trajectory runSittings({
       );
 
       final outcome = playing.play(exercise, rng);
+      final full = traceRetention == TraceRetention.full;
       final handsTogetherTraces = traces.where(
         (trace) =>
             trace.exercise.conditions.hands == HandConfiguration.together,
@@ -238,31 +255,38 @@ Trajectory runSittings({
         (trace) =>
             trace.exercise.conditions.hands == HandConfiguration.together,
       );
-      final handsTogether = HandsTogetherStages(
-        prerequisiteSatisfied: {
-          for (final trace in handsTogetherTraces)
-            if (trace.handsTogetherPrerequisiteSatisfied == true)
-              trace.exercise.material.materialId,
-        },
-        eligible: {
-          for (final trace in handsTogetherTraces)
-            if (trace.eligibility.tier == EligibilityTier.fullyEligible)
-              trace.exercise.material.materialId,
-        },
-        admitted: {
-          for (final trace in handsTogetherTraces)
-            if (trace.isRanked) trace.exercise.material.materialId,
-        },
-        selectable: {
-          for (final trace in handsTogetherSelectable)
-            trace.exercise.material.materialId,
-        },
-        diagnostics: _handsTogetherDiagnostics(
-          state,
-          handsTogetherTraces,
-          handsTogetherSelectable,
-        ),
-      );
+      final handsTogether = !full
+          ? const HandsTogetherStages(
+              prerequisiteSatisfied: {},
+              eligible: {},
+              admitted: {},
+              selectable: {},
+            )
+          : HandsTogetherStages(
+              prerequisiteSatisfied: {
+                for (final trace in handsTogetherTraces)
+                  if (trace.handsTogetherPrerequisiteSatisfied == true)
+                    trace.exercise.material.materialId,
+              },
+              eligible: {
+                for (final trace in handsTogetherTraces)
+                  if (trace.eligibility.tier == EligibilityTier.fullyEligible)
+                    trace.exercise.material.materialId,
+              },
+              admitted: {
+                for (final trace in handsTogetherTraces)
+                  if (trace.isRanked) trace.exercise.material.materialId,
+              },
+              selectable: {
+                for (final trace in handsTogetherSelectable)
+                  trace.exercise.material.materialId,
+              },
+              diagnostics: _handsTogetherDiagnostics(
+                state,
+                handsTogetherTraces,
+                handsTogetherSelectable,
+              ),
+            );
       final candidateCounts = _candidateCounts(
         candidates.length,
         traces,
@@ -294,10 +318,12 @@ Trajectory runSittings({
           sitting: sitting,
           chosen: exercise,
           winner: chosen,
-          alternatives: [
-            for (final trace in available)
-              if (!identical(trace, chosen)) trace,
-          ]..sort((a, b) => b.rankKey!.compareTo(a.rankKey!)),
+          alternatives: full
+              ? ([
+                  for (final trace in available)
+                    if (!identical(trace, chosen)) trace,
+                ]..sort((a, b) => b.rankKey!.compareTo(a.rankKey!)))
+              : const [],
           performedTempoBpm: playing.lastPerformedTempoBpm,
           outcome: outcome,
           managedExecution: managedExecution,

@@ -20,6 +20,7 @@ export 'src/calibration.dart';
 export 'src/clusters.dart';
 export 'src/decision_cost_census.dart';
 export 'src/practice_simulation.dart';
+export 'src/placement_convergence.dart';
 export 'src/player_archetypes.dart';
 export 'src/family_exposure.dart';
 export 'src/goal_trajectory_experiment.dart';
