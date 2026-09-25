@@ -8,15 +8,22 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// The two readings of the execution floors, compared where they must agree.
 void main() {
   const learner = LearnerModel();
-  final raw = SchedulerPipeline(learner: learner);
-  final reference = SchedulerPipeline(
+  final raw = SchedulerPipeline(
     learner: learner,
     config: v1SchedulerConfig.withEligibility(
       v1SchedulerConfig.eligibility.withEvidence(
-        EligibilityEvidence.predictedReference,
+        EligibilityEvidence.rawCompetency,
       ),
     ),
   );
+  final reference = SchedulerPipeline(learner: learner);
+
+  test('the shipped floors read the predicted reference', () {
+    expect(
+      v1SchedulerConfig.eligibility.evidence,
+      EligibilityEvidence.predictedReference,
+    );
+  });
   final candidates = productionCandidates(InstrumentProfile());
 
   test('a placement alone decides every candidate the same either way', () {

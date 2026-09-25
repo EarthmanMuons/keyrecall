@@ -35,9 +35,11 @@ physical and product validity, not pedagogy.
 ## 2. Eligibility and safety
 
 The `REQUIRES` relationship creates an ordered eligibility tier from competency
-state. In the current implementation, hands-together work is fully eligible when
-both RH and LH execution means meet the configured threshold; otherwise it is
-provisionally eligible.
+state. Hands-together work is fully eligible once each hand has shown
+coordination readiness on that material at that span; otherwise it is
+provisionally eligible. The band and multi-octave floors read the predicted
+execution of a reference exercise rather than a competency mean, because the
+evidence identifies a prediction and not how it divides among competencies.
 
 This is a soft pedagogical gate. A provisional candidate remains reachable, but
 cannot outrank a fully eligible candidate.

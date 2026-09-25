@@ -717,7 +717,7 @@ class SchedulerConfig {
 /// frozen for initial production; the numbers are starting points for
 /// calibration against real practice data.
 const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
-  modelVersion: 'v1-5',
+  modelVersion: 'v1-6',
   eligibility: EligibilityConfig(
     multiOctaveExecutionFloor: -0.5,
     gentleTempoBpm: 60,
@@ -731,7 +731,7 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     fluentHandsTogetherFloor: 1.0,
     sameTonicAlteredFormPrerequisite: true,
     scopeAwareAlteredFormBreadth: true,
-    evidence: EligibilityEvidence.rawCompetency,
+    evidence: EligibilityEvidence.predictedReference,
     earlyTransferReferenceFloor: 0.528,
     intermediateReferenceFloor: 0.625,
     advancedReferenceFloor: 0.714,

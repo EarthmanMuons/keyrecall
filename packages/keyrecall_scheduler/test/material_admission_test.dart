@@ -188,8 +188,8 @@ void main() {
     });
 
     test('read the hand that is actually playing', () {
-      final state = learnerAt(-1.0);
-      state.competency(Competency.rhScaleExecution).mean = 1.0;
+      final state = learnerAt(1.0);
+      state.competency(Competency.lhScaleExecution).mean = -4.0;
 
       expect(
         decide(state, scale('Bb', ScaleForm.major)).tier,
@@ -917,7 +917,7 @@ void main() {
 
     test('it reads the hand that is actually playing', () {
       final state = learnerAt(1.0);
-      state.competency(Competency.lhScaleExecution).mean = -2.0;
+      state.competency(Competency.lhScaleExecution).mean = -4.0;
 
       expect(
         decide(state, scale('C', ScaleForm.major, octaves: 2)).tier,

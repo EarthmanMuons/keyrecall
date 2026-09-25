@@ -84,7 +84,10 @@ eligible" was never the same claim as "not to be introduced".
 **Decision.** `REQUIRES`, as a conservative prior: foundation, early transfer,
 intermediate keyboard, advanced keyboard, enforced by `AdmissionBand` plus a
 per-band single-hand execution floor, **discounted by one band at the gentlest
-conditions the catalog offers** (one octave, one hand, slow).
+conditions the catalog offers** (one octave, one hand, slow). The floor reads
+the predicted execution of that material in that hand at its gentlest, not a
+competency mean; see
+[The floors read a prediction](#the-floors-read-a-prediction).
 
 **Why.** The discount is the difference between a band and a wall. Difficulty is
 compositional, and the floor was reading only half of it: new keyboard geography
@@ -182,7 +185,30 @@ Like the bands, it reads the model's belief, which is seeded at placement from
 self-report. A learner who reports some experience clears the floor from their
 first attempt whatever their playing later shows. That is the trade every rule
 here makes, and it is the right one: the alternative is an artificial beginner's
-path through material somebody already has.
+path through material somebody already has. What it reads is the predicted
+execution of the same material and hand at one octave, which is the transition
+being gated.
+
+### The floors read a prediction
+
+**Decision.** The band and multi-octave floors read the predicted execution of a
+reference exercise, the same material and hand at one octave ascending at the
+gentle tempo, rather than a hand's execution mean. Their probability floors are
+that reference's execution for a learner sitting at each earlier raw floor,
+rounded down, so placement alone decides exactly as before.
+
+**Why.** An outcome loads several competencies at once, and the evidence
+corrects their combined effect rather than how it divides among them. A mean
+read on its own kept whatever placement seeded: after 500 identical attempts,
+three placements still disagreed on the eligibility of 7% of candidates. Read
+through a prediction, that fell to 2%, with what remains at the floors.
+
+**Evidence.**
+[`../research/experiments/placement-convergence.md`](../research/experiments/placement-convergence.md).
+
+**Consequences.** The topology floor and the hands-together waiver keep reading
+their own competencies, which have outcome channels of their own. The raw
+reading stays available as a setting for comparison.
 
 ### Entry tempo
 
