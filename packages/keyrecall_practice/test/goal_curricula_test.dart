@@ -276,4 +276,26 @@ void main() {
       );
     });
   });
+
+  group('uncovered target shapes', () {
+    test('are a finite goal\'s target realizations, and only those named', () {
+      final scope = resolved('FOUNDATIONS');
+      final one = scope.requirements.first;
+      final targets = uncoveredTargetsIn(scope, [one.requirement.id]);
+
+      expect(targets, one.targetCandidates.toSet());
+    });
+
+    test('are nothing for a goal that names no shape', () {
+      final scope = resolved('GENERAL_FLUENCY');
+
+      expect(
+        uncoveredTargetsIn(scope, [
+          for (final requirement in scope.requirements)
+            requirement.requirement.id,
+        ]),
+        isEmpty,
+      );
+    });
+  });
 }

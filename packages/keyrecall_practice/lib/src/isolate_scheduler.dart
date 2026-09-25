@@ -118,6 +118,7 @@ class IsolateScheduler implements SchedulerHost {
     required SessionState session,
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
+    List<String> uncoveredTargetIds = const [],
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -143,6 +144,7 @@ class IsolateScheduler implements SchedulerHost {
         session: session,
         dueRequirementIds: dueRequirementIds,
         liveSupportHands: liveSupportHands,
+        uncoveredTargetIds: uncoveredTargetIds,
         at: at,
         acquisitionFloor: acquisitionFloor,
         acquisitionFamilyFloor: acquisitionFamilyFloor,
@@ -168,6 +170,7 @@ class _DecisionRequest {
   final SessionState session;
   final List<String> dueRequirementIds;
   final Map<String, Set<HandConfiguration>> liveSupportHands;
+  final List<String> uncoveredTargetIds;
   final DateTime at;
   final AcquisitionFloor? acquisitionFloor;
   final AcquisitionFloor? acquisitionFamilyFloor;
@@ -183,6 +186,7 @@ class _DecisionRequest {
     required this.session,
     required this.dueRequirementIds,
     required this.liveSupportHands,
+    required this.uncoveredTargetIds,
     required this.at,
     required this.acquisitionFloor,
     required this.acquisitionFamilyFloor,
@@ -408,6 +412,7 @@ class _Worker {
         executionEvidenceRevisions: request.executionEvidenceRevisions,
         practiceEntryPolicy: entry,
         emphasis: emphasis,
+        uncoveredTargets: uncoveredTargetsIn(scope, request.uncoveredTargetIds),
       );
       replies.send(
         _DecisionResponse(

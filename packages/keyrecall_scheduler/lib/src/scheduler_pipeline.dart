@@ -308,6 +308,7 @@ class SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
+    Set<Exercise> uncoveredTargets = const {},
   }) {
     final slot = evaluateSlot(
       state: state,
@@ -323,6 +324,7 @@ class SchedulerPipeline {
       executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
+      uncoveredTargets: uncoveredTargets,
     );
     SelectionEffect.of(slot.result).applyTo(session);
     return slot.result;
@@ -353,6 +355,7 @@ class SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
+    Set<Exercise> uncoveredTargets = const {},
   }) {
     final entryPolicy =
         practiceEntryPolicy ??
@@ -384,6 +387,7 @@ class SchedulerPipeline {
       },
       practiceEntryPolicy: entryPolicy,
       emphasis: emphasis,
+      uncoveredTargets: uncoveredTargets,
     );
     var narrowed = _selectionStages(traces, session, state, at);
 
@@ -448,6 +452,7 @@ class SchedulerPipeline {
           overrides: {...overrides, ...floorOverrides},
           practiceEntryPolicy: entryPolicy,
           emphasis: emphasis,
+          uncoveredTargets: uncoveredTargets,
         );
         narrowed = _selectionStages(traces, session, state, at);
         selected = chooseFrom(narrowed.selectable, session);
@@ -1984,6 +1989,7 @@ class SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
+    Set<Exercise> uncoveredTargets = const {},
   }) {
     final entryPolicy =
         practiceEntryPolicy ??
@@ -2062,6 +2068,7 @@ class SchedulerPipeline {
           informationCache: informationCache,
           practiceEntryPolicy: entryPolicy,
           emphasis: emphasis,
+          uncoveredTargets: uncoveredTargets,
         ),
     ];
   }
@@ -2084,6 +2091,7 @@ class SchedulerPipeline {
     required Map<InformationKey, double> informationCache,
     required PracticeEntryPolicy practiceEntryPolicy,
     required GoalEmphasis emphasis,
+    required Set<Exercise> uncoveredTargets,
   }) {
     final realization = realizationKeyOf(exercise);
     final independentRetrievalP = retrievalCache.putIfAbsent(
@@ -2175,6 +2183,12 @@ class SchedulerPipeline {
             ),
             diversity: diversity(exercise, session),
             goals: goals(exercise, emphasis),
+            targetShaped:
+                config.targetShapes == TargetShapePreference.aboveRetention &&
+                uncoveredTargets.contains(exercise),
+            targetShapedGoal:
+                config.targetShapes == TargetShapePreference.atGoals &&
+                uncoveredTargets.contains(exercise),
             realization: realizationRankFor(
               state,
               exercise,

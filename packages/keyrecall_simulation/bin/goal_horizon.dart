@@ -5,6 +5,7 @@ import 'dart:isolate';
 import 'package:args/args.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
@@ -20,11 +21,19 @@ Future<void> main(List<String> arguments) async {
     ..addOption('sittings', defaultsTo: '50')
     ..addOption('every', defaultsTo: '10', help: 'sittings per checkpoint')
     ..addOption('jobs', defaultsTo: '5')
-    ..addOption('out', defaultsTo: 'goal_horizon.jsonl');
+    ..addOption('out', defaultsTo: 'goal_horizon.jsonl')
+    ..addOption(
+      'target-shapes',
+      allowed: [for (final value in TargetShapePreference.values) value.name],
+      defaultsTo: 'off',
+    );
   final options = parser.parse(arguments);
   final scope = GoalTrajectoryScope.values.byName(options.option('scope')!);
   final sittings = int.parse(options.option('sittings')!);
   final every = int.parse(options.option('every')!);
+  final targetShapes = TargetShapePreference.values.byName(
+    options.option('target-shapes')!,
+  );
   final out = File(options.option('out')!);
   final done = {
     if (out.existsSync())
@@ -37,7 +46,7 @@ Future<void> main(List<String> arguments) async {
     for (final player in PlayerArchetypes.all)
       for (var seed = 0; seed < int.parse(options.option('seeds')!); seed++)
         if (!done.contains('${player.id}/$seed'))
-          () => _run(scope, player, seed, sittings, every),
+          () => _run(scope, player, seed, sittings, every, targetShapes),
   ];
   final stopwatch = Stopwatch()..start();
   var next = 0;
@@ -70,6 +79,7 @@ Future<Map<String, Object?>> _run(
   int seed,
   int sittings,
   int every,
+  TargetShapePreference targetShapes,
 ) async {
   final catalog = <TechnicalMaterial>[
     ...allScales,
@@ -91,6 +101,7 @@ Future<Map<String, Object?>> _run(
     player: player,
     seed: seed,
     sittings: sittings,
+    targetShapes: targetShapes,
     afterSitting: (sitting, slots, session) {
       if ((sitting + 1) % every != 0) return;
       final evaluated = const PracticeScopeEvaluator().evaluate(

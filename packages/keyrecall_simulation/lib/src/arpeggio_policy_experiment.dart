@@ -450,6 +450,7 @@ class _RecordingPipeline extends SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
+    Set<Exercise> uncoveredTargets = const {},
   }) {
     lastState = state;
     final slot = super.evaluateSlot(
@@ -466,6 +467,7 @@ class _RecordingPipeline extends SchedulerPipeline {
       executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
+      uncoveredTargets: uncoveredTargets,
     );
     lastSelection = slot.result;
     return slot;

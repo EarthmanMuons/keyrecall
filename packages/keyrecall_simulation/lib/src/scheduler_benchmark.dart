@@ -301,6 +301,7 @@ class _TimedPipeline extends SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
+    Set<Exercise> uncoveredTargets = const {},
   }) {
     lastGenerated = candidates.length;
     _watch
@@ -320,6 +321,7 @@ class _TimedPipeline extends SchedulerPipeline {
       executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
+      uncoveredTargets: uncoveredTargets,
     );
     _watch.stop();
     lastDecide = _watch.elapsed;

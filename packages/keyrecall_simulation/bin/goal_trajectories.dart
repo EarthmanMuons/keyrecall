@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
@@ -11,7 +12,12 @@ Future<void> main(List<String> arguments) async {
     ..addOption('seeds', defaultsTo: '4')
     ..addOption('sittings', defaultsTo: '10')
     ..addOption('slots', defaultsTo: '20', help: 'slots per sitting')
-    ..addOption('jobs', defaultsTo: '8');
+    ..addOption('jobs', defaultsTo: '8')
+    ..addOption(
+      'target-shapes',
+      allowed: [for (final value in TargetShapePreference.values) value.name],
+      defaultsTo: 'off',
+    );
   final options = parser.parse(arguments);
   final seeds = int.parse(options.option('seeds')!);
   final sittings = int.parse(options.option('sittings')!);
@@ -23,6 +29,9 @@ Future<void> main(List<String> arguments) async {
     sittings: sittings,
     slotsPerSitting: slots,
     parallelism: int.parse(options.option('jobs')!),
+    targetShapes: TargetShapePreference.values.byName(
+      options.option('target-shapes')!,
+    ),
     onProgress: (completed, total) {
       if (completed == total || completed % 16 == 0) {
         stderr.writeln(

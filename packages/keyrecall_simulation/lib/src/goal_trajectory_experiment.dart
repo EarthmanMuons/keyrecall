@@ -4,6 +4,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'player_archetypes.dart';
 import 'python_compatible_random.dart';
@@ -148,10 +149,15 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
   int sittings = 10,
   int slotsPerSitting = 20,
   PlacementTier? placement,
+  TargetShapePreference targetShapes = TargetShapePreference.off,
   void Function(int sitting, int slots, PracticeSession session)? afterSitting,
 }) async {
   final at0 = DateTime.utc(2026);
   const learner = LearnerModel();
+  final pipeline = SchedulerPipeline(
+    learner: learner,
+    config: v1SchedulerConfig.withTargetShapes(targetShapes),
+  );
   final catalog = <TechnicalMaterial>[
     ...allScales,
     ...allRootPositionArpeggios,
@@ -204,6 +210,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
       profile: profile,
       materials: catalog,
       learner: learner,
+      pipeline: pipeline,
       goal: resolution.goal,
       focus: resolution.focus,
       sessionId: '$name-$sitting',
@@ -291,6 +298,7 @@ Future<List<GoalTrajectoryRun>> runGoalTrajectoryMatrix({
   int sittings = 10,
   int slotsPerSitting = 20,
   int parallelism = 1,
+  TargetShapePreference targetShapes = TargetShapePreference.off,
   void Function(int completed, int total)? onProgress,
 }) async {
   if (parallelism < 1) {
@@ -306,6 +314,7 @@ Future<List<GoalTrajectoryRun>> runGoalTrajectoryMatrix({
             seed: seed,
             sittings: sittings,
             slotsPerSitting: slotsPerSitting,
+            targetShapes: targetShapes,
           ),
   ];
   final runs = List<GoalTrajectoryRun?>.filled(tasks.length, null);

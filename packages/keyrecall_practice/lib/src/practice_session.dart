@@ -738,6 +738,11 @@ class PracticeSession {
         for (final MapEntry(key: state, value: hands) in liveSupport.entries)
           state.resolved.requirement.id: hands,
       },
+      uncoveredTargetIds: [
+        for (final state in evaluated.requirements)
+          if (state.resolved.isTarget && !state.isCovered)
+            state.resolved.requirement.id,
+      ],
       at: at,
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: familyFloor,

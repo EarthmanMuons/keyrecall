@@ -13,6 +13,7 @@ List<Exercise> candidatesDueIn(
   ResolvedPracticeScope scope,
   List<String> dueRequirementIds, [
   Map<String, Set<HandConfiguration>> liveSupportHands = const {},
+  List<String> uncoveredTargetIds = const [],
 ]) {
   final due = dueRequirementIds.toSet();
   final candidates = distinctCandidatesOf([
@@ -39,6 +40,24 @@ List<Exercise> candidatesDueIn(
         for (final exercise in requirement.realizations)
           if (hands.contains(exercise.conditions.hands)) exercise,
   ];
+}
+
+/// The target-shaped candidates of [uncoveredTargetIds], against [scope].
+///
+/// Only a requirement that names a shape has one to prefer; a catalog goal's
+/// requirement names none, so general technique contributes nothing here.
+Set<Exercise> uncoveredTargetsIn(
+  ResolvedPracticeScope scope,
+  List<String> uncoveredTargetIds,
+) {
+  if (uncoveredTargetIds.isEmpty) return const {};
+  final uncovered = uncoveredTargetIds.toSet();
+  return {
+    for (final requirement in scope.requirements)
+      if (uncovered.contains(requirement.requirement.id) &&
+          requirement.requirement.constraints.namesShape)
+        ...requirement.targetCandidates,
+  };
 }
 
 /// The emphasis [scope] puts on each of its materials.
@@ -184,6 +203,7 @@ abstract interface class SchedulerHost {
     required SessionState session,
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
+    List<String> uncoveredTargetIds = const [],
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -236,6 +256,7 @@ class InProcessScheduler implements SchedulerHost {
     required SessionState session,
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
+    List<String> uncoveredTargetIds = const [],
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -257,6 +278,7 @@ class InProcessScheduler implements SchedulerHost {
       executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: _entry,
       emphasis: _emphasis,
+      uncoveredTargets: uncoveredTargetsIn(_scope!, uncoveredTargetIds),
     );
     final effect = SelectionEffect.of(slot.result);
     return switch (slot.result) {

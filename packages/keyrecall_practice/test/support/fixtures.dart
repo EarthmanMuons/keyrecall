@@ -173,6 +173,7 @@ class AlwaysOffersAcquisition extends SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
+    Set<Exercise> uncoveredTargets = const {},
   }) {
     final slot = super.evaluateSlot(
       state: state,
@@ -188,6 +189,7 @@ class AlwaysOffersAcquisition extends SchedulerPipeline {
       executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
+      uncoveredTargets: uncoveredTargets,
     );
     final floor = (acquisitionFamilyFloor ?? acquisitionFloor)?.entries.first;
     if (floor == null) return slot;

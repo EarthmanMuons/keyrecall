@@ -19,6 +19,19 @@ enum EligibilityEvidence {
   predictedReference,
 }
 
+/// Whether ranking prefers a candidate with the shape of an uncovered goal
+/// target, and at which point in the rank key.
+enum TargetShapePreference {
+  /// Goal relevance reads material alone.
+  off,
+
+  /// Beside goal relevance, below retention, information, and diversity.
+  atGoals,
+
+  /// Above retention, below the tier and the coordination transition.
+  aboveRetention,
+}
+
 /// Thresholds for the `REQUIRES` prerequisite gate.
 @immutable
 class EligibilityConfig {
@@ -578,6 +591,9 @@ class SchedulerConfig {
   /// deciding between them.
   final RankTolerances rankTolerances;
 
+  /// Whether ranking prefers the shape of an uncovered goal target.
+  final TargetShapePreference targetShapes;
+
   /// The introduction cap, or null where breadth is uncapped.
   final IntroductionConfig? introductions;
 
@@ -595,6 +611,7 @@ class SchedulerConfig {
     required this.pacing,
     this.dose,
     this.rankTolerances = RankTolerances.exact,
+    this.targetShapes = TargetShapePreference.off,
     this.introductions,
     this.novelty,
   });
@@ -623,6 +640,7 @@ class SchedulerConfig {
     pacing: pacing,
     dose: dose,
     rankTolerances: rankTolerances,
+    targetShapes: targetShapes,
     introductions: introductions,
     novelty: novelty,
   );
@@ -639,6 +657,7 @@ class SchedulerConfig {
     pacing: pacing,
     dose: dose,
     rankTolerances: rankTolerances,
+    targetShapes: targetShapes,
     introductions: introductions,
     novelty: novelty,
   );
@@ -655,6 +674,7 @@ class SchedulerConfig {
         pacing: pacing,
         dose: dose,
         rankTolerances: rankTolerances,
+        targetShapes: targetShapes,
         introductions: introductions,
         novelty: novelty,
       );
@@ -671,6 +691,25 @@ class SchedulerConfig {
         pacing: pacing,
         dose: dose,
         rankTolerances: rankTolerances,
+        targetShapes: targetShapes,
+        introductions: introductions,
+        novelty: novelty,
+      );
+
+  /// The same policy with [targetShapes] deciding what arriving at a goal
+  /// target is worth in ranking.
+  SchedulerConfig withTargetShapes(TargetShapePreference targetShapes) =>
+      SchedulerConfig(
+        modelVersion: modelVersion,
+        eligibility: eligibility,
+        safety: safety,
+        challenge: challenge,
+        diversity: diversity,
+        probe: probe,
+        pacing: pacing,
+        dose: dose,
+        rankTolerances: rankTolerances,
+        targetShapes: targetShapes,
         introductions: introductions,
         novelty: novelty,
       );
@@ -687,6 +726,7 @@ class SchedulerConfig {
         pacing: pacing,
         dose: dose,
         rankTolerances: rankTolerances,
+        targetShapes: targetShapes,
         introductions: introductions,
         novelty: novelty,
       );
@@ -702,6 +742,7 @@ class SchedulerConfig {
     pacing: pacing,
     dose: dose,
     rankTolerances: rankTolerances,
+    targetShapes: targetShapes,
     introductions: introductions,
     novelty: novelty,
   );

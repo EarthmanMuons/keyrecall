@@ -37,6 +37,14 @@ class ExerciseConstraints {
         (handMotion == null || conditions.handMotion == handMotion);
   }
 
+  /// Whether this names any shape at all, as a finite goal's requirements do
+  /// and a catalog goal's do not.
+  bool get namesShape =>
+      hands != null ||
+      octaves != null ||
+      direction != null ||
+      handMotion != null;
+
   /// Whether [conditions] is this shape or on the declared way to it.
   ///
   /// What a finite goal offers of a material: its target, and the realizations

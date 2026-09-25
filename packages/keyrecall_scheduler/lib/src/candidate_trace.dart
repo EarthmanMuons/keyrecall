@@ -376,6 +376,14 @@ class RankKey implements Comparable<RankKey> {
   /// none of 710 transition slots for exactly that reason.
   final bool contraryCoordination;
 
+  /// Whether this candidate has the shape of a goal target not yet covered,
+  /// where [SchedulerConfig.targetShapes] ranks that above retention.
+  ///
+  /// A goal term, as [goals] is, but read from the shape a requirement asks
+  /// for rather than the material alone. Below the tier, so it chooses only
+  /// among candidates equally eligible and already admitted.
+  final bool targetShaped;
+
   /// `R(e)`: how urgent it is to test this material, weighted by whether this
   /// candidate can actually produce retrieval evidence.
   final double retention;
@@ -388,6 +396,10 @@ class RankKey implements Comparable<RankKey> {
 
   /// `G(e)`: learner-goal relevance, zero for everything no focus emphasized.
   final double goals;
+
+  /// [targetShaped] where [SchedulerConfig.targetShapes] ranks it beside
+  /// [goals] instead.
+  final bool targetShapedGoal;
 
   /// Where this realization sits against the learner's frontier for its
   /// material and hand.
@@ -413,6 +425,8 @@ class RankKey implements Comparable<RankKey> {
     required this.information,
     required this.diversity,
     required this.goals,
+    this.targetShaped = false,
+    this.targetShapedGoal = false,
     this.realization = RealizationRank.unmeasured,
     this.realizationFit = 0,
   });
@@ -429,6 +443,10 @@ class RankKey implements Comparable<RankKey> {
       contraryCoordination,
     ).compareTo(_order(other.contraryCoordination));
     if (byContrary != 0) return byContrary;
+    final byTargetShape = _order(
+      targetShaped,
+    ).compareTo(_order(other.targetShaped));
+    if (byTargetShape != 0) return byTargetShape;
     final byRetention = retention.compareTo(other.retention);
     if (byRetention != 0) return byRetention;
     final byInformation = information.compareTo(other.information);
@@ -437,6 +455,10 @@ class RankKey implements Comparable<RankKey> {
     if (byDiversity != 0) return byDiversity;
     final byGoals = goals.compareTo(other.goals);
     if (byGoals != 0) return byGoals;
+    final byTargetShapedGoal = _order(
+      targetShapedGoal,
+    ).compareTo(_order(other.targetShapedGoal));
+    if (byTargetShapedGoal != 0) return byTargetShapedGoal;
     final byRealization = realization.index.compareTo(other.realization.index);
     if (byRealization != 0) return byRealization;
     return realizationFit.compareTo(other.realizationFit);
@@ -452,6 +474,8 @@ class RankKey implements Comparable<RankKey> {
       other.information == information &&
       other.diversity == diversity &&
       other.goals == goals &&
+      other.targetShaped == targetShaped &&
+      other.targetShapedGoal == targetShapedGoal &&
       other.realization == realization &&
       other.realizationFit == realizationFit;
 
@@ -464,6 +488,8 @@ class RankKey implements Comparable<RankKey> {
     information,
     diversity,
     goals,
+    targetShaped,
+    targetShapedGoal,
     realization,
     realizationFit,
   );
