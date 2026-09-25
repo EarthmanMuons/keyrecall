@@ -1,10 +1,10 @@
 # Placement convergence
 
 > **Status:** the fixed-history half of the placement question. Under identical
-> evidence, predictions converge and decisions do not, because gates read
-> competency means the evidence does not identify one at a time. No policy is
-> changed here. The closed-loop half waits on the finite-goal realization
-> envelope.
+> evidence, predictions converge and decisions did not, because gates read
+> competency means the evidence does not identify one at a time. Floors reading
+> a predicted reference instead, measured below, cut the eligibility
+> disagreement to a third at 500 attempts; they are not yet the shipped setting.
 
 Placement asks a new learner where to start, and the promise worth keeping is
 that it only decides where: that choosing the wrong level makes the first
@@ -109,6 +109,44 @@ Directions, none argued for yet:
   every competency, so the evidence corrects the part it can see;
 - a variance floor that keeps competencies placement seeded, and evidence has
   not separated, visibly uncertain rather than settled.
+
+## Floors that read a predicted reference
+
+The two floors that read an execution mean, the admission band and the
+multi-octave floor, can read instead the predicted execution of a reference
+exercise: the same material and hand, one octave, ascending, at the gentle
+tempo, the weaker hand where both play. Their probability floors are that
+reference's execution for a learner sitting at each raw floor, rounded down:
+0.528, 0.625, and 0.714 for the three later bands and 0.404 for two octaves. At
+cold start the reference depends on the tier alone, 0.292, 0.529, and 0.753 for
+every material, so a test pins that placement alone decides every generated
+candidate exactly as the raw floors do. The topology floor and the
+hands-together waiver keep their own channels.
+
+Both readings scored on the same replayed states:
+
+| Attempts | Eligibility differs, raw | Reference | Overlap, raw | Reference | Same pick, raw | Reference |
+| -------: | -----------------------: | --------: | -----------: | --------: | -------------: | --------: |
+|       30 |                    15.8% |     15.5% |        0.231 |     0.242 |           2/26 |      2/26 |
+|      120 |                    17.1% |     15.0% |        0.413 |     0.476 |           3/26 |      4/26 |
+|      200 |                    12.1% |      7.8% |        0.613 |     0.721 |           5/26 |      7/26 |
+|      500 |                     6.9% |      2.2% |        0.784 |     0.907 |           7/26 |     15/26 |
+
+Overlap is the mean over histories of the least-overlapping pair's fully
+eligible sets, intersection over union. Challenge-band disagreement is the same
+in both, 15% at 500, since the band reads prediction either way.
+
+The disagreement now decays with evidence rather than holding, and what remains
+sits at the floors: the median candidate still disagreeing at 500 has a
+reference execution 0.009 from the nearest one. Eleven histories agree on every
+candidate. The exception is the arpeggio-strong, scale-weak archetype, at 10%
+with overlap 0.60 and disagreements 0.03 to 0.04 from a floor, which is the one
+place a placement offset rather than boundary noise survives, and the likely
+carrier is the prediction-only transfer between scale and arpeggio execution.
+
+What is left between the three placements after this is the challenge band, and
+that reads the prediction gap itself. Closing it is the model's question, not a
+gate's.
 
 ## Interpretation boundary
 
