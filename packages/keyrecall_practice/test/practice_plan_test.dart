@@ -138,6 +138,107 @@ void main() {
     });
   });
 
+  group('a focus carried across goals', () {
+    final production = <TechnicalMaterial>[
+      ...allScales,
+      ...allRootPositionArpeggios,
+    ];
+    ActiveFocus majorsIn(Set<String> tonics, FocusStrength strength) =>
+        ActiveFocus(
+          label: 'Majors',
+          strength: strength,
+          material: MaterialFocus(
+            scaleFormIds: {ScaleForm.major.id},
+            tonics: tonics,
+          ),
+        );
+
+    ResolvedPlan under(String goalId, ActiveFocus focus) =>
+        PracticePlan(goalId: goalId, focus: focus).resolve(production)
+            as ResolvedPlan;
+
+    test('names every requirement the new goal holds over its material', () {
+      final focus = majorsIn({'C'}, FocusStrength.exclusive);
+
+      expect(under('FOUNDATIONS', focus).focus.exclusiveRequirementIds, {
+        'C_MAJOR:RIGHT:1',
+        'C_MAJOR:LEFT:1',
+      });
+      expect(under('KEY_FLUENCY_24', focus).focus.exclusiveRequirementIds, {
+        'C_MAJOR:TOGETHER:2',
+      });
+    });
+
+    test('and resolves to a scope there', () {
+      for (final goalId in supportedGoals.keys) {
+        final resolved = under(
+          goalId,
+          majorsIn({'C'}, FocusStrength.exclusive),
+        );
+        expect(
+          PracticeScopeResolver().resolve(
+            goal: resolved.goal,
+            focus: resolved.focus,
+            catalog: production,
+            instrument: InstrumentProfile(),
+          ),
+          isA<ValidPracticeScope>(),
+          reason: goalId,
+        );
+      }
+    });
+
+    test('emphasis moves the same way', () {
+      expect(
+        under(
+          'FOUNDATIONS',
+          majorsIn({'C'}, FocusStrength.emphasis),
+        ).focus.emphasisByRequirementId.keys,
+        {'C_MAJOR:RIGHT:1', 'C_MAJOR:LEFT:1'},
+      );
+    });
+
+    test('drops material the new goal does not hold', () {
+      expect(
+        under(
+          'FOUNDATIONS',
+          majorsIn({'C', 'E'}, FocusStrength.exclusive),
+        ).focus.exclusiveRequirementIds,
+        {'C_MAJOR:RIGHT:1', 'C_MAJOR:LEFT:1'},
+      );
+    });
+
+    test('and is no focus there when it holds none of it', () {
+      final resolved = under(
+        'FOUNDATIONS',
+        majorsIn({'E', 'B'}, FocusStrength.exclusive),
+      );
+
+      expect(resolved.focus.exclusiveRequirementIds, isNull);
+      expect(resolved.focus.emphasisByRequirementId, isEmpty);
+    });
+
+    test('but still fails when the catalog holds none of it', () {
+      final resolved =
+          PracticePlan(
+                goalId: 'FOUNDATIONS',
+                focus: majorsIn({'C'}, FocusStrength.exclusive),
+              ).resolve(allRootPositionArpeggios)
+              as ResolvedPlan;
+
+      expect(
+        PracticeScopeResolver().resolve(
+          goal: resolved.goal,
+          focus: resolved.focus,
+          catalog: allRootPositionArpeggios,
+          instrument: InstrumentProfile(),
+        ),
+        isA<InvalidPracticeScope>(),
+        reason: 'a focus nothing can satisfy is not a request for everything',
+      );
+    });
+  });
+
   group('a plan this build cannot read', () {
     test('an unknown goal resolves to nothing rather than to everything', () {
       final resolution = PracticePlan(goalId: 'UNKNOWN_EXAM').resolve(_catalog);

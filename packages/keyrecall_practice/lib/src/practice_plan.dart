@@ -202,6 +202,32 @@ final Map<String, PracticeGoal> supportedGoals = Map.unmodifiable({
   ),
 });
 
+/// The target requirements [goal] holds over [materialIds].
+///
+/// What a focus resolves to. A focus names material rather than requirements,
+/// since requirements belong to one goal and a focus outlives a change of goal:
+/// Foundations holds C major as two one-hand requirements and 24-key fluency as
+/// one hands-together requirement, and a focus on C major means both.
+Set<String> targetRequirementIdsOver(
+  PracticeGoal goal,
+  Set<String> materialIds,
+) {
+  final curriculum = goal.curriculum;
+  if (curriculum != null) {
+    return {
+      for (final requirement in curriculum.requirements)
+        if (requirement.role == CurriculumRequirementRole.target &&
+            materialIds.contains(requirement.materialId))
+          requirement.id,
+    };
+  }
+  return {
+    for (final materialId in materialIds)
+      if (goal.targetMaterialIds?.contains(materialId) ?? true)
+        catalogRequirementId(goal.id, materialId),
+  };
+}
+
 /// The result of reading a plan against this build and one catalog.
 sealed class PlanResolution {
   const PlanResolution();
@@ -290,10 +316,19 @@ class PracticePlan {
       return ResolvedPlan(goal: goal, focus: PracticeFocus.unrestricted);
     }
 
-    final requirementIds = {
+    final selected = {
       for (final material in active.material.selectionOf(catalog))
-        catalogRequirementId(goal.id, material.materialId),
+        material.materialId,
     };
+    final requirementIds = targetRequirementIdsOver(goal, selected);
+    // Material the goal does not hold is dropped rather than failing the plan:
+    // a focus is carried across goals, and one the new goal shares nothing
+    // with is no focus there. Material the catalog does not hold is another
+    // matter, and still fails, since widening it would read a focus nothing
+    // can satisfy as a request for everything.
+    if (selected.isNotEmpty && requirementIds.isEmpty) {
+      return ResolvedPlan(goal: goal, focus: PracticeFocus.unrestricted);
+    }
     return ResolvedPlan(
       goal: goal,
       focus: active.isExclusive

@@ -159,6 +159,20 @@ predictions.
 
 A material dropped from scope and restored later is exactly where it was.
 
+The same holds for a change of goal. Coverage is never stored: it is read from
+the journal against the active goal's requirements at each decision, so a switch
+recomputes it and switching back reads the same history the same way. Each
+hand's retrievals and live support are rebuilt from the journal too.
+
+A focus names material rather than requirements, because requirements belong to
+one goal and a focus outlives a change of goal. It resolves to whatever target
+requirements the active goal holds over that material: a focus on C major means
+both one-hand requirements under Foundations and the one hands-together
+requirement under 24-key fluency. Material the goal does not hold is dropped,
+and a focus the goal shares nothing with is no focus there. A focus the catalog
+holds nothing of still fails, since widening it would read a request nothing can
+satisfy as a request for everything.
+
 ## Caught up is not the same as blocked
 
 Coverage and current scheduling demand are independent:
