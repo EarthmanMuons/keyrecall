@@ -136,12 +136,19 @@ class GoalTrajectoryRun {
       selections.where(test).length;
 }
 
+/// Runs [player] under [scope] over daily sittings.
+///
+/// [placement] replaces the player's own, for runs that ask what the starting
+/// level alone changes. [afterSitting] sees the learner state as each sitting
+/// closes, before the next one opens.
 Future<GoalTrajectoryRun> runGoalTrajectory({
   required GoalTrajectoryScope scope,
   required SyntheticPlayer player,
   required int seed,
   int sittings = 10,
   int slotsPerSitting = 20,
+  PlacementTier? placement,
+  void Function(int sitting, int slots, PracticeSession session)? afterSitting,
 }) async {
   final at0 = DateTime.utc(2026);
   const learner = LearnerModel();
@@ -173,13 +180,13 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
         requirement.requirement.constraints.matchesStructure(exercise),
   );
 
-  final name = '${scope.name}-${player.id}-$seed';
+  final name = '${scope.name}-${player.id}-$seed-${placement?.name ?? 'own'}';
   final store = InMemoryPracticeStore(createdAt: at0);
   final profile = Profile(
     id: name,
     displayName: player.id,
     createdAt: at0,
-    placement: player.placement,
+    placement: placement ?? player.placement,
   );
   final playing = player.begin();
   final random = PythonCompatibleRandom(seed);
@@ -256,6 +263,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
       break;
     }
     ends.add(end);
+    afterSitting?.call(sitting, slot, session);
   }
 
   final evaluated = const PracticeScopeEvaluator().evaluate(
