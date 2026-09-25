@@ -154,9 +154,7 @@ void main() {
         expect(session.journal.records, hasLength(records));
         expect(session.state.materialMemory.keys, containsAll(memory));
         expect(decision, isA<PresentedAttempt>());
-        final exercise = (decision as PresentedAttempt).exercise;
-        expect(exercise.material.scaleForm, isIn(coreForms));
-        expect(decision.coverage!.targetCount, 24);
+        expect((decision as PresentedAttempt).coverage!.targetCount, 48);
       },
     );
 

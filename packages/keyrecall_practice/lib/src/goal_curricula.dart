@@ -23,20 +23,22 @@ final Curriculum foundationsCurriculum = Curriculum(
   ],
 );
 
-/// Every major and natural-minor key, hands together over two octaves, up and
-/// down, from memory.
+/// Every major and natural-minor key, as a scale and as a root-position
+/// arpeggio, hands together over two octaves, up and down, from memory.
 ///
-/// Scales only in this version. The root-position arpeggios join once they
-/// are generated up and down, as a new version, rather than as ascending-only
-/// requirements that would say less than the goal's name does. The altered
-/// minor forms are extensions of these tonalities and not part of having them.
+/// Version 1 held the scales alone, until arpeggios were generated up and
+/// down. The altered minor forms are extensions of these tonalities and not
+/// part of having them, and inversions are a later phase of the arpeggio.
 final Curriculum keyFluencyCurriculum = Curriculum(
   id: 'KEY_FLUENCY_24',
-  version: '1',
+  version: '2',
   requirements: [
-    for (final material in allScales)
-      if (coreForms.contains(material.form))
-        _requirement(material, HandConfiguration.together, octaves: 2),
+    for (final material in [
+      for (final scale in allScales)
+        if (coreForms.contains(scale.form)) scale,
+      ...allRootPositionArpeggios,
+    ])
+      _requirement(material, HandConfiguration.together, octaves: 2),
   ],
 );
 

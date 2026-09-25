@@ -89,15 +89,46 @@ void main() {
 
   group('24-key fluency', () {
     final scope = resolved('KEY_FLUENCY_24');
+    final scales = [
+      for (final requirement in scope.requirements)
+        if (requirement.material is ScaleMaterial) requirement,
+    ];
+    final arpeggios = [
+      for (final requirement in scope.requirements)
+        if (requirement.material is ArpeggioMaterial) requirement,
+    ];
 
-    test('is every major and natural-minor key and no altered form', () {
+    test('is version 2, which added the arpeggios', () {
+      expect(keyFluencyCurriculum.version, '2');
+    });
+
+    test('is every major and minor key as a scale and an arpeggio', () {
       expect(tonicsOf(scope, ScaleForm.major), hasLength(12));
       expect(tonicsOf(scope, ScaleForm.naturalMinor), hasLength(12));
-      expect(scope.targetRequirementIds, hasLength(24));
+      expect(scales, hasLength(24));
+      expect(arpeggios, hasLength(24));
+      expect({
+        for (final requirement in arpeggios) requirement.material,
+      }, allRootPositionArpeggios.toSet());
+      expect(scope.targetRequirementIds, hasLength(48));
       expect(scope.supportRequirementIds, isEmpty);
     });
 
-    test('asks for two octaves, up and down, hands together', () {
+    test('holds no altered minor form and no inversion', () {
+      for (final requirement in scope.requirements) {
+        final material = requirement.material;
+        if (material is ScaleMaterial) {
+          expect(coreForms, contains(material.form));
+        } else {
+          expect(
+            (material as ArpeggioMaterial).inversion,
+            ArpeggioInversion.root,
+          );
+        }
+      }
+    });
+
+    test('asks for two octaves, up and down, hands together, of each', () {
       for (final requirement in scope.requirements) {
         expect(requirement.targetCandidates, isNotEmpty);
         for (final exercise in requirement.targetCandidates) {

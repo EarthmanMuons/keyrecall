@@ -93,19 +93,19 @@ Three, each KeyRecall's own destination rather than an examination's.
 Examination syllabi informed the material and its order; they are not what a
 goal is named after, since no syllabus asks for exactly these sets.
 
-| Goal              | Targets                                                                          |
-| ----------------- | -------------------------------------------------------------------------------- |
-| General technique | every material in the catalog, in any realization, with no end point             |
-| Foundations       | C G D A F Bb major and A E D G natural minor, each hand, one octave, up and down |
-| 24-key fluency    | every major and natural-minor scale, hands together, two octaves, up and down    |
+| Goal              | Targets                                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
+| General technique | every material in the catalog, in any realization, with no end point                                     |
+| Foundations       | C G D A F Bb major and A E D G natural minor, each hand, one octave, up and down                         |
+| 24-key fluency    | every major and natural-minor scale and root-position arpeggio, hands together, two octaves, up and down |
 
 General technique grows with the catalog, so a family added later joins it, and
 it makes no completion claim. Foundations is chosen for geography: both of the
 two earliest admission bands, and three fingering families rather than one,
-which is why it holds B flat major and not E major. 24-key fluency holds the
-scales only for now; its root-position arpeggios join as a new version once they
-are generated up and down. Neither names an altered minor form, which extends a
-tonality rather than defining it.
+which is why it holds B flat major and not E major. 24-key fluency is at version
+2, which added the root-position arpeggios once they were generated up and down.
+Neither names an altered minor form, which extends a tonality rather than
+defining it.
 
 ## Goals and focus answer different questions
 

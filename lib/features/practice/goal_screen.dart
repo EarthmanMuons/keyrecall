@@ -107,8 +107,8 @@ String goalDescription(String goalId, List<TechnicalMaterial> catalog) =>
         'Ten common major and minor scales across the keyboard, each hand '
             'on its own, from memory.',
       'KEY_FLUENCY_24' =>
-        'All 24 major and minor scales, hands together over two octaves, '
-            'from memory.',
+        'All 24 major and minor keys, as scales and arpeggios, hands '
+            'together over two octaves, from memory.',
       _ => _everythingIn(catalog),
     };
 
