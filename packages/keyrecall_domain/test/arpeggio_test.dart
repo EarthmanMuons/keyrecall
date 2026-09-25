@@ -520,6 +520,53 @@ void main() {
       }
     });
 
+    test('up and down turns once, on one shared top note', () {
+      for (final material in allRootPositionArpeggios) {
+        for (final hands in HandConfiguration.values) {
+          for (final octaves in material.progression.octaveSpans) {
+            final exercise = Exercise.linear(
+              material: material,
+              hands: hands,
+              octaves: octaves,
+              direction: ExerciseDirection.upDown,
+            );
+            final moments = realize(exercise).moments;
+            final notesPerOctave = material.topology.degreesPerOctave;
+            final apex = octaves * notesPerOctave;
+            final label = '${material.materialId} ${hands.id} $octaves';
+
+            expect(moments, hasLength(2 * apex + 1), reason: label);
+            for (final hand in hands.hands) {
+              final pitches = [
+                for (final moment in moments) moment.noteFor(hand)!.midiNote,
+              ];
+              for (var index = 1; index < pitches.length; index++) {
+                expect(
+                  pitches[index],
+                  isNot(pitches[index - 1]),
+                  reason: '$label $hand repeats a note at $index',
+                );
+              }
+              final highest = pitches.reduce((a, b) => a > b ? a : b);
+              expect(pitches.indexOf(highest), apex, reason: label);
+              expect(pitches.lastIndexOf(highest), apex, reason: label);
+              expect(pitches.last, pitches.first, reason: '$label ends home');
+              expect(
+                {
+                  for (final site in exercise.opportunitySites)
+                    if (site.hand == hand &&
+                        site.opportunity == MotorOpportunity.directionReversal)
+                      site.momentIndex,
+                },
+                {apex},
+                reason: '$label turns once, at the top',
+              );
+            }
+          }
+        }
+      }
+    });
+
     test('unsupported spellings and inversions remain absent', () {
       final unsupported = [
         ArpeggioMaterial('Gb', ArpeggioQuality.major),

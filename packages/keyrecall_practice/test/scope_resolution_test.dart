@@ -386,6 +386,28 @@ void main() {
     });
   });
 
+  test('an arpeggio is generated up, and up and down', () {
+    final generated = const ArpeggioPracticeMaterialFamily().generate(
+      InstrumentProfile(),
+      ArpeggioMaterial('C', ArpeggioQuality.major),
+    );
+
+    for (final hands in HandConfiguration.values) {
+      for (final octaves in [1, 2]) {
+        expect(
+          {
+            for (final exercise in generated)
+              if (exercise.conditions.hands == hands &&
+                  exercise.conditions.octaves == octaves)
+                exercise.conditions.direction,
+          },
+          ExerciseDirection.values.toSet(),
+          reason: '${hands.id} $octaves',
+        );
+      }
+    }
+  });
+
   test('one material is realized once, however many requirements name it', () {
     final material = fixtureMaterials.first;
     final family = _CountingFamily();

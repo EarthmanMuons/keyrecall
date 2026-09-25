@@ -623,4 +623,59 @@ void main() {
       expect(weights[Competency.rhScaleExecution], greaterThan(0.0));
     });
   });
+
+  group('an arpeggio up and down', () {
+    final arpeggio = Exercise.linear(
+      material: ArpeggioMaterial('C', ArpeggioQuality.major),
+      hands: HandConfiguration.right,
+      octaves: 2,
+      direction: ExerciseDirection.upDown,
+      tempoBpm: 60,
+    );
+    final turning = realize(arpeggio);
+    final path = [
+      for (final moment in turning.moments)
+        moment.noteFor(Hand.right)!.midiNote,
+    ];
+    final apex = path.indexOf(path.reduce((a, b) => a > b ? a : b));
+
+    PerformanceMeasurement playedOver(List<int> midiNotes) =>
+        measure(realization: turning, transcript: played(midiNotes));
+
+    test('is one traversal, with the turn measured like any other step', () {
+      final measurement = playedOver(path);
+
+      expect(measurement.completed, isTrue);
+      expect(measurement.repeats, 0);
+      expect(measurement.pitchIntegrity, 1);
+      expect(measurement.continuity, 1);
+      expect(measurement.timing.gaps, hasLength(path.length - 1));
+      expect(
+        measurement.timing.gaps.where(
+          (gap) => gap.fromPosition == apex && gap.toPosition == apex + 1,
+        ),
+        hasLength(1),
+        reason: 'the step out of the turn is a wait like the rest',
+      );
+    });
+
+    test('holds no repeated top note to be matched', () {
+      final doubled = [...path.sublist(0, apex + 1), ...path.sublist(apex)];
+
+      expect(
+        playedOver(doubled).pitchIntegrity,
+        lessThan(1),
+        reason: 'playing the top note twice is an extra note, not the turn',
+      );
+    });
+
+    test('keeps a slip just after the turn in the same attempt', () {
+      final slipped = [...path]..[apex + 1] = path[apex + 1] + 1;
+      final measurement = playedOver(slipped);
+
+      expect(measurement.completed, isTrue);
+      expect(measurement.pitchIntegrity, lessThan(1));
+      expect(measurement.timing.gaps, hasLength(path.length - 1));
+    });
+  });
 }

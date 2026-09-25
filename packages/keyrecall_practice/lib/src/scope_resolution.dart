@@ -520,7 +520,7 @@ List<Exercise> _generateArpeggioCandidates(
   for (final hands in HandConfiguration.values)
     if (_hasCanonicalFingering(material, hands))
       for (final octaves in material.progression.octaveSpans)
-        for (final direction in _arpeggioDirections(policy))
+        for (final direction in ExerciseDirection.values)
           ..._guidanceRungsOf(
             instrument,
             Exercise.linear(
@@ -544,12 +544,6 @@ List<Exercise> _guidanceRungsOf(InstrumentProfile instrument, Exercise shape) =>
           shape.withGuidance(guidance),
       ]
     : const [];
-
-List<ExerciseDirection> _arpeggioDirections(ArpeggioPracticePolicy policy) =>
-    policy.acquisitionFloorShape ==
-        ArpeggioAcquisitionFloorShape.rightHandAscendingAndDescending
-    ? const [ExerciseDirection.up, ExerciseDirection.upDown]
-    : const [ExerciseDirection.up];
 
 bool _hasCanonicalFingering(
   ArpeggioMaterial material,

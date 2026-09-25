@@ -1008,6 +1008,17 @@ unlike scales in ways contrary motion is not. The cross-family contract and its
 acceptance criteria are specified in
 [`curriculum-and-focus.md`](system/curriculum.md).
 
+### Up, down, and up again
+
+Arpeggios and scales are generated ascending and up and down, and up and down is
+the complete traversal every examination board asks for. Some method books,
+_Junior Hanon_ among them, practice arpeggios up, down, and up again: two
+reversals instead of one, and a longer continuous run without new pitches. That
+is a harder realization of the same material rather than new material, so it
+would be a third traversal the scheduler reaches only after the first reversal
+is established. No goal needs it, and nothing measures whether the second turn
+is a different demand from the first.
+
 ### Alternative fingerings
 
 V1 teaches one canonical fingering. Future legitimate alternatives should be
