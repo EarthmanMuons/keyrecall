@@ -20,6 +20,8 @@ const List<int> placementCheckpoints = [30, 60, 120, 200, 500];
 /// much the starting level could still matter, not how much it matters on
 /// average.
 class PlacementDivergence {
+  /// Which reading of the execution floors decided eligibility.
+  final EligibilityEvidence evidence;
   final int attempts;
 
   /// The largest gap in a competency mean, over competencies every placement
@@ -43,7 +45,23 @@ class PlacementDivergence {
   /// Whether one decision from a fresh sitting chose the same exercise.
   final bool sameSelection;
 
+  /// Fully eligible candidates under each placement, fewest and most.
+  final int fewestEligible;
+  final int mostEligible;
+
+  /// The smallest overlap between two placements' fully eligible sets, as
+  /// intersection over union.
+  final double eligibleOverlap;
+
+  /// For candidates whose eligibility differs, the median distance of their
+  /// reference execution from the nearest reference floor.
+  ///
+  /// Small when what still differs is ordinary uncertainty at a boundary
+  /// rather than a placement offset.
+  final double? disagreementDistance;
+
   Map<String, Object?> toJson() => {
+    'evidence': evidence.name,
     'attempts': attempts,
     'observed_competency': observedCompetency,
     'unobserved_competency': unobservedCompetency,
@@ -52,23 +70,33 @@ class PlacementDivergence {
     'band_disagreement': bandDisagreement,
     'eligibility_disagreement': eligibilityDisagreement,
     'same_selection': sameSelection,
+    'fewest_eligible': fewestEligible,
+    'most_eligible': mostEligible,
+    'eligible_overlap': eligibleOverlap,
+    'disagreement_distance': disagreementDistance,
   };
 
-  factory PlacementDivergence.fromJson(Map<String, Object?> json) =>
-      PlacementDivergence(
-        attempts: json['attempts']! as int,
-        observedCompetency: (json['observed_competency']! as num).toDouble(),
-        unobservedCompetency: (json['unobserved_competency']! as num)
-            .toDouble(),
-        meanPrediction: (json['mean_prediction']! as num).toDouble(),
-        maxPrediction: (json['max_prediction']! as num).toDouble(),
-        bandDisagreement: (json['band_disagreement']! as num).toDouble(),
-        eligibilityDisagreement: (json['eligibility_disagreement']! as num)
-            .toDouble(),
-        sameSelection: json['same_selection']! as bool,
-      );
+  factory PlacementDivergence.fromJson(
+    Map<String, Object?> json,
+  ) => PlacementDivergence(
+    evidence: EligibilityEvidence.values.byName(json['evidence']! as String),
+    attempts: json['attempts']! as int,
+    observedCompetency: (json['observed_competency']! as num).toDouble(),
+    unobservedCompetency: (json['unobserved_competency']! as num).toDouble(),
+    meanPrediction: (json['mean_prediction']! as num).toDouble(),
+    maxPrediction: (json['max_prediction']! as num).toDouble(),
+    bandDisagreement: (json['band_disagreement']! as num).toDouble(),
+    eligibilityDisagreement: (json['eligibility_disagreement']! as num)
+        .toDouble(),
+    sameSelection: json['same_selection']! as bool,
+    fewestEligible: json['fewest_eligible']! as int,
+    mostEligible: json['most_eligible']! as int,
+    eligibleOverlap: (json['eligible_overlap']! as num).toDouble(),
+    disagreementDistance: (json['disagreement_distance'] as num?)?.toDouble(),
+  );
 
   const PlacementDivergence({
+    required this.evidence,
     required this.attempts,
     required this.observedCompetency,
     required this.unobservedCompetency,
@@ -77,6 +105,10 @@ class PlacementDivergence {
     required this.bandDisagreement,
     required this.eligibilityDisagreement,
     required this.sameSelection,
+    required this.fewestEligible,
+    required this.mostEligible,
+    required this.eligibleOverlap,
+    required this.disagreementDistance,
   });
 }
 
@@ -135,6 +167,15 @@ PlacementConvergenceRun runPlacementConvergence({
   final candidates = productionCandidates(instrument);
   const learner = LearnerModel();
   final pipeline = SchedulerPipeline(learner: learner);
+  final arms = [
+    for (final evidence in EligibilityEvidence.values)
+      SchedulerPipeline(
+        learner: learner,
+        config: v1SchedulerConfig.withEligibility(
+          v1SchedulerConfig.eligibility.withEvidence(evidence),
+        ),
+      ),
+  ];
   final horizon = checkpoints.reduce(math.max);
   final start = DateTime.utc(2026);
   final history = runSittings(
@@ -172,15 +213,17 @@ PlacementConvergenceRun runPlacementConvergence({
     }
     applied++;
     if (checkpoints.contains(applied)) {
-      compared.add(
-        _divergenceAt(
-          applied,
-          states.values.toList(),
-          candidates,
-          pipeline,
-          slot.at,
-        ),
-      );
+      for (final arm in arms) {
+        compared.add(
+          _divergenceAt(
+            applied,
+            states.values.toList(),
+            candidates,
+            arm,
+            slot.at,
+          ),
+        );
+      }
     }
   }
   return PlacementConvergenceRun(
@@ -217,6 +260,8 @@ PlacementDivergence _divergenceAt(
   var largest = 0.0;
   var bandDiffers = 0;
   var eligibilityDiffers = 0;
+  final eligibleSets = [for (final _ in states) <Exercise>{}];
+  final distances = <double>[];
   for (final exercise in candidates) {
     final predictions = [
       for (final state in states)
@@ -229,10 +274,18 @@ PlacementDivergence _divergenceAt(
       for (final p in predictions) p >= challenge.pMin && p <= challenge.pMax,
     };
     if (inBand.length > 1) bandDiffers++;
-    final tiers = {
-      for (final state in states) pipeline.eligibilityFor(state, exercise).tier,
-    };
-    if (tiers.length > 1) eligibilityDiffers++;
+    final eligible = [
+      for (final state in states)
+        pipeline.eligibilityFor(state, exercise).tier ==
+            EligibilityTier.fullyEligible,
+    ];
+    for (final (index, fully) in eligible.indexed) {
+      if (fully) eligibleSets[index].add(exercise);
+    }
+    if (eligible.toSet().length > 1) {
+      eligibilityDiffers++;
+      distances.add(_distanceToReferenceFloor(states, exercise, pipeline));
+    }
   }
 
   final chosen = {
@@ -250,7 +303,22 @@ PlacementDivergence _divergenceAt(
       },
   };
 
+  var overlap = 1.0;
+  for (var a = 0; a < eligibleSets.length; a++) {
+    for (var b = a + 1; b < eligibleSets.length; b++) {
+      final union = eligibleSets[a].union(eligibleSets[b]).length;
+      if (union == 0) continue;
+      overlap = math.min(
+        overlap,
+        eligibleSets[a].intersection(eligibleSets[b]).length / union,
+      );
+    }
+  }
+  distances.sort();
+  final sizes = [for (final set in eligibleSets) set.length];
+
   return PlacementDivergence(
+    evidence: pipeline.config.eligibility.evidence,
     attempts: attempts,
     observedCompetency: observed,
     unobservedCompetency: unobserved,
@@ -259,7 +327,47 @@ PlacementDivergence _divergenceAt(
     bandDisagreement: bandDiffers / candidates.length,
     eligibilityDisagreement: eligibilityDiffers / candidates.length,
     sameSelection: chosen.length == 1,
+    fewestEligible: sizes.reduce(math.min),
+    mostEligible: sizes.reduce(math.max),
+    eligibleOverlap: overlap,
+    disagreementDistance: distances.isEmpty
+        ? null
+        : distances[distances.length ~/ 2],
   );
+}
+
+/// How near the placements' reference execution of [exercise] sits to the
+/// closest reference floor, as the smallest distance any of them has.
+double _distanceToReferenceFloor(
+  List<LearnerState> states,
+  Exercise exercise,
+  SchedulerPipeline pipeline,
+) {
+  final eligibility = pipeline.config.eligibility;
+  final floors = [
+    eligibility.multiOctaveReferenceFloor,
+    for (final band in AdmissionBand.values.skip(1))
+      eligibility.referenceFloorFor(band),
+  ];
+  var nearest = double.infinity;
+  for (final state in states) {
+    for (final hand in exercise.conditions.hands.hands) {
+      final p = pipeline.learner.executionProbability(
+        state,
+        Exercise.linear(
+          material: exercise.material,
+          hands: hand.configuration,
+          octaves: exercise.material.progression.octaveSpans.first,
+          direction: ExerciseDirection.up,
+          tempoBpm: eligibility.gentleTempoBpm,
+        ),
+      );
+      for (final floor in floors) {
+        nearest = math.min(nearest, (p - floor).abs());
+      }
+    }
+  }
+  return nearest;
 }
 
 /// Runs every history not in [done], reporting each to [onRun] as it lands.

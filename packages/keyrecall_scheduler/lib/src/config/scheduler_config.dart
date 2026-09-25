@@ -4,6 +4,21 @@ import 'package:meta/meta.dart';
 import '../candidate_trace.dart';
 import '../introduction_breadth.dart';
 
+/// What the execution floors read.
+enum EligibilityEvidence {
+  /// A hand's execution competency mean.
+  rawCompetency,
+
+  /// The predicted execution of a reference exercise: the same material and
+  /// hand, one octave, ascending, at the gentle tempo.
+  ///
+  /// An outcome loads several competencies at once, so evidence identifies
+  /// their combined effect and not how it divides among them, and a mean read
+  /// on its own keeps whatever placement seeded. A prediction is the combined
+  /// effect.
+  predictedReference,
+}
+
 /// Thresholds for the `REQUIRES` prerequisite gate.
 @immutable
 class EligibilityConfig {
@@ -101,6 +116,21 @@ class EligibilityConfig {
   /// cap cannot go below.
   final bool scopeAwareAlteredFormBreadth;
 
+  /// What the band and multi-octave execution floors read.
+  final EligibilityEvidence evidence;
+
+  /// The floors [EligibilityEvidence.predictedReference] reads, as execution
+  /// probabilities.
+  ///
+  /// Each is the reference exercise's predicted execution for a learner whose
+  /// every competency sits at the matching raw floor, rounded down, so a
+  /// placement alone decides exactly as the raw floors do and only evidence
+  /// moves the two apart.
+  final double earlyTransferReferenceFloor;
+  final double intermediateReferenceFloor;
+  final double advancedReferenceFloor;
+  final double multiOctaveReferenceFloor;
+
   const EligibilityConfig({
     required this.multiOctaveExecutionFloor,
     required this.gentleTempoBpm,
@@ -114,12 +144,30 @@ class EligibilityConfig {
     required this.fluentHandsTogetherFloor,
     required this.sameTonicAlteredFormPrerequisite,
     required this.scopeAwareAlteredFormBreadth,
+    required this.evidence,
+    required this.earlyTransferReferenceFloor,
+    required this.intermediateReferenceFloor,
+    required this.advancedReferenceFloor,
+    required this.multiOctaveReferenceFloor,
   });
 
   /// The same thresholds under a different altered-form policy.
   EligibilityConfig withAlteredFormPolicy({
     bool? sameTonicAlteredFormPrerequisite,
     bool? scopeAwareAlteredFormBreadth,
+  }) => withPolicy(
+    sameTonicAlteredFormPrerequisite: sameTonicAlteredFormPrerequisite,
+    scopeAwareAlteredFormBreadth: scopeAwareAlteredFormBreadth,
+  );
+
+  /// The same thresholds with the execution floors reading [evidence].
+  EligibilityConfig withEvidence(EligibilityEvidence evidence) =>
+      withPolicy(evidence: evidence);
+
+  EligibilityConfig withPolicy({
+    bool? sameTonicAlteredFormPrerequisite,
+    bool? scopeAwareAlteredFormBreadth,
+    EligibilityEvidence? evidence,
   }) => EligibilityConfig(
     multiOctaveExecutionFloor: multiOctaveExecutionFloor,
     gentleTempoBpm: gentleTempoBpm,
@@ -136,7 +184,20 @@ class EligibilityConfig {
         this.sameTonicAlteredFormPrerequisite,
     scopeAwareAlteredFormBreadth:
         scopeAwareAlteredFormBreadth ?? this.scopeAwareAlteredFormBreadth,
+    evidence: evidence ?? this.evidence,
+    earlyTransferReferenceFloor: earlyTransferReferenceFloor,
+    intermediateReferenceFloor: intermediateReferenceFloor,
+    advancedReferenceFloor: advancedReferenceFloor,
+    multiOctaveReferenceFloor: multiOctaveReferenceFloor,
   );
+
+  /// The reference floor [band] asks for.
+  double referenceFloorFor(AdmissionBand band) => switch (band) {
+    AdmissionBand.foundation => 0,
+    AdmissionBand.earlyTransfer => earlyTransferReferenceFloor,
+    AdmissionBand.intermediateKeyboard => intermediateReferenceFloor,
+    AdmissionBand.advancedKeyboard => advancedReferenceFloor,
+  };
 
   /// The execution floor [band] asks for.
   double executionFloorFor(AdmissionBand band) => switch (band) {
@@ -670,6 +731,11 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     fluentHandsTogetherFloor: 1.0,
     sameTonicAlteredFormPrerequisite: true,
     scopeAwareAlteredFormBreadth: true,
+    evidence: EligibilityEvidence.rawCompetency,
+    earlyTransferReferenceFloor: 0.528,
+    intermediateReferenceFloor: 0.625,
+    advancedReferenceFloor: 0.714,
+    multiOctaveReferenceFloor: 0.404,
   ),
   safety: SafetyConfig(),
   challenge: ChallengeConfig(pMin: 0.60, pMax: 0.90, pIntroductionMin: 0.15),

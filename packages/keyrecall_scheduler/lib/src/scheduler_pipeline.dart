@@ -65,6 +65,7 @@ class DecisionFacts {
   final Map<HandConfiguration, (int, int)> _breadth = {};
   final Map<HandConfiguration, (int, int)> _reachable = {};
   final Map<(String, HandConfiguration), double> _executionMean = {};
+  final Map<(String, HandConfiguration), double> _referenceExecution = {};
   final Map<ScaleForm, double> _minorTopology = {};
   bool? _fluentHandsTogether;
 
@@ -675,8 +676,14 @@ class SchedulerPipeline {
           code: EligibilityReason.octaveSpanPrerequisite,
         );
       }
-      final floor = config.eligibility.multiOctaveExecutionFloor;
-      final execution = _executionMeanFor(state, material, hands, facts);
+      final (:execution, :floor) = _readiness(
+        state,
+        material,
+        hands,
+        facts,
+        raw: config.eligibility.multiOctaveExecutionFloor,
+        reference: config.eligibility.multiOctaveReferenceFloor,
+      );
       if (execution < floor) {
         return EligibilityDecision(
           EligibilityTier.provisionallyEligible,
@@ -736,8 +743,14 @@ class SchedulerPipeline {
       final asked = _isGentlest(exercise, entryPolicy)
           ? _bandBefore(band)
           : band;
-      final floor = config.eligibility.executionFloorFor(asked);
-      final execution = _executionMeanFor(state, material, hands, facts);
+      final (:execution, :floor) = _readiness(
+        state,
+        material,
+        hands,
+        facts,
+        raw: config.eligibility.executionFloorFor(asked),
+        reference: config.eligibility.referenceFloorFor(asked),
+      );
       if (execution < floor) {
         return EligibilityDecision(
           EligibilityTier.provisionallyEligible,
@@ -1155,6 +1168,55 @@ class SchedulerPipeline {
       ? band
       : AdmissionBand.values[band.index - 1];
 
+  /// How ready [hands] is on [material], and the floor that is read against,
+  /// in whichever terms [EligibilityConfig.evidence] names.
+  ({double execution, double floor}) _readiness(
+    LearnerState state,
+    TechnicalMaterial material,
+    HandConfiguration hands,
+    DecisionFacts? facts, {
+    required double raw,
+    required double reference,
+  }) => switch (config.eligibility.evidence) {
+    EligibilityEvidence.rawCompetency => (
+      execution: _executionMeanFor(state, material, hands, facts),
+      floor: raw,
+    ),
+    EligibilityEvidence.predictedReference => (
+      execution: _referenceExecutionFor(state, material, hands, facts),
+      floor: reference,
+    ),
+  };
+
+  /// The weaker hand's predicted execution of [material] at its gentlest: one
+  /// octave, ascending, at the gentle tempo.
+  double _referenceExecutionFor(
+    LearnerState state,
+    TechnicalMaterial material,
+    HandConfiguration hands,
+    DecisionFacts? facts,
+  ) {
+    final cacheKey = (material.materialId, hands);
+    final memo = facts?._referenceExecution[cacheKey];
+    if (memo != null) return memo;
+    var weakest = 1.0;
+    for (final hand in hands.hands) {
+      final reference = Exercise.linear(
+        material: material,
+        hands: hand.configuration,
+        octaves: material.progression.octaveSpans.first,
+        direction: ExerciseDirection.up,
+        tempoBpm: config.eligibility.gentleTempoBpm,
+      );
+      weakest = math.min(
+        weakest,
+        learner.executionProbability(state, reference),
+      );
+    }
+    facts?._referenceExecution[cacheKey] = weakest;
+    return weakest;
+  }
+
   /// The weaker hand's execution when both play, otherwise the playing hand's.
   double _executionMeanFor(
     LearnerState state,
@@ -1186,9 +1248,9 @@ class SchedulerPipeline {
   ///
   /// Ignoring the form being admitted is what makes this a transfer rule
   /// rather than a self-referential one: A harmonic minor is admitted on the
-  /// strength of A natural minor, not of itself. Note that it is any minor
-  /// topology rather than the same tonic's, since the curricula give no
-  /// support for a per-key ladder either.
+  /// strength of A natural minor, not of itself. Any minor topology will do,
+  /// since topology is a competency; whether the hand knows the same tonic's
+  /// natural minor is the altered-form foundation's question.
   double _bestMinorTopology(
     LearnerState state,
     ScaleForm exclude,

@@ -49,6 +49,7 @@ Future<void> main(List<String> arguments) async {
       [
         'player',
         'seed',
+        'evidence',
         'attempts',
         'observed',
         'unobserved',
@@ -57,6 +58,10 @@ Future<void> main(List<String> arguments) async {
         'band_diff',
         'elig_diff',
         'same_pick',
+        'fewest_eligible',
+        'most_eligible',
+        'overlap',
+        'distance',
       ].join('\t'),
     );
   for (final run in [...previous, ...fresh]) {
@@ -65,6 +70,7 @@ Future<void> main(List<String> arguments) async {
         [
           run.playerId,
           '${run.seed}',
+          point.evidence.name,
           '${point.attempts}',
           point.observedCompetency.toStringAsFixed(3),
           point.unobservedCompetency.toStringAsFixed(3),
@@ -73,6 +79,10 @@ Future<void> main(List<String> arguments) async {
           point.bandDisagreement.toStringAsFixed(4),
           point.eligibilityDisagreement.toStringAsFixed(4),
           '${point.sameSelection}',
+          '${point.fewestEligible}',
+          '${point.mostEligible}',
+          point.eligibleOverlap.toStringAsFixed(4),
+          point.disagreementDistance?.toStringAsFixed(4) ?? '-',
         ].join('\t'),
       );
     }

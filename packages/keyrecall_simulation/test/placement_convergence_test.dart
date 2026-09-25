@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -12,7 +13,15 @@ void main() {
       slotsPerSitting: 10,
     );
 
-    expect(run.checkpoints.map((point) => point.attempts), [10, 20]);
+    expect(
+      {for (final point in run.checkpoints) (point.attempts, point.evidence)},
+      {
+        for (final attempts in [10, 20])
+          for (final evidence in EligibilityEvidence.values)
+            (attempts, evidence),
+      },
+      reason: 'both readings of the floors, on the same replayed states',
+    );
     for (final point in run.checkpoints) {
       expect(point.meanPrediction, inInclusiveRange(0, 1));
       expect(point.bandDisagreement, inInclusiveRange(0, 1));
