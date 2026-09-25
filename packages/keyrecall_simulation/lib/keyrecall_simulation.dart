@@ -31,6 +31,7 @@ export 'src/longitudinal_census.dart';
 export 'src/longitudinal_schedules.dart';
 export 'src/pacing_log.dart';
 export 'src/python_compatible_random.dart';
+export 'src/realization_depth.dart';
 export 'src/residual_census.dart';
 export 'src/return_cost.dart';
 export 'src/scheduler_agent.dart';

@@ -78,6 +78,9 @@ class GoalTrajectorySelection {
   /// asks for, whatever it was retrieved from.
   final bool clean;
 
+  /// The overall success the scheduler predicted when it chose this.
+  final double predicted;
+
   const GoalTrajectorySelection({
     required this.slot,
     required this.sitting,
@@ -93,6 +96,7 @@ class GoalTrajectorySelection {
     required this.isLiveSupport,
     required this.coveredBefore,
     required this.clean,
+    required this.predicted,
   });
 }
 
@@ -230,6 +234,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
         :final decision,
         :final coverage,
         :final liveSupportMaterialIds,
+        :final prediction,
       )) {
         final conditions = exercise.conditions;
         final played = playing.play(exercise, random);
@@ -254,6 +259,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
                 played.completed &&
                 played.pitchIntegrity >=
                     RequirementCompletionPolicy.standard.minimumPitchIntegrity,
+            predicted: prediction.overallP,
           ),
         );
         await session.acknowledgePresentation(decision.attemptId);

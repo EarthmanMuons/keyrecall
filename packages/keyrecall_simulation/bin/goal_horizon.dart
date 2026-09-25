@@ -179,5 +179,26 @@ Future<Map<String, Object?>> _run(
     'blocked': run.sittings.where((end) => end == SittingEnd.blocked).length,
     'checkpoints': checkpoints,
     'intervals': intervals,
+    'first': {
+      'hands_together': run.firstSlotWhere(
+        (pick) => pick.hands == HandConfiguration.together,
+      ),
+      'two_octaves': run.firstSlotWhere((pick) => pick.octaves >= 2),
+      'up_down': run.firstSlotWhere(
+        (pick) => pick.direction == ExerciseDirection.upDown,
+      ),
+      'depth_3': run.firstSlotWhere((pick) => depthOf(pick) == 3),
+      'depth_3_demonstrated': run.firstSlotWhere(
+        (pick) => depthOf(pick) == 3 && demonstrates(pick),
+      ),
+    },
+    'depth': [
+      for (final interval in realizationDepthOf(
+        run.selections,
+        sittings: sittings,
+        every: every,
+      ))
+        interval.toJson(),
+    ],
   };
 }
