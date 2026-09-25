@@ -476,32 +476,35 @@ class FilePracticeStore implements PracticeStore {
   }
 
   @override
-  Future<PracticePlan?> loadPracticePlan(String profileId) =>
-      _queue.run(profileId, () => _loadPracticePlan(profileId));
+  Future<String?> loadGoalId(String profileId) =>
+      _queue.run(profileId, () => _loadGoalId(profileId));
 
-  Future<PracticePlan?> _loadPracticePlan(String profileId) async {
+  Future<String?> _loadGoalId(String profileId) async {
     await _recoverErase(profileId);
-    final file = _planFile(profileId);
+    final file = _goalFile(profileId);
     if (!file.existsSync()) return null;
     final json = asMap(
-      await _decode(file, 'practice plan'),
-      'practice plan',
+      await _decode(file, 'practice goal'),
+      'practice goal',
       location: file.path,
     );
     return located(
-      () => PracticePlan.fromJson(json),
-      'practice plan',
+      () => practiceGoalFromJson(json),
+      'practice goal',
       location: file.path,
     );
   }
 
   @override
-  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
-      _write(profileId, null, () => _savePracticePlan(profileId, plan));
+  Future<void> saveGoalId(String profileId, String goalId) =>
+      _write(profileId, null, () => _saveGoalId(profileId, goalId));
 
-  Future<void> _savePracticePlan(String profileId, PracticePlan plan) async {
+  Future<void> _saveGoalId(String profileId, String goalId) async {
     await _recoverErase(profileId);
-    await _writeAtomically(_planFile(profileId), canonicalJson(plan.toJson()));
+    await _writeAtomically(
+      _goalFile(profileId),
+      canonicalJson(practiceGoalToJson(goalId)),
+    );
   }
 
   @override
@@ -677,7 +680,7 @@ class FilePracticeStore implements PracticeStore {
         _checkpointFile(profileId),
         _fluencyFile(profileId),
         _feedbackFile(profileId),
-        _planFile(profileId),
+        _goalFile(profileId),
         _coordinationFile(profileId),
         _selectionFile(profileId),
       ])
@@ -733,8 +736,8 @@ class FilePracticeStore implements PracticeStore {
   File _selectionFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/selections.jsonl');
 
-  File _planFile(String profileId) =>
-      File('${_profileDirectory(profileId).path}/plan.json');
+  File _goalFile(String profileId) =>
+      File('${_profileDirectory(profileId).path}/goal.json');
 
   File _feedbackFile(String profileId) =>
       File('${_profileDirectory(profileId).path}/feedback.jsonl');
@@ -853,16 +856,14 @@ class _LifetimeBoundFileStore implements PracticeStore {
       );
 
   @override
-  Future<PracticePlan?> loadPracticePlan(String profileId) =>
-      _store.loadPracticePlan(profileId);
+  Future<String?> loadGoalId(String profileId) => _store.loadGoalId(profileId);
 
   @override
-  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
-      _store._write(
-        profileId,
-        _lifetime,
-        () => _store._savePracticePlan(profileId, plan),
-      );
+  Future<void> saveGoalId(String profileId, String goalId) => _store._write(
+    profileId,
+    _lifetime,
+    () => _store._saveGoalId(profileId, goalId),
+  );
 
   @override
   Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId) =>

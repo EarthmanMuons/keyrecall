@@ -325,91 +325,66 @@ void main() {
       expect(plan.goalId, 'OTHER_GOAL');
       expect(plan.isFocused, isFalse);
     });
-
-    test('is never what a stored plan holds', () {
-      final stored = PracticePlan.normal
-          .focusedOn(
-            ActiveFocus(
-              label: 'Nothing selected',
-              strength: FocusStrength.exclusive,
-              material: MaterialFocus(),
-            ),
-          )
-          .toJson();
-
-      expect(
-        PracticePlan.fromJson(stored),
-        PracticePlan.normal,
-        reason: 'what is written round-trips, which is the whole invariant',
-      );
-    });
   });
 
   group('storing a plan', () {
-    test('a plan survives being written and read back', () {
-      final plan = PracticePlan.normal.focusedOn(_minorMaterial);
+    test('only the goal is stored', () {
+      final json = practiceGoalToJson('FOUNDATIONS');
 
-      expect(PracticePlan.fromJson(plan.toJson()), plan);
+      expect(json.keys, {'schema_version', 'goal_id'});
+      expect(practiceGoalFromJson(json), 'FOUNDATIONS');
     });
 
-    test('a plan from a later build is refused rather than guessed at', () {
-      final json = PracticePlan.normal.toJson()
-        ..['schema_version'] = practicePlanSchemaVersion + 1;
+    test('a goal from a later build is refused rather than guessed at', () {
+      final json = practiceGoalToJson('FOUNDATIONS')
+        ..['schema_version'] = practiceGoalSchemaVersion + 1;
 
       expect(
-        () => PracticePlan.fromJson(json),
+        () => practiceGoalFromJson(json),
         throwsA(isA<JournalFormatException>()),
       );
     });
 
-    test('a focus missing a facet is refused rather than read as empty', () {
-      final json = PracticePlan.normal
-          .focusedOn(
-            ActiveFocus(
-              label: 'C major only',
-              strength: FocusStrength.exclusive,
-              material: MaterialFocus(tonics: {'C'}),
-            ),
-          )
-          .toJson();
-      (json['focus']! as Map<String, Object?>)['material'] =
-          <String, Object?>{};
+    test('a focus is carried to a goal that holds some of it', () {
+      final focus = ActiveFocus(
+        label: 'C major',
+        strength: FocusStrength.exclusive,
+        material: MaterialFocus(
+          scaleFormIds: {ScaleForm.major.id},
+          tonics: {'C'},
+        ),
+      );
+      final plan = PracticePlan.normal.focusedOn(focus);
+      final catalog = <TechnicalMaterial>[...allScales];
+
+      expect(plan.withGoal('FOUNDATIONS', catalog).focus, focus);
+    });
+
+    test('and dropped for one that holds none of it', () {
+      final plan = PracticePlan.normal.focusedOn(
+        ActiveFocus(
+          label: 'E major',
+          strength: FocusStrength.exclusive,
+          material: MaterialFocus(
+            scaleFormIds: {ScaleForm.major.id},
+            tonics: {'E'},
+          ),
+        ),
+      );
 
       expect(
-        () => PracticePlan.fromJson(json),
-        throwsA(isA<JournalFormatException>()),
+        plan.withGoal('FOUNDATIONS', [...allScales]),
+        const PracticePlan(goalId: 'FOUNDATIONS'),
       );
     });
 
-    test('a stored focus that narrows nothing reads as no focus', () {
-      final json = PracticePlan.normal
-          .focusedOn(
-            ActiveFocus(
-              label: 'Everything',
-              strength: FocusStrength.exclusive,
-              material: MaterialFocus(tonics: {'C'}),
-            ),
-          )
-          .toJson();
-      final material =
-          (json['focus']! as Map<String, Object?>)['material']!
-              as Map<String, Object?>;
-      material['tonics'] = <String>[];
-
-      expect(
-        PracticePlan.fromJson(json),
-        PracticePlan.normal,
-        reason: 'a build whose chooser wrote this described normal practice',
-      );
-    });
-
-    test('erasing a profile takes its plan with it', () async {
+    test('erasing a profile takes its goal with it', () async {
       final store = InMemoryPracticeStore();
-      await store.savePracticePlan('learner', PracticePlan.normal);
+      await store.saveGoalId('learner', PracticePlan.normal.goalId);
 
       await store.erase('learner');
 
-      expect(await store.loadPracticePlan('learner'), isNull);
+      expect(await store.loadGoalId('learner'), isNull);
     });
   });
 }

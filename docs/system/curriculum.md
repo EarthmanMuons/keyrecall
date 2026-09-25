@@ -113,6 +113,10 @@ A **goal** is a durable destination: what capability am I trying to establish or
 maintain? A **focus** is a temporary constraint or preference: what should
 KeyRecall draw from right now?
 
+The difference is structural. Only the goal is stored, so it survives a relaunch
+and a focus does not: a focus lasts as long as the running app, and choosing a
+goal that holds none of its material clears it.
+
 Focus has two explicit modes, and they are not two ends of one slider:
 
 ```text

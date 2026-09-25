@@ -48,7 +48,7 @@ class GoalScreen extends ConsumerWidget {
               trailing: goalId == plan.goalId ? const Icon(Icons.check) : null,
               onTap: () => ref
                   .read(practicePlanProvider.notifier)
-                  .apply(PracticePlan(goalId: goalId, focus: plan.focus)),
+                  .apply(plan.withGoal(goalId, catalog)),
             ),
           if (coverage != null && hasFinishLine(plan))
             Padding(

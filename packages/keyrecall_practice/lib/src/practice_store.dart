@@ -4,7 +4,6 @@ import 'coordination_log.dart';
 import 'feedback_exposure.dart';
 import 'fluency_history.dart';
 import 'pending_decision.dart';
-import 'practice_plan.dart';
 import 'profile_lifetime.dart';
 
 /// Durable storage for one install's practice history.
@@ -149,14 +148,15 @@ abstract interface class PracticeStore {
   /// Idempotent on the attempt id: an attempt observes its hands once.
   Future<void> appendCoordinationSample(CoordinationSample sample);
 
-  /// What [profileId] is working toward, or null where nobody has said.
+  /// The goal [profileId] is working toward, or null where nobody has said.
   ///
-  /// Absent is not the same as the default plan: a caller that wants to know
-  /// whether the question was ever answered can still tell.
-  Future<PracticePlan?> loadPracticePlan(String profileId);
+  /// Absent is not the same as the default goal: a caller that wants to know
+  /// whether the question was ever answered can still tell. Only the goal is
+  /// kept; a focus is intent for the running app and is never stored.
+  Future<String?> loadGoalId(String profileId);
 
-  /// Saves [plan] for [profileId], replacing any earlier one.
-  Future<void> savePracticePlan(String profileId, PracticePlan plan);
+  /// Saves [goalId] for [profileId], replacing any earlier one.
+  Future<void> saveGoalId(String profileId, String goalId);
 
   /// The most recent checkpoint for [profileId], if one was saved.
   Future<LearnerStateCheckpoint?> loadCheckpoint(String profileId);
@@ -280,7 +280,7 @@ class InMemoryPracticeStore implements PracticeStore {
   final Map<String, PendingDecision> _pending = {};
   final Map<String, LearnerStateCheckpoint> _checkpoints = {};
   final Map<String, Map<String, Object?>> _fluencyHistories = {};
-  final Map<String, PracticePlan> _plans = {};
+  final Map<String, String> _goals = {};
   final Map<String, Map<String, CoordinationSample>> _coordination = {};
   final Map<String, Map<(String, PostAttemptFeedback), FeedbackExposure>>
   _feedback = {};
@@ -376,12 +376,11 @@ class InMemoryPracticeStore implements PracticeStore {
   }
 
   @override
-  Future<PracticePlan?> loadPracticePlan(String profileId) async =>
-      _plans[profileId];
+  Future<String?> loadGoalId(String profileId) async => _goals[profileId];
 
   @override
-  Future<void> savePracticePlan(String profileId, PracticePlan plan) async {
-    _plans[profileId] = plan;
+  Future<void> saveGoalId(String profileId, String goalId) async {
+    _goals[profileId] = goalId;
   }
 
   @override
@@ -419,7 +418,7 @@ class InMemoryPracticeStore implements PracticeStore {
     _checkpoints.remove(profileId);
     _fluencyHistories.remove(profileId);
     _feedback.remove(profileId);
-    _plans.remove(profileId);
+    _goals.remove(profileId);
     _coordination.remove(profileId);
   }
 
@@ -555,13 +554,12 @@ class _LifetimeBoundMemoryStore implements PracticeStore {
   }
 
   @override
-  Future<PracticePlan?> loadPracticePlan(String profileId) =>
-      _store.loadPracticePlan(profileId);
+  Future<String?> loadGoalId(String profileId) => _store.loadGoalId(profileId);
 
   @override
-  Future<void> savePracticePlan(String profileId, PracticePlan plan) async {
+  Future<void> saveGoalId(String profileId, String goalId) async {
     _authorize(profileId);
-    await _store.savePracticePlan(profileId, plan);
+    await _store.saveGoalId(profileId, goalId);
   }
 
   @override

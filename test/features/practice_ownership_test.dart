@@ -118,17 +118,17 @@ void main() {
       await loopOf(container);
 
       final notifier = container.read(practicePlanProvider.notifier);
-      final focused = notifier.apply(
-        PracticePlan.normal.focusedOn(_minorMaterial),
+      final foundations = notifier.apply(
+        const PracticePlan(goalId: 'FOUNDATIONS'),
       );
       final normal = notifier.apply(PracticePlan.normal);
       gate.complete();
-      await Future.wait([focused, normal]);
+      await Future.wait([foundations, normal]);
 
-      expect(store.saved.map((plan) => plan.isFocused), [true, false]);
+      expect(store.saved, ['FOUNDATIONS', PracticePlan.normal.goalId]);
       expect(
-        container.read(practicePlanProvider).requireValue.isFocused,
-        isFalse,
+        container.read(practicePlanProvider).requireValue,
+        PracticePlan.normal,
       );
     },
   );
@@ -159,12 +159,12 @@ void main() {
 
     final saving = container
         .read(practicePlanProvider.notifier)
-        .apply(PracticePlan.normal.focusedOn(_minorMaterial));
+        .apply(const PracticePlan(goalId: 'FOUNDATIONS'));
     container.dispose();
     gate.complete();
     await saving;
 
-    expect((await store.loadPracticePlan(profileId))!.isFocused, isTrue);
+    expect(await store.loadGoalId(profileId), 'FOUNDATIONS');
   });
 
   test('a commit that failed is written again, not reopened', () async {
@@ -430,7 +430,7 @@ void main() {
 
       final saving = container
           .read(practicePlanProvider.notifier)
-          .apply(PracticePlan.normal.focusedOn(_minorMaterial));
+          .apply(const PracticePlan(goalId: 'FOUNDATIONS'));
       await switchProfile(container);
       await container.read(profileRosterProvider.notifier).select(profileId);
 
@@ -443,8 +443,8 @@ void main() {
       await reopening;
 
       expect(
-        container.read(practicePlanProvider).requireValue.isFocused,
-        isTrue,
+        container.read(practicePlanProvider).requireValue.goalId,
+        'FOUNDATIONS',
       );
     },
   );
@@ -492,15 +492,15 @@ final _minorMaterial = ActiveFocus(
 /// Holds every plan save open until it is let go.
 class _GatedPlanStore extends InMemoryPracticeStore {
   final Future<void> gate;
-  final List<PracticePlan> saved = [];
+  final List<String> saved = [];
 
   _GatedPlanStore(this.gate);
 
   @override
-  Future<void> savePracticePlan(String profileId, PracticePlan plan) async {
+  Future<void> saveGoalId(String profileId, String goalId) async {
     await gate;
-    saved.add(plan);
-    await super.savePracticePlan(profileId, plan);
+    saved.add(goalId);
+    await super.saveGoalId(profileId, goalId);
   }
 }
 

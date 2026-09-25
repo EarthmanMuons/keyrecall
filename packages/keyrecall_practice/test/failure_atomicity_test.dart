@@ -132,12 +132,11 @@ class FlakyPracticeStore with UnretiredLifetimes implements PracticeStore {
       inner.appendCoordinationSample(sample);
 
   @override
-  Future<PracticePlan?> loadPracticePlan(String profileId) =>
-      inner.loadPracticePlan(profileId);
+  Future<String?> loadGoalId(String profileId) => inner.loadGoalId(profileId);
 
   @override
-  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
-      inner.savePracticePlan(profileId, plan);
+  Future<void> saveGoalId(String profileId, String goalId) =>
+      inner.saveGoalId(profileId, goalId);
 
   /// When set, every [loadAcquisitionJournal] throws, so an uncertain
   /// acquisition write cannot be settled either.
@@ -247,12 +246,11 @@ class MisfilingPracticeStore with UnretiredLifetimes implements PracticeStore {
       inner.appendCoordinationSample(sample);
 
   @override
-  Future<PracticePlan?> loadPracticePlan(String profileId) =>
-      inner.loadPracticePlan(profileId);
+  Future<String?> loadGoalId(String profileId) => inner.loadGoalId(profileId);
 
   @override
-  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
-      inner.savePracticePlan(profileId, plan);
+  Future<void> saveGoalId(String profileId, String goalId) =>
+      inner.saveGoalId(profileId, goalId);
 
   @override
   Future<AcquisitionJournal> loadAcquisitionJournal(

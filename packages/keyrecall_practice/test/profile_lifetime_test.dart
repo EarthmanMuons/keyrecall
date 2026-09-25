@@ -44,9 +44,9 @@ void main() {
     store,
   ) async {
     final bound = store.boundTo(await store.lifetimeOf(alice.id));
-    await bound.savePracticePlan(alice.id, PracticePlan.normal);
+    await bound.saveGoalId(alice.id, PracticePlan.normal.goalId);
 
-    expect(await store.loadPracticePlan(alice.id), PracticePlan.normal);
+    expect(await store.loadGoalId(alice.id), PracticePlan.normal.goalId);
   });
 
   forEachStore('erasing retires the incarnation that was writing', (
@@ -54,22 +54,22 @@ void main() {
   ) async {
     final held = await store.lifetimeOf(alice.id);
     final bound = store.boundTo(held);
-    await bound.savePracticePlan(alice.id, PracticePlan.normal);
+    await bound.saveGoalId(alice.id, PracticePlan.normal.goalId);
 
     await store.erase(alice.id);
 
     await expectLater(
-      bound.savePracticePlan(alice.id, PracticePlan.normal),
+      bound.saveGoalId(alice.id, PracticePlan.normal.goalId),
       throwsA(isA<RetiredProfileLifetime>()),
     );
-    expect(await store.loadPracticePlan(alice.id), isNull);
+    expect(await store.loadGoalId(alice.id), isNull);
   });
 
   forEachStore('a bound view refuses another profile outright', (store) async {
     final bound = store.boundTo(await store.lifetimeOf(alice.id));
 
     await expectLater(
-      bound.savePracticePlan('somebody-else', PracticePlan.normal),
+      bound.saveGoalId('somebody-else', PracticePlan.normal.goalId),
       throwsArgumentError,
     );
   });
@@ -116,7 +116,7 @@ void main() {
     );
     final held = await store.lifetimeOf(profile.id);
     final bound = store.boundTo(held);
-    await bound.savePracticePlan(profile.id, PracticePlan.normal);
+    await bound.saveGoalId(profile.id, PracticePlan.normal.goalId);
 
     await ProfileLifecycle(
       repository: repository,
@@ -128,7 +128,7 @@ void main() {
     // Authorization reads. Asking whether this incarnation may write must not
     // be what puts the profile's storage back.
     await expectLater(
-      bound.savePracticePlan(profile.id, PracticePlan.normal),
+      bound.saveGoalId(profile.id, PracticePlan.normal.goalId),
       throwsA(isA<RetiredProfileLifetime>()),
     );
     expect(directory.existsSync(), isFalse);
@@ -136,7 +136,7 @@ void main() {
       File('${root.path}/${profile.id}/lifetime.json').existsSync(),
       isFalse,
     );
-    expect(File('${root.path}/${profile.id}/plan.json').existsSync(), isFalse);
+    expect(File('${root.path}/${profile.id}/goal.json').existsSync(), isFalse);
   });
 
   test('an incarnation survives the process that issued it', () async {
@@ -153,7 +153,7 @@ void main() {
 
     final reopened = FilePracticeStore(root);
     await expectLater(
-      reopened.boundTo(held).savePracticePlan(alice.id, PracticePlan.normal),
+      reopened.boundTo(held).saveGoalId(alice.id, PracticePlan.normal.goalId),
       throwsA(isA<RetiredProfileLifetime>()),
     );
   });

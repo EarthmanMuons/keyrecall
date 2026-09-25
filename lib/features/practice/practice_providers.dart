@@ -208,9 +208,11 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
     try {
       final stored = await writes.run(
         profile.id,
-        () => store.loadPracticePlan(profile.id),
+        () => store.loadGoalId(profile.id),
       );
-      return stored ?? PracticePlan.normal;
+      return stored == null
+          ? PracticePlan.normal
+          : PracticePlan(goalId: stored);
     } catch (error) {
       throw PracticeLoopFailure(
         PracticeFailure.plan,
@@ -220,7 +222,9 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
     }
   }
 
-  /// Records [plan] and applies it to the next undecided slot.
+  /// Records [plan]'s goal and applies the whole plan to the next undecided
+  /// slot. The focus is held here and never stored, so a relaunch starts
+  /// working toward the same goal with no focus.
   ///
   /// The loop reads this provider, so replacing the plan reopens the sitting
   /// against the new scope. What survives that is the decision, not the
@@ -263,7 +267,7 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
     try {
       await lifecycle.store
           .boundTo(owner.lifetime)
-          .savePracticePlan(owner.profileId, plan);
+          .saveGoalId(owner.profileId, plan.goalId);
     } on RetiredProfileLifetime {
       // The history this plan was asked for is gone. A plan is intent rather
       // than evidence, so there is nothing to recover and nothing to report:

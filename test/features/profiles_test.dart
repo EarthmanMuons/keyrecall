@@ -224,7 +224,7 @@ void main() {
       displayName: 'Alice',
       placement: PlacementTier.advanced,
     );
-    await practice.savePracticePlan(created.id, PracticePlan.normal);
+    await practice.saveGoalId(created.id, PracticePlan.normal.goalId);
 
     final erased = await container
         .read(profileRosterProvider.notifier)
@@ -234,7 +234,7 @@ void main() {
     final remaining = (await profiles.list()).single;
     expect(remaining.id, created.id);
     expect(remaining.placement, PlacementTier.advanced);
-    expect(await practice.loadPracticePlan(created.id), isNull);
+    expect(await practice.loadGoalId(created.id), isNull);
   });
 
   test(
@@ -347,12 +347,11 @@ class _FailingEraseStore with UnretiredLifetimes implements PracticeStore {
       inner.appendCoordinationSample(sample);
 
   @override
-  Future<PracticePlan?> loadPracticePlan(String profileId) =>
-      inner.loadPracticePlan(profileId);
+  Future<String?> loadGoalId(String profileId) => inner.loadGoalId(profileId);
 
   @override
-  Future<void> savePracticePlan(String profileId, PracticePlan plan) =>
-      inner.savePracticePlan(profileId, plan);
+  Future<void> saveGoalId(String profileId, String goalId) =>
+      inner.saveGoalId(profileId, goalId);
 
   @override
   Future<AcquisitionJournal> loadAcquisitionJournal(

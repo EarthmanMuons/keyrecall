@@ -209,18 +209,15 @@ void main() {
                 placement: PlacementTier.someExperience,
               ))
               as ProfileCreated;
-      await lifecycle.store.savePracticePlan(
+      await lifecycle.store.saveGoalId(
         created.profile.id,
-        PracticePlan.normal,
+        PracticePlan.normal.goalId,
       );
 
       await lifecycle.delete(created.profile.id);
 
       expect(await lifecycle.repository.list(), isEmpty);
-      expect(
-        await lifecycle.store.loadPracticePlan(created.profile.id),
-        isNull,
-      );
+      expect(await lifecycle.store.loadGoalId(created.profile.id), isNull);
       expect(await lifecycle.repository.pendingDeletions(), isEmpty);
     });
 
@@ -259,7 +256,7 @@ void main() {
                 placement: PlacementTier.someExperience,
               ))
               as ProfileCreated;
-      await store.savePracticePlan(created.profile.id, PracticePlan.normal);
+      await store.saveGoalId(created.profile.id, PracticePlan.normal.goalId);
       await repository.beginDelete(created.profile.id);
 
       final reopened = ProfileLifecycle(
@@ -269,7 +266,7 @@ void main() {
       expect(await reopened.resumeDeletions(), [created.profile.id]);
 
       expect(await reopened.repository.list(), isEmpty);
-      expect(await reopened.store.loadPracticePlan(created.profile.id), isNull);
+      expect(await reopened.store.loadGoalId(created.profile.id), isNull);
       expect(
         repository.profileFileFor(created.profile.id).existsSync(),
         isFalse,
@@ -292,9 +289,9 @@ void main() {
         // An incarnation, the way opening a sitting establishes one, so the
         // deletion has all three of a profile's durable parts to destroy.
         await lifecycle.store.lifetimeOf(created.profile.id);
-        await lifecycle.store.savePracticePlan(
+        await lifecycle.store.saveGoalId(
           created.profile.id,
-          PracticePlan.normal,
+          PracticePlan.normal.goalId,
         );
         return (lifecycle, created.profile);
       }
@@ -319,8 +316,8 @@ void main() {
           reason: 'the incarnation',
         );
         expect(
-          await lifecycle.store.loadPracticePlan(profile.id),
-          PracticePlan.normal,
+          await lifecycle.store.loadGoalId(profile.id),
+          PracticePlan.normal.goalId,
           reason: 'what was recorded',
         );
         expect(
@@ -385,7 +382,7 @@ void main() {
 
         await lifecycle.delete(profile.id);
 
-        expect(await lifecycle.store.loadPracticePlan(profile.id), isNull);
+        expect(await lifecycle.store.loadGoalId(profile.id), isNull);
         expect(
           File('${root.path}/${profile.id}/profile.json').existsSync(),
           isFalse,
@@ -421,9 +418,9 @@ void main() {
               placement: PlacementTier.advanced,
             ))
             as ProfileCreated;
-    await lifecycle.store.savePracticePlan(
+    await lifecycle.store.saveGoalId(
       created.profile.id,
-      PracticePlan.normal,
+      PracticePlan.normal.goalId,
     );
 
     await lifecycle.eraseHistory(created.profile.id);
@@ -431,6 +428,6 @@ void main() {
     final remaining = (await lifecycle.repository.list()).single;
     expect(remaining.id, created.profile.id);
     expect(remaining.placement, PlacementTier.advanced);
-    expect(await lifecycle.store.loadPracticePlan(remaining.id), isNull);
+    expect(await lifecycle.store.loadGoalId(remaining.id), isNull);
   });
 }

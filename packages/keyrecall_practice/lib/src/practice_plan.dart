@@ -6,8 +6,33 @@ import 'package:meta/meta.dart';
 import 'goal_curricula.dart';
 import 'scope_resolution.dart';
 
-/// Version of the practice plan wire format.
-const int practicePlanSchemaVersion = 1;
+/// Version of the stored goal's wire format.
+const int practiceGoalSchemaVersion = 1;
+
+/// The stored form of what a profile is working toward.
+///
+/// The goal and nothing else. A focus is what someone wants from this sitting,
+/// so it lives as long as the running app and a relaunch starts unfocused;
+/// storing only the goal makes that a property of the format rather than
+/// something a reader has to remember to discard.
+Map<String, Object?> practiceGoalToJson(String goalId) => {
+  'schema_version': practiceGoalSchemaVersion,
+  'goal_id': goalId,
+};
+
+/// Reads a stored goal back.
+///
+/// A version this build does not know is refused rather than guessed at.
+String practiceGoalFromJson(Map<String, Object?> json) {
+  final version = requireInt(json, 'schema_version');
+  if (version != practiceGoalSchemaVersion) {
+    throw JournalFormatException(
+      'practice goal schema version $version is not readable by this build, '
+      'which writes version $practiceGoalSchemaVersion',
+    );
+  }
+  return requireString(json, 'goal_id', location: 'practice goal');
+}
 
 /// The weight an emphasis focus carries into goal relevance.
 ///
@@ -102,20 +127,6 @@ class MaterialFocus {
       if (matches(material)) material,
   ];
 
-  Map<String, Object?> toJson() => {
-    'family_ids': familyIds.toList()..sort(),
-    'scale_form_ids': scaleFormIds.toList()..sort(),
-    'arpeggio_quality_ids': arpeggioQualityIds.toList()..sort(),
-    'tonics': tonics.toList()..sort(),
-  };
-
-  factory MaterialFocus.fromJson(Map<String, Object?> json) => MaterialFocus(
-    familyIds: _stringSet(json, 'family_ids'),
-    scaleFormIds: _stringSet(json, 'scale_form_ids'),
-    arpeggioQualityIds: _stringSet(json, 'arpeggio_quality_ids'),
-    tonics: _stringSet(json, 'tonics'),
-  );
-
   @override
   bool operator ==(Object other) =>
       other is MaterialFocus &&
@@ -153,25 +164,6 @@ class ActiveFocus {
   });
 
   bool get isExclusive => strength == FocusStrength.exclusive;
-
-  Map<String, Object?> toJson() => {
-    'material': material.toJson(),
-    'strength': strength.name,
-    'label': label,
-  };
-
-  factory ActiveFocus.fromJson(Map<String, Object?> json) => ActiveFocus(
-    material: MaterialFocus.fromJson(
-      asMap(json['material'], 'material', location: 'practice plan'),
-    ),
-    strength: FocusStrength.values.firstWhere(
-      (strength) =>
-          strength.name == requireString(json, 'strength', location: 'focus'),
-      orElse: () =>
-          throw const JournalFormatException('unknown focus strength'),
-    ),
-    label: requireString(json, 'label', location: 'focus'),
-  );
 
   @override
   bool operator ==(Object other) =>
@@ -282,6 +274,23 @@ class PracticePlan {
 
   PracticePlan practicingNormally() => PracticePlan(goalId: goalId);
 
+  /// This plan working toward [goalId] instead, keeping the focus only where
+  /// the new goal holds some of its material in [catalog].
+  ///
+  /// A focus the new goal shares nothing with would be shown while nothing it
+  /// names is practiced, so it is dropped when the goal is chosen rather than
+  /// kept for a goal it might apply under later.
+  PracticePlan withGoal(String goalId, List<TechnicalMaterial> catalog) {
+    final active = focus;
+    final goal = supportedGoals[goalId];
+    if (active == null || goal == null) return PracticePlan(goalId: goalId);
+    final applies = targetRequirementIdsOver(goal, {
+      for (final material in active.material.selectionOf(catalog))
+        material.materialId,
+    }).isNotEmpty;
+    return PracticePlan(goalId: goalId, focus: applies ? active : null);
+  }
+
   /// The goal and focus this plan resolves to over [catalog].
   ///
   /// The requirement ids a focus names are the ones the goal's curriculum
@@ -341,72 +350,12 @@ class PracticePlan {
     );
   }
 
-  Map<String, Object?> toJson() => {
-    'schema_version': practicePlanSchemaVersion,
-    'goal_id': goalId,
-    'focus': focus?.toJson(),
-  };
-
-  /// Reads a plan back.
-  ///
-  /// A version this build does not know is refused rather than guessed at: a
-  /// plan is what a learner asked for, and a partial reading of it would put
-  /// them in a scope they never chose.
-  factory PracticePlan.fromJson(Map<String, Object?> json) {
-    final version = requireInt(json, 'schema_version');
-    if (version != practicePlanSchemaVersion) {
-      throw JournalFormatException(
-        'practice plan schema version $version is not readable by this build, '
-        'which writes version $practicePlanSchemaVersion',
-      );
-    }
-    final focus = json['focus'];
-    final plan = PracticePlan(
-      goalId: requireString(json, 'goal_id', location: 'practice plan'),
-      focus: focus == null
-          ? null
-          : ActiveFocus.fromJson(
-              asMap(focus, 'focus', location: 'practice plan'),
-            ),
-    );
-    // A facet that is present and empty narrows nothing, which a build whose
-    // chooser offered that could write. It is read as the unfocused plan it
-    // describes rather than refused, because what it asked for is legible. A
-    // facet that is not there at all is a different thing and threw above:
-    // nothing establishes what it said, and reading it as empty would widen
-    // whatever was asked for.
-    final stored = plan.focus;
-    return stored == null ? plan : plan.focusedOn(stored);
-  }
-
   @override
   bool operator ==(Object other) =>
       other is PracticePlan && other.goalId == goalId && other.focus == focus;
 
   @override
   int get hashCode => Object.hash(goalId, focus);
-}
-
-/// The strings at [field], which must be there.
-///
-/// A missing facet is not an empty one. Reading it as empty turns "C major
-/// only" whose payload did not survive into a focus that narrows nothing, and
-/// an exclusive one at that.
-Set<String> _stringSet(Map<String, Object?> json, String field) {
-  final value = json[field];
-  if (value is! List) {
-    throw JournalFormatException('$field must be a list', location: 'focus');
-  }
-  return {
-    for (final entry in value)
-      if (entry is String)
-        entry
-      else
-        throw JournalFormatException(
-          '$field must hold strings',
-          location: 'focus',
-        ),
-  };
 }
 
 bool _sameSet(Set<String> a, Set<String> b) =>

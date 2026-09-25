@@ -71,19 +71,27 @@ void main() {
     expect((await container.read(practiceLoopProvider.future)).plan, plan);
   });
 
-  test('a focus outlives the run that asked for it', () async {
+  test('a goal outlives the run that chose it, and a focus does not', () async {
     final container = launch();
     await place(container);
     await container.read(practicePlanProvider.future);
 
     await container
         .read(practicePlanProvider.notifier)
-        .apply(PracticePlan.normal.focusedOn(_minorMaterial));
+        .apply(
+          const PracticePlan(goalId: 'FOUNDATIONS').focusedOn(_minorMaterial),
+        );
+    expect(
+      container.read(practicePlanProvider).requireValue.isFocused,
+      isTrue,
+      reason: 'the focus holds for as long as the app runs',
+    );
 
     final relaunched = launch();
-    final plan = await relaunched.read(practicePlanProvider.future);
-    expect(plan.focus?.label, 'Minor material');
-    expect(plan.focus?.strength, FocusStrength.emphasis);
+    expect(
+      await relaunched.read(practicePlanProvider.future),
+      const PracticePlan(goalId: 'FOUNDATIONS'),
+    );
   });
 
   test('an exclusive focus is the only thing presented', () async {
@@ -198,10 +206,7 @@ void main() {
       final container = launch();
       await place(container);
       final profile = (await profiles.selectedOrOldest())!;
-      await practice.savePracticePlan(
-        profile.id,
-        const PracticePlan(goalId: 'UNKNOWN_EXAM'),
-      );
+      await practice.saveGoalId(profile.id, 'UNKNOWN_EXAM');
 
       final relaunched = launch();
 
@@ -261,7 +266,7 @@ void main() {
     }
 
     void corruptPlanOf(Profile profile) =>
-        File('${root.path}/${profile.id}/plan.json')
+        File('${root.path}/${profile.id}/goal.json')
             .writeAsStringSync('{not json');
 
     Future<Object?> failureFrom(ProviderContainer container) => container
@@ -306,8 +311,8 @@ void main() {
           .replaceWithNormalPractice();
 
       expect(
-        await FilePracticeStore(root).loadPracticePlan(profile.id),
-        PracticePlan.normal,
+        await FilePracticeStore(root).loadGoalId(profile.id),
+        PracticePlan.normal.goalId,
         reason: 'the replacement is addressed to the profile that failed',
       );
       relaunched.dispose();
@@ -325,8 +330,8 @@ void main() {
         placement: PlacementTier.beginner,
       );
       final store = FilePracticeStore(root);
-      final held = PracticePlan.normal.focusedOn(_minorMaterial);
-      await store.savePracticePlan(other.id, held);
+      const held = 'FOUNDATIONS';
+      await store.saveGoalId(other.id, held);
       started.dispose();
       corruptPlanOf(profile);
 
@@ -336,7 +341,7 @@ void main() {
           .read(practicePlanProvider.notifier)
           .replaceWithNormalPractice();
 
-      expect(await store.loadPracticePlan(other.id), held);
+      expect(await store.loadGoalId(other.id), held);
     });
 
     test('a replacement does not follow the profile into a new life', () async {
@@ -358,7 +363,7 @@ void main() {
           .replaceWithNormalPractice();
 
       expect(
-        await FilePracticeStore(root).loadPracticePlan(profile.id),
+        await FilePracticeStore(root).loadGoalId(profile.id),
         isNull,
         reason: 'a stale incarnation writes nothing over the new one',
       );
@@ -411,7 +416,7 @@ void main() {
     await tester.pump();
     await replaced.future;
 
-    expect(await practice.loadPracticePlan(profile.id), PracticePlan.normal);
+    expect(await practice.loadGoalId(profile.id), PracticePlan.normal.goalId);
   });
 
   test('the focus control says its state where the icon cannot', () {
