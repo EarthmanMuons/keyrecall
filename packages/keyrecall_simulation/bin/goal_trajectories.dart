@@ -14,9 +14,9 @@ Future<void> main(List<String> arguments) async {
     ..addOption('slots', defaultsTo: '20', help: 'slots per sitting')
     ..addOption('jobs', defaultsTo: '8')
     ..addOption(
-      'target-shapes',
-      allowed: [for (final value in TargetShapePreference.values) value.name],
-      defaultsTo: 'off',
+      'progress',
+      allowed: [for (final value in ProgressPreference.values) value.name],
+      defaultsTo: 'materialOnly',
     );
   final options = parser.parse(arguments);
   final seeds = int.parse(options.option('seeds')!);
@@ -29,9 +29,7 @@ Future<void> main(List<String> arguments) async {
     sittings: sittings,
     slotsPerSitting: slots,
     parallelism: int.parse(options.option('jobs')!),
-    targetShapes: TargetShapePreference.values.byName(
-      options.option('target-shapes')!,
-    ),
+    progress: ProgressPreference.values.byName(options.option('progress')!),
     onProgress: (completed, total) {
       if (completed == total || completed % 16 == 0) {
         stderr.writeln(
@@ -86,6 +84,7 @@ Future<void> main(List<String> arguments) async {
     'live': (group) => _pickShare(group, (pick) => pick.isLiveSupport),
     'target_shaped': (group) =>
         _pickShare(group, (pick) => pick.isTargetShaped),
+    'clean': (group) => _pickShare(group, (pick) => pick.clean),
     'unguided': (group) =>
         _pickShare(group, (pick) => !pick.guidance.isMaterialSupplied),
     'cued': (group) =>

@@ -19,17 +19,26 @@ enum EligibilityEvidence {
   predictedReference,
 }
 
-/// Whether ranking prefers a candidate with the shape of an uncovered goal
-/// target, and at which point in the rank key.
-enum TargetShapePreference {
+/// What ranking counts as progress, beyond the material a goal weights.
+///
+/// Among candidates already eligible and admitted, the ones that would add a
+/// capability not yet demonstrated. A finite goal names its destination as
+/// target shapes; any goal has a frontier, the adjacent step past what a hand
+/// has shown on a material. Neither means the hardest thing allowed.
+enum ProgressPreference {
   /// Goal relevance reads material alone.
-  off,
+  materialOnly,
 
-  /// Beside goal relevance, below retention, information, and diversity.
-  atGoals,
+  /// An uncovered target's shape, beside goal relevance, below retention,
+  /// information, and diversity.
+  targetAtGoals,
 
-  /// Above retention, below the tier and the coordination transition.
-  aboveRetention,
+  /// An uncovered target's shape, above retention.
+  target,
+
+  /// An uncovered target's shape, and then an adjacent step past the frontier,
+  /// both above retention.
+  targetAndFrontier,
 }
 
 /// Thresholds for the `REQUIRES` prerequisite gate.
@@ -591,8 +600,8 @@ class SchedulerConfig {
   /// deciding between them.
   final RankTolerances rankTolerances;
 
-  /// Whether ranking prefers the shape of an uncovered goal target.
-  final TargetShapePreference targetShapes;
+  /// What ranking counts as progress.
+  final ProgressPreference progress;
 
   /// The introduction cap, or null where breadth is uncapped.
   final IntroductionConfig? introductions;
@@ -611,7 +620,7 @@ class SchedulerConfig {
     required this.pacing,
     this.dose,
     this.rankTolerances = RankTolerances.exact,
-    this.targetShapes = TargetShapePreference.off,
+    this.progress = ProgressPreference.materialOnly,
     this.introductions,
     this.novelty,
   });
@@ -640,7 +649,7 @@ class SchedulerConfig {
     pacing: pacing,
     dose: dose,
     rankTolerances: rankTolerances,
-    targetShapes: targetShapes,
+    progress: progress,
     introductions: introductions,
     novelty: novelty,
   );
@@ -657,7 +666,7 @@ class SchedulerConfig {
     pacing: pacing,
     dose: dose,
     rankTolerances: rankTolerances,
-    targetShapes: targetShapes,
+    progress: progress,
     introductions: introductions,
     novelty: novelty,
   );
@@ -674,7 +683,7 @@ class SchedulerConfig {
         pacing: pacing,
         dose: dose,
         rankTolerances: rankTolerances,
-        targetShapes: targetShapes,
+        progress: progress,
         introductions: introductions,
         novelty: novelty,
       );
@@ -691,28 +700,27 @@ class SchedulerConfig {
         pacing: pacing,
         dose: dose,
         rankTolerances: rankTolerances,
-        targetShapes: targetShapes,
+        progress: progress,
         introductions: introductions,
         novelty: novelty,
       );
 
-  /// The same policy with [targetShapes] deciding what arriving at a goal
+  /// The same policy with [progress] deciding what arriving at a goal
   /// target is worth in ranking.
-  SchedulerConfig withTargetShapes(TargetShapePreference targetShapes) =>
-      SchedulerConfig(
-        modelVersion: modelVersion,
-        eligibility: eligibility,
-        safety: safety,
-        challenge: challenge,
-        diversity: diversity,
-        probe: probe,
-        pacing: pacing,
-        dose: dose,
-        rankTolerances: rankTolerances,
-        targetShapes: targetShapes,
-        introductions: introductions,
-        novelty: novelty,
-      );
+  SchedulerConfig withProgress(ProgressPreference progress) => SchedulerConfig(
+    modelVersion: modelVersion,
+    eligibility: eligibility,
+    safety: safety,
+    challenge: challenge,
+    diversity: diversity,
+    probe: probe,
+    pacing: pacing,
+    dose: dose,
+    rankTolerances: rankTolerances,
+    progress: progress,
+    introductions: introductions,
+    novelty: novelty,
+  );
 
   /// The same policy with [eligibility] deciding what is ready.
   SchedulerConfig withEligibility(EligibilityConfig eligibility) =>
@@ -726,7 +734,7 @@ class SchedulerConfig {
         pacing: pacing,
         dose: dose,
         rankTolerances: rankTolerances,
-        targetShapes: targetShapes,
+        progress: progress,
         introductions: introductions,
         novelty: novelty,
       );
@@ -742,7 +750,7 @@ class SchedulerConfig {
     pacing: pacing,
     dose: dose,
     rankTolerances: rankTolerances,
-    targetShapes: targetShapes,
+    progress: progress,
     introductions: introductions,
     novelty: novelty,
   );

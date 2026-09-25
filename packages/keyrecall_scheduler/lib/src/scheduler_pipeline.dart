@@ -2184,10 +2184,15 @@ class SchedulerPipeline {
             diversity: diversity(exercise, session),
             goals: goals(exercise, emphasis),
             targetShaped:
-                config.targetShapes == TargetShapePreference.aboveRetention &&
+                (config.progress == ProgressPreference.target ||
+                    config.progress == ProgressPreference.targetAndFrontier) &&
                 uncoveredTargets.contains(exercise),
+            advancesFrontier:
+                config.progress == ProgressPreference.targetAndFrontier &&
+                realizationRankFor(state, exercise, memo: facts.execution) ==
+                    RealizationRank.advancing,
             targetShapedGoal:
-                config.targetShapes == TargetShapePreference.atGoals &&
+                config.progress == ProgressPreference.targetAtGoals &&
                 uncoveredTargets.contains(exercise),
             realization: realizationRankFor(
               state,

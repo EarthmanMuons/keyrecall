@@ -74,6 +74,10 @@ class GoalTrajectorySelection {
   final bool isLiveSupport;
   final int coveredBefore;
 
+  /// Whether the attempt was played through with the pitch accuracy coverage
+  /// asks for, whatever it was retrieved from.
+  final bool clean;
+
   const GoalTrajectorySelection({
     required this.slot,
     required this.sitting,
@@ -88,6 +92,7 @@ class GoalTrajectorySelection {
     required this.isTargetShaped,
     required this.isLiveSupport,
     required this.coveredBefore,
+    required this.clean,
   });
 }
 
@@ -149,14 +154,14 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
   int sittings = 10,
   int slotsPerSitting = 20,
   PlacementTier? placement,
-  TargetShapePreference targetShapes = TargetShapePreference.off,
+  ProgressPreference progress = ProgressPreference.materialOnly,
   void Function(int sitting, int slots, PracticeSession session)? afterSitting,
 }) async {
   final at0 = DateTime.utc(2026);
   const learner = LearnerModel();
   final pipeline = SchedulerPipeline(
     learner: learner,
-    config: v1SchedulerConfig.withTargetShapes(targetShapes),
+    config: v1SchedulerConfig.withProgress(progress),
   );
   final catalog = <TechnicalMaterial>[
     ...allScales,
@@ -227,6 +232,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
         :final liveSupportMaterialIds,
       )) {
         final conditions = exercise.conditions;
+        final played = playing.play(exercise, random);
         selections.add(
           GoalTrajectorySelection(
             slot: slot++,
@@ -244,13 +250,14 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
               exercise.material.materialId,
             ),
             coveredBefore: coverage?.coveredTargets ?? 0,
+            clean:
+                played.completed &&
+                played.pitchIntegrity >=
+                    RequirementCompletionPolicy.standard.minimumPitchIntegrity,
           ),
         );
         await session.acknowledgePresentation(decision.attemptId);
-        await session.closeWithOutcome(
-          playing.play(exercise, random),
-          observedWallTime: at,
-        );
+        await session.closeWithOutcome(played, observedWallTime: at);
         continue;
       }
       switch (outcome) {
@@ -298,7 +305,7 @@ Future<List<GoalTrajectoryRun>> runGoalTrajectoryMatrix({
   int sittings = 10,
   int slotsPerSitting = 20,
   int parallelism = 1,
-  TargetShapePreference targetShapes = TargetShapePreference.off,
+  ProgressPreference progress = ProgressPreference.materialOnly,
   void Function(int completed, int total)? onProgress,
 }) async {
   if (parallelism < 1) {
@@ -314,7 +321,7 @@ Future<List<GoalTrajectoryRun>> runGoalTrajectoryMatrix({
             seed: seed,
             sittings: sittings,
             slotsPerSitting: slotsPerSitting,
-            targetShapes: targetShapes,
+            progress: progress,
           ),
   ];
   final runs = List<GoalTrajectoryRun?>.filled(tasks.length, null);

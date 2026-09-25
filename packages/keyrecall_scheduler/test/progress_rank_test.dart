@@ -7,6 +7,7 @@ void main() {
     double retention = 0,
     double information = 0,
     bool targetShaped = false,
+    bool advancesFrontier = false,
     bool targetShapedGoal = false,
     EligibilityTier tier = EligibilityTier.fullyEligible,
   }) => RankKey(
@@ -16,6 +17,7 @@ void main() {
     diversity: 0,
     goals: 0,
     targetShaped: targetShaped,
+    advancesFrontier: advancesFrontier,
     targetShapedGoal: targetShapedGoal,
   );
 
@@ -43,5 +45,17 @@ void main() {
       reason: 'continuous terms above it almost never tie',
     );
     expect(key(targetShapedGoal: true).compareTo(key()), greaterThan(0));
+  });
+
+  test('a step past the frontier outranks retention, and not a target', () {
+    expect(
+      key(advancesFrontier: true).compareTo(key(retention: 0.9)),
+      greaterThan(0),
+    );
+    expect(
+      key(advancesFrontier: true).compareTo(key(targetShaped: true)),
+      lessThan(0),
+      reason: 'a goal\'s destination before a step toward what it does not ask',
+    );
   });
 }

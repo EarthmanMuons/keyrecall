@@ -23,16 +23,16 @@ Future<void> main(List<String> arguments) async {
     ..addOption('jobs', defaultsTo: '5')
     ..addOption('out', defaultsTo: 'goal_horizon.jsonl')
     ..addOption(
-      'target-shapes',
-      allowed: [for (final value in TargetShapePreference.values) value.name],
-      defaultsTo: 'off',
+      'progress',
+      allowed: [for (final value in ProgressPreference.values) value.name],
+      defaultsTo: 'materialOnly',
     );
   final options = parser.parse(arguments);
   final scope = GoalTrajectoryScope.values.byName(options.option('scope')!);
   final sittings = int.parse(options.option('sittings')!);
   final every = int.parse(options.option('every')!);
-  final targetShapes = TargetShapePreference.values.byName(
-    options.option('target-shapes')!,
+  final progress = ProgressPreference.values.byName(
+    options.option('progress')!,
   );
   final out = File(options.option('out')!);
   final done = {
@@ -46,7 +46,7 @@ Future<void> main(List<String> arguments) async {
     for (final player in PlayerArchetypes.all)
       for (var seed = 0; seed < int.parse(options.option('seeds')!); seed++)
         if (!done.contains('${player.id}/$seed'))
-          () => _run(scope, player, seed, sittings, every, targetShapes),
+          () => _run(scope, player, seed, sittings, every, progress),
   ];
   final stopwatch = Stopwatch()..start();
   var next = 0;
@@ -79,7 +79,7 @@ Future<Map<String, Object?>> _run(
   int seed,
   int sittings,
   int every,
-  TargetShapePreference targetShapes,
+  ProgressPreference progress,
 ) async {
   final catalog = <TechnicalMaterial>[
     ...allScales,
@@ -101,7 +101,7 @@ Future<Map<String, Object?>> _run(
     player: player,
     seed: seed,
     sittings: sittings,
-    targetShapes: targetShapes,
+    progress: progress,
     afterSitting: (sitting, slots, session) {
       if ((sitting + 1) % every != 0) return;
       final evaluated = const PracticeScopeEvaluator().evaluate(

@@ -377,12 +377,21 @@ class RankKey implements Comparable<RankKey> {
   final bool contraryCoordination;
 
   /// Whether this candidate has the shape of a goal target not yet covered,
-  /// where [SchedulerConfig.targetShapes] ranks that above retention.
+  /// where [SchedulerConfig.progress] ranks that above retention.
   ///
   /// A goal term, as [goals] is, but read from the shape a requirement asks
   /// for rather than the material alone. Below the tier, so it chooses only
   /// among candidates equally eligible and already admitted.
   final bool targetShaped;
+
+  /// Whether this candidate is an adjacent step past the frontier for its
+  /// material and hand, where [SchedulerConfig.progress] ranks that above
+  /// retention.
+  ///
+  /// The step [realization] already names, read higher. Below [targetShaped],
+  /// so a finite goal's destination comes before any step toward something it
+  /// does not ask for.
+  final bool advancesFrontier;
 
   /// `R(e)`: how urgent it is to test this material, weighted by whether this
   /// candidate can actually produce retrieval evidence.
@@ -397,7 +406,7 @@ class RankKey implements Comparable<RankKey> {
   /// `G(e)`: learner-goal relevance, zero for everything no focus emphasized.
   final double goals;
 
-  /// [targetShaped] where [SchedulerConfig.targetShapes] ranks it beside
+  /// [targetShaped] where [SchedulerConfig.progress] ranks it beside
   /// [goals] instead.
   final bool targetShapedGoal;
 
@@ -426,6 +435,7 @@ class RankKey implements Comparable<RankKey> {
     required this.diversity,
     required this.goals,
     this.targetShaped = false,
+    this.advancesFrontier = false,
     this.targetShapedGoal = false,
     this.realization = RealizationRank.unmeasured,
     this.realizationFit = 0,
@@ -447,6 +457,10 @@ class RankKey implements Comparable<RankKey> {
       targetShaped,
     ).compareTo(_order(other.targetShaped));
     if (byTargetShape != 0) return byTargetShape;
+    final byFrontier = _order(
+      advancesFrontier,
+    ).compareTo(_order(other.advancesFrontier));
+    if (byFrontier != 0) return byFrontier;
     final byRetention = retention.compareTo(other.retention);
     if (byRetention != 0) return byRetention;
     final byInformation = information.compareTo(other.information);
@@ -475,6 +489,7 @@ class RankKey implements Comparable<RankKey> {
       other.diversity == diversity &&
       other.goals == goals &&
       other.targetShaped == targetShaped &&
+      other.advancesFrontier == advancesFrontier &&
       other.targetShapedGoal == targetShapedGoal &&
       other.realization == realization &&
       other.realizationFit == realizationFit;
@@ -489,6 +504,7 @@ class RankKey implements Comparable<RankKey> {
     diversity,
     goals,
     targetShaped,
+    advancesFrontier,
     targetShapedGoal,
     realization,
     realizationFit,
