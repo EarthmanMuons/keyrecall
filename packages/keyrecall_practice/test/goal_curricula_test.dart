@@ -35,6 +35,26 @@ void main() {
     }
   });
 
+  test('the finite goals are from memory, and general technique is not', () {
+    for (final goalId in ['FOUNDATIONS', 'KEY_FLUENCY_24']) {
+      expect(
+        {
+          for (final requirement in resolved(goalId).requirements)
+            requirement.requirement.retrieval,
+        },
+        {CoverageRetrieval.unguided},
+        reason: goalId,
+      );
+    }
+    expect(
+      {
+        for (final requirement in resolved('GENERAL_FLUENCY').requirements)
+          requirement.requirement.retrieval,
+      },
+      {CoverageRetrieval.observed},
+    );
+  });
+
   group('Foundations', () {
     final scope = resolved('FOUNDATIONS');
 

@@ -137,11 +137,7 @@ RequirementAssessment assessRequirementAttempt({
       completion: _met(outcome.started && outcome.completed),
       tempo: _assessTempo(requirement, record.exercise, outcome),
       pitch: _atLeast(outcome.pitchIntegrity, policy.minimumPitchIntegrity),
-      retrieval: switch (outcome.retrieval) {
-        FactualRetrieval.succeeded => CompletionCriterion.satisfied,
-        FactualRetrieval.failed => CompletionCriterion.notSatisfied,
-        FactualRetrieval.notTested => CompletionCriterion.unknown,
-      },
+      retrieval: _assessRetrieval(requirement, record.exercise, outcome),
       timing: _atLeast(outcome.motorScore, policy.minimumMotorScore),
       coordination:
           record.exercise.conditions.hands == HandConfiguration.together
@@ -152,6 +148,27 @@ RequirementAssessment assessRequirementAttempt({
   return RequirementAssessment.notDemonstrated(
     structureMatches: structureMatches,
   );
+}
+
+/// Whether [outcome] retrieved the material the way [requirement] asks.
+///
+/// A requirement asking for unguided retrieval reads anything shown first as
+/// not satisfying it, however the attempt went: the previewed or cued material
+/// is what the attempt had, not what the learner produced alone.
+CompletionCriterion _assessRetrieval(
+  CurriculumRequirement requirement,
+  Exercise exercise,
+  Outcome outcome,
+) {
+  if (requirement.retrieval == CoverageRetrieval.unguided &&
+      exercise.guidance.isMaterialSupplied) {
+    return CompletionCriterion.notSatisfied;
+  }
+  return switch (outcome.retrieval) {
+    FactualRetrieval.succeeded => CompletionCriterion.satisfied,
+    FactualRetrieval.failed => CompletionCriterion.notSatisfied,
+    FactualRetrieval.notTested => CompletionCriterion.unknown,
+  };
 }
 
 /// The pace [outcome] established, against the pace [requirement] asks for.

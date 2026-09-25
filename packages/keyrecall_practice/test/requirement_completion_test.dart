@@ -155,6 +155,88 @@ void main() {
     });
   });
 
+  group('retrieval from memory', () {
+    final fromMemory = _requirement(retrieval: CoverageRetrieval.unguided);
+    final previewed = _exercise(guidance: GuidanceContext.notesPreviewedOnly);
+
+    test('an unguided retrieval covers it', () {
+      expect(
+        _assess(
+          requirement: fromMemory,
+          exercise: _exercise(),
+          outcome: _outcome(),
+        ).isCovered,
+        isTrue,
+      );
+    });
+
+    test('the same performance after a preview does not', () {
+      final assessment = _assess(
+        requirement: fromMemory,
+        exercise: previewed,
+        outcome: _outcome(),
+      );
+
+      expect(assessment.retrieval, CompletionCriterion.notSatisfied);
+      expect(assessment.isCovered, isFalse);
+    });
+
+    test('nor does it under continuous cues', () {
+      expect(
+        _assess(
+          requirement: fromMemory,
+          exercise: _exercise(guidance: GuidanceContext.continuouslyCued),
+          outcome: _outcome(retrieval: FactualRetrieval.notTested),
+        ).retrieval,
+        CompletionCriterion.notSatisfied,
+      );
+    });
+
+    test('and unguided is not enough on its own', () {
+      expect(
+        _assess(
+          requirement: fromMemory,
+          exercise: _exercise(),
+          outcome: _outcome(pitchIntegrity: 0.5),
+        ).isCovered,
+        isFalse,
+      );
+    });
+
+    test('a requirement that asks for less still reads the preview', () {
+      expect(
+        _assess(
+          requirement: _requirement(),
+          exercise: previewed,
+          outcome: _outcome(),
+        ).isCovered,
+        isTrue,
+      );
+    });
+
+    test('the learner model still reads the preview as a retrieval', () {
+      // The criterion is coverage's. What the attempt says about memory is
+      // unchanged by it.
+      const model = LearnerModel();
+      final at = DateTime.utc(2026, 9, 25);
+      final state = LearnerState.cold(v1LearnerParams, at: at);
+      final outcome = _outcome();
+      model.applyOutcome(
+        state: state,
+        exercise: previewed,
+        outcome: outcome,
+        weights: evidenceWeightsFor(previewed, outcome),
+        prediction: model.predict(state, previewed, at: at),
+        at: at,
+      );
+
+      expect(
+        state.materialMemory[_material.materialId]!.hasFactualRetrieval,
+        isTrue,
+      );
+    });
+  });
+
   group('structure', () {
     test('an attempt at another shape demonstrates nothing', () {
       final assessment = _assess(
@@ -193,6 +275,7 @@ RequirementAssessment _assess({
 CurriculumRequirement _requirement({
   double? minimumTempoBpm,
   HandConfiguration? hands,
+  CoverageRetrieval retrieval = CoverageRetrieval.observed,
 }) => CurriculumRequirement(
   id: 'REQUIREMENT',
   familyId: _material.familyId,
@@ -201,6 +284,7 @@ CurriculumRequirement _requirement({
     hands: hands,
     minimumTempoBpm: minimumTempoBpm,
   ),
+  retrieval: retrieval,
 );
 
 Exercise _exercise({

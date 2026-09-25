@@ -179,6 +179,13 @@ ratio, so what the learner played is what counts rather than what they were
 asked for. A criterion the attempt carried no evidence about is unknown rather
 than failed, and an unknown criterion does not cover.
 
+Retrieval is read the way the requirement asks. By default any presentation that
+tests retrieval will do, which includes notes shown before the attempt; a
+requirement that asks for unguided retrieval is covered only when nothing was
+shown first. Foundations and 24-key fluency ask for unguided, since they say
+"from memory". This is coverage's reading and not the learner model's: a
+previewed retrieval still counts as retrieval evidence about memory.
+
 This is the curriculum's own policy and deliberately not the learner model's
 evidence predicates. The learner asks what a performance says about the learner;
 completion asks whether the performance demonstrated the requirement, which is

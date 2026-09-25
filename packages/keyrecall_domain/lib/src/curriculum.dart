@@ -45,6 +45,19 @@ class ExerciseConstraints {
           exercise.conditions.tempoBpm >= minimumTempoBpm!);
 }
 
+/// What a covering attempt has to have retrieved its material under.
+///
+/// A coverage criterion rather than evidence about the learner: the model may
+/// read a retrieval after the notes were previewed as a retrieval, and a goal
+/// that says "from memory" still cannot be covered by one.
+enum CoverageRetrieval {
+  /// Any presentation that tests retrieval at all.
+  observed,
+
+  /// Nothing about the material shown first.
+  unguided,
+}
+
 /// One stable, independently assessable capability in a curriculum.
 @immutable
 class CurriculumRequirement {
@@ -54,6 +67,7 @@ class CurriculumRequirement {
   final ExerciseConstraints constraints;
   final CurriculumRequirementRole role;
   final Set<String> supportsRequirementIds;
+  final CoverageRetrieval retrieval;
 
   factory CurriculumRequirement({
     required String id,
@@ -62,6 +76,7 @@ class CurriculumRequirement {
     ExerciseConstraints constraints = const ExerciseConstraints(),
     CurriculumRequirementRole role = CurriculumRequirementRole.target,
     Set<String> supportsRequirementIds = const {},
+    CoverageRetrieval retrieval = CoverageRetrieval.observed,
   }) => CurriculumRequirement._(
     id: id,
     familyId: familyId,
@@ -69,6 +84,7 @@ class CurriculumRequirement {
     constraints: constraints,
     role: role,
     supportsRequirementIds: Set.unmodifiable(supportsRequirementIds),
+    retrieval: retrieval,
   );
 
   const CurriculumRequirement._({
@@ -78,6 +94,7 @@ class CurriculumRequirement {
     required this.constraints,
     required this.role,
     required this.supportsRequirementIds,
+    required this.retrieval,
   });
 }
 

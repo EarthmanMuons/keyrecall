@@ -6,8 +6,8 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 /// the two earliest admission bands and three fingering families, the standard
 /// pattern, F's right-hand exception, and B flat's black-key start. E major is
 /// left out because it adds a fourth sharp and no new fingering. Each hand
-/// separately over one octave, up and down, since the milestone is geography
-/// and recall rather than coordination.
+/// separately over one octave, up and down, from memory, since the milestone
+/// is geography and recall rather than coordination.
 final Curriculum foundationsCurriculum = Curriculum(
   id: 'FOUNDATIONS',
   version: '1',
@@ -24,7 +24,7 @@ final Curriculum foundationsCurriculum = Curriculum(
 );
 
 /// Every major and natural-minor key, hands together over two octaves, up and
-/// down.
+/// down, from memory.
 ///
 /// Scales only in this version. The root-position arpeggios join once they
 /// are generated up and down, as a new version, rather than as ascending-only
@@ -53,4 +53,5 @@ CurriculumRequirement _requirement(
     octaves: octaves,
     direction: ExerciseDirection.upDown,
   ),
+  retrieval: CoverageRetrieval.unguided,
 );
