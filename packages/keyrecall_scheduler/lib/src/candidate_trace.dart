@@ -442,41 +442,7 @@ class RankKey implements Comparable<RankKey> {
   });
 
   @override
-  int compareTo(RankKey other) {
-    final byTier = tier.index.compareTo(other.tier.index);
-    if (byTier != 0) return byTier;
-    final byTransition = _order(
-      coordinationTransition,
-    ).compareTo(_order(other.coordinationTransition));
-    if (byTransition != 0) return byTransition;
-    final byContrary = _order(
-      contraryCoordination,
-    ).compareTo(_order(other.contraryCoordination));
-    if (byContrary != 0) return byContrary;
-    final byTargetShape = _order(
-      targetShaped,
-    ).compareTo(_order(other.targetShaped));
-    if (byTargetShape != 0) return byTargetShape;
-    final byFrontier = _order(
-      advancesFrontier,
-    ).compareTo(_order(other.advancesFrontier));
-    if (byFrontier != 0) return byFrontier;
-    final byRetention = retention.compareTo(other.retention);
-    if (byRetention != 0) return byRetention;
-    final byInformation = information.compareTo(other.information);
-    if (byInformation != 0) return byInformation;
-    final byDiversity = diversity.compareTo(other.diversity);
-    if (byDiversity != 0) return byDiversity;
-    final byGoals = goals.compareTo(other.goals);
-    if (byGoals != 0) return byGoals;
-    final byTargetShapedGoal = _order(
-      targetShapedGoal,
-    ).compareTo(_order(other.targetShapedGoal));
-    if (byTargetShapedGoal != 0) return byTargetShapedGoal;
-    final byRealization = realization.index.compareTo(other.realization.index);
-    if (byRealization != 0) return byRealization;
-    return realizationFit.compareTo(other.realizationFit);
-  }
+  int compareTo(RankKey other) => RankTolerances.exact.compare(this, other);
 
   @override
   bool operator ==(Object other) =>
@@ -690,14 +656,22 @@ class RankTolerances {
   int compare(RankKey a, RankKey b) {
     final byTier = a.tier.index.compareTo(b.tier.index);
     if (byTier != 0) return byTier;
-    final byTransition = (a.coordinationTransition ? 1 : 0).compareTo(
-      b.coordinationTransition ? 1 : 0,
-    );
+    final byTransition = _order(
+      a.coordinationTransition,
+    ).compareTo(_order(b.coordinationTransition));
     if (byTransition != 0) return byTransition;
-    final byContrary = (a.contraryCoordination ? 1 : 0).compareTo(
-      b.contraryCoordination ? 1 : 0,
-    );
+    final byContrary = _order(
+      a.contraryCoordination,
+    ).compareTo(_order(b.contraryCoordination));
     if (byContrary != 0) return byContrary;
+    final byTargetShape = _order(
+      a.targetShaped,
+    ).compareTo(_order(b.targetShaped));
+    if (byTargetShape != 0) return byTargetShape;
+    final byFrontier = _order(
+      a.advancesFrontier,
+    ).compareTo(_order(b.advancesFrontier));
+    if (byFrontier != 0) return byFrontier;
     if (!_ties(a.retention, b.retention, retention)) {
       return a.retention.compareTo(b.retention);
     }
@@ -708,6 +682,10 @@ class RankTolerances {
       return a.diversity.compareTo(b.diversity);
     }
     if (!_ties(a.goals, b.goals, goals)) return a.goals.compareTo(b.goals);
+    final byTargetShapedGoal = _order(
+      a.targetShapedGoal,
+    ).compareTo(_order(b.targetShapedGoal));
+    if (byTargetShapedGoal != 0) return byTargetShapedGoal;
     final byRealization = a.realization.index.compareTo(b.realization.index);
     if (byRealization != 0) return byRealization;
     if (!_ties(a.realizationFit, b.realizationFit, realizationFit)) {
