@@ -1,8 +1,8 @@
 # Goal trajectories
 
 > **Status:** characterization of the three production goals. Nothing blocks.
-> The finite goals scope material but do not steer realization, which is the
-> finding that matters; no policy is changed here.
+> The finite goals scoped material but did not steer realization; the
+> realization envelope that followed is measured at the end.
 
 The altered-form census asked whether narrow scopes can finish. This one asks
 what the goals KeyRecall offers actually do to practice: General technique,
@@ -84,15 +84,39 @@ slot 30, with 53% of picks spent on its declared support. B flat major under
 Foundations completes in 36. D major as scale and arpeggio under 24-key fluency
 completes in only 4, for the same reason the whole goal is slow.
 
-## What follows
+## After the realization envelope
 
-The gap is in the route rather than the destination. A finite goal could offer
-only realizations that are its targets or on the progression path to one: a span
-no wider than the target's, hands together only where a target asks for it, and
-the directions and rungs below the target's. That is derivable from the declared
-progression for any family, and it would take hands-together and two-octave work
-out of Foundations entirely while leaving 24-key fluency's path intact. It is a
-scope change, not a ranking term, and is not made here.
+A finite goal now offers a material only in the shapes on the declared way to
+its targets: a span no wider, ascending before up and down, and each hand alone
+before both where the material requires it. The same census, rerun:
+
+| Foundations         | Before | After |
+| ------------------- | -----: | ----: |
+| Hands together      |  0.375 | 0.000 |
+| Two octaves         |  0.456 | 0.000 |
+| Target-shaped       |  0.168 | 0.429 |
+| Covered             |  0.441 | 0.762 |
+| Complete            |   0/52 | 29/52 |
+| Fully covered, slot |      - |   139 |
+
+The advanced, reliable, compliant, coordination-limited, and forgetful
+archetypes complete Foundations in every seed; the intermediate in three of
+four. What remains slow is the learner rather than the route: the true beginner
+covers 1%, the scale-weak arpeggio player 26%, and the uneven-handed player
+half, the first two with most of their picks cued or previewed. The B flat focus
+completes in 34 runs rather than 36 and reaches full coverage by slot 31 rather
+than 54.
+
+General technique is unchanged, as it should be, since it names no shape. 24-key
+fluency is unchanged too: removing four-octave arpeggios leaves every precursor
+of its hands-together, two-octave targets in place, and 200 slots is short for
+48 of them. Whether it reaches its targets steadily is a question for a longer
+horizon.
+
+The census also ran in 920 seconds rather than 1928, on five workers rather than
+nine; per-decision cost is dominated by the number of candidates scored, which
+the envelope shrinks for a finite goal, and grows only mildly with history,
+about 115 ms a decision at 50 slots and 200 ms at 400.
 
 ## Interpretation boundary
 
