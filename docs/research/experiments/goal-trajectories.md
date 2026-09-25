@@ -1,0 +1,102 @@
+# Goal trajectories
+
+> **Status:** characterization of the three production goals. Nothing blocks.
+> The finite goals scope material but do not steer realization, which is the
+> finding that matters; no policy is changed here.
+
+The altered-form census asked whether narrow scopes can finish. This one asks
+what the goals KeyRecall offers actually do to practice: General technique,
+Foundations, and 24-key fluency, each also with a narrow focus inside it.
+
+## Method
+
+Thirteen archetypes, four seeds, ten daily sittings of up to twenty slots, each
+sitting a fresh practice session over the same store, as the app opens one. A
+sitting that is caught up or blocked ends early and the next day carries on.
+Coverage is read from the journal against the goal, as the product reads it.
+
+| Scope                       | Plan                                                      |
+| --------------------------- | --------------------------------------------------------- |
+| `general`                   | General technique                                         |
+| `foundations`               | Foundations                                               |
+| `keyFluency`                | 24-key fluency, version 2                                 |
+| `generalFocusedOnDHarmonic` | General technique, exclusive focus on D harmonic minor    |
+| `foundationsFocusedOnBFlat` | Foundations, exclusive focus on B flat major              |
+| `keyFluencyFocusedOnD`      | 24-key fluency, exclusive focus on D major, both families |
+
+```console
+dart run keyrecall_simulation:goal_trajectories --seeds 4 --sittings 10 --slots 20 --jobs 8
+```
+
+A pick is **target-shaped** when its hands, span, and direction match one of the
+goal's target requirements; guidance is not part of the shape.
+
+## Results
+
+52 runs per scope, about 193 picks per unfocused run. Slots are means over the
+runs that reached them, with that count.
+
+| Scope          | Covered | Complete | Half covered | Target-shaped | Hands together | Two octaves | Arpeggio |
+| -------------- | ------: | -------: | -----------: | ------------: | -------------: | ----------: | -------: |
+| general        |       - |        - |            - |             - |          0.210 |       0.285 |    0.477 |
+| foundations    |   0.441 |     0/52 |     151 (26) |         0.168 |          0.375 |       0.456 |    0.000 |
+| keyFluency     |   0.009 |     0/52 |            - |         0.019 |          0.226 |       0.253 |    0.577 |
+| D harmonic     |   0.942 |    49/52 |      30 (49) |         0.475 |          0.317 |       0.344 |    0.000 |
+| B flat, Found. |   0.837 |    36/52 |      21 (51) |         0.339 |          0.174 |       0.398 |    0.000 |
+| D, 24-key      |   0.154 |     4/52 |      38 (12) |         0.018 |          0.188 |       0.279 |    0.514 |
+
+No run in any scope blocked. General technique met 36 materials in 193 picks,
+with no material above 7% of them, arpeggios at about half, and altered forms
+first appearing near slot 74 in 39 of 52 runs.
+
+## What it shows
+
+**The finite goals narrow material and not realization.** A goal's requirements
+name a shape, and nothing in selection reads it: goal emphasis weights a
+material, so every realization of a target material is equally wanted. Under
+Foundations, whose every target is one hand over one octave up and down, 46% of
+picks were two octaves and 38% hands together, work the goal neither asks for
+nor needs as preparation. Only 17% of picks had a target's shape. Under 24-key
+fluency the scheduler chose almost exactly what it chose under General
+technique, minus the altered forms: for the true beginner the two rows are
+identical.
+
+**So coverage is slow, and not for want of ability.** No Foundations run
+finished in 200 slots. The advanced archetype reached 79% while spending 55% of
+its picks on two octaves. Coverage arrives as a long tail rather than steadily,
+which is what a scheduler that has moved past one octave would produce, though
+the census does not trace which targets were left.
+
+**A true beginner covers nothing in Foundations in 200 slots.** 41% of its picks
+are continuously cued and 17% unguided, so from-memory coverage has almost no
+attempts to come from. That is the cold-start regime the roadmap describes, seen
+through a goal, and a question for the placement work rather than for the goal
+definitions.
+
+**24-key fluency is a long goal, as expected.** Target-shaped attempts first
+appear near slot 107, hands together over two octaves being several
+prerequisites away, and coverage reaches 1%. Arpeggios take 58% of picks and
+appear in the first two slots; that share is a property of the catalog's
+arpeggio candidates under the information term, and General shows the same.
+
+**Narrow focuses finish.** D harmonic minor completes in 49 of 52 runs by about
+slot 30, with 53% of picks spent on its declared support. B flat major under
+Foundations completes in 36. D major as scale and arpeggio under 24-key fluency
+completes in only 4, for the same reason the whole goal is slow.
+
+## What follows
+
+The gap is in the route rather than the destination. A finite goal could offer
+only realizations that are its targets or on the progression path to one: a span
+no wider than the target's, hands together only where a target asks for it, and
+the directions and rungs below the target's. That is derivable from the declared
+progression for any family, and it would take hands-together and two-octave work
+out of Foundations entirely while leaving 24-key fluency's path intact. It is a
+scope change, not a ranking term, and is not made here.
+
+## Interpretation boundary
+
+Synthetic players over ten short sittings. The census says what the goals ask
+the scheduler to do and what it did; it does not say that a Foundations learner
+held to one octave learns the keys faster, only that the goal as defined is not
+what their practice was aimed at.
