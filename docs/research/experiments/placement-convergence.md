@@ -205,6 +205,25 @@ picked the same exercise from a fresh sitting at any checkpoint, which reads
 less as divergence than as three genuinely different histories breaking every
 tie differently. Overlap is the measure that carries the result.
 
+### Under the arriving term and the shape frontier
+
+The same comparison rerun at scheduler model version `v1-8`, which prefers a
+finite goal's uncovered target shapes and steps past demonstrated shapes within
+a material, 3047 seconds.
+
+| Goal        | Measure              |          `v1-6` |          `v1-8` |
+| ----------- | -------------------- | --------------: | --------------: |
+| Foundations | eligible overlap, 25 |           0.975 |           0.951 |
+| Foundations | fully covered, slot  | 197 / 209 / 198 | 132 / 133 / 122 |
+| General     | eligible overlap, 25 |           0.584 |           0.595 |
+| General     | half covered, slot   | 312 / 212 / 226 | 320 / 218 / 214 |
+
+Slots are beginner, some experience, and advanced. Neither change moves
+convergence. Foundations finishes about seventy slots sooner from every
+placement, and the three still finish together; General technique converges as
+slowly as before, and the beginner placement still reaches half its catalog
+about a hundred slots later.
+
 ## Interpretation boundary
 
 Synthetic players whose performance is generated from the same competency
