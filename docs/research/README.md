@@ -27,19 +27,20 @@ citation key is not an argument.
 
 ## experiments
 
-| Document                                                           | Question it answered                                       |
-| ------------------------------------------------------------------ | ---------------------------------------------------------- |
-| [`learner-model.md`](experiments/learner-model.md)                 | Do the state layers stay separate, and what broke them     |
-| [`scheduler.md`](experiments/scheduler.md)                         | Seventeen passes; most promoted nothing                    |
-| [`trajectories.md`](experiments/trajectories.md)                   | What goes wrong over a trajectory rather than a decision   |
-| [`introduction-breadth.md`](experiments/introduction-breadth.md)   | How much new material may be open at once                  |
-| [`arpeggio-policy.md`](experiments/arpeggio-policy.md)             | Is the arpeggio policy viable, and is a competency missing |
-| [`altered-forms.md`](experiments/altered-forms.md)                 | What each part of the altered-form gate does, by scope     |
-| [`goal-trajectories.md`](experiments/goal-trajectories.md)         | What the production goals do to practice                   |
-| [`placement-convergence.md`](experiments/placement-convergence.md) | Whether identical evidence washes out the starting level   |
-| [`beginner-guidance.md`](experiments/beginner-guidance.md)         | Why a true beginner stays on supported rungs               |
-| [`player-calibration.md`](experiments/player-calibration.md)       | Can a synthetic player be fitted to a real sitting         |
-| [`fluency-tempo.md`](experiments/fluency-tempo.md)                 | Which rule a typical-tempo chart can read                  |
+| Document                                                           | Question it answered                                        |
+| ------------------------------------------------------------------ | ----------------------------------------------------------- |
+| [`learner-model.md`](experiments/learner-model.md)                 | Do the state layers stay separate, and what broke them      |
+| [`scheduler.md`](experiments/scheduler.md)                         | Seventeen passes; most promoted nothing                     |
+| [`trajectories.md`](experiments/trajectories.md)                   | What goes wrong over a trajectory rather than a decision    |
+| [`introduction-breadth.md`](experiments/introduction-breadth.md)   | How much new material may be open at once                   |
+| [`arpeggio-policy.md`](experiments/arpeggio-policy.md)             | Is the arpeggio policy viable, and is a competency missing  |
+| [`altered-forms.md`](experiments/altered-forms.md)                 | What each part of the altered-form gate does, by scope      |
+| [`goal-trajectories.md`](experiments/goal-trajectories.md)         | What the production goals do to practice                    |
+| [`placement-convergence.md`](experiments/placement-convergence.md) | Whether identical evidence washes out the starting level    |
+| [`beginner-guidance.md`](experiments/beginner-guidance.md)         | Why a true beginner stays on supported rungs                |
+| [`family-transfer.md`](experiments/family-transfer.md)             | How far one family's evidence moves the other's predictions |
+| [`player-calibration.md`](experiments/player-calibration.md)       | Can a synthetic player be fitted to a real sitting          |
+| [`fluency-tempo.md`](experiments/fluency-tempo.md)                 | Which rule a typical-tempo chart can read                   |
 
 ## How to read a negative result here
 

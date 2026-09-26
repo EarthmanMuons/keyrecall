@@ -41,6 +41,7 @@ export 'src/synthetic_performance.dart';
 export 'src/synthetic_player.dart';
 export 'src/trace_digest.dart';
 export 'src/trajectory.dart';
+export 'src/transfer_census.dart';
 export 'src/trajectory_cases.dart';
 export 'src/trajectory_detectors.dart';
 export 'src/trajectory_jobs.dart';

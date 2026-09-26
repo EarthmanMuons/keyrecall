@@ -142,7 +142,9 @@ reference execution 0.009 from the nearest one. Eleven histories agree on every
 candidate. The exception is the arpeggio-strong, scale-weak archetype, at 10%
 with overlap 0.60 and disagreements 0.03 to 0.04 from a floor, which is the one
 place a placement offset rather than boundary noise survives, and the likely
-carrier is the prediction-only transfer between scale and arpeggio execution.
+carrier is the prediction-only transfer between scale and arpeggio execution;
+[`family-transfer.md`](family-transfer.md) finds the competencies both families
+share carry more of it than the declared transfer.
 
 What is left between the three placements after this is the challenge band, and
 that reads the prediction gap itself. Closing it is the model's question, not a
