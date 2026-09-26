@@ -2185,7 +2185,9 @@ class SchedulerPipeline {
             goals: goals(exercise, emphasis),
             targetShaped:
                 (config.progress == ProgressPreference.target ||
-                    config.progress == ProgressPreference.targetAndFrontier) &&
+                    config.progress == ProgressPreference.targetAndFrontier ||
+                    config.progress ==
+                        ProgressPreference.targetAndFrontierInMaterial) &&
                 uncoveredTargets.contains(exercise),
             advancesFrontier:
                 config.progress == ProgressPreference.targetAndFrontier &&
@@ -2499,7 +2501,37 @@ class SchedulerPipeline {
   CandidateTrace? chooseFrom(
     List<CandidateTrace> selectable,
     SessionState session,
-  ) => overdueGuidanceProbe(selectable, session) ?? selectBest(selectable);
+  ) =>
+      overdueGuidanceProbe(selectable, session) ??
+      advancedWithin(selectable, selectBest(selectable));
+
+  /// The best step past [chosen]'s frontier on its material, at its rung and
+  /// tier, or [chosen] where there is none.
+  ///
+  /// Which material a slot serves is left to ranking, so breadth and retention
+  /// keep deciding across materials; only how far in is decided here. A
+  /// material met for the first time has no frontier and is taken as chosen.
+  CandidateTrace? advancedWithin(
+    List<CandidateTrace> selectable,
+    CandidateTrace? chosen,
+  ) {
+    if (chosen == null ||
+        config.progress != ProgressPreference.targetAndFrontierInMaterial ||
+        chosen.rankKey!.targetShaped ||
+        chosen.rankKey!.realization == RealizationRank.advancing) {
+      return chosen;
+    }
+    return selectBest([
+          for (final trace in selectable)
+            if (trace.isRanked &&
+                trace.exercise.material == chosen.exercise.material &&
+                trace.exercise.guidance == chosen.exercise.guidance &&
+                trace.rankKey!.tier == chosen.rankKey!.tier &&
+                trace.rankKey!.realization == RealizationRank.advancing)
+              trace,
+        ]) ??
+        chosen;
+  }
 
   /// Selects from evaluated candidates using all production selection filters.
   CandidateTrace? selectChoice(

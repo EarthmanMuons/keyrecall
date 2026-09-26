@@ -39,6 +39,10 @@ enum ProgressPreference {
   /// An uncovered target's shape, and then an adjacent step past the frontier,
   /// both above retention.
   targetAndFrontier,
+
+  /// An uncovered target's shape above retention; then, once ranking has
+  /// chosen a material, an adjacent step past its frontier at the same rung.
+  targetAndFrontierInMaterial,
 }
 
 /// Thresholds for the `REQUIRES` prerequisite gate.
