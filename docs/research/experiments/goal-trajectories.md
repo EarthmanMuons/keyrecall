@@ -2,8 +2,8 @@
 
 > **Status:** characterization of the three production goals. Nothing blocks.
 > The finite goals scoped material but did not steer realization; the
-> realization envelope and the arriving term that followed are measured at the
-> end, and the arriving term ships.
+> realization envelope, the arriving term, and the shape frontier that followed
+> are measured at the end, and the last two ship.
 
 The altered-form census asked whether narrow scopes can finish. This one asks
 what the goals KeyRecall offers actually do to practice: General technique,
@@ -216,7 +216,7 @@ and retrieval of established material, the share of materials demonstrated
 earlier that were retrieved unguided again in the interval, 96% against 97%, are
 unchanged. Arriving work does not crowd out keeping.
 
-**It ships**, as scheduler model version `v1-7`.
+**It shipped**, as scheduler model version `v1-7`.
 
 ### A frontier does not transfer to General technique
 
@@ -244,6 +244,66 @@ and never for hands together or a reversal. Two things follow. Which material a
 slot serves must stay with ranking, which is what keeps breadth and retrieval;
 and the destination General technique lacks is a frontier over shapes, not over
 tempo. Both variants remain settings for comparison.
+
+### A frontier over shapes
+
+A shape is a realization's hands, span, and direction, demonstrated by a clean,
+unguided attempt. A shape not yet demonstrated steps past those that have been
+when it is the next span the material declares, up and down after ascending, or
+hands together after each hand alone. Ranking chooses the material; where it
+chose ordinary progression and a step is on offer at the same rung and tier,
+admitted the same way, the step is presented instead.
+
+```console
+dart run keyrecall_simulation:goal_horizon --scope general --seeds 4 \
+  --sittings 30 --every 10 --jobs 5 --progress targetAndShapeFrontier \
+  --out general.jsonl
+```
+
+It took two corrections. Replacing whatever ranking chose overrode recovery,
+probes, and the first hands-together attempt: General technique met 27 materials
+in 200 slots rather than 36 and cued 20% of picks rather than 14%. Replacing
+only band admissions then replaced almost nothing, because General technique
+barely uses the band: of 521 picks traced, 214 came through execution
+progression, 194 as new material, 89 through recovery, and 4 through the band.
+Execution progression is how owned material ordinarily advances, and it is what
+a step now replaces.
+
+General technique over 30 sittings, the last ten:
+
+| Measure                        |              Arriving |        Shape frontier |
+| ------------------------------ | --------------------: | --------------------: |
+| Surpassed shapes               |                 0.230 |                 0.167 |
+| Depth 0 / 2 / 3                | 0.285 / 0.237 / 0.054 | 0.206 / 0.320 / 0.064 |
+| Two octaves or more            |                 0.407 |                 0.494 |
+| Four octaves                   |                 0.004 |                 0.051 |
+| Up and down                    |                 0.333 |                 0.448 |
+| Hands together                 |                 0.320 |                 0.301 |
+| Materials                      |                  53.0 |                  53.2 |
+| Unguided                       |                 0.694 |                 0.691 |
+| Failed                         |                 0.466 |                 0.469 |
+| Established material retrieved |                 0.976 |                 0.975 |
+
+Depth is the number of hands together, two octaves or more, and up and down a
+pick asks for. A step was on offer for a third of picks in the last ten
+sittings, and every one was taken, all in place of execution progression and
+none in place of a pick made for a reason: span 54%, direction 41%, hands 5%.
+Four-octave arpeggios, which General technique barely reached, appear near slot
+154 in 46 runs rather than slot 251 in 25. Breadth, the guidance mix, failure,
+and retrieval of established material are unchanged.
+
+Hands together does not rise. Traced over one seed of each archetype, 95% of the
+picks a step could replace had no hands step to offer, because the two hands had
+not each shown the same shape cleanly from memory; where one was on offer it was
+taken or lost to a span or direction step ranked above it, and an eligibility
+tier stood in the way once in 2,636. Hands together is left to eligibility and
+the coordination transition, which already carry it.
+
+The finite goals barely move: 24-key coverage at 600 slots is 0.436 against
+0.408, and the census is unchanged but for the D major focus under 24-key
+fluency, completing in 11 runs rather than 13, within what seeds move.
+
+**It ships**, as scheduler model version `v1-8`.
 
 ## Interpretation boundary
 

@@ -333,8 +333,32 @@ they are not ready for. Over 600 slots of 24-key fluency it raised coverage from
 material unchanged; see
 [`../research/experiments/goal-trajectories.md`](../research/experiments/goal-trajectories.md).
 
-The alternatives measured with it remain settings for comparison:
-`ProgressPreference` in `SchedulerConfig`.
+### Stepping past demonstrated shapes
+
+Ranking chooses which material a slot serves. When the pick it chose is ordinary
+progression, admitted through the band or as an execution step on owned
+material, and a shape one step past those demonstrated on that material is on
+offer at the same rung and tier and admitted the same way, the step is presented
+instead, the best of them by the rank key.
+
+A shape is a realization's hands, span, and direction. It is demonstrated by a
+clean, unguided attempt, read from the journal, without the timing a goal's
+coverage asks for: this is about what structure a learner has managed, not
+whether any standard was met. A step is the next span the material declares, so
+four-octave arpeggios step from two and never from one; up and down after
+ascending; or hands together once each hand has shown that shape alone, where
+the material asks for separate hands first.
+
+It changes only how far into a material a slot goes, never which material:
+putting a step above retention instead let a material already practiced outrank
+every one not yet met. It never replaces a pick made for a reason, recovery, a
+probe, an introduction, or the first hands-together attempt, and never offers a
+step admission did not. Without it, General technique spends a growing share of
+practice on shapes the learner has already surpassed.
+
+The alternatives measured with these remain settings for comparison:
+`ProgressPreference` in `SchedulerConfig`. See
+[`../research/experiments/goal-trajectories.md`](../research/experiments/goal-trajectories.md).
 
 ### The coordination transition
 

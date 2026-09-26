@@ -143,16 +143,21 @@ void main() {
     });
   });
 
-  test('inert under every other preference', () {
+  test('the execution frontier is inert under every other preference', () {
     final holding = _trace(retention: 0.9);
     final deeper = _trace(octaves: 2, realization: RealizationRank.advancing);
 
-    expect(
-      const SchedulerPipeline(
-        learner: LearnerModel(),
-      ).chooseFrom([holding, deeper], SessionState()),
-      holding,
-    );
+    for (final progress in ProgressPreference.values) {
+      if (progress == ProgressPreference.targetAndFrontierInMaterial) continue;
+      expect(
+        SchedulerPipeline(
+          learner: const LearnerModel(),
+          config: v1SchedulerConfig.withProgress(progress),
+        ).chooseFrom([holding, deeper], SessionState()),
+        holding,
+        reason: progress.name,
+      );
+    }
   });
 }
 
