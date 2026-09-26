@@ -57,6 +57,23 @@ void main() {
     );
   });
 
+  test('says which way it steps', () {
+    final base = shown([
+      shape(scale),
+      shape(scale, hands: HandConfiguration.left),
+    ]);
+
+    expect(shapeStepOf(shape(scale, octaves: 2), base), ShapeStep.span);
+    expect(
+      shapeStepOf(shape(scale, direction: ExerciseDirection.upDown), base),
+      ShapeStep.direction,
+    );
+    expect(
+      shapeStepOf(shape(scale, hands: HandConfiguration.together), base),
+      ShapeStep.hands,
+    );
+  });
+
   test('hands together waits on both hands where the material asks', () {
     final together = shape(scale, hands: HandConfiguration.together);
 

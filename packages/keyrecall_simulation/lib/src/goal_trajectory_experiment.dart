@@ -81,6 +81,9 @@ class GoalTrajectorySelection {
   /// The overall success the scheduler predicted when it chose this.
   final double predicted;
 
+  /// What the shape frontier could do with this decision, and did.
+  final ShapeStepObservation? shapeStep;
+
   const GoalTrajectorySelection({
     required this.slot,
     required this.sitting,
@@ -97,6 +100,7 @@ class GoalTrajectorySelection {
     required this.coveredBefore,
     required this.clean,
     required this.predicted,
+    this.shapeStep,
   });
 }
 
@@ -163,7 +167,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
 }) async {
   final at0 = DateTime.utc(2026);
   const learner = LearnerModel();
-  final pipeline = SchedulerPipeline(
+  final pipeline = _ShapeStepRecorder(
     learner: learner,
     config: progress == null
         ? v1SchedulerConfig
@@ -230,6 +234,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
     var end = SittingEnd.slotLimit;
     for (var index = 0; index < slotsPerSitting; index++) {
       final at = start.add(Duration(minutes: index));
+      pipeline.last = null;
       final outcome = await session.decideOutcome(at: at);
       if (outcome case PresentedAttempt(
         :final exercise,
@@ -262,6 +267,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
                 played.pitchIntegrity >=
                     RequirementCompletionPolicy.standard.minimumPitchIntegrity,
             predicted: prediction.overallP,
+            shapeStep: pipeline.last,
           ),
         );
         await session.acknowledgePresentation(decision.attemptId);
@@ -353,4 +359,81 @@ Future<List<GoalTrajectoryRun>> runGoalTrajectoryMatrix({
       work(),
   ]);
   return [for (final run in runs) run!];
+}
+
+/// How one decision stood toward the shape frontier.
+class ShapeStepObservation {
+  /// How ranking's choice was admitted: a bypass id, or `band`.
+  final String route;
+
+  /// Whether that choice was progression a shape step may replace.
+  final bool replaceable;
+
+  /// Whether a shape step of its material was on offer in its place.
+  final bool opportunity;
+
+  /// Which way the step presented instead went, if one was.
+  final ShapeStep? step;
+
+  /// How the step presented instead was admitted, if one was.
+  final String? stepRoute;
+
+  const ShapeStepObservation({
+    required this.route,
+    required this.replaceable,
+    required this.opportunity,
+    this.step,
+    this.stepRoute,
+  });
+
+  bool get replaced => step != null;
+}
+
+class _ShapeStepRecorder extends SchedulerPipeline {
+  ShapeStepObservation? last;
+
+  _ShapeStepRecorder({required super.learner, required super.config});
+
+  @override
+  CandidateTrace? advancedWithin(
+    List<CandidateTrace> selectable,
+    CandidateTrace? chosen, {
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+  }) {
+    final presented = super.advancedWithin(
+      selectable,
+      chosen,
+      demonstratedShapes: demonstratedShapes,
+    );
+    if (chosen == null || presented == null) return presented;
+    String routeOf(CandidateTrace trace) => trace.challengeBypass?.id ?? 'band';
+    Set<RealizationShape> shapesOf(CandidateTrace trace) =>
+        demonstratedShapes[trace.exercise.material.materialId] ?? const {};
+    final replaceable =
+        SchedulerPipeline.isProgression(chosen) &&
+        !chosen.rankKey!.coordinationTransition &&
+        !chosen.rankKey!.targetShaped &&
+        !advancesShapeFrontier(chosen.exercise, shapesOf(chosen));
+    final replaced = presented != chosen;
+    last = ShapeStepObservation(
+      route: routeOf(chosen),
+      replaceable: replaceable,
+      opportunity:
+          replaceable &&
+          selectable.any(
+            (trace) =>
+                trace.isRanked &&
+                trace.exercise.material == chosen.exercise.material &&
+                trace.exercise.guidance == chosen.exercise.guidance &&
+                trace.rankKey!.tier == chosen.rankKey!.tier &&
+                SchedulerPipeline.isProgression(trace) &&
+                advancesShapeFrontier(trace.exercise, shapesOf(trace)),
+          ),
+      step: replaced
+          ? shapeStepOf(presented.exercise, shapesOf(presented))
+          : null,
+      stepRoute: replaced ? routeOf(presented) : null,
+    );
+    return presented;
+  }
 }

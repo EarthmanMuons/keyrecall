@@ -60,6 +60,19 @@ class RealizationDepthInterval {
   /// unguided in it, in any shape.
   final double establishedRetrieved;
 
+  /// Share of picks by how ranking's choice was admitted.
+  final Map<String, double> routes;
+
+  /// Share of picks whose choice a shape step may replace, that had one on
+  /// offer, and that were replaced.
+  final double replaceable;
+  final double opportunity;
+  final double replaced;
+
+  /// Replacements by the way the step went, and by how it was admitted.
+  final Map<String, int> steps;
+  final Map<String, int> stepRoutes;
+
   const RealizationDepthInterval({
     required this.fromSitting,
     required this.picks,
@@ -73,6 +86,12 @@ class RealizationDepthInterval {
     required this.previewed,
     required this.cued,
     required this.establishedRetrieved,
+    this.routes = const {},
+    this.replaceable = 0,
+    this.opportunity = 0,
+    this.replaced = 0,
+    this.steps = const {},
+    this.stepRoutes = const {},
   });
 
   Map<String, Object?> toJson() => {
@@ -90,6 +109,12 @@ class RealizationDepthInterval {
     'previewed': previewed,
     'cued': cued,
     'established_retrieved': establishedRetrieved,
+    'routes': routes,
+    'replaceable': replaceable,
+    'opportunity': opportunity,
+    'replaced': replaced,
+    'steps': steps,
+    'step_routes': stepRoutes,
   };
 }
 
@@ -151,8 +176,33 @@ List<RealizationDepthInterval> realizationDepthOf(
         establishedRetrieved: before.isEmpty
             ? 0
             : before.intersection(retrieved).length / before.length,
+        routes: {
+          for (final route in {
+            for (final pick in picks)
+              if (pick.shapeStep case final observed?) observed.route,
+          })
+            route: share((pick) => pick.shapeStep?.route == route),
+        },
+        replaceable: share((pick) => pick.shapeStep?.replaceable ?? false),
+        opportunity: share((pick) => pick.shapeStep?.opportunity ?? false),
+        replaced: share((pick) => pick.shapeStep?.replaced ?? false),
+        steps: _counts([
+          for (final pick in picks)
+            if (pick.shapeStep?.step case final step?) step.name,
+        ]),
+        stepRoutes: _counts([
+          for (final pick in picks) ?pick.shapeStep?.stepRoute,
+        ]),
       ),
     );
   }
   return intervals;
+}
+
+Map<String, int> _counts(Iterable<String> keys) {
+  final counts = <String, int>{};
+  for (final key in keys) {
+    counts[key] = (counts[key] ?? 0) + 1;
+  }
+  return counts;
 }

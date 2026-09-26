@@ -104,7 +104,27 @@ void main() {
       );
     });
 
-    test('nor with a step the band did not admit', () {
+    test('in place of execution progression, which is ordinary work', () {
+      final progressing = _trace(
+        retention: 0.9,
+        bypass: ChallengeBypass.executionProgression,
+      );
+      final step = _trace(
+        octaves: 2,
+        bypass: ChallengeBypass.executionProgression,
+      );
+
+      expect(
+        byShape.chooseFrom(
+          [progressing, step],
+          SessionState(),
+          demonstratedShapes: shown,
+        ),
+        step,
+      );
+    });
+
+    test('nor with a step progression did not admit', () {
       expect(
         byShape.chooseFrom(
           [oneOctave, _trace(octaves: 2, bypass: ChallengeBypass.tempoProbe)],

@@ -1,4 +1,5 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -13,6 +14,7 @@ void main() {
     ExerciseDirection direction = ExerciseDirection.up,
     GuidanceContext guidance = GuidanceContext.unguided,
     bool clean = true,
+    ShapeStepObservation? shapeStep,
   }) => GoalTrajectorySelection(
     slot: slot++,
     sitting: sitting,
@@ -29,6 +31,7 @@ void main() {
     coveredBefore: 0,
     clean: clean,
     predicted: 0.8,
+    shapeStep: shapeStep,
   );
 
   test(
@@ -86,5 +89,46 @@ void main() {
     );
     expect(first.previewed, 1);
     expect(second.establishedRetrieved, 0);
+  });
+
+  test('counts what the shape frontier could do, and did', () {
+    const recovering = ShapeStepObservation(
+      route: 'recovery',
+      replaceable: false,
+      opportunity: false,
+    );
+    const passedOver = ShapeStepObservation(
+      route: 'execution_progression',
+      replaceable: true,
+      opportunity: true,
+    );
+    const taken = ShapeStepObservation(
+      route: 'band',
+      replaceable: true,
+      opportunity: true,
+      step: ShapeStep.hands,
+      stepRoute: 'execution_progression',
+    );
+    final [interval] = realizationDepthOf(
+      [
+        pick(shapeStep: recovering),
+        pick(shapeStep: passedOver),
+        pick(shapeStep: taken),
+        pick(),
+      ],
+      sittings: 1,
+      every: 1,
+    );
+
+    expect(interval.routes, {
+      'recovery': 0.25,
+      'execution_progression': 0.25,
+      'band': 0.25,
+    });
+    expect(interval.replaceable, 0.5);
+    expect(interval.opportunity, 0.5);
+    expect(interval.replaced, 0.25);
+    expect(interval.steps, {'hands': 1});
+    expect(interval.stepRoutes, {'execution_progression': 1});
   });
 }

@@ -2526,6 +2526,12 @@ class SchedulerPipeline {
         demonstratedShapes: demonstratedShapes,
       );
 
+  /// Whether [trace] was admitted as ordinary progression: through the band,
+  /// or as one execution step on material the learner already owns.
+  static bool isProgression(CandidateTrace trace) =>
+      trace.challengeBypass == null ||
+      trace.challengeBypass == ChallengeBypass.executionProgression;
+
   /// The best step past [chosen]'s frontier on its material, at its rung and
   /// tier, or [chosen] where there is none.
   ///
@@ -2546,17 +2552,18 @@ class SchedulerPipeline {
         advances = (trace) =>
             trace.rankKey!.realization == RealizationRank.advancing;
       case ProgressPreference.targetAndShapeFrontier:
-        // Only ordinary work is replaced, and only by ordinary work: a pick
-        // made for a reason, such as recovery, a probe, or the first time the
-        // hands meet, is that reason's to keep, and a step is offered only
-        // where the band already says the learner is ready for it.
+        // Only progression is replaced, and only by progression: a pick made
+        // for a reason, such as recovery, a probe, an introduction, or the
+        // first time the hands meet, is that reason's to keep, and a step is
+        // offered only where the band or execution progression already says
+        // the learner is ready for it.
         if (chosen == null ||
-            chosen.challengeBypass != null ||
+            !isProgression(chosen) ||
             chosen.rankKey!.coordinationTransition) {
           return chosen;
         }
         advances = (trace) =>
-            trace.challengeBypass == null &&
+            isProgression(trace) &&
             advancesShapeFrontier(
               trace.exercise,
               demonstratedShapes[trace.exercise.material.materialId] ??
