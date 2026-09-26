@@ -4,6 +4,8 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'requirement_completion.dart';
+
 /// The record [observation] belongs in the acquisition log.
 ///
 /// The one place an observation becomes history. It carries the facts across
@@ -130,6 +132,31 @@ Set<(String, Hand)> retrievedMaterialHands(Iterable<AttemptRecord> records) => {
         for (final hand in record.exercise.conditions.hands.hands)
           (record.exercise.material.materialId, hand),
 };
+
+/// The shapes each material has been played through cleanly in, from memory.
+///
+/// What the shape frontier steps past. Pitch accuracy is the covering one, and
+/// timing is not asked: this says what structure a learner has managed, not
+/// that any goal's standard was met.
+Map<String, Set<RealizationShape>> demonstratedShapes(
+  Iterable<AttemptRecord> records, {
+  RequirementCompletionPolicy policy = RequirementCompletionPolicy.standard,
+}) {
+  final shapes = <String, Set<RealizationShape>>{};
+  for (final record in records) {
+    if (record.exercise.guidance.isMaterialSupplied) continue;
+    if (record.closure.measurement case Measured(:final outcome)) {
+      if (outcome.started &&
+          outcome.completed &&
+          outcome.pitchIntegrity >= policy.minimumPitchIntegrity) {
+        shapes
+            .putIfAbsent(record.exercise.material.materialId, () => {})
+            .add(shapeOf(record.exercise));
+      }
+    }
+  }
+  return shapes;
+}
 
 /// Causal revisions reconstructed only from informative ordinary execution.
 Map<ExecutionContext, int> executionEvidenceRevisions(

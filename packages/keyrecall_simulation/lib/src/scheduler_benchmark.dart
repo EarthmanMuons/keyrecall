@@ -302,6 +302,7 @@ class _TimedPipeline extends SchedulerPipeline {
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     Set<Exercise> uncoveredTargets = const {},
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     lastGenerated = candidates.length;
     _watch
@@ -322,6 +323,7 @@ class _TimedPipeline extends SchedulerPipeline {
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
+      demonstratedShapes: demonstratedShapes,
     );
     _watch.stop();
     lastDecide = _watch.elapsed;

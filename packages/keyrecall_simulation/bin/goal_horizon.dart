@@ -184,6 +184,7 @@ Future<Map<String, Object?>> _run(
         (pick) => pick.hands == HandConfiguration.together,
       ),
       'two_octaves': run.firstSlotWhere((pick) => pick.octaves >= 2),
+      'beyond_two_octaves': run.firstSlotWhere((pick) => pick.octaves > 2),
       'up_down': run.firstSlotWhere(
         (pick) => pick.direction == ExerciseDirection.upDown,
       ),

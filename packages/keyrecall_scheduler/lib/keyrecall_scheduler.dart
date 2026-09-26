@@ -23,4 +23,5 @@ export 'src/realization_family_pacing.dart';
 export 'src/recovery.dart';
 export 'src/scheduler_pipeline.dart';
 export 'src/session_state.dart';
+export 'src/shape_frontier.dart';
 export 'src/tempo_probe.dart';

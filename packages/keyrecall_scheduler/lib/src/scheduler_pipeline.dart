@@ -18,6 +18,7 @@ import 'realization_family_pacing.dart';
 import 'recovery.dart';
 import 'selection_diagnostics.dart';
 import 'session_state.dart';
+import 'shape_frontier.dart';
 import 'tempo_probe.dart';
 
 /// What one admission exception has to say about one candidate.
@@ -309,6 +310,7 @@ class SchedulerPipeline {
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     Set<Exercise> uncoveredTargets = const {},
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     final slot = evaluateSlot(
       state: state,
@@ -325,6 +327,7 @@ class SchedulerPipeline {
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
+      demonstratedShapes: demonstratedShapes,
     );
     SelectionEffect.of(slot.result).applyTo(session);
     return slot.result;
@@ -356,6 +359,7 @@ class SchedulerPipeline {
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     Set<Exercise> uncoveredTargets = const {},
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     final entryPolicy =
         practiceEntryPolicy ??
@@ -409,7 +413,13 @@ class SchedulerPipeline {
     // the ones acquisition is for.
     final familyFloor = acquisitionFamilyFloor ?? acquisitionFloor;
 
-    var selected = servedProbe ?? chooseFrom(narrowed.selectable, session);
+    var selected =
+        servedProbe ??
+        chooseFrom(
+          narrowed.selectable,
+          session,
+          demonstratedShapes: demonstratedShapes,
+        );
     if (servedProbe == null && familyFloor != null) {
       selected =
           owedFloorCheck(
@@ -455,7 +465,11 @@ class SchedulerPipeline {
           uncoveredTargets: uncoveredTargets,
         );
         narrowed = _selectionStages(traces, session, state, at);
-        selected = chooseFrom(narrowed.selectable, session);
+        selected = chooseFrom(
+          narrowed.selectable,
+          session,
+          demonstratedShapes: demonstratedShapes,
+        );
         blockedReason = BlockedReason.safeEntryRejected;
       }
     }
@@ -2187,7 +2201,9 @@ class SchedulerPipeline {
                 (config.progress == ProgressPreference.target ||
                     config.progress == ProgressPreference.targetAndFrontier ||
                     config.progress ==
-                        ProgressPreference.targetAndFrontierInMaterial) &&
+                        ProgressPreference.targetAndFrontierInMaterial ||
+                    config.progress ==
+                        ProgressPreference.targetAndShapeFrontier) &&
                 uncoveredTargets.contains(exercise),
             advancesFrontier:
                 config.progress == ProgressPreference.targetAndFrontier &&
@@ -2500,10 +2516,15 @@ class SchedulerPipeline {
   /// fairness guard, then lexicographic ranking.
   CandidateTrace? chooseFrom(
     List<CandidateTrace> selectable,
-    SessionState session,
-  ) =>
+    SessionState session, {
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+  }) =>
       overdueGuidanceProbe(selectable, session) ??
-      advancedWithin(selectable, selectBest(selectable));
+      advancedWithin(
+        selectable,
+        selectBest(selectable),
+        demonstratedShapes: demonstratedShapes,
+      );
 
   /// The best step past [chosen]'s frontier on its material, at its rung and
   /// tier, or [chosen] where there is none.
@@ -2511,14 +2532,28 @@ class SchedulerPipeline {
   /// Which material a slot serves is left to ranking, so breadth and retention
   /// keep deciding across materials; only how far in is decided here. A
   /// material met for the first time has no frontier and is taken as chosen.
+  /// The frontier is the execution frontier or, for
+  /// [ProgressPreference.targetAndShapeFrontier], the shapes in
+  /// [demonstratedShapes].
   CandidateTrace? advancedWithin(
     List<CandidateTrace> selectable,
-    CandidateTrace? chosen,
-  ) {
-    if (chosen == null ||
-        config.progress != ProgressPreference.targetAndFrontierInMaterial ||
-        chosen.rankKey!.targetShaped ||
-        chosen.rankKey!.realization == RealizationRank.advancing) {
+    CandidateTrace? chosen, {
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+  }) {
+    final bool Function(CandidateTrace) advances;
+    switch (config.progress) {
+      case ProgressPreference.targetAndFrontierInMaterial:
+        advances = (trace) =>
+            trace.rankKey!.realization == RealizationRank.advancing;
+      case ProgressPreference.targetAndShapeFrontier:
+        advances = (trace) => advancesShapeFrontier(
+          trace.exercise,
+          demonstratedShapes[trace.exercise.material.materialId] ?? const {},
+        );
+      default:
+        return chosen;
+    }
+    if (chosen == null || chosen.rankKey!.targetShaped || advances(chosen)) {
       return chosen;
     }
     return selectBest([
@@ -2527,7 +2562,7 @@ class SchedulerPipeline {
                 trace.exercise.material == chosen.exercise.material &&
                 trace.exercise.guidance == chosen.exercise.guidance &&
                 trace.rankKey!.tier == chosen.rankKey!.tier &&
-                trace.rankKey!.realization == RealizationRank.advancing)
+                advances(trace))
               trace,
         ]) ??
         chosen;

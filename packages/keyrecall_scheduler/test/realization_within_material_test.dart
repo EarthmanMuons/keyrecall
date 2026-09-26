@@ -40,6 +40,65 @@ void main() {
     expect(pipeline.chooseFrom([holding, cued], SessionState()), holding);
   });
 
+  group('over shapes', () {
+    final byShape = SchedulerPipeline(
+      learner: const LearnerModel(),
+      config: v1SchedulerConfig.withProgress(
+        ProgressPreference.targetAndShapeFrontier,
+      ),
+    );
+    final oneOctave = _trace(retention: 0.9);
+    final twoOctaves = _trace(octaves: 2);
+    final shown = {
+      materials[0].materialId: {shapeOf(oneOctave.exercise)},
+    };
+
+    test('a demonstrated shape gives way to the next one on it', () {
+      expect(
+        byShape.chooseFrom(
+          [oneOctave, twoOctaves],
+          SessionState(),
+          demonstratedShapes: shown,
+        ),
+        twoOctaves,
+      );
+    });
+
+    test('which ignores the execution frontier', () {
+      expect(
+        byShape.chooseFrom(
+          [
+            oneOctave,
+            _trace(
+              direction: ExerciseDirection.upDown,
+              realization: RealizationRank.advancing,
+            ),
+            twoOctaves,
+          ],
+          SessionState(),
+          demonstratedShapes: {
+            materials[0].materialId: {
+              ...shown[materials[0].materialId]!,
+              (
+                hands: HandConfiguration.right,
+                octaves: 1,
+                direction: ExerciseDirection.upDown,
+              ),
+            },
+          },
+        ),
+        twoOctaves,
+      );
+    });
+
+    test('and nothing demonstrated leaves ranking alone', () {
+      expect(
+        byShape.chooseFrom([oneOctave, twoOctaves], SessionState()),
+        oneOctave,
+      );
+    });
+  });
+
   test('inert under every other preference', () {
     final holding = _trace(retention: 0.9);
     final deeper = _trace(octaves: 2, realization: RealizationRank.advancing);
@@ -56,6 +115,7 @@ void main() {
 CandidateTrace _trace({
   int material = 0,
   int octaves = 1,
+  ExerciseDirection direction = ExerciseDirection.up,
   GuidanceContext guidance = GuidanceContext.unguided,
   double retention = 0,
   RealizationRank realization = RealizationRank.holding,
@@ -64,7 +124,7 @@ CandidateTrace _trace({
     material: materials[material],
     hands: HandConfiguration.right,
     octaves: octaves,
-    direction: ExerciseDirection.up,
+    direction: direction,
     tempoBpm: 60,
     guidance: guidance,
   ),

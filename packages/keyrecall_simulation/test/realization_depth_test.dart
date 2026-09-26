@@ -43,6 +43,11 @@ void main() {
       expect(subsumes(hard, pick(materialId: 'g-major')), isFalse);
       expect(subsumes(pick(), pick()), isFalse, reason: 'the same shape');
       expect(
+        subsumes(pick(octaves: 4), pick(octaves: 2)),
+        isTrue,
+        reason: 'wider within the same depth',
+      );
+      expect(
         subsumes(pick(octaves: 2), pick(hands: HandConfiguration.left)),
         isFalse,
         reason: 'the other hand is not played',
@@ -64,6 +69,7 @@ void main() {
     );
     expect(first.subsumed, 0, reason: 'the two-octave attempt failed');
     expect(first.depth, [2 / 3, 1 / 3, 0, 0]);
+    expect(first.spans, {1: 2 / 3, 2: 1 / 3});
     expect(first.failed, 1 / 3);
     expect(second.subsumed, 0.5);
     expect(second.establishedRetrieved, 1);

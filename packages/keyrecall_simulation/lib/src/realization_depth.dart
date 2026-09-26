@@ -24,7 +24,11 @@ bool subsumes(GoalTrajectorySelection harder, GoalTrajectorySelection easier) {
   final direction =
       harder.direction == easier.direction ||
       harder.direction == ExerciseDirection.upDown;
-  return hands && span && direction && depthOf(harder) > depthOf(easier);
+  final differs =
+      harder.hands != easier.hands ||
+      harder.octaves != easier.octaves ||
+      harder.direction != easier.direction;
+  return hands && span && direction && differs;
 }
 
 /// What one interval of picks practiced, read against everything before it.
@@ -34,6 +38,9 @@ class RealizationDepthInterval {
 
   /// Share of picks at each depth, 0 to 3.
   final List<double> depth;
+
+  /// Share of picks at each octave span played.
+  final Map<int, double> spans;
 
   /// Share of picks whose shape a realization the learner had already
   /// demonstrated of the same material subsumes.
@@ -57,6 +64,7 @@ class RealizationDepthInterval {
     required this.fromSitting,
     required this.picks,
     required this.depth,
+    required this.spans,
     required this.subsumed,
     required this.materials,
     required this.predicted,
@@ -71,6 +79,9 @@ class RealizationDepthInterval {
     'from_sitting': fromSitting,
     'picks': picks,
     'depth': depth,
+    'spans': {
+      for (final MapEntry(:key, :value) in spans.entries) '$key': value,
+    },
     'subsumed': subsumed,
     'materials': materials,
     'predicted': predicted,
@@ -119,6 +130,10 @@ List<RealizationDepthInterval> realizationDepthOf(
           for (var level = 0; level <= 3; level++)
             share((pick) => depthOf(pick) == level),
         ],
+        spans: {
+          for (final span in {for (final pick in picks) pick.octaves})
+            span: share((pick) => pick.octaves == span),
+        },
         subsumed: picks.isEmpty ? 0 : subsumed / picks.length,
         materials: {for (final pick in picks) pick.materialId}.length,
         predicted: picks.isEmpty

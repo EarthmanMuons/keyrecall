@@ -743,6 +743,7 @@ class PracticeSession {
           if (state.resolved.isTarget && !state.isCovered)
             state.resolved.requirement.id,
       ],
+      demonstratedShapes: demonstratedShapes(_journal.records),
       at: at,
       acquisitionFloor: acquisitionFloor,
       acquisitionFamilyFloor: familyFloor,

@@ -179,6 +179,7 @@ class _LastSelection extends SchedulerPipeline {
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     Set<Exercise> uncoveredTargets = const {},
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     final slot = super.evaluateSlot(
       state: state,
@@ -195,6 +196,7 @@ class _LastSelection extends SchedulerPipeline {
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
+      demonstratedShapes: demonstratedShapes,
     );
     last = slot.result;
     return slot;

@@ -119,6 +119,7 @@ class IsolateScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     List<String> uncoveredTargetIds = const [],
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -145,6 +146,7 @@ class IsolateScheduler implements SchedulerHost {
         dueRequirementIds: dueRequirementIds,
         liveSupportHands: liveSupportHands,
         uncoveredTargetIds: uncoveredTargetIds,
+        demonstratedShapes: demonstratedShapes,
         at: at,
         acquisitionFloor: acquisitionFloor,
         acquisitionFamilyFloor: acquisitionFamilyFloor,
@@ -171,6 +173,7 @@ class _DecisionRequest {
   final List<String> dueRequirementIds;
   final Map<String, Set<HandConfiguration>> liveSupportHands;
   final List<String> uncoveredTargetIds;
+  final Map<String, Set<RealizationShape>> demonstratedShapes;
   final DateTime at;
   final AcquisitionFloor? acquisitionFloor;
   final AcquisitionFloor? acquisitionFamilyFloor;
@@ -187,6 +190,7 @@ class _DecisionRequest {
     required this.dueRequirementIds,
     required this.liveSupportHands,
     required this.uncoveredTargetIds,
+    required this.demonstratedShapes,
     required this.at,
     required this.acquisitionFloor,
     required this.acquisitionFamilyFloor,
@@ -413,6 +417,7 @@ class _Worker {
         practiceEntryPolicy: entry,
         emphasis: emphasis,
         uncoveredTargets: uncoveredTargetsIn(scope, request.uncoveredTargetIds),
+        demonstratedShapes: request.demonstratedShapes,
       );
       replies.send(
         _DecisionResponse(

@@ -215,6 +215,7 @@ class CountingPipeline extends SchedulerPipeline {
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     Set<Exercise> uncoveredTargets = const {},
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     decisions++;
     return super.decide(
@@ -230,6 +231,9 @@ class CountingPipeline extends SchedulerPipeline {
       retrievedMaterialHands: retrievedMaterialHands,
       executionEvidenceRevisions: executionEvidenceRevisions,
       practiceEntryPolicy: practiceEntryPolicy,
+      emphasis: emphasis,
+      uncoveredTargets: uncoveredTargets,
+      demonstratedShapes: demonstratedShapes,
     );
   }
 }

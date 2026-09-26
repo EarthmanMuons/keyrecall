@@ -13,7 +13,6 @@ List<Exercise> candidatesDueIn(
   ResolvedPracticeScope scope,
   List<String> dueRequirementIds, [
   Map<String, Set<HandConfiguration>> liveSupportHands = const {},
-  List<String> uncoveredTargetIds = const [],
 ]) {
   final due = dueRequirementIds.toSet();
   final candidates = distinctCandidatesOf([
@@ -209,6 +208,7 @@ abstract interface class SchedulerHost {
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     List<String> uncoveredTargetIds = const [],
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -262,6 +262,7 @@ class InProcessScheduler implements SchedulerHost {
     required List<String> dueRequirementIds,
     Map<String, Set<HandConfiguration>> liveSupportHands = const {},
     List<String> uncoveredTargetIds = const [],
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
     required DateTime at,
     AcquisitionFloor? acquisitionFloor,
     AcquisitionFloor? acquisitionFamilyFloor,
@@ -284,6 +285,7 @@ class InProcessScheduler implements SchedulerHost {
       practiceEntryPolicy: _entry,
       emphasis: _emphasis,
       uncoveredTargets: uncoveredTargetsIn(_scope!, uncoveredTargetIds),
+      demonstratedShapes: demonstratedShapes,
     );
     final effect = SelectionEffect.of(slot.result);
     return switch (slot.result) {

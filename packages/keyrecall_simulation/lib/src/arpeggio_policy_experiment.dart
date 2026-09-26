@@ -451,6 +451,7 @@ class _RecordingPipeline extends SchedulerPipeline {
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
     Set<Exercise> uncoveredTargets = const {},
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     lastState = state;
     final slot = super.evaluateSlot(
@@ -468,6 +469,7 @@ class _RecordingPipeline extends SchedulerPipeline {
       practiceEntryPolicy: practiceEntryPolicy,
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
+      demonstratedShapes: demonstratedShapes,
     );
     lastSelection = slot.result;
     return slot;

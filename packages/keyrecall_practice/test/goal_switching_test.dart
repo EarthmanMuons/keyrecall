@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -135,6 +136,19 @@ void main() {
       (gMajor.materialId, Hand.right),
       (gMajor.materialId, Hand.left),
     }, reason: 'memory evidence, where a preview still counts');
+  });
+
+  test('nor do the shapes each material was demonstrated in', () {
+    expect(
+      demonstratedShapes(history().records),
+      {
+        cMajor.materialId: {shapeOf(played(cMajor, HandConfiguration.right))},
+        gMajor.materialId: {
+          shapeOf(played(gMajor, HandConfiguration.together, octaves: 2)),
+        },
+      },
+      reason: 'a shape played after a preview is not demonstrated from memory',
+    );
   });
 
   group('a sitting that changes goal', () {
