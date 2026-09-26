@@ -2546,10 +2546,22 @@ class SchedulerPipeline {
         advances = (trace) =>
             trace.rankKey!.realization == RealizationRank.advancing;
       case ProgressPreference.targetAndShapeFrontier:
-        advances = (trace) => advancesShapeFrontier(
-          trace.exercise,
-          demonstratedShapes[trace.exercise.material.materialId] ?? const {},
-        );
+        // Only ordinary work is replaced, and only by ordinary work: a pick
+        // made for a reason, such as recovery, a probe, or the first time the
+        // hands meet, is that reason's to keep, and a step is offered only
+        // where the band already says the learner is ready for it.
+        if (chosen == null ||
+            chosen.challengeBypass != null ||
+            chosen.rankKey!.coordinationTransition) {
+          return chosen;
+        }
+        advances = (trace) =>
+            trace.challengeBypass == null &&
+            advancesShapeFrontier(
+              trace.exercise,
+              demonstratedShapes[trace.exercise.material.materialId] ??
+                  const {},
+            );
       default:
         return chosen;
     }

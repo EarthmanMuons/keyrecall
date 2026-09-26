@@ -91,6 +91,30 @@ void main() {
       );
     });
 
+    test('never in place of a pick made for a reason', () {
+      final recovering = _trace(bypass: ChallengeBypass.recovery);
+
+      expect(
+        byShape.chooseFrom(
+          [recovering, twoOctaves],
+          SessionState(),
+          demonstratedShapes: shown,
+        ),
+        recovering,
+      );
+    });
+
+    test('nor with a step the band did not admit', () {
+      expect(
+        byShape.chooseFrom(
+          [oneOctave, _trace(octaves: 2, bypass: ChallengeBypass.tempoProbe)],
+          SessionState(),
+          demonstratedShapes: shown,
+        ),
+        oneOctave,
+      );
+    });
+
     test('and nothing demonstrated leaves ranking alone', () {
       expect(
         byShape.chooseFrom([oneOctave, twoOctaves], SessionState()),
@@ -116,6 +140,7 @@ CandidateTrace _trace({
   int material = 0,
   int octaves = 1,
   ExerciseDirection direction = ExerciseDirection.up,
+  ChallengeBypass? bypass,
   GuidanceContext guidance = GuidanceContext.unguided,
   double retention = 0,
   RealizationRank realization = RealizationRank.holding,
@@ -142,7 +167,7 @@ CandidateTrace _trace({
     topologyP: 1,
   ),
   isWithinChallengeBand: true,
-  challengeBypass: null,
+  challengeBypass: bypass,
   challengeSurvived: true,
   priorityStatus: StageStatus.reached,
   rankKey: RankKey(
