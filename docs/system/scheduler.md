@@ -283,15 +283,16 @@ this, and `RankKey.compareTo` is the whole of it:
 1  eligibility tier          a provisional candidate never outranks a full one
 2  coordination transition   the first hands-together chance, just earned
 3  contrary coordination     spend that first chance on mirrored motion
-4  retention        R(e)     how urgent it is to test this before it fades
-5  information      I(e)     how much uncertainty this attempt would resolve
-6  diversity        V(e)     negative count of this material recently
-7  goals            G(e)     learner-goal relevance
-8  realization rank          advancing, holding, unmeasured, or surpassed
-9  realization fit           how near an unmeasured realization is to entry
+4  arriving                  could cover an uncovered target of the goal
+5  retention        R(e)     how urgent it is to test this before it fades
+6  information      I(e)     how much uncertainty this attempt would resolve
+7  diversity        V(e)     negative count of this material recently
+8  goals            G(e)     learner-goal relevance
+9  realization rank          advancing, holding, unmeasured, or surpassed
+10 realization fit           how near an unmeasured realization is to entry
 ```
 
-The first three terms are the only ordinal ones, and each is there because
+The first four terms are the only ordinal ones, and each is there because
 ordering below its position would make it inert.
 
 **Retention** is the term that usually decides:
@@ -311,9 +312,29 @@ count of the material in the recent-history window. **Goals** is zero for
 anything no focus emphasized.
 
 The last two terms never decide which material to practice, only which
-realization of it. Two candidates on the same scale always tie on terms 4
-through 7, so realization rank and fit are what choose the tempo and span it is
+realization of it. Two candidates on the same scale always tie on terms 5
+through 8, so realization rank and fit are what choose the tempo and span it is
 asked at.
+
+### Arriving at a finite goal's targets
+
+Term 4 is true for a candidate in the shape of a target requirement the goal has
+not yet covered, presented under guidance that requirement's coverage accepts. A
+continuously cued rendition of a from-memory target has the target's shape and
+still cannot cover it, so it is not arriving and is left to the terms below.
+General technique names no shape, and the term is false throughout it.
+
+It sits above retention because below it nothing arrives: goal relevance weights
+a material, so the shape that would cover a target was one candidate among its
+many precursors, and continuous terms above it almost never tie. It only orders
+what admission has already allowed, so it cannot hurry a learner into a shape
+they are not ready for. Over 600 slots of 24-key fluency it raised coverage from
+11% to 41%, with breadth, failure, guidance, and retrieval of established
+material unchanged; see
+[`../research/experiments/goal-trajectories.md`](../research/experiments/goal-trajectories.md).
+
+The alternatives measured with it remain settings for comparison:
+`ProgressPreference` in `SchedulerConfig`.
 
 ### The coordination transition
 
@@ -386,14 +407,14 @@ The information boundary is the architectural commitment here. Violating it is a
 design defect rather than a tuning question, and a source-level test keeps
 family-specific policy out of the scheduler package entirely.
 
-| Stage        | Reads                                                   | Decides                    |
-| ------------ | ------------------------------------------------------- | -------------------------- |
-| Generation   | domain and instrument validity                          | whether an exercise exists |
-| Prerequisite | transferable competencies                               | full or provisional tier   |
-| Safety       | session and workload state                              | suppress or allow          |
-| Challenge    | candidate `p_overall` and named-exception clocks        | admit or reject            |
-| Priority     | tier, actionable retention, uncertainty, history, goals | ordering                   |
-| Selection    | ordered candidates and repetition history               | one next exercise          |
+| Stage        | Reads                                                             | Decides                    |
+| ------------ | ----------------------------------------------------------------- | -------------------------- |
+| Generation   | domain and instrument validity                                    | whether an exercise exists |
+| Prerequisite | transferable competencies                                         | full or provisional tier   |
+| Safety       | session and workload state                                        | suppress or allow          |
+| Challenge    | candidate `p_overall` and named-exception clocks                  | admit or reject            |
+| Priority     | tier, arriving, actionable retention, uncertainty, history, goals | ordering                   |
+| Selection    | ordered candidates and repetition history                         | one next exercise          |
 
 Candidate generation takes no learner or session parameter at all, and that
 absence is the enforcement rather than a convention.

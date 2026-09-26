@@ -2,7 +2,8 @@
 
 > **Status:** characterization of the three production goals. Nothing blocks.
 > The finite goals scoped material but did not steer realization; the
-> realization envelope that followed is measured at the end.
+> realization envelope and the arriving term that followed are measured at the
+> end, and the arriving term ships.
 
 The altered-form census asked whether narrow scopes can finish. This one asks
 what the goals KeyRecall offers actually do to practice: General technique,
@@ -162,8 +163,87 @@ open.
 
 The step this points to is the one the envelope deliberately did not take: a
 goal term that prefers the realizations matching an uncovered target's shape,
-not only the target's material. It would be a ranking change, and is not made
-here.
+not only the target's material.
+
+## Arriving at the targets
+
+A rank term, above retention, true for a candidate in the shape of a target the
+goal has not covered yet, under guidance that target's coverage accepts. It
+orders only what admission allowed. Measured against goal relevance reading
+material alone, with the same census and a 30-sitting horizon, plus two frontier
+variants for General technique, which names no target.
+
+```console
+dart run keyrecall_simulation:goal_trajectories --seeds 4 --sittings 10 \
+  --slots 20 --jobs 5 --progress target
+dart run keyrecall_simulation:goal_horizon --scope keyFluency --seeds 4 \
+  --sittings 30 --every 10 --jobs 5 --progress target --out key_fluency.jsonl
+```
+
+The first version preferred the shape at any rung. Under Foundations, which
+counts only what is played from memory, that pulled continuously cued target
+shapes ahead of unguided precursors: target-shaped picks rose from 43% to 66%,
+cued picks from 10% to 40%, and completion fell from 29 runs to 26. A shape the
+goal cannot count is not arriving, and the term was narrowed to guidance the
+coverage accepts.
+
+The census, 200 slots:
+
+| Scope            | Covered, material only | Arriving | Complete, material only | Arriving |
+| ---------------- | ---------------------: | -------: | ----------------------: | -------: |
+| Foundations      |                  0.767 |    0.781 |                   29/52 |    36/52 |
+| 24-key fluency   |                  0.012 |    0.056 |                    0/52 |     0/52 |
+| B flat, Found.   |                  0.817 |    0.904 |                   34/52 |    43/52 |
+| D, 24-key        |                  0.250 |    0.375 |                    8/52 |    13/52 |
+| D harmonic, Gen. |                  0.942 |    0.942 |                   49/52 |    49/52 |
+
+Foundations finishes in fewer picks, 137 rather than 162 a run, with cued picks
+at 11% rather than 10%. General technique and its focus are identical, as they
+should be.
+
+24-key fluency over 30 sittings, each row the ten sittings before it:
+
+| Sittings | Covered, material only | Arriving | Target-shaped | Arriving | Materials | Arriving | Failed | Arriving |
+| -------: | ---------------------: | -------: | ------------: | -------: | --------: | -------: | -----: | -------: |
+|       10 |                  0.012 |    0.056 |         0.017 |    0.071 |      33.1 |     32.1 |  0.533 |    0.538 |
+|       20 |                  0.053 |    0.224 |         0.041 |    0.156 |      38.2 |     37.5 |  0.498 |    0.503 |
+|       30 |                  0.108 |    0.408 |         0.057 |    0.230 |      40.5 |     39.1 |  0.460 |    0.480 |
+
+Coverage at 600 slots nearly quadruples. The first clean, unguided attempt that
+is hands together, two octaves or more, and up and down comes near slot 127
+rather than 166, in 47 runs rather than 40. Breadth, failure, the guidance mix,
+and retrieval of established material, the share of materials demonstrated
+earlier that were retrieved unguided again in the interval, 96% against 97%, are
+unchanged. Arriving work does not crowd out keeping.
+
+**It ships**, as scheduler model version `v1-7`.
+
+### A frontier does not transfer to General technique
+
+General technique names no destination, and its horizon shows the pattern a
+destination would fix: over 30 sittings, the share of picks whose shape an
+already demonstrated realization of the same material subsumes rises from 3% to
+23%, while picks that are hands together, two octaves, and up and down stay near
+5%. Breadth and retrieval are healthy; depth is not.
+
+The scheduler's realization frontier was tried as the destination, and made
+things worse both ways:
+
+- **Above retention**, a step past the frontier outranked every other candidate,
+  and a material met for the first time has none. General technique met 4
+  materials in 200 slots rather than 36, one taking 47% of picks, and
+  Foundations covered 13% rather than 77%.
+- **Within the material ranking chose**, at the same rung, breadth held, but
+  24-key coverage at 600 slots fell to 7%, Foundations completed in no run, and
+  in General technique the deepest picks fell from 5% to 1% while subsumed
+  shapes rose to 36%.
+
+The reason is what that frontier is: a hand's demonstrated tempo and span on a
+material. Stepping past it asks one hand for more of the same, faster or wider,
+and never for hands together or a reversal. Two things follow. Which material a
+slot serves must stay with ranking, which is what keeps breadth and retrieval;
+and the destination General technique lacks is a frontier over shapes, not over
+tempo. Both variants remain settings for comparison.
 
 ## Interpretation boundary
 

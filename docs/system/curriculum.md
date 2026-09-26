@@ -70,6 +70,12 @@ technique, offers everything. Live support is the one exception, drawn from
 every realization, because what a barrier waits on need not be anything the goal
 targets.
 
+Within that envelope, ranking prefers arriving: a candidate in the shape of a
+target not yet covered, under guidance that target's coverage accepts, outranks
+retention and everything below it. Which shapes are on the way is the envelope's
+question; that the target itself is wanted is this one's. See
+[`scheduler.md`](scheduler.md#arriving-at-a-finite-goals-targets).
+
 ## Requirements describe capability, not lessons
 
 A curriculum is a provenance-backed set of requirements, each describing an

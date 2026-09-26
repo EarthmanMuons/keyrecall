@@ -158,14 +158,16 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
   int sittings = 10,
   int slotsPerSitting = 20,
   PlacementTier? placement,
-  ProgressPreference progress = ProgressPreference.materialOnly,
+  ProgressPreference? progress,
   void Function(int sitting, int slots, PracticeSession session)? afterSitting,
 }) async {
   final at0 = DateTime.utc(2026);
   const learner = LearnerModel();
   final pipeline = SchedulerPipeline(
     learner: learner,
-    config: v1SchedulerConfig.withProgress(progress),
+    config: progress == null
+        ? v1SchedulerConfig
+        : v1SchedulerConfig.withProgress(progress),
   );
   final catalog = <TechnicalMaterial>[
     ...allScales,
@@ -311,7 +313,7 @@ Future<List<GoalTrajectoryRun>> runGoalTrajectoryMatrix({
   int sittings = 10,
   int slotsPerSitting = 20,
   int parallelism = 1,
-  ProgressPreference progress = ProgressPreference.materialOnly,
+  ProgressPreference? progress,
   void Function(int completed, int total)? onProgress,
 }) async {
   if (parallelism < 1) {

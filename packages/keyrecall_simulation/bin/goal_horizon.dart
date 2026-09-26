@@ -25,7 +25,7 @@ Future<void> main(List<String> arguments) async {
     ..addOption(
       'progress',
       allowed: [for (final value in ProgressPreference.values) value.name],
-      defaultsTo: 'materialOnly',
+      defaultsTo: v1SchedulerConfig.progress.name,
     );
   final options = parser.parse(arguments);
   final scope = GoalTrajectoryScope.values.byName(options.option('scope')!);

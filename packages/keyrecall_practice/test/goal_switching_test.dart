@@ -168,12 +168,14 @@ void main() {
         final decision = await session.decideOutcome(at: t0.plusDays(day));
         final coverage = switch (decision) {
           PresentedAttempt(:final coverage) => coverage!,
+          PresentedAcquisition(:final coverage) => coverage,
           PracticeCaughtUp(:final coverage) => coverage,
           PracticeBlocked(:final coverage) => coverage,
           _ => throw StateError('unexpected $decision'),
         };
         // A clear miss closes the slot and cannot cover anything, so every
         // count below reads the same history.
+        if (decision is PresentedAcquisition) await session.abandonPending();
         if (decision is PresentedAttempt) {
           await session.acknowledgePresentation(decision.decision.attemptId);
           await session.closeWithOutcome(
