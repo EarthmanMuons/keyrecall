@@ -10,25 +10,29 @@ import 'goal_screen.dart';
 import 'practice_providers.dart';
 
 /// Progress toward the goal in force, or null where there is no finish line
-/// or nothing has reported coverage yet.
+/// or no sitting is open.
+///
+/// Read from the goal's targets and the history alone. It does not wait on a
+/// scheduling decision, so it is there while an attempt is pending or under
+/// review, and it never generates the candidates a decision would.
 ///
 /// General technique has no finish line, so it has no progress here; the
 /// fluency report is what describes open-ended practice.
 final goalProgressProvider = Provider<GoalProgress?>((ref) {
-  final plan = ref.watch(practicePlanProvider).value;
-  final coverage = ref.watch(practiceLoopProvider).value?.coverage;
-  if (plan == null || coverage == null || !hasFinishLine(plan)) return null;
+  final loop = ref.watch(practiceLoopProvider).value;
+  if (loop == null || !hasFinishLine(loop.plan)) return null;
   final catalog = ref.watch(practiceCatalogProvider);
-  if (plan.resolve(catalog) case ResolvedPlan(:final goal, :final focus)) {
-    if (PracticeScopeResolver().resolve(
-          goal: goal,
-          focus: focus,
-          catalog: catalog,
-          instrument: InstrumentProfile(),
-        )
-        case ValidPracticeScope(:final scope)) {
-      return goalProgressOf(scope, coverage);
-    }
+  if (loop.plan.resolve(catalog) case ResolvedPlan(:final goal, :final focus)) {
+    final targets = PracticeScopeResolver().targetsOf(
+      goal: goal,
+      focus: focus,
+      catalog: catalog,
+    );
+    if (targets.isEmpty) return null;
+    return goalProgressOf(
+      targets,
+      coverageOf(targets, loop.session.journal.records),
+    );
   }
   return null;
 });
@@ -45,11 +49,15 @@ class GoalProgressScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final layout = Layout.of(context);
-    final plan = ref.watch(practicePlanProvider).value ?? PracticePlan.normal;
+    final plan =
+        ref.watch(practiceLoopProvider).value?.plan ?? PracticePlan.normal;
     final progress = ref.watch(goalProgressProvider);
+    final focused = plan.focus?.isExclusive ?? false;
 
     return Scaffold(
-      appBar: AppBar(title: Text(goalName(plan.goalId))),
+      appBar: AppBar(
+        title: Text(focused ? 'Focus progress' : goalName(plan.goalId)),
+      ),
       body: progress == null
           ? const Center(child: Text('Nothing to show yet.'))
           : ListView(
@@ -62,6 +70,11 @@ class GoalProgressScreen extends ConsumerWidget {
                   '${progress.covered} of ${progress.total} demonstrated',
                   style: theme.textTheme.titleLarge,
                 ),
+                if (focused)
+                  Text(
+                    'In this focus, within ${goalName(plan.goalId)}',
+                    style: theme.textTheme.bodyMedium,
+                  ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: progress.total == 0
@@ -70,9 +83,7 @@ class GoalProgressScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Something counts once you have played it from memory the '
-                  'way the goal asks. Practice keeps coming back to it, and '
-                  'that never takes it away.',
+                  progressExplanation(progress),
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -85,26 +96,25 @@ class GoalProgressScreen extends ConsumerWidget {
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
-                  switch (layoutOf(section)) {
-                    GoalProgressLayout.keyGrid => _KeyGrid(section),
-                    GoalProgressLayout.handRows => Column(
-                      children: [
-                        for (final row in section.rows) _HandsRow(row),
-                      ],
-                    ),
-                    GoalProgressLayout.targetList => Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final row in section.rows) _TargetRows(row),
-                      ],
-                    ),
-                  },
+                  GoalProgressSectionView(section),
                 ],
               ],
             ),
     );
   }
 }
+
+/// What it takes for something to count, in the terms its targets use.
+///
+/// From memory only where every target asks for that. A general technique
+/// focus counts playing that follows a preview, and saying "from memory" there
+/// would hold the learner to a standard the count does not.
+String progressExplanation(GoalProgress progress) =>
+    '${progress.fromMemory ? 'Something counts once you have played it from '
+              'memory the way the goal asks.' : 'Something counts once you '
+              'have played it the way the goal asks, recalling it yourself '
+              'rather than following cues.'} '
+    'Practice keeps coming back to it, and that never takes it away.';
 
 /// What a section is called: the family's plural, or its id for a family
 /// this build has no name for.
@@ -154,6 +164,25 @@ bool isMinorKey(TechnicalMaterial material) => switch (material) {
   ArpeggioMaterial(:final quality) => quality == ArpeggioQuality.minor,
 };
 
+/// One section of a goal's progress, in the layout that names its targets.
+class GoalProgressSectionView extends StatelessWidget {
+  const GoalProgressSectionView(this.section, {super.key});
+
+  final GoalProgressSection section;
+
+  @override
+  Widget build(BuildContext context) => switch (layoutOf(section)) {
+    GoalProgressLayout.keyGrid => _KeyGrid(section),
+    GoalProgressLayout.handRows => Column(
+      children: [for (final row in section.rows) _HandsRow(row)],
+    ),
+    GoalProgressLayout.targetList => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [for (final row in section.rows) _TargetRows(row)],
+    ),
+  };
+}
+
 class _KeyGrid extends StatelessWidget {
   const _KeyGrid(this.section);
 
@@ -201,10 +230,11 @@ class _KeyMark extends StatelessWidget {
           '${materialName(row.material)}, '
           '${done ? 'demonstrated' : 'not yet demonstrated'}',
       excludeSemantics: true,
+      // Sized to its label, with a floor for touch and for one-letter keys.
+      // An alignment here would stretch it to the width of the run instead.
       child: Container(
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 36),
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        alignment: Alignment.center,
+        constraints: const BoxConstraints(minWidth: 44),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: done ? scheme.primaryContainer : null,
           border: Border.all(
@@ -214,6 +244,7 @@ class _KeyMark extends StatelessWidget {
         ),
         child: Text(
           keyLabel(row.material),
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: done ? scheme.onPrimaryContainer : scheme.onSurfaceVariant,
           ),

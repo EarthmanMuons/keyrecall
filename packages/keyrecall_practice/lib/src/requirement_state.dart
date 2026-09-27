@@ -4,6 +4,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
 import 'requirement_completion.dart';
+import 'scope_resolution.dart';
 
 /// Retrieval health below which a covered requirement warrants maintenance.
 ///
@@ -250,6 +251,39 @@ RequirementState assessScaleRequirement({
   learner: learner,
   at: at,
 );
+
+/// How much of [targets] [records] have demonstrated.
+///
+/// Coverage by definition alone, the same criterion the evaluator applies,
+/// read in one pass over history: each record is asked only about the targets
+/// of its own material.
+ScopeCoverage coverageOf(
+  List<GoalTarget> targets,
+  Iterable<AttemptRecord> records,
+) {
+  final byMaterial = <TechnicalMaterial, List<GoalTarget>>{};
+  for (final target in targets) {
+    byMaterial.putIfAbsent(target.material, () => []).add(target);
+  }
+  final covered = <String>{};
+  for (final record in records) {
+    for (final target
+        in byMaterial[record.exercise.material] ?? const <GoalTarget>[]) {
+      if (covered.contains(target.requirement.id)) continue;
+      if (assessRequirementAttempt(
+        requirement: target.requirement,
+        material: target.material,
+        record: record,
+      ).isCovered) {
+        covered.add(target.requirement.id);
+      }
+    }
+  }
+  return ScopeCoverage(
+    coveredTargetIds: Set.unmodifiable(covered),
+    targetCount: targets.length,
+  );
+}
 
 RequirementState _assessDemonstratedRequirement({
   required ResolvedRequirement resolved,

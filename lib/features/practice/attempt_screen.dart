@@ -593,7 +593,8 @@ class _GoalProgressButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final progress = ref.watch(goalProgressProvider);
-    if (progress == null) return const SizedBox.shrink();
+    final plan = ref.watch(practiceLoopProvider).value?.plan;
+    if (progress == null || plan == null) return const SizedBox.shrink();
     return TextButton.icon(
       onPressed: () => Navigator.of(context).push(
         MaterialPageRoute<void>(
@@ -604,8 +605,8 @@ class _GoalProgressButton extends ConsumerWidget {
       label: Text(
         '${progress.covered}/${progress.total}',
         semanticsLabel:
-            'Goal progress, ${progress.covered} of ${progress.total} '
-            'demonstrated',
+            '${coverageScopeName(plan)}, ${progress.covered} of '
+            '${progress.total} demonstrated',
       ),
     );
   }

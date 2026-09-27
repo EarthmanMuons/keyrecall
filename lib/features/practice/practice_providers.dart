@@ -516,27 +516,26 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   }
 
   /// Changes a profile's display name.
+  ///
+  /// Never reopens practice, even for the active profile. A name is how the
+  /// roster shows somebody, not anything practice reads, and reopening would
+  /// drop the focus the sitting is holding.
   Future<ProfileMutation<Profile>> rename(
     String profileId,
     String displayName,
   ) => _mutate((lifecycle) async {
     final renamed = await lifecycle.repository.rename(profileId, displayName);
-    return (
-      await _isActive(lifecycle.repository, profileId),
-      ProfileChanged(renamed),
-    );
+    return (false, ProfileChanged(renamed));
   });
 
-  /// Changes the color a profile is recognized by.
+  /// Changes the color a profile is recognized by, which, like its name,
+  /// leaves practice alone.
   Future<ProfileMutation<Profile>> recolor(
     String profileId,
     ProfileColor color,
   ) => _mutate((lifecycle) async {
     final restyled = await lifecycle.repository.restyle(profileId, color.name);
-    return (
-      await _isActive(lifecycle.repository, profileId),
-      ProfileChanged(restyled),
-    );
+    return (false, ProfileChanged(restyled));
   });
 
   /// Makes [profileId] the profile the practice loop runs as.

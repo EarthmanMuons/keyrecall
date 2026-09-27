@@ -125,12 +125,13 @@ defining it.
 
 A goal with a finish line shows its progress in the shape of its curriculum:
 Foundations as its ten scales with a mark for each hand, 24-key fluency as a
-grid of keys for scales and one for arpeggios. It reads coverage and nothing
-else, so it counts targets and never the route to them, and a target once
-covered stays covered: coverage is read from history, and being due again does
-not take it back. General technique shows no count, since it has no end; the
-fluency report is what describes it. An exclusive focus inside it is a chosen
-set, and shows the progress of that set.
+grid of keys for scales and one for arpeggios. It reads the goal's targets and
+the history directly, not the last scheduling decision, so it is there while an
+attempt is pending and generates nothing to get there. It counts targets and
+never the route to them, and a target once covered stays covered: coverage is
+read from history, and being due again does not take it back. General technique
+shows no count, since it has no end; the fluency report is what describes it. An
+exclusive focus inside it is a chosen set, and shows the progress of that set.
 
 The compact layouts are used only while they name every target. A grid needs one
 target per material, and a mark per hand needs no two of a material's targets to

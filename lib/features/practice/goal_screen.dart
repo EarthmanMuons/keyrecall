@@ -26,7 +26,7 @@ class GoalScreen extends ConsumerWidget {
     final layout = Layout.of(context);
     final catalog = ref.watch(practiceCatalogProvider);
     final plan = ref.watch(practicePlanProvider).value ?? PracticePlan.normal;
-    final coverage = ref.watch(practiceLoopProvider).value?.coverage;
+    final progress = ref.watch(goalProgressProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Goal')),
@@ -51,12 +51,12 @@ class GoalScreen extends ConsumerWidget {
                   .read(practicePlanProvider.notifier)
                   .apply(plan.withGoal(goalId, catalog)),
             ),
-          if (coverage != null && hasFinishLine(plan))
+          if (progress != null)
             ListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(
-                '${coverageScopeName(plan)}: ${coverage.coveredTargets} of '
-                '${coverage.targetCount} covered so far',
+                '${coverageScopeName(plan)}: ${progress.covered} of '
+                '${progress.total} covered so far',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

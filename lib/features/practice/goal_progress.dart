@@ -11,8 +11,14 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 class GoalProgress {
   final List<GoalProgressSection> sections;
 
-  GoalProgress(Iterable<GoalProgressSection> sections)
-    : sections = List.unmodifiable(sections);
+  /// Whether every target counts only what was played from memory, so a
+  /// preview beforehand never covers one.
+  final bool fromMemory;
+
+  GoalProgress(
+    Iterable<GoalProgressSection> sections, {
+    required this.fromMemory,
+  }) : sections = List.unmodifiable(sections);
 
   int get covered => sections.fold(0, (sum, section) => sum + section.covered);
   int get total => sections.fold(0, (sum, section) => sum + section.total);
@@ -91,44 +97,43 @@ GoalProgressLayout layoutOf(GoalProgressSection section) {
       : GoalProgressLayout.targetList;
 }
 
-/// [scope]'s targets under [coverage], in the order the curriculum lists them.
+/// [targets] under [coverage], in the order the curriculum lists them.
 ///
 /// Families appear in the order their first target does, materials likewise,
 /// and a material's cells in hand order, right before left before together.
-GoalProgress goalProgressOf(
-  ResolvedPracticeScope scope,
-  ScopeCoverage coverage,
-) {
+GoalProgress goalProgressOf(List<GoalTarget> targets, ScopeCoverage coverage) {
   final cells = <String, Map<TechnicalMaterial, List<GoalProgressCell>>>{};
-  for (final requirement in scope.requirements) {
-    if (!requirement.isTarget) continue;
+  for (final target in targets) {
     cells
-        .putIfAbsent(requirement.material.familyId, () => {})
-        .putIfAbsent(requirement.material, () => [])
+        .putIfAbsent(target.material.familyId, () => {})
+        .putIfAbsent(target.material, () => [])
         .add(
           GoalProgressCell(
-            constraints: requirement.requirement.constraints,
-            covered: coverage.coveredTargetIds.contains(
-              requirement.requirement.id,
-            ),
+            constraints: target.requirement.constraints,
+            covered: coverage.coveredTargetIds.contains(target.requirement.id),
           ),
         );
   }
   int handOrder(GoalProgressCell cell) =>
       cell.hands?.index ?? HandConfiguration.values.length;
-  return GoalProgress([
-    for (final MapEntry(key: familyId, value: materials) in cells.entries)
-      GoalProgressSection(
-        familyId: familyId,
-        rows: [
-          for (final MapEntry(key: material, value: materialCells)
-              in materials.entries)
-            GoalProgressRow(
-              material: material,
-              cells: [...materialCells]
-                ..sort((a, b) => handOrder(a).compareTo(handOrder(b))),
-            ),
-        ],
-      ),
-  ]);
+  return GoalProgress(
+    [
+      for (final MapEntry(key: familyId, value: materials) in cells.entries)
+        GoalProgressSection(
+          familyId: familyId,
+          rows: [
+            for (final MapEntry(key: material, value: materialCells)
+                in materials.entries)
+              GoalProgressRow(
+                material: material,
+                cells: [...materialCells]
+                  ..sort((a, b) => handOrder(a).compareTo(handOrder(b))),
+              ),
+          ],
+        ),
+    ],
+    fromMemory: targets.every(
+      (target) => target.requirement.retrieval == CoverageRetrieval.unguided,
+    ),
+  );
 }

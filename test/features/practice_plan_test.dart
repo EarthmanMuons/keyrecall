@@ -10,6 +10,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/input/input.dart';
 import 'package:keyrecall/features/practice/focus_sheet.dart';
+import 'package:keyrecall/features/practice/goal_progress_screen.dart';
 import 'package:keyrecall/features/practice/loop_failure.dart';
 import 'package:keyrecall/features/practice/practice_failure.dart';
 import 'package:material_ui/material_ui.dart';
@@ -17,6 +18,7 @@ import 'package:keyrecall/features/practice/exercise_presentation.dart';
 import 'package:keyrecall/features/practice/practice_focus.dart';
 import 'package:keyrecall/features/practice/attempt_transcript.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
+import 'package:keyrecall/features/practice/profile_color.dart';
 
 import '../support/scheduler_override.dart';
 
@@ -93,6 +95,57 @@ void main() {
       const PracticePlan(goalId: 'FOUNDATIONS'),
     );
   });
+
+  test('renaming or recoloring the profile keeps its focus', () async {
+    final container = launch();
+    await place(container);
+    await container.read(practicePlanProvider.future);
+    final focused = const PracticePlan(goalId: 'FOUNDATIONS')
+        .focusedOn(_minorMaterial);
+    await container.read(practicePlanProvider.notifier).apply(focused);
+    final profileId = (await container.read(profileRosterProvider.future))
+        .single
+        .profile
+        .id;
+
+    await container
+        .read(profileRosterProvider.notifier)
+        .rename(profileId, 'Somebody else');
+    await container
+        .read(profileRosterProvider.notifier)
+        .recolor(profileId, ProfileColor.values.last);
+
+    expect(await container.read(practicePlanProvider.future), focused);
+  });
+
+  test(
+    'progress is there on a relaunch that resumes a pending attempt',
+    () async {
+      final container = launch();
+      await place(container);
+      await container.read(practiceLoopProvider.future);
+      await container
+          .read(practicePlanProvider.notifier)
+          .apply(const PracticePlan(goalId: 'FOUNDATIONS'));
+      final reopened = await container.read(practiceLoopProvider.future);
+      expect(
+        reopened.pending,
+        isNotNull,
+        reason: 'the decision made before the goal changed is still waiting',
+      );
+      expect(container.read(goalProgressProvider), isNotNull);
+
+      final relaunched = launch();
+      final resumed = await relaunched.read(practiceLoopProvider.future);
+
+      expect(
+        resumed.coverage,
+        isNull,
+        reason: 'no decision was made to resume',
+      );
+      expect(relaunched.read(goalProgressProvider), isNotNull);
+    },
+  );
 
   test('an exclusive focus is the only thing presented', () async {
     final container = launch();

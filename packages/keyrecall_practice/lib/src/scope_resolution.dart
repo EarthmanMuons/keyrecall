@@ -434,6 +434,31 @@ class PracticeScopeResolver {
     );
   }
 
+  /// [goal]'s completion targets under [focus], by definition alone.
+  ///
+  /// What coverage and progress read, without generating a single candidate:
+  /// a target is a requirement and its material, and what realizes it is the
+  /// scheduler's question. Validation is [resolve]'s; a target whose material
+  /// the catalog lacks is left out rather than reported.
+  List<GoalTarget> targetsOf({
+    required PracticeGoal goal,
+    required PracticeFocus focus,
+    required List<TechnicalMaterial> catalog,
+  }) {
+    final curriculum = _curriculumFor(goal, catalog);
+    final exclusiveIds = focus.exclusiveRequirementIds;
+    final catalogById = {
+      for (final material in catalog) material.materialId: material,
+    };
+    return [
+      for (final requirement in curriculum.requirements)
+        if (requirement.role == CurriculumRequirementRole.target &&
+            (exclusiveIds == null || exclusiveIds.contains(requirement.id)))
+          if (catalogById[requirement.materialId] case final material?)
+            GoalTarget(requirement: requirement, material: material),
+    ];
+  }
+
   Curriculum _curriculumFor(
     PracticeGoal goal,
     List<TechnicalMaterial> catalog,
@@ -646,3 +671,12 @@ ExerciseDirection _floorDirection(ArpeggioPracticePolicy policy) =>
         ArpeggioAcquisitionFloorShape.rightHandAscendingAndDescending
     ? ExerciseDirection.upDown
     : ExerciseDirection.up;
+
+/// One completion target: a requirement and the material it is asked of.
+@immutable
+class GoalTarget {
+  final CurriculumRequirement requirement;
+  final TechnicalMaterial material;
+
+  const GoalTarget({required this.requirement, required this.material});
+}
