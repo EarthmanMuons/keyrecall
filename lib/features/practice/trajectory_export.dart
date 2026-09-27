@@ -122,6 +122,31 @@ String trajectoryRow(
             }}',
       MeasurementUnavailable(:final reason) => 'unmeasured ${reason.id}',
     },
+    contextOf(record),
+  ].join(' ');
+}
+
+/// What an attempt records about the circumstances it ran in: the goal it was
+/// decided under, how long its parts took, and what it was played on.
+///
+/// A dash for each a record does not carry, which is every record written
+/// before they were part of the format and every attempt that never opened a
+/// listening window.
+String contextOf(AttemptRecord record) {
+  String seconds(int? ms) =>
+      ms == null ? '-' : '${(ms / 1000).toStringAsFixed(2)}s';
+  final scope = record.scope;
+  final timing = record.timing;
+  final input = record.input;
+  return [
+    'goal=${scope == null ? '-' : scope.goalId}'
+        '${scope?.exclusiveRequirementIds == null ? '' : '+focus'}',
+    'open=${seconds(timing?.openMs)}',
+    'first=${seconds(timing?.firstNoteMs)}',
+    'playing=${seconds(timing?.playingMs)}',
+    'left=${timing == null ? '-' : timing.leftForeground}',
+    'input=${input == null ? '-' : [input.source, input.transport ?? '-', if (input.clockGranularity != null) 'clock${input.clockGranularity}'
+                '${input.clockModulus == null ? '' : 'mod${input.clockModulus}'}'].join('/')}',
   ].join(' ');
 }
 
@@ -163,6 +188,7 @@ String trajectoryOf(
     'admitted_by'.padRight(18),
     'predicted',
     'outcome (played = requested x achieved ratio)',
+    'context',
   ].join(' '),
   for (final (index, record) in journal.records.indexed)
     trajectoryRow(

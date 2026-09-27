@@ -234,6 +234,77 @@ void main() {
     });
   });
 
+  group('an attempt\'s context', () {
+    AttemptRecord recordWith({
+      DecisionScope? scope,
+      AttemptTiming? timing,
+      InputProvenance? input,
+    }) {
+      final exercise = Exercise.linear(
+        material: TechnicalMaterial('C', ScaleForm.major),
+        hands: HandConfiguration.right,
+      );
+      return AttemptRecord(
+        journalSequence: 0,
+        identity: AttemptIdentity(
+          profileId: learner.id,
+          attemptId: 'a',
+          sessionId: 's',
+          indexInSession: 0,
+          occurredAt: learner.createdAt,
+        ),
+        provenance: const ModelProvenance(
+          learnerModelVersion: 'learner',
+          schedulerModelVersion: 'scheduler',
+        ),
+        exercise: exercise,
+        scope: scope,
+        timing: timing,
+        input: input,
+        closure: AttemptClosure.unmeasured(
+          termination: AttemptTermination.learnerStopped,
+          reason: MeasurementUnavailableReason.nothingPlayed,
+        ),
+      );
+    }
+
+    test('names the goal, the timing, and the input', () {
+      final context = contextOf(
+        recordWith(
+          scope: DecisionScope(
+            goalId: 'FOUNDATIONS',
+            curriculumId: 'FOUNDATIONS',
+            curriculumVersion: '1',
+          ),
+          timing: const AttemptTiming(
+            openMs: 9250,
+            firstNoteMs: 1500,
+            playingMs: 6420,
+            leftForeground: true,
+          ),
+          input: const InputProvenance(
+            source: 'MIDI',
+            transport: 'ble',
+            clockGranularity: 1,
+            clockModulus: 8192,
+          ),
+        ),
+      );
+
+      expect(context, contains('goal=FOUNDATIONS'));
+      expect(context, contains('open=9.25s first=1.50s playing=6.42s'));
+      expect(context, contains('left=true'));
+      expect(context, contains('input=MIDI/ble/clock1mod8192'));
+    });
+
+    test('marks what an older record never carried', () {
+      expect(
+        contextOf(recordWith()),
+        'goal=- open=- first=- playing=- left=- input=-',
+      );
+    });
+  });
+
   group('the coordination counterfactuals', () {
     // The device run's F major: typically together, with a short tail over the
     // bound, and a fault reported for it.
