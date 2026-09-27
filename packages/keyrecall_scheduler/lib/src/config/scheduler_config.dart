@@ -186,9 +186,13 @@ class EligibilityConfig {
   EligibilityConfig withAlteredFormPolicy({
     bool? sameTonicAlteredFormPrerequisite,
     bool? scopeAwareAlteredFormBreadth,
+    int? harmonicMinorCoreRetrievals,
+    int? melodicMinorCoreRetrievals,
   }) => withPolicy(
     sameTonicAlteredFormPrerequisite: sameTonicAlteredFormPrerequisite,
     scopeAwareAlteredFormBreadth: scopeAwareAlteredFormBreadth,
+    harmonicMinorCoreRetrievals: harmonicMinorCoreRetrievals,
+    melodicMinorCoreRetrievals: melodicMinorCoreRetrievals,
   );
 
   /// The same thresholds with the execution floors reading [evidence].
@@ -198,6 +202,8 @@ class EligibilityConfig {
   EligibilityConfig withPolicy({
     bool? sameTonicAlteredFormPrerequisite,
     bool? scopeAwareAlteredFormBreadth,
+    int? harmonicMinorCoreRetrievals,
+    int? melodicMinorCoreRetrievals,
     EligibilityEvidence? evidence,
   }) => EligibilityConfig(
     multiOctaveExecutionFloor: multiOctaveExecutionFloor,
@@ -206,8 +212,10 @@ class EligibilityConfig {
     intermediateExecutionFloor: intermediateExecutionFloor,
     advancedExecutionFloor: advancedExecutionFloor,
     minorTopologyFloor: minorTopologyFloor,
-    harmonicMinorCoreRetrievals: harmonicMinorCoreRetrievals,
-    melodicMinorCoreRetrievals: melodicMinorCoreRetrievals,
+    harmonicMinorCoreRetrievals:
+        harmonicMinorCoreRetrievals ?? this.harmonicMinorCoreRetrievals,
+    melodicMinorCoreRetrievals:
+        melodicMinorCoreRetrievals ?? this.melodicMinorCoreRetrievals,
     coreRetrievalBands: coreRetrievalBands,
     fluentHandsTogetherFloor: fluentHandsTogetherFloor,
     sameTonicAlteredFormPrerequisite:

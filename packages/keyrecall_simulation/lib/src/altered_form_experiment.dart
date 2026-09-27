@@ -40,6 +40,21 @@ class AlteredFormArm {
     config: v1SchedulerConfig,
   );
 
+  /// Core retrieval breadth for harmonic and melodic minor, around the
+  /// shipped six and eight.
+  static List<AlteredFormArm> get breadth => [
+    for (final (harmonic, melodic) in [(4, 6), (6, 8), (8, 10)])
+      AlteredFormArm(
+        id: 'breadth_${harmonic}_$melodic',
+        config: v1SchedulerConfig.withEligibility(
+          v1SchedulerConfig.eligibility.withAlteredFormPolicy(
+            harmonicMinorCoreRetrievals: harmonic,
+            melodicMinorCoreRetrievals: melodic,
+          ),
+        ),
+      ),
+  ];
+
   /// The same-tonic prerequisite and the scope-aware breadth cap, crossed.
   static List<AlteredFormArm> get factorial => [
     for (final (sameTonic, scopeAware) in [
@@ -74,6 +89,12 @@ class AlteredFormIntroduction {
   final bool naturalMinorRetrieved;
   final bool waiverOpen;
 
+  /// Successful retrievals of the same tonic's natural minor, in any hand.
+  final int sameTonicRetrievals;
+
+  /// Distinct natural minors retrieved, counted per hand.
+  final int naturalMinorHandsRetrieved;
+
   const AlteredFormIntroduction({
     required this.slot,
     required this.form,
@@ -84,6 +105,43 @@ class AlteredFormIntroduction {
     required this.bandsRetrieved,
     required this.naturalMinorRetrieved,
     required this.waiverOpen,
+    required this.sameTonicRetrievals,
+    required this.naturalMinorHandsRetrieved,
+  });
+}
+
+/// One of the first attempts at an altered form in one hand configuration.
+class AlteredFormAttempt {
+  final ScaleForm form;
+
+  /// Which attempt at this material and hands it was, from 1.
+  final int ordinal;
+  final bool managed;
+  final GuidanceContext guidance;
+  final bool recovery;
+
+  const AlteredFormAttempt({
+    required this.form,
+    required this.ordinal,
+    required this.managed,
+    required this.guidance,
+    required this.recovery,
+  });
+}
+
+/// What one presented attempt was, as much as the window after the first
+/// introduction reads.
+class AlteredFormPick {
+  final int slot;
+  final ScaleForm? form;
+  final String materialId;
+  final bool unguided;
+
+  const AlteredFormPick({
+    required this.slot,
+    required this.form,
+    required this.materialId,
+    required this.unguided,
   });
 }
 
@@ -110,6 +168,16 @@ class AlteredFormRun {
   final AlteredFormTerminal terminal;
   final int? terminalSlot;
 
+  /// The first three attempts at each altered material and hands.
+  final List<AlteredFormAttempt> firstAttempts;
+
+  /// Every presented attempt, in order.
+  final List<AlteredFormPick> picks;
+
+  /// Altered-form targets covered at the end, and how many there were.
+  final int alteredCovered;
+  final int alteredTargets;
+
   AlteredFormRun({
     required this.armId,
     required this.scope,
@@ -124,7 +192,40 @@ class AlteredFormRun {
     required Iterable<AlteredFormIntroduction> introductions,
     required this.terminal,
     required this.terminalSlot,
-  }) : introductions = List.unmodifiable(introductions);
+    Iterable<AlteredFormAttempt> firstAttempts = const [],
+    Iterable<AlteredFormPick> picks = const [],
+    this.alteredCovered = 0,
+    this.alteredTargets = 0,
+  }) : introductions = List.unmodifiable(introductions),
+       firstAttempts = List.unmodifiable(firstAttempts),
+       picks = List.unmodifiable(picks);
+
+  /// The [window] picks after the first altered form was introduced, or none
+  /// when none was.
+  List<AlteredFormPick> afterOpening(int window) {
+    final opened = introductions.isEmpty ? null : introductions.first.slot;
+    if (opened == null) return const [];
+    return picks.where((pick) => pick.slot > opened).take(window).toList();
+  }
+
+  /// Of the core materials retrieved unguided before the first introduction,
+  /// the share retrieved unguided again in the [window] picks after it.
+  double? coreRetainedAfterOpening(int window) {
+    final opened = introductions.isEmpty ? null : introductions.first.slot;
+    if (opened == null) return null;
+    bool core(AlteredFormPick pick) =>
+        pick.form != null && coreForms.contains(pick.form);
+    final established = {
+      for (final pick in picks)
+        if (pick.slot < opened && core(pick) && pick.unguided) pick.materialId,
+    };
+    if (established.isEmpty) return null;
+    final again = {
+      for (final pick in afterOpening(window))
+        if (core(pick) && pick.unguided) pick.materialId,
+    };
+    return established.intersection(again).length / established.length;
+  }
 
   /// The first introduction of [form], or null when it never happened.
   AlteredFormIntroduction? first(ScaleForm form) {
@@ -239,6 +340,9 @@ Future<AlteredFormRun> runAlteredFormTrajectory({
   final random = PythonCompatibleRandom(seed);
   final introductions = <AlteredFormIntroduction>[];
   final met = <(String, HandConfiguration)>{};
+  final attemptsOf = <(String, HandConfiguration), int>{};
+  final firstAttempts = <AlteredFormAttempt>[];
+  final picks = <AlteredFormPick>[];
   var selections = 0;
   var supportSelections = 0;
   var liveSupportSelections = 0;
@@ -246,22 +350,50 @@ Future<AlteredFormRun> runAlteredFormTrajectory({
   var liveSupportSlots = 0;
   var supportedSlots = 0;
 
-  AlteredFormRun finish(AlteredFormTerminal terminal, int? slot) =>
-      AlteredFormRun(
-        armId: arm.id,
-        scope: scope,
-        playerId: player.id,
-        seed: seed,
-        selections: selections,
-        supportSelections: supportSelections,
-        liveSupportSelections: liveSupportSelections,
-        liveSupportSelectionsAfterOpening: liveSupportSelectionsAfterOpening,
-        liveSupportSlots: liveSupportSlots,
-        supportedSlots: supportedSlots,
-        introductions: introductions,
-        terminal: terminal,
-        terminalSlot: slot,
-      );
+  final resolved =
+      (PracticeScopeResolver().resolve(
+                goal: fixture.goal,
+                focus: fixture.focus,
+                catalog: fixture.materials,
+                instrument: InstrumentProfile(),
+              )
+              as ValidPracticeScope)
+          .scope;
+
+  AlteredFormRun finish(AlteredFormTerminal terminal, int? slot) {
+    final evaluated = const PracticeScopeEvaluator().evaluate(
+      scope: resolved,
+      state: session.state,
+      journal: session.journal,
+      learner: learner,
+      at: at0.add(Duration(minutes: slots + 1)),
+    );
+    final altered = [
+      for (final requirement in evaluated.requirements)
+        if (requirement.resolved.isTarget &&
+            !coreForms.contains(requirement.resolved.material.scaleForm))
+          requirement,
+    ];
+    return AlteredFormRun(
+      armId: arm.id,
+      scope: scope,
+      playerId: player.id,
+      seed: seed,
+      selections: selections,
+      supportSelections: supportSelections,
+      liveSupportSelections: liveSupportSelections,
+      liveSupportSelectionsAfterOpening: liveSupportSelectionsAfterOpening,
+      liveSupportSlots: liveSupportSlots,
+      supportedSlots: supportedSlots,
+      introductions: introductions,
+      terminal: terminal,
+      terminalSlot: slot,
+      firstAttempts: firstAttempts,
+      picks: picks,
+      alteredCovered: altered.where((state) => state.isCovered).length,
+      alteredTargets: altered.length,
+    );
+  }
 
   for (var slot = 0; slot < slots; slot++) {
     final at = at0.add(Duration(minutes: slot + 1));
@@ -284,9 +416,8 @@ Future<AlteredFormRun> runAlteredFormTrajectory({
         }
         final form = material.scaleForm;
         final hands = exercise.conditions.hands;
-        if (form != null &&
-            !coreForms.contains(form) &&
-            met.add((material.materialId, hands))) {
+        final altered = form != null && !coreForms.contains(form);
+        if (altered && met.add((material.materialId, hands))) {
           introductions.add(
             _introductionAt(
               slot,
@@ -294,14 +425,41 @@ Future<AlteredFormRun> runAlteredFormTrajectory({
               hands,
               pipeline.lastState!,
               arm.config,
+              session.journal.records,
             ),
           );
         }
-        await session.acknowledgePresentation(decision.attemptId);
-        await session.closeWithOutcome(
-          playing.play(exercise, random),
-          observedWallTime: at,
+        picks.add(
+          AlteredFormPick(
+            slot: slot,
+            form: form,
+            materialId: material.materialId,
+            unguided: !exercise.guidance.isMaterialSupplied,
+          ),
         );
+        final played = playing.play(exercise, random);
+        if (altered) {
+          final ordinal = attemptsOf.update(
+            (material.materialId, hands),
+            (count) => count + 1,
+            ifAbsent: () => 1,
+          );
+          if (ordinal <= 3) {
+            firstAttempts.add(
+              AlteredFormAttempt(
+                form: form,
+                ordinal: ordinal,
+                managed: learner.executionWasManaged(played),
+                guidance: exercise.guidance,
+                recovery:
+                    decision.decision.challengeBypass ==
+                    ChallengeBypass.recovery,
+              ),
+            );
+          }
+        }
+        await session.acknowledgePresentation(decision.attemptId);
+        await session.closeWithOutcome(played, observedWallTime: at);
       case PresentedAcquisition(:final task):
         supportedSlots++;
         await session.closeAcquisition(
@@ -326,7 +484,22 @@ AlteredFormIntroduction _introductionAt(
   HandConfiguration hands,
   LearnerState state,
   SchedulerConfig config,
+  Iterable<AttemptRecord> records,
 ) {
+  final sameTonic = ScaleMaterial(material.tonic, ScaleForm.naturalMinor);
+  final naturalMinorIds = {
+    for (final scale in allScales)
+      if (scale.form == ScaleForm.naturalMinor) scale.materialId,
+  };
+  var sameTonicRetrievals = 0;
+  for (final record in records) {
+    if (record.exercise.material != sameTonic) continue;
+    if (record.closure.measurement case Measured(
+      :final outcome,
+    ) when outcome.retrieval == FactualRetrieval.succeeded) {
+      sameTonicRetrievals++;
+    }
+  }
   bool retrieved(ScaleMaterial scale) =>
       state.materialMemory[scale.materialId]?.hasFactualRetrieval == true;
   final core = [
@@ -352,6 +525,11 @@ AlteredFormIntroduction _introductionAt(
     waiverOpen:
         state.isObserved(Competency.handsTogetherCoordination) &&
         coordination.mean >= config.eligibility.fluentHandsTogetherFloor,
+    sameTonicRetrievals: sameTonicRetrievals,
+    naturalMinorHandsRetrieved: {
+      for (final (materialId, hand) in retrievedMaterialHands(records))
+        if (naturalMinorIds.contains(materialId)) (materialId, hand),
+    }.length,
   );
 }
 
