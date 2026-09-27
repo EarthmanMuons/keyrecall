@@ -8,6 +8,7 @@ import 'codecs/closure_codec.dart';
 import 'codecs/domain_codec.dart';
 import 'codecs/learner_codec.dart';
 import 'codecs/scheduler_codec.dart';
+import 'decision_scope.dart';
 import 'presentation_record.dart';
 import 'profile.dart';
 import 'schema.dart';
@@ -189,6 +190,11 @@ class AttemptRecord {
   /// production loop presents.
   final SchedulerDecision? decision;
 
+  /// The goal and focus [decision] was made under, or null for a record
+  /// written before scope was part of the format and for an attempt no
+  /// scheduler chose.
+  final DecisionScope? scope;
+
   /// How the attempt ended, and what was measured of it.
   ///
   /// An attempt that ended did so somehow, so the termination is always here.
@@ -214,6 +220,7 @@ class AttemptRecord {
     required this.closure,
     this.presentation,
     this.decision,
+    this.scope,
     this.stateBeforeHash,
     this.stateAfterHash,
     this.observedWallTime,
@@ -235,6 +242,7 @@ class AttemptRecord {
     presentation: presentation,
     closure: closure,
     decision: decision,
+    scope: scope,
     stateBeforeHash: before,
     stateAfterHash: after,
     observedWallTime: observedWallTime,
@@ -264,6 +272,7 @@ class AttemptRecord {
     'decision': decision == null
         ? null
         : encodeDecision(decision!, encodePrediction),
+    'scope': scope == null ? null : encodeDecisionScope(scope!),
     'closure': encodeClosure(closure),
     'state_before_hash': stateBeforeHash,
     'state_after_hash': stateAfterHash,
@@ -295,6 +304,7 @@ class AttemptRecord {
     final provenanceJson = requireMap(json, 'provenance', location: location);
     final decisionJson = json['decision'];
     final presentationJson = json['presentation'];
+    final scopeJson = json['scope'];
 
     return AttemptRecord(
       schemaVersion: version,
@@ -347,6 +357,12 @@ class AttemptRecord {
           : decodeDecision(
               asMap(decisionJson, 'decision', location: location),
               (prediction) => decodePrediction(prediction, location: location),
+              location: location,
+            ),
+      scope: scopeJson == null
+          ? null
+          : decodeDecisionScope(
+              asMap(scopeJson, 'scope', location: location),
               location: location,
             ),
       closure: decodeClosure(

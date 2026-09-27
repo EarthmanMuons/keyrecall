@@ -172,6 +172,55 @@ void main() {
       },
     );
 
+    test('records each attempt under the scope it was decided in', () async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store, materials: catalog);
+      session.updateScope(goal: supportedGoals['FOUNDATIONS']!);
+      final before = await practise(session, attempts: 2);
+      final focus = PracticeFocus(
+        exclusiveRequirementIds: {
+          catalogRequirementId(
+            PracticeGoal.generalFluency.id,
+            cMajor.materialId,
+          ),
+        },
+      );
+      session.updateScope(goal: PracticeGoal.generalFluency, focus: focus);
+      final after = await practise(session, attempts: 2, startDay: 3);
+
+      expect(
+        {for (final record in before) record.scope!.goalId},
+        {'FOUNDATIONS'},
+      );
+      expect(before.first.scope!.exclusiveRequirementIds, isNull);
+      expect(
+        {for (final record in after) record.scope!.goalId},
+        {PracticeGoal.generalFluency.id},
+      );
+      expect(
+        after.first.scope!.exclusiveRequirementIds,
+        focus.exclusiveRequirementIds,
+      );
+    });
+
+    test('a decision left pending keeps its scope across a restart', () async {
+      final store = InMemoryPracticeStore(createdAt: t0);
+      final session = await openSession(store, materials: catalog);
+      session.updateScope(goal: supportedGoals['FOUNDATIONS']!);
+      final presented = await session.decide(at: t0.plusDays(1));
+
+      final reopened = await openSession(
+        store,
+        materials: catalog,
+        sessionId: 'session-2',
+      );
+      final record = await reopened.closeWithOutcome(
+        outcomeFor(presented!.exercise),
+      );
+
+      expect(record.scope!.goalId, 'FOUNDATIONS');
+    });
+
     test('and back again counts what it counted before', () async {
       final store = InMemoryPracticeStore(createdAt: t0);
       final session = await openSession(store, materials: catalog);

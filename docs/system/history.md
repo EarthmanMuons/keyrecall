@@ -160,6 +160,10 @@ placement tier. Placement belongs there because every posterior in the journal
 is a function of it, and a history that does not record the prior it was
 computed against cannot reproduce itself.
 
+Each scheduled attempt also records the goal and focus it was decided under. The
+profile keeps only its current goal and a focus lasts only a sitting, so without
+it a history could not say which scope chose any of its attempts.
+
 Nothing may be aggregated, summarized, or dropped.
 
 ### 2. Feedback exposure, observational companion

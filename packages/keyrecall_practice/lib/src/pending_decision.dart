@@ -59,6 +59,10 @@ class PendingDecision {
   /// Why it was chosen.
   final SchedulerDecision decision;
 
+  /// The goal and focus it was chosen under, or null for a slot written
+  /// before scope was recorded.
+  final DecisionScope? scope;
+
   /// Hash of the state the decision was made from.
   final String stateBeforeHash;
 
@@ -73,6 +77,7 @@ class PendingDecision {
     required this.provenance,
     required this.exercise,
     required this.decision,
+    this.scope,
     required this.stateBeforeHash,
   }) : profileId = requireProfileId(profileId),
        decidedAt = decidedAt.toUtc();
@@ -94,6 +99,7 @@ class PendingDecision {
     },
     'exercise': encodeExercise(exercise),
     'decision': encodeDecision(decision, encodePrediction),
+    'scope': scope == null ? null : encodeDecisionScope(scope!),
     'state_before_hash': stateBeforeHash,
   };
 
@@ -147,6 +153,12 @@ class PendingDecision {
         (prediction) => decodePrediction(prediction, location: location),
         location: location,
       ),
+      scope: json['scope'] == null
+          ? null
+          : decodeDecisionScope(
+              asMap(json['scope'], 'scope', location: location),
+              location: location,
+            ),
       stateBeforeHash: requireString(
         json,
         'state_before_hash',
@@ -176,6 +188,7 @@ class PendingDecision {
     exercise: exercise,
     presentation: presentation,
     decision: decision,
+    scope: scope,
     closure: closure,
     stateBeforeHash: stateBeforeHash,
     stateAfterHash: stateAfterHash,

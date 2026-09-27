@@ -332,6 +332,9 @@ class PracticeSession {
 
   late ScopeResolution _scopeResolution;
 
+  /// The focus [_scopeResolution] was resolved with.
+  late PracticeFocus _focus;
+
   PracticeSession._({
     required this.learner,
     required this.pipeline,
@@ -365,6 +368,7 @@ class PracticeSession {
        _scopeResolver = scopeResolver,
        _scopeEvaluator = scopeEvaluator {
     _scopeResolution = _resolve(goal, focus);
+    _focus = focus;
   }
 
   /// Opens a sitting for [profile], recovering whatever the last run left.
@@ -582,6 +586,7 @@ class PracticeSession {
     PracticeFocus focus = PracticeFocus.unrestricted,
   }) {
     _scopeResolution = _resolve(goal, focus);
+    _focus = focus;
     _epoch++;
     _bound = false;
   }
@@ -652,6 +657,7 @@ class PracticeSession {
     }
 
     final resolution = _scopeResolution;
+    final focus = _focus;
     if (resolution case InvalidPracticeScope(:final failures)) {
       return PracticeInvalidScope(failures);
     }
@@ -791,6 +797,13 @@ class PracticeSession {
       ),
       exercise: chosen.exercise,
       decision: SchedulerDecision.fromTrace(chosen, pipeline.config),
+      scope: DecisionScope(
+        goalId: scope.goalId,
+        curriculumId: scope.curriculumId,
+        curriculumVersion: scope.curriculumVersion,
+        exclusiveRequirementIds: focus.exclusiveRequirementIds,
+        emphasisByRequirementId: focus.emphasisByRequirementId,
+      ),
       stateBeforeHash: learnerStateHash(scratch),
     );
 

@@ -12,10 +12,13 @@ Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) {
   final version = json['schema_version'];
   return switch (version) {
     attemptSchemaVersion => json,
-    4 => _version4To5(json),
-    3 => _version4To5(_version3To4(json)),
-    2 => _version4To5(_version3To4(_version2To3(json))),
-    1 => _version4To5(_version3To4(_version2To3(_version1To2(json)))),
+    5 => _version5To6(json),
+    4 => _version5To6(_version4To5(json)),
+    3 => _version5To6(_version4To5(_version3To4(json))),
+    2 => _version5To6(_version4To5(_version3To4(_version2To3(json)))),
+    1 => _version5To6(
+      _version4To5(_version3To4(_version2To3(_version1To2(json)))),
+    ),
     _ => throw JournalFormatException(
       'attempt schema version $version is not upgradable by this build, which '
       'writes version $attemptSchemaVersion',
@@ -45,12 +48,15 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
     switch (json['schema_version']) {
       attemptSchemaVersion => json,
-      4 => _version4To5(json),
-      3 => _version4To5(_version3To4(json)),
-      2 => _version4To5(_version3To4(_version2To3(json))),
-      1 => _version4To5(
-        _version3To4(
-          _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+      5 => _version5To6(json),
+      4 => _version5To6(_version4To5(json)),
+      3 => _version5To6(_version4To5(_version3To4(json))),
+      2 => _version5To6(_version4To5(_version3To4(_version2To3(json)))),
+      1 => _version5To6(
+        _version4To5(
+          _version3To4(
+            _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+          ),
         ),
       ),
       final version => throw JournalFormatException(
@@ -68,7 +74,11 @@ Map<String, Object?> _stampedForward(
 }) {
   final version = json['schema_version'];
   if (version == attemptSchemaVersion) return json;
-  if (version == 1 || version == 2 || version == 3 || version == 4) {
+  if (version == 1 ||
+      version == 2 ||
+      version == 3 ||
+      version == 4 ||
+      version == 5) {
     return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
@@ -137,3 +147,9 @@ Map<String, Object?> _version3To4(Map<String, Object?> json) {
 /// assert an exposure nobody observed.
 Map<String, Object?> _version4To5(Map<String, Object?> json) =>
     Map<String, Object?>.of(json)..['schema_version'] = 5;
+
+/// Version 5 recorded no scope. It stays absent: the goal and focus in force
+/// were never written down, and the profile's goal today is not evidence of
+/// the one a past decision was made under.
+Map<String, Object?> _version5To6(Map<String, Object?> json) =>
+    Map<String, Object?>.of(json)..['schema_version'] = 6;

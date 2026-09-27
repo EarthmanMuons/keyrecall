@@ -42,7 +42,7 @@ stream, and replay over them.
 | Family transfer: does one family's playing predict the other's, at which shapes                 | shared competencies, family transfer strength | predicted execution and its components, managed execution, family, shape                                | derived      |
 | Altered-form breadth: how breadth at a first harmonic or melodic encounter relates to it        | the six and eight thresholds                  | breadth at introduction, the first attempts' outcomes                                                   | derived      |
 | Placement priors: how far each self-report sits from the evidence that follows                  | placement priors                              | placement tier, early predictions and outcomes                                                          | persisted    |
-| Goal effects: what arriving and the shape frontier do to real learning and adherence            | the progress preference, goal definitions     | the goal and focus each decision was made under                                                         | missing      |
+| Goal effects: what arriving and the shape frontier do to real learning and adherence            | the progress preference, goal definitions     | the goal and focus each decision was made under                                                         | persisted    |
 | Coverage standards: is 0.5 timing what a from-memory requirement should ask of a beginner       | the completion policy                         | motor scores of retrieved attempts over time                                                            | persisted    |
 | Presentation and feedback: do cues, fingering, or feedback levels move later attempts           | presentation policy                           | presentation record, feedback exposure                                                                  | persisted    |
 | Measurement validity: does timing quality differ by transport, and should it pool               | timing floors, per-transport calibration      | which clock measured each attempt's timing                                                              | missing      |
@@ -58,14 +58,15 @@ breadth at introduction from history.
 
 ## What the device does not keep
 
-Four things that the questions need are not written anywhere, and cannot be
-recovered later because nothing downstream holds them.
+Four things the questions need were written nowhere, and could not be recovered
+later because nothing downstream held them. Each says below whether it now is.
 
 **The goal and focus a decision was made under.** The profile stores its current
-goal and the focus lives only in memory, so a history cannot say which goal
+goal and the focus lives only in memory, so a history could not say which goal
 chose any attempt. Arriving and the shape frontier behave differently per goal,
-and every scheduler distribution needs to be read per scope. The fix is small:
-the goal id, its curriculum version, and the focus, on each decision.
+and every scheduler distribution needs to be read per scope. Recorded since
+attempt schema version 6: the goal id, its curriculum and version, and the
+focus, on each decision.
 
 **Attempt timing.** An attempt records when it was decided, and the transcript
 it was measured from is discarded at close. Nothing keeps when the first note

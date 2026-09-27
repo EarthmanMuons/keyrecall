@@ -18,7 +18,11 @@
 /// implied depended on the policy of the build that presented it, and
 /// reconstructing it from today's policy would claim an exposure that was never
 /// stored.
-const int attemptSchemaVersion = 5;
+///
+/// Version 6 records the goal and focus a decision was made under. An earlier
+/// record leaves it absent: the goal in force then was never written down, and
+/// the profile's current goal says nothing about it.
+const int attemptSchemaVersion = 6;
 
 /// Version of the checkpoint wire format.
 ///

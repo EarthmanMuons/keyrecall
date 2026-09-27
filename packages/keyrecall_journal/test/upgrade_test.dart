@@ -42,9 +42,14 @@ Map<String, Object?> version3(Map<String, Object?> current) {
 }
 
 Map<String, Object?> version4(Map<String, Object?> current) =>
-    Map<String, Object?>.of(current)
+    Map<String, Object?>.of(version5(current))
       ..['schema_version'] = 4
       ..remove('presentation');
+
+Map<String, Object?> version5(Map<String, Object?> current) =>
+    Map<String, Object?>.of(current)
+      ..['schema_version'] = 5
+      ..remove('scope');
 
 void main() {
   final recorded = recordSession();
@@ -183,6 +188,17 @@ void main() {
 
         expect(upgraded.presentation, isNull);
         expect(upgraded.exercise.guidance, original.exercise.guidance);
+      }
+    });
+  });
+
+  group('version 5 to current', () {
+    test('leaves the scope unsaid rather than assuming today\'s goal', () {
+      for (final original in journal.records) {
+        final upgraded = AttemptRecord.fromJson(version5(original.toJson()));
+
+        expect(upgraded.scope, isNull);
+        expect(upgraded.decision?.rankKey, original.decision?.rankKey);
       }
     });
   });

@@ -185,6 +185,62 @@ void main() {
       });
     });
 
+    group('scope', () {
+      AttemptRecord recordWith(DecisionScope? scope) {
+        final exercise = exerciseFor(v1ScaleCatalog.first);
+        final outcome = outcomeOf();
+        return AttemptRecord(
+          journalSequence: 0,
+          identity: AttemptIdentity(
+            profileId: testProfile.id,
+            attemptId: 'a',
+            sessionId: 's',
+            indexInSession: 0,
+            occurredAt: t0,
+          ),
+          provenance: provenance,
+          exercise: exercise,
+          scope: scope,
+          closure: AttemptClosure.measured(
+            termination: AttemptTermination.learnerStopped,
+            outcome: outcome,
+            weights: evidenceWeightsFor(exercise, outcome),
+            memoryUpdate: const MemoryUpdateDiagnostics(),
+          ),
+        );
+      }
+
+      AttemptRecord reread(AttemptRecord record) => AttemptRecord.fromJson(
+        jsonDecode(jsonEncode(record.toJson())) as Map<String, Object?>,
+      );
+
+      test('the goal and a focus survive', () {
+        final scope = DecisionScope(
+          goalId: 'FOUNDATIONS',
+          curriculumId: 'FOUNDATIONS',
+          curriculumVersion: '1',
+          exclusiveRequirementIds: {'b', 'a'},
+          emphasisByRequirementId: {'a': 2.0},
+        );
+
+        expect(reread(recordWith(scope)).scope, scope);
+      });
+
+      test('no focus stays distinct from an empty one', () {
+        final unfocused = DecisionScope(
+          goalId: 'GENERAL_FLUENCY',
+          curriculumId: 'GENERAL_FLUENCY',
+          curriculumVersion: '1',
+        );
+
+        expect(
+          reread(recordWith(unfocused)).scope!.exclusiveRequirementIds,
+          isNull,
+        );
+        expect(reread(recordWith(null)).scope, isNull);
+      });
+    });
+
     test('timestamps keep sub-millisecond precision', () {
       final precise = DateTime.utc(2026, 3, 4, 5, 6, 7, 8, 9);
       final identity = AttemptIdentity(
