@@ -28,7 +28,7 @@ final goalProgressProvider = Provider<GoalProgress?>((ref) {
       focus: focus,
       catalog: catalog,
     );
-    if (targets.isEmpty) return null;
+    if (targets == null) return null;
     return goalProgressOf(
       targets,
       coverageOf(targets, loop.session.journal.records),

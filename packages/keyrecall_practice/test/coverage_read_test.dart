@@ -50,7 +50,7 @@ void main() {
             goal: goal,
             focus: focus,
             catalog: catalog,
-          ))
+          )!)
             target.requirement.id,
         },
         {
@@ -86,7 +86,7 @@ void main() {
           goal: goal,
           focus: focus,
           catalog: catalog,
-        ),
+        )!,
         session.journal.records,
       );
 
@@ -101,4 +101,28 @@ void main() {
       expect(read.targetCount, evaluated.coverage.targetCount);
     });
   }
+
+  group('an incomplete projection is refused, not shrunk', () {
+    test('when a target\'s material is missing from the catalog', () {
+      expect(
+        PracticeScopeResolver().targetsOf(
+          goal: supportedGoals['FOUNDATIONS']!,
+          focus: PracticeFocus.unrestricted,
+          catalog: [ScaleMaterial('C', ScaleForm.major)],
+        ),
+        isNull,
+      );
+    });
+
+    test('when a focus names a requirement the goal lacks', () {
+      expect(
+        PracticeScopeResolver().targetsOf(
+          goal: supportedGoals['FOUNDATIONS']!,
+          focus: PracticeFocus(exclusiveRequirementIds: {'NOT_A_TARGET'}),
+          catalog: catalog,
+        ),
+        isNull,
+      );
+    });
+  });
 }

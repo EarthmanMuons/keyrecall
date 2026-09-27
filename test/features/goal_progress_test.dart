@@ -21,7 +21,7 @@ void main() {
         : supportedGoals[goalId]!,
     focus: focus,
     catalog: catalog,
-  );
+  )!;
 
   Set<String> targetIdsOf(List<GoalTarget> targets) => {
     for (final target in targets) target.requirement.id,

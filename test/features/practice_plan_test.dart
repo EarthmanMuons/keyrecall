@@ -45,13 +45,13 @@ void main() {
     practice = InMemoryPracticeStore();
   });
 
-  ProviderContainer launch() {
+  ProviderContainer launch({List<TechnicalMaterial>? catalog}) {
     final container = ProviderContainer(
       overrides: [
         profileRepositoryProvider.overrideWith((ref) async => profiles),
         inProcessScheduling,
         practiceStoreProvider.overrideWith((ref) async => practice),
-        practiceCatalogProvider.overrideWithValue(_catalog),
+        practiceCatalogProvider.overrideWithValue(catalog ?? _catalog),
       ],
     );
     addTearDown(container.dispose);
@@ -118,10 +118,42 @@ void main() {
     expect(await container.read(practicePlanProvider.future), focused);
   });
 
+  test('a rename or recolor that fails keeps the focus too', () async {
+    final failing = _FailingEdits();
+    profiles = failing;
+    final container = launch();
+    await place(container);
+    await container.read(practicePlanProvider.future);
+    final focused = const PracticePlan(goalId: 'FOUNDATIONS')
+        .focusedOn(_minorMaterial);
+    await container.read(practicePlanProvider.notifier).apply(focused);
+    final profileId = (await container.read(profileRosterProvider.future))
+        .single
+        .profile
+        .id;
+    failing.failing = true;
+
+    expect(
+      await container
+          .read(profileRosterProvider.notifier)
+          .rename(profileId, 'Somebody else'),
+      isA<ProfileMutationFailed<Profile>>(),
+    );
+    expect(
+      await container
+          .read(profileRosterProvider.notifier)
+          .recolor(profileId, ProfileColor.values.last),
+      isA<ProfileMutationFailed<Profile>>(),
+    );
+    expect(await container.read(practicePlanProvider.future), focused);
+  });
+
   test(
     'progress is there on a relaunch that resumes a pending attempt',
     () async {
-      final container = launch();
+      // Every scale, since progress is only drawn for a goal the catalog
+      // carries whole.
+      final container = launch(catalog: allScales);
       await place(container);
       await container.read(practiceLoopProvider.future);
       await container
@@ -135,7 +167,7 @@ void main() {
       );
       expect(container.read(goalProgressProvider), isNotNull);
 
-      final relaunched = launch();
+      final relaunched = launch(catalog: allScales);
       final resumed = await relaunched.read(practiceLoopProvider.future);
 
       expect(
@@ -547,4 +579,21 @@ void main() {
       reason: 'a focus that reaches everything narrows nothing',
     );
   });
+}
+
+/// A profile index whose name and color edits can be made to fail.
+class _FailingEdits extends InMemoryProfileRepository {
+  bool failing = false;
+
+  @override
+  Future<Profile> rename(String profileId, String displayName) async {
+    if (failing) throw StateError('rename refused');
+    return super.rename(profileId, displayName);
+  }
+
+  @override
+  Future<Profile> restyle(String profileId, String? presentationHint) async {
+    if (failing) throw StateError('restyle refused');
+    return super.restyle(profileId, presentationHint);
+  }
 }

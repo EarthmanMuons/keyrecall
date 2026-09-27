@@ -434,29 +434,43 @@ class PracticeScopeResolver {
     );
   }
 
-  /// [goal]'s completion targets under [focus], by definition alone.
+  /// [goal]'s completion targets under [focus], by definition alone, or null
+  /// when they cannot all be named.
   ///
   /// What coverage and progress read, without generating a single candidate:
   /// a target is a requirement and its material, and what realizes it is the
-  /// scheduler's question. Validation is [resolve]'s; a target whose material
-  /// the catalog lacks is left out rather than reported.
-  List<GoalTarget> targetsOf({
+  /// scheduler's question. Null rather than fewer when a target's material is
+  /// missing from [catalog] or [focus] names a requirement the goal lacks,
+  /// since counting the rest would shrink the goal to what happens to be
+  /// here and let covering part of it read as finishing it. The rest of
+  /// validation is [resolve]'s.
+  List<GoalTarget>? targetsOf({
     required PracticeGoal goal,
     required PracticeFocus focus,
     required List<TechnicalMaterial> catalog,
   }) {
     final curriculum = _curriculumFor(goal, catalog);
     final exclusiveIds = focus.exclusiveRequirementIds;
+    final requirementIds = {
+      for (final requirement in curriculum.requirements) requirement.id,
+    };
+    if (exclusiveIds != null && !requirementIds.containsAll(exclusiveIds)) {
+      return null;
+    }
     final catalogById = {
       for (final material in catalog) material.materialId: material,
     };
-    return [
-      for (final requirement in curriculum.requirements)
-        if (requirement.role == CurriculumRequirementRole.target &&
-            (exclusiveIds == null || exclusiveIds.contains(requirement.id)))
-          if (catalogById[requirement.materialId] case final material?)
-            GoalTarget(requirement: requirement, material: material),
-    ];
+    final targets = <GoalTarget>[];
+    for (final requirement in curriculum.requirements) {
+      if (requirement.role != CurriculumRequirementRole.target) continue;
+      if (exclusiveIds != null && !exclusiveIds.contains(requirement.id)) {
+        continue;
+      }
+      final material = catalogById[requirement.materialId];
+      if (material == null) return null;
+      targets.add(GoalTarget(requirement: requirement, material: material));
+    }
+    return targets.isEmpty ? null : targets;
   }
 
   Curriculum _curriculumFor(

@@ -517,16 +517,16 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
 
   /// Changes a profile's display name.
   ///
-  /// Never reopens practice, even for the active profile. A name is how the
-  /// roster shows somebody, not anything practice reads, and reopening would
-  /// drop the focus the sitting is holding.
+  /// Never reopens practice, even for the active profile and even when it
+  /// fails. A name is how the roster shows somebody, not anything practice
+  /// reads.
   Future<ProfileMutation<Profile>> rename(
     String profileId,
     String displayName,
   ) => _mutate((lifecycle) async {
     final renamed = await lifecycle.repository.rename(profileId, displayName);
     return (false, ProfileChanged(renamed));
-  });
+  }, touchesPractice: false);
 
   /// Changes the color a profile is recognized by, which, like its name,
   /// leaves practice alone.
@@ -536,7 +536,7 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   ) => _mutate((lifecycle) async {
     final restyled = await lifecycle.repository.restyle(profileId, color.name);
     return (false, ProfileChanged(restyled));
-  });
+  }, touchesPractice: false);
 
   /// Makes [profileId] the profile the practice loop runs as.
   ///
@@ -586,9 +586,15 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   /// The reload happens whether or not the change succeeded. Several of these
   /// commit part of their work before they fail, and leaving the screen on
   /// what it read beforehand would show a roster the storage disagrees with.
+  ///
+  /// [touchesPractice] false says [change] can only ever alter what the roster
+  /// shows, so practice is left alone whatever happens, failure included:
+  /// reopening it would drop the focus the sitting holds, over an edit that
+  /// could not have changed anything practice reads.
   Future<ProfileMutation<T>> _mutate<T>(
-    Future<(bool, ProfileMutation<T>)> Function(ProfileLifecycle) change,
-  ) async {
+    Future<(bool, ProfileMutation<T>)> Function(ProfileLifecycle) change, {
+    bool touchesPractice = true,
+  }) async {
     if (_writing) return ProfileMutationBusy<T>();
 
     _writing = true;
@@ -603,7 +609,7 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
       // What failed may have committed something first, and there is no
       // saying what from here, so everything reading profile state is asked
       // again.
-      touchedActive = true;
+      touchedActive = touchesPractice;
       return ProfileMutationFailed<T>(error);
     } finally {
       _writing = false;
