@@ -148,8 +148,9 @@ which.
 
 ## What this settles
 
-The four gaps are the local work. The first three are fields on the attempt
-record and belong in the next journal schema; the fourth waits until a guardrail
-needs it. Everything else in the table is already persisted or derivable, and
-the projection itself, its schema, consent, and transport, is the separate
-project this prepares for.
+Three of the four gaps are closed: the goal and focus, the timing, and the input
+are on every attempt record from attempt schema version 6. How a sitting ended
+waits until a guardrail needs it. Everything else in the table is persisted or
+derivable, so a projection written later can answer every question here from
+what the device already keeps. The projection itself, its schema, consent, and
+transport, is the separate project this prepares for.
