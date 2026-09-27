@@ -103,8 +103,12 @@ final clockAuthorizationProvider = Provider<ClockAuthorization>(
 );
 
 /// What the selected source is, as a class of input an attempt can record.
+///
+/// Reads MIDI only when MIDI is the source, so choosing the synthetic
+/// instrument never brings a transport up to ask it.
 final inputProvenanceProvider = Provider<InputProvenance>((ref) {
   final source = ref.watch(inputSourceProvider);
+  if (source != InputSourceKind.midi) return inputProvenanceOf(source: source);
   final midi = ref.watch(midiInputProvider);
   return inputProvenanceOf(
     source: source,

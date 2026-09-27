@@ -77,7 +77,10 @@ window opens: how long it was open, when the first note came, the playing from
 first note to last, and whether the app lost the foreground. The first two are
 the screen's own counts, to a quarter of a second; the playing is read from the
 notes' arrival times. How long a learner looked at the exercise before starting
-is still not counted.
+is still not counted. The time to the first note is latency from the window
+opening, not retrieval latency: it includes finding the keys and moving to the
+first of them, so it reads as a signal within one learner over time rather than
+as recall time.
 
 **What the attempt was played on.** An attempt with timing said so by carrying
 continuity and stability, but not which transport or clock produced them, and
@@ -86,7 +89,10 @@ one played at a piano. Transports differ in resolution and jitter, and pooling
 across them without knowing which is which risks reading the device as the
 learner. Recorded since attempt schema version 6: the source, MIDI or the
 synthetic instrument, the transport's class, such as `ble` or `usb`, and the
-shape of the clock that timed the notes, none of which names an instrument.
+shape of the clock that timed the notes, none of which names an instrument. All
+three are read as the listening window opens, not at close, since a transport
+that drops mid-attempt is exactly when what is selected by the end differs from
+what produced the notes.
 
 **How a sitting ended.** Caught up, blocked, and left are decisions that write
 no attempt, so the no-admission frequency the roadmap asks for is invisible.

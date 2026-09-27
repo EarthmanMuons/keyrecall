@@ -785,6 +785,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// Whether the app lost the foreground while the window was open.
   bool _leftForeground = false;
 
+  /// What was playing into the window, read as it opened.
+  ///
+  /// Not at close: a transport that drops mid-attempt is exactly the case
+  /// where what is selected by then is not what produced the notes.
+  InputProvenance? _input;
+
   /// How long the current silence has run.
   ///
   /// Reset by a note arriving and by the learner saying they are still going,
@@ -918,6 +924,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     setState(() {
       _phase = _Phase.playing;
       _recording = _transcript.start(widget.exercise.material);
+      _input = ref.read(inputProvenanceProvider);
     });
   }
 
@@ -983,6 +990,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           timer.cancel();
           _phase = _Phase.playing;
           _recording = _transcript.start(widget.exercise.material);
+          _input = ref.read(inputProvenanceProvider);
           _watchdog = Timer.periodic(_watchdogTick, (_) => _watch());
         }
       });
@@ -1098,7 +1106,8 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       termination: termination,
       capture: capture,
       presentation: presentation,
-      timing: _recording == null
+      input: _input,
+      timing: _recording == null || _isSelfPaced
           ? null
           : attemptTimingOf(
               open: _elapsed,

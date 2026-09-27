@@ -1014,7 +1014,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           transcript: transcript,
           presentation: completion.presentation,
           timing: completion.timing,
-          input: ref.read(inputProvenanceProvider),
+          input: completion.input,
           observedWallTime: DateTime.now().toUtc(),
         );
         return PracticeLoopState(
@@ -1122,7 +1122,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             reason: MeasurementUnavailableReason.inputInterrupted,
             presentation: completion.presentation,
             timing: completion.timing,
-            input: ref.read(inputProvenanceProvider),
+            input: completion.input,
             observedWallTime: DateTime.now().toUtc(),
           );
           return PracticeLoopState(
@@ -1143,7 +1143,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             reason: MeasurementUnavailableReason.nothingPlayed,
             presentation: completion.presentation,
             timing: completion.timing,
-            input: ref.read(inputProvenanceProvider),
+            input: completion.input,
             observedWallTime: DateTime.now().toUtc(),
           );
           return PracticeLoopState(
@@ -1160,7 +1160,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           termination: completion.termination,
           presentation: completion.presentation,
           timing: completion.timing,
-          input: ref.read(inputProvenanceProvider),
+          input: completion.input,
           observedWallTime: DateTime.now().toUtc(),
         );
         await _recordCoordination(closed.record, closed.reading);

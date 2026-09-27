@@ -106,21 +106,28 @@ class AttemptCompletion {
   /// are still true together.
   final PresentationRecord? presentation;
 
-  /// How long its parts took, or null when its window never opened.
+  /// How long its parts took, or null when its window never opened or its
+  /// task is paced by the learner rather than a watchdog.
   final AttemptTiming? timing;
+
+  /// What was playing into it, as its window opened, or null when it never
+  /// did.
+  final InputProvenance? input;
 
   const AttemptCompletion({
     required this.termination,
     required this.capture,
     this.presentation,
     this.timing,
+    this.input,
   });
 
   /// Nothing played, however the attempt ended.
   AttemptCompletion.unplayed(this.termination)
     : capture = AttemptCapture.none,
       presentation = null,
-      timing = null;
+      timing = null,
+      input = null;
 
   /// What was played.
   PerformanceTranscript get transcript => capture.transcript;
