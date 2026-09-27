@@ -30,7 +30,7 @@ class ObservedPipeline extends SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
-    Set<Exercise> uncoveredTargets = const {},
+    UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     this.session = session;

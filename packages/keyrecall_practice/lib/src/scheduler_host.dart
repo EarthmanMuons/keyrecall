@@ -41,27 +41,27 @@ List<Exercise> candidatesDueIn(
   ];
 }
 
-/// The candidates that could cover one of [uncoveredTargetIds], against
-/// [scope].
+/// The targets of [scope] that [uncoveredTargetIds] names, for ranking to ask
+/// candidates about.
 ///
 /// Only a requirement that names a shape has one to prefer; a catalog goal's
-/// requirement names none, so general technique contributes nothing here. A
-/// target's shape under guidance its coverage refuses is not arriving, and is
-/// left to ordinary ranking.
-Set<Exercise> uncoveredTargetsIn(
+/// requirement names none, so general technique contributes nothing here.
+UncoveredTargets uncoveredTargetsIn(
   ResolvedPracticeScope scope,
   List<String> uncoveredTargetIds,
 ) {
-  if (uncoveredTargetIds.isEmpty) return const {};
+  if (uncoveredTargetIds.isEmpty) return UncoveredTargets.none;
   final uncovered = uncoveredTargetIds.toSet();
-  return {
+  return UncoveredTargets([
     for (final requirement in scope.requirements)
       if (uncovered.contains(requirement.requirement.id) &&
           requirement.requirement.constraints.namesShape)
-        for (final exercise in requirement.targetCandidates)
-          if (requirement.requirement.retrieval.admits(exercise.guidance))
-            exercise,
-  };
+        UncoveredTarget(
+          material: requirement.material,
+          constraints: requirement.requirement.constraints,
+          retrieval: requirement.requirement.retrieval,
+        ),
+  ]);
 }
 
 /// The emphasis [scope] puts on each of its materials.

@@ -321,8 +321,11 @@ asked at.
 Term 4 is true for a candidate in the shape of a target requirement the goal has
 not yet covered, presented under guidance that requirement's coverage accepts. A
 continuously cued rendition of a from-memory target has the target's shape and
-still cannot cover it, so it is not arriving and is left to the terms below.
-General technique names no shape, and the term is false throughout it.
+still cannot cover it, so it is not arriving and is left to the terms below. The
+question is asked of the requirement rather than of any generated exercise, so a
+candidate at a tempo refined from this learner's history is as much a target as
+one at a tempo generation offered. General technique names no shape, and the
+term is false throughout it.
 
 It sits above retention because below it nothing arrives: goal relevance weights
 a material, so the shape that would cover a target was one candidate among its

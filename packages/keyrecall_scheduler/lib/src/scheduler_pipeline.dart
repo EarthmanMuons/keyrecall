@@ -20,6 +20,7 @@ import 'selection_diagnostics.dart';
 import 'session_state.dart';
 import 'shape_frontier.dart';
 import 'tempo_probe.dart';
+import 'uncovered_targets.dart';
 
 /// What one admission exception has to say about one candidate.
 ///
@@ -309,7 +310,7 @@ class SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
-    Set<Exercise> uncoveredTargets = const {},
+    UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     final slot = evaluateSlot(
@@ -358,7 +359,7 @@ class SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
-    Set<Exercise> uncoveredTargets = const {},
+    UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     final entryPolicy =
@@ -2003,7 +2004,7 @@ class SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
-    Set<Exercise> uncoveredTargets = const {},
+    UncoveredTargets uncoveredTargets = UncoveredTargets.none,
   }) {
     final entryPolicy =
         practiceEntryPolicy ??
@@ -2105,7 +2106,7 @@ class SchedulerPipeline {
     required Map<InformationKey, double> informationCache,
     required PracticeEntryPolicy practiceEntryPolicy,
     required GoalEmphasis emphasis,
-    required Set<Exercise> uncoveredTargets,
+    required UncoveredTargets uncoveredTargets,
   }) {
     final realization = realizationKeyOf(exercise);
     final independentRetrievalP = retrievalCache.putIfAbsent(
@@ -2204,14 +2205,14 @@ class SchedulerPipeline {
                         ProgressPreference.targetAndFrontierInMaterial ||
                     config.progress ==
                         ProgressPreference.targetAndShapeFrontier) &&
-                uncoveredTargets.contains(exercise),
+                uncoveredTargets.admits(exercise),
             advancesFrontier:
                 config.progress == ProgressPreference.targetAndFrontier &&
                 realizationRankFor(state, exercise, memo: facts.execution) ==
                     RealizationRank.advancing,
             targetShapedGoal:
                 config.progress == ProgressPreference.targetAtGoals &&
-                uncoveredTargets.contains(exercise),
+                uncoveredTargets.admits(exercise),
             realization: realizationRankFor(
               state,
               exercise,

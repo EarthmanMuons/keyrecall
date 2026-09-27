@@ -293,7 +293,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
     Map<ExecutionContext, int> executionEvidenceRevisions = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
-    Set<Exercise> uncoveredTargets = const {},
+    UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
   }) {
     _generated = candidates.length;
@@ -331,7 +331,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
     Map<Exercise, ChallengeBypass> overrides = const {},
     PracticeEntryPolicy? practiceEntryPolicy,
     GoalEmphasis emphasis = GoalEmphasis.none,
-    Set<Exercise> uncoveredTargets = const {},
+    UncoveredTargets uncoveredTargets = UncoveredTargets.none,
   }) {
     _evaluate.start();
     _traces = super.evaluate(

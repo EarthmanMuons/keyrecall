@@ -25,3 +25,4 @@ export 'src/scheduler_pipeline.dart';
 export 'src/session_state.dart';
 export 'src/shape_frontier.dart';
 export 'src/tempo_probe.dart';
+export 'src/uncovered_targets.dart';

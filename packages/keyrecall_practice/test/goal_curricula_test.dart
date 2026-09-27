@@ -282,24 +282,32 @@ void main() {
       final scope = resolved('FOUNDATIONS');
       final one = scope.requirements.first;
       final targets = uncoveredTargetsIn(scope, [one.requirement.id]);
+      final unguided = one.targetCandidates.where(
+        (exercise) => !exercise.guidance.isMaterialSupplied,
+      );
 
-      expect(targets, isNotEmpty);
-      expect(targets, everyElement(isIn(one.targetCandidates)));
+      expect(unguided, isNotEmpty);
+      expect(unguided.every(targets.admits), isTrue);
       expect(
-        one.targetCandidates.where(targets.contains),
-        everyElement(
-          predicate<Exercise>(
-            (exercise) => !exercise.guidance.isMaterialSupplied,
-          ),
-        ),
+        one.targetCandidates
+            .where((exercise) => exercise.guidance.isMaterialSupplied)
+            .any(targets.admits),
+        isFalse,
         reason: 'Foundations is covered only from memory',
       );
+      final between = unguided.first;
       expect(
-        one.targetCandidates.any(
-          (exercise) => exercise.guidance.isMaterialSupplied,
+        targets.admits(
+          Exercise.linear(
+            material: between.material,
+            hands: between.conditions.hands,
+            octaves: between.conditions.octaves,
+            direction: between.conditions.direction,
+            tempoBpm: 63,
+          ),
         ),
         isTrue,
-        reason: 'the supported shapes exist, and are left out',
+        reason: 'a tempo learned from history rather than generated',
       );
     });
 
@@ -310,8 +318,8 @@ void main() {
         uncoveredTargetsIn(scope, [
           for (final requirement in scope.requirements)
             requirement.requirement.id,
-        ]),
-        isEmpty,
+        ]).isEmpty,
+        isTrue,
       );
     });
   });
