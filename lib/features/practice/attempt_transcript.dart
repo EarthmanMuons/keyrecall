@@ -106,16 +106,21 @@ class AttemptCompletion {
   /// are still true together.
   final PresentationRecord? presentation;
 
+  /// How long its parts took, or null when its window never opened.
+  final AttemptTiming? timing;
+
   const AttemptCompletion({
     required this.termination,
     required this.capture,
     this.presentation,
+    this.timing,
   });
 
   /// Nothing played, however the attempt ended.
   AttemptCompletion.unplayed(this.termination)
     : capture = AttemptCapture.none,
-      presentation = null;
+      presentation = null,
+      timing = null;
 
   /// What was played.
   PerformanceTranscript get transcript => capture.transcript;
@@ -364,3 +369,23 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
     );
   }
 }
+
+/// How long an attempt's parts took, from the counts its screen kept.
+///
+/// [open] and [firstNote] are the screen's own counts from the window opening,
+/// which is the clock its windows run on. How long the playing took is read
+/// from the notes instead, which arrive stamped on the input's clock and so
+/// say it more finely than any count could.
+AttemptTiming attemptTimingOf({
+  required Duration open,
+  required Duration? firstNote,
+  required PerformanceTranscript transcript,
+  required bool leftForeground,
+}) => AttemptTiming(
+  openMs: open.inMilliseconds,
+  firstNoteMs: firstNote?.inMilliseconds,
+  playingMs: transcript.notes.length < 2
+      ? null
+      : transcript.notes.last.timestampMs - transcript.notes.first.timestampMs,
+  leftForeground: leftForeground,
+);

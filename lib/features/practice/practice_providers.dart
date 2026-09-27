@@ -1013,6 +1013,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         final record = await current.session.closeDeclined(
           transcript: transcript,
           presentation: completion.presentation,
+          timing: completion.timing,
           observedWallTime: DateTime.now().toUtc(),
         );
         return PracticeLoopState(
@@ -1119,6 +1120,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             termination: AttemptTermination.inputInterrupted,
             reason: MeasurementUnavailableReason.inputInterrupted,
             presentation: completion.presentation,
+            timing: completion.timing,
             observedWallTime: DateTime.now().toUtc(),
           );
           return PracticeLoopState(
@@ -1138,6 +1140,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             termination: completion.termination,
             reason: MeasurementUnavailableReason.nothingPlayed,
             presentation: completion.presentation,
+            timing: completion.timing,
             observedWallTime: DateTime.now().toUtc(),
           );
           return PracticeLoopState(
@@ -1153,6 +1156,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           transcript,
           termination: completion.termination,
           presentation: completion.presentation,
+          timing: completion.timing,
           observedWallTime: DateTime.now().toUtc(),
         );
         await _recordCoordination(closed.record, closed.reading);

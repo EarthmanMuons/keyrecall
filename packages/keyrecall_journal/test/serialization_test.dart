@@ -226,6 +226,24 @@ void main() {
         expect(reread(recordWith(scope)).scope, scope);
       });
 
+      test('timing survives, including what was not measured', () {
+        final record = recordWith(null);
+        const timing = AttemptTiming(openMs: 4000, firstNoteMs: 750);
+        final timed = AttemptRecord(
+          journalSequence: record.journalSequence,
+          identity: record.identity,
+          provenance: record.provenance,
+          exercise: record.exercise,
+          timing: timing,
+          closure: record.closure,
+        );
+
+        final stored = reread(timed).timing!;
+        expect(stored, timing);
+        expect(stored.playingMs, isNull);
+        expect(reread(record).timing, isNull);
+      });
+
       test('no focus stays distinct from an empty one', () {
         final unfocused = DecisionScope(
           goalId: 'GENERAL_FLUENCY',

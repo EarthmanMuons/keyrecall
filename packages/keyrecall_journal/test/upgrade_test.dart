@@ -49,7 +49,8 @@ Map<String, Object?> version4(Map<String, Object?> current) =>
 Map<String, Object?> version5(Map<String, Object?> current) =>
     Map<String, Object?>.of(current)
       ..['schema_version'] = 5
-      ..remove('scope');
+      ..remove('scope')
+      ..remove('timing');
 
 void main() {
   final recorded = recordSession();
@@ -198,6 +199,7 @@ void main() {
         final upgraded = AttemptRecord.fromJson(version5(original.toJson()));
 
         expect(upgraded.scope, isNull);
+        expect(upgraded.timing, isNull);
         expect(upgraded.decision?.rankKey, original.decision?.rankKey);
       }
     });

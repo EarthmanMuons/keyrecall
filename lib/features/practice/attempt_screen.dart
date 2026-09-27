@@ -779,6 +779,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// drives.
   Duration _elapsed = Duration.zero;
 
+  /// When the watchdog first saw a note, counted the way [_elapsed] is.
+  Duration? _firstNoteAt;
+
+  /// Whether the app lost the foreground while the window was open.
+  bool _leftForeground = false;
+
   /// How long the current silence has run.
   ///
   /// Reset by a note arriving and by the learner saying they are still going,
@@ -845,6 +851,8 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _screenWakeLock.setEnabled(true).ignore();
+    } else if (_recording != null && !_finishing) {
+      _leftForeground = true;
     }
   }
 
@@ -1022,6 +1030,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     }
 
     final played = _capture.isNotEmpty;
+    if (played) _firstNoteAt ??= _elapsed;
     final asks =
         _quiet >= (played ? windows.afterPlaying : windows.beforePlaying);
     if (asks != _questioned) setState(() => _questioned = asks);
@@ -1084,10 +1093,19 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     // under and its evidence are one fact about one instant.
     final presentation = _presented;
     unawaited(_pulse.stop());
+    final capture = _capture;
     final completion = AttemptCompletion(
       termination: termination,
-      capture: _capture,
+      capture: capture,
       presentation: presentation,
+      timing: _recording == null
+          ? null
+          : attemptTimingOf(
+              open: _elapsed,
+              firstNote: _firstNoteAt,
+              transcript: capture.transcript,
+              leftForeground: _leftForeground,
+            ),
     );
     _transcript.stop();
     setState(() => _phase = _Phase.finishing);

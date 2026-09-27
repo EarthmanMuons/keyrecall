@@ -19,9 +19,10 @@
 /// reconstructing it from today's policy would claim an exposure that was never
 /// stored.
 ///
-/// Version 6 records the goal and focus a decision was made under. An earlier
-/// record leaves it absent: the goal in force then was never written down, and
-/// the profile's current goal says nothing about it.
+/// Version 6 records the goal and focus a decision was made under, and how
+/// long the attempt's parts took. An earlier record leaves both absent: the
+/// goal in force then was never written down, the profile's current goal says
+/// nothing about it, and the transcript the timing is read from is not kept.
 const int attemptSchemaVersion = 6;
 
 /// Version of the checkpoint wire format.

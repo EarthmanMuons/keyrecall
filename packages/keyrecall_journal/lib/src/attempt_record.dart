@@ -3,6 +3,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:meta/meta.dart';
 
 import 'attempt_closure.dart';
+import 'attempt_timing.dart';
 import 'canonical_json.dart';
 import 'codecs/closure_codec.dart';
 import 'codecs/domain_codec.dart';
@@ -195,6 +196,10 @@ class AttemptRecord {
   /// scheduler chose.
   final DecisionScope? scope;
 
+  /// How long its parts took, or null for a record written before timing was
+  /// part of the format and for an attempt no screen timed.
+  final AttemptTiming? timing;
+
   /// How the attempt ended, and what was measured of it.
   ///
   /// An attempt that ended did so somehow, so the termination is always here.
@@ -221,6 +226,7 @@ class AttemptRecord {
     this.presentation,
     this.decision,
     this.scope,
+    this.timing,
     this.stateBeforeHash,
     this.stateAfterHash,
     this.observedWallTime,
@@ -243,6 +249,7 @@ class AttemptRecord {
     closure: closure,
     decision: decision,
     scope: scope,
+    timing: timing,
     stateBeforeHash: before,
     stateAfterHash: after,
     observedWallTime: observedWallTime,
@@ -273,6 +280,7 @@ class AttemptRecord {
         ? null
         : encodeDecision(decision!, encodePrediction),
     'scope': scope == null ? null : encodeDecisionScope(scope!),
+    'timing': timing == null ? null : encodeAttemptTiming(timing!),
     'closure': encodeClosure(closure),
     'state_before_hash': stateBeforeHash,
     'state_after_hash': stateAfterHash,
@@ -305,6 +313,7 @@ class AttemptRecord {
     final decisionJson = json['decision'];
     final presentationJson = json['presentation'];
     final scopeJson = json['scope'];
+    final timingJson = json['timing'];
 
     return AttemptRecord(
       schemaVersion: version,
@@ -363,6 +372,12 @@ class AttemptRecord {
           ? null
           : decodeDecisionScope(
               asMap(scopeJson, 'scope', location: location),
+              location: location,
+            ),
+      timing: timingJson == null
+          ? null
+          : decodeAttemptTiming(
+              asMap(timingJson, 'timing', location: location),
               location: location,
             ),
       closure: decodeClosure(

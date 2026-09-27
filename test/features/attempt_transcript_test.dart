@@ -474,4 +474,49 @@ void main() {
       },
     );
   });
+
+  group('attempt timing', () {
+    PlayedNote note(int sequence, int timestampMs) => PlayedNote(
+      sequence: sequence,
+      pitch: SpelledPitch(letter: NoteLetter.c, alteration: 0, octave: 4),
+      timestampMs: timestampMs,
+    );
+
+    test('reads the playing from the notes and the rest from the counts', () {
+      final timing = attemptTimingOf(
+        open: const Duration(milliseconds: 8250),
+        firstNote: const Duration(milliseconds: 1500),
+        transcript: PerformanceTranscript([
+          note(0, 10400),
+          note(1, 10900),
+          note(2, 16150),
+        ]),
+        leftForeground: false,
+      );
+
+      expect(timing.openMs, 8250);
+      expect(timing.firstNoteMs, 1500);
+      expect(timing.playingMs, 5750);
+    });
+
+    test('says nothing of playing that did not happen', () {
+      final silent = attemptTimingOf(
+        open: const Duration(seconds: 12),
+        firstNote: null,
+        transcript: PerformanceTranscript.empty,
+        leftForeground: true,
+      );
+      final one = attemptTimingOf(
+        open: const Duration(seconds: 3),
+        firstNote: const Duration(seconds: 1),
+        transcript: PerformanceTranscript([note(0, 500)]),
+        leftForeground: false,
+      );
+
+      expect(silent.firstNoteMs, isNull);
+      expect(silent.playingMs, isNull);
+      expect(silent.leftForeground, isTrue);
+      expect(one.playingMs, isNull);
+    });
+  });
 }

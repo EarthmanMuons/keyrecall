@@ -38,7 +38,7 @@ stream, and replay over them.
 | Posterior behavior: does uncertainty contract with spaced evidence and reverse on contradiction | the consolidation envelope                    | the history per learner, replayed                                                                       | derived      |
 | Recovery and probes: episode length, time to the next factual observation, probe yield          | recovery and probe policy                     | challenge bypass, guidance, outcomes in order                                                           | persisted    |
 | Scheduler distributions: concentration, revisit gaps, bypass mix, no-admission frequency        | guardrails on every scheduler change          | material, bypass, timing, and how each sitting ended                                                    | partial      |
-| Session effects: warm-up and fatigue shapes within a sitting                                    | a transient session state (roadmap 2.1)       | order within the sitting, gaps between attempts, active playing time, interruptions                     | partial      |
+| Session effects: warm-up and fatigue shapes within a sitting                                    | a transient session state (roadmap 2.1)       | order within the sitting, gaps between attempts, active playing time, interruptions                     | persisted    |
 | Family transfer: does one family's playing predict the other's, at which shapes                 | shared competencies, family transfer strength | predicted execution and its components, managed execution, family, shape                                | derived      |
 | Altered-form breadth: how breadth at a first harmonic or melodic encounter relates to it        | the six and eight thresholds                  | breadth at introduction, the first attempts' outcomes                                                   | derived      |
 | Placement priors: how far each self-report sits from the evidence that follows                  | placement priors                              | placement tier, early predictions and outcomes                                                          | persisted    |
@@ -68,13 +68,16 @@ and every scheduler distribution needs to be read per scope. Recorded since
 attempt schema version 6: the goal id, its curriculum and version, and the
 focus, on each decision.
 
-**Attempt timing.** An attempt records when it was decided, and the transcript
-it was measured from is discarded at close. Nothing keeps when the first note
-came, how long the playing took, or when it closed, so active practice time and
-the gaps a warm-up or fatigue analysis reads are unrecoverable, and so is the
-time to the first note, the natural latency signal for retrieval. The fix is a
-few durations on the record, measured from the moment the attempt opened, and
-whether the app lost the foreground during it.
+**Attempt timing.** An attempt recorded when it was decided, and the transcript
+it was measured from is discarded at close, so nothing kept when the first note
+came or how long the playing took. The close wall time does survive, in a field
+documented as a clock diagnostic, which is not something a projection should
+lean on. Recorded since attempt schema version 6, from the moment the listening
+window opens: how long it was open, when the first note came, the playing from
+first note to last, and whether the app lost the foreground. The first two are
+the screen's own counts, to a quarter of a second; the playing is read from the
+notes' arrival times. How long a learner looked at the exercise before starting
+is still not counted.
 
 **Which clock measured the timing.** An attempt with timing says so by carrying
 continuity and stability, but not which transport or clock shape produced them.

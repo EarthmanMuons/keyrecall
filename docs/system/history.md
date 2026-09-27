@@ -162,7 +162,9 @@ computed against cannot reproduce itself.
 
 Each scheduled attempt also records the goal and focus it was decided under. The
 profile keeps only its current goal and a focus lasts only a sitting, so without
-it a history could not say which scope chose any of its attempts.
+it a history could not say which scope chose any of its attempts. It records how
+long its parts took too, from the listening window opening, since the transcript
+those durations are read from is not kept.
 
 Nothing may be aggregated, summarized, or dropped.
 

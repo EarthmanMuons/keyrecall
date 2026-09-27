@@ -1127,11 +1127,13 @@ class PracticeSession {
     Outcome outcome, {
     AttemptTermination termination = AttemptTermination.learnerStopped,
     PresentationRecord? presentation,
+    AttemptTiming? timing,
     DateTime? observedWallTime,
   }) => _close(
     termination: termination,
     outcome: outcome,
     presentation: presentation,
+    timing: timing,
     observedWallTime: observedWallTime,
   );
 
@@ -1154,6 +1156,7 @@ class PracticeSession {
     AttemptTermination termination = AttemptTermination.learnerStopped,
     MeasurementPolicy policy = MeasurementPolicy.standard,
     PresentationRecord? presentation,
+    AttemptTiming? timing,
     DateTime? observedWallTime,
   }) async {
     if (_commit case final held? when held.reading == null) {
@@ -1177,6 +1180,7 @@ class PracticeSession {
         outcome: reading.outcome,
         unavailable: null,
         presentation: presentation,
+        timing: timing,
         observedWallTime: observedWallTime,
         reading: reading,
       );
@@ -1207,6 +1211,7 @@ class PracticeSession {
   Future<AttemptRecord> closeDeclined({
     required PerformanceTranscript transcript,
     PresentationRecord? presentation,
+    AttemptTiming? timing,
     DateTime? observedWallTime,
   }) {
     // Only when this is a new transaction. Resuming one asks nothing of the
@@ -1242,6 +1247,7 @@ class PracticeSession {
         topologyAccuracy: 0.0,
       ),
       presentation: presentation,
+      timing: timing,
       observedWallTime: observedWallTime,
     );
   }
@@ -1262,11 +1268,13 @@ class PracticeSession {
     MeasurementUnavailableReason reason =
         MeasurementUnavailableReason.notAvailable,
     PresentationRecord? presentation,
+    AttemptTiming? timing,
     DateTime? observedWallTime,
   }) => _close(
     termination: termination,
     unavailable: reason,
     presentation: presentation,
+    timing: timing,
     observedWallTime: observedWallTime,
   );
 
@@ -1280,6 +1288,7 @@ class PracticeSession {
     Outcome? outcome,
     MeasurementUnavailableReason? unavailable,
     PresentationRecord? presentation,
+    AttemptTiming? timing,
     DateTime? observedWallTime,
   }) async => (await _commitTransaction(
     () => _prepare(
@@ -1287,6 +1296,7 @@ class PracticeSession {
       outcome: outcome,
       unavailable: unavailable,
       presentation: presentation,
+      timing: timing,
       observedWallTime: observedWallTime,
     ),
   )).record;
@@ -1353,6 +1363,7 @@ class PracticeSession {
     required MeasurementUnavailableReason? unavailable,
     required DateTime? observedWallTime,
     required PresentationRecord? presentation,
+    AttemptTiming? timing,
     PerformanceReading? reading,
   }) {
     final decision = (_outstanding ?? _pendingAsOutstanding()).decision;
@@ -1391,6 +1402,7 @@ class PracticeSession {
         closure: closure,
         stateAfterHash: learnerStateHash(next),
         presentation: presentation,
+        timing: timing,
         observedWallTime: observedWallTime,
       ),
       next: next,
