@@ -26,9 +26,9 @@ final Curriculum foundationsCurriculum = Curriculum(
 /// Every major and natural-minor key, as a scale and as a root-position
 /// arpeggio, hands together over two octaves, up and down, from memory.
 ///
-/// Version 1 held the scales alone, until arpeggios were generated up and
-/// down. The altered minor forms are extensions of these tonalities and not
-/// part of having them, and inversions are a later phase of the arpeggio.
+/// The altered minor forms are extensions of these tonalities and not part of
+/// having them, and inversions are a later phase of the arpeggio. What each
+/// version held is in `docs/system/curriculum.md`.
 final Curriculum keyFluencyCurriculum = Curriculum(
   id: 'KEY_FLUENCY_24',
   version: '2',
