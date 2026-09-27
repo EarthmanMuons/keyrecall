@@ -164,7 +164,9 @@ Each scheduled attempt also records the goal and focus it was decided under. The
 profile keeps only its current goal and a focus lasts only a sitting, so without
 it a history could not say which scope chose any of its attempts. It records how
 long its parts took too, from the listening window opening, since the transcript
-those durations are read from is not kept.
+those durations are read from is not kept, and what class of input it was played
+on: the source, the transport, and the clock's shape, never the instrument
+itself.
 
 Nothing may be aggregated, summarized, or dropped.
 

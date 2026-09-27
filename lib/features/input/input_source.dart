@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_input/keyrecall_input.dart';
+import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 
 import '../demo_input/demo_input.dart';
@@ -100,3 +101,33 @@ final clockAuthorizationProvider = Provider<ClockAuthorization>(
     ref.watch(midiInputProvider).clockObservation,
   ),
 );
+
+/// What the selected source is, as a class of input an attempt can record.
+final inputProvenanceProvider = Provider<InputProvenance>((ref) {
+  final source = ref.watch(inputSourceProvider);
+  final midi = ref.watch(midiInputProvider);
+  return inputProvenanceOf(
+    source: source,
+    transport: midi.adopted?.transport,
+    clock: midi.clockObservation.shape,
+  );
+});
+
+/// [source] as the attempt record names it, with the adopted instrument's
+/// [transport] and [clock] shape when that source is a real instrument.
+///
+/// The synthetic instrument has neither: it is attached to nothing, and what
+/// timed its notes is the app rather than a transport.
+InputProvenance inputProvenanceOf({
+  required InputSourceKind source,
+  String? transport,
+  ClockDomainShape? clock,
+}) => switch (source) {
+  InputSourceKind.demo => const InputProvenance(source: 'DEMO'),
+  InputSourceKind.midi => InputProvenance(
+    source: 'MIDI',
+    transport: transport,
+    clockGranularity: clock?.granularity,
+    clockModulus: clock?.modulus,
+  ),
+};

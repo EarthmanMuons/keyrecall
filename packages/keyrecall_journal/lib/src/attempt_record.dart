@@ -10,6 +10,7 @@ import 'codecs/domain_codec.dart';
 import 'codecs/learner_codec.dart';
 import 'codecs/scheduler_codec.dart';
 import 'decision_scope.dart';
+import 'input_provenance.dart';
 import 'presentation_record.dart';
 import 'profile.dart';
 import 'schema.dart';
@@ -200,6 +201,10 @@ class AttemptRecord {
   /// part of the format and for an attempt no screen timed.
   final AttemptTiming? timing;
 
+  /// What it was played on, or null for a record written before input was part
+  /// of the format.
+  final InputProvenance? input;
+
   /// How the attempt ended, and what was measured of it.
   ///
   /// An attempt that ended did so somehow, so the termination is always here.
@@ -227,6 +232,7 @@ class AttemptRecord {
     this.decision,
     this.scope,
     this.timing,
+    this.input,
     this.stateBeforeHash,
     this.stateAfterHash,
     this.observedWallTime,
@@ -250,6 +256,7 @@ class AttemptRecord {
     decision: decision,
     scope: scope,
     timing: timing,
+    input: input,
     stateBeforeHash: before,
     stateAfterHash: after,
     observedWallTime: observedWallTime,
@@ -281,6 +288,7 @@ class AttemptRecord {
         : encodeDecision(decision!, encodePrediction),
     'scope': scope == null ? null : encodeDecisionScope(scope!),
     'timing': timing == null ? null : encodeAttemptTiming(timing!),
+    'input': input == null ? null : encodeInputProvenance(input!),
     'closure': encodeClosure(closure),
     'state_before_hash': stateBeforeHash,
     'state_after_hash': stateAfterHash,
@@ -314,6 +322,7 @@ class AttemptRecord {
     final presentationJson = json['presentation'];
     final scopeJson = json['scope'];
     final timingJson = json['timing'];
+    final inputJson = json['input'];
 
     return AttemptRecord(
       schemaVersion: version,
@@ -378,6 +387,12 @@ class AttemptRecord {
           ? null
           : decodeAttemptTiming(
               asMap(timingJson, 'timing', location: location),
+              location: location,
+            ),
+      input: inputJson == null
+          ? null
+          : decodeInputProvenance(
+              asMap(inputJson, 'input', location: location),
               location: location,
             ),
       closure: decodeClosure(

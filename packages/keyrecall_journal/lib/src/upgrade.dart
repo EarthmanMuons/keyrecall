@@ -148,9 +148,9 @@ Map<String, Object?> _version3To4(Map<String, Object?> json) {
 Map<String, Object?> _version4To5(Map<String, Object?> json) =>
     Map<String, Object?>.of(json)..['schema_version'] = 5;
 
-/// Version 5 recorded no scope and no timing. Both stay absent: the goal and
-/// focus in force were never written down, the profile's goal today is not
-/// evidence of the one a past decision was made under, and the transcript the
-/// timing would be read from is gone.
+/// Version 5 recorded no scope, timing, or input. All stay absent: the goal
+/// and focus in force were never written down, the profile's goal today is not
+/// evidence of the one a past decision was made under, and the transcript and
+/// input the rest would be read from are gone.
 Map<String, Object?> _version5To6(Map<String, Object?> json) =>
     Map<String, Object?>.of(json)..['schema_version'] = 6;

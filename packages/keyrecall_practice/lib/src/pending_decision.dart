@@ -174,6 +174,7 @@ class PendingDecision {
     required String stateAfterHash,
     PresentationRecord? presentation,
     AttemptTiming? timing,
+    InputProvenance? input,
     DateTime? observedWallTime,
   }) => AttemptRecord(
     journalSequence: journalSequence,
@@ -191,6 +192,7 @@ class PendingDecision {
     decision: decision,
     scope: scope,
     timing: timing,
+    input: input,
     closure: closure,
     stateBeforeHash: stateBeforeHash,
     stateAfterHash: stateAfterHash,

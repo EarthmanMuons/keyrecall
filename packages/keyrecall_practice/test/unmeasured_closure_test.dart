@@ -78,7 +78,7 @@ void main() {
     },
   );
 
-  test('an attempt keeps the timing it was closed with', () async {
+  test('an attempt keeps the timing and input it was closed with', () async {
     final store = InMemoryPracticeStore(createdAt: t0);
     final session = await openSession(store);
     const timing = AttemptTiming(
@@ -90,13 +90,16 @@ void main() {
 
     final presented =
         await session.decideOutcome(at: t0.plusDays(1)) as PresentedAttempt;
+    const input = InputProvenance(source: 'MIDI', transport: 'usb');
     await session.closeWithOutcome(
       outcomeFor(presented.exercise),
       timing: timing,
+      input: input,
     );
     final reopened = await openSession(store, sessionId: 'session-2');
 
     expect(reopened.journal.records.single.timing, timing);
+    expect(reopened.journal.records.single.input, input);
   });
 
   test('closing without a measurement moves no learner state', () async {

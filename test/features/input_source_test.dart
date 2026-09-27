@@ -327,4 +327,31 @@ void main() {
       expect(container.read(inputSourceProvider), InputSourceKind.demo);
     });
   });
+
+  group('input provenance', () {
+    test('names an instrument by its transport and clock alone', () {
+      final input = inputProvenanceOf(
+        source: InputSourceKind.midi,
+        transport: 'ble',
+        clock: const ClockDomainShape(granularity: 1, modulus: 8192),
+      );
+
+      expect(input.source, 'MIDI');
+      expect(input.transport, 'ble');
+      expect(input.clockGranularity, 1);
+      expect(input.clockModulus, 8192);
+    });
+
+    test('gives the synthetic instrument neither', () {
+      final input = inputProvenanceOf(
+        source: InputSourceKind.demo,
+        transport: 'ble',
+        clock: const ClockDomainShape(granularity: 1),
+      );
+
+      expect(input.source, 'DEMO');
+      expect(input.transport, isNull);
+      expect(input.clockGranularity, isNull);
+    });
+  });
 }

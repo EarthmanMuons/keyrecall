@@ -244,6 +244,28 @@ void main() {
         expect(reread(record).timing, isNull);
       });
 
+      test('input survives, with what a synthetic source lacks', () {
+        final record = recordWith(null);
+        AttemptRecord playedOn(InputProvenance input) => AttemptRecord(
+          journalSequence: record.journalSequence,
+          identity: record.identity,
+          provenance: record.provenance,
+          exercise: record.exercise,
+          input: input,
+          closure: record.closure,
+        );
+        const instrument = InputProvenance(
+          source: 'MIDI',
+          transport: 'ble',
+          clockGranularity: 1,
+          clockModulus: 8192,
+        );
+        const synthetic = InputProvenance(source: 'DEMO');
+
+        expect(reread(playedOn(instrument)).input, instrument);
+        expect(reread(playedOn(synthetic)).input, synthetic);
+      });
+
       test('no focus stays distinct from an empty one', () {
         final unfocused = DecisionScope(
           goalId: 'GENERAL_FLUENCY',

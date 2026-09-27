@@ -29,6 +29,7 @@ export 'src/codecs/domain_codec.dart';
 export 'src/codecs/learner_codec.dart';
 export 'src/codecs/scheduler_codec.dart';
 export 'src/decision_scope.dart';
+export 'src/input_provenance.dart';
 export 'src/presentation_record.dart';
 export 'src/profile.dart';
 export 'src/replay.dart';

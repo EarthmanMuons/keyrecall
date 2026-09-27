@@ -45,7 +45,7 @@ stream, and replay over them.
 | Goal effects: what arriving and the shape frontier do to real learning and adherence            | the progress preference, goal definitions     | the goal and focus each decision was made under                                                         | persisted    |
 | Coverage standards: is 0.5 timing what a from-memory requirement should ask of a beginner       | the completion policy                         | motor scores of retrieved attempts over time                                                            | persisted    |
 | Presentation and feedback: do cues, fingering, or feedback levels move later attempts           | presentation policy                           | presentation record, feedback exposure                                                                  | persisted    |
-| Measurement validity: does timing quality differ by transport, and should it pool               | timing floors, per-transport calibration      | which clock measured each attempt's timing                                                              | missing      |
+| Measurement validity: does timing quality differ by transport, and should it pool               | timing floors, per-transport calibration      | which clock measured each attempt's timing                                                              | persisted    |
 
 "Derived" means every input is persisted and the value is computed by replay on
 the device. "Partial" and "missing" are the gaps below.
@@ -79,12 +79,14 @@ the screen's own counts, to a quarter of a second; the playing is read from the
 notes' arrival times. How long a learner looked at the exercise before starting
 is still not counted.
 
-**Which clock measured the timing.** An attempt with timing says so by carrying
-continuity and stability, but not which transport or clock shape produced them.
-Transports differ in resolution and jitter, and pooling across them without
-knowing which is which risks reading the device as the learner. The fix is the
-clock shape's identifier on the record, which names a class of transport and
-nothing about the instrument.
+**What the attempt was played on.** An attempt with timing said so by carrying
+continuity and stability, but not which transport or clock produced them, and
+nothing at all distinguished an attempt played on the synthetic instrument from
+one played at a piano. Transports differ in resolution and jitter, and pooling
+across them without knowing which is which risks reading the device as the
+learner. Recorded since attempt schema version 6: the source, MIDI or the
+synthetic instrument, the transport's class, such as `ble` or `usb`, and the
+shape of the clock that timed the notes, none of which names an instrument.
 
 **How a sitting ended.** Caught up, blocked, and left are decisions that write
 no attempt, so the no-admission frequency the roadmap asks for is invisible.

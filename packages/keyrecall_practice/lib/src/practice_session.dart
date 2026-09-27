@@ -1128,12 +1128,14 @@ class PracticeSession {
     AttemptTermination termination = AttemptTermination.learnerStopped,
     PresentationRecord? presentation,
     AttemptTiming? timing,
+    InputProvenance? input,
     DateTime? observedWallTime,
   }) => _close(
     termination: termination,
     outcome: outcome,
     presentation: presentation,
     timing: timing,
+    input: input,
     observedWallTime: observedWallTime,
   );
 
@@ -1157,6 +1159,7 @@ class PracticeSession {
     MeasurementPolicy policy = MeasurementPolicy.standard,
     PresentationRecord? presentation,
     AttemptTiming? timing,
+    InputProvenance? input,
     DateTime? observedWallTime,
   }) async {
     if (_commit case final held? when held.reading == null) {
@@ -1181,6 +1184,7 @@ class PracticeSession {
         unavailable: null,
         presentation: presentation,
         timing: timing,
+        input: input,
         observedWallTime: observedWallTime,
         reading: reading,
       );
@@ -1212,6 +1216,7 @@ class PracticeSession {
     required PerformanceTranscript transcript,
     PresentationRecord? presentation,
     AttemptTiming? timing,
+    InputProvenance? input,
     DateTime? observedWallTime,
   }) {
     // Only when this is a new transaction. Resuming one asks nothing of the
@@ -1248,6 +1253,7 @@ class PracticeSession {
       ),
       presentation: presentation,
       timing: timing,
+      input: input,
       observedWallTime: observedWallTime,
     );
   }
@@ -1269,12 +1275,14 @@ class PracticeSession {
         MeasurementUnavailableReason.notAvailable,
     PresentationRecord? presentation,
     AttemptTiming? timing,
+    InputProvenance? input,
     DateTime? observedWallTime,
   }) => _close(
     termination: termination,
     unavailable: reason,
     presentation: presentation,
     timing: timing,
+    input: input,
     observedWallTime: observedWallTime,
   );
 
@@ -1289,6 +1297,7 @@ class PracticeSession {
     MeasurementUnavailableReason? unavailable,
     PresentationRecord? presentation,
     AttemptTiming? timing,
+    InputProvenance? input,
     DateTime? observedWallTime,
   }) async => (await _commitTransaction(
     () => _prepare(
@@ -1297,6 +1306,7 @@ class PracticeSession {
       unavailable: unavailable,
       presentation: presentation,
       timing: timing,
+      input: input,
       observedWallTime: observedWallTime,
     ),
   )).record;
@@ -1364,6 +1374,7 @@ class PracticeSession {
     required DateTime? observedWallTime,
     required PresentationRecord? presentation,
     AttemptTiming? timing,
+    InputProvenance? input,
     PerformanceReading? reading,
   }) {
     final decision = (_outstanding ?? _pendingAsOutstanding()).decision;
@@ -1403,6 +1414,7 @@ class PracticeSession {
         stateAfterHash: learnerStateHash(next),
         presentation: presentation,
         timing: timing,
+        input: input,
         observedWallTime: observedWallTime,
       ),
       next: next,
