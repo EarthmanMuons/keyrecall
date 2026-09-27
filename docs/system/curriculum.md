@@ -129,7 +129,13 @@ grid of keys for scales and one for arpeggios. It reads coverage and nothing
 else, so it counts targets and never the route to them, and a target once
 covered stays covered: coverage is read from history, and being due again does
 not take it back. General technique shows no count, since it has no end; the
-fluency report is what describes it.
+fluency report is what describes it. An exclusive focus inside it is a chosen
+set, and shows the progress of that set.
+
+The compact layouts are used only while they name every target. A grid needs one
+target per material, and a mark per hand needs no two of a material's targets to
+share a hand. A curriculum asking more of one material than that, say one hand
+at two spans, gets each target listed by its whole shape instead.
 
 ## Goals and focus answer different questions
 

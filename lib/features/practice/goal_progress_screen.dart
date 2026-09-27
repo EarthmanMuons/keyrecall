@@ -85,10 +85,20 @@ class GoalProgressScreen extends ConsumerWidget {
                     style: theme.textTheme.titleMedium,
                   ),
                   const SizedBox(height: 8),
-                  if (section.rows.every((row) => row.cells.length == 1))
-                    _KeyGrid(section)
-                  else
-                    for (final row in section.rows) _HandsRow(row),
+                  switch (layoutOf(section)) {
+                    GoalProgressLayout.keyGrid => _KeyGrid(section),
+                    GoalProgressLayout.handRows => Column(
+                      children: [
+                        for (final row in section.rows) _HandsRow(row),
+                      ],
+                    ),
+                    GoalProgressLayout.targetList => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final row in section.rows) _TargetRows(row),
+                      ],
+                    ),
+                  },
                 ],
               ],
             ),
@@ -96,11 +106,29 @@ class GoalProgressScreen extends ConsumerWidget {
   }
 }
 
-/// What a section is called: the family's plural.
-String sectionName(GoalProgressSection section) =>
-    section.familyId == TechnicalMaterial.arpeggioFamilyId
-    ? 'Arpeggios'
-    : 'Scales';
+/// What a section is called: the family's plural, or its id for a family
+/// this build has no name for.
+String sectionName(GoalProgressSection section) => switch (section.familyId) {
+  TechnicalMaterial.scaleFamilyId => 'Scales',
+  TechnicalMaterial.arpeggioFamilyId => 'Arpeggios',
+  final familyId => familyId,
+};
+
+/// The whole shape a target asks for, as a learner would say it.
+///
+/// What the explicit list names each target by, so two targets of one
+/// material read differently whenever they are different.
+String targetShapeName(ExerciseConstraints constraints) => [
+  if (constraints.hands case final hands?) handsName(hands),
+  if (constraints.octaves case final octaves?) octavesName(octaves),
+  if (constraints.handMotion == HandMotion.contrary) 'contrary motion',
+  switch (constraints.direction) {
+    ExerciseDirection.up => 'up',
+    ExerciseDirection.upDown => 'up and down',
+    null => null,
+  },
+  if (constraints.minimumTempoBpm case final tempo?) 'at ${tempo.round()} bpm',
+].nonNulls.join(', ');
 
 /// A material as one key on a grid: the tonic, with `m` for minor.
 ///
@@ -232,6 +260,57 @@ class _HandsRow extends StatelessWidget {
                     Text(
                       handsMark(cell.hands),
                       style: theme.textTheme.labelMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A material's targets one to a line, each named by its whole shape.
+class _TargetRows extends StatelessWidget {
+  const _TargetRows(this.row);
+
+  final GoalProgressRow row;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(materialName(row.material)),
+          for (final cell in row.cells)
+            Semantics(
+              label:
+                  '${targetShapeName(cell.constraints)}, '
+                  '${cell.covered ? 'demonstrated' : 'not yet demonstrated'}',
+              excludeSemantics: true,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 12, top: 4),
+                child: Row(
+                  children: [
+                    Icon(
+                      cell.covered
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 18,
+                      color: cell.covered
+                          ? theme.colorScheme.primary
+                          : theme.colorScheme.outline,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        targetShapeName(cell.constraints),
+                        style: theme.textTheme.bodyMedium,
+                      ),
                     ),
                   ],
                 ),

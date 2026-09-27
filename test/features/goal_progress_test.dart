@@ -160,4 +160,75 @@ void main() {
       expect(handsMark(HandConfiguration.left), 'LH');
     });
   });
+
+  group('choosing a layout', () {
+    GoalProgressCell cell(
+      HandConfiguration? hands, {
+      int octaves = 1,
+      bool covered = false,
+    }) => GoalProgressCell(
+      constraints: ExerciseConstraints(
+        hands: hands,
+        octaves: octaves,
+        direction: ExerciseDirection.upDown,
+      ),
+      covered: covered,
+    );
+
+    GoalProgressSection sectionOf(List<GoalProgressCell> cells) =>
+        GoalProgressSection(
+          familyId: TechnicalMaterial.scaleFamilyId,
+          rows: [
+            GoalProgressRow(
+              material: ScaleMaterial('C', ScaleForm.major),
+              cells: cells,
+            ),
+          ],
+        );
+
+    test('the production goals keep their compact layouts', () {
+      GoalProgressLayout only(String goalId, int targets) => layoutOf(
+        goalProgressOf(
+          resolved(goalId),
+          ScopeCoverage(coveredTargetIds: const {}, targetCount: targets),
+        ).sections.first,
+      );
+
+      expect(only('FOUNDATIONS', 20), GoalProgressLayout.handRows);
+      expect(only('KEY_FLUENCY_24', 48), GoalProgressLayout.keyGrid);
+    });
+
+    test('hands that do not tell targets apart fall back to naming them', () {
+      final section = sectionOf([
+        cell(HandConfiguration.right),
+        cell(HandConfiguration.right, octaves: 2),
+      ]);
+
+      expect(layoutOf(section), GoalProgressLayout.targetList);
+      expect(
+        [
+          for (final c in section.rows.single.cells)
+            targetShapeName(c.constraints),
+        ],
+        [
+          'Right hand, 1 octave, up and down',
+          'Right hand, 2 octaves, up and down',
+        ],
+      );
+    });
+
+    test('a target naming no hands falls back as well', () {
+      expect(
+        layoutOf(sectionOf([cell(null), cell(HandConfiguration.left)])),
+        GoalProgressLayout.targetList,
+      );
+    });
+
+    test('a family this build cannot name is called by its id', () {
+      expect(
+        sectionName(GoalProgressSection(familyId: 'CHORD', rows: const [])),
+        'CHORD',
+      );
+    });
+  });
 }

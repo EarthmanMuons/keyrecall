@@ -50,11 +50,45 @@ class GoalProgressRow {
 
 @immutable
 class GoalProgressCell {
-  /// The hands the target asks for, or null for a target that names none.
-  final HandConfiguration? hands;
+  /// The shape the target asks for.
+  final ExerciseConstraints constraints;
   final bool covered;
 
-  const GoalProgressCell({required this.hands, required this.covered});
+  const GoalProgressCell({required this.constraints, required this.covered});
+
+  /// The hands the target asks for, or null for a target that names none.
+  HandConfiguration? get hands => constraints.hands;
+}
+
+/// How a section can be drawn without leaving any target unnamed.
+enum GoalProgressLayout {
+  /// One target per material: the material names it.
+  keyGrid,
+
+  /// Several per material, told apart by their hands alone.
+  handRows,
+
+  /// Anything else: each target named by its whole shape.
+  targetList,
+}
+
+/// The most compact layout that still says what each of [section]'s targets
+/// is.
+///
+/// A hand mark is only a name while no two targets of a material share one.
+/// A curriculum asking the same scale of one hand at two spans would otherwise
+/// show two marks with one label and no way to tell which was which.
+GoalProgressLayout layoutOf(GoalProgressSection section) {
+  if (section.rows.every((row) => row.cells.length == 1)) {
+    return GoalProgressLayout.keyGrid;
+  }
+  final handsTellApart = section.rows.every((row) {
+    final hands = [for (final cell in row.cells) cell.hands];
+    return !hands.contains(null) && hands.toSet().length == hands.length;
+  });
+  return handsTellApart
+      ? GoalProgressLayout.handRows
+      : GoalProgressLayout.targetList;
 }
 
 /// [scope]'s targets under [coverage], in the order the curriculum lists them.
@@ -73,7 +107,7 @@ GoalProgress goalProgressOf(
         .putIfAbsent(requirement.material, () => [])
         .add(
           GoalProgressCell(
-            hands: requirement.requirement.constraints.hands,
+            constraints: requirement.requirement.constraints,
             covered: coverage.coveredTargetIds.contains(
               requirement.requirement.id,
             ),
