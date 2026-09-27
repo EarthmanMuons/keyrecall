@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
@@ -34,13 +33,23 @@ Future<void> main(List<String> arguments) async {
   final progress = ProgressPreference.values.byName(
     options.option('progress')!,
   );
-  final out = File(options.option('out')!);
-  final done = {
-    if (out.existsSync())
-      for (final line in out.readAsLinesSync())
-        if (line.trim().isNotEmpty)
-          (jsonDecode(line) as Map<String, Object?>)['identity'],
-  };
+  final curriculum = _resolved(scope);
+  final out = ResumableOutput(File(options.option('out')!), {
+    'experiment': 'goal_horizon',
+    'format': 1,
+    'scope': scope.name,
+    'progress': progress.name,
+    'sittings': sittings,
+    'every': every,
+    'slots_per_sitting': 20,
+    'curriculum': '${curriculum.curriculumId}@${curriculum.curriculumVersion}',
+    ...modelConfiguration(
+      schedulerModelVersion: v1SchedulerConfig
+          .withProgress(progress)
+          .modelVersion,
+    ),
+  });
+  final done = {for (final record in out.resume()) record['identity']};
 
   final tasks = [
     for (final player in PlayerArchetypes.all)
@@ -55,11 +64,7 @@ Future<void> main(List<String> arguments) async {
     while (next < tasks.length) {
       final task = tasks[next++];
       final record = await Isolate.run(task);
-      out.writeAsStringSync(
-        '${jsonEncode(record)}\n',
-        mode: FileMode.append,
-        flush: true,
-      );
+      out.append(record);
       stderr.writeln(
         'completed ${++completed}/${tasks.length} '
         '(${stopwatch.elapsed.inSeconds}s)',
@@ -81,20 +86,7 @@ Future<Map<String, Object?>> _run(
   int every,
   ProgressPreference progress,
 ) async {
-  final catalog = <TechnicalMaterial>[
-    ...allScales,
-    ...allRootPositionArpeggios,
-  ];
-  final plan = scope.plan.resolve(catalog) as ResolvedPlan;
-  final resolved =
-      (PracticeScopeResolver().resolve(
-                goal: plan.goal,
-                focus: plan.focus,
-                catalog: catalog,
-                instrument: InstrumentProfile(),
-              )
-              as ValidPracticeScope)
-          .scope;
+  final resolved = _resolved(scope);
   final checkpoints = <Map<String, Object?>>[];
   final run = await runGoalTrajectory(
     scope: scope,
@@ -202,4 +194,20 @@ Future<Map<String, Object?>> _run(
         interval.toJson(),
     ],
   };
+}
+
+ResolvedPracticeScope _resolved(GoalTrajectoryScope scope) {
+  final catalog = <TechnicalMaterial>[
+    ...allScales,
+    ...allRootPositionArpeggios,
+  ];
+  final plan = scope.plan.resolve(catalog) as ResolvedPlan;
+  return (PracticeScopeResolver().resolve(
+            goal: plan.goal,
+            focus: plan.focus,
+            catalog: catalog,
+            instrument: InstrumentProfile(),
+          )
+          as ValidPracticeScope)
+      .scope;
 }

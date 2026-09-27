@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
@@ -15,24 +15,29 @@ Future<void> main(List<String> arguments) async {
     ..addOption('jobs', defaultsTo: '4')
     ..addOption('out', defaultsTo: 'closed_loop_placement.jsonl');
   final options = parser.parse(arguments);
-  final out = File(options.option('out')!);
 
+  final out = ResumableOutput(File(options.option('out')!), {
+    'experiment': 'closed_loop_placement',
+    'format': 1,
+    'scopes': [
+      GoalTrajectoryScope.general.name,
+      GoalTrajectoryScope.foundations.name,
+    ],
+    'checkpoints': closedLoopCheckpoints,
+    'slots_per_sitting': 20,
+    ...modelConfiguration(
+      schedulerModelVersion: v1SchedulerConfig.modelVersion,
+    ),
+  });
   final previous = [
-    if (out.existsSync())
-      for (final line in out.readAsLinesSync())
-        if (line.trim().isNotEmpty)
-          ClosedLoopGroup.fromJson(jsonDecode(line) as Map<String, Object?>),
+    for (final record in out.resume()) ClosedLoopGroup.fromJson(record),
   ];
   final stopwatch = Stopwatch()..start();
   final fresh = await runClosedLoopPlacementMatrix(
     seeds: int.parse(options.option('seeds')!),
     parallelism: int.parse(options.option('jobs')!),
     done: {for (final group in previous) group.identity},
-    onGroup: (group) => out.writeAsStringSync(
-      '${jsonEncode(group.toJson())}\n',
-      mode: FileMode.append,
-      flush: true,
-    ),
+    onGroup: (group) => out.append(group.toJson()),
     onProgress: (completed, total) => stderr.writeln(
       'completed $completed/$total (${stopwatch.elapsed.inSeconds}s)',
     ),

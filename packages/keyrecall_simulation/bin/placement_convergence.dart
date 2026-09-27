@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/args.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
@@ -15,26 +15,24 @@ Future<void> main(List<String> arguments) async {
     ..addOption('jobs', defaultsTo: '4')
     ..addOption('out', defaultsTo: 'placement_convergence.jsonl');
   final options = parser.parse(arguments);
-  final out = File(options.option('out')!);
 
+  final out = ResumableOutput(File(options.option('out')!), {
+    'experiment': 'placement_convergence',
+    'format': 1,
+    'checkpoints': placementCheckpoints,
+    ...modelConfiguration(
+      schedulerModelVersion: v1SchedulerConfig.modelVersion,
+    ),
+  });
   final previous = [
-    if (out.existsSync())
-      for (final line in out.readAsLinesSync())
-        if (line.trim().isNotEmpty)
-          PlacementConvergenceRun.fromJson(
-            jsonDecode(line) as Map<String, Object?>,
-          ),
+    for (final record in out.resume()) PlacementConvergenceRun.fromJson(record),
   ];
   final stopwatch = Stopwatch()..start();
   final fresh = await runPlacementConvergenceMatrix(
     seeds: int.parse(options.option('seeds')!),
     parallelism: int.parse(options.option('jobs')!),
     done: {for (final run in previous) run.identity},
-    onRun: (run) => out.writeAsStringSync(
-      '${jsonEncode(run.toJson())}\n',
-      mode: FileMode.append,
-      flush: true,
-    ),
+    onRun: (run) => out.append(run.toJson()),
     onProgress: (completed, total) => stderr.writeln(
       'completed $completed/$total (${stopwatch.elapsed.inSeconds}s)',
     ),
