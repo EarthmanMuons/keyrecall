@@ -123,6 +123,14 @@ which is why it holds B flat major and not E major. 24-key fluency is at version
 Neither names an altered minor form, which extends a tonality rather than
 defining it.
 
+A goal with a finish line shows its progress in the shape of its curriculum:
+Foundations as its ten scales with a mark for each hand, 24-key fluency as a
+grid of keys for scales and one for arpeggios. It reads coverage and nothing
+else, so it counts targets and never the route to them, and a target once
+covered stays covered: coverage is read from history, and being due again does
+not take it back. General technique shows no count, since it has no end; the
+fluency report is what describes it.
+
 ## Goals and focus answer different questions
 
 A **goal** is a durable destination: what capability am I trying to establish or

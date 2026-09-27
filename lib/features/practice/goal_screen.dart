@@ -4,6 +4,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import 'goal_progress_screen.dart';
 import 'practice_focus.dart';
 import 'practice_providers.dart';
 
@@ -51,13 +52,19 @@ class GoalScreen extends ConsumerWidget {
                   .apply(plan.withGoal(goalId, catalog)),
             ),
           if (coverage != null && hasFinishLine(plan))
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(
                 '${coverageScopeName(plan)}: ${coverage.coveredTargets} of '
                 '${coverage.targetCount} covered so far',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (context) => const GoalProgressScreen(),
                 ),
               ),
             ),

@@ -36,15 +36,22 @@ class RequirementState {
 }
 
 /// Aggregate coverage, kept independent from whether anything is due.
+///
+/// Which targets are covered as well as how many, so a surface can show what
+/// is left without evaluating the scope again. A target stays covered once an
+/// attempt has demonstrated it: coverage is read from history, and nothing
+/// becoming due again takes it back.
 @immutable
 class ScopeCoverage {
-  final int coveredTargets;
+  final Set<String> coveredTargetIds;
   final int targetCount;
 
   const ScopeCoverage({
-    required this.coveredTargets,
+    required this.coveredTargetIds,
     required this.targetCount,
   });
+
+  int get coveredTargets => coveredTargetIds.length;
 
   bool get isComplete => coveredTargets == targetCount;
 }
@@ -214,7 +221,10 @@ class PracticeScopeEvaluator {
       scope: scope,
       requirements: requirements,
       coverage: ScopeCoverage(
-        coveredTargets: targetList.where((state) => state.isCovered).length,
+        coveredTargetIds: Set.unmodifiable({
+          for (final state in targetList)
+            if (state.isCovered) state.resolved.requirement.id,
+        }),
         targetCount: targetList.length,
       ),
     );

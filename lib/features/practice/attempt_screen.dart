@@ -21,6 +21,7 @@ import 'acquisition_review.dart';
 import 'attempt_review.dart';
 import 'attempt_transcript.dart';
 import 'cue_semantics.dart';
+import 'goal_progress_screen.dart';
 import 'developer_screen.dart';
 import 'exercise_presentation.dart';
 import 'fingering.dart';
@@ -370,8 +371,9 @@ class _PracticeAppBar extends ConsumerWidget implements PreferredSizeWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // First, because it is the only one of these about what is
-                // practiced rather than about the app around it.
+                const _GoalProgressButton(),
+                // First of the controls, because it is the only one of them
+                // about what is practiced rather than about the app around it.
                 const _FocusButton(),
                 // Only when MIDI is the source: reading the connection
                 // state starts the Bluetooth stack, which the synthetic
@@ -575,6 +577,36 @@ class _MenuButton extends ConsumerWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// How much of a goal with a finish line has been demonstrated, and the way
+/// to its breakdown.
+///
+/// A count and nothing else. The practice screen is for practicing, so what is
+/// left is one tap away rather than laid out here, and where the goal has no
+/// finish line this takes no room at all.
+class _GoalProgressButton extends ConsumerWidget {
+  const _GoalProgressButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final progress = ref.watch(goalProgressProvider);
+    if (progress == null) return const SizedBox.shrink();
+    return TextButton.icon(
+      onPressed: () => Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => const GoalProgressScreen(),
+        ),
+      ),
+      icon: const Icon(Icons.flag_outlined, size: 18),
+      label: Text(
+        '${progress.covered}/${progress.total}',
+        semanticsLabel:
+            'Goal progress, ${progress.covered} of ${progress.total} '
+            'demonstrated',
+      ),
     );
   }
 }

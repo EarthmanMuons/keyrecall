@@ -40,7 +40,7 @@ void main() {
         workStatus: RequirementWorkStatus.healthy,
       ),
     ],
-    coverage: const ScopeCoverage(coveredTargets: 0, targetCount: 1),
+    coverage: const ScopeCoverage(coveredTargetIds: {}, targetCount: 1),
   );
 
   test('covered support stays offered while a dependent waits on it', () {
