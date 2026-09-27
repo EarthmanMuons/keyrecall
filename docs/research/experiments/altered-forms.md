@@ -2,8 +2,9 @@
 
 > **Status:** characterization of the altered-form foundation across goal and
 > focus shapes. The same-tonic prerequisite, exact per-hand breadth, the
-> scope-aware cap, and live support are promoted; the breadth numbers are not
-> revisited.
+> scope-aware cap, and live support are promoted. The breadth numbers are priced
+> at the end and kept: synthetic players can show what they cost, not what they
+> buy.
 
 The altered-form gate decides when harmonic and melodic minor may first be met.
 It was built against the general goal, where the catalog always holds more
@@ -141,6 +142,59 @@ everything already, and is unchanged. Live picks after the first altered form
 opened are zero in the narrow scopes; the 1.4 in the broad scope are other
 altered forms still waiting on their own natural minors. The runs that end
 without harmonic minor end caught up or at the slot limit, not blocked.
+
+## How much breadth
+
+Harmonic minor waits for six core materials retrieved in each hand, melodic
+minor for eight. Three pairs, four and six, six and eight, and eight and ten,
+under scheduler model version `v1-8`, 300 slots, four seeds, 3386 seconds:
+
+```console
+dart run keyrecall_simulation:altered_forms --breadth --scope general \
+  --scope narrowAltered --scope broad --seeds 4 --slots 300 --jobs 5
+```
+
+| Scope   | Breadth | Harmonic, slot | Melodic, slot | Same-tonic retrievals | Minor hands | Core retained | Altered covered |
+| ------- | ------- | -------------: | ------------: | --------------------: | ----------: | ------------: | --------------: |
+| General | 4 / 6   |        75 (42) |       89 (41) |                   3.0 |         5.1 |         0.384 |       1483/2496 |
+| General | 6 / 8   |        88 (41) |      105 (39) |                   3.0 |         5.9 |         0.418 |       1479/2496 |
+| General | 8 / 10  |        98 (39) |      126 (38) |                   3.6 |         7.0 |         0.330 |       1486/2496 |
+| Broad   | 4 / 6   |        47 (50) |       57 (50) |                   3.0 |         6.2 |         0.203 |         454/520 |
+| Broad   | 6 / 8   |        51 (50) |       65 (49) |                   3.4 |         7.2 |         0.145 |         455/520 |
+| Broad   | 8 / 10  |        59 (49) |       58 (45) |                   5.3 |         8.8 |         0.076 |         448/520 |
+
+Slots are means over the runs that reached the form, with that count. Minor
+hands counts distinct natural minors retrieved per hand at the first harmonic
+introduction, and core retained is the share of core materials retrieved
+unguided before it that were retrieved unguided again in the forty picks after.
+The narrow focus on D harmonic minor is identical under every pair, since the
+scope-aware cap already asks for the one natural minor it can reach, and no run
+under any pair blocked.
+
+**What breadth costs is time.** Each step of two delays harmonic minor by about
+25 to 30 slots for a typical learner in General technique, intermediate from
+slot 32 to 63 to 86, and by 5 to 10 in the syllabus-sized scope, and melodic
+minor further. Coverage of the altered forms at 300 slots does not move.
+
+**What it buys is not measurable here.** Among the ten archetypes that meet
+harmonic minor under every pair, managing the first three attempts rises by
+about one point per step, which is what a later introduction after more ordinary
+practice would give anyway. The players have no mechanism by which knowing more
+minor scales helps with an altered one: harmonic minor is to them another scale
+of the same family. The threshold's reason, that minor should be a settled idea
+before it is altered, is exactly what the synthetic players leave out, so the
+census cannot show where more breadth stops buying a better first encounter.
+
+**A higher threshold opens altered forms in a burst.** In the syllabus-sized
+scope, where every target waits on the same count, eight and ten released them
+together: the share of core material retrieved again after the opening fell from
+0.20 to 0.08 and altered forms took 77% of the next forty picks. Under General
+technique, with the whole catalog to draw on, there is no such effect.
+
+So six and eight stay: nothing here argues for moving them, in either direction,
+and the question they answer needs the first encounters of real learners. The
+journal records enough to ask it: breadth at introduction can be recomputed from
+history, and set against how the first attempts went.
 
 ## Interpretation boundary
 
