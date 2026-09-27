@@ -221,7 +221,8 @@ evidence there was.
 
 Opt-in, minimized, versioned, and **not a journal upload**. A field belongs in
 it because a research question needs it, never because the journal happens to
-carry it.
+carry it. The questions, and what each needs, are in
+[`../research/telemetry.md`](../research/telemetry.md).
 
 > Local persistence is optimized for faithful reconstruction. Telemetry is
 > optimized for answering specified questions with the minimum necessary data.

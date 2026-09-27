@@ -79,3 +79,9 @@ input stack, and `scale-motor/` for the motor realization corpus.
 [`extending-the-model.md`](extending-the-model.md) is the method for proposing,
 testing, and promoting a new competency or prediction channel. It is a process
 rather than an authorization, and nothing in it permits adding anything.
+
+## Telemetry
+
+[`telemetry.md`](telemetry.md) is what telemetry should answer: the questions
+real practice has to settle, what each needs, which of it the device already
+keeps, and what an upload may carry. It is an audit, not a build.
