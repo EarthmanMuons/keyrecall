@@ -86,8 +86,11 @@ String? reasonForNext({
                   'earlier.'
             : 'A quicker one, at a speed you have already reached.',
     },
-    ChallengeBypass.pulseSupport => 'Once more, with the click keeping time.',
-    ChallengeBypass.pulseWithdrawal => 'And again, keeping the time yourself.',
+    // The same exercise both times, so only the metronome is worth saying.
+    // Said as a fact about the attempt rather than a verdict on the last one.
+    ChallengeBypass.pulseSupport => 'The same one again, with the metronome.',
+    ChallengeBypass.pulseWithdrawal =>
+      'The same one again, without the metronome.',
     ChallengeBypass.acquisitionFloor => switch (hands) {
       final hands? => 'Starting with $hands and the notes in view.',
       null => 'Starting with the notes in view.',
@@ -119,6 +122,17 @@ String? reasonForNext({
 /// arrives: across a restart, a deferred service, or a spell where the parent
 /// was out of scope. A note carried out of the acquisition screen would instead
 /// be a guess about what the scheduler would choose next.
+/// What the Ready screen says about the metronome, where the scheduler made it
+/// part of this attempt's reason, or null.
+///
+/// Stated on the withdrawal too, since the attempt just before it had one and
+/// its absence is the point.
+String? metronomeLine(ChallengeBypass? admittedBy) => switch (admittedBy) {
+  ChallengeBypass.pulseSupport => 'This one uses the metronome.',
+  ChallengeBypass.pulseWithdrawal => 'This one is without the metronome.',
+  _ => null,
+};
+
 String restoredTempoLine(Exercise probe) =>
     'Back at ${_tempoText(probe.conditions.tempoBpm)} BPM this time.';
 
@@ -354,6 +368,7 @@ class AttemptReview extends StatelessWidget {
                               context,
                               includesCoordination:
                                   summary.coordination != null,
+                              pulseSupplied: summary.pulseSupplied,
                             ),
                           ),
                         ),
@@ -647,7 +662,12 @@ class _AttemptSummaryView extends StatelessWidget {
             ],
             if (summary.pulse case final pulse?) ...[
               const SizedBox(height: 12),
-              _QualityRow(label: 'Pulse', value: pulse),
+              _QualityRow(
+                label: summary.pulseSupplied
+                    ? 'Pulse, with metronome'
+                    : 'Pulse',
+                value: pulse,
+              ),
             ],
             if (summary.coordination case final coordination?) ...[
               const SizedBox(height: 12),

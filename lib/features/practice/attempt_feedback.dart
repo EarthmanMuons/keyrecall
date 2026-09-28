@@ -15,6 +15,10 @@ class AttemptSummary {
   /// Null when the attempt supplied too few intervals to read its timing.
   final double? flow;
   final double? pulse;
+
+  /// Whether a pulse was supplied while the attempt ran, which makes [pulse]
+  /// how evenly the playing went along with it rather than a beat kept alone.
+  final bool pulseSupplied;
   final double? coordination;
 
   /// The pace the attempt played at, or null when it established none.
@@ -27,6 +31,7 @@ class AttemptSummary {
     required this.targetTempoBpm,
     this.flow,
     this.pulse,
+    this.pulseSupplied = false,
     this.coordination,
     this.achievedTempoBpm,
   });
@@ -50,6 +55,7 @@ AttemptSummary? summarizeAttempt(AttemptRecord record) =>
         notes: outcome.pitchIntegrity,
         flow: outcome.continuity,
         pulse: outcome.temporalStability,
+        pulseSupplied: !outcome.pulseMaintenance.isTested,
         coordination: outcome.coordination,
         achievedTempoBpm: switch (outcome.measuredTempoRatio) {
           final ratio? => record.exercise.conditions.tempoBpm * ratio,
@@ -164,8 +170,10 @@ bool _recordWasCompletedIndependently(AttemptRecord record) =>
 /// Whether every channel the exercise asks about was measured and met.
 ///
 /// Coordination passes over only where the exercise does not ask for it. Two
-/// hands whose spread nobody measured have not been shown to be together.
+/// hands whose spread nobody measured have not been shown to be together, and
+/// a pulse the app supplied was not one the learner kept.
 bool _isClean(Exercise exercise, Outcome outcome) =>
+    outcome.pulseMaintenance.isTested &&
     outcome.pitchIntegrity == 1 &&
     outcome.continuity == 1 &&
     outcome.temporalStability == 1 &&

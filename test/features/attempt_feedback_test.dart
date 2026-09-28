@@ -22,7 +22,9 @@ void main() {
     bool started = true,
     bool completed = true,
     FactualRetrieval retrieval = FactualRetrieval.succeeded,
+    PulseMaintenance pulseMaintenance = PulseMaintenance.tested,
   }) => Outcome(
+    pulseMaintenance: pulseMaintenance,
     started: started,
     retrieval: retrieval,
     completed: completed,
@@ -87,6 +89,31 @@ void main() {
     expect(summary.achievedTempoBpm, isNull);
 
     expect(summarizeAttempt(record(1, outcome(pulse: 0.7)))!.hasTiming, isTrue);
+  });
+
+  test('a pulse played along with a metronome is marked as such', () {
+    final supplied = summarizeAttempt(
+      record(
+        0,
+        outcome(pulse: 0.7, pulseMaintenance: PulseMaintenance.notTested),
+      ),
+    )!;
+
+    expect(supplied.pulse, 0.7);
+    expect(supplied.pulseSupplied, isTrue);
+    expect(summarizeAttempt(record(1, outcome()))!.pulseSupplied, isFalse);
+  });
+
+  test('a clean run with the metronome is not a clean run', () {
+    final supplied = record(
+      0,
+      outcome(pulseMaintenance: PulseMaintenance.notTested),
+    );
+
+    expect(
+      progressEventsFor(supplied, history: [supplied]).map((e) => e.type),
+      isNot(contains(ProgressEventKind.firstCleanCompletion)),
+    );
   });
 
   test('an attempt with no performance gets no summary', () {

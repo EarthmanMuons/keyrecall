@@ -123,7 +123,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
             ? (presented.decision.decision.challengeBypass ==
                       ChallengeBypass.acquisitionProbe
                   ? restoredTempoLine(presented.exercise)
-                  : null)
+                  : metronomeLine(presented.decision.decision.challengeBypass))
             : reasonForNext(
                 decision: presented.decision.decision,
                 next: presented.exercise,
@@ -1275,7 +1275,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           showsTempo: !_isSelfPaced,
           note: widget.admittedBy == ChallengeBypass.acquisitionProbe
               ? restoredTempoLine(exercise)
-              : null,
+              : metronomeLine(widget.admittedBy),
         ),
       ),
       secondChild: const SizedBox(width: double.infinity),

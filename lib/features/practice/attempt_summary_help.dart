@@ -8,6 +8,7 @@ const String attemptSummaryIntroduction =
 
 List<(String term, String meaning)> attemptSummaryHelpEntries({
   required bool includesCoordination,
+  bool pulseSupplied = false,
 }) => [
   ('Notes', 'How closely the notes you played matched the exercise.'),
   (
@@ -15,7 +16,14 @@ List<(String term, String meaning)> attemptSummaryHelpEntries({
     'Whether you kept moving through the exercise without stopping or '
         'breaking it up.',
   ),
-  ('Pulse', 'How evenly the notes were spaced in time.'),
+  if (pulseSupplied)
+    (
+      'Pulse, with metronome',
+      'How evenly you played along with the metronome. It shows playing with '
+          'the beat supplied, not keeping it on your own.',
+    )
+  else
+    ('Pulse', 'How evenly the notes were spaced in time.'),
   if (includesCoordination)
     ('Coordination', 'How closely the two hands arrived together.'),
   (
@@ -27,11 +35,13 @@ List<(String term, String meaning)> attemptSummaryHelpEntries({
 Future<void> showAttemptSummaryHelp(
   BuildContext context, {
   required bool includesCoordination,
+  bool pulseSupplied = false,
 }) => showTermHelp(
   context,
   title: 'What KeyRecall heard',
   introduction: attemptSummaryIntroduction,
   entries: attemptSummaryHelpEntries(
     includesCoordination: includesCoordination,
+    pulseSupplied: pulseSupplied,
   ),
 );

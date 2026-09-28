@@ -149,6 +149,12 @@ the beat in its bar, the downbeat larger. The click, the count, and the dots
 read one `PulseSchedule`, and a beat that was shown counts as supplied whether
 or not the click sounded.
 
+The Ready screen says "This one uses the metronome" on the supported attempt and
+"This one is without the metronome" on the withdrawal after it, as facts about
+the attempt rather than verdicts on the last one. Its summary reads **Pulse,
+with metronome**, since what it measured was playing along with a beat the app
+supplied, and it counts toward no clean-run milestone.
+
 The **neutral echo** lights the keys currently held on the keyboard diagram. The
 staff is static until the traversal starts, then lights the note each hand has
 reached, for as long as that key is held.

@@ -113,6 +113,21 @@ void main() {
       previous: previous,
     );
 
+    test('says only whether the metronome is on, the rest being the same', () {
+      expect(
+        reasonFor(ChallengeBypass.pulseSupport, previous),
+        'The same one again, with the metronome.',
+      );
+      expect(
+        reasonFor(ChallengeBypass.pulseWithdrawal, previous),
+        'The same one again, without the metronome.',
+      );
+      expect(metronomeLine(ChallengeBypass.pulseSupport), isNotNull);
+      expect(metronomeLine(ChallengeBypass.pulseWithdrawal), isNotNull);
+      expect(metronomeLine(ChallengeBypass.tempoProbe), isNull);
+      expect(metronomeLine(null), isNull);
+    });
+
     test('names the hand whatever the reason was', () {
       final otherHand = exerciseOf(hands: HandConfiguration.left);
 

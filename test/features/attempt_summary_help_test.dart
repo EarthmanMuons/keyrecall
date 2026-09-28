@@ -22,4 +22,14 @@ void main() {
 
     expect(entries.map((entry) => entry.$1), isNot(contains('Coordination')));
   });
+
+  test('names the pulse as played along with the metronome when it was', () {
+    final entries = attemptSummaryHelpEntries(
+      includesCoordination: false,
+      pulseSupplied: true,
+    );
+
+    expect(entries.map((entry) => entry.$1), contains('Pulse, with metronome'));
+    expect(entries.map((entry) => entry.$1), isNot(contains('Pulse')));
+  });
 }
