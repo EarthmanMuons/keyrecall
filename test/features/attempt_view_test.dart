@@ -240,6 +240,52 @@ void main() {
       );
     });
 
+    testWidgets('counts the beats it drew, not the beats that passed', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(1400, 2000);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final exercise = exerciseUnder(GuidanceContext.unguided);
+      final completions = <AttemptCompletion>[];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            syntheticInstrument,
+            pulseClickerProvider.overrideWithValue(
+              PulseClicker(sink: _DrainingSink()),
+            ),
+          ],
+          child: MaterialApp(
+            home: Scaffold(
+              body: AttemptView(
+                exercise: exercise,
+                presentation: presentationFor(
+                  exercise.guidance,
+                  exercise: exercise,
+                  admittedBy: ChallengeBypass.pulseSupport,
+                ),
+                onFinish: (completion) async => completions.add(completion),
+              ),
+            ),
+          ),
+        ),
+      );
+      // One frame on the first beat after the count-in, then one frame three
+      // beats later: two beats drawn, four passed.
+      await readyAndCountIn(tester);
+      expect(find.byType(PulseBeat), findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 750 * 3));
+      await tester.tap(find.text('Done'));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+
+      final delivery = completions.single.presentation!.delivery;
+      expect(delivery.shownContinuingBeats, 2);
+      expect(delivery.suppliedPulseDuringAttempt, isTrue);
+    });
+
     testWidgets('records a count-in the engine took as delivered', (
       tester,
     ) async {

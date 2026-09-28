@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -804,7 +803,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   Ticker? _beats;
   int _beat = -1;
 
-  /// Beats after the count-in the screen has shown, which is support whether
+  /// Beats after the count-in the screen has drawn, which is support whether
   /// or not the click sounded.
   int _shownContinuingBeats = 0;
   Timer? _watchdog;
@@ -1059,16 +1058,20 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           _watchdog = Timer.periodic(_watchdogTick, (_) => _watch());
         }
       }
-      if (_phase == _Phase.playing &&
-          _showsBeat &&
-          schedule.countedIn &&
-          !schedule.isOver) {
-        _shownContinuingBeats = math.max(
-          _shownContinuingBeats,
-          current - schedule.countInBeats + 1,
-        );
-      }
     });
+    if (_phase == _Phase.playing &&
+        _showsBeat &&
+        schedule.countedIn &&
+        !schedule.isOver) {
+      // Counted once the frame showing it has been drawn, and once for each
+      // beat that was: a frame that arrives late shows the beat it lands on
+      // and none of the ones it skipped.
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _beat == current && _phase == _Phase.playing) {
+          _shownContinuingBeats++;
+        }
+      });
+    }
     if (schedule.countedIn && (!_showsBeat || schedule.isOver)) _stopBeats();
   }
 
