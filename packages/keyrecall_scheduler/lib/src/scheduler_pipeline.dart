@@ -579,11 +579,14 @@ class SchedulerPipeline {
     Outcome? outcome, {
     required DateTime at,
   }) {
-    // Read before the cycle moves on. Every slot while a cycle is owed held a
-    // waiting probe back, a recovery interrupting the cycle included.
-    final remediationOwed =
+    // Read before the cycle moves on. A slot taken while a cycle is owed held a
+    // waiting probe back, a recovery interrupting the cycle included, unless
+    // the slot was the probe itself: one a scope change left the only thing
+    // to serve has been asked, and is spent like any other.
+    final deferredTempoProbe =
         config.pulseRemediation != null &&
-        session.pulseRemediations.due != null;
+        session.pulseRemediations.due != null &&
+        exercise != session.tempoProbe;
     if (config.pulseRemediation case final remediation?) {
       session.pulseRemediations.record(
         exercise,
@@ -603,7 +606,7 @@ class SchedulerPipeline {
               outcome: outcome,
               config: config.probe,
             ),
-      preservesWaitingTempoProbe: remediationOwed,
+      preservesWaitingTempoProbe: deferredTempoProbe,
       config: config.diversity,
     );
     final familyWindow = config.familyWindow;

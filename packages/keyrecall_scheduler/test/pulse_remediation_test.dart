@@ -337,6 +337,29 @@ void main() {
         expect(probesOffered(session), [probe]);
       });
 
+      test('served while a cycle is still owed, it is spent', () {
+        // A scope change can leave the probe the only thing to serve while
+        // the cycle's target is out of reach.
+        final (session, probe) = opened(withProbe: true);
+
+        remediating.recordOutcome(session, probe!, played(), at: t0);
+
+        expect(session.tempoProbe, isNull);
+        expect(probesOffered(session), isEmpty);
+      });
+
+      test('served and played fast, it opens the next one, not itself', () {
+        final (session, probe) = opened(withProbe: true);
+
+        remediating.recordOutcome(session, probe!, fast, at: t0);
+
+        expect(session.tempoProbe, isNot(probe));
+        expect(
+          session.tempoProbe?.conditions.tempoBpm,
+          greaterThan(probe.conditions.tempoBpm),
+        );
+      });
+
       test('none waiting, a fast withdrawal opens one', () {
         final (session, probe) = opened(withProbe: false);
         expect(probe, isNull);

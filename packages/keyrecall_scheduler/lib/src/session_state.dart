@@ -162,9 +162,9 @@ class SessionState {
   /// shown retrieval succeeding or failing, whichever it did.
   ///
   /// [preservesWaitingTempoProbe] leaves a probe that is already waiting
-  /// exactly where it was, for a slot taken while remediation was owed: the
-  /// probe was held back from it, not passed over in it. Where none is
-  /// waiting, the attempt may open one as any other can.
+  /// exactly where it was, for a slot remediation took from it: the probe was
+  /// held back from that slot, not passed over in it. Where none is waiting,
+  /// the attempt may open one as any other can.
   void recordSelection(
     Exercise exercise, {
     required bool retrievalFailed,
