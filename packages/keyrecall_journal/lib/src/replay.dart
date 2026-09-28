@@ -186,7 +186,7 @@ ReplayResult replayJournal(
   var unmeasured = 0;
 
   for (final record in journal.records) {
-    // Skip by position in the history, not by position within a sitting. A
+    // Skip by position in the history, not by position within a session. A
     // journal spans many sessions, and a checkpoint already contains all of
     // them up to its sequence.
     if (from != null && record.journalSequence <= from.throughJournalSequence) {

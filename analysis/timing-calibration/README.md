@@ -159,7 +159,7 @@ Engineering calibration, not empirical validation. These numbers say what this
 input stack sees when this player plays comfortably on this instrument, which is
 what the scores need in order to not be arbitrary. They do not establish a
 pedagogically meaningful boundary between steady and unsteady playing, and they
-are one player, one instrument, one sitting, with three of five takes played
+are one player, one instrument, one session, with three of five takes played
 badly on purpose.
 
 Revisit them with takes from people genuinely finding the material hard, and

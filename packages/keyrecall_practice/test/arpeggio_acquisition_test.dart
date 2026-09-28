@@ -6,11 +6,11 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'support/fixtures.dart';
 
-/// Supported acquisition of arpeggios, through the ordinary sitting.
+/// Supported acquisition of arpeggios, through the ordinary session.
 ///
 /// The rule is family-neutral and the scale tests prove the rule. What these
 /// ask is whether the arpeggio family's own declaration reaches it: the floor
-/// it names, the task it names below that floor, and what a sitting does with
+/// it names, the task it names below that floor, and what a session does with
 /// the pair.
 void main() {
   final arpeggio = proofArpeggios.first;
@@ -49,8 +49,8 @@ void main() {
     return transcript;
   }
 
-  /// Runs a sitting, playing [play] at every supported task it offers.
-  Future<List<Object>> sitting(
+  /// Runs a session, playing [play] at every supported task it offers.
+  Future<List<Object>> runSession(
     PracticeSession session, {
     int slots = 14,
     PerformanceTranscript Function(AcquisitionTask task)? play,
@@ -82,7 +82,7 @@ void main() {
     // The distinction the family-neutral sequence rests on. Failing an ordinary
     // rung is a reason to ask for the floor; only failing the floor is a reason
     // to take the tempo off it.
-    final offered = await sitting(
+    final offered = await runSession(
       await struggling(InMemoryPracticeStore(createdAt: t0)),
     );
     final firstTask = offered.indexWhere((entry) => entry is AcquisitionTask);
@@ -97,7 +97,7 @@ void main() {
   });
 
   test('the supported task is the arpeggio floor, unmetered', () async {
-    final offered = await sitting(
+    final offered = await runSession(
       await struggling(InMemoryPracticeStore(createdAt: t0)),
     );
     final task =
@@ -123,7 +123,7 @@ void main() {
     final session = await struggling(InMemoryPracticeStore(createdAt: t0));
     var attempt = 0;
 
-    await sitting(
+    await runSession(
       session,
       slots: 20,
       play: (task) {
@@ -156,7 +156,7 @@ void main() {
     // never say the motion was fluent however well it went.
     final session = await struggling(InMemoryPracticeStore(createdAt: t0));
 
-    final offered = await sitting(
+    final offered = await runSession(
       session,
       slots: 20,
       play: (task) => playing(task, notesOf(task)),
@@ -189,7 +189,7 @@ void main() {
     // reason the evidence fails.
     final session = await struggling(InMemoryPracticeStore(createdAt: t0));
 
-    await sitting(
+    await runSession(
       session,
       slots: 20,
       play: (task) {
@@ -213,10 +213,10 @@ void main() {
     expect(record.earnedProbe, isTrue);
   });
 
-  test('supported work is a step aside, not the sitting', () async {
-    // The set-aside and the dose, read off one sitting: a stuck floor that goes
+  test('supported work is a step aside, not the session', () async {
+    // The set-aside and the dose, read off one session: a stuck floor that goes
     // on being stuck does not fill the slots with its own relaxed version.
-    final offered = await sitting(
+    final offered = await runSession(
       await struggling(InMemoryPracticeStore(createdAt: t0)),
       slots: 14,
     );

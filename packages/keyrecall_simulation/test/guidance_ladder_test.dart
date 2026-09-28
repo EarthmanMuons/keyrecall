@@ -10,8 +10,8 @@ void main() {
         scope: GoalTrajectoryScope.foundations,
         player: PlayerArchetypes.trueBeginner,
         seed: 0,
-        sittings: 2,
-        slotsPerSitting: 10,
+        sessions: 2,
+        slotsPerSession: 10,
       );
 
       expect(slots, isNotEmpty);

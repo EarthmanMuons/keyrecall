@@ -47,7 +47,7 @@ final profileRepositoryProvider = FutureProvider<ProfileRepository>((
 /// part of what the recorded conditions mean.
 ///
 /// Overridden at launch, where there is a package to ask. Nothing else may
-/// hold a sitting closed while it asks: a test binding has no package, and a
+/// hold a session closed while it asks: a test binding has no package, and a
 /// build that cannot name itself says nothing rather than naming something
 /// else.
 final appBuildVersionProvider = Provider<String?>((ref) => null);
@@ -75,7 +75,7 @@ final profileLifecycleRawProvider = FutureProvider<ProfileLifecycle>(
 ///
 /// Everything that creates, erases, or deletes a profile goes through here,
 /// and so does everything that needs to know who is active: resolving that is
-/// the first thing after a deletion the last run did not finish, and a sitting
+/// the first thing after a deletion the last run did not finish, and a session
 /// opened before that repair would run as somebody this install has already
 /// decided to forget.
 final profileLifecycleProvider = FutureProvider<ProfileLifecycle>((ref) async {
@@ -139,7 +139,7 @@ final practicePlanProvider =
 ///
 /// Deliberately not a [PracticeSessionIdentity]. A plan belongs to a profile
 /// and to one incarnation of this notifier, which is a shorter lifecycle than
-/// a sitting and not in step with it: reading the two generations as the same
+/// a session and not in step with it: reading the two generations as the same
 /// kind of thing would suggest a relationship that does not exist.
 @immutable
 class _PlanOwner {
@@ -226,9 +226,9 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   /// slot. The focus is held here and never stored, so a relaunch starts
   /// working toward the same goal with no focus.
   ///
-  /// The loop reads this provider, so replacing the plan reopens the sitting
+  /// The loop reads this provider, so replacing the plan reopens the session
   /// against the new scope. What survives that is the decision, not the
-  /// attempt: it is durable, so the reopened sitting finds it pending and
+  /// attempt: it is durable, so the reopened session finds it pending and
   /// presents the same exercise again, while anything being recorded at the
   /// time goes with the screen that was recording it.
   ///
@@ -295,14 +295,14 @@ class PracticePlanNotifier extends AsyncNotifier<PracticePlan> {
   }
 }
 
-/// Makes a host for one sitting to decide on.
+/// Makes a host for one session to decide on.
 ///
 /// A worker isolate in the app, and overridden with an `InProcessScheduler`
 /// wherever a test wants the decision on the calling isolate.
 ///
 /// A factory rather than a host, because a host is not shareable. Binding
-/// replaces the scope a host holds, so two sittings over one host decide
-/// against whichever scope bound last; the sitting that opens a host disposes
+/// replaces the scope a host holds, so two sessions over one host decide
+/// against whichever scope bound last; the session that opens a host disposes
 /// it, and an isolate is cheap beside that confusion.
 final schedulerHostFactoryProvider = Provider<SchedulerHost Function()>(
   (ref) => IsolateScheduler.new,
@@ -401,7 +401,7 @@ class ProfileMutationFailed<T> extends ProfileMutation<T> {
 /// Creating, renaming, switching, erasing, and deleting profiles.
 ///
 /// Every mutation goes through the lifecycle and then reloads this list.
-/// Reloading the practice loop is separate and deliberate: reopening a sitting
+/// Reloading the practice loop is separate and deliberate: reopening a session
 /// while an exercise is on screen leaves its decision pending, so the loop is
 /// invalidated only when a change actually moves the ground under it, which
 /// means a change to the active profile.
@@ -589,7 +589,7 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
   ///
   /// [touchesPractice] false says [change] can only ever alter what the roster
   /// shows, so practice is left alone whatever happens, failure included:
-  /// reopening it would drop the focus the sitting holds, over an edit that
+  /// reopening it would drop the focus the session holds, over an edit that
   /// could not have changed anything practice reads.
   Future<ProfileMutation<T>> _mutate<T>(
     Future<(bool, ProfileMutation<T>)> Function(ProfileLifecycle) change, {
@@ -616,7 +616,7 @@ class ProfileRosterNotifier extends AsyncNotifier<List<ProfileSummary>> {
       ref.read(profileMutationProvider.notifier)._running(false);
       ref.invalidateSelf();
       if (touchedActive) {
-        // The plan first: the loop reads it, and reopening a sitting against
+        // The plan first: the loop reads it, and reopening a session against
         // the previous profile's scope would decide one slot under it.
         ref.invalidate(practicePlanProvider);
         ref.invalidate(practiceLoopProvider);
@@ -668,16 +668,16 @@ enum PracticeIdleReason {
 /// Everything the panel needs to show about the loop's current position.
 @immutable
 class PracticeLoopState {
-  /// Which live sitting this is.
+  /// Which live session this is.
   ///
-  /// What everything asynchronous this sitting starts is bound to, so a result
+  /// What everything asynchronous this session starts is bound to, so a result
   /// that outlives it can be told from one that is still current.
   final PracticeSessionIdentity identity;
 
-  /// Whose sitting this is.
+  /// Whose session this is.
   final Profile profile;
 
-  /// The goal and focus this sitting was opened under.
+  /// The goal and focus this session was opened under.
   final PracticePlan plan;
 
   /// Curriculum coverage as of the last decision, where one reported it.
@@ -686,7 +686,7 @@ class PracticeLoopState {
   /// Why there is nothing to present, when there is nothing.
   final PracticeIdleReason? idle;
 
-  /// The open sitting.
+  /// The open session.
   final PracticeSession session;
 
   /// What is on screen waiting to be answered, if anything.
@@ -703,10 +703,10 @@ class PracticeLoopState {
   /// so two offers of the same task are two attempts at it.
   final PresentedAcquisition? acquisition;
 
-  /// The last attempt committed in this sitting.
+  /// The last attempt committed in this session.
   final AttemptRecord? lastCommitted;
 
-  /// The last supported attempt recorded in this sitting.
+  /// The last supported attempt recorded in this session.
   ///
   /// Held for the same reason [lastCommitted] is: something has to be closed
   /// before the next thing begins. It carries no outcome, so what a screen can
@@ -748,11 +748,11 @@ class PracticeLoopState {
   bool get isAwaitingAnswer =>
       presented != null || pending != null || acquisition != null;
 
-  /// What is awaiting an answer, and the sitting that issued it.
+  /// What is awaiting an answer, and the session that issued it.
   ///
   /// What closing an attempt names its target by. An attempt belongs to the
-  /// sitting that decided it for as long as it exists, so a completion that
-  /// arrives after that sitting was replaced has nothing here to match.
+  /// session that decided it for as long as it exists, so a completion that
+  /// arrives after that session was replaced has nothing here to match.
   PracticeAttemptOwner? get attempt {
     final attemptId =
         presented?.decision.attemptId ??
@@ -784,7 +784,7 @@ class PracticeLoopState {
 /// The practice loop.
 ///
 /// Retries are off. The default is to rebuild a failed provider on a backoff,
-/// which suits a flaky network and not this: opening a sitting fails for
+/// which suits a flaky network and not this: opening a session fails for
 /// reasons a retry cannot change, such as a journal recorded under a learner
 /// model this build no longer runs. Retrying leaves the loop in a loading
 /// state that carries the last error, so it renders as failed but never
@@ -806,16 +806,16 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// proceed.
   bool _writing = false;
 
-  /// Which sitting this notifier is holding, or null while it has none.
+  /// Which session this notifier is holding, or null while it has none.
   ///
   /// Every asynchronous operation this notifier starts carries the identity it
   /// began under and is checked against this before it publishes anything or
   /// starts anything further.
   PracticeSessionIdentity? _owner;
 
-  /// The incarnation this sitting writes as, or null while it has none.
+  /// The incarnation this session writes as, or null while it has none.
   ///
-  /// The sitting's own writes go through the bound store the session holds.
+  /// Its own writes go through the bound store the session holds.
   /// This is for the observations recorded beside it, which reach storage from
   /// here rather than through the transaction.
   ProfileLifetime? _lifetime;
@@ -841,7 +841,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     ref.onDispose(() => _disposed = true);
 
     // Deletions the last run did not finish are completed before anything
-    // asks who is active, so no sitting opens as somebody this install has
+    // asks who is active, so no session opens as somebody this install has
     // already decided to forget.
     final ProfileLifecycle lifecycle;
     try {
@@ -853,7 +853,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
 
     // Never conjures anybody. An install with no profile has not answered the
     // placement question, and answering it is what creates the learner; a
-    // sitting opened before that would run as somebody started from a prior
+    // session opened before that would run as somebody started from a prior
     // nobody chose. The gate above this screen is what makes it unreachable.
     //
     // Each artifact is classified where it is read, so a recovery acts on the
@@ -870,19 +870,19 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     }
     // Scheduling is the expensive part of a slot and blocks whatever isolate
     // computes it, so it does not happen on the one that draws. The worker
-    // holds the sitting's scope and nothing else; this isolate stays
+    // holds the session's scope and nothing else; this isolate stays
     // authoritative for state and for what is written.
     //
-    // One host per sitting, disposed with it. A host bound to a scope that is
-    // no longer this sitting's is a host answering somebody else's question.
+    // One host per session, disposed with it. A host bound to a scope that is
+    // no longer this session's is a host answering somebody else's question.
     final scheduler = ref.watch(schedulerHostFactoryProvider)();
     ref.onDispose(scheduler.dispose);
-    // The plan is read before the sitting opens rather than applied to it
-    // afterwards, so the first slot of a sitting is decided under the scope the
+    // The plan is read before the session opens rather than applied to it
+    // afterwards, so the first slot of a session is decided under the scope the
     // learner last asked for.
     final catalog = ref.watch(practiceCatalogProvider);
     final plan = await ref.watch(practicePlanProvider.future);
-    // A plan naming something this build cannot read stops the sitting rather
+    // A plan naming something this build cannot read stops the session rather
     // than opening a wider one. What was stored is intent, and the failure a
     // learner can act on is being told their plan was not understood.
     final resolution = plan.resolve(catalog);
@@ -900,8 +900,8 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       );
     }
     final scope = resolution as ResolvedPlan;
-    // Bound to the incarnation standing now. Everything this sitting writes
-    // carries it, so an erase during the sitting refuses the writes rather
+    // Bound to the incarnation standing now. Everything this session writes
+    // carries it, so an erase during the session refuses the writes rather
     // than letting them put the erased history back.
     final lifetime = await store.lifetimeOf(profile.id);
     final PracticeSession session;
@@ -928,7 +928,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
 
     final identity = PracticeSessionIdentity.next(profile.id);
     // Replaced or torn down while opening, which are two ways of no longer
-    // being the sitting rather than one: a build with nothing after it is not
+    // being the session rather than one: a build with nothing after it is not
     // superseded, and is just as gone. Either way this result is discarded;
     // what it must not do is go on to decide, because deciding persists a
     // pending slot over whatever is presenting one now, and the attempt on
@@ -960,7 +960,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         note: 'resuming an attempt an earlier run never closed',
       );
     }
-    // A sitting that opened and could not be decided is a scheduling failure,
+    // A session that opened and could not be decided is a scheduling failure,
     // not an unreadable history: nothing about what is recorded is in doubt,
     // and offering to erase it would answer a question nobody asked.
     try {
@@ -977,7 +977,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     }
   }
 
-  /// What a failed profile artifact means for the sitting that wanted it.
+  /// What a failed profile artifact means for the session that wanted it.
   ///
   /// Classified where the artifact is read, and carrying whose it was, so the
   /// recovery offered acts on the file that actually failed.
@@ -992,7 +992,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         profileId: error.profileId,
       );
 
-  /// Whether [session] is the sitting this notifier is still holding.
+  /// Whether [session] is the session this notifier is still holding.
   bool _owns(PracticeSessionIdentity session) =>
       !_disposed && _owner == session;
 
@@ -1039,8 +1039,8 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// one's review is still on screen, and a prepared decision can be discarded
   /// before anybody sees it.
   ///
-  /// Answers whether the sitting took it. A screen reporting an exposure does
-  /// not get to conclude it was recorded: an attempt this sitting no longer
+  /// Answers whether the session took it. A screen reporting an exposure does
+  /// not get to conclude it was recorded: an attempt this session no longer
   /// holds is refused, and a write that failed is refused, so the surface can
   /// ask again rather than marking it done.
   Future<bool> acknowledgePresentation(PracticeAttemptOwner attempt) async {
@@ -1186,16 +1186,16 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     );
   }
 
-  /// The sitting [attempt] belongs to, if it is still the one on screen and
+  /// The session [attempt] belongs to, if it is still the one on screen and
   /// nothing else is being written.
   ///
   /// The ownership check is here rather than at the transaction, because a
-  /// completion that names an attempt this sitting is not holding is evidence
+  /// completion that names an attempt this session is not holding is evidence
   /// about somebody else's slot and there is nowhere to put it.
   ///
   /// Ownership is asked of the notifier first and of the state second. State
   /// is retained across a failure and a rebuild, so a value that still holds
-  /// the right attempt is not on its own evidence that its sitting is current.
+  /// the right attempt is not on its own evidence that its session is current.
   PracticeLoopState? _answerable(PracticeAttemptOwner attempt) {
     if (_writing || !_owns(attempt.session)) return null;
     final current = state.value;
@@ -1208,7 +1208,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   /// [close] is allowed to finish whatever it started: an append in flight owes
   /// authoritative history an answer, and abandoning it on the strength of a
   /// profile switch is what leaves one attempt in the file and none in the
-  /// sitting. What ownership governs is everything after it, which is
+  /// session. What ownership governs is everything after it, which is
   /// publishing state and asking for another decision.
   ///
   /// No loading state: committing is an append and a scheduler decision, and
@@ -1223,7 +1223,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
       closed = await close();
     } catch (error, stackTrace) {
       // The transaction stays frozen on the session, so the recovery is to
-      // write this same attempt again rather than to open a sitting that
+      // write this same attempt again rather than to open a session that
       // would find its decision pending and its performance gone.
       _fail(
         attempt.session,
@@ -1249,7 +1249,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         PracticeFailure.scheduling,
         error,
         stackTrace,
-        // A lost worker took its binding and nothing else, so the sitting
+        // A lost worker took its binding and nothing else, so the session
         // re-establishes where it decides before asking again. Deciding can
         // fail for reasons that say nothing about the host, such as the
         // pending slot not reaching storage, and rebinding for those would
@@ -1283,11 +1283,11 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   ///
   /// A frozen close is finished and a failed decision is asked again, both on
   /// the session that owns them. Anything else reopens, which is what a
-  /// sitting that never opened has.
+  /// session that never opened has.
   Future<void> retry() async {
     // A recovery already running is what this exists to finish, not something
     // to start again. Reopening now would abandon a frozen commit mid-write
-    // and leave the sitting on screen behind durable history.
+    // and leave the session on screen behind durable history.
     if (_writing) return;
 
     final recovery = _recovery;
@@ -1381,10 +1381,10 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
     await current.session.saveCheckpoint();
   }
 
-  /// Storage for the observations recorded beside this sitting, or null when
-  /// there is no sitting to record them for.
+  /// Storage for the observations recorded beside this session, or null when
+  /// there is no session to record them for.
   ///
-  /// Bound like everything else the sitting writes. An exposure is an
+  /// Bound like everything else the session writes. An exposure is an
   /// observation of a review screen, and a review of an attempt that has been
   /// erased is describing something that no longer happened.
   Future<PracticeStore?> _observing() async {
@@ -1567,7 +1567,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
 /// What would answer the failure on screen, and whose it is.
 @immutable
 class _Recovery {
-  /// The sitting that produced the failure, and the only one this answers for.
+  /// The session that produced the failure, and the only one this answers for.
   final PracticeSessionIdentity session;
 
   /// Finishes what failed: a frozen close, or a decision asked again.

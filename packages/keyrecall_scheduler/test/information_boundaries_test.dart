@@ -291,12 +291,12 @@ void main() {
       );
     });
 
-    test('an unbounded sitting is never suppressed by its length', () {
+    test('an unbounded session is never suppressed by its length', () {
       expect(config.safety.maxSessionAttempts, isNull);
       expect(
         pipeline.safetyFor(SessionState(attemptsThisSession: 1000)).isAllowed,
         isTrue,
-        reason: 'a sitting ends when the player stops, not at a constant',
+        reason: 'a session ends when the player stops, not at a constant',
       );
     });
   });
@@ -444,7 +444,7 @@ void main() {
       seedAllMaterials(state);
       final candidates = allCandidates();
 
-      // A bounded sitting is the one deterministic way to suppress every
+      // A bounded session is the one deterministic way to suppress every
       // candidate at stage 2b, which is what this needs to observe.
       const cap = 40;
       final suppressed =

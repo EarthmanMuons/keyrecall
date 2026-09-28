@@ -356,7 +356,7 @@ void main() {
   });
 }
 
-/// Two sittings on different days, one succeeding and one failing, so the
+/// Two sessions on different days, one succeeding and one failing, so the
 /// history holds every demonstration level and several days.
 Future<AttemptJournal> _practisedJournal() async {
   final store = InMemoryPracticeStore();

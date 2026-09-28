@@ -8,7 +8,7 @@ import 'trajectory.dart';
 ///
 /// The long-term progression questions in one vocabulary: whether coordination
 /// work, contrary motion, a second octave and unsupported retrieval are
-/// reached at all, and what a break does to the sitting they arrive in.
+/// reached at all, and what a break does to the session they arrive in.
 enum Milestone {
   handsTogether('hands_together'),
   contraryMotion('contrary_motion'),
@@ -31,7 +31,7 @@ enum Milestone {
   }
 }
 
-/// What one slot of a sitting did, relative to the frontier it was asked
+/// What one slot of a session did, relative to the frontier it was asked
 /// against.
 ///
 /// Exclusive, and ordered by what the slot achieved rather than by what it
@@ -71,15 +71,15 @@ SlotWork workOf(TrajectorySlot slot, {required bool known}) {
       : SlotWork.consolidating;
 }
 
-/// What one sitting of a run did.
+/// What one session of a run did.
 ///
-/// Counted in slots rather than proportions, so a short sitting and a long one
+/// Counted in slots rather than proportions, so a short session and a long one
 /// can be added together and the reader decides what to divide by.
-class SittingSummary {
+class SessionSummary {
   final int index;
   final DateTime at;
 
-  /// Time since the last attempt of the previous sitting, or zero for the
+  /// Time since the last attempt of the previous session, or zero for the
   /// first.
   final Duration away;
 
@@ -124,20 +124,20 @@ class SittingSummary {
   final int probesOpened;
   final int probesAnswered;
 
-  /// Whether the sitting ended with a probe that had already cleared its
+  /// Whether the session ended with a probe that had already cleared its
   /// defer, which does not survive the break.
   final bool probeStranded;
 
-  /// Whether a slot in this sitting admitted nothing.
+  /// Whether a slot in this session admitted nothing.
   final bool ranDry;
 
-  /// Distinct materials the run has met by the end of this sitting.
+  /// Distinct materials the run has met by the end of this session.
   final int coverage;
 
-  /// Milestones first reached in this sitting.
+  /// Milestones first reached in this session.
   final Set<Milestone> firsts;
 
-  const SittingSummary({
+  const SessionSummary({
     required this.index,
     required this.at,
     required this.away,
@@ -158,7 +158,7 @@ class SittingSummary {
     required this.firsts,
   });
 
-  /// Whether the sitting moved anything forward.
+  /// Whether the session moved anything forward.
   bool get progressed => advancing > 0 || introductions > 0;
 
   double get reacquisitionShare => slots == 0 ? 0 : reacquiring / slots;
@@ -167,33 +167,33 @@ class SittingSummary {
 /// What happened on the way back from one break.
 ///
 /// The shape the incidence of a reacquisition finding cannot answer: whether a
-/// learner reacquires for a sitting and resumes, or whether every break leaves
-/// them there. [sittingsToProgress] is zero when the returning sitting itself
+/// learner reacquires for a session and resumes, or whether every break leaves
+/// them there. [sessionsToProgress] is zero when the returning session itself
 /// advanced something, and null when nothing in the rest of the run did.
 class GapRecovery {
-  final int sitting;
+  final int session;
   final Duration away;
   final double reacquisitionShare;
-  final int? sittingsToProgress;
+  final int? sessionsToProgress;
 
   const GapRecovery({
-    required this.sitting,
+    required this.session,
     required this.away,
     required this.reacquisitionShare,
-    required this.sittingsToProgress,
+    required this.sessionsToProgress,
   });
 }
 
-/// A run summarized one sitting at a time.
+/// A run summarized one session at a time.
 class LongitudinalCensus {
   final String playerId;
   final int seed;
-  final List<SittingSummary> sittings;
+  final List<SessionSummary> sessions;
 
   const LongitudinalCensus({
     required this.playerId,
     required this.seed,
-    required this.sittings,
+    required this.sessions,
   });
 
   /// The recoveries from every break of at least [away].
@@ -203,36 +203,36 @@ class LongitudinalCensus {
   Iterable<GapRecovery> recoveries({
     Duration away = const Duration(days: 2),
   }) sync* {
-    for (final sitting in sittings) {
-      if (sitting.index == 0 || sitting.away < away) continue;
+    for (final session in sessions) {
+      if (session.index == 0 || session.away < away) continue;
       int? toProgress;
-      for (var next = sitting.index; next < sittings.length; next++) {
-        if (!sittings[next].progressed) continue;
-        toProgress = next - sitting.index;
+      for (var next = session.index; next < sessions.length; next++) {
+        if (!sessions[next].progressed) continue;
+        toProgress = next - session.index;
         break;
       }
       yield GapRecovery(
-        sitting: sitting.index,
-        away: sitting.away,
-        reacquisitionShare: sitting.reacquisitionShare,
-        sittingsToProgress: toProgress,
+        session: session.index,
+        away: session.away,
+        reacquisitionShare: session.reacquisitionShare,
+        sessionsToProgress: toProgress,
       );
     }
   }
 
-  /// Which sitting each milestone was first reached in.
+  /// Which session each milestone was first reached in.
   Map<Milestone, int> get milestones {
     final first = <Milestone, int>{};
-    for (final sitting in sittings) {
-      for (final milestone in sitting.firsts) {
-        first[milestone] = sitting.index;
+    for (final session in sessions) {
+      for (final milestone in session.firsts) {
+        first[milestone] = session.index;
       }
     }
     return first;
   }
 }
 
-/// Summarizes [trajectory] one sitting at a time.
+/// Summarizes [trajectory] one session at a time.
 /// What one slot was, read in the order the run happened.
 ///
 /// Held as its own reading because the answers depend on everything before the
@@ -263,7 +263,7 @@ class SlotReading {
 /// Every slot of [trajectory], classified in order.
 ///
 /// Positional, so it lines up with `trajectory.slots` rather than with slot
-/// indices: a sitting that ran dry consumed an index nothing was recorded at.
+/// indices: a session that ran dry consumed an index nothing was recorded at.
 List<SlotReading> readRun(Trajectory trajectory) {
   final seen = <String>{};
   // The independence each material has shown, cleared by a retrieval failure
@@ -299,18 +299,18 @@ List<SlotReading> readRun(Trajectory trajectory) {
   return readings;
 }
 
-/// Summarizes [trajectory] one sitting at a time.
+/// Summarizes [trajectory] one session at a time.
 LongitudinalCensus censusOfRun(Trajectory trajectory) {
   final read = readRun(trajectory);
   final readings = {
     for (final (position, slot) in trajectory.slots.indexed)
       slot.index: read[position],
   };
-  final summaries = <SittingSummary>[];
+  final summaries = <SessionSummary>[];
   final seen = <String>{};
   final reached = <Milestone>{};
 
-  for (var index = 0; index < trajectory.sittings.length; index++) {
+  for (var index = 0; index < trajectory.sessions.length; index++) {
     final slots = trajectory.slotsOf(index).toList();
     if (slots.isEmpty) continue;
     final previous = index == 0
@@ -332,9 +332,9 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
 
     final last = slots.last;
     summaries.add(
-      SittingSummary(
+      SessionSummary(
         index: index,
-        at: trajectory.sittings[index].at,
+        at: trajectory.sessions[index].at,
         away: previous == null
             ? Duration.zero
             : slots.first.at.difference(previous.at),
@@ -354,7 +354,7 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
         probeStranded:
             last.probe.pendingAfter != null && !last.probe.freshAfter,
         ranDry: trajectory.terminals.any(
-          (terminal) => terminal.sitting == index,
+          (terminal) => terminal.session == index,
         ),
         coverage: seen.length,
         firsts: firsts,
@@ -365,7 +365,7 @@ LongitudinalCensus censusOfRun(Trajectory trajectory) {
   return LongitudinalCensus(
     playerId: trajectory.playerId,
     seed: trajectory.seed,
-    sittings: summaries,
+    sessions: summaries,
   );
 }
 
@@ -384,7 +384,7 @@ bool _progresses(CandidateTrace trace, Set<String> seen) =>
 /// A new motor demand should cost something; the question is how much and for
 /// how long. Compared over equal windows either side of the slot a milestone
 /// first appears, across every attempt rather than only the milestone's own,
-/// because what a sitting feels like is the whole of it.
+/// because what a session feels like is the whole of it.
 ///
 /// Characterization, not a warning. A dip that recovers is desirable
 /// difficulty, and one that does not is a scheduler asking for something the

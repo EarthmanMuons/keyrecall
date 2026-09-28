@@ -7,7 +7,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'support/fixtures.dart';
 
 /// Timing remediation: a hand whose clean attempts keep drifting is given one
-/// attempt with a pulse and one without, once a sitting.
+/// attempt with a pulse and one without, once a session.
 void main() {
   const remediation = PulseRemediationConfig();
   final remediating = SchedulerPipeline(

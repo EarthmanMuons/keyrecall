@@ -88,7 +88,7 @@ GoalEmphasis goalEmphasisOf(ResolvedPracticeScope scope) {
 }
 
 /// The scheduler's final-result effect carried by a practice host.
-typedef SittingDecisionEffect = SelectionEffect;
+typedef SessionDecisionEffect = SelectionEffect;
 
 /// One slot's decision, reduced to what a session acts on.
 ///
@@ -96,7 +96,7 @@ typedef SittingDecisionEffect = SelectionEffect;
 /// thousand, so the whole of it cannot cross an isolate boundary at a price
 /// worth paying. What a session does with it is narrower: the winning
 /// candidate or a reason there was none, a compact competition report, and the
-/// selection bookkeeping the sitting records.
+/// selection bookkeeping the session records.
 @immutable
 class SchedulerVerdict {
   final String diagnostics;
@@ -125,8 +125,8 @@ class SchedulerVerdict {
   /// The ordinary work an offered task was chosen instead of, if any.
   final Exercise? displacedByAcquisition;
 
-  /// What to apply to the sitting if this verdict is still current.
-  final SittingDecisionEffect effect;
+  /// What to apply to the session if this verdict is still current.
+  final SessionDecisionEffect effect;
 
   /// Every trace, where the decision was made in this isolate.
   ///
@@ -172,12 +172,12 @@ class SchedulerVerdict {
 /// fifth of a second, and computing it elsewhere costs only the state that has
 /// to travel.
 ///
-/// A host never touches the sitting it is given. What deciding owes the
-/// sitting comes back as a [SittingDecisionEffect], which the session applies
+/// A host never touches the session it is given. What deciding owes the
+/// session comes back as a [SessionDecisionEffect], which the session applies
 /// once it has established that the answer is still current.
 ///
 /// A host holds the resolved scope it decides against for as long as that scope
-/// is the sitting's, so the candidate envelope is established once rather than
+/// is the session's, so the candidate envelope is established once rather than
 /// traveling with every request. Binding again replaces it.
 abstract interface class SchedulerHost {
   /// Adopts [scope], discarding whatever was bound before.
@@ -226,8 +226,8 @@ abstract interface class SchedulerHost {
 /// Decides in the calling isolate.
 ///
 /// What a test, a simulation, and any caller that has not opted into a worker
-/// use. It leaves the sitting alone like any other host, so both paths reach a
-/// post-decision sitting the same way.
+/// use. It leaves the session alone like any other host, so both paths reach a
+/// post-decision session the same way.
 class InProcessScheduler implements SchedulerHost {
   final SchedulerPipeline pipeline;
 

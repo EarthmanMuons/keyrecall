@@ -336,7 +336,7 @@ void main() {
       identity: AttemptIdentity(
         profileId: 'abc12345',
         attemptId: 'acq-0',
-        sessionId: 'sitting-1',
+        sessionId: 'session-1',
         indexInSession: 0,
         occurredAt: DateTime.utc(2026, 9, 9),
       ),
@@ -518,7 +518,7 @@ void main() {
             identity: AttemptIdentity(
               profileId: 'abc12345',
               attemptId: 'acq-0',
-              sessionId: 'sitting-1',
+              sessionId: 'session-1',
               indexInSession: 0,
               occurredAt: DateTime.utc(2026, 9, 9),
             ),
@@ -591,7 +591,7 @@ void main() {
         identity: AttemptIdentity(
           profileId: 'abc12345',
           attemptId: 'acq-0',
-          sessionId: 'sitting-1',
+          sessionId: 'session-1',
           indexInSession: 0,
           occurredAt: DateTime.utc(2026, 9, 9),
         ),

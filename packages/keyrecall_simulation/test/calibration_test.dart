@@ -6,12 +6,12 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 /// Whether a fit recovers a player it was not told about.
 ///
-/// Ground truth is synthetic on purpose. A fit against a device sitting cannot
+/// Ground truth is synthetic on purpose. A fit against a device session cannot
 /// be checked, because nobody knows the answer; a fit against a known player
 /// can, and an estimator that cannot recover a player it generated has no
 /// business being pointed at a person.
 void main() {
-  // The exercises a real sitting asked for, taken from a scheduler run so the
+  // The exercises a real session asked for, taken from a scheduler run so the
   // fit answers the same questions a person answered.
   final presented = [
     for (final slot in runTrajectory(
@@ -23,14 +23,14 @@ void main() {
       ReplayPresentation(slot.chosen, seenBefore: true),
   ];
 
-  SittingProfile sittingOf(SyntheticPlayer player) =>
+  SessionProfile sessionOf(SyntheticPlayer player) =>
       profileOf(replay(player, presented, seed: 11));
 
   List<PlayerFit> fitOf(
     SyntheticPlayer truth, {
-    Set<PlayerParameter> vary = firstSitting,
+    Set<PlayerParameter> vary = firstSession,
   }) => fitPlayers(
-    target: sittingOf(truth),
+    target: sessionOf(truth),
     presented: presented,
     vary: vary,
     samples: 600,
@@ -54,8 +54,8 @@ void main() {
     ]);
   });
 
-  test('a profile reads what a sitting did, not what it was asked', () {
-    final profile = sittingOf(PlayerArchetypes.tempoNoncompliant);
+  test('a profile reads what a session did, not what it was asked', () {
+    final profile = sessionOf(PlayerArchetypes.tempoNoncompliant);
 
     // Plays at its own pace whatever the count-in says, so the achieved tempo
     // is its own and the ratio is nothing like one.
@@ -109,7 +109,7 @@ void main() {
   });
 
   test('the ensemble is wide enough to say it is an ensemble', () {
-    // Several parameter sets reproduce one sitting, and a point estimate would
+    // Several parameter sets reproduce one session, and a point estimate would
     // claim a precision this cannot carry.
     final tempo = rangeOf(
       fitOf(PlayerArchetypes.developing),
@@ -137,18 +137,18 @@ void main() {
   });
 
   test('the closest candidate is closer than a wrong one', () {
-    final target = sittingOf(PlayerArchetypes.advanced);
+    final target = sessionOf(PlayerArchetypes.advanced);
     final ensemble = fitOf(PlayerArchetypes.advanced);
 
     expect(
       ensemble.first.distance,
       lessThan(
-        profileDistance(target, sittingOf(PlayerArchetypes.trueBeginner)),
+        profileDistance(target, sessionOf(PlayerArchetypes.trueBeginner)),
       ),
     );
   });
 
-  test('a distance skips what one sitting cannot answer', () {
+  test('a distance skips what one session cannot answer', () {
     final singleHanded = [
       for (final exercise in presented)
         if (exercise.exercise.conditions.hands != HandConfiguration.together)
@@ -169,7 +169,7 @@ void main() {
           exercise,
     ];
 
-    test('a sitting with no coordination work says so', () {
+    test('a session with no coordination work says so', () {
       final observed = profileOf(
         replay(PlayerArchetypes.unevenHands, singleHanded, seed: 11),
       );
@@ -177,12 +177,12 @@ void main() {
         ensemble: fitPlayers(
           target: observed,
           presented: singleHanded,
-          vary: firstSitting,
+          vary: firstSession,
           samples: 200,
           seed: 3,
         ),
         observed: observed,
-        vary: firstSitting,
+        vary: firstSession,
       );
 
       expect(
@@ -191,8 +191,8 @@ void main() {
       );
     });
 
-    test('one sitting never claims a learning rate', () {
-      const vary = {...firstSitting, PlayerParameter.learningRate};
+    test('one session never claims a learning rate', () {
+      const vary = {...firstSession, PlayerParameter.learningRate};
       final observed = profileOf(
         replay(PlayerArchetypes.developing, presented, seed: 11),
       );
@@ -210,11 +210,11 @@ void main() {
 
       expect(
         answers[PlayerParameter.learningRate],
-        Identifiability.needsMoreSittings,
+        Identifiability.needsMoreSessions,
       );
     });
 
-    test('familiarity needs provenance, not position in the sitting', () {
+    test('familiarity needs provenance, not position in the session', () {
       final withoutProvenance = [
         for (final attempt in replay(
           PlayerArchetypes.developing,
@@ -232,12 +232,12 @@ void main() {
           ensemble: fitPlayers(
             target: observed,
             presented: presented,
-            vary: firstSitting,
+            vary: firstSession,
             samples: 200,
             seed: 3,
           ),
           observed: observed,
-          vary: firstSitting,
+          vary: firstSession,
         )[PlayerParameter.familiarity],
         Identifiability.unobserved,
       );
@@ -269,12 +269,12 @@ void main() {
         ensemble: fitPlayers(
           target: observed,
           presented: singleHanded,
-          vary: firstSitting,
+          vary: firstSession,
           samples: 200,
           seed: 3,
         ),
         observed: observed,
-        vary: firstSitting,
+        vary: firstSession,
       );
 
       expect(report, contains('handsTogetherAbility'));
@@ -287,14 +287,14 @@ void main() {
     });
   });
 
-  test('an exported sitting profiles the same as the run it came from', () {
-    // One implementation of the profile semantics: a device sitting and a
+  test('an exported session profiles the same as the run it came from', () {
+    // One implementation of the profile semantics: a device session and a
     // synthetic one go through the same code, so a difference between them is
     // a difference in the playing.
     final played = replay(PlayerArchetypes.developing, presented, seed: 11);
-    final export = SittingExport(
+    final export = SessionExport(
       profileId: 'profile-1',
-      sittingId: 'session-1',
+      sessionId: 'session-1',
       startedAt: DateTime.utc(2026),
       attempts: [
         for (final (index, attempt) in played.indexed)
@@ -309,7 +309,7 @@ void main() {
       ],
     );
     final imported = observationsOf(
-      decodeSittingExport(encodeSittingExport(export)),
+      decodeSessionExport(encodeSessionExport(export)),
     );
 
     expect(profileDistance(profileOf(imported), profileOf(played)), 0);
@@ -317,9 +317,9 @@ void main() {
 
   test('an export that knows nothing about familiarity says so', () {
     final played = replay(PlayerArchetypes.developing, presented, seed: 11);
-    final export = SittingExport(
+    final export = SessionExport(
       profileId: 'profile-1',
-      sittingId: 'session-1',
+      sessionId: 'session-1',
       startedAt: DateTime.utc(2026),
       attempts: [
         for (final (index, attempt) in played.indexed)
@@ -339,7 +339,7 @@ void main() {
     final truth = PlayerArchetypes.reliableSelfPaced;
 
     test('completes nearly everything and plays its own pace', () {
-      final profile = sittingOf(truth);
+      final profile = sessionOf(truth);
 
       expect(profile.completionRate, greaterThan(0.9));
       expect(profile.motor[HandConfiguration.right], greaterThan(0.85));
@@ -355,8 +355,8 @@ void main() {
         PlayerArchetypes.developing,
       ]) {
         expect(
-          sittingOf(other).completionRate,
-          lessThan(sittingOf(truth).completionRate - 0.2),
+          sessionOf(other).completionRate,
+          lessThan(sessionOf(truth).completionRate - 0.2),
           reason: other.id,
         );
       }

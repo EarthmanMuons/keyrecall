@@ -86,7 +86,7 @@ void main() {
     );
   });
 
-  test('two scales in one sitting should not disagree by three rungs', () {
+  test('two scales in one session should not disagree by three rungs', () {
     // The shape a person would notice: same hand, same span, same session,
     // one met at the pace and the next at the floor.
     final state = playingAt(120);

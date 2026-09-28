@@ -4,7 +4,7 @@ import 'config/scheduler_config.dart';
 import 'pulse_remediation.dart';
 import 'realization_family_pacing.dart';
 
-/// Short-lived scheduling context for one practice sitting.
+/// Short-lived scheduling context for one practice session.
 ///
 /// Deliberately separate from persistent learner state, so a temporary
 /// session condition is never stored as ability. It drives the attempt cap,
@@ -36,7 +36,7 @@ class SessionState {
   /// Whether [tempoProbe] was opened by the attempt just recorded.
   ///
   /// A fresh probe is the same exercise the learner has this second finished,
-  /// one rung faster. Asking for it immediately is the echo a sitting notices:
+  /// one rung faster. Asking for it immediately is the echo a session notices:
   /// it reads as the app repeating itself rather than as verification. The
   /// slot after holds it back unconditionally, and the slot
   /// after that lets it compete like any other candidate.
@@ -47,7 +47,7 @@ class SessionState {
   /// Continuous cueing never observes retrieval, so practice under it produces
   /// no evidence about whether the support is still needed.
   ///
-  /// Counted across the sitting rather than per material, because what starves
+  /// Counted across the session rather than per material, because what starves
   /// is the scheduler's knowledge of whether support is still needed, and that
   /// starves whether or not the same scale keeps coming back. Cueing spreads
   /// itself across materials, so a per-material count would rarely reach two.
@@ -70,7 +70,7 @@ class SessionState {
   /// rather than a wait.
   ///
   /// Skipping only the parent just offered was not enough. Six declared floors
-  /// stuck at once rotated among themselves and filled most of a sitting while
+  /// stuck at once rotated among themselves and filled most of a session while
   /// never repeating a parent twice running.
   Exercise? lastAcquisitionParent;
 
@@ -80,9 +80,9 @@ class SessionState {
   /// how productive the work was, which a material id does not carry.
   final List<FamilyObservation> recentFamilies;
 
-  /// Each hand configuration's timing remediation this sitting.
+  /// Each hand configuration's timing remediation this session.
   ///
-  /// Never carried into another sitting: unsteady timing today is a reason to
+  /// Never carried into another session: unsteady timing today is a reason to
   /// offer a pulse today, and says nothing the learner model could keep.
   final PulseRemediations pulseRemediations = PulseRemediations();
 
@@ -98,12 +98,12 @@ class SessionState {
   }) : recentMaterialIds = recentMaterialIds ?? [],
        recentFamilies = recentFamilies ?? [];
 
-  /// The state a sitting starts from when [history] came before it.
+  /// The state a session starts from when [history] came before it.
   ///
   /// The recency and pacing windows carry over from the tail of the history,
   /// and nothing else does. The attempt cap, the recovery context, the waiting
-  /// tempo probe and the guidance counters are all conditions of the sitting
-  /// they arose in: a new sitting is not owed a probe opened before a break,
+  /// tempo probe and the guidance counters are all conditions of the session
+  /// they arose in: a new session is not owed a probe opened before a break,
   /// and a recovery context that outlived the failure it answered would answer
   /// a question nobody is still asking.
   ///
@@ -155,7 +155,7 @@ class SessionState {
   /// clearly too easy, and null otherwise. It lasts one decision it could win:
   /// a probe held back from the slot right after the attempt that opened it
   /// survives into the next one, where nothing holds it back. One waiting to
-  /// compete keeps its place against a newer one, so that a sitting in which
+  /// compete keeps its place against a newer one, so that a session in which
   /// every attempt is too easy still asks for a faster tempo every other slot.
   ///
   /// [retrievalObserved] says whether the attempt was at a rung that could have
@@ -265,7 +265,7 @@ class SessionState {
       'recent: ${recentMaterialIds.length}, recovering: $isRecovering)';
 }
 
-/// A selection a resumed sitting reads back out of its history.
+/// A selection a resumed session reads back out of its history.
 ///
 /// [productive] is the yield signal pacing reads, which the exercise alone
 /// does not carry.

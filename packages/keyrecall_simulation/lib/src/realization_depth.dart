@@ -33,7 +33,7 @@ bool subsumes(GoalTrajectorySelection harder, GoalTrajectorySelection easier) {
 
 /// What one interval of picks practiced, read against everything before it.
 class RealizationDepthInterval {
-  final int fromSitting;
+  final int fromSession;
   final int picks;
 
   /// Share of picks at each depth, 0 to 3.
@@ -74,7 +74,7 @@ class RealizationDepthInterval {
   final Map<String, int> stepRoutes;
 
   const RealizationDepthInterval({
-    required this.fromSitting,
+    required this.fromSession,
     required this.picks,
     required this.depth,
     required this.spans,
@@ -95,7 +95,7 @@ class RealizationDepthInterval {
   });
 
   Map<String, Object?> toJson() => {
-    'from_sitting': fromSitting,
+    'from_session': fromSession,
     'picks': picks,
     'depth': depth,
     'spans': {
@@ -118,19 +118,19 @@ class RealizationDepthInterval {
   };
 }
 
-/// [selections] in intervals of [every] sittings.
+/// [selections] in intervals of [every] sessions.
 List<RealizationDepthInterval> realizationDepthOf(
   List<GoalTrajectorySelection> selections, {
-  required int sittings,
+  required int sessions,
   required int every,
 }) {
   final demonstrated = <GoalTrajectorySelection>[];
   final established = <String>{};
   final intervals = <RealizationDepthInterval>[];
-  for (var start = 0; start < sittings; start += every) {
+  for (var start = 0; start < sessions; start += every) {
     final picks = [
       for (final pick in selections)
-        if (pick.sitting >= start && pick.sitting < start + every) pick,
+        if (pick.session >= start && pick.session < start + every) pick,
     ];
     double share(bool Function(GoalTrajectorySelection) test) =>
         picks.isEmpty ? 0 : picks.where(test).length / picks.length;
@@ -149,7 +149,7 @@ List<RealizationDepthInterval> realizationDepthOf(
     };
     intervals.add(
       RealizationDepthInterval(
-        fromSitting: start,
+        fromSession: start,
         picks: picks.length,
         depth: [
           for (var level = 0; level <= 3; level++)

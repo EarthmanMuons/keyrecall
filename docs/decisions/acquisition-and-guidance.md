@@ -35,11 +35,11 @@ is still cued, which is the evidence a fast player needs room to show.
 ## The scheduler supplies a pulse, and only as an intervention
 
 **Decision.** There is no metronome setting. A continuing pulse is supplied when
-a hand configuration's clean attempts, within one sitting, keep drifting:
+a hand configuration's clean attempts, within one session, keep drifting:
 `observations` of them in a row played through with the notes right and without
 stopping, and every one below `unsteadyStability`. The exercise that qualified
 is then played once with a pulse and once without, under `pulseSupport` and
-`pulseWithdrawal`, and that hand is done for the sitting whatever the withdrawal
+`pulseWithdrawal`, and that hand is done for the session whatever the withdrawal
 showed. The cycle is served ahead of ranking, gives way to recovery, and holds a
 waiting tempo probe back.
 
@@ -49,19 +49,19 @@ pulse that drifts while everything else about the playing holds: unsteadiness
 together with stopping is an execution problem a click does not address, and a
 learner who plays unevenly while the notes are wrong has a different question to
 answer first. Withdrawing it at once is what says anything, since steadiness
-under a click is partly the click's. One cycle a sitting keeps remediation an
-intervention inside practice rather than a drill that takes the sitting over.
+under a click is partly the click's. One cycle a session keeps remediation an
+intervention inside practice rather than a drill that takes the session over.
 
 **Evidence.**
 [`pulse-remediation.md`](../research/experiments/pulse-remediation.md). Per
-execution context, an interleaved sitting almost never brings the same context
-back three times, and nearly every sitting brings a hand configuration back that
+execution context, an interleaved session almost never brings the same context
+back three times, and nearly every session brings a hand configuration back that
 often, which is what fixes the grain. Under the scheduler, steady, fast, and
 self-paced players never qualify, and a player whose continuity is as poor as
 their steadiness does not either.
 
 **Consequences.** Session state, never learner state: nothing about it outlives
-the sitting, since today's drift is a reason to offer a pulse today and says
+the session, since today's drift is a reason to offer a pulse today and says
 nothing the learner model can keep. `ChallengeBypass.suppliesPulse` is the one
 place a scheduling reason becomes a continuing pulse, read by the presentation
 policy and by simulation alike, and only `pulseSupport` has one: a withdrawal

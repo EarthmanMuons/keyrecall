@@ -10,12 +10,12 @@ import 'goal_trajectory_experiment.dart';
 import 'player_archetypes.dart';
 import 'synthetic_player.dart';
 
-/// Sittings after which the three placements are compared, twenty slots each.
+/// Sessions after which the three placements are compared, twenty slots each.
 const List<int> closedLoopCheckpoints = [3, 6, 10, 25];
 
 /// The three placements of one player under one goal, at one checkpoint.
 class ClosedLoopCheckpoint {
-  final int sittings;
+  final int sessions;
 
   /// Coverage each placement had reached, beginner first.
   final List<double> covered;
@@ -27,12 +27,12 @@ class ClosedLoopCheckpoint {
   /// The least overlap between two placements' fully eligible candidates.
   final double eligibleOverlap;
 
-  /// Whether a fresh sitting from each placement's state picks the same
+  /// Whether a fresh session from each placement's state picks the same
   /// exercise.
   final bool samePick;
 
   const ClosedLoopCheckpoint({
-    required this.sittings,
+    required this.sessions,
     required this.covered,
     required this.mixDistance,
     required this.eligibleOverlap,
@@ -40,7 +40,7 @@ class ClosedLoopCheckpoint {
   });
 
   Map<String, Object?> toJson() => {
-    'sittings': sittings,
+    'sessions': sessions,
     'covered': covered,
     'mix_distance': mixDistance,
     'eligible_overlap': eligibleOverlap,
@@ -49,7 +49,7 @@ class ClosedLoopCheckpoint {
 
   factory ClosedLoopCheckpoint.fromJson(Map<String, Object?> json) =>
       ClosedLoopCheckpoint(
-        sittings: json['sittings']! as int,
+        sessions: json['sessions']! as int,
         covered: [
           for (final value in json['covered']! as List<Object?>)
             (value! as num).toDouble(),
@@ -120,9 +120,9 @@ Future<ClosedLoopGroup> runClosedLoopPlacement({
   required SyntheticPlayer player,
   required int seed,
   List<int> checkpoints = closedLoopCheckpoints,
-  int slotsPerSitting = 20,
+  int slotsPerSession = 20,
 }) async {
-  final sittings = checkpoints.reduce(math.max);
+  final sessions = checkpoints.reduce(math.max);
   final states = {
     for (final checkpoint in checkpoints) checkpoint: <LearnerState>[],
   };
@@ -133,11 +133,11 @@ Future<ClosedLoopGroup> runClosedLoopPlacement({
         scope: scope,
         player: player,
         seed: seed,
-        sittings: sittings,
-        slotsPerSitting: slotsPerSitting,
+        sessions: sessions,
+        slotsPerSession: slotsPerSession,
         placement: tier,
-        afterSitting: (sitting, _, session) {
-          states[sitting + 1]?.add(session.state.copy());
+        afterSession: (sessionIndex, _, session) {
+          states[sessionIndex + 1]?.add(session.state.copy());
         },
       ),
     );
@@ -174,9 +174,9 @@ Future<ClosedLoopGroup> runClosedLoopPlacement({
     }
     compared.add(
       ClosedLoopCheckpoint(
-        sittings: checkpoint,
+        sessions: checkpoint,
         covered: [
-          for (final run in runs) _coveredBy(run, checkpoint * slotsPerSitting),
+          for (final run in runs) _coveredBy(run, checkpoint * slotsPerSession),
         ],
         mixDistance: {
           for (final MapEntry(key: facet, value: of) in _facets.entries)
@@ -184,7 +184,7 @@ Future<ClosedLoopGroup> runClosedLoopPlacement({
               for (final run in runs)
                 [
                   for (final pick in run.selections)
-                    if (pick.sitting >= previous && pick.sitting < checkpoint)
+                    if (pick.session >= previous && pick.session < checkpoint)
                       of(pick),
                 ],
             ]),

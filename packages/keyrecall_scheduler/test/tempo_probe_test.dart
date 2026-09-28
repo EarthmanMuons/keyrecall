@@ -185,7 +185,7 @@ void main() {
     });
 
     test('the slot right after the attempt holds it back', () {
-      // The echo the sitting notices: the same realization, one rung faster,
+      // The echo the session notices: the same realization, one rung faster,
       // in the very next slot. It is held rather than dropped.
       final exercise = at(60);
       final probe = probeFor(exercise, playedAt(1.7))!;

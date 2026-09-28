@@ -11,7 +11,7 @@ const int practiceGoalSchemaVersion = 1;
 
 /// The stored form of what a profile is working toward.
 ///
-/// The goal and nothing else. A focus is what someone wants from this sitting,
+/// The goal and nothing else. A focus is what someone wants from this session,
 /// so it lives as long as the running app and a relaunch starts unfocused;
 /// storing only the goal makes that a property of the format rather than
 /// something a reader has to remember to discard.

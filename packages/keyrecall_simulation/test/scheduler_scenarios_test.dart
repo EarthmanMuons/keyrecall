@@ -372,7 +372,7 @@ void main() {
       attemptSpacing: const Duration(hours: 12),
       seed: 0,
     );
-    // Production sittings are unbounded, so a slot that admits nothing has to
+    // Production sessions are unbounded, so a slot that admits nothing has to
     // be arranged rather than waited for.
     const cap = 40;
     final agent = SchedulerAgent(

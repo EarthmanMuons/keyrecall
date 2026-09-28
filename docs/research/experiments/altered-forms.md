@@ -198,7 +198,7 @@ history, and set against how the first attempts went.
 
 ## Interpretation boundary
 
-Synthetic players, one sitting, no spacing. The census says when the gate opens,
+Synthetic players, one session, no spacing. The census says when the gate opens,
 what it opened on, and whether a scope can finish. It does not say that meeting
 harmonic minor twenty slots later teaches it better, and the six and eight
-retrievals over two bands remain first guesses for real sittings to revise.
+retrievals over two bands remain first guesses for real sessions to revise.

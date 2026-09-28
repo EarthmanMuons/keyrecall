@@ -16,7 +16,7 @@ import 'practice_providers.dart';
 ///
 /// The journal records the tempo that was asked for and not the reason it was
 /// the tempo asked for, and the difference between those two is most of what a
-/// sitting that feels slow is about. Replaying the history exposes the three
+/// session that feels slow is about. Replaying the history exposes the three
 /// numbers the request is chosen against:
 ///
 /// ```text
@@ -352,9 +352,9 @@ Future<String> exportTrajectory(WidgetRef ref) async {
   // calibration harness reads this, a person reads the other, and neither has
   // to be a compromise for the other's sake.
   // Supported attempts come with it, beside the ordinary ones. What a device
-  // sitting most often has to answer about supported work is what a particular
+  // session most often has to answer about supported work is what a particular
   // attempt actually recorded, and an export without them cannot say.
-  final sitting = sittingExportOf(
+  final session = sessionExportOf(
     profile,
     journal,
     acquisition: await store.loadAcquisitionJournal(
@@ -362,9 +362,9 @@ Future<String> exportTrajectory(WidgetRef ref) async {
       createdAt: profile.createdAt,
     ),
   );
-  if (sitting.attempts.isNotEmpty || sitting.acquisition.isNotEmpty) {
+  if (session.attempts.isNotEmpty || session.acquisition.isNotEmpty) {
     File('${directory.path}/$stamp-${profile.displayName}-attempts.json')
-        .writeAsStringSync(encodeSittingExport(sitting));
+        .writeAsStringSync(encodeSessionExport(session));
   }
 
   final selections = await store.loadSelectionDiagnostics(profile.id);
@@ -375,7 +375,7 @@ Future<String> exportTrajectory(WidgetRef ref) async {
   return file.path;
 }
 
-/// The last sitting of [journal], as the facts a fit is entitled to read.
+/// The last session of [journal], as the facts a fit is entitled to read.
 ///
 /// The exercise as presented and the outcome as measured, both in the
 /// journal's own encodings rather than a calibration-specific interpretation
@@ -391,7 +391,7 @@ Future<String> exportTrajectory(WidgetRef ref) async {
 ///
 /// Attempts that measured nothing are left out. A fit reads what was played,
 /// and an attempt with no measurement was not.
-SittingExport sittingExportOf(
+SessionExport sessionExportOf(
   Profile profile,
   AttemptJournal journal, {
   AcquisitionJournal? acquisition,
@@ -437,9 +437,9 @@ SittingExport sittingExportOf(
     }
   }
 
-  return SittingExport(
+  return SessionExport(
     profileId: profile.id,
-    sittingId: sessionId,
+    sessionId: sessionId,
     startedAt: startedAt,
     attempts: attempts,
     acquisition: [

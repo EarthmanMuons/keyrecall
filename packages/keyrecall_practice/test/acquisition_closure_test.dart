@@ -49,7 +49,7 @@ void main() {
   AttemptIdentity identityAt(int index) => AttemptIdentity(
     profileId: 'abc12345',
     attemptId: 'acq-$index',
-    sessionId: 'sitting-1',
+    sessionId: 'session-1',
     indexInSession: index,
     occurredAt: t0.add(Duration(minutes: index)),
   );

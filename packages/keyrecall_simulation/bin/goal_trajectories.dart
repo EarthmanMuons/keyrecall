@@ -6,12 +6,12 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// How the production goals unfold over daily sittings, per archetype.
+/// How the production goals unfold over daily sessions, per archetype.
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('seeds', defaultsTo: '4')
-    ..addOption('sittings', defaultsTo: '10')
-    ..addOption('slots', defaultsTo: '20', help: 'slots per sitting')
+    ..addOption('sessions', defaultsTo: '10')
+    ..addOption('slots', defaultsTo: '20', help: 'slots per session')
     ..addOption('jobs', defaultsTo: '8')
     ..addOption(
       'progress',
@@ -20,14 +20,14 @@ Future<void> main(List<String> arguments) async {
     );
   final options = parser.parse(arguments);
   final seeds = int.parse(options.option('seeds')!);
-  final sittings = int.parse(options.option('sittings')!);
+  final sessions = int.parse(options.option('sessions')!);
   final slots = int.parse(options.option('slots')!);
 
   final stopwatch = Stopwatch()..start();
   final runs = await runGoalTrajectoryMatrix(
     seeds: seeds,
-    sittings: sittings,
-    slotsPerSitting: slots,
+    sessions: sessions,
+    slotsPerSession: slots,
     parallelism: int.parse(options.option('jobs')!),
     progress: ProgressPreference.values.byName(options.option('progress')!),
     onProgress: (completed, total) {
@@ -39,7 +39,7 @@ Future<void> main(List<String> arguments) async {
     },
   );
   stdout.writeln(
-    'goal trajectories: $seeds seeds, $sittings sittings of $slots slots, '
+    'goal trajectories: $seeds seeds, $sessions sessions of $slots slots, '
     '${stopwatch.elapsed.inSeconds}s',
   );
 
@@ -58,12 +58,12 @@ Future<void> main(List<String> arguments) async {
     'cov100': (group) => _slot(group, (run) => run.slotCovering(1)),
     'caught_up': (group) => _mean(
       group.map(
-        (run) => run.sittings.where((end) => end == SittingEnd.caughtUp).length,
+        (run) => run.sessions.where((end) => end == SessionEnd.caughtUp).length,
       ),
     ),
     'blocked': (group) => _mean(
       group.map(
-        (run) => run.sittings.where((end) => end == SittingEnd.blocked).length,
+        (run) => run.sessions.where((end) => end == SessionEnd.blocked).length,
       ),
     ),
     'materials': (group) => _mean(

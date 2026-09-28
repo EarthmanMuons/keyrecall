@@ -55,7 +55,7 @@ Future<void> main(List<String> arguments) async {
       'what wins while hands together waits, $seeds seeds x $slots slots, '
       '${buckets.length} isolates in ${stopwatch.elapsed.inSeconds}s\n'
       '  gap = slots between the first offer of HT(M) and its selection,\n'
-      '        or the end of the sitting when it is never selected\n',
+      '        or the end of the session when it is never selected\n',
     )
     ..writeln(
       '${'archetype'.padRight(22)}${'gaps'.padLeft(6)}${'slots'.padLeft(7)}'

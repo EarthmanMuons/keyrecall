@@ -4,7 +4,7 @@ import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'candidate_trace.dart';
 import 'config/scheduler_config.dart';
 
-/// Where one hand configuration stands in a sitting's timing remediation.
+/// Where one hand configuration stands in a session's timing remediation.
 enum PulseRemediationStage {
   /// Reading clean attempts for unsteady timing.
   observing,
@@ -15,16 +15,16 @@ enum PulseRemediationStage {
   /// Supported, and owed one attempt with the pulse taken away.
   withdrawalDue,
 
-  /// Done for the sitting, whatever the withdrawal showed.
+  /// Done for the session, whatever the withdrawal showed.
   ///
-  /// One cycle a hand a sitting, so remediation is an intervention inside
-  /// practice rather than a drill that takes the sitting over.
+  /// One cycle a hand a session, so remediation is an intervention inside
+  /// practice rather than a drill that takes the session over.
   closed,
 }
 
-/// One hand configuration's timing remediation for the sitting.
+/// One hand configuration's timing remediation for the session.
 ///
-/// Scheduling state rather than learner state: it says what this sitting has
+/// Scheduling state rather than learner state: it says what this session has
 /// seen and owes, and nothing about how steady the learner is.
 class PulseRemediation {
   PulseRemediationStage stage = PulseRemediationStage.observing;
@@ -48,7 +48,7 @@ class PulseRemediation {
   };
 }
 
-/// Every hand configuration's remediation for one sitting.
+/// Every hand configuration's remediation for one session.
 class PulseRemediations {
   final Map<HandConfiguration, PulseRemediation> _byHands = {};
 
@@ -75,7 +75,7 @@ class PulseRemediations {
   /// by closes it: the question lapses rather than lingering.
   ///
   /// An owed attempt with nothing measured moves on as well. Retrying it
-  /// would make a sitting whose attempts cannot be measured nothing but
+  /// would make a session whose attempts cannot be measured nothing but
   /// retries.
   void record(
     Exercise exercise,

@@ -358,7 +358,7 @@ void main() {
         .read(practiceLoopProvider.future)
         .then<Object?>((_) => null, onError: (Object error) => error);
 
-    test('reports the plan rather than the sitting it stopped', () async {
+    test('reports the plan rather than the session it stopped', () async {
       final started = onDisk();
       final profile = await placedOn(started);
       started.dispose();

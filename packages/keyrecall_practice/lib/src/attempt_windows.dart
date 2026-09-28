@@ -31,7 +31,7 @@ class AttemptWindows {
   /// Silence after which the attempt closes itself.
   ///
   /// The abandoned case: nobody is coming back to answer the offer, and an
-  /// attempt left open forever is a decision the next sitting inherits.
+  /// attempt left open forever is a decision the next session inherits.
   final Duration abandon;
 
   /// The longest an attempt may run, however much is arriving.

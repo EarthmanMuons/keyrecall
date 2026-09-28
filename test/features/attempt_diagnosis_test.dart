@@ -155,7 +155,7 @@ void main() {
     });
 
     test('the whole scale an octave off is not a mistake', () {
-      // What a real sitting produced twice: the scale played correctly, an
+      // What a real session produced twice: the scale played correctly, an
       // octave from where the staff happened to draw it, scored as every note
       // wrong. Which C somebody starts on is not the task, so alignment
       // explains the performance against the shifted realization and there is

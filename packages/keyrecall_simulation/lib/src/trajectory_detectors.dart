@@ -62,7 +62,7 @@ String _describeCandidate(CandidateTrace trace) {
 /// Every detector, run over one trajectory.
 List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
   ..._realizationStall(trajectory),
-  ..._sittingRanDry(trajectory, requestedSlots ?? trajectory.slots.length),
+  ..._sessionRanDry(trajectory, requestedSlots ?? trajectory.slots.length),
   ..._entryTempoIgnoresPace(trajectory),
   ..._unmeasuredEntryIgnored(trajectory),
   ..._entryTempoRegression(trajectory),
@@ -75,7 +75,7 @@ List<Anomaly> detectAnomalies(Trajectory trajectory, {int? requestedSlots}) => [
   ..._materialCluster(trajectory),
   ..._probeEcho(trajectory),
   ..._probeVerificationShare(trajectory),
-  ..._probeStrandedAtSittingEnd(trajectory),
+  ..._probeStrandedAtSessionEnd(trajectory),
   ..._probeDeferBlocked(trajectory),
   ..._reacquisitionBurden(trajectory),
   ..._hairlineRankDecision(trajectory),
@@ -173,28 +173,28 @@ bool _tiesBeforeRealization(RankKey a, RankKey b) =>
     a.diversity == b.diversity &&
     a.goals == b.goals;
 
-/// **Invariant.** A sitting ran out of things to offer.
+/// **Invariant.** A session ran out of things to offer.
 ///
-/// Sittings are unbounded and eight mechanisms can admit outside the ordinary
+/// Sessions are unbounded and eight mechanisms can admit outside the ordinary
 /// band, so a slot that admits nothing means every one of them declined. The
 /// way this has actually happened is an exclusive target the candidate set did
 /// not contain: recovery refuses everything but one exact exercise, and if
 /// that exercise is not there the slot has nothing at all.
 ///
-/// Read from the sitting ending early rather than from a slot, because a slot
-/// that admits nothing is never recorded. A run of sittings reports each of
-/// them: the next sitting starts anyway, and a break is not a reason to stop
+/// Read from the session ending early rather than from a slot, because a slot
+/// that admits nothing is never recorded. A run of sessions reports each of
+/// them: the next session starts anyway, and a break is not a reason to stop
 /// counting.
-Iterable<Anomaly> _sittingRanDry(Trajectory trajectory, int requested) sync* {
+Iterable<Anomaly> _sessionRanDry(Trajectory trajectory, int requested) sync* {
   for (final terminal in trajectory.terminals) {
-    final played = trajectory.slotsOf(terminal.sitting).length;
+    final played = trajectory.slotsOf(terminal.session).length;
     yield Anomaly(
-      detector: 'sitting_ran_dry',
+      detector: 'session_ran_dry',
       severity: AnomalySeverity.invariant,
       slot: terminal.index,
       magnitude: (requested - trajectory.slots.length).toDouble(),
       summary:
-          'sitting ${terminal.sitting} admitted nothing after $played of its '
+          'session ${terminal.session} admitted nothing after $played of its '
           'slots, with $requested asked for across the run',
       census: censusOfTerminal(terminal),
     );
@@ -305,7 +305,7 @@ double? _entryTempoFloor(TrajectorySlot slot) {
       : tempoBefore(transferable);
 }
 
-/// **Observation.** How much of the sitting went to work the learner has
+/// **Observation.** How much of the session went to work the learner has
 /// already surpassed.
 ///
 /// A proportion, reported rather than asserted. Some repetition below the
@@ -327,7 +327,7 @@ Iterable<Anomaly> _belowFrontierShare(Trajectory trajectory) sync* {
   );
 }
 
-/// **Observation.** One material took an implausible share of the sitting.
+/// **Observation.** One material took an implausible share of the session.
 Iterable<Anomaly> _materialConcentration(Trajectory trajectory) sync* {
   if (trajectory.slots.length < 10) return;
   final counts = <String, int>{};
@@ -483,7 +483,7 @@ Iterable<Anomaly> _guidanceRegression(Trajectory trajectory) sync* {
       subject: entry.key,
       summary:
           '${entry.key} stayed below independence $reached from slot '
-          '${slot.index} through the end of the sitting, without an '
+          '${slot.index} through the end of the session, without an '
           'intervening retrieval failure',
       census: censusOf(slot),
     );
@@ -553,7 +553,7 @@ Iterable<Anomaly> _materialCluster(Trajectory trajectory) sync* {
 
 /// **Invariant.** A probe was answered in the slot right after it opened.
 ///
-/// The echo a device sitting reported as the app repeating itself: the same
+/// The echo a device session reported as the app repeating itself: the same
 /// realization one rung faster, asked for immediately after the attempt that
 /// earned it. The defer in [withoutFreshEcho] is unconditional, so a fresh
 /// probe winning a slot means the guard was bypassed rather than outvoted.
@@ -601,15 +601,15 @@ Iterable<Anomaly> _probeVerificationShare(Trajectory trajectory) sync* {
   );
 }
 
-/// **Observation.** A sitting ended with a probe that had waited its turn.
+/// **Observation.** A session ended with a probe that had waited its turn.
 ///
 /// Distinct from one opened by the last attempt, which was never going to be
-/// answered. This one cleared the defer, was ready to compete, and the sitting
+/// answered. This one cleared the defer, was ready to compete, and the session
 /// ended first. It does not survive the break, so the pace it would have
 /// verified waits for the learner to be underchallenged again.
-Iterable<Anomaly> _probeStrandedAtSittingEnd(Trajectory trajectory) sync* {
-  for (var sitting = 0; sitting < trajectory.sittings.length; sitting++) {
-    final slots = trajectory.slotsOf(sitting);
+Iterable<Anomaly> _probeStrandedAtSessionEnd(Trajectory trajectory) sync* {
+  for (var session = 0; session < trajectory.sessions.length; session++) {
+    final slots = trajectory.slotsOf(session);
     if (slots.isEmpty) continue;
     final last = slots.last;
     final waiting = last.probe.pendingAfter;
@@ -621,7 +621,7 @@ Iterable<Anomaly> _probeStrandedAtSittingEnd(Trajectory trajectory) sync* {
       magnitude: 1,
       subject: waiting.material.materialId,
       summary:
-          'sitting $sitting ended with a probe waiting for '
+          'session $session ended with a probe waiting for '
           '${waiting.material.materialId} at '
           '${waiting.conditions.tempoBpm.toStringAsFixed(0)}bpm',
       census: censusOf(last),
@@ -633,7 +633,7 @@ Iterable<Anomaly> _probeStrandedAtSittingEnd(Trajectory trajectory) sync* {
 ///
 /// The defer removes the probe from a set it may have been alone in. Ordinary
 /// practice has other work, so this says the slot was already down to one
-/// candidate, and the cost of the guard is a blocked sitting rather than an
+/// candidate, and the cost of the guard is a blocked session rather than an
 /// intervening exercise.
 Iterable<Anomaly> _probeDeferBlocked(Trajectory trajectory) sync* {
   for (final terminal in trajectory.terminals) {
@@ -651,7 +651,7 @@ Iterable<Anomaly> _probeDeferBlocked(Trajectory trajectory) sync* {
   }
 }
 
-/// **Observation.** The sitting after a break did nothing but reacquire.
+/// **Observation.** The session after a break did nothing but reacquire.
 ///
 /// The question a run across weeks exists to ask: whether what decayed over a
 /// gap crowds out everything else on the way back.
@@ -661,22 +661,22 @@ Iterable<Anomaly> _probeDeferBlocked(Trajectory trajectory) sync* {
 /// all is acquisition however familiar it looks, and counting it here would
 /// read every learner too weak to demonstrate anything as one losing ground.
 ///
-/// Only after a real break, and only for a sitting long enough for the share
+/// Only after a real break, and only for a session long enough for the share
 /// to mean anything.
 Iterable<Anomaly> _reacquisitionBurden(Trajectory trajectory) sync* {
   const gap = Duration(days: 2);
   const shortest = 8;
   const share = 0.9;
   final seen = <String>{};
-  for (var sitting = 0; sitting < trajectory.sittings.length; sitting++) {
-    final slots = trajectory.slotsOf(sitting).toList();
+  for (var session = 0; session < trajectory.sessions.length; session++) {
+    final slots = trajectory.slotsOf(session).toList();
     final work = [
       for (final slot in slots)
         workOf(slot, known: !seen.add(slot.chosen.material.materialId)),
     ];
-    if (sitting == 0 || slots.length < shortest) continue;
+    if (session == 0 || slots.length < shortest) continue;
     final away = slots.first.at.difference(
-      trajectory.slotsOf(sitting - 1).last.at,
+      trajectory.slotsOf(session - 1).last.at,
     );
     if (away < gap) continue;
 
@@ -690,7 +690,7 @@ Iterable<Anomaly> _reacquisitionBurden(Trajectory trajectory) sync* {
       slot: slots.first.index,
       magnitude: reacquiring / slots.length,
       summary:
-          'the sitting after ${away.inDays} days spent $reacquiring of '
+          'the session after ${away.inDays} days spent $reacquiring of '
           '${slots.length} slots below a frontier it had already '
           'demonstrated',
       census: censusOf(slots.first),

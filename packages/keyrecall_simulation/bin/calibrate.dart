@@ -6,10 +6,10 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// Fits synthetic players to one exported sitting.
+/// Fits synthetic players to one exported session.
 ///
-/// Deliberately diagnostic. It prints what the sitting looked like, what the
-/// ensemble found, what the sitting could and could not speak to, and what a
+/// Deliberately diagnostic. It prints what the session looked like, what the
+/// ensemble found, what the session could and could not speak to, and what a
 /// few ensemble members do when they answer the same questions. It does not
 /// run anything forward: whether a fitted learner would have a good six months
 /// is a different question, asked once this one reads sensibly.
@@ -22,11 +22,11 @@ Future<void> main(List<String> arguments) async {
     ..addFlag('help', negatable: false);
   final options = parser.parse(arguments);
   if (options.flag('help') || options.rest.isEmpty) {
-    stdout.writeln('usage: calibrate <sitting.json>\n${parser.usage}');
+    stdout.writeln('usage: calibrate <session.json>\n${parser.usage}');
     return;
   }
 
-  final export = decodeSittingExport(
+  final export = decodeSessionExport(
     File(options.rest.first).readAsStringSync(),
   );
   final observations = observationsOf(export);
@@ -37,14 +37,14 @@ Future<void> main(List<String> arguments) async {
   ];
 
   stdout
-    ..writeln('== the sitting')
+    ..writeln('== the session')
     ..writeln(_describe(observed))
     ..writeln();
 
   final ensemble = fitPlayers(
     target: observed,
     presented: presented,
-    vary: firstSitting,
+    vary: firstSession,
     samples: int.parse(options.option('samples')!),
     keep: int.parse(options.option('keep')!),
     replays: int.parse(options.option('replays')!),
@@ -57,11 +57,11 @@ Future<void> main(List<String> arguments) async {
       calibrationReport(
         ensemble: ensemble,
         observed: observed,
-        vary: firstSitting,
+        vary: firstSession,
       ),
     )
     ..writeln()
-    ..writeln('== what three of them do with the same sitting');
+    ..writeln('== what three of them do with the same session');
   for (final fit in [
     ensemble.first,
     ensemble[ensemble.length ~/ 2],
@@ -73,7 +73,7 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-String _describe(SittingProfile profile) {
+String _describe(SessionProfile profile) {
   String hands(Map<HandConfiguration, double> values, {int digits = 2}) => [
     for (final hand in HandConfiguration.values)
       if (values[hand] case final value?)

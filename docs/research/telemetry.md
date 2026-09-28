@@ -37,8 +37,8 @@ stream, and replay over them.
 | Retrieval calibration: predicted against factual retrieval, by band, interval, guidance         | memory parameters, probe spacing              | predicted retrieval, factual retrieval, guidance, elapsed interval, material maturity, scheduler intent | derived      |
 | Posterior behavior: does uncertainty contract with spaced evidence and reverse on contradiction | the consolidation envelope                    | the history per learner, replayed                                                                       | derived      |
 | Recovery and probes: episode length, time to the next factual observation, probe yield          | recovery and probe policy                     | challenge bypass, guidance, outcomes in order                                                           | persisted    |
-| Scheduler distributions: concentration, revisit gaps, bypass mix, no-admission frequency        | guardrails on every scheduler change          | material, bypass, timing, and how each sitting ended                                                    | partial      |
-| Session effects: warm-up and fatigue shapes within a sitting                                    | a transient session state (roadmap 2.1)       | order within the sitting, gaps between attempts, active playing time, interruptions                     | persisted    |
+| Scheduler distributions: concentration, revisit gaps, bypass mix, no-admission frequency        | guardrails on every scheduler change          | material, bypass, timing, and how each session ended                                                    | partial      |
+| Session effects: warm-up and fatigue shapes within a session                                    | a transient session state (roadmap 2.1)       | order within the session, gaps between attempts, active playing time, interruptions                     | persisted    |
 | Family transfer: does one family's playing predict the other's, at which shapes                 | shared competencies, family transfer strength | predicted execution and its components, managed execution, family, shape                                | derived      |
 | Altered-form breadth: how breadth at a first harmonic or melodic encounter relates to it        | the six and eight thresholds                  | breadth at introduction, the first attempts' outcomes                                                   | derived      |
 | Placement priors: how far each self-report sits from the evidence that follows                  | placement priors                              | placement tier, early predictions and outcomes                                                          | persisted    |
@@ -94,7 +94,7 @@ three are read as the listening window opens, not at close, since a transport
 that drops mid-attempt is exactly when what is selected by the end differs from
 what produced the notes.
 
-**How a sitting ended.** Caught up, blocked, and left are decisions that write
+**How a session ended.** Caught up, blocked, and left are decisions that write
 no attempt, so the no-admission frequency the roadmap asks for is invisible.
 Unlike the three above, this wants a small per-profile event stream rather than
 a field, since the event has no attempt to sit on, and it is the one gap that
@@ -121,7 +121,7 @@ Per attempt, a compact event, computed on the device:
 - the outcome's scalar scores and termination, the presentation record, and the
   timing durations;
 - time as position, not date: days since the subject's first attempt, the
-  attempt's order in its sitting, seconds since the previous attempt, and a
+  attempt's order in its session, seconds since the previous attempt, and a
   coarse local time-of-day band.
 
 Per subject, once: the placement tier, and nothing else about the person.
@@ -155,7 +155,7 @@ which.
 ## What this settles
 
 Three of the four gaps are closed: the goal and focus, the timing, and the input
-are on every attempt record from attempt schema version 6. How a sitting ended
+are on every attempt record from attempt schema version 6. How a session ended
 waits until a guardrail needs it. Everything else in the table is persisted or
 derivable, so a projection written later can answer every question here from
 what the device already keeps. The projection itself, its schema, consent, and

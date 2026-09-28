@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 /// What a practice failure leaves standing, which is what says how to recover.
 enum PracticeFailure {
-  /// The sitting could not be opened or replayed.
+  /// The session could not be opened or replayed.
   ///
   /// The usual cause is a journal recorded under a learner model this build no
   /// longer runs, which no retry can change. This is the only failure erasing
@@ -34,7 +34,7 @@ enum PracticeFailure {
   /// what cannot be established from here, so nothing says it got nowhere.
   deletion,
 
-  /// A sitting failed to open for a reason nothing classified.
+  /// A session failed to open for a reason nothing classified.
   ///
   /// Deliberately not [history]. An unclassified failure says nothing about
   /// what is on disk, and offering to erase a history nobody established was

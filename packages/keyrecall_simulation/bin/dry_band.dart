@@ -110,7 +110,7 @@ Future<void> main(List<String> arguments) async {
 
   stdout
     ..writeln(
-      '${player.id}: $dry dry sittings of $seeds, '
+      '${player.id}: $dry dry sessions of $seeds, '
       'scoped to ${narrow.length} materials',
     )
     ..writeln('band is ${band.pMin} to ${band.pMax}\n')

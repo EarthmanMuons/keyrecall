@@ -29,7 +29,7 @@ Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('archetypes', defaultsTo: 'true_beginner')
     ..addOption('seeds', defaultsTo: '8')
-    ..addOption('slots', defaultsTo: '10', help: 'Attempts per sitting.')
+    ..addOption('slots', defaultsTo: '10', help: 'Attempts per session.')
     ..addOption('schedule', defaultsTo: 'normal_month')
     ..addOption('days', help: 'Explicit days, overriding the schedule.')
     ..addFlag('help', negatable: false);
@@ -43,9 +43,9 @@ Future<void> main(List<String> arguments) async {
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
   final days = options.option('days');
-  final sittings = days == null
+  final sessions = days == null
       ? LongitudinalSchedules.named(options.option('schedule')!, slots: slots)
-      : sittingsOnDays([
+      : sessionsOnDays([
           for (final day in days.split(',')) int.parse(day.trim()),
         ], slots: slots);
 
@@ -63,7 +63,7 @@ Future<void> main(List<String> arguments) async {
   }
   final batches = await Future.wait([
     for (final bucket in buckets)
-      if (bucket.isNotEmpty) Isolate.run(() => _compare(bucket, sittings)),
+      if (bucket.isNotEmpty) Isolate.run(() => _compare(bucket, sessions)),
   ]);
   final rows = [for (final batch in batches) ...batch];
 
@@ -71,7 +71,7 @@ Future<void> main(List<String> arguments) async {
     ..writeln()
     ..writeln(
       '== coordination withheld: '
-      '${sittings.length} sittings of $slots, $seeds seeds',
+      '${sessions.length} sessions of $slots, $seeds seeds',
     )
     ..writeln(
       '   from the slot the baseline first reached hands together, to the end',
@@ -170,7 +170,7 @@ class _Row {
   });
 }
 
-List<_Row> _compare(List<TrajectoryJob> jobs, List<Sitting> sittings) {
+List<_Row> _compare(List<TrajectoryJob> jobs, List<Session> sessions) {
   final everything = generateCandidates(InstrumentProfile(), allScales);
   // The counterfactual is the candidate set, not a second scheduler: work that
   // is never offered cannot be chosen, and nothing else about the arm differs.
@@ -183,18 +183,18 @@ List<_Row> _compare(List<TrajectoryJob> jobs, List<Sitting> sittings) {
     for (final job in jobs)
       _rowFor(
         job,
-        runSittings(
+        runTrajectorySessions(
           player: playerOf(job.archetypeId),
           seed: job.seed,
           materials: allScales,
-          sittings: sittings,
+          sessions: sessions,
           generated: everything,
         ),
-        runSittings(
+        runTrajectorySessions(
           player: playerOf(job.archetypeId),
           seed: job.seed,
           materials: allScales,
-          sittings: sittings,
+          sessions: sessions,
           generated: withoutCoordination,
         ),
       ),

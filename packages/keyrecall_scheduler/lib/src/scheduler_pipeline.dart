@@ -136,12 +136,12 @@ sealed class SelectionResult {
   });
 }
 
-/// What deciding a slot owes the sitting.
+/// What deciding a slot owes the session.
 ///
-/// The scheduler records two things against a sitting as part of deciding, and
-/// a host that decides elsewhere has to bring them back, because the sitting it
-/// decided against was a copy. Applying this to the sitting a session owns
-/// leaves it exactly as an in-process decision would have.
+/// The scheduler records two things against a session as part of deciding, and
+/// a host that decides elsewhere has to bring them back, because the session it
+/// decided against was a copy. Applying this to the original leaves it exactly as an
+/// in-process decision would have.
 class SelectionEffect {
   final bool guidanceProbeAvailable;
   final bool guidanceProbeSelected;
@@ -334,12 +334,12 @@ class SchedulerPipeline {
     return slot.result;
   }
 
-  /// The same decision, and what it owes the sitting, without recording it.
+  /// The same decision, and what it owes the session, without recording it.
   ///
-  /// Separated so a caller deciding on a copy of the sitting can apply the
+  /// Separated so a caller deciding on a copy of the session can apply the
   /// bookkeeping to the one it owns. A worker isolate sees a copy by
   /// construction, and the two facts below are the whole of what deciding
-  /// changes about a sitting.
+  /// changes about a session.
   ({
     SelectionResult result,
     bool guidanceProbeAvailable,
@@ -409,7 +409,7 @@ class SchedulerPipeline {
           ]);
 
     // The family's declared floor, which is a different question from the safe
-    // entry ordinary admission reaches for. A general sitting never runs out of
+    // entry ordinary admission reaches for. A general session never runs out of
     // ordinary work and so is given no safe entry, and its learners are exactly
     // the ones acquisition is for.
     final familyFloor = acquisitionFamilyFloor ?? acquisitionFloor;
@@ -1337,7 +1337,7 @@ class SchedulerPipeline {
     final cap = config.safety.maxSessionAttempts;
     final attempts = session.attemptsThisSession;
     if (cap == null) {
-      return SafetyDecision(true, 'sittings are not bounded by attempt count');
+      return SafetyDecision(true, 'sessions are not bounded by attempt count');
     }
     if (attempts >= cap) {
       return SafetyDecision(
@@ -1434,7 +1434,7 @@ class SchedulerPipeline {
   /// A supported attempt that showed a criterion not met answered the question
   /// it asked, so offering the same scaffold again on no new evidence repeats
   /// it. With several floors stuck at once, that is how supported work fills a
-  /// sitting by rotation while never repeating a parent twice running.
+  /// session by rotation while never repeating a parent twice running.
   ///
   /// A demonstrated failure only. An attempt whose evidence could not answer
   /// the question has not asked it, so the scaffold stays on offer: suppressing
@@ -1478,13 +1478,13 @@ class SchedulerPipeline {
   ///
   /// Where several floors are stuck at once, the ordinary ranking among that
   /// subset decides, so acquisition does not wander to a different material
-  /// than the one the sitting would have worked on.
+  /// than the one the session would have worked on.
   ///
   /// [afterAcquisition] says the previous opportunity was supported work, and
   /// nothing is offered then. Supported work is an intervention inside ordinary
   /// practice, so the next thing a learner meets is ordinary work. Skipping
   /// only the same parent would leave several stuck floors free to rotate
-  /// through most of a sitting.
+  /// through most of a session.
   ({AcquisitionTask task, CandidateTrace? stuck})? acquisitionFor({
     required LearnerState state,
     required AcquisitionProgress progress,

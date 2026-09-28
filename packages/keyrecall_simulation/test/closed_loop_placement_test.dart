@@ -11,10 +11,10 @@ void main() {
         player: PlayerArchetypes.intermediate,
         seed: 0,
         checkpoints: const [1, 2],
-        slotsPerSitting: 8,
+        slotsPerSession: 8,
       );
 
-      expect(group.checkpoints.map((point) => point.sittings), [1, 2]);
+      expect(group.checkpoints.map((point) => point.sessions), [1, 2]);
       for (final point in group.checkpoints) {
         expect(point.covered, hasLength(3));
         expect(point.eligibleOverlap, inInclusiveRange(0, 1));

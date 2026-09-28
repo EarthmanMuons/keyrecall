@@ -48,7 +48,7 @@ void main() {
         learner: learner,
         sessionId: 'session-$run',
       );
-      // A sitting ends when the challenge band admits nothing, which is a fine
+      // A session ends when the challenge band admits nothing, which is a fine
       // place to stop measuring.
       try {
         await practise(session, attempts: 12, succeed: run.isEven);

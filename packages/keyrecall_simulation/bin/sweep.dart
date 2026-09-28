@@ -34,12 +34,12 @@ Future<void> main(List<String> arguments) async {
           'of minutes; a hundred or more is the wide one to run deliberately '
           'either side of a scheduler change.',
     )
-    ..addOption('slots', defaultsTo: '50', help: 'Attempts per sitting.')
+    ..addOption('slots', defaultsTo: '50', help: 'Attempts per session.')
     ..addOption(
       'days',
       help:
           'Comma-separated days to sit down on, spreading the run across '
-          'simulated calendar time. One sitting when omitted.',
+          'simulated calendar time. One session when omitted.',
     )
     ..addOption(
       'retention-tolerance',
@@ -63,12 +63,12 @@ Future<void> main(List<String> arguments) async {
   final seeds = int.parse(options.option('seeds')!);
   final slots = int.parse(options.option('slots')!);
   final days = options.option('days');
-  final sittings = days == null
-      ? [Sitting(at: DateTime.utc(2026), slots: slots)]
-      : sittingsOnDays([
+  final sessions = days == null
+      ? [Session(at: DateTime.utc(2026), slots: slots)]
+      : sessionsOnDays([
           for (final day in days.split(',')) int.parse(day.trim()),
         ], slots: slots);
-  final requested = slots * sittings.length;
+  final requested = slots * sessions.length;
   final censusLimit = int.parse(options.option('census')!);
   final tolerances = RankTolerances(
     retention: double.parse(options.option('retention-tolerance')!),
@@ -81,7 +81,7 @@ Future<void> main(List<String> arguments) async {
   // Trajectories are independent and deterministic in the archetype, the seed
   // and the configuration, so they can run at once and be assembled in a fixed
   // order afterwards. Dealt round robin rather than one isolate per archetype:
-  // a true beginner's sitting costs a fraction of an advanced one, so grouping
+  // a true beginner's session costs a fraction of an advanced one, so grouping
   // by archetype leaves the slowest one gating the whole sweep.
   final stopwatch = Stopwatch()..start();
   final workers = Platform.numberOfProcessors;
@@ -96,7 +96,7 @@ Future<void> main(List<String> arguments) async {
   final running = [
     for (final bucket in buckets)
       if (bucket.isNotEmpty)
-        Isolate.run(() => _findingsFor(bucket, sittings, tolerances)),
+        Isolate.run(() => _findingsFor(bucket, sessions, tolerances)),
   ];
   final findings = [for (final batch in await Future.wait(running)) ...batch];
   stdout.writeln(
@@ -129,7 +129,7 @@ Future<void> main(List<String> arguments) async {
     ..writeln()
     ..writeln(
       '== anomaly incidence: $seeds seeds x $requested slots per archetype '
-      'across ${sittings.length} sitting(s), retention tolerance '
+      'across ${sessions.length} session(s), retention tolerance '
       '${tolerances.retention}',
     )
     ..writeln(
@@ -214,7 +214,7 @@ class _Finding {
 /// Every anomaly one bucket of trajectories produces, in its own isolate.
 List<_Finding> _findingsFor(
   List<_Job> jobs,
-  List<Sitting> sittings,
+  List<Session> sessions,
   RankTolerances tolerances,
 ) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
@@ -222,15 +222,15 @@ List<_Finding> _findingsFor(
     learner: const LearnerModel(),
     config: v1SchedulerConfig.withRankTolerances(tolerances),
   );
-  final requested = sittings.fold(0, (total, s) => total + s.slots);
+  final requested = sessions.fold(0, (total, s) => total + s.slots);
   return [
     for (final job in jobs)
       for (final anomaly in detectAnomalies(
-        runSittings(
+        runTrajectorySessions(
           player: job.player,
           seed: job.seed,
           materials: allScales,
-          sittings: sittings,
+          sessions: sessions,
           generated: generated,
           pipeline: pipeline,
         ),

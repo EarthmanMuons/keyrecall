@@ -79,7 +79,7 @@ int allowedIndependence(int load, NoveltyConfig config) {
 /// puts two hands together for the first time.
 ///
 /// Never empties the set, for the reason pacing does not: the alternative to a
-/// demanding candidate is presenting nothing, and a first sitting offers
+/// demanding candidate is presenting nothing, and a first session offers
 /// first-time conditions only. Set aside where something else is available,
 /// offered where nothing is.
 List<CandidateTrace> withNoveltySupported(

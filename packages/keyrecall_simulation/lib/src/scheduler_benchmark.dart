@@ -107,7 +107,7 @@ class BenchmarkSession {
   /// The learner state the next decision reads.
   LearnerState get learnerState => session.state;
 
-  /// The sitting the next decision reads.
+  /// The session the next decision reads.
   SessionState get sessionState => session.session;
 
   /// When the next decision happens.

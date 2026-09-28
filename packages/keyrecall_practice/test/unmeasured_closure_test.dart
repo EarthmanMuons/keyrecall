@@ -21,7 +21,7 @@ void main() {
     // The model timeline cannot follow a clock that runs backward, so the
     // reading is raised to where history already stands before it reaches
     // scheduling. The alternative is a session that throws when a device
-    // corrects its clock mid-sitting.
+    // corrects its clock mid-session.
     final store = InMemoryPracticeStore(createdAt: t0);
     final session = await openSession(store);
     await practise(session, attempts: 2, startDay: 2);

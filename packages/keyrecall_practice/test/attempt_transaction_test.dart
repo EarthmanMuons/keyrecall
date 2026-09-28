@@ -163,14 +163,14 @@ void main() {
       );
       expect(await store.loadPendingDecision(alice.id), isNull);
 
-      // And the sitting carries on normally.
+      // And the session carries on normally.
       final presented = await reopened.decide(at: t0.plusDays(1));
       expect(presented, isNotNull);
     });
   });
 
   group('a recovered decision', () {
-    /// The slot a sitting left behind, ready to be tampered with.
+    /// The slot a session left behind, ready to be tampered with.
     Future<({InMemoryPracticeStore store, PendingDecision pending})>
     interrupted() async {
       final store = InMemoryPracticeStore(createdAt: t0);
@@ -425,7 +425,7 @@ void main() {
         expect(
           second.session.attemptsThisSession,
           0,
-          reason: 'a restart is a new sitting',
+          reason: 'a restart is a new session',
         );
         expect(
           second.session.lastFailedExercise,

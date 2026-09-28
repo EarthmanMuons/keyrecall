@@ -12,7 +12,7 @@ import 'practice_providers.dart';
 /// nothing; a genesis that cannot be read has no safe repair at all; an
 /// attempt that did not reach history is still here to write, and reopening
 /// would find its decision pending and its performance gone; a decision that
-/// failed asks again on a sitting nothing is wrong with; a stored plan nobody
+/// failed asks again on a session nothing is wrong with; a stored plan nobody
 /// can read says the same thing every time it is read, so it is the one
 /// failure with nothing to ask again and replacing it is the only way on.
 class LoopFailure extends ConsumerWidget {
@@ -29,7 +29,7 @@ class LoopFailure extends ConsumerWidget {
 
   /// What went wrong, from a classified failure.
   ///
-  /// Anything unclassified is [PracticeFailure.opening]: a sitting that never
+  /// Anything unclassified is [PracticeFailure.opening]: a session that never
   /// opened, for a reason nothing here established. Reading it as an
   /// unreadable history would offer to destroy a journal nobody found fault
   /// with.

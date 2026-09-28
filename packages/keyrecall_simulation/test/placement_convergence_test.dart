@@ -10,7 +10,7 @@ void main() {
       player: PlayerArchetypes.intermediate,
       seed: 0,
       checkpoints: const [10, 20],
-      slotsPerSitting: 10,
+      slotsPerSession: 10,
     );
 
     expect(
@@ -33,7 +33,7 @@ void main() {
       player: PlayerArchetypes.intermediate,
       seed: 0,
       checkpoints: const [10],
-      slotsPerSitting: 10,
+      slotsPerSession: 10,
     );
     final read = PlacementConvergenceRun.fromJson(run.toJson());
 
@@ -42,17 +42,17 @@ void main() {
   });
 
   test('a history kept selected-only still replays', () {
-    final full = runSittings(
+    final full = runTrajectorySessions(
       player: PlayerArchetypes.intermediate,
       seed: 3,
       materials: allScales,
-      sittings: [Sitting(at: DateTime.utc(2026), slots: 8)],
+      sessions: [Session(at: DateTime.utc(2026), slots: 8)],
     );
-    final lean = runSittings(
+    final lean = runTrajectorySessions(
       player: PlayerArchetypes.intermediate,
       seed: 3,
       materials: allScales,
-      sittings: [Sitting(at: DateTime.utc(2026), slots: 8)],
+      sessions: [Session(at: DateTime.utc(2026), slots: 8)],
       traceRetention: TraceRetention.selectedOnly,
     );
 

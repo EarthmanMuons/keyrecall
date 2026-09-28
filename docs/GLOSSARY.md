@@ -290,7 +290,7 @@ channel-specific [evidence weights](#evidence-weight).
 A selection rule that eventually takes a ranked independence probe that keeps
 losing free contests.
 
-Exploration legitimately dominates a capable learner's early sittings; what it
+Exploration legitimately dominates a capable learner's early sessions; what it
 may not do is dominate indefinitely. It counts opportunities rather than offers,
 so a slot narrowed to one candidate was never a contest and nothing lost it. A
 selection rule rather than a rank term, because strictly lexicographic ranking
@@ -410,7 +410,7 @@ How often a realization family is offered, given what its recent attempts
 actually produced.
 
 Distinct from [realization-family pacing](#realization-family-pacing), which
-reads how much of a sitting a family holds rather than what it yielded. In
+reads how much of a session a family holds rather than what it yielded. In
 longitudinal runs the two never change the same slot. See
 [`decisions/pacing-and-tempo.md`](decisions/pacing-and-tempo.md).
 
@@ -576,7 +576,7 @@ variant, which is why material identity excludes hand.
 A pulse continuing through an attempt, which makes it support.
 
 Supplied by the scheduler as timing remediation, `ChallengeBypass.pulseSupport`,
-when a hand's clean attempts in a sitting keep drifting, and then withdrawn for
+when a hand's clean attempts in a session keep drifting, and then withdrawn for
 one attempt. Not a setting, not a reward, and not part of the
 [guidance](#guidance-rung) ladder.
 
@@ -874,7 +874,7 @@ teaches.
 Conservative workload constraints applied before challenge admission.
 
 Carried by `SafetyConfig`. A session-attempt cap exists and is unset in
-production: a sitting ends when the player stops. It is a guard against a
+production: a session ends when the player stops. It is a guard against a
 runaway decision loop, and makes no medical or injury judgment from performance
 data.
 
@@ -893,7 +893,7 @@ Where a decision is computed, and nothing else.
 
 A session binds the resolved scope, the learner, and the policy constants, then
 asks for one slot's decision; the host answers with the winning candidate or a
-reason there was none, plus the effect to apply to the sitting. Production
+reason there was none, plus the effect to apply to the session. Production
 computes on a worker isolate so the isolate that draws stays free.
 
 ### Selection
@@ -905,15 +905,15 @@ no selection and no presented attempt.
 
 ### SessionState
 
-Transient scheduler context within one sitting.
+Transient scheduler context within one session.
 
 The attempt count, recent material history, the last failed exercise, an open
 tempo probe, unserved guidance-probe opportunities, and the rolling window
 [pacing](#realization-family-pacing) reads. Separate from
-[LearnerState](#learnerstate), and a sitting rebuilds it from the journal rather
+[LearnerState](#learnerstate), and a session rebuilds it from the journal rather
 than storing it.
 
-### Sitting
+### Session
 
 One continuous period of practice.
 

@@ -90,14 +90,14 @@ class SchedulerAgent {
     this.captureAdmittedMaterialIds = false,
   }) : candidates = generateCandidates(instrument, materials);
 
-  /// The current practice sitting.
+  /// The current practice session.
   SessionState get session => _session;
 
   /// Every selection this agent has made, in order.
   Iterable<CandidateTrace> get selections =>
       records.map((record) => record.selected).nonNulls;
 
-  /// Starts a fresh practice sitting.
+  /// Starts a fresh practice session.
   ///
   /// Session allocation history resumes while the learner, the hidden truth,
   /// and simulated time carry on. A long behavioral horizon is several bounded

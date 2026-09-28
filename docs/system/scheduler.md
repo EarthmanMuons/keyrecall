@@ -79,7 +79,7 @@ later.
 
 The safety policy is a separate hard gate based only on session/workload state.
 It implements a configurable session-attempt cap, left unset in production: a
-sitting ends when the player stops. The cap exists as a guard against a runaway
+session ends when the player stops. The cap exists as a guard against a runaway
 decision loop and as a knob for tests and simulation, not as a statement about
 how long somebody practices. It does not diagnose fatigue or injury from MIDI
 behavior.
@@ -158,7 +158,7 @@ so well that it stops gathering what it would take to stop. After a run of
 attempts in which retrieval went unobserved, one retrieval-observing question is
 admitted whatever its predicted success.
 
-Counted across the sitting rather than per material. Simulation showed cueing
+Counted across the session rather than per material. Simulation showed cueing
 spreading itself over distinct materials, so no material was cued twice running
 and a per-material count never reached two however long the drought lasted. What
 starves is the scheduler's knowledge of whether support is still needed, and
@@ -397,10 +397,10 @@ Three rules run after ranking has ordered the survivors and before the best is
 taken. None of them can empty a selectable set.
 
 **The diagnostic fairness guard.** Exploration legitimately dominates a capable
-learner's early sittings: new material establishes breadth and tempo probes find
+learner's early sessions: new material establishes breadth and tempo probes find
 speed, and both are worth the slots. What it may not do is dominate
 indefinitely. Simulation had an advanced learner lose fifteen consecutive free
-contests across two sittings with an independence probe ranked and waiting every
+contests across two sessions with an independence probe ranked and waiting every
 time, so once enough selection opportunities have passed that way, the
 highest-ranked independence probe is taken.
 
@@ -420,7 +420,7 @@ while the technical strand stays unchanged.
 different questions about the same slot. Realization-family pacing asks how much
 of the recent window one family holds, and relieves concentration when much of
 that work is unproductive. Family dose control asks what a family's recent
-attempts produced, independent of how much of the sitting it holds, and lowers
+attempts produced, independent of how much of the session it holds, and lowers
 how often a persistently unproductive one is offered. Both are live; see
 [`../decisions/pacing-and-tempo.md`](../decisions/pacing-and-tempo.md).
 
@@ -454,7 +454,7 @@ admission, or ranking.
 
 A session binds the resolved scope, the learner, and the policy constants, then
 asks for one slot's decision. The host answers with the winning candidate or a
-reason there was none, plus the effect to apply to the sitting. Production
+reason there was none, plus the effect to apply to the session. Production
 computes on a worker isolate so the isolate that draws stays free; tests decide
 in process. What one decision costs, and how that grows with the catalog, is in
 [`../decisions/pacing-and-tempo.md`](../decisions/pacing-and-tempo.md).

@@ -8,8 +8,8 @@ void main() {
   final catalog = v1ScaleCatalog.take(4).toList();
   final set = standardAssessment(catalog, repetitions: 2);
 
-  /// Four sittings to build something, then a season away, then a return.
-  final schedule = sittingsOnDays([0, 1, 2, 3, 120], slots: 20);
+  /// Four sessions to build something, then a season away, then a return.
+  final schedule = sessionsOnDays([0, 1, 2, 3, 120], slots: 20);
   const returned = 4;
 
   final base = PlayerArchetypes.forgetfulReturner;
@@ -37,19 +37,19 @@ void main() {
     learningRate: base.learningRate,
   );
 
-  Trajectory runOf(SyntheticPlayer player) => runSittings(
+  Trajectory runOf(SyntheticPlayer player) => runTrajectorySessions(
     player: player,
     seed: 8,
     materials: catalog,
-    sittings: schedule,
+    sessions: schedule,
     assessment: set,
   );
 
-  /// The reading taken on arrival at sitting [index], before its practice.
+  /// The reading taken on arrival at session [index], before its practice.
   AssessmentReading arrivalAt(Trajectory trajectory, int index) =>
       trajectory.assessments[index * 2];
 
-  /// The reading taken as sitting [index] ended.
+  /// The reading taken as session [index] ended.
   AssessmentReading departureAt(Trajectory trajectory, int index) =>
       trajectory.assessments[index * 2 + 1];
 
@@ -76,13 +76,13 @@ void main() {
     );
   });
 
-  test('forgetting is elapsed time, not sittings missed', () {
+  test('forgetting is elapsed time, not sessions missed', () {
     double lostOver(List<int> days) {
-      final trajectory = runSittings(
+      final trajectory = runTrajectorySessions(
         player: decaying['matched']!,
         seed: 8,
         materials: catalog,
-        sittings: sittingsOnDays([0, ...days], slots: 20),
+        sessions: sessionsOnDays([0, ...days], slots: 20),
         assessment: set,
       );
       final away = trajectory.assessments;
@@ -159,13 +159,13 @@ void main() {
   test('what a returner is asked for on the way back is answerable', () {
     for (final player in [stable, ...decaying.values]) {
       for (final seed in [8, 9, 10]) {
-        final back = runSittings(
+        final back = runTrajectorySessions(
           player: player,
           seed: seed,
           materials: catalog,
-          sittings: schedule,
+          sessions: schedule,
           assessment: set,
-        ).slots.where((slot) => slot.sitting == returned).toList();
+        ).slots.where((slot) => slot.session == returned).toList();
         final where = '${player.id} at seed $seed';
 
         expect(
@@ -188,13 +188,13 @@ void main() {
   });
 
   test('a returner is not handed the notes and the coordination at once', () {
-    final back = runSittings(
+    final back = runTrajectorySessions(
       player: decaying['matched']!,
       seed: 8,
       materials: catalog,
-      sittings: schedule,
+      sessions: schedule,
       assessment: set,
-    ).slots.where((slot) => slot.sitting == returned).first;
+    ).slots.where((slot) => slot.session == returned).first;
 
     expect(back.winner.challengeBypass, ChallengeBypass.executionProgression);
     expect(back.winner.isWithinChallengeBand, isFalse);
@@ -213,15 +213,15 @@ void main() {
     );
   });
 
-  test('overlapping sittings are refused rather than run backwards', () {
+  test('overlapping sessions are refused rather than run backwards', () {
     expect(
-      () => runSittings(
+      () => runTrajectorySessions(
         player: stable,
         seed: 8,
         materials: catalog,
-        sittings: [
-          Sitting(at: _epoch, slots: 20),
-          Sitting(at: _epoch.add(const Duration(minutes: 5)), slots: 20),
+        sessions: [
+          Session(at: _epoch, slots: 20),
+          Session(at: _epoch.add(const Duration(minutes: 5)), slots: 20),
         ],
       ),
       throwsArgumentError,

@@ -63,7 +63,7 @@ void main() {
     });
 
     test('keeps a criterion success across the break that follows it', () {
-      // The reason none of this lives in SessionState. A sitting boundary must
+      // The reason none of this lives in SessionState. A session boundary must
       // not decide whether work already done still counts.
       final progress = const AcquisitionProgress.empty().recording(
         parent: parent,

@@ -29,7 +29,7 @@ Set<String> handMotionFamilies(Exercise exercise) =>
 /// The families one recent selection consumed, what it yielded, and when.
 ///
 /// The time is what lets evidence age. Pacing does not read it: a family that
-/// crowded the window crowded it, however long ago the sitting was.
+/// crowded the window crowded it, however long ago the session was.
 @immutable
 class FamilyObservation {
   final Set<String> families;

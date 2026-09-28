@@ -66,15 +66,15 @@ void main() {
     expect(agent.records, isEmpty);
   });
 
-  test('terminal decisions reserve their own indices across sittings', () {
-    final trajectory = runSittings(
+  test('terminal decisions reserve their own indices across sessions', () {
+    final trajectory = runTrajectorySessions(
       player: PlayerArchetypes.advanced,
       seed: 0,
       materials: [],
       generated: [],
-      sittings: sittingsOnDays([0, 1, 2], slots: 2),
+      sessions: sessionsOnDays([0, 1, 2], slots: 2),
     );
     expect(trajectory.terminals.map((t) => t.index), [0, 1, 2]);
-    expect(trajectory.terminals.map((t) => t.sitting), [0, 1, 2]);
+    expect(trajectory.terminals.map((t) => t.session), [0, 1, 2]);
   });
 }

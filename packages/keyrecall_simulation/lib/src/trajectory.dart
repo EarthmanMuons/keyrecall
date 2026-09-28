@@ -72,20 +72,20 @@ class HandsTogetherDiagnostic {
   });
 }
 
-/// One sitting of a run: when a person sat down, and for how many attempts.
+/// One session of a run: when a person sat down, and for how many attempts.
 ///
-/// Explicit instants rather than a gap from the last sitting, because what
+/// Explicit instants rather than a gap from the last session, because what
 /// decays between them is a function of the calendar and reading a schedule
 /// back should not require adding durations up.
-class Sitting {
+class Session {
   final DateTime at;
   final int slots;
 
-  const Sitting({required this.at, required this.slots});
+  const Session({required this.at, required this.slots});
 }
 
-/// Sittings of [slots] attempts each, on the given [days] from [from].
-List<Sitting> sittingsOnDays(
+/// Sessions of [slots] attempts each, on the given [days] from [from].
+List<Session> sessionsOnDays(
   List<int> days, {
   required int slots,
   DateTime? from,
@@ -93,7 +93,7 @@ List<Sitting> sittingsOnDays(
   final start = from ?? DateTime.utc(2026);
   return [
     for (final day in days)
-      Sitting(
+      Session(
         at: start.add(Duration(days: day)),
         slots: slots,
       ),
@@ -136,8 +136,8 @@ class TerminalTrajectorySlot {
   final int index;
   final DateTime at;
 
-  /// Which sitting of the run it belongs to, from zero.
-  final int sitting;
+  /// Which session of the run it belongs to, from zero.
+  final int session;
   final List<CandidateTrace> traces;
   final List<CandidateTrace> selectable;
   final CandidateStageCounts candidates;
@@ -149,21 +149,21 @@ class TerminalTrajectorySlot {
     required this.traces,
     required this.selectable,
     required this.candidates,
-    this.sitting = 0,
+    this.session = 0,
     this.probe = ProbeState.none,
   });
 }
 
-/// One slot of a simulated sitting, with the state detectors need.
+/// One slot of a simulated session, with the state detectors need.
 class TrajectorySlot {
-  /// Which slot of the run this is, from zero, counted across sittings.
+  /// Which slot of the run this is, from zero, counted across sessions.
   final int index;
 
   /// When it was decided.
   final DateTime at;
 
-  /// Which sitting of the run it belongs to, from zero.
-  final int sitting;
+  /// Which session of the run it belongs to, from zero.
+  final int session;
 
   /// What the learner was asked for.
   final Exercise chosen;
@@ -221,7 +221,7 @@ class TrajectorySlot {
     required this.transferableBefore,
     required this.candidates,
     required this.handsTogether,
-    this.sitting = 0,
+    this.session = 0,
     this.probe = ProbeState.none,
   });
 
@@ -306,7 +306,7 @@ class Anomaly {
       '$summary';
 }
 
-/// A whole simulated sitting.
+/// A whole simulated session.
 class Trajectory {
   /// Which archetype played it.
   final String playerId;
@@ -314,16 +314,16 @@ class Trajectory {
   /// Which seed produced it.
   final int seed;
 
-  /// The slots, in order, across every sitting.
+  /// The slots, in order, across every session.
   final List<TrajectorySlot> slots;
 
-  /// The sittings the slots were played in, in order.
-  final List<Sitting> sittings;
+  /// The sessions the slots were played in, in order.
+  final List<Session> sessions;
 
-  /// The slots that admitted nothing, one per sitting that ran dry.
+  /// The slots that admitted nothing, one per session that ran dry.
   final List<TerminalTrajectorySlot> terminals;
 
-  /// Held-out readings, taken at both ends of every sitting.
+  /// Held-out readings, taken at both ends of every session.
   ///
   /// Empty unless the run was given a set to ask. Everything else here
   /// describes what the scheduler chose; these describe the person it chose
@@ -335,16 +335,16 @@ class Trajectory {
     required this.playerId,
     required this.seed,
     required this.slots,
-    this.sittings = const [],
+    this.sessions = const [],
     this.terminals = const [],
     this.assessments = const [],
   });
 
-  /// The first sitting that ran dry, or null.
+  /// The first session that ran dry, or null.
   TerminalTrajectorySlot? get terminal =>
       terminals.isEmpty ? null : terminals.first;
 
-  /// The slots of sitting [index], in order.
+  /// The slots of session [index], in order.
   Iterable<TrajectorySlot> slotsOf(int index) =>
-      slots.where((slot) => slot.sitting == index);
+      slots.where((slot) => slot.session == index);
 }

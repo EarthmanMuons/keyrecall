@@ -216,7 +216,7 @@ class PracticeStateError extends StateError {
   PracticeStateError(super.message);
 }
 
-/// One practice sitting, and the transaction that makes each attempt durable.
+/// One practice session, and the transaction that makes each attempt durable.
 ///
 /// Runs the ordered attempt transaction and survives being interrupted at any
 /// point in it:
@@ -263,10 +263,10 @@ class PracticeSession {
   /// Where history is kept.
   final PracticeStore store;
 
-  /// Whose sitting this is.
+  /// Whose session this is.
   final Profile profile;
 
-  /// This sitting's id, which scopes the attempt cap and the recency window.
+  /// This session's id, which scopes the attempt cap and the recency window.
   final String sessionId;
 
   final List<TechnicalMaterial> _materials;
@@ -371,7 +371,7 @@ class PracticeSession {
     _focus = focus;
   }
 
-  /// Opens a sitting for [profile], recovering whatever the last run left.
+  /// Opens a session for [profile], recovering whatever the last run left.
   ///
   /// Rebuilds learner state by replaying the journal, using a checkpoint only
   /// as a starting point. A checkpoint that does not match the current model
@@ -515,14 +515,14 @@ class PracticeSession {
     }
   }
 
-  /// The learner state this sitting reasons from.
+  /// The learner state this session reasons from.
   ///
   /// Advances only when an attempt is durably present in authoritative
   /// history, and exactly once for that attempt. Anything that looks ahead
   /// works on a copy, or replay could not reproduce the timeline.
   ///
   /// Mutable, because the learner model is. Treat it as read-only: advancing
-  /// it here puts this sitting's state somewhere replaying the journal cannot
+  /// it here puts this session's state somewhere replaying the journal cannot
   /// reach.
   ///
   /// Read it again after each close rather than holding the object across
@@ -542,7 +542,7 @@ class PracticeSession {
   /// cannot drift from it.
   AcquisitionProgress get acquisitionProgress => _acquisition.replay();
 
-  /// The scheduler's view of this sitting.
+  /// The scheduler's view of this session.
   SessionState get session => _session;
 
   /// Which version of this session's scheduler inputs is current.
@@ -591,15 +591,15 @@ class PracticeSession {
     _bound = false;
   }
 
-  /// Re-establishes where this sitting's decisions are computed.
+  /// Re-establishes where this session's decisions are computed.
   ///
   /// What a host that lost its worker needs, and the whole of what it needs:
   /// nothing authoritative went with the worker. The learner state, the
-  /// journal, and the pending slot never left this isolate, so the sitting
-  /// goes on being the sitting and the next decision binds the scope it holds
+  /// journal, and the pending slot never left this isolate, so the session
+  /// goes on being the session and the next decision binds the scope it holds
   /// to a fresh worker.
   ///
-  /// Not a reopen. Reopening would find this sitting's decision pending and
+  /// Not a reopen. Reopening would find this session's decision pending and
   /// present it again, which is a heavier recovery than a lost worker earns.
   void recoverScheduling() => _bound = false;
 
@@ -685,7 +685,7 @@ class PracticeSession {
     }
     final retrieved = retrievedMaterialHands(_journal.records);
     // A narrow scope offers only what is due, so it is the one that can retire
-    // material a dependent is still waiting on. A general sitting offers
+    // material a dependent is still waiting on. A general session offers
     // everything already.
     final liveSupport = scope.isNarrow
         ? evaluated.liveSupport(
@@ -707,7 +707,7 @@ class PracticeSession {
     final due = [...offered, ...liveSupport.keys];
     // Two questions of the same value, and only one of them is narrow. Ordinary
     // admission reaches for a safe entry when a scoped slot has nothing left to
-    // offer, which a general sitting never runs out of work to need.
+    // offer, which a general session never runs out of work to need.
     // Acquisition asks which realizations are the family's floor at all, and
     // that is as true of general practice as of a scoped goal: passing it only
     // for a narrow scope would leave a beginner practising normally unable to
@@ -841,7 +841,7 @@ class PracticeSession {
   /// obligation there would say a question had been asked that never was.
   ///
   /// Idempotent per attempt, and applies to a decision resumed from an earlier
-  /// run as readily as to one this sitting made: a pending attempt that comes
+  /// run as readily as to one this session made: a pending attempt that comes
   /// back on screen is being presented now.
   ///
   /// Named rather than assumed. A caller reporting this from a frame callback
@@ -1338,7 +1338,7 @@ class PracticeSession {
       _state = commit.next;
       _epoch++;
       _journal.append(commit.record);
-      // The exercise was presented either way, so the sitting knows it was. A
+      // The exercise was presented either way, so the session knows it was. A
       // retrieval failure is a claim about the performance, and an unmeasured
       // attempt supports no such claim.
       pipeline.recordOutcome(
@@ -1354,7 +1354,7 @@ class PracticeSession {
     // presenting it. Serving here too is idempotent, and it stops an
     // obligation outliving the question it asks: an owed probe is offered
     // again every slot, so a caller that never acknowledges is served the same
-    // probe until the sitting ends.
+    // probe until the session ends.
     await acknowledgePresentation(commit.record.identity.attemptId);
     _outstanding = null;
     _pending = null;
@@ -1409,7 +1409,7 @@ class PracticeSession {
     }
 
     // Refused here rather than written for the journal to refuse on the way
-    // back in, which would strand a sitting on a record it cannot read.
+    // back in, which would strand a session on a record it cannot read.
     if (AttemptRecord.pulseDisagreement(closure, presentation)
         case final disagreement?) {
       throw ArgumentError.value(outcome, 'outcome', disagreement);
@@ -1499,7 +1499,7 @@ class PracticeSession {
     if (_commit case final commit?) {
       // An append that threw may still have landed. Abandoning on the strength
       // of not knowing is what leaves one attempt in the file and none in the
-      // sitting, and every later commit then aims at a sequence storage has
+      // session, and every later commit then aims at a sequence storage has
       // already filled.
       if (commit.durability == _Durability.unknown) {
         final durable = await store.loadJournal(profile.id);
@@ -1576,7 +1576,7 @@ class PracticeSession {
       // hash, the digest of the records it skips, and agreement with the state
       // the covered attempt produced. A checkpoint covering history the journal
       // does not hold is one of those rejections, which is what an erase leaves
-      // behind if a sitting saves one after it.
+      // behind if a session saves one after it.
       final rejection = validateCheckpointAgainstJournal(
         checkpoint,
         journal: journal,
@@ -1756,9 +1756,9 @@ class PracticeSession {
     }
   }
 
-  /// Rebuilds what the scheduler needs to know about the sitting in progress.
+  /// Rebuilds what the scheduler needs to know about the session in progress.
   ///
-  /// A restart is a new sitting, so it carries what [SessionState.resuming]
+  /// A restart is a new session, so it carries what [SessionState.resuming]
   /// carries and nothing else.
   static SessionState _rebuildSessionState(
     AttemptJournal journal,

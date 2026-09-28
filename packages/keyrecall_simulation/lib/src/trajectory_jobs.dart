@@ -17,7 +17,7 @@ class TrajectoryJob {
 /// Every archetype at every seed below [seeds], dealt into one bucket per
 /// processor.
 ///
-/// Round robin rather than one bucket per archetype: a true beginner's sitting
+/// Round robin rather than one bucket per archetype: a true beginner's session
 /// costs a fraction of an advanced one, so grouping by archetype leaves the
 /// slowest one gating the whole run.
 List<List<TrajectoryJob>> dealTrajectoryJobs(

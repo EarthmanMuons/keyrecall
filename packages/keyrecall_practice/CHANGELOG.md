@@ -68,7 +68,7 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 - `CoordinationSample.looseMomentsAt` and `scoreUnder`, which replay one series
   against a synchronized bound it was not recorded under, so a threshold can be
-  argued from what the playing would have read rather than from how a sitting
+  argued from what the playing would have read rather than from how a session
   felt.
 
 - `CoordinationSample` and the store's coordination log, one append-only
@@ -94,10 +94,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   which both hosts derive once from the bound scope.
 - `SchedulerHost`, the seam a session decides through, and `SchedulerVerdict`,
   one slot's decision reduced to what a session acts on, carrying the epoch it
-  answered and a `SittingDecisionEffect` to apply. `InProcessScheduler` keeps
+  answered and a `SessionDecisionEffect` to apply. `InProcessScheduler` keeps
   the existing behavior and is the default.
 - `IsolateScheduler`, a host that decides on a worker isolate holding the
-  sitting's resolved scope. Requirement ids travel instead of the candidate
+  session's resolved scope. Requirement ids travel instead of the candidate
   envelope, and only the winning candidate comes back. Losing a worker fails
   that request alone, applying nothing and writing nothing.
 - `PracticeSession.decisionEpoch`, the version of the scheduler inputs a session
@@ -114,7 +114,7 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - `PracticeSession`, the attempt transaction: it persists the decision before
   presenting, commits the outcome as an attempt, and recovers from a run
   interrupted anywhere in that sequence.
-- Reopening a sitting rebuilds the scheduler's recency and realization-family
+- Reopening a session rebuilds the scheduler's recency and realization-family
   allocation windows from the tail of the journal, so restarting the app does
   not clear the pacing pressure the work before it built up.
 - `PendingDecision`, the durable record of what was presented but not yet

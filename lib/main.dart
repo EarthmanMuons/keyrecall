@@ -18,7 +18,7 @@ Future<void> main() async {
   // store later would have already answered that question with a guess.
   final preferences = await SharedPreferences.getInstance();
   // Asked once, here, because this is the only place there is a package to
-  // ask. Every attempt records it, and a sitting must not wait on a platform
+  // ask. Every attempt records it, and a session must not wait on a platform
   // query to open.
   final package = await PackageInfo.fromPlatform();
 

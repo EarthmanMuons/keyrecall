@@ -7,7 +7,7 @@ import 'python_compatible_random.dart';
 import 'synthetic_player.dart';
 import 'trajectory.dart';
 
-/// Runs [player] through one sitting against the real pipeline.
+/// Runs [player] through one session against the real pipeline.
 ///
 /// Deterministic in every part: the same player, seed, length and catalog
 /// produce the same trajectory and therefore the same detector findings, so a
@@ -46,11 +46,11 @@ Trajectory runTrajectory({
   void Function(int slot, LearnerState state)? observeState,
   void Function(int slot, PacingDecision pacing)? observePacing,
   void Function(int slot, DoseDecision dose)? observeDose,
-}) => runSittings(
+}) => runTrajectorySessions(
   player: player,
   seed: seed,
   materials: materials,
-  sittings: [Sitting(at: start ?? DateTime.utc(2026), slots: slots)],
+  sessions: [Session(at: start ?? DateTime.utc(2026), slots: slots)],
   minutesPerSlot: minutesPerSlot,
   pipeline: pipeline,
   instrument: instrument,
@@ -64,23 +64,23 @@ Trajectory runTrajectory({
   observeDose: observeDose,
 );
 
-/// Runs [player] through [sittings] spread across simulated calendar time.
+/// Runs [player] through [sessions] spread across simulated calendar time.
 ///
-/// What crosses a sitting boundary is what crosses it in the app. The learner
+/// What crosses a session boundary is what crosses it in the app. The learner
 /// state persists and keeps decaying through the gap, since that is the whole
-/// question a run across weeks asks; the sitting's own scheduling context is
+/// question a run across weeks asks; the session's own scheduling context is
 /// rebuilt the way a restart rebuilds it, through [SessionState.resuming], so
 /// a probe opened before a break cannot be answered after one just because the
 /// harness held the object.
 ///
-/// Slot indices run across the whole run rather than restarting each sitting,
+/// Slot indices run across the whole run rather than restarting each session,
 /// so a detector reading a window of slots reads one ordered history and can
-/// ask which sitting a slot belonged to.
-Trajectory runSittings({
+/// ask which session a slot belonged to.
+Trajectory runTrajectorySessions({
   required SyntheticPlayer player,
   required int seed,
   required List<TechnicalMaterial> materials,
-  required List<Sitting> sittings,
+  required List<Session> sessions,
   double minutesPerSlot = 1.0,
   SchedulerPipeline pipeline = const SchedulerPipeline(learner: LearnerModel()),
   TraceRetention traceRetention = TraceRetention.full,
@@ -103,24 +103,24 @@ Trajectory runSittings({
   void Function(int slot, PacingDecision pacing)? observePacing,
   void Function(int slot, DoseDecision dose)? observeDose,
 }) {
-  for (var i = 1; i < sittings.length; i++) {
-    final ends = sittings[i - 1].at.add(
+  for (var i = 1; i < sessions.length; i++) {
+    final ends = sessions[i - 1].at.add(
       Duration(
-        seconds: ((sittings[i - 1].slots - 1) * minutesPerSlot * 60).round(),
+        seconds: ((sessions[i - 1].slots - 1) * minutesPerSlot * 60).round(),
       ),
     );
-    if (sittings[i].at.isBefore(ends)) {
+    if (sessions[i].at.isBefore(ends)) {
       throw ArgumentError.value(
-        sittings,
-        'sittings',
-        'sitting $i starts before sitting ${i - 1} has finished',
+        sessions,
+        'sessions',
+        'session $i starts before session ${i - 1} has finished',
       );
     }
   }
 
   final rng = PythonCompatibleRandom(seed);
   final learner = pipeline.learner;
-  final state = learner.placementState(player.placement, at: sittings.first.at);
+  final state = learner.placementState(player.placement, at: sessions.first.at);
   final playing = player.begin();
   // Generation is learner-blind, so the same catalog and instrument give the
   // same candidates for every seed. A sweep passes one set in rather than
@@ -151,16 +151,16 @@ Trajectory runSittings({
     );
   }
 
-  for (var sitting = 0; sitting < sittings.length; sitting++) {
+  for (var sessionIndex = 0; sessionIndex < sessions.length; sessionIndex++) {
     final session = SessionState.resuming(history, config: pipeline.config);
-    var lastAt = sittings[sitting].at;
-    // Both ends of every sitting. The one on arrival is the person a break
-    // handed back, before this sitting's practice starts moving them again,
+    var lastAt = sessions[sessionIndex].at;
+    // Both ends of every session. The one on arrival is the person a break
+    // handed back, before this session's practice starts moving them again,
     // which is the only place a returner can be measured.
     read(lastAt);
-    for (var slot = 0; slot < sittings[sitting].slots; slot++) {
+    for (var slot = 0; slot < sessions[sessionIndex].slots; slot++) {
       final index = nextIndex++;
-      final at = lastAt = sittings[sitting].at.add(
+      final at = lastAt = sessions[sessionIndex].at.add(
         Duration(seconds: (slot * minutesPerSlot * 60).round()),
       );
       learner.propagate(state, at);
@@ -208,7 +208,7 @@ Trajectory runSittings({
             chosen?.challengeBypass == ChallengeBypass.guidanceProbe,
       );
       session.attemptsThisSession++;
-      // Every candidate, which a slot does not retain: a sitting evaluates
+      // Every candidate, which a slot does not retain: a session evaluates
       // thousands and only the selectable ones are worth carrying to the end.
       // A diagnostic asking what was refused has to see them as they go past.
       observeTraces?.call(index, traces);
@@ -217,7 +217,7 @@ Trajectory runSittings({
           TerminalTrajectorySlot(
             index: index,
             at: at,
-            sitting: sitting,
+            session: sessionIndex,
             traces: traceRetention == TraceRetention.full ? traces : const [],
             selectable: traceRetention == TraceRetention.full
                 ? available
@@ -319,7 +319,7 @@ Trajectory runSittings({
         TrajectorySlot(
           index: index,
           at: at,
-          sitting: sitting,
+          session: sessionIndex,
           chosen: exercise,
           winner: chosen,
           alternatives: full
@@ -353,7 +353,7 @@ Trajectory runSittings({
     playerId: player.id,
     seed: seed,
     slots: recorded,
-    sittings: sittings,
+    sessions: sessions,
     terminals: terminals,
     assessments: readings,
   );

@@ -51,7 +51,7 @@ void main() {
       .read(profileRosterProvider.notifier)
       .place(PlacementTier.beginner);
 
-  /// Practices as somebody else, which is what replaces the open sitting.
+  /// Practices as somebody else, which is what replaces the open session.
   Future<void> switchProfile(ProviderContainer container) async {
     await container
         .read(profileRosterProvider.notifier)
@@ -59,7 +59,7 @@ void main() {
     await loopOf(container);
   }
 
-  test('a completion answers the sitting that issued it, or nothing', () async {
+  test('a completion answers the session that issued it, or nothing', () async {
     final container = launch();
     await place(container);
     final first = await loopOf(container);
@@ -80,7 +80,7 @@ void main() {
     expect(
       after.lastCommitted,
       isNull,
-      reason: 'evidence from a replaced sitting is not this one\'s to record',
+      reason: 'evidence from a replaced session is not this one\'s to record',
     );
     expect(after.attemptsRecorded, 0);
     expect(after.presented, replacement.presented);
@@ -201,7 +201,7 @@ void main() {
     expect(
       after.lastCommitted!.identity.attemptId,
       issued.attemptId,
-      reason: 'the frozen close is what is retried, not a fresh sitting',
+      reason: 'the frozen close is what is retried, not a fresh session',
     );
     expect(after.identity, first.identity);
     expect(after.attemptsRecorded, 1);
@@ -217,7 +217,7 @@ void main() {
     final container = launch();
     await place(container);
     final first = await loopOf(container);
-    // Nothing to resume, so a reopened sitting decides rather than presenting
+    // Nothing to resume, so a reopened session decides rather than presenting
     // the slot it recovered.
     await first.session.abandonPending();
 
@@ -254,7 +254,7 @@ void main() {
   test('a build abandoned while opening never decides', () async {
     // Torn down rather than replaced. Nothing comes after it, so nothing else
     // will have moved the generation on: a build that only asks whether it was
-    // superseded answers no, and goes on to decide for a sitting that no
+    // superseded answers no, and goes on to decide for a session that no
     // longer exists.
     final store = _HoldsOnePendingRead();
     practice = store;
@@ -278,7 +278,7 @@ void main() {
     expect(
       await store.loadPendingDecision(profileId),
       isNull,
-      reason: 'a sitting nobody is holding decides nothing and writes nothing',
+      reason: 'a session nobody is holding decides nothing and writes nothing',
     );
   });
 
@@ -301,7 +301,7 @@ void main() {
       final retrying = notifier.retry();
       await pumpEventQueue();
       // The recovery this would restart is the one still writing. Reopening now
-      // is how the sitting on screen ends up behind durable history.
+      // is how the session on screen ends up behind durable history.
       await notifier.retry();
       store.gate.complete();
       await retrying;
@@ -361,7 +361,7 @@ void main() {
       expect(
         recovered,
         isA<AsyncData<PracticeLoopState>>(),
-        reason: 'the sitting rebinds where it decides rather than reopening',
+        reason: 'the session rebinds where it decides rather than reopening',
       );
       final after = recovered.requireValue;
       expect(after.presented, isNotNull);

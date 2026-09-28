@@ -4,7 +4,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'support/fixtures.dart';
 
-/// What a new sitting inherits from the one before it, and what it does not.
+/// What a new session inherits from the one before it, and what it does not.
 final DateTime _at = DateTime.utc(2026);
 
 void main() {
@@ -44,7 +44,7 @@ void main() {
     expect(resumed.recentFamilies.single.productive, isFalse);
   });
 
-  test('nothing the last sitting was in the middle of survives', () {
+  test('nothing the last session was in the middle of survives', () {
     final resumed = SessionState.resuming([
       PriorSelection(first, productive: true, at: _at),
       PriorSelection(second, productive: true, at: _at),

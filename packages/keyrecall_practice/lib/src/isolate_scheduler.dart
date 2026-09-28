@@ -24,7 +24,7 @@ class SchedulerWorkerLost implements Exception {
 /// Decides on a worker isolate, so the isolate that draws is free while it
 /// happens.
 ///
-/// The learner state and the sitting cross by copy, the candidate envelope
+/// The learner state and the session cross by copy, the candidate envelope
 /// never moves because the worker holds the scope, and the winner comes back
 /// with a compact competition report.
 ///
@@ -33,8 +33,8 @@ class SchedulerWorkerLost implements Exception {
 /// however it died, and the session decides again from the state it never gave
 /// up.
 ///
-/// One host belongs to one sitting. Binding replaces the scope the worker
-/// holds, so a host two sittings share decides both of their slots against
+/// One host belongs to one session. Binding replaces the scope the worker
+/// holds, so a host two sessions share decides both of their slots against
 /// whichever scope bound last.
 class IsolateScheduler implements SchedulerHost {
   _Worker? _worker;

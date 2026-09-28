@@ -4,9 +4,9 @@ import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// When a sitting runs out of things to offer.
+/// When a session runs out of things to offer.
 ///
-/// A slot that admits nothing is severe: sittings are unbounded and eight
+/// A slot that admits nothing is severe: sessions are unbounded and eight
 /// mechanisms can admit outside the ordinary band, so reaching it means every
 /// one of them declined. The app shows an error state for it.
 ///
@@ -49,7 +49,7 @@ void main() {
       isZero,
       reason:
           'the gentlest work in a family with no frontier is admitted at the '
-          'introduction floor rather than the ordinary one, so a sitting that '
+          'introduction floor rather than the ordinary one, so a session that '
           'used to run out of things to offer has this to offer',
     );
   });
@@ -89,7 +89,7 @@ void main() {
   test('so a goal that narrows the catalog can be offered one', () {
     // PracticeGoal.scopeOf cuts the catalog to targetMaterialIds, so a goal
     // aimed at a handful of scales was a narrow catalog by another name, and
-    // this reproduced the dry sitting that argument against shipping goals
+    // this reproduced the dry session that argument against shipping goals
     // rested on. The seam itself is covered by scoped_goal_test.dart.
     final goal = PracticeGoal(
       id: 'FIVE_SCALES',

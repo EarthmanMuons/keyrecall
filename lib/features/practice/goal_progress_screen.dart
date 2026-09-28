@@ -10,7 +10,7 @@ import 'goal_screen.dart';
 import 'practice_providers.dart';
 
 /// Progress toward the goal in force, or null where there is no finish line
-/// or no sitting is open.
+/// or no session is open.
 ///
 /// Read from the goal's targets and the history alone. It does not wait on a
 /// scheduling decision, so it is there while an attempt is pending or under

@@ -24,10 +24,10 @@ void main() {
       store: InMemoryPracticeStore(createdAt: t0),
       profile: profile,
       materials: materials,
-      sessionId: 'sitting-${player.id}',
+      sessionId: 'session-${player.id}',
       nextId: _countingIds(player.id),
     );
-    return censusOfSitting(
+    return censusOfSession(
       session: session,
       player: player,
       seed: seed,
@@ -35,12 +35,12 @@ void main() {
     );
   }
 
-  group('what supported work does to a sitting', () {
+  group('what supported work does to a session', () {
     test('a beginner reaches it and is not trapped in it', () async {
       final beginner = await census(PlayerArchetypes.trueBeginner);
 
       // Descriptive, not a target. What it has to show is that the path is
-      // reachable at all and that the sitting is still mostly ordinary work.
+      // reachable at all and that the session is still mostly ordinary work.
       expect(beginner.everCheckedFloor, isTrue);
       expect(beginner.everAcquired, isTrue);
       expect(beginner.ordinaryAttempts, greaterThan(0));
@@ -69,7 +69,7 @@ void main() {
     test(
       'a failed parent waits for new evidence rather than its turn',
       () async {
-        // Rotation among simultaneously stuck floors used to fill a sitting
+        // Rotation among simultaneously stuck floors used to fill a session
         // while never repeating a parent twice running. What ends a set-aside
         // is ordinary evidence, so recurrences are spaced by that rather than
         // by how much other work happened.
@@ -94,7 +94,7 @@ void main() {
 
     test('every archetype produces a readable census', () async {
       // Breadth rather than assertion: the point is that none of them crashes,
-      // deadlocks the loop, or spends a whole sitting on scaffolds.
+      // deadlocks the loop, or spends a whole session on scaffolds.
       for (final player in PlayerArchetypes.all) {
         final result = await census(player, slots: 24);
         expect(result.opportunities, 24, reason: player.id);

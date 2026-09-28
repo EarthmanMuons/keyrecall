@@ -60,7 +60,7 @@ the beginning, and nothing more. Deleting every checkpoint must cost time and
 nothing else, which is why one carries the hash of its own content, the point in
 history it covers, and the model version that produced it.
 
-Its position is a journal sequence, not a position within a sitting. A history
+Its position is a journal sequence, not a position within a session. A history
 spans many sessions, and a within-session index cannot say what a checkpoint
 already includes: resuming from one would silently reapply every attempt from
 every other session. It also names the attempt at that sequence, so a resume is
@@ -174,7 +174,7 @@ rather than persisted in an expanded form this cannot read back.
 
 `journalSequence` counts attempts in append order, contiguously, so a lost line
 is detectable rather than silently absorbed. It is distinct from
-`indexInSession`, which is position within one sitting.
+`indexInSession`, which is position within one session.
 
 Idempotency is not first-write-wins. An attempt id that returns with identical
 content is a retry and a no-op; an attempt id that returns with _different_
@@ -312,7 +312,7 @@ here, so they are all said that way rather than escaping as `ArgumentError`,
 `FormatException`, or `TypeError`.
 
 The promise belongs to every public reader of persisted data, not to the journal
-loader alone: records, headers, profiles, checkpoints, sitting exports, and the
+loader alone: records, headers, profiles, checkpoints, session exports, and the
 storage layer's own single-slot files. Domain constructors go on throwing
 `ArgumentError` on their own terms, because that is useful inside the model; the
 boundary translates it on the way out. Storage wraps a whole decode rather than

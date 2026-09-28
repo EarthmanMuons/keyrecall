@@ -65,11 +65,11 @@ void main() {
   );
 
   test('taking a reading cannot change the run it measures', () {
-    Trajectory run({AssessmentSet? assessment}) => runSittings(
+    Trajectory run({AssessmentSet? assessment}) => runTrajectorySessions(
       player: PlayerArchetypes.developing,
       seed: 3,
       materials: catalog,
-      sittings: sittingsOnDays([0, 3, 21], slots: 10),
+      sessions: sessionsOnDays([0, 3, 21], slots: 10),
       assessment: assessment,
     );
 
@@ -94,11 +94,11 @@ void main() {
 
   test('a reading answers about the player, not about the questions asked', () {
     final unchanging = PlayerArchetypes.advanced.copyWith(learningRate: 0);
-    final trajectory = runSittings(
+    final trajectory = runTrajectorySessions(
       player: unchanging,
       seed: 1,
       materials: catalog,
-      sittings: sittingsOnDays([0, 1], slots: 8),
+      sessions: sessionsOnDays([0, 1], slots: 8),
       assessment: set,
     );
 
@@ -116,11 +116,11 @@ void main() {
 
   test('practice the run chose moves what the held-out set finds', () {
     final learning = PlayerArchetypes.developing.copyWith(learningRate: 0.2);
-    final readings = runSittings(
+    final readings = runTrajectorySessions(
       player: learning,
       seed: 4,
       materials: catalog,
-      sittings: sittingsOnDays([0, 1, 2, 3], slots: 25),
+      sessions: sessionsOnDays([0, 1, 2, 3], slots: 25),
       assessment: set,
     ).assessments;
 
@@ -143,11 +143,11 @@ void main() {
 
   test('a break moves belief without moving the person', () {
     final unchanging = PlayerArchetypes.developing.copyWith(learningRate: 0);
-    final readings = runSittings(
+    final readings = runTrajectorySessions(
       player: unchanging,
       seed: 2,
       materials: catalog,
-      sittings: sittingsOnDays([0, 240], slots: 6),
+      sessions: sessionsOnDays([0, 240], slots: 6),
       assessment: set,
     ).assessments;
 

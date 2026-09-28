@@ -55,13 +55,13 @@ enum GoalTrajectoryScope {
   bool get hasFinishLine => this != general;
 }
 
-/// How one sitting ended.
-enum SittingEnd { slotLimit, caughtUp, blocked, invalid }
+/// How one session ended.
+enum SessionEnd { slotLimit, caughtUp, blocked, invalid }
 
 /// One presented attempt, as much of it as the census reads.
 class GoalTrajectorySelection {
   final int slot;
-  final int sitting;
+  final int session;
   final String materialId;
   final String familyId;
   final ScaleForm? form;
@@ -86,7 +86,7 @@ class GoalTrajectorySelection {
 
   const GoalTrajectorySelection({
     required this.slot,
-    required this.sitting,
+    required this.session,
     required this.materialId,
     required this.familyId,
     required this.form,
@@ -111,7 +111,7 @@ class GoalTrajectoryRun {
   final int targetCount;
   final int finalCovered;
   final List<GoalTrajectorySelection> selections;
-  final List<SittingEnd> sittings;
+  final List<SessionEnd> sessions;
 
   GoalTrajectoryRun({
     required this.scope,
@@ -120,9 +120,9 @@ class GoalTrajectoryRun {
     required this.targetCount,
     required this.finalCovered,
     required Iterable<GoalTrajectorySelection> selections,
-    required Iterable<SittingEnd> sittings,
+    required Iterable<SessionEnd> sessions,
   }) : selections = List.unmodifiable(selections),
-       sittings = List.unmodifiable(sittings);
+       sessions = List.unmodifiable(sessions);
 
   bool get isComplete => targetCount > 0 && finalCovered == targetCount;
 
@@ -150,20 +150,21 @@ class GoalTrajectoryRun {
       selections.where(test).length;
 }
 
-/// Runs [player] under [scope] over daily sittings.
+/// Runs [player] under [scope] over daily sessions.
 ///
 /// [placement] replaces the player's own, for runs that ask what the starting
-/// level alone changes. [afterSitting] sees the learner state as each sitting
+/// level alone changes. [afterSession] sees the learner state as each session
 /// closes, before the next one opens.
 Future<GoalTrajectoryRun> runGoalTrajectory({
   required GoalTrajectoryScope scope,
   required SyntheticPlayer player,
   required int seed,
-  int sittings = 10,
-  int slotsPerSitting = 20,
+  int sessions = 10,
+  int slotsPerSession = 20,
   PlacementTier? placement,
   ProgressPreference? progress,
-  void Function(int sitting, int slots, PracticeSession session)? afterSitting,
+  void Function(int sessionIndex, int slots, PracticeSession session)?
+  afterSession,
 }) async {
   final at0 = DateTime.utc(2026);
   const learner = LearnerModel();
@@ -212,13 +213,13 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
   final playing = player.begin();
   final random = PythonCompatibleRandom(seed);
   final selections = <GoalTrajectorySelection>[];
-  final ends = <SittingEnd>[];
+  final ends = <SessionEnd>[];
   var ids = 0;
   var slot = 0;
   late PracticeSession session;
 
-  for (var sitting = 0; sitting < sittings; sitting++) {
-    final start = at0.add(Duration(days: sitting + 1));
+  for (var sessionIndex = 0; sessionIndex < sessions; sessionIndex++) {
+    final start = at0.add(Duration(days: sessionIndex + 1));
     playing.restUntil(start);
     session = await PracticeSession.open(
       store: store,
@@ -228,11 +229,11 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
       pipeline: pipeline,
       goal: resolution.goal,
       focus: resolution.focus,
-      sessionId: '$name-$sitting',
+      sessionId: '$name-$sessionIndex',
       nextId: () => '$name-${ids++}',
     );
-    var end = SittingEnd.slotLimit;
-    for (var index = 0; index < slotsPerSitting; index++) {
+    var end = SessionEnd.slotLimit;
+    for (var index = 0; index < slotsPerSession; index++) {
       final at = start.add(Duration(minutes: index));
       pipeline.last = null;
       final outcome = await session.decideOutcome(at: at);
@@ -248,7 +249,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
         selections.add(
           GoalTrajectorySelection(
             slot: slot++,
-            sitting: sitting,
+            session: sessionIndex,
             materialId: exercise.material.materialId,
             familyId: exercise.material.familyId,
             form: exercise.material.scaleForm,
@@ -282,16 +283,16 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
           );
           continue;
         case PracticeCaughtUp():
-          end = SittingEnd.caughtUp;
+          end = SessionEnd.caughtUp;
         case PracticeBlocked():
-          end = SittingEnd.blocked;
+          end = SessionEnd.blocked;
         default:
-          end = SittingEnd.invalid;
+          end = SessionEnd.invalid;
       }
       break;
     }
     ends.add(end);
-    afterSitting?.call(sitting, slot, session);
+    afterSession?.call(sessionIndex, slot, session);
   }
 
   final evaluated = const PracticeScopeEvaluator().evaluate(
@@ -299,7 +300,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
     state: session.state,
     journal: session.journal,
     learner: learner,
-    at: at0.add(Duration(days: sittings + 1)),
+    at: at0.add(Duration(days: sessions + 1)),
   );
   return GoalTrajectoryRun(
     scope: scope,
@@ -308,7 +309,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
     targetCount: evaluated.coverage.targetCount,
     finalCovered: evaluated.coverage.coveredTargets,
     selections: selections,
-    sittings: ends,
+    sessions: ends,
   );
 }
 
@@ -316,8 +317,8 @@ Future<List<GoalTrajectoryRun>> runGoalTrajectoryMatrix({
   Iterable<GoalTrajectoryScope> scopes = GoalTrajectoryScope.values,
   Iterable<SyntheticPlayer>? players,
   int seeds = 4,
-  int sittings = 10,
-  int slotsPerSitting = 20,
+  int sessions = 10,
+  int slotsPerSession = 20,
   int parallelism = 1,
   ProgressPreference? progress,
   void Function(int completed, int total)? onProgress,
@@ -333,8 +334,8 @@ Future<List<GoalTrajectoryRun>> runGoalTrajectoryMatrix({
             scope: scope,
             player: player,
             seed: seed,
-            sittings: sittings,
-            slotsPerSitting: slotsPerSitting,
+            sessions: sessions,
+            slotsPerSession: slotsPerSession,
             progress: progress,
           ),
   ];

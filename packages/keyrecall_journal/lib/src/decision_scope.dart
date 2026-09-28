@@ -6,7 +6,7 @@ import 'schema.dart';
 /// The goal and focus a decision was made under.
 ///
 /// Recorded because nothing else keeps it: a profile stores only its current
-/// goal, and a focus lives only as long as the sitting that set it. What a
+/// goal, and a focus lives only as long as the session that set it. What a
 /// goal asks of ranking differs by goal, so reading a decision later needs the
 /// scope it was made in, not the one in force when somebody looks.
 @immutable

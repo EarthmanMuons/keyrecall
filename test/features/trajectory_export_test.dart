@@ -7,7 +7,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/practice/trajectory_export.dart';
 
-/// The tables a device sitting is read from afterwards.
+/// The tables a device session is read from afterwards.
 void main() {
   CoordinationSample sampleWith(List<int> asynchronies) => CoordinationSample(
     profileId: 'learner',
@@ -38,7 +38,7 @@ void main() {
     placement: PlacementTier.beginner,
   );
 
-  group('the latest sitting across both journals', () {
+  group('the latest session across both journals', () {
     final parent = Exercise.linear(
       material: TechnicalMaterial('C', ScaleForm.major),
       hands: HandConfiguration.right,
@@ -62,20 +62,20 @@ void main() {
       );
     });
 
-    AttemptIdentity identity(String sitting, int minute, String id) =>
+    AttemptIdentity identity(String session, int minute, String id) =>
         AttemptIdentity(
           profileId: learner.id,
           attemptId: id,
-          sessionId: sitting,
+          sessionId: session,
           indexInSession: 0,
           occurredAt: learner.createdAt.add(Duration(minutes: minute)),
         );
 
-    void supported(String sitting, int minute) {
+    void supported(String session, int minute) {
       acquisition.append(
         AcquisitionAttemptRecord(
           journalSequence: acquisition.length,
-          identity: identity(sitting, minute, 'supported-$minute'),
+          identity: identity(session, minute, 'supported-$minute'),
           task: AcquisitionTask.unmeteredTraversal(parent),
           started: false,
           termination: AttemptTermination.learnerStopped,
@@ -91,7 +91,7 @@ void main() {
       );
     }
 
-    void measured(String sitting, int minute) {
+    void measured(String session, int minute) {
       final outcome = readPerformance(
         exercise: parent,
         transcript: PerformanceTranscript.empty,
@@ -99,7 +99,7 @@ void main() {
       ordinary.append(
         AttemptRecord(
           journalSequence: ordinary.length,
-          identity: identity(sitting, minute, 'ordinary-$minute'),
+          identity: identity(session, minute, 'ordinary-$minute'),
           provenance: const ModelProvenance(
             learnerModelVersion: 'learner',
             schedulerModelVersion: 'scheduler',
@@ -115,14 +115,14 @@ void main() {
       );
     }
 
-    SittingExport export() =>
-        sittingExportOf(learner, ordinary, acquisition: acquisition);
+    SessionExport export() =>
+        sessionExportOf(learner, ordinary, acquisition: acquisition);
 
-    test('a newer supported-only sitting replaces the ordinary one', () {
+    test('a newer supported-only session replaces the ordinary one', () {
       measured('old', 1);
       supported('new', 2);
       final result = export();
-      expect(result.sittingId, 'new');
+      expect(result.sessionId, 'new');
       expect(
         result.startedAt,
         learner.createdAt.add(const Duration(minutes: 2)),
@@ -134,7 +134,7 @@ void main() {
     test('supported work can be exported without ordinary history', () {
       supported('only', 2);
       final result = export();
-      expect(result.sittingId, 'only');
+      expect(result.sessionId, 'only');
       expect(
         result.startedAt,
         learner.createdAt.add(const Duration(minutes: 2)),
@@ -142,11 +142,11 @@ void main() {
       expect(result.acquisition, hasLength(1));
     });
 
-    test('a mixed sitting starts with its earlier supported work', () {
+    test('a mixed session starts with its earlier supported work', () {
       supported('mixed', 1);
       measured('mixed', 2);
       final result = export();
-      expect(result.sittingId, 'mixed');
+      expect(result.sessionId, 'mixed');
       expect(
         result.startedAt,
         learner.createdAt.add(const Duration(minutes: 1)),
@@ -155,11 +155,11 @@ void main() {
       expect(result.acquisition, hasLength(1));
     });
 
-    test('a newer ordinary sitting excludes older supported work', () {
+    test('a newer ordinary session excludes older supported work', () {
       supported('old', 1);
       measured('new', 2);
       final result = export();
-      expect(result.sittingId, 'new');
+      expect(result.sessionId, 'new');
       expect(
         result.startedAt,
         learner.createdAt.add(const Duration(minutes: 2)),
@@ -170,7 +170,7 @@ void main() {
 
     test('empty history keeps the empty export', () {
       final result = export();
-      expect(result.sittingId, isEmpty);
+      expect(result.sessionId, isEmpty);
       expect(result.startedAt, learner.createdAt);
       expect(result.attempts, isEmpty);
       expect(result.acquisition, isEmpty);

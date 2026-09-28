@@ -17,7 +17,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 ///
 /// So at a dry slot the gentlest thing in existence is sixty, predicted at
 /// about 0.30 against a floor of 0.60. This asks what the same exercise would
-/// be predicted at on the rungs below, using the learner state those sittings
+/// be predicted at on the rungs below, using the learner state those sessions
 /// actually reached.
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
@@ -84,7 +84,7 @@ Future<void> main(List<String> arguments) async {
       : (values.reduce((a, b) => a + b) / values.length).toStringAsFixed(3);
 
   stdout
-    ..writeln('${player.id}: $dry dry sittings of $seeds')
+    ..writeln('${player.id}: $dry dry sessions of $seeds')
     ..writeln('band floor ${band.pMin}\n')
     ..writeln('predicted success on the gentlest eligible exercise, slowed:');
   for (final rung in descent) {

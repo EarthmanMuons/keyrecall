@@ -39,7 +39,7 @@ void main() {
     identity: AttemptIdentity(
       profileId: 'abc12345',
       attemptId: attemptId ?? 'acq-$sequence',
-      sessionId: 'sitting-1',
+      sessionId: 'session-1',
       indexInSession: sequence,
       occurredAt: t0.add(after),
     ),
@@ -135,7 +135,7 @@ void main() {
         identity: AttemptIdentity(
           profileId: 'abc12345',
           attemptId: 'probe',
-          sessionId: 'sitting-1',
+          sessionId: 'session-1',
           indexInSession: 1,
           occurredAt: t0,
         ),
@@ -666,7 +666,7 @@ void main() {
       identity: AttemptIdentity(
         profileId: 'abc12345',
         attemptId: 'probe-$sequence',
-        sessionId: 'sitting-1',
+        sessionId: 'session-1',
         indexInSession: sequence,
         occurredAt: t0.add(after),
       ),
@@ -800,7 +800,7 @@ void main() {
 
     test('is the same progress after a restart', () {
       // The property the whole log exists for. Progress is whatever replaying
-      // history produces, so it cannot disappear across a restart or a sitting
+      // history produces, so it cannot disappear across a restart or a session
       // boundary.
       final log = emptyLog()
         ..append(recordAt(0))

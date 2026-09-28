@@ -5,11 +5,11 @@ import 'trajectory.dart';
 /// A handful of shapes rather than a sweep over gap lengths. What a run across
 /// months is asked to answer is whether practice and forgetting interact
 /// sensibly, and the answer differs by the pattern of the calendar rather than
-/// by any one interval: the same twelve sittings dense, spread, interrupted or
+/// by any one interval: the same twelve sessions dense, spread, interrupted or
 /// sporadic are four different questions.
 ///
 /// The days are attendance, not policy. Nothing in the app schedules a
-/// sitting, so these describe learners who show up in recognizable ways.
+/// session, so these describe learners who show up in recognizable ways.
 class LongitudinalSchedules {
   /// A week of near-daily practice, where almost nothing decays.
   static const List<int> denseWeek = [0, 1, 2, 4, 6];
@@ -34,14 +34,14 @@ class LongitudinalSchedules {
     'return_after_long_break': returnAfterLongBreak,
   };
 
-  /// The schedule [name] describes, at [slots] attempts a sitting.
+  /// The schedule [name] describes, at [slots] attempts a session.
   ///
   /// Throws [ArgumentError] when no schedule matches.
-  static List<Sitting> named(String name, {required int slots}) {
+  static List<Session> named(String name, {required int slots}) {
     final days = all[name];
     if (days == null) {
       throw ArgumentError.value(name, 'name', 'unknown schedule');
     }
-    return sittingsOnDays(days, slots: slots);
+    return sessionsOnDays(days, slots: slots);
   }
 }

@@ -11,18 +11,18 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// Characterizes every archetype across the named calendar schedules.
 ///
 /// The question the sweep cannot ask. A sweep counts anomalies over one
-/// unbroken sitting; this reports the shape of a run that practice and
+/// unbroken session; this reports the shape of a run that practice and
 /// forgetting both act on, which is the only way to see whether a break costs
-/// a learner a sitting or traps them.
+/// a learner a session or traps them.
 ///
 /// Reported rather than asserted, for the same reason the observational
-/// detectors are: nobody yet knows what share of a returning sitting should go
+/// detectors are: nobody yet knows what share of a returning session should go
 /// to reacquisition, and a threshold picked today would become a second
 /// specification.
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('seeds', defaultsTo: '10', help: 'Seeds per archetype.')
-    ..addOption('slots', defaultsTo: '12', help: 'Attempts per sitting.')
+    ..addOption('slots', defaultsTo: '12', help: 'Attempts per session.')
     ..addOption(
       'archetypes',
       help: 'Which archetypes to run. Every one when omitted.',
@@ -96,7 +96,7 @@ Future<void> main(List<String> arguments) async {
 String _header(String first) => first.padRight(24);
 
 String _row(String archetype, List<_Row> rows) {
-  String firstSitting(Milestone milestone) {
+  String firstSession(Milestone milestone) {
     final reached = [for (final row in rows) ?row.milestones[milestone.id]];
     // Blank rather than a number when most runs never got there: a median over
     // the few that did would describe a different population.
@@ -129,7 +129,7 @@ String _row(String archetype, List<_Row> rows) {
     _median(
       rows.map((row) => row.coverage.toDouble()),
     ).toStringAsFixed(0).padLeft(4),
-    for (final milestone in Milestone.values) firstSitting(milestone),
+    for (final milestone in Milestone.values) firstSession(milestone),
     _total(rows.map((row) => row.probesOpened)).padLeft(5),
     _total(rows.map((row) => row.probesAnswered)).padLeft(4),
     _total(rows.map((row) => row.probesStranded)).padLeft(4),
@@ -162,7 +162,7 @@ class _Row {
   final double consolidationShare;
   final double supportedShare;
 
-  /// Over returning sittings only, the two ways a reacquiring slot happens.
+  /// Over returning sessions only, the two ways a reacquiring slot happens.
   final int progressionPassedOver;
   final int noProgressionSelectable;
   final List<int?> resumes;
@@ -211,7 +211,7 @@ List<_Row> _summarize(
   bool dose,
 ) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
-  final sittings = LongitudinalSchedules.named(schedule, slots: slots);
+  final sessions = LongitudinalSchedules.named(schedule, slots: slots);
   const learner = LearnerModel();
   final pipeline = dose
       ? const SchedulerPipeline(learner: learner)
@@ -219,12 +219,12 @@ List<_Row> _summarize(
           learner: learner,
           config: v1SchedulerConfig.withDose(null),
         );
-  return [for (final job in jobs) _rowFor(job, sittings, generated, pipeline)];
+  return [for (final job in jobs) _rowFor(job, sessions, generated, pipeline)];
 }
 
 _Row _rowFor(
   TrajectoryJob job,
-  List<Sitting> sittings,
+  List<Session> sessions,
   List<Exercise> generated,
   SchedulerPipeline pipeline,
 ) {
@@ -232,11 +232,11 @@ _Row _rowFor(
   var paced = 0;
   var both = 0;
   var pacedThisSlot = false;
-  final trajectory = runSittings(
+  final trajectory = runTrajectorySessions(
     player: playerOf(job.archetypeId),
     seed: job.seed,
     materials: allScales,
-    sittings: sittings,
+    sessions: sessions,
     generated: generated,
     pipeline: pipeline,
     // Pacing is reported before dose control for the same slot, and dose
@@ -254,48 +254,48 @@ _Row _rowFor(
   final census = censusOfRun(trajectory);
   final slots = trajectory.slots.length;
   final returning = census.recoveries().toList();
-  final played = census.sittings.fold(0, (total, s) => total + s.slots);
+  final played = census.sessions.fold(0, (total, s) => total + s.slots);
   return _Row(
     archetype: job.archetypeId,
-    // Over returning sittings only: the share of an ordinary sitting spent on
+    // Over returning sessions only: the share of an ordinary session spent on
     // known work answers a different question.
     preFrontierShare: _shareOf(
       returning,
       census,
-      (sitting) => sitting.preFrontier,
+      (session) => session.preFrontier,
     ),
     reacquisitionShare: _shareOf(
       returning,
       census,
-      (sitting) => sitting.reacquiring,
+      (session) => session.reacquiring,
     ),
     consolidationShare: _shareOf(
       returning,
       census,
-      (sitting) => sitting.consolidating,
+      (session) => session.consolidating,
     ),
     supportedShare: played == 0
         ? 0
-        : census.sittings.fold(0, (total, s) => total + s.supported) / played,
+        : census.sessions.fold(0, (total, s) => total + s.supported) / played,
     progressionPassedOver: returning.fold(
       0,
       (total, recovery) =>
-          total + census.sittings[recovery.sitting].progressionPassedOver,
+          total + census.sessions[recovery.session].progressionPassedOver,
     ),
     noProgressionSelectable: returning.fold(
       0,
       (total, recovery) =>
-          total + census.sittings[recovery.sitting].noProgressionSelectable,
+          total + census.sessions[recovery.session].noProgressionSelectable,
     ),
-    resumes: [for (final recovery in returning) recovery.sittingsToProgress],
-    coverage: census.sittings.last.coverage,
+    resumes: [for (final recovery in returning) recovery.sessionsToProgress],
+    coverage: census.sessions.last.coverage,
     milestones: {
       for (final entry in census.milestones.entries) entry.key.id: entry.value,
     },
-    probesOpened: census.sittings.fold(0, (t, s) => t + s.probesOpened),
-    probesAnswered: census.sittings.fold(0, (t, s) => t + s.probesAnswered),
-    probesStranded: census.sittings.where((s) => s.probeStranded).length,
-    dry: census.sittings.where((s) => s.ranDry).length,
+    probesOpened: census.sessions.fold(0, (t, s) => t + s.probesOpened),
+    probesAnswered: census.sessions.fold(0, (t, s) => t + s.probesAnswered),
+    probesStranded: census.sessions.where((s) => s.probeStranded).length,
+    dry: census.sessions.where((s) => s.ranDry).length,
     doseOnly: slots == 0 ? 0 : (dosed - both) / slots,
     pacingOnly: slots == 0 ? 0 : (paced - both) / slots,
     both: slots == 0 ? 0 : both / slots,
@@ -305,15 +305,15 @@ _Row _rowFor(
 double _shareOf(
   List<GapRecovery> returning,
   LongitudinalCensus census,
-  int Function(SittingSummary sitting) count,
+  int Function(SessionSummary session) count,
 ) {
   if (returning.isEmpty) return 0;
   var slots = 0;
   var matching = 0;
   for (final recovery in returning) {
-    final sitting = census.sittings[recovery.sitting];
-    slots += sitting.slots;
-    matching += count(sitting);
+    final session = census.sessions[recovery.session];
+    slots += session.slots;
+    matching += count(session);
   }
   return slots == 0 ? 0 : matching / slots;
 }

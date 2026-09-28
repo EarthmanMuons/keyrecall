@@ -70,7 +70,7 @@ abstract interface class PracticeStore {
 
   /// A view of this store whose writes are refused once [lifetime] is retired.
   ///
-  /// What a sitting writes through. The check happens where the write does, so
+  /// What a session writes through. The check happens where the write does, so
   /// an erase cannot land between an authorization and the append it allowed.
   PracticeStore boundTo(ProfileLifetime lifetime);
 
@@ -447,7 +447,7 @@ class InMemoryPracticeStore implements PracticeStore {
 
 /// An [InMemoryPracticeStore] view that writes only as one incarnation.
 ///
-/// Reads pass through: what a retired sitting may not do is persist, and
+/// Reads pass through: what a retired session may not do is persist, and
 /// refusing it the history it already replayed would only hide where the
 /// refusal came from.
 class _LifetimeBoundMemoryStore implements PracticeStore {

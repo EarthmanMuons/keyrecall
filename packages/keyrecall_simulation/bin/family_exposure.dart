@@ -12,7 +12,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 ///
 /// Support already adapts: a family that keeps failing gets more guidance. The
 /// question this asks is the other one, which nothing currently answers.
-/// **Does its share of the sitting contract when the learner keeps giving the
+/// **Does its share of the session contract when the learner keeps giving the
 /// same answer?**
 ///
 /// Read `share` against `after`, the family's share of the slots following an
@@ -27,7 +27,7 @@ Future<void> main(List<String> arguments) async {
       'archetypes',
       help: 'Which archetypes to run. Every one when omitted.',
     )
-    ..addOption('slots', defaultsTo: '10', help: 'Attempts per sitting.')
+    ..addOption('slots', defaultsTo: '10', help: 'Attempts per session.')
     ..addOption('schedule', defaultsTo: 'normal_month')
     ..addOption('days', help: 'Explicit days, overriding the schedule.')
     ..addOption('window', defaultsTo: '10', help: 'Slots an answer may take.')
@@ -66,9 +66,9 @@ Future<void> main(List<String> arguments) async {
   final window = int.parse(options.option('window')!);
   final streak = int.parse(options.option('streak')!);
   final days = options.option('days');
-  final sittings = days == null
+  final sessions = days == null
       ? LongitudinalSchedules.named(options.option('schedule')!, slots: slots)
-      : sittingsOnDays([
+      : sessionsOnDays([
           for (final day in days.split(',')) int.parse(day.trim()),
         ], slots: slots);
 
@@ -89,18 +89,18 @@ Future<void> main(List<String> arguments) async {
   final batches = await Future.wait([
     for (final bucket in buckets)
       Isolate.run(
-        () => _exposures(bucket, sittings, window, streak, dose, policy),
+        () => _exposures(bucket, sessions, window, streak, dose, policy),
       ),
   ]);
   final rows = [for (final batch in batches) ...batch];
 
-  final total = sittings.fold(0, (count, sitting) => count + sitting.slots);
+  final total = sessions.fold(0, (count, session) => count + session.slots);
   stdout
     ..writeln()
     ..writeln(
       '== family exposure'
       '${dose ? ', dose control ${_describe(policy)}' : ', no dose control'}: '
-      '${sittings.length} sittings of $slots, $seeds seeds, $total slots',
+      '${sessions.length} sessions of $slots, $seeds seeds, $total slots',
     )
     ..writeln(
       '   share is of the run after the family first appeared; after is of '
@@ -243,7 +243,7 @@ class _Row {
 
 List<_Row> _exposures(
   List<TrajectoryJob> jobs,
-  List<Sitting> sittings,
+  List<Session> sessions,
   int window,
   int streak,
   bool dose,
@@ -260,11 +260,11 @@ List<_Row> _exposures(
     // What pacing actually did, which only the run can say: a set-aside is a
     // substitution at the slot, not a property of the trajectory it produced.
     final setAsides = <String, int>{};
-    final trajectory = runSittings(
+    final trajectory = runTrajectorySessions(
       player: playerOf(job.archetypeId),
       seed: job.seed,
       materials: allScales,
-      sittings: sittings,
+      sessions: sessions,
       generated: generated,
       pipeline: pipeline,
       observePacing: (_, pacing) {

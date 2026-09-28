@@ -6,7 +6,7 @@
 > its thresholds are still provisional.
 
 Whether the players a supplied pulse is for can be told apart from the players
-it must leave alone, and whether a sitting brings the same kind of timing
+it must leave alone, and whether a session brings the same kind of timing
 evidence back often enough for a detector to act on it within one.
 
 ## What was run
@@ -22,7 +22,7 @@ unsteady_pulse_transfers      intermediate, loses half its steadiness alone,
 unsteady_pulse_relapses       the same, and none of it stays
 unsteady_pulse_unresponsive   the same, and a click makes up none of it
 true_beginner                 unsteady because the hands are
-reliable_self_paced           the device sitting the calibration was fitted to
+reliable_self_paced           the device session the calibration was fitted to
 ```
 
 The unsteady players are `intermediate` with only the pulse traits turned, so
@@ -35,8 +35,8 @@ bit for bit as before.
 count-in attempts, six under a metronome, and six count-in attempts again.
 
 **Recurrence.** Four seeds of every player through the production scheduler on
-the 48-scale catalog, `normal_month` (seven sittings across thirty days), at
-twelve and at twenty-four slots a sitting. An observation is an attempt that
+the 48-scale catalog, `normal_month` (seven sessions across thirty days), at
+twelve and at twenty-four slots a session. An observation is an attempt that
 started and tested the pulse; nothing judges whether its timing was good,
 because no threshold for that exists yet. Each row asks the same question with a
 different meaning of "the same kind":
@@ -45,7 +45,7 @@ different meaning of "the same kind":
 execution context   material x hands x hand motion
 material            the scale, any hands
 hands               right, left, or together, any scale
-sitting             everything in the sitting
+session             everything in the session
 ```
 
 ## Findings
@@ -80,20 +80,20 @@ the steady players. `true_beginner` reads as unsteady for the same reason it
 reads as broken: continuity is as low as steadiness, which is what a
 clean-performance precondition exists to separate from a pulse problem.
 
-**Per execution context, a sitting almost never brings the evidence back.**
+**Per execution context, a session almost never brings the evidence back.**
 
 ```text
-12 slots a sitting   obs/sit  keys/sit  keys 2+  keys 3+  sits 2+  sits 3+  gap
+12 slots a session   obs/sit  keys/sit  keys 2+  keys 3+  sits 2+  sits 3+  gap
 execution context      9.8      9.3       5%       1%      34%       6%    1
 material               9.8      8.0      19%       4%      85%      28%    1
 hands                  9.8      2.9      89%      69%     100%      99%    2
-sitting                9.8      1.0     100%     100%     100%     100%    1
+session                9.8      1.0     100%     100%     100%     100%    1
 ```
 
-At twelve slots, one sitting in three sees any context twice and one in sixteen
+At twelve slots, one session in three sees any context twice and one in sixteen
 sees one three times. A rule waiting for "the last few attempts in this context"
 would almost never fire under the scheduler's interleaving. Grouped by hand
-configuration, nearly every sitting has a hand observed three times.
+configuration, nearly every session has a hand observed three times.
 
 When a context does come back, it comes back within a slot or two. The
 candidates for that are the mechanisms that repeat an exercise on purpose,
@@ -101,29 +101,29 @@ recovery above all, and a recovery's first attempt failed retrieval, so it would
 not pass a clean-notes precondition either. The census does not yet say which
 mechanism it was.
 
-Doubling the sitting does not rescue the per-context rule. Twice the
+Doubling the session does not rescue the per-context rule. Twice the
 observations spread over twice the contexts, so the share of contexts seen twice
-barely moves, and a context seen three times is still a sitting in six:
+barely moves, and a context seen three times is still a session in six:
 
 ```text
-24 slots a sitting   obs/sit  keys/sit  keys 2+  keys 3+  sits 2+  sits 3+  gap
+24 slots a session   obs/sit  keys/sit  keys 2+  keys 3+  sits 2+  sits 3+  gap
 execution context     19.7     18.1       7%       1%      69%      17%    2
 material              19.7     14.9      23%       6%      99%      63%    1
 hands                 19.7      3.0      96%      94%     100%     100%    2
-sitting               19.7      1.0     100%     100%     100%     100%    1
+session               19.7      1.0     100%     100%     100%     100%    1
 ```
 
 ## Remediation under the scheduler
 
-The mechanism as built: per hand configuration within a sitting, three clean
+The mechanism as built: per hand configuration within a session, three clean
 attempts in a row below 0.5 steadiness, then one attempt with a pulse and one
-without, once a sitting. Clean means played through, pitch integrity at least
+without, once a session. Clean means played through, pitch integrity at least
 0.9, continuity at least 0.5, and a pulse the player held. Eight seeds of every
-player, `normal_month`, twelve slots a sitting, through the production scheduler
+player, `normal_month`, twelve slots a session, through the production scheduler
 with `PulseRemediationConfig` in force:
 
 ```text
-                              sittings  cycles  withdrawn  steady with  after
+                              sessions  cycles  withdrawn  steady with  after
 intermediate                     0%        0        0          -          -
 advanced                         0%        0        0          -          -
 unsteady_pulse_transfers        21%       12        5        0.65       0.48
@@ -139,7 +139,7 @@ the clean gate before its steadiness is read.
 
 **Nor is any swept archetype.** With remediation in the shipped configuration,
 none of the thirteen in `PlayerArchetypes.all` opened a cycle in four seeds of
-the same schedule. It is not impossible: a single fifty-slot sitting of
+the same schedule. It is not impossible: a single fifty-slot session of
 `developing` did open one, since that player's continuity and steadiness are
 independent draws around a motor quality near 0.5, so one can clear its bar
 while the other misses its own three times running. A gate on the gap between
@@ -161,14 +161,14 @@ has to compare it with unaided attempts that were not selected, never with the
 ones that qualified the hand.
 
 **Half the cycles lose their withdrawal.** A hand that qualifies late in a
-sitting has its supported attempt and then the sitting ends. At twelve slots
+session has its supported attempt and then the session ends. At twelve slots
 that is roughly half of them. Nothing is recorded wrongly, since a withdrawal
-that never happened closes nothing, but a sitting that ends on a supported
+that never happened closes nothing, but a session that ends on a supported
 attempt has spent it on support alone.
 
 ## Consequences
 
-- Qualification is per hand configuration within a sitting, the finest grain the
+- Qualification is per hand configuration within a session, the finest grain the
   evidence reaches, and still session-scoped rather than a trait.
 - The intervention stays on the exercise that qualified.
 - A player whose continuity is as poor as their steadiness has an execution

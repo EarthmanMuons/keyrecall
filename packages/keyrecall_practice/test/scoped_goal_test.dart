@@ -69,7 +69,7 @@ void main() {
           expect(
             decision,
             isA<PresentedAttempt>(),
-            reason: 'the first slot of a scoped sitting resolves, for $where',
+            reason: 'the first slot of a scoped session resolves, for $where',
           );
           expect(
             (decision as PresentedAttempt).exercise.material.materialId,

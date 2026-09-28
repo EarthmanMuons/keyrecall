@@ -5,7 +5,7 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 /// Why a player stays on supported rungs, over the first and second half of
-/// their sittings.
+/// their sessions.
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('player', defaultsTo: 'true_beginner')
@@ -23,8 +23,8 @@ Future<void> main(List<String> arguments) async {
   const policy = RequirementCompletionPolicy.standard;
 
   for (final (label, half) in [
-    ('first half', slots.where((slot) => slot.sitting < 5)),
-    ('second half', slots.where((slot) => slot.sitting >= 5)),
+    ('first half', slots.where((slot) => slot.session < 5)),
+    ('second half', slots.where((slot) => slot.session >= 5)),
   ]) {
     final picks = half.toList();
     print('$label: ${picks.length} attempts');

@@ -75,7 +75,7 @@ Map<Exercise, CandidateTrace> tracesByExercise(List<CandidateTrace> traces) => {
   for (final trace in traces) trace.exercise: trace,
 };
 
-/// A configuration whose sittings end after [attempts] slots.
+/// A configuration whose sessions end after [attempts] slots.
 ///
 /// Production leaves the bound unset, so a test about the cap has to ask for
 /// one rather than read it off the shipped configuration.

@@ -24,9 +24,9 @@ void main() {
     achievedTempoRatio: 1.1,
     topologyAccuracy: 0.9,
   );
-  final export = SittingExport(
+  final export = SessionExport(
     profileId: 'profile-1',
-    sittingId: 'session-1',
+    sessionId: 'session-1',
     startedAt: DateTime.utc(2026, 9, 7, 10),
     attempts: [
       ExportedAttempt(
@@ -44,11 +44,11 @@ void main() {
     ],
   );
 
-  test('a sitting survives the round trip', () {
-    final read = decodeSittingExport(encodeSittingExport(export));
+  test('a session survives the round trip', () {
+    final read = decodeSessionExport(encodeSessionExport(export));
 
     expect(read.profileId, 'profile-1');
-    expect(read.sittingId, 'session-1');
+    expect(read.sessionId, 'session-1');
     expect(read.startedAt, export.startedAt);
     expect(read.attempts.length, 2);
     expect(read.attempts.first.exercise, exercise);
@@ -56,31 +56,31 @@ void main() {
   });
 
   test('familiarity keeps its three answers apart', () {
-    final read = decodeSittingExport(encodeSittingExport(export));
+    final read = decodeSessionExport(encodeSessionExport(export));
 
     expect(read.attempts.first.familiarity, MaterialFamiliarity.unknown);
     expect(read.attempts.last.familiarity, MaterialFamiliarity.familiar);
   });
 
   test('a version it cannot read is refused, not guessed at', () {
-    final ahead = encodeSittingExport(export).replaceFirst(
-      '"schema_version": $sittingExportSchemaVersion',
+    final ahead = encodeSessionExport(export).replaceFirst(
+      '"schema_version": $sessionExportSchemaVersion',
       '"schema_version": 99',
     );
 
     expect(
-      () => decodeSittingExport(ahead),
+      () => decodeSessionExport(ahead),
       throwsA(isA<JournalFormatException>()),
     );
   });
 
   test('an unknown familiarity is refused', () {
-    final wrong = encodeSittingExport(
+    final wrong = encodeSessionExport(
       export,
     ).replaceFirst('"familiarity": "unknown"', '"familiarity": "vaguely"');
 
     expect(
-      () => decodeSittingExport(wrong),
+      () => decodeSessionExport(wrong),
       throwsA(isA<JournalFormatException>()),
     );
   });
@@ -99,7 +99,7 @@ void main() {
       identity: AttemptIdentity(
         profileId: 'abc12345',
         attemptId: 'acq-0',
-        sessionId: 'sitting-1',
+        sessionId: 'session-1',
         indexInSession: 0,
         occurredAt: DateTime.utc(2026, 9, 9),
       ),
@@ -117,11 +117,11 @@ void main() {
     );
 
     test('travels beside the ordinary attempts, not among them', () {
-      final read = decodeSittingExport(
-        encodeSittingExport(
-          SittingExport(
+      final read = decodeSessionExport(
+        encodeSessionExport(
+          SessionExport(
             profileId: 'abc12345',
-            sittingId: 'sitting-1',
+            sessionId: 'session-1',
             startedAt: DateTime.utc(2026, 9, 9),
             attempts: const [],
             acquisition: [record],
@@ -130,7 +130,7 @@ void main() {
       );
 
       // A fit reads the ordinary attempts. Supported work is here so a device
-      // sitting can be asked what an attempt actually recorded, and it must
+      // session can be asked what an attempt actually recorded, and it must
       // never become part of what a learner is fitted from.
       expect(read.attempts, isEmpty);
       expect(read.acquisition, hasLength(1));
@@ -142,10 +142,10 @@ void main() {
     });
 
     test('an export written before it existed still reads', () {
-      final current = encodeSittingExport(
-        SittingExport(
+      final current = encodeSessionExport(
+        SessionExport(
           profileId: 'abc12345',
-          sittingId: 'sitting-1',
+          sessionId: 'session-1',
           startedAt: DateTime.utc(2026, 9, 9),
           attempts: const [],
         ),
@@ -154,7 +154,7 @@ void main() {
         ..['schema_version'] = 1
         ..remove('acquisition');
 
-      expect(decodeSittingExport(jsonEncode(legacy)).acquisition, isEmpty);
+      expect(decodeSessionExport(jsonEncode(legacy)).acquisition, isEmpty);
     });
   });
 }

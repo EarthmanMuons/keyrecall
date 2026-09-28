@@ -151,7 +151,7 @@ void main() {
     );
   });
 
-  group('a sitting that changes goal', () {
+  group('a session that changes goal', () {
     test(
       'keeps its learner and journal, and decides in the new scope',
       () async {

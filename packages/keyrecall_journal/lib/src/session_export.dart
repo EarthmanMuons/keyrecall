@@ -9,12 +9,12 @@ import 'codecs/domain_codec.dart';
 import 'codecs/learner_codec.dart';
 import 'schema.dart';
 
-/// The wire format one exported sitting is written in.
+/// The wire format one exported session is written in.
 ///
 /// Separate from the journal's own schema version, because this is a file
 /// somebody carries off a device to analyze rather than state the app reads
 /// back. Anything that cannot read this version refuses rather than guessing.
-const int sittingExportSchemaVersion = 2;
+const int sessionExportSchemaVersion = 3;
 
 /// What was known, before the attempt, about the learner having met the
 /// material.
@@ -43,10 +43,10 @@ enum MaterialFamiliarity {
       );
 }
 
-/// One attempt of an exported sitting: what was asked, what happened, and what
+/// One attempt of an exported session: what was asked, what happened, and what
 /// was known beforehand.
 class ExportedAttempt {
-  /// Position in the sitting, from zero.
+  /// Position in the session, from zero.
   final int index;
 
   /// The exercise as it was presented, not a later reconstruction.
@@ -63,7 +63,7 @@ class ExportedAttempt {
   });
 }
 
-/// One sitting, as a file.
+/// One session, as a file.
 ///
 /// [profileId] and the timestamps are operational metadata for finding and
 /// ordering exports. Nothing that fits a learner is entitled to read them: a
@@ -75,40 +75,40 @@ class ExportedAttempt {
 /// was played completely and the conditions it was played under only in part.
 /// Deferred deliberately, with a trigger: see the roadmap's reserved extensions
 /// before treating an export as calibration data.
-class SittingExport {
+class SessionExport {
   final int schemaVersion;
   final String profileId;
-  final String sittingId;
+  final String sessionId;
   final DateTime startedAt;
   final List<ExportedAttempt> attempts;
 
-  /// Supported attempts from the same sitting, beside the ordinary ones and
+  /// Supported attempts from the same session, beside the ordinary ones and
   /// never among them.
   ///
   /// A fit reads [attempts]. These are not ordinary evidence and must not
   /// become part of one, which is why they are a separate list rather than
   /// rows with a flag on them. They are here because the question a device
-  /// sitting most often has to answer about supported work is what a
+  /// session most often has to answer about supported work is what a
   /// particular attempt actually recorded, and an export that omitted them
   /// could not answer it.
   final List<AcquisitionAttemptRecord> acquisition;
 
-  const SittingExport({
+  const SessionExport({
     required this.profileId,
-    required this.sittingId,
+    required this.sessionId,
     required this.startedAt,
     required this.attempts,
     this.acquisition = const [],
-    this.schemaVersion = sittingExportSchemaVersion,
+    this.schemaVersion = sessionExportSchemaVersion,
   });
 }
 
 /// Writes [export] as JSON.
-String encodeSittingExport(SittingExport export) =>
+String encodeSessionExport(SessionExport export) =>
     const JsonEncoder.withIndent('  ').convert({
       'schema_version': export.schemaVersion,
       'profile_id': export.profileId,
-      'sitting_id': export.sittingId,
+      'session_id': export.sessionId,
       'started_at': encodeTime(export.startedAt),
       'attempts': [
         for (final attempt in export.attempts)
@@ -122,27 +122,27 @@ String encodeSittingExport(SittingExport export) =>
       'acquisition': [for (final record in export.acquisition) record.toJson()],
     });
 
-/// Reads a sitting back, rejecting a version it does not know.
+/// Reads a session back, rejecting a version it does not know.
 ///
 /// Throws [JournalFormatException] for a version it cannot read or a field it
-/// cannot make sense of, rather than returning a half-built sitting that an
+/// cannot make sense of, rather than returning a half-built session that an
 /// estimator would quietly fit.
-SittingExport decodeSittingExport(String source) => located(
-  () => _decodeSittingExport(source),
-  'sitting export',
+SessionExport decodeSessionExport(String source) => located(
+  () => _decodeSessionExport(source),
+  'session export',
   location: 'export',
 );
 
-SittingExport _decodeSittingExport(String source) {
+SessionExport _decodeSessionExport(String source) {
   final json = jsonDecode(source);
   if (json is! Map<String, Object?>) {
     throw const JournalFormatException('an export is a JSON object');
   }
   final version = requireInt(json, 'schema_version', location: 'export');
-  if (version != sittingExportSchemaVersion && version != 1) {
+  if (version != sessionExportSchemaVersion && version != 1) {
     throw JournalFormatException(
       'cannot read export schema $version, this reads '
-      '$sittingExportSchemaVersion',
+      '$sessionExportSchemaVersion',
       location: 'export',
     );
   }
@@ -154,10 +154,10 @@ SittingExport _decodeSittingExport(String source) {
     );
   }
 
-  return SittingExport(
+  return SessionExport(
     schemaVersion: version,
     profileId: requireString(json, 'profile_id', location: 'export'),
-    sittingId: requireString(json, 'sitting_id', location: 'export'),
+    sessionId: requireString(json, 'session_id', location: 'export'),
     startedAt: requireTime(json, 'started_at', location: 'export'),
     attempts: [
       for (final (position, attempt) in attempts.indexed)

@@ -1,6 +1,6 @@
 /// The KeyRecall attempt transaction and its durable store.
 ///
-/// [PracticeSession] runs one sitting: it decides what to present, makes that
+/// [PracticeSession] runs one session: it decides what to present, makes that
 /// decision durable before the learner sees it, and commits the outcome as an
 /// attempt. It survives being interrupted anywhere in that sequence, because
 /// the decision is persisted before presentation and the attempt id chosen

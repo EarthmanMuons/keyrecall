@@ -56,7 +56,7 @@ session an asynchronous result belongs to, and it exists because every part of
 the app can be locally correct while the app still applies a valid result to the
 wrong owner: the journal validates a transaction, the worker evaluates a
 request, the capture records notes, and the profile repository switches
-profiles, and none of them can see that the sitting moved under the result.
+profiles, and none of them can see that the session moved under the result.
 
 > **An asynchronous continuation may finish work for its original owner, but it
 > may publish state or start further work only if that owner is still current.**
@@ -70,7 +70,7 @@ The five rules the app layer holds to:
 1. **A selected profile does not identify an asynchronous operation's owner.**
    An operation carries the identity it began under, and never resolves the
    owner again after an await.
-2. **A generation uniquely identifies one live sitting.** Two sittings for one
+2. **A generation uniquely identifies one live session.** Two sessions for one
    profile are two owners, whatever the storage underneath them says.
 3. **An attempt belongs permanently to the session generation that issued it.**
    Completion names its target: `finish`, `decline`, and `finishAcquisition`
@@ -79,10 +79,10 @@ The five rules the app layer holds to:
 4. **Superseded work may satisfy a durability obligation it already started, but
    may not publish into or schedule for the replacement.** An append in flight
    owes history an answer; the continuation that would have shown its result
-   does not get to run. A sitting that was replaced or torn down while it was
+   does not get to run. A session that was replaced or torn down while it was
    opening stops before deciding, because deciding persists a pending slot over
    whatever is presenting one now. Being replaced and being torn down are two
-   ways of no longer being the sitting rather than one: a build with nothing
+   ways of no longer being the session rather than one: a build with nothing
    after it is not superseded, and is just as gone.
 5. **A recoverable commit failure retains and retries the frozen close.**
    Reopening is a different recovery, and one that abandons the performance the
@@ -90,14 +90,14 @@ The five rules the app layer holds to:
 
 Recovery is single-flight with everything else the loop writes. A recovery
 already running is what a retry exists to finish, not something to start again:
-reopening while a frozen close is mid-write is how the sitting on screen ends up
+reopening while a frozen close is mid-write is how the session on screen ends up
 behind durable history.
 
 Two resources are owned rather than shared:
 
-- **A scheduler host belongs to the sitting that opened it**, for that sitting's
+- **A scheduler host belongs to the session that opened it**, for that session's
   lifetime. Binding replaces the scope a host holds, so a shared host answers
-  both sittings against whichever scope bound last. Worker requests carry ids
+  both sessions against whichever scope bound last. Worker requests carry ids
   and are answered by id; a worker that dies, however it dies, fails every
   request outstanding on it rather than leaving them pending. Each binding names
   itself before it yields, so one superseded or disposed while its isolate was
@@ -111,20 +111,20 @@ how to recover:
 
 | Failure      | What is still valid                  | Recovery                                    |
 | ------------ | ------------------------------------ | ------------------------------------------- |
-| `history`    | possibly no usable sitting           | reopen, or erase                            |
+| `history`    | possibly no usable session           | reopen, or erase                            |
 | `commit`     | the frozen close, on its own session | write that same attempt                     |
-| `scheduling` | everything recorded, and the sitting | ask again, rebinding if the worker was lost |
+| `scheduling` | everything recorded, and the session | ask again, rebinding if the worker was lost |
 
 Erasing is offered for the first only. Beside an attempt that is still savable
 it destroys the practice it was meant to rescue.
 
 `scheduling` covers the whole of the decide-to-durability path, and not every
 failure in it is the host's. Where the worker was lost, recovery re-establishes
-where the sitting decides before asking again, because what died took its
+where the session decides before asking again, because what died took its
 binding and nothing authoritative. Every other failure there, such as the
 pending slot not reaching storage, retries from the same still-authoritative
-sitting without rebinding: the host never said it was at fault, and diagnosing
-one nobody observed is its own kind of wrong answer. Neither reopens a sitting
+session without rebinding: the host never said it was at fault, and diagnosing
+one nobody observed is its own kind of wrong answer. Neither reopens a session
 whose state never left this isolate.
 
 Plan reads are ordered behind plan writes for the same profile, above the

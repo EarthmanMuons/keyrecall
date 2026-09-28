@@ -32,7 +32,7 @@ Future<void> main(List<String> arguments) async {
           'and eight took 459s at 9.1GB, so past a point more workers are '
           'both slower and the reason a sweep gets killed.',
     )
-    ..addOption('slots', defaultsTo: '12', help: 'Attempts per sitting.')
+    ..addOption('slots', defaultsTo: '12', help: 'Attempts per session.')
     ..addOption('schedules', defaultsTo: 'normal_month,interrupted')
     ..addOption('archetypes', help: 'Every one when omitted.')
     ..addOption('min-attempts', defaultsTo: '3,4,6,8')
@@ -100,7 +100,7 @@ Future<void> main(List<String> arguments) async {
       (Platform.numberOfProcessors < 4 ? Platform.numberOfProcessors : 4);
 
   for (final schedule in options.option('schedules')!.split(',')) {
-    final sittings = LongitudinalSchedules.named(schedule, slots: slots);
+    final sessions = LongitudinalSchedules.named(schedule, slots: slots);
     final jobs = [
       for (final player in players)
         for (var seed = 0; seed < seeds; seed++)
@@ -114,7 +114,7 @@ Future<void> main(List<String> arguments) async {
     stdout
       ..writeln()
       ..writeln(
-        '== dose sweep on $schedule: ${sittings.length} sittings of $slots, '
+        '== dose sweep on $schedule: ${sessions.length} sessions of $slots, '
         '$seeds seeds, ${players.length} archetypes, $workers workers',
       )
       ..writeln(
@@ -138,7 +138,7 @@ Future<void> main(List<String> arguments) async {
     final batches = await Future.wait([
       for (final bucket in buckets)
         if (bucket.isNotEmpty)
-          Isolate.run(() => _measure(bucket, sittings, arms)),
+          Isolate.run(() => _measure(bucket, sessions, arms)),
     ]);
     for (final (index, arm) in arms.indexed) {
       stdout.writeln(
@@ -159,7 +159,7 @@ String _row(DoseConfig? arm, List<_Run> runs) {
       for (final family in run.families)
         if (family.lowYield) family,
   ];
-  final reachedHt = [for (final run in runs) ?run.handsTogetherSitting];
+  final reachedHt = [for (final run in runs) ?run.handsTogetherSession];
   return [
     '   ${_label(arm).padRight(30)}',
     _percent(_mean(runs.map((run) => run.contractedShare))).padLeft(5),
@@ -170,7 +170,7 @@ String _row(DoseConfig? arm, List<_Run> runs) {
       lowYield.map((family) => family.streak.toDouble()),
     ).toStringAsFixed(0).padLeft(7),
     _median(
-      reachedHt.map((sitting) => sitting.toDouble()),
+      reachedHt.map((session) => session.toDouble()),
     ).toStringAsFixed(0).padLeft(4),
     '${runs.where((run) => run.matchesBaseline).length}/${runs.length}'.padLeft(
       8,
@@ -233,7 +233,7 @@ class _Run {
   final double contractedShare;
   final double changedShare;
   final List<_Family> families;
-  final int? handsTogetherSitting;
+  final int? handsTogetherSession;
   final bool matchesBaseline;
   final int dry;
 
@@ -242,7 +242,7 @@ class _Run {
     required this.contractedShare,
     required this.changedShare,
     required this.families,
-    required this.handsTogetherSitting,
+    required this.handsTogetherSession,
     required this.matchesBaseline,
     required this.dry,
   });
@@ -256,7 +256,7 @@ class _Run {
 /// trajectory while an arm is running.
 List<_Run> _measure(
   List<TrajectoryJob> jobs,
-  List<Sitting> sittings,
+  List<Session> sessions,
   List<DoseConfig?> arms,
 ) {
   final generated = generateCandidates(InstrumentProfile(), allScales);
@@ -271,11 +271,11 @@ List<_Run> _measure(
 
   for (final job in jobs) {
     final chosen = _digestOf(
-      runSittings(
+      runTrajectorySessions(
         player: playerOf(job.archetypeId),
         seed: job.seed,
         materials: allScales,
-        sittings: sittings,
+        sessions: sessions,
         generated: generated,
         pipeline: baseline,
       ),
@@ -287,7 +287,7 @@ List<_Run> _measure(
               learner: learner,
               config: v1SchedulerConfig.withDose(arm),
             );
-      rows.add(_runOf(index, job, sittings, generated, pipeline, chosen));
+      rows.add(_runOf(index, job, sessions, generated, pipeline, chosen));
     }
   }
   return rows;
@@ -306,18 +306,18 @@ String _digestOf(Trajectory trajectory) => [
 _Run _runOf(
   int arm,
   TrajectoryJob job,
-  List<Sitting> sittings,
+  List<Session> sessions,
   List<Exercise> generated,
   SchedulerPipeline pipeline,
   String baseline,
 ) {
   var spoke = 0;
   var changed = 0;
-  final trajectory = runSittings(
+  final trajectory = runTrajectorySessions(
     player: playerOf(job.archetypeId),
     seed: job.seed,
     materials: allScales,
-    sittings: sittings,
+    sessions: sessions,
     generated: generated,
     pipeline: pipeline,
     observeDose: (_, dose) {
@@ -344,8 +344,8 @@ _Run _runOf(
           streak: exposure.longestUnproductiveStreak,
         ),
     ],
-    handsTogetherSitting: census.milestones[Milestone.handsTogether],
+    handsTogetherSession: census.milestones[Milestone.handsTogether],
     matchesBaseline: _digestOf(trajectory) == baseline,
-    dry: census.sittings.where((sitting) => sitting.ranDry).length,
+    dry: census.sessions.where((session) => session.ranDry).length,
   );
 }

@@ -83,10 +83,10 @@ class AttemptIdentity {
   /// Locally unique id, and the idempotency key for appending.
   final String attemptId;
 
-  /// The practice sitting this belongs to.
+  /// The practice session this belongs to.
   final String sessionId;
 
-  /// Position within that sitting, counting from zero.
+  /// Position within that session, counting from zero.
   final int indexInSession;
 
   /// When the attempt happened, in UTC.
@@ -153,7 +153,7 @@ class AttemptRecord {
   /// Position in this journal, counting from zero in append order.
   ///
   /// Distinct from [AttemptIdentity.indexInSession], which is position within
-  /// one practice sitting. A history spans many sittings, so a checkpoint has
+  /// one practice session. A history spans many sessions, so a checkpoint has
   /// to say where it sits in the history, and a reader has to be able to tell
   /// that a record is missing. Contiguity gives both.
   final int journalSequence;

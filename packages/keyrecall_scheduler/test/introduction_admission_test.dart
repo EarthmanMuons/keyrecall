@@ -179,7 +179,7 @@ void main() {
   test('an altered form cannot be introduced before its foundation', () {
     // The distinction eligibility alone could not make. Provisional means
     // deferred while something better exists, which is right for an execution
-    // condition and wrong for a curriculum phase: a device sitting introduced
+    // condition and wrong for a curriculum phase: a device session introduced
     // harmonic and melodic minor six times before hands-together work
     // appeared once, every time through this exception.
     final state = learnerAt(-1.0);
@@ -197,7 +197,7 @@ void main() {
   });
 
   test('the barrier is asked directly, not read off the first refusal', () {
-    // Straight from a device sitting: an unseen harmonic minor at an unguided
+    // Straight from a device session: an unseen harmonic minor at an unguided
     // rung reports that its first encounter has to be cued, because that rule
     // refuses before the phase check is reached. Deciding a barrier from a
     // diagnostic that stops at the first answer is how this went wrong once

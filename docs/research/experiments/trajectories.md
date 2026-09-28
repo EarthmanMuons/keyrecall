@@ -1,6 +1,6 @@
 # Trajectory simulation
 
-Device sittings found real defects, and they were finding them slowly. A person
+Device sessions found real defects, and they were finding them slowly. A person
 at a piano covers one point in the space of players: one natural tempo, one pair
 of hands, one level of familiarity, one honest answer at placement. Several
 defects were interactions between locally reasonable rules, visible only in a
@@ -22,7 +22,7 @@ why simulation had been silent about all of them.
 | Paired experiments       | Does a policy change trajectories for the better?     | While designing one   |
 | Device playing           | Do the abstractions resemble real playing?            | Ecological validation |
 
-Device sittings stop being a coverage mechanism and become the check on whether
+Device sessions stop being a coverage mechanism and become the check on whether
 the model's assumptions correspond to what a person at a keyboard actually
 experiences, which is the one thing simulation cannot answer.
 
@@ -118,7 +118,7 @@ clamped to a plausible zero, it separates into two different defects:
 
 - **Hands close in ability.** Offer latency is zero at median and p90.
   Coordination work is then chosen in 15 to 25 runs of 40, a median of 20 to 25
-  slots later. Available immediately, unchosen for a third of a sitting, often
+  slots later. Available immediately, unchosen for a third of a session, often
   never. That is a ranking question.
 - **One weak hand.** The prerequisite is satisfied in 2 runs of 40, and for a
   true beginner in none. The frontier advances only on an attempt at or above
@@ -161,7 +161,7 @@ as one who keeps losing it.
 
 Separately: the tempo probe reads as a mechanism that opens and is not answered.
 The advanced player opens seven to ten probes across four seeds of `interrupted`
-and answers none, stranding one or two at a sitting boundary. Too few openings
+and answers none, stranding one or two at a session boundary. Too few openings
 for a per-run threshold to trip on, which is worth remembering: **a mechanism
 that fires rarely needs the census rather than a per-run threshold.**
 
@@ -173,7 +173,7 @@ person did not, so every such run established how the scheduler reacts to its
 own aging belief and nothing about whether that reaction suits somebody who
 really decayed.
 
-Three people, one schedule, four sittings then a gap, measured on the held-out
+Three people, one schedule, four sessions then a gap, measured on the held-out
 set on arrival. The stable player forgets nothing; the matched returner loses
 execution on a 45-day half-life and the notes on a 20-day one; the faster
 returner loses them on 12 and 6.
@@ -197,7 +197,7 @@ and 1.000 at best.
 So the failure a returner meets is not a scheduler asking for April's work. It
 is one **expecting nothing of somebody who can still play.**
 
-What that costs in the return sitting: the first thing offered is unguided work
+What that costs in the return session: the first thing offered is unguided work
 the model predicts at 0.00, admitted by an execution-progression bypass. It does
 not start. Recovery then walks guidance down and the attempt at continuous
 cueing succeeds. The ladder works, and the returner pays one failed attempt to

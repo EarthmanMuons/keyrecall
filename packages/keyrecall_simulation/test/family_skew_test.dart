@@ -25,11 +25,11 @@ void main() {
   final runs = {
     for (final weak in weakIn.keys)
       for (final seed in seeds)
-        (weak, seed): runSittings(
+        (weak, seed): runTrajectorySessions(
           player: weakIn[weak]!,
           seed: seed,
           materials: catalog,
-          sittings: sittingsOnDays([0, 1, 2, 3], slots: 20),
+          sessions: sessionsOnDays([0, 1, 2, 3], slots: 20),
           assessment: set,
         ),
   };
@@ -102,11 +102,11 @@ void main() {
           trace.challengeBypass == ChallengeBypass.executionProgression;
 
       for (final seed in [2, 3, 4]) {
-        final trajectory = runSittings(
+        final trajectory = runTrajectorySessions(
           player: weakIn[weak]!,
           seed: seed,
           materials: catalog,
-          sittings: sittingsOnDays([0, 1, 2, 3], slots: 20),
+          sessions: sessionsOnDays([0, 1, 2, 3], slots: 20),
           observeTraces: (_, traces) =>
               admitted += traces.where(foothold).length,
         );
@@ -233,11 +233,11 @@ void main() {
 
       for (final seed in [2, 4]) {
         var needed = false;
-        runSittings(
+        runTrajectorySessions(
           player: weakIn[weak]!,
           seed: seed,
           materials: catalog,
-          sittings: sittingsOnDays([0, 1, 2, 3], slots: 20),
+          sessions: sessionsOnDays([0, 1, 2, 3], slots: 20),
           observeState: (_, state) =>
               needed = !state.materialExecution.values.any(
                 (residual) =>
@@ -281,7 +281,7 @@ void main() {
       mean,
       lessThan(band.pMin),
       reason:
-          'sitting where it always sat, between the floor a first exposure '
+          'session where it always sat, between the floor a first exposure '
           'gets and the one every later exposure used to be held to',
     );
   });

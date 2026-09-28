@@ -32,13 +32,13 @@ void main() {
       scope: GoalTrajectoryScope.foundations,
       player: PlayerArchetypes.intermediate,
       seed: 0,
-      sittings: 2,
-      slotsPerSitting: 10,
+      sessions: 2,
+      slotsPerSession: 10,
     );
 
     expect(run.targetCount, 20);
-    expect(run.sittings, hasLength(2));
-    expect({for (final pick in run.selections) pick.sitting}, {0, 1});
+    expect(run.sessions, hasLength(2));
+    expect({for (final pick in run.selections) pick.session}, {0, 1});
     expect(run.selections.every((pick) => pick.isTarget), isTrue);
   });
 }

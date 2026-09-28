@@ -268,7 +268,7 @@ class _Tools extends ConsumerWidget {
       ),
       _Tool(
         icon: Icons.restart_alt,
-        title: 'Reopen the sitting',
+        title: 'Reopen the session',
         subtitle: 'Read it back from storage, as a relaunch would',
         onTap: () => ref.read(practiceLoopProvider.notifier).reopen(),
       ),

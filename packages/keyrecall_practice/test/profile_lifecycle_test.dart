@@ -286,7 +286,7 @@ void main() {
                   placement: PlacementTier.someExperience,
                 ))
                 as ProfileCreated;
-        // An incarnation, the way opening a sitting establishes one, so the
+        // An incarnation, the way opening a session establishes one, so the
         // deletion has all three of a profile's durable parts to destroy.
         await lifecycle.store.lifetimeOf(created.profile.id);
         await lifecycle.store.saveGoalId(

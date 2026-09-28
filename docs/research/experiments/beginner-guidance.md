@@ -15,7 +15,7 @@ something different:
 
 ## Method
 
-The true beginner under Foundations over ten daily sittings of twenty slots,
+The true beginner under Foundations over ten daily sessions of twenty slots,
 four seeds. Each attempt records its rung, how it was admitted, how it went,
 and, for a supported attempt, what became of the unguided realization of the
 same material and hand.
@@ -29,8 +29,8 @@ dart run keyrecall_simulation:guidance_ladder --player true_beginner \
 
 | Half          | Cued | Previewed, retrieved | Unguided, retrieved | Retrieved and meeting coverage |
 | ------------- | ---: | -------------------: | ------------------: | -----------------------------: |
-| Sittings 1-5  |  131 |             27 / 115 |              6 / 27 |                              2 |
-| Sittings 6-10 |   98 |             45 / 113 |             20 / 66 |                              3 |
+| Sessions 1-5  |  131 |             27 / 115 |              6 / 27 |                              2 |
+| Sessions 6-10 |   98 |             45 / 113 |             20 / 66 |                              3 |
 
 For a supported attempt, the unguided version of it was refused by recovery
 after a failure 215 times, fell outside the challenge band 154 times, and was
@@ -54,7 +54,7 @@ chosen, and is what it is for.
 
 **Coverage waits on timing.** Of 26 unguided retrievals, 17 had the pitch
 accuracy coverage asks for and 4 the timing, and 1 had both. This archetype's
-mean motor score moves from 0.19 to 0.23 over ten sittings, because its
+mean motor score moves from 0.19 to 0.23 over ten sessions, because its
 execution learns slowly, and coverage asks for 0.5. No change to the ladder
 would cover Foundations for it inside 200 slots.
 
@@ -66,4 +66,4 @@ requirement should ask of someone at the start.
 ## Interpretation boundary
 
 One archetype, whose abilities and learning rates are chosen rather than fitted.
-The same trace pointed at real sittings is the test that would matter.
+The same trace pointed at real sessions is the test that would matter.

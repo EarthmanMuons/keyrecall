@@ -23,7 +23,7 @@ AttemptRecord recordAt({
       attemptId: attemptId,
       sessionId: sessionId,
       indexInSession: indexInSession,
-      // History order, not sitting order: the model timeline follows the
+      // History order, not session order: the model timeline follows the
       // journal.
       occurredAt: t0.plusDays(sequence.toDouble()),
     ),

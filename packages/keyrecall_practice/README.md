@@ -88,7 +88,7 @@ Abandoning is gated on knowing. An append that threw may still have landed, so
 be abandoned once storage has established that its attempt is absent from
 history, and where that is unknown abandoning reads history to settle it and
 fails if it cannot. Treating uncertainty as absence is what leaves one attempt
-in the file and none in the sitting, with every later commit aimed at a sequence
+in the file and none in the session, with every later commit aimed at a sequence
 storage has already filled.
 
 Stated exactly: **once a close is prepared, its complete observable result is
@@ -157,7 +157,7 @@ computed and nothing else. Passing none decides on the calling isolate, which is
 what a test and a simulation want. The app passes an `IsolateScheduler`, because
 a mature full-catalog decision blocks its isolate for a fifth of a second on a
 mid-range phone. Either way the session binds the scope, the learner, and the
-policy constants, applies the returned sitting effect, and writes the pending
+policy constants, applies the returned session effect, and writes the pending
 decision itself.
 
 Placement state is anchored at `Profile.createdAt`, so every attempt must fall

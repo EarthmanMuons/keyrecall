@@ -20,7 +20,7 @@ class AttemptObservation {
   ///
   /// Provenance rather than reconstruction. A person who already played C
   /// major before the app existed is not evidence about meeting new material,
-  /// and inferring novelty from position in an exported sitting would say they
+  /// and inferring novelty from position in an exported session would say they
   /// were. A profile drops the familiarity contrast entirely rather than
   /// answering it from the wrong fact.
   final bool? seenBefore;
@@ -42,12 +42,12 @@ class ReplayPresentation {
       );
 }
 
-/// What a sitting looked like, as distributions rather than a sequence.
+/// What a session looked like, as distributions rather than a sequence.
 ///
 /// A fit compares these rather than reproducing attempts one by one. One human
-/// sitting is not deterministic, and a candidate that matched it attempt by
+/// session is not deterministic, and a candidate that matched it attempt by
 /// attempt would be fitting its noise.
-class SittingProfile {
+class SessionProfile {
   final int attempts;
 
   /// Median tempo actually played, by hand configuration.
@@ -80,7 +80,7 @@ class SittingProfile {
   /// Per hand because natural tempo is per hand and the scheduler need not ask
   /// each of them for the same spread of tempos; pooling lets a difference
   /// between the hands arrive as a statement about compliance. A hand whose
-  /// requested tempo barely varied is absent rather than zero, since a sitting
+  /// requested tempo barely varied is absent rather than zero, since a session
   /// that never asked cannot answer.
   final Map<HandConfiguration, double> tempoSlope;
 
@@ -94,12 +94,12 @@ class SittingProfile {
   /// Share of attempts that were completed.
   final double completionRate;
 
-  /// Median motor score on material the sitting had not seen before, against
+  /// Median motor score on material the session had not seen before, against
   /// material it had.
   final double? unfamiliarMotor;
   final double? familiarMotor;
 
-  const SittingProfile({
+  const SessionProfile({
     required this.attempts,
     required this.achievedTempo,
     required this.motor,
@@ -113,7 +113,7 @@ class SittingProfile {
 
   /// The hands-together cost, in motor score against the better single hand.
   ///
-  /// Null when the sitting holds no hands-together work, which a first sitting
+  /// Null when the session holds no hands-together work, which a first session
   /// often does not.
   double? get handsTogetherPenalty {
     final together = motor[HandConfiguration.together];
@@ -126,16 +126,16 @@ class SittingProfile {
   }
 }
 
-/// The attempts of an exported sitting, as a fit reads them.
+/// The attempts of an exported session, as a fit reads them.
 ///
 /// Everything the estimator is entitled to and nothing else: the exercise, the
 /// outcome, and what was known beforehand. The profile identifier and the
 /// timestamps stay in the file.
 ///
-/// One implementation of the profile semantics, so a device sitting and a
+/// One implementation of the profile semantics, so a device session and a
 /// synthetic one are summarized by the same code and a difference between them
 /// is a difference in the playing.
-List<AttemptObservation> observationsOf(SittingExport export) => [
+List<AttemptObservation> observationsOf(SessionExport export) => [
   for (final attempt in export.attempts)
     AttemptObservation(
       attempt.exercise,
@@ -149,7 +149,7 @@ List<AttemptObservation> observationsOf(SittingExport export) => [
 ];
 
 /// The profile [attempts] make, in the order they happened.
-SittingProfile profileOf(List<AttemptObservation> attempts) {
+SessionProfile profileOf(List<AttemptObservation> attempts) {
   final byHands = <HandConfiguration, List<AttemptObservation>>{};
   final unfamiliar = <double>[];
   final familiar = <double>[];
@@ -191,7 +191,7 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
     if (slope != null) slopes[entry.key] = slope;
   }
 
-  return SittingProfile(
+  return SessionProfile(
     attempts: attempts.length,
     tempoSlope: slopes,
     achievedTempo: {
@@ -220,7 +220,7 @@ SittingProfile profileOf(List<AttemptObservation> attempts) {
 
 /// Plays [presented] through [player], without a scheduler.
 ///
-/// The exercises are the ones a sitting actually asked for, so a candidate is
+/// The exercises are the ones a session actually asked for, so a candidate is
 /// answering the same questions the person answered. Replaying a fit through
 /// the scheduler instead would fit the policy and the player at once.
 List<AttemptObservation> replay(
@@ -240,13 +240,13 @@ List<AttemptObservation> replay(
   ];
 }
 
-/// How far apart two sittings look.
+/// How far apart two sessions look.
 ///
 /// Scaled so that each term is roughly a proportion: tempos as relative error,
 /// scores and rates as absolute difference. Terms only one profile can answer
-/// are skipped rather than defaulted, which keeps a sitting with no
+/// are skipped rather than defaulted, which keeps a session with no
 /// hands-together work from being fitted on a quantity it never observed.
-double profileDistance(SittingProfile a, SittingProfile b) {
+double profileDistance(SessionProfile a, SessionProfile b) {
   var total = 0.0;
   var terms = 0;
 
@@ -278,7 +278,7 @@ double profileDistance(SittingProfile a, SittingProfile b) {
 ///
 /// Staged deliberately. Where a learner starts and how fast they improve are
 /// separate hypotheses, and a fit that moved both at once could explain a weak
-/// sitting either way; a single sitting cannot see improvement at all, so
+/// session either way; a single session cannot see improvement at all, so
 /// [learningRate] belongs to a fit across several.
 enum PlayerParameter {
   naturalTempoRight,
@@ -292,7 +292,7 @@ enum PlayerParameter {
   learningRate,
 }
 
-/// The parameters a first sitting can speak to.
+/// The parameters a first session can speak to.
 const Set<PlayerParameter> initialConditions = {
   PlayerParameter.naturalTempoRight,
   PlayerParameter.naturalTempoLeft,
@@ -308,19 +308,19 @@ const Set<PlayerParameter> behavioralNoise = {
   PlayerParameter.sprintProbability,
 };
 
-/// What one sitting can be fitted on at once.
+/// What one session can be fitted on at once.
 ///
 /// Compliance belongs here rather than to a later stage, because the played
 /// tempo is a blend of the requested one and the natural one and neither is
 /// identified without the other: holding compliance at a guess reports a
 /// natural tempo that is really a statement about the guess. They are one
-/// block, and [SittingProfile.tempoSlope] is what separates them.
-const Set<PlayerParameter> firstSitting = {
+/// block, and [SessionProfile.tempoSlope] is what separates them.
+const Set<PlayerParameter> firstSession = {
   ...initialConditions,
   ...behavioralNoise,
 };
 
-/// One candidate and how far its sitting was from the observed one.
+/// One candidate and how far its session was from the observed one.
 class PlayerFit {
   final SyntheticPlayer player;
   final double distance;
@@ -328,15 +328,15 @@ class PlayerFit {
   const PlayerFit(this.player, this.distance);
 }
 
-/// Candidate players whose sitting resembles [target], closest first.
+/// Candidate players whose session resembles [target], closest first.
 ///
 /// Simulation-based matching rather than an optimizer: sample players, play the
-/// same exercises through each, and keep the ones whose sitting looks like the
+/// same exercises through each, and keep the ones whose session looks like the
 /// observed one. The answer is the ensemble, because several parameter sets
-/// reproduce one sitting and reporting a single point estimate would claim a
+/// reproduce one session and reporting a single point estimate would claim a
 /// precision the data does not carry.
 List<PlayerFit> fitPlayers({
-  required SittingProfile target,
+  required SessionProfile target,
   required List<ReplayPresentation> presented,
   required Set<PlayerParameter> vary,
   SyntheticPlayer? from,
@@ -369,7 +369,7 @@ List<PlayerFit> fitPlayers({
 
 /// The range an ensemble puts a parameter in.
 ///
-/// Reported instead of a best value: a wide range says the sitting did not
+/// Reported instead of a best value: a wide range says the session did not
 /// identify the parameter, which is as useful an answer as a narrow one.
 ({double low, double median, double high}) rangeOf(
   List<PlayerFit> ensemble,
@@ -409,7 +409,7 @@ abstract final class PlayerArchetypeSeed {
 ///
 /// The ability ranges reach further up than a logit of two and a half, which
 /// tops out at a motor score of about 0.92 before span and strain take their
-/// share. A device sitting with a median of one needs more headroom than that,
+/// share. A device session with a median of one needs more headroom than that,
 /// and a prior that cannot reach the data reports a bias as a measurement.
 const Map<PlayerParameter, (double, double)> playerPriors = {
   PlayerParameter.naturalTempoRight: (40, 200),
@@ -466,7 +466,7 @@ SyntheticPlayer _sample(
 /// The least-squares slope of the second value on the first, or null when the
 /// first barely varied.
 ///
-/// Null rather than zero, because a sitting that asked one tempo cannot say
+/// Null rather than zero, because a session that asked one tempo cannot say
 /// whether the player would have followed a different one, and a zero there
 /// would read as somebody ignoring the count-in.
 double? _slope(List<(double, double)> points) {
@@ -495,9 +495,9 @@ double _median(List<double> values) {
       : (sorted[middle - 1] + sorted[middle]) / 2;
 }
 
-/// How much a sitting had to say about a parameter.
+/// How much a session had to say about a parameter.
 enum Identifiability {
-  /// The sitting contains the observable that constrains it, and the ensemble
+  /// The session contains the observable that constrains it, and the ensemble
   /// narrowed to a fraction of what it was drawn from.
   identified('identified'),
 
@@ -508,27 +508,27 @@ enum Identifiability {
   /// nothing.
   unconstrained('not identified'),
 
-  /// The sitting never contained the observable at all, so the range is the
+  /// The session never contained the observable at all, so the range is the
   /// prior with a different name.
   unobserved('not observed'),
 
-  /// Nothing about one sitting could speak to it.
-  needsMoreSittings('needs several sittings');
+  /// Nothing about one session could speak to it.
+  needsMoreSessions('needs several sessions');
 
   const Identifiability(this.id);
 
   final String id;
 }
 
-/// What the sitting said about each parameter the fit varied.
+/// What the session said about each parameter the fit varied.
 ///
 /// The distinction that matters when a report is read: **a sampled range is
-/// not evidence.** A parameter whose observable the sitting never contained
+/// not evidence.** A parameter whose observable the session never contained
 /// comes back as wide as it went in, and saying so is the difference between
 /// an interval and a guess wearing one.
 Map<PlayerParameter, Identifiability> identifiabilityOf({
   required List<PlayerFit> ensemble,
-  required SittingProfile observed,
+  required SessionProfile observed,
   required Set<PlayerParameter> vary,
 }) {
   final answers = <PlayerParameter, Identifiability>{};
@@ -536,7 +536,7 @@ Map<PlayerParameter, Identifiability> identifiabilityOf({
     if (!vary.contains(parameter)) continue;
     if (!_observes(observed, parameter)) {
       answers[parameter] = parameter == PlayerParameter.learningRate
-          ? Identifiability.needsMoreSittings
+          ? Identifiability.needsMoreSessions
           : Identifiability.unobserved;
       continue;
     }
@@ -556,7 +556,7 @@ Map<PlayerParameter, Identifiability> identifiabilityOf({
 }
 
 /// Whether [observed] contains anything that speaks to [parameter].
-bool _observes(SittingProfile observed, PlayerParameter parameter) =>
+bool _observes(SessionProfile observed, PlayerParameter parameter) =>
     switch (parameter) {
       PlayerParameter.naturalTempoRight => observed.achievedTempo.containsKey(
         HandConfiguration.right,
@@ -583,7 +583,7 @@ bool _observes(SittingProfile observed, PlayerParameter parameter) =>
 /// The fit as a report, one line per parameter.
 String calibrationReport({
   required List<PlayerFit> ensemble,
-  required SittingProfile observed,
+  required SessionProfile observed,
   required Set<PlayerParameter> vary,
 }) {
   final answers = identifiabilityOf(
@@ -611,7 +611,7 @@ String _line(
     // A range nothing constrained is the prior, and printing it would be the
     // report arguing against itself.
     Identifiability.unobserved ||
-    Identifiability.needsMoreSittings ||
+    Identifiability.needsMoreSessions ||
     Identifiability.unconstrained => '-',
     _ => '${range.low.toStringAsFixed(2)} to ${range.high.toStringAsFixed(2)}',
   };

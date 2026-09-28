@@ -18,7 +18,7 @@ const Map<String, Set<String>> familyPrerequisites = {
 
 /// How much a family's dose should contract, in `[0, 1]`.
 ///
-/// **Yield, not share.** Pacing asks whether a family is crowding a sitting and
+/// **Yield, not share.** Pacing asks whether a family is crowding a session and
 /// cannot see one that holds a third of it while yielding nothing. This asks
 /// only what the last several attempts produced.
 ///
@@ -68,7 +68,7 @@ double familyDose(
 /// discarded on a boundary, and never reaches zero. What takes a family out of
 /// contention is [doseGap] rounding a weak contraction back to no gap at all.
 ///
-/// Time before the evidence is not relief: a window rebuilt at a sitting that
+/// Time before the evidence is not relief: a window rebuilt at a session that
 /// starts before its own history is a corrupt clock.
 double _confidence(DateTime seen, DateTime at, DoseConfig config) {
   final elapsed = at.difference(seen);

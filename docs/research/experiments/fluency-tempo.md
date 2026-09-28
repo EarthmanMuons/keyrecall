@@ -11,7 +11,7 @@ histories the production loop produced rather than argued from the design.
 
 `keyrecall_simulation/bin/fluency_tempo.dart`: twelve seeds of four archetypes
 (`true_beginner`, `developing`, `intermediate`, `uneven_hands`), eight weeks of
-three sittings of twenty slots each, through `PracticeSession` over the 48-scale
+three sessions of twenty slots each, through `PracticeSession` over the 48-scale
 catalog. Each journal is projected to `FluencyHistory`, and every rule reads the
 same projection at one octave, parallel motion, per hand configuration:
 
@@ -73,7 +73,7 @@ meant to encourage.
 Synthetic players invent their own motor scores and tempo behavior; see
 [`player-calibration.md`](player-calibration.md). The near-zero qualifying rate
 for a beginner's left hand is partly an artifact of that model, and the
-direction of the result, not its size, is what carries over. Three sittings of
+direction of the result, not its size, is what carries over. Three sessions of
 twenty attempts a week is one schedule among many.
 
 ## The rule promoted

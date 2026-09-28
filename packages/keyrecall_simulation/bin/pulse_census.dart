@@ -7,7 +7,7 @@ import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// Characterizes the players a supplied pulse is for, and how often a sitting
+/// Characterizes the players a supplied pulse is for, and how often a session
 /// brings the same kind of timing evidence back.
 ///
 /// Characterization only. Nothing here decides what should open timing
@@ -23,7 +23,7 @@ Future<void> main(List<String> arguments) async {
       help: 'The pulse characterization set, or every swept archetype.',
     )
     ..addOption('seeds', defaultsTo: '4')
-    ..addOption('slots', defaultsTo: '12,24', help: 'Attempts per sitting.')
+    ..addOption('slots', defaultsTo: '12,24', help: 'Attempts per session.')
     ..addOption(
       'schedule',
       defaultsTo: 'normal_month',
@@ -68,7 +68,7 @@ Future<void> main(List<String> arguments) async {
     'execution context': executionContextOf,
     'material': (exercise) => exercise.material.materialId,
     'hands': (exercise) => exercise.conditions.hands,
-    'sitting': (_) => null,
+    'session': (_) => null,
   };
   if (options.flag('remediation')) {
     _remediation(
@@ -86,11 +86,11 @@ Future<void> main(List<String> arguments) async {
     for (final player in players) {
       for (var seed = 0; seed < seeds; seed++) {
         trajectories.add(
-          runSittings(
+          runTrajectorySessions(
             player: player,
             seed: seed,
             materials: allScales,
-            sittings: LongitudinalSchedules.named(schedule, slots: slots),
+            sessions: LongitudinalSchedules.named(schedule, slots: slots),
           ),
         );
         stderr.writeln(
@@ -102,7 +102,7 @@ Future<void> main(List<String> arguments) async {
 
     stdout.writeln();
     stdout.writeln(
-      '== timing recurrence within a sitting: $schedule, $slots slots, '
+      '== timing recurrence within a session: $schedule, $slots slots, '
       '${players.length} players x $seeds seeds',
     );
     stdout.writeln(
@@ -113,15 +113,15 @@ Future<void> main(List<String> arguments) async {
     );
     for (final MapEntry(key: name, value: keyOf) in keys.entries) {
       final recurrence = TimingRecurrence.of(trajectories, keyOf: keyOf);
-      final sittings = recurrence.sittings;
+      final sessions = recurrence.sessions;
       stdout.writeln(
         '${name.padRight(20)}'
-        '${(recurrence.observations / sittings).toStringAsFixed(1).padLeft(9)}'
-        '${(recurrence.keys / sittings).toStringAsFixed(1).padLeft(10)}'
+        '${(recurrence.observations / sessions).toStringAsFixed(1).padLeft(9)}'
+        '${(recurrence.keys / sessions).toStringAsFixed(1).padLeft(10)}'
         '${_share(recurrence.keysObservedAtLeast[2]!, recurrence.keys)}'
         '${_share(recurrence.keysObservedAtLeast[3]!, recurrence.keys)}'
-        '${_share(recurrence.sittingsWithAKeyAtLeast[2]!, sittings)}'
-        '${_share(recurrence.sittingsWithAKeyAtLeast[3]!, sittings)}'
+        '${_share(recurrence.sessionsWithAKeyAtLeast[2]!, sessions)}'
+        '${_share(recurrence.sessionsWithAKeyAtLeast[3]!, sessions)}'
         '${(recurrence.medianGap?.toStringAsFixed(1) ?? '-').padLeft(7)}',
       );
     }
@@ -147,7 +147,7 @@ void _remediation(
     '$seeds seeds',
   );
   stdout.writeln(
-    '${'player'.padRight(30)}${'sittings'.padLeft(9)}${'cycles'.padLeft(8)}'
+    '${'player'.padRight(30)}${'sessions'.padLeft(9)}${'cycles'.padLeft(8)}'
     '${'withdrawn'.padLeft(11)}'
     '${'steady with'.padLeft(13)}${'steady after'.padLeft(14)}',
   );
@@ -155,11 +155,11 @@ void _remediation(
   for (final player in players) {
     final reading = RemediationReading.of([
       for (var seed = 0; seed < seeds; seed++)
-        runSittings(
+        runTrajectorySessions(
           player: player,
           seed: seed,
           materials: allScales,
-          sittings: LongitudinalSchedules.named(schedule, slots: slots),
+          sessions: LongitudinalSchedules.named(schedule, slots: slots),
           pipeline: pipeline,
         ),
     ]);
@@ -173,7 +173,7 @@ void _remediation(
     }
     stdout.writeln(
       '${player.id.padRight(30)}'
-      '${_share(reading.sittingsWithACycle, reading.sittings)}'
+      '${_share(reading.sessionsWithACycle, reading.sessions)}'
       '${reading.cycles.toString().padLeft(8)}'
       '${reading.withdrawals.toString().padLeft(11)}'
       '${_fixed(reading.meanSupportedSteadiness).padLeft(13)}'

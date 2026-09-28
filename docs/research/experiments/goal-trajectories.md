@@ -11,9 +11,9 @@ Foundations, and 24-key fluency, each also with a narrow focus inside it.
 
 ## Method
 
-Thirteen archetypes, four seeds, ten daily sittings of up to twenty slots, each
-sitting a fresh practice session over the same store, as the app opens one. A
-sitting that is caught up or blocked ends early and the next day carries on.
+Thirteen archetypes, four seeds, ten daily sessions of up to twenty slots, each
+session a fresh `PracticeSession` over the same store, as the app opens one. A
+session that is caught up or blocked ends early and the next day carries on.
 Coverage is read from the journal against the goal, as the product reads it.
 
 | Scope                       | Plan                                                      |
@@ -26,7 +26,7 @@ Coverage is read from the journal against the goal, as the product reads it.
 | `keyFluencyFocusedOnD`      | 24-key fluency, exclusive focus on D major, both families |
 
 ```console
-dart run keyrecall_simulation:goal_trajectories --seeds 4 --sittings 10 --slots 20 --jobs 8
+dart run keyrecall_simulation:goal_trajectories --seeds 4 --sessions 10 --slots 20 --jobs 8
 ```
 
 A pick is **target-shaped** when its hands, span, and direction match one of the
@@ -121,15 +121,15 @@ about 115 ms a decision at 50 slots and 200 ms at 400.
 
 ## 24-key fluency over a thousand slots
 
-The same goal over 50 daily sittings of 20 slots, the same thirteen archetypes
-and four seeds, with coverage split by family every ten sittings.
+The same goal over 50 daily sessions of 20 slots, the same thirteen archetypes
+and four seeds, with coverage split by family every ten sessions.
 
 ```console
 dart run keyrecall_simulation:goal_horizon --scope keyFluency --seeds 4 \
-  --sittings 50 --every 10 --jobs 5 --out key_fluency.jsonl
+  --sessions 50 --every 10 --jobs 5 --out key_fluency.jsonl
 ```
 
-| Sittings | Slots | Covered | Scales of 24 | Arpeggios of 24 | Target-shaped | Arpeggio picks | Unguided |
+| Sessions | Slots | Covered | Scales of 24 | Arpeggios of 24 | Target-shaped | Arpeggio picks | Unguided |
 | -------: | ----: | ------: | -----------: | --------------: | ------------: | -------------: | -------: |
 |       10 |   193 |   0.012 |          0.3 |             0.2 |         0.017 |          0.536 |    0.499 |
 |       20 |   389 |   0.053 |          1.4 |             1.1 |         0.041 |          0.515 |    0.684 |
@@ -137,7 +137,7 @@ dart run keyrecall_simulation:goal_horizon --scope keyFluency --seeds 4 \
 |       40 |   785 |   0.192 |          5.9 |             3.3 |         0.058 |          0.534 |    0.788 |
 |       50 |   984 |   0.280 |          8.2 |             5.2 |         0.061 |          0.557 |    0.820 |
 
-The pick shares are over each interval of ten sittings ending at that row.
+The pick shares are over each interval of ten sessions ending at that row.
 Nothing blocked and nothing was caught up; no run finished. A quarter was
 covered in 28 of 52 runs, near slot 723, and half in 9, near slot 728. The
 advanced and reliable archetypes reached 40 and 39 of 48; the uneven-handed and
@@ -170,14 +170,14 @@ not only the target's material.
 A rank term, above retention, true for a candidate in the shape of a target the
 goal has not covered yet, under guidance that target's coverage accepts. It
 orders only what admission allowed. Measured against goal relevance reading
-material alone, with the same census and a 30-sitting horizon, plus two frontier
+material alone, with the same census and a 30-session horizon, plus two frontier
 variants for General technique, which names no target.
 
 ```console
-dart run keyrecall_simulation:goal_trajectories --seeds 4 --sittings 10 \
+dart run keyrecall_simulation:goal_trajectories --seeds 4 --sessions 10 \
   --slots 20 --jobs 5 --progress target
 dart run keyrecall_simulation:goal_horizon --scope keyFluency --seeds 4 \
-  --sittings 30 --every 10 --jobs 5 --progress target --out key_fluency.jsonl
+  --sessions 30 --every 10 --jobs 5 --progress target --out key_fluency.jsonl
 ```
 
 The first version preferred the shape at any rung. Under Foundations, which
@@ -201,9 +201,9 @@ Foundations finishes in fewer picks, 137 rather than 162 a run, with cued picks
 at 11% rather than 10%. General technique and its focus are identical, as they
 should be.
 
-24-key fluency over 30 sittings, each row the ten sittings before it:
+24-key fluency over 30 sessions, each row the ten sessions before it:
 
-| Sittings | Covered, material only | Arriving | Target-shaped | Arriving | Materials | Arriving | Failed | Arriving |
+| Sessions | Covered, material only | Arriving | Target-shaped | Arriving | Materials | Arriving | Failed | Arriving |
 | -------: | ---------------------: | -------: | ------------: | -------: | --------: | -------: | -----: | -------: |
 |       10 |                  0.012 |    0.056 |         0.017 |    0.071 |      33.1 |     32.1 |  0.533 |    0.538 |
 |       20 |                  0.053 |    0.224 |         0.041 |    0.156 |      38.2 |     37.5 |  0.498 |    0.503 |
@@ -221,7 +221,7 @@ unchanged. Arriving work does not crowd out keeping.
 ### A frontier does not transfer to General technique
 
 General technique names no destination, and its horizon shows the pattern a
-destination would fix: over 30 sittings, the share of picks whose shape an
+destination would fix: over 30 sessions, the share of picks whose shape an
 already demonstrated realization of the same material subsumes rises from 3% to
 23%, while picks that are hands together, two octaves, and up and down stay near
 5%. Breadth and retrieval are healthy; depth is not.
@@ -256,7 +256,7 @@ admitted the same way, the step is presented instead.
 
 ```console
 dart run keyrecall_simulation:goal_horizon --scope general --seeds 4 \
-  --sittings 30 --every 10 --jobs 5 --progress targetAndShapeFrontier \
+  --sessions 30 --every 10 --jobs 5 --progress targetAndShapeFrontier \
   --out general.jsonl
 ```
 
@@ -269,7 +269,7 @@ progression, 194 as new material, 89 through recovery, and 4 through the band.
 Execution progression is how owned material ordinarily advances, and it is what
 a step now replaces.
 
-General technique over 30 sittings, the last ten:
+General technique over 30 sessions, the last ten:
 
 | Measure                        |              Arriving |        Shape frontier |
 | ------------------------------ | --------------------: | --------------------: |
@@ -286,7 +286,7 @@ General technique over 30 sittings, the last ten:
 
 Depth is the number of hands together, two octaves or more, and up and down a
 pick asks for. A step was on offer for a third of picks in the last ten
-sittings, and every one was taken, all in place of execution progression and
+sessions, and every one was taken, all in place of execution progression and
 none in place of a pick made for a reason: span 54%, direction 41%, hands 5%.
 Four-octave arpeggios, which General technique barely reached, appear near slot
 154 in 46 runs rather than slot 251 in 25. Breadth, the guidance mix, failure,
@@ -307,7 +307,7 @@ fluency, completing in 11 runs rather than 13, within what seeds move.
 
 ## Interpretation boundary
 
-Synthetic players over ten short sittings. The census says what the goals ask
+Synthetic players over ten short sessions. The census says what the goals ask
 the scheduler to do and what it did; it does not say that a Foundations learner
 held to one octave learns the keys faster, only that the goal as defined is not
 what their practice was aimed at.

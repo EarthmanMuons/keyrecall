@@ -8,7 +8,7 @@ import 'package:flutter/foundation.dart';
 /// is current by then rather than on the one it began under.
 @immutable
 class PracticeSessionIdentity {
-  /// Whose sitting this is.
+  /// Whose session this is.
   final String profileId;
 
   /// Which instantiation of it, unique for the life of the process.

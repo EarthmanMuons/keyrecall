@@ -96,7 +96,7 @@ String? reasonForNext({
       null => 'Starting with the notes in view.',
     },
     // The ordinary question the supported work was preparing for. It says what
-    // is being asked now rather than naming a scaffold or an earlier sitting:
+    // is being asked now rather than naming a scaffold or an earlier session:
     // the learner has been playing this at their own pace, and the tempo is
     // what comes back.
     //
@@ -257,7 +257,7 @@ class AttemptReview extends StatelessWidget {
   final TimingShortfall? timingShortfall;
 
   /// Records that one part of this review reached the learner, answering
-  /// whether the sitting that owns the history took the report.
+  /// whether the session that owns the history took the report.
   final Future<bool> Function(ReviewExposure)? onExposed;
 
   /// What has been decided to come next, if anything.

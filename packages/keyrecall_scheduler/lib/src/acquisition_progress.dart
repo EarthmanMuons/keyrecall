@@ -128,9 +128,9 @@ class AcquisitionRecord {
 /// because what a criterion success earns is a probe of that exact question.
 /// Two parents in one context can be stuck for different reasons.
 ///
-/// Progress has to outlive a sitting. A criterion success followed by a break
+/// Progress has to outlive a session. A criterion success followed by a break
 /// is still a criterion success, so none of this belongs in `SessionState`,
-/// every field of which is deliberately a condition of the sitting it arose
+/// every field of which is deliberately a condition of the session it arose
 /// in.
 @immutable
 class AcquisitionProgress {

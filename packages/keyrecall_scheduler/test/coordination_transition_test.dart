@@ -10,7 +10,7 @@ import 'support/fixtures.dart';
 ///
 /// Hands-together work became fully eligible and admissible in the very slot
 /// its prerequisite was first satisfied, and was then chosen a median of seven
-/// to nineteen slots later, in many sittings never. Attributing every one of
+/// to nineteen slots later, in many sessions never. Attributing every one of
 /// those waiting slots found that none of them went to another realization of
 /// the same scale: the material simply lost, over and over, to other material.
 void main() {

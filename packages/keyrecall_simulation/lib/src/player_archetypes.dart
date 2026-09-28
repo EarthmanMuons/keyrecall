@@ -76,7 +76,7 @@ abstract final class PlayerArchetypes {
 
   /// Plays quickly and cleanly, and called themselves a beginner.
   ///
-  /// The device sittings, in the shape they kept turning out to have: a
+  /// The device sessions, in the shape they kept turning out to have: a
   /// placement that understates the player, so every estimate starts low while
   /// the playing does not.
   static SyntheticPlayer get fastButPlacedLow => SyntheticPlayer(
@@ -108,7 +108,7 @@ abstract final class PlayerArchetypes {
 
   /// Follows the count-in, and now and then plays a scale at their own pace.
   ///
-  /// Built from a device sitting rather than from a tier of ability: the
+  /// Built from a device session rather than from a tier of ability: the
   /// attempts that opened tempo probes there were the occasional ones, played
   /// clean and well above the request, by somebody who had followed the
   /// count-in all session.
@@ -128,7 +128,7 @@ abstract final class PlayerArchetypes {
 
   /// Technically reliable, and plays at their own pace whatever is asked.
   ///
-  /// Built from the first device sitting rather than from a tier of ability:
+  /// Built from the first device session rather than from a tier of ability:
   /// thirty-five attempts, every one completed, execution at the top of the
   /// measurement's range, and a played tempo that follows the requested one
   /// with a slope near a third. The archetypes that came before could not
@@ -176,7 +176,7 @@ abstract final class PlayerArchetypes {
     spanPenalty: 0.3,
   );
 
-  /// Practises well and loses it between sittings.
+  /// Practises well and loses it between sessions.
   ///
   /// The player a long-gap run needs and did not have. Every other archetype
   /// keeps whatever they gained forever, so a run across a calendar could only
@@ -282,7 +282,7 @@ abstract final class PlayerArchetypes {
   ///
   /// [intermediate] is steady and ordinary, [advanced] steady and fast,
   /// [trueBeginner] unsteady because their hands are rather than their pulse,
-  /// and [reliableSelfPaced] the device sitting the calibration was fitted to.
+  /// and [reliableSelfPaced] the device session the calibration was fitted to.
   static List<SyntheticPlayer> get pulseCharacterization => [
     intermediate,
     advanced,

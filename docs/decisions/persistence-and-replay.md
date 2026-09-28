@@ -185,7 +185,7 @@ boundary, so they should all be said the same way rather than escaping as
 `ArgumentError`, `FormatException`, or `TypeError`.
 
 **Consequences.** The promise belongs to every public reader of persisted data:
-records, headers, profiles, checkpoints, sitting exports, and the storage
+records, headers, profiles, checkpoints, session exports, and the storage
 layer's own single-slot files. Domain constructors go on throwing
 `ArgumentError` on their own terms, because that is useful inside the model, and
 the boundary translates on the way out. Storage wraps a whole decode rather than

@@ -21,7 +21,7 @@ void main() {
   AttemptIdentity identityFor(String id) => AttemptIdentity(
     profileId: 'abc12345',
     attemptId: id,
-    sessionId: 'sitting-1',
+    sessionId: 'session-1',
     indexInSession: 0,
     occurredAt: t0,
   );

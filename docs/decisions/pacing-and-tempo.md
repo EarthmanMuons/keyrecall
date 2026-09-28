@@ -4,7 +4,7 @@ How work is spread across strands over a trajectory, what happens to a strand
 that keeps producing nothing, and where a decision is computed.
 
 Two mechanisms read the same recent window and answer different questions.
-Pacing asks **how much of the sitting** a family holds; dose control asks **what
+Pacing asks **how much of the session** a family holds; dose control asks **what
 its recent attempts produced**. In longitudinal runs they never change the same
 slot.
 
@@ -80,7 +80,7 @@ and recovery targets the exact exercise one rung more supported. Nothing adapted
 the other quantity. A family that has produced nothing for fifty attempts was
 offered at the same cadence as one that produces something every time.
 
-**Evidence.** Sixteen sittings of ten attempts across seventy days, four seeds,
+**Evidence.** Sixteen sessions of ten attempts across seventy days, four seeds,
 every archetype. Pacing cannot answer this: it reads share of the window, and a
 family can be unproductive without being concentrated.
 

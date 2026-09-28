@@ -112,7 +112,7 @@ PulseResponse pulseResponseOf(
   );
 }
 
-/// How often the same kind of timing evidence comes back within a sitting.
+/// How often the same kind of timing evidence comes back within a session.
 ///
 /// What a detector that waits for several observations of one kind before
 /// acting would have to work with. [keyOf] decides what counts as the same
@@ -122,51 +122,51 @@ PulseResponse pulseResponseOf(
 /// Only attempts that started and tested the pulse count. Nothing here judges
 /// whether the timing was good, because no threshold for that exists yet.
 class TimingRecurrence {
-  /// Sittings read.
-  final int sittings;
+  /// Sessions read.
+  final int sessions;
 
   /// Timing observations across them.
   final int observations;
 
-  /// Distinct keys observed, summed over sittings.
+  /// Distinct keys observed, summed over sessions.
   final int keys;
 
-  /// Keys, summed over sittings, observed at least `n` times in their
-  /// sitting, by `n`.
+  /// Keys, summed over sessions, observed at least `n` times in their
+  /// session, by `n`.
   final Map<int, int> keysObservedAtLeast;
 
-  /// Sittings in which some key was observed at least `n` times, by `n`.
-  final Map<int, int> sittingsWithAKeyAtLeast;
+  /// Sessions in which some key was observed at least `n` times, by `n`.
+  final Map<int, int> sessionsWithAKeyAtLeast;
 
-  /// Slots between consecutive observations of one key in one sitting.
+  /// Slots between consecutive observations of one key in one session.
   final List<int> gaps;
 
   const TimingRecurrence({
-    required this.sittings,
+    required this.sessions,
     required this.observations,
     required this.keys,
     required this.keysObservedAtLeast,
-    required this.sittingsWithAKeyAtLeast,
+    required this.sessionsWithAKeyAtLeast,
     required this.gaps,
   });
 
-  /// Counted from the sittings of [trajectories], for `n` in [depths].
+  /// Counted from the sessions of [trajectories], for `n` in [depths].
   static TimingRecurrence of<K>(
     Iterable<Trajectory> trajectories, {
     required K Function(Exercise exercise) keyOf,
     List<int> depths = const [2, 3],
   }) {
-    var sittings = 0;
+    var sessions = 0;
     var observations = 0;
     var keys = 0;
     final keysAtLeast = {for (final depth in depths) depth: 0};
-    final sittingsAtLeast = {for (final depth in depths) depth: 0};
+    final sessionsAtLeast = {for (final depth in depths) depth: 0};
     final gaps = <int>[];
     for (final trajectory in trajectories) {
-      for (var sitting = 0; sitting < trajectory.sittings.length; sitting++) {
-        sittings++;
+      for (var session = 0; session < trajectory.sessions.length; session++) {
+        sessions++;
         final positions = <K, List<int>>{};
-        for (final (position, slot) in trajectory.slotsOf(sitting).indexed) {
+        for (final (position, slot) in trajectory.slotsOf(session).indexed) {
           if (!_timedUnaided(slot.outcome)) continue;
           observations++;
           positions.putIfAbsent(keyOf(slot.chosen), () => []).add(position);
@@ -183,17 +183,17 @@ class TimingRecurrence {
               .length;
           keysAtLeast[depth] = keysAtLeast[depth]! + reaching;
           if (reaching > 0) {
-            sittingsAtLeast[depth] = sittingsAtLeast[depth]! + 1;
+            sessionsAtLeast[depth] = sessionsAtLeast[depth]! + 1;
           }
         }
       }
     }
     return TimingRecurrence(
-      sittings: sittings,
+      sessions: sessions,
       observations: observations,
       keys: keys,
       keysObservedAtLeast: keysAtLeast,
-      sittingsWithAKeyAtLeast: sittingsAtLeast,
+      sessionsWithAKeyAtLeast: sessionsAtLeast,
       gaps: gaps,
     );
   }
@@ -209,21 +209,21 @@ class TimingRecurrence {
   }
 }
 
-/// What timing remediation did across sittings the scheduler ran.
+/// What timing remediation did across sessions the scheduler ran.
 ///
 /// Read from the trajectories themselves: a cycle is a slot chosen under
 /// [ChallengeBypass.pulseSupport], and what it showed is the steadiness of
 /// that slot and of the withdrawal after it.
 class RemediationReading {
-  final int sittings;
+  final int sessions;
 
-  /// Sittings in which a cycle opened.
-  final int sittingsWithACycle;
+  /// Sessions in which a cycle opened.
+  final int sessionsWithACycle;
 
-  /// Cycles opened, over every sitting.
+  /// Cycles opened, over every session.
   final int cycles;
 
-  /// Cycles whose withdrawal was reached before the sitting ended.
+  /// Cycles whose withdrawal was reached before the session ended.
   final int withdrawals;
 
   /// Supported attempts whose outcome still claimed a pulse the player held,
@@ -239,8 +239,8 @@ class RemediationReading {
   final List<double> withdrawnSteadiness;
 
   const RemediationReading({
-    required this.sittings,
-    required this.sittingsWithACycle,
+    required this.sessions,
+    required this.sessionsWithACycle,
     required this.cycles,
     required this.withdrawals,
     required this.supportedButTested,
@@ -249,18 +249,18 @@ class RemediationReading {
   });
 
   factory RemediationReading.of(Iterable<Trajectory> trajectories) {
-    var sittings = 0;
-    var sittingsWithACycle = 0;
+    var sessions = 0;
+    var sessionsWithACycle = 0;
     var cycles = 0;
     var withdrawals = 0;
     var supportedButTested = 0;
     final supported = <double>[];
     final withdrawn = <double>[];
     for (final trajectory in trajectories) {
-      for (var sitting = 0; sitting < trajectory.sittings.length; sitting++) {
-        sittings++;
+      for (var session = 0; session < trajectory.sessions.length; session++) {
+        sessions++;
         var opened = false;
-        for (final slot in trajectory.slotsOf(sitting)) {
+        for (final slot in trajectory.slotsOf(session)) {
           switch (slot.winner.challengeBypass) {
             case ChallengeBypass.pulseSupport:
               opened = true;
@@ -277,12 +277,12 @@ class RemediationReading {
             default:
           }
         }
-        if (opened) sittingsWithACycle++;
+        if (opened) sessionsWithACycle++;
       }
     }
     return RemediationReading(
-      sittings: sittings,
-      sittingsWithACycle: sittingsWithACycle,
+      sessions: sessions,
+      sessionsWithACycle: sessionsWithACycle,
       cycles: cycles,
       withdrawals: withdrawals,
       supportedButTested: supportedButTested,

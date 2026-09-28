@@ -24,7 +24,7 @@ Future<void> main(List<String> arguments) async {
       GoalTrajectoryScope.foundations.name,
     ],
     'checkpoints': closedLoopCheckpoints,
-    'slots_per_sitting': 20,
+    'slots_per_session': 20,
     ...modelConfiguration(
       schedulerModelVersion: v1SchedulerConfig.modelVersion,
     ),
@@ -54,7 +54,7 @@ Future<void> main(List<String> arguments) async {
         'scope',
         'player',
         'seed',
-        'sittings',
+        'sessions',
         'covered',
         ...facets,
         'overlap',
@@ -68,7 +68,7 @@ Future<void> main(List<String> arguments) async {
           group.scope.name,
           group.playerId,
           '${group.seed}',
-          '${point.sittings}',
+          '${point.sessions}',
           point.covered.map((value) => value.toStringAsFixed(2)).join('/'),
           for (final facet in facets)
             point.mixDistance[facet]!.toStringAsFixed(3),

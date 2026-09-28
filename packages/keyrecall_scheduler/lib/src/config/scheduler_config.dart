@@ -106,7 +106,7 @@ class EligibilityConfig {
   /// A quarter of the twenty-four core materials per hand, and a third for
   /// melodic minor, which alters two degrees rather than one. Asked of each
   /// hand rather than of the profile. Both are first guesses to revise against
-  /// real sittings rather than measurements.
+  /// real sessions rather than measurements.
   final int harmonicMinorCoreRetrievals;
   final int melodicMinorCoreRetrievals;
 
@@ -251,16 +251,16 @@ class EligibilityConfig {
 @immutable
 class SafetyConfig {
   /// Attempt slots allowed per session before every candidate is suppressed,
-  /// or null for a sitting the scheduler never ends.
+  /// or null for a session the scheduler never ends.
   ///
-  /// Null in production. A sitting ends when the player stops, which is the
+  /// Null in production. A session ends when the player stops, which is the
   /// whole shape of the product: open it, play, leave. A constant that stopped
   /// somebody at forty was a guard against a runaway `decide` loop that had
   /// quietly become the length of a practice session, and it read to the
   /// player as having run out of material while a hundred and fifty candidates
   /// were still admissible.
   ///
-  /// Kept as a knob because bounded sittings are still worth writing tests
+  /// Kept as a knob because bounded sessions are still worth writing tests
   /// about, and because a simulation wants to say how long one runs.
   final int? maxSessionAttempts;
 
@@ -358,7 +358,7 @@ class ProbeConfig {
   /// ranked and losing before one is chosen anyway.
   ///
   /// Not a rule that the probe should usually win. Exploration legitimately
-  /// dominates a capable learner's first sittings, since new material
+  /// dominates a capable learner's first sessions, since new material
   /// establishes breadth and tempo probes find speed. What this rules out is
   /// that dominance being indefinite.
   final int maxUnservedGuidanceProbes;
@@ -371,7 +371,7 @@ class ProbeConfig {
   /// leaves nothing to say whether the support is still needed.
   ///
   /// Counted rather than timed, because what it guards against is
-  /// informational: a whole sitting producing no retrieval evidence at all.
+  /// informational: a whole session producing no retrieval evidence at all.
   final int supportedAttemptsBeforeObservation;
 
   /// What an attempt has to look like before the next one may jump straight
@@ -418,9 +418,9 @@ class ProbeConfig {
 /// Yield-based dose control for a realization family.
 ///
 /// Distinct from [PacingConfig], which relieves concentration. This one reads
-/// what a family produced rather than how much of the sitting it held, because
+/// what a family produced rather than how much of the session it held, because
 /// the family that most needs asking for less often is a minority of the
-/// sitting by the time it is failing.
+/// session by the time it is failing.
 class DoseConfig {
   /// How many recent selections yield is read over.
   final int window;
@@ -446,7 +446,7 @@ class DoseConfig {
   ///
   /// **A factor, so lower means more relief.** Zero lets prerequisite work
   /// cancel a family's own failure outright, which on a learner whose separate
-  /// hands are improving takes coordination work to nearly half the sitting
+  /// hands are improving takes coordination work to nearly half the session
   /// and puts it beyond contracting at all. One means prerequisites buy
   /// nothing. The point of the parameter is between them: soften the
   /// conclusion, never veto the evidence.
@@ -587,7 +587,7 @@ class NoveltyConfig {
     : assert(independenceAllowance >= 0);
 }
 
-/// What makes a hand's timing, within one sitting, worth supplying a pulse
+/// What makes a hand's timing, within one session, worth supplying a pulse
 /// for.
 ///
 /// Provisional throughout. Measured timing saturates on real device attempts,
@@ -599,8 +599,8 @@ class PulseRemediationConfig {
   /// timing counts as unsteady.
   ///
   /// Per hand configuration rather than per execution context: interleaving
-  /// spreads a sitting across so many contexts that one almost never recurs
-  /// three times, and nearly every sitting brings a hand back that often.
+  /// spreads a session across so many contexts that one almost never recurs
+  /// three times, and nearly every session brings a hand back that often.
   final int observations;
 
   /// Pitch integrity an attempt needs before its timing is read at all.

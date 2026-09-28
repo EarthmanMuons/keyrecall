@@ -119,7 +119,7 @@ class _Census {
   const _Census(this.flags, this.detail);
 }
 
-/// Runs one scoped sitting and describes the slot that admitted nothing.
+/// Runs one scoped session and describes the slot that admitted nothing.
 _Census? _dryCensus({
   required SyntheticPlayer player,
   required int seed,

@@ -242,23 +242,23 @@ void main() {
   });
 
   group('timing recurrence', () {
-    final trajectory = runSittings(
+    final trajectory = runTrajectorySessions(
       player: PlayerArchetypes.intermediate,
       seed: 0,
       materials: v1ScaleCatalog,
-      sittings: sittingsOnDays([0, 1], slots: 6),
+      sessions: sessionsOnDays([0, 1], slots: 6),
     );
 
     test('counts every unaided timing observation once', () {
-      final bySitting = TimingRecurrence.of([trajectory], keyOf: (_) => null);
+      final bySession = TimingRecurrence.of([trajectory], keyOf: (_) => null);
       final timed = trajectory.slots.where(
         (slot) =>
             slot.outcome.started && slot.outcome.pulseMaintenance.isTested,
       );
 
-      expect(bySitting.sittings, 2);
-      expect(bySitting.observations, timed.length);
-      expect(bySitting.keys, 2);
+      expect(bySession.sessions, 2);
+      expect(bySession.observations, timed.length);
+      expect(bySession.keys, 2);
     });
 
     test('a finer key never recurs more than a coarser one', () {
@@ -269,8 +269,8 @@ void main() {
 
       expect(fine.keys, greaterThanOrEqualTo(coarse.keys));
       expect(
-        fine.sittingsWithAKeyAtLeast[2]!,
-        lessThanOrEqualTo(coarse.sittingsWithAKeyAtLeast[2]!),
+        fine.sessionsWithAKeyAtLeast[2]!,
+        lessThanOrEqualTo(coarse.sessionsWithAKeyAtLeast[2]!),
       );
     });
   });
@@ -284,11 +284,11 @@ void main() {
     );
     Iterable<TrajectorySlot> slotsOf(SyntheticPlayer player) => [
       for (var seed = 0; seed < 2; seed++)
-        ...runSittings(
+        ...runTrajectorySessions(
           player: player,
           seed: seed,
           materials: allScales,
-          sittings: sittingsOnDays([0, 2, 5], slots: 12),
+          sessions: sessionsOnDays([0, 2, 5], slots: 12),
           pipeline: pipeline,
         ).slots,
     ];

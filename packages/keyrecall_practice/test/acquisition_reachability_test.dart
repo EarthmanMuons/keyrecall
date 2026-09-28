@@ -89,7 +89,7 @@ void main() {
 
   test('one parent does not take every slot after it stalls', () async {
     // A floor that qualifies goes on qualifying until it is managed. Without a
-    // step aside the sitting stops interleaving at exactly the point the
+    // step aside the session stops interleaving at exactly the point the
     // learner is finding hardest.
     final session = await struggling(InMemoryPracticeStore(createdAt: t0));
     final offered = <String>[];

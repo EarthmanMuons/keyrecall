@@ -81,7 +81,7 @@ class _PreviewState extends State<_Preview> {
   /// Which tempo support this case is being heard under.
   ///
   /// Reachable here and nowhere else. Practice policy is count-in only, and a
-  /// metronome the learner could switch on mid-sitting would change what an
+  /// metronome the learner could switch on mid-session would change what an
   /// attempt observes; only policy decides that for an attempt anything is
   /// recorded of. These cases record nothing, so hearing one costs nothing.
   TempoSupport _tempoSupport = TempoSupport.countInOnly;

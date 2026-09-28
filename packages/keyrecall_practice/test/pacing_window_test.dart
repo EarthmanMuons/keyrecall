@@ -44,7 +44,7 @@ void main() {
     },
   );
 
-  test('a sitting with no history starts unpressured', () async {
+  test('a session with no history starts unpressured', () async {
     final session = await openSession(InMemoryPracticeStore(createdAt: t0));
 
     expect(session.session.recentFamilies, isEmpty);

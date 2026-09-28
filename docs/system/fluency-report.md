@@ -197,7 +197,7 @@ detail-sheet dimensions, not rings.
 
 ## Over time
 
-Weeks, not sittings. A sitting is where someone happened to stop, and a week is
+Weeks, not sessions. A session is where someone happened to stop, and a week is
 a unit a person recognizes as progress.
 
 **Recall milestones** is built, above playing pace. It stacks the catalog's

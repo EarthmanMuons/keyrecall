@@ -37,11 +37,11 @@ void main() {
     var frontierAt = -1;
     var slot = 0;
 
-    final trajectory = runSittings(
+    final trajectory = runTrajectorySessions(
       player: weakIn[weak]!,
       seed: seed,
       materials: catalog,
-      sittings: sittingsOnDays([0, 1, 2, 3], slots: 20),
+      sessions: sessionsOnDays([0, 1, 2, 3], slots: 20),
       assessment: set,
       chooseInstead: (selection, state) {
         slot++;

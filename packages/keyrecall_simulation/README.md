@@ -129,7 +129,7 @@ dart run keyrecall_simulation:longitudinal --seeds 10 --slots 12
 ```
 
 Every archetype against each named calendar schedule, reporting per returning
-sitting how much went to reacquisition and how many sittings passed before
+session how much went to reacquisition and how many sessions passed before
 anything moved forward again.
 `dart run keyrecall_simulation:sweep --days 0,2,9,30` runs the anomaly detectors
 over the same kind of schedule.
@@ -144,7 +144,7 @@ dart run keyrecall_simulation:coordination_withheld --archetypes true_beginner
 The counterfactual is the candidate set rather than a second scheduler, so
 nothing about the learner, the player or the policy differs between the arms.
 
-To ask whether a hard family's share of a sitting responds to it failing:
+To ask whether a hard family's share of a session responds to it failing:
 
 ```console
 dart run keyrecall_simulation:family_exposure --seeds 6
@@ -152,7 +152,7 @@ dart run keyrecall_simulation:family_exposure --seeds 6
 
 Reports each realization family's share, managed yield, longest run of attempts
 that yielded nothing, its share of the slots following such a run, how far into
-a returning sitting it is offered again, and the times realization-family pacing
+a returning session it is offered again, and the times realization-family pacing
 set it aside. `--dose` runs the same thing with yield-based dose control in
 force, and every one of its constants is an option, so a sweep is a shell loop
 rather than another command.
@@ -169,13 +169,13 @@ sweeps the yield floor against the maximum gap as a product instead. It reports
 how often the mechanism spoke, how often it changed the slot, what happened to
 low-yield families, and how many runs matched the no-dose trajectory exactly.
 
-To fit synthetic players to a sitting exported from a device:
+To fit synthetic players to a session exported from a device:
 
 ```console
 dart run keyrecall_simulation:calibrate <stamp>-<profile>-attempts.json
 ```
 
-Prints the sitting, the ensemble, what the sitting could and could not speak to,
+Prints the session, the ensemble, what the session could and could not speak to,
 and what a few ensemble members do when asked the same questions. It runs
 nothing forward.
 
@@ -223,7 +223,7 @@ guarantees this harness is meant to grow into.
 `PracticeSimulation` defaults to the production learner and one minute between
 attempts. Reference tests explicitly pass `LearnerModel.v1Prototype()` and a
 12-hour spacing. A `SchedulerAgent` must share the simulation's learner
-instance; `runSessions` rejects a mismatch before running. New sittings resume
+instance; `runSessions` rejects a mismatch before running. New sessions resume
 allocation history through `SessionState.resuming`.
 
 Calibration replay accepts `ReplayPresentation` values carrying the exercise and
@@ -232,7 +232,7 @@ provenance; unknown stays unknown, and replay position never supplies a
 classification.
 
 Trajectory decision indices include blocked decisions. The beginner invariant
-suite permits only its characterized narrow-catalog `sitting_ran_dry` anomaly;
+suite permits only its characterized narrow-catalog `session_ran_dry` anomaly;
 all other structural invariants still run.
 
 ## Held-out assessment
@@ -242,8 +242,8 @@ scheduler chose to ask, so a policy that asks easier questions improves all
 three without teaching anyone anything. `standardAssessment` builds a fixed set
 asked outside the practice sequence: every material, each hand alone and
 together, unguided, at one octave and one tempo. Passing it to `runTrajectory`
-or `runSittings` records a reading at both ends of every sitting, so a break has
-a reading either side of it.
+or `runTrajectorySessions` records a reading at both ends of every session, so a
+break has a reading either side of it.
 
 A reading cannot change the run it measures. Its attempts are played with
 `practising: false`, so ability, familiarity, and the last performed tempo are
@@ -289,7 +289,7 @@ zero, so a break can undo practice and cannot invent somebody worse than the
 person who first sat down. Natural tempo, compliance, and sprinting do not
 decay, so what a returner lost stays interpretable.
 
-`returnCostOf` reads the product consequence out of a sitting: attempts that
+`returnCostOf` reads the product consequence out of a session: attempts that
 never started before the first that did, guidance rungs descended to get there,
 and attempts played before the first demonstrated execution. It is what says
 whether a calibration discrepancy costs a person anything.

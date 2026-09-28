@@ -3,62 +3,62 @@ import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// The per-sitting summary agrees with the slots it summarizes.
+/// The per-session summary agrees with the slots it summarizes.
 ///
 /// Checked against a real run rather than a constructed one: the census exists
 /// to be read instead of the trajectory, so what matters is that the two say
 /// the same thing about the same run.
 void main() {
-  final sittings = LongitudinalSchedules.named('interrupted', slots: 10);
-  final trajectory = runSittings(
+  final sessions = LongitudinalSchedules.named('interrupted', slots: 10);
+  final trajectory = runTrajectorySessions(
     player: PlayerArchetypes.intermediate,
     seed: 3,
     materials: v1ScaleCatalog,
-    sittings: sittings,
+    sessions: sessions,
   );
   final census = censusOfRun(trajectory);
 
-  test('every sitting is summarized once, in order', () {
-    expect(census.sittings.length, sittings.length);
+  test('every session is summarized once, in order', () {
+    expect(census.sessions.length, sessions.length);
     expect(
-      census.sittings.map((sitting) => sitting.index),
-      List.generate(sittings.length, (index) => index),
+      census.sessions.map((session) => session.index),
+      List.generate(sessions.length, (index) => index),
     );
-    for (final sitting in census.sittings) {
-      expect(sitting.slots, trajectory.slotsOf(sitting.index).length);
+    for (final session in census.sessions) {
+      expect(session.slots, trajectory.slotsOf(session.index).length);
     }
   });
 
   test('coverage counts the materials the run has met', () {
     final seen = <String>{};
-    for (final sitting in census.sittings) {
+    for (final session in census.sessions) {
       seen.addAll(
         trajectory
-            .slotsOf(sitting.index)
+            .slotsOf(session.index)
             .map((slot) => slot.chosen.material.materialId),
       );
-      expect(sitting.coverage, seen.length);
+      expect(session.coverage, seen.length);
     }
   });
 
   test('every slot is counted as exactly one kind of work', () {
-    for (final sitting in census.sittings) {
+    for (final session in census.sessions) {
       expect(
-        sitting.advancing +
-            sitting.introductions +
-            sitting.preFrontier +
-            sitting.reacquiring +
-            sitting.consolidating,
-        sitting.slots,
+        session.advancing +
+            session.introductions +
+            session.preFrontier +
+            session.reacquiring +
+            session.consolidating,
+        session.slots,
       );
     }
   });
 
   test('every slot that moved nothing lands on one side of the split', () {
-    for (final sitting in census.sittings) {
+    for (final session in census.sessions) {
       expect(
-        sitting.progressionPassedOver + sitting.noProgressionSelectable,
-        sitting.preFrontier + sitting.reacquiring + sitting.consolidating,
+        session.progressionPassedOver + session.noProgressionSelectable,
+        session.preFrontier + session.reacquiring + session.consolidating,
       );
     }
   });
@@ -74,41 +74,41 @@ void main() {
     }
   });
 
-  test('the gap is the time since the last attempt, not the last sitting', () {
-    for (final sitting in census.sittings.skip(1)) {
-      final previous = trajectory.slotsOf(sitting.index - 1).last;
-      final first = trajectory.slotsOf(sitting.index).first;
-      expect(sitting.away, first.at.difference(previous.at));
+  test('the gap is the time since the last attempt, not the last session', () {
+    for (final session in census.sessions.skip(1)) {
+      final previous = trajectory.slotsOf(session.index - 1).last;
+      final first = trajectory.slotsOf(session.index).first;
+      expect(session.away, first.at.difference(previous.at));
     }
   });
 
   test('a recovery is reported for every real break', () {
-    final breaks = census.sittings
+    final breaks = census.sessions
         .where(
-          (sitting) =>
-              sitting.index > 0 && sitting.away >= const Duration(days: 2),
+          (session) =>
+              session.index > 0 && session.away >= const Duration(days: 2),
         )
-        .map((sitting) => sitting.index);
+        .map((session) => session.index);
 
-    expect(census.recoveries().map((r) => r.sitting), breaks);
+    expect(census.recoveries().map((r) => r.session), breaks);
   });
 
-  test('resuming counts sittings until something moved forward', () {
+  test('resuming counts sessions until something moved forward', () {
     for (final recovery in census.recoveries()) {
-      final after = census.sittings.skip(recovery.sitting);
-      final resumed = after.where((sitting) => sitting.progressed);
+      final after = census.sessions.skip(recovery.session);
+      final resumed = after.where((session) => session.progressed);
       expect(
-        recovery.sittingsToProgress,
-        resumed.isEmpty ? isNull : resumed.first.index - recovery.sitting,
+        recovery.sessionsToProgress,
+        resumed.isEmpty ? isNull : resumed.first.index - recovery.session,
       );
     }
   });
 
-  test('a milestone is dated to the sitting it first appears in', () {
+  test('a milestone is dated to the session it first appears in', () {
     for (final milestone in Milestone.values) {
       final first = trajectory.slots
           .where(milestone.reachedBy)
-          .map((slot) => slot.sitting);
+          .map((slot) => slot.session);
       expect(
         census.milestones[milestone],
         first.isEmpty ? isNull : first.first,

@@ -22,7 +22,7 @@ class PerformanceReading {
 
 /// A committed attempt, and the reading it was committed from.
 ///
-/// Two lifetimes in one place. The record is history and outlives the sitting;
+/// Two lifetimes in one place. The record is history and outlives the session;
 /// the reading is the correspondence behind it, which nothing persists, so
 /// this is the only moment anything can ask it where a fault happened.
 @immutable

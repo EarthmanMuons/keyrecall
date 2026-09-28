@@ -8,7 +8,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// What a summary says about attempts whose timing went unmeasured.
 ///
 /// Every statistic here is an average, and an average of nothing is not zero.
-/// A sitting of attempts too short to time observed no motor quality and no
+/// A session of attempts too short to time observed no motor quality and no
 /// pace, and a profile that reported zeros would be fitted against numbers
 /// nobody played.
 void main() {
@@ -35,12 +35,12 @@ void main() {
   final untimed = outcomeWith();
   final timed = outcomeWith(continuity: 1, temporalStability: 1);
 
-  SittingProfile profileWith(Outcome outcome, {int attempts = 8}) => profileOf([
+  SessionProfile profileWith(Outcome outcome, {int attempts = 8}) => profileOf([
     for (var index = 0; index < attempts; index++)
       AttemptObservation(exercise, outcome, seenBefore: true),
   ]);
 
-  group('a sitting nothing timed', () {
+  group('a session nothing timed', () {
     final profile = profileWith(untimed);
 
     test('reports no motor score for the hand that played', () {
@@ -63,7 +63,7 @@ void main() {
       final answers = identifiabilityOf(
         ensemble: const [],
         observed: profile,
-        vary: firstSitting,
+        vary: firstSession,
       );
 
       expect(
@@ -80,7 +80,7 @@ void main() {
       );
     });
 
-    test('is no distance from a sitting that measured something else', () {
+    test('is no distance from a session that measured something else', () {
       // Every term the two profiles could be compared on is absent from one of
       // them, and an absent term is skipped rather than compared against a
       // zero.
@@ -91,7 +91,7 @@ void main() {
     });
   });
 
-  group('a sitting that measured its timing', () {
+  group('a session that measured its timing', () {
     final profile = profileWith(timed);
 
     test('reports the hand it measured', () {
@@ -109,7 +109,7 @@ void main() {
       final answers = identifiabilityOf(
         ensemble: const [],
         observed: profile,
-        vary: firstSitting,
+        vary: firstSession,
       );
 
       expect(
@@ -192,7 +192,7 @@ TrajectorySlot _slotOf(
   return TrajectorySlot(
     index: index,
     at: DateTime.utc(2026).add(Duration(minutes: index)),
-    sitting: 0,
+    session: 0,
     chosen: exercise,
     winner: CandidateTrace(
       exercise: exercise,

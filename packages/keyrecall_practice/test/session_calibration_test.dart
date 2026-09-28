@@ -13,17 +13,17 @@ import 'support/fixtures.dart';
 /// The other harness advances half a day per attempt inside one session, which
 /// is fine for asking whether a mechanism can fire at all and useless for
 /// asking when. Anything paced by elapsed time or by session boundaries has to
-/// be asked here: a sitting is a session, the attempt cap is per sitting, and
-/// coming back tomorrow is a new one.
+/// be asked here: the attempt cap is per session, and coming back tomorrow is a
+/// new one.
 ///
 /// Like its sibling, it asserts shape rather than numbers. The table it prints
 /// is for a person to read across runs.
 void main() {
-  /// Twenty attempts a sitting, ninety seconds apart, on these days.
-  const perSitting = 20;
-  const sittingDays = [0.0, 1.0, 3.0, 7.0];
+  /// Twenty attempts a session, ninety seconds apart, on these days.
+  const perSession = 20;
+  const sessionDays = [0.0, 1.0, 3.0, 7.0];
 
-  /// What each sitting asked for, in order.
+  /// What each session asked for, in order.
   Future<List<Map<int, int>>> practise(
     PlacementTier placement, {
     required double quality,
@@ -31,19 +31,19 @@ void main() {
     String label = '',
   }) async {
     final store = InMemoryPracticeStore(createdAt: t0);
-    final sittings = <Map<int, int>>[];
+    final sessions = <Map<int, int>>[];
 
-    for (final (index, day) in sittingDays.indexed) {
+    for (final (index, day) in sessionDays.indexed) {
       final session = await openSession(
         store,
         placement: placement,
         materials: allScales,
-        sessionId: 'sitting-$index',
-        ids: countingIds('sitting-$index-attempt'),
+        sessionId: 'session-$index',
+        ids: countingIds('session-$index-attempt'),
       );
       final rungs = <int, int>{};
       final bypasses = <String, int>{};
-      for (var i = 0; i < perSitting; i++) {
+      for (var i = 0; i < perSession; i++) {
         final at = t0.plusDays(day + i * 90 / Duration.secondsPerDay);
 
         final presented = await session.decide(at: at);
@@ -77,19 +77,19 @@ void main() {
         );
       }
 
-      sittings.add(rungs);
+      sessions.add(rungs);
       print(
-        '$label sitting $index (day ${day.toInt()}): '
+        '$label session $index (day ${day.toInt()}): '
         'cued/previewed/unguided='
         '${rungs[0] ?? 0}/${rungs[1] ?? 0}/${rungs[2] ?? 0} '
         'bypasses=$bypasses',
       );
     }
-    return sittings;
+    return sessions;
   }
 
   test('someone who retrieves everything stops being shown it', () async {
-    final sittings = await practise(
+    final sessions = await practise(
       PlacementTier.advanced,
       quality: 1.0,
       bpm: 110,
@@ -100,7 +100,7 @@ void main() {
     // retention clock, which every successful retrieval pushes forward, keeps a
     // learner who never misses a note on the preview for longer the harder they
     // practise.
-    final firstUnguided = sittings.indexWhere((rungs) => (rungs[2] ?? 0) > 0);
+    final firstUnguided = sessions.indexWhere((rungs) => (rungs[2] ?? 0) > 0);
 
     expect(firstUnguided, isNot(-1), reason: 'never asked to play unaided');
     expect(
@@ -108,11 +108,11 @@ void main() {
       0,
       reason:
           'an independence question was ranked and waiting through the whole '
-          'first sitting and lost every free contest to novelty, which is '
+          'first session and lost every free contest to novelty, which is '
           'exploration dominating rather than merely leading',
     );
     expect(
-      sittingDays[firstUnguided],
+      sessionDays[firstUnguided],
       lessThan(v1SchedulerConfig.probe.minDaysSinceLastRetrieval),
       reason:
           'removing a preview is not the same question as proving retention, '
@@ -122,7 +122,7 @@ void main() {
   });
 
   test('someone who is still learning keeps their support', () async {
-    final sittings = await practise(
+    final sessions = await practise(
       PlacementTier.beginner,
       quality: 0.45,
       bpm: 55,
@@ -130,32 +130,32 @@ void main() {
     );
 
     expect(
-      sittings.fold<int>(0, (total, rungs) => total + (rungs[2] ?? 0)),
+      sessions.fold<int>(0, (total, rungs) => total + (rungs[2] ?? 0)),
       0,
       reason: 'failing every retrieval is not how independence is earned',
     );
   });
 
-  test('no sitting teaches the scheduler nothing about retrieval', () async {
+  test('no session teaches the scheduler nothing about retrieval', () async {
     // Support raises predicted success, so as memory weakened the ordinary
     // band came to prefer continuous cueing, which observes no retrieval at
-    // all. A whole sitting went by without one attempt that could have said
+    // all. A whole session went by without one attempt that could have said
     // whether the support was still needed, and the preference persisted on
     // evidence that could never arrive.
-    final sittings = await practise(
+    final sessions = await practise(
       PlacementTier.someExperience,
       quality: 0.8,
       bpm: 80,
       label: 'middle  ',
     );
 
-    for (final (index, rungs) in sittings.indexed) {
+    for (final (index, rungs) in sessions.indexed) {
       final observing = (rungs[1] ?? 0) + (rungs[2] ?? 0);
       expect(
         observing,
         greaterThan(0),
         reason:
-            'sitting $index was practised entirely under continuous cueing, '
+            'session $index was practised entirely under continuous cueing, '
             'so it produced no evidence about the question the scheduler was '
             'implicitly answering when it chose that support',
       );

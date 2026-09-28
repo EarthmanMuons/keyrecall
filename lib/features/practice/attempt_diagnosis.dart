@@ -54,7 +54,7 @@ enum TraversalLandmark {
 /// Three questions, and no more: did it finish, what went wrong, and where.
 /// Everything the observation model saw is already in the journal, so this is
 /// free to say the one true thing that helps rather than the fifteen that are
-/// also true. A learner mid-sitting is deciding whether to keep going.
+/// also true. A learner mid-session is deciding whether to keep going.
 ///
 /// Nothing here is softened and nothing is invented. An attempt that fell
 /// apart says so, an attempt that went well says so, and an attempt nobody can

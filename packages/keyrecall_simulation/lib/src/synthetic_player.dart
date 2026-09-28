@@ -52,7 +52,7 @@ class SyntheticPlayer {
   ///
   /// [tempoCompliance] is a disposition, and a constant one describes somebody
   /// who misses the request by the same proportion every time. The learner the
-  /// device sittings found is not that: they follow the count-in nearly always
+  /// device sessions found is not that: they follow the count-in nearly always
   /// and occasionally play a scale they find easy at the speed they actually
   /// play it. Only the second kind of attempt is clean, fast and above the
   /// request at once, which is what opens a tempo probe, so no constant
@@ -142,7 +142,7 @@ class SyntheticPlayer {
   /// How long a break takes to cost half of what practice gained in
   /// execution, in days, or null for somebody who does not lose it.
   ///
-  /// Elapsed calendar time rather than sittings missed, so it means the same
+  /// Elapsed calendar time rather than sessions missed, so it means the same
   /// thing as the learner model's own decay and a two-day gap and a two-month
   /// one are the same question asked at two scales.
   ///
@@ -512,7 +512,7 @@ class PlayerState {
     // Falling apart is a consequence of how the attempt is going rather than
     // a tax on every attempt. The unconditional nine-in-ten draw this replaced
     // put a ceiling of ninety per cent on any player's completion, which a
-    // device sitting of thirty-five clean attempts is already enough to
+    // device session of thirty-five clean attempts is already enough to
     // refute; squaring what is left makes an attempt fail only when quality is
     // genuinely low, and rarely for somebody executing well.
     final completed =

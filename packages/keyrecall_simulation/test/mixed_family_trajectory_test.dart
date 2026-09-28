@@ -28,7 +28,7 @@ void main() {
           detectAnomalies(trajectory, requestedSlots: 40).where(
             (anomaly) =>
                 anomaly.severity == AnomalySeverity.invariant &&
-                anomaly.detector != 'sitting_ran_dry',
+                anomaly.detector != 'session_ran_dry',
           ),
         );
         final terminal = trajectory.terminal;

@@ -36,7 +36,7 @@ class LearnerStateCheckpoint {
 
   /// The journal sequence of the last attempt folded into this state.
   ///
-  /// A position in the *history*, not in a sitting. A history spans many
+  /// A position in the *history*, not in a session. A history spans many
   /// sessions, so a within-session index cannot say what a checkpoint already
   /// includes: resuming from one would silently reapply every attempt from
   /// every other session.

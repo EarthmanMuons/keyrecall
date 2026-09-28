@@ -42,7 +42,7 @@ end a profile's recorded practice while work started before them is still in
 flight, and an id alone would let that work put back what was just destroyed.
 
 So every profile carries a durable `ProfileLifetime`: its id, and an incarnation
-that is replaced rather than cleared. A sitting binds to the one standing when
+that is replaced rather than cleared. A session binds to the one standing when
 it opened and writes through that view, and storage refuses anything naming an
 incarnation that has been retired. The check happens inside the same serialized
 operation as the write, so nothing can be retired between authorizing a write
@@ -161,7 +161,7 @@ is a function of it, and a history that does not record the prior it was
 computed against cannot reproduce itself.
 
 Each scheduled attempt also records the goal and focus it was decided under. The
-profile keeps only its current goal and a focus lasts only a sitting, so without
+profile keeps only its current goal and a focus lasts only a session, so without
 it a history could not say which scope chose any of its attempts. It records how
 long its parts took too, from the listening window opening, since the transcript
 those durations are read from is not kept, and what class of input it was played
@@ -191,7 +191,7 @@ None of that says anybody looked, which a screen cannot establish; what it says
 is that everything between the app and the learner was out of the way.
 
 The surface that drew a part does not get to conclude it was recorded. It
-reports, and the sitting that owns the history answers whether the report
+reports, and the session that owns the history answers whether the report
 stands; a refusal is asked again, on a wait that lengthens each time.
 
 Feedback exposure never changes evidence weight. Any effect on later attempts is

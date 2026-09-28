@@ -15,7 +15,7 @@ import 'support/fixtures.dart';
 /// exist to pin that it really is load-bearing, rather than that the field
 /// happens to survive serialization.
 void main() {
-  /// A sitting over [profile], run [attempts] deep when asked.
+  /// A session over [profile], run [attempts] deep when asked.
   Future<PracticeSession> sessionOver(
     PracticeStore store,
     Profile profile, {
@@ -33,7 +33,7 @@ void main() {
     return session;
   }
 
-  /// Runs a real sitting for [profile] and returns what its state hashes to.
+  /// Runs a real session for [profile] and returns what its state hashes to.
   Future<String> hashAfterPractising(
     PracticeStore store,
     Profile profile,
@@ -54,8 +54,8 @@ void main() {
     'the same history under a different placement is a different state',
     () async {
       // The reason the tier is stored rather than defaulted. Same identity,
-      // same materials, same seeded ids, so the sittings are as alike as two
-      // sittings can be; only the prior differs.
+      // same materials, same seeded ids, so the sessions are as alike as two
+      // sessions can be; only the prior differs.
       final asBeginner = await hashAfterPractising(
         InMemoryPracticeStore(createdAt: t0),
         alicePlacedAt(PlacementTier.beginner),

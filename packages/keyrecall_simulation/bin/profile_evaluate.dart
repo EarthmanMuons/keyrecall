@@ -38,7 +38,7 @@ Future<void> main(List<String> arguments) async {
   const pipeline = SchedulerPipeline(learner: model);
   final player = playerOf(options.option('archetype')!);
 
-  // A state partway through a real sitting, so the frontiers, memory and
+  // A state partway through a real session, so the frontiers, memory and
   // residuals a decision reads are populated the way they are in practice.
   final state = _stateAfter(player, slot, pipeline);
   final session = SessionState();

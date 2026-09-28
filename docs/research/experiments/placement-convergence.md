@@ -16,7 +16,7 @@ whatever the start? This is the first.
 ## Method
 
 Each archetype's history is generated once by the scheduler over the production
-catalog, both families, 25 daily sittings of 20 attempts, from its own
+catalog, both families, 25 daily sessions of 20 attempts, from its own
 placement. Its exercises, outcomes, and times alone are then replayed into a
 fresh state for each tier, so all three see exactly the same evidence and any
 gap left is the prior. At each checkpoint the three are compared, taking the
@@ -27,7 +27,7 @@ largest gap over the three pairs:
 - predicted success over every generated candidate, about 20,000;
 - the share of candidates whose challenge-band membership differs, and whose
   eligibility tier differs;
-- whether one decision from a fresh sitting picks the same exercise.
+- whether one decision from a fresh session picks the same exercise.
 
 Thirteen archetypes, two seeds, 897 seconds.
 
@@ -153,10 +153,10 @@ gate's.
 ## With the scheduler choosing
 
 The same player run three times under a goal, once per placement, over 25 daily
-sittings of 20 slots, with the shipped floors. Each placement is offered
+sessions of 20 slots, with the shipped floors. Each placement is offered
 different work and so gathers different evidence, which is the question the
 fixed history could not ask: whether the scheduler lets them converge. After 3,
-6, 10, and 25 sittings the three are compared on coverage, on the largest total
+6, 10, and 25 sessions the three are compared on coverage, on the largest total
 variation distance between two placements' mix of picks since the previous
 checkpoint, and on the least overlap between two placements' fully eligible
 sets, read from their own learner states. Thirteen archetypes, two seeds, two
@@ -169,7 +169,7 @@ dart run keyrecall_simulation:closed_loop_placement --seeds 2 --jobs 4 \
 
 Means over the 26 groups per goal:
 
-| Goal        | Sittings | Coverage gap | Guidance | Hands | Octaves | Direction | Family | Eligible overlap |
+| Goal        | Sessions | Coverage gap | Guidance | Hands | Octaves | Direction | Family | Eligible overlap |
 | ----------- | -------: | -----------: | -------: | ----: | ------: | --------: | -----: | ---------------: |
 | Foundations |        3 |        0.085 |    0.095 | 0.052 |       - |     0.084 |      - |            0.696 |
 | Foundations |       25 |        0.075 |    0.054 | 0.081 |       - |     0.038 |      - |            0.975 |
@@ -203,7 +203,7 @@ facet to agree. Nothing in the data says it stops converging; it does say that
 over a catalog this wide the start costs something for a long time.
 
 **Same next pick is too strict a measure here.** No group's three placements
-picked the same exercise from a fresh sitting at any checkpoint, which reads
+picked the same exercise from a fresh session at any checkpoint, which reads
 less as divergence than as three genuinely different histories breaking every
 tie differently. Overlap is the measure that carries the result.
 

@@ -1,16 +1,16 @@
-# Calibrating a player from a sitting
+# Calibrating a player from a session
 
 > **Status:** estimator implemented and validated against synthetic ground
-> truth. One device sitting fitted.
+> truth. One device session fitted.
 
-Recovering `SyntheticPlayer` parameters from the attempts of one sitting, so a
+Recovering `SyntheticPlayer` parameters from the attempts of one session, so a
 long-run simulation can ask what a learner who plays like this person would
 experience over months.
 
-## Getting a sitting off a device
+## Getting a session off a device
 
 `exportTrajectory` writes `<stamp>-<profile>-attempts.json` beside the readable
-report: schema version, profile, sitting and start time, then one entry per
+report: schema version, profile, session and start time, then one entry per
 attempt holding the exercise as presented, the outcome as measured, and the
 familiarity known beforehand. The exercise and outcome use the journal's own
 encodings rather than a calibration-specific interpretation of them, so the file
@@ -22,7 +22,7 @@ ordering exports. Nothing that fits a learner reads them: a fit sees the
 exercise, the outcome and the familiarity, which is what makes it a statement
 about playing rather than about who was playing.
 
-**The derived profile is not exported.** A device sitting and a synthetic one
+**The derived profile is not exported.** A device session and a synthetic one
 both go through `profileOf`, so there is one implementation of the profile
 semantics and a difference between the two is a difference in the playing.
 
@@ -44,34 +44,34 @@ engagement, because those are consequences of policy. The question a fit answers
 is what kind of person this is; whether the scheduler treats that person well is
 a separate question, asked afterwards by running them.
 
-Candidates are compared by replaying **the exercises the sitting actually asked
+Candidates are compared by replaying **the exercises the session actually asked
 for**, so every candidate answers the questions the person answered. Running
 each candidate through the scheduler instead would fit the player and the policy
 at once.
 
 ## Distributions, not attempts
 
-A fit compares [`SittingProfile`]s: median achieved tempo and motor score by
+A fit compares [`SessionProfile`]s: median achieved tempo and motor score by
 hand configuration, the played-over-requested ratio, the share of attempts well
 above what was asked, the completion rate, and performance on unseen material
-against familiar. One human sitting is not deterministic, and a candidate that
+against familiar. One human session is not deterministic, and a candidate that
 matched it attempt by attempt would be fitting its noise.
 
 Terms only one profile can answer are skipped rather than defaulted, so a
-sitting with no hands-together work is not fitted on a coordination penalty it
+session with no hands-together work is not fitted on a coordination penalty it
 never observed.
 
 Whether the learner had met a material before is **provenance carried on the
 attempt**, not position in the export. Somebody who played C major for years
 before the app existed is not evidence about meeting new material, and inferring
-novelty from first appearance in a sitting would say they were. An attempt that
+novelty from first appearance in a session would say they were. An attempt that
 does not know says so, and the whole familiarity contrast drops out rather than
 being answered from the wrong fact.
 
 The answer is an **ensemble**, closest first, with a range per parameter. A wide
-range is a real answer: it says the sitting did not identify that parameter.
+range is a real answer: it says the session did not identify that parameter.
 
-## What one sitting identifies
+## What one session identifies
 
 Validated by recovering players the estimator was not told about, over sixty
 attempts:
@@ -87,13 +87,13 @@ The compliance observable is **per hand**, since natural tempo is per hand and
 the scheduler need not ask each of them for the same spread of tempos. Pooling
 them lets a difference between the hands arrive as a statement about compliance.
 A hand whose requested tempo barely varied is absent from the profile rather
-than reading as zero, because a sitting that never asked cannot answer.
+than reading as zero, because a session that never asked cannot answer.
 
 **Compliance has to be fitted with the tempos, not after them.** The played
 tempo is a geometric blend of the requested one and the natural one, so holding
 one at a guess makes the fit report a statement about the guess: with compliance
 fixed, a learner whose natural pace is 84bpm fits at 116, and with it free,
-at 93. `SittingProfile.tempoSlope`, the slope of log played against log
+at 93. `SessionProfile.tempoSlope`, the slope of log played against log
 requested, is what separates them, and without it the estimator cannot tell a
 fast complier from a slow one who plays their own pace.
 
@@ -104,52 +104,52 @@ score. Ordering survives that, levels do not.
 
 ## Sampled is not identified
 
-A fit samples every parameter it is asked to vary, whether or not the sitting
+A fit samples every parameter it is asked to vary, whether or not the session
 contains anything that speaks to it, so an interval alone means nothing. Each
-one is reported against what the sitting could see:
+one is reported against what the session could see:
 
 ```text
 identified            the observable is there, and the ensemble narrowed
 weakly identified     narrowed, but not by much
 not identified        as wide as it was drawn: sampled, nothing learned
-not observed          the sitting never contained the observable
-needs several sittings  nothing about one sitting could speak to it
+not observed          the session never contained the observable
+needs several sessions  nothing about one session could speak to it
 ```
 
 The last two print no interval at all. A range nothing constrained is the prior
 wearing an answer's clothes, and printing it would be the report arguing against
-itself. A sitting with no hands-together work reports coordination ability as
-**not observed**; the same fit on a sitting that has some reports it as
+itself. A session with no hands-together work reports coordination ability as
+**not observed**; the same fit on a session that has some reports it as
 unconstrained or identified on its merits.
 
 ## Staging
 
 ```text
-first sitting     tempos, per-hand ability, coordination, familiarity, compliance
+first session     tempos, per-hand ability, coordination, familiarity, compliance
                   and sprint probability, fitted together
-across sittings   learning rate, from the change between them
+across sessions   learning rate, from the change between them
 ```
 
-Learning rate is deliberately last and separate. A single sitting cannot see
+Learning rate is deliberately last and separate. A single session cannot see
 improvement at all, and fitting it alongside starting ability would let a fit
-explain a weak sitting either way, which is exactly the collapse that made the
+explain a weak session either way, which is exactly the collapse that made the
 old synthetic beginner unable to learn.
 
 ## What this does not claim
 
-An ensemble that reproduces a sitting's distributions is a **behavioral
+An ensemble that reproduces a session's distributions is a **behavioral
 surrogate**, not a measurement of a person. Two learners who play the same way
 for an hour may differ in every way that matters over a year, and the ranges are
 the honest expression of that.
 
-## The first device sitting
+## The first device session
 
-Thirty-five attempts, one sitting, single hands and coordination work, tempos
-from 58 to 132. `bin/calibrate.dart` reads the export and prints the sitting,
-the fit and what the sitting could speak to.
+Thirty-five attempts, one session, single hands and coordination work, tempos
+from 58 to 132. `bin/calibrate.dart` reads the export and prints the session,
+the fit and what the session could speak to.
 
 ```text
-== the sitting
+== the session
    played     right 130, left 121, together 114
    motor      right 1.00, left 1.00, together 1.00
    slope      right 0.28, left 0.37, together 0.43
@@ -171,11 +171,11 @@ the fit and what the sitting could speak to.
   sprintProbability     -                   not identified
 ```
 
-Familiarity reads as not observed, exactly as the export promised: the sitting
+Familiarity reads as not observed, exactly as the export promised: the session
 opens on material with no earlier record, so nothing knows whether the person
 had played it before.
 
-### Two things the sitting says about the model rather than the player
+### Two things the session says about the model rather than the player
 
 **Measurement saturates, so motor score carries almost no information.**
 Continuity and temporal stability are 1.00 on thirty-one of thirty-five
@@ -185,7 +185,7 @@ completion, because `SyntheticPlayer` cannot express somebody who never has a
 bad attempt: completion is capped by a nine-in-ten draw and motor quality
 carries noise on every attempt. **The fit is therefore working almost entirely
 from tempo**, and the ability intervals are wide for that reason rather than
-because the sitting was short.
+because the session was short.
 
 **Compliance is low and the slope says so.** The played tempo follows the
 requested one with a slope of 0.28 to 0.43, and the ratio distribution is
@@ -205,7 +205,7 @@ to the estimator.
 Two things, neither of them ability.
 
 An unconditional nine-in-ten completion draw taxed every attempt, so no player
-could complete more than ninety per cent of a sitting whatever they could do.
+could complete more than ninety per cent of a session whatever they could do.
 Completion now falls out of the attempt instead: it fails with the square of
 what is left of execution quality, so a bad attempt still falls apart and a
 learner executing well rarely does.
@@ -216,17 +216,17 @@ hundred and twenty costs them nothing.
 
 The other was the prior rather than the model. Ability was drawn up to a logit
 of two and a half, which tops out near a motor score of 0.92 before span and
-strain take their share, so a sitting whose median is one could not be reached
+strain take their share, so a session whose median is one could not be reached
 and the fit reported the ceiling as a measurement.
 
-After both, the same sitting fits at 0.100 rather than 0.130, with the closest
+After both, the same session fits at 0.100 rather than 0.130, with the closest
 members at 0.87 motor and ninety-one per cent completion rather than 0.70 and
 eighty-six, and the ability interval moves from 0.53-2.34 up to 1.43-3.79.
 `reliable_self_paced` is that learner as a named archetype, and playing the same
-sitting it lands at 0.067, closer than anything the search found.
+session it lands at 0.067, closer than anything the search found.
 
 The archetypes it had to leave alone kept their character: the true beginner
-completes seventeen per cent of a sitting at 0.09 motor, developing forty-three
+completes seventeen per cent of a session at 0.09 motor, developing forty-three
 at 0.32, advanced eighty-eight at 0.83. **Expressiveness, not uniform
 competence**, and a family that could describe this learner while losing the
 struggling ones would have traded one blind spot for another.

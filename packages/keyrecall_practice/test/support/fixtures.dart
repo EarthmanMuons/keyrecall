@@ -75,7 +75,7 @@ Outcome outcomeFor(
   tempoRatio: tempoRatio,
 );
 
-/// Opens a sitting against [store], with reproducible ids.
+/// Opens a session against [store], with reproducible ids.
 /// Placement now travels on the profile, so a session over a different tier
 /// is a session over a different profile.
 Future<PracticeSession> openSession(
@@ -98,7 +98,7 @@ Future<PracticeSession> openSession(
   nextId: ids ?? countingIds(),
 );
 
-/// A pipeline whose sitting ends after [attempts] slots.
+/// A pipeline whose session ends after [attempts] slots.
 ///
 /// The one deterministic way to reach a slot that admits nothing. A short
 /// catalog cannot be run dry, because the scheduler goes on deepening material
@@ -148,7 +148,7 @@ Future<List<AttemptRecord>> practise(
 /// A pipeline that offers supported work for the floor of the first material.
 ///
 /// When the scheduler offers acquisition is the scheduler's own question, and
-/// its tests ask it. These are about what a sitting does with an offer once it
+/// its tests ask it. These are about what a session does with an offer once it
 /// has one, so the offer is supplied rather than provoked.
 class AlwaysOffersAcquisition extends SchedulerPipeline {
   const AlwaysOffersAcquisition() : super(learner: learner);
@@ -216,7 +216,7 @@ String genesisHashOf(Profile profile) => learnerStateHash(
   learner.placementState(profile.placement, at: profile.createdAt),
 );
 
-/// A checkpoint over [session]'s history, as that sitting would save one.
+/// A checkpoint over [session]'s history, as that session would save one.
 LearnerStateCheckpoint checkpointOf(
   PracticeSession session, {
   Profile? profile,

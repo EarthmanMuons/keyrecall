@@ -74,7 +74,7 @@ exists, which is right for an execution condition and wrong for a curriculum
 phase.** Two octaves of an appropriate scale is material the learner should be
 on, played a way they have not earned; harmonic minor before its foundation is
 not material they should be on at all. So the altered forms are a barrier to
-first _introduction_ rather than a ranking disadvantage. A device sitting
+first _introduction_ rather than a ranking disadvantage. A device session
 introduced harmonic and melodic minor six times before hands-together work
 appeared once, every time through the introduction exception, because "not fully
 eligible" was never the same claim as "not to be introduced".

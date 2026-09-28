@@ -17,8 +17,8 @@ Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('scope', defaultsTo: 'keyFluency')
     ..addOption('seeds', defaultsTo: '4')
-    ..addOption('sittings', defaultsTo: '50')
-    ..addOption('every', defaultsTo: '10', help: 'sittings per checkpoint')
+    ..addOption('sessions', defaultsTo: '50')
+    ..addOption('every', defaultsTo: '10', help: 'sessions per checkpoint')
     ..addOption('jobs', defaultsTo: '5')
     ..addOption('out', defaultsTo: 'goal_horizon.jsonl')
     ..addOption(
@@ -28,7 +28,7 @@ Future<void> main(List<String> arguments) async {
     );
   final options = parser.parse(arguments);
   final scope = GoalTrajectoryScope.values.byName(options.option('scope')!);
-  final sittings = int.parse(options.option('sittings')!);
+  final sessions = int.parse(options.option('sessions')!);
   final every = int.parse(options.option('every')!);
   final progress = ProgressPreference.values.byName(
     options.option('progress')!,
@@ -39,9 +39,9 @@ Future<void> main(List<String> arguments) async {
     'format': 1,
     'scope': scope.name,
     'progress': progress.name,
-    'sittings': sittings,
+    'sessions': sessions,
     'every': every,
-    'slots_per_sitting': 20,
+    'slots_per_session': 20,
     'curriculum': '${curriculum.curriculumId}@${curriculum.curriculumVersion}',
     ...modelConfiguration(
       schedulerModelVersion: v1SchedulerConfig
@@ -55,7 +55,7 @@ Future<void> main(List<String> arguments) async {
     for (final player in PlayerArchetypes.all)
       for (var seed = 0; seed < int.parse(options.option('seeds')!); seed++)
         if (!done.contains('${player.id}/$seed'))
-          () => _run(scope, player, seed, sittings, every, progress),
+          () => _run(scope, player, seed, sessions, every, progress),
   ];
   final stopwatch = Stopwatch()..start();
   var next = 0;
@@ -82,7 +82,7 @@ Future<Map<String, Object?>> _run(
   GoalTrajectoryScope scope,
   SyntheticPlayer player,
   int seed,
-  int sittings,
+  int sessions,
   int every,
   ProgressPreference progress,
 ) async {
@@ -92,16 +92,16 @@ Future<Map<String, Object?>> _run(
     scope: scope,
     player: player,
     seed: seed,
-    sittings: sittings,
+    sessions: sessions,
     progress: progress,
-    afterSitting: (sitting, slots, session) {
-      if ((sitting + 1) % every != 0) return;
+    afterSession: (sessionIndex, slots, session) {
+      if ((sessionIndex + 1) % every != 0) return;
       final evaluated = const PracticeScopeEvaluator().evaluate(
         scope: resolved,
         state: session.state,
         journal: session.journal,
         learner: session.learner,
-        at: DateTime.utc(2026).add(Duration(days: sitting + 1, hours: 23)),
+        at: DateTime.utc(2026).add(Duration(days: sessionIndex + 1, hours: 23)),
       );
       int coveredIn(String familyId) => evaluated.requirements
           .where(
@@ -112,7 +112,7 @@ Future<Map<String, Object?>> _run(
           )
           .length;
       checkpoints.add({
-        'sittings': sitting + 1,
+        'sessions': sessionIndex + 1,
         'slots': slots,
         'covered': evaluated.coverage.coveredTargets,
         'targets': evaluated.coverage.targetCount,
@@ -127,15 +127,15 @@ Future<Map<String, Object?>> _run(
     bool Function(GoalTrajectorySelection) test,
   ) => picks.isEmpty ? 0 : picks.where(test).length / picks.length;
   final intervals = [
-    for (var start = 0; start < sittings; start += every)
+    for (var start = 0; start < sessions; start += every)
       (() {
         final picks = run.selections
             .where(
-              (pick) => pick.sitting >= start && pick.sitting < start + every,
+              (pick) => pick.session >= start && pick.session < start + every,
             )
             .toList();
         return {
-          'from_sitting': start,
+          'from_session': start,
           'picks': picks.length,
           'target_shaped': share(picks, (pick) => pick.isTargetShaped),
           'arpeggio': share(
@@ -167,8 +167,8 @@ Future<Map<String, Object?>> _run(
       for (final fraction in [0.25, 0.5, 0.75, 1.0])
         '$fraction': run.slotCovering(fraction),
     },
-    'caught_up': run.sittings.where((end) => end == SittingEnd.caughtUp).length,
-    'blocked': run.sittings.where((end) => end == SittingEnd.blocked).length,
+    'caught_up': run.sessions.where((end) => end == SessionEnd.caughtUp).length,
+    'blocked': run.sessions.where((end) => end == SessionEnd.blocked).length,
     'checkpoints': checkpoints,
     'intervals': intervals,
     'first': {
@@ -188,7 +188,7 @@ Future<Map<String, Object?>> _run(
     'depth': [
       for (final interval in realizationDepthOf(
         run.selections,
-        sittings: sittings,
+        sessions: sessions,
         every: every,
       ))
         interval.toJson(),

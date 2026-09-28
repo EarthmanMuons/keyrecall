@@ -371,7 +371,7 @@ void main() {
           identity: AttemptIdentity(
             profileId: alice.id,
             attemptId: 'acquisition-1',
-            sessionId: 'sitting-0',
+            sessionId: 'session-0',
             indexInSession: 0,
             occurredAt: t0,
           ),

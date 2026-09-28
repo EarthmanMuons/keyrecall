@@ -22,7 +22,7 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - Three unsteady-pulse archetypes, transferring, relapsing, and unresponsive,
   kept out of `PlayerArchetypes.all`, and `pulse_census`, which characterizes
   them against the players a pulse must leave alone and counts how often a
-  sitting brings the same kind of timing evidence back.
+  session brings the same kind of timing evidence back.
 - Trajectories play a slot chosen under a bypass that supplies a pulse with a
   metronome, and `pulse_census` reports what remediation did under the
   scheduler.

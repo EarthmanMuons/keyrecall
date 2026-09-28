@@ -314,7 +314,7 @@ void main() {
           identity: AttemptIdentity(
             profileId: alice.id,
             attemptId: 'acquisition-1',
-            sessionId: 'sitting-0',
+            sessionId: 'session-0',
             indexInSession: 0,
             occurredAt: t0,
           ),
@@ -465,7 +465,7 @@ void main() {
             identity: AttemptIdentity(
               profileId: alice.id,
               attemptId: offered.attemptId,
-              sessionId: 'sitting-0',
+              sessionId: 'session-0',
               indexInSession: 0,
               occurredAt: at,
             ),
@@ -881,7 +881,7 @@ void main() {
     test('abandoning is refused while durability is unknown', () async {
       // The append wrote and then threw, and the read that would settle it
       // failed too. Abandoning on the strength of not knowing leaves one
-      // attempt in the file and none in the sitting.
+      // attempt in the file and none in the session.
       final store = FlakyPracticeStore(InMemoryPracticeStore(createdAt: t0));
       final session = await openSession(store);
       final presented = await session.decide(at: t0.plusDays(0.5));
@@ -931,7 +931,7 @@ void main() {
       expect((await store.loadJournal(alice.id)).length, 0);
       expect(await store.loadPendingDecision(alice.id), isNull);
 
-      // And the sitting carries on, aiming at the sequence storage expects.
+      // And the session carries on, aiming at the sequence storage expects.
       final next = await session.decide(at: t0.plusDays(1));
       await session.closeWithOutcome(outcomeFor(next!.exercise));
       expect((await store.loadJournal(alice.id)).length, 1);

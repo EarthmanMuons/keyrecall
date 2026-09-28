@@ -37,7 +37,7 @@ void main() {
     });
 
     test('and the ratio is what the app would see', () {
-      // The device sitting, in one number: asked for sixty, played at a
+      // The device session, in one number: asked for sixty, played at a
       // hundred and twenty-six, reported as a ratio just over two.
       final playing = PlayerArchetypes.fastButPlacedLow
           .copyWith(tempoCompliance: 0)

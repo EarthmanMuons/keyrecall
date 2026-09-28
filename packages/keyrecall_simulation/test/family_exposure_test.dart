@@ -6,11 +6,11 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 /// The exposure reading agrees with the run it summarizes.
 void main() {
-  final trajectory = runSittings(
+  final trajectory = runTrajectorySessions(
     player: PlayerArchetypes.coordinationLimited,
     seed: 2,
     materials: v1ScaleCatalog,
-    sittings: LongitudinalSchedules.named('normal_month', slots: 12),
+    sessions: LongitudinalSchedules.named('normal_month', slots: 12),
   );
   final exposures = familyExposures(trajectory);
 

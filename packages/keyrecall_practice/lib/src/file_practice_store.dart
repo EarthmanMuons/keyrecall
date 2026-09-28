@@ -751,7 +751,7 @@ class FilePracticeStore implements PracticeStore {
 
 /// A [FilePracticeStore] view that writes only as one incarnation.
 ///
-/// Reads pass through: what a retired sitting may not do is persist, and
+/// Reads pass through: what a retired session may not do is persist, and
 /// refusing it the history it already replayed would only hide where the
 /// refusal came from.
 class _LifetimeBoundFileStore implements PracticeStore {

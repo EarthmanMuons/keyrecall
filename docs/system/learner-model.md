@@ -223,7 +223,7 @@ stored as persistent ability. In the scheduler, session state drives the attempt
 cap, diversity history, repetition guard, and exact recovery action.
 
 These pieces do not all have the same lifetime. The attempt cap and the recovery
-context are per-sitting: a restart begins a new sitting, and a recovery context
+context are per-session: a restart begins a new session, and a recovery context
 that outlived the failure it answered would be answering a question nobody is
 still asking. The diversity history is rebuilt from the tail of the journal, so
 the repetition guard keeps working across a restart rather than immediately

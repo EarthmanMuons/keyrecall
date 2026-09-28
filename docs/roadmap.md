@@ -421,9 +421,9 @@ the project learns how pianists learn
 
 Population fitting must not become a prerequisite for local operation.
 
-### Presentation provenance in the sitting export
+### Presentation provenance in the session export
 
-A sitting export carries the exercise, the outcome, and the familiarity. It does
+A session export carries the exercise, the outcome, and the familiarity. It does
 not carry what the attempt was presented under, which the attempt journal now
 records: the resolved conditions, what the app delivered on each fallible
 channel, and the policy that chose them. So an export is a complete statement of
@@ -442,9 +442,9 @@ more than it buys while nothing depends on the exports.
 The trigger is the point where exports stop being a way to look at the app and
 start being data the project may use:
 
-> Before the first sitting export that is meant as calibration or training data,
+> Before the first session export that is meant as calibration or training data,
 > add presentation provenance to the exported observation and bump
-> `sittingExportSchemaVersion`.
+> `sessionExportSchemaVersion`.
 
 Waiting past that point is the expensive mistake, because it accumulates a
 dataset missing a variable whose effect on interpretation is already understood.
@@ -640,7 +640,7 @@ Safety policy must not wait for a latent fatigue inference to become reliable.
 Conservative workload constraints can remain direct, and neither path should
 claim to diagnose injury or medical risk from MIDI behavior.
 
-### Preserve the sessionless UX
+### Keep sessions open-ended
 
 Future scheduler intelligence remains constrained by a core product principle:
 
@@ -715,7 +715,7 @@ and the third only just does.
 `beginnerMean = -1.0`, `someExperienceMean = 0.0` and `pMin = 0.60` are each
 defensible alone. Together they define a regime nobody chose: for the majority
 of new learners the ordinary "not too easy, not too hard" path is inert, and
-every attempt is admitted by a named bypass instead. A traced beginner sitting
+every attempt is admitted by a named bypass instead. A traced beginner session
 confirms it — across sixteen consecutive attempts, `challengeBypass` was never
 null.
 
@@ -735,7 +735,7 @@ so the tier ordering could only sort what admission let through, and
 stratified: it may bypass challenge difficulty, but while the slot holds an
 introducible candidate in a higher eligibility tier, a lower one is not
 reachable through it at all. For `someExperience` that removed provisional
-selections from an early sitting entirely, and `advanced` was unaffected.
+selections from an early session entirely, and `advanced` was unaffected.
 
 What it does not remove is the underlying scarcity. A beginner has five
 foundation materials, and once all five have been met every remaining
@@ -782,7 +782,7 @@ equality semantics of two numbers set independently. It now asks for evidence
 about the work in front of the learner - both hands having managed that scale at
 that span - which is also what supplies the entry tempo.
 
-### A sitting with nothing to offer
+### A session with nothing to offer
 
 The app distinguishes a caught-up scope, an invalid scope, and a blocked slot,
 and only the last is presented as a defect. Scheduler absence is not ambiguous:
@@ -810,7 +810,7 @@ entry rejected by those remaining stages are distinct blocked reasons.
 
 The scale family supplies continuously cued, one-octave, ascending single-hand
 entries. They prevent the seven-material true-beginner trajectory from running
-dry in `keyrecall_simulation/test/sitting_ran_dry_test.dart`.
+dry in `keyrecall_simulation/test/session_ran_dry_test.dart`.
 
 `PracticeScopeResolver` rejects unknown identities, family mismatches,
 unrealizable constraints, dangling support, invalid focus, and unsupported
@@ -827,12 +827,12 @@ rarely clears that, so its frontier stayed empty and coordination work was never
 offered. Readiness is now its own record, written on any completed attempt whose
 pitch integrity clears its own bar, because a hand playing the right notes
 unevenly knows the scale and a hand playing the wrong ones smoothly does not. An
-uneven player went from qualifying in two simulated sittings of twenty to
+uneven player went from qualifying in two simulated sessions of twenty to
 eighteen.
 
 The earlier scheduler let a fully eligible, admitted hands-together candidate
 wait a median of seven to nineteen slots after its prerequisite was first
-satisfied, and in some sittings never chose it.
+satisfied, and in some sessions never chose it.
 
 Attributing every slot of that wait says the cause is not what it looked like:
 
@@ -890,7 +890,7 @@ logit(0.60) - logit(0.30) = 0.847
 
 which under that coefficient would take about **seven beats per minute**. The
 sub-sixty ladder cannot move this learner into the band, and thirty one dry
-sittings confirm it: none re-enters the band at any rung, and mean predicted
+sessions confirm it: none re-enters the band at any rung, and mean predicted
 success rises from 0.298 to 0.333 across the entire descent.
 
 For scale, an extra octave costs 0.3 and hands together costs 0.2 under the same
@@ -908,7 +908,7 @@ their own completion rules.
 Which makes this a device question, and a small one. For a learner who knows the
 notes, one octave of C major in one hand, fully cued, at forty, fifty and sixty,
 several attempts each, scored against whatever `acceptable execution` is taken
-to mean. Counterbalance the tempo order, or within-sitting learning will read as
+to mean. Counterbalance the tempo order, or within-session learning will read as
 a tempo effect.
 
 That gives both quantities at once: whether predicted execution probability is
@@ -962,7 +962,7 @@ as one transcript, or if the staff drops frames while somebody plays.
 
 ### A rebuilt window reinterprets history under the current model
 
-Reopening a sitting rebuilds the realization-family pacing window from the tail
+Reopening a session rebuilds the realization-family pacing window from the tail
 of the journal, and each record's `productive` flag is recomputed by asking the
 _current_ `LearnerModel.executionWasManaged` about a historical outcome. The
 window is therefore derivable from the journal rather than separately persisted,
@@ -970,7 +970,7 @@ which is what keeps pacing state out of the schema, but its reconstruction is
 interpreted by whatever learner version is running now.
 
 If the managed-execution criterion moves, the same journal yields a different
-window, so a sitting reopened after an upgrade can carry different pressure than
+window, so a session reopened after an upgrade can carry different pressure than
 the one that was interrupted. Nothing is corrupted by this: the window is a
 short rolling summary that the next dozen attempts replace, and the journal, the
 learner state, and replay are untouched.

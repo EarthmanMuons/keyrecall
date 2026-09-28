@@ -42,7 +42,7 @@ class PlacementDivergence {
   /// Share of candidates whose eligibility tier differs.
   final double eligibilityDisagreement;
 
-  /// Whether one decision from a fresh sitting chose the same exercise.
+  /// Whether one decision from a fresh session chose the same exercise.
   final bool sameSelection;
 
   /// Fully eligible candidates under each placement, fewest and most.
@@ -161,7 +161,7 @@ PlacementConvergenceRun runPlacementConvergence({
   required SyntheticPlayer player,
   required int seed,
   List<int> checkpoints = placementCheckpoints,
-  int slotsPerSitting = 20,
+  int slotsPerSession = 20,
 }) {
   final instrument = InstrumentProfile();
   final candidates = productionCandidates(instrument);
@@ -178,16 +178,16 @@ PlacementConvergenceRun runPlacementConvergence({
   ];
   final horizon = checkpoints.reduce(math.max);
   final start = DateTime.utc(2026);
-  final history = runSittings(
+  final history = runTrajectorySessions(
     player: player,
     seed: seed,
     materials: [...allScales, ...allRootPositionArpeggios],
     generated: candidates,
-    sittings: [
-      for (var day = 0; day * slotsPerSitting < horizon; day++)
-        Sitting(
+    sessions: [
+      for (var day = 0; day * slotsPerSession < horizon; day++)
+        Session(
           at: start.add(Duration(days: day)),
-          slots: slotsPerSitting,
+          slots: slotsPerSession,
         ),
     ],
     pipeline: pipeline,

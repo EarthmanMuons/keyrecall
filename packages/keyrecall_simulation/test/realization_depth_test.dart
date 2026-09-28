@@ -8,7 +8,7 @@ void main() {
   var slot = 0;
   GoalTrajectorySelection pick({
     String materialId = 'c-major',
-    int sitting = 0,
+    int session = 0,
     HandConfiguration hands = HandConfiguration.right,
     int octaves = 1,
     ExerciseDirection direction = ExerciseDirection.up,
@@ -17,7 +17,7 @@ void main() {
     ShapeStepObservation? shapeStep,
   }) => GoalTrajectorySelection(
     slot: slot++,
-    sitting: sitting,
+    session: session,
     materialId: materialId,
     familyId: TechnicalMaterial.scaleFamilyId,
     form: null,
@@ -64,10 +64,10 @@ void main() {
         pick(),
         pick(octaves: 2, clean: false),
         pick(),
-        pick(sitting: 1, octaves: 2),
-        pick(sitting: 1),
+        pick(session: 1, octaves: 2),
+        pick(session: 1),
       ],
-      sittings: 2,
+      sessions: 2,
       every: 1,
     );
     expect(first.subsumed, 0, reason: 'the two-octave attempt failed');
@@ -82,9 +82,9 @@ void main() {
     final [first, second] = realizationDepthOf(
       [
         pick(guidance: GuidanceContext.notesPreviewedOnly),
-        pick(sitting: 1, materialId: 'g-major'),
+        pick(session: 1, materialId: 'g-major'),
       ],
-      sittings: 2,
+      sessions: 2,
       every: 1,
     );
     expect(first.previewed, 1);
@@ -116,7 +116,7 @@ void main() {
         pick(shapeStep: taken),
         pick(),
       ],
-      sittings: 1,
+      sessions: 1,
       every: 1,
     );
 

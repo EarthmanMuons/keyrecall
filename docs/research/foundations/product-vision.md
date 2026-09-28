@@ -210,7 +210,7 @@ They play.
 
 The app evaluates the attempt and immediately chooses the next exercise.
 
-### Sessionless by design
+### No preplanned sessions
 
 The user should not need to declare:
 
@@ -297,7 +297,7 @@ worth keeping rather than the equations that did not:
 | Principle                     | Where it lives now                                                   |
 | ----------------------------- | -------------------------------------------------------------------- |
 | Start playing immediately     | One practice screen, no lesson list                                  |
-| Sessionless by design         | A sitting ends when the player stops; the session cap ships unset    |
+| No preplanned sessions        | A session ends when the player stops; the session cap ships unset    |
 | No "behind" state             | No streaks, no due counts, and a scope can report caught up honestly |
 | Repetition must have a reason | The repetition guard, diversity ranking, and dose control            |
 | Make the intelligence legible | `CandidateTrace` on every candidate; the Fluency Profile             |

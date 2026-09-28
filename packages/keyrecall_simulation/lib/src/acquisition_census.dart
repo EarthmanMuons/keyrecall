@@ -7,11 +7,11 @@ import 'python_compatible_random.dart';
 import 'synthetic_performance.dart';
 import 'synthetic_player.dart';
 
-/// What one sitting did with supported work.
+/// What one session did with supported work.
 ///
 /// Descriptive only. Nothing here is a target, a threshold or a score: it
 /// counts what happened so that a policy question has something other than one
-/// device sitting to answer from. Reading a preference into any of these
+/// device session to answer from. Reading a preference into any of these
 /// numbers before device distributions exist is how a provisional constant
 /// becomes a permanent one.
 @immutable
@@ -19,7 +19,7 @@ class AcquisitionCensus {
   /// Which kind of player this was.
   final String playerId;
 
-  /// How many decision opportunities the sitting had.
+  /// How many decision opportunities the session had.
   final int opportunities;
 
   /// Ordinary attempts presented.
@@ -77,7 +77,7 @@ class AcquisitionCensus {
     required this.divertedFrom,
   });
 
-  /// Whether the sitting ever reached supported work.
+  /// Whether the session ever reached supported work.
   bool get everAcquired => acquisitionAttempts > 0;
 
   /// Whether the declared floor was ever asked for.
@@ -93,13 +93,13 @@ class AcquisitionCensus {
       'supported, $probesServed probes)';
 }
 
-/// Runs one sitting of [slots] and counts what supported work did in it.
+/// Runs one session of [slots] and counts what supported work did in it.
 ///
 /// The player answers both paths from the same latent ability: ordinary
 /// attempts through an outcome, supported ones through a transcript that is
 /// read back by the same observation path device MIDI takes. Nothing here
 /// decides anything; it drives the production decision loop and watches.
-Future<AcquisitionCensus> censusOfSitting({
+Future<AcquisitionCensus> censusOfSession({
   required PracticeSession session,
   required SyntheticPlayer player,
   required int seed,

@@ -25,10 +25,10 @@ class PendingDecision {
   /// Whose attempt this is.
   final String profileId;
 
-  /// The sitting it belongs to.
+  /// The session it belongs to.
   final String sessionId;
 
-  /// Position within that sitting.
+  /// Position within that session.
   final int indexInSession;
 
   /// The journal sequence the completed attempt will occupy.

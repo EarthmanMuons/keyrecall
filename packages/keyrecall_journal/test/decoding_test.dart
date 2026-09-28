@@ -266,9 +266,9 @@ void main() {
       );
     });
 
-    test('covers a sitting export that is not JSON at all', () {
+    test('covers a session export that is not JSON at all', () {
       expect(
-        () => decodeSittingExport('{not json'),
+        () => decodeSessionExport('{not json'),
         throwsA(isA<JournalFormatException>()),
       );
     });

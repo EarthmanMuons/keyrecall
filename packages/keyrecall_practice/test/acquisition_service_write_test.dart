@@ -8,14 +8,14 @@ import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'support/fixtures.dart';
 
 void main() {
-  /// Acquisition history that earned a probe of [parent] before this sitting.
+  /// Acquisition history that earned a probe of [parent] before this session.
   AcquisitionAttemptRecord earnedFor(Exercise parent) =>
       AcquisitionAttemptRecord(
         journalSequence: 0,
         identity: AttemptIdentity(
           profileId: alice.id,
           attemptId: 'acquisition-1',
-          sessionId: 'sitting-0',
+          sessionId: 'session-0',
           indexInSession: 0,
           occurredAt: t0,
         ),
@@ -31,7 +31,7 @@ void main() {
         gaps: const [],
       );
 
-  /// The task a sitting that always offers one presents.
+  /// The task a session that always offers one presents.
   Future<AcquisitionTask> offeredTask(
     PracticeSession session, {
     required DateTime at,
@@ -139,7 +139,7 @@ void main() {
     final store = InMemoryPracticeStore(createdAt: t0);
     final at = t0.plusDays(0.5);
 
-    // What this sitting presents first, so the history below is about the
+    // What this session presents first, so the history below is about the
     // exercise the learner will actually be shown.
     final first = await openSession(store);
     final presented = await first.decideOutcome(at: at) as PresentedAttempt;
@@ -152,7 +152,7 @@ void main() {
       isTrue,
     );
 
-    // A fresh sitting over the same store decides the same way, and presenting
+    // A fresh session over the same store decides the same way, and presenting
     // that exercise is the question acquisition earned being asked.
     final reopened = await openSession(store, sessionId: 'session-2');
     expect(reopened.acquisitionProgress.probeOwed(parent), isTrue);
@@ -184,7 +184,7 @@ void main() {
     await second.acknowledgePresentation(shown.decision.attemptId);
     await second.abandonPending();
 
-    // A third sitting rebuilds progress from the log and finds nothing owed,
+    // A third session rebuilds progress from the log and finds nothing owed,
     // so the same question is not asked twice.
     final later = await openSession(store, sessionId: 'session-3');
     expect(later.acquisitionProgress.probeOwed(parent), isFalse);

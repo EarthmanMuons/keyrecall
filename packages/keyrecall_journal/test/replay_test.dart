@@ -80,7 +80,7 @@ void main() {
         frontiers.values.any((residual) => residual.demonstratedOctaves > 0),
         isTrue,
         reason:
-            'a sitting this long demonstrates something, or the rest of '
+            'a session this long demonstrates something, or the rest of '
             'this test is checking that zero equals zero',
       );
 

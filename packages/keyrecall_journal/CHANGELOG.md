@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Session export schema version 3 names the session `session_id`, as the attempt
+  and acquisition journals do. `SittingExport` and its codec are now
+  `SessionExport`, `encodeSessionExport`, and `decodeSessionExport`.
+
 - A record whose outcome and presentation disagree about whether a pulse was
   supplied is refused on reading. `AttemptRecord.pulseDisagreement` says why,
   and a record with no presentation has nothing to disagree with.

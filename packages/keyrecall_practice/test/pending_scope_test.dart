@@ -9,7 +9,7 @@ import 'support/fixtures.dart';
 
 /// A decision nobody answered is disposable, and the scope it was made under
 /// can be gone by the time the next run opens. These reopen under a changed
-/// scope, which is what narrowing practice looks like from the sitting's side.
+/// scope, which is what narrowing practice looks like from the session's side.
 void main() {
   test('a decision outside the scope in force is abandoned', () async {
     final store = InMemoryPracticeStore(createdAt: t0);

@@ -5,7 +5,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
-/// Whether oscillating support and an empty sitting are one defect.
+/// Whether oscillating support and an empty session are one defect.
 ///
 /// Two findings that look like they share a cause. A learner who cannot start a
 /// material is introduced at the previewed rung, recovered to full cueing,
@@ -112,13 +112,13 @@ Future<void> main(List<String> arguments) async {
     );
   }
 
-  stdout.writeln('\nthe last slots before the sitting admitted nothing:\n');
+  stdout.writeln('\nthe last slots before the session admitted nothing:\n');
   for (final terminal in terminals) {
     stdout.writeln('$terminal\n');
   }
 }
 
-/// The tail of a sitting that ran dry.
+/// The tail of a session that ran dry.
 String _terminal(int seed, Trajectory trajectory, {int show = 8}) {
   final tail = trajectory.slots.length <= show
       ? trajectory.slots

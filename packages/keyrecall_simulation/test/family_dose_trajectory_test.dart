@@ -18,14 +18,14 @@ void main() {
     config: v1SchedulerConfig.withDose(null),
   );
   const dosing = SchedulerPipeline(learner: learner);
-  final sittings = LongitudinalSchedules.named('normal_month', slots: 12);
+  final sessions = LongitudinalSchedules.named('normal_month', slots: 12);
 
   Trajectory run(SyntheticPlayer player, SchedulerPipeline pipeline) =>
-      runSittings(
+      runTrajectorySessions(
         player: player,
         seed: 4,
         materials: v1ScaleCatalog,
-        sittings: sittings,
+        sessions: sessions,
         pipeline: pipeline,
       );
 

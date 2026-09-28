@@ -67,7 +67,7 @@ void main() {
     });
   });
 
-  test('a dry sitting reports the terminal slot', () {
+  test('a dry session reports the terminal slot', () {
     final terminal = TerminalTrajectorySlot(
       index: 0,
       at: _at(0),
@@ -89,7 +89,7 @@ void main() {
     );
 
     final found = detectAnomalies(trajectory, requestedSlots: 1).single;
-    expect(found.detector, 'sitting_ran_dry');
+    expect(found.detector, 'session_ran_dry');
     expect(found.census, contains('slot 0'));
     expect(found.census, contains('0 selectable'));
   });
@@ -450,7 +450,7 @@ void main() {
       );
     });
 
-    test('a sitting ending on a probe that had waited its turn reports it', () {
+    test('a session ending on a probe that had waited its turn reports it', () {
       final found = _find(
         'probe_stranded',
         [
@@ -464,7 +464,7 @@ void main() {
             ),
           ),
         ],
-        sittings: [Sitting(at: _at(0), slots: 2)],
+        sessions: [Session(at: _at(0), slots: 2)],
       );
 
       expect(found.single.severity, AnomalySeverity.observation);
@@ -476,7 +476,7 @@ void main() {
         _find(
           'probe_stranded',
           [_slot(0, probe: ProbeState(pendingAfter: probe, freshAfter: true))],
-          sittings: [Sitting(at: _at(0), slots: 1)],
+          sessions: [Session(at: _at(0), slots: 1)],
         ),
         isEmpty,
       );
@@ -489,25 +489,25 @@ void main() {
     // Below a frontier the hand has already demonstrated, which is what
     // reacquisition means: known material with nothing demonstrated on it is
     // acquisition however familiar it looks.
-    TrajectorySlot below(int index, {int sitting = 0, DateTime? at}) => _slot(
+    TrajectorySlot below(int index, {int session = 0, DateTime? at}) => _slot(
       index,
-      sitting: sitting,
+      session: session,
       at: at,
       winner: _trace(_exercise(), realization: RealizationRank.surpassed),
       frontierBefore: const {1: 72},
     );
 
-    test('a sitting after a break that only reacquires reports it', () {
+    test('a session after a break that only reacquires reports it', () {
       final found = _find(
         'reacquisition_burden',
         [
           below(0),
           for (var i = 0; i < 8; i++)
-            below(i + 1, sitting: 1, at: away.add(Duration(minutes: i))),
+            below(i + 1, session: 1, at: away.add(Duration(minutes: i))),
         ],
-        sittings: [
-          Sitting(at: _at(0), slots: 1),
-          Sitting(at: away, slots: 8),
+        sessions: [
+          Session(at: _at(0), slots: 1),
+          Session(at: away, slots: 8),
         ],
       );
 
@@ -516,7 +516,7 @@ void main() {
       expect(found.single.magnitude, 1.0);
     });
 
-    test('a returning sitting that advances a frontier does not', () {
+    test('a returning session that advances a frontier does not', () {
       expect(
         _find(
           'reacquisition_burden',
@@ -525,22 +525,22 @@ void main() {
             for (var i = 0; i < 8; i++)
               _slot(
                 i + 1,
-                sitting: 1,
+                session: 1,
                 at: away.add(Duration(minutes: i)),
                 frontierBefore: const {1: 60},
                 frontierAfter: const {1: 72},
               ),
           ],
-          sittings: [
-            Sitting(at: _at(0), slots: 1),
-            Sitting(at: away, slots: 8),
+          sessions: [
+            Session(at: _at(0), slots: 1),
+            Session(at: away, slots: 8),
           ],
         ),
         isEmpty,
       );
     });
 
-    test('a sitting on the next day is not a break', () {
+    test('a session on the next day is not a break', () {
       final soon = DateTime.utc(2026).add(const Duration(hours: 20));
       expect(
         _find(
@@ -548,11 +548,11 @@ void main() {
           [
             below(0),
             for (var i = 0; i < 8; i++)
-              below(i + 1, sitting: 1, at: soon.add(Duration(minutes: i))),
+              below(i + 1, session: 1, at: soon.add(Duration(minutes: i))),
           ],
-          sittings: [
-            Sitting(at: _at(0), slots: 1),
-            Sitting(at: soon, slots: 8),
+          sessions: [
+            Session(at: _at(0), slots: 1),
+            Session(at: soon, slots: 8),
           ],
         ),
         isEmpty,
@@ -751,9 +751,9 @@ void main() {
 List<Anomaly> _find(
   String detector,
   List<TrajectorySlot> slots, {
-  List<Sitting> sittings = const [],
+  List<Session> sessions = const [],
 }) => detectAnomalies(
-  Trajectory(playerId: 'test', seed: 0, slots: slots, sittings: sittings),
+  Trajectory(playerId: 'test', seed: 0, slots: slots, sessions: sessions),
   requestedSlots: slots.length,
 ).where((anomaly) => anomaly.detector == detector).toList();
 
@@ -766,7 +766,7 @@ TrajectorySlot _slot(
   Map<int, double>? frontierAfter,
   double transferableBefore = 0,
   HandsTogetherStages? handsTogether,
-  int sitting = 0,
+  int session = 0,
   ProbeState probe = ProbeState.none,
   DateTime? at,
 }) {
@@ -775,7 +775,7 @@ TrajectorySlot _slot(
   return TrajectorySlot(
     index: index,
     at: at ?? _at(index),
-    sitting: sitting,
+    session: session,
     chosen: selected.exercise,
     winner: selected,
     alternatives: alternatives,

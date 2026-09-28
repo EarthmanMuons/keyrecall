@@ -37,7 +37,7 @@ void main() {
     return container;
   }
 
-  /// The host the open sitting decides on, which is the one it opened.
+  /// The host the open session decides on, which is the one it opened.
   IsolateScheduler workerOf(ProviderContainer container) =>
       container.read(practiceLoopProvider).requireValue.session.scheduler
           as IsolateScheduler;
@@ -55,7 +55,7 @@ void main() {
 
     container.dispose();
 
-    // The host is disposed with the sitting that opened it, so the request it
+    // The host is disposed with the session that opened it, so the request it
     // would have taken has nowhere to run rather than a worker still holding
     // a scope.
     await expectLater(

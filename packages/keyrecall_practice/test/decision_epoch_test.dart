@@ -107,8 +107,8 @@ void main() {
     });
   });
 
-  group('the sitting effect', () {
-    test('leaves the sitting where deciding in process leaves it', () async {
+  group('the session effect', () {
+    test('leaves the session where deciding in process leaves it', () async {
       final direct = SessionState();
       final pipeline = SchedulerPipeline(learner: learner);
       final state = learner.placementState(
@@ -134,7 +134,7 @@ void main() {
         candidates: candidates,
         at: t0.plusDays(0.5),
       );
-      SittingDecisionEffect(
+      SessionDecisionEffect(
         guidanceProbeAvailable: slot.guidanceProbeAvailable,
         guidanceProbeSelected: slot.guidanceProbeSelected,
       ).applyTo(applied);

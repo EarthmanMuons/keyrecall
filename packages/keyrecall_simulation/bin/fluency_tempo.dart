@@ -20,8 +20,8 @@ Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption('seeds', defaultsTo: '12')
     ..addOption('weeks', defaultsTo: '8')
-    ..addOption('sittings', defaultsTo: '3', help: 'sittings a week')
-    ..addOption('slots', defaultsTo: '20', help: 'attempts a sitting')
+    ..addOption('sessions', defaultsTo: '3', help: 'sessions a week')
+    ..addOption('slots', defaultsTo: '20', help: 'attempts a session')
     ..addOption('minimum', defaultsTo: '3', help: 'evidence for a rung')
     ..addMultiOption(
       'archetypes',
@@ -40,7 +40,7 @@ Future<void> main(List<String> arguments) async {
   }
   final plan = _Plan(
     weeks: int.parse(options.option('weeks')!),
-    sittingsPerWeek: int.parse(options.option('sittings')!),
+    sessionsPerWeek: int.parse(options.option('sessions')!),
     slots: int.parse(options.option('slots')!),
     minimum: int.parse(options.option('minimum')!),
   );
@@ -65,7 +65,7 @@ Future<void> main(List<String> arguments) async {
 
   stdout.writeln(
     'weekly tempo by rule, $seeds seeds, ${plan.weeks} weeks x '
-    '${plan.sittingsPerWeek} sittings x ${plan.slots} slots, '
+    '${plan.sessionsPerWeek} sessions x ${plan.slots} slots, '
     'in ${stopwatch.elapsed.inSeconds}s\n'
     '  cell = share of seeds with a value, mean median bpm, mean observations\n'
     '  pooled mixes rungs; unguided reads rung 2; best reads the most '
@@ -146,13 +146,13 @@ Future<void> main(List<String> arguments) async {
 
 class _Plan {
   final int weeks;
-  final int sittingsPerWeek;
+  final int sessionsPerWeek;
   final int slots;
   final int minimum;
 
   const _Plan({
     required this.weeks,
-    required this.sittingsPerWeek,
+    required this.sessionsPerWeek,
     required this.slots,
     required this.minimum,
   });
@@ -195,13 +195,17 @@ Future<_Run> _run(TrajectoryJob job, _Plan plan) async {
   var ids = 0;
 
   for (var week = 0; week < plan.weeks; week++) {
-    for (var sitting = 0; sitting < plan.sittingsPerWeek; sitting++) {
-      final day = week * 7 + sitting * (7 ~/ plan.sittingsPerWeek);
+    for (
+      var sessionIndex = 0;
+      sessionIndex < plan.sessionsPerWeek;
+      sessionIndex++
+    ) {
+      final day = week * 7 + sessionIndex * (7 ~/ plan.sessionsPerWeek);
       final session = await PracticeSession.open(
         store: store,
         profile: profile,
         materials: v1ScaleCatalog,
-        sessionId: 'sitting-$week-$sitting',
+        sessionId: 'session-$week-$sessionIndex',
         nextId: () => '${profile.id}-${ids++}',
       );
       final begins = _start.add(Duration(days: day));

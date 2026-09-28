@@ -17,7 +17,7 @@ import 'practice_providers.dart';
 /// rather than from a flag: an install with a profile has been placed, and one
 /// without has not. It holds however the roster emptied, so deleting the last
 /// profile puts the install back here rather than conjuring a replacement
-/// placed at a tier nobody chose. The practice loop refuses to open a sitting
+/// placed at a tier nobody chose. The practice loop refuses to open a session
 /// without a profile, and this is what keeps that unreachable.
 ///
 /// A roster that cannot be read falls through to the app, which has its own
@@ -219,8 +219,8 @@ class _ReadyStep extends ConsumerWidget {
         ],
         const SizedBox(height: 14),
         Text(
-          'Practice for as long or as little as you want. There are no '
-          'sessions to finish.',
+          'Practice for as long or as little as you want. A session ends '
+          'whenever you stop.',
           style: theme.textTheme.bodyMedium?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),

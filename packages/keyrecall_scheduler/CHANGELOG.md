@@ -13,9 +13,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 ### Added
 
 - Timing remediation, in force from scheduler model version `v1-10`. A hand
-  configuration whose clean attempts in a sitting keep drifting is served its
+  configuration whose clean attempts in a session keep drifting is served its
   qualifying exercise once under `ChallengeBypass.pulseSupport` and once under
-  `pulseWithdrawal`, then closed for the sitting. It gives way to recovery and
+  `pulseWithdrawal`, then closed for the session. It gives way to recovery and
   holds a waiting tempo probe back. `ChallengeBypass.suppliesPulse` is the one
   place a scheduling reason becomes a continuing pulse. A served cycle joins the
   selectable set it was served from. A tempo probe waiting when a cycle opens is
@@ -57,7 +57,7 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   `evaluateSlot`, and `decide`, and orders admitted candidates only: eligibility
   and challenge are untouched, and goal relevance remains the last key before
   the realization terms.
-- `SchedulerPipeline.evaluateSlot`, the decision and what it owes the sitting,
+- `SchedulerPipeline.evaluateSlot`, the decision and what it owes the session,
   without recording it. `decide` applies that itself and is unchanged.
 - `ExecutionMemo`, holding the transferable entry pace and hands-together entry
   tempo for one decision. Both were recomputed per candidate, and the first

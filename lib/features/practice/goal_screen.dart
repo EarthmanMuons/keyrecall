@@ -11,7 +11,7 @@ import 'practice_providers.dart';
 /// What this learner is working toward, and how much of it they have covered.
 ///
 /// A goal is durable and rarely touched, so it lives behind the menu with the
-/// other things that are true between sittings. Focus is not here: it is
+/// other things that are true between sessions. Focus is not here: it is
 /// temporary intent, it has its own control on the practice screen, and one
 /// page holding both taught that they were the same kind of thing.
 ///

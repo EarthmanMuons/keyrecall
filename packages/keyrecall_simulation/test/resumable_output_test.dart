@@ -15,7 +15,7 @@ void main() {
   });
   tearDown(() => directory.deleteSync(recursive: true));
 
-  const configuration = {'experiment': 'x', 'scope': 'general', 'sittings': 30};
+  const configuration = {'experiment': 'x', 'scope': 'general', 'sessions': 30};
 
   test('a fresh file starts with what produced it', () {
     final out = ResumableOutput(file, configuration);
@@ -32,7 +32,7 @@ void main() {
       ..append({'identity': 'a/0'});
 
     final resumed = ResumableOutput(file, {
-      'sittings': 30,
+      'sessions': 30,
       'scope': 'general',
       'experiment': 'x',
     }).resume();

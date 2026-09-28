@@ -20,7 +20,7 @@ Rung rungOf(GuidanceContext guidance) => guidance.concurrentPitchCues
 
 /// One presented attempt, and what became of the unguided version of it.
 class LadderSlot {
-  final int sitting;
+  final int session;
   final Rung rung;
 
   /// How the chosen candidate was admitted, or null for the ordinary band.
@@ -37,7 +37,7 @@ class LadderSlot {
   final double? motorScore;
 
   const LadderSlot({
-    required this.sitting,
+    required this.session,
     required this.rung,
     required this.bypass,
     required this.unguidedFate,
@@ -62,8 +62,8 @@ Future<List<LadderSlot>> traceGuidanceLadder({
   required GoalTrajectoryScope scope,
   required SyntheticPlayer player,
   required int seed,
-  int sittings = 10,
-  int slotsPerSitting = 20,
+  int sessions = 10,
+  int slotsPerSession = 20,
 }) async {
   final at0 = DateTime.utc(2026);
   const learner = LearnerModel();
@@ -86,8 +86,8 @@ Future<List<LadderSlot>> traceGuidanceLadder({
   final slots = <LadderSlot>[];
   var ids = 0;
 
-  for (var sitting = 0; sitting < sittings; sitting++) {
-    final start = at0.add(Duration(days: sitting + 1));
+  for (var sessionIndex = 0; sessionIndex < sessions; sessionIndex++) {
+    final start = at0.add(Duration(days: sessionIndex + 1));
     playing.restUntil(start);
     final session = await PracticeSession.open(
       store: store,
@@ -97,10 +97,10 @@ Future<List<LadderSlot>> traceGuidanceLadder({
       pipeline: pipeline,
       goal: resolution.goal,
       focus: resolution.focus,
-      sessionId: '${profile.id}-$sitting',
+      sessionId: '${profile.id}-$sessionIndex',
       nextId: () => '${profile.id}-${ids++}',
     );
-    for (var index = 0; index < slotsPerSitting; index++) {
+    for (var index = 0; index < slotsPerSession; index++) {
       final at = start.add(Duration(minutes: index));
       final decided = await session.decideOutcome(at: at);
       if (decided case PresentedAttempt(:final exercise, :final decision)) {
@@ -109,7 +109,7 @@ Future<List<LadderSlot>> traceGuidanceLadder({
         final outcome = playing.play(exercise, random);
         slots.add(
           LadderSlot(
-            sitting: sitting,
+            session: sessionIndex,
             rung: rung,
             bypass: selection is CandidateSelected
                 ? selection.candidate.challengeBypass

@@ -4,7 +4,7 @@ import 'trajectory.dart';
 
 /// What one realization family did after it first appeared.
 ///
-/// The question is dose rather than difficulty: whether the share of a sitting
+/// The question is dose rather than difficulty: whether the share of a session
 /// a family holds responds to that family repeatedly failing to yield managed
 /// execution. A family that keeps its cadence through a long unproductive run
 /// is the scheduler asking the same hard question at the same rate, whatever
@@ -41,12 +41,12 @@ class FamilyExposure {
   /// at the median, or null where none followed.
   final int? slotsToNextManaged;
 
-  /// Slots into a returning sitting before the family is attempted again, at
+  /// Slots into a returning session before the family is attempted again, at
   /// the median, or null where it never was.
   ///
   /// Where time relaxation shows up. A contraction carried across a break is
   /// evidence about a learner who has not touched the family in weeks, and
-  /// what ages is how far into the sitting they get before being asked again.
+  /// what ages is how far into the session they get before being asked again.
   final int? returnDelay;
 
   /// Times realization-family pacing actually set this family aside.
@@ -71,7 +71,7 @@ class FamilyExposure {
 ///
 /// [window] is how many slots after an unproductive run count as its response,
 /// and [streakLength] how long a run has to be to ask for one. [returning] is
-/// the gap that makes a sitting a return. [setAsides] counts what pacing did,
+/// the gap that makes a session a return. [setAsides] counts what pacing did,
 /// which only a run that observed it can supply.
 List<FamilyExposure> familyExposures(
   Trajectory trajectory, {
@@ -82,7 +82,7 @@ List<FamilyExposure> familyExposures(
   RealizationFamilyResolver families = handMotionFamilies,
 }) {
   final slots = trajectory.slots;
-  final returns = _returningSittings(trajectory, returning);
+  final returns = _returningSessions(trajectory, returning);
   final positions = <String, List<int>>{};
   for (final (position, slot) in slots.indexed) {
     for (final family in families(slot.chosen)) {
@@ -152,12 +152,12 @@ List<FamilyExposure> familyExposures(
   return exposures;
 }
 
-/// The positions each returning sitting starts at, oldest first.
-List<int> _returningSittings(Trajectory trajectory, Duration returning) {
+/// The positions each returning session starts at, oldest first.
+List<int> _returningSessions(Trajectory trajectory, Duration returning) {
   final starts = <int>[];
-  for (var sitting = 1; sitting < trajectory.sittings.length; sitting++) {
-    final slots = trajectory.slotsOf(sitting).toList();
-    final previous = trajectory.slotsOf(sitting - 1).lastOrNull;
+  for (var session = 1; session < trajectory.sessions.length; session++) {
+    final slots = trajectory.slotsOf(session).toList();
+    final previous = trajectory.slotsOf(session - 1).lastOrNull;
     if (slots.isEmpty || previous == null) continue;
     if (slots.first.at.difference(previous.at) < returning) continue;
     starts.add(trajectory.slots.indexOf(slots.first));
@@ -165,7 +165,7 @@ List<int> _returningSittings(Trajectory trajectory, Duration returning) {
   return starts;
 }
 
-/// Slots into a returning sitting before a family held one, at the median.
+/// Slots into a returning session before a family held one, at the median.
 int? _returnDelay(
   List<TrajectorySlot> slots,
   List<int> returns,
@@ -173,9 +173,9 @@ int? _returnDelay(
 ) {
   final delays = <int>[];
   for (final start in returns) {
-    final sitting = slots[start].sitting;
+    final session = slots[start].session;
     final next = held.firstWhere(
-      (position) => position >= start && slots[position].sitting == sitting,
+      (position) => position >= start && slots[position].session == session,
       orElse: () => -1,
     );
     if (next >= 0) delays.add(next - start);
@@ -197,7 +197,7 @@ enum DoseReachability {
   /// It kept failing and never held enough of the window at once.
   ///
   /// The failure mode a high evidence minimum buys: a family that is a small
-  /// minority of every sitting can fail indefinitely without ever holding
+  /// minority of every session can fail indefinitely without ever holding
   /// `minAttempts` of the last `window` selections, so the mechanism is not
   /// slow to answer, it is structurally unable to.
   neverEnoughEvidence('never_enough_evidence'),
@@ -223,8 +223,8 @@ class DoseLatency {
 
   /// The family's share of the window when the run began.
   ///
-  /// A family holding much of a sitting reaches the minimum in a few attempts;
-  /// one holding a little may need several sittings, which is the coupling
+  /// A family holding much of a session reaches the minimum in a few attempts;
+  /// one holding a little may need several sessions, which is the coupling
   /// between the minimum and the window.
   final double shareAtOnset;
 
@@ -245,7 +245,7 @@ class DoseLatency {
 /// have been able to say rather than what it did.
 ///
 /// The window is reconstructed the way the scheduler holds it: the last
-/// [DoseConfig.window] selections, which carry across a sitting boundary
+/// [DoseConfig.window] selections, which carry across a session boundary
 /// exactly as `SessionState.resuming` carries them.
 List<DoseLatency> doseLatencies(
   Trajectory trajectory, {

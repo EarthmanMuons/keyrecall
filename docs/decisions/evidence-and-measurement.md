@@ -121,7 +121,7 @@ note throws away a distinction the model wants. Meanwhile the realization's
 anchor is a _drawing_ decision: the same fingering, the same intervals, the same
 shape, wherever on the keyboard it starts.
 
-**Evidence.** Two device sittings scored a scale played correctly an octave from
+**Evidence.** Two device sessions scored a scale played correctly an octave from
 where the staff drew it as every note wrong, one of them on a hand's first
 encounter with the material.
 

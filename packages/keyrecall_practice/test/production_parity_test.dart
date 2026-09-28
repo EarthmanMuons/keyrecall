@@ -59,9 +59,9 @@ void _testProductionParity(List<TechnicalMaterial> catalog) {
             reason: '${path.name} history at $stage',
           );
           expect(
-            sittingFacts(path.sitting),
-            sittingFacts(direct.sitting),
-            reason: '${path.name} sitting at $stage',
+            sessionFacts(path.state),
+            sessionFacts(direct.state),
+            reason: '${path.name} session at $stage',
           );
         }
       }
@@ -181,14 +181,14 @@ void _testProductionParity(List<TechnicalMaterial> catalog) {
       expect(reopenedSuccesses, greaterThan(0));
       expect(probes, greaterThan(0));
 
-      // A genuinely new sitting clears transient service state the same way on
-      // every path, rather than inheriting it from the sitting that just ended.
+      // A genuinely new session clears transient service state the same way on
+      // every path, rather than inheriting it from the session that just ended.
       for (final path in paths) {
-        await path.open(sessionId: 'next-sitting');
-        expect(path.sitting.attemptsThisSession, 0);
-        expect(path.sitting.lastAcquisitionParent, isNull);
+        await path.open(sessionId: 'next-session');
+        expect(path.state.attemptsThisSession, 0);
+        expect(path.state.lastAcquisitionParent, isNull);
       }
-      expectAgreement('a new sitting');
+      expectAgreement('a new session');
       for (final path in paths) {
         await path.decide(t0.plusDays(1));
       }
@@ -196,7 +196,7 @@ void _testProductionParity(List<TechnicalMaterial> catalog) {
         expect(
           decisionFacts(path.decision),
           decisionFacts(direct.decision),
-          reason: '${path.name} decision in a new sitting',
+          reason: '${path.name} decision in a new session',
         );
       }
     },
@@ -225,15 +225,15 @@ class _ParityPath {
     required this.materials,
   }) : host = _RecordingHost(host);
 
-  SessionState get sitting => session.session;
+  SessionState get state => session.session;
 
   SchedulerVerdict get verdict => host.last!;
 
-  Future<void> open({String sessionId = 'sitting'}) async =>
+  Future<void> open({String sessionId = 'session'}) async =>
       session = await reopen(sessionId: sessionId);
 
   /// Opens a second view of the same store, leaving [session] untouched.
-  Future<PracticeSession> reopen({String sessionId = 'sitting'}) => openSession(
+  Future<PracticeSession> reopen({String sessionId = 'session'}) => openSession(
     store,
     materials: materials,
     pipeline: pipeline,
@@ -243,12 +243,12 @@ class _ParityPath {
     placement: PlacementTier.beginner,
   );
 
-  /// Rebuilds the session from persisted history, restoring the sitting state
+  /// Rebuilds the session from persisted history, restoring the session state
   /// a live session would still be holding in memory.
   Future<void> replay() async {
-    final previous = sitting;
+    final previous = state;
     await open();
-    copySitting(previous, sitting);
+    copySession(previous, state);
   }
 
   Future<PracticeDecision> decide(DateTime at) async =>
@@ -287,7 +287,7 @@ Map<String, Object?> persistentFacts(PracticeSession session) => {
   ],
 };
 
-Map<String, Object?> sittingFacts(SessionState session) => {
+Map<String, Object?> sessionFacts(SessionState session) => {
   'slots': session.attemptsThisSession,
   'recent': List.of(session.recentMaterialIds),
   'recovery': session.lastFailedExercise,
@@ -306,7 +306,7 @@ Map<String, Object?> sittingFacts(SessionState session) => {
   ],
 };
 
-void copySitting(SessionState from, SessionState to) {
+void copySession(SessionState from, SessionState to) {
   to.attemptsThisSession = from.attemptsThisSession;
   to.recentMaterialIds
     ..clear()

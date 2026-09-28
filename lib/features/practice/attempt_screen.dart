@@ -193,7 +193,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
     }
 
     // Carried rather than looked up again when the attempt ends: what closes
-    // an attempt names the sitting that issued it, so a completion that
+    // an attempt names the session that issued it, so a completion that
     // arrives after the ground moved lands nowhere instead of on whoever is
     // selected by then.
     final attempt = loop.value?.attempt;
@@ -256,7 +256,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
       // Deciding is not presenting, and building is not presenting either.
       // What discharges a probe earned by supported work is the exercise
       // reaching a learner: drawn, on the route in front, with the app on
-      // screen. The sitting decides whether the report stands, so a refusal
+      // screen. The session decides whether the report stands, so a refusal
       // leaves the question to be asked again next frame.
       body: attempt == null
           ? presenting
@@ -1166,7 +1166,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   ///
   /// Read before the pulse is silenced, so what it sounded is what the attempt
   /// heard rather than what is left of it after the teardown. The clicker is
-  /// shared across the sitting, so an attempt that never asked it for a pulse
+  /// shared across the session, so an attempt that never asked it for a pulse
   /// reports no pulse rather than the last attempt's answer.
   PresentationRecord get _presented => PresentationRecord(
     policyVersion: presentationPolicyVersion,

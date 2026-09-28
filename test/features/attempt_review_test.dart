@@ -151,7 +151,7 @@ void main() {
     test('says what an acquisition probe is asking for now', () {
       // What changed, not why it was chosen. The learner has been playing this
       // at their own pace, and the tempo is what comes back; naming a scaffold
-      // or an earlier sitting would ask them to remember a presentation
+      // or an earlier session would ask them to remember a presentation
       // instead of telling them what to do.
       expect(
         reasonFor(ChallengeBypass.acquisitionProbe, exerciseOf(tempoBpm: 60)),
