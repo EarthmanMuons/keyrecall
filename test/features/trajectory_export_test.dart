@@ -239,6 +239,7 @@ void main() {
       DecisionScope? scope,
       AttemptTiming? timing,
       InputProvenance? input,
+      Outcome? outcome,
     }) {
       final exercise = Exercise.linear(
         material: TechnicalMaterial('C', ScaleForm.major),
@@ -261,12 +262,46 @@ void main() {
         scope: scope,
         timing: timing,
         input: input,
-        closure: AttemptClosure.unmeasured(
-          termination: AttemptTermination.learnerStopped,
-          reason: MeasurementUnavailableReason.nothingPlayed,
-        ),
+        closure: outcome == null
+            ? AttemptClosure.unmeasured(
+                termination: AttemptTermination.learnerStopped,
+                reason: MeasurementUnavailableReason.nothingPlayed,
+              )
+            : AttemptClosure.measured(
+                termination: AttemptTermination.learnerStopped,
+                outcome: outcome,
+                weights: evidenceWeightsFor(exercise, outcome),
+                memoryUpdate: const MemoryUpdateDiagnostics(),
+              ),
       );
     }
+
+    test('reads flow and pulse apart, marking a supplied pulse', () {
+      Outcome played(PulseMaintenance pulse) => Outcome(
+        started: true,
+        retrieval: FactualRetrieval.succeeded,
+        completed: true,
+        materialRetrieval: 1,
+        pitchIntegrity: 1,
+        continuity: 0.9,
+        temporalStability: 0.4,
+        achievedTempoRatio: 1,
+        topologyAccuracy: 1,
+        pulseMaintenance: pulse,
+      );
+
+      expect(
+        trajectoryRow(0, recordWith(outcome: played(PulseMaintenance.tested))),
+        contains('flow=0.90 pulse=0.40 '),
+      );
+      expect(
+        trajectoryRow(
+          0,
+          recordWith(outcome: played(PulseMaintenance.notTested)),
+        ),
+        contains('flow=0.90 pulse=0.40(metronome) '),
+      );
+    });
 
     test('names the goal, the timing, and the input', () {
       final context = contextOf(

@@ -111,6 +111,13 @@ String trajectoryRow(
         'done=${outcome.completed} pitch='
             '${outcome.pitchIntegrity.toStringAsFixed(2)} '
             'motor=${outcome.motorScore?.toStringAsFixed(2) ?? 'unassessed'} '
+            // Separately, because timing remediation reads them apart: a pulse
+            // that drifts while the playing does not stop. Marked where a
+            // metronome supplied the pulse, since that reading is playing
+            // along rather than keeping time.
+            'flow=${outcome.continuity?.toStringAsFixed(2) ?? '-'} '
+            'pulse=${outcome.temporalStability?.toStringAsFixed(2) ?? '-'}'
+            '${outcome.pulseMaintenance.isTested ? '' : '(metronome)'} '
             // What the tempo probe reads and the frontier is attributed at.
             // A ratio far from what somebody believes they played is a
             // question about the transcript rather than about the playing,
