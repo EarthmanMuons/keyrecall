@@ -259,6 +259,64 @@ void main() {
     },
   );
 
+  group('a window that opens on the downbeat', () {
+    void recordFrom(int opensAtMs) => container
+        .read(attemptTranscriptProvider.notifier)
+        .start(TechnicalMaterial('C', ScaleForm.major), opensAtMs: opensAtMs);
+
+    test(
+      'keeps what arrives from the downbeat on, and nothing before',
+      () async {
+        await observe();
+        recordFrom(1000);
+        await playNote(59, at: 999);
+        await playNote(60, at: 1000);
+        await playNote(62, at: 1004);
+
+        expect(capture().notes.map((note) => note.timestampMs), [1000, 1004]);
+        expect(capture().isInterrupted, isFalse);
+      },
+    );
+
+    test('opens into an observation that began during the count-in', () async {
+      await observe();
+      recordFrom(1000);
+      await deliver(
+        InputTemporalFaultEvent(
+          timestampMs: 400,
+          fault: InputIntegrityFault.observationGap,
+        ),
+      );
+      await deliver(
+        InputTemporalResetEvent(
+          timestampMs: 600,
+          snapshot: InputTemporalSnapshot.silent,
+        ),
+      );
+      await playNote(60, at: 1002);
+
+      expect(capture().isInterrupted, isFalse);
+      expect(capture().length, 1);
+    });
+
+    test(
+      'is interrupted by a fault the count-in never recovered from',
+      () async {
+        await observe();
+        recordFrom(1000);
+        await deliver(
+          InputTemporalFaultEvent(
+            timestampMs: 400,
+            fault: InputIntegrityFault.observationGap,
+          ),
+        );
+
+        expect(capture().isInterrupted, isTrue);
+        expect(capture().fault, InputIntegrityFault.observationGap);
+      },
+    );
+  });
+
   test('an integrity fault interrupts and keeps its reason', () async {
     await observe();
     record();

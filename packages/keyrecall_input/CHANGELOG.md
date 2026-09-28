@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `StopwatchInputClock` takes the stopwatch it runs, so a host can put input on
+  the same clock as anything else it times.
+
 - The normalized live-input vocabulary, ported from the WhatChord input layer:
   the sealed `InputTemporalEvent` family, `InputTemporalSnapshot` with the
   states an instrument cannot be in ruled out, `InputNoteEvent`, and the

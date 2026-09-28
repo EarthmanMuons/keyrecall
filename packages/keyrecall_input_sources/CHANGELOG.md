@@ -10,6 +10,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ## [Unreleased]
 
+### Changed
+
+- `inputEventClockProvider` reads `package:clock`, so input stamps and an
+  attempt's pulse agree about how time passes, and follow pumped time in a
+  widget test.
+
 ### Added
 
 - `inputEventClockProvider`, the monotonic clock shared by every input source,

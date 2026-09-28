@@ -6,6 +6,7 @@ import 'package:flutter/scheduler.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_input_sources/keyrecall_input_sources.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_midi/keyrecall_midi.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -1031,6 +1032,16 @@ class _AttemptViewState extends ConsumerState<AttemptView>
       _askedForAPulse = true;
       unawaited(_pulse.play(schedule));
     }
+    // Opened now, with the downbeat as its cutoff on the input's own clock, so
+    // a note played just after the beat counts however late the next frame is.
+    final untilDownbeat =
+        schedule.beat * schedule.countInBeats - schedule.elapsed;
+    _recording = _transcript.start(
+      widget.exercise.material,
+      opensAtMs:
+          ref.read(inputEventClockProvider)() +
+          (untilDownbeat.inMicroseconds / 1000).ceil(),
+    );
     _beat = -1;
     _beats = createTicker((_) => _readBeat(schedule))..start();
   }
@@ -1046,7 +1057,6 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         _beatsLeft = schedule.beatsLeftInCountIn;
         if (schedule.countedIn) {
           _phase = _Phase.playing;
-          _recording = _transcript.start(widget.exercise.material);
           _input = ref.read(inputProvenanceProvider);
           _watchdog = Timer.periodic(_watchdogTick, (_) => _watch());
         }

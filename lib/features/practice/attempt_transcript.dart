@@ -22,8 +22,11 @@ import 'latency_probe.dart';
 /// have been played, and exploratory notes would otherwise make the attempt
 /// look started and arrive in the alignment as extra notes.
 ///
-/// The window opens after the count-in. Until that downbeat the exercise is
-/// presented but no performance is being observed.
+/// The window opens on the downbeat after the count-in. Until then the exercise
+/// is presented but no performance is being observed. Recording starts as the
+/// count-in does, with the downbeat as a cutoff on the input's own clock, so
+/// the boundary falls where the beat does rather than wherever a frame is next
+/// drawn.
 final attemptTranscriptProvider =
     NotifierProvider<AttemptTranscriptNotifier, AttemptCapture>(
       AttemptTranscriptNotifier.new,
@@ -180,6 +183,11 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// The timeline this recording's timed notes are on, once one is.
   int? _timingGeneration;
 
+  /// When the window opens, on the input clock, and the material it opens for
+  /// while that is still ahead.
+  int _opensAtMs = 0;
+  TechnicalMaterial? _awaiting;
+
   @override
   AttemptCapture build() {
     // Where the source says it stands, before any event arrives. The shared
@@ -212,13 +220,20 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
     return AttemptCapture(transcript: PerformanceTranscript.empty);
   }
 
-  /// Starts a fresh transcript for an attempt at [material].
+  /// Starts a fresh transcript for an attempt at [material], whose window opens
+  /// at [opensAtMs] on the input clock.
+  ///
+  /// Nothing stamped before [opensAtMs] is part of the attempt. A reset or a
+  /// fault before it decides only whether there is a live observation to open
+  /// into, exactly as if recording had started on the downbeat.
   ///
   /// Returns the recording's name, which is what the attempt identifies its
   /// own capture by.
-  int start(TechnicalMaterial material) {
+  int start(TechnicalMaterial material, {int opensAtMs = 0}) {
     _lastTimestampMs = 0;
     _timingGeneration = null;
+    _opensAtMs = opensAtMs;
+    _awaiting = material;
     _recordings += 1;
     // Asked again rather than remembered: nothing guarantees an event arrived
     // between building and starting, and the source knows.
@@ -245,7 +260,10 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// What was played outlives the attempt on purpose: closing it reads the
   /// transcript after recording has stopped. It belongs to that attempt and
   /// nothing else, which is what [discard] is for.
-  void stop() => _material = null;
+  void stop() {
+    _material = null;
+    _awaiting = null;
+  }
 
   /// Forgets the last attempt's transcript.
   ///
@@ -254,6 +272,7 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   /// reading the wrong attempt.
   void discard() {
     _material = null;
+    _awaiting = null;
     _lastTimestampMs = 0;
     _timingGeneration = null;
     state = AttemptCapture.none;
@@ -308,6 +327,10 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   }
 
   void _record(InputTemporalEvent event) {
+    if (_awaiting != null && event.timestampMs < _opensAtMs) {
+      _beforeTheWindow(event);
+      return;
+    }
     final material = _material;
     if (material == null) return;
     if (event is InputTemporalFaultEvent) {
@@ -360,6 +383,28 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
   ///
   /// Terminal: nothing reopens a capture whose integrity is in doubt, so a
   /// later note belongs to no attempt rather than to this one.
+  /// What arrives before the window opens, which is not part of the attempt.
+  ///
+  /// A reset reopens the recording into the new observation and a fault
+  /// interrupts it, which is where each would have left a recording started on
+  /// the downbeat.
+  void _beforeTheWindow(InputTemporalEvent event) {
+    switch (event) {
+      case InputTemporalResetEvent():
+        _material = _awaiting;
+        _lastTimestampMs = 0;
+        _timingGeneration = null;
+        state = AttemptCapture(
+          transcript: PerformanceTranscript.empty,
+          recording: _recordings,
+        );
+      case InputTemporalFaultEvent(:final fault, :final detail):
+        _interrupt(fault, detail: detail);
+      case _:
+        break;
+    }
+  }
+
   void _interrupt(InputIntegrityFault? fault, {String? detail}) {
     if (_material == null) return;
     _material = null;

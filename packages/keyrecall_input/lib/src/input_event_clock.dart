@@ -8,7 +8,11 @@ typedef InputEventClock = int Function();
 /// Every source in a session must share one, or their events cannot be ordered
 /// against each other.
 class StopwatchInputClock {
-  final Stopwatch _stopwatch = Stopwatch()..start();
+  /// Runs [stopwatch], or a system one when none is given.
+  StopwatchInputClock([Stopwatch? stopwatch])
+    : _stopwatch = (stopwatch ?? Stopwatch())..start();
+
+  final Stopwatch _stopwatch;
 
   /// Milliseconds elapsed since this clock was created.
   int call() => _stopwatch.elapsedMilliseconds;

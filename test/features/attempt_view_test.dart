@@ -820,6 +820,30 @@ void main() {
       );
     });
 
+    testWidgets('a note just after the downbeat counts before any frame', (
+      tester,
+    ) async {
+      await pumpAttempt(tester, GuidanceContext.unguided);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(AttemptView)),
+      );
+      await tester.tap(find.text('Ready'));
+      await tester.pump();
+      // The count-in starts once the screen settles, and its downbeat is four
+      // beats of 750 ms later. The last frame lands just short of it.
+      const downbeat = Duration(milliseconds: 400 + 750 * 4);
+      await tester.pump(downbeat - const Duration(milliseconds: 6));
+
+      // Struck 2 ms after the downbeat, with the next frame 5 ms after it.
+      Timer(
+        const Duration(milliseconds: 8),
+        () => container.read(demoInputProvider.notifier).playChord({60}),
+      );
+      await tester.pump(const Duration(milliseconds: 11));
+
+      expect(transcriptIn(tester).length, 1);
+    });
+
     testWidgets('what arrives after the downbeat is', (tester) async {
       await pumpAttempt(tester, GuidanceContext.unguided);
       final container = ProviderScope.containerOf(
