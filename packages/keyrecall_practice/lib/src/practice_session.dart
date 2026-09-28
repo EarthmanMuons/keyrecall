@@ -1380,7 +1380,6 @@ class PracticeSession {
   }) {
     final decision = (_outstanding ?? _pendingAsOutstanding()).decision;
     final at = decision.decidedAt;
-
     final next = _state.copy();
     final AttemptClosure closure;
 
@@ -1407,6 +1406,13 @@ class PracticeSession {
         termination: termination,
         reason: unavailable ?? MeasurementUnavailableReason.notAvailable,
       );
+    }
+
+    // Refused here rather than written for the journal to refuse on the way
+    // back in, which would strand a sitting on a record it cannot read.
+    if (AttemptRecord.pulseDisagreement(closure, presentation)
+        case final disagreement?) {
+      throw ArgumentError.value(outcome, 'outcome', disagreement);
     }
 
     return _PreparedCommit(

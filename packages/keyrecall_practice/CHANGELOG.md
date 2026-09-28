@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Fixed
 
+- An attempt whose outcome and presentation disagree about the pulse is refused
+  before it is written, rather than written for the journal to refuse.
+
 - A requirement's timing criterion is unknown under a supplied pulse, as its
   retrieval criterion is under a cue. `readPerformance` takes the delivery the
   outcome is read against.

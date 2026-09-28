@@ -120,9 +120,14 @@ void main() {
     });
 
     group('presentation', () {
-      AttemptRecord recordWith(PresentationRecord? presentation) {
+      AttemptRecord recordWith(
+        PresentationRecord? presentation, {
+        PulseMaintenance? pulse,
+      }) {
         final exercise = exerciseFor(v1ScaleCatalog.first);
-        final outcome = outcomeOf();
+        final outcome = outcomeOf(
+          pulse: pulse ?? PulseMaintenance.under(presentation?.delivery),
+        );
         return AttemptRecord(
           journalSequence: 0,
           identity: AttemptIdentity(
@@ -210,6 +215,60 @@ void main() {
         );
 
         expect(reread(recordWith(presentation)).presentation, presentation);
+      });
+
+      group('and the pulse its outcome claims', () {
+        PresentationRecord presentedWith(
+          TempoDelivery tempo, {
+          int shown = 0,
+        }) => PresentationRecord(
+          policyVersion: 'v1-presentation-1',
+          conditions: PresentationConditions(
+            pitchCue: PitchCue.none,
+            motorCue: MotorCue.none,
+            performanceFeedback: PerformanceFeedback.neutralEcho,
+            tempoSupport: TempoSupport.metronomeThroughout,
+          ),
+          delivery: PresentationDelivery(
+            tempo: tempo,
+            shownContinuingBeats: shown,
+          ),
+        );
+        final supplied = presentedWith(
+          TempoDelivery.complete(4, continuingBeats: 12),
+          shown: 12,
+        );
+        final silent = presentedWith(
+          TempoDelivery.silent(4, continuingBeats: 12),
+        );
+
+        test('agree, and read back', () {
+          expect(reread(recordWith(supplied)).presentation, supplied);
+          expect(reread(recordWith(silent)).presentation, silent);
+        });
+
+        test('are refused when a supplied pulse is claimed as held', () {
+          expect(
+            () => reread(recordWith(supplied, pulse: PulseMaintenance.tested)),
+            throwsA(isA<JournalFormatException>()),
+          );
+        });
+
+        test('are refused when a held pulse is claimed as supplied', () {
+          expect(
+            () => reread(recordWith(silent, pulse: PulseMaintenance.notTested)),
+            throwsA(isA<JournalFormatException>()),
+          );
+        });
+
+        test('are not checked where nothing was presented', () {
+          expect(
+            reread(
+              recordWith(null, pulse: PulseMaintenance.notTested),
+            ).presentation,
+            isNull,
+          );
+        });
       });
 
       test('an attempt that recorded none reads back as none', () {

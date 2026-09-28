@@ -324,7 +324,7 @@ class AttemptRecord {
     final timingJson = json['timing'];
     final inputJson = json['input'];
 
-    return AttemptRecord(
+    final record = AttemptRecord(
       schemaVersion: version,
       journalSequence: requireInt(json, 'journal_sequence', location: location),
       observedWallTime: readOptionalTime(
@@ -410,6 +410,34 @@ class AttemptRecord {
         location: location,
       ),
     );
+    if (pulseDisagreement(record.closure, record.presentation)
+        case final disagreement?) {
+      throw JournalFormatException(disagreement, location: location);
+    }
+    return record;
+  }
+
+  /// Why [closure]'s outcome contradicts what [presentation] delivered, or
+  /// null when they agree or nothing was presented to check against.
+  ///
+  /// Two records of one fact. The delivery says whether a pulse reached the
+  /// learner once the attempt began, and the outcome says whether the attempt
+  /// tested them keeping it alone; either one alone would replay, and a record
+  /// where they differ would replay as whichever the reader happened to trust.
+  static String? pulseDisagreement(
+    AttemptClosure closure,
+    PresentationRecord? presentation,
+  ) {
+    if (presentation == null) return null;
+    if (closure.measurement case Measured(:final outcome)) {
+      final delivered = PulseMaintenance.under(presentation.delivery);
+      if (outcome.pulseMaintenance != delivered) {
+        return 'the outcome says pulse maintenance was '
+            '${outcome.pulseMaintenance.name} while its delivery says '
+            '${delivered.name}';
+      }
+    }
+    return null;
   }
 
   @override
