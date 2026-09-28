@@ -111,6 +111,14 @@ void main() {
       }
     });
 
+    test('both pulse maintenance values survive distinctly', () {
+      for (final pulse in PulseMaintenance.values) {
+        final outcome = outcomeOf(pulse: pulse);
+
+        expect(decodeOutcome(encodeOutcome(outcome)), outcome);
+      }
+    });
+
     group('presentation', () {
       AttemptRecord recordWith(PresentationRecord? presentation) {
         final exercise = exerciseFor(v1ScaleCatalog.first);
@@ -178,6 +186,29 @@ void main() {
         expect(stored.conditions.tempoSupport, TempoSupport.countInOnly);
         expect(stored.delivery.tempo.delivery, ChannelDelivery.unavailable);
         expect(stored.delivery.tempo.failureReason, 'no audio engine');
+      });
+
+      test('a metronome keeps its beats apart from the count-in', () {
+        final presentation = PresentationRecord(
+          policyVersion: 'v1-presentation-0',
+          conditions: PresentationConditions(
+            pitchCue: PitchCue.none,
+            motorCue: MotorCue.none,
+            performanceFeedback: PerformanceFeedback.neutralEcho,
+            tempoSupport: TempoSupport.metronomeThroughout,
+          ),
+          delivery: PresentationDelivery(
+            tempo: TempoDelivery(
+              countInBeats: 4,
+              continuingBeats: 12,
+              deliveredCountInBeats: 1,
+              deliveredContinuingBeats: 12,
+              failureReason: 'the engine took 13 of 16 beats',
+            ),
+          ),
+        );
+
+        expect(reread(recordWith(presentation)).presentation, presentation);
       });
 
       test('an attempt that recorded none reads back as none', () {

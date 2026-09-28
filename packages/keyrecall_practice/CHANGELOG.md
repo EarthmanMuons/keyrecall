@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Fixed
 
+- A requirement's timing criterion is unknown under a supplied pulse, as its
+  retrieval criterion is under a cue. `readPerformance` takes the delivery the
+  outcome is read against.
+
 - Curriculum completion assesses what a performance demonstrated instead of
   borrowing the learner model's execution predicate. `assessRequirementAttempt`
   reads one attempt criterion by criterion: completion, tempo, pitch integrity,

@@ -51,9 +51,8 @@ bool isUnderchallenged({
     (outcome.continuity ?? -1) >= config.underchallengeContinuity &&
     (outcome.temporalStability ?? -1) >=
         config.underchallengeTemporalStability &&
-    // The threshold is above 1 by construction, so the zero an attempt with no
-    // measured pace carries cannot reach it.
-    outcome.achievedTempoRatio >= config.underchallengeTempoRatio;
+    // Outrunning a pulse the app supplied is ignoring it, not ease.
+    (outcome.chosenTempoRatio ?? 0) >= config.underchallengeTempoRatio;
 
 /// The exercise to ask for next when [exercise] was too easy, or null.
 ///
@@ -85,7 +84,7 @@ Exercise? tempoProbeTarget({
   // The highest rung of the metronome ladder they were already reaching,
   // rather than the highest tempo the generator happens to offer.
   final requested = exercise.conditions.tempoBpm;
-  final achieved = requested * outcome.achievedTempoRatio;
+  final achieved = requested * outcome.chosenTempoRatio!;
   double? target;
   for (final tempo in metronomeLadder) {
     if (tempo <= requested || tempo > achieved) continue;

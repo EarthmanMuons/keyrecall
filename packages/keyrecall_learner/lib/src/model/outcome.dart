@@ -41,6 +41,23 @@ enum FactualRetrieval {
   };
 }
 
+/// Whether holding the pulse unaided was tested.
+///
+/// [notTested] is not unsteady playing. The timing was still measured and is
+/// still reported, but a pulse the app supplied while the attempt ran is not
+/// one the learner kept, so steadiness and chosen pace carry no evidence about
+/// the learner holding a tempo alone.
+enum PulseMaintenance {
+  /// Nothing sounded or showed the beat once the attempt began.
+  tested,
+
+  /// A pulse reached the learner while the attempt ran.
+  notTested;
+
+  /// Whether this attempt tested keeping the pulse unaided.
+  bool get isTested => this == PulseMaintenance.tested;
+}
+
 /// What actually happened on one attempt.
 ///
 /// The quality scores are bounded in `[0, 1]`. [achievedTempoRatio] need only
@@ -106,6 +123,10 @@ class Outcome {
   /// it.
   final double? coordination;
 
+  /// Whether the learner held the pulse alone, which decides what
+  /// [temporalStability] and [achievedTempoRatio] are evidence of.
+  final PulseMaintenance pulseMaintenance;
+
   /// Throws [ArgumentError] for a score outside its documented range.
   Outcome({
     required this.started,
@@ -118,6 +139,7 @@ class Outcome {
     required this.achievedTempoRatio,
     required this.topologyAccuracy,
     this.coordination,
+    this.pulseMaintenance = PulseMaintenance.tested,
   }) {
     _requireScore(materialRetrieval, 'materialRetrieval');
     _requireScore(pitchIntegrity, 'pitchIntegrity');
@@ -149,17 +171,29 @@ class Outcome {
   double? get measuredTempoRatio =>
       achievedTempoRatio > 0 ? achievedTempoRatio : null;
 
+  /// [measuredTempoRatio] when the learner set the pace, else null.
+  ///
+  /// Under a supplied pulse the ratio says how closely they followed it, which
+  /// is not the pace they would have chosen.
+  double? get chosenTempoRatio =>
+      pulseMaintenance.isTested ? measuredTempoRatio : null;
+
   /// `y_motor`: the bounded motor score the execution channel learns from, or
   /// null when nothing measured the timing.
   ///
   /// Pitch integrity is excluded, since it blends retrieval and motor quality.
+  /// So is [temporalStability] under a supplied pulse, since steadiness then
+  /// belongs partly to the pulse.
   ///
   /// Null and zero are different claims: zero says the playing was as poor as
   /// playing gets, null that the attempt carried no timing evidence. The
   /// execution channel learns from this, so a null carries no weight rather
   /// than a bad score.
   double? get motorScore {
-    final measured = _measuredTiming;
+    final measured = [
+      ?continuity,
+      if (pulseMaintenance.isTested) ?temporalStability,
+    ];
     if (measured.isEmpty) return null;
     return measured.reduce((a, b) => a + b) / measured.length;
   }
@@ -174,7 +208,8 @@ class Outcome {
   ///
   /// Averaged over the channels the attempt established, so an attempt too
   /// short to time is read on its pitch alone rather than as unproductive
-  /// practice.
+  /// practice. Steadiness counts under a supplied pulse too: this asks whether
+  /// the practice went well, not whether the learner kept the pulse alone.
   double get practiceQuality {
     if (!started || !completed) return 0.0;
     final scores = [..._measuredTiming, pitchIntegrity];
@@ -194,7 +229,8 @@ class Outcome {
       other.continuity == continuity &&
       other.temporalStability == temporalStability &&
       other.achievedTempoRatio == achievedTempoRatio &&
-      other.topologyAccuracy == topologyAccuracy;
+      other.topologyAccuracy == topologyAccuracy &&
+      other.pulseMaintenance == pulseMaintenance;
 
   @override
   int get hashCode => Object.hash(
@@ -208,6 +244,7 @@ class Outcome {
     achievedTempoRatio,
     topologyAccuracy,
     coordination,
+    pulseMaintenance,
   );
 
   @override

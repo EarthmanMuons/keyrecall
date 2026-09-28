@@ -128,6 +128,18 @@ void main() {
       expect(assessment.isCovered, isFalse);
     });
 
+    test('a supplied pulse leaves timing unknown, and tempo still counts', () {
+      final assessment = _assess(
+        requirement: _requirement(minimumTempoBpm: 100),
+        exercise: _exercise(tempoBpm: 100),
+        outcome: _outcome(pulse: PulseMaintenance.notTested),
+      );
+
+      expect(assessment.timing, CompletionCriterion.unknown);
+      expect(assessment.tempo, CompletionCriterion.satisfied);
+      expect(assessment.isCovered, isFalse);
+    });
+
     test('cued material was never retrieved, so it never covers', () {
       final assessment = _assess(
         requirement: _requirement(),
@@ -305,6 +317,7 @@ Outcome _outcome({
   double? temporalStability = 0.9,
   double tempoRatio = 1,
   double? coordination,
+  PulseMaintenance pulse = PulseMaintenance.tested,
 }) => Outcome(
   started: true,
   retrieval: retrieval,
@@ -316,4 +329,5 @@ Outcome _outcome({
   achievedTempoRatio: tempoRatio,
   topologyAccuracy: 1,
   coordination: coordination,
+  pulseMaintenance: pulse,
 );

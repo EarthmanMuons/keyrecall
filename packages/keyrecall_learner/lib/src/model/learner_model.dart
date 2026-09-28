@@ -620,10 +620,12 @@ class LearnerModel {
       octaves: exercise.conditions.octaves,
       tempoBpm: exercise.conditions.tempoBpm,
     );
-    // And how fast they were actually going, which the frontier does not
-    // record: an unseen scale should arrive near the demonstrated pace rather
-    // than near the last request.
-    if (performedTempoBpm != null) residual.paced(performedTempoBpm);
+    // And how fast they chose to go, which the frontier does not record: an
+    // unseen scale should arrive near the learner's own pace rather than near
+    // the last request, or the last pulse they were given.
+    if (outcome.chosenTempoRatio case final ratio?) {
+      residual.paced(exercise.conditions.tempoBpm * ratio);
+    }
   }
 
   MemoryUpdateDiagnostics _updateMaterialMemory({

@@ -77,6 +77,7 @@ bool hasCoveredTraversal({
 PerformanceReading readPerformance({
   required Exercise exercise,
   required PerformanceTranscript transcript,
+  PresentationDelivery? delivery,
   MeasurementPolicy policy = MeasurementPolicy.standard,
 }) {
   final measurement = measure(
@@ -86,6 +87,10 @@ PerformanceReading readPerformance({
   );
   return PerformanceReading(
     measurement: measurement,
-    outcome: outcomeFor(measurement: measurement, exercise: exercise),
+    outcome: outcomeFor(
+      measurement: measurement,
+      exercise: exercise,
+      delivery: delivery,
+    ),
   );
 }

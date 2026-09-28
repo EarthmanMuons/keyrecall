@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Fixed
 
+- A tempo probe opens only on a pace the learner chose. Outrunning a supplied
+  pulse is ignoring it, and no longer reads as a task that was too easy.
+
 - Candidate generation asks the instrument whether the exercise it would offer
   fits, rather than whether one hand's octave span does. A two-octave
   hands-together exercise needs 49 keys under V1's hand placement and no longer

@@ -104,6 +104,48 @@ void main() {
       await clicker.stop();
     });
 
+    test('separates a metronome from the count-in before it', () async {
+      final sink = _RecordingSink();
+      final clicker = PulseClicker(sink: sink);
+      await clicker.play(
+        countInBeats: 4,
+        continuingBeats: 8,
+        beat: const Duration(milliseconds: 750),
+      );
+      for (var chunk = 0; chunk < 10; chunk++) {
+        sink.requestFrames();
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(clicker.delivered.deliveredCountInBeats, 4);
+      expect(clicker.delivered.deliveredContinuingBeats, 8);
+      expect(clicker.delivered.suppliedDuringAttempt, isTrue);
+      await clicker.stop();
+    });
+
+    test(
+      'a metronome opening after the count-in still supplied the pulse',
+      () async {
+        final sink = _DelayedSink();
+        final clicker = PulseClicker(sink: sink);
+        final playing = clicker.play(
+          countInBeats: 4,
+          continuingBeats: 8,
+          beat: const Duration(milliseconds: 100),
+        );
+        await sink.started.future;
+        await Future<void>.delayed(const Duration(milliseconds: 500));
+        sink.completePreparation();
+        final delivery = await playing;
+
+        expect(delivery.deliveredCountInBeats, 0);
+        expect(delivery.deliveredContinuingBeats, greaterThan(0));
+        expect(delivery.delivery, ChannelDelivery.partial);
+        expect(delivery.suppliedDuringAttempt, isTrue);
+        await clicker.stop();
+      },
+    );
+
     test('a device with no engine took none of it', () async {
       final clicker = PulseClicker(sink: _RefusingSink());
       await clicker.play(

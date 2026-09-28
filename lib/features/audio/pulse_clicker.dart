@@ -111,10 +111,11 @@ class PulseClicker {
   String? _silence;
   TempoDelivery _delivered = TempoDelivery.notRequested();
 
-  /// The pulse being handed over: how many beats it holds, how long each one
-  /// is in frames, and how many of them were already behind the cursor when
-  /// the engine opened.
+  /// The pulse being handed over: how many beats it holds and how many of
+  /// those count in, how long each one is in frames, and how many of them were
+  /// already behind the cursor when the engine opened.
   int _pulseBeats = 0;
+  int _pulseCountIn = 0;
   int _pulseBeatFrames = 1;
   int _pulseSkipped = 0;
 
@@ -253,21 +254,22 @@ class PulseClicker {
     // reports while it is opening.
     final beatFrames = beat.inMicroseconds * _sampleRate ~/ 1000000;
     _pulseBeats = beats;
+    _pulseCountIn = countInBeats;
     _pulseBeatFrames = beatFrames;
     _pulseSkipped = 0;
     _acceptedFrames = 0;
-    _delivered = TempoDelivery.silent(beats, reason: 'the engine is opening');
+    TempoDelivery silent(String reason) => TempoDelivery.silent(
+      countInBeats,
+      continuingBeats: continuingBeats,
+      reason: reason,
+    );
+    _delivered = silent('the engine is opening');
     await prepare();
     // Nothing below may run for a pulse that is no longer the one on screen:
     // installing a track, arming the release, and handing audio over are all
     // this playback acting, and it has been cancelled or replaced.
-    if (!_owns(pulse, generation)) return _cancelled(beats);
-    if (!_ready) {
-      return _delivered = TempoDelivery.silent(
-        beats,
-        reason: _silence ?? 'no audio engine',
-      );
-    }
+    if (!_owns(pulse, generation)) return silent(_cancelled);
+    if (!_ready) return _delivered = silent(_silence ?? 'no audio engine');
 
     final tailFrames = _tail.inMicroseconds * _sampleRate ~/ 1000000;
     final track = Int16List(beatFrames * beats + tailFrames);
@@ -302,7 +304,7 @@ class PulseClicker {
     // Only the first chunk has been handed over by now; the engine asks for
     // the rest as it plays, and each one that lands moves this on. What the
     // attempt records is read when it closes, not here.
-    return _owns(pulse, generation) ? _delivered : _cancelled(beats);
+    return _owns(pulse, generation) ? _delivered : silent(_cancelled);
   }
 
   /// Whether this playback is still the one the clicker is running.
@@ -312,12 +314,11 @@ class PulseClicker {
   bool _owns(int pulse, int generation) =>
       pulse == _pulse && generation == _generation;
 
-  /// What a playback that never got to sound reports.
+  /// Why a playback that never got to sound reports silence.
   ///
   /// Its own report rather than whatever [delivered] now holds, which belongs
   /// to the pulse that replaced it.
-  TempoDelivery _cancelled(int beats) =>
-      TempoDelivery.silent(beats, reason: 'the pulse ended before it sounded');
+  static const String _cancelled = 'the pulse ended before it sounded';
 
   /// Notes how much of the pulse the engine has taken.
   ///
@@ -329,11 +330,26 @@ class PulseClicker {
     if (_pulseBeats == 0) return;
     final through = _acceptedFrames < _clickFrames
         ? 0
-        : (_acceptedFrames - _clickFrames) ~/ _pulseBeatFrames + 1;
-    final queued = (through - _pulseSkipped).clamp(0, _pulseBeats);
+        : math.min(
+            (_acceptedFrames - _clickFrames) ~/ _pulseBeatFrames + 1,
+            _pulseBeats,
+          );
+    // One unbroken run from the first beat the engine reached, so the split
+    // either side of the count-in is exact.
+    final countIn = math.max(
+      0,
+      math.min(through, _pulseCountIn) - _pulseSkipped,
+    );
+    final continuing = math.max(
+      0,
+      through - math.max<int>(_pulseSkipped, _pulseCountIn),
+    );
+    final queued = countIn + continuing;
     _delivered = TempoDelivery(
-      requestedBeats: _pulseBeats,
-      deliveredBeats: queued,
+      countInBeats: _pulseCountIn,
+      continuingBeats: _pulseBeats - _pulseCountIn,
+      deliveredCountInBeats: countIn,
+      deliveredContinuingBeats: continuing,
       failureReason: switch (queued) {
         _ when failure != null => failure,
         _ when queued == _pulseBeats => null,

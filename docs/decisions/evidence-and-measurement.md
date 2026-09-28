@@ -290,6 +290,56 @@ stronger claim than refusing to invent it. The uncharacterized domain is
 persistent rather than intermittent, so what a progression that genuinely
 requires timing runs into is unavailable evidence, not repeated failure.
 
+## A supplied pulse is not one the learner kept
+
+**Decision.** An attempt tests keeping the pulse unaided only when no beat
+reached the learner after the count-in. Any delivered beat, audible or visual,
+makes it `PulseMaintenance.notTested`, however partial the delivery. That
+changes what two measurements are evidence of, and nothing else:
+
+```text
+temporal stability   still measured and reported, out of the motor score
+achieved tempo       still measured, not the learner's chosen pace
+continuity           still in the motor score
+execution            still learns, and the frontier still moves
+```
+
+**Why.** A click running under the notes supplies the steadiness temporal
+stability measures, the way a cue supplies the notes retrieval is asked for.
+Reading it as independent timing would credit the learner with the pulse, and
+discounting it by a coefficient would put a pedagogical guess inside a
+measurement. The claim is narrowed instead: the learner managed this task at
+this tempo with a pulse, which is real execution evidence, and said nothing
+about holding a tempo alone.
+
+The rule reads delivery rather than the request, and any beat rather than a
+complete metronome. A metronome that opened late and still clicked through the
+attempt is a partial delivery the learner heard throughout, so treating partial
+as absent would record a supplied pulse as independent evidence. The error this
+permits runs one way: a beat that was queued and never heard costs an
+independent observation and can never manufacture one. Its converse holds too: a
+metronome that failed before the downbeat supplied nothing during the attempt,
+and the pulse was the learner's.
+
+Continuity stays because a click helps keep the playing from stopping only a
+little, and the alternative is an attempt that says nothing about execution at
+all. That residual help is accepted rather than modeled: predicting execution
+under a pulse would need a coefficient nothing has fitted.
+
+**Consequences.** A pace learned for unseen material and a tempo probe opened by
+playing faster than asked both read only a pace the learner chose, since
+outrunning a supplied pulse is ignoring it rather than finding the task easy. A
+curriculum requirement's timing criterion is unknown under a supplied pulse, as
+its retrieval criterion is under a cue. Practice quality still counts
+steadiness, because it asks whether the practice went well rather than whether
+the learner kept time alone.
+
+Every attempt recorded before this could not have supplied a pulse after the
+count-in, since practice never asked for one, so history reads as tested. That
+also leaves the learner model version where it was: on everything it could
+previously receive, the transition is unchanged, and the recorded journal still
+replays to the same state.
+
 ## A wait is trustworthy or it does not exist
 
 **Decision.** Timing runs are over **aligned musical moments**. A moment with no

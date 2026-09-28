@@ -138,7 +138,11 @@ RequirementAssessment assessRequirementAttempt({
       tempo: _assessTempo(requirement, record.exercise, outcome),
       pitch: _atLeast(outcome.pitchIntegrity, policy.minimumPitchIntegrity),
       retrieval: _assessRetrieval(requirement, record.exercise, outcome),
-      timing: _atLeast(outcome.motorScore, policy.minimumMotorScore),
+      // Unknown rather than judged on continuity alone: under a supplied pulse
+      // the attempt never tested whether the learner could keep time.
+      timing: outcome.pulseMaintenance.isTested
+          ? _atLeast(outcome.motorScore, policy.minimumMotorScore)
+          : CompletionCriterion.unknown,
       coordination:
           record.exercise.conditions.hands == HandConfiguration.together
           ? _atLeast(outcome.coordination, policy.minimumCoordination)

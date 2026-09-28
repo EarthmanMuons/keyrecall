@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Attempt schema version 7 and acquisition schema version 9 record a pulse's
+  count-in and continuing beats separately, and an outcome's pulse maintenance.
+  Earlier records upgrade to a count-in with nothing after it and an outcome
+  that tested the pulse, which practice never asked otherwise; one whose
+  conditions asked for a metronome is refused rather than split.
+
 - The acquisition decoder hands a repetition count to `TraversalRepetitions`
   instead of judging it, so what counts as a valid count stays a domain rule
   rather than a serialization one. An invalid count is still a decode failure.

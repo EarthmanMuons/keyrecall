@@ -273,8 +273,14 @@ Map<String, Object?> encodePresentationDelivery(
 ) => {
   'tempo': {
     'delivery': delivery.tempo.delivery.id,
-    'requested_beats': delivery.tempo.requestedBeats,
-    'delivered_beats': delivery.tempo.deliveredBeats,
+    'count_in': {
+      'requested': delivery.tempo.countInBeats,
+      'delivered': delivery.tempo.deliveredCountInBeats,
+    },
+    'continuing': {
+      'requested': delivery.tempo.continuingBeats,
+      'delivered': delivery.tempo.deliveredContinuingBeats,
+    },
     'failure_reason': delivery.tempo.failureReason,
   },
 };
@@ -289,10 +295,22 @@ PresentationDelivery decodePresentationDelivery(
   String? location,
 }) {
   final tempo = requireMap(json, 'tempo', location: location);
+  final countIn = requireMap(tempo, 'count_in', location: location);
+  final continuing = requireMap(tempo, 'continuing', location: location);
   return PresentationDelivery(
     tempo: TempoDelivery(
-      requestedBeats: requireInt(tempo, 'requested_beats', location: location),
-      deliveredBeats: requireInt(tempo, 'delivered_beats', location: location),
+      countInBeats: requireInt(countIn, 'requested', location: location),
+      continuingBeats: requireInt(continuing, 'requested', location: location),
+      deliveredCountInBeats: requireInt(
+        countIn,
+        'delivered',
+        location: location,
+      ),
+      deliveredContinuingBeats: requireInt(
+        continuing,
+        'delivered',
+        location: location,
+      ),
       failureReason: asOptionalString(
         tempo['failure_reason'],
         'failure_reason',

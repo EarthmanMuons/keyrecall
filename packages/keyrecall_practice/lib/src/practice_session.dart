@@ -1176,6 +1176,7 @@ class PracticeSession {
       final reading = readPerformance(
         exercise: outstanding.decision.exercise,
         transcript: transcript,
+        delivery: presentation?.delivery,
         policy: policy,
       );
       return _prepare(

@@ -1,3 +1,4 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:test/test.dart';
 
@@ -47,11 +48,47 @@ Map<String, Object?> version4(Map<String, Object?> current) =>
       ..remove('presentation');
 
 Map<String, Object?> version5(Map<String, Object?> current) =>
-    Map<String, Object?>.of(current)
+    Map<String, Object?>.of(version6(current))
       ..['schema_version'] = 5
       ..remove('scope')
       ..remove('timing')
       ..remove('input');
+
+/// A version 6 record: every beat a pulse asked for was counted in one total,
+/// and no outcome said whether it tested the learner keeping the pulse.
+Map<String, Object?> version6(Map<String, Object?> current) {
+  final old = Map<String, Object?>.of(current)..['schema_version'] = 6;
+  if (old['presentation'] case final Map<String, Object?> presentation) {
+    final delivery = presentation['delivery']! as Map<String, Object?>;
+    final tempo = delivery['tempo']! as Map<String, Object?>;
+    final countIn = tempo['count_in']! as Map<String, Object?>;
+    old['presentation'] = {
+      ...presentation,
+      'delivery': {
+        ...delivery,
+        'tempo': {
+          'delivery': tempo['delivery'],
+          'requested_beats': countIn['requested'],
+          'delivered_beats': countIn['delivered'],
+          'failure_reason': tempo['failure_reason'],
+        },
+      },
+    };
+  }
+  final closure = old['closure']! as Map<String, Object?>;
+  final measurement = closure['measurement']! as Map<String, Object?>;
+  if (measurement['outcome'] case final Map<String, Object?> outcome) {
+    old['closure'] = {
+      ...closure,
+      'measurement': {
+        ...measurement,
+        'outcome': Map<String, Object?>.of(outcome)
+          ..remove('pulse_maintenance_tested'),
+      },
+    };
+  }
+  return old;
+}
 
 void main() {
   final recorded = recordSession();
@@ -204,6 +241,91 @@ void main() {
         expect(upgraded.input, isNull);
         expect(upgraded.decision?.rankKey, original.decision?.rankKey);
       }
+    });
+  });
+
+  group('version 6 to current', () {
+    Map<String, Object?> withPresentation(
+      Map<String, Object?> json,
+      TempoSupport tempoSupport,
+    ) => json
+      ..['presentation'] = encodePresentation(
+        PresentationRecord(
+          policyVersion: 'v1-presentation-0',
+          conditions: PresentationConditions(
+            pitchCue: PitchCue.none,
+            motorCue: MotorCue.none,
+            performanceFeedback: PerformanceFeedback.neutralEcho,
+            tempoSupport: tempoSupport,
+          ),
+          delivery: PresentationDelivery(
+            tempo: TempoDelivery(
+              countInBeats: 4,
+              continuingBeats: 0,
+              deliveredCountInBeats: 3,
+              deliveredContinuingBeats: 0,
+            ),
+          ),
+        ),
+      );
+
+    test('reads every outcome as having tested the pulse', () {
+      for (final original in journal.records) {
+        final upgraded = AttemptRecord.fromJson(version6(original.toJson()));
+
+        expect(
+          measuredOf(upgraded).outcome.pulseMaintenance,
+          PulseMaintenance.tested,
+        );
+        expect(measuredOf(upgraded).outcome, measuredOf(original).outcome);
+      }
+    });
+
+    test('reads every beat of a pulse as counting in', () {
+      final json = withPresentation(
+        journal.records.first.toJson(),
+        TempoSupport.countInOnly,
+      );
+      final upgraded = AttemptRecord.fromJson(version6(json));
+      final tempo = upgraded.presentation!.delivery.tempo;
+
+      expect(tempo.deliveredCountInBeats, 3);
+      expect(tempo.countInBeats, 4);
+      expect(tempo.continuingBeats, 0);
+      expect(tempo.suppliedDuringAttempt, isFalse);
+    });
+
+    test('refuses a metronome whose beats it cannot split', () {
+      final json = withPresentation(
+        journal.records.first.toJson(),
+        TempoSupport.metronomeThroughout,
+      );
+
+      expect(
+        () => AttemptRecord.fromJson(version6(json)),
+        throwsA(isA<JournalFormatException>()),
+      );
+    });
+
+    test('an upgraded journal replays to the same learner state', () {
+      final upgraded = AttemptJournal(journal.header);
+      for (final record in journal.records) {
+        upgraded.append(AttemptRecord.fromJson(version6(record.toJson())));
+      }
+
+      final before = replayJournal(
+        journal,
+        model: model,
+        initial: recorded.initial.copy(),
+      );
+      final after = replayJournal(
+        upgraded,
+        model: model,
+        initial: recorded.initial.copy(),
+      );
+
+      expect(after.stateHash, before.stateHash);
+      expect(after.divergences, isEmpty);
     });
   });
 

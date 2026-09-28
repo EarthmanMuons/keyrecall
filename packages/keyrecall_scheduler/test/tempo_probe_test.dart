@@ -18,6 +18,7 @@ void main() {
     bool completed = true,
     FactualRetrieval retrieval = FactualRetrieval.succeeded,
     double quality = 1.0,
+    PulseMaintenance pulse = PulseMaintenance.tested,
   }) => Outcome(
     started: true,
     retrieval: retrieval,
@@ -28,6 +29,7 @@ void main() {
     temporalStability: quality,
     achievedTempoRatio: tempoRatio,
     topologyAccuracy: quality,
+    pulseMaintenance: pulse,
   );
 
   Exercise? probeFor(Exercise exercise, Outcome outcome) => tempoProbeTarget(
@@ -89,6 +91,13 @@ void main() {
 
       expect(
         probeFor(cued, playedAt(1.6, retrieval: FactualRetrieval.notTested)),
+        isNull,
+      );
+    });
+
+    test('outrunning a supplied pulse is ignoring it, not ease', () {
+      expect(
+        probeFor(at(60), playedAt(1.6, pulse: PulseMaintenance.notTested)),
         isNull,
       );
     });

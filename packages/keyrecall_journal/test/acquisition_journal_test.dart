@@ -85,6 +85,25 @@ void main() {
       expect(reread.presentation!.conditions.tempoSupport, TempoSupport.none);
     });
 
+    test('reads a version 8 pulse as counting in, which it was', () {
+      final older = recordAt(0, presentation: unmetered).toJson()
+        ..['schema_version'] = 8;
+      final presentation = older['presentation']! as Map<String, Object?>;
+      older['presentation'] = {
+        ...presentation,
+        'delivery': {
+          'tempo': {
+            'delivery': 'COMPLETE',
+            'requested_beats': 0,
+            'delivered_beats': 0,
+            'failure_reason': null,
+          },
+        },
+      };
+
+      expect(AcquisitionAttemptRecord.fromJson(older).presentation, unmetered);
+    });
+
     test('is unsaid for a record written before the format carried it', () {
       final older = recordAt(0).toJson()
         ..remove('presentation')

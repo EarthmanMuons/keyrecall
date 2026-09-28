@@ -12,6 +12,13 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- `Outcome.pulseMaintenance` says whether the attempt tested the learner keeping
+  the pulse alone. When it did not, temporal stability leaves `motorScore` and
+  `chosenTempoRatio` is null, so a supplied pulse neither teaches execution its
+  steadiness nor records a pace the learner did not choose. Execution and the
+  frontier still learn. The model version stays at `v1-9`: every outcome it
+  could previously receive tested the pulse and learns exactly as before.
+
 - Learner model `v1-9`. Every reduction over competencies now runs in
   `Competency.values` order rather than the order the exercise's own set
   iterates in, so a serialized exercise sums to the same bits as the presented

@@ -52,7 +52,9 @@ Outcome outcomeOf({
   // the quality unless a test says otherwise, which is what these fixtures
   // meant before there was anything to say.
   double? tempoRatio,
+  PulseMaintenance pulse = PulseMaintenance.tested,
 }) => Outcome(
+  pulseMaintenance: pulse,
   started: started,
   retrieval: retrieval,
   completed: completed,

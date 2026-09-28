@@ -8,6 +8,13 @@
   caller can ask where the hands were apart rather than only how far apart they
   got.
 
+## [Unreleased]
+
+### Changed
+
+- `outcomeFor` takes the presentation's delivery and marks pulse maintenance
+  untested when any beat reached the learner once the attempt began.
+
 ## 0.1.0
 
 - Measurement of a single-hand aligned performance, and its conversion into an

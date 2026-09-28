@@ -38,11 +38,20 @@ enum ChannelDelivery {
 /// the room is a question only a device with playback completion could answer.
 @immutable
 class TempoDelivery {
-  /// Beats the presentation asked the audio layer for.
-  final int requestedBeats;
+  /// Beats asked for before the attempt begins.
+  final int countInBeats;
 
-  /// Beats of those the audio layer accepted, counted from their own start.
-  final int deliveredBeats;
+  /// Beats asked for once the attempt has begun, which is a metronome.
+  final int continuingBeats;
+
+  /// Beats of [countInBeats] the audio layer accepted.
+  final int deliveredCountInBeats;
+
+  /// Beats of [continuingBeats] the audio layer accepted.
+  ///
+  /// What separates a pulse the learner held from one they were given: any
+  /// beat here was supplied while the attempt was being observed.
+  final int deliveredContinuingBeats;
 
   /// Why the pulse fell short, when the audio layer said.
   final String? failureReason;
@@ -50,33 +59,76 @@ class TempoDelivery {
   /// The only constructor that decides how much of the pulse was delivered, so
   /// no caller can record a shortfall as a complete count-in.
   TempoDelivery({
-    required this.requestedBeats,
-    required this.deliveredBeats,
+    required this.countInBeats,
+    required this.continuingBeats,
+    required this.deliveredCountInBeats,
+    required this.deliveredContinuingBeats,
     this.failureReason,
   }) {
-    if (requestedBeats < 0) {
-      throw ArgumentError.value(requestedBeats, 'requestedBeats');
-    }
-    if (deliveredBeats < 0 || deliveredBeats > requestedBeats) {
+    _requireWithin(
+      countInBeats,
+      deliveredCountInBeats,
+      'countInBeats',
+      'deliveredCountInBeats',
+    );
+    _requireWithin(
+      continuingBeats,
+      deliveredContinuingBeats,
+      'continuingBeats',
+      'deliveredContinuingBeats',
+    );
+  }
+
+  static void _requireWithin(
+    int requested,
+    int delivered,
+    String requestedName,
+    String deliveredName,
+  ) {
+    if (requested < 0) throw ArgumentError.value(requested, requestedName);
+    if (delivered < 0 || delivered > requested) {
       throw ArgumentError.value(
-        deliveredBeats,
-        'deliveredBeats',
-        'must be within the $requestedBeats that were asked for',
+        delivered,
+        deliveredName,
+        'must be within the $requested that were asked for',
       );
     }
   }
 
   /// A pulse nothing was asked of, which is what an attempt under
   /// `TempoSupport.none` owes the learner.
-  TempoDelivery.notRequested() : this(requestedBeats: 0, deliveredBeats: 0);
+  TempoDelivery.notRequested() : this.complete(0);
 
   /// Every requested beat, handed over from the first.
-  TempoDelivery.complete(int beats)
-    : this(requestedBeats: beats, deliveredBeats: beats);
+  TempoDelivery.complete(int countInBeats, {int continuingBeats = 0})
+    : this(
+        countInBeats: countInBeats,
+        continuingBeats: continuingBeats,
+        deliveredCountInBeats: countInBeats,
+        deliveredContinuingBeats: continuingBeats,
+      );
 
   /// Nothing was handed over at all, for [reason].
-  TempoDelivery.silent(int beats, {String? reason})
-    : this(requestedBeats: beats, deliveredBeats: 0, failureReason: reason);
+  TempoDelivery.silent(
+    int countInBeats, {
+    int continuingBeats = 0,
+    String? reason,
+  }) : this(
+         countInBeats: countInBeats,
+         continuingBeats: continuingBeats,
+         deliveredCountInBeats: 0,
+         deliveredContinuingBeats: 0,
+         failureReason: reason,
+       );
+
+  /// Beats the presentation asked the audio layer for.
+  int get requestedBeats => countInBeats + continuingBeats;
+
+  /// Beats of those the audio layer accepted.
+  int get deliveredBeats => deliveredCountInBeats + deliveredContinuingBeats;
+
+  /// Whether any beat was supplied after the count-in.
+  bool get suppliedDuringAttempt => deliveredContinuingBeats > 0;
 
   /// How much of the requested pulse the audio layer took.
   ChannelDelivery get delivery {
@@ -88,17 +140,26 @@ class TempoDelivery {
   @override
   bool operator ==(Object other) =>
       other is TempoDelivery &&
-      other.requestedBeats == requestedBeats &&
-      other.deliveredBeats == deliveredBeats &&
+      other.countInBeats == countInBeats &&
+      other.continuingBeats == continuingBeats &&
+      other.deliveredCountInBeats == deliveredCountInBeats &&
+      other.deliveredContinuingBeats == deliveredContinuingBeats &&
       other.failureReason == failureReason;
 
   @override
-  int get hashCode =>
-      Object.hash(requestedBeats, deliveredBeats, failureReason);
+  int get hashCode => Object.hash(
+    countInBeats,
+    continuingBeats,
+    deliveredCountInBeats,
+    deliveredContinuingBeats,
+    failureReason,
+  );
 
   @override
   String toString() =>
-      'TempoDelivery(${delivery.id}, $deliveredBeats/$requestedBeats)';
+      'TempoDelivery(${delivery.id}, '
+      'count-in $deliveredCountInBeats/$countInBeats, '
+      'continuing $deliveredContinuingBeats/$continuingBeats)';
 }
 
 /// What the app managed to put in front of the learner, channel by channel.
@@ -115,6 +176,12 @@ class PresentationDelivery {
 
   /// Whether any channel gave the learner less than it was asked for.
   bool get fellShort => tempo.delivery.fellShort;
+
+  /// Whether the learner was given a pulse while the attempt was observed.
+  ///
+  /// Asked of what was delivered rather than of what was requested, so a
+  /// metronome that never sounded leaves the learner holding the pulse alone.
+  bool get suppliedPulseDuringAttempt => tempo.suppliedDuringAttempt;
 
   @override
   bool operator ==(Object other) =>

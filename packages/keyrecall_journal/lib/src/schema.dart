@@ -24,7 +24,13 @@
 /// earlier record leaves all three absent: the goal in force then was never
 /// written down, the profile's current goal says nothing about it, and the
 /// transcript and input they would be read from are gone.
-const int attemptSchemaVersion = 6;
+///
+/// Version 7 separates the beats a pulse counted in from any that continued
+/// once the attempt began, and records whether each outcome tested the learner
+/// keeping the pulse alone. Practice never continued a pulse before it, so an
+/// earlier record upgrades to a count-in with nothing after it and an outcome
+/// that tested the pulse.
+const int attemptSchemaVersion = 7;
 
 /// Version of the checkpoint wire format.
 ///
@@ -82,7 +88,12 @@ const int checkpointSchemaVersion = 3;
 /// fell short, nor whether the attempt was in a position to judge it, and
 /// reading a failure out of it would turn a missing wait or a lost event into
 /// evidence about the learner.
-const int acquisitionSchemaVersion = 8;
+///
+/// Version 9 separates the beats a pulse counted in from any that continued
+/// once the attempt began, for the reason [attemptSchemaVersion]'s version 7
+/// gives. An earlier presentation reads back as a count-in with nothing after
+/// it, which its recorded conditions confirm.
+const int acquisitionSchemaVersion = 9;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

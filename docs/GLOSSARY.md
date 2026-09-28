@@ -652,7 +652,9 @@ the only thing a step goes on from; this records how fast somebody plays when
 nobody is holding them back. Keeping them apart preserves the rule that evidence
 at a tempo is earned by being asked for that tempo, while letting an unseen
 scale arrive near the speed the learner actually plays. Read by
-`transferableTempoFor`.
+`transferableTempoFor`. Not recorded under a supplied pulse, where the pace was
+the pulse's rather than the learner's; see
+[pulse maintenance](#pulse-maintenance).
 
 ### Parameter Registry
 
@@ -728,6 +730,16 @@ state, its own session.
 The id is opaque and stable, never derived from a display name, because names
 change and repeat. Every persisted artifact is scoped by it, and a history's
 owner is checked before its content is read.
+
+### Pulse maintenance
+
+Whether an attempt tested the learner keeping the pulse alone.
+
+`tested` unless any beat reached the learner after the count-in, however partial
+the delivery. `notTested` is not unsteady playing: timing is still measured and
+reported, but [temporal stability](#temporal-stability) leaves the motor score
+and the achieved tempo stops being the learner's own pace. See
+[`evidence-and-measurement.md`](decisions/evidence-and-measurement.md).
 
 ### Q-matrix
 
@@ -928,6 +940,10 @@ a single interruption. Both use
 stay independent, and both are absent below five measurable waits, because
 interpolated quartiles would otherwise include the extremes they exist to
 ignore.
+
+Left out of the motor score when the attempt did not test
+[pulse maintenance](#pulse-maintenance), since a supplied pulse lends the
+steadiness it measures.
 
 ### TimingEvidence
 

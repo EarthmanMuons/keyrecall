@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `TempoDelivery` counts the beats before the attempt and the beats after it
+  separately, so a metronome that opened late is still known to have supplied
+  the attempt. `suppliedDuringAttempt` and
+  `PresentationDelivery.suppliedPulseDuringAttempt` answer that from what was
+  delivered rather than what was requested.
+
 - `ExerciseConstraints.matchesStructure`, the shape a requirement names without
   its tempo criterion, so an assessment can match structure and read the pace
   off what was measured.

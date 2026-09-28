@@ -11,6 +11,7 @@ import 'codecs/domain_codec.dart';
 import 'presentation_record.dart';
 import 'profile.dart';
 import 'schema.dart';
+import 'upgrade.dart';
 
 /// The wait between two moments that arrived, as it was recorded.
 ///
@@ -42,6 +43,7 @@ const Set<int> readableAcquisitionVersions = {
   5,
   6,
   7,
+  8,
   acquisitionSchemaVersion,
 };
 
@@ -448,10 +450,17 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
       ),
       presentation: switch (json['presentation']) {
         null => null,
-        final Object encoded => decodePresentation(
-          asMap(encoded, 'presentation', location: location),
+        final Object encoded => decodePresentation(switch (asMap(
+          encoded,
+          'presentation',
           location: location,
-        ),
+        )) {
+          final written when version < 9 => presentationBeforeContinuingPulse(
+            written,
+            location: location,
+          ),
+          final written => written,
+        }, location: location),
       },
       started: requireBool(json, 'started', location: location),
       // Absent in version 1, and meaning two things at once in version 2,

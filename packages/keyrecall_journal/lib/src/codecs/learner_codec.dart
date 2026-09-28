@@ -53,6 +53,7 @@ Map<String, Object?> encodeOutcome(Outcome outcome) => {
   'achieved_tempo_ratio': outcome.achievedTempoRatio,
   'topology_accuracy': outcome.topologyAccuracy,
   if (outcome.coordination != null) 'coordination': outcome.coordination,
+  'pulse_maintenance_tested': outcome.pulseMaintenance.isTested,
 };
 
 /// Reads an outcome back, preserving the three-valued retrieval exactly.
@@ -98,6 +99,10 @@ Outcome decodeOutcome(Map<String, Object?> json, {String? location}) {
     coordination: json['coordination'] == null
         ? null
         : requireDouble(json, 'coordination', location: location),
+    pulseMaintenance:
+        requireBool(json, 'pulse_maintenance_tested', location: location)
+        ? PulseMaintenance.tested
+        : PulseMaintenance.notTested,
   );
 }
 

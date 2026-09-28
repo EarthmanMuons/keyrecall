@@ -22,15 +22,78 @@ void main() {
 
     test('beats dropped by a late start read as a partial count-in', () {
       expect(
-        TempoDelivery(requestedBeats: 4, deliveredBeats: 2).delivery,
+        TempoDelivery(
+          countInBeats: 4,
+          continuingBeats: 0,
+          deliveredCountInBeats: 2,
+          deliveredContinuingBeats: 0,
+        ).delivery,
         ChannelDelivery.partial,
       );
     });
 
     test('is derived from the counts rather than asserted beside them', () {
       expect(
-        () => TempoDelivery(requestedBeats: 4, deliveredBeats: 5),
+        () => TempoDelivery(
+          countInBeats: 4,
+          continuingBeats: 0,
+          deliveredCountInBeats: 5,
+          deliveredContinuingBeats: 0,
+        ),
         throwsArgumentError,
+      );
+      expect(
+        () => TempoDelivery(
+          countInBeats: 4,
+          continuingBeats: 8,
+          deliveredCountInBeats: 4,
+          deliveredContinuingBeats: 9,
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('a pulse supplied during the attempt', () {
+    test('is never supplied by a count-in alone', () {
+      expect(TempoDelivery.complete(4).suppliedDuringAttempt, isFalse);
+    });
+
+    test('is supplied by a metronome that sounded', () {
+      expect(
+        TempoDelivery.complete(4, continuingBeats: 12).suppliedDuringAttempt,
+        isTrue,
+      );
+    });
+
+    test('is supplied by a metronome that started late, however partial', () {
+      final late = TempoDelivery(
+        countInBeats: 4,
+        continuingBeats: 12,
+        deliveredCountInBeats: 0,
+        deliveredContinuingBeats: 1,
+      );
+
+      expect(late.delivery, ChannelDelivery.partial);
+      expect(late.suppliedDuringAttempt, isTrue);
+    });
+
+    test('is not supplied by a metronome that failed before the downbeat', () {
+      final cutOff = TempoDelivery(
+        countInBeats: 4,
+        continuingBeats: 12,
+        deliveredCountInBeats: 3,
+        deliveredContinuingBeats: 0,
+      );
+
+      expect(cutOff.delivery, ChannelDelivery.partial);
+      expect(cutOff.suppliedDuringAttempt, isFalse);
+    });
+
+    test('is not supplied by a metronome that never sounded', () {
+      expect(
+        TempoDelivery.silent(4, continuingBeats: 12).suppliedDuringAttempt,
+        isFalse,
       );
     });
   });

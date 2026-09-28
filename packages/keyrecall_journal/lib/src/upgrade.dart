@@ -12,12 +12,17 @@ Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) {
   final version = json['schema_version'];
   return switch (version) {
     attemptSchemaVersion => json,
-    5 => _version5To6(json),
-    4 => _version5To6(_version4To5(json)),
-    3 => _version5To6(_version4To5(_version3To4(json))),
-    2 => _version5To6(_version4To5(_version3To4(_version2To3(json)))),
-    1 => _version5To6(
-      _version4To5(_version3To4(_version2To3(_version1To2(json)))),
+    6 => _version6To7(json),
+    5 => _version6To7(_version5To6(json)),
+    4 => _version6To7(_version5To6(_version4To5(json))),
+    3 => _version6To7(_version5To6(_version4To5(_version3To4(json)))),
+    2 => _version6To7(
+      _version5To6(_version4To5(_version3To4(_version2To3(json)))),
+    ),
+    1 => _version6To7(
+      _version5To6(
+        _version4To5(_version3To4(_version2To3(_version1To2(json)))),
+      ),
     ),
     _ => throw JournalFormatException(
       'attempt schema version $version is not upgradable by this build, which '
@@ -48,14 +53,19 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
     switch (json['schema_version']) {
       attemptSchemaVersion => json,
-      5 => _version5To6(json),
-      4 => _version5To6(_version4To5(json)),
-      3 => _version5To6(_version4To5(_version3To4(json))),
-      2 => _version5To6(_version4To5(_version3To4(_version2To3(json)))),
-      1 => _version5To6(
-        _version4To5(
-          _version3To4(
-            _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+      6 => _version6To7(json),
+      5 => _version6To7(_version5To6(json)),
+      4 => _version6To7(_version5To6(_version4To5(json))),
+      3 => _version6To7(_version5To6(_version4To5(_version3To4(json)))),
+      2 => _version6To7(
+        _version5To6(_version4To5(_version3To4(_version2To3(json)))),
+      ),
+      1 => _version6To7(
+        _version5To6(
+          _version4To5(
+            _version3To4(
+              _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+            ),
           ),
         ),
       ),
@@ -78,7 +88,8 @@ Map<String, Object?> _stampedForward(
       version == 2 ||
       version == 3 ||
       version == 4 ||
-      version == 5) {
+      version == 5 ||
+      version == 6) {
     return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
@@ -154,3 +165,73 @@ Map<String, Object?> _version4To5(Map<String, Object?> json) =>
 /// input the rest would be read from are gone.
 Map<String, Object?> _version5To6(Map<String, Object?> json) =>
     Map<String, Object?>.of(json)..['schema_version'] = 6;
+
+/// Version 6 could not record a pulse continuing past the count-in, and
+/// practice never asked for one, so every outcome it wrote tested the learner
+/// keeping the pulse alone. Both facts are written out rather than left to a
+/// reader's default.
+Map<String, Object?> _version6To7(Map<String, Object?> json) {
+  final upgraded = Map<String, Object?>.of(json)..['schema_version'] = 7;
+  if (json['presentation'] case final Map<String, Object?> presentation) {
+    upgraded['presentation'] = presentationBeforeContinuingPulse(presentation);
+  }
+  if (json['closure'] case final Map<String, Object?> closure) {
+    if (closure['measurement'] case final Map<String, Object?> measurement) {
+      if (measurement['outcome'] case final Map<String, Object?> outcome) {
+        upgraded['closure'] = {
+          ...closure,
+          'measurement': {
+            ...measurement,
+            'outcome': {...outcome, 'pulse_maintenance_tested': true},
+          },
+        };
+      }
+    }
+  }
+  return upgraded;
+}
+
+/// [presentation] as written before a pulse could continue past the count-in,
+/// in the shape that says none did.
+///
+/// Every beat such a record asked for counted in, which its own conditions
+/// confirm. One whose conditions asked for a metronome is refused rather than
+/// split: its beats cannot be divided after the fact, and counting them all as
+/// a count-in would record a pulse the learner was given as one they held.
+///
+/// Throws [JournalFormatException] for a presentation that asked for a
+/// metronome.
+Map<String, Object?> presentationBeforeContinuingPulse(
+  Map<String, Object?> presentation, {
+  String? location,
+}) {
+  if (presentation['conditions'] case {
+    'tempo_support': 'METRONOME_THROUGHOUT',
+  }) {
+    throw JournalFormatException(
+      'a presentation written before continuing pulses were recorded asked for '
+      'a metronome, so its beats cannot be split around the count-in',
+      location: location,
+    );
+  }
+  if (presentation['delivery'] case final Map<String, Object?> delivery) {
+    if (delivery['tempo'] case final Map<String, Object?> tempo) {
+      return {
+        ...presentation,
+        'delivery': {
+          ...delivery,
+          'tempo': {
+            'delivery': tempo['delivery'],
+            'count_in': {
+              'requested': tempo['requested_beats'],
+              'delivered': tempo['delivered_beats'],
+            },
+            'continuing': {'requested': 0, 'delivered': 0},
+            'failure_reason': tempo['failure_reason'],
+          },
+        },
+      };
+    }
+  }
+  return presentation;
+}
