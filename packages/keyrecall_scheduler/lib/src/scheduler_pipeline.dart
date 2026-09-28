@@ -579,6 +579,11 @@ class SchedulerPipeline {
     Outcome? outcome, {
     required DateTime at,
   }) {
+    // Read before the cycle moves on: this attempt belongs to remediation if it
+    // is the one the cycle was owed.
+    final claimedByRemediation =
+        config.pulseRemediation != null &&
+        session.pulseRemediations.due?.target == exercise;
     if (config.pulseRemediation case final remediation?) {
       session.pulseRemediations.record(
         exercise,
@@ -598,6 +603,7 @@ class SchedulerPipeline {
               outcome: outcome,
               config: config.probe,
             ),
+      holdsTempoProbe: claimedByRemediation,
       config: config.diversity,
     );
     final familyWindow = config.familyWindow;

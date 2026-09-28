@@ -261,6 +261,55 @@ void main() {
       expect(chosen(session)!.challengeBypass, ChallengeBypass.pulseSupport);
     });
 
+    test('serves a waiting tempo probe once the cycle is over', () {
+      final session = SessionState();
+      final left = exerciseFor(materials[1], hands: HandConfiguration.left);
+      final fast = Outcome(
+        started: true,
+        retrieval: FactualRetrieval.succeeded,
+        completed: true,
+        materialRetrieval: 1,
+        pitchIntegrity: 1,
+        continuity: 1,
+        temporalStability: 1,
+        achievedTempoRatio: 1.5,
+        topologyAccuracy: 1,
+      );
+      remediating.recordOutcome(session, right, played(), at: t0);
+      remediating.recordOutcome(session, right, played(), at: t0);
+      remediating.recordOutcome(session, left, fast, at: t0);
+      final probe = session.tempoProbe;
+      expect(probe, isNotNull);
+      remediating.recordOutcome(session, right, played(), at: t0);
+      expect(session.pulseRemediations.due, isNotNull);
+
+      remediating.recordOutcome(
+        session,
+        right,
+        played(pulse: PulseMaintenance.notTested),
+        at: t0,
+      );
+      expect(session.tempoProbe, probe, reason: 'through the support');
+      remediating.recordOutcome(session, right, played(), at: t0);
+      expect(session.tempoProbe, probe, reason: 'through the withdrawal');
+      expect(session.pulseRemediations.due, isNull);
+
+      final traces = remediating.evaluate(
+        state: stateAt(PlacementTier.advanced),
+        session: session,
+        candidates: allCandidates(),
+        at: t0,
+      );
+      expect(
+        traces
+            .where(
+              (trace) => trace.challengeBypass == ChallengeBypass.tempoProbe,
+            )
+            .map((trace) => trace.exercise),
+        [probe],
+      );
+    });
+
     test('holds a waiting tempo probe back while it is owed', () {
       final session = qualifiedSession(remediating)
         ..tempoProbe = exerciseFor(materials[2], tempoBpm: 120);
