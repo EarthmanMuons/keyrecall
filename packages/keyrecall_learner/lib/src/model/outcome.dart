@@ -1,3 +1,4 @@
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:meta/meta.dart';
 
 /// Whether independent retrieval was tested, and what happened.
@@ -53,6 +54,18 @@ enum PulseMaintenance {
 
   /// A pulse reached the learner while the attempt ran.
   notTested;
+
+  /// What an attempt under [delivery] can say about the pulse.
+  ///
+  /// The one reading of a delivery, shared by measurement and by anything that
+  /// simulates a performance, so neither can reach its own. Decided by what
+  /// reached the learner rather than what was requested, and by any beat
+  /// rather than a complete pulse. Without a delivery nothing was presented to
+  /// supply one.
+  static PulseMaintenance under(PresentationDelivery? delivery) =>
+      delivery?.suppliedPulseDuringAttempt ?? false
+      ? PulseMaintenance.notTested
+      : PulseMaintenance.tested;
 
   /// Whether this attempt tested keeping the pulse unaided.
   bool get isTested => this == PulseMaintenance.tested;

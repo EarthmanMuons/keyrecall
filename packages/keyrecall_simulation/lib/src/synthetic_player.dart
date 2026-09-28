@@ -59,6 +59,27 @@ class SyntheticPlayer {
   /// compliance can express them.
   final double sprintProbability;
 
+  /// How much of their steadiness they lose holding the pulse alone, in
+  /// `[0, 1]`.
+  ///
+  /// Zero for somebody whose playing is as even without a click as their hands
+  /// allow. Continuity is untouched: a weak pulse drifts rather than stops.
+  final double pulseWeakness;
+
+  /// How much of [pulseWeakness] a supplied pulse makes up for, in `[0, 1]`,
+  /// and how far it pulls their tempo toward the one it sounds.
+  ///
+  /// A click never makes playing steadier than the hands allow, so one here is
+  /// a player who plays with a click as evenly as they execute, not perfectly.
+  final double pulseResponsiveness;
+
+  /// How much of what a supplied pulse made up for stays once it is gone, per
+  /// attempt played with one, in `[0, 1]`.
+  ///
+  /// Zero is somebody the click helps and who is back where they were the
+  /// moment it stops, which is the case a withdrawal exists to catch.
+  final double pulseTransfer;
+
   /// How well each hand executes, in logits, before difficulty.
   final double rightHandAbility;
   final double leftHandAbility;
@@ -154,6 +175,9 @@ class SyntheticPlayer {
     required this.handsTogetherAbility,
     required this.familiarity,
     this.sprintProbability = 0,
+    this.pulseWeakness = 0,
+    this.pulseResponsiveness = 0,
+    this.pulseTransfer = 0,
     this.spanPenalty = 0.4,
     this.opportunityPenalty = 0,
     this.familyAbility = const {},
@@ -173,6 +197,9 @@ class SyntheticPlayer {
     double? naturalTempoLeftBpm,
     double? tempoCompliance,
     double? sprintProbability,
+    double? pulseWeakness,
+    double? pulseResponsiveness,
+    double? pulseTransfer,
     double? rightHandAbility,
     double? leftHandAbility,
     double? handsTogetherAbility,
@@ -192,6 +219,9 @@ class SyntheticPlayer {
     naturalTempoLeftBpm: naturalTempoLeftBpm ?? this.naturalTempoLeftBpm,
     tempoCompliance: tempoCompliance ?? this.tempoCompliance,
     sprintProbability: sprintProbability ?? this.sprintProbability,
+    pulseWeakness: pulseWeakness ?? this.pulseWeakness,
+    pulseResponsiveness: pulseResponsiveness ?? this.pulseResponsiveness,
+    pulseTransfer: pulseTransfer ?? this.pulseTransfer,
     rightHandAbility: rightHandAbility ?? this.rightHandAbility,
     leftHandAbility: leftHandAbility ?? this.leftHandAbility,
     handsTogetherAbility: handsTogetherAbility ?? this.handsTogetherAbility,
@@ -223,7 +253,17 @@ class PlayerState {
   final Map<String, double> _familiarity;
   DateTime? _restedAt;
 
-  PlayerState(this.player) : _familiarity = {...player.materialFamiliarity};
+  PlayerState(this.player)
+    : _familiarity = {...player.materialFamiliarity},
+      _pulseWeakness = player.pulseWeakness;
+
+  /// How much steadiness they currently lose holding the pulse alone.
+  ///
+  /// Moves only through practice with a supplied pulse, by
+  /// [SyntheticPlayer.pulseTransfer], and slips back toward where they started
+  /// with the rest of what practice gained.
+  double get pulseWeakness => _pulseWeakness;
+  double _pulseWeakness;
 
   /// What this player came in able to do with [hands] on [family].
   double startingAbilityOf(HandConfiguration hands, String family) =>
@@ -268,6 +308,11 @@ class PlayerState {
         player.retentionHalfLifeDays,
       );
     }
+    _pulseWeakness = slipped(
+      _pulseWeakness,
+      player.pulseWeakness,
+      player.retentionHalfLifeDays,
+    );
     for (final materialId in _familiarity.keys) {
       _familiarity[materialId] = slipped(
         _familiarity[materialId]!,
@@ -333,11 +378,21 @@ class PlayerState {
   /// count-in says, somebody who ignores it plays their own pace, and the
   /// people in between drift toward comfort by a fixed proportion of the
   /// distance in log tempo. A sprint is that same person taking none of the
-  /// request for one attempt.
-  double performedTempoFor(Exercise exercise, {bool sprinting = false}) {
+  /// request for one attempt. A supplied pulse closes the rest of the distance
+  /// by [SyntheticPlayer.pulseResponsiveness].
+  double performedTempoFor(
+    Exercise exercise, {
+    bool sprinting = false,
+    bool pulseSupplied = false,
+  }) {
     final requested = exercise.conditions.tempoBpm;
     final natural = naturalTempoFor(exercise.conditions.hands);
-    final compliance = sprinting ? 0.0 : player.tempoCompliance.clamp(0.0, 1.0);
+    final disposed = player.tempoCompliance.clamp(0.0, 1.0);
+    final compliance = sprinting
+        ? 0.0
+        : pulseSupplied
+        ? disposed + (1 - disposed) * player.pulseResponsiveness
+        : disposed;
     return math.exp(
       compliance * math.log(requested) + (1 - compliance) * math.log(natural),
     );
@@ -349,10 +404,16 @@ class PlayerState {
   /// rather than lived, so it teaches nothing and leaves no trace behind it.
   /// Anything a run reads afterwards has to describe the practice sequence,
   /// not the question that was asked outside it.
+  ///
+  /// [delivery] is what the app put in front of them. Whether it supplied a
+  /// pulse is read once, by [PulseMaintenance.under], and that one reading is
+  /// both what the player hears and what the outcome claims, so a simulated
+  /// attempt cannot play with a click and report a pulse the player held.
   Outcome play(
     Exercise exercise,
     PythonCompatibleRandom rng, {
     bool practising = true,
+    PresentationDelivery? delivery,
   }) {
     final conditions = exercise.conditions;
     final materialId = exercise.material.materialId;
@@ -372,8 +433,14 @@ class PlayerState {
     final topologyZ = rng.nextGaussian(0, 1);
     final coordinationZ = rng.nextGaussian(0, 1);
 
+    final pulse = PulseMaintenance.under(delivery);
+    final pulseSupplied = !pulse.isTested;
     final sprinting = sprintDraw < player.sprintProbability;
-    final performed = performedTempoFor(exercise, sprinting: sprinting);
+    final performed = performedTempoFor(
+      exercise,
+      sprinting: sprinting,
+      pulseSupplied: pulseSupplied,
+    );
     if (practising) _lastPerformedTempoBpm = performed;
     final natural = naturalTempoFor(conditions.hands);
 
@@ -411,6 +478,7 @@ class PlayerState {
         temporalStability: 0,
         achievedTempoRatio: 0,
         topologyAccuracy: 0,
+        pulseMaintenance: pulse,
       );
     }
 
@@ -452,8 +520,18 @@ class PlayerState {
           )
         : null;
 
+    // Steadiness only where the hands are, less whatever the pulse the player
+    // is holding costs them.
+    final unheldPulse = pulseSupplied
+        ? _pulseWeakness * (1 - player.pulseResponsiveness)
+        : _pulseWeakness;
+    final steadiness = motorQuality * (1 - unheldPulse);
+
     if (practising) {
       practiseExecution(exercise, motorQuality, completed: completed);
+      if (pulseSupplied) {
+        _pulseWeakness *= 1 - player.pulseTransfer * player.pulseResponsiveness;
+      }
     }
 
     return Outcome(
@@ -463,10 +541,11 @@ class PlayerState {
       materialRetrieval: noisy(available, retrievalZ),
       pitchIntegrity: pitchIntegrity,
       continuity: noisy(motorQuality, continuityZ),
-      temporalStability: noisy(motorQuality, stabilityZ),
+      temporalStability: noisy(steadiness, stabilityZ),
       achievedTempoRatio: performed / conditions.tempoBpm,
       topologyAccuracy: noisy(available, topologyZ),
       coordination: coordination,
+      pulseMaintenance: pulse,
     );
   }
 

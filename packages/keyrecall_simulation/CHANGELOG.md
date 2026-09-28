@@ -12,6 +12,17 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `SyntheticPlayer` takes the delivery an attempt was presented with, reads it
+  through `PulseMaintenance.under` for both what the player hears and what the
+  outcome claims, and has three pulse traits: how much steadiness they lose
+  holding the pulse alone, how much a supplied pulse makes up for, and how much
+  of that stays once it is withdrawn. All default to zero, which plays exactly
+  as before.
+- Three unsteady-pulse archetypes, transferring, relapsing, and unresponsive,
+  kept out of `PlayerArchetypes.all`, and `pulse_census`, which characterizes
+  them against the players a pulse must leave alone and counts how often a
+  sitting brings the same kind of timing evidence back.
+
 - `runSchedulerBenchmark`, which drives an archetype to a chosen state over a
   chosen catalog and reports median, p95, and worst decision cost. A
   primitives-only entry point lets a worker isolate run it.

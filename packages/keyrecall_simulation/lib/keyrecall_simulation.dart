@@ -23,6 +23,7 @@ export 'src/decision_cost_census.dart';
 export 'src/practice_simulation.dart';
 export 'src/placement_convergence.dart';
 export 'src/player_archetypes.dart';
+export 'src/pulse_census.dart';
 export 'src/family_exposure.dart';
 export 'src/goal_trajectory_experiment.dart';
 export 'src/guidance_ladder.dart';

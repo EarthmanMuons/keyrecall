@@ -14,10 +14,8 @@ import 'performance_measurement.dart';
 /// succeeding while reading the answer is not evidence of remembering.
 ///
 /// Pulse maintenance is forced to [PulseMaintenance.notTested] the same way
-/// when [delivery] supplied any beat once the attempt began, however little of
-/// the pulse it managed. What reached the learner decides it rather than what
-/// was requested, so a metronome that never sounded leaves the pulse theirs.
-/// Without a [delivery] nothing was presented to supply one.
+/// when [delivery] supplied any beat once the attempt began; see
+/// [PulseMaintenance.under].
 Outcome outcomeFor({
   required PerformanceMeasurement measurement,
   required Exercise exercise,
@@ -25,9 +23,7 @@ Outcome outcomeFor({
 }) {
   final tested = exercise.guidance.isRetrievalObserved;
   return Outcome(
-    pulseMaintenance: delivery?.suppliedPulseDuringAttempt ?? false
-        ? PulseMaintenance.notTested
-        : PulseMaintenance.tested,
+    pulseMaintenance: PulseMaintenance.under(delivery),
     started: measurement.started,
     completed: measurement.completed,
     retrieval: !tested

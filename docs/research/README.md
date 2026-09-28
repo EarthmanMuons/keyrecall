@@ -41,6 +41,7 @@ citation key is not an argument.
 | [`family-transfer.md`](experiments/family-transfer.md)             | How far one family's evidence moves the other's predictions |
 | [`player-calibration.md`](experiments/player-calibration.md)       | Can a synthetic player be fitted to a real sitting          |
 | [`fluency-tempo.md`](experiments/fluency-tempo.md)                 | Which rule a typical-tempo chart can read                   |
+| [`pulse-remediation.md`](experiments/pulse-remediation.md)         | What a timing-remediation rule would have to work with      |
 
 ## How to read a negative result here
 

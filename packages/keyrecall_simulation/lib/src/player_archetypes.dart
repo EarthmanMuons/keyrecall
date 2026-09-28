@@ -246,6 +246,49 @@ abstract final class PlayerArchetypes {
   static SyntheticPlayer get crossingLimited =>
       developing.copyWith(id: 'crossing_limited', opportunityPenalty: 3.0);
 
+  /// Plays the notes evenly with a click and drifts without one, and keeps
+  /// some of the steadiness each time they practise with it.
+  ///
+  /// The learner timing remediation is for. The three unsteady-pulse players
+  /// are [intermediate] with only the pulse traits turned, so anything that
+  /// separates them is about the pulse.
+  ///
+  /// Not in [all], nor are the other two: nothing in a sweep supplies a pulse
+  /// yet, so there they would re-run [intermediate] with worse timing.
+  static SyntheticPlayer get unsteadyPulseTransfers => intermediate.copyWith(
+    id: 'unsteady_pulse_transfers',
+    pulseWeakness: 0.5,
+    pulseResponsiveness: 0.8,
+    pulseTransfer: 0.15,
+  );
+
+  /// Steadied by a click, and back where they were the moment it stops.
+  static SyntheticPlayer get unsteadyPulseRelapses => unsteadyPulseTransfers
+      .copyWith(id: 'unsteady_pulse_relapses', pulseTransfer: 0);
+
+  /// Drifts with a click as much as without one.
+  ///
+  /// Keeps the transfer of [unsteadyPulseTransfers], which has nothing to act
+  /// on: what a click never made up for cannot stay once it is gone.
+  static SyntheticPlayer get unsteadyPulseUnresponsive => unsteadyPulseTransfers
+      .copyWith(id: 'unsteady_pulse_unresponsive', pulseResponsiveness: 0);
+
+  /// The players a supplied pulse has to be characterized against: the
+  /// unsteady ones, and the ones it must leave alone.
+  ///
+  /// [intermediate] is steady and ordinary, [advanced] steady and fast,
+  /// [trueBeginner] unsteady because their hands are rather than their pulse,
+  /// and [reliableSelfPaced] the device sitting the calibration was fitted to.
+  static List<SyntheticPlayer> get pulseCharacterization => [
+    intermediate,
+    advanced,
+    unsteadyPulseTransfers,
+    unsteadyPulseRelapses,
+    unsteadyPulseUnresponsive,
+    trueBeginner,
+    reliableSelfPaced,
+  ];
+
   /// Every archetype, for sweeping.
   static List<SyntheticPlayer> get all => [
     trueBeginner,
