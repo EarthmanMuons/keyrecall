@@ -802,6 +802,56 @@ void main() {
     );
   });
 
+  testWidgets('input that recovers during the count-in does not end it', (
+    tester,
+  ) async {
+    final finished = await pumpAttempt(tester, GuidanceContext.unguided);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AttemptView)),
+    );
+    await tester.tap(find.text('Ready'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    container
+        .read(attemptTranscriptProvider.notifier)
+        .interruptForTest(InputIntegrityFault.observationGap);
+    await tester.pump();
+    expect(finished, isEmpty, reason: 'not while the count-in runs');
+
+    await tester.pump(const Duration(milliseconds: 500));
+    container.invalidate(demoTemporalEventsProvider);
+    await tester.pump();
+    // Past the downbeat, which falls 3.4 s after Ready.
+    await tester.pump(const Duration(seconds: 2));
+    container.read(demoInputProvider.notifier).playChord({60});
+    await tester.pump();
+
+    expect(finished, isEmpty);
+    expect(container.read(attemptTranscriptProvider).isInterrupted, isFalse);
+    expect(container.read(attemptTranscriptProvider).transcript.length, 1);
+  });
+
+  testWidgets('a fault still there at the downbeat ends the attempt', (
+    tester,
+  ) async {
+    final finished = await pumpAttempt(tester, GuidanceContext.unguided);
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(AttemptView)),
+    );
+    await tester.tap(find.text('Ready'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    container
+        .read(attemptTranscriptProvider.notifier)
+        .interruptForTest(InputIntegrityFault.observationGap);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump();
+
+    expect(finished, [AttemptTermination.inputInterrupted]);
+  });
+
   testWidgets('an input reset interrupts the attempt', (tester) async {
     final finished = await pumpAttempt(tester, GuidanceContext.unguided);
     await readyAndCountIn(tester);

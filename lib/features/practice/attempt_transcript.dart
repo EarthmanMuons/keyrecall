@@ -379,15 +379,11 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
         .appended(sequence: sequence, arrivedMs: event.timestampMs);
   }
 
-  /// Closes the capture, keeping what was already played.
-  ///
-  /// Terminal: nothing reopens a capture whose integrity is in doubt, so a
-  /// later note belongs to no attempt rather than to this one.
   /// What arrives before the window opens, which is not part of the attempt.
   ///
   /// A reset reopens the recording into the new observation and a fault
   /// interrupts it, which is where each would have left a recording started on
-  /// the downbeat.
+  /// the downbeat. Nothing here is final until then.
   void _beforeTheWindow(InputTemporalEvent event) {
     switch (event) {
       case InputTemporalResetEvent():
@@ -405,6 +401,11 @@ class AttemptTranscriptNotifier extends Notifier<AttemptCapture> {
     }
   }
 
+  /// Closes the capture, keeping what was already played.
+  ///
+  /// Terminal once the window is open: nothing reopens a capture whose
+  /// integrity is in doubt, so a later note belongs to no attempt rather than
+  /// to this one. Before it, a reset still can.
   void _interrupt(InputIntegrityFault? fault, {String? detail}) {
     if (_material == null) return;
     _material = null;

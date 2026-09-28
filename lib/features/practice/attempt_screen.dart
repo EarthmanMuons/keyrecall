@@ -1229,7 +1229,10 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         : AttemptCapture.none;
     final transcript = capture.transcript;
 
-    if (capture.isInterrupted && !_finishing) {
+    // Only once the window is open. Before the downbeat the capture can be
+    // interrupted and reopened by the input recovering, and what counts is
+    // where it stands when the attempt begins.
+    if (capture.isInterrupted && _phase == _Phase.playing && !_finishing) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) unawaited(_finish(AttemptTermination.inputInterrupted));
       });
