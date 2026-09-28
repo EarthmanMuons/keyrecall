@@ -13,6 +13,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// remediation; it reports what a rule for that would have to work with.
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
+    ..addFlag('recurrence', defaultsTo: true)
     ..addOption('seeds', defaultsTo: '4')
     ..addOption('slots', defaultsTo: '12,24', help: 'Attempts per sitting.')
     ..addOption(
@@ -59,6 +60,7 @@ Future<void> main(List<String> arguments) async {
     'hands': (exercise) => exercise.conditions.hands,
     'sitting': (_) => null,
   };
+  if (!options.flag('recurrence')) return;
   for (final slots in slotCounts) {
     final stopwatch = Stopwatch()..start();
     final trajectories = <Trajectory>[];

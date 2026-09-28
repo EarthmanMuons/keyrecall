@@ -66,12 +66,19 @@ class SyntheticPlayer {
   /// allow. Continuity is untouched: a weak pulse drifts rather than stops.
   final double pulseWeakness;
 
-  /// How much of [pulseWeakness] a supplied pulse makes up for, in `[0, 1]`,
-  /// and how far it pulls their tempo toward the one it sounds.
+  /// How much of [pulseWeakness] a supplied pulse makes up for, in `[0, 1]`.
   ///
   /// A click never makes playing steadier than the hands allow, so one here is
   /// a player who plays with a click as evenly as they execute, not perfectly.
-  final double pulseResponsiveness;
+  final double pulseSteadinessResponsiveness;
+
+  /// How much of the distance a supplied pulse closes between the tempo they
+  /// would have played and the one it sounds, in `[0, 1]`.
+  ///
+  /// Separate from [pulseSteadinessResponsiveness]: following a click's tempo
+  /// and being steadied by it are different abilities, and a player whose
+  /// drift a click does not fix can still hear what speed it is going.
+  final double pulseTempoCompliance;
 
   /// How much of what a supplied pulse made up for stays once it is gone, per
   /// attempt played with one, in `[0, 1]`.
@@ -176,7 +183,8 @@ class SyntheticPlayer {
     required this.familiarity,
     this.sprintProbability = 0,
     this.pulseWeakness = 0,
-    this.pulseResponsiveness = 0,
+    this.pulseSteadinessResponsiveness = 0,
+    this.pulseTempoCompliance = 0.8,
     this.pulseTransfer = 0,
     this.spanPenalty = 0.4,
     this.opportunityPenalty = 0,
@@ -198,7 +206,8 @@ class SyntheticPlayer {
     double? tempoCompliance,
     double? sprintProbability,
     double? pulseWeakness,
-    double? pulseResponsiveness,
+    double? pulseSteadinessResponsiveness,
+    double? pulseTempoCompliance,
     double? pulseTransfer,
     double? rightHandAbility,
     double? leftHandAbility,
@@ -220,7 +229,9 @@ class SyntheticPlayer {
     tempoCompliance: tempoCompliance ?? this.tempoCompliance,
     sprintProbability: sprintProbability ?? this.sprintProbability,
     pulseWeakness: pulseWeakness ?? this.pulseWeakness,
-    pulseResponsiveness: pulseResponsiveness ?? this.pulseResponsiveness,
+    pulseSteadinessResponsiveness:
+        pulseSteadinessResponsiveness ?? this.pulseSteadinessResponsiveness,
+    pulseTempoCompliance: pulseTempoCompliance ?? this.pulseTempoCompliance,
     pulseTransfer: pulseTransfer ?? this.pulseTransfer,
     rightHandAbility: rightHandAbility ?? this.rightHandAbility,
     leftHandAbility: leftHandAbility ?? this.leftHandAbility,
@@ -379,7 +390,7 @@ class PlayerState {
   /// people in between drift toward comfort by a fixed proportion of the
   /// distance in log tempo. A sprint is that same person taking none of the
   /// request for one attempt. A supplied pulse closes the rest of the distance
-  /// by [SyntheticPlayer.pulseResponsiveness].
+  /// by [SyntheticPlayer.pulseTempoCompliance].
   double performedTempoFor(
     Exercise exercise, {
     bool sprinting = false,
@@ -391,7 +402,7 @@ class PlayerState {
     final compliance = sprinting
         ? 0.0
         : pulseSupplied
-        ? disposed + (1 - disposed) * player.pulseResponsiveness
+        ? disposed + (1 - disposed) * player.pulseTempoCompliance
         : disposed;
     return math.exp(
       compliance * math.log(requested) + (1 - compliance) * math.log(natural),
@@ -523,14 +534,15 @@ class PlayerState {
     // Steadiness only where the hands are, less whatever the pulse the player
     // is holding costs them.
     final unheldPulse = pulseSupplied
-        ? _pulseWeakness * (1 - player.pulseResponsiveness)
+        ? _pulseWeakness * (1 - player.pulseSteadinessResponsiveness)
         : _pulseWeakness;
     final steadiness = motorQuality * (1 - unheldPulse);
 
     if (practising) {
       practiseExecution(exercise, motorQuality, completed: completed);
       if (pulseSupplied) {
-        _pulseWeakness *= 1 - player.pulseTransfer * player.pulseResponsiveness;
+        _pulseWeakness *=
+            1 - player.pulseTransfer * player.pulseSteadinessResponsiveness;
       }
     }
 

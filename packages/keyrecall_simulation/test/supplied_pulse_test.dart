@@ -82,20 +82,34 @@ void main() {
     });
   });
 
-  group('a player with no pulse traits', () {
-    test('plays the same under a metronome, and only the claim moves', () {
+  group('a player with no pulse weakness', () {
+    test('follows a metronome\'s tempo instead of its own', () {
       for (final player in [
-        PlayerArchetypes.intermediate,
+        PlayerArchetypes.advanced,
         PlayerArchetypes.reliableSelfPaced,
       ]) {
         final held = played(player, delivery: countIn);
         final given = played(player, delivery: metronome);
-
-        expect(given.temporalStability, held.temporalStability);
-        expect(given.achievedTempoRatio, held.achievedTempoRatio);
+        expect(
+          (given.achievedTempoRatio - 1).abs(),
+          lessThan((held.achievedTempoRatio - 1).abs()),
+          reason: player.id,
+        );
         expect(given.pulseMaintenance, PulseMaintenance.notTested);
       }
     });
+  });
+
+  test('following a click\'s tempo and being steadied by it are separate', () {
+    final unresponsive = PlayerArchetypes.unsteadyPulseUnresponsive;
+    final held = played(unresponsive, delivery: countIn);
+    final given = played(unresponsive, delivery: metronome);
+
+    expect(
+      (given.achievedTempoRatio - 1).abs(),
+      lessThan((held.achievedTempoRatio - 1).abs()),
+    );
+    expect(unresponsive.pulseSteadinessResponsiveness, 0);
   });
 
   group('a player with a weak pulse', () {
@@ -115,7 +129,7 @@ void main() {
 
     test('is never steadier with a click than its hands allow', () {
       final responsive = PlayerArchetypes.unsteadyPulseTransfers.copyWith(
-        pulseResponsiveness: 1,
+        pulseSteadinessResponsiveness: 1,
       );
       final steady = PlayerArchetypes.intermediate;
 

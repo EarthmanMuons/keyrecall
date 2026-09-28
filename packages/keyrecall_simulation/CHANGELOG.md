@@ -14,10 +14,11 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 - `SyntheticPlayer` takes the delivery an attempt was presented with, reads it
   through `PulseMaintenance.under` for both what the player hears and what the
-  outcome claims, and has three pulse traits: how much steadiness they lose
-  holding the pulse alone, how much a supplied pulse makes up for, and how much
-  of that stays once it is withdrawn. All default to zero, which plays exactly
-  as before.
+  outcome claims, and has four pulse traits: how much steadiness they lose
+  holding the pulse alone, how much a supplied pulse makes up for, how much of
+  that stays once it is withdrawn, and how closely they follow a supplied
+  pulse's tempo. The first three default to zero and the last applies only under
+  a supplied pulse, so every existing run plays exactly as before.
 - Three unsteady-pulse archetypes, transferring, relapsing, and unresponsive,
   kept out of `PlayerArchetypes.all`, and `pulse_census`, which characterizes
   them against the players a pulse must leave alone and counts how often a

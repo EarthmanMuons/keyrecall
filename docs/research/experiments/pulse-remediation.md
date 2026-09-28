@@ -53,13 +53,13 @@ drifts rather than stops.
 ```text
                               steadiness                  tempo ratio
                               before  supplied  withdrawn before  supplied
-intermediate                   0.59    0.61     0.63      1.16    1.16
-advanced                       0.82    0.81     0.82      1.38    1.38
+intermediate                   0.59    0.61     0.63      1.16    1.03
+advanced                       0.82    0.81     0.82      1.38    1.07
 unsteady_pulse_transfers       0.29    0.56     0.46      1.16    1.03
 unsteady_pulse_relapses        0.29    0.55     0.32      1.16    1.03
-unsteady_pulse_unresponsive    0.29    0.31     0.32      1.16    1.16
-true_beginner                  0.05    0.06     0.06      0.96    0.96
-reliable_self_paced            0.88    0.84     0.86      1.38    1.38
+unsteady_pulse_unresponsive    0.29    0.31     0.32      1.16    1.03
+true_beginner                  0.05    0.06     0.06      0.96    0.99
+reliable_self_paced            0.88    0.84     0.86      1.38    1.07
 ```
 
 Transfer and relapse are indistinguishable under the click and apart only once
@@ -68,8 +68,12 @@ supported one is not. An unresponsive player looks the same before and during,
 so a remediation policy that reads the supported attempt at all can tell
 "responds" from "does not" before withdrawing.
 
-Steady players are untouched. `true_beginner` reads as unsteady for the same
-reason it reads as broken: continuity is as low as steadiness, which is what a
+Every player follows a click's tempo most of the way, the unresponsive one
+included: being steadied by a pulse and hearing what speed it is going are
+separate traits, so a fast player asked for 80 plays near 80 under a click
+without needing remediation to get there. Steadiness is otherwise untouched for
+the steady players. `true_beginner` reads as unsteady for the same reason it
+reads as broken: continuity is as low as steadiness, which is what a
 clean-performance precondition exists to separate from a pulse problem.
 
 **Per execution context, a sitting almost never brings the evidence back.**
@@ -122,9 +126,8 @@ sitting               19.7      1.0     100%     100%     100%     100%    1
 
 ## What the model does not express
 
-- One responsiveness governs both how much a click steadies the player and how
-  far it pulls their tempo, so a steady player with no pulse traits ignores a
-  metronome's tempo entirely. Harmless while nothing supplies a pulse to them,
-  and worth splitting before any run does.
+- Every player follows a click's tempo by the same default proportion. Nobody
+  has been recorded following one, so that number is a placeholder rather than a
+  measurement.
 - Transfer comes only from supported practice. Unsupported practice never
   improves the pulse, which leaves "improved on its own" out of the picture.

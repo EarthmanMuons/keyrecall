@@ -258,7 +258,7 @@ abstract final class PlayerArchetypes {
   static SyntheticPlayer get unsteadyPulseTransfers => intermediate.copyWith(
     id: 'unsteady_pulse_transfers',
     pulseWeakness: 0.5,
-    pulseResponsiveness: 0.8,
+    pulseSteadinessResponsiveness: 0.8,
     pulseTransfer: 0.15,
   );
 
@@ -266,12 +266,16 @@ abstract final class PlayerArchetypes {
   static SyntheticPlayer get unsteadyPulseRelapses => unsteadyPulseTransfers
       .copyWith(id: 'unsteady_pulse_relapses', pulseTransfer: 0);
 
-  /// Drifts with a click as much as without one.
+  /// Drifts with a click as much as without one, while still following the
+  /// tempo it sounds.
   ///
   /// Keeps the transfer of [unsteadyPulseTransfers], which has nothing to act
   /// on: what a click never made up for cannot stay once it is gone.
-  static SyntheticPlayer get unsteadyPulseUnresponsive => unsteadyPulseTransfers
-      .copyWith(id: 'unsteady_pulse_unresponsive', pulseResponsiveness: 0);
+  static SyntheticPlayer get unsteadyPulseUnresponsive =>
+      unsteadyPulseTransfers.copyWith(
+        id: 'unsteady_pulse_unresponsive',
+        pulseSteadinessResponsiveness: 0,
+      );
 
   /// The players a supplied pulse has to be characterized against: the
   /// unsteady ones, and the ones it must leave alone.
