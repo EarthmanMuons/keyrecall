@@ -143,6 +143,12 @@ different demands.
 One screen presents one exercise. Guidance changes what is placed on the staff
 and keyboard rather than swapping in a different screen.
 
+Every attempt that asks for a tempo is counted in. Where the scheduler supplies
+a pulse through the attempt, the click continues and four dots above Done show
+the beat in its bar, the downbeat larger. The click, the count, and the dots
+read one `PulseSchedule`, and a beat that was shown counts as supplied whether
+or not the click sounded.
+
 The **neutral echo** lights the keys currently held on the keyboard diagram. The
 staff is static until the traversal starts, then lights the note each hand has
 reached, for as long as that key is held.

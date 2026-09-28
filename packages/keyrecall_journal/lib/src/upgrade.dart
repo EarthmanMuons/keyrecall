@@ -12,16 +12,23 @@ Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) {
   final version = json['schema_version'];
   return switch (version) {
     attemptSchemaVersion => json,
-    6 => _version6To7(json),
-    5 => _version6To7(_version5To6(json)),
-    4 => _version6To7(_version5To6(_version4To5(json))),
-    3 => _version6To7(_version5To6(_version4To5(_version3To4(json)))),
-    2 => _version6To7(
-      _version5To6(_version4To5(_version3To4(_version2To3(json)))),
+    7 => _version7To8(json),
+    6 => _version7To8(_version6To7(json)),
+    5 => _version7To8(_version6To7(_version5To6(json))),
+    4 => _version7To8(_version6To7(_version5To6(_version4To5(json)))),
+    3 => _version7To8(
+      _version6To7(_version5To6(_version4To5(_version3To4(json)))),
     ),
-    1 => _version6To7(
-      _version5To6(
-        _version4To5(_version3To4(_version2To3(_version1To2(json)))),
+    2 => _version7To8(
+      _version6To7(
+        _version5To6(_version4To5(_version3To4(_version2To3(json)))),
+      ),
+    ),
+    1 => _version7To8(
+      _version6To7(
+        _version5To6(
+          _version4To5(_version3To4(_version2To3(_version1To2(json)))),
+        ),
       ),
     ),
     _ => throw JournalFormatException(
@@ -53,18 +60,25 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
     switch (json['schema_version']) {
       attemptSchemaVersion => json,
-      6 => _version6To7(json),
-      5 => _version6To7(_version5To6(json)),
-      4 => _version6To7(_version5To6(_version4To5(json))),
-      3 => _version6To7(_version5To6(_version4To5(_version3To4(json)))),
-      2 => _version6To7(
-        _version5To6(_version4To5(_version3To4(_version2To3(json)))),
+      7 => _version7To8(json),
+      6 => _version7To8(_version6To7(json)),
+      5 => _version7To8(_version6To7(_version5To6(json))),
+      4 => _version7To8(_version6To7(_version5To6(_version4To5(json)))),
+      3 => _version7To8(
+        _version6To7(_version5To6(_version4To5(_version3To4(json)))),
       ),
-      1 => _version6To7(
-        _version5To6(
-          _version4To5(
-            _version3To4(
-              _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+      2 => _version7To8(
+        _version6To7(
+          _version5To6(_version4To5(_version3To4(_version2To3(json)))),
+        ),
+      ),
+      1 => _version7To8(
+        _version6To7(
+          _version5To6(
+            _version4To5(
+              _version3To4(
+                _version2To3(_stampedForward(json, 'pending decision', to: 2)),
+              ),
             ),
           ),
         ),
@@ -89,7 +103,8 @@ Map<String, Object?> _stampedForward(
       version == 3 ||
       version == 4 ||
       version == 5 ||
-      version == 6) {
+      version == 6 ||
+      version == 7) {
     return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
@@ -189,6 +204,30 @@ Map<String, Object?> _version6To7(Map<String, Object?> json) {
     }
   }
   return upgraded;
+}
+
+/// Version 7 could not record a beat shown on screen, and no build before it
+/// showed one.
+Map<String, Object?> _version7To8(Map<String, Object?> json) {
+  final upgraded = Map<String, Object?>.of(json)..['schema_version'] = 8;
+  if (json['presentation'] case final Map<String, Object?> presentation) {
+    upgraded['presentation'] = presentationBeforeShownPulse(presentation);
+  }
+  return upgraded;
+}
+
+/// [presentation] as written before a continuing beat could be shown on
+/// screen, in the shape that says none was.
+Map<String, Object?> presentationBeforeShownPulse(
+  Map<String, Object?> presentation,
+) {
+  if (presentation['delivery'] case final Map<String, Object?> delivery) {
+    return {
+      ...presentation,
+      'delivery': {...delivery, 'shown_continuing_beats': 0},
+    };
+  }
+  return presentation;
 }
 
 /// [presentation] as written before a pulse could continue past the count-in,

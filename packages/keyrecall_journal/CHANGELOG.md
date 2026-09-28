@@ -17,6 +17,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   Earlier records upgrade to a count-in with nothing after it and an outcome
   that tested the pulse, which practice never asked otherwise; one whose
   conditions asked for a metronome is refused rather than split.
+- Attempt schema version 8 and acquisition schema version 10 record how many
+  continuing beats were shown on screen. Earlier records read as none shown,
+  since no build before showed one.
 
 - The acquisition decoder hands a repetition count to `TraversalRepetitions`
   instead of judging it, so what counts as a valid count stays a domain rule

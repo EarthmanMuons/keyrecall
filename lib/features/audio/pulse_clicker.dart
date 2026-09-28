@@ -8,6 +8,8 @@ import 'package:flutter_pcm_sound/flutter_pcm_sound.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
+import 'pulse_schedule.dart';
+
 /// The click that sounds the pulse.
 ///
 /// Generated rather than played from an asset, so the app carries no audio
@@ -209,11 +211,11 @@ class PulseClicker {
     }
   }
 
-  /// Sounds [countInBeats] counting beats and then [continuingBeats] more,
-  /// [beat] apart, starting now.
+  /// Sounds [schedule]: its count-in and then any continuing beats, from the
+  /// beat it has reached.
   ///
-  /// Pass zero continuing beats for a count-in that stops and leaves the
-  /// learner holding the pulse.
+  /// A schedule with no continuing beats is a count-in that stops and leaves
+  /// the learner holding the pulse.
   ///
   /// The whole thing is rendered on one sample clock, then queued in chunks
   /// before the engine runs dry between them.
@@ -225,17 +227,15 @@ class PulseClicker {
   /// the engine asks for the rest. A beat the engine was too slow to reach is
   /// dropped rather than played late, and a dropped beat is one the learner
   /// was never supplied.
-  Future<TempoDelivery> play({
-    required int countInBeats,
-    required int continuingBeats,
-    required Duration beat,
-  }) async {
+  Future<TempoDelivery> play(PulseSchedule schedule) async {
     // Preparing the engine takes a variable few hundred milliseconds, and the
     // count-in the learner is watching has already started. Rather than
-    // holding the numbers back, the audio starts from wherever the count-in
+    // holding the numbers back, the audio starts from wherever the schedule
     // has got to, dropping the beats it missed instead of playing them late.
-    final since = Stopwatch()..start();
-    final beats = countInBeats + continuingBeats;
+    final countInBeats = schedule.countInBeats;
+    final continuingBeats = schedule.continuingBeats;
+    final beat = schedule.beat;
+    final beats = schedule.beats;
     // This playback's identity, taken before it waits on anything. Every
     // continuation below proves it still holds both before touching playback
     // state: a pulse that resumed later does not thereby become the current
@@ -283,8 +283,11 @@ class PulseClicker {
         hz: index % _beatsPerBar == 0 ? _downbeatHz : _beatHz,
       );
     }
-    final startFrame = (since.elapsedMicroseconds * _sampleRate ~/ 1000000)
-        .clamp(0, track.length);
+    final startFrame =
+        (schedule.elapsed.inMicroseconds * _sampleRate ~/ 1000000).clamp(
+          0,
+          track.length,
+        );
     _installed = _InstalledTrack(pulse: pulse, frames: track, fed: startFrame);
     // A beat is lost only once its whole click is behind the cursor. Opening
     // the engine a millisecond into the first click clips it inaudibly, and

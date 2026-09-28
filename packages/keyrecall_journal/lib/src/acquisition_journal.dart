@@ -44,6 +44,7 @@ const Set<int> readableAcquisitionVersions = {
   6,
   7,
   8,
+  9,
   acquisitionSchemaVersion,
 };
 
@@ -455,9 +456,11 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
           'presentation',
           location: location,
         )) {
-          final written when version < 9 => presentationBeforeContinuingPulse(
+          final written when version < 9 => presentationBeforeShownPulse(
+            presentationBeforeContinuingPulse(written, location: location),
+          ),
+          final written when version < 10 => presentationBeforeShownPulse(
             written,
-            location: location,
           ),
           final written => written,
         }, location: location),

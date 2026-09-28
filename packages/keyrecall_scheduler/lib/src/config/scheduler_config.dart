@@ -852,7 +852,7 @@ class SchedulerConfig {
 /// frozen for initial production; the numbers are starting points for
 /// calibration against real practice data.
 const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
-  modelVersion: 'v1-9',
+  modelVersion: 'v1-10',
   eligibility: EligibilityConfig(
     multiOctaveExecutionFloor: -0.5,
     gentleTempoBpm: 60,
@@ -904,5 +904,6 @@ const SchedulerConfig v1SchedulerConfig = SchedulerConfig(
     evidenceHalfLifeDays: 7,
   ),
   novelty: NoveltyConfig(),
+  pulseRemediation: PulseRemediationConfig(),
   progress: ProgressPreference.targetAndShapeFrontier,
 );

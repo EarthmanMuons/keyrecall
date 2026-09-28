@@ -1,11 +1,12 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 /// Which presentation rules resolved an attempt's conditions.
 ///
 /// Recorded beside the conditions themselves, not instead of them: it says
 /// which policy applied, while the conditions say what the learner was given,
 /// so reading history never depends on this build's rules still running.
-const String presentationPolicyVersion = 'v1-presentation-0';
+const String presentationPolicyVersion = 'v1-presentation-1';
 
 /// What V1 puts in front of a learner for a decided exercise.
 ///
@@ -16,8 +17,9 @@ const String presentationPolicyVersion = 'v1-presentation-0';
 /// unattributable.
 ///
 /// V1 is uniform: a cue on both the keyboard and the staff or no cue at all,
-/// always a neutral echo, and a count-in and no more wherever a tempo is asked
-/// for. Only the pitch cue
+/// always a neutral echo, and a count-in wherever a tempo is asked for, with a
+/// pulse continuing through the attempt only where [admittedBy] supplies one.
+/// Only the pitch cue
 /// varies with the rung, so a rung change moves one variable. Fingering varies
 /// with the material, shown wherever the catalog has one that is not a guess.
 ///
@@ -33,6 +35,7 @@ PresentationConditions presentationFor(
   GuidanceContext guidance, {
   Exercise? exercise,
   AcquisitionTask? acquisition,
+  ChallengeBypass? admittedBy,
 }) {
   final supplied = guidance.isMaterialSupplied;
   // Fingering is execution support and rides with the cue: naming the finger
@@ -50,9 +53,14 @@ PresentationConditions presentationFor(
     // A supported task asks for no pulse at all: there is no tempo to hold, so
     // there is nothing to count in to. Saying count-in here would record a
     // support the attempt deliberately removed.
-    tempoSupport: acquisition == null
-        ? TempoSupport.countInOnly
-        : TempoSupport.none,
+    //
+    // The scheduler decides when a pulse continues, and only as an
+    // intervention; a rung never implies one.
+    tempoSupport: acquisition != null
+        ? TempoSupport.none
+        : admittedBy?.suppliesPulse ?? false
+        ? TempoSupport.metronomeThroughout
+        : TempoSupport.countInOnly,
     // Only where a cue staff is on screen while the attempt runs. Withdrawing
     // the cue at Ready takes the locator with it, and there is nothing for it
     // to travel over at a rung that supplies nothing.

@@ -104,6 +104,20 @@ void main() {
       expect(AcquisitionAttemptRecord.fromJson(older).presentation, unmetered);
     });
 
+    test('reads a version 9 presentation as having shown nothing', () {
+      final older = recordAt(0, presentation: unmetered).toJson()
+        ..['schema_version'] = 9;
+      final presentation = older['presentation']! as Map<String, Object?>;
+      older['presentation'] = {
+        ...presentation,
+        'delivery': Map<String, Object?>.of(
+          presentation['delivery']! as Map<String, Object?>,
+        )..remove('shown_continuing_beats'),
+      };
+
+      expect(AcquisitionAttemptRecord.fromJson(older).presentation, unmetered);
+    });
+
     test('is unsaid for a record written before the format carried it', () {
       final older = recordAt(0).toJson()
         ..remove('presentation')

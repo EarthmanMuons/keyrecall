@@ -135,6 +135,15 @@ reliable_self_paced              0%        0        0          -          -
 players never qualify, and neither does `true_beginner`, whose continuity fails
 the clean gate before its steadiness is read.
 
+**Nor is any swept archetype.** With remediation in the shipped configuration,
+none of the thirteen in `PlayerArchetypes.all` opened a cycle in four seeds of
+the same schedule. It is not impossible: a single fifty-slot sitting of
+`developing` did open one, since that player's continuity and steadiness are
+independent draws around a motor quality near 0.5, so one can clear its bar
+while the other misses its own three times running. A gate on the gap between
+the two, rather than on each separately, would close that, and is worth
+revisiting once real attempts say what an unsteady pulse looks like.
+
 **The supported attempt tells responsive from unresponsive.** 0.65 against 0.39,
 where the three had been indistinguishable before it.
 

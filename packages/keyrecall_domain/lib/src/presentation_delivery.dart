@@ -164,32 +164,53 @@ class TempoDelivery {
 
 /// What the app managed to put in front of the learner, channel by channel.
 ///
-/// Only the fallible channels are here. A cue the renderer is asked for either
-/// draws or does not draw, and nothing between those is a state this app can
-/// reach; audio is the channel that can half happen.
+/// A cue the renderer is asked for either draws or does not draw, so only the
+/// pulse is here, and it has two channels. Audio can half happen. The beat
+/// shown on screen is counted rather than assumed, because what matters about
+/// it is whether it was on screen once the attempt began, and an attempt can
+/// end before its first continuing beat.
 @immutable
 class PresentationDelivery {
   /// What the pulse sounded.
   final TempoDelivery tempo;
 
-  const PresentationDelivery({required this.tempo});
+  /// Beats after the count-in that were shown on screen.
+  ///
+  /// Zero wherever nothing showed a continuing beat, which is every attempt
+  /// without a metronome.
+  final int shownContinuingBeats;
 
-  /// Whether any channel gave the learner less than it was asked for.
+  PresentationDelivery({required this.tempo, this.shownContinuingBeats = 0}) {
+    if (shownContinuingBeats < 0) {
+      throw ArgumentError.value(shownContinuingBeats, 'shownContinuingBeats');
+    }
+  }
+
+  /// Whether the audio gave the learner less than it was asked for.
+  ///
+  /// About the audio alone. A beat shown on screen is support in its own right
+  /// and does not make up for a click that did not sound.
   bool get fellShort => tempo.delivery.fellShort;
 
   /// Whether the learner was given a pulse while the attempt was observed.
   ///
-  /// Asked of what was delivered rather than of what was requested, so a
-  /// metronome that never sounded leaves the learner holding the pulse alone.
-  bool get suppliedPulseDuringAttempt => tempo.suppliedDuringAttempt;
+  /// Asked of what was delivered rather than of what was requested, and of
+  /// either channel: a beat that was only seen is still a pulse the learner
+  /// did not keep alone, and a metronome that neither sounded nor showed
+  /// leaves the pulse theirs.
+  bool get suppliedPulseDuringAttempt =>
+      tempo.suppliedDuringAttempt || shownContinuingBeats > 0;
 
   @override
   bool operator ==(Object other) =>
-      other is PresentationDelivery && other.tempo == tempo;
+      other is PresentationDelivery &&
+      other.tempo == tempo &&
+      other.shownContinuingBeats == shownContinuingBeats;
 
   @override
-  int get hashCode => tempo.hashCode;
+  int get hashCode => Object.hash(tempo, shownContinuingBeats);
 
   @override
-  String toString() => 'PresentationDelivery($tempo)';
+  String toString() =>
+      'PresentationDelivery($tempo, shown $shownContinuingBeats)';
 }

@@ -108,4 +108,49 @@ void main() {
       isTrue,
     );
   });
+
+  group('a pulse supplied by either channel', () {
+    final metronome = TempoDelivery.complete(4, continuingBeats: 12);
+    final silent = TempoDelivery.silent(4, continuingBeats: 12);
+    final partial = TempoDelivery(
+      countInBeats: 4,
+      continuingBeats: 12,
+      deliveredCountInBeats: 0,
+      deliveredContinuingBeats: 5,
+    );
+
+    test('is supplied when only the beat on screen reached the learner', () {
+      final delivery = PresentationDelivery(
+        tempo: silent,
+        shownContinuingBeats: 12,
+      );
+
+      expect(delivery.suppliedPulseDuringAttempt, isTrue);
+      expect(delivery.fellShort, isTrue);
+    });
+
+    test('is supplied when the click was partial and the screen complete', () {
+      expect(
+        PresentationDelivery(
+          tempo: partial,
+          shownContinuingBeats: 12,
+        ).suppliedPulseDuringAttempt,
+        isTrue,
+      );
+    });
+
+    test('is supplied by the click alone', () {
+      expect(
+        PresentationDelivery(tempo: metronome).suppliedPulseDuringAttempt,
+        isTrue,
+      );
+    });
+
+    test('is not supplied when neither sounded nor showed', () {
+      expect(
+        PresentationDelivery(tempo: silent).suppliedPulseDuringAttempt,
+        isFalse,
+      );
+    });
+  });
 }

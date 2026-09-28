@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'package:keyrecall/features/audio/pulse_clicker.dart';
+import 'package:keyrecall/features/audio/pulse_schedule.dart';
 
 void main() {
   test('queues each frame of a count-in exactly once', () async {
@@ -14,9 +15,11 @@ void main() {
     final clicker = PulseClicker(sink: sink);
 
     await clicker.play(
-      countInBeats: 4,
-      continuingBeats: 0,
-      beat: const Duration(milliseconds: 750),
+      PulseSchedule(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      ),
     );
     for (var index = 0; index < 4; index++) {
       sink.requestFrames();
@@ -47,9 +50,11 @@ void main() {
     final sink = _DelayedSink();
     final clicker = PulseClicker(sink: sink);
     final playing = clicker.play(
-      countInBeats: 4,
-      continuingBeats: 0,
-      beat: const Duration(milliseconds: 750),
+      PulseSchedule(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      ),
     );
     await sink.started.future;
 
@@ -68,9 +73,11 @@ void main() {
     Future<PulseClicker> countIn(_RecordingSink sink) async {
       final clicker = PulseClicker(sink: sink);
       await clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       return clicker;
     }
@@ -108,9 +115,11 @@ void main() {
       final sink = _RecordingSink();
       final clicker = PulseClicker(sink: sink);
       await clicker.play(
-        countInBeats: 4,
-        continuingBeats: 8,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 8,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       for (var chunk = 0; chunk < 10; chunk++) {
         sink.requestFrames();
@@ -129,9 +138,11 @@ void main() {
         final sink = _DelayedSink();
         final clicker = PulseClicker(sink: sink);
         final playing = clicker.play(
-          countInBeats: 4,
-          continuingBeats: 8,
-          beat: const Duration(milliseconds: 100),
+          PulseSchedule(
+            countInBeats: 4,
+            continuingBeats: 8,
+            beat: const Duration(milliseconds: 100),
+          ),
         );
         await sink.started.future;
         await Future<void>.delayed(const Duration(milliseconds: 500));
@@ -146,12 +157,36 @@ void main() {
       },
     );
 
+    test('starts from the beat the schedule has reached', () async {
+      final sink = _RecordingSink();
+      final clicker = PulseClicker(sink: sink);
+      const beat = Duration(milliseconds: 250);
+      await clicker.play(
+        PulseSchedule(
+          beat: beat,
+          countInBeats: 4,
+          continuingBeats: 8,
+          elapsed: () => beat * 5,
+        ),
+      );
+      for (var chunk = 0; chunk < 4; chunk++) {
+        sink.requestFrames();
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(clicker.delivered.deliveredCountInBeats, 0);
+      expect(clicker.delivered.deliveredContinuingBeats, 7);
+      await clicker.stop();
+    });
+
     test('a device with no engine took none of it', () async {
       final clicker = PulseClicker(sink: _RefusingSink());
       await clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
 
       expect(clicker.delivered.delivery, ChannelDelivery.unavailable);
@@ -164,9 +199,11 @@ void main() {
       final sink = _FailingAfterFirstFeedSink();
       final clicker = PulseClicker(sink: sink);
       await clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       final afterFirst = clicker.delivered.deliveredBeats;
       sink.requestFrames();
@@ -186,9 +223,11 @@ void main() {
       final sink = _DelayedSink();
       final clicker = PulseClicker(sink: sink);
       final playing = clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       await sink.started.future;
 
@@ -205,9 +244,11 @@ void main() {
     final sink = _DelayedFeedSink();
     final clicker = PulseClicker(sink: sink);
     final playing = clicker.play(
-      countInBeats: 4,
-      continuingBeats: 0,
-      beat: const Duration(milliseconds: 750),
+      PulseSchedule(
+        countInBeats: 4,
+        continuingBeats: 0,
+        beat: const Duration(milliseconds: 750),
+      ),
     );
     await sink.feedStarted.future;
 
@@ -231,9 +272,11 @@ void main() {
     Future<PulseClicker> started(_GatedSink sink) async {
       final clicker = PulseClicker(sink: sink);
       final playing = clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       await Future<void>.delayed(Duration.zero);
       sink.complete(0);
@@ -285,9 +328,11 @@ void main() {
       // A second pulse on the same clicker, while the first one's chunk is
       // still out. Nothing of this one has been handed over yet.
       final playing = clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       await playing;
       final before = clicker.delivered;
@@ -316,9 +361,11 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         await clicker.play(
-          countInBeats: 4,
-          continuingBeats: 0,
-          beat: const Duration(milliseconds: 750),
+          PulseSchedule(
+            countInBeats: 4,
+            continuingBeats: 0,
+            beat: const Duration(milliseconds: 750),
+          ),
         );
         sink.fail(1);
         await Future<void>.delayed(Duration.zero);
@@ -365,9 +412,11 @@ void main() {
     Future<PulseClicker> tearingDown(_GatedReleaseSink sink) async {
       final clicker = PulseClicker(sink: sink);
       await clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       unawaited(clicker.stop());
       await Future<void>.delayed(Duration.zero);
@@ -379,9 +428,11 @@ void main() {
       final clicker = await tearingDown(sink);
 
       final queued = clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       await Future<void>.delayed(Duration.zero);
       final cancelling = clicker.stop();
@@ -407,17 +458,21 @@ void main() {
 
       final fedBefore = sink.feeds;
       final queued = clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       await Future<void>.delayed(Duration.zero);
       // Not a cancellation: a different pulse, which is its own way of ending
       // this one's claim on the engine.
       final replacing = clicker.play(
-        countInBeats: 2,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 2,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
 
       sink.completeRelease();
@@ -462,15 +517,19 @@ void main() {
         // both wake up to a ready engine: the stop generation cannot tell them
         // apart, and only the pulse can.
         final replaced = clicker.play(
-          countInBeats: 4,
-          continuingBeats: 0,
-          beat: const Duration(milliseconds: 750),
+          PulseSchedule(
+            countInBeats: 4,
+            continuingBeats: 0,
+            beat: const Duration(milliseconds: 750),
+          ),
         );
         await sink.started.future;
         final current = clicker.play(
-          countInBeats: 2,
-          continuingBeats: 0,
-          beat: const Duration(milliseconds: 300),
+          PulseSchedule(
+            countInBeats: 2,
+            continuingBeats: 0,
+            beat: const Duration(milliseconds: 300),
+          ),
         );
 
         sink.completePreparation();
@@ -496,9 +555,11 @@ void main() {
       final sink = _RefillSink();
       final clicker = PulseClicker(sink: sink);
       await clicker.play(
-        countInBeats: 4,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 750),
+        PulseSchedule(
+          countInBeats: 4,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 750),
+        ),
       );
       final submitted = sink.chunks.length;
 
@@ -506,9 +567,11 @@ void main() {
       // engine asks for more inside that wait, when the only track that has
       // ever been installed is the one being replaced.
       final replacing = clicker.play(
-        countInBeats: 2,
-        continuingBeats: 0,
-        beat: const Duration(milliseconds: 300),
+        PulseSchedule(
+          countInBeats: 2,
+          continuingBeats: 0,
+          beat: const Duration(milliseconds: 300),
+        ),
       );
       sink.requestFrames();
       final inGap = sink.chunks.length - submitted;

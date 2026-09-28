@@ -30,7 +30,10 @@
 /// keeping the pulse alone. Practice never continued a pulse before it, so an
 /// earlier record upgrades to a count-in with nothing after it and an outcome
 /// that tested the pulse.
-const int attemptSchemaVersion = 7;
+///
+/// Version 8 records how many continuing beats were shown on screen. No build
+/// before it showed one, so an earlier record upgrades to none shown.
+const int attemptSchemaVersion = 8;
 
 /// Version of the checkpoint wire format.
 ///
@@ -93,7 +96,11 @@ const int checkpointSchemaVersion = 3;
 /// once the attempt began, for the reason [attemptSchemaVersion]'s version 7
 /// gives. An earlier presentation reads back as a count-in with nothing after
 /// it, which its recorded conditions confirm.
-const int acquisitionSchemaVersion = 9;
+///
+/// Version 10 records how many continuing beats were shown on screen, for the
+/// reason [attemptSchemaVersion]'s version 8 gives. An earlier presentation
+/// reads back as none shown.
+const int acquisitionSchemaVersion = 10;
 
 /// Discriminator for the record kinds a journal file can hold.
 enum JournalRecordType {

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_measurement/keyrecall_measurement.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -168,6 +169,20 @@ void main() {
               'tempo support is an independent axis, so a rung change must '
               'not move it in either direction',
         );
+      }
+    });
+
+    test('continues the pulse only where the scheduler supplies one', () {
+      for (final guidance in GuidanceContext.ladder) {
+        for (final bypass in ChallengeBypass.values) {
+          expect(
+            presentationFor(guidance, admittedBy: bypass).tempoSupport,
+            bypass == ChallengeBypass.pulseSupport
+                ? TempoSupport.metronomeThroughout
+                : TempoSupport.countInOnly,
+            reason: '${bypass.id} at ${guidance.independence}',
+          );
+        }
       }
     });
 

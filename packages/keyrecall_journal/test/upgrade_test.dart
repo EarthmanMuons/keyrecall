@@ -56,8 +56,23 @@ Map<String, Object?> version5(Map<String, Object?> current) =>
 
 /// A version 6 record: every beat a pulse asked for was counted in one total,
 /// and no outcome said whether it tested the learner keeping the pulse.
+/// A version 7 record: nothing said how many continuing beats were shown.
+Map<String, Object?> version7(Map<String, Object?> current) {
+  final old = Map<String, Object?>.of(current)..['schema_version'] = 7;
+  if (old['presentation'] case final Map<String, Object?> presentation) {
+    old['presentation'] = {
+      ...presentation,
+      'delivery': Map<String, Object?>.of(
+        presentation['delivery']! as Map<String, Object?>,
+      )..remove('shown_continuing_beats'),
+    };
+  }
+  return old;
+}
+
 Map<String, Object?> version6(Map<String, Object?> current) {
-  final old = Map<String, Object?>.of(current)..['schema_version'] = 6;
+  final old = Map<String, Object?>.of(version7(current))
+    ..['schema_version'] = 6;
   if (old['presentation'] case final Map<String, Object?> presentation) {
     final delivery = presentation['delivery']! as Map<String, Object?>;
     final tempo = delivery['tempo']! as Map<String, Object?>;
@@ -241,6 +256,31 @@ void main() {
         expect(upgraded.input, isNull);
         expect(upgraded.decision?.rankKey, original.decision?.rankKey);
       }
+    });
+  });
+
+  group('version 7 to current', () {
+    test('reads a presentation as having shown no continuing beat', () {
+      final json = journal.records.first.toJson()
+        ..['presentation'] = encodePresentation(
+          PresentationRecord(
+            policyVersion: 'v1-presentation-0',
+            conditions: PresentationConditions(
+              pitchCue: PitchCue.none,
+              motorCue: MotorCue.none,
+              performanceFeedback: PerformanceFeedback.neutralEcho,
+              tempoSupport: TempoSupport.countInOnly,
+            ),
+            delivery: PresentationDelivery(tempo: TempoDelivery.complete(4)),
+          ),
+        );
+      final upgraded = AttemptRecord.fromJson(version7(json));
+
+      expect(upgraded.presentation!.delivery.shownContinuingBeats, 0);
+      expect(
+        upgraded.presentation!.delivery.suppliedPulseDuringAttempt,
+        isFalse,
+      );
     });
   });
 

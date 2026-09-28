@@ -205,6 +205,7 @@ void main() {
               deliveredContinuingBeats: 12,
               failureReason: 'the engine took 13 of 16 beats',
             ),
+            shownContinuingBeats: 11,
           ),
         );
 

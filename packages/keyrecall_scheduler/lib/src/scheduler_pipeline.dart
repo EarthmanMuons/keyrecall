@@ -527,6 +527,12 @@ class SchedulerPipeline {
       probesOwed: owedProbes.length,
       probeServed: servedProbe != null,
     );
+    // Served past the preferences that narrowed the slot, so it joins the
+    // selectable set rather than being chosen from outside it.
+    final selectable =
+        servedPulse != null && !narrowed.selectable.contains(servedPulse)
+        ? [...narrowed.selectable, servedPulse]
+        : narrowed.selectable;
     final result = offer != null
         ? AcquisitionOffered(
             diagnostics: diagnostics,
@@ -552,7 +558,7 @@ class SchedulerPipeline {
         : CandidateSelected(
             diagnostics: diagnostics,
             traces: traces,
-            selectable: narrowed.selectable,
+            selectable: selectable,
             pacing: narrowed.pacing,
             dose: narrowed.dose,
             introductions: narrowed.introductions,

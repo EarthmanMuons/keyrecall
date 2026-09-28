@@ -16,6 +16,12 @@ Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addFlag('recurrence', defaultsTo: true)
     ..addFlag('remediation', defaultsTo: true)
+    ..addOption(
+      'players',
+      defaultsTo: 'pulse',
+      allowed: ['pulse', 'all'],
+      help: 'The pulse characterization set, or every swept archetype.',
+    )
     ..addOption('seeds', defaultsTo: '4')
     ..addOption('slots', defaultsTo: '12,24', help: 'Attempts per sitting.')
     ..addOption(
@@ -27,7 +33,9 @@ Future<void> main(List<String> arguments) async {
   final seeds = int.parse(options.option('seeds')!);
   final slotCounts = options.option('slots')!.split(',').map(int.parse);
   final schedule = options.option('schedule')!;
-  final players = PlayerArchetypes.pulseCharacterization;
+  final players = options.option('players') == 'all'
+      ? PlayerArchetypes.all
+      : PlayerArchetypes.pulseCharacterization;
 
   stdout.writeln('== response to a supplied pulse, then its withdrawal');
   stdout.writeln(

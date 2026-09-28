@@ -17,6 +17,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   the attempt. `suppliedDuringAttempt` and
   `PresentationDelivery.suppliedPulseDuringAttempt` answer that from what was
   delivered rather than what was requested.
+- `PresentationDelivery.shownContinuingBeats`, the beats a screen showed after
+  the count-in. A beat that was only seen supplies the pulse as a click does, so
+  `suppliedPulseDuringAttempt` reads either channel.
 
 - `ExerciseConstraints.matchesStructure`, the shape a requirement names without
   its tempo criterion, so an assessment can match structure and read the pace

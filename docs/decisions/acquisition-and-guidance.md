@@ -62,10 +62,17 @@ their steadiness does not either.
 
 **Consequences.** Session state, never learner state: nothing about it outlives
 the sitting, since today's drift is a reason to offer a pulse today and says
-nothing the learner model can keep. `SchedulerConfig.pulseRemediation` is null
-in the shipped configuration until the app can present the pulse it asks for.
-The thresholds separate synthetic players and have met no learner whose pulse is
-weak, since measured timing saturates on the device attempts recorded so far.
+nothing the learner model can keep. `ChallengeBypass.suppliesPulse` is the one
+place a scheduling reason becomes a continuing pulse, read by the presentation
+policy and by simulation alike, and only `pulseSupport` has one: a withdrawal
+gets the ordinary count-in.
+
+The click, the count on screen, and a beat shown during the metronome all read
+one `PulseSchedule`, so none of them keeps time of its own. The beat on screen
+is support in its own right: an attempt where it showed and the audio did not
+still records the pulse as supplied. The thresholds separate synthetic players
+and have met no learner whose pulse is weak, since measured timing saturates on
+the device attempts recorded so far.
 
 ## Moving down a rung is a response, not a penalty
 

@@ -282,8 +282,13 @@ void main() {
     });
 
     test('never opens under a policy without remediation', () {
-      expect(config.pulseRemediation, isNull);
-      expect(qualifiedSession(pipeline).pulseRemediations.due, isNull);
+      final without = SchedulerPipeline(
+        learner: learner,
+        config: config.withPulseRemediation(null),
+      );
+
+      expect(qualifiedSession(without).pulseRemediations.due, isNull);
+      expect(config.pulseRemediation, isNotNull);
     });
   });
 }

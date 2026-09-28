@@ -12,12 +12,13 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
-- Timing remediation, off unless `SchedulerConfig.pulseRemediation` is set. A
-  hand configuration whose clean attempts in a sitting keep drifting is served
-  its qualifying exercise once under `ChallengeBypass.pulseSupport` and once
-  under `pulseWithdrawal`, then closed for the sitting. It gives way to recovery
-  and holds a waiting tempo probe back. `ChallengeBypass.suppliesPulse` is the
-  one place a scheduling reason becomes a continuing pulse.
+- Timing remediation, in force from scheduler model version `v1-10`. A hand
+  configuration whose clean attempts in a sitting keep drifting is served its
+  qualifying exercise once under `ChallengeBypass.pulseSupport` and once under
+  `pulseWithdrawal`, then closed for the sitting. It gives way to recovery and
+  holds a waiting tempo probe back. `ChallengeBypass.suppliesPulse` is the one
+  place a scheduling reason becomes a continuing pulse. A served cycle joins the
+  selectable set it was served from.
 
 ### Fixed
 

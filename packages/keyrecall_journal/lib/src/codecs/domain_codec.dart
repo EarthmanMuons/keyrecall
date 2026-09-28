@@ -283,6 +283,7 @@ Map<String, Object?> encodePresentationDelivery(
     },
     'failure_reason': delivery.tempo.failureReason,
   },
+  'shown_continuing_beats': delivery.shownContinuingBeats,
 };
 
 /// Reads a delivery report back.
@@ -298,6 +299,11 @@ PresentationDelivery decodePresentationDelivery(
   final countIn = requireMap(tempo, 'count_in', location: location);
   final continuing = requireMap(tempo, 'continuing', location: location);
   return PresentationDelivery(
+    shownContinuingBeats: requireInt(
+      json,
+      'shown_continuing_beats',
+      location: location,
+    ),
     tempo: TempoDelivery(
       countInBeats: requireInt(countIn, 'requested', location: location),
       continuingBeats: requireInt(continuing, 'requested', location: location),

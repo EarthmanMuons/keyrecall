@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -14,6 +16,7 @@ import '../../layout.dart';
 import '../../theme_mode.dart';
 import '../../wordmark.dart';
 import '../audio/pulse_clicker.dart';
+import '../audio/pulse_schedule.dart';
 import '../fluency/fluency_screen.dart';
 import '../input/input.dart';
 import '../piano/piano.dart';
@@ -222,6 +225,7 @@ class _AttemptScreenState extends ConsumerState<AttemptScreen> {
         presentation: presentationFor(
           value.exercise!.guidance,
           exercise: value.exercise!,
+          admittedBy: value.presented?.decision.decision.challengeBypass,
         ),
         metBefore: value.hasMet(value.exercise!.material),
         admittedBy: value.presented?.decision.decision.challengeBypass,
@@ -769,7 +773,7 @@ class AttemptView extends ConsumerStatefulWidget {
 }
 
 class _AttemptViewState extends ConsumerState<AttemptView>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   /// Beats in the count-in. One bar of four, which also gives the learner time
   /// to get their hands from the screen to the keyboard.
   static const int _countInBeats = 4;
@@ -788,7 +792,20 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   _Phase _phase = _Phase.ready;
   int _beatsLeft = _countInBeats;
   Timer? _settling;
-  Timer? _countIn;
+
+  /// The pulse this attempt is counted in and kept to, and the frame ticker
+  /// that reads it.
+  ///
+  /// The count, the downbeat, and the beat shown under a metronome are all
+  /// read from [_schedule] rather than timed here, so they cannot drift from
+  /// the click, which renders from the same start.
+  PulseSchedule? _schedule;
+  Ticker? _beats;
+  int _beat = -1;
+
+  /// Beats after the count-in the screen has shown, which is support whether
+  /// or not the click sounded.
+  int _shownContinuingBeats = 0;
   Timer? _watchdog;
   bool _finishing = false;
   int _painted = 0;
@@ -876,7 +893,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     _screenWakeLock.setEnabled(false).ignore();
     _handover.dispose();
     _settling?.cancel();
-    _countIn?.cancel();
+    _beats?.dispose();
     _watchdog?.cancel();
     // Leaving the screen ends the attempt: a pulse that outlived it would keep
     // sounding over whatever comes next, and a recording that outlived it
@@ -975,65 +992,87 @@ class _AttemptViewState extends ConsumerState<AttemptView>
 
   void _beginCountIn() {
     _settling?.cancel();
-    _countIn?.cancel();
+    _stopBeats();
     unawaited(_pulse.prepare());
     setState(() {
       _phase = _Phase.countIn;
       _beatsLeft = _countInBeats;
+      _shownContinuingBeats = 0;
     });
     _settling = Timer(attemptSettle, () {
       if (mounted) _countInAndPlay();
     });
   }
 
+  /// Whether a beat is shown on screen once the attempt begins.
+  bool get _showsBeat =>
+      widget.presentation.tempoSupport == TempoSupport.metronomeThroughout;
+
   void _countInAndPlay() {
     final tempoSupport = widget.presentation.tempoSupport;
-    final beat = Duration(
-      microseconds:
-          (60 *
-                  Duration.microsecondsPerSecond /
-                  widget.exercise.conditions.tempoBpm)
-              .round(),
+    final schedule = _schedule = PulseSchedule(
+      beat: Duration(
+        microseconds:
+            (60 *
+                    Duration.microsecondsPerSecond /
+                    widget.exercise.conditions.tempoBpm)
+                .round(),
+      ),
+      countInBeats: _countInBeats,
+      // A metronome outlasts the notes on purpose. Ending the pulse on the last
+      // expected beat would stop it under anyone playing at all slowly, which
+      // is exactly who is following it.
+      continuingBeats: _showsBeat
+          ? realize(widget.exercise).moments.length + _countInBeats
+          : 0,
     );
 
-    // The clicks are rendered as one buffer, so the pulse is exact whatever
-    // this timer does, and the audio catches up to the count rather than the
-    // count waiting on the audio.
     if (tempoSupport != TempoSupport.none) {
       _askedForAPulse = true;
-      unawaited(
-        _pulse.play(
-          countInBeats: _countInBeats,
-          // A metronome outlasts the notes on purpose. Ending the pulse on the
-          // last expected beat would stop it under anyone playing at all
-          // slowly, which is exactly who is following it.
-          continuingBeats: tempoSupport == TempoSupport.metronomeThroughout
-              ? realize(widget.exercise).moments.length + _countInBeats
-              : 0,
-          beat: beat,
-        ),
-      );
+      unawaited(_pulse.play(schedule));
     }
+    _beat = -1;
+    _beats = createTicker((_) => _readBeat(schedule))..start();
+  }
 
-    _countIn = Timer.periodic(beat, (timer) {
-      if (!mounted) return;
-      setState(() {
-        _beatsLeft--;
-        if (_beatsLeft <= 0) {
-          timer.cancel();
+  /// Moves the screen to the beat [schedule] has reached, once a beat.
+  void _readBeat(PulseSchedule schedule) {
+    if (!mounted || !identical(schedule, _schedule)) return;
+    final current = schedule.currentBeat;
+    if (current == _beat) return;
+    setState(() {
+      _beat = current;
+      if (_phase == _Phase.countIn) {
+        _beatsLeft = schedule.beatsLeftInCountIn;
+        if (schedule.countedIn) {
           _phase = _Phase.playing;
           _recording = _transcript.start(widget.exercise.material);
           _input = ref.read(inputProvenanceProvider);
           _watchdog = Timer.periodic(_watchdogTick, (_) => _watch());
         }
-      });
+      }
+      if (_phase == _Phase.playing &&
+          _showsBeat &&
+          schedule.countedIn &&
+          !schedule.isOver) {
+        _shownContinuingBeats = math.max(
+          _shownContinuingBeats,
+          current - schedule.countInBeats + 1,
+        );
+      }
     });
+    if (schedule.countedIn && (!_showsBeat || schedule.isOver)) _stopBeats();
+  }
+
+  void _stopBeats() {
+    _beats?.dispose();
+    _beats = null;
   }
 
   void _pause() {
     if (_phase != _Phase.countIn) return;
     _settling?.cancel();
-    _countIn?.cancel();
+    _stopBeats();
     unawaited(_pulse.stop());
     _abandonRecording();
     setState(() => _phase = _Phase.paused);
@@ -1087,6 +1126,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     if (_finishing) return;
     _finishing = true;
     _watchdog?.cancel();
+    _stopBeats();
     final presentation = _presented;
     unawaited(_pulse.stop());
     final completion = AttemptCompletion(
@@ -1122,6 +1162,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     conditions: widget.presentation,
     delivery: PresentationDelivery(
       tempo: _askedForAPulse ? _pulse.delivered : TempoDelivery.notRequested(),
+      shownContinuingBeats: _shownContinuingBeats,
     ),
   );
 
@@ -1129,6 +1170,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
     if (_finishing) return;
     _finishing = true;
     _watchdog?.cancel();
+    _stopBeats();
     // Read before the screen is handed over, and carried rather than left to
     // be looked up again: an attempt's disposition, what it was presented
     // under and its evidence are one fact about one instant.
@@ -1555,9 +1597,19 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           : SizedBox(
               height: 88,
               child: Center(
-                child: FilledButton.tonal(
-                  onPressed: () => _finish(AttemptTermination.learnerStopped),
-                  child: const Text('Done'),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_showsBeat && !(_schedule?.isOver ?? true)) ...[
+                      PulseBeat(place: PulseSchedule.placeInBar(_beat)),
+                      const SizedBox(height: 12),
+                    ],
+                    FilledButton.tonal(
+                      onPressed: () =>
+                          _finish(AttemptTermination.learnerStopped),
+                      child: const Text('Done'),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -2073,6 +2125,45 @@ class _NothingToPlay extends ConsumerWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Where the beat is in its bar, while a pulse continues through an attempt.
+///
+/// Four places rather than one pulsing dot, since notated music is counted in
+/// bars and the downbeat is worth seeing. Discrete steps rather than an
+/// animation, so it reads as meter rather than as activity.
+class PulseBeat extends StatelessWidget {
+  const PulseBeat({super.key, required this.place});
+
+  /// The beat under way, from zero on the downbeat.
+  final int place;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      label: 'Beat ${place + 1} of 4',
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var index = 0; index < 4; index++)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+              child: Container(
+                width: index == 0 ? 12 : 9,
+                height: index == 0 ? 12 : 9,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: index == place
+                      ? colors.primary
+                      : colors.outlineVariant,
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
