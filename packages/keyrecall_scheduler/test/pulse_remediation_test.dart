@@ -261,8 +261,7 @@ void main() {
       expect(chosen(session)!.challengeBypass, ChallengeBypass.pulseSupport);
     });
 
-    test('serves a waiting tempo probe once the cycle is over', () {
-      final session = SessionState();
+    group('a tempo probe across a cycle', () {
       final left = exerciseFor(materials[1], hands: HandConfiguration.left);
       final fast = Outcome(
         started: true,
@@ -275,39 +274,83 @@ void main() {
         achievedTempoRatio: 1.5,
         topologyAccuracy: 1,
       );
-      remediating.recordOutcome(session, right, played(), at: t0);
-      remediating.recordOutcome(session, right, played(), at: t0);
-      remediating.recordOutcome(session, left, fast, at: t0);
-      final probe = session.tempoProbe;
-      expect(probe, isNotNull);
-      remediating.recordOutcome(session, right, played(), at: t0);
-      expect(session.pulseRemediations.due, isNotNull);
+      final supported = played(pulse: PulseMaintenance.notTested);
 
-      remediating.recordOutcome(
-        session,
-        right,
-        played(pulse: PulseMaintenance.notTested),
-        at: t0,
-      );
-      expect(session.tempoProbe, probe, reason: 'through the support');
-      remediating.recordOutcome(session, right, played(), at: t0);
-      expect(session.tempoProbe, probe, reason: 'through the withdrawal');
-      expect(session.pulseRemediations.due, isNull);
+      /// A right hand qualified, with or without a probe opened on the left
+      /// hand just before.
+      (SessionState, Exercise?) opened({required bool withProbe}) {
+        final session = SessionState();
+        remediating.recordOutcome(session, right, played(), at: t0);
+        remediating.recordOutcome(session, right, played(), at: t0);
+        if (withProbe) {
+          remediating.recordOutcome(session, left, fast, at: t0);
+        }
+        final probe = session.tempoProbe;
+        remediating.recordOutcome(session, right, played(), at: t0);
+        expect(session.pulseRemediations.due, isNotNull);
+        return (session, probe);
+      }
 
-      final traces = remediating.evaluate(
-        state: stateAt(PlacementTier.advanced),
-        session: session,
-        candidates: allCandidates(),
-        at: t0,
-      );
-      expect(
-        traces
-            .where(
-              (trace) => trace.challengeBypass == ChallengeBypass.tempoProbe,
-            )
-            .map((trace) => trace.exercise),
-        [probe],
-      );
+      Iterable<Exercise> probesOffered(SessionState session) => [
+        for (final trace in remediating.evaluate(
+          state: stateAt(PlacementTier.advanced),
+          session: session,
+          candidates: allCandidates(),
+          at: t0,
+        ))
+          if (trace.challengeBypass == ChallengeBypass.tempoProbe)
+            trace.exercise,
+      ];
+
+      test('waiting through support and withdrawal is still waiting', () {
+        final (session, probe) = opened(withProbe: true);
+        expect(probe, isNotNull);
+
+        remediating.recordOutcome(session, right, supported, at: t0);
+        expect(session.tempoProbe, probe, reason: 'through the support');
+        remediating.recordOutcome(session, right, played(), at: t0);
+        expect(session.tempoProbe, probe, reason: 'through the withdrawal');
+
+        expect(session.pulseRemediations.due, isNull);
+        expect(probesOffered(session), [probe]);
+      });
+
+      test('waiting through a recovery that interrupts the cycle too', () {
+        final (session, probe) = opened(withProbe: true);
+
+        remediating.recordOutcome(
+          session,
+          right,
+          played(
+            pulse: PulseMaintenance.notTested,
+            retrieval: FactualRetrieval.failed,
+          ),
+          at: t0,
+        );
+        final recovery = recoveryTarget(right)!;
+        expect(session.lastFailedExercise, right);
+        remediating.recordOutcome(session, recovery, played(), at: t0);
+        expect(session.tempoProbe, probe, reason: 'through the recovery');
+
+        remediating.recordOutcome(session, right, played(), at: t0);
+        expect(session.tempoProbe, probe, reason: 'through the withdrawal');
+        expect(probesOffered(session), [probe]);
+      });
+
+      test('none waiting, a fast withdrawal opens one', () {
+        final (session, probe) = opened(withProbe: false);
+        expect(probe, isNull);
+
+        remediating.recordOutcome(session, right, supported, at: t0);
+        expect(
+          session.tempoProbe,
+          isNull,
+          reason: 'a supplied pulse opens none',
+        );
+        remediating.recordOutcome(session, right, fast, at: t0);
+
+        expect(session.tempoProbe, right.atTempo(120));
+      });
     });
 
     test('holds a waiting tempo probe back while it is owed', () {

@@ -161,22 +161,23 @@ class SessionState {
   /// [retrievalObserved] says whether the attempt was at a rung that could have
   /// shown retrieval succeeding or failing, whichever it did.
   ///
-  /// [holdsTempoProbe] leaves a waiting probe exactly where it was, for an
-  /// attempt remediation claimed: the probe was held back from that slot, not
-  /// passed over in it, and the attempt says nothing about the probe's pace.
+  /// [preservesWaitingTempoProbe] leaves a probe that is already waiting
+  /// exactly where it was, for a slot taken while remediation was owed: the
+  /// probe was held back from it, not passed over in it. Where none is
+  /// waiting, the attempt may open one as any other can.
   void recordSelection(
     Exercise exercise, {
     required bool retrievalFailed,
     required bool retrievalObserved,
     Exercise? tempoProbe,
-    bool holdsTempoProbe = false,
+    bool preservesWaitingTempoProbe = false,
     required DiversityConfig config,
   }) {
     supportedAttemptsSinceObservation = retrievalObserved
         ? 0
         : supportedAttemptsSinceObservation + 1;
     lastFailedExercise = retrievalFailed ? exercise : null;
-    if (holdsTempoProbe) {
+    if (preservesWaitingTempoProbe && this.tempoProbe != null) {
       // Neither taken nor replaced.
     } else if (tempoProbeIsFresh && exercise != this.tempoProbe) {
       // Held back rather than taken, so it is no longer an echo of the attempt

@@ -18,8 +18,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   `pulseWithdrawal`, then closed for the sitting. It gives way to recovery and
   holds a waiting tempo probe back. `ChallengeBypass.suppliesPulse` is the one
   place a scheduling reason becomes a continuing pulse. A served cycle joins the
-  selectable set it was served from, and a tempo probe waiting when a cycle
-  opens is still waiting when it closes.
+  selectable set it was served from. A tempo probe waiting when a cycle opens is
+  still waiting when it closes, a recovery inside the cycle included, and an
+  attempt in the cycle can still open one where none is waiting.
 
 ### Fixed
 
