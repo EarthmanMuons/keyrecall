@@ -797,8 +797,8 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// that reads it.
   ///
   /// The count, the downbeat, and the beat shown under a metronome are all
-  /// read from [_schedule] rather than timed here, so they cannot drift from
-  /// the click, which renders from the same start.
+  /// read from [_schedule] rather than timed here, so they share the click's
+  /// start and spacing.
   PulseSchedule? _schedule;
   Ticker? _beats;
   int _beat = -1;

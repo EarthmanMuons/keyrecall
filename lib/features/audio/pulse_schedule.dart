@@ -5,9 +5,11 @@ import 'package:clock/clock.dart';
 /// When each beat of one pulse falls, read from one clock.
 ///
 /// The click, the count on screen, and the beat shown during a metronome all
-/// read this, so none of them can drift against another: they do not keep
-/// time, they ask it. The click renders its whole track on a sample clock from
-/// the same start, which is what keeps it exact.
+/// read this rather than keeping time of their own, so they share one start
+/// and one spacing. The click renders on a sample clock from that start. What
+/// nothing measures is the latency after it: audio output and drawing each add
+/// their own, so this keeps them from wandering apart, not from arriving at
+/// slightly different moments.
 class PulseSchedule {
   /// Started now.
   PulseSchedule({

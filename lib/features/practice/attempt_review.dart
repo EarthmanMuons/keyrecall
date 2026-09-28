@@ -115,24 +115,20 @@ String? reasonForNext({
   };
 }
 
-/// What an acquisition probe is asking for now, read off the probe itself.
+/// What the Ready screen says about the metronome, or null where the
+/// scheduler did not make it part of this attempt.
 ///
-/// Derived rather than handed forward. The fact belongs to the exercise being
-/// presented, so it stays true however long after the supported work the probe
-/// arrives: across a restart, a deferred service, or a spell where the parent
-/// was out of scope. A note carried out of the acquisition screen would instead
-/// be a guess about what the scheduler would choose next.
-/// What the Ready screen says about the metronome, where the scheduler made it
-/// part of this attempt's reason, or null.
-///
-/// Stated on the withdrawal too, since the attempt just before it had one and
-/// its absence is the point.
+/// Said on the withdrawal too, since its absence is the point.
 String? metronomeLine(ChallengeBypass? admittedBy) => switch (admittedBy) {
   ChallengeBypass.pulseSupport => 'This one uses the metronome.',
   ChallengeBypass.pulseWithdrawal => 'This one is without the metronome.',
   _ => null,
 };
 
+/// What an acquisition probe is asking for now, read off the probe itself.
+///
+/// Derived rather than handed forward, so it stays true however long after the
+/// supported work the probe arrives.
 String restoredTempoLine(Exercise probe) =>
     'Back at ${_tempoText(probe.conditions.tempoBpm)} BPM this time.';
 

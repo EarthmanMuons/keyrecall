@@ -26,8 +26,10 @@ reliable_self_paced           the device sitting the calibration was fitted to
 ```
 
 The unsteady players are `intermediate` with only the pulse traits turned, so
-anything separating them is about the pulse. Every trait defaults to zero, and a
-player with none plays bit for bit as before.
+anything separating them is about the pulse. The traits that change unaided
+playing default to zero, and the one that only acts under a supplied pulse,
+following its tempo, defaults to 0.8; an attempt with no pulse supplied plays
+bit for bit as before.
 
 **Response.** C major, right hand, one octave, asked for 80, twenty seeds of six
 count-in attempts, six under a metronome, and six count-in attempts again.
