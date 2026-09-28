@@ -179,6 +179,43 @@ void main() {
       await clicker.stop();
     });
 
+    test(
+      'spaces every click exactly, across the chunks it is fed in',
+      () async {
+        final sink = _CapturingSink();
+        final clicker = PulseClicker(sink: sink);
+        // Not a whole number of chunks a beat, so clicks straddle chunk edges.
+        const beat = Duration(milliseconds: 290);
+        const beatFrames = 290 * 44100 ~/ 1000;
+        await clicker.play(
+          PulseSchedule(
+            beat: beat,
+            countInBeats: 4,
+            continuingBeats: 12,
+            elapsed: () => Duration.zero,
+          ),
+        );
+        for (var chunk = 0; chunk < 6; chunk++) {
+          sink.requestFrames();
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        final frames = sink.frames;
+        // A bar later is the same audio, accent and all.
+        for (var bar = 1; bar < 4; bar++) {
+          for (var i = 0; i < 4 * beatFrames; i++) {
+            expect(
+              frames[bar * 4 * beatFrames + i],
+              frames[i],
+              reason: 'bar $bar, frame $i',
+            );
+          }
+        }
+        expect(frames[1], isNot(0));
+        await clicker.stop();
+      },
+    );
+
     test('a device with no engine took none of it', () async {
       final clicker = PulseClicker(sink: _RefusingSink());
       await clicker.play(
@@ -661,6 +698,35 @@ class _RecordingSink implements PulseAudioSink {
     largestBuffer = largestBuffer > bufferedFrames
         ? largestBuffer
         : bufferedFrames;
+  }
+
+  @override
+  Future<void> release() async {}
+}
+
+/// Keeps every frame it is fed, in order.
+class _CapturingSink implements PulseAudioSink {
+  void Function(int)? _onFeed;
+  final List<int> frames = [];
+
+  void requestFrames() => _onFeed!(0);
+
+  @override
+  void setFeedCallback(void Function(int)? callback) => _onFeed = callback;
+
+  @override
+  Future<void> prepare({
+    required int sampleRate,
+    required int feedThreshold,
+  }) async {}
+
+  @override
+  Future<void> feed(PcmArrayInt16 frames) async {
+    final view = frames.bytes.buffer.asInt16List(
+      frames.bytes.offsetInBytes,
+      frames.count,
+    );
+    this.frames.addAll(view);
   }
 
   @override

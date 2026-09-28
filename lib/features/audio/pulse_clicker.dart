@@ -272,23 +272,17 @@ class PulseClicker {
     if (!_ready) return _delivered = silent(_silence ?? 'no audio engine');
 
     final tailFrames = _tail.inMicroseconds * _sampleRate ~/ 1000000;
-    final track = Int16List(beatFrames * beats + tailFrames);
-    for (var index = 0; index < beats; index++) {
-      _writeClick(
-        track,
-        at: index * beatFrames,
-        // The bar line, not just the start: a pulse that runs through the
-        // attempt says where the beat is, and an accent every fourth beat says
-        // which beat it is.
-        hz: index % _beatsPerBar == 0 ? _downbeatHz : _beatHz,
-      );
-    }
+    final track = _Track(
+      beats: beats,
+      beatFrames: beatFrames,
+      length: beatFrames * beats + tailFrames,
+    );
     final startFrame =
         (schedule.elapsed.inMicroseconds * _sampleRate ~/ 1000000).clamp(
           0,
           track.length,
         );
-    _installed = _InstalledTrack(pulse: pulse, frames: track, fed: startFrame);
+    _installed = _InstalledTrack(pulse: pulse, track: track, fed: startFrame);
     // A beat is lost only once its whole click is behind the cursor. Opening
     // the engine a millisecond into the first click clips it inaudibly, and
     // counting that as a beat nobody heard would report a shortfall that is
@@ -422,12 +416,10 @@ class PulseClicker {
     // new playback was opening the engine took the old track and submitted it
     // as the new one's audio.
     final installed = _installed;
-    if (installed == null || installed.fed >= installed.frames.length) return;
+    if (installed == null || installed.fed >= installed.track.length) return;
 
-    final end = math.min(installed.fed + _chunkFrames, installed.frames.length);
-    final frames = Int16List.fromList(
-      Int16List.sublistView(installed.frames, installed.fed, end),
-    );
+    final end = math.min(installed.fed + _chunkFrames, installed.track.length);
+    final frames = installed.track.render(installed.fed, end);
     installed.fed = end;
     final pulse = installed.pulse;
     late final Future<void> operation;
@@ -466,35 +458,64 @@ class PulseClicker {
       _recordQueued(failure: '$error');
     }
   }
+}
 
-  /// Writes a sine burst that decays to nothing, so it reads as a tick rather
-  /// than a tone and never clicks on its own edges.
-  static void _writeClick(
-    Int16List track, {
-    required int at,
-    required double hz,
-  }) {
-    for (var i = 0; i < _clickFrames && at + i < track.length; i++) {
-      final t = i / _sampleRate;
-      final decay = math.exp(-t * 60);
-      track[at + i] = (math.sin(2 * math.pi * hz * t) * decay * 12000).round();
+/// A pulse on one sample clock, rendered a chunk at a time as it is fed.
+///
+/// Beat `k` starts at exactly `k` beats of frames, so the spacing is the sample
+/// clock's however the chunks fall, and a pulse long enough to last out an
+/// attempt costs one chunk of memory rather than all of itself.
+class _Track {
+  _Track({required this.beats, required this.beatFrames, required this.length});
+
+  final int beats;
+  final int beatFrames;
+
+  /// Every frame of it, the silence after the last beat included.
+  final int length;
+
+  /// Frames [from] up to [to].
+  Int16List render(int from, int to) {
+    final frames = Int16List(to - from);
+    final clickFrames = PulseClicker._clickFrames;
+    final first = math.max(0, (from - clickFrames) ~/ beatFrames);
+    for (var beat = first; beat < beats; beat++) {
+      final at = beat * beatFrames;
+      if (at >= to) break;
+      // The bar line, not just the start: a pulse that runs through the
+      // attempt says where the beat is, and an accent every fourth beat says
+      // which beat it is.
+      final hz = beat % PulseClicker._beatsPerBar == 0
+          ? PulseClicker._downbeatHz
+          : PulseClicker._beatHz;
+      for (var i = math.max(0, from - at); i < clickFrames; i++) {
+        final frame = at + i;
+        if (frame >= to) break;
+        final t = i / PulseClicker._sampleRate;
+        // A sine burst that decays to nothing, so it reads as a tick rather
+        // than a tone and never clicks on its own edges.
+        frames[frame -
+            from] = (math.sin(2 * math.pi * hz * t) * math.exp(-t * 60) * 12000)
+            .round();
+      }
     }
+    return frames;
   }
 }
 
-/// A rendered pulse and how far into it the engine has been fed, held together
-/// with the playback it belongs to.
+/// A pulse and how far into it the engine has been fed, held together with
+/// the playback it belongs to.
 class _InstalledTrack {
   _InstalledTrack({
     required this.pulse,
-    required this.frames,
+    required this.track,
     required this.fed,
   });
 
-  /// Which playback rendered these frames.
+  /// Which playback this is the audio of.
   final int pulse;
 
-  final Int16List frames;
+  final _Track track;
 
   /// How far the engine has been offered, in frames.
   int fed;

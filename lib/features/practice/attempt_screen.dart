@@ -1011,20 +1011,18 @@ class _AttemptViewState extends ConsumerState<AttemptView>
 
   void _countInAndPlay() {
     final tempoSupport = widget.presentation.tempoSupport;
+    final beat = Duration(
+      microseconds:
+          (60 *
+                  Duration.microsecondsPerSecond /
+                  widget.exercise.conditions.tempoBpm)
+              .round(),
+    );
     final schedule = _schedule = PulseSchedule(
-      beat: Duration(
-        microseconds:
-            (60 *
-                    Duration.microsecondsPerSecond /
-                    widget.exercise.conditions.tempoBpm)
-                .round(),
-      ),
+      beat: beat,
       countInBeats: _countInBeats,
-      // A metronome outlasts the notes on purpose. Ending the pulse on the last
-      // expected beat would stop it under anyone playing at all slowly, which
-      // is exactly who is following it.
       continuingBeats: _showsBeat
-          ? realize(widget.exercise).moments.length + _countInBeats
+          ? metronomeBeatsFor(widget.exercise, beat: beat)
           : 0,
     );
 
@@ -2139,6 +2137,16 @@ class _NothingToPlay extends ConsumerWidget {
     );
   }
 }
+
+/// How many beats a metronome continuing through an attempt at [exercise]
+/// supplies after the count-in.
+///
+/// Through the attempt means until it closes, however slowly it is played, so
+/// the pulse lasts out the longest the attempt may run and stops with it.
+int metronomeBeatsFor(Exercise exercise, {required Duration beat}) =>
+    (AttemptWindows.forExercise(exercise).limit.inMicroseconds /
+            beat.inMicroseconds)
+        .ceil();
 
 /// Where the beat is in its bar, while a pulse continues through an attempt.
 ///
