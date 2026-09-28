@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
@@ -14,6 +15,7 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addFlag('recurrence', defaultsTo: true)
+    ..addFlag('remediation', defaultsTo: true)
     ..addOption('seeds', defaultsTo: '4')
     ..addOption('slots', defaultsTo: '12,24', help: 'Attempts per sitting.')
     ..addOption(
@@ -60,6 +62,15 @@ Future<void> main(List<String> arguments) async {
     'hands': (exercise) => exercise.conditions.hands,
     'sitting': (_) => null,
   };
+  if (options.flag('remediation')) {
+    _remediation(
+      players,
+      seeds: seeds,
+      slots: slotCounts.first,
+      schedule: schedule,
+    );
+  }
+
   if (!options.flag('recurrence')) return;
   for (final slots in slotCounts) {
     final stopwatch = Stopwatch()..start();
@@ -106,6 +117,60 @@ Future<void> main(List<String> arguments) async {
         '${(recurrence.medianGap?.toStringAsFixed(1) ?? '-').padLeft(7)}',
       );
     }
+  }
+}
+
+/// Every player through the scheduler with remediation in force.
+void _remediation(
+  List<SyntheticPlayer> players, {
+  required int seeds,
+  required int slots,
+  required String schedule,
+}) {
+  final pipeline = SchedulerPipeline(
+    learner: const LearnerModel(),
+    config: v1SchedulerConfig.withPulseRemediation(
+      const PulseRemediationConfig(),
+    ),
+  );
+  stdout.writeln();
+  stdout.writeln(
+    '== remediation under the scheduler: $schedule, $slots slots, '
+    '$seeds seeds',
+  );
+  stdout.writeln(
+    '${'player'.padRight(30)}${'sittings'.padLeft(9)}${'cycles'.padLeft(8)}'
+    '${'withdrawn'.padLeft(11)}'
+    '${'steady with'.padLeft(13)}${'steady after'.padLeft(14)}',
+  );
+  final stopwatch = Stopwatch()..start();
+  for (final player in players) {
+    final reading = RemediationReading.of([
+      for (var seed = 0; seed < seeds; seed++)
+        runSittings(
+          player: player,
+          seed: seed,
+          materials: allScales,
+          sittings: LongitudinalSchedules.named(schedule, slots: slots),
+          pipeline: pipeline,
+        ),
+    ]);
+    stderr.writeln(
+      'remediation ${player.id} (${stopwatch.elapsed.inSeconds}s)',
+    );
+    if (reading.supportedButTested > 0) {
+      stderr.writeln(
+        '${reading.supportedButTested} supported attempts claimed a held pulse',
+      );
+    }
+    stdout.writeln(
+      '${player.id.padRight(30)}'
+      '${_share(reading.sittingsWithACycle, reading.sittings)}'
+      '${reading.cycles.toString().padLeft(8)}'
+      '${reading.withdrawals.toString().padLeft(11)}'
+      '${_fixed(reading.meanSupportedSteadiness).padLeft(13)}'
+      '${_fixed(reading.meanWithdrawnSteadiness).padLeft(14)}',
+    );
   }
 }
 

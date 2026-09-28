@@ -23,12 +23,49 @@ research-established coefficient, and is flagged as such wherever it appears.
 
 ## The ladder governs pitch support only
 
-**Decision.** Every exercise gets a count-in at every rung. The metronome is a
-separate opt-in choice, not something unlocked by progress.
+**Decision.** Every exercise that asks for a tempo gets a count-in at every
+rung. A metronome continuing through the attempt is never implied by a rung.
 
 **Why.** Tempo support and pitch support change different demands. Bundling them
 would mean a learner who wants a click has to accept the notes on screen, or
-that fading the notes silently removes the pulse they were relying on.
+that fading the notes silently removes the pulse they were relying on. It would
+also hold a capable player to a conservative tempo because an unfamiliar scale
+is still cued, which is the evidence a fast player needs room to show.
+
+## The scheduler supplies a pulse, and only as an intervention
+
+**Decision.** There is no metronome setting. A continuing pulse is supplied when
+a hand configuration's clean attempts, within one sitting, keep drifting:
+`observations` of them in a row played through with the notes right and without
+stopping, and every one below `unsteadyStability`. The exercise that qualified
+is then played once with a pulse and once without, under `pulseSupport` and
+`pulseWithdrawal`, and that hand is done for the sitting whatever the withdrawal
+showed. The cycle is served ahead of ranking, gives way to recovery, and holds a
+waiting tempo probe back.
+
+**Why.** A click is support, so the question is when support is the right
+intervention rather than whether a learner likes hearing one. The answer is a
+pulse that drifts while everything else about the playing holds: unsteadiness
+together with stopping is an execution problem a click does not address, and a
+learner who plays unevenly while the notes are wrong has a different question to
+answer first. Withdrawing it at once is what says anything, since steadiness
+under a click is partly the click's. One cycle a sitting keeps remediation an
+intervention inside practice rather than a drill that takes the sitting over.
+
+**Evidence.**
+[`pulse-remediation.md`](../research/experiments/pulse-remediation.md). Per
+execution context, an interleaved sitting almost never brings the same context
+back three times, and nearly every sitting brings a hand configuration back that
+often, which is what fixes the grain. Under the scheduler, steady, fast, and
+self-paced players never qualify, and a player whose continuity is as poor as
+their steadiness does not either.
+
+**Consequences.** Session state, never learner state: nothing about it outlives
+the sitting, since today's drift is a reason to offer a pulse today and says
+nothing the learner model can keep. `SchedulerConfig.pulseRemediation` is null
+in the shipped configuration until the app can present the pulse it asks for.
+The thresholds separate synthetic players and have met no learner whose pulse is
+weak, since measured timing saturates on the device attempts recorded so far.
 
 ## Moving down a rung is a response, not a penalty
 

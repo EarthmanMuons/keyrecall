@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
@@ -270,6 +271,48 @@ void main() {
       expect(
         fine.sittingsWithAKeyAtLeast[2]!,
         lessThanOrEqualTo(coarse.sittingsWithAKeyAtLeast[2]!),
+      );
+    });
+  });
+
+  group('remediation under the scheduler', () {
+    final pipeline = SchedulerPipeline(
+      learner: const LearnerModel(),
+      config: v1SchedulerConfig.withPulseRemediation(
+        const PulseRemediationConfig(),
+      ),
+    );
+    Iterable<TrajectorySlot> slotsOf(SyntheticPlayer player) => [
+      for (var seed = 0; seed < 2; seed++)
+        ...runSittings(
+          player: player,
+          seed: seed,
+          materials: allScales,
+          sittings: sittingsOnDays([0, 2, 5], slots: 12),
+          pipeline: pipeline,
+        ).slots,
+    ];
+    bool supported(TrajectorySlot slot) =>
+        slot.winner.challengeBypass == ChallengeBypass.pulseSupport;
+
+    test('never supplies a pulse to a steady player', () {
+      for (final player in [
+        PlayerArchetypes.intermediate,
+        PlayerArchetypes.reliableSelfPaced,
+      ]) {
+        expect(slotsOf(player).where(supported), isEmpty, reason: player.id);
+      }
+    });
+
+    test('supplies one to an unsteady player, and the outcome says so', () {
+      final cycles = slotsOf(
+        PlayerArchetypes.unsteadyPulseRelapses,
+      ).where(supported).toList();
+
+      expect(cycles, isNotEmpty);
+      expect(
+        cycles.map((slot) => slot.outcome.pulseMaintenance),
+        everyElement(PulseMaintenance.notTested),
       );
     });
   });

@@ -245,8 +245,9 @@ hands-together work was never offered at all.
 
 The beats played before every attempt, at every [guidance rung](#guidance-rung).
 
-Not a reward and not part of the support ladder. The [metronome](#metronome) is
-a separate opt-in choice.
+Not a reward and not part of the support ladder, and never support: beats before
+the attempt leave [pulse maintenance](#pulse-maintenance) tested. The
+[metronome](#metronome) is a separate question.
 
 ### Current durability
 
@@ -572,10 +573,12 @@ variant, which is why material identity excludes hand.
 
 ### Metronome
 
-An opt-in click during an attempt.
+A pulse continuing through an attempt, which makes it support.
 
-A separate choice the player makes, not a reward unlocked by progress and not
-part of the [guidance](#guidance-rung) ladder.
+Supplied by the scheduler as timing remediation, `ChallengeBypass.pulseSupport`,
+when a hand's clean attempts in a sitting keep drifting, and then withdrawn for
+one attempt. Not a setting, not a reward, and not part of the
+[guidance](#guidance-rung) ladder.
 
 ### Metronome ladder
 

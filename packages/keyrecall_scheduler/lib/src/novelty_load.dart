@@ -101,6 +101,8 @@ List<CandidateTrace> withNoveltySupported(
 bool _governed(CandidateTrace trace) => switch (trace.challengeBypass) {
   ChallengeBypass.recovery ||
   ChallengeBypass.tempoProbe ||
+  ChallengeBypass.pulseSupport ||
+  ChallengeBypass.pulseWithdrawal ||
   ChallengeBypass.acquisitionFloor => false,
   _ => true,
 };

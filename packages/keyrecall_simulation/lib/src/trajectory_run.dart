@@ -245,7 +245,11 @@ Trajectory runSittings({
         family: exercise.material.familyId,
       );
 
-      final outcome = playing.play(exercise, rng);
+      final outcome = playing.play(
+        exercise,
+        rng,
+        delivery: _deliveryFor(exercise, chosen.challengeBypass),
+      );
       final full = traceRetention == TraceRetention.full;
       final handsTogetherTraces = traces.where(
         (trace) =>
@@ -443,5 +447,19 @@ HandsTogetherDiagnostic _handsTogetherDiagnostic(
       for (final trace in traces)
         if (trace.challengeBypass case final bypass?) bypass.id,
     },
+  );
+}
+
+/// What the app would have put in front of the player for [exercise] chosen
+/// under [bypass]: a metronome where the bypass supplies a pulse, and nothing
+/// the evidence rule reads otherwise.
+PresentationDelivery? _deliveryFor(Exercise exercise, ChallengeBypass? bypass) {
+  if (bypass?.suppliesPulse != true) return null;
+  const countIn = 4;
+  return PresentationDelivery(
+    tempo: TempoDelivery.complete(
+      countIn,
+      continuingBeats: realize(exercise).moments.length + countIn,
+    ),
   );
 }

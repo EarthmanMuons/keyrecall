@@ -1,6 +1,7 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'config/scheduler_config.dart';
+import 'pulse_remediation.dart';
 import 'realization_family_pacing.dart';
 
 /// Short-lived scheduling context for one practice sitting.
@@ -78,6 +79,12 @@ class SessionState {
   /// Held beside [recentMaterialIds] rather than derived from it: pacing reads
   /// how productive the work was, which a material id does not carry.
   final List<FamilyObservation> recentFamilies;
+
+  /// Each hand configuration's timing remediation this sitting.
+  ///
+  /// Never carried into another sitting: unsteady timing today is a reason to
+  /// offer a pulse today, and says nothing the learner model could keep.
+  final PulseRemediations pulseRemediations = PulseRemediations();
 
   SessionState({
     this.attemptsThisSession = 0,
@@ -219,9 +226,13 @@ class SessionState {
       unservedGuidanceProbeSelections = 0;
       return;
     }
-    // A slot the recovery or tempo context narrowed to one candidate was never
-    // a contest, so nothing lost it.
-    if (isRecovering || (tempoProbe != null && !tempoProbeIsFresh)) return;
+    // A slot the recovery, remediation, or tempo context narrowed to one
+    // candidate was never a contest, so nothing lost it.
+    if (isRecovering ||
+        pulseRemediations.due != null ||
+        (tempoProbe != null && !tempoProbeIsFresh)) {
+      return;
+    }
     if (!guidanceProbeAvailable) return;
     unservedGuidanceProbeSelections++;
   }

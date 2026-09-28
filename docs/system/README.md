@@ -109,8 +109,9 @@ you are asked for it from memory. Those are the three **guidance rungs**, and
 moving down one is a normal response to a bad attempt rather than a penalty.
 
 The ladder governs pitch support only. Every exercise gets a count-in at every
-rung, and the metronome is a separate choice the player makes rather than a
-reward that gets unlocked.
+rung. A metronome is something the scheduler supplies when a hand's timing keeps
+drifting while the rest of the playing holds, once, and then takes away again to
+see what stayed.
 
 ## The numbers
 

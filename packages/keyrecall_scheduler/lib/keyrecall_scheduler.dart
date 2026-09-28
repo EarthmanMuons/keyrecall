@@ -22,6 +22,7 @@ export 'src/family_dose.dart';
 export 'src/realization_family_pacing.dart';
 export 'src/recovery.dart';
 export 'src/scheduler_pipeline.dart';
+export 'src/pulse_remediation.dart';
 export 'src/session_state.dart';
 export 'src/shape_frontier.dart';
 export 'src/tempo_probe.dart';

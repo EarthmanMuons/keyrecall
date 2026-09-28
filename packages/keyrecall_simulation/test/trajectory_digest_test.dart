@@ -28,6 +28,7 @@ void main() {
           slot.winner.challengeBypass?.id ?? 'in-band',
           slot.winner.rankKey!.realization.id,
           slot.outcome.completed,
+          slot.outcome.pulseMaintenance.name,
           slot.outcome.pitchIntegrity.toStringAsFixed(6),
           slot.performedTempoBpm.toStringAsFixed(6),
           slot.frontierBefore.toString(),

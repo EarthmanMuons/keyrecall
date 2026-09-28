@@ -144,6 +144,16 @@ enum ChallengeBypass {
   /// The same task at a tempo the learner just played it at unasked.
   tempoProbe('tempo_probe'),
 
+  /// The exercise a hand's unsteady timing qualified on, with a pulse
+  /// continuing through it.
+  pulseSupport('pulse_support'),
+
+  /// The same exercise straight after, with the pulse taken away again.
+  ///
+  /// The attempt that says whether the support transferred. The supported one
+  /// cannot, since steadiness there is partly the pulse's.
+  pulseWithdrawal('pulse_withdrawal'),
+
   /// A retrieval test for material that support has made invisible.
   observationProbe('observation_probe'),
 
@@ -165,6 +175,14 @@ enum ChallengeBypass {
 
   /// Stable identifier used in traces.
   final String id;
+
+  /// Whether an attempt admitted this way is presented with a pulse
+  /// continuing through it.
+  ///
+  /// The one place a scheduling reason becomes tempo support, so a
+  /// presentation and a simulation cannot disagree about which attempts had
+  /// one.
+  bool get suppliesPulse => this == ChallengeBypass.pulseSupport;
 }
 
 /// The admission exceptions, in the order they are consulted.
@@ -181,6 +199,11 @@ enum AdmissionException {
 
   /// Something just went wrong, which matters more than anything going well.
   recovery,
+
+  /// A hand's timing drifted while everything else held, and the pulse is
+  /// the question. Before the tempo probe, since asking a hand whose pulse is
+  /// unsteady to play faster answers nothing about either.
+  pulseRemediation,
 
   /// Something went too easily, and the harder question is worth the slot.
   tempoProbe,

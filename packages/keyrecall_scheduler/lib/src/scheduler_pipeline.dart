@@ -414,14 +414,30 @@ class SchedulerPipeline {
     // the ones acquisition is for.
     final familyFloor = acquisitionFamilyFloor ?? acquisitionFloor;
 
+    // Served ahead of ranking for the reason an owed probe is: the cycle is
+    // one attempt with a pulse and one without, on the exercise that
+    // qualified, and ranking it against ordinary work would let the question
+    // lapse half asked. Recovery refuses it at admission, which is what puts
+    // recovery first.
+    final servedPulse = servedProbe != null
+        ? null
+        : selectBest([
+            for (final trace in traces)
+              if (trace.isRanked &&
+                  (trace.challengeBypass == ChallengeBypass.pulseSupport ||
+                      trace.challengeBypass == ChallengeBypass.pulseWithdrawal))
+                trace,
+          ]);
+
     var selected =
         servedProbe ??
+        servedPulse ??
         chooseFrom(
           narrowed.selectable,
           session,
           demonstratedShapes: demonstratedShapes,
         );
-    if (servedProbe == null && familyFloor != null) {
+    if (servedProbe == null && servedPulse == null && familyFloor != null) {
       selected =
           owedFloorCheck(
             state: state,
@@ -479,6 +495,7 @@ class SchedulerPipeline {
         acquisition == null ||
             familyFloor == null ||
             servedProbe != null ||
+            servedPulse != null ||
             familyFloor.entries.any(
               (entry) => !candidates.contains(entry.exercise),
             )
@@ -556,6 +573,14 @@ class SchedulerPipeline {
     Outcome? outcome, {
     required DateTime at,
   }) {
+    if (config.pulseRemediation case final remediation?) {
+      session.pulseRemediations.record(
+        exercise,
+        outcome,
+        recovering: session.isRecovering,
+        config: remediation,
+      );
+    }
     session.recordSelection(
       exercise,
       retrievalFailed: outcome?.retrieval == FactualRetrieval.failed,
@@ -1758,6 +1783,7 @@ class SchedulerPipeline {
     required DateTime at,
     required ChallengeBypass? override,
     required Exercise? recoveryTarget,
+    (Exercise, ChallengeBypass)? pulseTarget,
     required Exercise? tempoProbe,
     bool tempoProbeIsFresh = false,
     required int supportedAttempts,
@@ -1775,6 +1801,10 @@ class SchedulerPipeline {
           exercise,
           ChallengeBypass.recovery,
         ),
+        AdmissionException.pulseRemediation => switch (pulseTarget) {
+          (final target, final bypass) => _exactly(target, exercise, bypass),
+          null => const _Silent(),
+        },
         AdmissionException.tempoProbe =>
           tempoProbeIsFresh && exercise != tempoProbe
               ? const _Silent()
@@ -1905,6 +1935,7 @@ class SchedulerPipeline {
     required DateTime at,
     required ChallengeBypass? override,
     required Exercise? recoveryTarget,
+    (Exercise, ChallengeBypass)? pulseTarget,
     required Exercise? tempoProbe,
     required bool tempoProbeIsFresh,
     required int supportedAttempts,
@@ -1923,6 +1954,7 @@ class SchedulerPipeline {
       at: at,
       override: override,
       recoveryTarget: recoveryTarget,
+      pulseTarget: pulseTarget,
       tempoProbe: tempoProbe,
       tempoProbeIsFresh: tempoProbeIsFresh,
       supportedAttempts: supportedAttempts,
@@ -2014,7 +2046,13 @@ class SchedulerPipeline {
     Exercise? permitted(Exercise? exercise) =>
         exercise != null && envelope.contains(exercise) ? exercise : null;
     final target = permitted(failed == null ? null : recoveryTarget(failed));
-    final probe = target == null ? permitted(session.tempoProbe) : null;
+    final owed = target == null && config.pulseRemediation != null
+        ? session.pulseRemediations.due
+        : null;
+    final pulse = permitted(owed?.target);
+    final probe = target == null && pulse == null
+        ? permitted(session.tempoProbe)
+        : null;
     final safety = safetyFor(session);
     // Refined once here, so that every set-level fact below reads the same
     // universe the candidate loop evaluates.
@@ -2028,7 +2066,7 @@ class SchedulerPipeline {
     );
     final refined = [
       ...neighbors,
-      for (final exclusive in [target, probe])
+      for (final exclusive in [target, pulse, probe])
         if (exclusive != null && !neighbors.contains(exclusive)) exclusive,
     ];
     // One memo for the slot, so the questions eligibility asks of state alone
@@ -2072,6 +2110,7 @@ class SchedulerPipeline {
           at: at,
           safety: safety,
           recoveryTarget: target,
+          pulseTarget: pulse == null ? null : (pulse, owed!.bypass!),
           tempoProbe: probe,
           override: overrides[exercise],
           introducibleTier: introducible,
@@ -2095,6 +2134,7 @@ class SchedulerPipeline {
     required DateTime at,
     required SafetyDecision safety,
     required Exercise? recoveryTarget,
+    required (Exercise, ChallengeBypass)? pulseTarget,
     required Exercise? tempoProbe,
     required ChallengeBypass? override,
     required EligibilityTier? introducibleTier,
@@ -2146,6 +2186,7 @@ class SchedulerPipeline {
       at: at,
       override: override,
       recoveryTarget: recoveryTarget,
+      pulseTarget: pulseTarget,
       tempoProbe: tempoProbe,
       tempoProbeIsFresh: session.tempoProbeIsFresh,
       supportedAttempts: session.supportedAttemptsSinceObservation,

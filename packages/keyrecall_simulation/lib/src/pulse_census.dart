@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
 import 'python_compatible_random.dart';
 import 'synthetic_player.dart';
@@ -207,6 +208,95 @@ class TimingRecurrence {
         : (ordered[middle - 1] + ordered[middle]) / 2;
   }
 }
+
+/// What timing remediation did across sittings the scheduler ran.
+///
+/// Read from the trajectories themselves: a cycle is a slot chosen under
+/// [ChallengeBypass.pulseSupport], and what it showed is the steadiness of
+/// that slot and of the withdrawal after it.
+class RemediationReading {
+  final int sittings;
+
+  /// Sittings in which a cycle opened.
+  final int sittingsWithACycle;
+
+  /// Cycles opened, over every sitting.
+  final int cycles;
+
+  /// Cycles whose withdrawal was reached before the sitting ended.
+  final int withdrawals;
+
+  /// Supported attempts whose outcome still claimed a pulse the player held,
+  /// which the evidence rule forbids.
+  final int supportedButTested;
+
+  /// Temporal stability of the supported attempts, and of the withdrawals,
+  /// where they started.
+  ///
+  /// An attempt that never started records steadiness as zero, which is no
+  /// playing rather than unsteady playing.
+  final List<double> supportedSteadiness;
+  final List<double> withdrawnSteadiness;
+
+  const RemediationReading({
+    required this.sittings,
+    required this.sittingsWithACycle,
+    required this.cycles,
+    required this.withdrawals,
+    required this.supportedButTested,
+    required this.supportedSteadiness,
+    required this.withdrawnSteadiness,
+  });
+
+  factory RemediationReading.of(Iterable<Trajectory> trajectories) {
+    var sittings = 0;
+    var sittingsWithACycle = 0;
+    var cycles = 0;
+    var withdrawals = 0;
+    var supportedButTested = 0;
+    final supported = <double>[];
+    final withdrawn = <double>[];
+    for (final trajectory in trajectories) {
+      for (var sitting = 0; sitting < trajectory.sittings.length; sitting++) {
+        sittings++;
+        var opened = false;
+        for (final slot in trajectory.slotsOf(sitting)) {
+          switch (slot.winner.challengeBypass) {
+            case ChallengeBypass.pulseSupport:
+              opened = true;
+              cycles++;
+              if (slot.outcome.pulseMaintenance.isTested) supportedButTested++;
+              if (_steadinessOf(slot.outcome) case final steadiness?) {
+                supported.add(steadiness);
+              }
+            case ChallengeBypass.pulseWithdrawal:
+              withdrawals++;
+              if (_steadinessOf(slot.outcome) case final steadiness?) {
+                withdrawn.add(steadiness);
+              }
+            default:
+          }
+        }
+        if (opened) sittingsWithACycle++;
+      }
+    }
+    return RemediationReading(
+      sittings: sittings,
+      sittingsWithACycle: sittingsWithACycle,
+      cycles: cycles,
+      withdrawals: withdrawals,
+      supportedButTested: supportedButTested,
+      supportedSteadiness: supported,
+      withdrawnSteadiness: withdrawn,
+    );
+  }
+
+  double get meanSupportedSteadiness => _meanOf(supportedSteadiness);
+  double get meanWithdrawnSteadiness => _meanOf(withdrawnSteadiness);
+}
+
+double? _steadinessOf(Outcome outcome) =>
+    outcome.started ? outcome.temporalStability : null;
 
 bool _timedUnaided(Outcome outcome) =>
     outcome.started &&

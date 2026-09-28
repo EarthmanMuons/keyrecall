@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ## [Unreleased]
 
+### Added
+
+- Timing remediation, off unless `SchedulerConfig.pulseRemediation` is set. A
+  hand configuration whose clean attempts in a sitting keep drifting is served
+  its qualifying exercise once under `ChallengeBypass.pulseSupport` and once
+  under `pulseWithdrawal`, then closed for the sitting. It gives way to recovery
+  and holds a waiting tempo probe back. `ChallengeBypass.suppliesPulse` is the
+  one place a scheduling reason becomes a continuing pulse.
+
 ### Fixed
 
 - A tempo probe opens only on a pace the learner chose. Outrunning a supplied

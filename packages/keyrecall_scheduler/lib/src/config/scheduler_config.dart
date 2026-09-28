@@ -587,6 +587,43 @@ class NoveltyConfig {
     : assert(independenceAllowance >= 0);
 }
 
+/// What makes a hand's timing, within one sitting, worth supplying a pulse
+/// for.
+///
+/// Provisional throughout. Measured timing saturates on real device attempts,
+/// so these separate synthetic players and have not met a learner whose pulse
+/// is weak.
+@immutable
+class PulseRemediationConfig {
+  /// Clean attempts on one hand configuration that have to agree before its
+  /// timing counts as unsteady.
+  ///
+  /// Per hand configuration rather than per execution context: interleaving
+  /// spreads a sitting across so many contexts that one almost never recurs
+  /// three times, and nearly every sitting brings a hand back that often.
+  final int observations;
+
+  /// Pitch integrity an attempt needs before its timing is read at all.
+  final double minimumPitchIntegrity;
+
+  /// Continuity an attempt needs before its timing is read at all.
+  ///
+  /// What separates a weak pulse from weak execution: a pulse drifts and the
+  /// playing goes on, while playing that also stops is a problem a click does
+  /// not address.
+  final double minimumContinuity;
+
+  /// Temporal stability below which a clean attempt reads as unsteady.
+  final double unsteadyStability;
+
+  const PulseRemediationConfig({
+    this.observations = 3,
+    this.minimumPitchIntegrity = 0.9,
+    this.minimumContinuity = 0.5,
+    this.unsteadyStability = 0.5,
+  }) : assert(observations > 0, 'unsteadiness needs something to agree');
+}
+
 class SchedulerConfig {
   /// Identifier of this configuration, recorded with every decision.
   final String modelVersion;
@@ -627,6 +664,10 @@ class SchedulerConfig {
   /// nothing.
   final NoveltyConfig? novelty;
 
+  /// When a hand's timing is unsteady enough to supply a pulse, or null where
+  /// nothing ever does.
+  final PulseRemediationConfig? pulseRemediation;
+
   const SchedulerConfig({
     required this.modelVersion,
     required this.eligibility,
@@ -640,6 +681,7 @@ class SchedulerConfig {
     this.progress = ProgressPreference.materialOnly,
     this.introductions,
     this.novelty,
+    this.pulseRemediation,
   });
 
   /// How many recent selections the family window has to hold.
@@ -669,6 +711,7 @@ class SchedulerConfig {
     progress: progress,
     introductions: introductions,
     novelty: novelty,
+    pulseRemediation: pulseRemediation,
   );
 
   /// The same policy with [dose] in force, or with a family's cadence
@@ -686,6 +729,7 @@ class SchedulerConfig {
     progress: progress,
     introductions: introductions,
     novelty: novelty,
+    pulseRemediation: pulseRemediation,
   );
 
   /// The same policy with [rankTolerances] deciding what ties.
@@ -703,6 +747,7 @@ class SchedulerConfig {
         progress: progress,
         introductions: introductions,
         novelty: novelty,
+        pulseRemediation: pulseRemediation,
       );
 
   /// The same policy with [introductions] in force, or uncapped when null.
@@ -720,6 +765,7 @@ class SchedulerConfig {
         progress: progress,
         introductions: introductions,
         novelty: novelty,
+        pulseRemediation: pulseRemediation,
       );
 
   /// The same policy with [progress] deciding what arriving at a goal
@@ -737,6 +783,7 @@ class SchedulerConfig {
     progress: progress,
     introductions: introductions,
     novelty: novelty,
+    pulseRemediation: pulseRemediation,
   );
 
   /// The same policy with [eligibility] deciding what is ready.
@@ -754,6 +801,7 @@ class SchedulerConfig {
         progress: progress,
         introductions: introductions,
         novelty: novelty,
+        pulseRemediation: pulseRemediation,
       );
 
   /// The same policy with [novelty] in force, or unconstrained when null.
@@ -770,6 +818,27 @@ class SchedulerConfig {
     progress: progress,
     introductions: introductions,
     novelty: novelty,
+    pulseRemediation: pulseRemediation,
+  );
+
+  /// The same policy with [pulseRemediation] in force, or never supplying a
+  /// pulse when it is null.
+  SchedulerConfig withPulseRemediation(
+    PulseRemediationConfig? pulseRemediation,
+  ) => SchedulerConfig(
+    modelVersion: modelVersion,
+    eligibility: eligibility,
+    safety: safety,
+    challenge: challenge,
+    diversity: diversity,
+    probe: probe,
+    pacing: pacing,
+    dose: dose,
+    rankTolerances: rankTolerances,
+    progress: progress,
+    introductions: introductions,
+    novelty: novelty,
+    pulseRemediation: pulseRemediation,
   );
 }
 

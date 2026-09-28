@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
   kept out of `PlayerArchetypes.all`, and `pulse_census`, which characterizes
   them against the players a pulse must leave alone and counts how often a
   sitting brings the same kind of timing evidence back.
+- Trajectories play a slot chosen under a bypass that supplies a pulse with a
+  metronome, and `pulse_census` reports what remediation did under the
+  scheduler.
 
 - `runSchedulerBenchmark`, which drives an archetype to a chosen state over a
   chosen catalog and reports median, p95, and worst decision cost. A

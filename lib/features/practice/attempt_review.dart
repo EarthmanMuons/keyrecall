@@ -86,6 +86,8 @@ String? reasonForNext({
                   'earlier.'
             : 'A quicker one, at a speed you have already reached.',
     },
+    ChallengeBypass.pulseSupport => 'Once more, with the click keeping time.',
+    ChallengeBypass.pulseWithdrawal => 'And again, keeping the time yourself.',
     ChallengeBypass.acquisitionFloor => switch (hands) {
       final hands? => 'Starting with $hands and the notes in view.',
       null => 'Starting with the notes in view.',
