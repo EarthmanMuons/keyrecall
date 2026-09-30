@@ -444,3 +444,163 @@ void Function(T) failingOnErrors<T>(void Function(T) body) => (value) {
     fail('$error\n$stackTrace');
   }
 };
+
+final Arbitrary<TaskPortion> anyPortion = weighted<TaskPortion>([
+  (2, constant(const FullTraversal())),
+  (1, integer(min: 2, max: 8).map(TraversalRepetitions.new)),
+]);
+
+final Arbitrary<RecordedGap> anyGap =
+    combine4(
+      anyCount,
+      integer(min: 1, max: 64),
+      anyCount,
+      optional(anyScore),
+    ).map(
+      (parts) => (
+        fromPosition: parts.$1,
+        toPosition: parts.$1 + parts.$2,
+        gapMs: parts.$3,
+        ratio: parts.$4 == null ? null : parts.$4! * 8,
+      ),
+    );
+
+/// Everything about an acquisition attempt but its parent and its place in a
+/// log.
+typedef AttemptContent = ({
+  DateTime? observedWallTime,
+  int? executionEvidenceRevision,
+  TaskPortion portion,
+  PresentationRecord? presentation,
+  bool started,
+  AttemptTermination? termination,
+  AcquisitionCompletion completion,
+  (int, int, int) corrections,
+  int? firstAbsentPosition,
+  List<RecordedGap> gaps,
+  CriterionVerdict sequence,
+  CriterionVerdict continuity,
+});
+
+final Arbitrary<AttemptContent> anyAttemptContent =
+    combine2(
+      combine8(
+        optional(anyTime),
+        optional(anyCount),
+        anyPortion,
+        optional(anyPresentation),
+        boolean(),
+        optional(choiceOf(AttemptTermination.values)),
+        choiceOf(AcquisitionCompletion.values),
+        combine3(anyCount, anyCount, anyCount),
+      ),
+      combine4(
+        optional(anyCount),
+        list(anyGap, maxLength: 6),
+        choiceOf(CriterionVerdict.values),
+        choiceOf(CriterionVerdict.values),
+      ),
+    ).map((parts) {
+      final (
+        observed,
+        revision,
+        portion,
+        presentation,
+        started,
+        termination,
+        completion,
+        corrections,
+      ) = parts.$1;
+      final (firstAbsent, gaps, sequence, continuity) = parts.$2;
+      // A capture that may have lost events judges no criterion, and a probe
+      // is earned by both criteria and only as a completion.
+      final interrupted = termination == AttemptTermination.inputInterrupted;
+      final judgedSequence = interrupted
+          ? CriterionVerdict.unavailable
+          : sequence;
+      final judgedContinuity = interrupted
+          ? CriterionVerdict.unavailable
+          : continuity;
+      final earnsProbe =
+          judgedSequence == CriterionVerdict.met &&
+          judgedContinuity == CriterionVerdict.met;
+      return (
+        observedWallTime: observed,
+        executionEvidenceRevision: revision,
+        portion: portion,
+        presentation: presentation,
+        started: started,
+        termination: termination,
+        completion: earnsProbe && !completion.isComplete
+            ? AcquisitionCompletion.completedWithCorrections
+            : completion,
+        corrections: corrections,
+        firstAbsentPosition: firstAbsent,
+        gaps: gaps,
+        sequence: judgedSequence,
+        continuity: judgedContinuity,
+      );
+    });
+
+AcquisitionAttemptRecord attemptOf(
+  AttemptContent content, {
+  required Exercise parent,
+  required int journalSequence,
+  required AttemptIdentity identity,
+}) => AcquisitionAttemptRecord(
+  journalSequence: journalSequence,
+  identity: identity,
+  observedWallTime: content.observedWallTime,
+  executionEvidenceRevision: content.executionEvidenceRevision,
+  task: AcquisitionTask(
+    parent: parent,
+    timing: TimingDemand.unmetered,
+    advancement: TaskAdvancement.learnerDriven,
+    portion: content.portion,
+  ),
+  presentation: content.presentation,
+  started: content.started,
+  termination: content.termination,
+  completion: content.completion,
+  repairs: content.corrections.$1,
+  repeats: content.corrections.$2,
+  intrusions: content.corrections.$3,
+  firstAbsentPosition: content.firstAbsentPosition,
+  gaps: content.gaps,
+  earnedProbe:
+      content.sequence == CriterionVerdict.met &&
+      content.continuity == CriterionVerdict.met,
+  sequence: content.sequence,
+  continuity: content.continuity,
+);
+
+final Arbitrary<AttemptIdentity> anyIdentity =
+    combine5(anyProfileId, anyText, anyText, anyCount, anyTime).map(
+      (parts) => AttemptIdentity(
+        profileId: parts.$1,
+        attemptId: parts.$2,
+        sessionId: parts.$3,
+        indexInSession: parts.$4,
+        occurredAt: parts.$5,
+      ),
+    );
+
+final Arbitrary<AcquisitionAttemptRecord> anyAttempt =
+    combine4(anyAttemptContent, anyExercise, anyCount, anyIdentity).map(
+      (parts) => attemptOf(
+        parts.$1,
+        parent: parts.$2,
+        journalSequence: parts.$3,
+        identity: parts.$4,
+      ),
+    );
+
+final Arbitrary<AcquisitionProbeServedRecord> anyProbe =
+    combine4(optional(anyTime), anyExercise, anyCount, anyIdentity).map(
+      (parts) => AcquisitionProbeServedRecord(
+        observedWallTime: parts.$1,
+        parent: parts.$2,
+        journalSequence: parts.$3,
+        identity: parts.$4,
+      ),
+    );
