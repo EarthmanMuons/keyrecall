@@ -9,10 +9,23 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
 /// Benchmark trajectories, pinned by digest.
 ///
-/// Performance work on the sweep must not change what it finds. These two are
-/// the fixtures a change is measured against: same choices, same outcomes,
-/// same anomalies, or the optimization has quietly become a second
-/// implementation.
+/// Performance work on the sweep must not change what it finds. These are the
+/// fixtures a change is measured against: same choices, same outcomes, same
+/// anomalies, or the optimization has quietly become a second implementation.
+/// A deliberate change to scheduling regenerates them in the same step.
+const pinned = [
+  (
+    player: 'advanced',
+    seed: 7,
+    digest: '1142158a0a2d297c1c73f786968660cc8516e9ecf641d5ee00bf0d511e61a80e',
+  ),
+  (
+    player: 'true_beginner',
+    seed: 3,
+    digest: 'eb474cbeff02fe809082394dd678b66898a2c98c5bd48fa85043813ed569b1d9',
+  ),
+];
+
 void main() {
   String digestOf(Trajectory trajectory) {
     final lines = [
@@ -50,40 +63,32 @@ void main() {
     generated: generated,
   );
 
-  test('the same archetype and seed give the same trajectory', () {
-    for (final (player, seed) in [
-      (PlayerArchetypes.advanced, 7),
-      (PlayerArchetypes.trueBeginner, 3),
-    ]) {
-      expect(
-        digestOf(run(player, seed)),
-        digestOf(run(player, seed)),
-        reason: '${player.id} seed $seed',
-      );
-    }
-  });
+  SyntheticPlayer playerNamed(String id) =>
+      PlayerArchetypes.all.firstWhere((player) => player.id == id);
+
+  for (final (:player, :seed, :digest) in pinned) {
+    test('$player at seed $seed is pinned', () {
+      expect(digestOf(run(playerNamed(player), seed)), digest);
+    });
+  }
 
   test('hoisting candidate generation changes nothing', () {
     // The sweep generates once per isolate and passes the list in, which is
     // only safe because generation is learner-blind.
     final generated = generateCandidates(InstrumentProfile(), v1ScaleCatalog);
 
-    for (final (player, seed) in [
-      (PlayerArchetypes.advanced, 7),
-      (PlayerArchetypes.trueBeginner, 3),
-    ]) {
+    for (final (:player, :seed, :digest) in pinned) {
       expect(
-        digestOf(run(player, seed, generated: generated)),
-        digestOf(run(player, seed)),
-        reason: '${player.id} seed $seed',
+        digestOf(run(playerNamed(player), seed, generated: generated)),
+        digest,
+        reason: '$player seed $seed',
       );
     }
   });
 
   test('and different seeds do not', () {
-    expect(
-      digestOf(run(PlayerArchetypes.advanced, 7)),
-      isNot(digestOf(run(PlayerArchetypes.advanced, 8))),
-    );
+    final (:player, :seed, :digest) = pinned.first;
+
+    expect(digestOf(run(playerNamed(player), seed + 1)), isNot(digest));
   });
 }
