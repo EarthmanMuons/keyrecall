@@ -136,7 +136,7 @@ void main() {
 
       final decision = _pacedPipeline().pace(traces, _saturated());
 
-      expect(decision.selectable, hasLength(2));
+      expect(decision.selectable, traces);
       expect(decision.disposition, PacingDisposition.unrelieved);
       expect(decision.setAside, isNull);
     });
@@ -149,7 +149,7 @@ void main() {
 
       final decision = _pacedPipeline().pace(traces, _saturated());
 
-      expect(decision.selectable, hasLength(2));
+      expect(decision.selectable, traces);
       expect(decision.disposition, PacingDisposition.unready);
       expect(decision.setAside, isNull);
     });

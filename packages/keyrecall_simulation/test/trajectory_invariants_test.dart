@@ -20,11 +20,13 @@ void main() {
     test('${player.id} trips no structural invariant', () {
       final found = <Anomaly>[];
       for (var seed = 0; seed < seeds; seed++) {
+        final pacing = PacingLog();
         final trajectory = runTrajectory(
           player: player,
           seed: seed,
           materials: v1ScaleCatalog,
           slots: slots,
+          observePacing: (_, decision) => pacing.record(decision),
         );
         found.addAll(
           detectAnomalies(
@@ -32,6 +34,24 @@ void main() {
             requestedSlots: slots,
           ).where((a) => a.severity == AnomalySeverity.invariant),
         );
+        for (final slot in trajectory.slots) {
+          expect(
+            slot.winner.isRanked,
+            isTrue,
+            reason:
+                'seed $seed slot ${slot.index} chose an unadmitted exercise',
+          );
+          expect(
+            slot.candidates.selectable,
+            greaterThan(0),
+            reason: 'seed $seed slot ${slot.index} had nothing selectable',
+          );
+        }
+        for (final setAside in pacing.setAsides) {
+          expect(setAside.isRelievable, isTrue, reason: 'seed $seed');
+          expect(setAside.pressured.isRanked, isTrue, reason: 'seed $seed');
+          expect(setAside.relieving.isRanked, isTrue, reason: 'seed $seed');
+        }
       }
 
       expect(
