@@ -1,9 +1,8 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_testing/keyrecall_testing.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
-
-import 'support/seed_budget.dart';
 
 /// Properties the scheduler must hold for every kind of player.
 ///
@@ -16,7 +15,7 @@ import 'support/seed_budget.dart';
 /// `KEYRECALL_SEED_SCALE` widens it on demand; the widest search is the
 /// sweep's job.
 void main() {
-  final seeds = seedBudget(6);
+  final seeds = propertyBudget(6);
   const slots = 40;
 
   Iterable<String> invariantsBroken(
@@ -75,11 +74,11 @@ void main() {
       // seed 4 is where that contraction was first checked.
       final found = <String>[];
       for (final (sessions, firstSeed, seeds) in [
-        (sessionsOnDays([0, 2, 9, 30, 90], slots: 8), 0, seedBudget(3)),
+        (sessionsOnDays([0, 2, 9, 30, 90], slots: 8), 0, propertyBudget(3)),
         (
           LongitudinalSchedules.named('normal_month', slots: 12),
           4,
-          seedBudget(1),
+          propertyBudget(1),
         ),
       ]) {
         for (var seed = firstSeed; seed < firstSeed + seeds; seed++) {

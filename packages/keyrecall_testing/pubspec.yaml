@@ -1,8 +1,8 @@
-name: keyrecall_input
+name: keyrecall_testing
 description: >-
-  The normalized live-input vocabulary for KeyRecall: ordered, validated note,
-  pedal, and reset events from any input source.
-repository: https://github.com/EarthmanMuons/keyrecall/tree/main/packages/keyrecall_input
+  The property-testing conventions KeyRecall's packages share: one fixed seed,
+  a budget scaled on demand, and the small generator combinators they all use.
+repository: https://github.com/EarthmanMuons/keyrecall/tree/main/packages/keyrecall_testing
 issue_tracker: https://github.com/EarthmanMuons/keyrecall/issues
 
 publish_to: none
@@ -15,12 +15,9 @@ environment:
   sdk: ^3.8.0
 
 dependencies:
-  collection: ^1.19.0
-  meta: ^1.17.0
+  kiri_check: ^1.3.1
+  test: ^1.25.0
 
 dev_dependencies:
   import_order_lint: ^0.2.2
-  keyrecall_testing: ^0.1.0
-  kiri_check: ^1.3.1
   lints: ^6.0.0
-  test: ^1.25.0

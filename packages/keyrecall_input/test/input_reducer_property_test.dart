@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'dart:math';
 
+import 'package:keyrecall_testing/keyrecall_testing.dart';
 import 'package:kiri_check/kiri_check.dart';
 import 'package:test/test.dart';
 
@@ -8,24 +8,6 @@ import 'package:keyrecall_input/keyrecall_input.dart';
 
 const piano = InputSourceIdentity(deviceId: 'piano', transport: 'ble');
 const other = InputSourceIdentity(deviceId: 'pad', transport: 'usb');
-
-/// Fixed so every run explores the same streams; a failure names its seed.
-const seed = 20260930;
-
-/// Multiplied by `KEYRECALL_SEED_SCALE` for a wider search on demand.
-int examples(int count) {
-  final value = Platform.environment['KEYRECALL_SEED_SCALE'];
-  if (value == null) return count;
-  final scale = int.tryParse(value);
-  if (scale == null || scale < 1) {
-    throw ArgumentError.value(
-      value,
-      'KEYRECALL_SEED_SCALE',
-      'must be a positive integer',
-    );
-  }
-  return count * scale;
-}
 
 /// One thing that can happen to a reducer, at [delta] ms after the last.
 sealed class Step {
@@ -83,9 +65,6 @@ final class Adopt extends Step {
   @override
   String toString() => 'Adopt($source)';
 }
-
-Arbitrary<T> weighted<T>(List<(int, Arbitrary<T>)> choices) =>
-    frequency(choices).map((value) => value as T);
 
 /// Mostly a handful of pitches, so presses, releases, and the pedal collide.
 final Arbitrary<int?> anyNote = weighted<int?>([
@@ -235,18 +214,6 @@ class KeyboardModel {
 
 enum _Key { up, held, caught }
 
-/// [body], with any thrown [Error] reported as a failure.
-///
-/// kiri_check shrinks only what is thrown as an [Exception], so a crash would
-/// otherwise surface unshrunk and without its seed.
-void Function(T) failingOnErrors<T>(void Function(T) body) => (value) {
-  try {
-    body(value);
-  } on Error catch (error, stackTrace) {
-    fail('$error\n$stackTrace');
-  }
-};
-
 InputTemporalState replay(Iterable<InputTemporalEvent> events) =>
     events.fold(InputTemporalState.silent, (state, e) => state.applying(e));
 
@@ -283,8 +250,8 @@ List<Step> minimalFailing(List<Step> steps, void Function(List<Step>) check) {
 void forAllSequences(Arbitrary<Step> step, void Function(List<Step>) check) {
   forAll(
     list(step, maxLength: 60),
-    seed: seed,
-    maxExamples: examples(300),
+    seed: propertySeed,
+    maxExamples: propertyBudget(300),
     failingOnErrors(check),
     onFalsify: (steps) => printOnFailure(
       'Minimal failing steps: ${minimalFailing(steps, check)}',

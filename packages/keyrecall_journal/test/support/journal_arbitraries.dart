@@ -1,41 +1,14 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
+import 'package:keyrecall_testing/keyrecall_testing.dart';
 import 'package:kiri_check/kiri_check.dart';
-import 'package:test/test.dart';
 
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 
-/// Fixed so every run explores the same values; a failure names its seed.
-const seed = 20260930;
-
-/// Multiplied by `KEYRECALL_SEED_SCALE` for a wider search on demand.
-int examples(int count) {
-  final value = Platform.environment['KEYRECALL_SEED_SCALE'];
-  if (value == null) return count;
-  final scale = int.tryParse(value);
-  if (scale == null || scale < 1) {
-    throw ArgumentError.value(
-      value,
-      'KEYRECALL_SEED_SCALE',
-      'must be a positive integer',
-    );
-  }
-  return count * scale;
-}
-
-Arbitrary<T> weighted<T>(List<(int, Arbitrary<T>)> choices) =>
-    frequency(choices).map((value) => value as T);
-
-Arbitrary<T?> optional<T>(Arbitrary<T> present) => weighted<T?>([
-  (1, constant<T?>(null)),
-  (3, present.map<T?>((value) => value)),
-]);
-
-Arbitrary<T> choiceOf<T>(List<T> values) => constantFrom(values);
+export 'package:keyrecall_testing/keyrecall_testing.dart';
 
 /// Text JSON has to work at: quotes, escapes, a newline inside a line-based
 /// file, a NUL, and characters outside ASCII and outside the BMP.
@@ -432,18 +405,6 @@ final Arbitrary<InputProvenance> anyInput =
 
 /// [text] as storage hands it back: written as UTF-8 and read again.
 String stored(String text) => utf8.decode(utf8.encode(text));
-
-/// [body], with any thrown [Error] reported as a failure.
-///
-/// kiri_check shrinks only what is thrown as an [Exception], so a crash would
-/// otherwise surface unshrunk and without its seed.
-void Function(T) failingOnErrors<T>(void Function(T) body) => (value) {
-  try {
-    body(value);
-  } on Error catch (error, stackTrace) {
-    fail('$error\n$stackTrace');
-  }
-};
 
 final Arbitrary<TaskPortion> anyPortion = weighted<TaskPortion>([
   (2, constant(const FullTraversal())),

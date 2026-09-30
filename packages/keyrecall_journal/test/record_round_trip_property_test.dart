@@ -303,8 +303,8 @@ void main() {
   property('a record reads back as what was written', () {
     forAll(
       anyRecord,
-      seed: seed,
-      maxExamples: examples(500),
+      seed: propertySeed,
+      maxExamples: propertyBudget(500),
       failingOnErrors<AttemptRecord>((record) {
         noteReached(record);
         final back = reread(record);
@@ -323,8 +323,8 @@ void main() {
   property('equal records write the same bytes however they were built', () {
     forAll(
       anyRecord,
-      seed: seed,
-      maxExamples: examples(300),
+      seed: propertySeed,
+      maxExamples: propertyBudget(300),
       failingOnErrors<AttemptRecord>((record) {
         expect(
           canonicalJson(builtBackward(record).toJson()),
@@ -352,8 +352,8 @@ void main() {
           maxLength: 12,
         ),
       ),
-      seed: seed,
-      maxExamples: examples(100),
+      seed: propertySeed,
+      maxExamples: propertyBudget(100),
       failingOnErrors<(String, DateTime, List<(Content, int, int, int)>)>((
         parts,
       ) {

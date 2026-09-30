@@ -108,8 +108,8 @@ void main() {
   property('a profile reads back as what was written', () {
     forAll(
       anyProfile,
-      seed: seed,
-      maxExamples: examples(200),
+      seed: propertySeed,
+      maxExamples: propertyBudget(200),
       failingOnErrors<Profile>((profile) {
         final back = Profile.fromJson(
           jsonDecode(stored(canonicalJson(profile.toJson())))
@@ -125,8 +125,8 @@ void main() {
   property('renaming or reshowing a profile keeps who it is', () {
     forAll(
       combine3(anyProfile, anyText, optional(anyText)),
-      seed: seed,
-      maxExamples: examples(200),
+      seed: propertySeed,
+      maxExamples: propertyBudget(200),
       failingOnErrors<(Profile, String, String?)>((parts) {
         final (profile, name, hint) = parts;
         final renamed = profile.renamed(name);
@@ -148,8 +148,8 @@ void main() {
   property('an export reads back as what was written', () {
     forAll(
       anyExport,
-      seed: seed,
-      maxExamples: examples(200),
+      seed: propertySeed,
+      maxExamples: propertyBudget(200),
       failingOnErrors<SessionExport>((export) {
         final back = decodeSessionExport(stored(encodeSessionExport(export)));
 

@@ -1,9 +1,8 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
+import 'package:keyrecall_testing/keyrecall_testing.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
-
-import 'support/seed_budget.dart';
 
 void main() {
   final materials = <TechnicalMaterial>[
@@ -16,7 +15,7 @@ void main() {
     final found = <String>[];
 
     for (final player in PlayerArchetypes.all) {
-      for (var seed = 0; seed < seedBudget(3); seed++) {
+      for (var seed = 0; seed < propertyBudget(3); seed++) {
         final trajectory = runTrajectory(
           player: player,
           seed: seed,

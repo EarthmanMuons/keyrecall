@@ -15,6 +15,7 @@ workspace:
   - packages/keyrecall_practice
   - packages/keyrecall_scheduler
   - packages/keyrecall_simulation
+  - packages/keyrecall_testing
 
 publish_to: none
 version: 1.0.0+1

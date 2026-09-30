@@ -162,9 +162,12 @@ wider search, for example
 
 Property tests use [kiri_check](https://pub.dev/packages/kiri_check) with a
 fixed seed, so every run explores the same inputs. The same variable multiplies
-how many examples they generate. kiri_check shrinks a sequence only to its
-prefixes, so sequence properties also report a locally minimal failing sequence,
-found by dropping one step at a time; see
+how many examples they generate. The seed, the budget, and the generator
+combinators every package shares live in `packages/keyrecall_testing`, a
+development dependency only; each package's own generators stay beside its
+tests. kiri_check shrinks a sequence only to its prefixes, so sequence
+properties also report a locally minimal failing sequence, found by dropping one
+step at a time; see
 `packages/keyrecall_input/test/input_reducer_property_test.dart`.
 
 ## Which document is authoritative

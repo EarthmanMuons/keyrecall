@@ -315,8 +315,8 @@ void main() {
         list(anyExercise, minLength: 1, maxLength: 4),
         list(anyStep, minLength: 1, maxLength: 12),
       ),
-      seed: seed,
-      maxExamples: examples(60),
+      seed: propertySeed,
+      maxExamples: propertyBudget(60),
       failingOnErrors<
         (
           (String, LearnerState Function(DateTime)),

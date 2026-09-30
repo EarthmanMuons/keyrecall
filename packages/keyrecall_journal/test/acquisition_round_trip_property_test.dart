@@ -109,8 +109,8 @@ void main() {
   property('an acquisition attempt reads back as what was written', () {
     forAll(
       anyAttempt,
-      seed: seed,
-      maxExamples: examples(400),
+      seed: propertySeed,
+      maxExamples: propertyBudget(400),
       failingOnErrors<AcquisitionAttemptRecord>((record) {
         reached.addAll([
           ?record.termination,
@@ -133,8 +133,8 @@ void main() {
   property('a served probe reads back as what was written', () {
     forAll(
       anyProbe,
-      seed: seed,
-      maxExamples: examples(200),
+      seed: propertySeed,
+      maxExamples: propertyBudget(200),
       failingOnErrors<AcquisitionProbeServedRecord>((record) {
         final back = AcquisitionProbeServedRecord.fromJson(
           storedJson(record.toJson()),
@@ -149,8 +149,8 @@ void main() {
   property('an acquisition log header reads back as what was written', () {
     forAll(
       combine2(anyProfileId, anyTime),
-      seed: seed,
-      maxExamples: examples(100),
+      seed: propertySeed,
+      maxExamples: propertyBudget(100),
       failingOnErrors<(String, DateTime)>((parts) {
         final header = AcquisitionJournalHeader(
           profileId: parts.$1,
@@ -187,8 +187,8 @@ void main() {
           maxLength: 12,
         ),
       ),
-      seed: seed,
-      maxExamples: examples(100),
+      seed: propertySeed,
+      maxExamples: propertyBudget(100),
       failingOnErrors<(String, DateTime, List<Exercise>, List<Planned>)>((
         parts,
       ) {
@@ -222,8 +222,8 @@ void main() {
           maxLength: 12,
         ),
       ),
-      seed: seed,
-      maxExamples: examples(100),
+      seed: propertySeed,
+      maxExamples: propertyBudget(100),
       failingOnErrors<(List<Exercise>, List<(bool, int, AttemptContent)>)>((
         parts,
       ) {
