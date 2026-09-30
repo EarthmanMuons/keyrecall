@@ -168,6 +168,8 @@ class InputReducer {
   /// which replaying the last event cannot give it. The observation continues,
   /// but the boundary is real, so anything measuring across it must not.
   ///
+  /// Advances the observation's clock to [timestampMs], as [opening] does.
+  ///
   /// Throws [StateError] when no observation is open. Use [opening] for a
   /// consumer that has to be told where things stand either way.
   InputTemporalEvent resync({required int timestampMs}) {
@@ -188,6 +190,12 @@ class InputReducer {
   /// evidence that a failed source recovered, and an observation that resumed
   /// because somebody started watching would be exactly the claim the
   /// terminal-fault rule exists to refuse.
+  ///
+  /// The observation's clock advances to [timestampMs], so input delivered
+  /// afterwards must arrive no earlier than it or the observation ends as a
+  /// [InputIntegrityFault.timestampRegression]. A source therefore stamps a
+  /// message no earlier than the moment it becomes deliverable; one buffered
+  /// across an opening is restamped rather than delivered with its old time.
   InputTemporalEvent opening({required int timestampMs}) {
     if (isObserving) return resync(timestampMs: timestampMs);
     _lastTimestampMs = _atLeastLast(timestampMs);

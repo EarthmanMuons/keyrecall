@@ -250,8 +250,8 @@ void Function(T) failingOnErrors<T>(void Function(T) body) => (value) {
 InputTemporalState replay(Iterable<InputTemporalEvent> events) =>
     events.fold(InputTemporalState.silent, (state, e) => state.applying(e));
 
-/// The shortest sublist of [steps] that still fails [check], found by dropping
-/// one step at a time until no single removal fails.
+/// A locally minimal failing sublist of [steps], found by repeatedly dropping
+/// any single step whose removal still fails [check].
 ///
 /// kiri_check shrinks a list only to its prefixes, and a sequence usually
 /// fails on its last step, so the prefix it settles on is rarely minimal.
