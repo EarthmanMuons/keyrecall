@@ -71,13 +71,18 @@ void main() {
       // The same properties, over sessions spread across a calendar rather
       // than one unbroken run: what decays between them is the only
       // difference, and nothing about a break makes a defect acceptable. The
-      // month of short sessions is where dose control contracts a family.
+      // month of short sessions is where dose control contracts a family, and
+      // seed 4 is where that contraction was first checked.
       final found = <String>[];
-      for (final (sessions, seeds) in [
-        (sessionsOnDays([0, 2, 9, 30, 90], slots: 8), seedBudget(3)),
-        (LongitudinalSchedules.named('normal_month', slots: 12), seedBudget(1)),
+      for (final (sessions, firstSeed, seeds) in [
+        (sessionsOnDays([0, 2, 9, 30, 90], slots: 8), 0, seedBudget(3)),
+        (
+          LongitudinalSchedules.named('normal_month', slots: 12),
+          4,
+          seedBudget(1),
+        ),
       ]) {
-        for (var seed = 0; seed < seeds; seed++) {
+        for (var seed = firstSeed; seed < firstSeed + seeds; seed++) {
           found.addAll(
             invariantsBroken(
               runTrajectorySessions(
