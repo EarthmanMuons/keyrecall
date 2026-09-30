@@ -174,7 +174,8 @@ final class ArpeggioMaterial extends TechnicalMaterial {
   }
 
   @override
-  String get materialId => '${tonic}_${quality.id}_${inversion.id}_ARPEGGIO';
+  late final String materialId =
+      '${tonic}_${quality.id}_${inversion.id}_ARPEGGIO';
 
   @override
   String get familyId => TechnicalMaterial.arpeggioFamilyId;
@@ -299,7 +300,7 @@ final class ScaleMaterial extends TechnicalMaterial {
 
   /// Stable identifier for this material, such as `F#_HARMONIC_MINOR`.
   @override
-  String get materialId => '${tonic}_${form.id}';
+  late final String materialId = '${tonic}_${form.id}';
 
   /// The material-family identity used by curriculum requirements.
   @override
