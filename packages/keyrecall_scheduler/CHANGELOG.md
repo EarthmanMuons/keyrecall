@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- A shape progression term, last in the rank key and in force from scheduler
+  model version `v1-11`: one octave before two, then up before up and down,
+  deciding only what every other term left tied, which had fallen to the order
+  the conditions are listed in. Hands have no order and take no part.
 - Timing remediation, in force from scheduler model version `v1-10`. A hand
   configuration whose clean attempts in a session keep drifting is served its
   qualifying exercise once under `ChallengeBypass.pulseSupport` and once under

@@ -1,5 +1,6 @@
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -64,9 +65,24 @@ const unrecordedRankKeyFlags = [
   'target_shaped_goal',
 ];
 
+/// A version 9 record: the rank key had no shape progression term.
+Map<String, Object?> version9(Map<String, Object?> current) {
+  final old = Map<String, Object?>.of(current)..['schema_version'] = 9;
+  if (old['decision'] case final Map<String, Object?> decision) {
+    old['decision'] = {
+      ...decision,
+      'rank_key': Map<String, Object?>.of(
+        decision['rank_key']! as Map<String, Object?>,
+      )..remove('shape_progression'),
+    };
+  }
+  return old;
+}
+
 /// A version 8 record: the rank key lacked four of the flags it ranked on.
 Map<String, Object?> version8(Map<String, Object?> current) {
-  final old = Map<String, Object?>.of(current)..['schema_version'] = 8;
+  final old = Map<String, Object?>.of(version9(current))
+    ..['schema_version'] = 8;
   if (old['decision'] case final Map<String, Object?> decision) {
     final rankKey = Map<String, Object?>.of(
       decision['rank_key']! as Map<String, Object?>,
@@ -128,6 +144,21 @@ Map<String, Object?> version6(Map<String, Object?> current) {
   }
   return old;
 }
+
+/// The rank key terms a record written before version 9 carried; the rest
+/// read back as not recorded.
+List<Object?>? termsBeforeVersion9(RankKey? key) => key == null
+    ? null
+    : [
+        key.tier,
+        key.coordinationTransition,
+        key.retention,
+        key.information,
+        key.diversity,
+        key.goals,
+        key.realization,
+        key.realizationFit,
+      ];
 
 void main() {
   final recorded = recordSession();
@@ -278,8 +309,55 @@ void main() {
         expect(upgraded.scope, isNull);
         expect(upgraded.timing, isNull);
         expect(upgraded.input, isNull);
-        expect(upgraded.decision?.rankKey, original.decision?.rankKey);
+        expect(
+          termsBeforeVersion9(upgraded.decision?.rankKey),
+          termsBeforeVersion9(original.decision?.rankKey),
+        );
       }
+    });
+  });
+
+  group('version 9 to current', () {
+    Map<String, Object?> rankedOnShape() {
+      final json = journal.records.first.toJson();
+      final decision = json['decision']! as Map<String, Object?>;
+      return json
+        ..['decision'] = {
+          ...decision,
+          'rank_key': {
+            ...decision['rank_key']! as Map<String, Object?>,
+            'shape_progression': -3.0,
+          },
+        };
+    }
+
+    test('writes the shape term the rank key won on', () {
+      expect(
+        AttemptRecord.fromJson(
+          rankedOnShape(),
+        ).decision!.rankKey.shapeProgression,
+        -3.0,
+      );
+    });
+
+    test('reads the term it never wrote as not recorded', () {
+      final upgraded = AttemptRecord.fromJson(version9(rankedOnShape()));
+
+      expect(upgraded.decision!.rankKey.shapeProgression, 0.0);
+      expect(
+        upgraded.decision!.rankKey.retention,
+        AttemptRecord.fromJson(rankedOnShape()).decision!.rankKey.retention,
+      );
+    });
+
+    test('reads a pending decision the same way', () {
+      final upgraded = upgradePendingDecisionJson(version9(rankedOnShape()));
+      final rankKey =
+          (upgraded['decision']! as Map<String, Object?>)['rank_key']!
+              as Map<String, Object?>;
+
+      expect(upgraded['schema_version'], attemptSchemaVersion);
+      expect(rankKey['shape_progression'], 0.0);
     });
   });
 

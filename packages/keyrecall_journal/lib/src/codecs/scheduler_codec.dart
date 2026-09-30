@@ -142,6 +142,7 @@ Map<String, Object?> encodeDecision(
     'goals': decision.rankKey.goals,
     'realization': decision.rankKey.realization.id,
     'realization_fit': decision.rankKey.realizationFit,
+    'shape_progression': decision.rankKey.shapeProgression,
   },
 };
 
@@ -246,6 +247,11 @@ SchedulerDecision decodeDecision(
       realizationFit: requireDouble(
         rankKeyJson,
         'realization_fit',
+        location: location,
+      ),
+      shapeProgression: requireDouble(
+        rankKeyJson,
+        'shape_progression',
         location: location,
       ),
     ),

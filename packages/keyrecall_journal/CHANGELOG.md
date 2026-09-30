@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Attempt schema 10 records the rank key's shape progression term. An earlier
+  record reads it as zero because it was not recorded, which says nothing about
+  how that decision ranked shapes.
 - Session export schema version 3 names the session `session_id`, as the attempt
   and acquisition journals do. `SittingExport` and its codec are now
   `SessionExport`, `encodeSessionExport`, and `decodeSessionExport`.

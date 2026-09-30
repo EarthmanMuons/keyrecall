@@ -39,7 +39,12 @@
 /// and target-shaped goal flags default to false because their original values
 /// were not recorded. That is a representation, not a recovery of the key, so
 /// an earlier record's decision may under-report those characteristics.
-const int attemptSchemaVersion = 9;
+///
+/// Version 10 records the shape progression term, the last in the rank key.
+/// Reading an earlier version, it defaults to zero because it was not
+/// recorded: a scheduler before it had no such term, so the default says
+/// nothing about how that decision would have ranked the shapes it compared.
+const int attemptSchemaVersion = 10;
 
 /// Version of the checkpoint wire format.
 ///

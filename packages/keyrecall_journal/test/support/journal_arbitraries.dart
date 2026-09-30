@@ -295,11 +295,12 @@ final Arbitrary<RankKey> anyRankKey =
         anyFinite,
         boolean(),
       ),
-      combine4(
+      combine5(
         boolean(),
         boolean(),
         choiceOf(RealizationRank.values),
         anyNonnegative.map((distance) => -distance),
+        anyNonnegative.map((steps) => -steps),
       ),
     ).map((parts) {
       final (
@@ -312,7 +313,7 @@ final Arbitrary<RankKey> anyRankKey =
         goals,
         shaped,
       ) = parts.$1;
-      final (advances, shapedGoal, realization, fit) = parts.$2;
+      final (advances, shapedGoal, realization, fit, shape) = parts.$2;
       return RankKey(
         tier: tier,
         retention: retention,
@@ -326,6 +327,7 @@ final Arbitrary<RankKey> anyRankKey =
         targetShapedGoal: shapedGoal,
         realization: realization,
         realizationFit: fit,
+        shapeProgression: shape,
       );
     });
 

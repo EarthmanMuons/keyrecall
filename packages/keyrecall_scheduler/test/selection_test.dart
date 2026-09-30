@@ -89,6 +89,55 @@ void main() {
       expect(key().compareTo(key()), 0);
     });
 
+    test('the shape term orders one octave before two, then up first', () {
+      double shapeOf(
+        int octaves,
+        ExerciseDirection direction, [
+        HandConfiguration hands = HandConfiguration.right,
+      ]) => shapeProgression(
+        Exercise.linear(
+          material: TechnicalMaterial('C', ScaleForm.major),
+          hands: hands,
+          octaves: octaves,
+          direction: direction,
+        ),
+      );
+
+      expect([
+        shapeOf(1, ExerciseDirection.up),
+        shapeOf(1, ExerciseDirection.upDown),
+        shapeOf(2, ExerciseDirection.up),
+        shapeOf(2, ExerciseDirection.upDown),
+      ], orderedEquals([0.0, -1.0, -2.0, -3.0]));
+      expect(
+        shapeOf(1, ExerciseDirection.up, HandConfiguration.left),
+        shapeOf(1, ExerciseDirection.up),
+        reason: 'hands have no order of their own',
+      );
+    });
+
+    test('the shape term decides only what everything else tied', () {
+      RankKey key({double retention = 0, double shapeProgression = 0}) =>
+          RankKey(
+            tier: EligibilityTier.fullyEligible,
+            retention: retention,
+            information: 0,
+            diversity: 0,
+            goals: 0,
+            shapeProgression: shapeProgression,
+          );
+
+      expect(
+        key(shapeProgression: 0).compareTo(key(shapeProgression: -1)),
+        greaterThan(0),
+      );
+      expect(
+        key(retention: 0.1, shapeProgression: -3).compareTo(key()),
+        greaterThan(0),
+        reason: 'every earlier term outranks it',
+      );
+    });
+
     test('refuses a term outside what it measures', () {
       RankKey key({
         double retention = 0.5,

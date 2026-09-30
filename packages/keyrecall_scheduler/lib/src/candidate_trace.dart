@@ -449,6 +449,16 @@ class RankKey implements Comparable<RankKey> {
   /// need a boundary nobody can defend.
   final double realizationFit;
 
+  /// How early this realization's shape comes in its material's progression,
+  /// as a negated step count: one octave before two, and up before up and
+  /// down.
+  ///
+  /// The last term, after everything the learner model and the goal can say,
+  /// so it decides only what would otherwise fall to candidate order. Declared
+  /// rather than read from how the conditions happen to be listed, and silent
+  /// about hands, which have no order of their own.
+  final double shapeProgression;
+
   /// Throws [ArgumentError] for a term outside what it measures: an urgency
   /// outside zero to one, negative information, a positive count or distance
   /// where each is a negated one, or anything non-finite, which would make
@@ -466,6 +476,7 @@ class RankKey implements Comparable<RankKey> {
     this.targetShapedGoal = false,
     this.realization = RealizationRank.unmeasured,
     this.realizationFit = 0,
+    this.shapeProgression = 0,
   }) {
     if (!retention.isFinite || retention < 0 || retention > 1) {
       throw ArgumentError.value(retention, 'retention', 'must be 0 to 1');
@@ -483,6 +494,13 @@ class RankKey implements Comparable<RankKey> {
       throw ArgumentError.value(
         realizationFit,
         'realizationFit',
+        'must be <= 0',
+      );
+    }
+    if (!shapeProgression.isFinite || shapeProgression > 0) {
+      throw ArgumentError.value(
+        shapeProgression,
+        'shapeProgression',
         'must be <= 0',
       );
     }
@@ -505,7 +523,8 @@ class RankKey implements Comparable<RankKey> {
       other.advancesFrontier == advancesFrontier &&
       other.targetShapedGoal == targetShapedGoal &&
       other.realization == realization &&
-      other.realizationFit == realizationFit;
+      other.realizationFit == realizationFit &&
+      other.shapeProgression == shapeProgression;
 
   @override
   int get hashCode => Object.hash(
@@ -521,6 +540,7 @@ class RankKey implements Comparable<RankKey> {
     targetShapedGoal,
     realization,
     realizationFit,
+    shapeProgression,
   );
 
   @override
@@ -533,7 +553,8 @@ class RankKey implements Comparable<RankKey> {
       'V: ${diversity.toStringAsFixed(1)}, '
       'G: ${goals.toStringAsFixed(1)}, '
       '${realization.id}'
-      '${realizationFit == 0 ? '' : ' ${realizationFit.toStringAsFixed(0)}'})';
+      '${realizationFit == 0 ? '' : ' ${realizationFit.toStringAsFixed(0)}'}'
+      '${shapeProgression == 0 ? '' : ', S: ${shapeProgression.toStringAsFixed(0)}'})';
 }
 
 /// Everything the pipeline computed about one candidate.
@@ -738,6 +759,6 @@ class RankTolerances {
     if (!_ties(a.realizationFit, b.realizationFit, realizationFit)) {
       return a.realizationFit.compareTo(b.realizationFit);
     }
-    return 0;
+    return a.shapeProgression.compareTo(b.shapeProgression);
   }
 }

@@ -150,3 +150,17 @@ double diversity(Exercise exercise, SessionState session) =>
 /// Only the ordering is read, never the magnitude.
 double goals(Exercise exercise, GoalEmphasis emphasis) =>
     emphasis.of(exercise) - GoalEmphasis.unemphasized;
+
+/// `S(e)`: how early [exercise]'s shape comes in its material's progression,
+/// as a negated step count.
+///
+/// One octave before two, and at one span up before up and down. Each step
+/// is declared here rather than taken from the order the conditions are
+/// listed in, and hands take no part.
+double shapeProgression(Exercise exercise) {
+  final directionSteps = switch (exercise.conditions.direction) {
+    ExerciseDirection.up => 0,
+    ExerciseDirection.upDown => 1,
+  };
+  return -(2 * (exercise.conditions.octaves - 1) + directionSteps).toDouble();
+}

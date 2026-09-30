@@ -76,7 +76,8 @@ String selectionDiagnostics({
     if (acquisitionOffered) 'acquisition_offered=true',
     if (probesOwed > 0) 'probes_owed=$probesOwed probe_served=$probeServed',
     'rank order: tier, coordination_transition, contrary_coordination, '
-        'retention, information, diversity, focus, realization, realization_fit; '
+        'retention, information, diversity, focus, realization, realization_fit, '
+        'shape_progression; '
         'higher wins; exact ties use candidate order',
     'pacing, introductions, echo and novelty are filters, not score adjustments',
     for (final entry in groups.entries)
@@ -135,6 +136,7 @@ Map<String, num> _rankValues(RankKey key) => {
   'focus': key.goals,
   'realization': key.realization.index,
   'realization_fit': key.realizationFit,
+  'shape_progression': key.shapeProgression,
 };
 
 /// The first unequal field in the scheduler's lexicographic comparison.

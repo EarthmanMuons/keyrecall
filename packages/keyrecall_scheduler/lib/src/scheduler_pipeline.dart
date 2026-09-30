@@ -2286,6 +2286,7 @@ class SchedulerPipeline {
               practiceEntryPolicy: practiceEntryPolicy,
               memo: facts.execution,
             ),
+            shapeProgression: shapeProgression(exercise),
           )
         : null;
 

@@ -9,9 +9,11 @@ import 'schema.dart';
 ///
 /// Throws [JournalFormatException] for a version this build cannot upgrade.
 Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) =>
-    json['schema_version'] == attemptSchemaVersion
-    ? json
-    : _version8To9(_attemptToVersion8(json));
+    switch (json['schema_version']) {
+      attemptSchemaVersion => json,
+      9 => _version9To10(json),
+      _ => _version9To10(_version8To9(_attemptToVersion8(json))),
+    };
 
 Map<String, Object?> _attemptToVersion8(Map<String, Object?> json) {
   final version = json['schema_version'];
@@ -63,9 +65,11 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 ///
 /// Throws [JournalFormatException] for a version this build cannot upgrade.
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
-    json['schema_version'] == attemptSchemaVersion
-    ? json
-    : _version8To9(_pendingDecisionToVersion8(json));
+    switch (json['schema_version']) {
+      attemptSchemaVersion => json,
+      9 => _version9To10(json),
+      _ => _version9To10(_version8To9(_pendingDecisionToVersion8(json))),
+    };
 
 Map<String, Object?> _pendingDecisionToVersion8(Map<String, Object?> json) =>
     switch (json['schema_version']) {
@@ -115,7 +119,8 @@ Map<String, Object?> _stampedForward(
       version == 5 ||
       version == 6 ||
       version == 7 ||
-      version == 8) {
+      version == 8 ||
+      version == 9) {
     return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
@@ -243,6 +248,21 @@ Map<String, Object?> _version8To9(Map<String, Object?> json) {
           'advances_frontier': false,
           'target_shaped_goal': false,
         },
+      };
+    }
+  }
+  return upgraded;
+}
+
+/// Version 9 had no shape progression term. It reads back as zero because it
+/// was not recorded, not because the decision ranked shapes neutrally.
+Map<String, Object?> _version9To10(Map<String, Object?> json) {
+  final upgraded = Map<String, Object?>.of(json)..['schema_version'] = 10;
+  if (json['decision'] case final Map<String, Object?> decision) {
+    if (decision['rank_key'] case final Map<String, Object?> rankKey) {
+      upgraded['decision'] = {
+        ...decision,
+        'rank_key': {...rankKey, 'shape_progression': 0.0},
       };
     }
   }

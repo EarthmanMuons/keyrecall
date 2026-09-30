@@ -290,6 +290,7 @@ this, and `RankKey.compareTo` is the whole of it:
 8  goals            G(e)     learner-goal relevance
 9  realization rank          advancing, holding, unmeasured, or surpassed
 10 realization fit           how near an unmeasured realization is to entry
+11 shape progression         one octave before two, then up before up and down
 ```
 
 The first four terms are the only ordinal ones, and each is there because
@@ -311,10 +312,18 @@ and execution evidence opportunities would expose. **Diversity** is the negative
 count of the material in the recent-history window. **Goals** is zero for
 anything no focus emphasized.
 
-The last two terms never decide which material to practice, only which
+The last three terms never decide which material to practice, only which
 realization of it. Two candidates on the same scale always tie on terms 5
 through 8, so realization rank and fit are what choose the tempo and span it is
-asked at.
+asked at, and **shape progression** settles what they leave tied: one octave
+before two, and at one span up before up and down, declared as steps rather than
+taken from the order the conditions are listed in. It says nothing about hands,
+which have no order of their own. Candidates still tied after it fall to
+candidate order, which follows the curriculum's requirements, so two unpractised
+materials are introduced in the order the curriculum lists them (see
+[`curriculum.md`](curriculum.md)). A tie between two materials that also differ
+in shape goes to the simpler shape first; under the production goals no such tie
+has been observed.
 
 ### Arriving at a finite goal's targets
 
