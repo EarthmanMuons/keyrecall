@@ -8,10 +8,15 @@ import 'schema.dart';
 /// what the old format implied and must never guess at what it did not say.
 ///
 /// Throws [JournalFormatException] for a version this build cannot upgrade.
-Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) {
+Map<String, Object?> upgradeAttemptJson(Map<String, Object?> json) =>
+    json['schema_version'] == attemptSchemaVersion
+    ? json
+    : _version8To9(_attemptToVersion8(json));
+
+Map<String, Object?> _attemptToVersion8(Map<String, Object?> json) {
   final version = json['schema_version'];
   return switch (version) {
-    attemptSchemaVersion => json,
+    8 => json,
     7 => _version7To8(json),
     6 => _version7To8(_version6To7(json)),
     5 => _version7To8(_version6To7(_version5To6(json))),
@@ -58,8 +63,13 @@ Map<String, Object?> upgradeJournalHeaderJson(Map<String, Object?> json) =>
 ///
 /// Throws [JournalFormatException] for a version this build cannot upgrade.
 Map<String, Object?> upgradePendingDecisionJson(Map<String, Object?> json) =>
+    json['schema_version'] == attemptSchemaVersion
+    ? json
+    : _version8To9(_pendingDecisionToVersion8(json));
+
+Map<String, Object?> _pendingDecisionToVersion8(Map<String, Object?> json) =>
     switch (json['schema_version']) {
-      attemptSchemaVersion => json,
+      8 => json,
       7 => _version7To8(json),
       6 => _version7To8(_version6To7(json)),
       5 => _version7To8(_version6To7(_version5To6(json))),
@@ -104,7 +114,8 @@ Map<String, Object?> _stampedForward(
       version == 4 ||
       version == 5 ||
       version == 6 ||
-      version == 7) {
+      version == 7 ||
+      version == 8) {
     return Map<String, Object?>.of(json)..['schema_version'] = to;
   }
   throw JournalFormatException(
@@ -212,6 +223,28 @@ Map<String, Object?> _version7To8(Map<String, Object?> json) {
   final upgraded = Map<String, Object?>.of(json)..['schema_version'] = 8;
   if (json['presentation'] case final Map<String, Object?> presentation) {
     upgraded['presentation'] = presentationBeforeShownPulse(presentation);
+  }
+  return upgraded;
+}
+
+/// Version 8 did not write the rank key's contrary coordination, target shape,
+/// frontier advance, or target-shaped goal flags. They read back false because
+/// their values were not recorded, not because they were false.
+Map<String, Object?> _version8To9(Map<String, Object?> json) {
+  final upgraded = Map<String, Object?>.of(json)..['schema_version'] = 9;
+  if (json['decision'] case final Map<String, Object?> decision) {
+    if (decision['rank_key'] case final Map<String, Object?> rankKey) {
+      upgraded['decision'] = {
+        ...decision,
+        'rank_key': {
+          ...rankKey,
+          'contrary_coordination': false,
+          'target_shaped': false,
+          'advances_frontier': false,
+          'target_shaped_goal': false,
+        },
+      };
+    }
   }
   return upgraded;
 }

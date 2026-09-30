@@ -33,7 +33,13 @@
 ///
 /// Version 8 records how many continuing beats were shown on screen. No build
 /// before it showed one, so an earlier record upgrades to none shown.
-const int attemptSchemaVersion = 8;
+///
+/// Version 9 persists the rest of the rank key a decision won on. Reading an
+/// earlier version, its contrary coordination, target shape, frontier advance,
+/// and target-shaped goal flags default to false because their original values
+/// were not recorded. That is a representation, not a recovery of the key, so
+/// an earlier record's decision may under-report those characteristics.
+const int attemptSchemaVersion = 9;
 
 /// Version of the checkpoint wire format.
 ///

@@ -115,6 +115,10 @@ Map<String, Object?> encodeDecision(
   'rank_key': {
     'tier': decision.rankKey.tier.id,
     'coordination_transition': decision.rankKey.coordinationTransition,
+    'contrary_coordination': decision.rankKey.contraryCoordination,
+    'target_shaped': decision.rankKey.targetShaped,
+    'advances_frontier': decision.rankKey.advancesFrontier,
+    'target_shaped_goal': decision.rankKey.targetShapedGoal,
     'retention': decision.rankKey.retention,
     'information': decision.rankKey.information,
     'diversity': decision.rankKey.diversity,
@@ -188,6 +192,26 @@ SchedulerDecision decodeDecision(
       coordinationTransition: requireBool(
         rankKeyJson,
         'coordination_transition',
+        location: location,
+      ),
+      contraryCoordination: requireBool(
+        rankKeyJson,
+        'contrary_coordination',
+        location: location,
+      ),
+      targetShaped: requireBool(
+        rankKeyJson,
+        'target_shaped',
+        location: location,
+      ),
+      advancesFrontier: requireBool(
+        rankKeyJson,
+        'advances_frontier',
+        location: location,
+      ),
+      targetShapedGoal: requireBool(
+        rankKeyJson,
+        'target_shaped_goal',
         location: location,
       ),
       retention: requireDouble(rankKeyJson, 'retention', location: location),

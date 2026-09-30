@@ -56,9 +56,33 @@ Map<String, Object?> version5(Map<String, Object?> current) =>
 
 /// A version 6 record: every beat a pulse asked for was counted in one total,
 /// and no outcome said whether it tested the learner keeping the pulse.
+/// The rank key flags version 8 did not write.
+const unrecordedRankKeyFlags = [
+  'contrary_coordination',
+  'target_shaped',
+  'advances_frontier',
+  'target_shaped_goal',
+];
+
+/// A version 8 record: the rank key lacked four of the flags it ranked on.
+Map<String, Object?> version8(Map<String, Object?> current) {
+  final old = Map<String, Object?>.of(current)..['schema_version'] = 8;
+  if (old['decision'] case final Map<String, Object?> decision) {
+    final rankKey = Map<String, Object?>.of(
+      decision['rank_key']! as Map<String, Object?>,
+    );
+    for (final flag in unrecordedRankKeyFlags) {
+      rankKey.remove(flag);
+    }
+    old['decision'] = {...decision, 'rank_key': rankKey};
+  }
+  return old;
+}
+
 /// A version 7 record: nothing said how many continuing beats were shown.
 Map<String, Object?> version7(Map<String, Object?> current) {
-  final old = Map<String, Object?>.of(current)..['schema_version'] = 7;
+  final old = Map<String, Object?>.of(version8(current))
+    ..['schema_version'] = 7;
   if (old['presentation'] case final Map<String, Object?> presentation) {
     old['presentation'] = {
       ...presentation,
@@ -255,6 +279,57 @@ void main() {
         expect(upgraded.timing, isNull);
         expect(upgraded.input, isNull);
         expect(upgraded.decision?.rankKey, original.decision?.rankKey);
+      }
+    });
+  });
+
+  group('version 8 to current', () {
+    Map<String, Object?> rankedOnEveryFlag() {
+      final json = journal.records.first.toJson();
+      final decision = json['decision']! as Map<String, Object?>;
+      return json
+        ..['decision'] = {
+          ...decision,
+          'rank_key': {
+            ...decision['rank_key']! as Map<String, Object?>,
+            for (final flag in unrecordedRankKeyFlags) flag: true,
+          },
+        };
+    }
+
+    test('writes every flag the rank key won on', () {
+      final key = AttemptRecord.fromJson(rankedOnEveryFlag()).decision!.rankKey;
+
+      expect(key.contraryCoordination, isTrue);
+      expect(key.targetShaped, isTrue);
+      expect(key.advancesFrontier, isTrue);
+      expect(key.targetShapedGoal, isTrue);
+    });
+
+    test('reads the flags it never wrote as the key defaults them', () {
+      final current = AttemptRecord.fromJson(rankedOnEveryFlag());
+      final upgraded = AttemptRecord.fromJson(version8(rankedOnEveryFlag()));
+      final key = upgraded.decision!.rankKey;
+
+      expect(key.contraryCoordination, isFalse);
+      expect(key.targetShaped, isFalse);
+      expect(key.advancesFrontier, isFalse);
+      expect(key.targetShapedGoal, isFalse);
+      expect(key.tier, current.decision!.rankKey.tier);
+      expect(key.retention, current.decision!.rankKey.retention);
+      expect(key.realization, current.decision!.rankKey.realization);
+    });
+
+    test('reads a pending decision the same way', () {
+      final json = version8(rankedOnEveryFlag());
+      final upgraded = upgradePendingDecisionJson(json);
+      final rankKey =
+          (upgraded['decision']! as Map<String, Object?>)['rank_key']!
+              as Map<String, Object?>;
+
+      expect(upgraded['schema_version'], attemptSchemaVersion);
+      for (final flag in unrecordedRankKeyFlags) {
+        expect(rankKey[flag], isFalse, reason: flag);
       }
     });
   });
