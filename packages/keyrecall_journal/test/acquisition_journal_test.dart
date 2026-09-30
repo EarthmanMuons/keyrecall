@@ -761,10 +761,12 @@ void main() {
     });
 
     test('is refused for a parent with no acquisition history', () {
-      // Service of an obligation that never existed.
-      final log = emptyLog()..append(serviceAt(0));
-
-      expect(log.replay, throwsArgumentError);
+      // Service of an obligation that never existed, which replay could not
+      // apply, so the log does not take it in the first place.
+      expect(
+        () => emptyLog().append(serviceAt(0)),
+        throwsA(isA<JournalFormatException>()),
+      );
     });
   });
 

@@ -460,7 +460,7 @@ void main() {
 
         // Something else already holds that id, with different content.
         await inner.appendAcquisitionEntry(
-          AcquisitionProbeServedRecord(
+          AcquisitionAttemptRecord(
             journalSequence: 0,
             identity: AttemptIdentity(
               profileId: alice.id,
@@ -469,7 +469,16 @@ void main() {
               indexInSession: 0,
               occurredAt: at,
             ),
-            parent: offered.task.parent,
+            task: offered.task,
+            started: true,
+            completion: AcquisitionCompletion.notCompleted,
+            repairs: 7,
+            repeats: 0,
+            intrusions: 0,
+            earnedProbe: false,
+            gaps: const [],
+            sequence: CriterionVerdict.unavailable,
+            continuity: CriterionVerdict.unavailable,
           ),
         );
         store.failAcquisitionAppends = true;

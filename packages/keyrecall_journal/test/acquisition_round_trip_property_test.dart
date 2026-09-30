@@ -8,6 +8,8 @@ import 'package:keyrecall_journal/keyrecall_journal.dart';
 
 import 'support/journal_arbitraries.dart';
 
+final DateTime t0 = DateTime.utc(2026);
+
 final Arbitrary<TaskPortion> anyPortion = weighted<TaskPortion>([
   (2, constant(const FullTraversal())),
   (1, integer(min: 2, max: 8).map(TraversalRepetitions.new)),
@@ -367,6 +369,58 @@ void main() {
             reason: 'an entry read back is the one already appended',
           );
         }
+      }),
+    );
+  });
+
+  property('whatever a log accepts, it can replay', () {
+    forAll(
+      combine2(
+        list(anyExercise, minLength: 1, maxLength: 3),
+        list(
+          combine3(boolean(), integer(min: 0, max: 2), anyAttemptContent),
+          maxLength: 12,
+        ),
+      ),
+      seed: seed,
+      maxExamples: examples(100),
+      failingOnErrors<(List<Exercise>, List<(bool, int, AttemptContent)>)>((
+        parts,
+      ) {
+        final (parents, planned) = parts;
+        final log = AcquisitionJournal(
+          AcquisitionJournalHeader(profileId: 'learner', createdAt: t0),
+        );
+        for (final (index, (serves, which, content)) in planned.indexed) {
+          final parent = parents[which % parents.length];
+          final identity = AttemptIdentity(
+            profileId: 'learner',
+            attemptId: 'entry-$index',
+            sessionId: 'session',
+            indexInSession: index,
+            occurredAt: t0.add(Duration(minutes: index)),
+          );
+          try {
+            log.append(
+              serves
+                  ? AcquisitionProbeServedRecord(
+                      journalSequence: log.nextSequence,
+                      identity: identity,
+                      parent: parent,
+                    )
+                  : attemptOf(
+                      content,
+                      parent: parent,
+                      journalSequence: log.nextSequence,
+                      identity: identity,
+                    ),
+            );
+          } on JournalFormatException {
+            // Refused, which is the log keeping itself replayable.
+          }
+        }
+
+        expect(log.replay, returnsNormally);
       }),
     );
   });

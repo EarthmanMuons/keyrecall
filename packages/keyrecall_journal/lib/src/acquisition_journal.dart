@@ -682,6 +682,7 @@ class AcquisitionJournal {
 
   final List<AcquisitionEntry> _records = [];
   final Map<String, String> _hashByAttemptId = {};
+  final Set<Exercise> _attemptedParents = {};
 
   AcquisitionJournal(this.header);
 
@@ -707,8 +708,9 @@ class AcquisitionJournal {
   /// with different content is a collision rather than a retry.
   ///
   /// Throws [JournalFormatException] when the record belongs to another
-  /// profile, when its sequence is not the next one, or when its timestamp
-  /// precedes the previous attempt.
+  /// profile, when its sequence is not the next one, when its timestamp
+  /// precedes the previous attempt, or when it serves a probe for a parent
+  /// this log holds no attempt at, which [replay] could not apply.
   bool append(AcquisitionEntry record) {
     final location = 'acquisition entry ${record.identity.attemptId}';
 
@@ -752,8 +754,20 @@ class AcquisitionJournal {
       }
     }
 
+    if (record is AcquisitionProbeServedRecord &&
+        !_attemptedParents.contains(record.parent)) {
+      throw JournalFormatException(
+        'a probe of ${record.parent.material.materialId} was served with no '
+        'acquisition attempt at it before; a probe is owed only by '
+        'acquisition history',
+        location: location,
+      );
+    }
     _records.add(record);
     _hashByAttemptId[record.identity.attemptId] = hash;
+    if (record is AcquisitionAttemptRecord) {
+      _attemptedParents.add(record.parent);
+    }
     return true;
   }
 
