@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+cd "$(dirname "$0")/.."
+
+base='main@origin'
+dry_run=false
+all=false
+while [[ $# -gt 0 ]]; do
+	case "$1" in
+	--dry-run) dry_run=true ;;
+	--all) all=true ;;
+	--base)
+		[[ $# -ge 2 ]] || {
+			echo '--base requires a revision' >&2
+			exit 2
+		}
+		base="$2"
+		shift
+		;;
+	--help | -h)
+		echo 'Usage: bin/test-from-upstream [--dry-run] [--all] [--base REVISION]'
+		echo 'Test changed packages and their dependents since the common ancestor with main@origin.'
+		echo 'Uses the locally recorded upstream bookmark; does not fetch.'
+		exit 0
+		;;
+	*)
+		echo "Unknown argument: $1" >&2
+		exit 2
+		;;
+	esac
+	shift
+done
+
+directories=()
+names=()
+dependencies=()
+reasons=()
+for directory in packages/* third_party/crisp_notation/packages/* .; do
+	[[ -f "$directory/pubspec.yaml" ]] || continue
+	directories+=("$directory")
+	names+=("$(awk '$1 == "name:" { print $2; exit }' "$directory/pubspec.yaml")")
+	dependencies+=("$(awk '
+    /^[^[:space:]#]/ { section = ($0 ~ /^(dependencies|dev_dependencies|dependency_overrides):/) }
+    section && /^  [a-zA-Z_][a-zA-Z_0-9]*:/ {
+      sub(/^  /, ""); sub(/:.*/, ""); printf " %s ", $0
+    }
+  ' "$directory/pubspec.yaml")")
+	reasons+=("")
+done
+
+temporary=$(mktemp -d)
+trap 'rm -rf "$temporary"' EXIT
+
+if "$all"; then
+	full_reason='full suite requested'
+else
+	full_reason=''
+	jj diff --from "heads(ancestors(($base)) & ancestors(@))" --to @ \
+		--no-pager --color never \
+		--template 'source.path() ++ "\0" ++ target.path() ++ "\0"' >"$temporary/paths"
+	while IFS= read -r -d '' path; do
+		case "$path" in
+		*.md | docs/*) continue ;;
+		*/pubspec.yaml | pubspec.yaml | pubspec.lock)
+			full_reason="shared dependency configuration: $path"
+			break
+			;;
+		esac
+		owner=''
+		for ((index = 0; index < ${#directories[@]}; index++)); do
+			directory=${directories[index]}
+			if [[ $directory != . ]] && [[ $path == "$directory/"* ]]; then
+				owner=$index
+				break
+			fi
+		done
+		if [[ -z $owner ]]; then
+			case "$path" in
+			lib/* | test/* | assets/* | android/* | ios/* | linux/* | macos/* | web/* | windows/*)
+				owner=$((${#directories[@]} - 1))
+				;;
+			*)
+				full_reason="shared or unrecognized path: $path"
+				break
+				;;
+			esac
+		fi
+		reasons[owner]="changed: $path"
+	done <"$temporary/paths"
+fi
+
+if [[ -n $full_reason ]]; then
+	for ((index = 0; index < ${#directories[@]}; index++)); do
+		reasons[index]=$full_reason
+	done
+else
+	added=true
+	while "$added"; do
+		added=false
+		for ((index = 0; index < ${#directories[@]}; index++)); do
+			[[ -z ${reasons[index]} ]] || continue
+			for ((dependency = 0; dependency < ${#directories[@]}; dependency++)); do
+				[[ -n ${reasons[dependency]} ]] || continue
+				if [[ ${dependencies[index]} == *" ${names[dependency]} "* ]]; then
+					reasons[index]="depends on ${names[dependency]}"
+					added=true
+					break
+				fi
+			done
+		done
+	done
+fi
+
+selected=()
+for ((index = 0; index < ${#directories[@]}; index++)); do
+	[[ -n ${reasons[index]} ]] && [[ -d "${directories[index]}/test" ]] || continue
+	selected+=("$index")
+	printf '%s (%s)\n' "${directories[index]}" "${reasons[index]}"
+done
+if [[ ${#selected[@]} -eq 0 ]]; then
+	echo 'No affected test suites.'
+	exit 0
+fi
+"$dry_run" && exit 0
+
+run_tests() {
+	local index=$1 directory=${directories[$1]} runner=dart status=0 started=$SECONDS
+	if awk '
+    /^[^[:space:]#]/ { section = ($0 ~ /^(dependencies|dev_dependencies):/) }
+    section && /^  flutter(_test)?:/ { found = 1 }
+    END { exit !found }
+  ' "$directory/pubspec.yaml"; then
+		runner=flutter
+	fi
+	(cd "$directory" && "$runner" test) || status=$?
+	printf '%s\t%s\t%s\n' "$((SECONDS - started))" "$status" "$directory" >"$temporary/$index.result"
+	return "$status"
+}
+
+pids=()
+for index in "${selected[@]}"; do
+	run_tests "$index" &
+	pids+=("$!")
+done
+status=0
+for pid in "${pids[@]}"; do
+	wait "$pid" || status=1
+done
+printf '\nPackage durations (concurrent wall time, slowest first):\n'
+sort -nr "$temporary/"*.result | while IFS=$'\t' read -r seconds result directory; do
+	outcome=PASS
+	[[ $result -eq 0 ]] || outcome=FAIL
+	printf '%5ss  %s  %s\n' "$seconds" "$outcome" "$directory"
+done
+exit "$status"

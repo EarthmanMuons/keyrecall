@@ -57,31 +57,7 @@ run = "dart analyze"
 
 [tasks."dart:test"]
 description = "Run the package and app tests"
-run = """
-run_tests() {
-  directory="$1"
-  [ -d "$directory/test" ] || return 0
-  # A package that depends on the Flutter SDK needs the Flutter test runner.
-  if grep -q "^  flutter:" "$directory/pubspec.yaml"; then
-    (cd "$directory" && flutter test)
-  else
-    (cd "$directory" && dart test)
-  fi
-}
-
-for package in packages/*/ third_party/crisp_notation/packages/*/; do
-  run_tests "${package%/}" &
-  test_pids="$test_pids $!"
-done
-run_tests . &
-test_pids="$test_pids $!"
-
-test_status=0
-for test_pid in $test_pids; do
-  wait "$test_pid" || test_status=1
-done
-exit "$test_status"
-"""
+run = "bin/test-from-upstream --all"
 
 [tasks."dart:check"]
 description = "Format-check, lint, analyze, and test the Dart packages"

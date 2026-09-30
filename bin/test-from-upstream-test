@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+temporary=$(mktemp -d)
+trap 'rm -rf "$temporary"' EXIT
+mkdir -p "$temporary/repository/bin" "$temporary/runners"
+cp "$(dirname "$0")/test-from-upstream" "$temporary/repository/bin/"
+cd "$temporary/repository"
+printf '[user]\nname = "Test"\nemail = "test@example.com"\n[signing]\nbehavior = "drop"\n' >"$temporary/jj.toml"
+export JJ_CONFIG="$temporary/jj.toml"
+jj git init --quiet
+mkdir -p packages/{a,b,c}/test packages/a/lib packages/b/lib lib test docs
+for directory in packages/{a,b,c} .; do
+	echo 'fixture' >"$directory/test/fixture_test.dart"
+done
+echo 'app fixture' >lib/app.dart
+echo 'package fixture' >packages/b/lib/existing.dart
+printf 'name: app\ndependencies:\n  flutter:\n    sdk: flutter\n  c: any\n' >pubspec.yaml
+printf 'name: a\n' >packages/a/pubspec.yaml
+printf 'name: b\ndependencies:\n  a: any\n' >packages/b/pubspec.yaml
+printf 'name: c\ndev_dependencies:\n  b: any\n' >packages/c/pubspec.yaml
+echo 'original' >packages/a/lib/source.dart
+jj describe --quiet -m 'Fixture'
+jj bookmark create upstream --quiet
+jj bookmark create fixture-root --quiet
+jj new --quiet
+
+assert_plan() {
+	bin/test-from-upstream --base upstream --dry-run | sed 's/ (.*//' >"$temporary/actual"
+	printf '%s\n' "$1" >"$temporary/expected"
+	diff -u "$temporary/expected" "$temporary/actual"
+}
+
+reset_fixture() {
+	jj restore --from upstream --quiet
+}
+
+all_packages=$'packages/a\npackages/b\npackages/c\n.'
+assert_plan 'No affected test suites.'
+echo 'documentation' >docs/guide.md
+assert_plan 'No affected test suites.'
+echo 'app' >lib/app.dart
+assert_plan '.'
+reset_fixture
+echo 'changed' >>packages/a/lib/source.dart
+assert_plan "$all_packages"
+reset_fixture
+echo 'test' >packages/b/test/with\ spaces.dart
+assert_plan $'packages/b\npackages/c\n.'
+reset_fixture
+rm packages/a/lib/source.dart
+assert_plan "$all_packages"
+reset_fixture
+mv packages/a/lib/source.dart packages/b/lib/source.dart
+assert_plan "$all_packages"
+reset_fixture
+echo '# manifest change' >>packages/a/pubspec.yaml
+assert_plan "$all_packages"
+reset_fixture
+echo 'lock' >pubspec.lock
+assert_plan "$all_packages"
+reset_fixture
+echo 'shared' >shared.yaml
+assert_plan "$all_packages"
+reset_fixture
+
+# Upstream-only changes must not select local suites.
+jj new upstream --quiet
+echo 'upstream' >>packages/a/lib/source.dart
+jj bookmark set upstream --quiet
+jj new fixture-root --quiet
+assert_plan 'No affected test suites.'
+echo 'local' >lib/app.dart
+jj describe --quiet -m 'Local change'
+jj new --quiet
+assert_plan '.'
+
+cat >"$temporary/runners/dart" <<'RUNNER'
+#!/usr/bin/env bash
+printf '%s %s %s\n' "$(basename "$0")" "$(basename "$PWD")" "$*" >> "$RUNNER_LOG"
+[[ "$(basename "$PWD")" != "${FAIL_PACKAGE:-}" ]]
+RUNNER
+cp "$temporary/runners/dart" "$temporary/runners/flutter"
+chmod +x "$temporary/runners/"*
+export PATH="$temporary/runners:$PATH"
+export RUNNER_LOG="$temporary/runners.log"
+bin/test-from-upstream --all >"$temporary/output"
+sort "$RUNNER_LOG" >"$temporary/actual"
+printf 'dart a test\ndart b test\ndart c test\nflutter repository test\n' >"$temporary/expected"
+diff -u "$temporary/expected" "$temporary/actual"
+export FAIL_PACKAGE=c
+if bin/test-from-upstream --all >"$temporary/output"; then
+	echo 'Expected a failed package to fail the command' >&2
+	exit 1
+fi
+grep -q 'FAIL  packages/c' "$temporary/output"
+if bin/test-from-upstream --base missing --dry-run >"$temporary/output" 2>&1; then
+	echo 'Expected a missing base to fail the command' >&2
+	exit 1
+fi
+echo 'All test selection and runner checks passed.'

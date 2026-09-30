@@ -54,6 +54,21 @@ package's tests directly works too, but **use `dart test` rather than
 `flutter test` inside a pure-Dart package**. The Flutter runner fails to load
 it, and it rewrites that package's `analysis_options.yaml` on the way past.
 
+For local iteration, run `bin/test-from-upstream`. It tests changed packages and
+their transitive dependents, including development dependencies, since the
+common ancestor of `main@origin` and the working copy. Committed and uncommitted
+changes are included. The script uses the locally recorded bookmark and does not
+fetch; run `jj git fetch` when you want to update it.
+
+Use `--dry-run` to see which suites would run and why, or `--base REVISION` to
+compare against another revision. Documentation-only changes skip tests;
+manifests, the lockfile, and shared or unrecognized paths select the full suite.
+`mise dart:test` still runs every suite, as does `bin/test-from-upstream --all`.
+Both commands report package durations from the concurrent run, slowest first.
+
+After changing the selector, run `bin/test-from-upstream-test` to check package
+selection and runner behavior in a temporary jj repository.
+
 Markdown and the Python analysis tooling have their own tasks
 (`markdown:format`, `python:check`), also run by CI when those files change.
 
