@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_journal/keyrecall_journal.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_practice/keyrecall_practice.dart';
@@ -19,8 +20,13 @@ import 'support/fixtures.dart';
 /// its own tests; this asks whether they add up to a practice sequence that
 /// makes sense.
 void main() {
-  /// The first [count] exercises presented to a learner placed at [tier].
-  Future<List<Exercise>> offeredTo(PlacementTier tier, {int count = 10}) async {
+  /// The first [count] exercises presented to a learner placed at [tier],
+  /// each also handed to [onPresented] with the state it was decided from.
+  Future<List<Exercise>> offeredTo(
+    PlacementTier tier, {
+    int count = 10,
+    void Function(Exercise exercise, LearnerState state)? onPresented,
+  }) async {
     final root = Directory.systemTemp.createTempSync('keyrecall_trajectory');
     addTearDown(() => root.deleteSync(recursive: true));
     final session = await PracticeSession.open(
@@ -45,6 +51,7 @@ void main() {
       final presented = await session.decide(at: at);
       if (presented == null) continue;
       offered.add(presented.exercise);
+      onPresented?.call(presented.exercise, session.state);
       // Mostly right, which is what an appropriately pitched sequence should
       // produce and what keeps this from being a study of failure.
       await session.closeWithOutcome(
@@ -58,7 +65,17 @@ void main() {
   test(
     'a beginner starts on one hand, one octave, and the first scales',
     () async {
-      final offered = await offeredTo(PlacementTier.beginner);
+      final togetherWasReady = <bool>[];
+      final offered = await offeredTo(
+        PlacementTier.beginner,
+        onPresented: (exercise, state) {
+          if (exercise.conditions.hands == HandConfiguration.together) {
+            togetherWasReady.add(
+              handsTogetherPrerequisiteSatisfied(state, exercise),
+            );
+          }
+        },
+      );
 
       expect(
         offered.every((e) => e.conditions.octaves == 1),
@@ -69,10 +86,25 @@ void main() {
             'on the way in',
       );
       expect(
-        offered.every((e) => e.conditions.hands != HandConfiguration.together),
-        isTrue,
-        reason: 'both hands come before hands together',
+        togetherWasReady,
+        everyElement(isTrue),
+        reason: 'hands together comes once each hand has shown the key alone',
       );
+      for (final (index, exercise) in offered.indexed) {
+        if (exercise.conditions.hands != HandConfiguration.together) continue;
+        final before = offered.take(index);
+        for (final hands in [HandConfiguration.right, HandConfiguration.left]) {
+          expect(
+            before.any(
+              (e) =>
+                  e.material == exercise.material &&
+                  e.conditions.hands == hands,
+            ),
+            isTrue,
+            reason: '${exercise.material.materialId} ${hands.id} came first',
+          );
+        }
+      }
       expect(
         offered.every((e) => coreForms.contains(e.material.scaleForm)),
         isTrue,

@@ -100,6 +100,13 @@ next selection. One- and two-handed preparation, cue fading, tempo progression,
 and maintenance all remain consequences of the existing learner and scheduler
 machinery.
 
+The order of the requirements does say one thing: which new material comes
+first. Two materials nobody has practised look identical to the learner model
+and to the goal, so ranking ties them, and the tie falls to candidate order,
+which follows the requirements. A curriculum's list is therefore its
+introduction order among materials that are otherwise equal, and nothing more:
+it moves no retention, challenge, or progression decision.
+
 Named curricula carry their source and edition. A syllabus update creates a new
 definition rather than silently changing what a completed goal meant.
 
@@ -119,9 +126,17 @@ General technique grows with the catalog, so a family added later joins it, and
 it makes no completion claim. Foundations is chosen for geography: both of the
 two earliest admission bands, and three fingering families rather than one,
 which is why it holds B flat major and not E major. 24-key fluency is at version
-2, which added the root-position arpeggios once they were generated up and down.
-Neither names an altered minor form, which extends a tonality rather than
-defining it.
+3, which lists its keys in introduction order; version 2 added the root-position
+arpeggios once they were generated up and down.
+
+Foundations introduces its keys in the order it lists them. Both fluency goals
+introduce theirs fewest accidentals first, a major before a minor and a sharp
+key before a flat one at equal complexity, each minor placed by its own key
+signature, and each key as its scale then its root-position arpeggio. General
+technique then adds every harmonic minor and then every melodic minor in the
+same minor-key order. `inIntroductionOrder` in the domain package holds the
+sequence. Neither names an altered minor form, which extends a tonality rather
+than defining it.
 
 A goal with a finish line shows its progress in the shape of its curriculum:
 Foundations as its ten scales with a mark for each hand, 24-key fluency as a

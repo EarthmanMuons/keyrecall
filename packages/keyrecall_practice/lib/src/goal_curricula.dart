@@ -26,18 +26,21 @@ final Curriculum foundationsCurriculum = Curriculum(
 /// Every major and natural-minor key, as a scale and as a root-position
 /// arpeggio, hands together over two octaves, up and down, from memory.
 ///
+/// Listed in introduction order: fewest accidentals first, each key's scale
+/// then its arpeggio.
+///
 /// The altered minor forms are extensions of these tonalities and not part of
 /// having them, and inversions are a later phase of the arpeggio. What each
 /// version held is in `docs/system/curriculum.md`.
 final Curriculum keyFluencyCurriculum = Curriculum(
   id: 'KEY_FLUENCY_24',
-  version: '2',
+  version: '3',
   requirements: [
-    for (final material in [
+    for (final material in inIntroductionOrder<TechnicalMaterial>([
       for (final scale in allScales)
         if (coreForms.contains(scale.form)) scale,
       ...allRootPositionArpeggios,
-    ])
+    ]))
       _requirement(material, HandConfiguration.together, octaves: 2),
   ],
 );

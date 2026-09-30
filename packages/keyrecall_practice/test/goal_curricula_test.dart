@@ -98,8 +98,17 @@ void main() {
         if (requirement.material is ArpeggioMaterial) requirement,
     ];
 
-    test('is version 2, which added the arpeggios', () {
-      expect(keyFluencyCurriculum.version, '2');
+    test('is version 3, which lists its keys in introduction order', () {
+      expect(keyFluencyCurriculum.version, '3');
+      expect(
+        keyFluencyCurriculum.requirements.take(4).map((r) => r.materialId),
+        [
+          'C_MAJOR',
+          'C_MAJOR_ROOT_ARPEGGIO',
+          'A_NATURAL_MINOR',
+          'A_MINOR_ROOT_ARPEGGIO',
+        ],
+      );
     });
 
     test('is every major and minor key as a scale and an arpeggio', () {

@@ -51,6 +51,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- 24-key fluency, now version 3, and general technique introduce their keys
+  fewest accidentals first, each key as its scale then its arpeggio, where both
+  had listed them chromatically. Among materials nobody has practised, the
+  requirement order is what decides which comes first.
 - Arpeggio candidate generation uses the shared `playableOn` instrument gate, so
   a four-octave hands-together arpeggio, which V1's hand placement spreads over
   eight octaves, is no longer offered on any keyboard.

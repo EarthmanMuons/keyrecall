@@ -480,14 +480,20 @@ class PracticeScopeResolver {
     final explicit = goal.curriculum;
     if (explicit != null) return explicit;
     final materialIds = goal.targetMaterialIds;
+    // A goal naming its materials lists them in its own order. One reaching
+    // for the whole catalog introduces it in the fluency order instead.
     final selected =
-        materialIds ?? {for (final material in catalog) material.materialId};
+        materialIds ??
+        {
+          for (final material in inIntroductionOrder(catalog))
+            material.materialId,
+        };
     final catalogById = {
       for (final material in catalog) material.materialId: material,
     };
     return Curriculum(
       id: goal.id,
-      version: '1',
+      version: materialIds == null ? '2' : '1',
       requirements: [
         for (final materialId in selected)
           CurriculumRequirement(
