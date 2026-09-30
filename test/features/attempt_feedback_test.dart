@@ -57,7 +57,7 @@ void main() {
         termination: AttemptTermination.learnerStopped,
         outcome: result,
         weights: evidenceWeightsFor(played, result),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        memoryUpdate: MemoryUpdateDiagnostics(),
       ),
     );
   }

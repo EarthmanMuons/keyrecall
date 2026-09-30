@@ -21,6 +21,8 @@ class DecisionScope {
   /// The weight a focus put on each requirement it emphasized.
   final Map<String, double> emphasisByRequirementId;
 
+  /// Throws [ArgumentError] for an emphasis weight the focus could not have
+  /// carried: one that is not finite and greater than zero.
   DecisionScope({
     required this.goalId,
     required this.curriculumId,
@@ -30,7 +32,17 @@ class DecisionScope {
   }) : exclusiveRequirementIds = exclusiveRequirementIds == null
            ? null
            : Set.unmodifiable(exclusiveRequirementIds),
-       emphasisByRequirementId = Map.unmodifiable(emphasisByRequirementId);
+       emphasisByRequirementId = Map.unmodifiable(emphasisByRequirementId) {
+    for (final weight in emphasisByRequirementId.values) {
+      if (!weight.isFinite || weight <= 0) {
+        throw ArgumentError.value(
+          weight,
+          'emphasisByRequirementId',
+          'weights must be finite and greater than zero',
+        );
+      }
+    }
+  }
 
   @override
   bool operator ==(Object other) {

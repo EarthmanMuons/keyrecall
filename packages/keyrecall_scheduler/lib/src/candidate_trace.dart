@@ -449,7 +449,11 @@ class RankKey implements Comparable<RankKey> {
   /// need a boundary nobody can defend.
   final double realizationFit;
 
-  const RankKey({
+  /// Throws [ArgumentError] for a term outside what it measures: an urgency
+  /// outside zero to one, negative information, a positive count or distance
+  /// where each is a negated one, or anything non-finite, which would make
+  /// the ordering meaningless.
+  RankKey({
     required this.tier,
     required this.retention,
     this.coordinationTransition = false,
@@ -462,7 +466,27 @@ class RankKey implements Comparable<RankKey> {
     this.targetShapedGoal = false,
     this.realization = RealizationRank.unmeasured,
     this.realizationFit = 0,
-  });
+  }) {
+    if (!retention.isFinite || retention < 0 || retention > 1) {
+      throw ArgumentError.value(retention, 'retention', 'must be 0 to 1');
+    }
+    if (!information.isFinite || information < 0) {
+      throw ArgumentError.value(information, 'information', 'must be >= 0');
+    }
+    if (!diversity.isFinite || diversity > 0) {
+      throw ArgumentError.value(diversity, 'diversity', 'must be <= 0');
+    }
+    if (!goals.isFinite) {
+      throw ArgumentError.value(goals, 'goals', 'must be finite');
+    }
+    if (!realizationFit.isFinite || realizationFit > 0) {
+      throw ArgumentError.value(
+        realizationFit,
+        'realizationFit',
+        'must be <= 0',
+      );
+    }
+  }
 
   @override
   int compareTo(RankKey other) => RankTolerances.exact.compare(this, other);

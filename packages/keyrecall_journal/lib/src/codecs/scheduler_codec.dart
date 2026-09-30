@@ -49,7 +49,8 @@ class SchedulerDecision {
   /// The lexicographic key it won on.
   final RankKey rankKey;
 
-  const SchedulerDecision({
+  /// Throws [ArgumentError] for a band that is not a range of probabilities.
+  SchedulerDecision({
     required this.prediction,
     required this.eligibilityTier,
     required this.eligibilityReason,
@@ -60,7 +61,23 @@ class SchedulerDecision {
     this.challengeFloorReason,
     required this.challengeBypass,
     required this.rankKey,
-  });
+  }) {
+    for (final (name, edge) in [
+      ('challengeBandMin', challengeBandMin),
+      ('challengeBandMax', challengeBandMax),
+    ]) {
+      if (!edge.isFinite || edge < 0 || edge > 1) {
+        throw ArgumentError.value(edge, name, 'must be 0 to 1');
+      }
+    }
+    if (challengeBandMin > challengeBandMax) {
+      throw ArgumentError.value(
+        challengeBandMin,
+        'challengeBandMin',
+        'must not exceed challengeBandMax $challengeBandMax',
+      );
+    }
+  }
 
   /// The decision behind a selected [trace], under [config].
   factory SchedulerDecision.fromTrace(

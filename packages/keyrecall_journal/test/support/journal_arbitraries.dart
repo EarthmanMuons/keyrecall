@@ -91,6 +91,15 @@ final Arbitrary<double> anyFinite = weighted<double>([
   (1, choiceOf([-0.0, 1e-300, -1e300, 2.5, 9007199254740993.0])),
 ]);
 
+/// A finite magnitude that is zero or more, including the smallest subnormal.
+final Arbitrary<double> anyNonnegative = anyFinite.map((value) => value.abs());
+
+/// A finite weight greater than zero.
+final Arbitrary<double> anyPositive = weighted<double>([
+  (6, float(min: 1e-9, max: 1e6)),
+  (1, choiceOf([5e-324, 1.0, 1e300])),
+]);
+
 final Arbitrary<int> anyCount = weighted<int>([
   (6, integer(min: 0, max: 100000)),
   (1, choiceOf([0, 1, 9007199254740991])),
@@ -305,11 +314,11 @@ final Arbitrary<RankKey> anyRankKey =
     combine2(
       combine8(
         choiceOf(EligibilityTier.values),
-        anyFinite,
+        anyScore,
         boolean(),
         boolean(),
-        anyFinite,
-        anyFinite,
+        anyNonnegative,
+        anyNonnegative.map((count) => -count),
         anyFinite,
         boolean(),
       ),
@@ -317,7 +326,7 @@ final Arbitrary<RankKey> anyRankKey =
         boolean(),
         boolean(),
         choiceOf(RealizationRank.values),
-        anyFinite,
+        anyNonnegative.map((distance) => -distance),
       ),
     ).map((parts) {
       final (
@@ -369,8 +378,8 @@ final Arbitrary<SchedulerDecision> anyDecision =
         eligibilityReason: reason,
         safetyReason: safety,
         withinChallengeBand: within,
-        challengeBandMin: low,
-        challengeBandMax: high,
+        challengeBandMin: low < high ? low : high,
+        challengeBandMax: low < high ? high : low,
         challengeFloorReason: floor,
         challengeBypass: parts.$2.$1,
         rankKey: parts.$2.$2,
@@ -383,7 +392,7 @@ final Arbitrary<DecisionScope> anyScope =
       anyText,
       anyText,
       optional(list(anyText, maxLength: 6)),
-      list(combine2(anyText, anyFinite), maxLength: 6),
+      list(combine2(anyText, anyPositive), maxLength: 6),
     ).map(
       (parts) => DecisionScope(
         goalId: parts.$1,

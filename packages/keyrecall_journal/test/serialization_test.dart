@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
+import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 import 'package:test/test.dart';
 
 import 'package:keyrecall_journal/keyrecall_journal.dart';
@@ -64,7 +65,7 @@ void main() {
           termination: AttemptTermination.learnerStopped,
           outcome: outcome,
           weights: evidenceWeightsFor(exercise, outcome),
-          memoryUpdate: const MemoryUpdateDiagnostics(),
+          memoryUpdate: MemoryUpdateDiagnostics(),
         ),
       );
 
@@ -101,7 +102,7 @@ void main() {
             termination: AttemptTermination.learnerStopped,
             outcome: outcome,
             weights: evidenceWeightsFor(exercise, outcome),
-            memoryUpdate: const MemoryUpdateDiagnostics(),
+            memoryUpdate: MemoryUpdateDiagnostics(),
           ),
         );
         final reread = AttemptRecord.fromJson(
@@ -144,7 +145,7 @@ void main() {
             termination: AttemptTermination.learnerStopped,
             outcome: outcome,
             weights: evidenceWeightsFor(exercise, outcome),
-            memoryUpdate: const MemoryUpdateDiagnostics(),
+            memoryUpdate: MemoryUpdateDiagnostics(),
           ),
         );
       }
@@ -296,7 +297,7 @@ void main() {
             termination: AttemptTermination.learnerStopped,
             outcome: outcome,
             weights: evidenceWeightsFor(exercise, outcome),
-            memoryUpdate: const MemoryUpdateDiagnostics(),
+            memoryUpdate: MemoryUpdateDiagnostics(),
           ),
         );
       }
@@ -304,6 +305,21 @@ void main() {
       AttemptRecord reread(AttemptRecord record) => AttemptRecord.fromJson(
         jsonDecode(jsonEncode(record.toJson())) as Map<String, Object?>,
       );
+
+      test('refuses an emphasis a focus could not carry', () {
+        for (final weight in [0.0, -1.0, double.nan, double.infinity]) {
+          expect(
+            () => DecisionScope(
+              goalId: 'FOUNDATIONS',
+              curriculumId: 'curriculum',
+              curriculumVersion: '1',
+              emphasisByRequirementId: {'C_MAJOR': weight},
+            ),
+            throwsArgumentError,
+            reason: '$weight',
+          );
+        }
+      });
 
       test('the goal and a focus survive', () {
         final scope = DecisionScope(
@@ -392,7 +408,7 @@ void main() {
           termination: AttemptTermination.learnerStopped,
           outcome: outcome,
           weights: evidenceWeightsFor(exercise, outcome),
-          memoryUpdate: const MemoryUpdateDiagnostics(),
+          memoryUpdate: MemoryUpdateDiagnostics(),
         ),
       );
 
@@ -402,6 +418,53 @@ void main() {
       expect(reread.identity.occurredAt, precise);
       expect(reread.identity.occurredAt.microsecond, 9);
       expect(reread.identity.occurredAt.isUtc, isTrue);
+    });
+  });
+
+  group('a decision', () {
+    SchedulerDecision decision({required double low, required double high}) =>
+        SchedulerDecision(
+          prediction: Prediction(
+            independentRetrievalP: 0.5,
+            materialAvailableP: 0.5,
+            executionP: 0.5,
+            coordinationP: 0.5,
+            topologyP: 0.5,
+          ),
+          eligibilityTier: EligibilityTier.fullyEligible,
+          eligibilityReason: null,
+          safetyReason: 'safe',
+          withinChallengeBand: true,
+          challengeBandMin: low,
+          challengeBandMax: high,
+          challengeBypass: null,
+          rankKey: RankKey(
+            tier: EligibilityTier.fullyEligible,
+            retention: 0,
+            information: 0,
+            diversity: 0,
+            goals: 0,
+          ),
+        );
+
+    test('accepts a band of one probability', () {
+      expect(decision(low: 0.6, high: 0.6).challengeBandMax, 0.6);
+    });
+
+    test('refuses a band that is not a range of probabilities', () {
+      for (final (low, high) in [
+        (-0.1, 0.9),
+        (0.6, 1.1),
+        (0.9, 0.6),
+        (double.nan, 0.9),
+        (0.6, double.infinity),
+      ]) {
+        expect(
+          () => decision(low: low, high: high),
+          throwsArgumentError,
+          reason: '$low to $high',
+        );
+      }
     });
   });
 
@@ -424,7 +487,7 @@ void main() {
           termination: AttemptTermination.learnerStopped,
           outcome: outcome,
           weights: evidenceWeightsFor(exercise, outcome),
-          memoryUpdate: const MemoryUpdateDiagnostics(),
+          memoryUpdate: MemoryUpdateDiagnostics(),
         ),
       ).toJson();
     }
@@ -475,6 +538,40 @@ void main() {
         () => AttemptRecord.fromJson(json),
         throwsA(isA<JournalFormatException>()),
       );
+    });
+
+    test('on a decision term outside what it measures', () {
+      final decided = recordSession().journal.records.first.toJson();
+      Map<String, Object?> withDecision(
+        Map<String, Object?> Function(Map<String, Object?>) change,
+      ) => {
+        ...decided,
+        'decision': change(decided['decision']! as Map<String, Object?>),
+      };
+
+      for (final json in [
+        withDecision(
+          (decision) => {
+            ...decision,
+            'rank_key': {
+              ...decision['rank_key']! as Map<String, Object?>,
+              'diversity': 1.0,
+            },
+          },
+        ),
+        withDecision(
+          (decision) => {
+            ...decision,
+            'challenge_band_min': 0.95,
+            'challenge_band_max': 0.9,
+          },
+        ),
+      ]) {
+        expect(
+          () => AttemptRecord.fromJson(json),
+          throwsA(isA<JournalFormatException>()),
+        );
+      }
     });
 
     test('on a malformed nested value, with the same exception type', () {

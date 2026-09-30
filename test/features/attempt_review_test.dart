@@ -47,7 +47,7 @@ void main() {
     challengeBandMin: 0.4,
     challengeBandMax: 0.7,
     challengeBypass: bypass,
-    rankKey: const RankKey(
+    rankKey: RankKey(
       tier: EligibilityTier.fullyEligible,
       retention: 0,
       information: 0,
@@ -292,7 +292,7 @@ void main() {
         termination: AttemptTermination.learnerStopped,
         outcome: outcome,
         weights: evidenceWeightsFor(previous, outcome),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        memoryUpdate: MemoryUpdateDiagnostics(),
       ),
     );
     var transcript = PerformanceTranscript.empty;

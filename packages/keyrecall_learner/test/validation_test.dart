@@ -114,6 +114,29 @@ void main() {
     });
   });
 
+  group('MemoryUpdateDiagnostics', () {
+    test('rejects a change that is not a number', () {
+      for (final bad in [
+        double.nan,
+        double.infinity,
+        double.negativeInfinity,
+      ]) {
+        expect(
+          () => MemoryUpdateDiagnostics(
+            consolidationDeltaFromRetrievalInference: bad,
+          ),
+          throwsArgumentError,
+        );
+        expect(
+          () => MemoryUpdateDiagnostics(
+            consolidationDeltaFromCausalFormation: bad,
+          ),
+          throwsArgumentError,
+        );
+      }
+    });
+  });
+
   group('parameter bounds', () {
     test('the shipped registry satisfies its own assertions', () {
       // Both registries are const, so these assertions are checked when the

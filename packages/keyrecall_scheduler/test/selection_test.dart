@@ -52,14 +52,14 @@ void main() {
 
   group('RankKey ordering', () {
     test('the tier decides before any other term', () {
-      const provisional = RankKey(
+      final provisional = RankKey(
         tier: EligibilityTier.provisionallyEligible,
         retention: 1.0,
         information: 1.0,
-        diversity: 1.0,
+        diversity: 0.0,
         goals: 1.0,
       );
-      const fully = RankKey(
+      final fully = RankKey(
         tier: EligibilityTier.fullyEligible,
         retention: 0.0,
         information: 0.0,
@@ -73,7 +73,7 @@ void main() {
       RankKey key({
         double retention = 0.0,
         double information = 0.0,
-        double diversity = 0.0,
+        double diversity = -1.0,
         double goals = 0.0,
       }) => RankKey(
         tier: EligibilityTier.fullyEligible,
@@ -84,9 +84,45 @@ void main() {
       );
 
       expect(key(retention: 1).compareTo(key(information: 1)), greaterThan(0));
-      expect(key(information: 1).compareTo(key(diversity: 1)), greaterThan(0));
-      expect(key(diversity: 1).compareTo(key(goals: 1)), greaterThan(0));
+      expect(key(information: 1).compareTo(key(diversity: 0)), greaterThan(0));
+      expect(key(diversity: 0).compareTo(key(goals: 1)), greaterThan(0));
       expect(key().compareTo(key()), 0);
+    });
+
+    test('refuses a term outside what it measures', () {
+      RankKey key({
+        double retention = 0.5,
+        double information = 0.5,
+        double diversity = -1,
+        double goals = 0,
+        double realizationFit = 0,
+      }) => RankKey(
+        tier: EligibilityTier.fullyEligible,
+        retention: retention,
+        information: information,
+        diversity: diversity,
+        goals: goals,
+        realizationFit: realizationFit,
+      );
+
+      for (final build in <RankKey Function()>[
+        () => key(retention: -0.01),
+        () => key(retention: 1.01),
+        () => key(information: -1),
+        () => key(diversity: 1),
+        () => key(realizationFit: 1),
+        for (final bad in [double.nan, double.infinity])
+          for (final term in <RankKey Function(double)>[
+            (value) => key(retention: value),
+            (value) => key(information: value),
+            (value) => key(diversity: -value),
+            (value) => key(goals: value),
+            (value) => key(realizationFit: -value),
+          ])
+            () => term(bad),
+      ]) {
+        expect(build, throwsArgumentError);
+      }
     });
   });
 

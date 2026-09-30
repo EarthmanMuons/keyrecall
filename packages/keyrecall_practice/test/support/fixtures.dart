@@ -289,7 +289,7 @@ AttemptRecord recordOf(
             termination: termination,
             outcome: measured,
             weights: evidenceWeightsFor(exercise, measured),
-            memoryUpdate: const MemoryUpdateDiagnostics(),
+            memoryUpdate: MemoryUpdateDiagnostics(),
           )
         : AttemptClosure.unmeasured(
             termination: termination,

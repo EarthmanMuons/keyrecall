@@ -224,7 +224,7 @@ CandidateTrace _trace(
   challengeBypass: bypass,
   challengeSurvived: true,
   priorityStatus: StageStatus.reached,
-  rankKey: const RankKey(
+  rankKey: RankKey(
     tier: EligibilityTier.fullyEligible,
     coordinationTransition: false,
     retention: 0,

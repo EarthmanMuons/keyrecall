@@ -71,7 +71,7 @@ void main() {
         termination: AttemptTermination.learnerStopped,
         outcome: outcome,
         weights: evidenceWeightsFor(parent, outcome),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        memoryUpdate: MemoryUpdateDiagnostics(),
       ),
       AttemptClosure.unmeasured(
         termination: AttemptTermination.inputInterrupted,
@@ -120,7 +120,7 @@ void main() {
         termination: AttemptTermination.learnerStopped,
         outcome: outcome,
         weights: evidenceWeightsFor(exercise, outcome),
-        memoryUpdate: const MemoryUpdateDiagnostics(),
+        memoryUpdate: MemoryUpdateDiagnostics(),
       );
     }
 

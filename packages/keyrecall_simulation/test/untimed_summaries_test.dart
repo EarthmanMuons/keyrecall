@@ -213,7 +213,7 @@ TrajectorySlot _slotOf(
       challengeBypass: null,
       challengeSurvived: true,
       priorityStatus: StageStatus.reached,
-      rankKey: const RankKey(
+      rankKey: RankKey(
         tier: EligibilityTier.fullyEligible,
         coordinationTransition: false,
         retention: 0,

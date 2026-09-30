@@ -185,7 +185,7 @@ TrajectorySlot _slot(
 }
 
 CandidateTrace _trace(Exercise exercise, {ChallengeBypass? bypass}) {
-  const rank = RankKey(
+  final rank = RankKey(
     tier: EligibilityTier.fullyEligible,
     retention: 0,
     information: 0,

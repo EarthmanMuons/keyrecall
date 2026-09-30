@@ -202,7 +202,7 @@ void main() {
               termination: AttemptTermination.learnerStopped,
               outcome: outcome,
               weights: evidenceWeightsFor(exercise, outcome),
-              memoryUpdate: const MemoryUpdateDiagnostics(),
+              memoryUpdate: MemoryUpdateDiagnostics(),
             ),
           ),
         ),

@@ -53,7 +53,7 @@ void main() {
     termination: termination,
     outcome: outcome,
     weights: evidenceWeightsFor(of ?? exercise, outcome),
-    memoryUpdate: const MemoryUpdateDiagnostics(),
+    memoryUpdate: MemoryUpdateDiagnostics(),
   );
 
   AttemptDiagnosis diagnosisOf(

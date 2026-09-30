@@ -20,10 +20,26 @@ class MemoryUpdateDiagnostics {
   /// quality.
   final double consolidationDeltaFromCausalFormation;
 
-  const MemoryUpdateDiagnostics({
+  /// Throws [ArgumentError] for a change that is not finite.
+  MemoryUpdateDiagnostics({
     this.consolidationDeltaFromRetrievalInference = 0.0,
     this.consolidationDeltaFromCausalFormation = 0.0,
-  });
+  }) {
+    for (final (name, delta) in [
+      (
+        'consolidationDeltaFromRetrievalInference',
+        consolidationDeltaFromRetrievalInference,
+      ),
+      (
+        'consolidationDeltaFromCausalFormation',
+        consolidationDeltaFromCausalFormation,
+      ),
+    ]) {
+      if (!delta.isFinite) {
+        throw ArgumentError.value(delta, name, 'must be finite');
+      }
+    }
+  }
 
   @override
   bool operator ==(Object other) =>
