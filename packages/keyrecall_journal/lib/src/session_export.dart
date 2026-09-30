@@ -93,14 +93,45 @@ class SessionExport {
   /// could not answer it.
   final List<AcquisitionAttemptRecord> acquisition;
 
-  const SessionExport({
+  /// Throws [ArgumentError] when an attempt's index is not its position, or a
+  /// supported attempt belongs to another profile or session or began before
+  /// this one did.
+  SessionExport({
     required this.profileId,
     required this.sessionId,
     required this.startedAt,
     required this.attempts,
     this.acquisition = const [],
     this.schemaVersion = sessionExportSchemaVersion,
-  });
+  }) {
+    for (final (position, attempt) in attempts.indexed) {
+      if (attempt.index != position) {
+        throw ArgumentError.value(
+          attempt.index,
+          'attempts',
+          'the attempt at position $position must have index $position',
+        );
+      }
+    }
+    for (final record in acquisition) {
+      final identity = record.identity;
+      if (identity.profileId != profileId || identity.sessionId != sessionId) {
+        throw ArgumentError.value(
+          identity,
+          'acquisition',
+          'a supported attempt must come from session $sessionId of profile '
+              '$profileId',
+        );
+      }
+      if (identity.occurredAt.isBefore(startedAt)) {
+        throw ArgumentError.value(
+          identity.occurredAt,
+          'acquisition',
+          'a supported attempt cannot precede the session start $startedAt',
+        );
+      }
+    }
+  }
 }
 
 /// Writes [export] as JSON.

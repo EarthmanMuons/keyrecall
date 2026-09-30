@@ -55,6 +55,18 @@ void main() {
     expect(read.attempts.first.outcome.achievedTempoRatio, 1.1);
   });
 
+  test('an attempt is numbered by its place in the session', () {
+    expect(
+      () => SessionExport(
+        profileId: 'profile-1',
+        sessionId: 'session-1',
+        startedAt: DateTime.utc(2026, 9, 7, 10),
+        attempts: [export.attempts.last],
+      ),
+      throwsArgumentError,
+    );
+  });
+
   test('familiarity keeps its three answers apart', () {
     final read = decodeSessionExport(encodeSessionExport(export));
 
@@ -139,6 +151,51 @@ void main() {
       expect(held.completion, AcquisitionCompletion.completedWithCorrections);
       expect(held.repairs, 2);
       expect(held.gaps.single.gapMs, 3200);
+    });
+
+    test('belongs to the session it is exported with', () {
+      SessionExport exportOf({
+        String profileId = 'abc12345',
+        String sessionId = 'session-1',
+        DateTime? startedAt,
+      }) => SessionExport(
+        profileId: profileId,
+        sessionId: sessionId,
+        startedAt: startedAt ?? DateTime.utc(2026, 9, 9),
+        attempts: const [],
+        acquisition: [record],
+      );
+
+      expect(exportOf().acquisition, [record]);
+      expect(() => exportOf(profileId: 'other'), throwsArgumentError);
+      expect(() => exportOf(sessionId: 'session-2'), throwsArgumentError);
+      expect(
+        () => exportOf(startedAt: DateTime.utc(2026, 9, 10)),
+        throwsArgumentError,
+        reason: 'supported work cannot precede the session it is part of',
+      );
+    });
+
+    test('from another session is refused on reading', () {
+      final written =
+          jsonDecode(
+                  encodeSessionExport(
+                    SessionExport(
+                      profileId: 'abc12345',
+                      sessionId: 'session-1',
+                      startedAt: DateTime.utc(2026, 9, 9),
+                      attempts: const [],
+                      acquisition: [record],
+                    ),
+                  ),
+                )
+                as Map<String, Object?>
+            ..['session_id'] = 'session-2';
+
+      expect(
+        () => decodeSessionExport(jsonEncode(written)),
+        throwsA(isA<JournalFormatException>()),
+      );
     });
 
     test('an export written before it existed still reads', () {
