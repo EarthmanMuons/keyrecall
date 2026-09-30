@@ -33,11 +33,11 @@ run = "bin/test-from-upstream-test"
 
 [tasks."dart:format"]
 description = "Format Dart sources"
-run = "dart format lib test packages"
+run = "dart format ."
 
 [tasks."dart:format-check"]
 description = "Check Dart formatting"
-run = "dart format --set-exit-if-changed lib test packages"
+run = "dart format --output=none --set-exit-if-changed ."
 
 [tasks."dart:imports"]
 description = "Fix Dart import ordering in each package"
@@ -57,7 +57,7 @@ done
 
 [tasks."dart:analyze"]
 description = "Analyze Dart sources"
-run = "dart analyze"
+run = "dart analyze --fatal-infos"
 
 [tasks."dart:test"]
 description = "Run the package and app tests"

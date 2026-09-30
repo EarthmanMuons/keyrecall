@@ -21,9 +21,11 @@ Both packages are members of KeyRecall's Pub workspace. The app uses a relative
 path dependency, and workspace resolution also selects the vendored core for the
 Flutter package. No sibling checkout is required to build the app.
 
-Upstream files are not reformatted or import-sorted to KeyRecall's conventions.
-`mise dart:analyze` analyzes them with their own configuration, and
-`mise dart:test` runs both upstream test suites along with the app tests.
+Upstream files are not import-sorted to KeyRecall's conventions, but they are
+held to `dart format`, since CI checks formatting across the whole tree.
+`mise dart:analyze` analyzes them with their own configuration and fails on
+infos, as CI does, and `mise dart:test` runs both upstream test suites along
+with the app tests.
 
 ### Screenshot baselines
 
