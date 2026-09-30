@@ -53,11 +53,13 @@ class Exercise {
   /// The cues shown before or during the attempt.
   final GuidanceContext guidance;
 
+  final _MotorStructure _structure;
+
   /// The observable motor sites this exercise creates.
-  final Set<MotorOpportunity> opportunities;
+  Set<MotorOpportunity> get opportunities => _structure.opportunities;
 
   /// The exact hand and moment for each derived motor opportunity.
-  final Set<MotorOpportunitySite> opportunitySites;
+  Set<MotorOpportunitySite> get opportunitySites => _structure.sites;
 
   /// Rehydrates the motor structure persisted with a presented exercise.
   Exercise.recorded({
@@ -67,8 +69,7 @@ class Exercise {
     this.guidance = GuidanceContext.unguided,
     required Set<MotorOpportunity> opportunities,
     Set<MotorOpportunitySite> opportunitySites = const {},
-  }) : opportunities = Set.unmodifiable(opportunities),
-       opportunitySites = Set.unmodifiable(opportunitySites) {
+  }) : _structure = _MotorStructure(opportunities, opportunitySites) {
     final paths = handPathsFor(
       conditions,
       degreesPerOctave: material.topology.degreesPerOctave,
@@ -87,6 +88,16 @@ class Exercise {
       throw ArgumentError('every opportunity site must name a played moment');
     }
   }
+
+  /// A variant of [source] that shares its already validated motor structure,
+  /// which neither tempo nor guidance can change.
+  Exercise._variant(
+    Exercise source, {
+    required this.conditions,
+    required this.guidance,
+  }) : material = source.material,
+       pattern = source.pattern,
+       _structure = source._structure;
 
   /// A linear exercise with motor opportunities derived from its realization.
   factory Exercise.linear({
@@ -121,21 +132,15 @@ class Exercise {
   /// This exercise with [guidance] replaced and everything else held fixed.
   ///
   /// The only variation recovery and the probes are allowed to make.
-  Exercise withGuidance(GuidanceContext guidance) => Exercise.recorded(
-    material: material,
-    conditions: conditions,
-    pattern: pattern,
-    guidance: guidance,
-    opportunities: opportunities,
-    opportunitySites: opportunitySites,
-  );
+  Exercise withGuidance(GuidanceContext guidance) =>
+      Exercise._variant(this, conditions: conditions, guidance: guidance);
 
   /// This exercise at [tempoBpm], with everything else held fixed.
   ///
   /// The next tempo rung is learner-dependent, so no static candidate sits at
   /// it and the scheduler builds one from the shape beside it.
-  Exercise atTempo(double tempoBpm) => Exercise.recorded(
-    material: material,
+  Exercise atTempo(double tempoBpm) => Exercise._variant(
+    this,
     conditions: ExecutionConditions(
       hands: conditions.hands,
       octaves: conditions.octaves,
@@ -143,10 +148,7 @@ class Exercise {
       handMotion: conditions.handMotion,
       tempoBpm: tempoBpm,
     ),
-    pattern: pattern,
     guidance: guidance,
-    opportunities: opportunities,
-    opportunitySites: opportunitySites,
   );
 
   /// Whether [other] is the same motor task under different guidance.
@@ -154,11 +156,7 @@ class Exercise {
       material == other.material &&
       pattern == other.pattern &&
       conditions == other.conditions &&
-      _opportunitySetEquality.equals(opportunities, other.opportunities) &&
-      _opportunitySiteSetEquality.equals(
-        opportunitySites,
-        other.opportunitySites,
-      );
+      _structure.sameAs(other._structure);
 
   /// `Q[e,k]`: the competencies this exercise creates an opportunity to
   /// observe, generated from its composition.
@@ -181,19 +179,43 @@ class Exercise {
       other.guidance == guidance &&
       hasSameRealizationAs(other);
 
-  /// Computed once: scheduling hashes every candidate repeatedly, and two of
-  /// the six components are themselves set hashes.
+  /// Computed once: scheduling hashes every candidate repeatedly.
   @override
   late final int hashCode = Object.hash(
     material,
     pattern,
     conditions,
     guidance,
-    _opportunitySetEquality.hash(opportunities),
-    _opportunitySiteSetEquality.hash(opportunitySites),
+    _structure.opportunitiesHash,
+    _structure.sitesHash,
   );
 
   @override
   String toString() =>
       'Exercise(${material.materialId}, ${pattern.id}, $conditions, $guidance)';
+}
+
+/// The motor opportunities of an exercise, shared by its tempo and guidance
+/// variants so that comparing and hashing them happens once per shape.
+class _MotorStructure {
+  final Set<MotorOpportunity> opportunities;
+  final Set<MotorOpportunitySite> sites;
+
+  _MotorStructure(
+    Set<MotorOpportunity> opportunities,
+    Set<MotorOpportunitySite> sites,
+  ) : opportunities = Set.unmodifiable(opportunities),
+      sites = Set.unmodifiable(sites);
+
+  late final int opportunitiesHash = _opportunitySetEquality.hash(
+    opportunities,
+  );
+  late final int sitesHash = _opportunitySiteSetEquality.hash(sites);
+
+  bool sameAs(_MotorStructure other) =>
+      identical(this, other) ||
+      opportunitiesHash == other.opportunitiesHash &&
+          sitesHash == other.sitesHash &&
+          _opportunitySetEquality.equals(opportunities, other.opportunities) &&
+          _opportunitySiteSetEquality.equals(sites, other.sites);
 }

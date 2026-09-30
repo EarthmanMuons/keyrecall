@@ -71,22 +71,19 @@ List<Exercise> _presentationsOf(
   required ExerciseDirection direction,
   required HandMotion handMotion,
 }) {
-  final tempi = [
-    for (final tempoBpm in generatedTempi)
-      Exercise.linear(
-        material: material,
-        hands: hands,
-        octaves: octaves,
-        direction: direction,
-        handMotion: handMotion,
-        tempoBpm: tempoBpm,
-      ),
-  ];
-  if (!playableOn(instrument, tempi.first)) return const [];
+  final shape = Exercise.linear(
+    material: material,
+    hands: hands,
+    octaves: octaves,
+    direction: direction,
+    handMotion: handMotion,
+    tempoBpm: generatedTempi.first,
+  );
+  if (!playableOn(instrument, shape)) return const [];
   return [
-    for (final exercise in tempi)
+    for (final tempoBpm in generatedTempi)
       for (final guidance in GuidanceContext.ladder)
-        exercise.withGuidance(guidance),
+        shape.atTempo(tempoBpm).withGuidance(guidance),
   ];
 }
 
