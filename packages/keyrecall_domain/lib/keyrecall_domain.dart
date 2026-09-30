@@ -18,6 +18,7 @@ export 'src/exercise_fingering.dart';
 export 'src/fingering.dart';
 export 'src/guidance_context.dart';
 export 'src/hand_path.dart';
+export 'src/introduction_order.dart';
 export 'src/instrument_profile.dart';
 export 'src/material_topology.dart';
 export 'src/motor_opportunity.dart';
