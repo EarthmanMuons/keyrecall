@@ -10,8 +10,8 @@ printf '[user]\nname = "Test"\nemail = "test@example.com"\n[signing]\nbehavior =
 export JJ_CONFIG="$temporary/jj.toml"
 jj git init --quiet
 vendor=third_party/crisp_notation/packages
-mkdir -p packages/{a,b,c}/test packages/{a,b,bridge}/lib "$vendor/"{crisp_notation,crisp_notation_core}/{lib,test} lib test docs
-for directory in packages/{a,b,c} "$vendor/"{crisp_notation,crisp_notation_core} .; do
+mkdir -p packages/{a,b,c,sim}/test packages/{a,b,bridge}/lib "$vendor/"{crisp_notation,crisp_notation_core}/{lib,test} lib test docs
+for directory in packages/{a,b,c,sim} "$vendor/"{crisp_notation,crisp_notation_core} .; do
 	echo 'fixture' >"$directory/test/fixture_test.dart"
 done
 echo 'app fixture' >lib/app.dart
@@ -22,6 +22,7 @@ printf 'name: b\ndependencies:\n  bridge: any\n' >packages/b/pubspec.yaml
 printf 'name: bridge\ndependencies:\n  a: any\n' >packages/bridge/pubspec.yaml
 echo 'bridge' >packages/bridge/lib/source.dart
 printf 'name: c\ndev_dependencies:\n  b: any\n' >packages/c/pubspec.yaml
+printf 'name: keyrecall_simulation\n' >packages/sim/pubspec.yaml
 printf 'name: crisp_notation\ndependencies:\n  flutter:\n    sdk: flutter\n  crisp_notation_core: any\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\n' >"$vendor/crisp_notation/pubspec.yaml"
 printf 'name: crisp_notation_core\n' >"$vendor/crisp_notation_core/pubspec.yaml"
 echo 'notation' >"$vendor/crisp_notation/lib/source.dart"
@@ -43,7 +44,7 @@ reset_fixture() {
 }
 
 chain_packages=$'packages/a\npackages/b\npackages/c\n.'
-all_packages=$'packages/a\npackages/b\npackages/c\nthird_party/crisp_notation/packages/crisp_notation\nthird_party/crisp_notation/packages/crisp_notation_core\n.'
+all_packages=$'packages/a\npackages/b\npackages/c\npackages/sim\nthird_party/crisp_notation/packages/crisp_notation\nthird_party/crisp_notation/packages/crisp_notation_core\n.'
 assert_plan 'No affected test suites.'
 echo 'documentation' >docs/guide.md
 assert_plan 'No affected test suites.'
@@ -126,7 +127,10 @@ export PATH="$temporary/runners:$PATH"
 export RUNNER_LOG="$temporary/runners.log"
 bin/test-from-upstream --all >"$temporary/output"
 sort "$RUNNER_LOG" >"$temporary/actual"
-printf 'dart a test\ndart b test\ndart c test\ndart crisp_notation_core test\nflutter crisp_notation test\nflutter repository test\n' >"$temporary/expected"
+printf '%s\n' 'dart a test' 'dart b test' 'dart c test' 'dart crisp_notation_core test' \
+	'dart sim test --total-shards 3 --shard-index 0' 'dart sim test --total-shards 3 --shard-index 1' \
+	'dart sim test --total-shards 3 --shard-index 2' \
+	'flutter crisp_notation test' 'flutter repository test' >"$temporary/expected"
 diff -u "$temporary/expected" "$temporary/actual"
 export FAIL_PACKAGE=c
 if bin/test-from-upstream --all >"$temporary/output"; then
@@ -134,6 +138,12 @@ if bin/test-from-upstream --all >"$temporary/output"; then
 	exit 1
 fi
 grep -q 'FAIL  packages/c' "$temporary/output"
+export FAIL_PACKAGE=sim
+if bin/test-from-upstream --all >"$temporary/output"; then
+	echo 'Expected a failed shard to fail the command' >&2
+	exit 1
+fi
+grep -q 'FAIL  packages/sim' "$temporary/output"
 if bin/test-from-upstream --base missing --dry-run >"$temporary/output" 2>&1; then
 	echo 'Expected a missing base to fail the command' >&2
 	exit 1

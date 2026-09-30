@@ -124,12 +124,33 @@ if [[ ${#selected[@]} -eq 0 ]]; then
 fi
 "$dry_run" && exit 0
 
+# Tests within a file run serially, so a suite whose slowest file outlasts the
+# rest of the run is split across processes.
+shards_for() {
+	case "$1" in
+	keyrecall_simulation) echo 3 ;;
+	*) echo 1 ;;
+	esac
+}
+
 run_tests() {
 	local index=$1 directory=${directories[$1]} runner=dart status=0 started=$SECONDS
+	local shards shard shard_pids=()
 	if [[ ${dependencies[index]} == *" flutter "* || ${dependencies[index]} == *" flutter_test "* ]]; then
 		runner=flutter
 	fi
-	(cd "$directory" && "$runner" test) || status=$?
+	shards=$(shards_for "${names[index]}")
+	if ((shards == 1)); then
+		(cd "$directory" && "$runner" test) || status=$?
+	else
+		for ((shard = 0; shard < shards; shard++)); do
+			(cd "$directory" && "$runner" test --total-shards "$shards" --shard-index "$shard") &
+			shard_pids+=("$!")
+		done
+		for pid in "${shard_pids[@]}"; do
+			wait "$pid" || status=1
+		done
+	fi
 	printf '%s\t%s\t%s\n' "$((SECONDS - started))" "$status" "$directory" >"$temporary/$index.result"
 	return "$status"
 }
