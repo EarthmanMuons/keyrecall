@@ -332,4 +332,47 @@ void main() {
       );
     });
   });
+
+  group('introduction order', () {
+    // Two unpractised materials tie on every rank term, and the tie falls to
+    // candidate order. These are what make that order the curriculum's.
+    List<String> firstAppearances(Iterable<String> materialIds) =>
+        {...materialIds}.toList();
+
+    List<String> authoredOrder(String goalId) {
+      final curriculum = supportedGoals[goalId]!.curriculum;
+      return firstAppearances(
+        curriculum == null
+            ? inIntroductionOrder(catalog).map((m) => m.materialId)
+            : curriculum.requirements.map((r) => r.materialId),
+      );
+    }
+
+    for (final goalId in supportedGoals.keys) {
+      test(
+        '$goalId resolves its materials in the order it introduces them',
+        () {
+          expect(
+            firstAppearances(
+              resolved(goalId).requirements.map((r) => r.material.materialId),
+            ),
+            authoredOrder(goalId),
+          );
+        },
+      );
+
+      test('$goalId generates candidates in that order', () {
+        final scope = resolved(goalId);
+        final candidates = candidatesDueIn(scope, [
+          for (final requirement in scope.requirements)
+            requirement.requirement.id,
+        ]);
+
+        expect(
+          firstAppearances(candidates.map((e) => e.material.materialId)),
+          authoredOrder(goalId),
+        );
+      });
+    }
+  });
 }
