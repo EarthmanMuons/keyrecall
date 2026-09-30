@@ -26,6 +26,20 @@ class MemoryUpdateDiagnostics {
   });
 
   @override
+  bool operator ==(Object other) =>
+      other is MemoryUpdateDiagnostics &&
+      other.consolidationDeltaFromRetrievalInference ==
+          consolidationDeltaFromRetrievalInference &&
+      other.consolidationDeltaFromCausalFormation ==
+          consolidationDeltaFromCausalFormation;
+
+  @override
+  int get hashCode => Object.hash(
+    consolidationDeltaFromRetrievalInference,
+    consolidationDeltaFromCausalFormation,
+  );
+
+  @override
   String toString() =>
       'MemoryUpdateDiagnostics(inference: '
       '${consolidationDeltaFromRetrievalInference.toStringAsFixed(4)}d, '
