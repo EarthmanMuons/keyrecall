@@ -3,6 +3,8 @@ import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
+import 'support/seed_budget.dart';
+
 void main() {
   final materials = <TechnicalMaterial>[
     v1ScaleCatalog.first,
@@ -11,10 +13,10 @@ void main() {
 
   test('mixed-family trajectories preserve structural invariants', () {
     final selectedFamilies = <String>{};
-    final found = <Anomaly>[];
+    final found = <String>[];
 
     for (final player in PlayerArchetypes.all) {
-      for (var seed = 0; seed < 3; seed++) {
+      for (var seed = 0; seed < seedBudget(3); seed++) {
         final trajectory = runTrajectory(
           player: player,
           seed: seed,
@@ -24,13 +26,12 @@ void main() {
         selectedFamilies.addAll(
           trajectory.slots.map((slot) => slot.chosen.material.familyId),
         );
-        found.addAll(
-          detectAnomalies(trajectory, requestedSlots: 40).where(
-            (anomaly) =>
-                anomaly.severity == AnomalySeverity.invariant &&
-                anomaly.detector != 'session_ran_dry',
-          ),
-        );
+        found.addAll([
+          for (final anomaly in detectAnomalies(trajectory, requestedSlots: 40))
+            if (anomaly.severity == AnomalySeverity.invariant &&
+                anomaly.detector != 'session_ran_dry')
+              '${player.id} seed $seed: ${anomaly.summary}\n${anomaly.census}',
+        ]);
         final terminal = trajectory.terminal;
         if (terminal != null) {
           expect(terminal.selectable, isEmpty);
@@ -39,11 +40,7 @@ void main() {
       }
     }
 
-    expect(
-      found,
-      isEmpty,
-      reason: found.map((a) => '${a.summary}\n${a.census}').join('\n\n'),
-    );
+    expect(found, isEmpty, reason: found.join('\n\n'));
     expect(selectedFamilies, {
       TechnicalMaterial.scaleFamilyId,
       TechnicalMaterial.arpeggioFamilyId,

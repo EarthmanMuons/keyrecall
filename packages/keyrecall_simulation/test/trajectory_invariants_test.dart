@@ -3,6 +3,8 @@ import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
+import 'support/seed_budget.dart';
+
 /// Properties the scheduler must hold for every kind of player.
 ///
 /// Invariants only. The observational detectors are counts against thresholds
@@ -11,14 +13,27 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// and read, not enforced.
 ///
 /// A handful of seeds on the small catalog, because this runs on every commit.
-/// The wide search is the sweep's job.
+/// `KEYRECALL_SEED_SCALE` widens it on demand; the widest search is the
+/// sweep's job.
 void main() {
-  const seeds = 6;
+  final seeds = seedBudget(6);
   const slots = 40;
+
+  Iterable<String> invariantsBroken(
+    Trajectory trajectory, {
+    required int requestedSlots,
+  }) => [
+    for (final anomaly in detectAnomalies(
+      trajectory,
+      requestedSlots: requestedSlots,
+    ))
+      if (anomaly.severity == AnomalySeverity.invariant)
+        'seed ${trajectory.seed}: ${anomaly.summary}\n${anomaly.census}',
+  ];
 
   for (final player in PlayerArchetypes.all) {
     test('${player.id} trips no structural invariant', () {
-      final found = <Anomaly>[];
+      final found = <String>[];
       for (var seed = 0; seed < seeds; seed++) {
         final pacing = PacingLog();
         final trajectory = runTrajectory(
@@ -28,12 +43,7 @@ void main() {
           slots: slots,
           observePacing: (_, decision) => pacing.record(decision),
         );
-        found.addAll(
-          detectAnomalies(
-            trajectory,
-            requestedSlots: slots,
-          ).where((a) => a.severity == AnomalySeverity.invariant),
-        );
+        found.addAll(invariantsBroken(trajectory, requestedSlots: slots));
         for (final slot in trajectory.slots) {
           expect(
             slot.winner.isRanked,
@@ -54,11 +64,7 @@ void main() {
         }
       }
 
-      expect(
-        found,
-        isEmpty,
-        reason: found.map((a) => '${a.summary}\n${a.census}').join('\n\n'),
-      );
+      expect(found, isEmpty, reason: found.join('\n\n'));
     });
 
     test('${player.id} trips no structural invariant across months', () {
@@ -66,14 +72,14 @@ void main() {
       // than one unbroken run: what decays between them is the only
       // difference, and nothing about a break makes a defect acceptable. The
       // month of short sessions is where dose control contracts a family.
-      final found = <Anomaly>[];
+      final found = <String>[];
       for (final (sessions, seeds) in [
-        (sessionsOnDays([0, 2, 9, 30, 90], slots: 8), 3),
-        (LongitudinalSchedules.named('normal_month', slots: 12), 1),
+        (sessionsOnDays([0, 2, 9, 30, 90], slots: 8), seedBudget(3)),
+        (LongitudinalSchedules.named('normal_month', slots: 12), seedBudget(1)),
       ]) {
         for (var seed = 0; seed < seeds; seed++) {
           found.addAll(
-            detectAnomalies(
+            invariantsBroken(
               runTrajectorySessions(
                 player: player,
                 seed: seed,
@@ -84,16 +90,12 @@ void main() {
                 0,
                 (sum, session) => sum + session.slots,
               ),
-            ).where((a) => a.severity == AnomalySeverity.invariant),
+            ),
           );
         }
       }
 
-      expect(
-        found,
-        isEmpty,
-        reason: found.map((a) => '${a.summary}\n${a.census}').join('\n\n'),
-      );
+      expect(found, isEmpty, reason: found.join('\n\n'));
     });
   }
 

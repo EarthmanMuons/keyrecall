@@ -155,7 +155,10 @@ distinguishable at all.
 Simulation is the fastest way to find out whether a scheduler change is sane.
 `packages/keyrecall_simulation/bin/sweep.dart` runs every synthetic player over
 many seeds and reports what went wrong; the invariant tests run a handful of
-seeds on every commit.
+seeds on every commit. Set `KEYRECALL_SEED_SCALE` to multiply those seeds for a
+wider search, for example
+`KEYRECALL_SEED_SCALE=10 dart test test/trajectory_invariants_test.dart` in
+`packages/keyrecall_simulation`. Every finding names the seed that produced it.
 
 ## Which document is authoritative
 
