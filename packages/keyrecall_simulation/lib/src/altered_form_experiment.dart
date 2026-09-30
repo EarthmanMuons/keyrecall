@@ -633,6 +633,7 @@ class _StateRecordingPipeline extends SchedulerPipeline {
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+    bool diagnose = true,
   }) {
     lastState = state;
     return super.evaluateSlot(
@@ -651,6 +652,7 @@ class _StateRecordingPipeline extends SchedulerPipeline {
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
       demonstratedShapes: demonstratedShapes,
+      diagnose: diagnose,
     );
   }
 }

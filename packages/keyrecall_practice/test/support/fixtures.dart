@@ -175,6 +175,7 @@ class AlwaysOffersAcquisition extends SchedulerPipeline {
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+    bool diagnose = true,
   }) {
     final slot = super.evaluateSlot(
       state: state,
@@ -192,6 +193,7 @@ class AlwaysOffersAcquisition extends SchedulerPipeline {
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
       demonstratedShapes: demonstratedShapes,
+      diagnose: diagnose,
     );
     final floor = (acquisitionFamilyFloor ?? acquisitionFloor)?.entries.first;
     if (floor == null) return slot;

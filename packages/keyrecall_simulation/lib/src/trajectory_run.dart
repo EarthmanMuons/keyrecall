@@ -180,6 +180,7 @@ Trajectory runTrajectorySessions({
         candidates: candidates,
         at: at,
         acquisitionFloor: acquisitionFloor,
+        diagnose: false,
       );
       final selection = slotEvaluation.result;
       observePacing?.call(index, selection.pacing);

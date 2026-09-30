@@ -303,6 +303,7 @@ class _TimedPipeline extends SchedulerPipeline {
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+    bool diagnose = true,
   }) {
     lastGenerated = candidates.length;
     _watch
@@ -324,6 +325,7 @@ class _TimedPipeline extends SchedulerPipeline {
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
       demonstratedShapes: demonstratedShapes,
+      diagnose: diagnose,
     );
     _watch.stop();
     lastDecide = _watch.elapsed;

@@ -295,6 +295,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+    bool diagnose = true,
   }) {
     _generated = candidates.length;
     _decide.start();
@@ -314,6 +315,7 @@ class _ProfilingPipeline extends SchedulerPipeline {
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
       demonstratedShapes: demonstratedShapes,
+      diagnose: diagnose,
     );
     _decide.stop();
     return slot;

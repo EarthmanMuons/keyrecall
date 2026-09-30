@@ -452,6 +452,7 @@ class _RecordingPipeline extends SchedulerPipeline {
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+    bool diagnose = true,
   }) {
     lastState = state;
     final slot = super.evaluateSlot(
@@ -470,6 +471,7 @@ class _RecordingPipeline extends SchedulerPipeline {
       emphasis: emphasis,
       uncoveredTargets: uncoveredTargets,
       demonstratedShapes: demonstratedShapes,
+      diagnose: diagnose,
     );
     lastSelection = slot.result;
     return slot;

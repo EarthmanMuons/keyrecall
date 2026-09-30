@@ -340,6 +340,9 @@ class SchedulerPipeline {
   /// bookkeeping to the one it owns. A worker isolate sees a copy by
   /// construction, and the two facts below are the whole of what deciding
   /// changes about a session.
+  ///
+  /// A caller that never reads [SelectionResult.diagnostics] can pass
+  /// [diagnose] false to skip building them, which changes nothing else.
   ({
     SelectionResult result,
     bool guidanceProbeAvailable,
@@ -361,6 +364,7 @@ class SchedulerPipeline {
     GoalEmphasis emphasis = GoalEmphasis.none,
     UncoveredTargets uncoveredTargets = UncoveredTargets.none,
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+    bool diagnose = true,
   }) {
     final entryPolicy =
         practiceEntryPolicy ??
@@ -510,23 +514,25 @@ class SchedulerPipeline {
             executionEvidenceRevisions: executionEvidenceRevisions,
           );
 
-    final diagnostics = selectionDiagnostics(
-      traces: traces,
-      stages: narrowed.stages,
-      winner: selected,
-      state: state,
-      pacing: narrowed.pacing.disposition.name,
-      introductions:
-          '${narrowed.introductions.disposition.name} unresolved=${narrowed.introductions.unresolved}',
-      freshProbe: session.tempoProbeIsFresh,
-      tempoProbe: session.tempoProbe,
-      guidanceService:
-          overdueGuidanceProbe(narrowed.selectable, session) != null,
-      acquisitionFallback: acquisitionFallback,
-      acquisitionOffered: offer != null,
-      probesOwed: owedProbes.length,
-      probeServed: servedProbe != null,
-    );
+    final diagnostics = !diagnose
+        ? ''
+        : selectionDiagnostics(
+            traces: traces,
+            stages: narrowed.stages,
+            winner: selected,
+            state: state,
+            pacing: narrowed.pacing.disposition.name,
+            introductions:
+                '${narrowed.introductions.disposition.name} unresolved=${narrowed.introductions.unresolved}',
+            freshProbe: session.tempoProbeIsFresh,
+            tempoProbe: session.tempoProbe,
+            guidanceService:
+                overdueGuidanceProbe(narrowed.selectable, session) != null,
+            acquisitionFallback: acquisitionFallback,
+            acquisitionOffered: offer != null,
+            probesOwed: owedProbes.length,
+            probeServed: servedProbe != null,
+          );
     // Served past the preferences that narrowed the slot, so it joins the
     // selectable set rather than being chosen from outside it.
     final selectable =
