@@ -199,6 +199,20 @@ Future<void> main(List<String> arguments) async {
         ..sort((a, b) => b.value.compareTo(a.value)))) {
     stdout.writeln('    $value\t$key');
   }
+  var earlierFirst = 0;
+  var laterFirst = 0;
+  for (final tie in materialTies) {
+    final (won, lost) = (tie.winnerIntroduction, tie.reversedIntroduction);
+    if (won == null || lost == null) continue;
+    if (won < lost) earlierFirst++;
+    if (won > lost) laterFirst++;
+  }
+  if (scope != null) {
+    stdout.writeln(
+      '  candidate order picks the material the curriculum introduces '
+      'earlier $earlierFirst times and later $laterFirst',
+    );
+  }
   stdout.writeln('  by role in the goal:');
   for (final MapEntry(:key, :value)
       in (roles.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))) {

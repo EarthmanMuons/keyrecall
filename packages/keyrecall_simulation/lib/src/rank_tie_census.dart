@@ -72,6 +72,11 @@ class RankTie {
   final String winnerRole;
   final String reversedRole;
 
+  /// Where each side's material stands in the goal's introduction order, or
+  /// null outside a goal's targets.
+  final int? winnerIntroduction;
+  final int? reversedIntroduction;
+
   const RankTie({
     required this.playerId,
     required this.seed,
@@ -84,6 +89,8 @@ class RankTie {
     required this.reversedPractised,
     this.winnerRole = 'no goal',
     this.reversedRole = 'no goal',
+    this.winnerIntroduction,
+    this.reversedIntroduction,
   });
 
   /// Whether the two sides are different materials, which makes the tie a
@@ -142,6 +149,7 @@ RankTie? rankTieOf(
   required int seed,
   required int slot,
   String Function(Exercise exercise)? roleOf,
+  int? Function(Exercise exercise)? introductionOf,
 }) {
   if (result is! CandidateSelected) return null;
   final selectable = result.selectable;
@@ -170,6 +178,8 @@ RankTie? rankTieOf(
     reversedPractised: _practised(state, reversed),
     winnerRole: roleOf?.call(winner.exercise) ?? 'no goal',
     reversedRole: roleOf?.call(reversed.exercise) ?? 'no goal',
+    winnerIntroduction: introductionOf?.call(winner.exercise),
+    reversedIntroduction: introductionOf?.call(reversed.exercise),
   );
 }
 
@@ -196,6 +206,10 @@ Future<RankTieCensus> censusGoalRankTies({
     sessions: sessions,
     slotsPerSession: slotsPerSession,
     observeSlot: (pipeline, state, result, targetMaterialIds) {
+      final introduction = {
+        for (final (position, materialId) in targetMaterialIds.indexed)
+          materialId: position,
+      };
       final index = slots++;
       if (result is CandidateSelected) selections++;
       final tie = rankTieOf(
@@ -209,6 +223,8 @@ Future<RankTieCensus> censusGoalRankTies({
             targetMaterialIds.contains(exercise.material.materialId)
             ? 'target'
             : 'in scope',
+        introductionOf: (exercise) =>
+            introduction[exercise.material.materialId],
       );
       if (tie != null) ties.add(tie);
     },
