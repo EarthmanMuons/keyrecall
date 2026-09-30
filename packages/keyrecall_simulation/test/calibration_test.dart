@@ -11,16 +11,19 @@ import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 /// can, and an estimator that cannot recover a player it generated has no
 /// business being pointed at a person.
 void main() {
-  // The exercises a real session asked for, taken from a scheduler run so the
-  // fit answers the same questions a person answered.
+  // The exercises real sessions asked for, taken from scheduler runs so the fit
+  // answers the same questions a person answered. Pooled from several runs so
+  // what the fit recovers is a property of the player and not of one run's
+  // particular questions.
   final presented = [
-    for (final slot in runTrajectory(
-      player: PlayerArchetypes.intermediate,
-      seed: 5,
-      materials: v1ScaleCatalog,
-      slots: 60,
-    ).slots)
-      ReplayPresentation(slot.chosen, seenBefore: true),
+    for (var seed = 0; seed < 4; seed++)
+      for (final slot in runTrajectory(
+        player: PlayerArchetypes.intermediate,
+        seed: seed,
+        materials: v1ScaleCatalog,
+        slots: 60,
+      ).slots)
+        ReplayPresentation(slot.chosen, seenBefore: true),
   ];
 
   SessionProfile sessionOf(SyntheticPlayer player) =>
