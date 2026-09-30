@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:clock/clock.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
@@ -27,6 +29,8 @@ final _catalog = <TechnicalMaterial>[
   ScaleMaterial('G', ScaleForm.major),
   ScaleMaterial('A', ScaleForm.naturalMinor),
 ];
+
+final _placedAt = DateTime.utc(2026, 9, 30, 12);
 
 final _minorMaterial = ActiveFocus(
   label: 'Minor material',
@@ -150,7 +154,8 @@ void main() {
 
   test(
     'progress is there on a relaunch that resumes a pending attempt',
-    () async {
+    () => withClock(Clock.fixed(_placedAt), () async {
+      profiles = InMemoryProfileRepository(now: () => _placedAt);
       // Every scale, since progress is only drawn for a goal the catalog
       // carries whole.
       final container = launch(catalog: allScales);
@@ -176,7 +181,7 @@ void main() {
         reason: 'no decision was made to resume',
       );
       expect(relaunched.read(goalProgressProvider), isNotNull);
-    },
+    }),
   );
 
   test('an exclusive focus is the only thing presented', () async {

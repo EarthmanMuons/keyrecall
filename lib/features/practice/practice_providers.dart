@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:clock/clock.dart';
+
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -1020,7 +1022,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           presentation: completion.presentation,
           timing: completion.timing,
           input: completion.input,
-          observedWallTime: DateTime.now().toUtc(),
+          observedWallTime: clock.now().toUtc(),
         );
         return PracticeLoopState(
           identity: current.identity,
@@ -1076,7 +1078,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         final record = await current.session.closeAcquisition(
           completion.transcript,
           presentation: completion.presentation,
-          at: DateTime.now().toUtc(),
+          at: clock.now().toUtc(),
           // An interrupted capture is still an observation of what was played,
           // and what it is not is the learner stopping. Recording it as an
           // ordinary attempt would put an incomplete traversal down to them.
@@ -1128,7 +1130,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             presentation: completion.presentation,
             timing: completion.timing,
             input: completion.input,
-            observedWallTime: DateTime.now().toUtc(),
+            observedWallTime: clock.now().toUtc(),
           );
           return PracticeLoopState(
             identity: current.identity,
@@ -1149,7 +1151,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
             presentation: completion.presentation,
             timing: completion.timing,
             input: completion.input,
-            observedWallTime: DateTime.now().toUtc(),
+            observedWallTime: clock.now().toUtc(),
           );
           return PracticeLoopState(
             identity: current.identity,
@@ -1166,7 +1168,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
           presentation: completion.presentation,
           timing: completion.timing,
           input: completion.input,
-          observedWallTime: DateTime.now().toUtc(),
+          observedWallTime: clock.now().toUtc(),
         );
         await _recordCoordination(closed.record, closed.reading);
         return PracticeLoopState(
@@ -1414,7 +1416,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
         FeedbackExposure(
           profileId: record.profileId,
           attemptId: record.identity.attemptId,
-          shownAt: DateTime.now().toUtc(),
+          shownAt: clock.now().toUtc(),
           postAttemptFeedback: postAttemptFeedback,
           progressFeedback: progress.isEmpty
               ? ProgressFeedback.none
@@ -1486,9 +1488,7 @@ class PracticeLoopNotifier extends AsyncNotifier<PracticeLoopState> {
   ///
   /// Every terminal practice outcome is surfaced instead of retried.
   Future<PracticeLoopState> _decide(PracticeLoopState from) async {
-    final decision = await from.session.decideOutcome(
-      at: DateTime.now().toUtc(),
-    );
+    final decision = await from.session.decideOutcome(at: clock.now().toUtc());
     return switch (decision) {
       final PresentedAttempt presented => PracticeLoopState(
         identity: from.identity,
