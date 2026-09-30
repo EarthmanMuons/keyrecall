@@ -70,6 +70,9 @@ final Arbitrary<Plan> anyPlan = combine4(
 
 /// The state and session [plan] leaves, the next slot's time, and what can be
 /// offered in it, built by the real decision loop so every part is reachable.
+///
+/// Like a practice session, every decision is made from state propagated to
+/// its own time, the next slot's included.
 ({
   LearnerState state,
   SessionState session,
@@ -89,6 +92,7 @@ practised(Plan plan) {
   var at = start;
   for (final (seconds, played) in slots) {
     at = at.add(Duration(seconds: seconds));
+    model.propagate(state, at);
     final result = pipeline.decide(
       state: state,
       session: session,
@@ -98,7 +102,6 @@ practised(Plan plan) {
     if (result case CandidateSelected(:final candidate)) {
       final exercise = candidate.exercise;
       final outcome = outcomeOf(exercise, played);
-      model.propagate(state, at);
       model.applyOutcome(
         state: state,
         exercise: exercise,
@@ -110,12 +113,9 @@ practised(Plan plan) {
       pipeline.recordOutcome(session, exercise, outcome, at: at);
     }
   }
-  return (
-    state: state,
-    session: session,
-    at: at.add(Duration(seconds: pause)),
-    candidates: candidates,
-  );
+  at = at.add(Duration(seconds: pause));
+  model.propagate(state, at);
+  return (state: state, session: session, at: at, candidates: candidates);
 }
 
 SelectionResult nextSlot(Plan plan, {bool reversed = false}) {
