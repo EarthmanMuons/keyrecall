@@ -29,6 +29,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Fixed
 
+- Retention and information are compared on a grid of `rankTermResolution`
+  (1e-9), in force from scheduler model version `v1-12`. A rank key holds the
+  values `canonicalRankValue` rounded them to, so floating-point noise in the
+  last bits no longer decides a tie the later terms should settle. A newly
+  placed learner had been offered two octaves first at some moments and one at
+  others.
 - A tempo probe opens only on a pace the learner chose. Outrunning a supplied
   pulse is ignoring it, and no longer reads as a task that was too easy.
 

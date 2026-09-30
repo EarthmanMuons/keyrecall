@@ -2253,10 +2253,12 @@ class SchedulerPipeline {
             contraryCoordination:
                 transition &&
                 exercise.conditions.handMotion == HandMotion.contrary,
-            retention: retention(prediction, exercise),
+            retention: canonicalRankValue(retention(prediction, exercise)),
             information: informationCache.putIfAbsent(
               informationKeyFor(exercise),
-              () => information(state, exercise, learner.params),
+              () => canonicalRankValue(
+                information(state, exercise, learner.params),
+              ),
             ),
             diversity: diversity(exercise, session),
             goals: goals(exercise, emphasis),

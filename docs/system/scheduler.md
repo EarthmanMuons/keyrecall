@@ -312,6 +312,14 @@ and execution evidence opportunities would expose. **Diversity** is the negative
 count of the material in the recent-history window. **Goals** is zero for
 anything no focus emphasized.
 
+Retention and information are sums of floating-point products, and two
+candidates that mean the same value can land a few bits apart depending on the
+order the sum ran in. Both are rounded to a grid of 1e-9 before they are
+compared, and the rank key holds the rounded values, so a difference only the
+arithmetic made ties and leaves the later terms to decide. Rounding each value
+once, rather than tolerating a margin inside the comparison, keeps the ordering
+transitive. The discrete terms are compared as they are.
+
 The last three terms never decide which material to practice, only which
 realization of it. Two candidates on the same scale always tie on terms 5
 through 8, so realization rank and fit are what choose the tempo and span it is

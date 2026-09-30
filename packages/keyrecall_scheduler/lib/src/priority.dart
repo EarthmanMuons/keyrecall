@@ -151,6 +151,25 @@ double diversity(Exercise exercise, SessionState session) =>
 double goals(Exercise exercise, GoalEmphasis emphasis) =>
     emphasis.of(exercise) - GoalEmphasis.unemphasized;
 
+/// The resolution continuous rank terms are compared at.
+///
+/// Retention and information reach the rank key through floating-point sums,
+/// and two that are equal in meaning can differ in their last bits. A slot
+/// decided by that difference is decided by rounding, ahead of every term
+/// after it. On this grid such a difference is a tie, and because the rounded
+/// values are compared exactly the ordering stays total.
+const double rankTermResolution = 1e-9;
+
+/// [value] on the grid continuous rank terms are compared at.
+///
+/// Divides by the whole number of steps rather than multiplying by the
+/// resolution, which lands on the nearest double to each grid point, so a
+/// value already on the grid stays where it is.
+double canonicalRankValue(double value) =>
+    (value * _stepsPerUnit).roundToDouble() / _stepsPerUnit;
+
+const double _stepsPerUnit = 1e9;
+
 /// `S(e)`: how early [exercise]'s shape comes in its material's progression,
 /// as a negated step count.
 ///
