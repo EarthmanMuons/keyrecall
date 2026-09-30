@@ -61,8 +61,8 @@ else
 		--template 'source.path() ++ "\0" ++ target.path() ++ "\0"' >"$temporary/paths"
 	while IFS= read -r -d '' path; do
 		case "$path" in
-		*.md | docs/*) continue ;;
-		*/pubspec.yaml | pubspec.yaml | pubspec.lock)
+		*.md | docs/* | doc/* | analysis/*.py | pyproject.toml | uv.lock | .github/* | .claude/* | .typos.toml | .prettier* | bin/test-from-upstream | bin/test-from-upstream-test) continue ;;
+		pubspec.yaml | pubspec.lock)
 			full_reason="shared dependency configuration: $path"
 			break
 			;;
@@ -126,11 +126,7 @@ fi
 
 run_tests() {
 	local index=$1 directory=${directories[$1]} runner=dart status=0 started=$SECONDS
-	if awk '
-    /^[^[:space:]#]/ { section = ($0 ~ /^(dependencies|dev_dependencies):/) }
-    section && /^  flutter(_test)?:/ { found = 1 }
-    END { exit !found }
-  ' "$directory/pubspec.yaml"; then
+	if [[ ${dependencies[index]} == *" flutter "* || ${dependencies[index]} == *" flutter_test "* ]]; then
 		runner=flutter
 	fi
 	(cd "$directory" && "$runner" test) || status=$?

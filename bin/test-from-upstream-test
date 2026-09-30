@@ -9,16 +9,23 @@ cd "$temporary/repository"
 printf '[user]\nname = "Test"\nemail = "test@example.com"\n[signing]\nbehavior = "drop"\n' >"$temporary/jj.toml"
 export JJ_CONFIG="$temporary/jj.toml"
 jj git init --quiet
-mkdir -p packages/{a,b,c}/test packages/a/lib packages/b/lib lib test docs
-for directory in packages/{a,b,c} .; do
+vendor=third_party/crisp_notation/packages
+mkdir -p packages/{a,b,c}/test packages/{a,b,bridge}/lib "$vendor/"{crisp_notation,crisp_notation_core}/{lib,test} lib test docs
+for directory in packages/{a,b,c} "$vendor/"{crisp_notation,crisp_notation_core} .; do
 	echo 'fixture' >"$directory/test/fixture_test.dart"
 done
 echo 'app fixture' >lib/app.dart
 echo 'package fixture' >packages/b/lib/existing.dart
-printf 'name: app\ndependencies:\n  flutter:\n    sdk: flutter\n  c: any\n' >pubspec.yaml
+printf 'name: app\ndependencies:\n  flutter:\n    sdk: flutter\n  c: any\n  crisp_notation: any\n' >pubspec.yaml
 printf 'name: a\n' >packages/a/pubspec.yaml
-printf 'name: b\ndependencies:\n  a: any\n' >packages/b/pubspec.yaml
+printf 'name: b\ndependencies:\n  bridge: any\n' >packages/b/pubspec.yaml
+printf 'name: bridge\ndependencies:\n  a: any\n' >packages/bridge/pubspec.yaml
+echo 'bridge' >packages/bridge/lib/source.dart
 printf 'name: c\ndev_dependencies:\n  b: any\n' >packages/c/pubspec.yaml
+printf 'name: crisp_notation\ndependencies:\n  flutter:\n    sdk: flutter\n  crisp_notation_core: any\ndev_dependencies:\n  flutter_test:\n    sdk: flutter\n' >"$vendor/crisp_notation/pubspec.yaml"
+printf 'name: crisp_notation_core\n' >"$vendor/crisp_notation_core/pubspec.yaml"
+echo 'notation' >"$vendor/crisp_notation/lib/source.dart"
+echo 'core' >"$vendor/crisp_notation_core/lib/source.dart"
 echo 'original' >packages/a/lib/source.dart
 jj describe --quiet -m 'Fixture'
 jj bookmark create upstream --quiet
@@ -35,26 +42,59 @@ reset_fixture() {
 	jj restore --from upstream --quiet
 }
 
-all_packages=$'packages/a\npackages/b\npackages/c\n.'
+chain_packages=$'packages/a\npackages/b\npackages/c\n.'
+all_packages=$'packages/a\npackages/b\npackages/c\nthird_party/crisp_notation/packages/crisp_notation\nthird_party/crisp_notation/packages/crisp_notation_core\n.'
 assert_plan 'No affected test suites.'
 echo 'documentation' >docs/guide.md
 assert_plan 'No affected test suites.'
 echo 'app' >lib/app.dart
 assert_plan '.'
 reset_fixture
-echo 'changed' >>packages/a/lib/source.dart
+for path in analysis/foo.py analysis/nested/analyze.py pyproject.toml uv.lock .github/workflows/check.yml .claude/settings.json .typos.toml .prettierrc.json .prettierignore doc/guide.txt bin/test-from-upstream-test; do
+	mkdir -p "$(dirname "$path")"
+	echo 'tooling' >"$path"
+	assert_plan 'No affected test suites.'
+	reset_fixture
+done
+echo '# selector change' >>bin/test-from-upstream
+assert_plan 'No affected test suites.'
+reset_fixture
+mkdir -p analysis/onset-grouping/takes
+echo '{}' >analysis/onset-grouping/takes/recorded.json
 assert_plan "$all_packages"
+reset_fixture
+mkdir -p analysis
+echo 'registry' >analysis/params.toml
+assert_plan "$all_packages"
+reset_fixture
+echo 'changed' >>packages/a/lib/source.dart
+assert_plan "$chain_packages"
 reset_fixture
 echo 'test' >packages/b/test/with\ spaces.dart
 assert_plan $'packages/b\npackages/c\n.'
 reset_fixture
 rm packages/a/lib/source.dart
-assert_plan "$all_packages"
+assert_plan "$chain_packages"
 reset_fixture
 mv packages/a/lib/source.dart packages/b/lib/source.dart
-assert_plan "$all_packages"
+assert_plan "$chain_packages"
 reset_fixture
 echo '# manifest change' >>packages/a/pubspec.yaml
+assert_plan "$chain_packages"
+reset_fixture
+echo '# manifest change' >>packages/c/pubspec.yaml
+assert_plan $'packages/c\n.'
+reset_fixture
+echo 'bridge changed' >>packages/bridge/lib/source.dart
+assert_plan $'packages/b\npackages/c\n.'
+reset_fixture
+echo 'changed' >>"$vendor/crisp_notation/lib/source.dart"
+assert_plan $'third_party/crisp_notation/packages/crisp_notation\n.'
+reset_fixture
+echo 'changed' >>"$vendor/crisp_notation_core/lib/source.dart"
+assert_plan $'third_party/crisp_notation/packages/crisp_notation\nthird_party/crisp_notation/packages/crisp_notation_core\n.'
+reset_fixture
+echo '# root manifest change' >>pubspec.yaml
 assert_plan "$all_packages"
 reset_fixture
 echo 'lock' >pubspec.lock
@@ -86,7 +126,7 @@ export PATH="$temporary/runners:$PATH"
 export RUNNER_LOG="$temporary/runners.log"
 bin/test-from-upstream --all >"$temporary/output"
 sort "$RUNNER_LOG" >"$temporary/actual"
-printf 'dart a test\ndart b test\ndart c test\nflutter repository test\n' >"$temporary/expected"
+printf 'dart a test\ndart b test\ndart c test\ndart crisp_notation_core test\nflutter crisp_notation test\nflutter repository test\n' >"$temporary/expected"
 diff -u "$temporary/expected" "$temporary/actual"
 export FAIL_PACKAGE=c
 if bin/test-from-upstream --all >"$temporary/output"; then

@@ -27,6 +27,10 @@ run = "uvx ruff@latest check analysis"
 description = "Format-check and lint Python tooling"
 depends = ["python:format-check", "python:lint"]
 
+[tasks."bin:test"]
+description = "Test package selection and test runner behavior"
+run = "bin/test-from-upstream-test"
+
 [tasks."dart:format"]
 description = "Format Dart sources"
 run = "dart format lib test packages"

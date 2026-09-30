@@ -32,7 +32,8 @@ the loop end to end by hand means attaching an instrument.
 
 ## Checks
 
-`mise run dart:check` is what CI runs, and it is the one to run before pushing:
+`mise run dart:check` runs the local Dart checks and is the one to run before
+pushing:
 
 ```console
 mise run dart:check     # format, imports, analyze, test
@@ -61,13 +62,19 @@ changes are included. The script uses the locally recorded bookmark and does not
 fetch; run `jj git fetch` when you want to update it.
 
 Use `--dry-run` to see which suites would run and why, or `--base REVISION` to
-compare against another revision. Documentation-only changes skip tests;
-manifests, the lockfile, and shared or unrecognized paths select the full suite.
-`mise dart:test` still runs every suite, as does `bin/test-from-upstream --all`.
-Both commands report package durations from the concurrent run, slowest first.
+compare against another revision. Changes to documentation, Python tooling,
+workflow configuration, and the selector scripts skip Dart tests. Data under
+`analysis/` still selects the full suite because Dart tests read its recorded
+takes and parameter registries. A package manifest selects that package and its
+dependents; the root manifest, lockfile, and shared or unrecognized paths select
+the full suite. `mise dart:test` still runs every suite, as does
+`bin/test-from-upstream --all`. Both commands report package durations from the
+concurrent run, slowest first.
 
-After changing the selector, run `bin/test-from-upstream-test` to check package
-selection and runner behavior in a temporary jj repository.
+After changing the selector, run `mise bin:test` to check package selection and
+runner behavior, including `--all`, in a temporary jj repository with stub Dart
+and Flutter commands. CI's reusable Flutter workflow runs independently of these
+local tasks.
 
 Markdown and the Python analysis tooling have their own tasks
 (`markdown:format`, `python:check`), also run by CI when those files change.
