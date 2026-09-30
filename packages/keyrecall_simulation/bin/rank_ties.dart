@@ -5,6 +5,12 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
+final Map<String, List<TechnicalMaterial>> _catalogs = {
+  'v1': v1ScaleCatalog,
+  'scales': allScales,
+  'mixed': [...allScales, ...proofArpeggios],
+};
+
 /// How often candidate order decides a slot, and along which dimensions.
 ///
 /// Reads the production trajectory of every archetype and reports each slot
@@ -20,7 +26,7 @@ Future<void> main(List<String> arguments) async {
     ..addOption(
       'catalog',
       defaultsTo: 'v1',
-      allowed: ['v1', 'scales', 'mixed'],
+      allowed: _catalogs.keys,
       help: 'v1 scales, every scale, or every scale with the proof arpeggios',
     )
     ..addOption(
@@ -41,14 +47,9 @@ Future<void> main(List<String> arguments) async {
   final scope = goal == 'none' ? null : GoalTrajectoryScope.values.byName(goal);
   final sessions = int.parse(options.option('sessions')!);
   final slotsPerSession = int.parse(options.option('slots-per-session')!);
-  final catalog = scope == null
-      ? 'catalog ${options.option('catalog')!}'
-      : 'goal $goal';
-  final List<TechnicalMaterial> materials = switch (catalog) {
-    'scales' => allScales,
-    'mixed' => [...allScales, ...proofArpeggios],
-    _ => v1ScaleCatalog,
-  };
+  final catalogName = options.option('catalog')!;
+  final catalog = scope == null ? 'catalog $catalogName' : 'goal $goal';
+  final materials = _catalogs[catalogName]!;
 
   var slotCount = 0;
   var selections = 0;
