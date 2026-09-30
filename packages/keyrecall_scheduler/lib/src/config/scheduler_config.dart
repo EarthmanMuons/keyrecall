@@ -296,8 +296,8 @@ class ChallengeConfig {
          'the band must be an orderable pair of probabilities',
        ),
        assert(
-         pIntroductionMin >= 0 && pIntroductionMin <= 1,
-         'the introduction floor is a probability',
+         pIntroductionMin >= 0 && pIntroductionMin <= pMax,
+         'the introduction floor is a probability no higher than the band',
        );
 }
 

@@ -57,6 +57,15 @@ void main() {
       expect(config.challenge.pIntroductionMin, greaterThan(0.0));
     });
 
+    test('refuses an introduction floor above the band', () {
+      // A floor above the band's upper edge would admit introductions into a
+      // band no decision can record.
+      expect(
+        () => ChallengeConfig(pMin: 0.6, pMax: 0.9, pIntroductionMin: 0.95),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
     test('paces realization families behind the readiness gate', () {
       final pacing = config.pacing;
       expect(pacing, isNotNull);
