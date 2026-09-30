@@ -160,6 +160,13 @@ wider search, for example
 `KEYRECALL_SEED_SCALE=10 dart test test/trajectory_invariants_test.dart` in
 `packages/keyrecall_simulation`. Every finding names the seed that produced it.
 
+Property tests use [kiri_check](https://pub.dev/packages/kiri_check) with a
+fixed seed, so every run explores the same inputs. The same variable multiplies
+how many examples they generate. kiri_check shrinks a sequence only to its
+prefixes, so sequence properties also report the minimal failing sequence, found
+by dropping one step at a time; see
+`packages/keyrecall_input/test/input_reducer_property_test.dart`.
+
 ## Which document is authoritative
 
 `docs/` is organized by what kind of truth a document holds, so the folder tells
