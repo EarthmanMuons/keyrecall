@@ -119,7 +119,7 @@ assert_plan '.'
 cat >"$temporary/runners/dart" <<'RUNNER'
 #!/usr/bin/env bash
 printf '%s %s %s\n' "$(basename "$0")" "$(basename "$PWD")" "$*" >> "$RUNNER_LOG"
-[[ "$(basename "$PWD")" != "${FAIL_PACKAGE:-}" ]]
+[[ "$(basename "$PWD") $*" != "${FAIL_INVOCATION:-}" ]]
 RUNNER
 cp "$temporary/runners/dart" "$temporary/runners/flutter"
 chmod +x "$temporary/runners/"*
@@ -132,15 +132,15 @@ printf '%s\n' 'dart a test' 'dart b test' 'dart c test' 'dart crisp_notation_cor
 	'dart sim test --total-shards 3 --shard-index 2' \
 	'flutter crisp_notation test' 'flutter repository test' >"$temporary/expected"
 diff -u "$temporary/expected" "$temporary/actual"
-export FAIL_PACKAGE=c
+export FAIL_INVOCATION='c test'
 if bin/test-from-upstream --all >"$temporary/output"; then
 	echo 'Expected a failed package to fail the command' >&2
 	exit 1
 fi
 grep -q 'FAIL  packages/c' "$temporary/output"
-export FAIL_PACKAGE=sim
+export FAIL_INVOCATION='sim test --total-shards 3 --shard-index 0'
 if bin/test-from-upstream --all >"$temporary/output"; then
-	echo 'Expected a failed shard to fail the command' >&2
+	echo 'Expected one failed shard to fail the command after the others pass' >&2
 	exit 1
 fi
 grep -q 'FAIL  packages/sim' "$temporary/output"
