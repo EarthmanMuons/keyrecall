@@ -50,6 +50,10 @@ class RankTie {
   /// overrides ranking choosing something else.
   final bool presented;
 
+  /// Whether the learner had practised each side's material before the slot.
+  final bool winnerPractised;
+  final bool reversedPractised;
+
   const RankTie({
     required this.playerId,
     required this.seed,
@@ -58,7 +62,23 @@ class RankTie {
     required this.winner,
     required this.reversed,
     required this.presented,
+    required this.winnerPractised,
+    required this.reversedPractised,
   });
+
+  /// Whether the two sides are different materials, which makes the tie a
+  /// question of what to practise rather than how.
+  bool get isMaterialTie =>
+      winner.exercise.material.materialId !=
+      reversed.exercise.material.materialId;
+
+  /// Which kind of material question the tie left to order.
+  String get materialKind => switch ((winnerPractised, reversedPractised)) {
+    (false, false) => 'two new materials',
+    (true, true) => 'two practised materials',
+    (false, true) => 'new over practised',
+    (true, false) => 'practised over new',
+  };
 
   /// The dimensions the two sides differ on, each with the winning value and
   /// the losing one.
@@ -203,10 +223,23 @@ class _TieRecorder extends SchedulerPipeline {
             winner: winner,
             reversed: reversed,
             presented: identical(candidate, winner),
+            winnerPractised: _practised(state, winner),
+            reversedPractised: _practised(state, reversed),
           ),
         );
       }
     }
     return slot;
   }
+}
+
+/// Whether [state] holds evidence of the learner playing [trace]'s material,
+/// in any hands or from memory.
+bool _practised(LearnerState state, CandidateTrace trace) {
+  final materialId = trace.exercise.material.materialId;
+  return state.materialMemory[materialId]?.lastObservedAt != null ||
+      state.materialExecution.entries.any(
+        (entry) =>
+            entry.key.$1 == materialId && entry.value.lastEvidenceAt != null,
+      );
 }

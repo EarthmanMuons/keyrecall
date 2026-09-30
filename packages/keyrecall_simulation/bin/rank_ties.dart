@@ -88,6 +88,51 @@ void main(List<String> arguments) {
     stdout.writeln('  $id\t$seen\t$decided\t${share(decided, seen)}');
   }
 
+  final materialTies = [
+    for (final tie in presented)
+      if (tie.isMaterialTie) tie,
+  ];
+  final kinds = <String, int>{};
+  final families = <String, int>{};
+  final keys = <String, int>{};
+  for (final tie in materialTies) {
+    kinds[tie.materialKind] = (kinds[tie.materialKind] ?? 0) + 1;
+    final family =
+        '${tie.winner.exercise.material.familyId} over '
+        '${tie.reversed.exercise.material.familyId}';
+    families[family] = (families[family] ?? 0) + 1;
+    final key = tie.winner.rankKey!;
+    final summary =
+        '${key.tier.id} retention ${key.retention.toStringAsFixed(3)} '
+        'information ${key.information.toStringAsFixed(3)} '
+        'diversity ${key.diversity} goals ${key.goals} '
+        '${key.realization.id} fit ${key.realizationFit}';
+    keys[summary] = (keys[summary] ?? 0) + 1;
+  }
+  stdout
+    ..writeln()
+    ..writeln(
+      'material ties, presented: ${materialTies.length} '
+      '(${share(materialTies.length, presented.length)} of presented ties); '
+      'no goal was in force, so every goal term is inactive here',
+    );
+  for (final MapEntry(:key, :value)
+      in (kinds.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))) {
+    stdout.writeln('  $value\t$key');
+  }
+  stdout.writeln('  by family:');
+  for (final MapEntry(:key, :value)
+      in (families.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value)))) {
+    stdout.writeln('    $value\t$key');
+  }
+  stdout.writeln('  the rank key both sides shared, most common first:');
+  for (final MapEntry(:key, :value)
+      in (keys.entries.toList()..sort((a, b) => b.value.compareTo(a.value)))
+          .take(8)) {
+    stdout.writeln('    $value\t$key');
+  }
+
   final dimensions = <String, int>{};
   final signatures = <String, int>{};
   final outcomes = <String, Map<String, int>>{};
