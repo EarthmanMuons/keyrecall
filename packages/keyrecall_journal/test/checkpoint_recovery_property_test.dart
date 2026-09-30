@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'dart:io';
+import 'dart:isolate';
 
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
@@ -39,6 +41,20 @@ final Arbitrary<Step> anyStep = combine4(
     (1, constant<Outcome?>(null)),
   ]),
   choiceOf(AttemptTermination.values),
+);
+
+/// A performance that measured everything, for building a populated state.
+final Outcome anyOutcomeExample = Outcome(
+  started: true,
+  retrieval: FactualRetrieval.succeeded,
+  completed: true,
+  materialRetrieval: 0.9,
+  pitchIntegrity: 0.9,
+  continuity: 0.9,
+  temporalStability: 0.9,
+  achievedTempoRatio: 1,
+  topologyAccuracy: 0.9,
+  coordination: 0.9,
 );
 
 /// [outcome] as [exercise] could have produced it: retrieval is tested exactly
@@ -160,53 +176,94 @@ List<Prediction> predictionsOf(
     model.predict(propagatedCopy(state, at), exercise, at: at),
 ];
 
+List<(int, double)> _spans(Map<int, double> bySpan) =>
+    [for (final MapEntry(:key, :value) in bySpan.entries) (key, value)]
+      ..sort((a, b) => a.$1.compareTo(b.$1));
+
+/// Every field of a competency, by name.
+Map<String, Object?> competencyFacts(CompetencyState c) => {
+  'competency': c.competency,
+  'mean': c.mean,
+  'variance': c.variance,
+  'updatedAt': c.updatedAt,
+  'lastEvidenceAt': c.lastEvidenceAt,
+};
+
+/// Every field of a material's memory, by name.
+Map<String, Object?> memoryFacts(MaterialMemoryState m) => {
+  'materialId': m.materialId,
+  'logCurrentHalfLife': m.logCurrentHalfLife,
+  'currentHalfLifeUncertainty': m.currentHalfLifeUncertainty,
+  'logConsolidatedHalfLife': m.logConsolidatedHalfLife,
+  'consolidatedLogHalfLifeVariance': m.consolidatedLogHalfLifeVariance,
+  'logitColdStart': m.logitColdStart,
+  'coldStartUncertainty': m.coldStartUncertainty,
+  'memoryAnchorAt': m.memoryAnchorAt,
+  'factualLastRetrievalAt': m.factualLastRetrievalAt,
+  'establishedIndependence': m.establishedIndependence,
+  'establishedIndependenceAt': m.establishedIndependenceAt,
+  'lastRetrievalAttemptAt': m.lastRetrievalAttemptAt,
+};
+
+/// Every field of an execution context's state, by name.
+Map<String, Object?> executionFacts(MaterialExecutionState e) => {
+  'materialId': e.materialId,
+  'familyId': e.familyId,
+  'hands': e.hands,
+  'handMotion': e.handMotion,
+  'residualMean': e.residualMean,
+  'residualVariance': e.residualVariance,
+  'updatedAt': e.updatedAt,
+  'lastEvidenceAt': e.lastEvidenceAt,
+  'demonstratedTempoByOctaves': _spans(e.demonstratedTempoByOctaves),
+  'pacedTempoBpm': e.pacedTempoBpm,
+  'coordinationReadyTempoByOctaves': _spans(e.coordinationReadyTempoByOctaves),
+};
+
 /// Every field of [state], read from the objects rather than through the codec.
 ///
 /// The state hashes are computed through the codec, so a field it failed to
 /// write would be invisible to every one of them.
-List<Object?> factsOf(LearnerState state) {
-  List<(int, double)> spans(Map<int, double> bySpan) =>
-      [for (final MapEntry(:key, :value) in bySpan.entries) (key, value)]
-        ..sort((a, b) => a.$1.compareTo(b.$1));
-  return [
+Map<String, Object?> factsOf(LearnerState state) => {
+  'competencies': [
     for (final competency in Competency.values)
-      if (state.competencies[competency] case final c?)
-        [c.competency, c.mean, c.variance, c.updatedAt, c.lastEvidenceAt],
+      if (state.competencies[competency] case final c?) competencyFacts(c),
+  ],
+  'materialMemory': [
     for (final m
         in state.materialMemory.values.toList()
           ..sort((a, b) => a.materialId.compareTo(b.materialId)))
-      [
-        m.materialId,
-        m.logCurrentHalfLife,
-        m.currentHalfLifeUncertainty,
-        m.logConsolidatedHalfLife,
-        m.consolidatedLogHalfLifeVariance,
-        m.logitColdStart,
-        m.coldStartUncertainty,
-        m.memoryAnchorAt,
-        m.factualLastRetrievalAt,
-        m.establishedIndependence,
-        m.establishedIndependenceAt,
-        m.lastRetrievalAttemptAt,
-      ],
-    for (final MapEntry(:key, value: e)
+      memoryFacts(m),
+  ],
+  'materialExecution': [
+    for (final MapEntry(:key, :value)
         in state.materialExecution.entries.toList()
           ..sort((a, b) => '${a.key}'.compareTo('${b.key}')))
-      [
-        key,
-        e.materialId,
-        e.familyId,
-        e.hands,
-        e.handMotion,
-        e.residualMean,
-        e.residualVariance,
-        e.updatedAt,
-        e.lastEvidenceAt,
-        spans(e.demonstratedTempoByOctaves),
-        e.pacedTempoBpm,
-        spans(e.coordinationReadyTempoByOctaves),
-      ],
-  ];
+      [key, executionFacts(value)],
+  ],
+};
+
+final RegExp _fieldDeclaration = RegExp(
+  r'^  (?:final |late final |late )?[A-Za-z][\w<>?, ]*[\w>?] (\w+)'
+  r'(?: = [^;]*)?;$',
+  multiLine: true,
+);
+
+/// The fields class [type] declares in [file] of the learner's state, which
+/// the facts above must name exactly.
+///
+/// Read from the source, one declaration per line, since nothing at runtime
+/// lists a class's fields.
+Future<Set<String>> declaredFields(String file, String type) async {
+  final uri = await Isolate.resolvePackageUri(
+    Uri.parse('package:keyrecall_learner/src/state/$file'),
+  );
+  final source = File.fromUri(uri!).readAsStringSync();
+  final start = source.indexOf(RegExp('^class $type\\b', multiLine: true));
+  final body = source.substring(start, source.indexOf('\n}\n', start));
+  return {
+    for (final match in _fieldDeclaration.allMatches(body)) match.group(1)!,
+  };
 }
 
 /// [checkpoint] as storage hands it back.
@@ -365,6 +422,38 @@ void main() {
           }
         }
       }),
+    );
+  });
+
+  test('the facts name every field the learner state declares', () async {
+    // A tripwire. A field added to the state that these facts do not read is
+    // one the recovery property cannot see the codec lose; update the facts
+    // and the learner codec together.
+    final state = historyOf(
+      (at) => model.placementState(PlacementTier.advanced, at: at),
+      DateTime.utc(2026),
+      [shapes.first],
+      [(0, 0, anyOutcomeExample, AttemptTermination.learnerStopped)],
+    ).after.last;
+
+    expect(
+      factsOf(state).keys.toSet(),
+      await declaredFields('learner_state.dart', 'LearnerState'),
+    );
+    expect(
+      competencyFacts(state.competencies.values.first).keys.toSet(),
+      await declaredFields('competency_state.dart', 'CompetencyState'),
+    );
+    expect(
+      memoryFacts(state.materialMemory.values.first).keys.toSet(),
+      await declaredFields('material_memory_state.dart', 'MaterialMemoryState'),
+    );
+    expect(
+      executionFacts(state.materialExecution.values.first).keys.toSet(),
+      await declaredFields(
+        'material_execution_state.dart',
+        'MaterialExecutionState',
+      ),
     );
   });
 
