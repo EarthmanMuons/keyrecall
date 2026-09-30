@@ -12,9 +12,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
-- `rank_ties` and `censusRankTies`, which report every slot whose top rank
-  candidates shared, so that generated order chose between them, and the
-  dimensions the two sides differ on. Observational: nothing chosen changes.
+- `rank_ties`, `censusRankTies`, and `censusGoalRankTies`, which report every
+  slot whose top rank candidates shared, so that generated order chose between
+  them: the dimensions the two sides differ on, whether each material had been
+  practised, and, under a production goal, what each was to it. Observational:
+  nothing chosen changes. `runGoalTrajectory` takes an observer of each slot for
+  it.
 - `SyntheticPlayer` takes the delivery an attempt was presented with, reads it
   through `PulseMaintenance.under` for both what the player hears and what the
   outcome claims, and has four pulse traits: how much steadiness they lose

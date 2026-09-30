@@ -55,6 +55,17 @@ enum GoalTrajectoryScope {
   bool get hasFinishLine => this != general;
 }
 
+/// Sees each slot a goal trajectory decides: the pipeline deciding it, the
+/// state it was decided from, what it decided, and the goal's target
+/// materials.
+typedef GoalSlotObserver =
+    void Function(
+      SchedulerPipeline pipeline,
+      LearnerState state,
+      SelectionResult result,
+      Set<String> targetMaterialIds,
+    );
+
 /// How one session ended.
 enum SessionEnd { slotLimit, caughtUp, blocked, invalid }
 
@@ -165,6 +176,7 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
   ProgressPreference? progress,
   void Function(int sessionIndex, int slots, PracticeSession session)?
   afterSession,
+  GoalSlotObserver? observeSlot,
 }) async {
   final at0 = DateTime.utc(2026);
   const learner = LearnerModel();
@@ -196,6 +208,10 @@ Future<GoalTrajectoryRun> runGoalTrajectory({
   final targetMaterialIds = {
     for (final requirement in targets) requirement.material.materialId,
   };
+  if (observeSlot != null) {
+    pipeline.onSlot = (state, result) =>
+        observeSlot(pipeline, state, result, targetMaterialIds);
+  }
   bool targetShaped(Exercise exercise) => targets.any(
     (requirement) =>
         requirement.material == exercise.material &&
@@ -392,8 +408,55 @@ class ShapeStepObservation {
 
 class _ShapeStepRecorder extends SchedulerPipeline {
   ShapeStepObservation? last;
+  void Function(LearnerState state, SelectionResult result)? onSlot;
 
   _ShapeStepRecorder({required super.learner, required super.config});
+
+  @override
+  ({
+    SelectionResult result,
+    bool guidanceProbeAvailable,
+    bool guidanceProbeSelected,
+  })
+  evaluateSlot({
+    required LearnerState state,
+    required SessionState session,
+    required List<Exercise> candidates,
+    required DateTime at,
+    Map<Exercise, ChallengeBypass> overrides = const {},
+    AcquisitionFloor? acquisitionFloor,
+    AcquisitionFloor? acquisitionFamilyFloor,
+    AcquisitionProgress? acquisition,
+    Set<Exercise>? attemptedExercises,
+    Set<(String, Hand)>? retrievedMaterialHands,
+    Map<ExecutionContext, int> executionEvidenceRevisions = const {},
+    PracticeEntryPolicy? practiceEntryPolicy,
+    GoalEmphasis emphasis = GoalEmphasis.none,
+    UncoveredTargets uncoveredTargets = UncoveredTargets.none,
+    Map<String, Set<RealizationShape>> demonstratedShapes = const {},
+    bool diagnose = true,
+  }) {
+    final slot = super.evaluateSlot(
+      state: state,
+      session: session,
+      candidates: candidates,
+      at: at,
+      overrides: overrides,
+      acquisitionFloor: acquisitionFloor,
+      acquisitionFamilyFloor: acquisitionFamilyFloor,
+      acquisition: acquisition,
+      attemptedExercises: attemptedExercises,
+      retrievedMaterialHands: retrievedMaterialHands,
+      executionEvidenceRevisions: executionEvidenceRevisions,
+      practiceEntryPolicy: practiceEntryPolicy,
+      emphasis: emphasis,
+      uncoveredTargets: uncoveredTargets,
+      demonstratedShapes: demonstratedShapes,
+      diagnose: diagnose,
+    );
+    onSlot?.call(state, slot.result);
+    return slot;
+  }
 
   @override
   CandidateTrace? advancedWithin(

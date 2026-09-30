@@ -39,8 +39,63 @@ void main() {
     );
 
     expect(
-      [for (final slot in census().trajectory.slots) slot.chosen],
+      [for (final slot in census().trajectory!.slots) slot.chosen],
       [for (final slot in plain.slots) slot.chosen],
     );
+  });
+
+  group('under a goal', () {
+    test(
+      'reports ties the goal left to order, with each side\'s role',
+      () async {
+        final found = await censusGoalRankTies(
+          scope: GoalTrajectoryScope.foundations,
+          player: PlayerArchetypes.developing,
+          seed: 0,
+          sessions: 2,
+          slotsPerSession: 10,
+        );
+
+        expect(found.ties, isNotEmpty);
+        for (final tie in found.ties) {
+          expect(
+            v1SchedulerConfig.rankTolerances.compare(
+              tie.winner.rankKey!,
+              tie.reversed.rankKey!,
+            ),
+            0,
+          );
+          expect({
+            tie.winnerRole,
+            tie.reversedRole,
+          }, everyElement(isIn(['target', 'in scope'])));
+        }
+      },
+    );
+
+    test('observing a goal trajectory changes nothing it chooses', () async {
+      List<(String, HandConfiguration, int, ExerciseDirection)> chosen(
+        GoalTrajectoryRun run,
+      ) => [
+        for (final selection in run.selections)
+          (
+            selection.materialId,
+            selection.hands,
+            selection.octaves,
+            selection.direction,
+          ),
+      ];
+      Future<GoalTrajectoryRun> run({bool observed = false}) =>
+          runGoalTrajectory(
+            scope: GoalTrajectoryScope.foundations,
+            player: PlayerArchetypes.developing,
+            seed: 0,
+            sessions: 2,
+            slotsPerSession: 10,
+            observeSlot: observed ? (_, _, _, _) {} : null,
+          );
+
+      expect(chosen(await run(observed: true)), chosen(await run()));
+    });
   });
 }

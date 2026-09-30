@@ -2,6 +2,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:keyrecall_scheduler/keyrecall_scheduler.dart';
 
+import 'goal_trajectory_experiment.dart';
 import 'synthetic_player.dart';
 import 'trajectory.dart';
 import 'trajectory_run.dart';
@@ -30,6 +31,18 @@ Map<String, String> tieDimensionsOf(CandidateTrace trace) {
   };
 }
 
+/// The dimensions of an exercise itself, as opposed to how it was admitted.
+const Set<String> exerciseDimensions = {
+  'material',
+  'family',
+  'hands',
+  'direction',
+  'hand motion',
+  'octaves',
+  'guidance',
+  'tempo',
+};
+
 /// A slot whose ranking was decided by candidate order.
 ///
 /// [winner] is what ranking picks in the order candidates were generated, and
@@ -54,6 +67,11 @@ class RankTie {
   final bool winnerPractised;
   final bool reversedPractised;
 
+  /// What each side's material was to the goal in force: `target`,
+  /// `in scope`, or `no goal` for a run without one.
+  final String winnerRole;
+  final String reversedRole;
+
   const RankTie({
     required this.playerId,
     required this.seed,
@@ -64,6 +82,8 @@ class RankTie {
     required this.presented,
     required this.winnerPractised,
     required this.reversedPractised,
+    this.winnerRole = 'no goal',
+    this.reversedRole = 'no goal',
   });
 
   /// Whether the two sides are different materials, which makes the tie a
@@ -98,15 +118,106 @@ class RankTieCensus {
   final int slotsWithSelection;
   final List<RankTie> ties;
 
-  /// The trajectory the census read, which is the production one.
-  final Trajectory trajectory;
+  /// The trajectory the census read, which is the production one, when it ran
+  /// without a goal.
+  final Trajectory? trajectory;
 
   const RankTieCensus({
     required this.slots,
     required this.slotsWithSelection,
     required this.ties,
-    required this.trajectory,
+    this.trajectory,
   });
+}
+
+/// The tie [pipeline] left to candidate order in [result], or null when
+/// ranking picks the same candidate in either order.
+///
+/// [roleOf] names what each side's material is to the goal in force.
+RankTie? rankTieOf(
+  SchedulerPipeline pipeline,
+  LearnerState state,
+  SelectionResult result, {
+  required String playerId,
+  required int seed,
+  required int slot,
+  String Function(Exercise exercise)? roleOf,
+}) {
+  if (result is! CandidateSelected) return null;
+  final selectable = result.selectable;
+  final winner = pipeline.selectBest(selectable);
+  final reversed = pipeline.selectBest(selectable.reversed.toList());
+  if (winner == null || reversed == null || identical(winner, reversed)) {
+    return null;
+  }
+  return RankTie(
+    playerId: playerId,
+    seed: seed,
+    slot: slot,
+    tied: [
+      for (final trace in selectable)
+        if (pipeline.config.rankTolerances.compare(
+              trace.rankKey!,
+              winner.rankKey!,
+            ) ==
+            0)
+          trace,
+    ].length,
+    winner: winner,
+    reversed: reversed,
+    presented: identical(result.candidate, winner),
+    winnerPractised: _practised(state, winner),
+    reversedPractised: _practised(state, reversed),
+    winnerRole: roleOf?.call(winner.exercise) ?? 'no goal',
+    reversedRole: roleOf?.call(reversed.exercise) ?? 'no goal',
+  );
+}
+
+/// Runs [player] under [scope]'s goal through the production practice
+/// session, and records every slot whose ranking candidate order decided.
+///
+/// Observational only, like [censusRankTies], but through the path the app
+/// takes: the goal's requirements, emphasis, and uncovered targets reach the
+/// pipeline exactly as they do in practice.
+Future<RankTieCensus> censusGoalRankTies({
+  required GoalTrajectoryScope scope,
+  required SyntheticPlayer player,
+  required int seed,
+  int sessions = 10,
+  int slotsPerSession = 20,
+}) async {
+  final ties = <RankTie>[];
+  var slots = 0;
+  var selections = 0;
+  await runGoalTrajectory(
+    scope: scope,
+    player: player,
+    seed: seed,
+    sessions: sessions,
+    slotsPerSession: slotsPerSession,
+    observeSlot: (pipeline, state, result, targetMaterialIds) {
+      final index = slots++;
+      if (result is CandidateSelected) selections++;
+      final tie = rankTieOf(
+        pipeline,
+        state,
+        result,
+        playerId: player.id,
+        seed: seed,
+        slot: index,
+        roleOf: (exercise) =>
+            targetMaterialIds.contains(exercise.material.materialId)
+            ? 'target'
+            : 'in scope',
+      );
+      if (tie != null) ties.add(tie);
+    },
+  );
+  return RankTieCensus(
+    slots: slots,
+    slotsWithSelection: selections,
+    ties: ties,
+  );
 }
 
 /// Runs [player] and records every slot whose ranking candidate order decided.
@@ -199,35 +310,17 @@ class _TieRecorder extends SchedulerPipeline {
       diagnose: diagnose,
     );
     final index = slots++;
-    final result = slot.result;
-    if (result case CandidateSelected(:final candidate)) {
-      selections++;
-      final selectable = result.selectable;
-      final winner = selectBest(selectable);
-      final reversed = selectBest(selectable.reversed.toList());
-      if (winner != null && reversed != null && !identical(winner, reversed)) {
-        ties.add(
-          RankTie(
-            playerId: playerId,
-            seed: seed,
-            slot: index,
-            tied: [
-              for (final trace in selectable)
-                if (config.rankTolerances.compare(
-                      trace.rankKey!,
-                      winner.rankKey!,
-                    ) ==
-                    0)
-                  trace,
-            ].length,
-            winner: winner,
-            reversed: reversed,
-            presented: identical(candidate, winner),
-            winnerPractised: _practised(state, winner),
-            reversedPractised: _practised(state, reversed),
-          ),
-        );
-      }
+    if (slot.result is CandidateSelected) selections++;
+    if (rankTieOf(
+          this,
+          state,
+          slot.result,
+          playerId: playerId,
+          seed: seed,
+          slot: index,
+        )
+        case final tie?) {
+      ties.add(tie);
     }
     return slot;
   }
