@@ -3,6 +3,13 @@ import 'package:test/test.dart';
 
 import 'package:keyrecall_simulation/keyrecall_simulation.dart';
 
+typedef _Run = ({
+  int frontierAt,
+  int consumed,
+  double weakGain,
+  double strongGain,
+});
+
 /// A bounded chance for a family with nothing to show for itself.
 ///
 /// Not a rank bonus and not a preference for weak families: while the target
@@ -25,11 +32,7 @@ void main() {
         PlayerArchetypes.scaleStrongArpeggioWeak,
   };
 
-  ({int frontierAt, int consumed, double weakGain, double strongGain}) runWith({
-    required String weak,
-    required int bound,
-    required int seed,
-  }) {
+  _Run measure({required String weak, required int bound, required int seed}) {
     final strong = weak == TechnicalMaterial.scaleFamilyId
         ? TechnicalMaterial.arpeggioFamilyId
         : TechnicalMaterial.scaleFamilyId;
@@ -78,6 +81,15 @@ void main() {
       strongGain: after[strong]!.managed - before[strong]!.managed,
     );
   }
+
+  final runs = <(String, int, int), _Run>{};
+
+  _Run runWith({required String weak, required int bound, required int seed}) =>
+      runs[(weak, bound, seed)] ??= measure(
+        weak: weak,
+        bound: bound,
+        seed: seed,
+      );
 
   test('a bounded chance reaches a first frontier it otherwise would not', () {
     var withoutFrontier = 0;
