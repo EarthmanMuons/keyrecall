@@ -112,6 +112,36 @@ void main() {
       );
     });
 
+    test('two registers that cost the same keep the one matching more', () {
+      // Found by searching generated performances: read at one register this
+      // is three notes played and three wrong, at another one played and the
+      // rest wrong, and both cost the same. The explanation that finds what
+      // was played is the one to keep.
+      final arpeggio = ArpeggioMaterial('G', ArpeggioQuality.minor);
+      final realization = realize(
+        Exercise.linear(
+          material: arpeggio,
+          hands: HandConfiguration.left,
+          octaves: 1,
+          direction: ExerciseDirection.upDown,
+        ),
+      );
+      var transcript = PerformanceTranscript.empty;
+      for (final (index, midiNote) in [62, 55, 38, 46, 43, 68].indexed) {
+        transcript = transcript.appending(
+          pitch: spellObservedPitch(midiNote, material: arpeggio),
+          timestampMs: 1000 + index * 400,
+        );
+      }
+      final alignment = align(realization: realization, transcript: transcript);
+
+      expect(alignment.cost, 13);
+      expect(
+        alignment.noteEdits.where((positioned) => positioned.edit is Match),
+        hasLength(3),
+      );
+    });
+
     test('one note in the wrong octave is still a register substitution', () {
       // No shift of everything explains this one, which is what separates a
       // learner starting somewhere else from a learner slipping.
