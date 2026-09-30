@@ -64,21 +64,29 @@ void main() {
     test('${player.id} trips no structural invariant across months', () {
       // The same properties, over sessions spread across a calendar rather
       // than one unbroken run: what decays between them is the only
-      // difference, and nothing about a break makes a defect acceptable.
-      final sessions = sessionsOnDays([0, 2, 9, 30, 90], slots: 8);
+      // difference, and nothing about a break makes a defect acceptable. The
+      // month of short sessions is where dose control contracts a family.
       final found = <Anomaly>[];
-      for (var seed = 0; seed < 3; seed++) {
-        found.addAll(
-          detectAnomalies(
-            runTrajectorySessions(
-              player: player,
-              seed: seed,
-              materials: v1ScaleCatalog,
-              sessions: sessions,
-            ),
-            requestedSlots: 40,
-          ).where((a) => a.severity == AnomalySeverity.invariant),
-        );
+      for (final (sessions, seeds) in [
+        (sessionsOnDays([0, 2, 9, 30, 90], slots: 8), 3),
+        (LongitudinalSchedules.named('normal_month', slots: 12), 1),
+      ]) {
+        for (var seed = 0; seed < seeds; seed++) {
+          found.addAll(
+            detectAnomalies(
+              runTrajectorySessions(
+                player: player,
+                seed: seed,
+                materials: v1ScaleCatalog,
+                sessions: sessions,
+              ),
+              requestedSlots: sessions.fold<int>(
+                0,
+                (sum, session) => sum + session.slots,
+              ),
+            ).where((a) => a.severity == AnomalySeverity.invariant),
+          );
+        }
       }
 
       expect(

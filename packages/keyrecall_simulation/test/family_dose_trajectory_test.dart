@@ -51,18 +51,6 @@ void main() {
     },
   );
 
-  test('contraction never empties a slot', () {
-    for (final player in PlayerArchetypes.all) {
-      final trajectory = run(player, dosing);
-
-      expect(
-        trajectory.terminals,
-        isEmpty,
-        reason: '${player.id} was left with nothing to practise',
-      );
-    }
-  });
-
   test('a contracted family is asked for less, never never', () {
     final trajectory = run(PlayerArchetypes.coordinationLimited, dosing);
     final exposures = familyExposures(trajectory);
