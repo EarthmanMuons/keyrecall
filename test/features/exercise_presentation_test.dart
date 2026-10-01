@@ -277,11 +277,11 @@ void main() {
       // them again rather than knowing them at all.
       expect(
         declineLabel(GuidanceContext.notesPreviewedOnly, metBefore: true),
-        "I can't play this from memory",
+        "I can't play it without the notes",
       );
       expect(
         declineLabel(GuidanceContext.notesPreviewedOnly, metBefore: false),
-        "I can't play this from memory",
+        "I can't play it without the notes",
       );
     });
 

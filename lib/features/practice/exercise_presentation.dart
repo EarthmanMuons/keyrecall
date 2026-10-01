@@ -119,15 +119,15 @@ String traversalName(ExecutionConditions conditions) =>
 
 /// What the way out of an attempt says, before anything has been played.
 ///
-/// At the previewed rung the notes were studied a moment ago, so the question
-/// is producing them again and the button says so. Unguided, it is about
+/// At the previewed rung the notes were studied a moment ago and are hidden
+/// once it starts, so the button answers that condition. Unguided, it is about
 /// memory, and only then can it be about forgetting: a material this learner
 /// has never been shown cannot have been forgotten, and saying so on a first
 /// meeting asks somebody to accept a failure that is not theirs, at the moment
 /// KeyRecall is deliberately probing past what it has seen them do.
 String declineLabel(GuidanceContext guidance, {required bool metBefore}) =>
     switch ((guidance.independence, metBefore)) {
-      (1, _) => "I can't play this from memory",
+      (1, _) => "I can't play it without the notes",
       (_, true) => "I don't remember",
       (_, false) => "I don't know this yet",
     };
