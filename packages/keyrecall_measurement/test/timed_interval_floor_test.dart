@@ -10,6 +10,7 @@ void main() {
   final exercise = Exercise.linear(
     material: material,
     hands: HandConfiguration.right,
+    direction: ExerciseDirection.up,
     tempoBpm: 120,
   );
   final realization = realize(exercise);
@@ -65,6 +66,19 @@ void main() {
       expect(outcome.measuredTempoRatio, isNotNull);
     });
   }
+
+  test('waits stamped together for most of the run are no pace', () {
+    // Eight moments, so seven waits, and the median of them is zero, which is
+    // as far below the floor as a wait gets.
+    expect(realization.moments, hasLength(8));
+    final measurement = stampedApart([0, 0, 0, 0, 500000, 500000, 500000]);
+    final outcome = outcomeFor(measurement: measurement, exercise: exercise);
+
+    expect(measurement.timing.paceMs, isNull);
+    expect(outcome.continuity, isNull);
+    expect(outcome.temporalStability, isNull);
+    expect(outcome.motorScore, isNull);
+  });
 
   test('one pair stamped together among ordinary waits leaves the rest', () {
     final gaps = steady(500000)..[3] = 100;

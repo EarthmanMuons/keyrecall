@@ -327,6 +327,12 @@ void checkReading(
       pace,
       greaterThanOrEqualTo(measurement.policy.minimumTimedIntervalMs),
     );
+  } else {
+    // No typical wait to read playing against, so nothing read from one.
+    expect(measurement.dispersion, isNull);
+    expect(measurement.worstIntervalRatio, isNull);
+    expect(outcome.continuity, isNull);
+    expect(outcome.temporalStability, isNull);
   }
 
   // A moment is placed on the performance clock by any of its notes that

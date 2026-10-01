@@ -170,10 +170,11 @@ class TimingEvidence {
       if (run > longestRun) longestRun = run;
     }
     final waits = [for (final span in spans) span.intervalMs];
-    final median = _paceOf(waits);
+    final median = _medianWaitOf(waits);
     // Checked against the typical wait rather than any one, so a single pair
-    // of near-simultaneous stamps does not void the rest.
-    final credible = median == null || median >= policy.minimumTimedIntervalMs;
+    // of near-simultaneous stamps does not void the rest. Too few waits to
+    // have a typical one are no more credible than waits that are too short.
+    final credible = median != null && median >= policy.minimumTimedIntervalMs;
     final pace = credible ? median : null;
     final reference = credible ? _referenceOf(waits) : null;
     final judged =
@@ -222,15 +223,12 @@ class TimingEvidence {
       'longest run $longestRunWaits)';
 }
 
-/// How fast the playing went, or null when too few waits arrived to say.
+/// The median wait, or null when too few waits arrived to say.
 ///
-/// Zero when the playing was instantaneous, which nothing can be read against,
-/// so that reads as no pace either.
-double? _paceOf(List<double> waits) {
-  if (waits.length < fewestWaitsForPace) return null;
-  final pace = _median(waits);
-  return pace <= 0 ? null : pace;
-}
+/// Reported whatever it is, zero included, so that whether it is a pace at all
+/// is decided in one place, against the policy's floor.
+double? _medianWaitOf(List<double> waits) =>
+    waits.length < fewestWaitsForPace ? null : _median(waits);
 
 /// The slow end of ordinary playing, or null when there is none to read.
 ///
