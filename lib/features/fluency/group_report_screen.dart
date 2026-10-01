@@ -264,14 +264,8 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
   );
 
   List<(String, String)> _helpEntries() => [
-    if (_group.view case WheelView(:final ringsHelp)) ...[
-      (
-        'Keys',
-        'Each slice holds the ${_group.plural} that start on the same piano '
-            'key, such as D♭ major and C♯ minor. Slices follow the circle of '
-            'fifths, so neighbors share all but one note, but you can simply '
-            'read the names.',
-      ),
+    if (_group.view case WheelView(:final keysHelp, :final ringsHelp)) ...[
+      ('Keys', keysHelp),
       ('Rings', ringsHelp),
     ],
     ('From memory', 'You have played it without any notes shown.'),

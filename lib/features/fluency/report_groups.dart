@@ -14,13 +14,21 @@ sealed class PrimaryView {
 final class WheelView extends PrimaryView {
   final List<WheelRing> rings;
 
+  /// What a slice holds and how slices are ordered, for the help sheet.
+  final String keysHelp;
+
   /// What the rings are, for the help sheet.
   final String ringsHelp;
 
   /// The line under the wheel: how the rings run, and how to open a cell.
   final String caption;
 
-  const WheelView(this.rings, {required this.ringsHelp, required this.caption});
+  const WheelView(
+    this.rings, {
+    required this.keysHelp,
+    required this.ringsHelp,
+    required this.caption,
+  });
 }
 
 /// A plain list of the group's materials, which any group can be shown as.
@@ -79,6 +87,10 @@ final ReportGroup scaleGroup = ReportGroup(
               : KeySpelling.minor,
         ),
     ],
+    keysHelp:
+        'Each slice holds the scales that start on the same piano key, such as '
+        'D♭ major and C♯ minor. Slices follow the circle of fifths, so '
+        'neighbors share all but one note, but you can simply read the names.',
     ringsHelp:
         'Major is the outer ring, then natural, harmonic, and melodic minor '
         'toward the middle.',
@@ -110,6 +122,10 @@ final ReportGroup arpeggioGroup = ReportGroup(
               : KeySpelling.minor,
         ),
     ],
+    keysHelp:
+        'Each slice holds the arpeggios that start on the same piano key, such '
+        'as D♭ major and C♯ minor. Slices follow the circle of fifths, but you '
+        'can simply read the names.',
     ringsHelp: 'Major is the outer ring and minor the inner one.',
     caption:
         'Major on the outside, minor inside. Tap an arpeggio for its tempos, '
