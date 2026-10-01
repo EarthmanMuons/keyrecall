@@ -4,8 +4,12 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
+import 'package:keyrecall/features/fluency/fluency_report.dart';
 import 'package:keyrecall/features/fluency/fluency_screen.dart';
 import 'package:keyrecall/features/fluency/fluency_summary.dart';
+import 'package:keyrecall/features/fluency/group_report_screen.dart';
+import 'package:keyrecall/features/fluency/key_wheel.dart';
+import 'package:keyrecall/features/fluency/report_groups.dart';
 import 'package:keyrecall/features/practice/hands_icon.dart';
 import 'package:keyrecall/features/practice/practice_providers.dart';
 
@@ -25,7 +29,7 @@ void main() {
             ),
           ),
         ],
-        child: const MaterialApp(home: FluencyScreen()),
+        child: MaterialApp(home: GroupReportScreen(group: scaleGroup)),
       ),
     );
     await tester.pumpAndSettle();
@@ -162,4 +166,66 @@ void main() {
       }
     },
   );
+
+  group('the overview', () {
+    final catalog = [...allScales, ...allRootPositionArpeggios];
+
+    Future<void> pumpOverview(
+      WidgetTester tester, {
+      List<ReportGroup>? groups,
+    }) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            practiceCatalogProvider.overrideWithValue(catalog),
+            fluencyGroupsProvider.overrideWithValue(
+              resolveReportGroups(catalog, groups: groups),
+            ),
+            fluencyReportProvider.overrideWith(
+              (ref) async => (
+                summary: FluencySummary.of(const [], catalog: catalog),
+                days: const <FluencyDay>[],
+              ),
+            ),
+          ],
+          child: const MaterialApp(home: FluencyScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('opens the arpeggio wheel, whose sheet spans four octaves', (
+      tester,
+    ) async {
+      await pumpOverview(tester);
+      expect(find.text('0 of 48 scales played from memory'), findsOneWidget);
+      await tester.tap(find.text('Arpeggios'));
+      await tester.pumpAndSettle();
+      expect(find.byType(KeyWheel), findsOneWidget);
+      expect(find.text('0 of 24 arpeggios played from memory'), findsOneWidget);
+      final wheel = tester.getRect(find.byType(KeyWheel));
+      await tester.tapAt(wheel.center + Offset(0, -0.7 * wheel.width / 2));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<ListTile>(find.widgetWithText(ListTile, 'C major arpeggio'))
+            .selected,
+        isTrue,
+      );
+      expect(find.text('4 octaves'), findsOneWidget);
+    });
+
+    testWidgets('shows a family no group claims as a list', (tester) async {
+      await pumpOverview(tester, groups: [scaleGroup]);
+      await tester.tap(find.text(TechnicalMaterial.arpeggioFamilyId));
+      await tester.pumpAndSettle();
+      expect(find.byType(KeyWheel), findsNothing);
+      await tester.tap(find.text('C major arpeggio'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Table), findsOneWidget);
+    });
+  });
 }

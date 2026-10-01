@@ -343,6 +343,13 @@ String demonstrationName(DemonstrationLevel? level) => switch (level) {
   DemonstrationLevel.fromMemory => 'From memory',
 };
 
+/// What a hand configuration is called in the report.
+String handsLabel(HandConfiguration hands) => switch (hands) {
+  HandConfiguration.right => 'Right hand',
+  HandConfiguration.left => 'Left hand',
+  HandConfiguration.together => 'Together',
+};
+
 /// When something was last demonstrated, as a date a learner reads: the year
 /// only when it is not the year of [now].
 String demonstratedOn(DateTime at, {required DateTime now}) {

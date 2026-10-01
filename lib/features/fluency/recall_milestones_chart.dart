@@ -9,9 +9,9 @@ import 'fluency_summary.dart';
 import 'fluency_trends.dart';
 import 'weekly_chart_semantics.dart';
 
-/// How many scales have reached each level of recall, week by week.
+/// How many materials have reached each level of recall, week by week.
 ///
-/// Milestones rather than current recall: each scale counts at the strongest
+/// Milestones rather than current recall: each counts at the strongest
 /// level it has ever been demonstrated at, so the bars only grow, and the title
 /// says so rather than letting a learner expect forgetting to show here.
 class RecallMilestonesChart extends StatelessWidget {
@@ -19,11 +19,20 @@ class RecallMilestonesChart extends StatelessWidget {
     super.key,
     required this.days,
     required this.materialIds,
+    required this.singular,
+    required this.plural,
     required this.today,
   });
 
   final List<FluencyDay> days;
   final Set<String> materialIds;
+
+  /// What one of the materials is called inside a sentence.
+  final String singular;
+
+  /// What several of the materials are called inside a sentence.
+  final String plural;
+
   final CalendarDay today;
 
   static const int _weeks = 8;
@@ -52,15 +61,19 @@ class RecallMilestonesChart extends StatelessWidget {
         Text('Recall milestones', style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
         Text(
-          'Scales by the most independent way you have played them. A scale '
-          'keeps its milestone, so the bars only grow.',
+          '${plural[0].toUpperCase()}${plural.substring(1)} by the most '
+          'independent way you have played them. Each keeps its milestone, '
+          'so the bars only grow.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
         ),
         const SizedBox(height: 16),
         if (weeks.last.total == 0)
-          Text('No scales demonstrated yet.', style: theme.textTheme.bodyMedium)
+          Text(
+            'No $plural demonstrated yet.',
+            style: theme.textTheme.bodyMedium,
+          )
         else ...[
           WeeklyChartSemantics(
             labels: [for (final week in weeks) _description(week)],
@@ -212,7 +225,7 @@ class RecallMilestonesChart extends StatelessWidget {
 
   String _countDescription(WeeklyMilestones week, DemonstrationLevel level) {
     final count = week.countAt(level);
-    final noun = count == 1 ? 'scale' : 'scales';
+    final noun = count == 1 ? singular : plural;
     final support = switch (level) {
       DemonstrationLevel.fromMemory => 'from memory',
       DemonstrationLevel.notesPreviewed => 'with notes previewed',

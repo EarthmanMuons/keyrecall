@@ -14,7 +14,13 @@ sealed class PrimaryView {
 final class WheelView extends PrimaryView {
   final List<WheelRing> rings;
 
-  const WheelView(this.rings);
+  /// What the rings are, for the help sheet.
+  final String ringsHelp;
+
+  /// The line under the wheel: how the rings run, and how to open a cell.
+  final String caption;
+
+  const WheelView(this.rings, {required this.ringsHelp, required this.caption});
 }
 
 /// A plain list of the group's materials, which any group can be shown as.
@@ -30,8 +36,14 @@ final class MaterialListView extends PrimaryView {
 class ReportGroup {
   final String id;
 
-  /// What the group is called, as a plural.
+  /// What the group is called, as a title.
   final String name;
+
+  /// What one of its materials is called inside a sentence.
+  final String singular;
+
+  /// What several of its materials are called inside a sentence.
+  final String plural;
 
   final Set<String> familyIds;
   final PrimaryView view;
@@ -43,6 +55,8 @@ class ReportGroup {
   const ReportGroup({
     required this.id,
     required this.name,
+    required this.singular,
+    required this.plural,
     required this.familyIds,
     required this.view,
     this.paceCohort,
@@ -52,16 +66,26 @@ class ReportGroup {
 final ReportGroup scaleGroup = ReportGroup(
   id: 'SCALES',
   name: 'Scales',
+  singular: 'scale',
+  plural: 'scales',
   familyIds: const {TechnicalMaterial.scaleFamilyId},
-  view: WheelView([
-    for (final form in ScaleForm.values)
-      WheelRing(
-        holds: (material) => material.scaleForm == form,
-        spelling: form == ScaleForm.major
-            ? KeySpelling.major
-            : KeySpelling.minor,
-      ),
-  ]),
+  view: WheelView(
+    [
+      for (final form in ScaleForm.values)
+        WheelRing(
+          holds: (material) => material.scaleForm == form,
+          spelling: form == ScaleForm.major
+              ? KeySpelling.major
+              : KeySpelling.minor,
+        ),
+    ],
+    ringsHelp:
+        'Major is the outer ring, then natural, harmonic, and melodic minor '
+        'toward the middle.',
+    caption:
+        'Major on the outside, then natural, harmonic, and melodic minor. '
+        'Tap a scale for its tempos, or hold and slide to choose.',
+  ),
   paceCohort: PaceCohort.scales,
 );
 
@@ -70,19 +94,27 @@ final ReportGroup scaleGroup = ReportGroup(
 final ReportGroup arpeggioGroup = ReportGroup(
   id: 'ARPEGGIOS',
   name: 'Arpeggios',
+  singular: 'arpeggio',
+  plural: 'arpeggios',
   familyIds: const {TechnicalMaterial.arpeggioFamilyId},
-  view: WheelView([
-    for (final quality in ArpeggioQuality.values)
-      WheelRing(
-        holds: (material) =>
-            material is ArpeggioMaterial &&
-            material.quality == quality &&
-            material.inversion == ArpeggioInversion.root,
-        spelling: quality == ArpeggioQuality.major
-            ? KeySpelling.major
-            : KeySpelling.minor,
-      ),
-  ]),
+  view: WheelView(
+    [
+      for (final quality in ArpeggioQuality.values)
+        WheelRing(
+          holds: (material) =>
+              material is ArpeggioMaterial &&
+              material.quality == quality &&
+              material.inversion == ArpeggioInversion.root,
+          spelling: quality == ArpeggioQuality.major
+              ? KeySpelling.major
+              : KeySpelling.minor,
+        ),
+    ],
+    ringsHelp: 'Major is the outer ring and minor the inner one.',
+    caption:
+        'Major on the outside, minor inside. Tap an arpeggio for its tempos, '
+        'or hold and slide to choose.',
+  ),
 );
 
 final List<ReportGroup> reportGroups = List.unmodifiable([
@@ -131,6 +163,8 @@ List<ResolvedGroup> resolveReportGroups(
       () => ReportGroup(
         id: material.familyId,
         name: material.familyId,
+        singular: 'material',
+        plural: 'materials',
         familyIds: {material.familyId},
         view: const MaterialListView(),
       ),

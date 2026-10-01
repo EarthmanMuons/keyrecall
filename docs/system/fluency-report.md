@@ -1,10 +1,10 @@
 # The fluency report
 
 - **Status:** partly built. The fluency history projection, its storage, its
-  queries, the key map with its detail sheet, and both time charts are built.
-  The summary header, review marks, and skills panel are proposed, as are the
-  overview, report group drilldowns, and activity calendar; the built report is
-  the scale group's drilldown.
+  queries, the overview's group cards, the drilldowns for scales, arpeggios, and
+  the list fallback, the detail sheet, and both time charts are built. The
+  summary header, card previews, activity calendar, review marks, and skills
+  panel are proposed.
 
 A menu destination, beside Goal, that answers three questions a learner asks
 about their practice, and keeps them apart:

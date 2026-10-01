@@ -6,7 +6,7 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
-import 'package:keyrecall/features/fluency/fluency_screen.dart';
+import 'package:keyrecall/features/fluency/key_wheel.dart';
 import 'package:keyrecall/features/fluency/fluency_summary.dart';
 import 'package:keyrecall/features/fluency/playing_pace_chart.dart';
 import 'package:keyrecall/features/fluency/recall_milestones_chart.dart';
@@ -121,6 +121,8 @@ void main() {
           body: RecallMilestonesChart(
             days: [_day(7)],
             materialIds: {'C_MAJOR'},
+            singular: 'scale',
+            plural: 'scales',
             today: CalendarDay(2026, 9, 17),
           ),
         ),
