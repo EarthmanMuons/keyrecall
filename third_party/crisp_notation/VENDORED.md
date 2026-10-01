@@ -100,3 +100,5 @@ Flutter added a `build/**` analyzer exclusion to the Flutter package.
   edge as a baseline with local glyph-metric clearance and outward stacking. A
   focused, reviewed screenshot baseline covers piano fingering, beam edges, and
   the grand staff start line.
+- Record beam ink along the beam's slope, so fingerings and other marks placed
+  against the skyline follow a sloped beam instead of clearing its highest end.

@@ -63,6 +63,23 @@ void main() {
     }
   }
 
+  test('fingerings over a sloped beam follow its slope', () {
+    for (final below in [false, true]) {
+      final layout = const LayoutEngine().layout(
+        Score.simple(notes: below ? 'c5:e=2 a4:e=1' : 'e4:e=1 b4:e=3'),
+        LayoutSettings(
+          metadata: metadata,
+          fingeringPlacement: below
+              ? FingeringPlacement.belowStaff
+              : FingeringPlacement.aboveStaff,
+        ),
+      );
+      final [first, second] = fingers(layout);
+      expect(second.position.y,
+          below ? greaterThan(first.position.y) : lessThan(first.position.y));
+    }
+  });
+
   test('a distant ledger note does not displace other fingerings', () {
     double firstFingering(String notes) => fingers(const LayoutEngine().layout(
           Score.simple(notes: notes),
