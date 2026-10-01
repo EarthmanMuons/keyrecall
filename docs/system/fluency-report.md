@@ -56,8 +56,8 @@ natural, harmonic, and melodic minor, a mode, or an arpeggio's quality.
 **Realization** is how a material is played: hands, octave span, motion, and any
 later dimension. Realizations belong to the detail sheet and never become forms
 or groups. An arpeggio's inversion is a distinct material, since memory is kept
-per inversion, but it presents the same way, as a detail-sheet dimension of its
-root-position cell.
+per inversion, but it is proposed to present the same way, as a detail-sheet
+dimension of its root-position cell.
 
 **Pace cohort** is report policy naming playing comparable enough to form one
 pace series, such as scales over one octave in parallel motion. It is orthogonal
@@ -274,8 +274,14 @@ and whose sheet lists them. The same targets accept keyboard focus in circle
 order, show a focus outline, and open with Enter or Space.
 
 The arpeggio group uses the same wheel with one ring per quality, major
-outermost. Inversions, when the catalog holds them, are a detail-sheet dimension
-of their root-position cell, and the cell's fill reads the root position alone.
+outermost, and holds root positions only, as the catalog does. A wheel refuses
+any material its rings do not hold, so an inversion added to the catalog fails
+loudly rather than vanishing.
+
+**Proposed:** inversions as a detail-sheet dimension of their root-position
+cell, with the cell's fill reading the root position alone. That needs the group
+to resolve two kinds of material, those that occupy a cell and those attached to
+one, while every material in a cell still occupies exactly one.
 
 ## Over time
 

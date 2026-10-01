@@ -101,8 +101,8 @@ final ReportGroup scaleGroup = ReportGroup(
   paceCohort: PaceCohort.scales,
 );
 
-/// Root-position arpeggios only. An inversion belongs in its root position's
-/// detail sheet rather than in a ring of its own.
+/// Root-position arpeggios only. The catalog holds no inversions, and its
+/// wheel refuses one until inversions have a place of their own.
 final ReportGroup arpeggioGroup = ReportGroup(
   id: 'ARPEGGIOS',
   name: 'Arpeggios',
