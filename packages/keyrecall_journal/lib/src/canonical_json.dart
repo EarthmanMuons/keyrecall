@@ -59,6 +59,22 @@ Map<String, Object?> requireMap(
 }
 
 /// Reads [key] from [json] as a string, or fails with a located error.
+/// Refuses [json] unless its `record_type` names [type], so a record is never
+/// read as a kind it does not say it is.
+void requireRecordType(
+  Map<String, Object?> json,
+  JournalRecordType type, {
+  String? location,
+}) {
+  final written = requireString(json, 'record_type', location: location);
+  if (written != type.id) {
+    throw JournalFormatException(
+      'expected a ${type.id} record, got $written',
+      location: location,
+    );
+  }
+}
+
 String requireString(
   Map<String, Object?> json,
   String key, {

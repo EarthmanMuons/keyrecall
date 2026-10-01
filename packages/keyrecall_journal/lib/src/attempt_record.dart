@@ -303,6 +303,7 @@ class AttemptRecord {
       located(() => _fromJson(json), 'attempt record');
 
   static AttemptRecord _fromJson(Map<String, Object?> json) {
+    requireRecordType(json, JournalRecordType.attempt);
     // Older records are brought forward before anything reads them, so every
     // reader sees one shape and the upgrade lives in one place.
     json = upgradeAttemptJson(json);

@@ -164,9 +164,13 @@ SchedulerDecision decodeDecision(
       requireMap(json, 'prediction', location: location),
     ),
     eligibilityTier: tier,
-    eligibilityReason: switch (json['eligibility_reason']) {
-      final String id => _reasonFromId(id, location: location),
-      _ => null,
+    eligibilityReason: switch (asOptionalString(
+      json['eligibility_reason'],
+      'eligibility_reason',
+      location: location,
+    )) {
+      final id? => _reasonFromId(id, location: location),
+      null => null,
     },
     safetyReason: requireString(json, 'safety_reason', location: location),
     withinChallengeBand: requireBool(

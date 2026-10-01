@@ -12,6 +12,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `ExecutionConditions.maxOctaves`, the ten octaves MIDI's 128 notes hold. A
+  wider span is refused, so a corrupted count cannot reach realization.
+
 - `TempoDelivery` counts the beats before the attempt and the beats after it
   separately, so a metronome that opened late is still known to have supplied
   the attempt. `suppliedDuringAttempt` and

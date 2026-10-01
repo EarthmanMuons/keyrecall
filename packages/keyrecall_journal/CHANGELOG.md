@@ -12,6 +12,13 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Decoding refuses more of what it used to repair: a record whose `record_type`
+  is not the decoder's own, an `eligibility_reason` that is not a string, a
+  tempo delivery written as something its beat counts contradict, a motor
+  opportunity site at a moment no site can be at, and a current acquisition
+  attempt with no `traversals`, which defaults to one only for the versions
+  before 5 that never wrote it.
+
 - Attempt schema 10 records the rank key's shape progression term. An earlier
   record reads it as zero because it was not recorded, which says nothing about
   how that decision ranked shapes.

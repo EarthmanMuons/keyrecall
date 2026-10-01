@@ -148,16 +148,30 @@ Exercise decodeExercise(Map<String, Object?> json, {String? location}) {
   );
 }
 
+/// Reads a site back, refusing a moment no site can be at.
+///
+/// Checked here rather than left to the constructor, whose check is an
+/// assertion and so absent from a release build.
 MotorOpportunitySite _decodeOpportunitySite(
   Map<String, Object?> json, {
   String? location,
-}) => MotorOpportunitySite(
-  opportunity: MotorOpportunity.fromId(
-    requireString(json, 'opportunity', location: location),
-  ),
-  hand: Hand.fromId(requireString(json, 'hand', location: location)),
-  momentIndex: requireInt(json, 'moment_index', location: location),
-);
+}) {
+  final momentIndex = requireInt(json, 'moment_index', location: location);
+  if (momentIndex <= 0) {
+    throw JournalFormatException(
+      'an opportunity site is at moment $momentIndex, and sites begin after '
+      'the first moment',
+      location: location,
+    );
+  }
+  return MotorOpportunitySite(
+    opportunity: MotorOpportunity.fromId(
+      requireString(json, 'opportunity', location: location),
+    ),
+    hand: Hand.fromId(requireString(json, 'hand', location: location)),
+    momentIndex: momentIndex,
+  );
+}
 
 /// Names of the three guidance rungs, most independent first.
 const Map<int, String> _guidanceNames = {
@@ -288,9 +302,9 @@ Map<String, Object?> encodePresentationDelivery(
 
 /// Reads a delivery report back.
 ///
-/// The delivery classification is derived from the counts rather than read, so
-/// a record cannot claim a complete count-in beside the beats that say
-/// otherwise.
+/// The delivery classification is derived from the counts, and a written one
+/// that disagrees with them is refused, so a record cannot claim a complete
+/// count-in beside the beats that say otherwise.
 PresentationDelivery decodePresentationDelivery(
   Map<String, Object?> json, {
   String? location,
@@ -298,7 +312,7 @@ PresentationDelivery decodePresentationDelivery(
   final tempo = requireMap(json, 'tempo', location: location);
   final countIn = requireMap(tempo, 'count_in', location: location);
   final continuing = requireMap(tempo, 'continuing', location: location);
-  return PresentationDelivery(
+  final delivery = PresentationDelivery(
     shownContinuingBeats: requireInt(
       json,
       'shown_continuing_beats',
@@ -324,6 +338,15 @@ PresentationDelivery decodePresentationDelivery(
       ),
     ),
   );
+  final claimed = requireString(tempo, 'delivery', location: location);
+  if (claimed != delivery.tempo.delivery.id) {
+    throw JournalFormatException(
+      'tempo delivery is written as $claimed, but its beats say '
+      '${delivery.tempo.delivery.id}',
+      location: location,
+    );
+  }
+  return delivery;
 }
 
 /// Writes what an attempt was presented under, with the policy that decided it.

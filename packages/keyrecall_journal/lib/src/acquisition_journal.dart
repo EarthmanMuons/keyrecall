@@ -387,12 +387,17 @@ final class AcquisitionAttemptRecord extends AcquisitionEntry {
 
   static AcquisitionAttemptRecord _fromJson(Map<String, Object?> json) {
     final location = 'acquisition record';
+    requireRecordType(
+      json,
+      JournalRecordType.acquisitionAttempt,
+      location: location,
+    );
     final version = requireInt(json, 'schema_version', location: location);
     requireReadableAcquisitionVersion(version, location: location);
     final portion = requireString(json, 'portion', location: location);
-    // A version 4 record carried no count, and the one portion it could write
-    // was a single traversal.
-    final traversals = json['traversals'] == null
+    // A record before version 5 carried no count, and the one portion it
+    // could write was a single traversal.
+    final traversals = version <= 4
         ? 1
         : requireInt(json, 'traversals', location: location);
     final taskPortion = switch (portion) {
@@ -635,6 +640,11 @@ final class AcquisitionProbeServedRecord extends AcquisitionEntry {
 
   static AcquisitionProbeServedRecord _fromJson(Map<String, Object?> json) {
     const location = 'acquisition probe service';
+    requireRecordType(
+      json,
+      JournalRecordType.acquisitionProbeServed,
+      location: location,
+    );
     final version = requireInt(json, 'schema_version', location: location);
     requireReadableAcquisitionVersion(version, location: location);
     return AcquisitionProbeServedRecord(

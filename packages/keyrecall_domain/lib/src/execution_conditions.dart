@@ -103,6 +103,9 @@ enum HandMotion {
 /// memory state but carry separate execution residuals.
 @immutable
 class ExecutionConditions {
+  /// The widest span any traversal can have: what MIDI's 128 notes hold.
+  static const int maxOctaves = 10;
+
   /// Which hand or hands play.
   final HandConfiguration hands;
 
@@ -136,8 +139,12 @@ class ExecutionConditions {
     this.handMotion = HandMotion.parallel,
     this.tempoBpm = 80,
   }) {
-    if (octaves < 1) {
-      throw ArgumentError.value(octaves, 'octaves', 'must be at least 1');
+    if (octaves < 1 || octaves > maxOctaves) {
+      throw ArgumentError.value(
+        octaves,
+        'octaves',
+        'must be from 1 to $maxOctaves',
+      );
     }
     if (handMotion == HandMotion.contrary &&
         hands != HandConfiguration.together) {
