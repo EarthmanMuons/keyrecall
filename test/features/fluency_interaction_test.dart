@@ -24,8 +24,8 @@ void main() {
           practiceCatalogProvider.overrideWithValue(allScales),
           fluencyReportProvider.overrideWith(
             (ref) async => (
-              summary: FluencySummary.of(const [], catalog: allScales),
-              days: const <FluencyDay>[],
+              summary: FluencySummary.of(_played, catalog: allScales),
+              days: _played,
             ),
           ),
         ],
@@ -186,8 +186,8 @@ void main() {
             ),
             fluencyReportProvider.overrideWith(
               (ref) async => (
-                summary: FluencySummary.of(const [], catalog: catalog),
-                days: const <FluencyDay>[],
+                summary: FluencySummary.of(_played, catalog: catalog),
+                days: _played,
               ),
             ),
           ],
@@ -223,9 +223,42 @@ void main() {
       await tester.tap(find.text(TechnicalMaterial.arpeggioFamilyId));
       await tester.pumpAndSettle();
       expect(find.byType(KeyWheel), findsNothing);
-      await tester.tap(find.text('C major arpeggio'));
+      await tester.tap(find.text('D major arpeggio'));
       await tester.pumpAndSettle();
-      expect(find.byType(Table), findsOneWidget);
+      expect(find.byType(Table), findsNothing);
+      expect(find.textContaining('No tempo yet'), findsOneWidget);
     });
   });
 }
+
+/// A day with a tempo for every material the sheets above expand, so each
+/// opens on a table.
+final List<FluencyDay> _played = [
+  FluencyDay(
+    day: CalendarDay(2026, 9, 14),
+    attemptsByFamily: const {
+      TechnicalMaterial.scaleFamilyId: 3,
+      TechnicalMaterial.arpeggioFamilyId: 1,
+    },
+    demonstrations: const {},
+    tempos: [
+      for (final material in [
+        ScaleMaterial('C', ScaleForm.major),
+        ScaleMaterial('C', ScaleForm.naturalMinor),
+        ScaleMaterial('A', ScaleForm.harmonicMinor),
+        ArpeggioMaterial('C', ArpeggioQuality.major),
+      ])
+        TempoObservation(
+          materialId: material.materialId,
+          hands: HandConfiguration.right,
+          handMotion: HandMotion.parallel,
+          octaves: 1,
+          guidanceIndependence: 2,
+          requestedTempoBpm: 80,
+          tempoRatio: 1,
+          motorScore: 0.9,
+          occurredAt: DateTime.utc(2026, 9, 14, 18),
+        ),
+    ],
+  ),
+];

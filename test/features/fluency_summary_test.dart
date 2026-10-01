@@ -202,6 +202,14 @@ void main() {
       );
     });
 
+    test('knows whether any cell holds a tempo', () {
+      expect(detailOf(_cMajor, []).hasTempo, isFalse);
+      expect(
+        detailOf(_cMajor, [_played(_cMajor, rung: 1, tempoBpm: 60)]).hasTempo,
+        isTrue,
+      );
+    });
+
     test('takes its spans from the progression', () {
       final detail = detailOf(_cMajorArpeggio, [
         _played(_cMajorArpeggio, rung: 2, tempoBpm: 66, octaves: 4),
@@ -352,7 +360,10 @@ FluencyDay _day(
 }) => FluencyDay(
   day: CalendarDay(2026, 1, day),
   attemptsByFamily: {
-    TechnicalMaterial.scaleFamilyId: demonstrations.length + tempos.length,
+    TechnicalMaterial.scaleFamilyId: math.max(
+      1,
+      demonstrations.length + tempos.length,
+    ),
   },
   demonstrations: {
     for (final demonstration in demonstrations)

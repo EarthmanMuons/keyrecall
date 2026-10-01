@@ -43,7 +43,17 @@ class _DetailSheetState extends State<DetailSheet> {
                       : detail.material,
                 ),
               ),
-              if (detail.material == _expanded) _TempoTable(detail),
+              if (detail.material == _expanded)
+                detail.hasTempo
+                    ? _TempoTable(detail)
+                    : Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          'No tempo yet. One appears here once you play it '
+                          'through at a steady pace, evenly enough to count.',
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ),
             ],
             const SizedBox(height: 12),
             Text(

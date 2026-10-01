@@ -348,7 +348,10 @@ for an arpeggio, so the table never holds a cell for a realization the material
 is not played in, which would read as not yet learned. Tapping an expanded
 material collapses it; tapping another expands that one. Each cell reads the
 most independent rung with a tempo and names the support when it was not from
-memory, so a table never reads "96" for a tempo shown with cues.
+memory, so a table never reads "96" for a tempo shown with cues. A material with
+no tempo yet says so in a sentence instead of a table of empty cells, which
+would read as never played: early attempts are often self-paced, and set a
+demonstration but no pace.
 
 **Proposed:** review status and durability in words. Attempt history for a
 material, if it is ever exposed, belongs here rather than in the report.

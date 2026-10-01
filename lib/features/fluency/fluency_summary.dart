@@ -84,6 +84,10 @@ class MaterialDetail {
   }
 
   TechnicalMaterial get material => fluency.material;
+
+  /// Whether any cell of the table holds a tempo.
+  bool get hasTempo =>
+      rows.any((row) => row.tempos.any((tempo) => tempo != null));
 }
 
 /// One hand configuration's demonstrated tempos, a column per octave span.
