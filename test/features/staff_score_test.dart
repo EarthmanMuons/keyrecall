@@ -483,6 +483,36 @@ void main() {
     test('a system never falls below one bar', () {
       expect(barsPerSystem(scaleOf(), width: 40, minimumStaffSpace: 9), 1);
     });
+
+    test('a staff held below its fitted size spreads its notes', () {
+      const width = 345.0;
+      final rows = rowsOf(scaleOf(), measuresPerRow: 1);
+      final fitted = fittedStaffSpace(rows, width: width)!;
+      double stretchAt(double space) =>
+          fittedSpacingStretch(rows, width: width, staffSpace: space);
+
+      expect(stretchAt(fitted), closeTo(1, 0.01));
+      expect(stretchAt(fitted * 0.8), greaterThan(1.1));
+      expect(stretchAt(fitted * 0.7), greaterThan(stretchAt(fitted * 0.8)));
+    });
+
+    test('a braced staff held below its fitted size spreads its notes', () {
+      const width = 345.0;
+      final rows = rowsOfGrandStaff(
+        grandStaffFor(realize(exerciseOf(hands: HandConfiguration.together))),
+        measuresPerRow: 1,
+      );
+      final fitted = fittedGrandStaffSpace(rows, width: width)!;
+
+      expect(
+        fittedGrandStaffSpacingStretch(
+          rows,
+          width: width,
+          staffSpace: fitted * 0.8,
+        ),
+        greaterThan(1.1),
+      );
+    });
   });
 
   group('breaking a staff into rows', () {

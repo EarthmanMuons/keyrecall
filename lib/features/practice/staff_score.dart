@@ -204,6 +204,70 @@ double? fittedGrandStaffSpace(
   return widest <= 0 ? null : width / widest;
 }
 
+/// The note spacing stretch at which [rows] drawn at [staffSpace] fill
+/// [width], for a staff held smaller than its width would allow.
+double fittedSpacingStretch(
+  List<crisp.Score> rows, {
+  required double width,
+  required double staffSpace,
+}) {
+  final settings = _layoutSettings();
+  if (settings == null || rows.isEmpty) return 1;
+
+  const engine = crisp.LayoutEngine();
+  return _stretchFilling(
+    width / staffSpace,
+    (stretch) => rows
+        .map(
+          (row) => engine.layout(row, settings, spacingStretch: stretch).width,
+        )
+        .reduce((a, b) => a > b ? a : b),
+  );
+}
+
+/// The note spacing stretch at which the braced [rows] drawn at [staffSpace]
+/// fill [width].
+double fittedGrandStaffSpacingStretch(
+  List<crisp.GrandStaff> rows, {
+  required double width,
+  required double staffSpace,
+}) {
+  final settings = _layoutSettings();
+  if (settings == null || rows.isEmpty) return 1;
+
+  return _stretchFilling(
+    width / staffSpace,
+    (stretch) => rows
+        .map(
+          (row) =>
+              crisp
+                  .layoutGrandStaff(row, settings, spacingStretch: stretch)
+                  .width +
+              crisp.RenderGrandStaffView.braceInset,
+        )
+        .reduce((a, b) => a > b ? a : b),
+  );
+}
+
+/// The widest note spacing stretch an engraver justifies a system to.
+const double _maximumSpacingStretch = 4;
+
+/// The largest stretch whose [widthAt] stays within [target].
+double _stretchFilling(double target, double Function(double) widthAt) {
+  if (widthAt(_maximumSpacingStretch) <= target) return _maximumSpacingStretch;
+  var fits = 1.0;
+  var overflows = _maximumSpacingStretch;
+  for (var step = 0; step < 12; step++) {
+    final middle = (fits + overflows) / 2;
+    if (widthAt(middle) <= target) {
+      fits = middle;
+    } else {
+      overflows = middle;
+    }
+  }
+  return fits;
+}
+
 crisp.LayoutSettings? _layoutSettings() {
   final metadata = crisp.MusicFonts.metadataOrNull(crisp.MusicFont.bravura);
   return metadata == null
