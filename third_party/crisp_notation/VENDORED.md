@@ -102,3 +102,7 @@ Flutter added a `build/**` analyzer exclusion to the Flutter package.
   the grand staff start line.
 - Record beam ink along the beam's slope, so fingerings and other marks placed
   against the skyline follow a sloped beam instead of clearing its highest end.
+- Add a base `spacingStretch` to the wrapped single-staff and grand staff
+  layouts and their views. It widens every system, the last included, and
+  justification stretches up from it, so music drawn smaller than its width
+  allows can still fill that width.

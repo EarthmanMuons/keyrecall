@@ -114,6 +114,15 @@ void main() {
     expect(noteX(first.upper, 'e2'), closeTo(noteX(first.lower, 'e1'), 0.01));
   });
 
+  test('spacingStretch widens the last system too', () {
+    final plain =
+        layoutGrandStaffSystems(eightBarPiano(), settings, maxWidth: 1000);
+    final stretched = layoutGrandStaffSystems(eightBarPiano(), settings,
+        maxWidth: 1000, spacingStretch: 1.5);
+    expect(stretched.systems.single.layout.width,
+        greaterThan(plain.systems.single.layout.width + 1));
+  });
+
   test('justify: false leaves non-final systems ragged', () {
     final ragged = layoutGrandStaffSystems(eightBarPiano(), settings,
         maxWidth: 40, justify: false);

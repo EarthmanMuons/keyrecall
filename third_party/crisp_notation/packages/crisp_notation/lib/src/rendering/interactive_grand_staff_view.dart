@@ -45,6 +45,10 @@ class InteractiveGrandStaffView extends LeafRenderObjectWidget {
   /// note-spacing stretch across both staves).
   final bool justify;
 
+  /// Multiplier on note spacing for every system before any justification
+  /// (at least 1.0), for music spread wider than its natural spacing.
+  final double spacingStretch;
+
   /// Whether to align simultaneous notes vertically across the two staves
   /// (cross-staff onset gridding). Single-voice staves only.
   final bool gridAlign;
@@ -137,6 +141,7 @@ class InteractiveGrandStaffView extends LeafRenderObjectWidget {
     this.staffGap = 4.0,
     this.systemGap = 6.0,
     this.justify = true,
+    this.spacingStretch = 1.0,
     this.gridAlign = true,
     this.highlightedIds = const {},
     this.elementColors = const {},
@@ -169,6 +174,7 @@ class InteractiveGrandStaffView extends LeafRenderObjectWidget {
         staffGap: staffGap,
         systemGap: systemGap,
         justify: justify,
+        spacingStretch: spacingStretch,
         gridAlign: gridAlign,
         highlightedIds: highlightedIds,
         elementColors: elementColors,
@@ -204,6 +210,7 @@ class InteractiveGrandStaffView extends LeafRenderObjectWidget {
       ..staffGap = staffGap
       ..systemGap = systemGap
       ..justify = justify
+      ..spacingStretch = spacingStretch
       ..gridAlign = gridAlign
       ..highlightedIds = highlightedIds
       ..elementColors = elementColors
@@ -239,6 +246,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
     required double staffGap,
     required double systemGap,
     required bool justify,
+    double spacingStretch = 1.0,
     required bool gridAlign,
     required Set<String> highlightedIds,
     Map<String, Color> elementColors = const {},
@@ -248,6 +256,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
         _staffGap = staffGap,
         _systemGap = systemGap,
         _justify = justify,
+        _spacingStretch = spacingStretch,
         _gridAlign = gridAlign,
         _highlightedIds = highlightedIds,
         _elementColors = elementColors {
@@ -440,6 +449,16 @@ class RenderInteractiveGrandStaffView extends RenderBox
     markNeedsLayout();
   }
 
+  double _spacingStretch;
+
+  /// Multiplier on note spacing for every system before justification.
+  double get spacingStretch => _spacingStretch;
+  set spacingStretch(double value) {
+    if (value == _spacingStretch) return;
+    _spacingStretch = value;
+    markNeedsLayout();
+  }
+
   bool _gridAlign;
 
   /// Whether simultaneous notes align across the two staves.
@@ -620,6 +639,7 @@ class RenderInteractiveGrandStaffView extends RenderBox
       maxWidth: math.max(8.0, maxWidthSpaces),
       staffGap: _staffGap,
       justify: _justify,
+      spacingStretch: _spacingStretch,
       gridAlign: _gridAlign,
       showNoteNames: _showNoteNames,
       showNoteOctaves: _showNoteOctaves,
