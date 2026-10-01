@@ -9,6 +9,8 @@ import 'support/fixtures.dart';
 
 final _material = fixtureMaterials.first;
 final _other = fixtureMaterials[1];
+final _arpeggio = proofArpeggios.first;
+final _scales = PaceCohort.scales([...fixtureMaterials, _arpeggio]);
 
 /// 2026-01-05 is a Monday.
 final _monday = CalendarDay(2026, 1, 5);
@@ -120,6 +122,7 @@ void main() {
 
       final week = weeklyTempos(
         days,
+        cohort: _scales,
         hands: HandConfiguration.right,
         policy: const SingleRung(2),
         qualification: TempoQualification.v1,
@@ -136,6 +139,7 @@ void main() {
 
       final series = weeklyTempos(
         days,
+        cohort: _scales,
         hands: HandConfiguration.right,
         policy: const SingleRung(2),
       );
@@ -147,7 +151,7 @@ void main() {
       expect(series[1].observations, 0);
     });
 
-    test('reads only the hands, span, and parallel motion asked for', () {
+    test('reads only the hands asked for, at the cohort span', () {
       final days = _days([
         (day: 0, record: _attempt(hands: HandConfiguration.left)),
         (day: 0, record: _attempt(octaves: 2)),
@@ -156,8 +160,25 @@ void main() {
 
       final week = weeklyTempos(
         days,
+        cohort: _scales,
         hands: HandConfiguration.right,
         policy: const PooledRungs(),
+      ).single;
+      expect(week.medianTempoBpm, 72);
+      expect(week.observations, 1);
+    });
+
+    test('never pools arpeggios into a scale cohort', () {
+      final days = _days([
+        (day: 0, record: _attempt(tempoBpm: 72)),
+        for (var i = 0; i < 3; i++)
+          (day: 0, record: _attempt(material: _arpeggio, tempoBpm: 120)),
+      ]);
+
+      final week = playingPace(
+        days,
+        cohort: _scales,
+        hands: HandConfiguration.right,
       ).single;
       expect(week.medianTempoBpm, 72);
       expect(week.observations, 1);
@@ -178,6 +199,7 @@ void main() {
 
       WeeklyTempo read(TempoRungPolicy policy) => weeklyTempos(
         days,
+        cohort: _scales,
         hands: HandConfiguration.right,
         policy: policy,
       ).single;
@@ -201,12 +223,17 @@ void main() {
         (day: 0, record: _attempt(quality: 0.2, tempoBpm: 100, ratio: 1.2)),
       ]);
 
-      final week = playingPace(days, hands: HandConfiguration.right).single;
+      final week = playingPace(
+        days,
+        cohort: _scales,
+        hands: HandConfiguration.right,
+      ).single;
       expect(week.medianTempoBpm, closeTo(95, 1e-9));
       expect(week.observations, 2);
       expect(
         weeklyTempos(
           days,
+          cohort: _scales,
           hands: HandConfiguration.right,
           policy: const SingleRung(2),
           qualification: TempoQualification.v1,
@@ -228,7 +255,11 @@ void main() {
         (day: 0, record: _attempt(tempoBpm: 60)),
       ]);
 
-      final week = playingPace(days, hands: HandConfiguration.right).single;
+      final week = playingPace(
+        days,
+        cohort: _scales,
+        hands: HandConfiguration.right,
+      ).single;
       expect(week.guidanceIndependence, 2);
       expect(week.medianTempoBpm, 60);
       expect(week.observations, 1);
@@ -239,6 +270,7 @@ void main() {
 
       final week = weeklyTempos(
         days,
+        cohort: _scales,
         hands: HandConfiguration.right,
         policy: const MostIndependentRung(minimumObservations: 2),
       ).single;
@@ -272,6 +304,7 @@ List<FluencyDay> _days(List<_Scripted> attempts) {
 }
 
 AttemptRecord Function(int sequence) _attempt({
+  TechnicalMaterial? material,
   GuidanceContext guidance = GuidanceContext.unguided,
   FactualRetrieval? retrieval,
   HandConfiguration hands = HandConfiguration.right,
@@ -282,7 +315,7 @@ AttemptRecord Function(int sequence) _attempt({
 }) =>
     (sequence) => recordOf(
       Exercise.linear(
-        material: _material,
+        material: material ?? _material,
         hands: hands,
         octaves: octaves,
         tempoBpm: tempoBpm,

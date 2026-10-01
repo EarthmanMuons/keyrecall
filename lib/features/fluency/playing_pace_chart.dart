@@ -15,9 +15,15 @@ import 'weekly_chart_semantics.dart';
 /// and nothing about progress. A week without playing breaks its line, and a
 /// week of one or two attempts is drawn hollow.
 class PlayingPaceChart extends StatelessWidget {
-  const PlayingPaceChart({super.key, required this.days, required this.today});
+  const PlayingPaceChart({
+    super.key,
+    required this.days,
+    required this.cohort,
+    required this.today,
+  });
 
   final List<FluencyDay> days;
+  final PaceCohort cohort;
   final CalendarDay today;
 
   static const int _weeks = 8;
@@ -32,7 +38,7 @@ class PlayingPaceChart extends StatelessWidget {
     final series = {
       for (final hands in HandConfiguration.values)
         hands: recentWeeks(
-          playingPace(days, hands: hands),
+          playingPace(days, cohort: cohort, hands: hands),
           today: today,
           count: _weeks,
         ),
@@ -48,8 +54,8 @@ class PlayingPaceChart extends StatelessWidget {
         Text('Playing pace', style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
         Text(
-          'How fast you played one octave in parallel motion during practice. '
-          'Hollow points rest on one or two attempts.',
+          'How fast you played scales over one octave in parallel motion '
+          'during practice. Hollow points rest on one or two attempts.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -57,8 +63,8 @@ class PlayingPaceChart extends StatelessWidget {
         const SizedBox(height: 16),
         if (values.isEmpty)
           Text(
-            'No measured one-octave, parallel-motion playing pace in the last '
-            '$_weeks weeks.',
+            'No measured pace for one-octave scales in parallel motion in the '
+            'last $_weeks weeks.',
             style: theme.textTheme.bodyMedium,
           )
         else ...[

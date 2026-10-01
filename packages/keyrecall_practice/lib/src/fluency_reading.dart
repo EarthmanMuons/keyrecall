@@ -88,6 +88,31 @@ Map<TempoContext, double> demonstratedTempos(
   return fastest;
 }
 
+/// The playing one pace series compares.
+///
+/// Playing that differs in kind has no shared pace: a one-octave arpeggio is
+/// four notes with wider leaps, a one-octave scale eight. A series reads one
+/// cohort, so it never pools them.
+@immutable
+final class PaceCohort {
+  final Set<String> _materialIds;
+
+  /// The octave span every observation in the cohort was played over.
+  final int octaves;
+
+  PaceCohort._(Iterable<TechnicalMaterial> materials, {required this.octaves})
+    : _materialIds = {for (final material in materials) material.materialId};
+
+  /// The scales in [catalog], one octave in parallel motion.
+  factory PaceCohort.scales(Iterable<TechnicalMaterial> catalog) =>
+      PaceCohort._(catalog.whereType<ScaleMaterial>(), octaves: 1);
+
+  bool includes(TempoObservation observation) =>
+      observation.octaves == octaves &&
+      observation.handMotion == HandMotion.parallel &&
+      _materialIds.contains(observation.materialId);
+}
+
 /// Which guidance rungs a weekly tempo is read from.
 sealed class TempoRungPolicy {
   const TempoRungPolicy();
@@ -153,7 +178,7 @@ class WeeklyTempo {
       'from $observations)';
 }
 
-/// How fast [hands] has been playing, week by week.
+/// How fast [hands] has been playing [cohort], week by week.
 ///
 /// An observational trend rather than a capability claim: every completed
 /// attempt with a measured pace counts, whatever its motor score, at the pace
@@ -162,28 +187,28 @@ class WeeklyTempo {
 /// carries how little a sparse week rests on.
 List<WeeklyTempo> playingPace(
   List<FluencyDay> days, {
+  required PaceCohort cohort,
   required HandConfiguration hands,
-  int octaves = 1,
 }) => weeklyTempos(
   days,
+  cohort: cohort,
   hands: hands,
   policy: const MostIndependentRung(minimumObservations: 1),
-  octaves: octaves,
 );
 
-/// The median pace for [hands] in each week from the first practiced to the
-/// last, weeks without a value included.
+/// The median pace of [cohort] for [hands] in each week from the first
+/// practiced to the last, weeks without a value included.
 ///
 /// With a [qualification], only its qualifying observations count, at the pace
 /// they demonstrate. Without one, every observation counts at the pace played.
-/// Parallel motion only, at [octaves]. The median is taken over the week's
+/// The median is taken over the week's
 /// observations directly, never combined from daily summaries.
 List<WeeklyTempo> weeklyTempos(
   List<FluencyDay> days, {
+  required PaceCohort cohort,
   required HandConfiguration hands,
   required TempoRungPolicy policy,
   TempoQualification? qualification,
-  int octaves = 1,
 }) {
   if (days.isEmpty) return const [];
   final byWeek = <CalendarDay, List<TempoObservation>>{};
@@ -194,8 +219,7 @@ List<WeeklyTempo> weeklyTempos(
           day.tempos.where(
             (observation) =>
                 observation.hands == hands &&
-                observation.handMotion == HandMotion.parallel &&
-                observation.octaves == octaves &&
+                cohort.includes(observation) &&
                 (qualification?.qualifies(observation) ?? true),
           ),
         );

@@ -99,6 +99,13 @@ motor score, at the pace played rather than capped at the request. The
 structural requirements stay, since an attempt that was not completed or
 established no pace says nothing about playing speed.
 
+A series reads **one pace cohort**, a named kind of comparable playing, and
+never pools cohorts. Tempo has the same unit across families, one note to a
+beat, but not the same meaning: a one-octave arpeggio is four notes with wider
+leaps, a one-octave scale eight, so a week heavy in arpeggios would move a
+pooled line without any change in speed. The scale cohort is one octave in
+parallel motion. Cohorts are report policy, not properties of a family.
+
 Each week reads **one guidance rung**, the most independent with at least one
 observation, and never pools rungs or combines daily summaries. The number of
 attempts behind a week is carried with it. A week of one or two attempts is
@@ -211,10 +218,9 @@ throughout the report.
 
 **Playing pace** is built, below the key map after a section break rather than
 as another lens, since it answers a different question. It draws the last eight
-weeks, ending with the current one, as one line per hand configuration across
-all materials, restricted to one octave in parallel motion. The description and
-empty state name that restriction. The window is presentation policy; the weekly
-series underneath accepts any range.
+weeks, ending with the current one, as one line per hand configuration over the
+scale cohort. The description and empty state name that restriction. The window
+is presentation policy; the weekly series underneath accepts any range.
 
 A week without a value breaks its line rather than being drawn across, so hands
 together simply starts when coordination does. A week resting on one or two

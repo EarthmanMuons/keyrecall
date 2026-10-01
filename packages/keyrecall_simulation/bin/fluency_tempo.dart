@@ -237,6 +237,7 @@ Future<_Run> _run(TrajectoryJob job, _Plan plan) async {
     journal,
     partition: DayPartition.utc,
   ).days;
+  final cohort = PaceCohort.scales(v1ScaleCatalog);
   final rules = <String, TempoRungPolicy>{
     'pooled': const PooledRungs(),
     'unguided': const SingleRung(2),
@@ -248,6 +249,7 @@ Future<_Run> _run(TrajectoryJob job, _Plan plan) async {
         (rule, hands): _padded(
           weeklyTempos(
             days,
+            cohort: cohort,
             hands: hands,
             policy: policy,
             qualification: TempoQualification.v1,
@@ -255,7 +257,10 @@ Future<_Run> _run(TrajectoryJob job, _Plan plan) async {
           plan.weeks,
         ),
     for (final hands in HandConfiguration.values)
-      ('playing', hands): _padded(playingPace(days, hands: hands), plan.weeks),
+      ('playing', hands): _padded(
+        playingPace(days, cohort: cohort, hands: hands),
+        plan.weeks,
+      ),
   };
   final tempos = demonstratedTempos(days).keys.where(
     (context) =>

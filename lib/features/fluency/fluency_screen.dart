@@ -220,7 +220,11 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
               today: today,
             ),
             const SizedBox(height: 32),
-            PlayingPaceChart(days: report.days, today: today),
+            PlayingPaceChart(
+              days: report.days,
+              cohort: PaceCohort.scales(catalog),
+              today: today,
+            ),
           ],
         ),
       ),

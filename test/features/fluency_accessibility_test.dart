@@ -84,6 +84,7 @@ void main() {
         home: Scaffold(
           body: PlayingPaceChart(
             days: [_day(7), _day(14)],
+            cohort: _scales,
             today: CalendarDay(2026, 9, 17),
           ),
         ),
@@ -147,6 +148,7 @@ void main() {
         home: Scaffold(
           body: PlayingPaceChart(
             days: [_day(14, octaves: 2)],
+            cohort: _scales,
             today: CalendarDay(2026, 9, 17),
           ),
         ),
@@ -154,12 +156,15 @@ void main() {
     );
     expect(
       find.text(
-        'No measured one-octave, parallel-motion playing pace in the last 8 weeks.',
+        'No measured pace for one-octave scales in parallel motion in the '
+        'last 8 weeks.',
       ),
       findsOneWidget,
     );
   });
 }
+
+final _scales = PaceCohort.scales([ScaleMaterial('C', ScaleForm.major)]);
 
 FluencyDay _day(int day, {int octaves = 1}) => FluencyDay(
   day: CalendarDay(2026, 9, day),
