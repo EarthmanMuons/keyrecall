@@ -22,6 +22,7 @@ dependencies:
   meta: ^1.17.0
 
 dev_dependencies:
+  analyzer: ^13.3.0
   import_order_lint: ^0.2.2
   keyrecall_testing: ^0.1.0
   kiri_check: ^1.3.1

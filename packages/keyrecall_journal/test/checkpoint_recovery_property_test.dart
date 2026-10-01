@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:analyzer/dart/analysis/utilities.dart';
+import 'package:analyzer/dart/ast/ast.dart';
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_learner/keyrecall_learner.dart';
 import 'package:kiri_check/kiri_check.dart';
@@ -243,26 +245,28 @@ Map<String, Object?> factsOf(LearnerState state) => {
   ],
 };
 
-final RegExp _fieldDeclaration = RegExp(
-  r'^  (?:final |late final |late )?[A-Za-z][\w<>?, ]*[\w>?] (\w+)'
-  r'(?: = [^;]*)?;$',
-  multiLine: true,
-);
-
-/// The fields class [type] declares in [file] of the learner's state, which
-/// the facts above must name exactly.
+/// The instance fields class [type] declares in [file] of the learner's
+/// state, which the facts above must name exactly.
 ///
-/// Read from the source, one declaration per line, since nothing at runtime
-/// lists a class's fields.
+/// Read from the parsed source, since nothing at runtime lists a class's
+/// fields.
 Future<Set<String>> declaredFields(String file, String type) async {
   final uri = await Isolate.resolvePackageUri(
     Uri.parse('package:keyrecall_learner/src/state/$file'),
   );
-  final source = File.fromUri(uri!).readAsStringSync();
-  final start = source.indexOf(RegExp('^class $type\\b', multiLine: true));
-  final body = source.substring(start, source.indexOf('\n}\n', start));
+  final unit = parseString(content: File.fromUri(uri!).readAsStringSync()).unit;
+  final declaration = unit.declarations
+      .whereType<ClassDeclaration>()
+      .singleWhere(
+        (declaration) => declaration.namePart.typeName.lexeme == type,
+      );
+  if (declaration.namePart is PrimaryConstructorDeclaration) {
+    fail('$type declares fields in a primary constructor, which this misses');
+  }
   return {
-    for (final match in _fieldDeclaration.allMatches(body)) match.group(1)!,
+    for (final member in declaration.body.members)
+      if (member case FieldDeclaration(isStatic: false, :final fields))
+        for (final variable in fields.variables) variable.name.lexeme,
   };
 }
 
