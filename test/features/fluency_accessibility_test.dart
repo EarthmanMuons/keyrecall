@@ -89,6 +89,7 @@ void main() {
           body: PlayingPaceChart(
             days: [_day(7), _day(14)],
             cohort: _scales,
+            description: 'scales over one octave in parallel motion',
             today: CalendarDay(2026, 9, 17),
           ),
         ),
@@ -155,6 +156,7 @@ void main() {
           body: PlayingPaceChart(
             days: [_day(14, octaves: 2)],
             cohort: _scales,
+            description: 'scales over one octave in parallel motion',
             today: CalendarDay(2026, 9, 17),
           ),
         ),
@@ -162,8 +164,8 @@ void main() {
     );
     expect(
       find.text(
-        'No measured pace for one-octave scales in parallel motion in the '
-        'last 8 weeks.',
+        'No measured pace for scales over one octave in parallel motion in '
+        'the last 8 weeks.',
       ),
       findsOneWidget,
     );

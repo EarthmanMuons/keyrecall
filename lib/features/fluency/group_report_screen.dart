@@ -86,11 +86,12 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
               plural: _group.plural,
               today: today,
             ),
-            if (_group.paceCohort case final cohort?) ...[
+            if (_group.pace case final pace?) ...[
               const SizedBox(height: 32),
               PlayingPaceChart(
                 days: report.days,
-                cohort: cohort(materials),
+                cohort: pace.cohortOf(materials),
+                description: pace.description,
                 today: today,
               ),
             ],

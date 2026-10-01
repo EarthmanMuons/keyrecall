@@ -19,11 +19,16 @@ class PlayingPaceChart extends StatelessWidget {
     super.key,
     required this.days,
     required this.cohort,
+    required this.description,
     required this.today,
   });
 
   final List<FluencyDay> days;
   final PaceCohort cohort;
+
+  /// The playing [cohort] holds, inside a sentence.
+  final String description;
+
   final CalendarDay today;
 
   static const int _weeks = 8;
@@ -54,8 +59,8 @@ class PlayingPaceChart extends StatelessWidget {
         Text('Playing pace', style: theme.textTheme.titleMedium),
         const SizedBox(height: 4),
         Text(
-          'How fast you played scales over one octave in parallel motion '
-          'during practice. Hollow points rest on one or two attempts.',
+          'How fast you played $description during practice. Hollow points '
+          'rest on one or two attempts.',
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
           ),
@@ -63,8 +68,7 @@ class PlayingPaceChart extends StatelessWidget {
         const SizedBox(height: 16),
         if (values.isEmpty)
           Text(
-            'No measured pace for one-octave scales in parallel motion in the '
-            'last $_weeks weeks.',
+            'No measured pace for $description in the last $_weeks weeks.',
             style: theme.textTheme.bodyMedium,
           )
         else ...[

@@ -36,6 +36,19 @@ final class MaterialListView extends PrimaryView {
   const MaterialListView();
 }
 
+/// The cohort a group's playing pace is read over, and what it is called, kept
+/// together so a chart's data and its words cannot disagree.
+@immutable
+class GroupPace {
+  /// The cohort, from the group's materials.
+  final PaceCohort Function(Iterable<TechnicalMaterial> materials) cohortOf;
+
+  /// The playing the cohort holds, inside a sentence.
+  final String description;
+
+  const GroupPace({required this.cohortOf, required this.description});
+}
+
 /// A learner-facing grouping in the fluency report.
 ///
 /// Assembled from the catalog when the report is read, never stored, so a
@@ -56,9 +69,8 @@ class ReportGroup {
   final Set<String> familyIds;
   final PrimaryView view;
 
-  /// The cohort the group's playing pace is read over, from its materials, or
-  /// null when it has none yet.
-  final PaceCohort Function(Iterable<TechnicalMaterial> materials)? paceCohort;
+  /// How the group's playing pace is read, or null when it has none yet.
+  final GroupPace? pace;
 
   const ReportGroup({
     required this.id,
@@ -67,7 +79,7 @@ class ReportGroup {
     required this.plural,
     required this.familyIds,
     required this.view,
-    this.paceCohort,
+    this.pace,
   });
 }
 
@@ -98,7 +110,10 @@ final ReportGroup scaleGroup = ReportGroup(
         'Major on the outside, then natural, harmonic, and melodic minor. '
         'Tap a scale for its tempos, or hold and slide to choose.',
   ),
-  paceCohort: PaceCohort.scales,
+  pace: const GroupPace(
+    cohortOf: PaceCohort.scales,
+    description: 'scales over one octave in parallel motion',
+  ),
 );
 
 /// Root-position arpeggios only. The catalog holds no inversions, and its
