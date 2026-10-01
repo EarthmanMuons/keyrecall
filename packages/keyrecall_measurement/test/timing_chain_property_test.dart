@@ -540,4 +540,135 @@ void main() {
       }),
     );
   });
+
+  property('a steady performance measures what it was played at', () {
+    forAll(
+      combine6(
+        choiceOf(materials),
+        choiceOf(HandConfiguration.values),
+        combine2(choiceOf([1, 2]), choiceOf(ExerciseDirection.values)),
+        choiceOf([40.0, 60.0, 90.0, 120.0, 160.0]),
+        combine2(
+          integer(min: 20, max: 1500),
+          integer(min: 1000000, max: 1 << 30),
+        ),
+        integer(min: -60, max: 60),
+      ),
+      seed: propertySeed,
+      maxExamples: propertyBudget(150),
+      failingOnErrors<
+        (
+          TechnicalMaterial,
+          HandConfiguration,
+          (int, ExerciseDirection),
+          double,
+          (int, int),
+          int,
+        )
+      >((value) {
+        final (
+          material,
+          hands,
+          (octaves, direction),
+          bpm,
+          (waitMs, startUs),
+          lean,
+        ) = value;
+        // Under half a wait, so no hand reaches into a neighboring moment.
+        final offsetMs = lean.clamp(-(waitMs - 1) ~/ 2, (waitMs - 1) ~/ 2);
+        final exercise = Exercise.linear(
+          material: material,
+          hands: hands,
+          octaves: octaves,
+          direction: direction,
+          tempoBpm: bpm,
+        );
+        final realization = realize(exercise);
+
+        // Every moment [waitMs] after the last, the right hand [offsetMs]
+        // after the left, arriving in the order played.
+        int playedUs(int position, Set<Hand> noteHands) =>
+            startUs +
+            1000 * waitMs * position +
+            (noteHands.contains(Hand.right) &&
+                    !noteHands.contains(Hand.left) &&
+                    hands == HandConfiguration.together
+                ? 1000 * offsetMs
+                : 0);
+        final notes = [
+          for (final moment in realization.moments)
+            for (final note in moment.notes)
+              (
+                midiNote: note.midiNote,
+                atUs: playedUs(moment.position, note.hands),
+              ),
+        ]..sort((a, b) => a.atUs.compareTo(b.atUs));
+        var transcript = PerformanceTranscript.empty;
+        for (final note in notes) {
+          transcript = transcript.appending(
+            pitch: spellObservedPitch(note.midiNote, material: material),
+            timestampMs: 1000 + note.atUs ~/ 1000,
+            performanceTimeUs: note.atUs,
+          );
+        }
+        final measurement = measure(
+          realization: realization,
+          transcript: transcript,
+        );
+
+        final shared = realization.moments.any(
+          (moment) => moment.notes.any((note) => note.hands.length > 1),
+        );
+        final apart = hands == HandConfiguration.together && !shared;
+        int onsetUs(int position) {
+          final left = playedUs(position, {Hand.left});
+          final right = apart ? left + 1000 * offsetMs : left;
+          final earliest = left < right ? left : right;
+          final latest = left < right ? right : left;
+          return earliest + (latest - earliest) ~/ 2;
+        }
+
+        final moments = realization.moments.length;
+        expect(
+          [
+            for (final operation in measurement.alignment.operations)
+              if (operation case MomentCorrespondence(
+                :final performanceOnsetUs,
+              ))
+                performanceOnsetUs,
+          ],
+          [
+            for (var position = 0; position < moments; position++)
+              onsetUs(position),
+          ],
+          reason: 'every moment where it was played',
+        );
+        expect(
+          [
+            for (final gap in measurement.timing.gaps)
+              (gap.fromPosition, gap.toPosition, gap.gapMs),
+          ],
+          [
+            for (var position = 1; position < moments; position++)
+              (position - 1, position, waitMs),
+          ],
+        );
+        if (moments - 1 >= fewestWaitsForPace) {
+          expect(measurement.timing.paceMs, waitMs);
+          expect(
+            measurement.achievedTempoRatioFor(exercise.conditions),
+            closeTo(60000 / bpm / waitMs, 1e-12),
+          );
+        }
+        if (moments - 1 >= fewestContiguousWaitsForContinuity) {
+          expect(measurement.continuity, 1);
+          expect(measurement.temporalStability, 1);
+        }
+        expect(
+          measurement.handAsynchroniesMs,
+          apart ? List.filled(moments, offsetMs) : isEmpty,
+        );
+      }),
+    );
+  });
 }
