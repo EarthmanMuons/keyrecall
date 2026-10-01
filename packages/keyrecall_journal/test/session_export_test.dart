@@ -176,6 +176,39 @@ void main() {
       );
     });
 
+    test('is what was checked, whatever happens to the lists after', () {
+      final attempts = <ExportedAttempt>[];
+      final acquisition = [record];
+      final export = SessionExport(
+        profileId: 'abc12345',
+        sessionId: 'session-1',
+        startedAt: DateTime.utc(2026, 9, 9),
+        attempts: attempts,
+        acquisition: acquisition,
+      );
+      attempts.add(
+        ExportedAttempt(
+          index: 7,
+          exercise: parent,
+          outcome: outcome,
+          familiarity: MaterialFamiliarity.unknown,
+        ),
+      );
+      acquisition.add(record);
+
+      expect(export.attempts, isEmpty);
+      expect(export.acquisition, [record]);
+      expect(
+        () => export.attempts.add(attempts.single),
+        throwsUnsupportedError,
+      );
+      expect(() => export.acquisition.add(record), throwsUnsupportedError);
+      expect(
+        decodeSessionExport(encodeSessionExport(export)).acquisition,
+        hasLength(1),
+      );
+    });
+
     test('from another session is refused on reading', () {
       final written =
           jsonDecode(

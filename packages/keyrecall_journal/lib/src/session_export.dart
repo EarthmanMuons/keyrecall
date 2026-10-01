@@ -96,15 +96,19 @@ class SessionExport {
   /// Throws [ArgumentError] when an attempt's index is not its position, or a
   /// supported attempt belongs to another profile or session or began before
   /// this one did.
+  ///
+  /// Keeps unmodifiable copies of [attempts] and [acquisition], so what was
+  /// checked here is what is encoded.
   SessionExport({
     required this.profileId,
     required this.sessionId,
     required this.startedAt,
-    required this.attempts,
-    this.acquisition = const [],
+    required List<ExportedAttempt> attempts,
+    List<AcquisitionAttemptRecord> acquisition = const [],
     this.schemaVersion = sessionExportSchemaVersion,
-  }) {
-    for (final (position, attempt) in attempts.indexed) {
+  }) : attempts = List.unmodifiable(attempts),
+       acquisition = List.unmodifiable(acquisition) {
+    for (final (position, attempt) in this.attempts.indexed) {
       if (attempt.index != position) {
         throw ArgumentError.value(
           attempt.index,
@@ -113,7 +117,7 @@ class SessionExport {
         );
       }
     }
-    for (final record in acquisition) {
+    for (final record in this.acquisition) {
       final identity = record.identity;
       if (identity.profileId != profileId || identity.sessionId != sessionId) {
         throw ArgumentError.value(

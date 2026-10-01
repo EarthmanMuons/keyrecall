@@ -79,3 +79,9 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 - Attempt schema 3 records coordination prediction. Version 1 and 2 records and
   pending decisions upgrade with a coordination probability of one, preserving
   their former challenge semantics.
+
+### Fixed
+
+- `SessionExport` keeps unmodifiable copies of its attempts and supported
+  attempts, so a list changed after construction can no longer encode an export
+  its own reader refuses.
