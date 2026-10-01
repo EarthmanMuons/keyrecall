@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_testing/keyrecall_testing.dart';
 import 'package:kiri_check/kiri_check.dart';
@@ -191,6 +193,25 @@ void expectSane(LearnerState state, DateTime at) {
     ]) {
       expectFinite(value, 'memory ${memory.materialId}');
     }
+    // The envelope the state documents: 0 < current <= consolidated <= max.
+    expect(
+      memory.logCurrentHalfLife,
+      lessThanOrEqualTo(memory.logConsolidatedHalfLife),
+      reason: 'current durability above what is held in reserve',
+    );
+    expect(
+      memory.logConsolidatedHalfLife,
+      lessThanOrEqualTo(
+        math.log(model.params.materialMemory.maxMemoryHalfLifeDays) + 1e-12,
+      ),
+    );
+    for (final (name, spread) in [
+      ('current uncertainty', memory.currentHalfLifeUncertainty),
+      ('cold-start uncertainty', memory.coldStartUncertainty),
+      ('consolidation variance', memory.consolidatedLogHalfLifeVariance),
+    ]) {
+      expect(spread, greaterThan(0), reason: name);
+    }
     for (final time in [
       memory.memoryAnchorAt,
       memory.factualLastRetrievalAt,
@@ -235,19 +256,52 @@ void expectUpdateHeld(
   LearnerState after,
   Exercise exercise,
   Outcome outcome,
+  EvidenceWeights weights,
   DateTime at,
   Reached<String> reached,
 ) {
   final context = executionContextOf(exercise);
   final octaves = exercise.conditions.octaves;
+  final materialId = exercise.material.materialId;
+
+  // Evidence lands where the attempt was and nowhere else.
+  final was = factsOf(before);
+  final now = factsOf(after);
+  for (final key in {...was.keys, ...now.keys}) {
+    if (key == 'memory $materialId' || key == 'execution $context') continue;
+    if (key.startsWith('competency')) continue;
+    expect(now[key], was[key], reason: '$key moved for $exercise');
+  }
+  if (!outcome.retrieval.isTested) {
+    final memoryBefore = before.materialMemory[materialId];
+    final memoryAfter = after.materialMemory[materialId];
+    expect(
+      memoryAfter?.factualLastRetrievalAt,
+      memoryBefore?.factualLastRetrievalAt,
+      reason: 'no retrieval was tested',
+    );
+    expect(
+      memoryAfter?.lastRetrievalAttemptAt,
+      memoryBefore?.lastRetrievalAttemptAt,
+      reason: 'no retrieval was attempted',
+    );
+  }
   for (final MapEntry(key: competency, value: was)
       in before.competencies.entries) {
     final now = after.competencies[competency]!;
     expect(notBefore(now.lastEvidenceAt, was.lastEvidenceAt), isTrue);
     expect(notBefore(now.updatedAt, was.updatedAt), isTrue);
-    final moved = now.mean != was.mean || now.variance != was.variance;
+    final moved =
+        now.mean != was.mean ||
+        now.variance != was.variance ||
+        now.lastEvidenceAt != was.lastEvidenceAt;
     if (!moved) continue;
     expect(outcome.started, isTrue, reason: 'nothing began, ${competency.id}');
+    expect(
+      weights[competency],
+      greaterThan(0),
+      reason: '${competency.id} moved without the attempt crediting it',
+    );
     if (coordinationCompetencies.contains(competency)) {
       expect(outcome.coordination, isNotNull, reason: competency.id);
     } else if (!competency.isTopology) {
@@ -321,12 +375,14 @@ void expectUpdateHeld(
     }
     if (was != null) {
       expect(notBefore(now.lastEvidenceAt, was.lastEvidenceAt), isTrue);
-      if (now.residualMean != was.residualMean) {
+      if (now.residualMean != was.residualMean ||
+          now.lastEvidenceAt != was.lastEvidenceAt) {
         expect(
           outcome.motorScore,
           isNotNull,
           reason: 'residual from no timing',
         );
+        expect(weights.materialExecution, greaterThan(0));
       }
     }
   }
@@ -386,7 +442,9 @@ void expectPropagationHeld(LearnerState before, LearnerState after) {
 
 /// [steps] applied to a learner placed at [tier], or a cold one, checking
 /// every propagation and every update on the way.
-Map<String, Object?> practise(
+///
+/// Every step is valid practice, so every one has to be applied.
+LearnerState practise(
   PlacementTier? tier,
   List<Exercise> exercises,
   List<Step> steps,
@@ -400,6 +458,7 @@ Map<String, Object?> practise(
     at = at.add(Duration(minutes: minutes));
     final exercise = exercises[which % exercises.length];
     final outcome = outcomeOf(exercise, played);
+    final weights = evidenceWeightsFor(exercise, outcome);
 
     final unpropagated = state.copy();
     model.propagate(state, at);
@@ -407,26 +466,51 @@ Map<String, Object?> practise(
     expectSane(state, at);
 
     final before = state.copy();
-    try {
-      model.applyOutcome(
-        state: state,
-        exercise: exercise,
-        outcome: outcome,
-        weights: evidenceWeightsFor(exercise, outcome),
-        prediction: model.predict(state, exercise, at: at),
-        at: at,
-      );
-    } on ArgumentError {
-      reached.add('refused');
-      expect(factsOf(state), factsOf(before), reason: 'refused, unchanged');
-      continue;
-    }
+    model.applyOutcome(
+      state: state,
+      exercise: exercise,
+      outcome: outcome,
+      weights: weights,
+      prediction: model.predict(state, exercise, at: at),
+      at: at,
+    );
     reached.add('applied');
     expectSane(state, at);
-    expectUpdateHeld(before, state, exercise, outcome, at, reached);
+    expectUpdateHeld(before, state, exercise, outcome, weights, at, reached);
   }
-  return factsOf(state);
+  return state;
 }
+
+/// One rule of a valid update, broken.
+enum Breach {
+  misaligned,
+  retrievalAgainstRung,
+  neverBeganYetFinished,
+  memoryWithoutRetrieval,
+  executionWithoutTiming,
+  unboundedTempo,
+}
+
+/// [outcome] with some of its fields replaced.
+Outcome reshaped(
+  Outcome outcome, {
+  bool? started,
+  FactualRetrieval? retrieval,
+  bool untimed = false,
+  double? achievedTempoRatio,
+}) => Outcome(
+  started: started ?? outcome.started,
+  retrieval: retrieval ?? outcome.retrieval,
+  completed: outcome.completed,
+  materialRetrieval: outcome.materialRetrieval,
+  pitchIntegrity: outcome.pitchIntegrity,
+  continuity: untimed ? null : outcome.continuity,
+  temporalStability: untimed ? null : outcome.temporalStability,
+  achievedTempoRatio: achievedTempoRatio ?? outcome.achievedTempoRatio,
+  topologyAccuracy: outcome.topologyAccuracy,
+  coordination: outcome.coordination,
+  pulseMaintenance: outcome.pulseMaintenance,
+);
 
 void main() {
   property('every update moves only what its attempt established', () {
@@ -448,12 +532,133 @@ void main() {
       tearDownAll: reached.check,
       failingOnErrors<(PlacementTier?, List<Exercise>, List<Step>)>((value) {
         final (tier, exercises, steps) = value;
-        final facts = practise(tier, exercises, steps, reached);
+        final facts = factsOf(practise(tier, exercises, steps, reached));
         expect(
-          practise(tier, exercises, steps, reached),
+          factsOf(practise(tier, exercises, steps, reached)),
           facts,
           reason: 'the same history reaches the same state',
         );
+      }),
+    );
+  });
+
+  property('an update that breaks a rule is refused and writes nothing', () {
+    final ignored = Reached<String>({});
+    forAll(
+      combine4(
+        list(anyExercise, minLength: 1, maxLength: 3),
+        list(anyStep, maxLength: 6),
+        combine2(anyExercise, anyPlayed),
+        choiceOf(Breach.values),
+      ),
+      seed: propertySeed,
+      maxExamples: propertyBudget(200),
+      failingOnErrors<
+        (List<Exercise>, List<Step>, (Exercise, Played), Breach)
+      >((value) {
+        final (exercises, steps, (planned, played), breach) = value;
+        final state = practise(null, exercises, steps, ignored);
+        final at = state.lastPropagatedAt.add(const Duration(hours: 1));
+        model.propagate(state, at);
+
+        // The rung each breach needs, so it breaks its own rule and no
+        // other.
+        final exercise = switch (breach) {
+          Breach.memoryWithoutRetrieval => planned.withGuidance(
+            GuidanceContext.continuouslyCued,
+          ),
+          Breach.neverBeganYetFinished => planned.withGuidance(
+            GuidanceContext.unguided,
+          ),
+          _ => planned,
+        };
+        final ((_, _, retrieval), scores, (continuity, stability, _), _, _) =
+            played;
+        // Begun, finished, timed, and at a pace: an attempt every rule
+        // admits until one is broken.
+        final valid = outcomeOf(exercise, (
+          (true, true, retrieval),
+          scores,
+          (continuity ?? 0.5, stability ?? 0.5, null),
+          1.0,
+          false,
+        ));
+        final weights = evidenceWeightsFor(exercise, valid);
+        void apply(Outcome outcome, EvidenceWeights credited, DateTime when) =>
+            model.applyOutcome(
+              state: state,
+              exercise: exercise,
+              outcome: outcome,
+              weights: credited,
+              prediction: model.predict(state, exercise, at: at),
+              at: when,
+            );
+
+        final unbounded = reshaped(valid, achievedTempoRatio: double.maxFinite);
+        final (outcome, credited, attemptAt) = switch (breach) {
+          Breach.misaligned => (
+            valid,
+            weights,
+            at.subtract(const Duration(minutes: 1)),
+          ),
+          Breach.retrievalAgainstRung => (
+            reshaped(
+              valid,
+              retrieval: valid.retrieval.isTested
+                  ? FactualRetrieval.notTested
+                  : FactualRetrieval.succeeded,
+            ),
+            weights,
+            at,
+          ),
+          Breach.neverBeganYetFinished => (
+            reshaped(valid, started: false, retrieval: FactualRetrieval.failed),
+            EvidenceWeights(
+              competencies: const {},
+              materialExecution: 0,
+              materialMemory: weights.materialMemory,
+            ),
+            at,
+          ),
+          Breach.memoryWithoutRetrieval => (
+            valid,
+            EvidenceWeights(
+              competencies: weights.competencies,
+              materialExecution: weights.materialExecution,
+              materialMemory: 0.5,
+            ),
+            at,
+          ),
+          Breach.executionWithoutTiming => (
+            reshaped(valid, untimed: true),
+            EvidenceWeights(
+              competencies: {
+                for (final MapEntry(:key, :value)
+                    in weights.competencies.entries)
+                  if (key.isTopology) key: value,
+              },
+              materialExecution: 0.5,
+              materialMemory: weights.materialMemory,
+            ),
+            at,
+          ),
+          Breach.unboundedTempo => (
+            unbounded,
+            evidenceWeightsFor(exercise, unbounded),
+            at,
+          ),
+        };
+
+        final facts = factsOf(state);
+        expect(
+          () => apply(outcome, credited, attemptAt),
+          throwsArgumentError,
+          reason: breach.name,
+        );
+        expect(factsOf(state), facts, reason: 'refused, unchanged');
+
+        // The same attempt with the rule kept is accepted.
+        apply(valid, weights, at);
       }),
     );
   });
