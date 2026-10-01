@@ -1,7 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
+import 'activity_calendar.dart';
 import 'fluency_report.dart';
 import 'fluency_shades.dart';
 import 'fluency_summary.dart';
@@ -9,8 +11,8 @@ import 'group_report_screen.dart';
 import 'key_wheel.dart';
 import 'report_groups.dart';
 
-/// The fluency overview: a card per report group, each previewing its view
-/// where it has a wheel, and opening its report.
+/// The fluency overview: practice activity, then a card per report group,
+/// each previewing its view where it has a wheel, and opening its report.
 class FluencyScreen extends ConsumerWidget {
   const FluencyScreen({super.key});
 
@@ -29,6 +31,11 @@ class FluencyScreen extends ConsumerWidget {
                 vertical: 16,
               ),
               children: [
+                ActivityCalendar(
+                  days: report.days,
+                  today: CalendarDay.localOf(DateTime.now()),
+                ),
+                const SizedBox(height: 24),
                 for (final resolved in ref.watch(fluencyGroupsProvider))
                   _GroupCard(resolved: resolved, summary: report.summary),
               ],

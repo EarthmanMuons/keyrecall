@@ -363,23 +363,25 @@ String dayName(CalendarDay day, {required CalendarDay today}) =>
     _dateName(day.year, day.month, day.day, today.year);
 
 String _dateName(int year, int month, int day, int currentYear) {
-  const months = [
-    'Jan',
-    'Feb',
-    'Mar',
-    'Apr',
-    'May',
-    'Jun',
-    'Jul',
-    'Aug',
-    'Sep',
-    'Oct',
-    'Nov',
-    'Dec',
-  ];
-  final date = '${months[month - 1]} $day';
+  final date = '${monthName(month)} $day';
   return year == currentYear ? date : '$date, $year';
 }
+
+/// A month as a learner reads it on a date, such as `Sep`.
+String monthName(int month) => const [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+][month - 1];
 
 /// A demonstrated tempo as a table cell, naming the support it was shown with
 /// when that was not from memory.

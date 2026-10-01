@@ -2,9 +2,9 @@
 
 - **Status:** partly built. The fluency history projection, its storage, its
   queries, the overview's group cards with their wheel previews, the drilldowns
-  for scales, arpeggios, and the list fallback, the detail sheet, and both time
-  charts are built. The summary header, activity calendar, review marks, and
-  skills panel are proposed.
+  for scales, arpeggios, and the list fallback, the detail sheet, the activity
+  calendar, and both time charts are built. The summary header, review marks,
+  and skills panel are proposed.
 
 A menu destination, beside Goal, that answers three questions a learner asks
 about their practice, and keeps them apart:
@@ -309,8 +309,10 @@ graph. It records practice, not proficiency, and nothing in it rewards or warns.
 - A cell is a local calendar day, assigned by the history's `DayPartition`, and
   shaded by committed attempts in fixed bands: none, 1 to 2, 3 to 5, 6 to 10,
   and more. Fixed rather than relative to the learner's own range, so a day's
-  shade never changes as later history accumulates. Inspecting a day gives its
-  exact count.
+  shade never changes as later history accumulates. Its ramp is its own rather
+  than the recall shades, so activity never reads as a level. Inspecting a day
+  names its exact count in a line beneath the calendar that stays put, the same
+  for touch, pointer, and arrow keys.
 - Shade never encodes how well anything went. A day of rough acquisition
   attempts can be a productive one.
 - Beside it, days practiced in the past 30. There is no current run or streak:
@@ -320,7 +322,7 @@ graph. It records practice, not proficiency, and nothing in it rewards or warns.
 - Touch inspects by scrubbing across the whole calendar with nearest-day hit
   testing, rather than treating each cell as a minimum-size target. Assistive
   technology reads one entry per week, such as "Week of Sep 21. Practiced 4
-  days, 31 attempts.", and reaches its days from there.
+  days, 31 attempts.", rather than a stop per day.
 - Breaking a day down by report group needs attempts counted per material family
   per day, gathered into groups when read.
 
