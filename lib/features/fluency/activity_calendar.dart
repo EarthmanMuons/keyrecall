@@ -162,11 +162,7 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
                               child: Padding(
                                 padding: const EdgeInsets.all(8),
                                 child: Text(
-                                  activityDayDescription(
-                                    _inspected,
-                                    inspected?.attempts ?? 0,
-                                    today: widget.today,
-                                  ),
+                                  dayName(_inspected, today: widget.today),
                                   style: theme.textTheme.labelLarge?.copyWith(
                                     color: theme.colorScheme.onInverseSurface,
                                   ),
@@ -268,16 +264,33 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
   }
 }
 
+/// A teal ramp of its own, opposite the theme's orange, so activity stays
+/// vivid in both themes and never reads as a recall level.
 class _ActivityShades {
   final ColorScheme scheme;
 
   const _ActivityShades(this.scheme);
 
-  Color of(ActivityBand band) => Color.lerp(
-    scheme.surfaceContainerHighest,
-    scheme.tertiary,
-    band.index / (ActivityBand.values.length - 1),
-  )!;
+  static const _light = [
+    Color(0xFFB2EBE0),
+    Color(0xFF5FCFBC),
+    Color(0xFF1FA693),
+    Color(0xFF0B6E62),
+  ];
+
+  /// Brightest at the top, as dark surfaces read more activity as more light.
+  static const _dark = [
+    Color(0xFF0E4A43),
+    Color(0xFF12786B),
+    Color(0xFF23A996),
+    Color(0xFF6EE2CF),
+  ];
+
+  Color of(ActivityBand band) => switch (band) {
+    ActivityBand.none => scheme.surfaceContainerHighest,
+    _ =>
+      (scheme.brightness == Brightness.dark ? _dark : _light)[band.index - 1],
+  };
 }
 
 class _CalendarPainter extends CustomPainter {
