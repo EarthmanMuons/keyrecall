@@ -29,6 +29,13 @@ void main() {
     );
   });
 
+  test('weeks fill the width at a phone-sized day, six months to a year', () {
+    expect(weeksThatFit(328), 26);
+    expect(weeksThatFit(528), 42);
+    expect(weeksThatFit(1000), 52);
+    expect(weeksThatFit(200), 26);
+  });
+
   group('activity weeks', () {
     test('end with the week today falls in, each from its Monday', () {
       final weeks = activityWeeks(const [], today: _today, count: 26);

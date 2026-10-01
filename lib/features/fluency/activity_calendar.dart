@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 import 'package:material_ui/material_ui.dart';
@@ -33,13 +34,12 @@ class ActivityCalendar extends StatefulWidget {
 
 class _ActivityCalendarState extends State<ActivityCalendar> {
   late CalendarDay _inspected = widget.today;
+  bool _scrubbing = false;
 
   static const double _gap = 2;
   static const double _monthRow = 16;
 
-  /// The narrowest cell a whole year may be drawn with before the calendar
-  /// shows half of one instead.
-  static const double _narrowestYearCell = 10;
+  static const _holdDelay = Duration(milliseconds: 200);
 
   @override
   Widget build(BuildContext context) {
@@ -68,39 +68,115 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
         LayoutBuilder(
           builder: (context, constraints) {
             final width = constraints.maxWidth;
-            final count = width / 52 - _gap >= _narrowestYearCell ? 52 : 26;
+            final count = weeksThatFit(width);
             final weeks = activityWeeks(
               widget.days,
               today: widget.today,
               count: count,
             );
             final pitch = width / count;
+            final column = weeks.indexWhere(
+              (week) => week.week == _inspected.weekStart,
+            );
+            void inspect(Offset position) => _inspectAt(position, weeks, pitch);
             return Focus(
               onKeyEvent: (node, event) => _onKey(event, weeks.first.week),
-              child: GestureDetector(
+              child: RawGestureDetector(
                 behavior: HitTestBehavior.opaque,
-                onTapDown: (details) =>
-                    _inspectAt(details.localPosition, weeks, pitch),
-                onHorizontalDragUpdate: (details) =>
-                    _inspectAt(details.localPosition, weeks, pitch),
-                child: WeeklyChartSemantics(
-                  labels: [
-                    for (final week in weeks)
-                      activityWeekDescription(week, today: widget.today),
-                  ],
-                  child: CustomPaint(
-                    size: Size(width, _monthRow + pitch * 7),
-                    painter: _CalendarPainter(
-                      weeks: weeks,
-                      pitch: pitch,
-                      shades: shades,
-                      inspected: _inspected,
-                      highlight: theme.colorScheme.onSurface,
-                      labelStyle: theme.textTheme.labelSmall!.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
+                gestures: {
+                  TapGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                        TapGestureRecognizer
+                      >(
+                        TapGestureRecognizer.new,
+                        (recognizer) =>
+                            recognizer.onTapDown = (details) =>
+                                inspect(details.localPosition),
+                      ),
+                  HorizontalDragGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                        HorizontalDragGestureRecognizer
+                      >(HorizontalDragGestureRecognizer.new, (recognizer) {
+                        recognizer.onStart = (details) =>
+                            _scrub(details.localPosition, inspect);
+                        recognizer.onUpdate = (details) =>
+                            _scrub(details.localPosition, inspect);
+                        recognizer.onEnd = (_) => _endScrub();
+                        recognizer.onCancel = _endScrub;
+                      }),
+                  // Holding first frees the finger to move in any direction,
+                  // across weekdays as well as weeks.
+                  LongPressGestureRecognizer:
+                      GestureRecognizerFactoryWithHandlers<
+                        LongPressGestureRecognizer
+                      >(
+                        () => LongPressGestureRecognizer(duration: _holdDelay),
+                        (recognizer) {
+                          recognizer.onLongPressStart = (details) =>
+                              _scrub(details.localPosition, inspect);
+                          recognizer.onLongPressMoveUpdate = (details) =>
+                              _scrub(details.localPosition, inspect);
+                          recognizer.onLongPressEnd = (_) => _endScrub();
+                          recognizer.onLongPressCancel = _endScrub;
+                        },
+                      ),
+                },
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    WeeklyChartSemantics(
+                      labels: [
+                        for (final week in weeks)
+                          activityWeekDescription(week, today: widget.today),
+                      ],
+                      child: CustomPaint(
+                        size: Size(width, _monthRow + pitch * 7),
+                        painter: _CalendarPainter(
+                          weeks: weeks,
+                          pitch: pitch,
+                          shades: shades,
+                          inspected: _inspected,
+                          highlight: theme.colorScheme.onSurface,
+                          labelStyle: theme.textTheme.labelSmall!.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    // Above the calendar, where the finger scrubbing it
+                    // cannot cover the day it names.
+                    if (_scrubbing && column >= 0)
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: _monthRow + pitch * 7 + 4,
+                        child: IgnorePointer(
+                          child: Align(
+                            alignment: Alignment(
+                              (column + 0.5) / count * 2 - 1,
+                              0,
+                            ),
+                            child: Material(
+                              color: theme.colorScheme.inverseSurface,
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding: const EdgeInsets.all(8),
+                                child: Text(
+                                  activityDayDescription(
+                                    _inspected,
+                                    inspected?.attempts ?? 0,
+                                    today: widget.today,
+                                  ),
+                                  style: theme.textTheme.labelLarge?.copyWith(
+                                    color: theme.colorScheme.onInverseSurface,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             );
@@ -156,6 +232,13 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
       ],
     );
   }
+
+  void _scrub(Offset position, void Function(Offset position) inspect) {
+    if (!_scrubbing) setState(() => _scrubbing = true);
+    inspect(position);
+  }
+
+  void _endScrub() => setState(() => _scrubbing = false);
 
   void _inspectAt(Offset position, List<ActivityWeek> weeks, double pitch) {
     final column = (position.dx / pitch).floor().clamp(0, weeks.length - 1);

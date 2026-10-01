@@ -24,6 +24,15 @@ enum ActivityBand {
   };
 }
 
+/// The smallest a calendar day is drawn, gap included, so a wider layout
+/// shows more weeks rather than larger days.
+const double smallestDayPitch = 12.5;
+
+/// How many weeks fit across [width] at [smallestDayPitch], from six months
+/// to a year.
+int weeksThatFit(double width) =>
+    (width / smallestDayPitch).floor().clamp(26, 52);
+
 /// One week of the activity calendar.
 @immutable
 class ActivityWeek {

@@ -324,11 +324,14 @@ graph. It records practice, not proficiency, and nothing in it rewards or warns.
 - Beside it, days practiced in the past 30. There is no current run or streak:
   it is the one figure a single missed day resets, and spacing makes a day off
   appropriate.
-- Six months on a narrow layout, up to a year where there is room.
-- Touch inspects by scrubbing across the whole calendar with nearest-day hit
-  testing, rather than treating each cell as a minimum-size target. Assistive
-  technology reads one entry per week, such as "Week of Sep 21. Practiced 4
-  days, 31 attempts.", rather than a stop per day.
+- As many weeks as fit at a phone-sized day, from six months to a year, so a
+  wider layout shows more history rather than larger days.
+- Touch inspects by tapping, by sliding sideways, or by holding and then sliding
+  in any direction, with nearest-day hit testing across the whole calendar
+  rather than each cell as a minimum-size target. While a finger slides, the day
+  is also named in a label above the calendar, where the finger cannot cover it.
+  Assistive technology reads one entry per week, such as "Week of Sep 21.
+  Practiced 4 days, 31 attempts.", rather than a stop per day.
 - The inspected day also breaks its attempts down by report group, such as "9
   scales · 5 arpeggios", in a line that is reserved even when empty. The cell
   itself carries only the total. Attempts are kept per material family and
