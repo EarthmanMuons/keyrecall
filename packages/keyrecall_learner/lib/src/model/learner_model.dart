@@ -839,7 +839,12 @@ class LearnerModel {
             (consolidation - currentBase);
 
     memory.logConsolidatedHalfLife = math.log(consolidation);
-    memory.logCurrentHalfLife = math.log(current);
+    // Bounded in log space too, since the logs of a current that rounds a
+    // hair above consolidation would cross.
+    memory.logCurrentHalfLife = math.min(
+      math.log(current),
+      memory.logConsolidatedHalfLife,
+    );
     return consolidation - consolidationBefore;
   }
 
@@ -873,12 +878,15 @@ class LearnerModel {
     }
 
     final current = memory.currentHalfLifeDays;
-    memory.logCurrentHalfLife = math.log(
-      current +
-          memoryParams.supportedCurrentDurabilityRate *
-              practiceFactor *
-              quality *
-              (memory.consolidatedHalfLifeDays - current),
+    memory.logCurrentHalfLife = math.min(
+      math.log(
+        current +
+            memoryParams.supportedCurrentDurabilityRate *
+                practiceFactor *
+                quality *
+                (memory.consolidatedHalfLifeDays - current),
+      ),
+      memory.logConsolidatedHalfLife,
     );
   }
 }

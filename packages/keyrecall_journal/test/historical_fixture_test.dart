@@ -20,13 +20,15 @@ import 'support/fixtures.dart';
 /// be read needs a versioned upgrade, and the file stays as it is so the
 /// upgrade has something real to be proved against.
 ///
-/// Both learner model versions are kept. The `v1-8` pair is the file as it was
+/// Every learner model version is kept. The `v1-8` pair is the file as it was
 /// actually written, and what this build does with it is part of the storage
 /// contract: that version named a transition whose summation order followed
 /// the order an exercise's opportunities happened to iterate in, so a record
 /// of it read back off disk did not reliably replay to the state it produced,
 /// and no replay claims otherwise. The `v1-9` pair is the same history
-/// re-recorded, and it is the one that must still replay exactly.
+/// re-recorded, under a transition that could let memory formation round its
+/// current half-life a hair above consolidation. The `v1-10` pair is that
+/// history again, and it is the one that must still replay exactly.
 void main() {
   /// What the state hash is under the current model.
   const recordedStateHash =
@@ -47,7 +49,7 @@ void main() {
   LearnerState genesis() => model.placementState(testProfile.placement, at: t0);
 
   test('a stored journal still replays to the state it produced', () {
-    final journal = journalOf('attempt-journal-v4-v1-9.jsonl');
+    final journal = journalOf('attempt-journal-v4-v1-10.jsonl');
 
     expect(journal.header.profileId, testProfile.id);
     expect(journal.length, 4);
@@ -66,7 +68,7 @@ void main() {
 
   test('a stored checkpoint still holds the state that journal produced', () {
     expect(
-      checkpointOf('checkpoint-v3-v1-9.json').contentHash,
+      checkpointOf('checkpoint-v3-v1-10.json').contentHash,
       recordedStateHash,
     );
   });
@@ -80,8 +82,8 @@ void main() {
       // prove is which history it skipped, and the price of that is one replay.
       expect(
         validateCheckpointAgainstJournal(
-          checkpointOf('checkpoint-v3-v1-9.json'),
-          journal: journalOf('attempt-journal-v4-v1-9.jsonl'),
+          checkpointOf('checkpoint-v3-v1-10.json'),
+          journal: journalOf('attempt-journal-v4-v1-10.jsonl'),
           learnerModelVersion: params.modelVersion,
           genesisStateHash: learnerStateHash(genesis()),
         ),
@@ -90,60 +92,64 @@ void main() {
     },
   );
 
-  group('a journal from a superseded learner model', () {
-    test('still reads, because the wire format did not change', () {
-      final journal = journalOf('attempt-journal-v4-v1-8.jsonl');
+  for (final superseded in ['v1-8', 'v1-9']) {
+    group('a journal from superseded learner model $superseded', () {
+      test('still reads, because the wire format did not change', () {
+        final journal = journalOf('attempt-journal-v4-$superseded.jsonl');
 
-      expect(journal.length, 4);
-      expect(
-        journal.records.map((record) => record.provenance.learnerModelVersion),
-        everyElement('v1-8'),
-      );
-    });
+        expect(journal.length, 4);
+        expect(
+          journal.records.map(
+            (record) => record.provenance.learnerModelVersion,
+          ),
+          everyElement(superseded),
+        );
+      });
 
-    test('is refused by exact replay rather than reinterpreted', () {
-      expect(
-        () => replayJournal(
-          journalOf('attempt-journal-v4-v1-8.jsonl'),
+      test('is refused by exact replay rather than reinterpreted', () {
+        expect(
+          () => replayJournal(
+            journalOf('attempt-journal-v4-$superseded.jsonl'),
+            model: model,
+            initial: genesis(),
+          ),
+          throwsA(
+            isA<JournalFormatException>().having(
+              (error) => error.toString(),
+              'message',
+              allOf(contains(superseded), contains(params.modelVersion)),
+            ),
+          ),
+        );
+      });
+
+      test('re-estimates only where a caller asked for it deliberately', () {
+        final replayed = replayJournal(
+          journalOf('attempt-journal-v4-$superseded.jsonl'),
           model: model,
           initial: genesis(),
-        ),
-        throwsA(
-          isA<JournalFormatException>().having(
-            (error) => error.toString(),
-            'message',
-            allOf(contains('v1-8'), contains(params.modelVersion)),
+          options: const ReplayOptions(mode: ReplayMode.counterfactual),
+        );
+
+        expect(replayed.attemptsApplied, 4);
+      });
+
+      test('its checkpoint is a cache miss, not a shortcut', () {
+        final checkpoint = checkpointOf('checkpoint-v3-$superseded.json');
+
+        expect(checkpoint.isUsableUnder(params.modelVersion), isFalse);
+        expect(
+          validateCheckpointAgainstJournal(
+            checkpoint,
+            journal: journalOf('attempt-journal-v4-$superseded.jsonl'),
+            learnerModelVersion: params.modelVersion,
+            genesisStateHash: learnerStateHash(genesis()),
           ),
-        ),
-      );
+          isNotNull,
+        );
+      });
     });
-
-    test('re-estimates only where a caller asked for it deliberately', () {
-      final replayed = replayJournal(
-        journalOf('attempt-journal-v4-v1-8.jsonl'),
-        model: model,
-        initial: genesis(),
-        options: const ReplayOptions(mode: ReplayMode.counterfactual),
-      );
-
-      expect(replayed.attemptsApplied, 4);
-    });
-
-    test('its checkpoint is a cache miss, not a shortcut', () {
-      final checkpoint = checkpointOf('checkpoint-v3-v1-8.json');
-
-      expect(checkpoint.isUsableUnder(params.modelVersion), isFalse);
-      expect(
-        validateCheckpointAgainstJournal(
-          checkpoint,
-          journal: journalOf('attempt-journal-v4-v1-8.jsonl'),
-          learnerModelVersion: params.modelVersion,
-          genesisStateHash: learnerStateHash(genesis()),
-        ),
-        isNotNull,
-      );
-    });
-  });
+  }
 
   test('a checkpoint from a format this build cannot read is a cache miss', () {
     // The version 2 file is kept exactly as it was written. It carries no

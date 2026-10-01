@@ -12,6 +12,12 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Changed
 
+- Learner model `v1-10`. Memory formation and supported practice bound the
+  current log half-life by the consolidated one in log space, so floating-point
+  overshoot cannot leave current durability a hair above what is held in
+  reserve, which the state documents it never is. The version moves because the
+  arithmetic can, though the recorded history replays unchanged.
+
 - `Outcome.pulseMaintenance` says whether the attempt tested the learner keeping
   the pulse alone. When it did not, temporal stability leaves `motorScore` and
   `chosenTempoRatio` is null, so a supplied pulse neither teaches execution its
