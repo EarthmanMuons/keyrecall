@@ -320,13 +320,13 @@ void checkReading(
   }
   final tempo = measurement.achievedTempoRatioFor(exercise.conditions);
   expect(tempo.isFinite && tempo >= 0, isTrue, reason: 'tempo ratio $tempo');
-  // A pace under half a millisecond rounds to the tempo channel's sentinel
-  // for no pace while the timing evidence still reports one.
   final pace = measurement.timing.paceMs;
-  if (pace != null && pace < 0.5) {
-    reached.add('sub-millisecond pace');
-  } else {
-    expect(outcome.measuredTempoRatio == null, pace == null);
+  expect(outcome.measuredTempoRatio == null, pace == null);
+  if (pace != null) {
+    expect(
+      pace,
+      greaterThanOrEqualTo(measurement.policy.minimumTimedIntervalMs),
+    );
   }
 
   // A moment is placed on the performance clock by any of its notes that

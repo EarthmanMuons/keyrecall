@@ -253,6 +253,7 @@ AcquisitionObservation observeAcquisition({
     timing: TimingEvidence.of(
       measurement.alignment,
       restartPositions: acquisitionTraversalStarts(task).skip(1).toSet(),
+      policy: policy,
     ),
     policy: policy,
   );

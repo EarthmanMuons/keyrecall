@@ -78,7 +78,8 @@ class TimingEvidence {
   final List<MomentGap> gaps;
 
   /// How fast the playing went, in milliseconds per wait, or null below
-  /// [fewestWaitsForPace].
+  /// [fewestWaitsForPace] or when the waits are too short to be pacing; see
+  /// [MeasurementPolicy.minimumTimedIntervalMs].
   ///
   /// The median wait. Relative to the learner's own playing rather than to a
   /// requested tempo, so it reads the same whether they play fast or slowly.
@@ -169,8 +170,12 @@ class TimingEvidence {
       if (run > longestRun) longestRun = run;
     }
     final waits = [for (final span in spans) span.intervalMs];
-    final pace = _paceOf(waits);
-    final reference = _referenceOf(waits);
+    final median = _paceOf(waits);
+    // Checked against the typical wait rather than any one, so a single pair
+    // of near-simultaneous stamps does not void the rest.
+    final credible = median == null || median >= policy.minimumTimedIntervalMs;
+    final pace = credible ? median : null;
+    final reference = credible ? _referenceOf(waits) : null;
     final judged =
         reference != null && longestRun >= fewestContiguousWaitsForContinuity;
 

@@ -12,6 +12,13 @@
 
 ### Changed
 
+- `MeasurementPolicy.minimumTimedIntervalMs`, 20 ms by default. Below it the
+  median wait between moments is the clock's resolution rather than pacing, so
+  `TimingEvidence` reads no pace, reference, dispersion, or worst ratio, and
+  continuity, steadiness, and achieved tempo all report absence together. Timing
+  evidence now reads the policy measurement was given rather than the standard
+  one.
+
 - `outcomeFor` takes the presentation's delivery and marks pulse maintenance
   untested when any beat reached the learner once the attempt began.
 

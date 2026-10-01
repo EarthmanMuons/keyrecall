@@ -321,7 +321,7 @@ PerformanceMeasurement measure({
     degreesCorrect: degrees,
     repeats: repeats,
     intrusions: intrusions,
-    timing: TimingEvidence.of(alignment),
+    timing: TimingEvidence.of(alignment, policy: policy),
     widestAsynchronyAtPosition: _widestAsynchronyPositionOf(alignment),
     policy: policy,
   );

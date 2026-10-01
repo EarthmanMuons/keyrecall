@@ -73,6 +73,15 @@ class MeasurementPolicy {
   /// moment scores differently from one that is evenly loose.
   final double coordinationTailWeight;
 
+  /// The shortest typical wait between moments, in milliseconds, that reads
+  /// as performed pacing rather than the resolution of the clock.
+  ///
+  /// Fifty moments a second is far beyond any scale technique, and well clear
+  /// of timestamps a transport stamps as a burst. Below it the waits say
+  /// nothing about how the playing went, so no pace, continuity, or
+  /// steadiness is read from them.
+  final double minimumTimedIntervalMs;
+
   const MeasurementPolicy({
     this.repeatedMatchedPitchBreaksRetrieval = false,
     this.steadyDispersion = 0.08,
@@ -83,6 +92,7 @@ class MeasurementPolicy {
     this.synchronizedAsynchronyMs = 40,
     this.uncoordinatedAsynchronyMs = 150,
     this.coordinationTailWeight = 0.35,
+    this.minimumTimedIntervalMs = 20,
   }) : assert(
          steadyDispersion < unsteadyDispersion,
          'steadiness reads between its ends',
