@@ -49,3 +49,32 @@ Arbitrary<T?> optional<T>(Arbitrary<T> present) => weighted<T?>([
 
 /// One of [values].
 Arbitrary<T> choiceOf<T>(List<T> values) => constantFrom(values);
+
+/// What one property's generated examples reached, checked once they have all
+/// run.
+///
+/// Give [check] to `forAll` as `tearDownAll` and [falsified] as `onFalsify`.
+/// A property that fails reports that failure instead, since what its
+/// shrinking left reached says nothing about the generator.
+class Reached<V> {
+  /// Every value the examples have to reach.
+  final Set<V> expected;
+
+  final Set<V> _seen = {};
+  bool _falsified = false;
+
+  Reached(this.expected);
+
+  void add(V value) => _seen.add(value);
+
+  void falsified(Object? example) => _falsified = true;
+
+  void check() {
+    if (_falsified) return;
+    expect(
+      expected.difference(_seen),
+      isEmpty,
+      reason: 'the generated examples never reached these',
+    );
+  }
+}

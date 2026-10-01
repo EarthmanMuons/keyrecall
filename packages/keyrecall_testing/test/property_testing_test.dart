@@ -9,4 +9,24 @@ void main() {
     expect(propertyBudget(7), greaterThanOrEqualTo(7));
     expect(propertyBudget(7) % 7, 0);
   });
+
+  group('what generated examples reached', () {
+    test('fails on a value never reached', () {
+      final reached = Reached({1, 2})..add(1);
+      expect(reached.check, throwsA(isA<TestFailure>()));
+    });
+
+    test('passes once every value is reached', () {
+      final reached = Reached({1, 2})
+        ..add(2)
+        ..add(1)
+        ..add(3);
+      reached.check();
+    });
+
+    test('stands aside for a property that failed', () {
+      final reached = Reached({1})..falsified(0);
+      reached.check();
+    });
+  });
 }
