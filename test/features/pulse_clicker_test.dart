@@ -70,6 +70,10 @@ void main() {
   group('what it reports having handed over', () {
     /// A count-in of four at 750 ms is three and a half seconds of audio,
     /// which the engine takes a second at a time.
+    ///
+    /// Opened at the schedule's first instant. On the system clock, however
+    /// long opening took would already be behind the cursor, and a slow
+    /// enough start loses the first beat.
     Future<PulseClicker> countIn(_RecordingSink sink) async {
       final clicker = PulseClicker(sink: sink);
       await clicker.play(
@@ -77,6 +81,7 @@ void main() {
           countInBeats: 4,
           continuingBeats: 0,
           beat: const Duration(milliseconds: 750),
+          elapsed: () => Duration.zero,
         ),
       );
       return clicker;
@@ -119,6 +124,7 @@ void main() {
           countInBeats: 4,
           continuingBeats: 8,
           beat: const Duration(milliseconds: 750),
+          elapsed: () => Duration.zero,
         ),
       );
       for (var chunk = 0; chunk < 10; chunk++) {
