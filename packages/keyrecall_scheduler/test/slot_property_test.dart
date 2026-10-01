@@ -231,8 +231,8 @@ void main() {
               isTrue,
               reason: '$winner was chosen over the better ranked $best',
             );
-          case SelectionStage.tempoProbe:
-            expect(winner.challengeBypass, ChallengeBypass.tempoProbe);
+          case SelectionStage.acquisitionProbe:
+            expect(winner.challengeBypass, ChallengeBypass.acquisitionProbe);
           case SelectionStage.pulseCycle:
             expect(
               winner.challengeBypass,

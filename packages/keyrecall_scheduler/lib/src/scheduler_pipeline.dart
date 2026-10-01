@@ -189,8 +189,9 @@ enum SelectionStage {
   /// The best-ranked selectable candidate.
   ranking,
 
-  /// An owed tempo probe, served ahead of ranking.
-  tempoProbe,
+  /// An owed probe of a parent its acquisition work earned, served ahead of
+  /// ranking.
+  acquisitionProbe,
 
   /// The next attempt of a pulse remediation cycle.
   pulseCycle,
@@ -458,7 +459,7 @@ class SchedulerPipeline {
           ]);
 
     var (trace: selected, :stage) = servedProbe != null
-        ? (trace: servedProbe, stage: SelectionStage.tempoProbe)
+        ? (trace: servedProbe, stage: SelectionStage.acquisitionProbe)
         : servedPulse != null
         ? (trace: servedPulse, stage: SelectionStage.pulseCycle)
         : _choose(
