@@ -67,6 +67,8 @@ class Reached<V> {
 
   void add(V value) => _seen.add(value);
 
+  void addAll(Iterable<V> values) => _seen.addAll(values);
+
   void falsified(Object? example) => _falsified = true;
 
   void check() {

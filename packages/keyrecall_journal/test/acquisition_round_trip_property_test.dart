@@ -102,15 +102,21 @@ AcquisitionJournal logOf(
   return log;
 }
 
-/// Every enum value and portion the generated attempts reached.
-final Set<Object> reached = {};
-
 void main() {
   property('an acquisition attempt reads back as what was written', () {
+    final reached = Reached<Object>({
+      ...AttemptTermination.values,
+      ...AcquisitionCompletion.values,
+      ...CriterionVerdict.values,
+      FullTraversal,
+      TraversalRepetitions,
+    });
     forAll(
       anyAttempt,
       seed: propertySeed,
       maxExamples: propertyBudget(400),
+      onFalsify: reached.falsified,
+      tearDownAll: reached.check,
       failingOnErrors<AcquisitionAttemptRecord>((record) {
         reached.addAll([
           ?record.termination,
@@ -263,12 +269,5 @@ void main() {
         expect(log.replay, returnsNormally);
       }),
     );
-  });
-
-  test('the generated attempts reach every variant', () {
-    expect(reached, containsAll(AttemptTermination.values));
-    expect(reached, containsAll(AcquisitionCompletion.values));
-    expect(reached, containsAll(CriterionVerdict.values));
-    expect(reached, containsAll([FullTraversal, TraversalRepetitions]));
   });
 }

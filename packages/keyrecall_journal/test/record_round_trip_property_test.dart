@@ -261,10 +261,27 @@ AttemptJournal journalOf(
   return journal;
 }
 
-/// Every enum value the generated records reached.
-final Set<Enum> reached = {};
+/// Every variant a generated record has to be able to reach.
+Reached<Enum> everyVariant() => Reached({
+  ...AttemptTermination.values,
+  ...MeasurementUnavailableReason.values,
+  ...FactualRetrieval.values,
+  ...PulseMaintenance.values,
+  ...Competency.values,
+  ...PitchCue.values,
+  ...CueModality.values,
+  ...MotorCue.values,
+  ...PerformanceFeedback.values,
+  ...TempoSupport.values,
+  ...LocatorFeedback.values,
+  ...EligibilityTier.values,
+  ...EligibilityReason.values,
+  ...ChallengeFloorReason.values,
+  ...ChallengeBypass.values,
+  ...RealizationRank.values,
+});
 
-void noteReached(AttemptRecord record) {
+void noteReached(Reached<Enum> reached, AttemptRecord record) {
   reached.add(record.closure.termination);
   if (record.presentation case final presentation?) {
     final conditions = presentation.conditions;
@@ -301,12 +318,15 @@ void noteReached(AttemptRecord record) {
 
 void main() {
   property('a record reads back as what was written', () {
+    final reached = everyVariant();
     forAll(
       anyRecord,
       seed: propertySeed,
       maxExamples: propertyBudget(500),
+      onFalsify: reached.falsified,
+      tearDownAll: reached.check,
       failingOnErrors<AttemptRecord>((record) {
-        noteReached(record);
+        noteReached(reached, record);
         final back = reread(record);
 
         expect(meaningOf(back), meaningOf(record));
@@ -381,32 +401,5 @@ void main() {
         }
       }),
     );
-  });
-
-  test('the generated records reach every variant', () {
-    for (final values in <List<Enum>>[
-      AttemptTermination.values,
-      MeasurementUnavailableReason.values,
-      FactualRetrieval.values,
-      PulseMaintenance.values,
-      Competency.values,
-      PitchCue.values,
-      CueModality.values,
-      MotorCue.values,
-      PerformanceFeedback.values,
-      TempoSupport.values,
-      LocatorFeedback.values,
-      EligibilityTier.values,
-      EligibilityReason.values,
-      ChallengeFloorReason.values,
-      ChallengeBypass.values,
-      RealizationRank.values,
-    ]) {
-      expect(
-        reached,
-        containsAll(values),
-        reason: '${values.first.runtimeType}',
-      );
-    }
   });
 }

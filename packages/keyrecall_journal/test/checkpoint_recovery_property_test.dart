@@ -274,10 +274,29 @@ LearnerStateCheckpoint reread(LearnerStateCheckpoint checkpoint) =>
       params: model.params,
     );
 
-/// Every kind of state, boundary, and pause the generated histories reached.
-final Set<String> reached = {};
+/// Every kind of state, boundary, and pause a generated history has to be able
+/// to reach.
+Reached<String> everyKind() => Reached({
+  'genesis cold',
+  for (final tier in PlacementTier.values) 'genesis ${tier.id.toLowerCase()}',
+  'no material yet',
+  'memory anchor',
+  'factual retrieval',
+  'established independence',
+  'independence time',
+  'retrieval attempt',
+  'demonstrated tempo',
+  'coordination-ready tempo',
+  'execution evidence',
+  'competency evidence',
+  'first boundary',
+  'middle boundary',
+  'last boundary',
+  'unmeasured boundary',
+  'season away',
+});
 
-void noteReached(LearnerState state) {
+void noteReached(Reached<String> reached, LearnerState state) {
   for (final memory in state.materialMemory.values) {
     reached.addAll([
       if (memory.memoryAnchorAt != null) 'memory anchor',
@@ -305,6 +324,7 @@ void noteReached(LearnerState state) {
 
 void main() {
   property('recovering from any checkpoint reaches the state genesis does', () {
+    final reached = everyKind();
     forAll(
       combine4(
         anyGenesis,
@@ -317,6 +337,8 @@ void main() {
       ),
       seed: propertySeed,
       maxExamples: propertyBudget(60),
+      onFalsify: reached.falsified,
+      tearDownAll: reached.check,
       failingOnErrors<
         (
           (String, LearnerState Function(DateTime)),
@@ -338,7 +360,7 @@ void main() {
           initial: history.initial,
         );
         reached.add('genesis ${genesisName.toLowerCase()}');
-        noteReached(history.initial);
+        noteReached(reached, history.initial);
 
         expect(
           whole.divergences,
@@ -364,7 +386,7 @@ void main() {
             genesisStateHash: genesisHash,
           );
           final checkpoint = reread(written);
-          noteReached(checkpoint.state);
+          noteReached(reached, checkpoint.state);
           reached.addAll([
             if (through == 0) 'first boundary',
             if (through == journal.length - 1) 'last boundary',
@@ -454,32 +476,6 @@ void main() {
         'material_execution_state.dart',
         'MaterialExecutionState',
       ),
-    );
-  });
-
-  test('the generated histories reach every kind of state and boundary', () {
-    expect(
-      reached,
-      containsAll([
-        'genesis cold',
-        for (final tier in PlacementTier.values)
-          'genesis ${tier.id.toLowerCase()}',
-        'no material yet',
-        'memory anchor',
-        'factual retrieval',
-        'established independence',
-        'independence time',
-        'retrieval attempt',
-        'demonstrated tempo',
-        'coordination-ready tempo',
-        'execution evidence',
-        'competency evidence',
-        'first boundary',
-        'middle boundary',
-        'last boundary',
-        'unmeasured boundary',
-        'season away',
-      ]),
     );
   });
 }
