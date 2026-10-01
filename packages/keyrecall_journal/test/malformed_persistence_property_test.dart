@@ -92,20 +92,29 @@ const List<Object?> _otherTypes = ['text', 7, 0.5, true, <Object?>[], null];
   return (copy, '${damage.name} at ${path.join('.')} (was $current)');
 }
 
+/// The lists that encode a set, written in canonical order, whose order a
+/// reader is free not to keep.
+const Set<String> setValuedKeys = {
+  'exclusive_requirement_ids',
+  'opportunities',
+  'opportunity_sites',
+};
+
 /// Whether two JSON trees say the same thing, where an absent key and a null
-/// one are the same and a number is its value however it was written.
-bool sameJson(Object? a, Object? b) => switch ((a, b)) {
+/// one are the same, a number is its value however it was written, and only
+/// a list under one of [setValuedKeys] may come back in another order.
+bool sameJson(Object? a, Object? b, {String? key}) => switch ((a, b)) {
   (final num x, final num y) => x == y,
   (final List<Object?> x, final List<Object?> y) =>
     x.length == y.length &&
         ([
               for (var i = 0; i < x.length; i++) sameJson(x[i], y[i]),
             ].every((same) => same) ||
-            _sameElements(x, y)),
+            (setValuedKeys.contains(key) && _sameElements(x, y))),
   (final Map<String, Object?> x, final Map<String, Object?> y) => {
     ...x.keys,
     ...y.keys,
-  }.every((key) => sameJson(x[key], y[key])),
+  }.every((key) => sameJson(x[key], y[key], key: key)),
   _ => a == b,
 };
 
