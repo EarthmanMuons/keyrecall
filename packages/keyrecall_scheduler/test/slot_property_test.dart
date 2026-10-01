@@ -15,9 +15,9 @@ typedef Played = (bool, bool, FactualRetrieval, double, double?, double);
 
 final Arbitrary<Played> anyPlayed = combine6(
   weighted<bool>([(9, constant(true)), (1, constant(false))]),
-  boolean(),
+  weighted<bool>([(3, constant(true)), (1, constant(false))]),
   choiceOf(FactualRetrieval.values),
-  float(min: 0, max: 1),
+  weighted<double>([(1, float(min: 0, max: 1)), (1, float(min: 0.9, max: 1))]),
   optional(float(min: 0, max: 1)),
   float(min: 0, max: 1.5),
 );
@@ -63,7 +63,7 @@ final Arbitrary<Plan> anyPlan = combine4(
       ]),
       anyPlayed,
     ),
-    maxLength: 8,
+    maxLength: 12,
   ),
   integer(min: 60, max: 30 * 86400),
 );
@@ -72,12 +72,14 @@ final Arbitrary<Plan> anyPlan = combine4(
 /// offered in it, built by the real decision loop so every part is reachable.
 ///
 /// Like a practice session, every decision is made from state propagated to
-/// its own time, the next slot's included.
+/// its own time, the next slot's included, and knows the shapes each material
+/// has been played through cleanly in.
 ({
   LearnerState state,
   SessionState session,
   DateTime at,
   List<Exercise> candidates,
+  Map<String, Set<RealizationShape>> shapes,
 })
 practised(Plan plan) {
   final (placement, materials, slots, pause) = plan;
@@ -89,6 +91,7 @@ practised(Plan plan) {
     InstrumentProfile(),
     {...materials}.toList(),
   );
+  final shapes = <String, Set<RealizationShape>>{};
   var at = start;
   for (final (seconds, played) in slots) {
     at = at.add(Duration(seconds: seconds));
@@ -98,6 +101,7 @@ practised(Plan plan) {
       session: session,
       candidates: candidates,
       at: at,
+      demonstratedShapes: shapes,
     );
     if (result case CandidateSelected(:final candidate)) {
       final exercise = candidate.exercise;
@@ -111,21 +115,39 @@ practised(Plan plan) {
         at: at,
       );
       pipeline.recordOutcome(session, exercise, outcome, at: at);
+      if (!exercise.guidance.isMaterialSupplied &&
+          outcome.started &&
+          outcome.completed &&
+          outcome.pitchIntegrity >= _cleanPitchIntegrity) {
+        shapes
+            .putIfAbsent(exercise.material.materialId, () => {})
+            .add(shapeOf(exercise));
+      }
     }
   }
   at = at.add(Duration(seconds: pause));
   model.propagate(state, at);
-  return (state: state, session: session, at: at, candidates: candidates);
+  return (
+    state: state,
+    session: session,
+    at: at,
+    candidates: candidates,
+    shapes: shapes,
+  );
 }
 
+/// The pitch integrity a practice session counts a shape demonstrated at.
+const double _cleanPitchIntegrity = 0.9;
+
 SelectionResult nextSlot(Plan plan, {bool reversed = false}) {
-  final (:state, :session, :at, :candidates) = practised(plan);
+  final (:state, :session, :at, :candidates, :shapes) = practised(plan);
   return pipeline
       .evaluateSlot(
         state: state,
         session: session,
         candidates: reversed ? candidates.reversed.toList() : candidates,
         at: at,
+        demonstratedShapes: shapes,
       )
       .result;
 }
@@ -137,18 +159,25 @@ CandidateTrace? winnerOf(SelectionResult result) => switch (result) {
 
 void main() {
   property('a slot chooses among what it admitted, and says so', () {
+    final stages = Reached({
+      SelectionStage.ranking,
+      SelectionStage.frontierStep,
+    });
     forAll(
       anyPlan,
       seed: propertySeed,
       maxExamples: propertyBudget(60),
+      onFalsify: stages.falsified,
+      tearDownAll: stages.check,
       failingOnErrors<Plan>((plan) {
-        final (:state, :session, :at, :candidates) = practised(plan);
+        final (:state, :session, :at, :candidates, :shapes) = practised(plan);
         final result = pipeline
             .evaluateSlot(
               state: state,
               session: session,
               candidates: candidates,
               at: at,
+              demonstratedShapes: shapes,
             )
             .result;
 
@@ -166,9 +195,9 @@ void main() {
           isTrue,
           reason: 'the winner is one of the selectable candidates',
         );
-        final shapes = {for (final c in candidates) c.atTempo(60)};
+        final generated = {for (final c in candidates) c.atTempo(60)};
         expect(
-          shapes,
+          generated,
           contains(winner.exercise.atTempo(60)),
           reason: 'what is offered is a shape generation produced',
         );
@@ -188,26 +217,65 @@ void main() {
           reason: 'the band flag agrees with the band it will be recorded as',
         );
 
-        // Ranking decides, except where a named stage deliberately overrides
-        // it: an overdue guidance probe, a pulse cycle being served, or a
-        // step past the frontier on the material ranking already chose.
+        final stage = (result as CandidateSelected).stage;
+        stages.add(stage);
         final best = pipeline.selectBest(result.selectable)!;
-        final overridden =
-            (winner.challengeBypass == ChallengeBypass.guidanceProbe &&
-                session.unservedGuidanceProbeSelections >=
-                    pipeline.config.probe.maxUnservedGuidanceProbes) ||
-            winner.challengeBypass == ChallengeBypass.pulseSupport ||
-            winner.challengeBypass == ChallengeBypass.pulseWithdrawal ||
-            (SchedulerPipeline.isProgression(winner) &&
-                SchedulerPipeline.isProgression(best) &&
-                winner.exercise.material == best.exercise.material &&
-                winner.rankKey!.tier == best.rankKey!.tier);
-        if (!overridden) {
-          expect(
-            identical(winner, best),
-            isTrue,
-            reason: '$winner was chosen over the better ranked $best',
-          );
+        bool advances(CandidateTrace trace) => advancesShapeFrontier(
+          trace.exercise,
+          shapes[trace.exercise.material.materialId] ?? const {},
+        );
+        switch (stage) {
+          case SelectionStage.ranking:
+            expect(
+              identical(winner, best),
+              isTrue,
+              reason: '$winner was chosen over the better ranked $best',
+            );
+          case SelectionStage.tempoProbe:
+            expect(winner.challengeBypass, ChallengeBypass.tempoProbe);
+          case SelectionStage.pulseCycle:
+            expect(
+              winner.challengeBypass,
+              anyOf(
+                ChallengeBypass.pulseSupport,
+                ChallengeBypass.pulseWithdrawal,
+              ),
+            );
+          case SelectionStage.guidanceProbe:
+            expect(winner.challengeBypass, ChallengeBypass.guidanceProbe);
+            expect(
+              session.unservedGuidanceProbeSelections,
+              greaterThanOrEqualTo(
+                pipeline.config.probe.maxUnservedGuidanceProbes,
+              ),
+            );
+          case SelectionStage.frontierStep:
+            // Ranking chose the material and an ordinary realization of it
+            // that steps nowhere; the step replaces it at its rung and tier.
+            expect(SchedulerPipeline.isProgression(best), isTrue);
+            expect(best.rankKey!.coordinationTransition, isFalse);
+            expect(best.rankKey!.targetShaped, isFalse);
+            expect(advances(best), isFalse);
+            bool stepsFromBest(CandidateTrace trace) =>
+                SchedulerPipeline.isProgression(trace) &&
+                trace.exercise.material == best.exercise.material &&
+                trace.exercise.guidance == best.exercise.guidance &&
+                trace.rankKey!.tier == best.rankKey!.tier &&
+                advances(trace);
+            expect(stepsFromBest(winner), isTrue);
+            expect(
+              identical(
+                winner,
+                pipeline.selectBest([
+                  for (final trace in result.selectable)
+                    if (stepsFromBest(trace)) trace,
+                ]),
+              ),
+              isTrue,
+              reason: '$winner is not the best ranked step past $best',
+            );
+          case SelectionStage.floorCheck:
+            fail('no family floor was supplied, so none can be owed');
         }
       }),
     );

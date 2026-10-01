@@ -184,9 +184,32 @@ class SelectionEffect {
   }
 }
 
+/// Which stage of selection chose a slot's candidate.
+enum SelectionStage {
+  /// The best-ranked selectable candidate.
+  ranking,
+
+  /// An owed tempo probe, served ahead of ranking.
+  tempoProbe,
+
+  /// The next attempt of a pulse remediation cycle.
+  pulseCycle,
+
+  /// A guidance probe passed over as often as fairness allows.
+  guidanceProbe,
+
+  /// A step past the shape or execution frontier on the material ranking
+  /// chose.
+  frontierStep,
+
+  /// An owed check of a family's declared floor.
+  floorCheck,
+}
+
 /// The scheduler selected one candidate to present.
 final class CandidateSelected extends SelectionResult {
   final CandidateTrace candidate;
+  final SelectionStage stage;
 
   const CandidateSelected({
     super.diagnostics,
@@ -196,6 +219,7 @@ final class CandidateSelected extends SelectionResult {
     super.dose,
     required super.introductions,
     required this.candidate,
+    required this.stage,
   });
 }
 
@@ -433,24 +457,26 @@ class SchedulerPipeline {
                 trace,
           ]);
 
-    var selected =
-        servedProbe ??
-        servedPulse ??
-        chooseFrom(
-          narrowed.selectable,
-          session,
-          demonstratedShapes: demonstratedShapes,
-        );
+    var (trace: selected, :stage) = servedProbe != null
+        ? (trace: servedProbe, stage: SelectionStage.tempoProbe)
+        : servedPulse != null
+        ? (trace: servedPulse, stage: SelectionStage.pulseCycle)
+        : _choose(
+            narrowed.selectable,
+            session,
+            demonstratedShapes: demonstratedShapes,
+          );
     if (servedProbe == null && servedPulse == null && familyFloor != null) {
-      selected =
-          owedFloorCheck(
-            state: state,
-            floor: familyFloor,
-            attemptedParents: attemptedExercises ?? const {},
-            selected: selected,
-            traces: traces,
-          ) ??
-          selected;
+      final check = owedFloorCheck(
+        state: state,
+        floor: familyFloor,
+        attemptedParents: attemptedExercises ?? const {},
+        selected: selected,
+        traces: traces,
+      );
+      if (check != null && !identical(check, selected)) {
+        (selected, stage) = (check, SelectionStage.floorCheck);
+      }
     }
     var blockedReason = BlockedReason.admissionExhausted;
     var acquisitionFallback = false;
@@ -486,7 +512,7 @@ class SchedulerPipeline {
           uncoveredTargets: uncoveredTargets,
         );
         narrowed = _selectionStages(traces, session, state, at);
-        selected = chooseFrom(
+        (trace: selected, :stage) = _choose(
           narrowed.selectable,
           session,
           demonstratedShapes: demonstratedShapes,
@@ -569,6 +595,7 @@ class SchedulerPipeline {
             dose: narrowed.dose,
             introductions: narrowed.introductions,
             candidate: selected,
+            stage: stage,
           );
     final effect = SelectionEffect.of(result);
     return (
@@ -2584,13 +2611,33 @@ class SchedulerPipeline {
     List<CandidateTrace> selectable,
     SessionState session, {
     Map<String, Set<RealizationShape>> demonstratedShapes = const {},
-  }) =>
-      overdueGuidanceProbe(selectable, session) ??
-      advancedWithin(
-        selectable,
-        selectBest(selectable),
-        demonstratedShapes: demonstratedShapes,
-      );
+  }) => _choose(
+    selectable,
+    session,
+    demonstratedShapes: demonstratedShapes,
+  ).trace;
+
+  ({CandidateTrace? trace, SelectionStage stage}) _choose(
+    List<CandidateTrace> selectable,
+    SessionState session, {
+    required Map<String, Set<RealizationShape>> demonstratedShapes,
+  }) {
+    if (overdueGuidanceProbe(selectable, session) case final probe?) {
+      return (trace: probe, stage: SelectionStage.guidanceProbe);
+    }
+    final best = selectBest(selectable);
+    final advanced = advancedWithin(
+      selectable,
+      best,
+      demonstratedShapes: demonstratedShapes,
+    );
+    return (
+      trace: advanced,
+      stage: identical(advanced, best)
+          ? SelectionStage.ranking
+          : SelectionStage.frontierStep,
+    );
+  }
 
   /// Whether [trace] was admitted as ordinary progression: through the band,
   /// or as one execution step on material the learner already owns.

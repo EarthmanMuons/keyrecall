@@ -12,6 +12,10 @@ The format is based on [Keep a Changelog][1], and this package adheres to
 
 ### Added
 
+- `CandidateSelected.stage`, the `SelectionStage` that chose the candidate:
+  ranking, or the tempo probe, pulse cycle, guidance probe, frontier step, or
+  floor check that took its place.
+
 - A shape progression term, last in the rank key and in force from scheduler
   model version `v1-11`: one octave before two, then up before up and down,
   deciding only what every other term left tied, which had fallen to the order
