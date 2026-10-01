@@ -30,7 +30,9 @@ class GroupReportScreen extends ConsumerStatefulWidget {
 
 class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
   _Lens _lens = _Lens.recall;
-  HandConfiguration _hands = HandConfiguration.right;
+
+  /// The hands chosen for the tempo lens, or null until a choice is made.
+  HandConfiguration? _chosenHands;
 
   ReportGroup get _group => widget.group;
 
@@ -109,13 +111,14 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
     final theme = Theme.of(context);
     final sectors = keySectors(materials, view.rings);
     final shades = FluencyShades(theme.colorScheme);
+    final hands = _chosenHands ?? tempoLensHands(summary, materials);
 
     Color fill(TechnicalMaterial material) {
       final fluency = summary[material];
       return switch (_lens) {
         _Lens.recall => shades.ofLevel(fluency.level),
         _Lens.tempo => shades.ofBand(
-          TempoBand.of(fluency.unguidedTempo(_hands)),
+          TempoBand.of(fluency.unguidedTempo(hands)),
         ),
       };
     }
@@ -124,7 +127,7 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
       _Lens.recall => fromMemoryHeadline(summary, materials, _group),
       _Lens.tempo =>
         'Fastest tempo shown from memory, one octave, '
-            '${handsLabel(_hands).toLowerCase()}',
+            '${handsLabel(hands).toLowerCase()}',
     };
     final legend = switch (_lens) {
       _Lens.recall => [
@@ -165,9 +168,9 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
               ),
           ],
           showSelectedIcon: false,
-          selected: {_hands},
+          selected: {hands},
           onSelectionChanged: (selected) =>
-              setState(() => _hands = selected.single),
+              setState(() => _chosenHands = selected.single),
         ),
       ],
       const SizedBox(height: 16),
@@ -178,7 +181,7 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
         labelStyle: theme.textTheme.labelLarge!.copyWith(
           color: theme.colorScheme.onSurface,
         ),
-        describe: (sector) => _keyDescription(summary, sector),
+        describe: (sector) => _keyDescription(summary, sector, hands),
         onTap: (sector, ring) => _openDetails(
           summary,
           sectors[sector].materials,
@@ -231,17 +234,21 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
       ),
   ];
 
-  String _keyDescription(FluencySummary summary, KeySector sector) => [
+  String _keyDescription(
+    FluencySummary summary,
+    KeySector sector,
+    HandConfiguration hands,
+  ) => [
     for (final material in sector.materials)
-      _cellDescription(summary[material]),
+      _cellDescription(summary[material], hands),
   ].join('; ');
 
-  String _cellDescription(MaterialFluency fluency) {
+  String _cellDescription(MaterialFluency fluency, HandConfiguration hands) {
     final name = materialName(fluency.material);
     return switch (_lens) {
       _Lens.recall =>
         '$name, ${demonstrationName(fluency.level).toLowerCase()}',
-      _Lens.tempo => switch (fluency.unguidedTempo(_hands)) {
+      _Lens.tempo => switch (fluency.unguidedTempo(hands)) {
         final tempo? => '$name, ${tempo.round()} from memory',
         null => '$name, no tempo from memory yet',
       },

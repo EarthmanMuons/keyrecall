@@ -52,6 +52,25 @@ class MaterialFluency {
   };
 }
 
+/// The hands the tempo lens opens on for [materials].
+///
+/// Together once any of them has a tempo from memory together, since that is
+/// where practice heads. Before then, separate hands come first, so the hand
+/// with more tempos from memory, the right on a tie, rather than a map of
+/// nothing yet.
+HandConfiguration tempoLensHands(
+  FluencySummary summary,
+  Iterable<TechnicalMaterial> materials,
+) {
+  int shown(HandConfiguration hands) => materials
+      .where((material) => summary[material].unguidedTempo(hands) != null)
+      .length;
+  if (shown(HandConfiguration.together) > 0) return HandConfiguration.together;
+  return shown(HandConfiguration.left) > shown(HandConfiguration.right)
+      ? HandConfiguration.left
+      : HandConfiguration.right;
+}
+
 /// A demonstrated tempo and the rung it was demonstrated at.
 typedef RungTempo = ({double tempoBpm, int guidanceIndependence});
 

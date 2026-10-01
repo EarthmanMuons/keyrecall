@@ -246,7 +246,11 @@ The tempo lens has an explicit left hand, right hand, and together selector
 rather than one representative value. Its hand icons are ordered left, right,
 then together. A learner at 100 with the right hand, 72 with the left, and 60
 together has no single honest tempo for that scale, and switching hands is cheap
-because no cell moves. Its bands, under 72, 72 to 99, and 100 and up, are a
+because no cell moves. It opens on together once any of the group's materials
+has a tempo from memory together, since that is where practice heads, and before
+then on the hand with more tempos from memory, the right on a tie, since
+separate hands come first and a together map would be empty. A hand the learner
+picks holds for the visit. Its bands, under 72, 72 to 99, and 100 and up, are a
 reading aid for small cells; the exact tempo is one tap away.
 
 The lens and a group's playing pace need not read the same realization. The lens

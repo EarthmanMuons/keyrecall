@@ -253,6 +253,68 @@ void main() {
     });
   });
 
+  group('the tempo lens', () {
+    HandConfiguration opensOn(List<TempoObservation> tempos) => tempoLensHands(
+      FluencySummary.of([_day(1, tempos: tempos)], catalog: [_cMajor, _gMajor]),
+      [_cMajor, _gMajor],
+    );
+
+    test('opens on the right hand before anything is shown', () {
+      expect(opensOn([]), HandConfiguration.right);
+    });
+
+    test('opens on the hand with more tempos from memory', () {
+      expect(
+        opensOn([
+          _played(
+            _cMajor,
+            rung: 2,
+            tempoBpm: 60,
+            hands: HandConfiguration.left,
+          ),
+          _played(
+            _gMajor,
+            rung: 2,
+            tempoBpm: 60,
+            hands: HandConfiguration.left,
+          ),
+          _played(_cMajor, rung: 2, tempoBpm: 60),
+        ]),
+        HandConfiguration.left,
+      );
+    });
+
+    test('opens on together once any tempo from memory is together', () {
+      expect(
+        opensOn([
+          _played(_cMajor, rung: 2, tempoBpm: 80),
+          _played(_gMajor, rung: 2, tempoBpm: 80),
+          _played(
+            _cMajor,
+            rung: 2,
+            tempoBpm: 52,
+            hands: HandConfiguration.together,
+          ),
+        ]),
+        HandConfiguration.together,
+      );
+    });
+
+    test('ignores together shown only with support', () {
+      expect(
+        opensOn([
+          _played(
+            _cMajor,
+            rung: 1,
+            tempoBpm: 52,
+            hands: HandConfiguration.together,
+          ),
+        ]),
+        HandConfiguration.right,
+      );
+    });
+  });
+
   test('tempo bands split at 72 and 100', () {
     expect(TempoBand.of(null), TempoBand.none);
     expect(TempoBand.of(60), TempoBand.under72);
