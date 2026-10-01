@@ -248,6 +248,12 @@ together has no single honest tempo for that scale, and switching hands is cheap
 because no cell moves. Its bands, under 72, 72 to 99, and 100 and up, are a
 reading aid for small cells; the exact tempo is one tap away.
 
+The lens and a group's playing pace need not read the same realization. The lens
+states the fastest tempo demonstrated, a fact that holds whatever span it was
+shown over. A pace series compares weeks, so its cohort needs observations long
+and frequent enough to be comparable, and it can settle on a different span.
+When they differ, it is deliberate, and both name their span.
+
 **Proposed:** a secondary mark for due for review. Hatching is avoided at phone
 cell sizes; an outer-edge notch or a thin contrasting border is the candidate. A
 hands lens is also proposed.
@@ -443,4 +449,5 @@ moves.
   what the scheduler treats as due.
 - The reference exercise for each competency's skill zones.
 - The arpeggio pace cohort's span. One octave is four notes, and two may give
-  steadier weeks.
+  steadier weeks; the tempo lens stays at one octave either way unless its own
+  map proves noisy.
