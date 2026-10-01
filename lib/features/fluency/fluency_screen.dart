@@ -27,10 +27,7 @@ class FluencyScreen extends ConsumerWidget {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 560),
             child: ListView(
-              padding: EdgeInsets.symmetric(
-                horizontal: layout.gutter,
-                vertical: 16,
-              ),
+              padding: fluencyListPadding(context, layout.gutter),
               children: [
                 ActivityCalendar(
                   days: report.days,

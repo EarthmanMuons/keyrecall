@@ -64,6 +64,16 @@ class FluencyReportView extends ConsumerWidget {
       };
 }
 
+/// The padding a fluency screen's scrolling content takes, clear of the
+/// system's bottom inset with room past the last section.
+EdgeInsets fluencyListPadding(BuildContext context, double gutter) =>
+    EdgeInsets.fromLTRB(
+      gutter,
+      16,
+      gutter,
+      32 + MediaQuery.paddingOf(context).bottom,
+    );
+
 /// How many of [materials] have been played from memory, as a sentence.
 String fromMemoryHeadline(
   FluencySummary summary,

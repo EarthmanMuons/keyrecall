@@ -68,10 +68,7 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 560),
         child: ListView(
-          padding: EdgeInsets.symmetric(
-            horizontal: layout.gutter,
-            vertical: 16,
-          ),
+          padding: fluencyListPadding(context, layout.gutter),
           children: [
             ...switch (_group.view) {
               final WheelView view => _wheel(report.summary, view, materials),
