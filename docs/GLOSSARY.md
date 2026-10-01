@@ -644,6 +644,15 @@ material retrieval, [pitch integrity](#pitch-integrity),
 tempo, topology accuracy, and [coordination](#coordination). An absent channel
 is absent all the way through, never zero.
 
+### Pace cohort
+
+A named kind of playing comparable enough to share one pace series, such as
+scales over one octave in parallel motion.
+
+Report policy, orthogonal to [material family](#material-family) and
+[report group](#report-group): a series reads one cohort and never pools them.
+See [`system/fluency-report.md`](system/fluency-report.md).
+
 ### Paced tempo
 
 The fastest tempo a learner has actually played a material cleanly, whatever
@@ -831,6 +840,14 @@ recomputed value. `counterfactual` asks what a different estimator would have
 concluded from the same observations, and may be applied **only to the exercise
 actually presented**: the journal holds no outcome for an action never taken, so
 it is not policy evaluation. See [`system/history.md`](system/history.md).
+
+### Report group
+
+A learner-facing grouping in the fluency report, such as Scales or Arpeggios.
+
+Usually one per [material family](#material-family), but it may gather several.
+Assembled when the report is read, so storage never keys on it. See
+[`system/fluency-report.md`](system/fluency-report.md).
 
 ### Retained consolidation
 

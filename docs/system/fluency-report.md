@@ -2,7 +2,9 @@
 
 - **Status:** partly built. The fluency history projection, its storage, its
   queries, the key map with its detail sheet, and both time charts are built.
-  The summary header, review marks, and skills panel are proposed.
+  The summary header, review marks, and skills panel are proposed, as are the
+  overview, report group drilldowns, and activity calendar; the built report is
+  the scale group's drilldown.
 
 A menu destination, beside Goal, that answers three questions a learner asks
 about their practice, and keeps them apart:
@@ -34,18 +36,82 @@ The visual convention follows the layers and holds across the app: facts have
 crisp values, estimates have ranges and words. A learner should be able to tell
 how seriously to take something without understanding the model.
 
+## Organization
+
+Five terms keep the report's structure apart from the catalog's and from
+storage.
+
+**Material family** is the domain's structural grouping, `SCALE` or `ARPEGGIO`,
+which candidate generation, fingering, and competencies key on. It is the
+default source of report organization, not the learner-facing one.
+
+**Report group** is a learner-facing grouping, such as Scales or Arpeggios.
+Usually one per material family, but a group can gather several families a
+musician thinks of together: a chromatic or whole-tone family would read under
+Scales.
+
+**Form** is a distinction within a group that its primary view lays out: major,
+natural, harmonic, and melodic minor, a mode, or an arpeggio's quality.
+
+**Realization** is how a material is played: hands, octave span, motion, and any
+later dimension. Realizations belong to the detail sheet and never become forms
+or groups. An arpeggio's inversion is a distinct material, since memory is kept
+per inversion, but it presents the same way, as a detail-sheet dimension of its
+root-position cell.
+
+**Pace cohort** is report policy naming playing comparable enough to form one
+pace series, such as scales over one octave in parallel motion. It is orthogonal
+to the terms above: two cohorts may come from one group, or one family.
+
+Catalog structure does not dictate report structure, and report structure does
+not dictate evidence storage. Storage keys on material and material family, and
+groups are assembled when the report is read, so they can change without
+rewriting history.
+
 ## Layout
 
-One scrolling report, most trustworthy first:
+An overview, and a drilldown per report group, each most trustworthy first:
 
 ```text
-summary header    18 of 24 goal scales played from memory
-                  3 due for review · 6 practice days this month
-key map           facts, with one inference marker
-skills            inferences
-over time         projection
-detail sheet      on tap, for one material
+overview
+  summary           18 of 24 goal scales played from memory
+                    3 due for review
+  activity          days practiced, as a calendar
+  groups            a card per report group, opening its drilldown
+  skills            inferences, shared competencies then each group's
+  needs attention   trouble spots, labeled by group
+
+drilldown
+  primary view      the group's map or material list, facts with one
+                    inference marker
+  over time         projection
+  detail sheet      on tap, for one material
 ```
+
+Fluency opens on the overview, never on a group. Facts that belong to no group,
+activity and the due count, appear only there. A card gives its group's count
+from memory and may preview its primary view, but the interactive view belongs
+to the drilldown. Adding a group adds a card, so the overview never needs a
+switcher that outgrows its width.
+
+## Report groups
+
+A group declares its materials by material family, its forms, its primary view,
+its realization dimensions, its pace cohorts, and its help. A specialized
+primary view is optional. A plain list of the group's materials, each with its
+demonstration level, is the fallback every group has, and a material family no
+group claims gets a group of its own showing that list. Adding a family must
+never make its evidence disappear from the report.
+
+The detail sheet is generated from the group's realization dimensions rather
+than from scale-shaped rows and columns, with octave spans read from each
+material's progression: one and two octaves for a scale, up to four for an
+arpeggio.
+
+Trouble spots compare a material only with others in its group. The tempo lens's
+bands are fixed numerical reading aids shared by every group, not proficiency
+levels, and stay shared unless a group's map shows them failing to separate
+anything.
 
 ## Truth conditions
 
@@ -154,15 +220,17 @@ with similar demands." When nothing qualifies, nothing is shown.
 ### Goal coverage and practice days
 
 Coverage is `ScopeCoverage` for the active goal. A practice day is a local
-calendar day with at least one committed attempt.
+calendar day with at least one committed attempt. Days practiced in the past 30
+counts the practice days among the 30 local days ending today.
 
 ## Key map
 
-A circle of fifths with one ring per scale form, major outermost. The wheel is a
-**material selector**: each cell is one material, and every realization
-dimension (hands, span, tempo, guidance) belongs in the detail sheet. Every key
-keeps its sector whether or not the catalog holds a scale on it, and each sector
-is labeled with its major spelling and, where different, its minor one.
+The scale group's primary view: a circle of fifths with one ring per scale form,
+major outermost. The wheel is a **material selector**: each cell is one
+material, and every realization dimension (hands, span, tempo, guidance) belongs
+in the detail sheet. Every key keeps its sector whether or not the catalog holds
+a scale on it, and each sector is labeled with its major spelling and, where
+different, its minor one.
 
 Fill encodes a demonstrated fact, and a lens switches what the fill means
 without moving any cell:
@@ -198,17 +266,17 @@ square at phone width and clear of its neighbors, whose label reads every form
 and whose sheet lists them. The same targets accept keyboard focus in circle
 order, show a focus outline, and open with Enter or Space.
 
-Arpeggios are not yet on the map. They would use the same wheel with two rings
-for root-position major and minor; inversions and further families add
-detail-sheet dimensions, not rings.
+The arpeggio group uses the same wheel with one ring per quality, major
+outermost. Inversions, when the catalog holds them, are a detail-sheet dimension
+of their root-position cell, and the cell's fill reads the root position alone.
 
 ## Over time
 
 Weeks, not sessions. A session is where someone happened to stop, and a week is
 a unit a person recognizes as progress.
 
-**Recall milestones** is built, above playing pace. It stacks the catalog's
-scales by the strongest level each had reached by the end of each of the last
+**Recall milestones** is built, above playing pace. It stacks the group's
+materials by the strongest level each had reached by the end of each of the last
 eight weeks, from memory at the base. The counts are cumulative over the whole
 history rather than the window, and best-ever, so the bars only grow and the
 title says milestones so nobody expects forgetting to appear in it. Tapping a
@@ -219,8 +287,9 @@ throughout the report.
 **Playing pace** is built, below the key map after a section break rather than
 as another lens, since it answers a different question. It draws the last eight
 weeks, ending with the current one, as one line per hand configuration over the
-scale cohort. The description and empty state name that restriction. The window
-is presentation policy; the weekly series underneath accepts any range.
+group's pace cohort, for scales one octave in parallel motion. The description
+and empty state name that restriction. The window is presentation policy; the
+weekly series underneath accepts any range.
 
 A week without a value breaks its line rather than being drawn across, so hands
 together simply starts when coordination does. A week resting on one or two
@@ -230,6 +299,29 @@ is not drawn, because the simulations showed it mostly stops mattering. There is
 one screen-reader entry per week with every hand's pace, count, and support,
 including explicit gaps. There is no smoothing, trend line, or change figure:
 sparse weekly medians cannot carry them.
+
+## Practice activity
+
+A calendar of the days practiced, on the overview, laid out like a contribution
+graph. It records practice, not proficiency, and nothing in it rewards or warns.
+
+- A cell is a local calendar day, assigned by the history's `DayPartition`, and
+  shaded by committed attempts in fixed bands: none, 1 to 2, 3 to 5, 6 to 10,
+  and more. Fixed rather than relative to the learner's own range, so a day's
+  shade never changes as later history accumulates. Inspecting a day gives its
+  exact count.
+- Shade never encodes how well anything went. A day of rough acquisition
+  attempts can be a productive one.
+- Beside it, days practiced in the past 30. There is no current run or streak:
+  it is the one figure a single missed day resets, and spacing makes a day off
+  appropriate.
+- Six months on a narrow layout, up to a year where there is room.
+- Touch inspects by scrubbing across the whole calendar with nearest-day hit
+  testing, rather than treating each cell as a minimum-size target. Assistive
+  technology reads one entry per week, such as "Week of Sep 21. Practiced 4
+  days, 31 attempts.", and reaches its days from there.
+- Breaking a day down by report group needs attempts counted per material family
+  per day, gathered into groups when read.
 
 ## Detail sheet
 
@@ -265,6 +357,9 @@ tempo             per completed attempt with a pace and a motor score:
                   material, hands, motion, octaves, guidance rung,
                   requested tempo, tempo ratio, motor score, time
 ```
+
+**Proposed:** attempts per material family each day, for the activity calendar's
+breakdown.
 
 Only structural absences are filtered. A tempo observation is kept for an
 attempt that was not managed, because managed is a learner-model threshold, and
@@ -324,13 +419,22 @@ Four properties are tested:
 
 1. The fluency history projection.
 2. The key map and detail sheet.
-3. The factual time charts.
-4. Skill ranges and trouble spots, which depend most on calibration.
+3. The factual time charts, read over pace cohorts.
+4. A detail sheet generated from realization dimensions.
+5. Report group declarations with the list fallback, and a wheel generic over
+   its rings.
+6. The overview with group cards and the activity calendar, and the arpeggio
+   drilldown.
+7. Attempts per material family per day, for the activity breakdown.
+8. Skill ranges and trouble spots, which depend most on calibration.
 
-The first three are useful on their own while competency calibration moves.
+Everything before the last is useful on its own while competency calibration
+moves.
 
 ## Open questions
 
 - The retrievability threshold for due for review, and whether it should match
   what the scheduler treats as due.
 - The reference exercise for each competency's skill zones.
+- The arpeggio pace cohort's span. One octave is four notes, and two may give
+  steadier weeks.
