@@ -3,10 +3,14 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
 import 'fluency_report.dart';
+import 'fluency_shades.dart';
+import 'fluency_summary.dart';
 import 'group_report_screen.dart';
+import 'key_wheel.dart';
 import 'report_groups.dart';
 
-/// The fluency overview: a card per report group, each opening its report.
+/// The fluency overview: a card per report group, each previewing its view
+/// where it has a wheel, and opening its report.
 class FluencyScreen extends ConsumerWidget {
   const FluencyScreen({super.key});
 
@@ -26,14 +30,7 @@ class FluencyScreen extends ConsumerWidget {
               ),
               children: [
                 for (final resolved in ref.watch(fluencyGroupsProvider))
-                  _GroupCard(
-                    group: resolved.group,
-                    headline: fromMemoryHeadline(
-                      report.summary,
-                      resolved.materials,
-                      resolved.group,
-                    ),
-                  ),
+                  _GroupCard(resolved: resolved, summary: report.summary),
               ],
             ),
           ),
@@ -44,22 +41,58 @@ class FluencyScreen extends ConsumerWidget {
 }
 
 class _GroupCard extends StatelessWidget {
-  const _GroupCard({required this.group, required this.headline});
+  const _GroupCard({required this.resolved, required this.summary});
 
-  final ReportGroup group;
-  final String headline;
+  final ResolvedGroup resolved;
+  final FluencySummary summary;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: ListTile(
-      title: Text(group.name),
-      subtitle: Text(headline),
-      trailing: const Icon(Icons.chevron_right),
-      onTap: () => Navigator.of(context).push(
-        MaterialPageRoute<void>(
-          builder: (context) => GroupReportScreen(group: group),
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final background = theme.colorScheme.surfaceContainerLow;
+    final shades = FluencyShades(theme.colorScheme);
+    final group = resolved.group;
+    return Card(
+      color: background,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => GroupReportScreen(group: group),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              if (group.view case WheelView(:final rings)) ...[
+                KeyWheelPreview(
+                  sectors: keySectors(resolved.materials, rings),
+                  fill: (material) => shades.ofLevel(summary[material].level),
+                  emptyColor: background,
+                ),
+                const SizedBox(width: 16),
+              ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(group.name, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      fromMemoryHeadline(summary, resolved.materials, group),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

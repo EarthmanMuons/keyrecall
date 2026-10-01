@@ -232,6 +232,48 @@ class _KeyTargetState extends State<_KeyTarget> {
   );
 }
 
+/// A small, silent picture of the key wheel, with no names, targets, or
+/// gestures, so it reads as the shape of progress rather than a control.
+class KeyWheelPreview extends StatelessWidget {
+  const KeyWheelPreview({
+    super.key,
+    required this.sectors,
+    required this.fill,
+    required this.emptyColor,
+    this.size = 72,
+  });
+
+  final List<KeySector> sectors;
+  final Color Function(TechnicalMaterial material) fill;
+  final Color emptyColor;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: SizedBox.square(
+      dimension: size,
+      // The rings stop short of the edge to leave room for key names, which
+      // a preview has none of.
+      child: Transform.scale(
+        scale: 1 / KeyWheelGeometry.outerRadius,
+        child: CustomPaint(
+          size: Size.square(size),
+          painter: _KeyWheelPainter(
+            sectors: sectors,
+            geometry: KeyWheelGeometry(rings: sectors.first.cells.length),
+            fill: fill,
+            emptyColor: emptyColor,
+            labelStyle: null,
+            preview: null,
+            highlightColor: emptyColor,
+            gap: 1,
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _KeyWheelPainter extends CustomPainter {
   _KeyWheelPainter({
     required this.sectors,
@@ -241,20 +283,24 @@ class _KeyWheelPainter extends CustomPainter {
     required this.labelStyle,
     required this.preview,
     required this.highlightColor,
+    this.gap = 2,
   });
 
   final List<KeySector> sectors;
   final KeyWheelGeometry geometry;
   final Color Function(TechnicalMaterial material) fill;
   final Color emptyColor;
-  final TextStyle labelStyle;
+
+  /// How the key names are written, or null to leave them off.
+  final TextStyle? labelStyle;
+
   final WheelCell? preview;
   final Color highlightColor;
 
-  static const _sweep = 2 * math.pi / 12;
-
   /// The gap between neighboring cells, in logical pixels.
-  static const _gap = 2.0;
+  final double gap;
+
+  static const _sweep = 2 * math.pi / 12;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -262,7 +308,7 @@ class _KeyWheelPainter extends CustomPainter {
     final center = Offset(half, half);
     final separator = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = _gap
+      ..strokeWidth = gap
       ..color = emptyColor;
 
     for (final (index, sector) in sectors.indexed) {
@@ -278,7 +324,9 @@ class _KeyWheelPainter extends CustomPainter {
           )
           ..drawPath(path, separator);
       }
-      _label(canvas, center, half, index, sector);
+      if (labelStyle case final style?) {
+        _label(canvas, center, half, index, sector, style);
+      }
     }
     if (preview case final cell?) {
       final (outer, inner) = geometry.ringOf(cell.ring);
@@ -319,6 +367,7 @@ class _KeyWheelPainter extends CustomPainter {
     double half,
     int index,
     KeySector sector,
+    TextStyle labelStyle,
   ) {
     final major = sector.majorTonic;
     if (major == null) return;
