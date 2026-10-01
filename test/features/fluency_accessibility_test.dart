@@ -174,7 +174,7 @@ final _scales = PaceCohort.scales([ScaleMaterial('C', ScaleForm.major)]);
 
 FluencyDay _day(int day, {int octaves = 1}) => FluencyDay(
   day: CalendarDay(2026, 9, day),
-  attempts: 1,
+  attemptsByFamily: const {TechnicalMaterial.scaleFamilyId: 1},
   demonstrations: {
     'C_MAJOR': Demonstration(
       materialId: 'C_MAJOR',

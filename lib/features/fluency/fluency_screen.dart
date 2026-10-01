@@ -19,6 +19,7 @@ class FluencyScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final layout = Layout.of(context);
+    final groups = ref.watch(fluencyGroupsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Fluency')),
       body: FluencyReportView(
@@ -33,10 +34,11 @@ class FluencyScreen extends ConsumerWidget {
               children: [
                 ActivityCalendar(
                   days: report.days,
+                  groups: [for (final resolved in groups) resolved.group],
                   today: CalendarDay.localOf(DateTime.now()),
                 ),
                 const SizedBox(height: 24),
-                for (final resolved in ref.watch(fluencyGroupsProvider))
+                for (final resolved in groups)
                   _GroupCard(resolved: resolved, summary: report.summary),
               ],
             ),

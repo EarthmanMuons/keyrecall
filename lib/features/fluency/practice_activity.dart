@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'fluency_summary.dart';
+import 'report_groups.dart';
 
 /// How a calendar day is shaded by the attempts committed on it.
 ///
@@ -101,6 +102,30 @@ String activityDayDescription(
 }) =>
     '${dayName(day, today: today)} · '
     '${attempts == 0 ? 'No practice' : _count(attempts, 'attempt')}';
+
+/// A day's attempts gathered into report groups, such as
+/// `9 scales · 5 arpeggios`, or null for a day with none.
+///
+/// Gathered when read, so regrouping the report regroups every past day. A
+/// family no group in [groups] claims is counted as other.
+String? activityBreakdown(
+  Map<String, int> attemptsByFamily,
+  List<ReportGroup> groups,
+) {
+  var unclaimed = attemptsByFamily.values.fold(0, (sum, count) => sum + count);
+  final parts = <String>[];
+  for (final group in groups) {
+    final count = group.familyIds.fold(
+      0,
+      (sum, familyId) => sum + (attemptsByFamily[familyId] ?? 0),
+    );
+    if (count == 0) continue;
+    unclaimed -= count;
+    parts.add('$count ${count == 1 ? group.singular : group.plural}');
+  }
+  if (unclaimed > 0) parts.add('$unclaimed other');
+  return parts.isEmpty ? null : parts.join(' · ');
+}
 
 String _count(int count, String noun) =>
     count == 1 ? '1 $noun' : '$count ${noun}s';

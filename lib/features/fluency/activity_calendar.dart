@@ -4,6 +4,7 @@ import 'package:material_ui/material_ui.dart';
 
 import 'fluency_summary.dart';
 import 'practice_activity.dart';
+import 'report_groups.dart';
 import 'weekly_chart_semantics.dart';
 
 /// The days practiced, as a calendar of weeks shaded by attempts.
@@ -12,9 +13,18 @@ import 'weekly_chart_semantics.dart';
 /// than the report's recall shades. Inspecting a day, by touch, pointer, or
 /// arrow keys, names it in a line beneath that stays put.
 class ActivityCalendar extends StatefulWidget {
-  const ActivityCalendar({super.key, required this.days, required this.today});
+  const ActivityCalendar({
+    super.key,
+    required this.days,
+    required this.groups,
+    required this.today,
+  });
 
   final List<FluencyDay> days;
+
+  /// The report groups an inspected day's attempts are gathered into.
+  final List<ReportGroup> groups;
+
   final CalendarDay today;
 
   @override
@@ -36,7 +46,13 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
     final theme = Theme.of(context);
     final shades = _ActivityShades(theme.colorScheme);
     final practiced = daysPracticed(widget.days, today: widget.today);
-    final attemptsOn = {for (final day in widget.days) day.day: day.attempts};
+    final inspected = [
+      for (final day in widget.days)
+        if (day.day == _inspected) day,
+    ].firstOrNull;
+    final breakdown = inspected == null
+        ? null
+        : activityBreakdown(inspected.attemptsByFamily, widget.groups);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -94,13 +110,26 @@ class _ActivityCalendarState extends State<ActivityCalendar> {
         Row(
           children: [
             Expanded(
-              child: Text(
-                activityDayDescription(
-                  _inspected,
-                  attemptsOn[_inspected] ?? 0,
-                  today: widget.today,
-                ),
-                style: theme.textTheme.bodyMedium,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    activityDayDescription(
+                      _inspected,
+                      inspected?.attempts ?? 0,
+                      today: widget.today,
+                    ),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  // Always present, so the calendar never shifts as days
+                  // with and without a breakdown are inspected.
+                  Text(
+                    breakdown ?? '',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
             ),
             ExcludeSemantics(

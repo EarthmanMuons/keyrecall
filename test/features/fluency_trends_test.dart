@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/fluency/fluency_trends.dart';
@@ -141,7 +142,7 @@ void main() {
 
 FluencyDay _day(int days, Map<String, DemonstrationLevel> levels) => FluencyDay(
   day: _monday.plusDays(days),
-  attempts: levels.length,
+  attemptsByFamily: {TechnicalMaterial.scaleFamilyId: levels.length},
   demonstrations: {
     for (final MapEntry(key: id, value: level) in levels.entries)
       id: Demonstration(

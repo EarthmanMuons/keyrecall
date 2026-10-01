@@ -351,7 +351,9 @@ FluencyDay _day(
   List<TempoObservation> tempos = const [],
 }) => FluencyDay(
   day: CalendarDay(2026, 1, day),
-  attempts: demonstrations.length + tempos.length,
+  attemptsByFamily: {
+    TechnicalMaterial.scaleFamilyId: demonstrations.length + tempos.length,
+  },
   demonstrations: {
     for (final demonstration in demonstrations)
       demonstration.materialId: demonstration,

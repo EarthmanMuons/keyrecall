@@ -1,7 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/fluency/practice_activity.dart';
+import 'package:keyrecall/features/fluency/report_groups.dart';
 
 /// A Thursday.
 final _today = CalendarDay(2026, 10, 1);
@@ -79,6 +81,52 @@ void main() {
     expect(daysPracticed(days, today: _today), 3);
   });
 
+  group('a day breakdown', () {
+    const scales = TechnicalMaterial.scaleFamilyId;
+    const arpeggios = TechnicalMaterial.arpeggioFamilyId;
+
+    test('names each group in group order', () {
+      expect(
+        activityBreakdown(
+          {arpeggios: 5, scales: 9},
+          [scaleGroup, arpeggioGroup],
+        ),
+        '9 scales · 5 arpeggios',
+      );
+      expect(
+        activityBreakdown({arpeggios: 1}, [scaleGroup, arpeggioGroup]),
+        '1 arpeggio',
+      );
+    });
+
+    test('follows the groups it is read with, not the ones it was kept by', () {
+      final technique = ReportGroup(
+        id: 'TECHNIQUE',
+        name: 'Technique',
+        singular: 'exercise',
+        plural: 'exercises',
+        familyIds: const {scales, arpeggios},
+        view: const MaterialListView(),
+      );
+
+      expect(
+        activityBreakdown({arpeggios: 5, scales: 9}, [technique]),
+        '14 exercises',
+      );
+    });
+
+    test('counts a family no group claims as other', () {
+      expect(
+        activityBreakdown({arpeggios: 5, scales: 9}, [scaleGroup]),
+        '9 scales · 5 other',
+      );
+    });
+
+    test('is absent for a day without attempts', () {
+      expect(activityBreakdown(const {}, [scaleGroup]), isNull);
+    });
+  });
+
   group('descriptions', () {
     test('a week names its days and attempts', () {
       final weeks = activityWeeks(
@@ -112,7 +160,7 @@ void main() {
 
 FluencyDay _practiced(CalendarDay day, int attempts) => FluencyDay(
   day: day,
-  attempts: attempts,
+  attemptsByFamily: {TechnicalMaterial.scaleFamilyId: attempts},
   demonstrations: const {},
   tempos: const [],
 );

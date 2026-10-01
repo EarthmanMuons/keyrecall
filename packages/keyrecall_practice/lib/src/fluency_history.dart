@@ -7,7 +7,7 @@ import 'package:meta/meta.dart';
 ///
 /// A projection is rebuilt rather than upgraded, so exactly one version is
 /// readable.
-const int fluencyHistorySchemaVersion = 1;
+const int fluencyHistorySchemaVersion = 2;
 
 /// A civil calendar date, the unit fluency history groups practice by.
 @immutable
@@ -366,8 +366,8 @@ class TempoObservation {
 class FluencyDay {
   final CalendarDay day;
 
-  /// Committed attempts that day, measured or not.
-  final int attempts;
+  /// Committed attempts that day, measured or not, by material family.
+  final Map<String, int> attemptsByFamily;
 
   /// The strongest demonstration of each material, keyed by material id.
   final Map<String, Demonstration> demonstrations;
@@ -375,17 +375,23 @@ class FluencyDay {
   /// Every pace observation that day, in journal order.
   final List<TempoObservation> tempos;
 
-  /// Throws [ArgumentError] for a day with no attempts, or with more
-  /// observations than attempts could have produced.
+  /// Throws [ArgumentError] for a day with no attempts, a family counted
+  /// without any, or more observations than attempts could have produced.
   FluencyDay({
     required this.day,
-    required this.attempts,
+    required Map<String, int> attemptsByFamily,
     required Map<String, Demonstration> demonstrations,
     required Iterable<TempoObservation> tempos,
-  }) : demonstrations = Map.unmodifiable(demonstrations),
+  }) : attemptsByFamily = Map.unmodifiable(attemptsByFamily),
+       demonstrations = Map.unmodifiable(demonstrations),
        tempos = List.unmodifiable(tempos) {
-    if (attempts < 1) {
-      throw ArgumentError.value(attempts, 'attempts', 'must be positive');
+    if (this.attemptsByFamily.isEmpty) {
+      throw ArgumentError('a day holds at least one attempt');
+    }
+    for (final MapEntry(:key, :value) in this.attemptsByFamily.entries) {
+      if (value < 1) {
+        throw ArgumentError.value(value, key, 'must be positive');
+      }
     }
     if (this.demonstrations.length > attempts ||
         this.tempos.length > attempts) {
@@ -398,13 +404,21 @@ class FluencyDay {
     }
   }
 
+  /// Committed attempts that day, measured or not.
+  int get attempts =>
+      attemptsByFamily.values.fold(0, (total, count) => total + count);
+
   /// This day with [record] folded in.
   FluencyDay including(AttemptRecord record) {
     final demonstration = _demonstrationOf(record);
     final tempo = TempoObservation.of(record);
+    final familyId = record.exercise.material.familyId;
     return FluencyDay(
       day: day,
-      attempts: attempts + 1,
+      attemptsByFamily: {
+        ...attemptsByFamily,
+        familyId: (attemptsByFamily[familyId] ?? 0) + 1,
+      },
       demonstrations: demonstration == null
           ? demonstrations
           : {
@@ -425,7 +439,7 @@ class FluencyDay {
     final tempo = TempoObservation.of(record);
     return FluencyDay(
       day: day,
-      attempts: 1,
+      attemptsByFamily: {record.exercise.material.familyId: 1},
       demonstrations: {?demonstration?.materialId: ?demonstration},
       tempos: [?tempo],
     );
@@ -443,7 +457,10 @@ class FluencyDay {
 
   Map<String, Object?> toJson() => {
     'day': day.toString(),
-    'attempts': attempts,
+    'attempts_by_family': {
+      for (final familyId in attemptsByFamily.keys.toList()..sort())
+        familyId: attemptsByFamily[familyId],
+    },
     'demonstrations': [
       for (final id in demonstrations.keys.toList()..sort())
         demonstrations[id]!.toJson(),
@@ -469,7 +486,18 @@ class FluencyDay {
         }
         return FluencyDay(
           day: day,
-          attempts: requireInt(json, 'attempts'),
+          attemptsByFamily: {
+            for (final MapEntry(:key, :value) in requireMap(
+              json,
+              'attempts_by_family',
+            ).entries)
+              key: switch (value) {
+                final int count => count,
+                _ => throw JournalFormatException(
+                  'attempts for $key must be an integer',
+                ),
+              },
+          },
           demonstrations: demonstrations,
           tempos: [
             for (final entry in _list(json, 'tempos'))
@@ -486,7 +514,7 @@ class FluencyDay {
   bool operator ==(Object other) =>
       other is FluencyDay &&
       other.day == day &&
-      other.attempts == attempts &&
+      _sameMap(other.attemptsByFamily, attemptsByFamily) &&
       _sameMap(other.demonstrations, demonstrations) &&
       _sameList(other.tempos, tempos);
 

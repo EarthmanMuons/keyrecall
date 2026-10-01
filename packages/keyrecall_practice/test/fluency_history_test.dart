@@ -226,6 +226,47 @@ void main() {
       expect(day.demonstrations, isEmpty);
       expect(day.tempos, isEmpty);
     });
+
+    test('counts each material family apart, and reads them back', () {
+      final arpeggio = Exercise.linear(
+        material: ArpeggioMaterial('C', ArpeggioQuality.major),
+        hands: HandConfiguration.right,
+      );
+      final history = FluencyHistory.empty(alice.id, partition: _oneDay)
+        ..apply(_record(0))
+        ..apply(recordOf(arpeggio, sequence: 1))
+        ..apply(_record(2));
+
+      final day = history.days.single;
+      expect(day.attemptsByFamily, {
+        TechnicalMaterial.scaleFamilyId: 2,
+        TechnicalMaterial.arpeggioFamilyId: 1,
+      });
+      expect(day.attempts, 3);
+      expect(day.toJson()['attempts_by_family'], {
+        TechnicalMaterial.arpeggioFamilyId: 1,
+        TechnicalMaterial.scaleFamilyId: 2,
+      });
+      expect(
+        FluencyHistory.fromJson(
+          _roundTrip(history.toJson()),
+          partition: _oneDay,
+        ).days.single,
+        day,
+      );
+    });
+
+    test('a day crediting a family with no attempts is not read', () {
+      final json = FluencyDay(
+        day: CalendarDay(2026, 1, 5),
+        attemptsByFamily: const {TechnicalMaterial.scaleFamilyId: 1},
+        demonstrations: const {},
+        tempos: const [],
+      ).toJson();
+      json['attempts_by_family'] = {TechnicalMaterial.scaleFamilyId: 0};
+
+      expect(() => FluencyDay.fromJson(json), throwsA(isA<Exception>()));
+    });
   });
 
   group('tempo observations', () {
@@ -295,7 +336,8 @@ void main() {
     });
 
     test('another schema version is not read', () {
-      final json = _history()..['schema_version'] = 2;
+      final json = _history()
+        ..['schema_version'] = fluencyHistorySchemaVersion + 1;
 
       expect(
         () => FluencyHistory.fromJson(json, partition: _oneDay),

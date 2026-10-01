@@ -323,8 +323,11 @@ graph. It records practice, not proficiency, and nothing in it rewards or warns.
   testing, rather than treating each cell as a minimum-size target. Assistive
   technology reads one entry per week, such as "Week of Sep 21. Practiced 4
   days, 31 attempts.", rather than a stop per day.
-- Breaking a day down by report group needs attempts counted per material family
-  per day, gathered into groups when read.
+- The inspected day also breaks its attempts down by report group, such as "9
+  scales · 5 arpeggios", in a line that is reserved even when empty. The cell
+  itself carries only the total. Attempts are kept per material family and
+  gathered into groups when read, so regrouping the report regroups every past
+  day.
 
 ## Detail sheet
 
@@ -356,16 +359,13 @@ would weigh the same, so tempo is kept as one observation per attempt rather
 than as a daily summary. Per day it holds:
 
 ```text
-attempts          committed attempts, measured or not
+attempts          committed attempts, measured or not, per material family
 demonstrations    per material, the strongest level that day and when it
                   was last reached
 tempo             per completed attempt with a pace and a motor score:
                   material, hands, motion, octaves, guidance rung,
                   requested tempo, tempo ratio, motor score, time
 ```
-
-**Proposed:** attempts per material family each day, for the activity calendar's
-breakdown.
 
 Only structural absences are filtered. A tempo observation is kept for an
 attempt that was not managed, because managed is a learner-model threshold, and
