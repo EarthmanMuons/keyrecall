@@ -8,6 +8,7 @@ import 'package:keyrecall/features/fluency/fluency_summary.dart';
 
 final _cMajor = ScaleMaterial('C', ScaleForm.major);
 final _gMajor = ScaleMaterial('G', ScaleForm.major);
+final _cMajorArpeggio = ArpeggioMaterial('C', ArpeggioQuality.major);
 
 void main() {
   group('key sectors', () {
@@ -36,6 +37,12 @@ void main() {
       expect(narrow, hasLength(12));
       expect(narrow[0].forms, {ScaleForm.major: _cMajor});
       expect(narrow.skip(1).every((sector) => sector.forms.isEmpty), isTrue);
+    });
+
+    test("list a key's scales outermost ring first", () {
+      expect(sectors[0].materials, [
+        for (final form in ScaleForm.values) ScaleMaterial('C', form),
+      ]);
     });
 
     test('refuse one form of one key spelled two ways', () {
@@ -135,6 +142,94 @@ void main() {
       );
 
       expect(summary[_cMajor].tempoFor(HandConfiguration.right), isNull);
+    });
+  });
+
+  group('a material detail', () {
+    MaterialDetail detailOf(
+      TechnicalMaterial material,
+      List<TempoObservation> tempos,
+    ) => MaterialDetail.of(
+      FluencySummary.of(
+        [_day(1, tempos: tempos)],
+        catalog: [_cMajor, _cMajorArpeggio],
+      )[material],
+    );
+
+    test('reads a row per hand and a column per scale span, in order', () {
+      final detail = detailOf(_cMajor, [
+        _played(_cMajor, rung: 2, tempoBpm: 80),
+        _played(_cMajor, rung: 1, tempoBpm: 72, octaves: 2),
+        _played(
+          _cMajor,
+          rung: 0,
+          tempoBpm: 60,
+          hands: HandConfiguration.together,
+        ),
+      ]);
+
+      expect(detail.octaveSpans, [1, 2]);
+      expect(
+        [for (final row in detail.rows) row.hands],
+        [
+          HandConfiguration.right,
+          HandConfiguration.left,
+          HandConfiguration.together,
+        ],
+      );
+      expect(
+        [for (final row in detail.rows) row.tempos],
+        [
+          [
+            (tempoBpm: 80.0, guidanceIndependence: 2),
+            (tempoBpm: 72.0, guidanceIndependence: 1),
+          ],
+          [null, null],
+          [(tempoBpm: 60.0, guidanceIndependence: 0), null],
+        ],
+      );
+    });
+
+    test('takes its spans from the progression', () {
+      final detail = detailOf(_cMajorArpeggio, [
+        _played(_cMajorArpeggio, rung: 2, tempoBpm: 66, octaves: 4),
+      ]);
+
+      expect(detail.octaveSpans, _cMajorArpeggio.progression.octaveSpans);
+      expect(detail.octaveSpans, [1, 2, 4]);
+      expect(detail.rows.first.tempos.last, (
+        tempoBpm: 66.0,
+        guidanceIndependence: 2,
+      ));
+    });
+
+    test('holds no cell for a span the material does not offer', () {
+      final detail = detailOf(_cMajor, [
+        _played(_cMajor, rung: 2, tempoBpm: 80, octaves: 4),
+      ]);
+
+      expect(detail.octaveSpans, isNot(contains(4)));
+      expect(detail.rows.every((row) => row.tempos.length == 2), isTrue);
+      expect(
+        detail.rows.expand((row) => row.tempos).every((tempo) => tempo == null),
+        isTrue,
+      );
+    });
+
+    test("never shows another material's tempos", () {
+      final tempos = [
+        _played(_cMajorArpeggio, rung: 2, tempoBpm: 120),
+        _played(_cMajor, rung: 2, tempoBpm: 76),
+      ];
+
+      expect(detailOf(_cMajor, tempos).rows.first.tempos.first, (
+        tempoBpm: 76.0,
+        guidanceIndependence: 2,
+      ));
+      expect(detailOf(_cMajorArpeggio, tempos).rows.first.tempos.first, (
+        tempoBpm: 120.0,
+        guidanceIndependence: 2,
+      ));
     });
   });
 
@@ -256,16 +351,17 @@ Demonstration _shown(
 );
 
 TempoObservation _played(
-  ScaleMaterial material, {
+  TechnicalMaterial material, {
   required int rung,
   required double tempoBpm,
   HandConfiguration hands = HandConfiguration.right,
+  int octaves = 1,
   double motorScore = 0.9,
 }) => TempoObservation(
   materialId: material.materialId,
   hands: hands,
   handMotion: HandMotion.parallel,
-  octaves: 1,
+  octaves: octaves,
   guidanceIndependence: rung,
   requestedTempoBpm: tempoBpm,
   tempoRatio: 1,

@@ -103,10 +103,8 @@ demonstration level, is the fallback every group has, and a material family no
 group claims gets a group of its own showing that list. Adding a family must
 never make its evidence disappear from the report.
 
-The detail sheet is generated from the group's realization dimensions rather
-than from scale-shaped rows and columns, with octave spans read from each
-material's progression: one and two octaves for a scale, up to four for an
-arpeggio.
+The detail sheet reads a resolved detail per material, never a group, so a
+group's only part in it is choosing which materials it lists.
 
 Trouble spots compare a material only with others in its group. The tempo lens's
 bands are fixed numerical reading aids shared by every group, not proficiency
@@ -325,12 +323,15 @@ graph. It records practice, not proficiency, and nothing in it rewards or warns.
 
 ## Detail sheet
 
-For one key, each form with its demonstrated independence and the date it was
-last demonstrated, and for the focused form a table of demonstrated tempo by
-hand configuration and octave span. Tapping an expanded form collapses it;
-tapping another form expands that one. Each cell reads the most independent rung
-with a tempo and names the support when it was not from memory, so a table never
-reads "96" for a tempo shown with cues.
+For one key, each material with its demonstrated independence and the date it
+was last demonstrated, and for the expanded material a table of demonstrated
+tempo with a row per hand configuration and a column per octave span. The spans
+are the material's progression, one and two octaves for a scale and up to four
+for an arpeggio, so the table never holds a cell for a realization the material
+is not played in, which would read as not yet learned. Tapping an expanded
+material collapses it; tapping another expands that one. Each cell reads the
+most independent rung with a tempo and names the support when it was not from
+memory, so a table never reads "96" for a tempo shown with cues.
 
 **Proposed:** review status and durability in words. Attempt history for a
 material, if it is ever exposed, belongs here rather than in the report.

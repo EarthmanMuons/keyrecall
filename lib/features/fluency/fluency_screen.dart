@@ -254,8 +254,13 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
         context: context,
         showDragHandle: true,
         isScrollControlled: true,
-        builder: (context) =>
-            _KeySheet(summary: summary, sector: sector, initialForm: form),
+        builder: (context) => _DetailSheet(
+          details: [
+            for (final material in sector.materials)
+              MaterialDetail.of(summary[material]),
+          ],
+          initial: sector.forms[form],
+        ),
       );
 }
 
@@ -679,34 +684,26 @@ class _KeyWheelPainter extends CustomPainter {
   bool shouldRepaint(_KeyWheelPainter old) => true;
 }
 
-/// One key opened: each form's demonstration, and the focused form's tempos.
-class _KeySheet extends StatefulWidget {
-  const _KeySheet({
-    required this.summary,
-    required this.sector,
-    required this.initialForm,
-  });
+/// The materials of one key, each with its demonstration, and the expanded
+/// one's tempos.
+class _DetailSheet extends StatefulWidget {
+  const _DetailSheet({required this.details, required this.initial});
 
-  final FluencySummary summary;
-  final KeySector sector;
-  final ScaleForm initialForm;
+  final List<MaterialDetail> details;
+  final TechnicalMaterial? initial;
 
   @override
-  State<_KeySheet> createState() => _KeySheetState();
+  State<_DetailSheet> createState() => _DetailSheetState();
 }
 
-class _KeySheetState extends State<_KeySheet> {
-  late ScaleForm? _form = widget.initialForm;
+class _DetailSheetState extends State<_DetailSheet> {
+  late TechnicalMaterial? _expanded = widget.initial;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final layout = Layout.of(context);
     final now = DateTime.now();
-    final forms = [
-      for (final form in ScaleForm.values)
-        if (widget.sector.forms[form] case final material?) (form, material),
-    ];
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -714,15 +711,18 @@ class _KeySheetState extends State<_KeySheet> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final (form, material) in forms) ...[
-              _FormRow(
-                fluency: widget.summary[material],
+            for (final detail in widget.details) ...[
+              _MaterialRow(
+                fluency: detail.fluency,
                 now: now,
-                selected: form == _form,
-                onTap: () =>
-                    setState(() => _form = _form == form ? null : form),
+                selected: detail.material == _expanded,
+                onTap: () => setState(
+                  () => _expanded = _expanded == detail.material
+                      ? null
+                      : detail.material,
+                ),
               ),
-              if (form == _form) _TempoTable(fluency: widget.summary[material]),
+              if (detail.material == _expanded) _TempoTable(detail),
             ],
             const SizedBox(height: 12),
             Text(
@@ -739,8 +739,8 @@ class _KeySheetState extends State<_KeySheet> {
   }
 }
 
-class _FormRow extends StatelessWidget {
-  const _FormRow({
+class _MaterialRow extends StatelessWidget {
+  const _MaterialRow({
     required this.fluency,
     required this.now,
     required this.selected,
@@ -775,11 +775,9 @@ class _FormRow extends StatelessWidget {
 }
 
 class _TempoTable extends StatelessWidget {
-  const _TempoTable({required this.fluency});
+  const _TempoTable(this.detail);
 
-  final MaterialFluency fluency;
-
-  static const _octaves = [1, 2];
+  final MaterialDetail detail;
 
   @override
   Widget build(BuildContext context) {
@@ -796,26 +794,18 @@ class _TempoTable extends StatelessWidget {
           TableRow(
             children: [
               const SizedBox.shrink(),
-              for (final octaves in _octaves)
-                _cell(
-                  Text(
-                    octaves == 1 ? '1 octave' : '$octaves octaves',
-                    style: header,
-                  ),
-                ),
+              for (final octaves in detail.octaveSpans)
+                _cell(Text(octavesName(octaves), style: header)),
             ],
           ),
-          for (final hands in HandConfiguration.values)
+          for (final (:hands, :tempos) in detail.rows)
             TableRow(
               children: [
                 _cell(Text(_handsLabel(hands), style: header)),
-                for (final octaves in _octaves)
+                for (final tempo in tempos)
                   _cell(
                     Text(
-                      switch (fluency.tempoFor(hands, octaves: octaves)) {
-                        final tempo? => rungTempoName(tempo),
-                        null => 'Not yet',
-                      },
+                      tempo == null ? 'Not yet' : rungTempoName(tempo),
                       style: theme.textTheme.bodyMedium?.copyWith(
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),

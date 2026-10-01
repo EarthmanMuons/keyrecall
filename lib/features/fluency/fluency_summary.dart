@@ -55,6 +55,40 @@ class MaterialFluency {
 /// A demonstrated tempo and the rung it was demonstrated at.
 typedef RungTempo = ({double tempoBpm, int guidanceIndependence});
 
+/// One material as the detail sheet shows it: its fluency, and a tempo table
+/// with a row per hand configuration and a column per octave span.
+///
+/// The spans are the ones the material's progression offers, so the table has
+/// no cell for a realization the material is never played in, which would read
+/// as not yet learned.
+@immutable
+class MaterialDetail {
+  final MaterialFluency fluency;
+  final List<int> octaveSpans;
+  final List<TempoRow> rows;
+
+  const MaterialDetail._(this.fluency, this.octaveSpans, this.rows);
+
+  factory MaterialDetail.of(MaterialFluency fluency) {
+    final spans = fluency.material.progression.octaveSpans;
+    return MaterialDetail._(fluency, spans, [
+      for (final hands in HandConfiguration.values)
+        (
+          hands: hands,
+          tempos: [
+            for (final octaves in spans)
+              fluency.tempoFor(hands, octaves: octaves),
+          ],
+        ),
+    ]);
+  }
+
+  TechnicalMaterial get material => fluency.material;
+}
+
+/// One hand configuration's demonstrated tempos, a column per octave span.
+typedef TempoRow = ({HandConfiguration hands, List<RungTempo?> tempos});
+
 /// The fluency report's view of a whole catalog.
 @immutable
 class FluencySummary {
@@ -119,6 +153,11 @@ class KeySector {
     required this.pitchClass,
     required Map<ScaleForm, ScaleMaterial> forms,
   }) : forms = Map.unmodifiable(forms);
+
+  /// The key's scales, outermost ring first.
+  List<ScaleMaterial> get materials => [
+    for (final form in ScaleForm.values) ?forms[form],
+  ];
 
   /// The tonic as the major scale spells it.
   String? get majorTonic => forms[ScaleForm.major]?.tonic;
