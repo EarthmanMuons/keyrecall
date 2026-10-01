@@ -5,21 +5,23 @@ import 'package:keyrecall_domain/keyrecall_domain.dart';
 import 'package:keyrecall_practice/keyrecall_practice.dart';
 
 import 'package:keyrecall/features/fluency/fluency_summary.dart';
+import 'package:keyrecall/features/fluency/report_groups.dart';
 
 final _cMajor = ScaleMaterial('C', ScaleForm.major);
 final _gMajor = ScaleMaterial('G', ScaleForm.major);
 final _cMajorArpeggio = ArpeggioMaterial('C', ArpeggioQuality.major);
+final _scaleRings = (scaleGroup.view as WheelView).rings;
 
 void main() {
   group('key sectors', () {
-    final sectors = keySectors(allScales);
+    final sectors = keySectors(allScales, _scaleRings);
 
     test('run around the circle of fifths from C', () {
       expect(
         [for (final sector in sectors) sector.pitchClass],
         [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5],
       );
-      expect(sectors.every((sector) => sector.forms.length == 4), isTrue);
+      expect(sectors.every((sector) => sector.materials.length == 4), isTrue);
     });
 
     test('name a key the way its major and minor scales spell it', () {
@@ -32,11 +34,14 @@ void main() {
     });
 
     test('keep their shape for a narrower catalog', () {
-      final narrow = keySectors([_cMajor, ...allRootPositionArpeggios]);
+      final narrow = keySectors([_cMajor], _scaleRings);
 
       expect(narrow, hasLength(12));
-      expect(narrow[0].forms, {ScaleForm.major: _cMajor});
-      expect(narrow.skip(1).every((sector) => sector.forms.isEmpty), isTrue);
+      expect(narrow[0].cells, [_cMajor, null, null, null]);
+      expect(
+        narrow.skip(1).every((sector) => sector.materials.isEmpty),
+        isTrue,
+      );
     });
 
     test("list a key's scales outermost ring first", () {
@@ -45,12 +50,19 @@ void main() {
       ]);
     });
 
+    test('refuse a material no ring holds', () {
+      expect(
+        () => keySectors([_cMajorArpeggio], _scaleRings),
+        throwsStateError,
+      );
+    });
+
     test('refuse one form of one key spelled two ways', () {
       expect(
         () => keySectors([
           ScaleMaterial('Db', ScaleForm.major),
           ScaleMaterial('C#', ScaleForm.major),
-        ]),
+        ], _scaleRings),
         throwsStateError,
       );
     });
@@ -267,7 +279,7 @@ void main() {
   });
 
   group('the wheel', () {
-    const geometry = KeyWheelGeometry();
+    const geometry = KeyWheelGeometry(rings: 4);
 
     ({double x, double y}) point(double degrees, double radius) => (
       x: radius * math.sin(degrees * math.pi / 180),
@@ -280,14 +292,21 @@ void main() {
     }
 
     test('places major outermost and melodic minor innermost', () {
-      final (majorOuter, _) = geometry.ringOf(ScaleForm.major);
-      final (_, melodicInner) = geometry.ringOf(ScaleForm.melodicMinor);
+      final (majorOuter, _) = geometry.ringOf(0);
+      final (_, melodicInner) = geometry.ringOf(3);
 
-      expect(at(0, majorOuter - 0.01), (sector: 0, form: ScaleForm.major));
-      expect(at(0, melodicInner + 0.01), (
-        sector: 0,
-        form: ScaleForm.melodicMinor,
-      ));
+      expect(at(0, majorOuter - 0.01), (sector: 0, ring: 0));
+      expect(at(0, melodicInner + 0.01), (sector: 0, ring: 3));
+    });
+
+    test('widens its rings when there are fewer', () {
+      const twoRings = KeyWheelGeometry(rings: 2);
+      final (outer, inner) = twoRings.ringOf(1);
+
+      expect(twoRings.ringWidth, geometry.ringWidth * 2);
+      expect(inner, closeTo(KeyWheelGeometry.innerRadius, 1e-9));
+      expect(twoRings.cellAt(0, -(outer + 0.01)), (sector: 0, ring: 0));
+      expect(twoRings.cellAt(0, -(outer - 0.01)), (sector: 0, ring: 1));
     });
 
     test('finds a sector by its angle clockwise from the top', () {

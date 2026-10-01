@@ -141,64 +141,103 @@ class FluencySummary {
   ) => materials.where((material) => this[material].level == level).length;
 }
 
-/// One key on the wheel: a tonic pitch class and its scale in each form.
+/// Which spelling of a key a ring's materials carry in the sector label.
+enum KeySpelling { major, minor }
+
+/// One ring of the key wheel: which materials it holds, and how they spell the
+/// key.
+@immutable
+class WheelRing {
+  final bool Function(TechnicalMaterial material) holds;
+  final KeySpelling spelling;
+
+  const WheelRing({required this.holds, required this.spelling});
+}
+
+/// One key on the wheel: a tonic pitch class and its material in each ring.
 @immutable
 class KeySector {
   /// Semitones above C.
   final int pitchClass;
 
-  final Map<ScaleForm, ScaleMaterial> forms;
+  /// The material in each ring, outermost first, or null where there is none.
+  final List<TechnicalMaterial?> cells;
 
-  KeySector({
-    required this.pitchClass,
-    required Map<ScaleForm, ScaleMaterial> forms,
-  }) : forms = Map.unmodifiable(forms);
+  /// The tonic as the major-spelled rings write it.
+  final String? majorTonic;
 
-  /// The key's scales, outermost ring first.
-  List<ScaleMaterial> get materials => [
-    for (final form in ScaleForm.values) ?forms[form],
-  ];
+  /// The tonic as the minor-spelled rings write it, when that differs from
+  /// [majorTonic].
+  final String? minorTonic;
 
-  /// The tonic as the major scale spells it.
-  String? get majorTonic => forms[ScaleForm.major]?.tonic;
+  KeySector._(
+    this.pitchClass,
+    List<TechnicalMaterial?> cells,
+    List<WheelRing> rings,
+  ) : cells = List.unmodifiable(cells),
+      majorTonic = _tonicIn(cells, rings, KeySpelling.major),
+      minorTonic = _distinct(
+        _tonicIn(cells, rings, KeySpelling.minor),
+        _tonicIn(cells, rings, KeySpelling.major),
+      );
 
-  /// The tonic as the minor forms spell it, when that differs from the major.
-  String? get minorTonic {
-    final minor = [
-      for (final form in ScaleForm.values)
-        if (form != ScaleForm.major) ?forms[form]?.tonic,
-    ].firstOrNull;
-    return minor == majorTonic ? null : minor;
-  }
+  /// The key's materials, outermost ring first.
+  List<TechnicalMaterial> get materials => cells.nonNulls.toList();
+
+  static String? _tonicIn(
+    List<TechnicalMaterial?> cells,
+    List<WheelRing> rings,
+    KeySpelling spelling,
+  ) => [
+    for (final (ring, material) in cells.indexed)
+      if (rings[ring].spelling == spelling) ?material?.tonic,
+  ].firstOrNull;
+
+  static String? _distinct(String? minor, String? major) =>
+      minor == major ? null : minor;
 }
 
-/// The scales in [catalog] arranged around the circle of fifths from C.
+/// [materials] arranged around the circle of fifths from C, one ring per entry
+/// of [rings].
 ///
-/// Every pitch class has a sector, whether or not the catalog holds a scale on
-/// it, so the wheel keeps its shape for a narrower catalog.
+/// Every pitch class has a sector, whether or not there is a material on it,
+/// so the wheel keeps its shape for a narrower catalog.
 ///
-/// Throws [StateError] when the catalog spells one form on one pitch class two
-/// ways, since a cell can hold one material.
-List<KeySector> keySectors(Iterable<TechnicalMaterial> catalog) {
-  final byPitchClass = <int, Map<ScaleForm, ScaleMaterial>>{};
-  for (final material in catalog.whereType<ScaleMaterial>()) {
-    final forms = byPitchClass.putIfAbsent(
-      pitchClassOf(material.tonic),
-      () => {},
-    );
-    if (forms.containsKey(material.form)) {
+/// Throws [StateError] when a material belongs to no ring or to two, or when
+/// two share a key and ring, since a cell can hold one material.
+List<KeySector> keySectors(
+  Iterable<TechnicalMaterial> materials,
+  List<WheelRing> rings,
+) {
+  final byPitchClass = <int, List<TechnicalMaterial?>>{};
+  for (final material in materials) {
+    final matching = [
+      for (final (index, ring) in rings.indexed)
+        if (ring.holds(material)) index,
+    ];
+    if (matching.length != 1) {
       throw StateError(
-        '${material.materialId} shares a key and form with '
-        '${forms[material.form]!.materialId}',
+        '${material.materialId} belongs to ${matching.length} rings',
       );
     }
-    forms[material.form] = material;
+    final cells = byPitchClass.putIfAbsent(
+      pitchClassOf(material.tonic),
+      () => List.filled(rings.length, null),
+    );
+    if (cells[matching.single] case final held?) {
+      throw StateError(
+        '${material.materialId} shares a key and ring with '
+        '${held.materialId}',
+      );
+    }
+    cells[matching.single] = material;
   }
   return [
     for (var step = 0; step < 12; step++)
-      KeySector(
-        pitchClass: step * 7 % 12,
-        forms: byPitchClass[step * 7 % 12] ?? const {},
+      KeySector._(
+        step * 7 % 12,
+        byPitchClass[step * 7 % 12] ?? List.filled(rings.length, null),
+        rings,
       ),
   ];
 }
@@ -221,10 +260,8 @@ enum TempoBand {
   };
 }
 
-/// Where a point on the key map falls.
-///
-/// Rings run from the outside in, in [ScaleForm] order, so major is outermost.
-typedef WheelCell = ({int sector, ScaleForm form});
+/// Where a point on the key map falls, with rings counted from the outside in.
+typedef WheelCell = ({int sector, int ring});
 
 /// The key map's shape, in the unit square it is drawn into.
 @immutable
@@ -235,13 +272,15 @@ class KeyWheelGeometry {
   /// The inner edge of the innermost ring, likewise.
   static const double innerRadius = 0.24;
 
-  const KeyWheelGeometry();
+  final int rings;
 
-  double get ringWidth => (outerRadius - innerRadius) / ScaleForm.values.length;
+  const KeyWheelGeometry({required this.rings}) : assert(rings > 0);
 
-  /// The outer and inner radius of [form]'s ring.
-  (double outer, double inner) ringOf(ScaleForm form) {
-    final outer = outerRadius - form.index * ringWidth;
+  double get ringWidth => (outerRadius - innerRadius) / rings;
+
+  /// The outer and inner radius of [ring], counted from the outside in.
+  (double outer, double inner) ringOf(int ring) {
+    final outer = outerRadius - ring * ringWidth;
     return (outer, outer - ringWidth);
   }
 
@@ -287,12 +326,12 @@ class KeyWheelGeometry {
     if (radius > outerRadius || radius < innerRadius) return null;
     final ring = ((outerRadius - radius) / ringWidth).floor().clamp(
       0,
-      ScaleForm.values.length - 1,
+      rings - 1,
     );
     final clockwise = (math.atan2(x, -y) + 2 * math.pi) % (2 * math.pi);
     final sector =
         ((clockwise + math.pi / 12) / (2 * math.pi / 12)).floor() % 12;
-    return (sector: sector, form: ScaleForm.values[ring]);
+    return (sector: sector, ring: ring);
   }
 }
 

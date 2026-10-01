@@ -16,6 +16,7 @@ import 'fluency_shades.dart';
 import 'fluency_summary.dart';
 import 'playing_pace_chart.dart';
 import 'recall_milestones_chart.dart';
+import 'report_groups.dart';
 
 /// What the report reads: the summary the key map shares with its sheet, and
 /// the days the charts are drawn from.
@@ -99,13 +100,14 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
     final summary = report.summary;
     final theme = Theme.of(context);
     final layout = Layout.of(context);
-    final catalog = ref.watch(practiceCatalogProvider);
-    final scales = catalog.whereType<ScaleMaterial>().toList();
-    final sectors = keySectors(catalog);
+    final group = resolveReportGroups(ref.watch(practiceCatalogProvider))
+        .firstWhere((resolved) => resolved.group == scaleGroup);
+    final scales = group.materials;
+    final sectors = keySectors(scales, (scaleGroup.view as WheelView).rings);
     final shades = FluencyShades(theme.colorScheme);
     final today = CalendarDay.localOf(DateTime.now());
 
-    Color fill(ScaleMaterial material) {
+    Color fill(TechnicalMaterial material) {
       final fluency = summary[material];
       return switch (_lens) {
         _Lens.recall => shades.ofLevel(fluency.level),
@@ -184,7 +186,7 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
                 color: theme.colorScheme.onSurface,
               ),
               describe: (sector) => _keyDescription(summary, sector),
-              onTap: (sector, form) => _openKey(summary, sectors[sector], form),
+              onTap: (sector, ring) => _openKey(summary, sectors[sector], ring),
             ),
             const SizedBox(height: 12),
             Text(
@@ -220,11 +222,12 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
               today: today,
             ),
             const SizedBox(height: 32),
-            PlayingPaceChart(
-              days: report.days,
-              cohort: PaceCohort.scales(catalog),
-              today: today,
-            ),
+            if (scaleGroup.paceCohort case final cohort?)
+              PlayingPaceChart(
+                days: report.days,
+                cohort: cohort(scales),
+                today: today,
+              ),
           ],
         ),
       ),
@@ -232,9 +235,8 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
   }
 
   String _keyDescription(FluencySummary summary, KeySector sector) => [
-    for (final form in ScaleForm.values)
-      if (sector.forms[form] case final material?)
-        _cellDescription(summary[material]),
+    for (final material in sector.materials)
+      _cellDescription(summary[material]),
   ].join('; ');
 
   String _cellDescription(MaterialFluency fluency) {
@@ -249,7 +251,7 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
     };
   }
 
-  void _openKey(FluencySummary summary, KeySector sector, ScaleForm form) =>
+  void _openKey(FluencySummary summary, KeySector sector, int ring) =>
       showModalBottomSheet<void>(
         context: context,
         showDragHandle: true,
@@ -259,7 +261,7 @@ class _FluencyScreenState extends ConsumerState<FluencyScreen> {
             for (final material in sector.materials)
               MaterialDetail.of(summary[material]),
           ],
-          initial: sector.forms[form],
+          initial: sector.cells[ring],
         ),
       );
 }
@@ -342,7 +344,7 @@ class _Unavailable extends StatelessWidget {
   );
 }
 
-/// The circle of keys, one ring per scale form.
+/// The circle of keys, one ring per entry of each sector's cells.
 class KeyWheel extends StatefulWidget {
   const KeyWheel({
     super.key,
@@ -355,16 +357,16 @@ class KeyWheel extends StatefulWidget {
   });
 
   final List<KeySector> sectors;
-  final Color Function(ScaleMaterial material) fill;
+  final Color Function(TechnicalMaterial material) fill;
 
-  /// The color of a cell the catalog holds no scale for.
+  /// The color of a cell with no material.
   final Color emptyColor;
   final TextStyle labelStyle;
 
   /// What a key reads as to assistive technology, which finds the wheel one
   /// key at a time.
   final String Function(KeySector sector) describe;
-  final void Function(int sector, ScaleForm form) onTap;
+  final void Function(int sector, int ring) onTap;
 
   @override
   State<KeyWheel> createState() => _KeyWheelState();
@@ -374,8 +376,10 @@ class _KeyWheelState extends State<KeyWheel> {
   WheelCell? _preview;
   bool _scrubbing = false;
 
-  static const _geometry = KeyWheelGeometry();
   static const _holdDelay = Duration(milliseconds: 200);
+
+  KeyWheelGeometry get _geometry =>
+      KeyWheelGeometry(rings: widget.sectors.first.cells.length);
 
   @override
   Widget build(BuildContext context) => AspectRatio(
@@ -422,6 +426,7 @@ class _KeyWheelState extends State<KeyWheel> {
                   size: Size.square(constraints.maxWidth),
                   painter: _KeyWheelPainter(
                     sectors: widget.sectors,
+                    geometry: _geometry,
                     fill: widget.fill,
                     emptyColor: widget.emptyColor,
                     labelStyle: widget.labelStyle,
@@ -447,7 +452,7 @@ class _KeyWheelState extends State<KeyWheel> {
                                 : materialName(
                                     widget
                                         .sectors[_preview!.sector]
-                                        .forms[_preview!.form]!,
+                                        .cells[_preview!.ring]!,
                                   ),
                             textAlign: TextAlign.center,
                             style: Theme.of(context).textTheme.labelLarge
@@ -462,17 +467,15 @@ class _KeyWheelState extends State<KeyWheel> {
                     ),
                   ),
                 for (final (index, sector) in widget.sectors.indexed)
-                  if (ScaleForm.values
-                          .where(sector.forms.containsKey)
-                          .firstOrNull
-                      case final form?)
+                  if (sector.cells.indexWhere((cell) => cell != null)
+                      case final ring when ring >= 0)
                     Positioned.fromRect(
                       rect: _targetOf(index, half),
                       child: FocusTraversalOrder(
                         order: NumericFocusOrder(index.toDouble()),
                         child: _KeyTarget(
                           label: widget.describe(sector),
-                          onActivate: () => widget.onTap(index, form),
+                          onActivate: () => widget.onTap(index, ring),
                         ),
                       ),
                     ),
@@ -489,8 +492,7 @@ class _KeyWheelState extends State<KeyWheel> {
       (position.dx - half) / half,
       (position.dy - half) / half,
     );
-    return cell != null &&
-            widget.sectors[cell.sector].forms.containsKey(cell.form)
+    return cell != null && widget.sectors[cell.sector].cells[cell.ring] != null
         ? cell
         : null;
   }
@@ -506,7 +508,7 @@ class _KeyWheelState extends State<KeyWheel> {
   });
 
   void _select(WheelCell? cell) {
-    if (cell != null) widget.onTap(cell.sector, cell.form);
+    if (cell != null) widget.onTap(cell.sector, cell.ring);
   }
 
   Rect _targetOf(int sector, double half) {
@@ -569,6 +571,7 @@ class _KeyTargetState extends State<_KeyTarget> {
 class _KeyWheelPainter extends CustomPainter {
   _KeyWheelPainter({
     required this.sectors,
+    required this.geometry,
     required this.fill,
     required this.emptyColor,
     required this.labelStyle,
@@ -577,13 +580,13 @@ class _KeyWheelPainter extends CustomPainter {
   });
 
   final List<KeySector> sectors;
-  final Color Function(ScaleMaterial material) fill;
+  final KeyWheelGeometry geometry;
+  final Color Function(TechnicalMaterial material) fill;
   final Color emptyColor;
   final TextStyle labelStyle;
   final WheelCell? preview;
   final Color highlightColor;
 
-  static const _geometry = KeyWheelGeometry();
   static const _sweep = 2 * math.pi / 12;
 
   /// The gap between neighboring cells, in logical pixels.
@@ -600,11 +603,10 @@ class _KeyWheelPainter extends CustomPainter {
 
     for (final (index, sector) in sectors.indexed) {
       // Canvas angles run clockwise from three o'clock.
-      final start = _geometry.centerAngleOf(index) - _sweep / 2 - math.pi / 2;
-      for (final form in ScaleForm.values) {
-        final (outer, inner) = _geometry.ringOf(form);
+      final start = geometry.centerAngleOf(index) - _sweep / 2 - math.pi / 2;
+      for (final (ring, material) in sector.cells.indexed) {
+        final (outer, inner) = geometry.ringOf(ring);
         final path = _cell(center, outer * half, inner * half, start);
-        final material = sector.forms[form];
         canvas
           ..drawPath(
             path,
@@ -615,9 +617,9 @@ class _KeyWheelPainter extends CustomPainter {
       _label(canvas, center, half, index, sector);
     }
     if (preview case final cell?) {
-      final (outer, inner) = _geometry.ringOf(cell.form);
+      final (outer, inner) = geometry.ringOf(cell.ring);
       final start =
-          _geometry.centerAngleOf(cell.sector) - _sweep / 2 - math.pi / 2;
+          geometry.centerAngleOf(cell.sector) - _sweep / 2 - math.pi / 2;
       final path = _cell(center, outer * half, inner * half, start);
       canvas
         ..drawPath(
@@ -674,7 +676,7 @@ class _KeyWheelPainter extends CustomPainter {
       textAlign: TextAlign.center,
       textDirection: TextDirection.ltr,
     )..layout();
-    final angle = _geometry.centerAngleOf(index);
+    final angle = geometry.centerAngleOf(index);
     final radius = (KeyWheelGeometry.outerRadius + 1) / 2 * half;
     final at = center + Offset(math.sin(angle), -math.cos(angle)) * radius;
     painter.paint(canvas, at - Offset(painter.width / 2, painter.height / 2));

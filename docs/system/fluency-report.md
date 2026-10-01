@@ -96,12 +96,15 @@ switcher that outgrows its width.
 
 ## Report groups
 
-A group declares its materials by material family, its forms, its primary view,
-its realization dimensions, its pace cohorts, and its help. A specialized
-primary view is optional. A plain list of the group's materials, each with its
-demonstration level, is the fallback every group has, and a material family no
-group claims gets a group of its own showing that list. Adding a family must
-never make its evidence disappear from the report.
+A group declares its material families, its primary view, its pace cohort, and
+its help. A wheel's forms are its rings, and each ring declares which spelling
+of the key its materials carry, so a sector's label never depends on which ring
+happens to hold a material. A material no ring holds, or two rings hold, is
+refused rather than dropped. A specialized primary view is optional. A plain
+list of the group's materials, each with its demonstration level, is the
+fallback every group has, and a material family no group claims gets a group of
+its own showing that list. Adding a family must never make its evidence
+disappear from the report.
 
 The detail sheet reads a resolved detail per material, never a group, so a
 group's only part in it is choosing which materials it lists.

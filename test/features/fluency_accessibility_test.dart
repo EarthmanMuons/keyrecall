@@ -10,6 +10,7 @@ import 'package:keyrecall/features/fluency/fluency_screen.dart';
 import 'package:keyrecall/features/fluency/fluency_summary.dart';
 import 'package:keyrecall/features/fluency/playing_pace_chart.dart';
 import 'package:keyrecall/features/fluency/recall_milestones_chart.dart';
+import 'package:keyrecall/features/fluency/report_groups.dart';
 
 void main() {
   setUp(() {
@@ -27,12 +28,15 @@ void main() {
           body: SizedBox(
             width: 360,
             child: KeyWheel(
-              sectors: keySectors(allScales),
+              sectors: keySectors(
+                allScales,
+                (scaleGroup.view as WheelView).rings,
+              ),
               fill: (_) => Colors.blue,
               emptyColor: Colors.white,
               labelStyle: const TextStyle(fontSize: 14),
               describe: (sector) => 'Key ${sector.pitchClass}',
-              onTap: (sector, form) => activated.add(sector),
+              onTap: (sector, ring) => activated.add(sector),
             ),
           ),
         ),
