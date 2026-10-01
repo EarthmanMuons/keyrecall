@@ -334,7 +334,7 @@ void main() {
   });
 
   group('introduction order', () {
-    // Two unpractised materials tie on every rank term, and the tie falls to
+    // Two unpracticed materials tie on every rank term, and the tie falls to
     // candidate order. These are what make that order the curriculum's.
     List<String> firstAppearances(Iterable<String> materialIds) =>
         {...materialIds}.toList();

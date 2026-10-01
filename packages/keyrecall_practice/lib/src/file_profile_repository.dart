@@ -282,7 +282,7 @@ class FileProfileRepository implements ProfileRepository {
   /// The deletion recorded in [directory], or null where it records none.
   ///
   /// The single reading of that file, so what takes a profile off the roster
-  /// and what authorizes destroying its history are the same judgement. A
+  /// and what authorizes destroying its history are the same judgment. A
   /// marker that does not validate is neither: it fails, rather than hiding a
   /// profile nothing will ever finish removing.
   ProfileDeletionIntent? _readDeletion(Directory directory) {

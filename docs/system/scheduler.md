@@ -327,7 +327,7 @@ asked at, and **shape progression** settles what they leave tied: one octave
 before two, and at one span up before up and down, declared as steps rather than
 taken from the order the conditions are listed in. It says nothing about hands,
 which have no order of their own. Candidates still tied after it fall to
-candidate order, which follows the curriculum's requirements, so two unpractised
+candidate order, which follows the curriculum's requirements, so two unpracticed
 materials are introduced in the order the curriculum lists them (see
 [`curriculum.md`](curriculum.md)). A tie between two materials that also differ
 in shape goes to the simpler shape first; under the production goals no such tie
