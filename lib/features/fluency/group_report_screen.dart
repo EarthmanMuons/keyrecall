@@ -5,6 +5,7 @@ import 'package:material_ui/material_ui.dart';
 
 import '../../layout.dart';
 import '../practice/exercise_presentation.dart';
+import '../practice/goal_progress_screen.dart';
 import '../practice/hands_icon.dart';
 import '../practice/task_help.dart';
 import 'detail_sheet.dart';
@@ -164,6 +165,7 @@ class _GroupReportScreenState extends ConsumerState<GroupReportScreen> {
               ButtonSegment(
                 value: hands,
                 icon: HandsIcon(hands),
+                label: Text(handsMark(hands)),
                 tooltip: handsLabel(hands),
               ),
           ],
