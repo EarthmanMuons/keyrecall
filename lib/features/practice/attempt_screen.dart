@@ -2295,8 +2295,6 @@ class _Instrument extends ConsumerWidget {
             ),
           ],
         );
-        if (size == null || ceiling <= baseHeight + 0.5) return column;
-
         // The splitter rides on the band, just above the line, and its touch
         // target reaches down over the keys.
         const aboveKeys =
@@ -2304,26 +2302,29 @@ class _Instrument extends ConsumerWidget {
             PianoResizeHandle.splitterHeight +
             _lineHeight +
             _lineHeight;
+        // Stacked even without the handle, so the keyboard keeps its state
+        // and scroll position as the handle comes and goes.
         return Stack(
           clipBehavior: Clip.none,
           children: [
             column,
-            Positioned(
-              left: 0,
-              right: 0,
-              height: PianoResizeHandle.hitHeight,
-              bottom: scale.height - PianoResizeHandle.hitHeight + aboveKeys,
-              child: Center(
-                child: PianoResizeHandle(
-                  baseHeight: baseHeight,
-                  currentHeight: scale.height,
-                  maxHeight: ceiling,
-                  onHeightChanged: (height) =>
-                      size.setHeightScale(height / baseHeight),
-                  onReset: settings.isDefault ? null : size.reset,
+            if (size != null && ceiling > baseHeight + 0.5)
+              Positioned(
+                left: 0,
+                right: 0,
+                height: PianoResizeHandle.hitHeight,
+                bottom: scale.height - PianoResizeHandle.hitHeight + aboveKeys,
+                child: Center(
+                  child: PianoResizeHandle(
+                    baseHeight: baseHeight,
+                    currentHeight: scale.height,
+                    maxHeight: ceiling,
+                    onHeightChanged: (height) =>
+                        size.setHeightScale(height / baseHeight),
+                    onReset: settings.isDefault ? null : size.reset,
+                  ),
                 ),
               ),
-            ),
           ],
         );
       },
