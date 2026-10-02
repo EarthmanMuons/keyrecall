@@ -64,6 +64,19 @@ void main() {
     );
   });
 
+  test('asking for the size already held changes nothing', () async {
+    final (container, _) = await containerWith(const {});
+    final size = container.read(keyboardSizeProvider('a').notifier);
+    await size.setWidthScale(PianoViewSettings.maxScale);
+    var notified = 0;
+    container.listen(keyboardSizeProvider('a'), (_, _) => notified++);
+
+    await size.setWidthScale(PianoViewSettings.maxScale + 1);
+    await size.setHeightScale(1);
+
+    expect(notified, 0, reason: 'a pinch held at a limit writes nothing');
+  });
+
   test('a deleted profile leaves nothing behind', () async {
     final (container, preferences) = await containerWith(const {});
     await container.read(keyboardSizeProvider('a').notifier).setWidthScale(2);

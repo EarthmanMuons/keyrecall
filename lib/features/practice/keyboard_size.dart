@@ -37,12 +37,14 @@ class KeyboardSizeNotifier extends Notifier<PianoViewSettings> {
 
   Future<void> setWidthScale(double widthScale) async {
     final clamped = PianoViewSettings.clampScale(widthScale);
+    if (clamped == state.widthScale) return;
     state = state.copyWith(widthScale: clamped);
     await _prefs.setDouble(_widthKey(profileId), clamped);
   }
 
   Future<void> setHeightScale(double heightScale) async {
     final clamped = PianoViewSettings.clampScale(heightScale);
+    if (clamped == state.heightScale) return;
     state = state.copyWith(heightScale: clamped);
     await _prefs.setDouble(_heightKey(profileId), clamped);
   }

@@ -161,8 +161,26 @@ class _ScrollablePianoKeyboardState extends State<ScrollablePianoKeyboard> {
   }
 
   void _onScaleUpdate(ScaleUpdateDetails details) {
-    if (details.pointerCount < 2 || _pinchAnchorKeys == null) return;
+    final anchor = _pinchAnchorKeys;
+    final width = _cachedViewportWidth;
+    if (details.pointerCount < 2 || anchor == null || width == null) return;
     _pinchFocalX = details.localFocalPoint.dx;
+
+    // Pans by the fingers' movement whether or not the zoom changes, so a
+    // pinch held at a zoom limit still moves the keyboard. A zoom that does
+    // change is anchored again in the rebuild it causes.
+    if (_ctl.hasClients) {
+      final whiteKeyWidth = PianoGeometry.whiteKeyWidthForViewport(
+        viewportWidth: width,
+        visibleWhiteKeyCount: widget.visibleWhiteKeyCount,
+      );
+      _ctl.jumpTo(
+        (anchor * whiteKeyWidth - _pinchFocalX).clamp(
+          0.0,
+          _ctl.position.maxScrollExtent,
+        ),
+      );
+    }
     widget.onWidthScaleChanged?.call(_zoomStartScale * details.scale);
   }
 
