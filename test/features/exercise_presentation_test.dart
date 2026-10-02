@@ -199,6 +199,16 @@ void main() {
       expect(scale.height, 120);
     });
 
+    test('zooms continuously rather than by whole keys', () {
+      final scale = KeyboardScale.forSize(
+        width: 900,
+        baseHeight: 120,
+        settings: const PianoViewSettings(widthScale: 1.1, heightScale: 1),
+      );
+
+      expect(scale.visibleWhiteKeyCount, closeTo(30 / 1.1, 1e-9));
+    });
+
     test('zooms in no further than a handful of keys', () {
       final scale = KeyboardScale.forSize(
         width: 900,

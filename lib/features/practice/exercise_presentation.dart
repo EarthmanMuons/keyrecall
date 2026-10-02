@@ -207,11 +207,13 @@ class KeyboardDiagram {
 /// Never from the exercise, so the keys stay the same shape from one exercise
 /// to the next and only what is in view changes. By default a white key is
 /// `keyAspect` times as tall as it is wide, until the whole piano fits, and
-/// wider only on a window too wide for even that. Zooming widens them from there, and resizing
-/// grows the keyboard's height without touching their width.
+/// wider only on a window too wide for even that. Zooming widens them
+/// continuously from there, and resizing grows the keyboard's height without
+/// touching their width.
 class KeyboardScale {
-  /// How many white keys fit across the keyboard at once.
-  final int visibleWhiteKeyCount;
+  /// How many white keys fit across the keyboard at once, fractional while
+  /// zoomed.
+  final double visibleWhiteKeyCount;
 
   /// How wide each white key is drawn.
   final double whiteKeyWidth;
@@ -246,9 +248,9 @@ class KeyboardScale {
       1,
       PianoGeometry.fullKeyboardWhiteKeyCount,
     );
-    final int count = (base / settings.widthScale).round().clamp(
-      math.min(minZoomedWhiteKeyCount, base),
-      base,
+    final count = (base / settings.widthScale).clamp(
+      math.min(minZoomedWhiteKeyCount, base).toDouble(),
+      base.toDouble(),
     );
     final ceiling = math.max(baseHeight, maxHeight ?? baseHeight);
     return KeyboardScale(
