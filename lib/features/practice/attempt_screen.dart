@@ -30,6 +30,7 @@ import 'exercise_presentation.dart';
 import 'fingering.dart';
 import 'focus_sheet.dart';
 import 'hands_icon.dart';
+import 'item_lines.dart';
 import 'latency_probe.dart';
 import 'loop_failure.dart';
 import 'goal_screen.dart';
@@ -1404,13 +1405,18 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           layout.gutter,
           0,
         ),
-        child: _TaskStatement(
-          exercise,
-          compact: layout.isShort,
-          showsTempo: !_isSelfPaced,
-          note: widget.admittedBy == ChallengeBypass.acquisitionProbe
-              ? restoredTempoLine(exercise)
-              : metronomeLine(widget.admittedBy),
+        // As wide as the pane: the cross-fade lays it out loosely, and a
+        // statement narrower than the pane would otherwise sit at its start.
+        child: SizedBox(
+          width: double.infinity,
+          child: _TaskStatement(
+            exercise,
+            compact: layout.isShort,
+            showsTempo: !_isSelfPaced,
+            note: widget.admittedBy == ChallengeBypass.acquisitionProbe
+                ? restoredTempoLine(exercise)
+                : metronomeLine(widget.admittedBy),
+          ),
         ),
       ),
       secondChild: const SizedBox(width: double.infinity),
@@ -1648,10 +1654,13 @@ class _AttemptViewState extends ConsumerState<AttemptView>
   /// Held in the side insets where those have room, so they take nothing from
   /// the content, and over its corners where they do not. Gone with the rest
   /// of the controls for the length of the attempt.
+  ///
+  /// A little further in than the middle of the inset, because a screen's
+  /// rounded corner takes a bite out of it.
   List<Widget> _corners() {
     final padding = MediaQuery.paddingOf(context);
     double inside(double inset) => inset >= kMinInteractiveDimension
-        ? (inset - kMinInteractiveDimension) / 2
+        ? (inset - kMinInteractiveDimension) / 2 + 10
         : inset;
     Widget corner(Widget control) => IgnorePointer(
       ignoring: _phase != _Phase.ready,
@@ -1677,6 +1686,12 @@ class _AttemptViewState extends ConsumerState<AttemptView>
         ),
     ];
   }
+
+  /// The pause buttons' padding, which in a short window's narrow pane would
+  /// otherwise leave their labels no room.
+  EdgeInsetsGeometry? get _pausePadding => Layout.of(context).isShort
+      ? const EdgeInsets.symmetric(horizontal: 12)
+      : null;
 
   /// How tall the control is in every phase, so one replaces another without
   /// moving what is around it.
@@ -1776,6 +1791,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           // breaks across lines in half of it.
           Expanded(
             child: OutlinedButton(
+              style: OutlinedButton.styleFrom(padding: _pausePadding),
               onPressed: _backToReady,
               child: Text(
                 Layout.of(context).isShort ? 'Cancel' : 'Back to Ready',
@@ -1786,6 +1802,7 @@ class _AttemptViewState extends ConsumerState<AttemptView>
           const SizedBox(width: 12),
           Expanded(
             child: FilledButton(
+              style: FilledButton.styleFrom(padding: _pausePadding),
               onPressed: _beginCountIn,
               child: const Text('Resume', maxLines: 1),
             ),
@@ -2131,15 +2148,11 @@ class _TaskStatement extends StatelessWidget {
           // One line, the same one the bar carries during the attempt. The
           // tempo had a line to itself for its own rank in the task, and what
           // that cost was a line of music.
-          Text(
-            [
-              traversalName(conditions),
-              octavesName(conditions.octaves),
-              if (showsTempo) '${conditions.tempoBpm.round()} bpm',
-            ].join(' · '),
-            style: body?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            textAlign: TextAlign.center,
-          ),
+          ItemLines([
+            traversalName(conditions),
+            octavesName(conditions.octaves),
+            if (showsTempo) '${conditions.tempoBpm.round()} bpm',
+          ], style: body?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
           if (note case final note?) ...[
             SizedBox(height: compact ? 8 : 12),
             Text(note, style: body, textAlign: TextAlign.center),
