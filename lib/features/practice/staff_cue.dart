@@ -208,10 +208,12 @@ StaffSpaceBounds _staffSpaceBounds(BuildContext context) {
 }
 
 /// The theme a staff is drawn in, taken from the app's colors.
+///
+/// One ink for the staff and its notes, as printed music is.
 crisp.CrispNotationTheme staffTheme(BuildContext context) {
   final scheme = Theme.of(context).colorScheme;
   return crisp.CrispNotationTheme.standard.copyWith(
-    staffColor: scheme.onSurfaceVariant,
+    staffColor: scheme.onSurface,
     noteColor: scheme.onSurface,
     highlightColor: scheme.primary,
     fingeringPlacement: crisp.FingeringPlacement.outsideStaff,
